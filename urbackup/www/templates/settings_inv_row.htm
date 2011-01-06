@@ -1,0 +1,53 @@
+﻿<tr>
+<td>#{tInterval for incremental file backups}</td>
+<td><input type="text" id="update_freq_incr" value="#{update_freq_incr}"/> #{thours}</td>
+</tr>
+<tr>
+<td>#{tInterval for full file backups}</td>
+<td><input type="text" id="update_freq_full" value="#{update_freq_full}"/> #{tdays}</td>
+</tr>
+<tr>
+<td>#{tInverval for incremental image backups}</td>
+<td><input type="text" id="update_freq_image_incr" value="#{update_freq_image_incr}"/> #{tdays}</td>
+</tr>
+<tr>
+<td>#{tInterval for full image backups}</td>
+<td><input type="text" id="update_freq_image_full" value="#{update_freq_image_full}"/> #{tdays}</td>
+</tr>
+<tr>
+<td>#{tMaximal number of incremental file backups}</td>
+<td><input type="text" id="max_file_incr" value="#{max_file_incr}"/></td>
+</tr>
+<tr>
+<td>#{tMinimal number of incremental file backups}</td>
+<td><input type="text" id="min_file_incr" value="#{min_file_incr}"/></td>
+</tr>
+<td>#{tMaximal number of full file backups}</td>
+<td><input type="text" id="max_file_full" value="#{max_file_full}"/></td>
+</tr>
+<tr>
+<td>#{tMinimal number of full file backups}</td>
+<td><input type="text" id="min_file_full" value="#{min_file_full}"/></td>
+</tr>
+<td>#{tMaximal number of incremental image backups}</td>
+<td><input type="text" id="max_image_incr" value="#{max_image_incr}"/></td>
+</tr>
+<tr>
+<td>#{tMinimal number of incremental image backups}</td>
+<td><input type="text" id="min_image_incr" value="#{min_image_incr}"/></td>
+</tr>
+<td>#{tMaximal number of full image backups}</td>
+<td><input type="text" id="max_image_full" value="#{max_image_full}"/></td>
+</tr>
+<tr>
+<td>#{tMinimal number of full image backups}</td>
+<td><input type="text" id="min_image_full" value="#{min_image_full}"/></td>
+</tr>
+<tr>
+<td>#{tDelay after system startup}</td>
+<td><input type="text" id="startup_backup_delay" value="#{startup_backup_delay}"/> #{tmin}</td>
+</tr>
+<tr>
+<td>#{tAllow client to change settings}</td>
+<td><input type="checkbox" id="allow_overwrite" #{allow_overwrite}/></td>
+</tr>

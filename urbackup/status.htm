@@ -1,0 +1,35 @@
+﻿<html>
+<head>
+<title>UrBackup</title>
+</head>
+<body>
+<table border="0" cellspacing="0">
+<thead>
+<tr>
+	<th style="border-right: 1px solid black; padding: 5px">Client name</th>
+	<th style="border-right: 1px solid black; padding: 5px">Start time</th>
+	<th style="border-right: 1px solid black; padding: 5px">Online</th>
+	<th style="border-right: 1px solid black; padding: 5px">Done(%)</th>
+	<th style="border-right: 1px solid black; padding: 5px">Queue (1) Size</th>
+	<th style="border-right: 1px solid black; padding: 5px">Queue (2) Size</th>
+	<th style="border-right: 1px solid black; padding: 5px">Action</th>
+	<th style="padding: 5px">Done</th>
+</tr>
+</thead>
+<tbody>
+#foreach in CLIENTS
+<tr>
+	<td style="border-right: 1px solid black; padding: 5px; border-top: 1px solid black">#{NAME}</td>
+	<td style="border-right: 1px solid black; padding: 5px; border-top: 1px solid black">#{STARTTIME}</td>
+	<td style="border-right: 1px solid black; padding: 5px; border-top: 1px solid black">#{ONLINE}</td>
+	<td style="border-right: 1px solid black; padding: 5px; border-top: 1px solid black">#{PCDONE}</td>
+	<td style="border-right: 1px solid black; padding: 5px; border-top: 1px solid black">#{HASHQUEUESIZE}</td>
+	<td style="border-right: 1px solid black; padding: 5px; border-top: 1px solid black">#{HASHQUEUE_PREPARE}</td>
+	<td style="border-right: 1px solid black; padding: 5px; border-top: 1px solid black">#{ACTION}</td>
+	<td style="padding: 5px; border-top: 1px solid black">#{DONE}</td>
+</tr>
+#endfor
+</tbody>
+</table>
+</body>
+</html>

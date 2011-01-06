@@ -1,0 +1,19 @@
+﻿<br />
+<strong>#{tChange rights for user}: #{username}</strong>
+<br />
+<form action="#" onsubmit="submitChangeUserRights(#{userid}); return false;">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable" id="rightstable">
+<tr>
+<th class="tabHeaderNB">#{tDomain}</td>
+<th class="tabHeaderNB">#{tRights}</td>
+<th class="tabHeaderNB">#{tTranslation}</td>
+<th class="tabHeaderNB">#{tActions}</td>
+</tr>
+#{rows}
+</table>
+<br />
+<a href="javascript: addNewDomain(#{userid}, '#{username}')">#{tNew domain}</a>
+<br />
+<br />
+<input type="button" value="#{tAbort}" onclick="userSettings()"> <input type="submit" value="#{tChange}" />
+</form>

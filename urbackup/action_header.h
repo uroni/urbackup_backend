@@ -1,0 +1,12 @@
+#include "../vld.h"
+#include "../Interface/Action.h"
+#include "actions.h"
+#include "../Interface/Server.h"
+#include "../Interface/Template.h"
+#include "../Interface/Table.h"
+#include "../Interface/Database.h"
+#include "../Interface/SessionMgr.h"
+#include "../Interface/File.h"
+#include "../stringtools.h"
+#include "database.h"
+#include <stdlib.h>

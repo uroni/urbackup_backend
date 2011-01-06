@@ -1,0 +1,19 @@
+﻿<br />
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+<tr>
+<td>#{tBackup storage path}:</td>
+<td><input type="text" size="40" id="backupfolder" value="#{backupfolder}"/> </td>
+</tr>
+<tr>
+<td>#{tDo not do image backups}:</td>
+<td><input type="checkbox" id="no_images" value="true" #{no_images}/></td>
+</tr>
+<tr>
+<td>#{tAutomatically shut down server}:</td>
+<td><input type="checkbox" id="autoshutdown" value="true" #{autoshutdown}/></td>
+</tr>
+#{settings_inv}
+</table>
+<br />
+<br />
+<input type="button" value="#{tSave}" onClick="saveGeneralSettings()" />
