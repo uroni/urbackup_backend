@@ -1,21 +1,3 @@
-/*************************************************************************
-*    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
-*
-*    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation, either version 3 of the License, or
-*    (at your option) any later version.
-*
-*    This program is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
-*
-*    You should have received a copy of the GNU General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-**************************************************************************/
-
 #include <string>
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
@@ -579,7 +561,7 @@ void restore_wizard(void)
 			}break;
 		case 0:
 			{
-				system("urbackup/restore/progress-start.sh | dialog --backtitle \"`cat urbackup/restore/search`\" --gauge \"Fortschritt\" 6 60 0");
+				system("urbackup/restore/progress-start.sh | dialog --backtitle \"`cat urbackup/restore/search`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0");
 				++state;
 			}break;
 		case 1:
@@ -591,22 +573,22 @@ void restore_wizard(void)
 				{
 				case 10:
 				case 1:
-					errmsg="Interner Fehler";
+					errmsg="`cat urbackup/restore/internal_error`";
 					break;
 				case 2:
-					errmsg="Kein Backupserver wurde gefunden";
+					errmsg="`cat urbackup/restore/no_server_found`";
 					break; 
 				}
 
 				if(clients.empty())
 				{
 					ec=3;
-					errmsg="Keine Backupclients wurden gefunden";
+					errmsg="`cat urbackup/restore/no_clients_found`";
 				}
 
 				if(ec!=0)
 				{
-					int r=system(("dialog --menu \"Folgender Fehler ist aufgetreten: "+errmsg+". Wie soll weiter verfahren werden?\" 15 50 10 \"r\" \"Erneut nach Backupservern suchen\" \"n\" \"Netzwerkkarte konfigurieren\" \"w\" \"WLAN-Karte konfigurieren\" \"e\" \"Shell starten\" \"s\" \"Wiederherstellung beenden\" 2> out").c_str());
+					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/search_again`\" \"n\" \"`cat urbackup/restore/configure_networkcard`\" \"w\" \"`cat urbackup/restore/configure_wlan`\" \"e\" \"`cat urbackup/restore/start_shell`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
 						state=-1;
@@ -663,24 +645,24 @@ void restore_wizard(void)
 				{
 				case 10:
 				case 1:
-					errmsg="Interner Fehler";
+					errmsg="`cat urbackup/restore/internal_error`";
 					break;
 				case 2:
-					errmsg="Kein Backupserver wurde gefunden";
+					errmsg="`cat urbackup/restore/no_server_found`";
 					break; 
 				}
 
 				if(images.empty())
 				{
 					ec=3;
-					errmsg="Keine Images für client '"+clientname+"' wurden gefunden";
+					errmsg="`cat urbackup/restore/no_images_for_client1` '"+clientname+"' `cat urbackup/restore/no_images_for_client2`";
 				}
 
 				std::sort(images.begin(), images.end());
 
 				if(ec!=0)
 				{
-					int r=system(("dialog --menu \"Folgender Fehler ist aufgetreten: "+errmsg+". Wie soll weiter verfahren werden?\" 15 50 10 \"a\" \"`cat urbackup/restore/error_j_select`\" \"r\" \"Erneut nach Backupservern suchen\" \"s\" \"Wiederherstellung beenden\" 2> out").c_str());
+					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"a\" \"`cat urbackup/restore/error_j_select`\" \"r\" \"`cat urbackup/restore/search_again`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
 						state=-1;
@@ -737,7 +719,7 @@ void restore_wizard(void)
 					std::string vendor=trim2(getafter("Model Number:", out));
 					if(vendor.empty())
 					{
-						vendor="Unbekannte Platte";
+						vendor="`cat urbackup/restore/unknown_disk`";
 					}
 					vendors.push_back(vendor);
 					system(("hdparm -I /dev/"+drives[i]+" | grep \"M = 1000\" > out").c_str());
@@ -748,7 +730,7 @@ void restore_wizard(void)
 
 				if(drives.empty())
 				{
-					int r=system("dialog --menu \"Es wurden keine Festplatten gefunden. Wie soll weiter verfahren werden?\" 15 50 10 \"r\" \"Erneut nach Festplatten suchen\" \"s\" \"Wiederherstellung beenden\" 2> out");
+					int r=system("dialog --menu \"`cat urbackup/restore/no_disks_found`. `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/search_disk_again`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out");
 					if(r!=0)
 					{
 						state=-1;
@@ -790,14 +772,16 @@ void restore_wizard(void)
 		case 4:
 			{
 				system("clear");
-				std::cout << "Lade MBR fuer Festplatte..." << std::endl;
+				system("cat urbackup/restore/loading_mbr");
+				system("echo");
 				system("touch mbr.dat");
 				downloadImage(selimage.id, nconvert(selimage.time_s), "mbr.dat", true);
-				std::cout << "Verarbeite MBR..." << std::endl;
+				system("cat urbackup/restore/reading_mbr");
+				system("echo");
 				IFile *f=Server->openFile("mbr.dat", MODE_READ);
 				if(f==NULL)
 				{
-					err="Kann MBR Daten nicht lesen";
+					err="cannot_read_mbr";
 					state=101;
 					break;
 				}
@@ -809,17 +793,18 @@ void restore_wizard(void)
 				SMBRData mbrdata(mbr);
 				if(mbrdata.hasError())
 				{
-					err="Fehler beim lesen der MBR Daten";
+					err="error_while_reading_mbr";
 					exit(3);
 					state=101;
 					break;
 				}
 
-				std::cout << "Schreibe MBR..." << std::endl;
+				system("cat urbackup/restore/writing_mbr");
+				system("echo");
 				IFile *dev=Server->openFile("/dev/"+seldrive, MODE_RW);
 				if(dev==NULL)
 				{
-					err="Konnte Festplatte nicht öffnen";
+					err="cannot_open_disk";
 					state=101;
 					break;
 				}
@@ -827,23 +812,26 @@ void restore_wizard(void)
 				dev->Write(mbrdata.mbr_data);
 				Server->destroy(dev);
 
-				std::cout << "Lese Partitionstabelle neu ein..." << std::endl;
+				system("cat urbackup/restore/reading_partition_table");
+				system("echo");
 				system(("partprobe /dev/"+seldrive+" > /dev/null 2>&1").c_str());
 				Server->wait(10000);
-				std::cout << "Teste Partition auf Verfügbarkeit..." << std::endl;
+				system("cat urbackup/restore/testing_partition");
+				system("echo");
 				dev=Server->openFile("/dev/"+seldrive+nconvert(mbrdata.partition_number), MODE_RW);
 				int try_c=0;
 				while(dev==NULL && try_c<10)
 				{
 					system(("partprobe /dev/"+seldrive+" > /dev/null 2>&1").c_str());
 					Server->wait(10000);
-					std::cout << "Teste Partition auf Verfügbarkeit..." << std::endl;
+					system("cat urbackup/restore/testing_partition");
+					system("echo");
 					dev=Server->openFile("/dev/"+seldrive+nconvert(mbrdata.partition_number), MODE_RW);
 					++try_c;
 				}
 				if(dev==NULL)
 				{
-					err="Wiederherstellungspartition nicht verfuegbar";
+					err="no_restore_partition";
 					state=101;
 					break;
 				}
@@ -856,22 +844,22 @@ void restore_wizard(void)
 			{
 				RestoreThread rt(selimage.id, nconvert(selimage.time_s), "/dev/"+seldrive+nconvert( selpart ));
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
-				system("./cserver --plugin urbackup/.libs/liburbackup.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"Wiederherstellung\" --gauge \"Fortschritt\" 6 60 0");
+				system("./cserver --plugin urbackup/.libs/liburbackup.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0");
 				Server->getThreadPool()->waitFor(rt_ticket);
 				int rc=rt.getRC();
 				std::string errmsg;
 				switch(rc)
 				{
-				case 10: errmsg="Keine Verbindung zum Backupserver konnte hergestellt werden"; break;
-				case 2: errmsg="Auf die Partition konnte nicht geschrieben werden"; break;
-				case 3: errmsg="Die `cat urbackup/restore/size` der Daten ist fehlerhaft"; break;
-				case 4: errmsg="Der Server antwortete nicht mehr"; break;
-				case 6: errmsg="Schreiben auf die Festplatte schlug fehl"; break;
+				case 10: errmsg="`cat urbackup/restore/no_connection`"; break;
+				case 2: errmsg="`cat urbackup/restore/cannot_write_on_partition`"; break;
+				case 3: errmsg="`cat urbackup/restore/wrong_size`"; break;
+				case 4: errmsg="`cat urbackup/restore/server_doesnot_respond`"; break;
+				case 6: errmsg="`cat urbackup/restore/writing_failed`"; break;
 				};
 
 				if(rc!=0)
 				{
-					int r=system(("dialog --menu \"Folgender Fehler ist aufgetreten: "+errmsg+". Wie soll weiter verfahren werden?\" 15 50 10 \"r\" \"Wiederherstellung erneut starten\" \"e\" \"Expertenkonsole\" \"o\" \"`cat urbackup/restore/select_other_drive`\" \"s\" \"Wiederherstellung beenden\" 2> out").c_str());
+					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend`: "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_restore`\" \"e\" \"`cat urbackup/restore/error_happend`\" \"o\" \"`cat urbackup/restore/start_shell`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
 						state=-1;
@@ -898,19 +886,19 @@ void restore_wizard(void)
 			}break;
 		case 6:
 			{
-				system("dialog --msgbox \"Wiederherstellungsvorgang erfolgreich abgeschlossen. Der Computer wird jetzt neugestartet.\" 7 50");
+				system("dialog --msgbox \"`cat urbackup/restore/restore_success`\" 7 50");
 				system("init 6");
 				exit(0);
 			}break;
 		case 99:
 			{
-				system("dialog --msgbox \"Der Computer wird jetzt heruntergefahren.\" 7 50");
+				system("dialog --msgbox \"`cat urbackup/restore/computer_halt`\" 7 50");
 				system("init 0");
 				exit(1);
 			}break;
 		case 101:
 			{
-				int r=system(("dialog --menu \"Folgender Fehler ist aufgetreten: "+err+". Wie soll weiter verfahren werden?\" 15 50 10 \"r\" \"Wiederherstellungsprozess neustarten\" \"s\" \"Wiederherstellung beenden\" 2> out").c_str());
+				int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` `cat urbackup/restore/"+err+"`. `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_restore`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 				if(r!=0)
 				{
 					state=-1;
@@ -925,7 +913,7 @@ void restore_wizard(void)
 			}break;
 		default:
 			{
-				system("dialog --msgbox \"Interner Fehler!!!!\" 7 50");
+				system("dialog --msgbox \"`cat urbackup/restore/internal_error`!!!!\" 7 50");
 				exit(99);
 			}break;
 		}

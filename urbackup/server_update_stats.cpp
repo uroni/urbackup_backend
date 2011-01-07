@@ -1,21 +1,3 @@
-/*************************************************************************
-*    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
-*
-*    This program is free software: you can redistribute it and/or modify
-*    it under the terms of the GNU General Public License as published by
-*    the Free Software Foundation, either version 3 of the License, or
-*    (at your option) any later version.
-*
-*    This program is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU General Public License for more details.
-*
-*    You should have received a copy of the GNU General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-**************************************************************************/
-
 #ifndef CLIENT_ONLY
 
 #include "server_update_stats.h"
@@ -29,7 +11,7 @@
 
 void ServerUpdateStats::createQueries(void)
 {
-	q_get_images=db->Prepare("SELECT clientid,path FROM backup_images WHERE complete=1 AND running=0", false);
+	q_get_images=db->Prepare("SELECT clientid,path FROM backup_images WHERE complete=1 AND running<datetime('now','-300 seconds')", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=? WHERE id=?", false);
 	q_get_ncount_files=db->Prepare("SELECT files.rowid AS id, shahash, filesize, rsize, clientid, backupid FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE did_count=0 LIMIT 10000", false);
 	q_has_client=db->Prepare("SELECT count(*) AS c FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE shahash=? AND filesize=? AND clientid=?", false);
