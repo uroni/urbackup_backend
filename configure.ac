@@ -48,5 +48,6 @@ AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
 AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
 
+AC_CONFIG_SUBDIRS([cryptoplugin downloadplugin fileservplugin fsimageplugin httpserver piped_process pychart urbackup])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

@@ -98,7 +98,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Unknown crypto_action");
 		}
-		exit(0);
+		_exit(0);
 	}
 
 	Server->Log("Loaded -cryptoplugin- plugin", LL_INFO);
@@ -107,3 +107,4 @@ DLLEXPORT void LoadActions(IServer* pServer)
 DLLEXPORT void UnloadActions(void)
 {
 }
+

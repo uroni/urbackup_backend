@@ -1,0 +1,27 @@
+# Defaults for urbackup_srv initscript
+# sourced by /etc/init.d/urbackup_srv
+# installed at /etc/default/urbackup_srv by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# Additional options that are passed to the Daemon.
+
+#Port for fastcgi requests
+FASTCGI_PORT=55413
+
+#Port for the webinterface
+HTTP_PORT=55414
+
+#logfile name
+LOGFILE="urbackup.log"
+
+#Either debug,warn,info or error
+LOGLEVEL="warn"
+
+#Tmp file directory - be carefull this can get very large
+DAEMON_TMPDIR="/tmp"
+
+DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT"
+

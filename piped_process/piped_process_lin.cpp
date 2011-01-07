@@ -48,7 +48,7 @@ CPipedProcess::CPipedProcess(std::string cmd)
 	cmd=greplace("(","_d",cmd);
 	cmd=greplace(")","_e",cmd);
 	
-	cmd="./getpid "+cmd+" 2_a_b1 _a "+fifo;
+	cmd="getpid "+cmd+" 2_a_b1 _a "+fifo;
 	
 	Server->Log("CMD: "+cmd, LL_DEBUG);
 	outputp=popen(cmd.c_str(), "r");
