@@ -20,8 +20,8 @@ NAME="urbackup_srv"             # Introduce the short server's name here
 DAEMON=/usr/local/bin/urbackup_srv # Introduce the server's location here
 DAEMON_ARGS="--port 55413 --logfile /var/log/urbackup.log --loglevel warning"             # Arguments to run the daemon with
 DAEMON_DIR="/usr/local/var"
-DEAMON_LIBS="/usr/local/lib"
-DAEMON_PLUGINS="--daemon --plugin $DAEMON_LIBS/libpychart.so --plugin $DAEMON_LIBS/libdownloadplugin.so --plugin $DAEMON_LIBS/libfsimageplugin.so --plugin $DAEMON_LIBS/libpiped_process.so --plugin $DAEMON_LIBS/liburbackup.so --plugin $DAEMON_LIBS/libhttpserver.so --http_root $DAEMON_LIBS/urbackup/www --workingdir $DAEMON_DIR --server true --user urbackup"
+DAEMON_LIBS="/usr/local/lib"
+DAEMON_PLUGINS="--daemon --plugin $DAEMON_LIBS/libpychart.so --plugin $DAEMON_LIBS/libdownloadplugin.so --plugin $DAEMON_LIBS/libfsimageplugin.so --plugin $DAEMON_LIBS/libpiped_process.so --plugin $DAEMON_LIBS/liburbackup.so --plugin $DAEMON_LIBS/libhttpserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --server true --user urbackup"
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 DAEMON_TMPDIR=/tmp
@@ -52,7 +52,7 @@ DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
 do_start()
 {
 	export TMPDIR=$DAEMON_TMPDIR
-	export MPLCONFIGDIR=$DAEMON_DIR
+	export MPLCONFIGDIR=$DAEMON_DIR/urbackup
 	# Return
 	#   0 if daemon has been started
 	#   1 if daemon was already running

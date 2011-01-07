@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([compiled server], [0.1], [urpc@gmx.de])
+AC_INIT([urbackup-server], [0.2], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
@@ -48,6 +48,6 @@ AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
 AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
 
-AC_CONFIG_SUBDIRS([cryptoplugin downloadplugin fileservplugin fsimageplugin httpserver piped_process pychart urbackup])
+AC_CONFIG_SUBDIRS([downloadplugin fileservplugin fsimageplugin httpserver piped_process pychart urbackup])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

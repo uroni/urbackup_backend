@@ -46,5 +46,5 @@ private:
 
 	IService *service;
 
-	bool do_stop;
+	volatile bool do_stop;
 };

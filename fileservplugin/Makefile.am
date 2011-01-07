@@ -1,3 +1,4 @@
 lib_LTLIBRARIES = libfileservplugin.la
 libfileservplugin_la_SOURCES = dllmain.cpp ../stringtools.cpp bufmgr.cpp CampusThread.cpp CClientThread.cpp CriticalSection.cpp CTCPFileServ.cpp CUDPThread.cpp data.cpp download.cpp FileServ.cpp FileServFactory.cpp log.cpp main.cpp map_buffer.cpp pluginmgr.cpp tcpstack.cpp
+noinst_HEADERS = bufmgr.h CUDPThread.h FileServFactory.h IFileServ.h packet_ids.h socket_header.h CampusThread.h CriticalSection.h data.h FileServ.h log.h pluginmgr.h tcpstack.h CClientThread.h CTCPFileServ.h download.h IFileServFactory.h map_buffer.h settings.h types.h
 AM_CXXFLAGS = -DLINUX
