@@ -252,6 +252,11 @@ int my_init_fcn_t(int argc, char *argv[])
 		Server->setServerWorkingDir(Server->ConvertToUnicode(workingdir));
 	}
 	
+	if(!logfile.empty())
+	{
+		Server->setLogFile(logfile);
+	}
+	
 
 #ifndef _WIN32
 	if(daemon)
@@ -269,32 +274,11 @@ int my_init_fcn_t(int argc, char *argv[])
 
 		chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
 	}
-
-
-	if( !daemon_user.empty() && (getuid()==0 || geteuid()==0) )
-	{
-	    Server->Log("Changing user...", LL_DEBUG);
-		char buf[1000];
-	    passwd pwbuf;
-		passwd *pw;
-		int rc=getpwnam_r(daemon_user.c_str(), &pwbuf, buf, 1000, &pw);
-	    if(pw!=NULL)
-	    {
-			Server->Log("done.");
-			setgid(pw->pw_gid);
-			setuid(pw->pw_uid);
-	    }
-	    else
-	    {
-	    	Server->Log("Unable to change user, probably because process uid is not root", LL_ERROR);
-	    }
-	}
 #endif
+
+	
 		
-	if(!logfile.empty())
-	{
-		Server->setLogFile(logfile);
-	}
+	
 	
 	if(!loglevel.empty())
 	{
@@ -315,6 +299,27 @@ int my_init_fcn_t(int argc, char *argv[])
 			Server->Log("Loading "+(std::string)plugins[i]+" failed", LL_ERROR);
 		}
 	}
+
+#ifndef _WIN32
+	if( !daemon_user.empty() && (getuid()==0 || geteuid()==0) )
+	{
+	    Server->Log("Changing user...", LL_DEBUG);
+		char buf[1000];
+	    passwd pwbuf;
+		passwd *pw;
+		int rc=getpwnam_r(daemon_user.c_str(), &pwbuf, buf, 1000, &pw);
+	    if(pw!=NULL)
+	    {
+			Server->Log("done.");
+			setgid(pw->pw_gid);
+			setuid(pw->pw_uid);
+	    }
+	    else
+	    {
+	    	Server->Log("Unable to change user, probably because process uid is not root", LL_ERROR);
+	    }
+	}
+#endif
 	
 	CLoadbalancerClient *lbs=NULL;
 	if( loadbalancer!="" )
