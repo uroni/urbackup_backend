@@ -108,6 +108,8 @@ void ServerUpdateStats::update_images(void)
 	{
 		std::wstring &fn=res[i][L"path"];
 		IFile * file=Server->openFile(fn, MODE_READ);
+		if(file==NULL)
+			continue;
 		int cid=watoi(res[i][L"clientid"]);
 		std::map<int, _i64>::iterator it=clients_used.find(cid);
 		if(it==clients_used.end())

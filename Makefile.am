@@ -11,7 +11,7 @@ SUBDIRS=. downloadplugin fileservplugin fsimageplugin httpserver piped_process p
 install-data-local: $(srcdir)/init.d $(srcdir)/defaults
 	mkdir $(localstatedir) || true
 	cp $(srcdir)/init.d /etc/init.d/urbackup_srv
-	cp $(srcdir)/defaults /etc/default/urbackup_srv
+	if ! test -e /etc/default/urbackup_srv; then cp $(srcdir)/defaults /etc/default/urbackup_srv; fi
 	mkdir $(localstatedir)/urbackup || true
 	adduser --system --quiet --group --home $(localstatedir)/urbackup urbackup
 	

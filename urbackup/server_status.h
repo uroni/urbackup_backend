@@ -20,8 +20,8 @@ enum SStatusAction
 
 struct SStatus
 {
-	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1; prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; }
-	SStatus(bool pOnline) { online=pOnline; has_status=false; done=false; clientid=0;}
+	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1; prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false; }
+	SStatus(bool pOnline) { online=pOnline; has_status=false; done=false; clientid=0; action_done=false;}
 	std::string client;
 	int clientid;
 	unsigned int starttime;
@@ -32,6 +32,7 @@ struct SStatus
 	bool online;
 	bool done;
 	bool r_online;
+	bool action_done;
 	SStatusAction statusaction; 
 };
 

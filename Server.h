@@ -44,7 +44,7 @@ public:
 	virtual std::string getServerParameter(const std::string &key, const std::string &def);
 	virtual void setServerParameter(const std::string &key, const std::string &value);
 	virtual void setLogLevel(int LogLevel);
-	virtual void setLogFile(const std::string &plf);
+	virtual void setLogFile(const std::string &plf, std::string chown_user="");
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO);
 	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO);
 	virtual void Write(THREAD_ID tid, const std::string &str, bool cached=true);

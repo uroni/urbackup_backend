@@ -48,7 +48,7 @@ CPipedProcess::CPipedProcess(std::string cmd)
 	cmd=greplace("(","_d",cmd);
 	cmd=greplace(")","_e",cmd);
 	
-	cmd="getpid "+cmd+" 2_a_b1 _a "+fifo;
+	cmd="`whereis getpid_urbackup | sed -n 's/.*: \\([^ ]*\\)/\\1/p' -` "+cmd+" 2_a_b1 _a "+fifo;
 	
 	Server->Log("CMD: "+cmd, LL_DEBUG);
 	outputp=popen(cmd.c_str(), "r");
@@ -68,10 +68,12 @@ CPipedProcess::CPipedProcess(std::string cmd)
 	while( feof(outputp)==0 && ferror(outputp)==0 )
 	{
 		char ch=(char)fgetc(outputp);
+		//Server->Log("Char: "+ch, LL_DEBUG);
 		if( ch=='|' )break;
 		else tpid+=ch;
 	}
 	pid=atoi(tpid.c_str());
+	Server->Log("Process pid: "+nconvert((int)pid), LL_DEBUG);
 }
 
 CPipedProcess::~CPipedProcess()

@@ -70,6 +70,8 @@
 #	include <ctime>
 #	include <sys/time.h>
 #	include <unistd.h>
+#	include <sys/types.h>
+#	include <pwd.h>
 #endif
 
 const size_t SEND_BLOCKSIZE=8192;
@@ -294,7 +296,7 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 	}
 }
 
-void CServer::setLogFile(const std::string &plf)
+void CServer::setLogFile(const std::string &plf, std::string chown_user)
 {
 	if(logfile_a)
 	{
@@ -303,7 +305,26 @@ void CServer::setLogFile(const std::string &plf)
 	}
 	logfile.open( plf.c_str(), std::ios::app | std::ios::out | std::ios::binary );
 	if(logfile.is_open() )
+	{
+#ifndef _WIN32
+		if(!chown_user.empty())
+		{
+			char buf[1000];
+			passwd pwbuf;
+			passwd *pw;
+			int rc=getpwnam_r(chown_user.c_str(), &pwbuf, buf, 1000, &pw);
+			if(pw!=NULL)
+			{
+				chown(plf.c_str(), pw->pw_uid, pw->pw_gid);
+			}
+			else
+			{
+	    		Server->Log("Unable to change logfile ownership", LL_ERROR);
+			}
+		}
+#endif
 		logfile_a=true;
+	}
 }
 
 void CServer::setLogLevel(int LogLevel)

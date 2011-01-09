@@ -327,6 +327,7 @@ void BackupServerGet::operator ()(void)
 				os_remove_nonempty_dir(backuppath);
 			}
 
+			status.action_done=false;
 			status.statusaction=sa_none;
 			status.pcdone=100;
 			//Flush buffer before continuing...
@@ -2374,6 +2375,9 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
 
 							bool vhdfile_err=false;
+
+							status.action_done=true;
+							ServerStatus::setServerStatus(status);
 
 							if(vhdfile!=NULL)
 							{

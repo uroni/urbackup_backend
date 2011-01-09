@@ -57,7 +57,7 @@ ACTION_IMPL(progress)
 					break;
 				}
 			}
-			if(clients[i].r_online && clients[i].statusaction!=sa_none && (rights=="all" || found==true) )
+			if(clients[i].r_online && clients[i].statusaction!=sa_none && clients[i].action_done==false && (rights=="all" || found==true) )
 			{
 				JSON::Object obj;
 				obj.set("name", JSON::Value(clients[i].client));

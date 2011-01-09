@@ -58,7 +58,7 @@ void destroy_mutex_selthread(void);
 void termination_handler(int signum)
 {
 	run=false;
-	Server->Log("Shutting down", LL_WARNING);
+	Server->Log("Shutting down (Signal "+nconvert(signum)+")", LL_WARNING);
 }
 #endif
 
@@ -227,6 +227,7 @@ int my_init_fcn_t(int argc, char *argv[])
 	}
 
 	Server->setServerParameters(srv_params);
+	
 	if(workingdir.empty())
 	{
 #ifdef _WIN32
@@ -251,12 +252,7 @@ int my_init_fcn_t(int argc, char *argv[])
 	{
 		Server->setServerWorkingDir(Server->ConvertToUnicode(workingdir));
 	}
-	
-	if(!logfile.empty())
-	{
-		Server->setLogFile(logfile);
-	}
-	
+
 
 #ifndef _WIN32
 	if(daemon)
@@ -275,9 +271,14 @@ int my_init_fcn_t(int argc, char *argv[])
 		chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
 	}
 #endif
+	
+	
 
 	
-		
+	if(!logfile.empty())
+	{
+		Server->setLogFile(logfile, daemon_user);
+	}	
 	
 	
 	if(!loglevel.empty())
@@ -290,14 +291,6 @@ int my_init_fcn_t(int argc, char *argv[])
 			Server->setLogLevel(LL_INFO);
 		else if(loglevel=="error")
 			Server->setLogLevel(LL_ERROR);
-	}
-
-	for( size_t i=0;i<plugins.size();++i)
-	{
-		if( !Server->LoadDLL(plugins[i]) )
-		{
-			Server->Log("Loading "+(std::string)plugins[i]+" failed", LL_ERROR);
-		}
 	}
 
 #ifndef _WIN32
@@ -320,6 +313,13 @@ int my_init_fcn_t(int argc, char *argv[])
 	    }
 	}
 #endif
+	for( size_t i=0;i<plugins.size();++i)
+	{
+		if( !Server->LoadDLL(plugins[i]) )
+		{
+			Server->Log("Loading "+(std::string)plugins[i]+" failed", LL_ERROR);
+		}
+	}
 	
 	CLoadbalancerClient *lbs=NULL;
 	if( loadbalancer!="" )
@@ -332,8 +332,11 @@ int my_init_fcn_t(int argc, char *argv[])
 #ifndef _WIN32
 	if (signal (SIGINT, termination_handler) == SIG_IGN)
 		signal (SIGINT, SIG_IGN);
-	if (signal (SIGHUP, termination_handler) == SIG_IGN)
-		signal (SIGHUP, SIG_IGN);
+	if(!daemon)
+	{
+	    if (signal (SIGHUP, termination_handler) == SIG_IGN)
+			signal (SIGHUP, SIG_IGN);
+	}
 	if (signal (SIGTERM, termination_handler) == SIG_IGN)
 		signal (SIGTERM, SIG_IGN);
 #endif

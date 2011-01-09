@@ -53,7 +53,7 @@ void BackupServer::operator()(void)
 
 		if(!ServerStatus::isActive() && settings->getValue("autoshutdown", "false")=="true")
 		{
-			writestring("true", "shutdown_now");
+			writestring("true", "urbackup/shutdown_now");
 		}
 
 		std::string r;

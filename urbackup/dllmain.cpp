@@ -142,7 +142,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 #ifndef CLIENT_ONLY
 	if(both || (!both && !is_backup_client))
 	{
-		if((server_identity=getFile("server_ident.key")).size()<5)
+		if((server_identity=getFile("urbackup/server_ident.key")).size()<5)
 		{
 			Server->Log("Generating Server identity...", LL_INFO);
 			std::string ident="#I";
@@ -151,12 +151,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				ident+=getRandomChar();
 			}
 			ident+='#';
-			writestring(ident, "server_ident.key");
+			writestring(ident, "urbackup/server_ident.key");
 			server_identity=ident;
 		}
 		is_server=true;
 
-		Server->deleteFile("shutdown_now");
+		Server->deleteFile("urbackup/shutdown_now");
 	}
 #endif
 
