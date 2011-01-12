@@ -409,6 +409,8 @@ void IndexThread::indexDirs(void)
 	updateDirs();
 #ifdef _WIN32
 	cd->restoreSavedChangedDirs();
+	//Invalidate cache
+	DirectoryWatcherThread::getPipe()->Write("U");
 	changed_dirs=cd->getChangedDirs();
 #endif
 	std::sort(changed_dirs.begin(), changed_dirs.end());
@@ -435,7 +437,8 @@ void IndexThread::indexDirs(void)
 			std::wstring mod_path=backup_dirs[i].path;
 
 			Server->Log("Creating shadowcopy of \""+scd->dir+"\" in indexDirs()", LL_INFO);
-			bool b=start_shadowcopy(*scd);
+			bool onlyref;
+			bool b=start_shadowcopy(*scd, &onlyref);
 			Server->Log("done.", LL_INFO);
 			if(!b)
 			{
@@ -449,11 +452,14 @@ void IndexThread::indexDirs(void)
 				scd->running=true;
 			}
 #ifdef _WIN32
-			DirectoryWatcherThread::getPipe()->Write("U");
-			Server->wait(10000);
-			std::vector<std::wstring> acd=cd->getChangedDirs(false);
-			changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
-			std::sort(changed_dirs.begin(), changed_dirs.end());
+			if(!b || !onlyref)
+			{
+				DirectoryWatcherThread::getPipe()->Write("U");
+				Server->wait(10000);
+				std::vector<std::wstring> acd=cd->getChangedDirs(false);
+				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
+				std::sort(changed_dirs.begin(), changed_dirs.end());
+			}
 #endif
 
 			Server->Log("Indexing \""+backup_dirs[i].tname+"\"...", LL_INFO);
@@ -601,7 +607,7 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 }
 #endif
 
-bool IndexThread::start_shadowcopy(SCDirs &dir)
+bool IndexThread::start_shadowcopy(SCDirs &dir, bool *onlyref)
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS	
@@ -648,6 +654,10 @@ bool IndexThread::start_shadowcopy(SCDirs &dir)
 						filesrv->shareDir(dir.dir, dir.target);
 					}
 
+					if(onlyref!=NULL)
+					{
+						*onlyref=true;
+					}
 					Server->Log("Shadowcopy already present.", LL_INFO);
 					return true;
 				}
@@ -748,6 +758,10 @@ bool IndexThread::start_shadowcopy(SCDirs &dir)
 	VssFreeSnapshotProperties(&snap_props);
 
 	dir.ref->backupcom=backupcom;
+	if(onlyref!=NULL)
+	{
+		*onlyref=false;
+	}
 	return true;
 #else
 	return false;

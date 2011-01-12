@@ -124,6 +124,7 @@ void DirectoryWatcherThread::operator()(void)
 			{
 				lastentries.clear();
 				dcw.update();
+				dcw.update_longliving();
 			}
 #endif
 			else if( msg[0]=='Q' )

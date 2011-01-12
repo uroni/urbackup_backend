@@ -100,7 +100,7 @@ private:
 
 	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path);
 
-	bool start_shadowcopy(SCDirs &dir);
+	bool start_shadowcopy(SCDirs &dir, bool *onlyref=NULL);
 	bool release_shadowcopy(SCDirs &dir);
 	std::string lookup_shadowcopy(int sid);
 #ifdef _WIN32

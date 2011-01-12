@@ -712,6 +712,16 @@ void ChangeJournalWatcher::update(void)
 	}
 }
 
+void ChangeJournalWatcher::update_longliving(void)
+{
+	for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
+	{
+		listener->On_FileModified(it->first);
+	}
+}
+
+const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REASON_HARD_LINK_CHANGE | USN_REASON_NAMED_DATA_EXTEND | USN_REASON_NAMED_DATA_OVERWRITE| USN_REASON_NAMED_DATA_TRUNCATION| USN_REASON_REPARSE_POINT_CHANGE| USN_REASON_SECURITY_CHANGE| USN_REASON_STREAM_CHANGE| USN_REASON_DATA_TRUNCATION | USN_REASON_BASIC_INFO_CHANGE | USN_REASON_DATA_OVERWRITE | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME;
+
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
 {
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
@@ -725,7 +735,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			resetRoot(it->second.rid);
 			indexRootDirs(it->second.rid, it->first, it->second.rid);*/
 		}
-		else if(UsnRecord->Reason & (USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME ) )
+		else if(UsnRecord->Reason & (USN_REASON_CLOSE | watch_flags ) )
 		{
 			std::wstring dir_fn=getFilename(UsnRecord->ParentFileReferenceNumber, cj.rid);
 			if(dir_fn.empty())
@@ -747,8 +757,24 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				{
 					Server->Log(L"Error: "+Server->ConvertFromUTF16(fn)+L" was already created.", LL_ERROR);
 				}*/
+				
+				if(UsnRecord->Reason & USN_REASON_CLOSE)
+				{
+					std::map<std::wstring, bool>::iterator it=open_write_files.find(dir_fn+UsnRecord->Filename);
+					if(it!=open_write_files.end())
+					{
+						open_write_files.erase(it);
+					}
+				}
+				else if( UsnRecord->Reason & watch_flags )
+				{
+					open_write_files[dir_fn+UsnRecord->Filename]=true;
+				}
 
-				listener->On_FileModified(dir_fn+UsnRecord->Filename);
+				if(UsnRecord->Reason & watch_flags )
+				{
+					listener->On_FileModified(dir_fn+UsnRecord->Filename);
+				}
 			}
 		}
 		else if(UsnRecord->Reason & USN_REASON_RENAME_OLD_NAME )

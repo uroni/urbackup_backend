@@ -43,6 +43,7 @@ public:
 	void watchDir(const std::wstring &dir);
 
 	void update(void);
+	void update_longliving(void);
 private:
 	IChangeJournalListener *listener;
 	std::map<std::wstring, SChangeJournal> wdirs;
@@ -103,6 +104,8 @@ private:
 
 	bool has_error;
 	bool indexing_in_progress;
+
+	std::map<std::wstring, bool> open_write_files;
 };
 
 class IChangeJournalListener

@@ -212,6 +212,7 @@ void ClientDAO::removeAllFiles(void)
 std::vector<std::wstring> ClientDAO::getChangedDirs(bool del)
 {
 	std::vector<std::wstring> ret;
+	db->BeginTransaction();
 	db_results res=q_get_changed_dirs->Read();
 	q_get_changed_dirs->Reset();
 	if(del)
@@ -221,6 +222,7 @@ std::vector<std::wstring> ClientDAO::getChangedDirs(bool del)
 		q_remove_changed_dirs->Write();
 		q_remove_changed_dirs->Reset();
 	}
+	db->EndTransaction();
 	for(size_t i=0;i<res.size();++i)
 	{
 		ret.push_back(res[i][L"name"]);
