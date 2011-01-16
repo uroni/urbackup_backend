@@ -793,7 +793,10 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			}
 			else
 			{
-				listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
+				if(UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
+				{
+					listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
+				}
 				listener->On_FileModified(dir_fn+UsnRecord->Filename);
 			}
 		}
