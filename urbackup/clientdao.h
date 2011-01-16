@@ -75,6 +75,12 @@ public:
 
 	std::vector<std::wstring> getGapDirs(void);
 
+	std::vector<std::wstring> getDelDirs(bool del=true);
+	void deleteSavedDelDirs(void);
+	void restoreSavedDelDirs(void);
+
+	void removeDeletedDir(const std::wstring &dir);
+
 private:
 	IDatabase *db;
 
@@ -95,4 +101,10 @@ private:
 	IQuery *q_copy_from_tmp_files;
 	IQuery *q_delete_tmp_files;
 	IQuery *q_has_changed_gap;
+	IQuery *q_get_del_dirs;
+	IQuery *q_del_del_dirs;
+	IQuery *q_restore_del_dirs;
+	IQuery *q_copy_del_dirs;
+	IQuery *q_del_del_dirs_copy;
+	IQuery *q_remove_del_dir;
 };

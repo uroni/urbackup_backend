@@ -30,6 +30,7 @@ struct UsnInt
 	DWORD Reason;
 	std::wstring Filename;
 	USN NextUsn;
+	DWORD attributes;
 };
 
 class IChangeJournalListener;
@@ -116,4 +117,5 @@ public:
     virtual void On_FileAdded(const std::wstring & strFileName)=0;
     virtual void On_FileModified(const std::wstring & strFileName)=0;
 	virtual void On_ResetAll(const std::wstring & vol)=0;
+	virtual void On_DirRemoved(const std::wstring & strDirName)=0;
 };

@@ -215,6 +215,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			db->Write("DELETE FROM map_frn");
 			db->Write("CREATE INDEX IF NOT EXISTS logdata_index ON logdata( logid ASC )");
 			db->Write("ALTER TABLE logdata ADD ltime DATE;");
+			db->Write("CREATE TABLE IF NOT EXISTS del_dirs ( name TEXT );");
+			db->Write("CREATE TABLE IF NOT EXISTS del_dirs_backup ( name TEXT );");
+			db->Write("ALTER TABLE journal_data ADD attributes INTEGER;");
 		}
 	}
 
