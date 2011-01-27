@@ -42,6 +42,7 @@ std::string CHTTPFile::getContentType(void)
 
 void CHTTPFile::operator ()(void)
 {
+	Server->Log("Sending file \""+filename+"\"", LL_DEBUG);
 	IFile *fp=Server->openFile(filename);
 
 	if( fp==NULL )

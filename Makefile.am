@@ -11,7 +11,7 @@ AM_LDFLAGS = $(PTHREAD_LIBS) -ldl
 SUBDIRS=. pychart downloadplugin fsimageplugin httpserver urbackup
 install-exec-local: $(srcdir)/defaults $(srcdir)/init.d
 	$(INSTALL) -D $(srcdir)/init.d $(sysconfdir)/init.d/urbackup_srv
-	$(INSTALL) -D $(srcdir)/defaults $(DESTDIR)$(sysconfdir)/default/urbackup_srv
+	if ! test -e $(sysconfdir)/default/urbackup_srv; then $(INSTALL) -D $(srcdir)/defaults $(sysconfdir)/default/urbackup_srv; fi
 
 	mkdir -p $(DESTDIR)$(localstatedir)/urbackup
 	chown urbackup:urbackup $(DESTDIR)$(localstatedir)/urbackup

@@ -1138,6 +1138,8 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 
 bool IndexThread::cleanup_saved_shadowcopies(void)
 {
+#ifdef _WIN32
+#ifdef ENABLE_VSS
 #ifndef VSS_XP
 #ifndef VSS_S03
 #ifndef SERVER_ONLY
@@ -1154,6 +1156,7 @@ bool IndexThread::cleanup_saved_shadowcopies(void)
 				found=true;
 			}
 		}
+
 
 		if(found)
 		{
@@ -1186,6 +1189,8 @@ bool IndexThread::cleanup_saved_shadowcopies(void)
 #endif
 #endif
 #endif
+#endif //ENABLE_VSS
+#endif //_WIN32
 		return true;
 }
 

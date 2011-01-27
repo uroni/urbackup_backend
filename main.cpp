@@ -129,6 +129,7 @@ int my_init_fcn_t(int argc, char *argv[])
 	std::string workingdir;
 	bool daemon=false;
 	std::string daemon_user;
+	std::string pidfile;
 
 	for(int i=1;i<argc;++i)
 	{
@@ -188,10 +189,17 @@ int my_init_fcn_t(int argc, char *argv[])
 		else if (carg=="--loglevel" || carg=="-ll" )
 		{
 			loglevel=strlower(narg);
+			++i;
 		}
 		else if (carg=="--logfile" || carg=="-lf" )
 		{
 			logfile=narg;
+			++i;
+		}
+		else if( carg=="--pidfile" )
+		{
+			pidfile=narg;
+			++i;
 		}
 		else
 		{
@@ -270,6 +278,19 @@ int my_init_fcn_t(int argc, char *argv[])
 			exit(0);
 
 		chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
+		
+		if(pidfile.empty())
+		{
+			pidfile="/var/run/urbackup_srv.pid";
+		}
+		
+		std::fstream pf;
+		pf.open(pidfile.c_str(), std::ios::out|std::ios::binary);
+		if(pf.is_open())
+		{
+			pf << getpid();
+			pf.close();
+		}
 	}
 #endif
 	
@@ -357,6 +378,11 @@ int my_init_fcn_t(int argc, char *argv[])
 	{
 		init_mutex_selthread();
 		c_at=new CAcceptThread(workers, port);
+		if(c_at->has_error())
+		{
+			Server->Log("Error while starting listening to ports. Stopping server.", LL_ERROR);
+			run=false;
+		}
 #ifndef AS_SERVICE
 		while(run==true)
 		{
