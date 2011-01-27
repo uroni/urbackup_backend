@@ -17,7 +17,7 @@ public:
 	virtual void Bind(unsigned int p);
 	virtual void Bind(double p);
 	virtual void Bind(int64 p);
-#ifdef _WIN64
+#if defined(_WIN64) || defined(_LP64)
 	virtual void Bind(size_t p);
 #endif
 	virtual void Bind(const char* buffer, _u32 bsize);

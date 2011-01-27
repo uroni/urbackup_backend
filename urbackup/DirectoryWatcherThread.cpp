@@ -42,6 +42,7 @@ void DirectoryWatcherThread::operator()(void)
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
 	q_add_dir=db->Prepare("INSERT INTO mdirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM mdirs WHERE name=?)");
+	q_add_del_dir=db->Prepare("INSERT INTO del_dirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM del_dirs WHERE name=?)");
 
 	ChangeListener cl;
 #ifdef CHANGE_JOURNAL
@@ -131,6 +132,11 @@ void DirectoryWatcherThread::operator()(void)
 			{
 				break;
 			}
+			else if( msg[0]=='R' )
+			{
+				std::wstring dir=msg.substr(1);
+				OnDirRm(dir);
+			}
 			else
 			{
 				std::wstring dir=msg.substr(1);
@@ -181,6 +187,15 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
 	}
 }
 
+void DirectoryWatcherThread::OnDirRm(const std::wstring &dir)
+{
+
+	q_add_del_dir->Bind(dir);
+	q_add_del_dir->Bind(dir);
+	q_add_del_dir->Write();
+	q_add_del_dir->Reset();
+}
+
 void DirectoryWatcherThread::stop(void)
 {
 	do_stop=true;
@@ -222,6 +237,19 @@ void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName)
 	}	
 }
 
+void DirectoryWatcherThread::On_DirRemoved(const std::wstring & strDirName)
+{
+	bool ok=false;
+	for(size_t i=0;i<watching.size();++i)
+	{
+		if(strDirName.find(watching[i])==0)
+		{
+			OnDirRm(strDirName);
+			return;
+		}
+	}
+}
+
 void DirectoryWatcherThread::On_ResetAll(const std::wstring & vol)
 {
 	OnDirMod(L"##-GAP-##"+vol);
@@ -256,5 +284,11 @@ void ChangeListener::On_FileModified(const std::wstring & strFileName)
 void ChangeListener::On_ResetAll(const std::wstring & vol)
 {
 	std::wstring dir1=L"S##-GAP-##"+vol;
+	DirectoryWatcherThread::getPipe()->Write((char*)dir1.c_str(), dir1.size()*sizeof(wchar_t));
+}
+
+void ChangeListener::On_DirRemoved(const std::wstring & strDirName)
+{
+	std::wstring dir1=L"R"+ExtractFilePath(strDirName);
 	DirectoryWatcherThread::getPipe()->Write((char*)dir1.c_str(), dir1.size()*sizeof(wchar_t));
 }

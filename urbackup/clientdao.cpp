@@ -46,6 +46,12 @@ void ClientDAO::prepareQueries(void)
 	q_copy_from_tmp_files=db->Prepare("INSERT INTO files (num, data, name) SELECT num, data, name FROM files_tmp", false);
 	q_delete_tmp_files=db->Prepare("DELETE FROM files_tmp", false);
 	q_has_changed_gap=db->Prepare("SELECT name FROM mdirs WHERE name GLOB '##-GAP-##*'", false);
+	q_get_del_dirs=db->Prepare("SELECT name FROM del_dirs", false);
+	q_del_del_dirs=db->Prepare("DELETE FROM del_dirs", false);
+	q_restore_del_dirs=db->Prepare("INSERT INTO del_dirs SELECT name FROM del_dirs_backup", false);
+	q_copy_del_dirs=db->Prepare("INSERT INTO del_dirs_backup SELECT name FROM del_dirs", false);
+	q_del_del_dirs_copy=db->Prepare("DELETE FROM del_dirs_backup", false);
+	q_remove_del_dir=db->Prepare("DELETE FROM files WHERE name GLOB ?", false);
 }
 
 void ClientDAO::destroyQueries(void)
@@ -67,6 +73,12 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_copy_from_tmp_files);
 	db->destroyQuery(q_delete_tmp_files);
 	db->destroyQuery(q_has_changed_gap);
+	db->destroyQuery(q_get_del_dirs);
+	db->destroyQuery(q_del_del_dirs);
+	db->destroyQuery(q_restore_del_dirs);
+	db->destroyQuery(q_copy_del_dirs);
+	db->destroyQuery(q_del_del_dirs_copy);
+	db->destroyQuery(q_remove_del_dir);
 }
 
 void ClientDAO::restartQueries(void)
@@ -318,4 +330,44 @@ std::vector<std::wstring> ClientDAO::getGapDirs(void)
 		ret.push_back(gap);
 	}
 	return ret;
+}
+
+std::vector<std::wstring> ClientDAO::getDelDirs(bool del)
+{
+	std::vector<std::wstring> ret;
+	db->BeginTransaction();
+	db_results res=q_get_del_dirs->Read();
+	q_get_del_dirs->Reset();
+	if(del)
+	{
+		q_copy_del_dirs->Write();
+		q_copy_del_dirs->Reset();
+		q_del_del_dirs->Write();
+		q_del_del_dirs->Reset();
+	}
+	db->EndTransaction();
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret.push_back(res[i][L"name"]);
+	}
+	return ret;
+}
+
+void ClientDAO::deleteSavedDelDirs(void)
+{
+	q_del_del_dirs_copy->Write();
+	q_del_del_dirs_copy->Reset();
+}
+
+void ClientDAO::restoreSavedDelDirs(void)
+{
+	q_restore_del_dirs->Write();
+	q_restore_del_dirs->Reset();
+}
+
+void ClientDAO::removeDeletedDir(const std::wstring &dir)
+{
+	q_remove_del_dir->Bind(dir+L"*");
+	q_remove_del_dir->Write();
+	q_remove_del_dir->Reset();
 }

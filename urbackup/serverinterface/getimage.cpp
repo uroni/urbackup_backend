@@ -42,6 +42,7 @@ ACTION_IMPL(getimage)
 			Server->destroy(img);
 			Server->deleteFile(fn);
 			session->mCustom.erase(iter);
+			return;
 		}
 		else
 		{

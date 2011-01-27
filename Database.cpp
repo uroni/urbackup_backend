@@ -24,13 +24,14 @@
 IMutex * CDatabase::lock_mutex=NULL;
 
 
+/*
 #ifdef _WIN32
 #ifdef _DEBUG
 #pragma comment ( lib , "sqlite/sqlite3_dll_debug.lib" )
 #else if _RELEASE
 #pragma comment ( lib , "sqlite/sqlite3_dll_release.lib" )
 #endif
-#endif
+#endif*/
 
 struct UnlockNotification {
   bool fired;                           

@@ -29,8 +29,10 @@ public:
     void On_FileAdded(const std::wstring & strFileName);
     void On_FileModified(const std::wstring & strFileName);
 	void On_ResetAll(const std::wstring &vol);
+	void On_DirRemoved(const std::wstring & strDirName);
 
 	void OnDirMod(const std::wstring &dir);
+	void OnDirRm(const std::wstring &dir);
 
 private:
 	static IPipe *pipe;
@@ -39,6 +41,7 @@ private:
 	bool do_stop;
 	
 	IQuery* q_add_dir;
+	IQuery* q_add_del_dir;
 
 	std::list<SLastEntries> lastentries;
 	std::vector<std::wstring> watching;
@@ -52,4 +55,5 @@ public:
     void On_FileAdded(const std::wstring & strFileName);
     void On_FileModified(const std::wstring & strFileName);
 	void On_ResetAll(const std::wstring &vol);
+	void On_DirRemoved(const std::wstring & strDirName);
 };

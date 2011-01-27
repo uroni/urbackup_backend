@@ -1,10 +1,8 @@
 #include <string>
 
-#if CT_LANG_DE
-const std::string time_format_str="%d.%m.%Y %H:%M";
-#else
-const std::string time_format_str="%m/%d/%Y %H:%M";
-#endif
+extern std::string lang;
+extern std::string time_format_str_de;
+extern std::string time_format_str;
 
 const std::string duration_min_str="%M min";
 const std::string date_format_str="%d.%m";

@@ -412,6 +412,13 @@ void IndexThread::indexDirs(void)
 	//Invalidate cache
 	DirectoryWatcherThread::getPipe()->Write("U");
 	changed_dirs=cd->getChangedDirs();
+
+	cd->restoreSavedDelDirs();
+	std::vector<std::wstring> deldirs=cd->getDelDirs();
+	for(size_t i=0;i<deldirs.size();++i)
+	{
+		cd->removeDeletedDir(deldirs[i]);
+	}
 #endif
 	std::sort(changed_dirs.begin(), changed_dirs.end());
 
@@ -459,6 +466,12 @@ void IndexThread::indexDirs(void)
 				std::vector<std::wstring> acd=cd->getChangedDirs(false);
 				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 				std::sort(changed_dirs.begin(), changed_dirs.end());
+
+				std::vector<std::wstring> deldirs=cd->getDelDirs(false);
+				for(size_t i=0;i<deldirs.size();++i)
+				{
+					cd->removeDeletedDir(deldirs[i]);
+				}
 			}
 #endif
 
@@ -480,6 +493,7 @@ void IndexThread::indexDirs(void)
 
 #ifdef _WIN32
 	cd->deleteSavedChangedDirs();
+	cd->deleteSavedDelDirs();
 #endif
 
 	{

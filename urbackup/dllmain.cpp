@@ -87,6 +87,10 @@ void upgrade(void);
 
 bool is_server=false;
 
+std::string lang="en";
+std::string time_format_str_de="%d.%m.%Y %H:%M";
+std::string time_format_str="%m/%d/%Y %H:%M";
+
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
@@ -101,6 +105,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	init_mutex1();
 	ServerLogger::init_mutex();
 #endif
+
+#ifdef _WIN32
+	char t_lang[20];
+	GetLocaleInfoA(LOCALE_SYSTEM_DEFAULT,LOCALE_SISO639LANGNAME ,t_lang,sizeof(t_lang));
+	lang=t_lang;
+#endif
+
+	if(lang=="de")
+	{
+		time_format_str=time_format_str_de;
+	}
 
 	//writeZeroblockdata();
 
@@ -215,6 +230,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			db->Write("DELETE FROM map_frn");
 			db->Write("CREATE INDEX IF NOT EXISTS logdata_index ON logdata( logid ASC )");
 			db->Write("ALTER TABLE logdata ADD ltime DATE;");
+			db->Write("CREATE TABLE IF NOT EXISTS del_dirs ( name TEXT );");
+			db->Write("CREATE TABLE IF NOT EXISTS del_dirs_backup ( name TEXT );");
+			db->Write("ALTER TABLE journal_data ADD attributes INTEGER;");
 		}
 	}
 

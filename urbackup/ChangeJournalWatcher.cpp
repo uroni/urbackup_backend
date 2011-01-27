@@ -55,7 +55,7 @@ void ChangeJournalWatcher::createQueries(void)
 	q_update_journal_id=db->Prepare("UPDATE journal_ids SET journal_id=? WHERE device_name=?");
 	q_update_lastusn=db->Prepare("UPDATE journal_ids SET last_record=? WHERE device_name=?");
 	q_rename_entry=db->Prepare("UPDATE map_frn SET name=?, pid=? WHERE id=?");
-	q_save_journal_data=db->Prepare("INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, parent_frn, next_usn) VALUES (?, ?, ?, ?, ?, ?, ?,?)");
+	q_save_journal_data=db->Prepare("INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, parent_frn, next_usn, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 	q_get_journal_data=db->Prepare("SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data WHERE device_name=? ORDER BY usn DESC");
 	q_set_index_done=db->Prepare("UPDATE journal_ids SET index_done=? WHERE device_name=?");
 	q_del_journal_data=db->Prepare("DELETE FROM journal_data WHERE device_name=?");
@@ -94,6 +94,7 @@ void ChangeJournalWatcher::saveJournalData(DWORDLONG journal_id, const std::wstr
 	q_save_journal_data->Bind((_i64)rec->FileReferenceNumber);
 	q_save_journal_data->Bind((_i64)rec->ParentFileReferenceNumber);
 	q_save_journal_data->Bind(nextUsn);
+	q_save_journal_data->Bind((_i64)rec->FileAttributes);
 	
 	q_save_journal_data->Write();
 	q_save_journal_data->Reset();
@@ -114,6 +115,7 @@ std::vector<UsnInt> ChangeJournalWatcher::getJournalData(const std::wstring &vol
 		rec.FileReferenceNumber=os_atoi64(wnarrow(res[i][L"frn"]));
 		rec.ParentFileReferenceNumber=os_atoi64(wnarrow(res[i][L"parent_frn"]));
 		rec.NextUsn=os_atoi64(wnarrow(res[i][L"next_usn"]));
+		rec.attributes=(DWORD)os_atoi64(wnarrow(res[i][L"attributes"]));
 		ret.push_back(rec);
 	}
 	return ret;
@@ -649,6 +651,7 @@ void ChangeJournalWatcher::update(void)
 						UsnRecord.ParentFileReferenceNumber=TUsnRecord->ParentFileReferenceNumber;
 						UsnRecord.Reason=TUsnRecord->Reason;
 						UsnRecord.Usn=TUsnRecord->Usn;
+						UsnRecord.attributes=TUsnRecord->FileAttributes;
 
 						if(UsnRecord.Filename!=L"backup_client.db-journal")
 						{
@@ -750,6 +753,10 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				}
 				else if(UsnRecord->Reason & USN_REASON_FILE_DELETE)
 				{
+					if(UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
+					{
+						listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
+					}
 					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid);							
 					//indexRootDirs(it->second.rid, dir_fn+Server->ConvertFromUTF16(fn), parent_id); 
 				}
@@ -786,6 +793,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			}
 			else
 			{
+				listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
 				listener->On_FileModified(dir_fn+UsnRecord->Filename);
 			}
 		}
