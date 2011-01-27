@@ -105,7 +105,7 @@ void CQuery::Bind(int64 p)
 	++curr_idx;
 }
 
-#ifdef _WIN64
+#if defined(_WIN64) || defined(_LP64)
 void CQuery::Bind(size_t p)
 {
 	Bind((int64)p);

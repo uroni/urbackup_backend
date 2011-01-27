@@ -30,7 +30,7 @@ std::wstring convert(float f);
 std::wstring convert(double f);
 std::wstring convert(long long int i);
 std::wstring convert(size_t i);
-#ifndef _WIN64
+#if !(defined(_WIN64) && defined(_LP64))
 std::wstring convert(unsigned long long int i);
 #endif
 std::wstring convert(unsigned int i);
@@ -38,7 +38,7 @@ std::string nconvert(bool pBool);
 std::string nconvert(int i);
 std::string nconvert(long long int i);
 std::string nconvert(size_t i);
-#ifndef _WIN64
+#if !(defined(_WIN64) && defined(_LP64))
 std::string nconvert(unsigned long long int i);
 #endif
 std::string nconvert(unsigned int i);

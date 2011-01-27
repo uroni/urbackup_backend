@@ -12,7 +12,7 @@ public:
 	virtual void Bind(int p)=0;
 	virtual void Bind(double p)=0;
 	virtual void Bind(int64 p)=0;
-#ifdef _WIN64
+#if defined(_WIN64) || defined(_LP64)
 	virtual void Bind(size_t p)=0;
 #endif
 	virtual void Bind(const char* buffer, _u32 bsize)=0;
