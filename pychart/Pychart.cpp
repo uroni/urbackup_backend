@@ -109,6 +109,7 @@ void Pychart::operator()(void)
 	}
 	catch(error_already_set const &)
 	{
+		Server->Log("Error while inizializing Python occured. Did you install numpy and matplotlib?", LL_ERROR);
 		PyErr_Print();
 	}
 
