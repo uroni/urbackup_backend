@@ -2684,19 +2684,19 @@ std::string BackupServerGet::getMBR(const std::wstring &dl)
 
 void BackupServerGet::checkClientVersion(void)
 {
-	std::string version=getFile("version.txt");
+	std::string version=getFile("urbackup/version.txt");
 	if(!version.empty())
 	{
 		std::string r=sendClientMessage("VERSION "+version, L"Sending version to client failed", 10000);
 		if(r=="update")
 		{
-			IFile *sigfile=Server->openFile("UrBackupUpdate.sig", MODE_READ);
+			IFile *sigfile=Server->openFile("urbackup/UrBackupUpdate.sig", MODE_READ);
 			if(sigfile==NULL)
 			{
 				ServerLogger::Log(clientid, "Error opening sigfile", LL_ERROR);
 				return;
 			}
-			IFile *updatefile=Server->openFile("UrBackupUpdate.exe", MODE_READ);
+			IFile *updatefile=Server->openFile("urbackup/UrBackupUpdate.exe", MODE_READ);
 			if(updatefile==NULL)
 			{
 				ServerLogger::Log(clientid, "Error opening updatefile", LL_ERROR);

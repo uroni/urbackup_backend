@@ -69,27 +69,27 @@ void ServerUpdate::operator()(void)
 	}
 
 	std::string version=getFile(tfn);
-	std::string curr_version=getFile("version.txt");
+	std::string curr_version=getFile("urbackup/version.txt");
 	if(curr_version.empty()) curr_version="0";
 	
 	Server->deleteFile(tfn);
 
 	if(atoi(version.c_str())>atoi(curr_version.c_str()))
 	{
-		dl->download("http://www.urserver.de/urbackup/update/UrBackupUpdate.sig", "UrBackupUpdate.sig");
+		dl->download("http://www.urserver.de/urbackup/update/UrBackupUpdate.sig", "urbackup/UrBackupUpdate.sig");
 		if(!waitForDownload(dl))
 		{
 			download_fak->destroyFileDownload(dl);
 			return;
 		}
-		dl->download("http://www.urserver.de/urbackup/update/UrBackupUpdate.exe", "UrBackupUpdate.exe");
+		dl->download("http://www.urserver.de/urbackup/update/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.exe");
 		if(!waitForDownload(dl))
 		{
 			download_fak->destroyFileDownload(dl);
 			return;
 		}
 
-		writestring(version, "version.txt");
+		writestring(version, "urbackup/version.txt");
 	}
 
 	download_fak->destroyFileDownload(dl);
