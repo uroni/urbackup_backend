@@ -238,6 +238,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		Server->Log("GetVolumePathName(dir, volume_path, MAX_PATH) failed in ChangeJournalWatcher::watchDir", LL_ERROR);
 		listener->On_ResetAll(dir);
 		has_error=true;
+		error_dirs.push_back(dir);
 		return;
 	}
 
@@ -274,6 +275,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	{
 		Server->Log(L"CreateFile of volume '"+vol+L"' failed. - watchDir", LL_ERROR);
 		listener->On_ResetAll(vol);
+		error_dirs.push_back(vol);
 		CloseHandle(hVolume);
 		has_error=true;
 		return;
@@ -289,6 +291,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		{
 			Server->Log(L"Change Journals not supported for Volume '"+vol+L"'", LL_ERROR);
 			listener->On_ResetAll(vol);
+			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
 			return;
@@ -297,6 +300,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		{
 			Server->Log(L"Change Journals for Volume '"+vol+L"' is being deleted", LL_ERROR);
 			listener->On_ResetAll(vol);
+			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
 			return;
@@ -312,6 +316,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 			{
 				Server->Log(L"Error creating change journal for Volume '"+vol+L"'", LL_ERROR);
 				listener->On_ResetAll(vol);
+				error_dirs.push_back(vol);
 				CloseHandle(hVolume);
 				has_error=true;
 				return;
@@ -321,6 +326,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 			{
 				Server->Log(L"Unknown error for Volume '"+vol+L"' after creation - watchDir", LL_ERROR);
 				listener->On_ResetAll(vol);
+				error_dirs.push_back(vol);
 				CloseHandle(hVolume);
 				has_error=true;
 				return;
@@ -330,6 +336,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		{
 			Server->Log(L"Unknown error for Volume '"+vol+L"' - watchDir", LL_ERROR);
 			listener->On_ResetAll(vol);
+			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
 			return;
@@ -696,6 +703,7 @@ void ChangeJournalWatcher::update(void)
 					else if(indexing_in_progress==false)
 					{
 						has_error=true;
+						error_dirs.push_back(it->first);
 					}
 					listener->On_ResetAll(it->first);
 				}
@@ -720,6 +728,10 @@ void ChangeJournalWatcher::update_longliving(void)
 	for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
 	{
 		listener->On_FileModified(it->first);
+	}
+	for(size_t i=0;i<error_dirs.size();++i)
+	{
+		listener->On_ResetAll(error_dirs[i]);
 	}
 }
 
@@ -793,7 +805,10 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			}
 			else
 			{
-				listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
+				if(UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
+				{
+					listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
+				}
 				listener->On_FileModified(dir_fn+UsnRecord->Filename);
 			}
 		}

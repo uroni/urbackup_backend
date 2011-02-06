@@ -1,4 +1,3 @@
-
 #include "../Interface/SettingsReader.h"
 #include "../Interface/Database.h"
 #include "../Interface/Mutex.h"
@@ -6,6 +5,7 @@
 struct SSettings
 {
 	std::wstring backupfolder;
+	std::wstring backupfolder_uncompr;
 	int update_freq_incr;
 	int update_freq_full;
 	int update_freq_image_full;

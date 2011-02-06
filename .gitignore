@@ -71,3 +71,9 @@ UrBackupUpdate.sig
 version.txt
 vld.dll
 vld.lib
+urbackup/Release Server/*
+urbackupserver_installer_win/*
+UrBackupUpdate_untested.exe
+Release Server/*
+urbackup/clientlist_*.ub
+version_new.txt

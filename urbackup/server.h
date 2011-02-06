@@ -27,9 +27,6 @@ private:
 
 	std::map<std::string, SClient> clients;
 
-	std::wstring backupfolder;
-	std::wstring backupfolder_uncompr;
-
 	IPipe *exitpipe;
 };
 
