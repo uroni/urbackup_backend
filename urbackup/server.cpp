@@ -40,8 +40,6 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 void BackupServer::operator()(void)
 {
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings");
-	backupfolder=settings->getValue(L"backupfolder", L"");
-	backupfolder_uncompr=settings->getValue(L"backupfolder_uncompr", backupfolder);
 
 
 	FileClient fc;
@@ -54,6 +52,9 @@ void BackupServer::operator()(void)
 		if(!ServerStatus::isActive() && settings->getValue("autoshutdown", "false")=="true")
 		{
 			writestring("true", "urbackup/shutdown_now");
+#ifdef _WIN32
+			ExitWindowsEx(EWX_POWEROFF|EWX_FORCEIFHUNG, SHTDN_REASON_MAJOR_APPLICATION|SHTDN_REASON_MINOR_OTHER );
+#endif
 		}
 
 		std::string r;
@@ -98,7 +99,7 @@ void BackupServer::startClients(FileClient &fc)
 			ServerStatus::setOnline(names[i], true);
 			IPipe *np=Server->createMemoryPipe();
 
-			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i], backupfolder, backupfolder_uncompr);
+			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i]);
 			Server->getThreadPool()->execute(client);
 
 			SClient c;

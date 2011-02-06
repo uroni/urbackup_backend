@@ -144,6 +144,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.overwrite=false;
 	settings.allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
 	settings.backupfolder=settings_default->getValue(L"backupfolder", L"C:\\urbackup");
+	settings.backupfolder_uncompr=settings_default->getValue(L"backupfolder_uncompr", settings.backupfolder);
 	settings.client_overwrite=true;
 	settings.autoshutdown=false;
 	settings.startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);

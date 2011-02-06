@@ -42,11 +42,10 @@ void init_mutex1(void)
 	delete_mutex=Server->createMutex();
 }
 
-BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, std::wstring pBackuppath)
+BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid)
 {
 	pipe=pPipe;
 	clientid=pClientid;
-	backuppath=pBackuppath;
 	exitpipe=pExitpipe;
 	link_logcnt=0;
 	tmp_count=0;
@@ -57,10 +56,6 @@ BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid
 BackupServerHash::~BackupServerHash(void)
 {
 	db->destroyQuery(q_find_file_hash);
-	db->destroyQuery(q_get_backups);
-	db->destroyQuery(q_get_backup_path);
-	db->destroyQuery(q_delete_files);
-	db->destroyQuery(q_delete_backup);
 	db->destroyQuery(q_del_file);
 	db->destroyQuery(q_add_file);
 	db->destroyQuery(q_delete_files_tmp);
@@ -181,31 +176,13 @@ void BackupServerHash::operator()(void)
 void BackupServerHash::prepareSQL(void)
 {
 	q_find_file_hash=db->Prepare("SELECT fullpath, backupid FROM ( SELECT fullpath, backupid,created FROM files WHERE shahash=? AND filesize=? UNION ALL SELECT fullpath, backupid,created FROM files_tmp WHERE shahash=? AND filesize=?) ORDER BY created DESC LIMIT 1", false);
-	q_get_backups=db->Prepare("SELECT id, clientid, incremental FROM backups ORDER BY backuptime ASC LIMIT "+nconvert(c_backup_count), false);
-	q_get_backup_path=db->Prepare("SELECT path FROM backups WHERE id=?", false);
-	q_delete_files=db->Prepare("DELETE FROM files WHERE backupid=?", false);
 	q_delete_files_tmp=db->Prepare("DELETE FROM files_tmp WHERE backupid=?", false);
-	q_delete_backup=db->Prepare("DELETE FROM backups WHERE id=?", false);
 	q_add_file=db->Prepare("INSERT INTO files_tmp (backupid, fullpath, shahash, filesize, rsize) VALUES (?, ?, ?, ?, ?)", false);
 	q_del_file=db->Prepare("DELETE FROM files WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
 	q_del_file_tmp=db->Prepare("DELETE FROM files_tmp WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
 	q_copy_files=db->Prepare("INSERT INTO files (backupid, fullpath, shahash, filesize, created, rsize, did_count) SELECT backupid, fullpath, shahash, filesize, created, rsize, 0 AS did_count FROM files_tmp", false);
 	q_delete_all_files_tmp=db->Prepare("DELETE FROM files_tmp", false);
 	q_count_files_tmp=db->Prepare("SELECT count(*) AS c FROM files_tmp", false);
-}
-
-std::vector<SBackupEntry> BackupServerHash::getBackups(void)
-{
-	db_results res=q_get_backups->Read();
-	std::vector<SBackupEntry> ret;
-	ret.resize(res.size());
-	for(size_t i=0;i<res.size();++i)
-	{
-		ret[i].clientid=watoi(res[i][L"clientid"]);
-		ret[i].id=watoi(res[i][L"id"]);
-		ret[i].incremental=watoi(res[i][L"incremental"]);
-	}
-	return ret;
 }
 
 void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize)
@@ -234,29 +211,6 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	q_del_file_tmp->Bind(backupid);
 	q_del_file_tmp->Write();
 	q_del_file_tmp->Reset();	
-}
-
-std::wstring BackupServerHash::getBackupPath(int backupid)
-{
-	q_get_backup_path->Bind(backupid);
-	db_results res=q_get_backup_path->Read();
-	if(res.size()>0)
-		return res[0][L"path"];
-	else
-		return L"";
-}
-
-void BackupServerHash::deleteBackupSQL(int backupid)
-{
-	q_delete_files_tmp->Bind(backupid);
-	q_delete_files_tmp->Write();
-	q_delete_files_tmp->Reset();
-	q_delete_files->Bind(backupid);
-	q_delete_files->Write();
-	q_delete_files->Reset();
-	q_delete_backup->Bind(backupid);
-	q_delete_backup->Write();
-	q_delete_backup->Reset();
 }
 
 void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstring &tfn, const std::string &sha2)
@@ -410,69 +364,6 @@ bool BackupServerHash::freeSpace(int64 fs, const std::wstring &fp)
 
 	ServerCleanupThread cleanup;
 	return cleanup.do_cleanup(freespace_mod+fs);
-
-	/*
-	size_t todel=0;
-	std::vector<SBackupEntry> backups;
-	do
-	{
-		if(backups.size()<=todel)
-		{
-			std::vector<SBackupEntry> backups=getBackups();
-
-			for(size_t i=0;i<backups.size();++i)
-			{
-				backups[i].score=(int)i+(backups[i].incremental==0?40:0)+(backups[i].clientid!=clientid?20:0);
-			}
-
-			std::sort(backups.begin(), backups.end());
-			todel=0;
-
-			if(backups.empty() )
-			{
-				ServerLogger::Log(clientid, L"No free space and no backups to delete for path \""+fp+L"\"", LL_ERROR);
-				return false;
-			}
-		}
-
-		deleteBackup(backups[todel].id);
-		++todel;
-
-		int64 available_space=os_free_space(ExtractFilePath(fp));
-		if(available_space==-1)
-		{
-			ServerLogger::Log(clientid, L"Error getting free space for path \""+fp+L"\"", LL_ERROR);
-			return false;
-		}
-		else
-		{
-			available_space-=freespace_mod;
-		}
-	}
-	while(available_space<=fs);
-	return true;*/
-}
-
-void BackupServerHash::deleteBackup(int backupid)
-{
-	ServerLogger::Log(clientid, "Deleting backup --"+nconvert(backupid)+"--", LL_WARNING);
-
-	std::wstring bp=getBackupPath(backupid);
-	if(bp==L"")
-	{
-		ServerLogger::Log(clientid, "Error getting backup path", LL_ERROR);
-		return;
-	}
-
-	bool b=os_remove_nonempty_dir(backuppath+os_file_sep()+bp);
-	if(!b)
-	{
-		ServerLogger::Log(clientid, L"Error removing directory \""+backuppath+os_file_sep()+bp+L"\"", LL_ERROR);
-	}
-	else
-	{
-		deleteBackupSQL(backupid);
-	}
 }
 
 std::wstring BackupServerHash::findFileHash(const std::string &pHash, _i64 filesize, int &backupid)

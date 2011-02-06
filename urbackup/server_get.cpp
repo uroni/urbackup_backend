@@ -54,15 +54,13 @@ const unsigned int status_update_intervall=1000;
 const unsigned int mbr_size=(1024*1024)/4;
 const size_t minfreespace_image=1000*1024*1024; //1000 MB
 
-BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName, const std::wstring &pBackupFolder, const std::wstring &pBackupFolderUncompr)
+BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
 	clientaddr=pAddr;
 	clientaddr_mutex=Server->createMutex();
 	clientname=pName;
-	backupfolder=pBackupFolder;
-	backupfolder_uncompr=pBackupFolderUncompr;
 	clientid=0;
 
 	hashpipe=Server->createMemoryPipe();
@@ -149,8 +147,6 @@ void BackupServerGet::operator ()(void)
 		return;
 	}
 
-	os_create_dir(backupfolder+os_file_sep()+widen(clientname));
-
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
@@ -160,6 +156,8 @@ void BackupServerGet::operator ()(void)
 	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings WHERE key=? AND clientid="+nconvert(clientid));
 
 	server_settings=new ServerSettings(db, clientid);
+	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	os_create_dir(backupfolder+os_file_sep()+widen(clientname));
 
 	prepareSQL();
 
@@ -169,7 +167,7 @@ void BackupServerGet::operator ()(void)
 	status.clientid=clientid;
 	ServerStatus::setServerStatus(status);
 
-	BackupServerHash *bsh=new BackupServerHash(hashpipe_prepare, exitpipe, clientid, backupfolder+os_file_sep()+widen(clientname) );
+	BackupServerHash *bsh=new BackupServerHash(hashpipe_prepare, exitpipe, clientid );
 	BackupServerPrepareHash *bsh_prepare=new BackupServerPrepareHash(hashpipe, exitpipe_prepare, hashpipe_prepare, exitpipe, clientid);
 	Server->getThreadPool()->execute(bsh);
 	Server->getThreadPool()->execute(bsh_prepare);
@@ -877,6 +875,7 @@ bool BackupServerGet::doFullBackup(void)
 	}
 	if(r_done==false)
 	{
+		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 		std::wstring currdir=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+L"current";
 		Server->deleteFile(currdir);
 		os_link_symbolic(backuppath, currdir);
@@ -973,6 +972,7 @@ bool BackupServerGet::doIncrBackup(void)
 	}
 	backupid=createBackupSQL(last.incremental+1, clientid, backuppath_single);
 
+	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	std::wstring last_backuppath=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+last.path;
 
 	std::wstring tmpfilename=tmp->getFilenameW();
@@ -1192,6 +1192,7 @@ bool BackupServerGet::doIncrBackup(void)
 		
 			Server->Log("Creating symbolic links. -1", LL_DEBUG);
 
+			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+L"current";
 			Server->deleteFile(currdir);
 			os_link_symbolic(backuppath, currdir);
@@ -1273,6 +1274,7 @@ void BackupServerGet::constructBackupPath(void)
 	char buffer[500];
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
 	backuppath_single=widen((std::string)buffer);
+	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+backuppath_single;
 	os_create_dir(backuppath);	
 }
@@ -1289,6 +1291,7 @@ std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
 #endif
 	char buffer[500];
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
+	std::wstring backupfolder_uncompr=server_settings->getSettings()->backupfolder_uncompr;
 	return backupfolder_uncompr+os_file_sep()+widen(clientname)+os_file_sep()+L"Image_"+letter+L"_"+widen((std::string)buffer)+L".vhd";
 }
 

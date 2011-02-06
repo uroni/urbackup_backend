@@ -44,7 +44,7 @@ struct SBackup
 class BackupServerGet : public IThread
 {
 public:
-	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName, const std::wstring &pBackupFolder, const std::wstring &pBackupFolderUncompr);
+	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName);
 	~BackupServerGet(void);
 
 	void operator()(void);
@@ -111,8 +111,6 @@ private:
 	IMutex *clientaddr_mutex;
 	std::string clientname;
 	
-	std::wstring backupfolder;
-	std::wstring backupfolder_uncompr;
 	std::wstring backuppath;
 	std::wstring backuppath_single;
 
