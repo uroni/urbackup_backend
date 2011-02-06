@@ -183,7 +183,7 @@ ACTION_IMPL(server_status)
 				tab->addString(L"ONLINE", convert(status[i].online));
 				tab->addString(L"STARTTIME", L"&nbsp;");
 				tab->addString(L"DONE", L"&nbsp;");
-				tab->addString(L"ACTION", L"&nsbp;");
+				tab->addString(L"ACTION", L"&nbsp;");
 			}
 		}
 	}
