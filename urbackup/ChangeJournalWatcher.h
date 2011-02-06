@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 #include <windows.h>
 #include <WinIoCtl.h>
 
@@ -107,6 +108,7 @@ private:
 	bool indexing_in_progress;
 
 	std::map<std::wstring, bool> open_write_files;
+	std::vector<std::wstring> error_dirs;
 };
 
 class IChangeJournalListener
