@@ -74,7 +74,7 @@ void CHTTPFile::operator ()(void)
 	Server->Log("Sending file: "+filename, LL_INFO);
 	output->Write(status+header);
 	
-	int bytes=0;
+	size_t bytes=0;
 	std::string buf;
 	while( (buf=fp->Read(FP_READ_SIZE)).size()>0 )
 	{

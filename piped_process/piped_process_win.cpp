@@ -103,7 +103,7 @@ bool CPipedProcess::Write(const std::string &str)
 	 BOOL bSuccess = FALSE;
 	 DWORD dwWritten;
 	
-	 bSuccess = WriteFile(g_hChildStd_IN_Wr, str.c_str(), str.size(), &dwWritten, NULL);
+	 bSuccess = WriteFile(g_hChildStd_IN_Wr, str.c_str(), (DWORD)str.size(), &dwWritten, NULL);
 
 	 if( dwWritten!=str.size() )
 	 {

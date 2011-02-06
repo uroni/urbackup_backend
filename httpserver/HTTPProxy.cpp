@@ -135,7 +135,7 @@ void CHTTPProxy::operator()(void)
 								Server->Log("Synced client");
 							}
 
-							nb.offset=i;
+							nb.offset=(int)i;
 							output_buffer[j].push(nb );
 							++(*nb.rcount);
 							nb.offset=0;
