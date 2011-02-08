@@ -29,10 +29,50 @@
 
 
 #define CLIENT_TIMEOUT	120
+#define CHECK_BASE_PATH
 
 CriticalSection cs;
 
 int curr_tid=0;
+
+#ifdef _WIN32
+bool isDirectory(const std::wstring &path)
+{
+        DWORD attrib = GetFileAttributesW(path.c_str());
+
+        if ( attrib == 0xFFFFFFFF || !(attrib & FILE_ATTRIBUTE_DIRECTORY) )
+        {
+                return false;
+        }
+        else
+        {
+                return true;
+        }
+}
+#else
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+bool isDirectory(const std::wstring &path)
+{
+        struct stat64 f_info;
+		int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+		if(rc!=0)
+		{
+			Log(L"No permission to access \""+path+L"\"", LL_ERROR);
+			return false;
+		}
+
+        if ( S_ISDIR(f_info.st_mode) )
+        {
+                return true;
+        }
+        else
+        {
+                return false;
+        }
+}
+#endif
 
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 {
@@ -285,6 +325,22 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
 					hFile=NULL;
+#ifdef CHECK_BASE_PATH
+					std::wstring basePath=map_file(getuntil(L"/",filename)+L"/");
+					if(!isDirectory(basePath))
+					{
+						char ch=ID_BASE_DIR_LOST;
+						int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
+						if(rc==SOCKET_ERROR)
+						{
+							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST");
+							return false;
+						}
+						Log("Info: Base dir lost");
+						break;
+					}
+#endif
+					
 					char ch=ID_COULDNT_OPEN;
 					int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
 					if(rc==SOCKET_ERROR)
@@ -395,6 +451,21 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
+#ifdef CHECK_BASE_PATH
+					std::wstring basePath=map_file(getuntil(L"/",filename)+L"/");
+					if(!isDirectory(basePath))
+					{
+						char ch=ID_BASE_DIR_LOST;
+						int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
+						if(rc==SOCKET_ERROR)
+						{
+							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST");
+							return false;
+						}
+						Log("Info: Base dir lost");
+						break;
+					}
+#endif
 					hFile=0;
 					char ch=ID_COULDNT_OPEN;
 					int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);

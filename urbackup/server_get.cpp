@@ -915,7 +915,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr
 		std::wstring temp_fn=fd->getFilenameW();
 		Server->destroy(fd);
 		Server->deleteFile(temp_fn);
-		if(rc==ERR_TIMEOUT || rc==ERR_ERROR)
+		if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
 			return false;
 	}
 	else

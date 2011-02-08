@@ -493,8 +493,12 @@ bool FileClient::Reconnect(void)
             {
                     if(PID==ID_COULDNT_OPEN)
                     {
-                            return ERR_FILE_DOESNT_EXIST;
+                        return ERR_FILE_DOESNT_EXIST;
                     }
+					else if(PID==ID_BASE_DIR_LOST)
+					{
+						return ERR_BASE_DIR_LOST;
+					}
                     else if(PID==ID_FILESIZE && rc >= 1+sizeof(_u64))
                     {
                             memcpy(&filesize, buf+1, sizeof(_u64) );
