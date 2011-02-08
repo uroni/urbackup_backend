@@ -484,6 +484,12 @@ void upgrade2_3(void)
 	db->Write("CREATE INDEX IF NOT EXISTS clients_hist_created_idx ON clients_hist (created)");
 }
 
+void upgrade3_4(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE INDEX IF NOT EXISTS logs_created_idx ON logs (created)");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -513,6 +519,10 @@ void upgrade(void)
 				break;
 			case 2:
 				upgrade2_3();
+				++ver;
+				break;
+			case 3:
+				upgrade3_4();
 				++ver;
 				break;
 			default:
