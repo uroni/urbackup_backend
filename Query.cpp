@@ -146,10 +146,10 @@ bool CQuery::Execute(void)
 				--tries;
 				if(tries<0)
 				{
-				  Server->Log("SQLITE: Giving up waiting for query  Stmt: ["+stmt_str+"]");
+				  Server->Log("SQLITE: Giving up waiting for query  Stmt: ["+stmt_str+"]", LL_ERROR);
 				  break;
 				}
-				Server->Log("SQLITE_BUSY in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_ERROR);
+				Server->Log("SQLITE_BUSY in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_INFO);
 			}
 		}
 		else if(err==SQLITE_LOCKED)
