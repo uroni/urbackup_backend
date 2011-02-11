@@ -44,6 +44,7 @@ rm -Rf $DAEMON_TMPDIR > /dev/null 2>&1
 mkdir $DAEMON_TMPDIR > /dev/null 2>&1
 chown urbackup:urbackup $DAEMON_TMPDIR
 ulimit -n 10000 > /dev/null 2>&1
+ulimit -c unlimited
 
 DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
 #

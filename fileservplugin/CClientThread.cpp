@@ -59,7 +59,6 @@ bool isDirectory(const std::wstring &path)
 		int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
 		if(rc!=0)
 		{
-			Log(L"No permission to access \""+path+L"\"", LL_ERROR);
 			return false;
 		}
 
