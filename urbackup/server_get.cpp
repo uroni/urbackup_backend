@@ -113,7 +113,7 @@ void BackupServerGet::unloadSQL(void)
 void BackupServerGet::operator ()(void)
 {
 	{
-		bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client failed stopping...", 10000);
+		bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client failed stopping...", 10000, false);
 		if(!b)
 		{
 			pipe->Write("ok");
