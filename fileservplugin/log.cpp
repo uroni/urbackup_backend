@@ -24,6 +24,7 @@
 #include "CriticalSection.h"
 #include "../stringtools.h"
 #include "settings.h"
+#include "../Interface/Server.h"
 
 #ifndef _DEBUG
 #include <fstream>
@@ -84,6 +85,10 @@ void Log(const char *pStr,...)
 			}
 		}
 	}
+	
+#ifdef LOG_SERVER
+	Server->Log(tmpstr, LL_DEBUG);
+#endif
 
 #ifdef LOG_CONSOLE
 

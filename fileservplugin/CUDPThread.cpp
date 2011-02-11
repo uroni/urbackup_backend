@@ -24,11 +24,13 @@
 #endif
 
 #include "../vld.h"
+#include "../Interface/Server.h"
 #include "CUDPThread.h"
 #include "settings.h"
 #include "packet_ids.h"
 #include "log.h"
 #include "FileServ.h"
+#include "../stringtools.h"
 #include <memory.h>
 
 std::string getServerName(void)
@@ -67,7 +69,11 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 		int rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 		if(rc==SOCKET_ERROR)
 		{
-			Log("Failed.");
+#ifdef LOG_SERVER
+			Server->Log("Binding udp socket to port "+nconvert(udpport)+" failed", LL_ERROR);
+#else
+			Log("Failed binding udp socket.");
+#endif
 			return;
 		}
 		Log("done.");
@@ -113,11 +119,16 @@ CUDPThread::~CUDPThread()
 
 void CUDPThread::operator()(void)
 {
+	Log("UDP Thread startet");
 #ifdef _WIN32
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #endif
 
 	while(UdpStep()==true);
+	
+#ifdef LOG_SERVER
+	Server->Log("CUDPThread exited.", LL_ERROR);
+#endif
 }
 
 bool CUDPThread::UdpStep(void)
@@ -135,12 +146,16 @@ bool CUDPThread::UdpStep(void)
 
 	if(rc>0)
 	{
+		Log("Receiving UDP packet...");
 		char buffer[BUFFERSIZE];
 		socklen_t addrsize=sizeof(sockaddr_in);
 		sockaddr_in sender;
 		_i32 err = recvfrom(udpsock, buffer, BUFFERSIZE, 0, (sockaddr*)&sender, &addrsize);
 		if(err==SOCKET_ERROR)
 		{
+#ifdef LOG_SERVER
+			Server->Log("Recvfrom error in CUDPThread::UdpStep", LL_ERROR);
+#endif
 			return false;
 		}
 		else if(err>0)
@@ -159,10 +174,21 @@ bool CUDPThread::UdpStep(void)
 				}
 				delete[] buffer;
 			}
+			else
+			{
+#ifdef LOG_SERVER
+				Server->Log("Unknown UDP packet id", LL_WARNING);
+#endif
+			}
 		}
 	}
 	else if( rc==SOCKET_ERROR )
+	{
+#ifdef LOG_SERVER
+			Server->Log("Select error in CUDPThread::UdpStep", LL_ERROR);
+#endif
 		return false;
+	}
 
 	return true;
 }

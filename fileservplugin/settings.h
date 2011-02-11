@@ -18,8 +18,9 @@ const _i32 WINDOW_SIZE=512*1024; // 128 kbyte
 //#define HIGH_PRIORITY
 //#define LOG_FILE
 //#define LOG_CONSOLE
-#define LOG_OFF
+//#define LOG_OFF
 //#define CAMPUS
+#define LOG_SERVER
 #define DLL_EXPORT
 #define CHECK_IDENT
 #define BACKGROUND_PRIORITY

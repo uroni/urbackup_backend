@@ -136,8 +136,14 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 		addr.sin_addr.s_addr=INADDR_ANY;
 
 		rc=bind(mSocket,(sockaddr*)&addr,sizeof(addr));
-		if(rc==SOCKET_ERROR){
-				return false;
+		if(rc==SOCKET_ERROR)
+		{
+#ifdef LOG_SERVER
+			Server->Log("Binding tcp socket to port "+nconvert(tcpport)+" failed", LL_ERROR);
+#else
+			Log("Failed. Binding tcp socket.");
+#endif
+			return false;
 		}
 
 		listen(mSocket,60);
@@ -190,6 +196,9 @@ bool CTCPFileServ::TcpStep(void)
 	}
 	else if(rc==SOCKET_ERROR)
 	{
+#ifdef LOG_SERVER
+		Server->Log("Select error in CTCPFileServ::TcpStep", LL_ERROR);
+#endif
 		return false;
 	}
 	return true;
