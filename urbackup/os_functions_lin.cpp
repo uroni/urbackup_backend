@@ -190,24 +190,53 @@ bool os_remove_nonempty_dir(const std::wstring &path)
 	{
 		if( (std::string)dirp->d_name!="." && (std::string)dirp->d_name!=".." )
 		{
-			if(dirp->d_type & DT_DIR )
+			if(dirp->d_type==DT_UNKNOWN)
+			{
+				struct stat f_info;
+				int rc=stat((upath+"/"+(std::string)dirp->d_name).c_str(), &f_info);
+				if(rc==0)
+				{
+					if(S_ISDIR(f_info.st_mode) )
+					{
+						subdirs.push_back(Server->ConvertToUnicode(dirp->d_name));
+					}
+					else
+					{
+						if(unlink((upath+"/"+(std::string)dirp->d_name).c_str())!=0)
+						{
+							Server->Log("Error deleting file \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
+						}
+					}
+				}
+				else
+				{
+					Server->Log("No permission to stat \""+upath+dirp->d_name+"\"", LL_ERROR);
+				}
+			}
+			else if(dirp->d_type==DT_DIR )
 			{
 				subdirs.push_back(Server->ConvertToUnicode(dirp->d_name));
 			}
 			else
 			{
-				unlink((upath+"/"+(std::string)dirp->d_name).c_str());
+				if(unlink((upath+"/"+(std::string)dirp->d_name).c_str())!=0)
+				{
+					Server->Log("Error deleting file \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
+				}
 			}
 		}
     }
     closedir(dp);
     for(size_t i=0;i<subdirs.size();++i)
     {
-	bool b=os_remove_nonempty_dir(path+L"/"+subdirs[i]);
-	if(!b)
-	    ok=false;
+		bool b=os_remove_nonempty_dir(path+L"/"+subdirs[i]);
+		if(!b)
+		    ok=false;
     }
-    rmdir(upath.c_str());
+    if(rmdir(upath.c_str())!=0)
+	{
+		Server->Log("Error deleting directory \""+upath+"\"", LL_ERROR);
+	}
 	return ok;
 }
 
