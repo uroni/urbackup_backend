@@ -33,11 +33,13 @@
 IMutex *ServerCleanupThread::mutex=NULL;
 ICondition *ServerCleanupThread::cond=NULL;
 bool ServerCleanupThread::update_stats=false;
+IMutex *ServerCleanupThread::a_mutex=NULL;
 
 void ServerCleanupThread::initMutex(void)
 {
 	mutex=Server->createMutex();
 	cond=Server->createCondition();
+	a_mutex=Server->createMutex();
 }
 
 void ServerCleanupThread::operator()(void)
@@ -49,20 +51,27 @@ void ServerCleanupThread::operator()(void)
 		ISettingsReader *settings=Server->createDBSettingsReader(db, "settings");
 		if( settings->getValue("autoshutdown", "false")=="true" )
 		{
+			IScopedLock lock(a_mutex);
 			createQueries();
 			do_cleanup();
 			destroyQueries();
 		}
 
-		ServerUpdate upd;
-		upd();
+		{
+			IScopedLock lock(a_mutex);
+			ServerUpdate upd;
+			upd();
+		}
 	}
 
 	while(true)
 	{
 		{
 			IScopedLock lock(mutex);
-			cond->wait(&lock, 3600000);
+			if(!update_stats)
+			{
+				cond->wait(&lock, 3600000);
+			}
 			if(update_stats)
 			{
 				update_stats=false;
@@ -71,8 +80,11 @@ void ServerCleanupThread::operator()(void)
 
 				ScopedActiveThread sat;
 
-				ServerUpdateStats sus;
-				sus();
+				{
+					IScopedLock lock(a_mutex);
+					ServerUpdateStats sus;
+					sus();					
+				}
 
 				Server->Log("Done updating statistics.", LL_INFO);
 			}
@@ -88,6 +100,8 @@ void ServerCleanupThread::operator()(void)
 			int chour=watoi(res[0][L"time"]);
 			if( chour==3 || chour==4 )
 			{
+				IScopedLock lock(a_mutex);
+
 				ScopedActiveThread sat;
 
 				ServerUpdate upd;
@@ -111,6 +125,8 @@ void ServerCleanupThread::updateStats(void)
 void ServerCleanupThread::do_cleanup(void)
 {
 	db->Write("PRAGMA cache_size = 10000");
+
+	removeerr.clear();
 	cleanup_images();
 	cleanup_files();
 
@@ -118,23 +134,34 @@ void ServerCleanupThread::do_cleanup(void)
 	ServerUpdateStats sus;
 	sus();
 	Server->Log("Done updating statistics.", LL_INFO);
+
+	db->Write("PRAGMA cache_size = 10");
 }
 
 bool ServerCleanupThread::do_cleanup(int64 minspace)
 {
+	IScopedLock lock(a_mutex);
+
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	createQueries();
 
+	removeerr.clear();
 	cleanup_images(minspace);
 	cleanup_files(minspace);
+
+	Server->Log("Updating statistics...", LL_INFO);
+	ServerUpdateStats sus;
+	sus();
+	Server->Log("Done updating statistics.", LL_INFO);
 
 	db->destroyAllQueries();
 
 	ServerSettings settings(db);
-	return hasEnoughFreeSpace(minspace, &settings);
+	int r=hasEnoughFreeSpace(minspace, &settings);
+	return r==1;
 }
 
-bool ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)
+int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)
 {
 	if(minspace!=-1)
 	{
@@ -143,17 +170,18 @@ bool ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *set
 		if(available_space==-1)
 		{
 			Server->Log(L"Error getting free space for path \""+path+L"\"", LL_ERROR);
+			return -1;
 		}
 		else
 		{
 			if(available_space>minspace)
 			{
 				Server->Log(L"Enough free space now.", LL_DEBUG);
-				return true;
+				return 1;
 			}
 		}
 	}
-	return false;
+	return 0;
 }
 
 void ServerCleanupThread::cleanup_images(int64 minspace)
@@ -172,12 +200,13 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 
 	{
 		ServerSettings settings(db);
-		if(hasEnoughFreeSpace(minspace, &settings) )
+		int r=hasEnoughFreeSpace(minspace, &settings);
+		if( r==-1 || r==1)
 			return;
 	}
 
-	res=q_get_clients->Read();
-	q_get_clients->Reset();
+	res=q_get_clients_sortimages->Read();
+	q_get_clients_sortimages->Reset();
 	for(size_t i=0;i<res.size();++i)
 	{
 		int clientid=watoi(res[i][L"id"]);
@@ -215,7 +244,8 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 				notit.push_back(backupid);
 			}
 
-			if(hasEnoughFreeSpace(minspace, &settings) )
+			int r=hasEnoughFreeSpace(minspace, &settings);
+			if( r==-1 || r==1 )
 				return;
 		}
 
@@ -248,7 +278,8 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 				notit.push_back(backupid);
 			}
 
-			if(hasEnoughFreeSpace(minspace, &settings) )
+			int r=hasEnoughFreeSpace(minspace, &settings);
+			if( r==-1 || r==1 )
 				return;
 		}
 	}
@@ -371,62 +402,85 @@ size_t ServerCleanupThread::getImagesIncrNum(int clientid, int &backupid_top, co
 
 void ServerCleanupThread::cleanup_files(int64 minspace)
 {
+	bool deleted_something=true;
+	while(deleted_something)
 	{
-		ServerSettings settings(db);
-		if(hasEnoughFreeSpace(minspace, &settings) )
-				return;
-	}
-
-	db_results res=q_get_clients->Read();
-	q_get_clients->Reset();
-	for(size_t i=0;i<res.size();++i)
-	{
-		int clientid=watoi(res[i][L"id"]);
-		ServerSettings settings(db, clientid);
-
-		int max_file_full=settings.getSettings()->max_file_full;
-		int max_file_incr=settings.getSettings()->max_file_incr;
-		if(minspace!=-1)
+		deleted_something=false;
 		{
-			max_file_full=settings.getSettings()->min_file_full;
-			max_file_incr=settings.getSettings()->min_file_full;
+			ServerSettings settings(db);
+			int r=hasEnoughFreeSpace(minspace, &settings);
+			if( r==-1 || r==1 )
+					return;
 		}
 
-		int backupid;
-		while((int)getFilesFullNum(clientid, backupid)>max_file_full )
+		db_results res=q_get_clients_sortfiles->Read();
+		q_get_clients_sortfiles->Reset();
+		for(size_t i=0;i<res.size();++i)
 		{
-			q_get_filebackup_info->Bind(backupid);
-			db_results res_info=q_get_filebackup_info->Read();
-			q_get_filebackup_info->Reset();
-			q_get_clientname->Bind(clientid);
-			db_results res_name=q_get_clientname->Read();
-			q_get_clientname->Reset();
-			if(!res_name.empty() && !res_info.empty())
+			bool deleted_something_client=false;
+
+			int clientid=watoi(res[i][L"id"]);
+			ServerSettings settings(db, clientid);
+
+			int max_file_full=settings.getSettings()->max_file_full;
+			int max_file_incr=settings.getSettings()->max_file_incr;
+			if(minspace!=-1)
 			{
-				Server->Log(L"Deleting full file backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+				max_file_full=settings.getSettings()->min_file_full;
+				max_file_incr=settings.getSettings()->min_file_incr;
 			}
-			deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
 
-			if(hasEnoughFreeSpace(minspace, &settings) )
-				return;
-		}
-
-		while((int)getFilesIncrNum(clientid, backupid)>max_file_incr )
-		{
-			q_get_filebackup_info->Bind(backupid);
-			db_results res_info=q_get_filebackup_info->Read();
-			q_get_filebackup_info->Reset();
-			q_get_clientname->Bind(clientid);
-			db_results res_name=q_get_clientname->Read();
-			q_get_clientname->Reset();
-			if(!res_name.empty() && !res_info.empty())
+			int backupid;
+			if((int)getFilesFullNum(clientid, backupid)>max_file_full )
 			{
-				Server->Log(L"Deleting incremental file backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
-			}
-			deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+				q_get_filebackup_info->Bind(backupid);
+				db_results res_info=q_get_filebackup_info->Read();
+				q_get_filebackup_info->Reset();
+				q_get_clientname->Bind(clientid);
+				db_results res_name=q_get_clientname->Read();
+				q_get_clientname->Reset();
+				if(!res_name.empty() && !res_info.empty())
+				{
+					Server->Log(L"Deleting full file backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+				}
+				deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
 
-			if(hasEnoughFreeSpace(minspace, &settings) )
-				return;
+				int r=hasEnoughFreeSpace(minspace, &settings);
+				if( r==-1 || r==1 )
+					return;
+
+				deleted_something_client=true;
+				deleted_something=true;
+			}
+
+			if(deleted_something_client==true)
+				continue;
+
+			if((int)getFilesIncrNum(clientid, backupid)>max_file_incr )
+			{
+				q_get_filebackup_info->Bind(backupid);
+				db_results res_info=q_get_filebackup_info->Read();
+				q_get_filebackup_info->Reset();
+				q_get_clientname->Bind(clientid);
+				db_results res_name=q_get_clientname->Read();
+				q_get_clientname->Reset();
+				if(!res_name.empty() && !res_info.empty())
+				{
+					Server->Log(L"Deleting incremental file backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+				}
+				deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+
+				int r=hasEnoughFreeSpace(minspace, &settings);
+				if( r==-1 || r==1 )
+					return;
+
+				deleted_something_client=true;
+				deleted_something=true;
+				break;
+			}
+
+			if(deleted_something_client==true)
+				continue;
 		}
 	}
 
@@ -444,9 +498,9 @@ size_t ServerCleanupThread::getFilesFullNum(int clientid, int &backupid_top)
 		{
 			c=false;
 			for(size_t i=0;i<res.size();++i)
-    			{
-    				bool found=false;
-    				int bid=watoi(res[i][L"id"]);
+    		{
+    			bool found=false;
+    			int bid=watoi(res[i][L"id"]);
 				for(size_t j=0;j<removeerr.size();++j)
 				{
 					if(bid==removeerr[j])
@@ -572,6 +626,11 @@ void ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 			Server->Log(L"Error removing directory \""+path+L"\"", LL_ERROR);
 		}
 	}
+	if(os_directory_exists(path) )
+	{
+		del=false;
+		Server->Log(L"Directory still exists. Deleting backup failed. Path: \""+path+L"\"", LL_ERROR);
+	}
 	if(del)
 	{
 		db->BeginTransaction();
@@ -601,7 +660,8 @@ void ServerCleanupThread::createQueries(void)
 {
 	q_incomplete_images=db->Prepare("SELECT id, path FROM backup_images WHERE complete=0 AND running<datetime('now','-300 seconds')", false);
 	q_remove_image=db->Prepare("DELETE FROM backup_images WHERE id=?", false);
-	q_get_clients=db->Prepare("SELECT id FROM clients", false);
+	q_get_clients_sortfiles=db->Prepare("SELECT DISTINCT c.id FROM clients c INNER JOIN backups b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
+	q_get_clients_sortimages=db->Prepare("SELECT DISTINCT c.id FROM clients c INNER JOIN backup_images b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
 	q_get_full_num_images=db->Prepare("SELECT id FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 ORDER BY backuptime ASC", false);
 	q_get_image_refs=db->Prepare("SELECT id,complete FROM backup_images WHERE incremental<>0 AND incremental_ref=?", false);
 	q_get_image_path=db->Prepare("SELECT path FROM backup_images WHERE id=?", false);
@@ -624,7 +684,8 @@ void ServerCleanupThread::destroyQueries(void)
 {
 	db->destroyQuery(q_incomplete_images);
 	db->destroyQuery(q_remove_image);
-	db->destroyQuery(q_get_clients);
+	db->destroyQuery(q_get_clients_sortfiles);
+	db->destroyQuery(q_get_clients_sortimages);
 	db->destroyQuery(q_get_full_num_images);
 	db->destroyQuery(q_get_image_refs);
 	db->destroyQuery(q_get_image_path);

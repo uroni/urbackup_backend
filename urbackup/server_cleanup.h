@@ -38,13 +38,14 @@ private:
 
 	void removeImageSize(int backupid);
 
-	bool hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);
+	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);
 
 	IDatabase *db;
 
 	IQuery *q_incomplete_images;
 	IQuery *q_remove_image;
-	IQuery *q_get_clients;
+	IQuery *q_get_clients_sortfiles;
+	IQuery *q_get_clients_sortimages;
 	IQuery *q_get_full_num_images;
 	IQuery *q_get_image_refs;
 	IQuery *q_get_image_path;
@@ -64,6 +65,8 @@ private:
 
 	static IMutex *mutex;
 	static ICondition *cond;
+
+	static IMutex *a_mutex;
 
 	static bool update_stats;
 	
