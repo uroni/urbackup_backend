@@ -157,7 +157,14 @@ void BackupServerGet::operator ()(void)
 
 	server_settings=new ServerSettings(db, clientid);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	os_create_dir(backupfolder+os_file_sep()+widen(clientname));
+	if(!os_create_dir(backupfolder+os_file_sep()+widen(clientname)) && !os_directory_exists(backupfolder+os_file_sep()+widen(clientname)) )
+	{
+		Server->Log("Could not create or read directory for client \""+clientname+"\"", LL_ERROR);
+		pipe->Write("ok");
+		delete server_settings;
+		delete this;
+		return;
+	}
 
 	prepareSQL();
 
@@ -236,12 +243,18 @@ void BackupServerGet::operator ()(void)
 				do_full_backup_now=false;
 
 				hbu=true;
-				constructBackupPath();
+				if(!constructBackupPath())
+				{
+					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
+					r_success=false;
+				}
+				else
+				{
+					pingthread=new ServerPingThread(this);
+					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-				pingthread=new ServerPingThread(this);
-				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
-
-				r_success=doFullBackup();
+					r_success=doFullBackup();
+				}
 			}
 			else if(isUpdateIncr() || do_incr_backup_now)
 			{
@@ -254,12 +267,18 @@ void BackupServerGet::operator ()(void)
 				do_incr_backup_now=false;
 				hbu=true;
 				r_incremental=true;
-				constructBackupPath();
+				if(!constructBackupPath())
+				{
+					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
+					r_success=false;
+				}
+				else
+				{
+					pingthread=new ServerPingThread(this);
+					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-				pingthread=new ServerPingThread(this);
-				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
-
-				r_success=doIncrBackup();
+					r_success=doIncrBackup();
+				}
 			}
 			else if(!server_settings->getSettings()->no_images && (isUpdateFullImage() || do_full_image_now) )
 			{
@@ -834,7 +853,10 @@ bool BackupServerGet::doFullBackup(void)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						os_create_dir(backuppath+os_curr_path);
+						if(!os_create_dir(backuppath+os_curr_path))
+						{
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
+						}
 						++depth;
 						if(depth==1)
 						{
@@ -1059,7 +1081,10 @@ bool BackupServerGet::doIncrBackup(void)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						os_create_dir(backuppath+os_curr_path);
+						if(!os_create_dir(backuppath+os_curr_path))
+						{
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
+						}
 						++depth;
 						if(depth==1)
 						{
@@ -1200,7 +1225,10 @@ bool BackupServerGet::doIncrBackup(void)
 			Server->Log("Creating symbolic links. -2", LL_DEBUG);
 
 			currdir=backupfolder+os_file_sep()+L"clients";
-			os_create_dir(currdir);
+			if(!os_create_dir(currdir) && !os_directory_exists(currdir))
+			{
+				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
+			}
 			currdir+=os_file_sep()+widen(clientname);
 			Server->deleteFile(currdir);
 			os_link_symbolic(backuppath, currdir);
@@ -1261,7 +1289,7 @@ void BackupServerGet::hashFile(std::wstring dstpath, IFile *fd)
 	hashpipe->Write(data.getDataPtr(), data.getDataSize() );
 }
 
-void BackupServerGet::constructBackupPath(void)
+bool BackupServerGet::constructBackupPath(void)
 {
 	time_t tt=time(NULL);
 #ifdef _WIN32
@@ -1276,7 +1304,7 @@ void BackupServerGet::constructBackupPath(void)
 	backuppath_single=widen((std::string)buffer);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+backuppath_single;
-	os_create_dir(backuppath);	
+	return os_create_dir(backuppath);	
 }
 
 std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)

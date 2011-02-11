@@ -96,7 +96,7 @@ private:
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
 	
 	std::wstring constructImagePath(const std::wstring &letter);
-	void constructBackupPath(void);
+	bool constructBackupPath(void);
 	void resetEntryState(void);
 	bool getNextEntry(char ch, SFile &data);
 
