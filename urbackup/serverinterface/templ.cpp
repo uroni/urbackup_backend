@@ -74,6 +74,7 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("log_single_filter");
 	templates.push_back("logs_filter");
 	templates.push_back("logs_none");
+	templates.push_back("dir_error");
 
 	IFile *out=Server->openFile("urbackup/www/templates.js", MODE_WRITE);
 	if(out==NULL)

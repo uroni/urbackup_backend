@@ -364,7 +364,13 @@ function show_status2(data)
 		
 		rows+=tmpls.status_row.evaluate(obj);
 	}
-	ndata=tmpls.status.evaluate({rows: rows, ses: g.session});
+	var dir_error="";
+	if(data.dir_error)
+	{
+		dir_error=tmpls.dir_error.evaluate();
+	}
+	
+	ndata=tmpls.status.evaluate({rows: rows, ses: g.session, dir_error: dir_error});
 	
 	if(g.data_f!=ndata)
 	{

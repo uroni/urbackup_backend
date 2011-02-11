@@ -43,7 +43,8 @@ translations.en={
 "all": "All",
 "loglevel_0": "Info",
 "loglevel_1": "Warnings",
-"loglevel_2": "Errors"
+"loglevel_2": "Errors",
+"tdir_error_text": "The directory where UrBackup will save backups is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory."
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -174,5 +175,6 @@ translations.de={
 "tAllow client to change settings": "Client erlauben Einstellungen zu verändern",
 "tBackup storage path": "Speicherort für Backups",
 "tDo not do image backups": "Keine Imagebackups ausführen",
-"tAutomatically shut down server": "Server automatisch herunterfahren"
+"tAutomatically shut down server": "Server automatisch herunterfahren",
+"tdir_error_text": "Auf das Verzeichnis in dem UrBackup die Backups speichern soll kann nicht zugegriffen werden. Bitte verändern Sie in den Einstellungen das Verzeichnis oder geben Sie UrBackup Zugriffsrechte."
 }

@@ -20,6 +20,7 @@
 
 #include "action_header.h"
 #include "../server_settings.h"
+#include "../os_functions.h"
 
 ACTION_IMPL(status)
 {
@@ -43,6 +44,15 @@ ACTION_IMPL(status)
 	if(session!=NULL && session->id==-1) return;
 	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
+		{
+			ServerSettings settings(db);
+			if(!os_directory_exists(settings.getSettings()->backupfolder) || !os_directory_exists(settings.getSettings()->backupfolder_uncompr) || settings.getSettings()->backupfolder.empty())
+			{
+				ret.set("dir_error", true);
+			}
+		}
+
+
 		JSON::Array status;
 		IDatabase *db=helper.getDatabase();
 		std::string filter;
