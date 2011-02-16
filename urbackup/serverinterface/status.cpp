@@ -50,6 +50,10 @@ ACTION_IMPL(status)
 			{
 				ret.set("dir_error", true);
 			}
+			else if(!os_directory_exists(settings.getSettings()->backupfolder+os_file_sep()+L"clients") && !os_create_dir(settings.getSettings()->backupfolder+os_file_sep()+L"clients") )
+			{
+				ret.set("dir_error" ,true);
+			}
 		}
 
 
