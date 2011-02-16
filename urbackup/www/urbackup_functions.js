@@ -116,7 +116,7 @@ function StopLoad()
 function getURL(action, parameters)
 {
 	var ses="";
-	if(g.session!=null )
+	if(g.session!=null && g.session!="" )
 	{
 		ses="&ses="+g.session;
 	}
