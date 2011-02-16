@@ -240,7 +240,7 @@ void IndexThread::operator()(void)
 					updateDirs();
 				}
 			}
-			DirectoryWatcherThread::getPipe()->Write("U");
+			DirectoryWatcherThread::update();
 #endif
 			indexDirs();
 			contractor->Write("done");
@@ -410,7 +410,7 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 	cd->restoreSavedChangedDirs();
 	//Invalidate cache
-	DirectoryWatcherThread::getPipe()->Write("U");
+	DirectoryWatcherThread::update();
 	changed_dirs=cd->getChangedDirs();
 
 	cd->restoreSavedDelDirs();
@@ -461,7 +461,7 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 			if(!b || !onlyref)
 			{
-				DirectoryWatcherThread::getPipe()->Write("U");
+				DirectoryWatcherThread::update();
 				Server->wait(10000);
 				std::vector<std::wstring> acd=cd->getChangedDirs(false);
 				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
@@ -500,6 +500,7 @@ void IndexThread::indexDirs(void)
 		IScopedLock lock(filelist_mutex);
 		removeFile(L"urbackup/data/filelist.ub");
 		moveFile(L"urbackup/data/filelist_new.ub", L"urbackup/data/filelist.ub");
+		Server->wait(1000);
 	}
 }
 

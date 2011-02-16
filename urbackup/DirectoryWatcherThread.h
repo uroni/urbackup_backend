@@ -34,6 +34,8 @@ public:
 	void OnDirMod(const std::wstring &dir);
 	void OnDirRm(const std::wstring &dir);
 
+	static void update(void);
+
 private:
 	static IPipe *pipe;
 	IDatabase *db;
