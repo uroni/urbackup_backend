@@ -632,6 +632,9 @@
     <ClCompile Include="ServerIdentityMgr.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="ChangeJournalWatcher.cpp" />
+    <ClCompile Include="treediff\TreeDiff.cpp" />
+    <ClCompile Include="treediff\TreeNode.cpp" />
+    <ClCompile Include="treediff\TreeReader.cpp" />
     <ClCompile Include="watchdir\CriticalSection.cpp" />
     <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp" />
     <ClCompile Include="watchdir\DirectoryChanges.cpp" />
@@ -674,6 +677,9 @@
     <ClInclude Include="..\stringtools.h" />
     <ClInclude Include="ChangeJournalWatcher.h" />
     <ClInclude Include="settings.h" />
+    <ClInclude Include="treediff\TreeDiff.h" />
+    <ClInclude Include="treediff\TreeNode.h" />
+    <ClInclude Include="treediff\TreeReader.h" />
     <ClInclude Include="watchdir\CriticalSection.h" />
     <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h" />
     <ClInclude Include="watchdir\DirectoryChanges.h" />

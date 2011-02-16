@@ -34,7 +34,6 @@
 #include "../Interface/Query.h"
 #include "../Interface/Thread.h"
 
-#include "../piped_process/IPipedProcessFactory.h"
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../pychart/IPychartFactory.h"
 #include "../downloadplugin/IDownloadFactory.h"
@@ -60,7 +59,6 @@ IServer *Server;
 
 PLUGIN_ID filesrv_pluginid;
 IPipe *server_exit_pipe=NULL;
-IPipedProcessFactory *piped_process_fak;
 IFSImageFactory *image_fak;
 IPychartFactory *pychart_fak;
 IDownloadFactory *download_fak;
@@ -299,11 +297,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(both || (!both && !is_backup_client))
 	{
 		str_map params;
-		piped_process_fak=(IPipedProcessFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("piped_process", params));
-		if( piped_process_fak==NULL )
-		{
-			Server->Log("Error loading IPipedProcessFactory", LL_ERROR);
-		}
 		pychart_fak=(IPychartFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("pychart", params));
 		if(pychart_fak==NULL)
 		{

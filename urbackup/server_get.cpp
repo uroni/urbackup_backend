@@ -27,7 +27,6 @@
 #include "../Interface/ThreadPool.h"
 #include "fileclient/tcpstack.h"
 #include "fileclient/data.h"
-#include "../piped_process/IPipedProcessFactory.h"
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../fsimageplugin/IVHDFile.h"
 #include "server_channel.h"
@@ -38,11 +37,11 @@
 #include "mbr_code.h"
 #include "zero_hash.h"
 #include "server_running.h"
+#include "treediff/TreeDiff.h"
 #include <time.h>
 #include <algorithm>
 #include <memory.h>
 
-extern IPipedProcessFactory *piped_process_fak;
 extern IFSImageFactory *image_fak;
 extern std::string server_identity;
 
@@ -823,6 +822,13 @@ bool BackupServerGet::doFullBackup(void)
 	ServerStatus::setServerStatus(status, true);
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
 	Server->getThreadPool()->execute(running_updater);
+
+	std::vector<size_t> diffs;
+	_i64 files_size=getIncrementalSize(tmp, diffs, true);
+	_i64 transferred=0;
+
+	tmp->Seek(0);
+
 	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false)
 	{
 		filelist_currpos+=read;
@@ -832,7 +838,7 @@ bool BackupServerGet::doFullBackup(void)
 			if(ctime-laststatsupdate>status_update_intervall)
 			{
 				laststatsupdate=ctime;
-				status.pcdone=(int)(((float)filelist_currpos)/((float)filelist_size/100.f)+0.5f);
+				status.pcdone=(std::min)(100,(int)(((float)transferred)/((float)files_size/100.f)+0.5f));
 				status.hashqueuesize=(_u32)hashpipe->getNumElements();
 				status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 				ServerStatus::setServerStatus(status, true);
@@ -888,6 +894,7 @@ bool BackupServerGet::doFullBackup(void)
 						r_done=true;
 						break;
 					}
+					transferred+=cf.size;
 				}
 			}
 		}
@@ -957,6 +964,88 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr
 	return true;
 }
 
+_i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all)
+{
+	f->Seek(0);
+	_i64 rsize=0;
+	resetEntryState();
+	SFile cf;
+	bool indirchange=false;
+	size_t read;
+	size_t line=0;
+	char buffer[4096];
+	int indir_currdepth=0;
+	int depth=0;
+	int indir_curr_depth=0;
+	int changelevel=0;
+
+	if(all)
+	{
+		indirchange=true;
+	}
+
+	while( (read=f->Read(buffer, 4096))>0 )
+	{
+		for(size_t i=0;i<read;++i)
+		{
+			bool b=getNextEntry(buffer[i], cf);
+			if(b)
+			{
+				if(cf.isdir==true)
+				{
+					if(indirchange==false && hasChange(line, diffs) )
+					{
+						indirchange=true;
+						changelevel=depth;
+						indir_currdepth=0;
+					}
+					else if(indirchange==true)
+					{
+						if(cf.name!=L"..")
+							++indir_currdepth;
+						else
+							--indir_currdepth;
+					}
+
+					if(cf.name==L".." && indir_currdepth>0)
+					{
+						--indir_currdepth;
+					}
+
+					if(cf.name!=L"..")
+					{
+						++depth;
+					}
+					else
+					{
+						--depth;
+						if(indirchange==true && depth==changelevel)
+						{
+							if(!all)
+							{
+								indirchange=false;
+							}
+						}
+					}
+				}
+				else
+				{
+					if(indirchange==true || hasChange(line, diffs))
+					{
+						rsize+=cf.size;
+					}
+				}
+				++line;
+			}
+		}
+
+		if(read<4096)
+			break;
+	}
+
+	return rsize;
+}
+
 bool BackupServerGet::doIncrBackup(void)
 {
 	bool b=request_filelist_construct(false);
@@ -1000,12 +1089,21 @@ bool BackupServerGet::doIncrBackup(void)
 	std::wstring tmpfilename=tmp->getFilenameW();
 	Server->destroy(tmp);
 
-	std::vector<SDiff> diffs=diffFiles("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename));
-	std::sort(diffs.begin(), diffs.end());
+	bool error=false;
+	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error);
+	if(error)
+	{
+		ServerLogger::Log(clientid, "Error while calculating tree diff.", LL_ERROR);
+		has_error=true;
+		return false;
+	}
 
 	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub", MODE_WRITE);
 
-	tmp=Server->openFile(tmpfilename, MODE_READ);	
+	tmp=Server->openFile(tmpfilename, MODE_READ);
+
+	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
+	Server->getThreadPool()->execute(running_updater);
 	
 	resetEntryState();
 	
@@ -1022,10 +1120,13 @@ bool BackupServerGet::doIncrBackup(void)
 	_i64 filelist_size=tmp->Size();
 	_i64 filelist_currpos=0;
 	int indir_currdepth=0;
-	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
-	Server->getThreadPool()->execute(running_updater);
+	_i64 files_size=getIncrementalSize(tmp, diffs);
+	tmp->Seek(0);
+	_i64 transferred=0;
+	
 	unsigned int laststatsupdate=0;
 	ServerStatus::setServerStatus(status, true);
+
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
 		filelist_currpos+=read;
@@ -1039,12 +1140,12 @@ bool BackupServerGet::doIncrBackup(void)
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
 					laststatsupdate=ctime;
-					status.pcdone=(int)(((float)filelist_currpos)/((float)filelist_size/100.f)+0.5f);
+					status.pcdone=(std::min)(100,(int)(((float)filelist_currpos)/((float)files_size/100.f)+0.5f));
 					status.hashqueuesize=(_u32)hashpipe->getNumElements();
 					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 					ServerStatus::setServerStatus(status, true);
 				}
-				++line;
+				
 				if(cf.isdir==true)
 				{
 					if(indirchange==false && hasChange(line, diffs) )
@@ -1129,6 +1230,7 @@ bool BackupServerGet::doIncrBackup(void)
 							}
 							else
 							{
+								transferred+=cf.size;
 								clientlist->Write("f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
 							}
 						}
@@ -1185,6 +1287,7 @@ bool BackupServerGet::doIncrBackup(void)
 						}
 					}
 				}
+				++line;
 			}
 		}
 
@@ -1260,18 +1363,9 @@ bool BackupServerGet::doIncrBackup(void)
 	return !r_offline;
 }
 
-bool BackupServerGet::hasChange(int line, const std::vector<SDiff> &diffs)
+bool BackupServerGet::hasChange(size_t line, const std::vector<size_t> &diffs)
 {
-	SDiff ts;
-	ts.line=line;
-	std::vector<SDiff>::const_iterator it=std::lower_bound(diffs.begin(), diffs.end(), ts);
-	while(it!=diffs.end() && it->line==line )
-	{
-		if(it->type==DT_ADDED)
-			return true;
-		++it;
-	}
-	return false;
+	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
 void BackupServerGet::hashFile(std::wstring dstpath, IFile *fd)
@@ -1493,188 +1587,6 @@ void BackupServerGet::sendSettings(void)
 	escapeClientMessage(s_settings);
 	sendClientMessage("SETTINGS "+s_settings, "OK", L"Sending settings to client failed", 10000);
 }	
-
-std::vector<SDiff> BackupServerGet::diffFiles(std::string pInput, std::string pOutput)
-{
-	std::vector<SDiff> ret;
-	IPipedProcess *p=piped_process_fak->createProcess("diff \""+pInput+"\" \""+pOutput+"\"");
-	IPipe* pipe=p->getOutputPipe();
-
-	std::string strdiffs;
-
-	std::string r;
-	while(pipe->Read(&r))
-	{
-		if(r=="end" && p->isOpen()==false)
-			break;
-
-		strdiffs+=r;
-	}
-
-	Server->destroy(p);
-
-	int state=0;
-	int linetype=0;
-	D_TYPE t;
-	std::string added;
-	std::string deled;
-	std::string line;
-	int srclinestart,srclinestop;
-	int dstlinestart,dstlinestop;
-	int currlineoffset=-1;
-
-	for(size_t i=0;i<strdiffs.size();++i)
-	{
-		char ch=strdiffs[i];
-		switch(state)
-		{
-		case 0:
-			{
-				bool modtype=false;
-				if(isnumber(ch))
-					line+=ch;
-				else if(ch==',')
-				{
-					if(linetype==0)
-						srclinestart=atoi(line.c_str());
-					else if(linetype==2)
-						dstlinestart=atoi(line.c_str());
-					++linetype;
-					line.clear();
-				}
-				else if(ch=='a')
-				{
-					t=DT_ADDED;
-					modtype=true;
-				}
-				else if(ch=='c')
-				{
-					t=DT_CHANGED;
-					modtype=true;
-				}
-				else if(ch=='d')
-				{
-					t=DT_DELETED;
-					modtype=true;
-				}
-				else if(ch=='\n')
-				{
-					if(linetype==3)
-						dstlinestop=atoi(line.c_str());
-					else if(linetype==2)
-						dstlinestart=atoi(line.c_str());
-					linetype=0;
-					line.clear();
-					state=1;
-				}
-
-				if(modtype==true)
-				{
-					if(linetype==0)
-					{
-						srclinestart=atoi(line.c_str());
-						linetype=2;
-					}
-					else if(linetype==1)
-					{
-						srclinestop=atoi(line.c_str());
-						++linetype;
-					}
-					line.clear();
-				}
-			}break;		
-		case 5:
-			if(ch!='<' && ch!='-' && ch!='>')
-			{
-				currlineoffset=-1;
-				state=0;
-				if(i!=0)
-					--i;
-				break;
-			}			
-		case 1:
-			if(ch=='-')
-			{
-				currlineoffset=-1;
-				state=2;
-			}
-			else if(ch=='<')
-			{
-				++currlineoffset;
-				state=3;
-			}
-			else if(ch=='>')
-			{
-				++currlineoffset;
-				state=4;
-			}
-			if(state!=1)
-				++i;
-			break;
-		case 2:
-			if(ch=='\n')
-				state=1;
-			break;
-		case 3:
-			if(ch=='\n')
-			{
-				if(t==DT_CHANGED)
-				{
-						SDiff d;
-						d.type=DT_DELETED;
-						d.entry=deled;
-						d.line=srclinestart+currlineoffset;
-						if(d.line<500)
-							int asfsaf=5;
-						ret.push_back(d);
-						state=5;
-						deled.clear();
-				}
-				else
-				{
-						SDiff d;
-						d.type=t;
-						d.entry=deled;
-						d.line=srclinestart+currlineoffset;
-						if(d.line<500)
-							int asfsaf=5;
-						ret.push_back(d);
-						state=5;
-						deled.clear();
-				}
-			}
-			else if(ch!='\r')
-				deled+=ch;
-			break;
-		case 4:
-			if(ch=='\n')
-			{
-				SDiff d;
-				if(t==DT_CHANGED)
-				{					
-					d.type=DT_ADDED;
-					d.entry=added;
-					d.line=dstlinestart+currlineoffset;
-					ret.push_back(d);
-					added.clear();
-				}
-				else
-				{
-					d.type=DT_ADDED;
-					d.entry=added;
-					d.line=dstlinestart+currlineoffset;
-					ret.push_back(d);
-					added.clear();
-				}
-				state=5;
-			}
-			else if(ch!='\r')
-				added+=ch;
-			break;
-		}
-	}
-	return ret;
-}
 
 bool BackupServerGet::getClientSettings(void)
 {

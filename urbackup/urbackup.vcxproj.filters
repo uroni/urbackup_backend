@@ -25,6 +25,9 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="treediff">
+      <UniqueIdentifier>{1e3a9954-74c9-4bbf-b99c-4f78b6bd555f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bufmgr.cpp">
@@ -183,6 +186,15 @@
     <ClCompile Include="serverinterface\isimageready.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="treediff\TreeNode.cpp">
+      <Filter>treediff</Filter>
+    </ClCompile>
+    <ClCompile Include="treediff\TreeReader.cpp">
+      <Filter>treediff</Filter>
+    </ClCompile>
+    <ClCompile Include="treediff\TreeDiff.cpp">
+      <Filter>treediff</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -313,6 +325,15 @@
     </ClInclude>
     <ClInclude Include="server_status.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="treediff\TreeNode.h">
+      <Filter>treediff</Filter>
+    </ClInclude>
+    <ClInclude Include="treediff\TreeReader.h">
+      <Filter>treediff</Filter>
+    </ClInclude>
+    <ClInclude Include="treediff\TreeDiff.h">
+      <Filter>treediff</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

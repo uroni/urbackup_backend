@@ -17,23 +17,6 @@ class IFile;
 class IPipe;
 class ServerPingThread;
 
-enum D_TYPE
-{
-	DT_DELETED, DT_ADDED, DT_CHANGED
-};
-
-struct SDiff
-{
-	std::string entry;
-	int line;
-	D_TYPE type;
-
-	bool operator<(const SDiff &other) const
-	{
-		return line < other.line;
-	}
-};
-
 struct SBackup
 {
 	int incremental;
@@ -69,12 +52,11 @@ private:
 	void start_shadowcopy(const std::string &path);
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
-	std::vector<SDiff> diffFiles(std::string pInput, std::string pOutput);
 	bool request_filelist_construct(bool full);
 	bool load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc);
 	bool doIncrBackup(void);
 	SBackup getLastIncremental(void);
-	bool hasChange(int line, const std::vector<SDiff> &diffs);
+	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	void updateLastBackup(void);
 	void updateLastImageBackup(void);
 	void sendClientBackupIncrIntervall(void);
@@ -99,6 +81,8 @@ private:
 	bool constructBackupPath(void);
 	void resetEntryState(void);
 	bool getNextEntry(char ch, SFile &data);
+
+	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
 
 	sockaddr_in getClientaddr(void);
 
