@@ -77,3 +77,4 @@ UrBackupUpdate_untested.exe
 Release Server/*
 urbackup/clientlist_*.ub
 version_new.txt
+urbackup/sqlite3.exe

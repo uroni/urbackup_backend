@@ -148,6 +148,12 @@ void DirectoryWatcherThread::operator()(void)
 	db->destroyAllQueries();
 }
 
+void DirectoryWatcherThread::update(void)
+{
+	std::wstring msg=L"U";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+}
+
 void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
 {
 	bool found=false;

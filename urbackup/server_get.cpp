@@ -173,8 +173,8 @@ void BackupServerGet::operator ()(void)
 	status.clientid=clientid;
 	ServerStatus::setServerStatus(status);
 
-	BackupServerHash *bsh=new BackupServerHash(hashpipe_prepare, exitpipe, clientid );
-	BackupServerPrepareHash *bsh_prepare=new BackupServerPrepareHash(hashpipe, exitpipe_prepare, hashpipe_prepare, exitpipe, clientid);
+	BackupServerHash *bsh=new BackupServerHash(hashpipe, exitpipe, clientid );
+	BackupServerPrepareHash *bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
 	Server->getThreadPool()->execute(bsh);
 	Server->getThreadPool()->execute(bsh_prepare);
 	ServerChannelThread channel_thread(this, getClientaddr());
@@ -349,6 +349,7 @@ void BackupServerGet::operator ()(void)
 			//Flush buffer before continuing...
 			status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
 			status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
+			hashpipe->Write("flush");
 			while(status.hashqueuesize>0 || status.prepare_hashqueuesize>0)
 			{
 				ServerStatus::setServerStatus(status, true);
@@ -451,14 +452,14 @@ void BackupServerGet::operator ()(void)
 
 	if(do_exit_now)
 	{
-		hashpipe->Write("exitnow");
+		hashpipe_prepare->Write("exitnow");
 		std::string msg;
 		exitpipe_prepare->Read(&msg);
 		Server->destroy(exitpipe_prepare);
 	}
 	else
 	{
-		hashpipe->Write("exit");
+		hashpipe_prepare->Write("exit");
 	}
 	
 	
@@ -1384,7 +1385,7 @@ void BackupServerGet::hashFile(std::wstring dstpath, IFile *fd)
 	ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
 
 	Server->destroy(fd);
-	hashpipe->Write(data.getDataPtr(), data.getDataSize() );
+	hashpipe_prepare->Write(data.getDataPtr(), data.getDataSize() );
 }
 
 bool BackupServerGet::constructBackupPath(void)
