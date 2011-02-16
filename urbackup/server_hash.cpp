@@ -133,6 +133,13 @@ void BackupServerHash::operator()(void)
 			delete this;
 			return;
 		}
+		else if(data=="flush")
+		{
+			copyFilesFromTmp();
+			big_cache_size=20;
+			db->Write("PRAGMA cache_size = 1000");
+			continue;
+		}
 
 		if(rc>0)
 		{
