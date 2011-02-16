@@ -1056,6 +1056,7 @@ g.session_timeout_cb = function ()
 	alert(trans["session_timeout"]);
 	I('main_nav').innerHTML="";
 	I('nav_pos').innerHTML="";
+	g.session="";
 	startup();
 }
 function deleteUser(uid)
