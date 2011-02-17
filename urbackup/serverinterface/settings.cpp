@@ -44,10 +44,11 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 
 struct SGeneralSettings
 {
-	SGeneralSettings(void): no_images(false), autoshutdown(false) {}
+	SGeneralSettings(void): no_images(false), autoshutdown(false), autoupdate_clients(true) {}
 	std::wstring backupfolder;
 	bool no_images;
 	bool autoshutdown;
+	bool autoupdate_clients;
 };
 
 struct SClientSettings
@@ -72,6 +73,8 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.no_images=true;
 		else if(key==L"autoshutdown" && value==L"true")
 			ret.autoshutdown=true;
+		else if(key==L"autoupdate_clients" && value==L"false")
+			ret.autoupdate_clients=false;
 	}
 	return ret;
 }
@@ -123,6 +126,7 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 	updateSetting(L"backupfolder", settings.backupfolder, q_get, q_update, q_insert);
 	updateSetting(L"no_images", settings.no_images?L"true":L"false", q_get, q_update, q_insert);
 	updateSetting(L"autoshutdown", settings.autoshutdown?L"true":L"false",  q_get, q_update, q_insert);
+	updateSetting(L"autoupdate_clients", settings.autoupdate_clients?L"true":L"false",  q_get, q_update, q_insert);
 }
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
@@ -455,6 +459,7 @@ ACTION_IMPL(settings)
 				settings.backupfolder=GET[L"backupfolder"];
 				settings.no_images=(GET[L"no_images"]==L"true");
 				settings.autoshutdown=(GET[L"autoshutdown"]==L"true");
+				settings.autoupdate_clients=(GET[L"autoupdate_clients"]==L"true");
 				updateClientSettings(0, GET, db);
 				saveGeneralSettings(settings, db);
 
@@ -474,6 +479,7 @@ ACTION_IMPL(settings)
 				obj.set("backupfolder", settings.backupfolder);
 				obj.set("no_images", settings.no_images);
 				obj.set("autoshutdown", settings.autoshutdown);
+				obj.set("autoupdate_clients", settings.autoupdate_clients);
 
 				ret.set("settings", obj);
 			}

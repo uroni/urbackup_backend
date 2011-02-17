@@ -148,6 +148,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.client_overwrite=true;
 	settings.autoshutdown=false;
 	settings.startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
+	settings.autoupdate_clients=(settings_default->getValue("autoupdate_clients", "true")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)

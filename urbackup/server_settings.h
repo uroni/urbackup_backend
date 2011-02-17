@@ -24,6 +24,7 @@ struct SSettings
 	bool client_overwrite;
 	bool autoshutdown;
 	int startup_backup_delay;
+	bool autoupdate_clients;
 };
 
 class ServerSettings

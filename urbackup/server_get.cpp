@@ -116,8 +116,9 @@ void BackupServerGet::operator ()(void)
 		if(!b)
 		{
 			pipe->Write("ok");
-			Server->Log("server_get Thread for client "+clientname+" finished, because the identity was not recognized");
+			Server->Log("server_get Thread for client "+clientname+" finished, because the identity was not recognized", LL_INFO);
 
+			ServerStatus::setWrongIdent(clientname, true);
 			ServerLogger::reset(clientid);
 			delete this;
 			return;
@@ -191,7 +192,10 @@ void BackupServerGet::operator ()(void)
 	ServerLogger::Log(clientid, "Sending backup incr intervall...", LL_DEBUG);
 	sendClientBackupIncrIntervall();
 
-	checkClientVersion();
+	if(server_settings->getSettings()->autoupdate_clients)
+	{
+		checkClientVersion();
+	}
 
 	sendClientLogdata();
 

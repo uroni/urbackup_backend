@@ -57,11 +57,14 @@ void ServerCleanupThread::operator()(void)
 			destroyQueries();
 		}
 
+		if( settings->getValue("autoupdate_clients", "true")=="true" )
 		{
 			IScopedLock lock(a_mutex);
 			ServerUpdate upd;
 			upd();
 		}
+
+		Server->destroy(settings);
 	}
 
 	while(true)
@@ -102,14 +105,21 @@ void ServerCleanupThread::operator()(void)
 			{
 				IScopedLock lock(a_mutex);
 
+				ISettingsReader *settings=Server->createDBSettingsReader(db, "settings");
+
 				ScopedActiveThread sat;
 
-				ServerUpdate upd;
-				upd();
+				if( settings->getValue("autoupdate_clients", "true")=="true" )
+				{
+					ServerUpdate upd;
+					upd();
+				}
 
 				createQueries();
 				do_cleanup();
 				destroyQueries();
+
+				Server->destroy(settings);
 			}
 		}
 	}
