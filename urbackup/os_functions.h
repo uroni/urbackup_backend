@@ -46,4 +46,7 @@ std::string os_file_sepn(void);
 bool os_link_symbolic(const std::wstring &target, const std::wstring &lname);
 
 bool os_directory_exists(const std::wstring &path);
+
+bool os_lookuphostname(std::string pServer, unsigned int *dest);
+
 #endif //OS_FUNCTIONS_H

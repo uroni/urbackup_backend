@@ -148,7 +148,7 @@ _u32 FileClient::getLocalIP(void)
         return local_ip;
 }
 
-_u32 FileClient::GetServers(bool start)
+_u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 {
         if(start==true)
         {
@@ -196,9 +196,15 @@ _u32 FileClient::GetServers(bool start)
 
                 for(size_t i=0;i<addresses.size();++i)
                 {
-                        addr_udp.sin_addr.S_un.S_addr=addresses[i];
+                        addr_udp.sin_addr.s_addr=addresses[i];
                         sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
                 }
+
+				for(size_t i=0;i<addr_hints.size();++i)
+				{
+					addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
+					sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+				}
 #else
 		int broadcast=1;
 		if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
@@ -217,6 +223,18 @@ _u32 FileClient::GetServers(bool start)
 		if(rc==-1)
 		{
 			Server->Log("Sending broadcast failed!", LL_ERROR);
+		}
+
+		int broadcast=0;
+		if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
+		{
+			Server->Log("Error setting socket to not broadcast", LL_ERROR);
+		}
+
+		for(size_t i=0;i<addr_hints.size();++i)
+		{
+			addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
+			sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
 		}
 #endif
 

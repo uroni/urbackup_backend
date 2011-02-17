@@ -39,8 +39,11 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 
 void BackupServer::operator()(void)
 {
+	IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings");
 
+	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM extra_clients");
+	q_update_extra_ip=db->Prepare("UPDATE extra_clients SET lastip=? WHERE id=?");
 
 	FileClient fc;
 
@@ -64,6 +67,7 @@ void BackupServer::operator()(void)
 			removeAllClients();
 			exitpipe->Write("ok");
 			Server->destroy(settings);
+			db->destroyAllQueries();
 			delete this;
 			return;
 		}
@@ -72,11 +76,33 @@ void BackupServer::operator()(void)
 
 void BackupServer::findClients(FileClient &fc)
 {
-	_u32 rc=fc.GetServers(true);
+	db_results res=q_get_extra_hostnames->Read();
+	q_get_extra_hostnames->Reset();
+
+	std::vector<in_addr> addr_hints;
+
+	for(size_t i=0;i<res.size();++i)
+	{
+		unsigned int dest;
+		bool b=os_lookuphostname(Server->ConvertToUTF8(res[i][L"hostname"]), &dest);
+		if(b)
+		{
+			q_update_extra_ip->Bind((_i64)dest);
+			q_update_extra_ip->Bind(res[i][L"id"]);
+			q_update_extra_ip->Write();
+			q_update_extra_ip->Reset();
+
+			in_addr tmp;
+			tmp.s_addr=dest;
+			addr_hints.push_back(tmp);
+		}
+	}
+
+	_u32 rc=fc.GetServers(true, addr_hints);
 	while(rc==ERR_CONTINUE)
 	{
 		Server->wait(50);
-		rc=fc.GetServers(false);
+		rc=fc.GetServers(false, addr_hints);
 	}
 
 	if(rc==ERR_ERROR)
@@ -107,6 +133,8 @@ void BackupServer::startClients(FileClient &fc)
 			c.offlinecount=0;
 			c.addr=servers[i];
 
+			ServerStatus::setIP(names[i], c.addr.sin_addr.s_addr);
+
 			clients.insert(std::pair<std::string, SClient>(names[i], c) );
 		}
 		else if(it->second.offlinecount<max_offline)
@@ -123,6 +151,8 @@ void BackupServer::startClients(FileClient &fc)
 				msg[0]='a'; msg[1]='d'; msg[2]='d'; msg[3]='r'; msg[4]='e'; msg[5]='s'; msg[6]='s';
 				memcpy(&msg[7], &it->second.addr, sizeof(sockaddr_in));
 				it->second.pipe->Write(msg);
+
+				ServerStatus::setIP(names[i], it->second.addr.sin_addr.s_addr);
 			}
 		}
 	}

@@ -90,6 +90,20 @@ void ServerStatus::setDone(const std::string &clientname, bool bdone)
 	s->done=bdone;
 }
 
+void ServerStatus::setIP(const std::string &clientname, unsigned int ip)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->ip_addr=ip;
+}
+
+void ServerStatus::setWrongIdent(const std::string &clientname, bool b)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->wrong_ident=b;
+}
+
 std::vector<SStatus> ServerStatus::getStatus(void)
 {
 	IScopedLock lock(mutex);

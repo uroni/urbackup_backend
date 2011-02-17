@@ -183,3 +183,28 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 	return true;
 #endif
 }
+
+bool os_lookuphostname(std::string pServer, unsigned int *dest)
+{
+	const char* host=pServer.c_str();
+    unsigned int addr = inet_addr(host);
+    if (addr != INADDR_NONE)
+	{
+        *dest = addr;
+    }
+	else
+	{
+		hostent* hp = gethostbyname(host);
+        if (hp != 0)
+		{
+			in_addr tmp;
+			memcpy(&tmp, hp->h_addr,  hp->h_length );
+			*dest=tmp.s_addr;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return true;
+}

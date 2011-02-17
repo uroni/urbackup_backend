@@ -4,6 +4,7 @@
 #include <map>
 #include "../Interface/Pipe.h"
 #include "../Interface/Thread.h"
+#include "../Interface/Query.h"
 #include "fileclient/FileClient.h"
 
 struct SClient
@@ -26,6 +27,9 @@ private:
 	void removeAllClients(void);
 
 	std::map<std::string, SClient> clients;
+
+	IQuery *q_get_extra_hostnames;
+	IQuery *q_update_extra_ip;
 
 	IPipe *exitpipe;
 };

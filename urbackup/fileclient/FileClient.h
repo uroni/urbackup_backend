@@ -30,7 +30,7 @@ public:
         FileClient(void);
         ~FileClient(void);
 
-        _u32 GetServers(bool start);
+		_u32 GetServers(bool start, const std::vector<in_addr> &addr_hints);
         std::vector<sockaddr_in> getServers(void);
         std::vector<sockaddr_in> getWrongVersionServers(void);
         std::vector<std::string> getServerNames(void);

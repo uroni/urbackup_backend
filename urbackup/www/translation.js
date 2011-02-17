@@ -44,7 +44,10 @@ translations.en={
 "loglevel_0": "Info",
 "loglevel_1": "Warnings",
 "loglevel_2": "Errors",
-"tdir_error_text": "The directory where UrBackup will save backups is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory."
+"tdir_error_text": "The directory where UrBackup will save backups is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory.",
+"starting": "Starting",
+"ident_err": "Server rejected",
+"enter_hostname": "Please enter a hostname or IP address"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -176,5 +179,11 @@ translations.de={
 "tBackup storage path": "Speicherort für Backups",
 "tDo not do image backups": "Keine Imagebackups ausführen",
 "tAutomatically shut down server": "Server automatisch herunterfahren",
-"tdir_error_text": "Auf das Verzeichnis in dem UrBackup die Backups speichern soll kann nicht zugegriffen werden. Bitte verändern Sie in den Einstellungen das Verzeichnis oder geben Sie UrBackup Zugriffsrechte."
+"tdir_error_text": "Auf das Verzeichnis in dem UrBackup die Backups speichern soll kann nicht zugegriffen werden. Bitte verändern Sie in den Einstellungen das Verzeichnis oder geben Sie UrBackup Zugriffsrechte.",
+"starting": "Starte",
+"ident_err": "Server abgelehnt",
+"tNo extra clients": "Keine zusätzlichen Clients",
+"tShow details": "Details anzeigen",
+"tAutoupdate clients": "Clientprogramme automatisch aktualisieren",
+"enter_hostname": "Bitte geben Sie eine IP-Adresse oder einen Hostenamen ein"
 }

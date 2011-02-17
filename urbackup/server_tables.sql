@@ -177,3 +177,9 @@ ALTER TABLE logs ADD
 
 ALTER TABLE logs ADD
 	incremental INTEGER;
+	
+CREATE TABLE extra_clients (
+ id INTEGER PRIMARY KEY,
+ hostname TEXT,
+ lastip INTEGER
+);

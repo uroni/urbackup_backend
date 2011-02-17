@@ -317,11 +317,29 @@ function stat_client(id, name)
 	new loadGraph("usagegraph", "clientid="+id, "usagegraph");
 }
 
-function show_status1()
+function show_status1(details, hostname, remove)
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
-	new getJSON("status", "", show_status2);
+	var pars="";
+	if(details==true)
+	{
+		pars="details=true";
+	}
+	if(hostname)
+	{
+		if(pars!="")
+		{
+			pars+="&";
+		}
+		pars+="hostname="+hostname;
+		
+		if(remove)
+		{
+			pars+="&remove=true";
+		}
+	}
+	new getJSON("status", pars, show_status2);
 	
 	g.main_nav_pos=6;
 	build_main_nav();
@@ -362,7 +380,28 @@ function show_status2(data)
 		if(obj.lastbackup=="") obj.lastbackup=trans["backup_never"];
 		if(obj.lastbackup_image=="") obj.lastbackup_image=trans["backup_never"];
 		
-		rows+=tmpls.status_row.evaluate(obj);
+		if(obj.online) obj.online=trans["yes"];
+		else obj.online=trans["no"];
+		
+		switch(obj.status)
+		{
+			case 0: obj.status="ok"; break;
+			case 1: obj.status="incr_file"; break;
+			case 2: obj.status="full_file"; break;
+			case 3: obj.status="incr_image"; break;
+			case 4: obj.status="full_image"; break;
+			case 10: obj.status=trans["starting"]; break;
+			case 11: obj.status=trans["ident_err"]; break;
+		}	
+		
+		if(data.details)
+		{
+			rows+=tmpls.status_detail_row.evaluate(obj);
+		}
+		else
+		{
+			rows+=tmpls.status_row.evaluate(obj);
+		}
 	}
 	var dir_error="";
 	if(data.dir_error)
@@ -370,13 +409,52 @@ function show_status2(data)
 		dir_error=tmpls.dir_error.evaluate();
 	}
 	
-	ndata=tmpls.status.evaluate({rows: rows, ses: g.session, dir_error: dir_error});
+	var extra_clients_rows="";
+	
+	if(data.extra_clients.length>0)
+	{
+		for(var i=0;i<data.extra_clients.length;++i)
+		{
+			var obj=data.extra_clients[i];
+			
+			if(obj.online) obj.online=trans["yes"];
+			else obj.online=trans["no"];
+			
+			extra_clients_rows+=tmpls.status_detail_extra_row.evaluate(obj);
+		}
+	}
+	else
+	{
+		extra_clients_rows=tmpls.status_detail_extra_empty.evaluate();
+	}
+	
+	var c_tmpl=tmpls.status;
+	
+	if(data.details) c_tmpl=tmpls.status_detail;
+	
+	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, extra_clients_rows: extra_clients_rows});
 	
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 	}
+}
+function addExtraClient()
+{
+	if(I('hostname').value.length==0)
+	{
+		alert(trans["enter_hostname"]);
+		I('hostname').focus();
+		return;
+	}
+	
+	show_status1(true, I('hostname').value);
+}
+
+function removeExtraClient(id)
+{
+	show_status1(true, id, true);
 }
 
 function show_backups1()
@@ -639,6 +717,8 @@ function show_settings2(data)
 			else data.settings.allow_overwrite="";
 			if(data.settings.autoshutdown) data.settings.autoshutdown="checked=\"checked\"";
 			else data.settings.autoshutdown="";
+			if(data.settings.autoupdate_clients) data.settings.autoupdate_clients="checked=\"checked\"";
+			else data.settings.autoupdate_clients="";
 			
 			
 			data.settings.update_freq_incr/=60*60;
@@ -788,6 +868,7 @@ function saveGeneralSettings()
 	pars+=getPar("backupfolder");
 	pars+=getPar("no_images");
 	pars+=getPar("autoshutdown");
+	pars+=getPar("autoupdate_clients");
 	for(var i=0;i<g.settings_list.length;++i)
 	{
 		pars+=getPar(g.settings_list[i]);

@@ -21,6 +21,7 @@
 #include "action_header.h"
 #include "../server_settings.h"
 #include "../os_functions.h"
+#include "../server_status.h"
 
 ACTION_IMPL(status)
 {
@@ -56,6 +57,31 @@ ACTION_IMPL(status)
 			}
 		}
 
+		bool details=false;
+		if(GET.find(L"details")!=GET.end())
+		{
+			details=true;
+			ret.set("details", true);
+		}
+		std::wstring hostname=GET[L"hostname"];
+		if(!hostname.empty())
+		{
+			if(GET[L"remove"]==L"true")
+			{
+				IQuery *q=db->Prepare("DELETE FROM extra_clients WHERE id=?");
+				q->Bind(hostname);
+				q->Write();
+				q->Reset();
+			}
+			else
+			{
+				IQuery *q=db->Prepare("INSERT INTO extra_clients (hostname) SELECT ? AS hostname WHERE NOT EXISTS (SELECT hostname FROM extra_clients WHERE hostname=?)");
+				q->Bind(hostname);
+				q->Bind(hostname);
+				q->Write();
+				q->Reset();
+			}
+		}
 
 		JSON::Array status;
 		IDatabase *db=helper.getDatabase();
@@ -70,7 +96,7 @@ ACTION_IMPL(status)
 					filter+=" OR ";
 			}
 		}
-		db_results res=db->Read("SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup, strftime('"+time_format_str+"', lastseen, 'localtime') AS lastseen,"
+		db_results res=db->Read("SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen, 'localtime') AS lastseen,"
 			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image, 'localtime') AS lastbackup_image FROM clients"+filter);
 
 		int backup_ok_mod=3;
@@ -80,15 +106,41 @@ ACTION_IMPL(status)
 			backup_ok_mod=watoi(res_t[0][L"value"]);
 		}
 
+		std::vector<SStatus> client_status=ServerStatus::getStatus();
+
 		for(size_t i=0;i<res.size();++i)
 		{
 			JSON::Object stat;
 			int clientid=watoi(res[i][L"id"]);
+			std::wstring clientname=res[i][L"name"];
 			stat.set("id", clientid);
-			stat.set("name", res[i][L"name"]);
+			stat.set("name", clientname);
 			stat.set("lastbackup", res[i][L"lastbackup"]);
 			stat.set("lastseen", res[i][L"lastseen"]);
 			stat.set("lastbackup_image", res[i][L"lastbackup_image"]);
+
+			std::string ip="-";
+			int i_status=0;
+			bool online=false;
+			for(size_t j=0;j<client_status.size();++j)
+			{
+				if(client_status[j].client==wnarrow(clientname))
+				{
+					if(client_status[j].r_online==true)
+					{
+						online=true;
+					}
+					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
+					ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+
+					i_status=client_status[j].statusaction;
+				}
+			}
+
+			stat.set("online", online);
+			stat.set("ip", ip);
+			stat.set("status", i_status);
+			
 
 			ServerSettings settings(db, clientid);
 			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+nconvert(settings.getSettings()->update_freq_incr*backup_ok_mod)+" seconds')<lastbackup AND id=?");
@@ -105,7 +157,71 @@ ACTION_IMPL(status)
 
 			status.add(stat);
 		}
+
+		for(size_t i=0;i<client_status.size();++i)
+		{
+			bool found=false;
+			for(size_t j=0;j<res.size();++j)
+			{
+				if(wnarrow(res[j][L"name"])==client_status[i].client)
+				{
+					found=true;
+					break;
+				}
+			}
+
+			if(found) continue;
+
+			JSON::Object stat;
+			stat.set("id", "-");
+			stat.set("name", client_status[i].client);
+			stat.set("lastbackup", "-");
+			stat.set("lastseen", "-");
+			stat.set("lastbackup_image", "-");
+			stat.set("online", client_status[i].r_online);
+			std::string ip;
+			unsigned char *ips=(unsigned char*)&client_status[i].ip_addr;
+			ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+			stat.set("ip", ip);
+
+			if(client_status[i].wrong_ident)
+				stat.set("status", 11);
+			else
+				stat.set("status", 10);
+
+			stat.set("file_ok", false);
+			stat.set("image_ok", false);
+
+			status.add(stat);
+		}
+		JSON::Array extra_clients;
+
+		res=db->Read("SELECT id, hostname, lastip FROM extra_clients");
+		for(size_t i=0;i<res.size();++i)
+		{
+			JSON::Object extra_client;
+
+			extra_client.set("hostname", res[i][L"hostname"]);
+
+			_i64 i_ip=os_atoi64(wnarrow(res[i][L"lastip"]));
+
+			bool online=false;
+
+			for(size_t j=0;j<client_status.size();++j)
+			{
+				if(i_ip==(_i64)client_status[j].ip_addr)
+				{
+					online=true;
+				}
+			}
+			extra_client.set("id", res[i][L"id"]);
+			extra_client.set("online", online);
+
+			extra_clients.add(extra_client);
+		}
+
 		ret.set("status", status);
+		ret.set("extra_clients", extra_clients);
 
 	}
 	else

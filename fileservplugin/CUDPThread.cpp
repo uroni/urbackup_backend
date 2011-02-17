@@ -160,7 +160,7 @@ bool CUDPThread::UdpStep(void)
 		}
 		else if(err>0)
 		{
-			if(buffer[0]==ID_PING)
+			if(buffer[0]==ID_PING )
 			{
 				Log("UDP: PING received... sending PONG");
 				char *buffer=new char[mServername.size()+2];

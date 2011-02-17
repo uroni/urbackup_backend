@@ -20,8 +20,8 @@ enum SStatusAction
 
 struct SStatus
 {
-	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1; prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false; }
-	SStatus(bool pOnline) { online=pOnline; has_status=false; done=false; clientid=0; action_done=false;}
+	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1; prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false; wrong_ident=false; }
+	SStatus(bool pOnline) { online=pOnline; has_status=false; done=false; clientid=0; action_done=false; wrong_ident=false; }
 	std::string client;
 	int clientid;
 	unsigned int starttime;
@@ -33,7 +33,9 @@ struct SStatus
 	bool done;
 	bool r_online;
 	bool action_done;
-	SStatusAction statusaction; 
+	SStatusAction statusaction;
+	unsigned int ip_addr;
+	bool wrong_ident;
 };
 
 class ServerStatus
@@ -43,6 +45,8 @@ public:
 	static void setOnline(const std::string &clientname, bool bonline);
 	static void setDone(const std::string &clientname, bool bdone);
 	static void setROnline(const std::string &clientname, bool bonline);
+	static void setIP(const std::string &clientname, unsigned int ip);
+	static void setWrongIdent(const std::string &clientname, bool b);
 
 	static void init_mutex(void);
 

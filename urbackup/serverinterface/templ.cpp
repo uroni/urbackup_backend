@@ -32,6 +32,12 @@
 ACTION_IMPL(generate_templ)
 {
 #ifdef GEN_TEMPL
+
+	IFile *tf=Server->openFile("urbackup/www/templates/progress_row.htm", MODE_READ);
+	if(tf==NULL) return;
+	else
+		Server->destroy(tf);
+
 	std::vector<std::string> templates;
 	templates.push_back("progress_row");
 	templates.push_back("progress_table");
@@ -75,6 +81,10 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("logs_filter");
 	templates.push_back("logs_none");
 	templates.push_back("dir_error");
+	templates.push_back("status_detail");
+	templates.push_back("status_detail_extra_empty");
+	templates.push_back("status_detail_extra_row");
+	templates.push_back("status_detail_row");
 
 	IFile *out=Server->openFile("urbackup/www/templates.js", MODE_WRITE);
 	if(out==NULL)
