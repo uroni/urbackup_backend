@@ -1056,6 +1056,7 @@ bool BackupServerGet::doIncrBackup(void)
 		return false;
 	}
 
+	Server->Log("Connecting to client...", LL_DEBUG);
 	FileClient fc;
 	sockaddr_in addr=getClientaddr();
 	_u32 rc=fc.Connect(&addr);
@@ -1066,6 +1067,7 @@ bool BackupServerGet::doIncrBackup(void)
 		return false;
 	}
 	
+	Server->Log("Loading filelist...", LL_DEBUG);
 	IFile *tmp=Server->openTemporaryFile();
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
@@ -1074,6 +1076,8 @@ bool BackupServerGet::doIncrBackup(void)
 		has_error=true;
 		return false;
 	}
+	
+	Server->Log("Starting incremental backup...", LL_DEBUG);
 
 	SBackup last=getLastIncremental();
 	if(last.incremental==-2)

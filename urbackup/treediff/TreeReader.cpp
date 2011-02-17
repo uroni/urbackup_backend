@@ -1,6 +1,7 @@
 #include "TreeReader.h"
 #include <fstream>
 #include <iostream>
+#include <memory.h>
 #include <stack>
 #include "../../stringtools.h"
 #include "../os_functions.h"
@@ -11,7 +12,7 @@ const size_t buffer_size=4096;
 bool TreeReader::readTree(const std::string &fn)
 {
 	std::fstream in;
-	in.open(fn, std::ios::in | std::ios::binary );
+	in.open(fn.c_str(), std::ios::in | std::ios::binary );
 	if(!in.is_open())
 		return false;
 
