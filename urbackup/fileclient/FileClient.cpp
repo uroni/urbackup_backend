@@ -225,7 +225,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 			Server->Log("Sending broadcast failed!", LL_ERROR);
 		}
 
-		int broadcast=0;
+		broadcast=0;
 		if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
 		{
 			Server->Log("Error setting socket to not broadcast", LL_ERROR);
