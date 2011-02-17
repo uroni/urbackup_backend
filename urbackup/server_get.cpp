@@ -1141,7 +1141,7 @@ bool BackupServerGet::doIncrBackup(void)
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
 					laststatsupdate=ctime;
-					status.pcdone=(std::min)(100,(int)(((float)filelist_currpos)/((float)files_size/100.f)+0.5f));
+					status.pcdone=(std::min)(100,(int)(((float)transferred)/((float)files_size/100.f)+0.5f));
 					status.hashqueuesize=(_u32)hashpipe->getNumElements();
 					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 					ServerStatus::setServerStatus(status, true);
