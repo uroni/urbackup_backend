@@ -29,6 +29,8 @@
 #include "ServerIdentityMgr.h"
 #include <algorithm>
 #include <fstream>
+#include <stdlib.h>
+
 
 bool IdleCheckerThread::idle=false;
 bool IdleCheckerThread::pause=false;
@@ -242,6 +244,7 @@ void IndexThread::operator()(void)
 			}
 			DirectoryWatcherThread::update();
 #endif
+			execute_prebackup_hook();
 			indexDirs();
 			contractor->Write("done");
 		}
@@ -257,6 +260,7 @@ void IndexThread::operator()(void)
 				q->Write();
 				db->destroyQuery(q);
 			}
+			execute_prebackup_hook();
 			indexDirs();
 			contractor->Write("done");
 		}
@@ -1046,4 +1050,11 @@ SCDirs* IndexThread::getSCDir(const std::wstring path)
 IFileServ *IndexThread::getFileSrv(void)
 {
 	return filesrv;
+}
+
+void IndexThread::execute_prebackup_hook(void)
+{
+#ifdef _WIN32
+	system(Server->ConvertToUTF8(Server->getServerWorkingDir()+L"\\prefilebackup.bat").c_str());
+#endif
 }

@@ -110,6 +110,8 @@ private:
 
 	SCDirs* getSCDir(const std::wstring path);
 
+	void execute_prebackup_hook(void);
+
 
 	std::vector<SBackupDir> backup_dirs;
 
