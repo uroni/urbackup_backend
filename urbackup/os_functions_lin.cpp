@@ -27,6 +27,12 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <algorithm>
+#include <memory.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 void getMousePos(int &x, int &y)
 {
