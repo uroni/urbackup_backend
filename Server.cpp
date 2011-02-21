@@ -242,23 +242,37 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 	{
 		IScopedLock lock(log_mutex);
 
+		time_t rawtime;		
+		char buffer [100];
+		time ( &rawtime );
+#ifdef _WIN32
+		struct tm  timeinfo;
+		localtime_s(&timeinfo, &rawtime);
+		strftime (buffer,100,"%x %X: ",&timeinfo);
+#else
+		struct tm *timeinfo;
+		timeinfo = localtime ( &rawtime );
+		strftime (buffer,100,"%x %X: ",timeinfo);
+#endif	
+
+
 		if( LogLevel==LL_ERROR )
 		{
-			std::cout << "ERROR: " << pStr << std::endl;
+			std::cout << buffer << "ERROR: " << pStr << std::endl;
 			if(logfile_a)
-				logfile << "ERROR: " << pStr << std::endl;
+				logfile << buffer << "ERROR: " << pStr << std::endl;
 		}
 		else if( LogLevel==LL_WARNING )
 		{
-			std::cout << "WARNING: " << pStr << std::endl;
+			std::cout << buffer << "WARNING: " << pStr << std::endl;
 			if(logfile_a)
-				logfile << "WARNING: " << pStr << std::endl;
+				logfile<< buffer << "WARNING: " << pStr << std::endl;
 		}
 		else
 		{
-			std::cout << pStr << std::endl;		
+			std::cout << buffer << pStr << std::endl;		
 			if(logfile_a)
-				logfile << pStr << std::endl;
+				logfile << buffer << pStr << std::endl;
 		}
 		
 		if(logfile_a)
@@ -272,23 +286,39 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 	{
 		IScopedLock lock(log_mutex);
 
+		time_t rawtime;		
+		char buffer [100];
+		time ( &rawtime );
+#ifdef _WIN32
+		struct tm  timeinfo;
+		localtime_s(&timeinfo, &rawtime);
+		strftime (buffer,100,"%x %X: ",&timeinfo);
+#else
+		struct tm *timeinfo;
+		timeinfo = localtime ( &rawtime );
+		strftime (buffer,100,"%x %X: ",timeinfo);
+#endif		
+
 		if( LogLevel==LL_ERROR )
 		{
+			std::cout << buffer;
 			std::wcout << L"ERROR: " << pStr << std::endl;
 			if(logfile_a)
-				logfile << "ERROR: " << ConvertToUTF8(pStr) << std::endl;
+				logfile << buffer << "ERROR: " << ConvertToUTF8(pStr) << std::endl;
 		}
 		else if( LogLevel==LL_WARNING )
 		{
+			std::cout << buffer;
 			std::wcout << L"WARNING: " << pStr << std::endl;
 			if(logfile_a)
-				logfile << "WARNING: " << ConvertToUTF8(pStr) << std::endl;
+				logfile << buffer << "WARNING: " << ConvertToUTF8(pStr) << std::endl;
 		}
 		else
 		{
+			std::cout << buffer;
 			std::wcout << pStr << std::endl;		
 			if(logfile_a)
-				logfile << ConvertToUTF8(pStr) << std::endl;
+				logfile << buffer << ConvertToUTF8(pStr) << std::endl;
 		}
 
 		if(logfile_a)
