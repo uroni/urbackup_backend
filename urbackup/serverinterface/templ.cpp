@@ -48,7 +48,6 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("lastacts_row");
 	templates.push_back("stat_general");
 	templates.push_back("stat_general_row");
-	templates.push_back("stat_nav_pos");
 	templates.push_back("stat_user");
 	templates.push_back("status");
 	templates.push_back("status_row");

@@ -256,6 +256,7 @@ function show_statistics1()
 	new getJSON("usage", "", show_statistics3);
 	
 	g.main_nav_pos=2;
+	g.settings_nav_pos=0;
 	build_main_nav();
 }
 function show_statistics2(data)
@@ -264,17 +265,28 @@ function show_statistics2(data)
 	if(g.main_nav_pos!=2) return;
 	
 	var ndata="<a href=\"javascript: show_statistics1()\">"+trans["overview"]+"</a>";
-	if(data.users.length>0)
+	if(g.settings_nav_pos==0)
 	{
-		ndata+="&nbsp;| &nbsp;";
+		ndata="<strong>"+trans["overview"]+"</strong>";
 	}
-	for(var i=0;i<data.users.length;++i)
-	{
-		ndata+=tmpls.stat_nav_pos.evaluate(data.users[i]);
-		if(i+1<data.users.length)
+	if(data.users.length>0)
+	{		
+		ndata+="&nbsp;| &nbsp;";
+		ndata+="<select size=\"1\" style=\"width: 150px\" onchange=\"stat_client()\" id=\"statclient\">";
+		if(g.settings_nav_pos<1)
 		{
-			ndata+="&nbsp;| &nbsp;";
+			ndata+="<option value=\"n\">"+trans["clients"]+"</option>";
 		}
+		for(var i=0;i<data.users.length;++i)
+		{		
+			s="";
+			if(g.settings_nav_pos==i+1)
+			{
+				s=" selected=\"selected\"";
+			}
+			ndata+="<option value=\""+i+"\""+s+">"+data.users[i].name+"</option>";					
+		}
+		g.stat_data=data;
 	}
 	I('nav_pos').innerHTML=ndata;
 }
@@ -312,9 +324,18 @@ function stat_client(id, name)
 {
 	if(g.main_nav_pos!=2) return;
 	
-	g.data_f=tmpls.stat_user.evaluate({clientid: id, clientname: name, ses: g.session});
-	I('data_f').innerHTML=g.data_f;
-	new loadGraph("usagegraph", "clientid="+id, "usagegraph");
+	var selidx=I('statclient').selectedIndex;
+	if(selidx!=-1 && I('statclient').value!="n")
+	{	
+		var idx=I('statclient').value*1;
+		var name=g.stat_data.users[idx].name;
+		var id=g.stat_data.users[idx].id;
+		g.settings_nav_pos=idx+1;
+		g.data_f=tmpls.stat_user.evaluate({clientid: id, clientname: name, ses: g.session});
+		I('data_f').innerHTML=g.data_f;
+		new loadGraph("usagegraph", "clientid="+id, "usagegraph");
+		show_statistics2(g.stat_data);
+	}
 }
 
 function show_status1(details, hostname, remove)
@@ -687,20 +708,24 @@ function show_settings2(data)
 		{
 			g.settings_clients=nav.clients;
 			
-			for(var i=0;i<nav.clients.length;++i)
-			{
-				if(n!="" ) n+=" | ";
-				
-				if(g.settings_nav_pos==idx)
+			if(nav.clients.length>0)
+			{			
+				n+=" | ";
+				n+="<select size=\"1\" style=\"width: 150px\" onchange=\"clientSettings()\" id=\"settingsclient\">";
+				if(g.settings_nav_pos<idx)
 				{
-					n+="<strong>"+nav.clients[i].name+"</strong>";
+					n+="<option value=\"n\">"+trans["clients"]+"</option>"
 				}
-				else
-				{
-					n+="<a href=\"javascript: clientSettings("+nav.clients[i].id+","+idx+")\">"+nav.clients[i].name+"</a>";
+				for(var i=0;i<nav.clients.length;++i)
+				{		
+					s="";
+					if(g.settings_nav_pos==idx)
+					{
+						s=" selected=\"selected\"";
+					}
+					n+="<option value=\""+nav.clients[i].id+"-"+idx+"\""+s+">"+nav.clients[i].name+"</option>";					
+					++idx;
 				}
-				
-				++idx;
 			}
 		}
 		I('nav_pos').innerHTML=n;
@@ -875,11 +900,17 @@ function saveGeneralSettings()
 	}
 	new getJSON("settings", "sa=general_save"+pars, show_settings2);
 }
-function clientSettings(clientid, idx)
+function clientSettings()
 {
-	if(!startLoading()) return;
-	g.settings_nav_pos=idx;
-	new getJSON("settings", "sa=clientsettings&t_clientid="+clientid, show_settings2);
+	var selidx=I('settingsclient').selectedIndex;
+	if(selidx!=-1 && I('settingsclient').value!="n")
+	{
+		if(!startLoading()) return;
+		clientid=I('settingsclient').value.split("-")[0];
+		idx=clientid=I('settingsclient').value.split("-")[1];
+		g.settings_nav_pos=idx*1;
+		new getJSON("settings", "sa=clientsettings&t_clientid="+clientid, show_settings2);
+	}
 }
 function generalSettings()
 {
