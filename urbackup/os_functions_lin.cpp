@@ -33,6 +33,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <errno.h>
 
 void getMousePos(int &x, int &y)
 {
@@ -120,7 +121,7 @@ bool isDirectory(const std::wstring &path)
 		int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
 		if(rc!=0)
 		{
-			Server->Log(L"No permission to access \""+path+L"\"", LL_ERROR);
+			Server->Log(L"No permission to access \""+path+L"\" (isdir)", LL_DEBUG);
 			return false;
 		}
 
@@ -198,8 +199,8 @@ bool os_remove_nonempty_dir(const std::wstring &path)
 		{
 			if(dirp->d_type==DT_UNKNOWN)
 			{
-				struct stat f_info;
-				int rc=stat((upath+"/"+(std::string)dirp->d_name).c_str(), &f_info);
+				struct stat64 f_info;
+				int rc=stat64((upath+"/"+(std::string)dirp->d_name).c_str(), &f_info);
 				if(rc==0)
 				{
 					if(S_ISDIR(f_info.st_mode) )
@@ -216,7 +217,19 @@ bool os_remove_nonempty_dir(const std::wstring &path)
 				}
 				else
 				{
-					Server->Log("No permission to stat \""+upath+dirp->d_name+"\"", LL_ERROR);
+					std::string e=nconvert(errno);
+					switch(errno)
+					{
+					    case EACCES: e="EACCES"; break;
+					    case EBADF: e="EBADF"; break;
+					    case EFAULT: e="EFAULT"; break;
+					    case ELOOP: e="ELOOP"; break;
+					    case ENAMETOOLONG: e="ENAMETOOLONG"; break;
+					    case ENOENT: e="ENOENT"; break;
+					    case ENOMEM: e="ENOMEM"; break;
+					    case ENOTDIR: e="ENOTDIR"; break;
+					}
+					Server->Log("No permission to stat \""+upath+"/"+dirp->d_name+"\" error: "+e, LL_ERROR);
 				}
 			}
 			else if(dirp->d_type==DT_DIR )

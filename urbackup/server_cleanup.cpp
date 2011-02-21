@@ -190,6 +190,7 @@ int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *sett
 				return 1;
 			}
 		}
+		Server->Log("Free space: "+nconvert(available_space), LL_DEBUG);
 	}
 	return 0;
 }
@@ -441,7 +442,7 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 			}
 
 			int backupid;
-			if((int)getFilesFullNum(clientid, backupid)>max_file_full )
+			while((int)getFilesFullNum(clientid, backupid)>max_file_full )
 			{
 				q_get_filebackup_info->Bind(backupid);
 				db_results res_info=q_get_filebackup_info->Read();
@@ -453,20 +454,26 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 				{
 					Server->Log(L"Deleting full file backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
 				}
-				deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+				bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+				
+				Server->Log("Done.", LL_INFO);
 
 				int r=hasEnoughFreeSpace(minspace, &settings);
 				if( r==-1 || r==1 )
 					return;
 
-				deleted_something_client=true;
-				deleted_something=true;
+				if(b)
+				{
+					deleted_something_client=true;
+        				deleted_something=true;
+        				break;
+        			}
 			}
 
 			if(deleted_something_client==true)
 				continue;
 
-			if((int)getFilesIncrNum(clientid, backupid)>max_file_incr )
+			while((int)getFilesIncrNum(clientid, backupid)>max_file_incr )
 			{
 				q_get_filebackup_info->Bind(backupid);
 				db_results res_info=q_get_filebackup_info->Read();
@@ -478,14 +485,20 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 				{
 					Server->Log(L"Deleting incremental file backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
 				}
-				deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+				bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+				
+				Server->Log("Done.", LL_INFO);
 
 				int r=hasEnoughFreeSpace(minspace, &settings);
 				if( r==-1 || r==1 )
 					return;
 
-				deleted_something_client=true;
-				deleted_something=true;
+				if(b)
+				{
+					deleted_something_client=true;
+					deleted_something=true;
+					break;
+				}
 				break;
 			}
 
@@ -574,7 +587,7 @@ size_t ServerCleanupThread::getFilesIncrNum(int clientid, int &backupid_top)
 	return res.size();
 }
 
-void ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid)
+bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid)
 {
 	std::wstring clientname;
 	q_get_clientname->Bind(clientid);
@@ -583,7 +596,7 @@ void ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	if(res.empty())
 	{
 		Server->Log("Error getting clientname in ServerCleanupThread::deleteFileBackup", LL_ERROR);
-		return;
+		return false;
 	}
 
 	clientname=res[0][L"name"];
@@ -596,7 +609,7 @@ void ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	if(res.empty())
 	{
 		Server->Log("Error getting backuppath in ServerCleanupThread::deleteFileBackup", LL_ERROR);
-		return;
+		return false;
 	}
 
 	backuppath=res[0][L"path"];
@@ -604,29 +617,33 @@ void ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	if(backuppath.empty())
 	{
 		Server->Log("Error backuppath empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
-		return;
+		return false;
 	}
 
 	if(backupfolder.empty())
 	{
 		Server->Log("Error backupfolder empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
-		return;
+		return false;
 	}
 
 	if(clientname.empty())
 	{
 		Server->Log("Error clientname empty in ServerCleanupThread::deleteFileBackup", LL_ERROR);
-		return;
+		return false;
 	}
 
 	std::wstring path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath;
 	bool b=os_remove_nonempty_dir(path);
 	bool del=true;
+	bool err=false;
 	if(!b)
 	{
 		if(!os_directory_exists(path))
 		{
-			del=true;
+			if(os_directory_exists(backupfolder))
+			{
+			    del=true;
+			}
 			Server->Log(L"Warning: Directory doesn't exist: \""+path+L"\"", LL_WARNING);
 		}
 		else
@@ -634,12 +651,15 @@ void ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 			del=false;
 			removeerr.push_back(backupid);
 			Server->Log(L"Error removing directory \""+path+L"\"", LL_ERROR);
+			err=true;
 		}
 	}
 	if(os_directory_exists(path) )
 	{
 		del=false;
 		Server->Log(L"Directory still exists. Deleting backup failed. Path: \""+path+L"\"", LL_ERROR);
+		err=true;
+		removeerr.push_back(backupid);
 	}
 	if(del)
 	{
@@ -655,6 +675,8 @@ void ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 		q_remove_file_backup->Reset();
 		db->EndTransaction();
 	}
+	
+	return !err;
 }
 
 void ServerCleanupThread::removeImageSize(int backupid)

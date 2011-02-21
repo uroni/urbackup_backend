@@ -98,6 +98,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->Log("Escape test failed! Stopping.", LL_ERROR);
 		return;
 	}*/
+	
+	std::string rmtest=Server->getServerParameter("rmtest");
+	if(!rmtest.empty())
+	{
+		os_remove_nonempty_dir(widen(rmtest));
+		return;
+	}
 
 #ifndef CLIENT_ONLY
 	init_mutex1();
