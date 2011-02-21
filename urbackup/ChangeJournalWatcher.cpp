@@ -20,14 +20,14 @@
 #include "os_functions.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
+#include "DirectoryWatcherThread.h"
 
 const unsigned int usn_update_freq=10*60*1000;
 
-ChangeJournalWatcher::ChangeJournalWatcher(IDatabase *pDB, IChangeJournalListener *pListener) : listener(pListener), db(pDB)
+ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener) : dwt(dwt), listener(pListener), db(pDB)
 {
 	createQueries();
 
-	last_usn_update=Server->getTimeMS();
 	indexing_in_progress=false;
 	has_error=false;
 }
@@ -425,7 +425,10 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	listener->On_ResetAll(vol);
 	indexing_in_progress=false;
 
-	setIndexDone(vol, 1);
+	if(dwt->is_stopped()==false)
+	{
+		setIndexDone(vol, 1);
+	}
 }
 
 void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, _i64 parent)
@@ -509,6 +512,12 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 			}
 		}
 
+		if(dwt->is_stopped())
+		{
+			Server->Log("Stopped indexing process", LL_WARNING);
+			break;
+		}
+
 		PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
 		while ((PBYTE) pRecord < (pData + cb))
 		{
@@ -590,8 +599,6 @@ void ChangeJournalWatcher::update(void)
 
 	bool started_transaction=false;
 
-	static unsigned int update_bytes=0;
-
 	for(std::map<std::wstring, SChangeJournal>::iterator it=wdirs.begin();it!=wdirs.end();++it)
 	{
 		if(!indexing_in_progress)
@@ -605,6 +612,9 @@ void ChangeJournalWatcher::update(void)
 			deleteJournalData(it->first);
 		}
 
+		USN startUsn=it->second.last_record;
+		unsigned int update_bytes=0;
+
 		bool c=true;
 		while(c)
 		{
@@ -615,7 +625,7 @@ void ChangeJournalWatcher::update(void)
 			data.ReturnOnlyOnClose=0;
 			data.Timeout=0;
 			data.BytesToWaitFor=0;
-			data.UsnJournalID=it->second.journal_id;
+			data.UsnJournalID=it->second.journal_id;			
 
 			DWORD read;
 			memset(buffer, 0, BUF_LEN);
@@ -630,14 +640,14 @@ void ChangeJournalWatcher::update(void)
 				{
 					c=true;
 				}
-				else if(Server->getTimeMS()-last_usn_update>usn_update_freq || update_bytes>5000)
+				else if(update_bytes>5000)
 				{
-					last_usn_update=Server->getTimeMS();
 					update_bytes=0;
 					q_update_lastusn->Bind(it->second.last_record);
 					q_update_lastusn->Bind(it->first);
 					q_update_lastusn->Write();
 					q_update_lastusn->Reset();
+					startUsn=it->second.last_record;
 				}
 
 				USN nextUsn=*(USN *)&buffer;
@@ -648,7 +658,7 @@ void ChangeJournalWatcher::update(void)
 					fn.resize(TUsnRecord->FileNameLength);
 					memcpy(&fn[0], (char*)TUsnRecord->FileName, TUsnRecord->FileNameLength);
 					dwRetBytes-=TUsnRecord->RecordLength;
-					update_bytes+=dwRetBytes;
+					update_bytes+=TUsnRecord->RecordLength;
 
 					if(!indexing_in_progress)
 					{
@@ -672,11 +682,6 @@ void ChangeJournalWatcher::update(void)
 					}
 					else
 					{
-						if(started_transaction==false)
-						{
-							started_transaction=true;
-							db->BeginTransaction();
-						}
 						saveJournalData(it->second.journal_id, it->first, TUsnRecord, nextUsn);
 					}
 
@@ -698,10 +703,18 @@ void ChangeJournalWatcher::update(void)
 					if(bv!=0 && indexing_in_progress==false)
 					{
 						it->second.last_record=data.NextUsn;
+						Server->Log(L"Reindexing Volume '"+it->first+L"'", LL_ERROR);
+						if(started_transaction)
+						{
+							started_transaction=false;
+							db->EndTransaction();
+						}
 						reindex(it->second.rid, it->first, &it->second);
+						return;
 					}
 					else if(indexing_in_progress==false)
 					{
+						Server->Log("Journal Data not acessible. Errorcode: "+nconvert((int)GetLastError()), LL_ERROR);
 						has_error=true;
 						error_dirs.push_back(it->first);
 					}
@@ -714,6 +727,14 @@ void ChangeJournalWatcher::update(void)
 					has_error=true;
 				}
 			}
+		}
+
+		if(startUsn!=it->second.last_record)
+		{
+			q_update_lastusn->Bind(it->second.last_record);
+			q_update_lastusn->Bind(it->first);
+			q_update_lastusn->Write();
+			q_update_lastusn->Reset();
 		}
 	}
 

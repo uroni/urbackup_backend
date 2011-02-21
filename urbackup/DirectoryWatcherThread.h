@@ -36,11 +36,13 @@ public:
 
 	static void update(void);
 
+	bool is_stopped(void);
+
 private:
 	static IPipe *pipe;
 	IDatabase *db;
 
-	bool do_stop;
+	volatile bool do_stop;
 	
 	IQuery* q_add_dir;
 	IQuery* q_add_del_dir;

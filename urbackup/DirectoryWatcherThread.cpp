@@ -46,7 +46,7 @@ void DirectoryWatcherThread::operator()(void)
 
 	ChangeListener cl;
 #ifdef CHANGE_JOURNAL
-	ChangeJournalWatcher dcw(db, this);
+	ChangeJournalWatcher dcw(this, db, this);
 #else
 	CDirectoryChangeWatcher dcw(false);
 #endif
@@ -205,7 +205,8 @@ void DirectoryWatcherThread::OnDirRm(const std::wstring &dir)
 void DirectoryWatcherThread::stop(void)
 {
 	do_stop=true;
-	pipe->Write("Q");
+	std::wstring msg=L"Q";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 }
 
 IPipe *DirectoryWatcherThread::getPipe(void)
@@ -254,6 +255,11 @@ void DirectoryWatcherThread::On_DirRemoved(const std::wstring & strDirName)
 			return;
 		}
 	}
+}
+
+bool DirectoryWatcherThread::is_stopped(void)
+{
+	return do_stop;
 }
 
 void DirectoryWatcherThread::On_ResetAll(const std::wstring & vol)

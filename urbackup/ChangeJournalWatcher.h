@@ -1,3 +1,6 @@
+#ifndef CHANGEJOURNALWATCHER_H
+#define CHANGEJOURNALWATCHER_H
+
 #include <string>
 #include <vector>
 #include <windows.h>
@@ -5,6 +8,8 @@
 
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"
+
+class DirectoryWatcherThread;
 
 struct SChangeJournal
 {
@@ -39,7 +44,7 @@ class IChangeJournalListener;
 class ChangeJournalWatcher
 {
 public:
-	ChangeJournalWatcher(IDatabase *pDB, IChangeJournalListener *pListener);
+	ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener);
 	~ChangeJournalWatcher(void);
 
 	void watchDir(const std::wstring &dir);
@@ -100,8 +105,6 @@ private:
 	IQuery *q_del_journal_data;
 	IQuery *q_del_entry_frn;
 
-	unsigned int last_usn_update;
-
 	unsigned int last_index_update;
 
 	bool has_error;
@@ -109,6 +112,8 @@ private:
 
 	std::map<std::wstring, bool> open_write_files;
 	std::vector<std::wstring> error_dirs;
+
+	DirectoryWatcherThread * dwt;
 };
 
 class IChangeJournalListener
@@ -121,3 +126,5 @@ public:
 	virtual void On_ResetAll(const std::wstring & vol)=0;
 	virtual void On_DirRemoved(const std::wstring & strDirName)=0;
 };
+
+#endif //CHANGEJOURNALWATCHER_H
