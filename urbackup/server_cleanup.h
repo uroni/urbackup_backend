@@ -30,7 +30,7 @@ public:
 	void removeImage(int backupid);
 	bool findUncompleteImageRef(int backupid);
 
-	void deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid);
+	bool deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid);
 
 	static void updateStats(void);
 	static void initMutex(void);
