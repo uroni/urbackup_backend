@@ -307,16 +307,29 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 #endif
 
-				std::wstring filename=Server->ConvertToUnicode(s_filename);
+				std::wstring o_filename=Server->ConvertToUnicode(s_filename);
 
 				_i64 start_offset=0;
 				bool offset_set=data->getInt64(&start_offset);
 
-				Log("Sending file %s",wnarrow(filename).c_str());
+				Log("Sending file %s",wnarrow(o_filename).c_str());
 
-				filename=map_file(filename);
+				std::wstring filename=map_file(o_filename);
 				
 				Log("Mapped name: %s", wnarrow(filename).c_str() );
+
+				if(filename.empty())
+				{
+					char ch=ID_BASE_DIR_LOST;
+					int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
+					if(rc==SOCKET_ERROR)
+					{
+						Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -1");
+						return false;
+					}
+					Log("Info: Base dir lost -1");
+					break;
+				}
 				
 #ifndef LINUX
 				hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
@@ -325,7 +338,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				{
 					hFile=NULL;
 #ifdef CHECK_BASE_PATH
-					std::wstring basePath=map_file(getuntil(L"/",filename)+L"/");
+					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
 					if(!isDirectory(basePath))
 					{
 						char ch=ID_BASE_DIR_LOST;
