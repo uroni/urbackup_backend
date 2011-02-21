@@ -110,10 +110,13 @@ void CServiceWorker::operator()(void)
 
 			for(size_t i=0;i<clients.size();++i)
 			{
-				SOCKET s=clients[i].second->getSocket();
-				if((_i32)s>max)
-					max=(_i32)s;
-				FD_SET(s, &fdset);
+				if(clients[i].first->wantReceive())
+				{
+					SOCKET s=clients[i].second->getSocket();
+					if((_i32)s>max)
+						max=(_i32)s;
+					FD_SET(s, &fdset);
+				}
 			}
 		}
 

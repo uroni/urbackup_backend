@@ -32,8 +32,9 @@
 #include <stdlib.h>
 
 
-bool IdleCheckerThread::idle=false;
-bool IdleCheckerThread::pause=false;
+volatile bool IdleCheckerThread::idle=false;
+volatile bool IdleCheckerThread::pause=false;
+volatile bool IndexThread::stop_index=false;
 
 extern PLUGIN_ID filesrv_pluginid;
 
@@ -245,8 +246,22 @@ void IndexThread::operator()(void)
 			DirectoryWatcherThread::update();
 #endif
 			execute_prebackup_hook();
-			indexDirs();
-			contractor->Write("done");
+			if(!stop_index)
+			{
+				indexDirs();
+				if(!stop_index)
+				{
+					contractor->Write("done");
+				}
+				else
+				{
+					contractor->Write("error - stop_index 2");
+				}
+			}
+			else
+			{
+				contractor->Write("error - stop_index 1");
+			}
 		}
 		else if(action==1)
 		{
@@ -262,7 +277,14 @@ void IndexThread::operator()(void)
 			}
 			execute_prebackup_hook();
 			indexDirs();
-			contractor->Write("done");
+			if(!stop_index)
+			{
+				contractor->Write("done");
+			}
+			else
+			{
+				contractor->Write("error");
+			}
 		}
 		else if(action==2) // create shadowcopy
 		{
@@ -393,6 +415,7 @@ void IndexThread::operator()(void)
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			contractor->Write("done");
+			stop_index=false;
 		}
 		else if(action==6) //remove watch directory
 		{
@@ -403,6 +426,7 @@ void IndexThread::operator()(void)
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			contractor->Write("done");
+			stop_index=false;
 		}
 #endif
 	}
@@ -487,6 +511,18 @@ void IndexThread::indexDirs(void)
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			initialCheck( backup_dirs[i].path, mod_path, outfile);
+			if(stop_index)
+			{
+				for(size_t k=0;k<backup_dirs.size();++k)
+				{
+					SCDirs *scd=getSCDir(widen(backup_dirs[k].tname));
+					release_shadowcopy(*scd);
+				}
+				
+				outfile.close();
+				removeFile(L"urbackup/data/filelist_new.ub");
+				return;
+			}
 			//db->EndTransaction();
 			outfile << "d\"..\"\n";
 			Server->Log("Indexing of \""+backup_dirs[i].tname+"\" done. "+nconvert(index_c_fs)+" filesystem lookups "+nconvert(index_c_db)+" db lookups and "+nconvert(index_c_db_update)+" db updates" , LL_INFO);
@@ -523,6 +559,11 @@ void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	if(IdleCheckerThread::getPause())
 	{
 		Server->wait(5000);
+	}
+
+	if(stop_index)
+	{
+		return;
 	}
 
 	std::vector<SFile> files=getFilesProxy(orig_dir, dir);
@@ -598,6 +639,11 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 IPipe * IndexThread::getMsgPipe(void)
 {
 	return msgpipe;
+}
+
+void IndexThread::stopIndex(void)
+{
+	stop_index=true;
 }
 
 #ifdef _WIN32

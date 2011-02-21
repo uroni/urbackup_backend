@@ -81,6 +81,11 @@ void ClientConnector::init_mutex(void)
 	}
 }
 
+bool ClientConnector::wantReceive(void)
+{
+	return want_receive;
+}
+
 void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 {
 	tid=pTID;
@@ -92,6 +97,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	do_quit=false;
 	is_channel=false;
 	lcmd="none";
+	want_receive=true;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -159,6 +165,12 @@ bool ClientConnector::Run(void)
 			else if(msg=="done")
 			{
 				tcpstack.Send(pipe, "DONE");
+				lasttime=Server->getTimeMS();
+				state=0;
+			}
+			else if(!msg.empty())
+			{
+				tcpstack.Send(pipe, msg);
 				lasttime=Server->getTimeMS();
 				state=0;
 			}
@@ -323,6 +335,26 @@ bool ClientConnector::Run(void)
 			}
 			return true;
 		}break;
+	case 8: // wait for contractors
+		{
+			for(size_t i=0;i<contractors.size();++i)
+			{
+				std::string resp;
+				contractors[i]->Read(&resp, 0);
+				if(!resp.empty())
+				{
+					contractors[i]->Write("exit");
+					contractors.erase(contractors.begin()+i);
+					break;
+				}
+			}
+
+			if(contractors.empty())
+			{
+				return false;
+			}
+		}break;
+
 	}
 	return true;
 }
@@ -394,6 +426,11 @@ bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)
 
 void ClientConnector::ReceivePackets(void)
 {
+	if(state==8)
+	{
+		return;
+	}
+
 	IMutex *l_mutex=NULL;
 	if(is_channel)
 	{
@@ -405,7 +442,7 @@ void ClientConnector::ReceivePackets(void)
 	size_t rc=pipe->Read(&cmd, is_channel?0:-1);
 	if(rc==0 )
 	{
-		Server->Log("rc=0 hasError="+nconvert(pipe->hasError()), LL_DEBUG);
+		Server->Log("rc=0 hasError="+nconvert(pipe->hasError())+" state="+nconvert(state), LL_DEBUG);
 		if(is_channel && pipe->hasError())
 		{
 			do_quit=true;
@@ -1202,6 +1239,7 @@ bool ClientConnector::saveBackupDirs(str_map &args)
 	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
 	std::wstring dir;
 	size_t i=0;
+	std::vector<std::wstring> new_watchdirs;
 	do
 	{
 		dir=args[L"dir_"+convert(i)];
@@ -1244,15 +1282,7 @@ bool ClientConnector::saveBackupDirs(str_map &args)
 			if(!found)
 			{
 				//It's not already watched. Add it
-				IPipe *contractor=Server->createMemoryPipe();
-				CWData data;
-				data.addChar(5);
-				data.addVoidPtr(contractor);
-				data.addString(Server->ConvertToUTF8(dir));
-				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-				std::string response;
-				contractor->Read(&response);
-				contractor->Write("exit");
+				new_watchdirs.push_back(dir);
 			}
 			
 			q->Bind(name);
@@ -1265,6 +1295,21 @@ bool ClientConnector::saveBackupDirs(str_map &args)
 	while(!dir.empty());
 	db->EndTransaction();
 
+	for(size_t i=0;i<new_watchdirs.size();++i)
+	{
+		//Add watch
+		IPipe *contractor=Server->createMemoryPipe();
+		CWData data;
+		data.addChar(5);
+		data.addVoidPtr(contractor);
+		data.addString(Server->ConvertToUTF8(new_watchdirs[i]));
+		IndexThread::stopIndex();
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+		contractors.push_back(contractor);
+		state=8;
+		want_receive=false;
+	}
+
 	for(size_t i=0;i<backupdirs.size();++i)
 	{
 		if(backupdirs[i][L"need"]!=L"1")
@@ -1275,10 +1320,11 @@ bool ClientConnector::saveBackupDirs(str_map &args)
 			data.addChar(6);
 			data.addVoidPtr(contractor);
 			data.addString(Server->ConvertToUTF8(backupdirs[i][L"path"]));
+			IndexThread::stopIndex();
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-			std::string response;
-			contractor->Read(&response);
-			contractor->Write("exit");
+			contractors.push_back(contractor);
+			state=8;
+			want_receive=false;
 		}
 	}
 	db->destroyAllQueries();

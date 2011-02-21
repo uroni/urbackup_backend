@@ -13,6 +13,8 @@ public:
 
 	virtual bool Run(void)=0;
 	virtual void ReceivePackets(void)=0;
+
+	virtual bool wantReceive(void){ return true; }
 };
 
 #endif

@@ -42,8 +42,8 @@ public:
 	static void setPause(bool b);
 
 private:
-	static bool idle;
-	static bool pause;
+	volatile static bool idle;
+	volatile static bool pause;
 };
 
 struct SCRef
@@ -88,6 +88,8 @@ public:
 	static IMutex* getFilelistMutex(void);
 	static IPipe * getMsgPipe(void);
 	static IFileServ *getFileSrv(void);
+
+	static void stopIndex(void);
 
 private:
 
@@ -138,6 +140,8 @@ private:
 	int index_c_db;
 	int index_c_fs;
 	int index_c_db_update;
+
+	static volatile bool stop_index;
 
 
 	unsigned int last_transaction_start;

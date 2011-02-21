@@ -22,6 +22,8 @@ public:
 
 	static void init_mutex(void);
 
+	virtual bool wantReceive(void);
+
 	void operator()(void);
 
 private:
@@ -90,4 +92,8 @@ private:
 	IFile *hashdatafile;
 	unsigned int hashdataleft;
 	volatile bool hashdataok;
+
+	bool want_receive;
+
+	std::vector<IPipe*> contractors;
 };
