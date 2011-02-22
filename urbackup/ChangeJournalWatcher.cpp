@@ -56,7 +56,7 @@ void ChangeJournalWatcher::createQueries(void)
 	q_update_lastusn=db->Prepare("UPDATE journal_ids SET last_record=? WHERE device_name=?");
 	q_rename_entry=db->Prepare("UPDATE map_frn SET name=?, pid=? WHERE id=?");
 	q_save_journal_data=db->Prepare("INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, parent_frn, next_usn, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-	q_get_journal_data=db->Prepare("SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data WHERE device_name=? ORDER BY usn DESC");
+	q_get_journal_data=db->Prepare("SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data WHERE device_name=? ORDER BY usn ASC");
 	q_set_index_done=db->Prepare("UPDATE journal_ids SET index_done=? WHERE device_name=?");
 	q_del_journal_data=db->Prepare("DELETE FROM journal_data WHERE device_name=?");
 	q_del_entry_frn=db->Prepare("DELETE FROM map_frn WHERE frn=? AND rid=?");
@@ -353,6 +353,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 			listener->On_ResetAll(vol);
 			do_index=true;
 			setIndexDone(vol, 0);
+			info.last_record=data.NextUsn;
 
 			q_update_journal_id->Bind((_i64)data.UsnJournalID);
 			q_update_journal_id->Bind(vol);
@@ -360,27 +361,28 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 			q_update_journal_id->Reset();
 		}
 
-		if(info.last_record<data.FirstUsn)
+		if(do_index==false && info.last_record<data.FirstUsn)
 		{
 			Server->Log(L"Last record not readable at '"+vol+L"' - reindexing", LL_WARNING);
 			listener->On_ResetAll(vol);
 			do_index=true;
 			setIndexDone(vol, 0);
-			info.last_record=data.FirstUsn;
+			info.last_record=data.NextUsn;
 		}
 
-		if(info.index_done==0)
+		if(do_index==false && info.index_done==0)
 		{
 			Server->Log(L"Indexing was not finished at '"+vol+L"' - reindexing", LL_WARNING);
 			do_index=true;
 			setIndexDone(vol, 0);
+			info.last_record=data.NextUsn;
 		}
 	}
 	else
 	{
 		listener->On_ResetAll(vol);
 		Server->Log(L"Info not found at '"+vol+L"' - reindexing", LL_WARNING);
-		do_index=true;			
+		do_index=true;
 	}
 
 	SChangeJournal cj;
@@ -537,6 +539,8 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	q_add_frn_tmp=NULL;
 	db->Write("INSERT INTO map_frn (name, pid, frn, rid) SELECT name, pid, frn, rid FROM map_frn_tmp");
 	db->Write("DROP TABLE map_frn_tmp");
+
+	update(true);
 }
 
 SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
@@ -593,7 +597,7 @@ std::wstring ChangeJournalWatcher::getFilename(_i64 frn, _i64 rid)
 const int BUF_LEN=4096;
 
 
-void ChangeJournalWatcher::update(void)
+void ChangeJournalWatcher::update(bool force_write)
 {
 	char buffer[BUF_LEN];
 
@@ -670,7 +674,7 @@ void ChangeJournalWatcher::update(void)
 						UsnRecord.Usn=TUsnRecord->Usn;
 						UsnRecord.attributes=TUsnRecord->FileAttributes;
 
-						if(UsnRecord.Filename!=L"backup_client.db-journal")
+						if(UsnRecord.Filename!=L"backup_client.db" && UsnRecord.Filename!=L"backup_client.db-journal")
 						{
 							if(started_transaction==false)
 							{
@@ -729,7 +733,7 @@ void ChangeJournalWatcher::update(void)
 			}
 		}
 
-		if(startUsn!=it->second.last_record)
+		if(startUsn!=it->second.last_record || force_write)
 		{
 			q_update_lastusn->Bind(it->second.last_record);
 			q_update_lastusn->Bind(it->first);

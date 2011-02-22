@@ -49,7 +49,7 @@ public:
 
 	void watchDir(const std::wstring &dir);
 
-	void update(void);
+	void update(bool force_write=false);
 	void update_longliving(void);
 private:
 	IChangeJournalListener *listener;
