@@ -453,7 +453,16 @@ function show_status2(data)
 	
 	if(data.details) c_tmpl=tmpls.status_detail;
 	
-	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, extra_clients_rows: extra_clients_rows});
+	var dtl_c1="<!--";
+	var dtl_c2="-->";
+	
+	if(data.allow_extra_clients)
+	{
+		dtl_c1="";
+		dtl_c2="";
+	}
+	
+	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2});
 	
 	if(g.data_f!=ndata)
 	{

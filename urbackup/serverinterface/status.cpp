@@ -161,71 +161,78 @@ ACTION_IMPL(status)
 			status.add(stat);
 		}
 
-		for(size_t i=0;i<client_status.size();++i)
+		if(rights=="all")
 		{
-			bool found=false;
-			for(size_t j=0;j<res.size();++j)
+			for(size_t i=0;i<client_status.size();++i)
 			{
-				if(wnarrow(res[j][L"name"])==client_status[i].client)
+				bool found=false;
+				for(size_t j=0;j<res.size();++j)
 				{
-					found=true;
-					break;
+					if(wnarrow(res[j][L"name"])==client_status[i].client)
+					{
+						found=true;
+						break;
+					}
 				}
+
+				if(found) continue;
+
+				JSON::Object stat;
+				stat.set("id", (std::string)"-");
+				stat.set("name", client_status[i].client);
+				stat.set("lastbackup", (std::string)"-");
+				stat.set("lastseen", (std::string)"-");
+				stat.set("lastbackup_image", (std::string)"-");
+				stat.set("online", client_status[i].r_online);
+				std::string ip;
+				unsigned char *ips=(unsigned char*)&client_status[i].ip_addr;
+				ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+				stat.set("ip", ip);
+
+				if(client_status[i].wrong_ident)
+					stat.set("status", 11);
+				else
+					stat.set("status", 10);
+
+				stat.set("file_ok", false);
+				stat.set("image_ok", false);
+
+				status.add(stat);
 			}
-
-			if(found) continue;
-
-			JSON::Object stat;
-			stat.set("id", "-");
-			stat.set("name", client_status[i].client);
-			stat.set("lastbackup", "-");
-			stat.set("lastseen", "-");
-			stat.set("lastbackup_image", "-");
-			stat.set("online", client_status[i].r_online);
-			std::string ip;
-			unsigned char *ips=(unsigned char*)&client_status[i].ip_addr;
-			ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
-			stat.set("ip", ip);
-
-			if(client_status[i].wrong_ident)
-				stat.set("status", 11);
-			else
-				stat.set("status", 10);
-
-			stat.set("file_ok", false);
-			stat.set("image_ok", false);
-
-			status.add(stat);
 		}
 		JSON::Array extra_clients;
 
-		res=db->Read("SELECT id, hostname, lastip FROM extra_clients");
-		for(size_t i=0;i<res.size();++i)
+		if(rights=="all")
 		{
-			JSON::Object extra_client;
-
-			extra_client.set("hostname", res[i][L"hostname"]);
-
-			_i64 i_ip=os_atoi64(wnarrow(res[i][L"lastip"]));
-
-			bool online=false;
-
-			for(size_t j=0;j<client_status.size();++j)
+			res=db->Read("SELECT id, hostname, lastip FROM extra_clients");
+			for(size_t i=0;i<res.size();++i)
 			{
-				if(i_ip==(_i64)client_status[j].ip_addr)
-				{
-					online=true;
-				}
-			}
-			extra_client.set("id", res[i][L"id"]);
-			extra_client.set("online", online);
+				JSON::Object extra_client;
 
-			extra_clients.add(extra_client);
+				extra_client.set("hostname", res[i][L"hostname"]);
+
+				_i64 i_ip=os_atoi64(wnarrow(res[i][L"lastip"]));
+
+				bool online=false;
+
+				for(size_t j=0;j<client_status.size();++j)
+				{
+					if(i_ip==(_i64)client_status[j].ip_addr)
+					{
+						online=true;
+					}
+				}
+				extra_client.set("id", res[i][L"id"]);
+				extra_client.set("online", online);
+
+				extra_clients.add(extra_client);
+			}
+			ret.set("allow_extra_clients", true);
 		}
 
 		ret.set("status", status);
 		ret.set("extra_clients", extra_clients);
-
+		
 	}
 	else
 	{
