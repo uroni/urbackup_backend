@@ -27,6 +27,8 @@
 
 #ifdef MODE_LIN
 
+#include <errno.h>
+
 bool File::Open(std::wstring pfn, int mode)
 {
 	fn=pfn;
@@ -116,7 +118,10 @@ _u32 File::Write(const char* buffer, _u32 bsize)
 {
 	ssize_t w=write(fd, buffer, bsize);
 	if( w<0 )
+	{
+		Server->Log("Write failed. errno="+nconvert(errno), LL_DEBUG);
 		w=0;
+	}
 	return (_u32)w;
 }
 
