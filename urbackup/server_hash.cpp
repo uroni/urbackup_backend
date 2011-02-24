@@ -422,8 +422,65 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 		_u32 rc=dst->Write(buf, read);
 		if(rc!=read)
 		{
-			ServerLogger::Log(clientid, L"Error writing to file \""+dest+L"\"", LL_ERROR);
-			return false;
+			int64 available_space=os_free_space(ExtractFilePath(dest));
+			if(available_space==-1)
+			{
+				if(space_logcnt==0)
+				{
+					ServerLogger::Log(clientid, L"Error writing to file \""+dest+L"\"", LL_ERROR);
+					++space_logcnt;
+				}
+				else
+				{
+					Server->Log(L"Error writing to file \""+dest+L"\"", LL_ERROR);
+				}
+				return false;
+			}
+			else
+			{
+				bool free_ok=true;
+
+				if( available_space>=freespace_mod )
+				{
+					if(space_logcnt==0)
+					{
+						ServerLogger::Log(clientid, "HT: No free space available deleting backups...", LL_WARNING);
+					}
+					else
+					{
+						Server->Log("HT: No free space available deleting backups...", LL_WARNING);
+					}
+					free_ok=freeSpace(0, dest);
+				}
+
+				if(!free_ok)
+				{
+					if(space_logcnt==0)
+					{
+						ServerLogger::Log(clientid, L"Error writing to file \""+dest+L"\"", LL_ERROR);
+						++space_logcnt;
+					}
+					else
+					{
+						Server->Log(L"Error writing to file \""+dest+L"\"", LL_ERROR);
+					}
+					return false;
+				}
+
+				_u32 written=rc;
+				do
+				{
+					rc=dst->Write(buf+written, read-written);
+					written+=rc;
+				}
+				while(rc>0);
+				
+				if(rc==0)
+				{
+					Server->Log(L"Error writing to file \""+dest+L"\" -2", LL_ERROR);
+					return false;
+				}
+			}
 		}
 	}
 	while(read>0);

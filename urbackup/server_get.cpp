@@ -1315,6 +1315,7 @@ bool BackupServerGet::doIncrBackup(void)
 	{
 		Server->Log("Client ok. Copying full file...", LL_DEBUG);
 		IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+".ub", MODE_WRITE);
+		bool clientlist_copy_err=false;
 		if(clientlist!=NULL)
 		{
 			tmp->Seek(0);
@@ -1323,8 +1324,18 @@ bool BackupServerGet::doIncrBackup(void)
 			do
 			{
 				r=tmp->Read(buf, 4096);
+				_u32 written=0;
+				_u32 rc;
+				do
+				{
+					_u32 rc=clientlist->Write(buf+written, r-written);
+					written+=rc;
+				}
+				while(rc>0);
+				if(rc==0)
 				{
 					ServerLogger::Log(clientid, "Fatal error copying clientlist. Write error.", LL_ERROR);
+					clientlist_copy_err=true;
 					break;
 				}
 			}
@@ -1357,7 +1368,10 @@ bool BackupServerGet::doIncrBackup(void)
 		{
 			ServerLogger::Log(clientid, "Fatal error copying clientlist. Open error.", LL_ERROR);
 		}
-		Server->deleteFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub");
+		if(!clientlist_copy_err)
+		{
+			Server->deleteFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub");
+		}
 	}
 	else
 	{
