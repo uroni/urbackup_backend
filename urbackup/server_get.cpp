@@ -1060,7 +1060,7 @@ bool BackupServerGet::doIncrBackup(void)
 		return false;
 	}
 
-	Server->Log("Connecting to client...", LL_DEBUG);
+	Server->Log(clientname+": Connecting to client...", LL_DEBUG);
 	FileClient fc;
 	sockaddr_in addr=getClientaddr();
 	_u32 rc=fc.Connect(&addr);
@@ -1071,7 +1071,7 @@ bool BackupServerGet::doIncrBackup(void)
 		return false;
 	}
 	
-	Server->Log("Loading filelist...", LL_DEBUG);
+	Server->Log(clientname+": Loading filelist...", LL_DEBUG);
 	IFile *tmp=Server->openTemporaryFile();
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
@@ -1081,7 +1081,7 @@ bool BackupServerGet::doIncrBackup(void)
 		return false;
 	}
 	
-	Server->Log("Starting incremental backup...", LL_DEBUG);
+	Server->Log(clientname+" Starting incremental backup...", LL_DEBUG);
 
 	SBackup last=getLastIncremental();
 	if(last.incremental==-2)
@@ -1098,6 +1098,7 @@ bool BackupServerGet::doIncrBackup(void)
 	std::wstring tmpfilename=tmp->getFilenameW();
 	Server->destroy(tmp);
 
+	Server->Log(clientname+": Calculating file tree differences...", LL_DEBUG);
 	bool error=false;
 	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error);
 	if(error)
@@ -1129,12 +1130,16 @@ bool BackupServerGet::doIncrBackup(void)
 	_i64 filelist_size=tmp->Size();
 	_i64 filelist_currpos=0;
 	int indir_currdepth=0;
+	
+	Server->Log(clientname+": Calculating tree difference size...", LL_DEBUG);
 	_i64 files_size=getIncrementalSize(tmp, diffs);
 	tmp->Seek(0);
 	_i64 transferred=0;
 	
 	unsigned int laststatsupdate=0;
 	ServerStatus::setServerStatus(status, true);
+	
+	Server->Log(clientname+": Linking unchanged and loading new files...", LL_DEBUG);
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -1318,7 +1323,6 @@ bool BackupServerGet::doIncrBackup(void)
 			do
 			{
 				r=tmp->Read(buf, 4096);
-				if(clientlist->Write(buf, r)!=r)
 				{
 					ServerLogger::Log(clientid, "Fatal error copying clientlist. Write error.", LL_ERROR);
 					break;
