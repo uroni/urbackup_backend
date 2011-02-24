@@ -473,7 +473,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 					rc=dst->Write(buf+written, read-written);
 					written+=rc;
 				}
-				while(rc>0);
+				while(written<read);
 				
 				if(rc==0)
 				{

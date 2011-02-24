@@ -1326,7 +1326,7 @@ bool BackupServerGet::doIncrBackup(void)
 					_u32 rc=clientlist->Write(buf+written, r-written);
 					written+=rc;
 				}
-				while(rc>0);
+				while(written<r);
 				if(rc==0)
 				{
 					ServerLogger::Log(clientid, "Fatal error copying clientlist. Write error.", LL_ERROR);
