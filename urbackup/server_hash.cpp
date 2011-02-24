@@ -420,7 +420,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 	{
 		read=tf->Read(buf, 4096);
 		_u32 rc=dst->Write(buf, read);
-		if(rc!=read)
+		if(rc!=read && read>0)
 		{
 			int64 available_space=os_free_space(ExtractFilePath(dest));
 			if(available_space==-1)
@@ -473,7 +473,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 					rc=dst->Write(buf+written, read-written);
 					written+=rc;
 				}
-				while(written<read);
+				while(written<read && rc>0);
 				
 				if(rc==0)
 				{

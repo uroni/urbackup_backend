@@ -1319,19 +1319,22 @@ bool BackupServerGet::doIncrBackup(void)
 			do
 			{
 				r=tmp->Read(buf, 4096);
-				_u32 written=0;
-				_u32 rc;
-				do
+				if(r>0)
 				{
-					_u32 rc=clientlist->Write(buf+written, r-written);
-					written+=rc;
-				}
-				while(written<r);
-				if(rc==0)
-				{
-					ServerLogger::Log(clientid, "Fatal error copying clientlist. Write error.", LL_ERROR);
-					clientlist_copy_err=true;
-					break;
+					_u32 written=0;
+					_u32 rc;
+					do
+					{
+						rc=clientlist->Write(buf+written, r-written);
+						written+=rc;
+					}
+					while(written<r && rc>0);
+					if(rc==0)
+					{
+						ServerLogger::Log(clientid, "Fatal error copying clientlist. Write error.", LL_ERROR);
+						clientlist_copy_err=true;
+						break;
+					}
 				}
 			}
 			while(r>0);
