@@ -833,8 +833,10 @@ bool BackupServerGet::doFullBackup(void)
 	_i64 transferred=0;
 
 	tmp->Seek(0);
+	
+	bool c_has_error=false;
 
-	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false)
+	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
 	{
 		filelist_currpos+=read;
 		for(size_t i=0;i<read;++i)
@@ -867,6 +869,8 @@ bool BackupServerGet::doFullBackup(void)
 						if(!os_create_dir(backuppath+os_curr_path))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
+							c_has_error=true;
+							break;
 						}
 						++depth;
 						if(depth==1)
@@ -907,7 +911,7 @@ bool BackupServerGet::doFullBackup(void)
 		if(read<4096)
 			break;
 	}
-	if(r_done==false)
+	if(r_done==false && c_has_error==false)
 	{
 		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 		std::wstring currdir=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+L"current";
@@ -920,6 +924,9 @@ bool BackupServerGet::doFullBackup(void)
 	Server->destroy(tmp);
 
 	setBackupDone();
+	
+	if(c_has_error)
+		return false;
 
 	return !r_done;
 }
@@ -1140,6 +1147,8 @@ bool BackupServerGet::doIncrBackup(void)
 	ServerStatus::setServerStatus(status, true);
 	
 	Server->Log(clientname+": Linking unchanged and loading new files...", LL_DEBUG);
+	
+	bool c_has_error=false;
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -1199,6 +1208,8 @@ bool BackupServerGet::doIncrBackup(void)
 						if(!os_create_dir(backuppath+os_curr_path))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
+							c_has_error=true;
+							break;
 						}
 						++depth;
 						if(depth==1)
@@ -1304,6 +1315,9 @@ bool BackupServerGet::doIncrBackup(void)
 				++line;
 			}
 		}
+		
+		if(c_has_error)
+			break;
 
 		if(read<4096)
 			break;
@@ -1311,7 +1325,7 @@ bool BackupServerGet::doIncrBackup(void)
 	status.pcdone=100;
 	ServerStatus::setServerStatus(status, true);
 	Server->destroy(clientlist);
-	if(r_offline==false)
+	if(r_offline==false && c_has_error==false)
 	{
 		Server->Log("Client ok. Copying full file...", LL_DEBUG);
 		IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+".ub", MODE_WRITE);
@@ -1376,11 +1390,15 @@ bool BackupServerGet::doIncrBackup(void)
 			Server->deleteFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub");
 		}
 	}
-	else
+	else if(!c_has_error)
 	{
 		Server->Log("Client disconnected while backing up. Copying partial file...", LL_DEBUG);
 		Server->deleteFile("urbackup/clientlist_"+nconvert(clientid)+".ub");
 		moveFile(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub");
+	}
+	else
+	{
+		ServerLogger::Log(clientid, "Fatal error during backup. Backup not completed", LL_ERROR);
 	}
 
 	running_updater->stop();
@@ -1390,6 +1408,8 @@ bool BackupServerGet::doIncrBackup(void)
 
 	setBackupDone();
 
+	if(c_has_error) return false;
+	
 	return !r_offline;
 }
 
@@ -1848,6 +1868,19 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 	}
 
 	std::wstring imagefn=constructImagePath(L"C");
+	
+	int64 free_space=os_free_space(ExtractFilePath(imagefn));
+	if(free_space!=-1 && free_space<minfreespace_image)
+	{
+		ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
+		ServerCleanupThread cleanup;
+		if(!cleanup.do_cleanup(minfreespace_image) )
+		{
+			ServerLogger::Log(clientid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			Server->destroy(cc);
+			return false;
+		}
+	}
 
 	{
 		std::string mbrd=getMBR(L"C");
@@ -1858,22 +1891,26 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 		else
 		{
 			IFile *mbr_file=Server->openFile(imagefn+L".mbr", MODE_WRITE);
-			mbr_file->Write(mbrd);
-			Server->destroy(mbr_file);
+			if(mbr_file!=NULL)
+			{
+				_u32 w=mbr_file->Write(mbrd);
+				if(w!=mbrd.size())
+				{
+					Server->Log("Error writing mbr data.", LL_ERROR);
+					Server->destroy(mbr_file);
+					Server->destroy(cc);
+					return false;
+				}
+				Server->destroy(mbr_file);
+			}
+			else
+			{
+				Server->Log("Error creating file for writing MBR data.", LL_ERROR);
+				Server->destroy(cc);
+				return false;
+			}
 		}
-	}
-
-	int64 free_space=os_free_space(ExtractFilePath(imagefn));
-	if(free_space!=-1 && free_space<minfreespace_image)
-	{
-		ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
-		ServerCleanupThread cleanup;
-		if(!cleanup.do_cleanup(minfreespace_image) )
-		{
-			ServerLogger::Log(clientid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
-			return false;
-		}
-	}
+	}
 
 	if(pParentvhd.empty())
 		backupid=createBackupImageSQL(0,0, clientid, imagefn);
@@ -2378,7 +2415,10 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 							q_update_images_size->Bind(clientid);
 							q_update_images_size->Write();
 							q_update_images_size->Reset();
-							setBackupImageComplete();
+							if(vhdfile_err==false)
+							{
+							    setBackupImageComplete();
+							}
 							db->EndTransaction();
 							Server->destroy(t_file);
 
