@@ -396,6 +396,8 @@ bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)
 		return false;
 
 	IFile *out=Server->openFile(outfn, MODE_WRITE);
+	if(out==NULL)
+		return false;
 
 	size_t read=0;
 	char buf[4096];

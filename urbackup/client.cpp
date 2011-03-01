@@ -304,7 +304,7 @@ void IndexThread::operator()(void)
 			{
 				if(scd->running==true)
 				{
-					Server->Log("Removing shadowcopy \""+scd->dir+"\" because of timeout...", LL_INFO);
+					Server->Log("Removing shadowcopy \""+scd->dir+"\" because of timeout...", LL_WARNING);
 					bool b=release_shadowcopy(*scd);
 					if(!b)
 					{
@@ -628,7 +628,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		else
 		{
 			++index_c_fs;
-			tmp=getFiles(orig_path);
+			tmp=getFiles(path);
 			cd->addFiles(orig_path, tmp);
 			return tmp;
 		}

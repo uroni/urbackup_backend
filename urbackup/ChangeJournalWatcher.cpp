@@ -765,7 +765,7 @@ const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REAS
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
 {
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
-	if(dir_id!=-1)
+	if(dir_id!=-1) //Is a directory
 	{
 		_i64 parent_id=hasEntry(cj.rid, UsnRecord->ParentFileReferenceNumber);
 		if(parent_id==-1)
@@ -794,26 +794,12 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 					{
 						listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
 					}
-					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid);							
-					//indexRootDirs(it->second.rid, dir_fn+Server->ConvertFromUTF16(fn), parent_id); 
+					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid);
 				}
 				/*else
 				{
 					Server->Log(L"Error: "+Server->ConvertFromUTF16(fn)+L" was already created.", LL_ERROR);
 				}*/
-				
-				if(UsnRecord->Reason & USN_REASON_CLOSE)
-				{
-					std::map<std::wstring, bool>::iterator it=open_write_files.find(dir_fn+UsnRecord->Filename);
-					if(it!=open_write_files.end())
-					{
-						open_write_files.erase(it);
-					}
-				}
-				else if( UsnRecord->Reason & watch_flags )
-				{
-					open_write_files[dir_fn+UsnRecord->Filename]=true;
-				}
 
 				if(UsnRecord->Reason & watch_flags )
 				{
@@ -838,7 +824,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			}
 		}
 	}
-	else
+	else //Is a file
 	{
 		_i64 parent_id=hasEntry(cj.rid, UsnRecord->ParentFileReferenceNumber);
 		if(parent_id==-1)
@@ -856,11 +842,28 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			{
 				indexRootDirs(it->second.rid, real_fn, parent_id); 
 			}*/
-			if(UsnRecord->Reason & USN_REASON_FILE_CREATE )
+			if((UsnRecord->Reason & USN_REASON_FILE_CREATE) && (UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY) )
 			{
 				addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
 			}
-			listener->On_FileModified(real_fn);
+
+			if(UsnRecord->Reason & USN_REASON_CLOSE)
+			{
+				std::map<std::wstring, bool>::iterator it=open_write_files.find(real_fn);
+				if(it!=open_write_files.end())
+				{
+					open_write_files.erase(it);
+				}
+			}
+			else if(UsnRecord->Reason & watch_flags)
+			{
+				open_write_files[real_fn]=true;
+			}
+
+			if(UsnRecord->Reason & watch_flags)
+			{
+				listener->On_FileModified(real_fn);
+			}
 		}
 	}
 }
