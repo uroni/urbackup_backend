@@ -181,6 +181,107 @@ void LookForInterfaceChanges()
 		EnumerateInterfaces();
 	++num;
 }
+
+bool SetPrivilege(
+    HANDLE hToken,          // access token handle
+    LPCTSTR lpszPrivilege,  // name of privilege to enable/disable
+    BOOL bEnablePrivilege   // to enable or disable privilege
+    ) 
+{
+    TOKEN_PRIVILEGES tp;
+    LUID luid;
+
+    if ( !LookupPrivilegeValue( 
+            NULL,            // lookup privilege on local system
+            lpszPrivilege,   // privilege to lookup 
+            &luid ) )        // receives LUID of privilege
+    {
+        Log("FileSrv: LookupPrivilegeValue error: %i", (int)GetLastError() ); 
+        return false; 
+    }
+
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = luid;
+    if (bEnablePrivilege)
+        tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    else
+        tp.Privileges[0].Attributes = 0;
+
+    // Enable the privilege or disable all privileges.
+
+    if ( !AdjustTokenPrivileges(
+           hToken, 
+           FALSE, 
+           &tp, 
+           sizeof(TOKEN_PRIVILEGES), 
+           (PTOKEN_PRIVILEGES) NULL, 
+           (PDWORD) NULL) )
+    { 
+          Log("FileSrv: AdjustTokenPrivileges error: %i", (int)GetLastError() ); 
+          return false; 
+    } 
+
+    if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
+
+    {
+          Log("FileSrv: The token does not have the specified privilege.");
+          return false;
+    } 
+
+    return true;
+}
+
+HRESULT ModifyPrivilege(
+    IN LPCTSTR szPrivilege,
+    IN BOOL fEnable)
+{
+    HRESULT hr = S_OK;
+    TOKEN_PRIVILEGES NewState;
+    LUID             luid;
+    HANDLE hToken    = NULL;
+
+    // Open the process token for this process.
+    if (!OpenProcessToken(GetCurrentProcess(),
+                          TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
+                          &hToken ))
+    {
+        Log("Failed OpenProcessToken");
+        return ERROR_FUNCTION_FAILED;
+    }
+
+    // Get the local unique ID for the privilege.
+    if ( !LookupPrivilegeValue( NULL,
+                                szPrivilege,
+                                &luid ))
+    {
+        CloseHandle( hToken );
+        Log("Failed LookupPrivilegeValue");
+        return ERROR_FUNCTION_FAILED;
+    }
+
+    // Assign values to the TOKEN_PRIVILEGE structure.
+    NewState.PrivilegeCount = 1;
+    NewState.Privileges[0].Luid = luid;
+    NewState.Privileges[0].Attributes = 
+              (fEnable ? SE_PRIVILEGE_ENABLED : 0);
+
+    // Adjust the token privilege.
+    if (!AdjustTokenPrivileges(hToken,
+                               FALSE,
+                               &NewState,
+                               0,
+                               NULL,
+                               NULL))
+    {
+        Log("Failed AdjustTokenPrivileges");
+        hr = ERROR_FUNCTION_FAILED;
+    }
+
+    // Close the handle.
+    CloseHandle(hToken);
+
+    return hr;
+}
 #endif //_WIN32
 
 #ifdef LINUX_DAEMON
@@ -248,6 +349,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		servername=argv[1];
 #endif
 
+#ifdef BACKUP_SEM
+	HRESULT hr=ModifyPrivilege(SE_BACKUP_NAME, TRUE);
+	if(!SUCCEEDED(hr))
+	{
+		Log("Failed to modify backup privileges");
+	}
+	else
+	{
+		Log("Backup privileges set successfully");
+	}
+#endif
 
 #ifdef LOG_FILE
 #ifdef _WIN32
