@@ -350,6 +350,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #endif
 
 #ifdef BACKUP_SEM
+#ifdef _WIN32
 	HRESULT hr=ModifyPrivilege(SE_BACKUP_NAME, TRUE);
 	if(!SUCCEEDED(hr))
 	{
@@ -359,6 +360,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		Log("Backup privileges set successfully");
 	}
+#endif
 #endif
 
 #ifdef LOG_FILE
