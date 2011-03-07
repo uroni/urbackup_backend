@@ -841,9 +841,9 @@ void ClientConnector::ReceivePackets(void)
 
 			IScopedLock lock(backup_mutex);
 			bool ok=false;
-			if(channel_pipe!=NULL)
+			for(size_t o=0;o<channel_pipes.size();++o)
 			{
-				_u32 rc=(_u32)tcpstack.Send(channel_pipe, "UPDATE SETTINGS");
+				_u32 rc=(_u32)tcpstack.Send(channel_pipes[o], "UPDATE SETTINGS");
 				if(rc!=0)
 					ok=true;
 			}
@@ -1463,7 +1463,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 	bool mod=false;
 	for(size_t i=0;i<settings_names.size();++i)
 	{
-		std::wstring &key=settings_names[i];
+		std::wstring key=settings_names[i];
 		std::wstring v;
 		if(!curr_settings->getValue(key, &v) )
 		{
@@ -1471,6 +1471,11 @@ void ClientConnector::updateSettings(const std::string &pData)
 			if(new_settings->getValue(key, &nv) )
 			{
 				toadd+=key+L"="+nv+L"\n";
+				mod=true;
+			}
+			else if(new_settings->getValue(key+L"_def", &nv) )
+			{
+				toadd+=key+L"_def="+nv+L"\n";
 				mod=true;
 			}
 		}
