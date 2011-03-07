@@ -135,6 +135,8 @@ ACTION_IMPL(status)
 
 					if(!client_status[j].wrong_ident)
 						i_status=client_status[j].statusaction;
+					else if(client_status[i].too_many_clients)
+						i_status=12;
 					else
 						i_status=11;
 				}
@@ -191,6 +193,8 @@ ACTION_IMPL(status)
 
 				if(client_status[i].wrong_ident)
 					stat.set("status", 11);
+				else if(client_status[i].too_many_clients)
+					stat.set("status", 12);
 				else
 					stat.set("status", 10);
 

@@ -39,16 +39,19 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("max_image_full", settings.getSettings()->max_image_full);
 	ret.set("allow_overwrite", settings.getSettings()->allow_overwrite);
 	ret.set("startup_backup_delay", settings.getSettings()->startup_backup_delay);
+	ret.set("backup_window", settings.getSettings()->backup_window);
 	return ret;
 }
 
 struct SGeneralSettings
 {
-	SGeneralSettings(void): no_images(false), autoshutdown(false), autoupdate_clients(true) {}
+	SGeneralSettings(void): no_images(false), autoshutdown(false), autoupdate_clients(true), max_sim_backups(10), max_active_clients(100) {}
 	std::wstring backupfolder;
 	bool no_images;
 	bool autoshutdown;
 	bool autoupdate_clients;
+	int max_sim_backups;
+	int max_active_clients;
 };
 
 struct SClientSettings
@@ -75,6 +78,10 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.autoshutdown=true;
 		else if(key==L"autoupdate_clients" && value==L"false")
 			ret.autoupdate_clients=false;
+		else if(key==L"max_active_clients")
+			ret.max_active_clients=watoi(value);
+		else if(key==L"max_sim_backups")
+			ret.max_sim_backups=watoi(value);
 	}
 	return ret;
 }
@@ -127,6 +134,8 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 	updateSetting(L"no_images", settings.no_images?L"true":L"false", q_get, q_update, q_insert);
 	updateSetting(L"autoshutdown", settings.autoshutdown?L"true":L"false",  q_get, q_update, q_insert);
 	updateSetting(L"autoupdate_clients", settings.autoupdate_clients?L"true":L"false",  q_get, q_update, q_insert);
+	updateSetting(L"max_sim_backups", convert(settings.max_sim_backups),  q_get, q_update, q_insert);
+	updateSetting(L"max_active_clients", convert(settings.max_active_clients),  q_get, q_update, q_insert);
 }
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
@@ -460,6 +469,8 @@ ACTION_IMPL(settings)
 				settings.no_images=(GET[L"no_images"]==L"true");
 				settings.autoshutdown=(GET[L"autoshutdown"]==L"true");
 				settings.autoupdate_clients=(GET[L"autoupdate_clients"]==L"true");
+				settings.max_active_clients=watoi(GET[L"max_active_clients"]);
+				settings.max_sim_backups=watoi(GET[L"max_sim_backups"]);
 				updateClientSettings(0, GET, db);
 				saveGeneralSettings(settings, db);
 
@@ -480,6 +491,8 @@ ACTION_IMPL(settings)
 				obj.set("no_images", settings.no_images);
 				obj.set("autoshutdown", settings.autoshutdown);
 				obj.set("autoupdate_clients", settings.autoupdate_clients);
+				obj.set("max_sim_backups", settings.max_sim_backups);
+				obj.set("max_active_clients", settings.max_active_clients);
 
 				ret.set("settings", obj);
 			}

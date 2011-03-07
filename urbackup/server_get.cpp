@@ -47,11 +47,14 @@ extern std::string server_identity;
 
 const unsigned short serviceport=35623;
 const unsigned int full_backup_construct_timeout=60*60*1000;
-const unsigned int shadow_copy_timeout=5*60*1000;
+const unsigned int shadow_copy_timeout=10*60*1000;
 const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const unsigned int mbr_size=(1024*1024)/4;
 const size_t minfreespace_image=1000*1024*1024; //1000 MB
+
+int BackupServerGet::running_backups=0;
+IMutex *BackupServerGet::running_backup_mutex=NULL;
 
 BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName)
 {
@@ -80,6 +83,16 @@ BackupServerGet::~BackupServerGet(void)
 		unloadSQL();
 
 	Server->destroy(clientaddr_mutex);
+}
+
+void BackupServerGet::init_mutex(void)
+{
+	running_backup_mutex=Server->createMutex();
+}
+
+void BackupServerGet::destroy_mutex(void)
+{
+	Server->destroy(running_backup_mutex);
 }
 
 void BackupServerGet::unloadSQL(void)
@@ -150,11 +163,26 @@ void BackupServerGet::operator ()(void)
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
+	server_settings=new ServerSettings(db);
+
 	clientid=getClientID();
+
+	if(clientid==-1)
+	{
+		pipe->Write("ok");
+		Server->Log("server_get Thread for client "+clientname+" finished, because there were too many clients", LL_INFO);
+
+		ServerStatus::setTooManyClients(clientname, true);
+		ServerLogger::reset(clientid);
+		delete server_settings;
+		delete this;
+		return;
+	}
 
 	settings=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
 	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings WHERE key=? AND clientid="+nconvert(clientid));
 
+	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	if(!os_create_dir(backupfolder+os_file_sep()+widen(clientname)) && !os_directory_exists(backupfolder+os_file_sep()+widen(clientname)) )
@@ -235,7 +263,7 @@ void BackupServerGet::operator ()(void)
 			status.hashqueuesize=0;
 			status.prepare_hashqueuesize=0;
 			ServerStatus::setServerStatus(status);
-			if(isUpdateFull() || do_full_backup_now)
+			if( isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow()) || do_full_backup_now ) )
 			{
 				ScopedActiveThread sat;
 
@@ -246,6 +274,7 @@ void BackupServerGet::operator ()(void)
 				do_full_backup_now=false;
 
 				hbu=true;
+				startBackupRunning();
 				if(!constructBackupPath())
 				{
 					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
@@ -259,7 +288,7 @@ void BackupServerGet::operator ()(void)
 					r_success=doFullBackup();
 				}
 			}
-			else if(isUpdateIncr() || do_incr_backup_now)
+			else if(isBackupsRunningOkay() && ( (isUpdateIncr() && isInBackupWindow()) || do_incr_backup_now ) )
 			{
 				ScopedActiveThread sat;
 
@@ -269,6 +298,7 @@ void BackupServerGet::operator ()(void)
 				ServerLogger::Log(clientid, "Doing incremental file backup...", LL_DEBUG);
 				do_incr_backup_now=false;
 				hbu=true;
+				startBackupRunning();
 				r_incremental=true;
 				if(!constructBackupPath())
 				{
@@ -283,7 +313,7 @@ void BackupServerGet::operator ()(void)
 					r_success=doIncrBackup();
 				}
 			}
-			else if(!server_settings->getSettings()->no_images && (isUpdateFullImage() || do_full_image_now) )
+			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateFullImage() && isInBackupWindow()) || do_full_image_now) )
 			{
 				ScopedActiveThread sat;
 
@@ -297,9 +327,11 @@ void BackupServerGet::operator ()(void)
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
+				startBackupRunning();
+
 				r_success=doImage(L"", 0, 0);
 			}
-			else if(!server_settings->getSettings()->no_images && ( isUpdateIncrImage() || do_incr_image_now) )
+			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow()) || do_incr_image_now) )
 			{
 				ScopedActiveThread sat;
 
@@ -310,6 +342,8 @@ void BackupServerGet::operator ()(void)
 				do_incr_image_now=false;
 				r_image=true;
 				r_incremental=true;
+
+				startBackupRunning();
 			
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
@@ -397,6 +431,7 @@ void BackupServerGet::operator ()(void)
 
 			if(hbu || r_image)
 			{
+				stopBackupRunning();
 				saveClientLogdata(r_image?1:0, r_incremental?1:0);
 				sendClientLogdata();
 			}
@@ -515,13 +550,29 @@ int BackupServerGet::getClientID(void)
 		return watoi(res[0][L"id"]);
 	else
 	{
-		IQuery *q_insert_newclient=db->Prepare("INSERT INTO clients (name, lastseen,bytes_used_files,bytes_used_images) VALUES (?, CURRENT_TIMESTAMP, 0, 0)", false);
-		q_insert_newclient->Bind(clientname);
-		q_insert_newclient->Write();
-		int rid=(int)db->getLastInsertID();
-		q_insert_newclient->Reset();
-		db->destroyQuery(q_insert_newclient);
-		return rid;
+		IQuery *q_get_num_clients=db->Prepare("SELECT count(*) AS c FROM clients WHERE lastseen > date('now', '-2 month')", false);
+		db_results res_r=q_get_num_clients->Read();
+		q_get_num_clients->Reset();
+		int c_clients=-1;
+		if(!res_r.empty()) c_clients=watoi(res_r[0][L"c"]);
+
+		db->destroyQuery(q_get_num_clients);
+
+		if(c_clients<server_settings->getSettings()->max_active_clients)
+		{
+			IQuery *q_insert_newclient=db->Prepare("INSERT INTO clients (name, lastseen,bytes_used_files,bytes_used_images) VALUES (?, CURRENT_TIMESTAMP, 0, 0)", false);
+			q_insert_newclient->Bind(clientname);
+			q_insert_newclient->Write();
+			int rid=(int)db->getLastInsertID();
+			q_insert_newclient->Reset();
+			db->destroyQuery(q_insert_newclient);
+			return rid;
+		}
+		else
+		{
+			Server->Log("Too many clients. Didn't accept client '"+clientname+"'", LL_INFO);
+			return -1;
+		}
 	}
 }
 
@@ -1623,11 +1674,15 @@ void BackupServerGet::sendSettings(void)
 
 	for(size_t i=0;i<settings_names.size();++i)
 	{
-		std::wstring &key=settings_names[i];
+		std::wstring key=settings_names[i];
 		std::wstring value;
 		if(!settings_client->getValue(key, &value) )
+		{
 			if(!settings->getValue(key, &value) )
 				key=L"";
+			else
+				key+=L"_def";
+		}
 
 		if(!key.empty())
 		{
@@ -2842,6 +2897,88 @@ sockaddr_in BackupServerGet::getClientaddr(void)
 {
 	IScopedLock lock(clientaddr_mutex);
 	return clientaddr;
+}
+
+std::string BackupServerGet::strftimeInt(std::string fs)
+{
+	time_t rawtime;		
+	char buffer [100];
+	time ( &rawtime );
+#ifdef _WIN32
+	struct tm  timeinfo;
+	localtime_s(&timeinfo, &rawtime);
+	strftime (buffer,100,fs.c_str(),&timeinfo);
+#else
+	struct tm *timeinfo;
+	timeinfo = localtime ( &rawtime );
+	strftime (buffer,100,fs.c_str(),timeinfo);
+#endif	
+	std::string r(buffer);
+	return r;
+}
+
+std::string BackupServerGet::remLeadingZeros(std::string t)
+{
+	std::string r;
+	bool in=false;
+	for(size_t i=0;i<t.size();++i)
+	{
+		if(!in && t[i]!='0' )
+			in=true;
+
+		if(in)
+		{
+			r+=t[i];
+		}
+	}
+	return r;
+}
+
+bool BackupServerGet::isInBackupWindow(void)
+{
+	std::vector<STimeSpan> bw=server_settings->getBackupWindow();
+	if(bw.empty()) return true;
+	int dow=atoi(strftimeInt("%w").c_str());
+	if(dow==0) dow=7;
+	
+	float hm=(float)atoi(remLeadingZeros(strftimeInt("%H")).c_str())+(float)atoi(remLeadingZeros(strftimeInt("%M")).c_str())*(1.f/60.f);
+	for(size_t i=0;i<bw.size();++i)
+	{
+		if(bw[i].dayofweek==dow)
+		{
+			if(hm>=bw[i].start_hour && hm<=bw[i].stop_hour )
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool BackupServerGet::isBackupsRunningOkay(void)
+{
+	IScopedLock lock(running_backup_mutex);
+	if(running_backups<server_settings->getSettings()->max_sim_backups)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void BackupServerGet::startBackupRunning(void)
+{
+	IScopedLock lock(running_backup_mutex);
+	++running_backups;
+}
+
+void BackupServerGet::stopBackupRunning(void)
+{
+	IScopedLock lock(running_backup_mutex);
+	--running_backups;
 }
 
 #endif //CLIENT_ONLY

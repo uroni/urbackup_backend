@@ -52,7 +52,7 @@ IServer *Server;
 #include "server_status.h"
 #include "server_log.h"
 #include "server_cleanup.h"
-#include "server_settings.h"
+#include "server_get.h"
 #include "ServerIdentityMgr.h"
 #include "os_functions.h"
 #include <stdlib.h>
@@ -257,6 +257,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		ServerStatus::init_mutex();
 		ServerSettings::init_mutex();
+		BackupServerGet::init_mutex();
 
 		ADD_ACTION(server_status);
 		ADD_ACTION(progress);
@@ -347,6 +348,8 @@ DLLEXPORT void UnloadActions(void)
 	ServerLogger::destroy_mutex();
 	if(is_server)
 	{		
+		BackupServerGet::destroy_mutex();
+
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		db->Write("PRAGMA wal_checkpoint");
 		Server->destroyAllDatabases();

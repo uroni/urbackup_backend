@@ -34,6 +34,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"min_image_full");
 	ret.push_back(L"max_image_full");
 	ret.push_back(L"startup_backup_delay");
+	ret.push_back(L"backup_window");
 	return ret;
 }
 
@@ -149,6 +150,9 @@ void ServerSettings::readSettingsDefault(void)
 	settings.autoshutdown=false;
 	settings.startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
 	settings.autoupdate_clients=(settings_default->getValue("autoupdate_clients", "true")=="true");
+	settings.backup_window=settings_default->getValue("backup_window", "1-7/0-24");
+	settings.max_active_clients=settings_default->getValue("max_active_clients", 100);
+	settings.max_sim_backups=settings_default->getValue("max_sim_backups", 10);
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -198,6 +202,9 @@ void ServerSettings::readSettingsClient(void)
 	tmp=settings_client->getValue("startup_backup_delay", -1);
 	if(tmp!=-1)
 		settings.startup_backup_delay=tmp;
+	stmp=settings_client->getValue("backup_window", "");
+	if(!stmp.empty())
+		settings.backup_window=stmp;
 
 	stmp=settings_client->getValue("overwrite", "");
 	if(!stmp.empty())
@@ -208,6 +215,140 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("allow_overwrite", "");
 	if(!stmp.empty())
 		settings.allow_overwrite=(stmp=="true");
+}
+
+std::vector<STimeSpan> ServerSettings::getBackupWindow(void)
+{
+	std::string window=getSettings()->backup_window;
+	std::vector<std::string> toks;
+	Tokenize(window, toks, ";");
+
+	std::vector<STimeSpan> ret;
+
+	for(size_t i=0;i<toks.size();++i)
+	{
+		std::string f_o=getuntil("/", toks[i]);
+		std::string b_o=getafter("/", toks[i]);
+
+		std::vector<std::string> dow_toks;
+		Tokenize(f_o, dow_toks, ",");
+
+		std::vector<std::string> time_toks;
+		Tokenize(b_o, time_toks, ",");
+
+		for(size_t l=0;l<dow_toks.size();++l)
+		{
+			f_o=dow_toks[l];
+			if(f_o.find("-")!=std::string::npos)
+			{
+				std::string f1=getuntil("-", f_o);
+				std::string b2=getafter("-", f_o);
+
+				int start=parseDayOfWeek(f1);
+				int stop=parseDayOfWeek(b2);
+
+				if(stop<start) { int t=start; start=stop; stop=t; }
+
+				if(start<1 || start>7 || stop<1 || stop>7)
+				{
+					ret.clear();
+					return ret;
+				}
+				
+				for(size_t o=0;o<time_toks.size();++o)
+				{
+					b_o=time_toks[o];
+
+					STimeSpan ts=parseTime(b_o);
+					if(ts.dayofweek==-1)
+					{
+						ret.clear();
+						return ret;
+					}				
+			
+					for(int j=start;j<=stop;++j)
+					{				
+						ts.dayofweek=j;
+						ret.push_back(ts);
+					}
+				}
+			}
+			else
+			{
+				int j=parseDayOfWeek(f_o);
+				if(j<1 || j>7)
+				{
+					ret.clear();
+					return ret;
+				}
+
+				for(size_t o=0;o<time_toks.size();++o)
+				{
+					b_o=time_toks[o];
+					STimeSpan ts=parseTime(b_o);
+					if(ts.dayofweek==-1)
+					{
+						ret.clear();
+						return ret;
+					}
+					ts.dayofweek=j;
+					ret.push_back(ts);
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+float ServerSettings::parseTimeDet(std::string t)
+{
+	if(t.find(":")!=std::string::npos)
+	{
+		std::string h=getuntil(":", t);
+		std::string m=getafter(":", t);
+
+		return (float)atoi(h.c_str())+(float)atoi(m.c_str())*(1.f/60.f);
+	}
+	else
+	{
+		return (float)atoi(t.c_str());
+	}
+}
+
+int ServerSettings::parseDayOfWeek(std::string dow)
+{
+	if(dow.size()==1 && isnumber(dow[0])==true)
+	{
+		return atoi(dow.c_str());
+	}
+	else
+	{
+		dow=strlower(dow);
+		if(dow=="mon" || dow=="mo" ) return 1;
+		if(dow=="tu" || dow=="tue" || dow=="tues" || dow=="di" ) return 2;
+		if(dow=="wed" || dow=="mi" ) return 3;
+		if(dow=="th" || dow=="thu" || dow=="thur" || dow=="thurs" || dow=="do" ) return 4;
+		if(dow=="fri" || dow=="fr" ) return 5;
+		if(dow=="sat" || dow=="sa" ) return 6;
+		if(dow=="sun" || dow=="so" ) return 7;
+		return -1;
+	}
+}
+
+STimeSpan ServerSettings::parseTime(std::string t)
+{
+	if(t.find("-")!=std::string::npos)
+	{
+		std::string f=getuntil("-", t);
+		std::string b=getafter("-", t);
+
+		return STimeSpan(parseTimeDet(f), parseTimeDet(b) );
+	}
+	else
+	{
+		return STimeSpan();
+	}
 }
 
 #endif //CLIENT_ONLY

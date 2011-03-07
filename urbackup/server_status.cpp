@@ -104,6 +104,13 @@ void ServerStatus::setWrongIdent(const std::string &clientname, bool b)
 	s->wrong_ident=b;
 }
 
+void ServerStatus::setTooManyClients(const std::string &clientname, bool b)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->too_many_clients=b;
+}
+
 std::vector<SStatus> ServerStatus::getStatus(void)
 {
 	IScopedLock lock(mutex);

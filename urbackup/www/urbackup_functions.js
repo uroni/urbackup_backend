@@ -405,3 +405,73 @@ function randomString()
 	}
 	return randomstring;
 }
+
+function validate_text_nonempty(a)
+{
+	for(var i=0;i<a.length;++i)
+	{
+		if(I(a[i]).value.length==0)
+		{
+			if(trans["validate_err_empty_"+a[i]])
+			{
+				alert(trans["validate_err_empty_"+a[i]]);
+			}
+			else
+			{
+				alert( (new Template(trans["validate_text_empty"])).evaluate({name: trans["validate_name_"+a[i]]}));
+			}
+			I(a[i]).focus();
+			return false;
+		}
+	}
+	return true;
+}
+
+function isInt(x)
+{
+	var y=parseInt(x);
+	if (isNaN(y)) return false;
+	return x==y && x.toString()==y.toString();
+} 
+
+function validate_text_int(a)
+{
+	for(var i=0;i<a.length;++i)
+	{
+		if(!isInt(I(a[i]).value))
+		{
+			if(trans["validate_err_notint_"+a[i]])
+			{
+				alert(trans["validate_err_notint_"+a[i]]);
+			}
+			else
+			{
+				alert( (new Template(trans["validate_text_notint"])).evaluate({name: trans["validate_name_"+a[i]]}));
+			}
+			I(a[i]).focus();
+			return false;
+		}
+	}
+	return true;
+}
+
+function validate_text_regex(a)
+{
+	for(var i=0;i<a.length;++i)
+	{
+		if(!a[i].regexp.test(I(a[i].id).value))
+		{
+			if(trans["validate_err_notregexp_"+a[i].id])
+			{
+				alert(trans["validate_err_notregexp_"+a[i].id]);
+			}
+			else
+			{
+				alert( (new Template(trans["validate_text_notregexp"])).evaluate({name: trans["validate_name_"+a[i].id]}));
+			}
+			I(a[i].id).focus();
+			return false;
+		}
+	}
+	return true;
+}

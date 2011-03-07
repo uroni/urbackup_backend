@@ -37,6 +37,9 @@ public:
 	void sendToPipe(const std::string &msg);
 	int getPCDone(void);
 
+	static void init_mutex(void);
+	static void destroy_mutex(void);
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -76,11 +79,17 @@ private:
 	void updateRunning(bool image);
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
+	bool isInBackupWindow(void);
+	bool isBackupsRunningOkay(void);
+	void startBackupRunning(void);
+	void stopBackupRunning(void);
 	
 	std::wstring constructImagePath(const std::wstring &letter);
 	bool constructBackupPath(void);
 	void resetEntryState(void);
 	bool getNextEntry(char ch, SFile &data);
+	std::string remLeadingZeros(std::string t);
+	std::string strftimeInt(std::string fs);
 
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
 
@@ -150,4 +159,7 @@ private:
 	bool do_update_settings;
 	bool do_full_image_now;
 	bool do_incr_image_now;
+
+	static int running_backups;
+	static IMutex *running_backup_mutex;
 };

@@ -413,6 +413,7 @@ function show_status2(data)
 			case 4: obj.status="full_image"; break;
 			case 10: obj.status=trans["starting"]; break;
 			case 11: obj.status=trans["ident_err"]; break;
+			case 12: obj.status=trans["too_many_clients_err"]; break;
 		}	
 		
 		if(data.details)
@@ -893,16 +894,35 @@ g.settings_list=[
 "min_image_full",
 "max_image_full",
 "allow_overwrite",
-"startup_backup_delay"
+"startup_backup_delay",
+"backup_window"
 ];
+
+function validateCommonSettings()
+{
+	if(!validate_text_int(["update_freq_incr", "update_freq_full", "update_freq_image_incr", 
+							"update_freq_image_full", "max_file_incr", "min_file_incr", "max_file_full", 
+							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
+							"startup_backup_delay"] ) ) return false;
+	if(!validate_text_regex([{ id: "backup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?[,]?)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?[,]?)+[;]?)*$/i }]) ) return false;
+	return true;
+}
+
+
 
 function saveGeneralSettings()
 {
+	if(!validate_text_nonempty(["backupfolder"]) ) return;
+	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
+	if(!validateCommonSettings() ) return;
+	
 	var pars="";
 	pars+=getPar("backupfolder");
 	pars+=getPar("no_images");
 	pars+=getPar("autoshutdown");
 	pars+=getPar("autoupdate_clients");
+	pars+=getPar("max_sim_backups");
+	pars+=getPar("max_active_clients");
 	for(var i=0;i<g.settings_list.length;++i)
 	{
 		pars+=getPar(g.settings_list[i]);
@@ -916,7 +936,7 @@ function clientSettings()
 	{
 		if(!startLoading()) return;
 		clientid=I('settingsclient').value.split("-")[0];
-		idx=clientid=I('settingsclient').value.split("-")[1];
+		idx=I('settingsclient').value.split("-")[1];
 		g.settings_nav_pos=idx*1;
 		new getJSON("settings", "sa=clientsettings&t_clientid="+clientid, show_settings2);
 	}
@@ -951,6 +971,12 @@ function saveClientSettings(clientid, skip)
 	pars+=getPar("overwrite");
 	if(!skip)
 	{
+		if(!validateCommonSettings())
+		{
+			stopLoading();
+			return;
+		}
+		
 		for(var i=0;i<g.settings_list.length;++i)
 		{
 			pars+=getPar(g.settings_list[i]);

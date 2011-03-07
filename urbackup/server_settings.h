@@ -25,6 +25,19 @@ struct SSettings
 	bool autoshutdown;
 	int startup_backup_delay;
 	bool autoupdate_clients;
+	int max_sim_backups;
+	int max_active_clients;
+	std::string backup_window;
+};
+
+struct STimeSpan
+{
+	STimeSpan(void): dayofweek(-1) {}
+	STimeSpan(int dayofweek, float start_hour, float stop_hour):dayofweek(dayofweek), start_hour(start_hour), stop_hour(stop_hour) {}
+	STimeSpan(float start_hour, float stop_hour):dayofweek(0), start_hour(start_hour), stop_hour(stop_hour) {}
+	int dayofweek;
+	float start_hour;
+	float stop_hour;
 };
 
 class ServerSettings
@@ -41,7 +54,12 @@ public:
 
 	static void init_mutex(void);
 	static void updateAll(void);
+
+	std::vector<STimeSpan> getBackupWindow(void);
 private:
+	float parseTimeDet(std::string t);
+	STimeSpan parseTime(std::string t);
+	int parseDayOfWeek(std::string dow);
 	void readSettingsDefault(void);
 	void readSettingsClient(void);
 
