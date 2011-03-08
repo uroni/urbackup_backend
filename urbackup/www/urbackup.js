@@ -422,7 +422,10 @@ function show_status2(data)
 		}
 		else
 		{
-			rows+=tmpls.status_row.evaluate(obj);
+			if(!obj.rejected)
+			{
+			    rows+=tmpls.status_row.evaluate(obj);
+			}
 		}
 	}
 	var dir_error="";
