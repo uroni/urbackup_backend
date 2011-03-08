@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "../stringtools.h"
+#include <stdlib.h>
 
 std::vector<std::wstring> getSettingsList(void)
 {
