@@ -133,12 +133,12 @@ ACTION_IMPL(status)
 					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
 					ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
 
-					if(!client_status[j].wrong_ident)
-						i_status=client_status[j].statusaction;
+					if(client_status[j].wrong_ident)
+						i_status=11;
 					else if(client_status[i].too_many_clients)
 						i_status=12;
 					else
-						i_status=11;
+						i_status=client_status[j].statusaction;
 				}
 			}
 
