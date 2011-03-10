@@ -244,14 +244,18 @@ ACTION_IMPL(settings)
 	}
 	if(sa.empty())
 	{
-		if(clientid.size()==1 )
+		if(rights=="all" || helper.getRights("general_settings")=="all")
+		{
+			sa=L"general";
+		}
+		else if(helper.getRights("usermod")=="all")
+		{
+			sa=L"listusers";
+		}
+		else if(clientid.size()==1 )
 		{
 			sa=L"clientsettings";
 			t_clientid=clientid[0];
-		}
-		else if(rights=="all")
-		{
-			sa=L"general";
 		}
 	}
 
