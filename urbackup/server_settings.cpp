@@ -228,8 +228,9 @@ std::vector<STimeSpan> ServerSettings::getBackupWindow(void)
 
 	for(size_t i=0;i<toks.size();++i)
 	{
-		std::string f_o=getuntil("/", toks[i]);
-		std::string b_o=getafter("/", toks[i]);
+		std::string c_tok=trim(toks[i]);
+		std::string f_o=getuntil("/", c_tok);
+		std::string b_o=getafter("/", c_tok);
 
 		std::vector<std::string> dow_toks;
 		Tokenize(f_o, dow_toks, ",");
@@ -239,7 +240,7 @@ std::vector<STimeSpan> ServerSettings::getBackupWindow(void)
 
 		for(size_t l=0;l<dow_toks.size();++l)
 		{
-			f_o=dow_toks[l];
+			f_o=trim(dow_toks[l]);
 			if(f_o.find("-")!=std::string::npos)
 			{
 				std::string f1=getuntil("-", f_o);
@@ -258,7 +259,7 @@ std::vector<STimeSpan> ServerSettings::getBackupWindow(void)
 				
 				for(size_t o=0;o<time_toks.size();++o)
 				{
-					b_o=time_toks[o];
+					b_o=trim(time_toks[o]);
 
 					STimeSpan ts=parseTime(b_o);
 					if(ts.dayofweek==-1)
@@ -285,7 +286,7 @@ std::vector<STimeSpan> ServerSettings::getBackupWindow(void)
 
 				for(size_t o=0;o<time_toks.size();++o)
 				{
-					b_o=time_toks[o];
+					b_o=trim(time_toks[o]);
 					STimeSpan ts=parseTime(b_o);
 					if(ts.dayofweek==-1)
 					{

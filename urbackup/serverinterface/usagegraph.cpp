@@ -51,11 +51,35 @@ ACTION_IMPL(usagegraph)
 		}
 	}
 
+	std::string rights=helper.getRights("piegraph");
+	bool client_id_found=false;
+	if(rights!="all" && rights!="none" )
+	{
+		std::vector<int> v_clientid;
+		std::vector<std::string> s_clientid;
+		Tokenize(rights, s_clientid, ",");
+		for(size_t i=0;i<s_clientid.size();++i)
+		{
+			v_clientid.push_back(atoi(s_clientid[i].c_str()));
+		}
+		if(clientid!=-1)
+		{
+			for(size_t i=0;i<v_clientid.size();++i)
+			{
+				if(clientid==v_clientid[i])
+				{
+					client_id_found=true;
+					break;
+				}
+			}
+		}
+	}
+
 	JSON::Object ret;
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==-1) return;
 	if(session!=NULL &&
-		( ( clientid==-1 && helper.getRights("piegraph")=="all" ) || ( clientid!=-1 && helper.getRights("piegraph_"+nconvert(clientid))=="all" ) )
+		( ( clientid==-1 && helper.getRights("piegraph")=="all" ) || ( clientid!=-1 && (client_id_found || rights=="all") ) )
 	  )
 	{	
 		helper.releaseAll();
