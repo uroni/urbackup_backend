@@ -47,7 +47,7 @@ ACTION_IMPL(logs)
 	{
 		for(size_t i=0;i<clientid.size();++i)
 		{
-			filter=convert(clientid[i]);
+			filter+=convert(clientid[i]);
 			if(i+1<clientid.size())
 				filter+=L",";
 		}
