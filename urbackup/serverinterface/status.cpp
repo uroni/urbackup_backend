@@ -200,6 +200,7 @@ ACTION_IMPL(status)
 
 				stat.set("file_ok", false);
 				stat.set("image_ok", false);
+				stat.set("rejected", true);
 
 				status.add(stat);
 			}
