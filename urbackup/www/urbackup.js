@@ -691,6 +691,7 @@ function show_settings2(data)
 		var n="";
 		var nav=data.navitems;
 		var idx=0;
+		g.user_nav_pos_offset=0;
 		if(nav.general)
 		{
 			if(g.settings_nav_pos==idx)
@@ -702,6 +703,7 @@ function show_settings2(data)
 				n+="<a href=\"javascript: generalSettings()\">"+trans["general_settings"]+"</a>";
 			}
 			++idx;
+			++g.user_nav_pos_offset;
 		}
 		if(nav.users)
 		{	
@@ -716,6 +718,7 @@ function show_settings2(data)
 				n+="<a href=\"javascript: userSettings()\">"+trans["users"]+"</a>";
 			}			
 			++idx;
+			++g.user_nav_pos_offset;
 		}
 		if(nav.clients)
 		{
@@ -994,7 +997,7 @@ function saveClientSettings(clientid, skip)
 function userSettings()
 {
 	if(!startLoading()) return;
-	g.settings_nav_pos=1;
+	g.settings_nav_pos=g.user_nav_pos_offset-1;
 	new getJSON("settings", "sa=listusers", show_settings2);
 }
 function createUser()
