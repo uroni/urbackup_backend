@@ -252,7 +252,7 @@ ACTION_IMPL(settings)
 		{
 			sa=L"listusers";
 		}
-		else if(clientid.size()==1 )
+		else if(!clientid.empty() )
 		{
 			sa=L"clientsettings";
 			t_clientid=clientid[0];
@@ -295,7 +295,7 @@ ACTION_IMPL(settings)
 					q->Reset();
 					JSON::Object u;
 					u.set("id", clientid[i]);
-					u.set("name", res[i][L"name"]);
+					u.set("name", res[0][L"name"]);
 					clients.add(u);
 				}
 			}
