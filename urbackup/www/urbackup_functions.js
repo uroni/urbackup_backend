@@ -162,6 +162,23 @@ function clone(obj){
     return temp;
 }
 
+function sanitizeJSON(data)
+{
+	for(p in data)
+	{
+		var t=(typeof data[p]);
+		if(t=="string")
+		{
+			data[p]=data[p].escapeHTML();
+		}
+		else if(t=="object")
+		{
+			data[p]=sanitizeJSON(data[p]);
+		}
+	}
+	return data;
+}
+
 getJSON = function(action, parameters, callback)
 {
 	var cb=callback;
@@ -181,7 +198,9 @@ getJSON = function(action, parameters, callback)
 				if(window.JSON)
 					j=JSON.parse(transport.responseText);
 				else
-					j=eval('('+transport.responseText+')');
+					j=transport.responseText.evalJSON(true);
+					
+				j=sanitizeJSON(j);
 				
 				if(j.error && j.error==1)
 				{
