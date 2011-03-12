@@ -130,7 +130,7 @@ SSettings *ServerSettings::getSettings(void)
 
 void ServerSettings::readSettingsDefault(void)
 {
-	settings.update_freq_incr=settings_default->getValue("update_freq_incr", 60*60);
+	settings.update_freq_incr=settings_default->getValue("update_freq_incr", 5*60*60);
 	settings.update_freq_full=settings_default->getValue("update_freq_full", 30*24*60*60);
 	settings.update_freq_image_incr=settings_default->getValue("update_freq_image_incr", 7*24*60*60);
 	settings.update_freq_image_full=settings_default->getValue("update_freq_image_full", 60*24*60*60);
