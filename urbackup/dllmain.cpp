@@ -499,6 +499,13 @@ void upgrade4_5(void)
 	db->Write("CREATE TABLE extra_clients ( id INTEGER PRIMARY KEY, hostname TEXT, lastip INTEGER)");	
 }
 
+void upgrade5_6(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE files_del ADD is_del INTEGER");
+	db->Write("UPDATE files_del SET is_del=1 WHERE is_del IS NULL");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -536,6 +543,10 @@ void upgrade(void)
 				break;
 			case 4:
 				upgrade4_5();
+				++ver;
+				break;
+			case 5:
+				upgrade5_6();
 				++ver;
 				break;
 			default:

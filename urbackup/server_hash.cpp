@@ -63,6 +63,7 @@ BackupServerHash::~BackupServerHash(void)
 	db->destroyQuery(q_copy_files);
 	db->destroyQuery(q_delete_all_files_tmp);
 	db->destroyQuery(q_count_files_tmp);
+	db->destroyQuery(q_move_del_file);
 
 	Server->destroy(pipe);
 }
@@ -190,6 +191,7 @@ void BackupServerHash::prepareSQL(void)
 	q_copy_files=db->Prepare("INSERT INTO files (backupid, fullpath, shahash, filesize, created, rsize, did_count) SELECT backupid, fullpath, shahash, filesize, created, rsize, 0 AS did_count FROM files_tmp", false);
 	q_delete_all_files_tmp=db->Prepare("DELETE FROM files_tmp", false);
 	q_count_files_tmp=db->Prepare("SELECT count(*) AS c FROM files_tmp", false);
+	q_move_del_file=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 0 AS is_del FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
 }
 
 void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize)
@@ -205,12 +207,20 @@ void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const st
 
 void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid)
 {
+	db->BeginTransaction();
+	q_move_del_file->Bind(pHash.c_str(), (_u32)pHash.size());
+	q_move_del_file->Bind(fp);
+	q_move_del_file->Bind(filesize);
+	q_move_del_file->Bind(backupid);
+	q_move_del_file->Write();
+	q_move_del_file->Reset();
 	q_del_file->Bind(pHash.c_str(), (_u32)pHash.size());
 	q_del_file->Bind(fp);
 	q_del_file->Bind(filesize);
 	q_del_file->Bind(backupid);
 	q_del_file->Write();
 	q_del_file->Reset();
+	db->EndTransaction();
 
 	q_del_file_tmp->Bind(pHash.c_str(), (_u32)pHash.size());
 	q_del_file_tmp->Bind(fp);
@@ -225,6 +235,7 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 	_i64 t_filesize=tf->Size();
 	int f_backupid;
 	std::wstring ff=findFileHash(sha2, t_filesize, f_backupid);
+	std::wstring ff_last=ff;
 	bool copy=true;
 
 	bool tries_once=false;
@@ -245,6 +256,7 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 			}
 			deleteFileSQL(sha2, ff, t_filesize, f_backupid);
 			ff=findFileHash(sha2, t_filesize, f_backupid);
+			if(!ff.empty()) ff_last=ff;
 		}
 		else
 		{
@@ -263,7 +275,7 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 	{
 		if(link_logcnt<5)
 		{
-			ServerLogger::Log(clientid, L"HT: Error creating hardlink from \""+ff+L"\" to \""+tfn+L"\"", LL_WARNING);
+			ServerLogger::Log(clientid, L"HT: Error creating hardlink from \""+ff_last+L"\" to \""+tfn+L"\"", LL_WARNING);
 		}
 		else if(link_logcnt==5)
 		{
@@ -271,7 +283,7 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 		}
 		else
 		{
-			Server->Log(L"HT: Error creating hardlink from \""+ff+L"\" to \""+tfn+L"\"", LL_WARNING);
+			Server->Log(L"HT: Error creating hardlink from \""+ff_last+L"\" to \""+tfn+L"\"", LL_WARNING);
 		}
 		++link_logcnt;
 	}

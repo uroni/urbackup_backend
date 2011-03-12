@@ -30,6 +30,7 @@ private:
 	IQuery *q_delete_files_tmp;
 	IQuery *q_add_file;
 	IQuery *q_del_file;
+	IQuery *q_move_del_file;
 	IQuery *q_del_file_tmp;
 	IQuery *q_copy_files;
 	IQuery *q_delete_all_files_tmp;

@@ -19,7 +19,7 @@ void ServerUpdateStats::createQueries(void)
 	q_get_clients=db->Prepare("SELECT clientid, SUM(rsize) AS s_rsize FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE shahash=? AND filesize=? AND did_count=1 GROUP BY clientid", false);
 	q_get_sizes=db->Prepare("SELECT id,bytes_used_files FROM clients", false);
 	q_size_update=db->Prepare("UPDATE clients SET bytes_used_files=? WHERE id=?", false);
-	q_get_delfiles=db->Prepare("SELECT files_del.rowid AS id, shahash, filesize, rsize, clientid, backupid, incremental FROM files_del LIMIT 10000", false);
+	q_get_delfiles=db->Prepare("SELECT files_del.rowid AS id, shahash, filesize, rsize, clientid, backupid, incremental, is_del FROM files_del LIMIT 10000", false);
 	q_del_delfile=db->Prepare("DELETE FROM files_del WHERE rowid=?", false);
 	q_update_backups=db->Prepare("UPDATE backups SET size_bytes=? WHERE id=?", false);
 	q_get_backup_size=db->Prepare("SELECT size_bytes FROM backups WHERE id=?", false);
@@ -137,15 +137,122 @@ void ServerUpdateStats::update_images(void)
 
 void ServerUpdateStats::update_files(void)
 {
-	Server->Log("Updating file stats...",LL_INFO);
-
 	std::map<int, _i64> size_data=getSizes();
 	unsigned int last_update_time=Server->getTimeMS();
 
-	std::map<int, _i64> backup_sizes;
+	std::map<int, SDelInfo> del_sizes;
 
+	Server->Log("Updating deleted files...");
 	db_results res;
 	int last_pc=0;
+	do
+	{
+		res=q_get_delfiles->Read();
+		q_get_delfiles->Reset();
+		for(size_t i=0;i<res.size();++i)
+		{
+			int pc=(int)((float)i/(float)res.size()*100.f+0.5f);
+			if(pc!=last_pc)
+			{
+				Server->Log( "Updating del files stats: "+nconvert(pc)+"%", LL_INFO);
+				last_pc=pc;
+			}
+
+			_i64 rsize=os_atoi64(wnarrow(res[i][L"rsize"]));
+			_i64 filesize=os_atoi64(wnarrow(res[i][L"filesize"]));
+			_i64 id=os_atoi64(wnarrow(res[i][L"id"]));
+			int backupid=watoi(res[i][L"backupid"]);
+			int cid=watoi(res[i][L"clientid"]);
+			int incremental=watoi(res[i][L"incremental"]);
+			int is_del=watoi(res[i][L"is_del"]);
+			std::wstring &shahash=res[i][L"shahash"];
+			if(rsize==0)
+			{
+				q_has_client->Bind((char*)&shahash[0],(_u32)(shahash.size()*sizeof(wchar_t)));
+				q_has_client->Bind(filesize);
+				q_has_client->Bind(cid);
+				db_results r=q_has_client->Read();
+				q_has_client->Reset();
+				if(!r.empty())
+				{
+					if(watoi(r[0][L"c"])>0)
+					{
+						q_del_delfile->Bind(id);
+						q_del_delfile->Write();
+						q_del_delfile->Reset();
+						continue;
+					}
+				}
+			}
+			if(rsize!=0)
+			{
+				q_get_transfer->Bind((char*)&shahash[0],(_u32)(shahash.size()*sizeof(wchar_t)));
+				q_get_transfer->Bind(filesize);
+				db_results res=q_get_transfer->Read();
+				q_get_transfer->Reset();
+				if(!res.empty())
+				{
+					q_transfer_bytes->Bind(rsize);
+					q_transfer_bytes->Bind(res[0][L"id"]);
+					q_transfer_bytes->Write();
+					q_transfer_bytes->Reset();
+				}
+			}
+
+			_i64 nrsize;
+			std::map<int, _i64> pre_sizes=calculateSizeDeltas(shahash, filesize, &nrsize);
+			std::map<int, _i64> old_pre_sizes=pre_sizes;
+			size_t nmembers=pre_sizes.size();
+			if(nmembers==0)
+			{
+				if(is_del==1)
+				{
+					add_del(del_sizes, backupid, rsize, cid, incremental);
+				}
+				nrsize=rsize;
+			}
+			else if(is_del==1)
+			{	
+				add_del(del_sizes, backupid, 0, cid, incremental);
+			}
+			if(pre_sizes.find(cid)==pre_sizes.end())
+			{
+				++nmembers;
+				pre_sizes.insert(std::pair<int, _i64>(cid, 0));
+			}
+			for(std::map<int, _i64>::iterator it=pre_sizes.begin();it!=pre_sizes.end();++it)
+			{
+				if(nmembers>0)
+					it->second=nrsize/nmembers;
+				else
+					it->second=0;
+			}
+			add(size_data, pre_sizes, -1);			
+			add(size_data, old_pre_sizes, 1);
+
+			q_del_delfile->Bind(id);
+			q_del_delfile->Write();
+			q_del_delfile->Reset();
+
+			if(Server->getTimeMS()-last_update_time>2000)
+			{
+				updateSizes(size_data);
+				updateDels(del_sizes);
+			}
+		}
+	}
+	while(!res.empty());
+
+	updateSizes(size_data);
+	updateDels(del_sizes);
+
+	Server->Log("Updating file stats...",LL_INFO);
+
+	last_update_time=Server->getTimeMS();
+
+	std::map<int, _i64> backup_sizes;
+	
+	last_pc=0;
 	do
 	{
 		res=q_get_ncount_files->Read();
@@ -222,108 +329,6 @@ void ServerUpdateStats::update_files(void)
 
 	updateSizes(size_data);
 	updateBackups(backup_sizes);
-
-
-	std::map<int, SDelInfo> del_sizes;
-
-	Server->Log("Updating deleted files...");
-	last_pc=0;
-	do
-	{
-		res=q_get_delfiles->Read();
-		q_get_delfiles->Reset();
-		for(size_t i=0;i<res.size();++i)
-		{
-			int pc=(int)((float)i/(float)res.size()*100.f+0.5f);
-			if(pc!=last_pc)
-			{
-				Server->Log( "Updating del files stats: "+nconvert(pc)+"%", LL_INFO);
-				last_pc=pc;
-			}
-
-			_i64 rsize=os_atoi64(wnarrow(res[i][L"rsize"]));
-			_i64 filesize=os_atoi64(wnarrow(res[i][L"filesize"]));
-			_i64 id=os_atoi64(wnarrow(res[i][L"id"]));
-			int backupid=watoi(res[i][L"backupid"]);
-			int cid=watoi(res[i][L"clientid"]);
-			int incremental=watoi(res[i][L"incremental"]);
-			std::wstring &shahash=res[i][L"shahash"];
-			if(rsize==0)
-			{
-				q_has_client->Bind((char*)&shahash[0],(_u32)(shahash.size()*sizeof(wchar_t)));
-				q_has_client->Bind(filesize);
-				q_has_client->Bind(cid);
-				db_results r=q_has_client->Read();
-				q_has_client->Reset();
-				if(!r.empty())
-				{
-					if(watoi(r[0][L"c"])>0)
-					{
-						q_del_delfile->Bind(id);
-						q_del_delfile->Write();
-						q_del_delfile->Reset();
-						continue;
-					}
-				}
-			}
-			if(rsize!=0)
-			{
-				q_get_transfer->Bind((char*)&shahash[0],(_u32)(shahash.size()*sizeof(wchar_t)));
-				q_get_transfer->Bind(filesize);
-				db_results res=q_get_transfer->Read();
-				q_get_transfer->Reset();
-				if(!res.empty())
-				{
-					q_transfer_bytes->Bind(rsize);
-					q_transfer_bytes->Bind(res[0][L"id"]);
-					q_transfer_bytes->Write();
-					q_transfer_bytes->Reset();
-				}
-			}
-
-			_i64 nrsize;
-			std::map<int, _i64> pre_sizes=calculateSizeDeltas(shahash, filesize, &nrsize);
-			std::map<int, _i64> old_pre_sizes=pre_sizes;
-			size_t nmembers=pre_sizes.size();
-			if(nmembers==0)
-			{
-				add_del(del_sizes, backupid, rsize, cid, incremental);
-				nrsize=rsize;
-			}
-			else
-			{				
-				add_del(del_sizes, backupid, 0, cid, incremental);
-			}
-			if(pre_sizes.find(cid)==pre_sizes.end())
-			{
-				++nmembers;
-				pre_sizes.insert(std::pair<int, _i64>(cid, 0));
-			}
-			for(std::map<int, _i64>::iterator it=pre_sizes.begin();it!=pre_sizes.end();++it)
-			{
-				if(nmembers>0)
-					it->second=nrsize/nmembers;
-				else
-					it->second=0;
-			}
-			add(size_data, pre_sizes, -1);			
-			add(size_data, old_pre_sizes, 1);
-
-			q_del_delfile->Bind(id);
-			q_del_delfile->Write();
-			q_del_delfile->Reset();
-
-			if(Server->getTimeMS()-last_update_time>2000)
-			{
-				updateSizes(size_data);
-				updateDels(del_sizes);
-			}
-		}
-	}
-	while(!res.empty());
-
-	updateSizes(size_data);
-	updateDels(del_sizes);
 }
 
 std::map<int, _i64> ServerUpdateStats::calculateSizeDeltas(const std::wstring &pShaHash, _i64 filesize,  _i64 *rsize)
