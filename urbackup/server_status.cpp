@@ -62,6 +62,10 @@ void ServerStatus::setOnline(const std::string &clientname, bool bonline)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
+	if(bonline)
+	{
+		*s=SStatus();
+	}
 	s->online=bonline;
 	s->client=clientname;
 	s->done=false;
