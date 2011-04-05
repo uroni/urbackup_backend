@@ -506,6 +506,13 @@ void upgrade5_6(void)
 	db->Write("UPDATE files_del SET is_del=1 WHERE is_del IS NULL");
 }
 
+void upgrade6_7(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE backup_images ADD version INTEGER");
+	db->Write("UPDATE backup_images SET version=0 WHERE version IS NULL");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -549,6 +556,9 @@ void upgrade(void)
 				upgrade5_6();
 				++ver;
 				break;
+			case 6:
+				upgrade6_7();
+				++ver;
 			default:
 				break;
 		}

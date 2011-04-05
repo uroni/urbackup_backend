@@ -50,8 +50,9 @@ const unsigned int full_backup_construct_timeout=60*60*1000;
 const unsigned int shadow_copy_timeout=10*60*1000;
 const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
-const unsigned int mbr_size=(1024*1024)/4;
+const unsigned int mbr_size=(1024*1024)/2;
 const size_t minfreespace_image=1000*1024*1024; //1000 MB
+const unsigned int curr_image_version=1;
 
 int BackupServerGet::running_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
@@ -525,11 +526,11 @@ void BackupServerGet::prepareSQL(void)
 	q_set_complete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
 	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1", false);
 	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1", false); 
-	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0)", false);
+	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, "+nconvert(curr_image_version)+")", false);
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
 	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=CURRENT_TIMESTAMP WHERE id=?", false);
-	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" ORDER BY backuptime DESC LIMIT 1", false);
 	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
@@ -1856,7 +1857,7 @@ const unsigned int sha_size=32;
 
 void writeZeroblockdata(void)
 {
-	const int64 vhd_blocksize=(1024*1024/4);
+	const int64 vhd_blocksize=(1024*1024/2);
 	unsigned char *zeroes=new unsigned char[vhd_blocksize];
 	memset(zeroes, 0, vhd_blocksize);
 	unsigned char dig[sha_size];
@@ -1997,7 +1998,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 	bool persistent=false;
 	unsigned char *zeroblockdata=NULL;
 	int64 nextblock=0;
-	int64 vhd_blocksize=(1024*1024)/4;
+	int64 vhd_blocksize=(1024*1024)/2;
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, true);
 	Server->getThreadPool()->execute(running_updater);
 
@@ -2593,7 +2594,7 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 	partition[6]=0xff;
 	partition[7]=0xff;
 	partition[8]=0x00;
-	partition[9]=0x02;
+	partition[9]=0x04;
 	partition[10]=0x00;
 	partition[11]=0x00;
 
@@ -2613,14 +2614,14 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 	*mptr=0xaa;
 	vhdfile->writeBuffer(0, (char*)mbr, 512);
 
-	for(int i=0;i<511;++i)
+	for(int i=0;i<1023;++i)
 	{
 		char *buf=vhdfile->getBuffer();
 		memset(buf, 0, 512);
 		vhdfile->writeBuffer((i+1)*512, buf, 512);
 	}
 
-	return 512*512;
+	return 1024*512;
 }
 
 int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize)

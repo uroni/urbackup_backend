@@ -211,7 +211,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		int img_id=watoi(params[L"img_id"]);
 
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		IQuery *q=db->Prepare("SELECT path FROM backup_images WHERE id=? AND strftime('%s', backuptime)=?");
+		IQuery *q=db->Prepare("SELECT path, version FROM backup_images WHERE id=? AND strftime('%s', backuptime)=?");
 		q->Bind(img_id);
 		q->Bind(params[L"time"]);
 		db_results res=q->Read();
@@ -222,6 +222,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		}
 		else
 		{
+			int img_version=watoi(res[0][L"version"]);
 			if(params[L"mbr"]==L"true")
 			{
 				IFile *f=Server->openFile(res[0][L"path"]+L".mbr", MODE_READ);
@@ -271,7 +272,11 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 			}
 			else
 			{
-				int skip=512*512;
+				int skip=1024*512;
+
+				if(img_version==0)
+					skip=512*512;
+
 				_i64 r=(_i64)vhdfile->getSize()-skip;
 				input->Write((char*)&r, sizeof(_i64));
 				unsigned int blocksize=vhdfile->getBlocksize();
