@@ -242,6 +242,7 @@ int my_init_fcn_t(int argc, char *argv[])
 			wchar_t buf[MAX_PATH+1];
 			GetModuleFileNameW(NULL, buf, MAX_PATH);
 			Server->setServerWorkingDir(ExtractFilePath(buf));
+			SetCurrentDirectory(ExtractFilePath(buf).c_str());
 		}
 #endif
 #else
