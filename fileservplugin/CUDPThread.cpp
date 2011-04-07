@@ -54,8 +54,15 @@ std::string getServerName(void)
 #endif
 }
 
+bool CUDPThread::hasError(void)
+{
+	return has_error;
+}
+
 CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 {
+	has_error=false;
+	do_stop=false;
 	{
 		udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -74,6 +81,7 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 #else
 			Log("Failed binding udp socket.");
 #endif
+			has_error=true;
 			return;
 		}
 		Log("done.");
@@ -124,15 +132,22 @@ void CUDPThread::operator()(void)
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #endif
 
-	while(UdpStep()==true);
+	while(UdpStep()==true && do_stop==false);
 	
 #ifdef LOG_SERVER
 	Server->Log("CUDPThread exited.", LL_ERROR);
 #endif
+	if(do_stop)
+	{
+		delete this;
+	}
 }
 
 bool CUDPThread::UdpStep(void)
 {
+	if(has_error)
+		return false;
+
 	fd_set fdset;
 
 	FD_ZERO(&fdset);
@@ -156,6 +171,7 @@ bool CUDPThread::UdpStep(void)
 #ifdef LOG_SERVER
 			Server->Log("Recvfrom error in CUDPThread::UdpStep", LL_ERROR);
 #endif
+			has_error=true;
 			return false;
 		}
 		else if(err>0)
@@ -187,8 +203,14 @@ bool CUDPThread::UdpStep(void)
 #ifdef LOG_SERVER
 			Server->Log("Select error in CUDPThread::UdpStep", LL_ERROR);
 #endif
+		has_error=true;
 		return false;
 	}
 
 	return true;
+}
+
+void CUDPThread::stop(void)
+{
+	do_stop=true;
 }

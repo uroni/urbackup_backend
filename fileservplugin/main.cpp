@@ -102,7 +102,7 @@ void RestartServer()
 
 	TCPServer->KickClients();
 	delete TCPServer;
-	Sleep(1000);
+	Sleep(120000);
 
 	TCPServer=new CTCPFileServ;
 	int tries=20;
@@ -338,7 +338,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 #ifndef _DEBUG
 #ifndef AS_SERVICE
+#ifndef EXPORT_METHOD_INT
 	WriteReg();
+#endif
 #endif
 #endif
 
@@ -380,7 +382,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	for(size_t i=0;i<1024;++i)
 		out.write(buffer, 1024);
 	out.close();
-	delete[] buffer;*/
+	delete[] buffer;
+*/
 
 #ifdef _WIN32
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_HIGHEST);

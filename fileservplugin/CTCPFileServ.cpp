@@ -38,7 +38,7 @@ CTCPFileServ::CTCPFileServ(void)
 
 CTCPFileServ::~CTCPFileServ(void)
 {
-	delete udpthread;
+	udpthread->stop();
 	closesocket(mSocket);
 }
 
@@ -149,8 +149,26 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 		listen(mSocket,60);
 	}
 	//start udpsock
-	udpthread=new CUDPThread(udpport,pServername);
-	Server->createThread(udpthread);
+	if(udpthread!=NULL && udpthread->hasError() )
+	{
+		delete udpthread;
+		udpthread=NULL;
+	}
+	if(udpthread==NULL)
+	{
+		udpthread=new CUDPThread(udpport,pServername);
+		if(!udpthread->hasError())
+		{
+			Server->createThread(udpthread);
+		}
+		else
+		{
+			delete udpthread;
+			udpthread=NULL;
+			Log("Error starting UDP thread");
+			return false;
+		}
+	}
 
 	Log("Server started up sucessfully");
 
