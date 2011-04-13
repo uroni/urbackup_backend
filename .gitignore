@@ -82,3 +82,5 @@ urbackup/doc/*
 !urbackup/doc/admin_guide.tex
 pychart/build/*
 pychart/dist/*
+pychart/build_/*
+pychart/dist_/*
