@@ -298,3 +298,8 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 	}
 	return true;
 }
+
+std::wstring os_file_prefix(void)
+{
+	return L"";
+}

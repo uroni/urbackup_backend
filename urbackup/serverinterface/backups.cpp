@@ -159,7 +159,7 @@ ACTION_IMPL(backups)
 				Tokenize(u_path, t_path, L"/");
 				for(size_t i=0;i<t_path.size();++i)
 				{
-					if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".." )
+					if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".." && t_path[i].find(L"/")==std::string::npos && t_path[i].find(L"\\")==std::string::npos )
 					{
 						path+=t_path[i]+os_file_sep();
 					}
@@ -205,7 +205,7 @@ ACTION_IMPL(backups)
 						{
 							Server->setContentType(tid, "application/octet-stream");
 							Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(ExtractFileName(path))+"\"");
-							IFile *in=Server->openFile(currdir, MODE_READ);
+							IFile *in=Server->openFile(os_file_prefix()+currdir, MODE_READ);
 							if(in!=NULL)
 							{
 								Server->addHeader(tid, "Content-Length: "+nconvert(in->Size()) );
@@ -222,7 +222,7 @@ ACTION_IMPL(backups)
 							}
 						}
 
-						std::vector<SFile> tfiles=getFiles(currdir);
+						std::vector<SFile> tfiles=getFiles(os_file_prefix()+currdir);
 
 						JSON::Array files;
 						for(size_t i=0;i<tfiles.size();++i)

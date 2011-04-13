@@ -24,6 +24,7 @@
 #include "sha2/sha2.h"
 #include "../stringtools.h"
 #include "server_log.h"
+#include "os_functions.h"
 
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pExitpipe, IPipe *pOutput, IPipe *pExitpipe_hash, int pClientid)
 {
@@ -82,7 +83,7 @@ void BackupServerPrepareHash::operator()(void)
 			std::string tfn;
 			rd.getStr(&tfn);
 
-			IFile *tf=Server->openFile(Server->ConvertToUnicode(temp_fn), MODE_READ);
+			IFile *tf=Server->openFile(os_file_prefix()+Server->ConvertToUnicode(temp_fn), MODE_READ);
 
 			if(tf==NULL)
 			{

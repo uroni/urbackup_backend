@@ -315,6 +315,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 				Log("Sending file %s",wnarrow(o_filename).c_str());
 
 				std::wstring filename=map_file(o_filename);
+
+				if(filename.size()<2 || (filename[0]!='\\' && filename[1]!='\\' ) )
+					filename=L"\\\\?\\"+filename;
 				
 				Log("Mapped name: %s", wnarrow(filename).c_str() );
 

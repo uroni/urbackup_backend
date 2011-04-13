@@ -166,10 +166,17 @@ ACTION_IMPL(usagegraph)
 		bi.sizey=500;
 		bi.barwidth=1.f;
 
-		IPychart *pychart=pychart_fak->getPychart();
-		unsigned int id=pychart->drawBar(bi);
-		session->mInt[L"image_"+convert(id)]=1;
-		ret.set("image_id", id);
+		if(pychart_fak!=NULL)
+		{
+			IPychart *pychart=pychart_fak->getPychart();
+			unsigned int id=pychart->drawBar(bi);
+			session->mInt[L"image_"+convert(id)]=1;
+			ret.set("image_id", id);
+		}
+		else
+		{
+			ret.set("error", JSON::Value(3));
+		}
 	}
 	else
 	{

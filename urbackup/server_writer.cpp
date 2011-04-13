@@ -132,7 +132,7 @@ void ServerVHDWriter::operator()(void)
 			{
 				written=0;
 				std::wstring p=ExtractFilePath(vhd->getFilename());
-				int64 fs=os_free_space(p);
+				int64 fs=os_free_space(os_file_prefix()+p);
 				if(fs!=-1 && fs <= free_space_lim )
 				{
 					Server->Log("Not enough free space. Waiting for cleanup...");
@@ -168,7 +168,7 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 	if(!b)
 	{
 		std::wstring p=ExtractFilePath(vhd->getFilename());
-		int64 fs=os_free_space(p);
+		int64 fs=os_free_space(os_file_prefix()+p);
 		if(fs!=-1 && fs <= free_space_lim )
 		{
 			Server->Log("Not enough free space. Waiting for cleanup...");

@@ -44,10 +44,17 @@ ACTION_IMPL(piegraph)
 		pi.sizex=700;
 		pi.sizey=700;
 
-		IPychart *pychart=pychart_fak->getPychart();
-		unsigned int id=pychart->drawPie(pi);
-		session->mInt[L"image_"+convert(id)]=1;
-		ret.set("image_id", id);
+		if(pychart_fak!=NULL)
+		{
+			IPychart *pychart=pychart_fak->getPychart();
+			unsigned int id=pychart->drawPie(pi);
+			session->mInt[L"image_"+convert(id)]=1;
+			ret.set("image_id", id);
+		}
+		else
+		{
+			ret.set("error", JSON::Value(3));
+		}
 	}	
 	else
 	{

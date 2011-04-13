@@ -16,10 +16,16 @@ public:
 	std::string getServername();
 
 	void operator()(void);
+
+	bool hasError(void);
+	void stop(void);
 private:
 	SOCKET udpsock;
 	std::string mServername;
 
 	bool UdpStep(void);
+
+	bool has_error;
+	bool do_stop;
 };
 

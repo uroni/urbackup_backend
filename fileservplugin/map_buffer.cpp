@@ -70,7 +70,11 @@ std::wstring getFileName(const std::wstring &fn, const std::wstring &value, bool
 		return dir+L"/"+urd+fn;
 #endif
 	else
+#ifdef _WIN32
 		return dir+fn;
+#else
+		return dir+fn;
+#endif
 }
 
 std::wstring map_file(std::wstring fn, bool append_urd, std::wstring *udir=NULL)
@@ -82,6 +86,23 @@ std::wstring map_file(std::wstring fn, bool append_urd, std::wstring *udir=NULL)
 	if(ts.empty())
 		ts=fn;
 	fn.erase(0,ts.size());
+
+	std::wstring cp;
+	for(size_t i=0;i<fn.size();++i)
+	{
+		if(fn[i]=='/')
+		{
+			if(cp==L"." || cp==L"..")
+			{
+				return L"";
+			}
+			cp.clear();
+		}
+		else
+		{
+			cp+=fn[i];
+		}
+	}
 
 	mapcs.Enter();
 	std::map<std::string, s_mapl>::iterator i=mapbuffer.find(wnarrow(ts));

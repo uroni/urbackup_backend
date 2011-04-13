@@ -94,9 +94,18 @@ void Pychart::operator()(void)
 	static int t_num=0;
 
 	if(t_num==0)
+	{
+#ifdef _WIN32
+		std::string *prg_name=new std::string;
+		*prg_name=Server->ConvertToUTF8(Server->getServerWorkingDir());
+		Py_SetPythonHome((char*)prg_name->c_str());
+#endif
 		Py_Initialize();
+	}
 	else
+	{
 		Py_NewInterpreter();
+	}
 
 	++t_num;
 	

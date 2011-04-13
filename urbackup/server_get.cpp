@@ -50,8 +50,9 @@ const unsigned int full_backup_construct_timeout=60*60*1000;
 const unsigned int shadow_copy_timeout=10*60*1000;
 const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
-const unsigned int mbr_size=(1024*1024)/4;
+const unsigned int mbr_size=(1024*1024)/2;
 const size_t minfreespace_image=1000*1024*1024; //1000 MB
+const unsigned int curr_image_version=1;
 
 int BackupServerGet::running_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
@@ -185,7 +186,7 @@ void BackupServerGet::operator ()(void)
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	if(!os_create_dir(backupfolder+os_file_sep()+widen(clientname)) && !os_directory_exists(backupfolder+os_file_sep()+widen(clientname)) )
+	if(!os_create_dir(os_file_prefix()+backupfolder+os_file_sep()+widen(clientname)) && !os_directory_exists(os_file_prefix()+backupfolder+os_file_sep()+widen(clientname)) )
 	{
 		Server->Log("Could not create or read directory for client \""+clientname+"\"", LL_ERROR);
 		pipe->Write("ok");
@@ -525,11 +526,11 @@ void BackupServerGet::prepareSQL(void)
 	q_set_complete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
 	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1", false);
 	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1", false); 
-	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0)", false);
+	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, "+nconvert(curr_image_version)+")", false);
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
 	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=CURRENT_TIMESTAMP WHERE id=?", false);
-	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" ORDER BY backuptime DESC LIMIT 1", false);
 	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
@@ -917,7 +918,7 @@ bool BackupServerGet::doFullBackup(void)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!os_create_dir(backuppath+os_curr_path))
+						if(!os_create_dir(os_file_prefix()+backuppath+os_curr_path))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
@@ -1256,7 +1257,7 @@ bool BackupServerGet::doIncrBackup(void)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!os_create_dir(backuppath+os_curr_path))
+						if(!os_create_dir(os_file_prefix()+backuppath+os_curr_path))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
@@ -1325,7 +1326,7 @@ bool BackupServerGet::doIncrBackup(void)
 
 						bool f_ok=true;
 
-						bool b=os_create_hardlink(backuppath+os_curr_path, srcpath);
+						bool b=os_create_hardlink(os_file_prefix()+backuppath+os_curr_path, os_file_prefix()+srcpath);
 						if(!b)
 						{
 							if(link_logcnt<5)
@@ -1414,19 +1415,19 @@ bool BackupServerGet::doIncrBackup(void)
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+L"current";
-			Server->deleteFile(currdir);
-			os_link_symbolic(backuppath, currdir);
+			Server->deleteFile(os_file_prefix()+currdir);
+			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 
 			Server->Log("Creating symbolic links. -2", LL_DEBUG);
 
 			currdir=backupfolder+os_file_sep()+L"clients";
-			if(!os_create_dir(currdir) && !os_directory_exists(currdir))
+			if(!os_create_dir(os_file_prefix()+currdir) && !os_directory_exists(os_file_prefix()+currdir))
 			{
 				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
-			currdir+=os_file_sep()+widen(clientname);
-			Server->deleteFile(currdir);
-			os_link_symbolic(backuppath, currdir);
+			currdir+=widen(clientname);
+			Server->deleteFile(os_file_prefix()+currdir);
+			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 
 			Server->Log("Symbolic links created.", LL_DEBUG);
 
@@ -1499,7 +1500,7 @@ bool BackupServerGet::constructBackupPath(void)
 	backuppath_single=widen((std::string)buffer);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+backuppath_single;
-	return os_create_dir(backuppath);	
+	return os_create_dir(os_file_prefix()+backuppath);	
 }
 
 std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
@@ -1856,7 +1857,7 @@ const unsigned int sha_size=32;
 
 void writeZeroblockdata(void)
 {
-	const int64 vhd_blocksize=(1024*1024/4);
+	const int64 vhd_blocksize=(1024*1024/2);
 	unsigned char *zeroes=new unsigned char[vhd_blocksize];
 	memset(zeroes, 0, vhd_blocksize);
 	unsigned char dig[sha_size];
@@ -1883,7 +1884,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 	}
 	else
 	{
-		IFile *hashfile=Server->openFile(pParentvhd+L".hash");
+		IFile *hashfile=Server->openFile(os_file_prefix()+pParentvhd+L".hash");
 		if(hashfile==NULL)
 		{
 			ServerLogger::Log(clientid, "Error opening hashfile", LL_ERROR);
@@ -1924,7 +1925,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 	std::wstring imagefn=constructImagePath(L"C");
 	
-	int64 free_space=os_free_space(ExtractFilePath(imagefn));
+	int64 free_space=os_free_space(os_file_prefix()+ExtractFilePath(imagefn));
 	if(free_space!=-1 && free_space<minfreespace_image)
 	{
 		ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
@@ -1945,7 +1946,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 		}
 		else
 		{
-			IFile *mbr_file=Server->openFile(imagefn+L".mbr", MODE_WRITE);
+			IFile *mbr_file=Server->openFile(os_file_prefix()+imagefn+L".mbr", MODE_WRITE);
 			if(mbr_file!=NULL)
 			{
 				_u32 w=mbr_file->Write(mbrd);
@@ -1997,7 +1998,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 	bool persistent=false;
 	unsigned char *zeroblockdata=NULL;
 	int64 nextblock=0;
-	int64 vhd_blocksize=(1024*1024)/4;
+	int64 vhd_blocksize=(1024*1024)/2;
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, true);
 	Server->getThreadPool()->execute(running_updater);
 
@@ -2197,9 +2198,9 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 					memset(zeroblockdata, 0, blocksize);
 
 					if(!has_parent)
-						r_vhdfile=image_fak->createVHDFile(imagefn, false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize);
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize);
 					else
-						r_vhdfile=image_fak->createVHDFile(imagefn, pParentvhd, false);
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, pParentvhd, false);
 
 					if(r_vhdfile==NULL)
 					{
@@ -2224,7 +2225,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 					blockdata=vhdfile->getBuffer();
 
-					hashfile=Server->openFile(imagefn+L".hash", MODE_WRITE);
+					hashfile=Server->openFile(os_file_prefix()+imagefn+L".hash", MODE_WRITE);
 					if(hashfile==NULL)
 					{
 						ServerLogger::Log(clientid, L"Error opening Hashfile \""+imagefn+L".hash\"", LL_ERROR);
@@ -2245,7 +2246,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 					if(has_parent)
 					{
-						parenthashfile=Server->openFile(pParentvhd+L".hash", MODE_READ);
+						parenthashfile=Server->openFile(os_file_prefix()+pParentvhd+L".hash", MODE_READ);
 						if(parenthashfile==NULL)
 						{
 							ServerLogger::Log(clientid, L"Error opening Parenthashfile \""+pParentvhd+L".hash\"", LL_ERROR);
@@ -2459,7 +2460,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 								vhdfile=NULL;
 							}
 
-							IFile *t_file=Server->openFile(imagefn, MODE_READ);
+							IFile *t_file=Server->openFile(os_file_prefix()+imagefn, MODE_READ);
 							db->BeginTransaction();
 							q_set_image_size->Bind(t_file->Size());
 							q_set_image_size->Bind(backupid);
@@ -2593,7 +2594,7 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 	partition[6]=0xff;
 	partition[7]=0xff;
 	partition[8]=0x00;
-	partition[9]=0x02;
+	partition[9]=0x04;
 	partition[10]=0x00;
 	partition[11]=0x00;
 
@@ -2613,14 +2614,14 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 	*mptr=0xaa;
 	vhdfile->writeBuffer(0, (char*)mbr, 512);
 
-	for(int i=0;i<511;++i)
+	for(int i=0;i<1023;++i)
 	{
 		char *buf=vhdfile->getBuffer();
 		memset(buf, 0, 512);
 		vhdfile->writeBuffer((i+1)*512, buf, 512);
 	}
 
-	return 512*512;
+	return 1024*512;
 }
 
 int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize)

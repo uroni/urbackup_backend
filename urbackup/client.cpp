@@ -44,7 +44,9 @@ const unsigned short tcpport=35621;
 const unsigned short udpport=35622;
 const unsigned int shadowcopy_timeout=24*60*60*1000;
 
+#ifndef SERVER_ONLY
 #define ENABLE_VSS
+#endif
 
 #define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
 #define CHECK_COM_RESULT_RELEASE_S(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return ""; }}
@@ -143,8 +145,10 @@ void IndexThread::updateDirs(void)
 void IndexThread::operator()(void)
 {
 #ifdef _WIN32
+#ifndef SERVER_ONLY
 	CHECK_COM_RESULT(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED));
 	CHECK_COM_RESULT(CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, RPC_C_IMP_LEVEL_IDENTIFY, NULL, EOAC_NONE, NULL));
+#endif
 #endif
 #ifdef _WIN32
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
@@ -608,7 +612,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 	if(found)
 	{
 		++index_c_fs;
-		tmp=getFiles(path);
+
+		std::wstring tpath=path;
+		if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
+			tpath=L"\\\\?\\"+path;
+
+		tmp=getFiles(tpath);
 		if(cd->hasFiles(orig_path) )
 		{
 			++index_c_db_update;
@@ -628,7 +637,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		else
 		{
 			++index_c_fs;
-			tmp=getFiles(path);
+
+			std::wstring tpath=path;
+			if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
+				tpath=L"\\\\?\\"+path;
+
+			tmp=getFiles(tpath);
 			cd->addFiles(orig_path, tmp);
 			return tmp;
 		}
@@ -864,6 +878,7 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 			}
 #ifndef VSS_XP
 #ifndef VSS_S03
+#ifndef SERVER_ONLY
 			if(dir.fileserv)
 			{
 				filesrv->shareDir(dir.dir, dir.orig_target);
@@ -882,6 +897,7 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 			{
 				ok=true;
 			}
+#endif
 #endif
 #endif
 #if defined(VSS_XP) || defined(VSS_S03)
@@ -917,6 +933,7 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 
 #ifndef VSS_XP
 #ifndef VSS_S03
+#ifndef SERVER_ONLY
 		if(found)
 		{
 			IVssBackupComponents *backupcom=NULL; 
@@ -951,6 +968,7 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 
 			backupcom->Release();
 		}
+#endif
 #endif
 #endif
 #if defined(VSS_XP) || defined(VSS_S03)
@@ -1051,6 +1069,7 @@ std::string IndexThread::GetErrorHResErrStr(HRESULT res)
 std::string IndexThread::lookup_shadowcopy(int sid)
 {
 #ifdef _WIN32
+#ifndef SERVER_ONLY
 	std::vector<SShadowCopy> scs=cd->getShadowcopies();
 
 	for(size_t i=0;i<scs.size();++i)
@@ -1069,6 +1088,7 @@ std::string IndexThread::lookup_shadowcopy(int sid)
 			return ret;
 		}
 	}
+#endif
 #endif
 	return "";
 }

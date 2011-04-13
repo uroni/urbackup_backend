@@ -159,7 +159,7 @@ void BackupServerHash::operator()(void)
 			if(!rd.getStr(&sha2))
 				ServerLogger::Log(clientid, "Reading hash from pipe failed", LL_ERROR);
 
-			IFile *tf=Server->openFile(Server->ConvertToUnicode(temp_fn), MODE_READ);
+			IFile *tf=Server->openFile(os_file_prefix()+Server->ConvertToUnicode(temp_fn), MODE_READ);
 
 			if(tf==NULL)
 			{
@@ -243,10 +243,10 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 	while(!ff.empty())
 	{
 		tries_once=true;
-		bool b=os_create_hardlink(tfn, ff);
+		bool b=os_create_hardlink(os_file_prefix()+tfn, os_file_prefix()+ff);
 		if(!b)
 		{
-			IFile *tf=Server->openFile(ff, MODE_READ);
+			IFile *tf=Server->openFile(os_file_prefix()+ff, MODE_READ);
 			if(tf==NULL)
 				ServerLogger::Log(clientid, "HT: Hardlinking failed (File doesn't exist)", LL_DEBUG);
 			else
@@ -292,7 +292,7 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 	{
 		ServerLogger::Log(clientid, L"HT: Copying file: \""+tfn+L"\"", LL_DEBUG);
 		int64 fs=tf->Size();
-		int64 available_space=os_free_space(ExtractFilePath(tfn));
+		int64 available_space=os_free_space(os_file_prefix()+ExtractFilePath(tfn));
 		if(available_space==-1)
 		{
 			if(space_logcnt==0)
@@ -359,7 +359,7 @@ bool BackupServerHash::freeSpace(int64 fs, const std::wstring &fp)
 {
 	IScopedLock lock(delete_mutex);
 
-	int64 available_space=os_free_space(ExtractFilePath(fp));
+	int64 available_space=os_free_space(os_file_prefix()+ExtractFilePath(fp));
 	if(available_space==-1)
 	{
 		if(space_logcnt==0)
@@ -412,7 +412,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 	int count_t=0;
 	while(dst==NULL)
 	{
-		dst=Server->openFile(dest, MODE_WRITE);
+		dst=Server->openFile(os_file_prefix()+dest, MODE_WRITE);
 		if(dst==NULL)
 		{
 			ServerLogger::Log(clientid, L"Error opening destination file... \""+dest+L"\" retrying...", LL_DEBUG);
@@ -434,7 +434,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 		_u32 rc=dst->Write(buf, read);
 		if(rc!=read && read>0)
 		{
-			int64 available_space=os_free_space(ExtractFilePath(dest));
+			int64 available_space=os_free_space(os_file_prefix()+ExtractFilePath(dest));
 			if(available_space==-1)
 			{
 				if(space_logcnt==0)

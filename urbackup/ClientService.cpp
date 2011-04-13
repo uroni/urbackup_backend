@@ -1878,7 +1878,7 @@ void ClientConnector::sendFullImageThread(void)
 	do_quit=true;
 }
 
-const unsigned int c_vhdblocksize=(1024*1024/4);
+const unsigned int c_vhdblocksize=(1024*1024/2);
 const unsigned int c_hashsize=32;
 
 void ClientConnector::sendIncrImageThread(void)

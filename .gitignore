@@ -78,3 +78,9 @@ Release Server/*
 urbackup/clientlist_*.ub
 version_new.txt
 urbackup/sqlite3.exe
+urbackup/doc/*
+!urbackup/doc/admin_guide.tex
+pychart/build/*
+pychart/dist/*
+pychart/build_/*
+pychart/dist_/*

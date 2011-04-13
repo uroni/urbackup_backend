@@ -175,7 +175,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			else
 			{
 				std::string skip_s=Server->getServerParameter("skip");
-				int skip=512*512;
+				int skip=1024*512;
 				if(!skip_s.empty())
 				{
 					skip=atoi(skip_s.c_str());
@@ -356,7 +356,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 
 		unsigned int blocksize=in.getBlocksize();
-		int skip=512*512;
+		int skip=1024*512;
 		in.Seek(skip);
 		uint64 currpos=skip;
 		uint64 size=in.getSize();

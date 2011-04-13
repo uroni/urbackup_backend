@@ -30,6 +30,7 @@
 const uint64 def_header_offset=0;
 const uint64 def_dynamic_header_offset=512;
 const uint64 def_bat_offset=512+1024;
+const uint64 def_bat_offset_parent=2*1024;
 const int64 unixtime_offset=946684800;
 
 const unsigned int sector_size=512;
@@ -46,6 +47,27 @@ inline unsigned short endian_swap(unsigned short x)
 {
     return x = (x>>8) | 
         (x<<8);
+}
+
+inline std::string endian_swap(std::string str)
+{
+	if(sizeof(wchar_t)==2)
+	{
+		for(size_t i=0;i<str.size();i+=2)
+		{
+			unsigned short *t=(unsigned short*)&str[i];
+			*t=endian_swap(*t);
+		}
+	}
+	else if(sizeof(wchar_t)==4)
+	{
+		for(size_t i=0;i<str.size();++i)
+		{
+			unsigned int *t=(unsigned int*)&str[i];
+			*t=endian_swap(*t);
+		}
+	}
+	return str;
 }
 
 inline uint64 endian_swap(uint64 x)
@@ -185,7 +207,7 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 	{
 		header_offset=def_header_offset;
 		dynamic_header_offset=def_dynamic_header_offset;
-		bat_offset=def_bat_offset;
+		bat_offset=def_bat_offset_parent;
 
 		batsize=(unsigned int)(dstsize/blocksize);
 		if(dstsize%blocksize!=0)
@@ -201,7 +223,7 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 		nextblock_offset=nextblock_offset+(sector_size-nextblock_offset%sector_size);
 
 		write_header(true);
-		write_dynamicheader(parent->getUID(), parent->getTimestamp(), ExtractFileName(parent_fn) );
+		write_dynamicheader(parent->getUID(), parent->getTimestamp(), parent_fn );
 		write_bat();
 
 		write_footer();
@@ -369,24 +391,45 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		//Differencing file
 		memcpy(dynamicheader.parent_uid, parent_uid, 16);
 		dynamicheader.parent_timestamp=endian_swap(parent_timestamp);
-		std::string unicodename=Server->ConvertToUTF16(parentfn);
+		std::string unicodename=endian_swap(Server->ConvertToUTF16(ExtractFileName(parentfn)));
+		std::string rel_unicodename=Server->ConvertToUTF16(L".\\"+ExtractFileName(parentfn));
+		std::string abs_unicodename=Server->ConvertToUTF16(parentfn);
 		unicodename.resize(unicodename.size()+2);
 		unicodename[unicodename.size()-2]=0;
 		unicodename[unicodename.size()-1]=0;
 		memcpy(dynamicheader.parent_unicodename, &unicodename[0], unicodename.size());
-		dynamicheader.parentlocator[7].platform_code=endian_swap((unsigned int)0x57327275);
-		unsigned int locator_blocks=(unicodename.size()-2)/sector_size+((unicodename.size()-2)%sector_size!=0)?1:0;
-		dynamicheader.parentlocator[7].platform_space=endian_swap(locator_blocks);
-		dynamicheader.parentlocator[7].platform_length=endian_swap((unsigned int)(unicodename.size()-2));
-		dynamicheader.parentlocator[7].platform_offset=endian_swap(nextblock_offset);
+		unsigned int locator_blocks_abs=(abs_unicodename.size())/sector_size+((abs_unicodename.size())%sector_size!=0)?1:0;
+		dynamicheader.parentlocator[0].platform_code=endian_swap((unsigned int)0x57326B75);
+		dynamicheader.parentlocator[0].platform_space=endian_swap(locator_blocks_abs*sector_size);
+		dynamicheader.parentlocator[0].platform_length=endian_swap((unsigned int)abs_unicodename.size());
+		uint64 abs_locator_offset=def_bat_offset_parent-512;
+		if(locator_blocks_abs>1)
+		{
+			abs_locator_offset=nextblock_offset;
+			nextblock_offset+=abs_locator_offset*sector_size;
+		}
+		dynamicheader.parentlocator[0].platform_offset=endian_swap(abs_locator_offset);
+
+		if(!file->Seek(abs_locator_offset))
+			return false;
+		_u32 rc=file->Write(abs_unicodename.c_str(), (_u32)abs_unicodename.size());
+		if(rc!=abs_unicodename.size())
+			return false;
+
+		dynamicheader.parentlocator[1].platform_code=endian_swap((unsigned int)0x57327275);
+		unsigned int locator_blocks=(rel_unicodename.size())/sector_size+((rel_unicodename.size())%sector_size!=0)?1:0;
+		if(locator_blocks<128) locator_blocks=128;
+		dynamicheader.parentlocator[1].platform_space=endian_swap(locator_blocks*sector_size);
+		dynamicheader.parentlocator[1].platform_length=endian_swap((unsigned int)rel_unicodename.size());
+		dynamicheader.parentlocator[1].platform_offset=endian_swap(nextblock_offset);
 		if(!file->Seek(nextblock_offset))
 			return false;
 
-		_u32 rc=file->Write(unicodename.c_str(), (_u32)unicodename.size()-2);
-		if(rc!=unicodename.size()-2)
+		rc=file->Write(rel_unicodename.c_str(), (_u32)rel_unicodename.size());
+		if(rc!=rel_unicodename.size())
 			return false;
 
-		nextblock_offset+=sector_size;
+		nextblock_offset+=locator_blocks*sector_size;
 	}
 
 	init_bitmap();
@@ -529,6 +572,7 @@ bool VHDFile::read_dynamicheader(void)
 		std::string parent_unicodename;
 		parent_unicodename.resize(512);
 		memcpy(&parent_unicodename[0], dynamicheader.parent_unicodename, 512);
+		parent_unicodename=endian_swap(parent_unicodename);
 		std::wstring parent_fn=Server->ConvertFromUTF16(parent_unicodename);
 		parent_fn.resize(wcslen(parent_fn.c_str()));
 		parent_fn=ExtractFilePath(file->getFilenameW())+L"/"+parent_fn;
