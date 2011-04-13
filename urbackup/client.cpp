@@ -612,7 +612,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 	if(found)
 	{
 		++index_c_fs;
-		tmp=getFiles(path);
+
+		std::wstring tpath=path;
+		if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
+			tpath=L"\\\\?\\"+path;
+
+		tmp=getFiles(tpath);
 		if(cd->hasFiles(orig_path) )
 		{
 			++index_c_db_update;
@@ -632,7 +637,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		else
 		{
 			++index_c_fs;
-			tmp=getFiles(path);
+
+			std::wstring tpath=path;
+			if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
+				tpath=L"\\\\?\\"+path;
+
+			tmp=getFiles(tpath);
 			cd->addFiles(orig_path, tmp);
 			return tmp;
 		}

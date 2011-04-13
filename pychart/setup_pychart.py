@@ -15,7 +15,7 @@ opts = {
                             '_cairo', '_cocoaagg',
                             '_fltkagg', '_gtk', '_gtkcairo', ],
                 'dll_excludes': ['libgdk-win32-2.0-0.dll',
-                            'libgobject-2.0-0.dll']
+                            'libgobject-2.0-0.dll', 'MSVCP90.dll']
               }
        }
 

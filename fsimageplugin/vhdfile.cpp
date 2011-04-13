@@ -391,7 +391,7 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		//Differencing file
 		memcpy(dynamicheader.parent_uid, parent_uid, 16);
 		dynamicheader.parent_timestamp=endian_swap(parent_timestamp);
-		std::string unicodename=endian_swap(Server->ConvertToUTF16(ExtractFilePath(parentfn)));
+		std::string unicodename=endian_swap(Server->ConvertToUTF16(ExtractFileName(parentfn)));
 		std::string rel_unicodename=Server->ConvertToUTF16(L".\\"+ExtractFileName(parentfn));
 		std::string abs_unicodename=Server->ConvertToUTF16(parentfn);
 		unicodename.resize(unicodename.size()+2);

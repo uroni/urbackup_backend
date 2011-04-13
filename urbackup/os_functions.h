@@ -49,4 +49,6 @@ bool os_directory_exists(const std::wstring &path);
 
 bool os_lookuphostname(std::string pServer, unsigned int *dest);
 
+std::wstring os_file_prefix(void);
+
 #endif //OS_FUNCTIONS_H

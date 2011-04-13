@@ -225,7 +225,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 			int img_version=watoi(res[0][L"version"]);
 			if(params[L"mbr"]==L"true")
 			{
-				IFile *f=Server->openFile(res[0][L"path"]+L".mbr", MODE_READ);
+				IFile *f=Server->openFile(os_file_prefix()+res[0][L"path"]+L".mbr", MODE_READ);
 				if(f==NULL)
 				{
 					_i64 r=-1;

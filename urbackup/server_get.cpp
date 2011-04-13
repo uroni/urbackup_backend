@@ -186,7 +186,7 @@ void BackupServerGet::operator ()(void)
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	if(!os_create_dir(backupfolder+os_file_sep()+widen(clientname)) && !os_directory_exists(backupfolder+os_file_sep()+widen(clientname)) )
+	if(!os_create_dir(os_file_prefix()+backupfolder+os_file_sep()+widen(clientname)) && !os_directory_exists(os_file_prefix()+backupfolder+os_file_sep()+widen(clientname)) )
 	{
 		Server->Log("Could not create or read directory for client \""+clientname+"\"", LL_ERROR);
 		pipe->Write("ok");
@@ -918,7 +918,7 @@ bool BackupServerGet::doFullBackup(void)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!os_create_dir(backuppath+os_curr_path))
+						if(!os_create_dir(os_file_prefix()+backuppath+os_curr_path))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
@@ -1257,7 +1257,7 @@ bool BackupServerGet::doIncrBackup(void)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!os_create_dir(backuppath+os_curr_path))
+						if(!os_create_dir(os_file_prefix()+backuppath+os_curr_path))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
@@ -1326,7 +1326,7 @@ bool BackupServerGet::doIncrBackup(void)
 
 						bool f_ok=true;
 
-						bool b=os_create_hardlink(backuppath+os_curr_path, srcpath);
+						bool b=os_create_hardlink(os_file_prefix()+backuppath+os_curr_path, os_file_prefix()+srcpath);
 						if(!b)
 						{
 							if(link_logcnt<5)
@@ -1415,19 +1415,19 @@ bool BackupServerGet::doIncrBackup(void)
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+L"current";
-			Server->deleteFile(currdir);
-			os_link_symbolic(backuppath, currdir);
+			Server->deleteFile(os_file_prefix()+currdir);
+			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 
 			Server->Log("Creating symbolic links. -2", LL_DEBUG);
 
 			currdir=backupfolder+os_file_sep()+L"clients";
-			if(!os_create_dir(currdir) && !os_directory_exists(currdir))
+			if(!os_create_dir(os_file_prefix()+currdir) && !os_directory_exists(os_file_prefix()+currdir))
 			{
 				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
-			currdir+=os_file_sep()+widen(clientname);
-			Server->deleteFile(currdir);
-			os_link_symbolic(backuppath, currdir);
+			currdir+=widen(clientname);
+			Server->deleteFile(os_file_prefix()+currdir);
+			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 
 			Server->Log("Symbolic links created.", LL_DEBUG);
 
@@ -1500,7 +1500,7 @@ bool BackupServerGet::constructBackupPath(void)
 	backuppath_single=widen((std::string)buffer);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+backuppath_single;
-	return os_create_dir(backuppath);	
+	return os_create_dir(os_file_prefix()+backuppath);	
 }
 
 std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
@@ -1884,7 +1884,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 	}
 	else
 	{
-		IFile *hashfile=Server->openFile(pParentvhd+L".hash");
+		IFile *hashfile=Server->openFile(os_file_prefix()+pParentvhd+L".hash");
 		if(hashfile==NULL)
 		{
 			ServerLogger::Log(clientid, "Error opening hashfile", LL_ERROR);
@@ -1925,7 +1925,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 	std::wstring imagefn=constructImagePath(L"C");
 	
-	int64 free_space=os_free_space(ExtractFilePath(imagefn));
+	int64 free_space=os_free_space(os_file_prefix()+ExtractFilePath(imagefn));
 	if(free_space!=-1 && free_space<minfreespace_image)
 	{
 		ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
@@ -1946,7 +1946,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 		}
 		else
 		{
-			IFile *mbr_file=Server->openFile(imagefn+L".mbr", MODE_WRITE);
+			IFile *mbr_file=Server->openFile(os_file_prefix()+imagefn+L".mbr", MODE_WRITE);
 			if(mbr_file!=NULL)
 			{
 				_u32 w=mbr_file->Write(mbrd);
@@ -2198,9 +2198,9 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 					memset(zeroblockdata, 0, blocksize);
 
 					if(!has_parent)
-						r_vhdfile=image_fak->createVHDFile(imagefn, false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize);
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize);
 					else
-						r_vhdfile=image_fak->createVHDFile(imagefn, pParentvhd, false);
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, pParentvhd, false);
 
 					if(r_vhdfile==NULL)
 					{
@@ -2225,7 +2225,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 					blockdata=vhdfile->getBuffer();
 
-					hashfile=Server->openFile(imagefn+L".hash", MODE_WRITE);
+					hashfile=Server->openFile(os_file_prefix()+imagefn+L".hash", MODE_WRITE);
 					if(hashfile==NULL)
 					{
 						ServerLogger::Log(clientid, L"Error opening Hashfile \""+imagefn+L".hash\"", LL_ERROR);
@@ -2246,7 +2246,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 					if(has_parent)
 					{
-						parenthashfile=Server->openFile(pParentvhd+L".hash", MODE_READ);
+						parenthashfile=Server->openFile(os_file_prefix()+pParentvhd+L".hash", MODE_READ);
 						if(parenthashfile==NULL)
 						{
 							ServerLogger::Log(clientid, L"Error opening Parenthashfile \""+pParentvhd+L".hash\"", LL_ERROR);
@@ -2460,7 +2460,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 								vhdfile=NULL;
 							}
 
-							IFile *t_file=Server->openFile(imagefn, MODE_READ);
+							IFile *t_file=Server->openFile(os_file_prefix()+imagefn, MODE_READ);
 							db->BeginTransaction();
 							q_set_image_size->Bind(t_file->Size());
 							q_set_image_size->Bind(backupid);

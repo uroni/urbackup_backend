@@ -37,7 +37,9 @@ std::vector<SFile> getFiles(const std::wstring &path)
 	std::vector<SFile> tmp;
 	HANDLE fHandle;
 	WIN32_FIND_DATAW wfd;
-	fHandle=FindFirstFileW((path+L"\\*").c_str(),&wfd); 
+	std::wstring tpath=path;
+	if(!tpath.empty() && tpath[tpath.size()-1]=='\\' ) tpath.erase(path.size()-1, 1);
+	fHandle=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
 	if(fHandle==INVALID_HANDLE_VALUE)
 		return tmp;
 
@@ -207,4 +209,9 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 		}
 	}
 	return true;
+}
+
+std::wstring os_file_prefix(void)
+{
+	return L"\\\\?\\";
 }

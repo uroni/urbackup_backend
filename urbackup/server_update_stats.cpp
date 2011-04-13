@@ -107,7 +107,7 @@ void ServerUpdateStats::update_images(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		std::wstring &fn=res[i][L"path"];
-		IFile * file=Server->openFile(fn, MODE_READ);
+		IFile * file=Server->openFile(os_file_prefix()+fn, MODE_READ);
 		if(file==NULL)
 		{
 			Server->Log(L"Error opening file '"+fn+L"'", LL_ERROR);
