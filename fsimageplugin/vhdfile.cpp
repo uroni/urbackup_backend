@@ -49,23 +49,12 @@ inline unsigned short endian_swap(unsigned short x)
         (x<<8);
 }
 
-inline std::string endian_swap(std::string str)
+inline std::string endian_swap_utf16(std::string str)
 {
-	if(sizeof(wchar_t)==2)
+	for(size_t i=0;i<str.size();i+=2)
 	{
-		for(size_t i=0;i<str.size();i+=2)
-		{
-			unsigned short *t=(unsigned short*)&str[i];
-			*t=endian_swap(*t);
-		}
-	}
-	else if(sizeof(wchar_t)==4)
-	{
-		for(size_t i=0;i<str.size();i+=4)
-		{
-			unsigned int *t=(unsigned int*)&str[i];
-			*t=endian_swap(*t);
-		}
+		unsigned short *t=(unsigned short*)&str[i];
+		*t=endian_swap(*t);
 	}
 	return str;
 }
@@ -391,7 +380,7 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		//Differencing file
 		memcpy(dynamicheader.parent_uid, parent_uid, 16);
 		dynamicheader.parent_timestamp=endian_swap(parent_timestamp);
-		std::string unicodename=endian_swap(Server->ConvertToUTF16(ExtractFileName(parentfn)));
+		std::string unicodename=endian_swap_utf16(Server->ConvertToUTF16(ExtractFileName(parentfn)));
 		std::string rel_unicodename=Server->ConvertToUTF16(L".\\"+ExtractFileName(parentfn));
 		std::string abs_unicodename=Server->ConvertToUTF16(parentfn);
 		unicodename.resize(unicodename.size()+2);
@@ -572,7 +561,7 @@ bool VHDFile::read_dynamicheader(void)
 		std::string parent_unicodename;
 		parent_unicodename.resize(512);
 		memcpy(&parent_unicodename[0], dynamicheader.parent_unicodename, 512);
-		parent_unicodename=endian_swap(parent_unicodename);
+		parent_unicodename=endian_swap_utf16(parent_unicodename);
 		std::wstring parent_fn=Server->ConvertFromUTF16(parent_unicodename);
 		parent_fn.resize(wcslen(parent_fn.c_str()));
 		parent_fn=ExtractFilePath(file->getFilenameW())+L"/"+parent_fn;
