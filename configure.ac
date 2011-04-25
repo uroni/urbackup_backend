@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-server], [0.23], [martin@urbackup.org])
+AC_INIT([urbackup-server], [0.23.1], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
