@@ -967,8 +967,17 @@ bool BackupServerGet::doFullBackup(void)
 	{
 		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 		std::wstring currdir=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+L"current";
-		Server->deleteFile(currdir);
-		os_link_symbolic(backuppath, currdir);
+		Server->deleteFile(os_file_prefix()+currdir);
+		os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+
+		currdir=backupfolder+os_file_sep()+L"clients";
+		if(!os_create_dir(os_file_prefix()+currdir) && !os_directory_exists(os_file_prefix()+currdir))
+		{
+			Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
+		}
+		currdir+=os_file_sep()+widen(clientname);
+		Server->deleteFile(os_file_prefix()+currdir);
+		os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 	}
 	running_updater->stop();
 	updateRunning(false);
@@ -1425,7 +1434,7 @@ bool BackupServerGet::doIncrBackup(void)
 			{
 				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
-			currdir+=widen(clientname);
+			currdir+=os_file_sep()+widen(clientname);
 			Server->deleteFile(os_file_prefix()+currdir);
 			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 
