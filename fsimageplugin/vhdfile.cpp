@@ -61,7 +61,7 @@ inline std::string endian_swap(std::string str)
 	}
 	else if(sizeof(wchar_t)==4)
 	{
-		for(size_t i=0;i<str.size();++i)
+		for(size_t i=0;i<str.size();i+=4)
 		{
 			unsigned int *t=(unsigned int*)&str[i];
 			*t=endian_swap(*t);
