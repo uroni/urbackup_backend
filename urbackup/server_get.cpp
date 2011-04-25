@@ -46,8 +46,8 @@ extern IFSImageFactory *image_fak;
 extern std::string server_identity;
 
 const unsigned short serviceport=35623;
-const unsigned int full_backup_construct_timeout=60*60*1000;
-const unsigned int shadow_copy_timeout=10*60*1000;
+const unsigned int full_backup_construct_timeout=4*60*60*1000;
+const unsigned int shadow_copy_timeout=30*60*1000;
 const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const unsigned int mbr_size=(1024*1024)/2;
