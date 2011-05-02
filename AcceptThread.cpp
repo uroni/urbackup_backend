@@ -18,9 +18,6 @@
 
 #include "vld.h"
 
-#include <boost/thread/thread.hpp>
-#include <boost/bind.hpp>
-
 #include "AcceptThread.h"
 #include "Server.h"
 #include "stringtools.h"

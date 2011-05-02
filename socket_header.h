@@ -17,3 +17,6 @@
 #	define SOCKET int
 #	define Sleep(x) usleep(x*1000)
 #endif
+#ifdef sun
+#	define MSG_NOSIGNAL 0
+#endif
