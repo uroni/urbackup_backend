@@ -81,8 +81,6 @@ private:
 
 	std::string image_letter;
 
-	std::string lcmd;
-
 	int thread_action;
 	THREADPOOL_TICKET thread_ticket;
 	std::string thread_ret;

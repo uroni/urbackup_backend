@@ -96,7 +96,6 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	lasttime=Server->getTimeMS();
 	do_quit=false;
 	is_channel=false;
-	lcmd="none";
 	want_receive=true;
 }
 
@@ -139,7 +138,7 @@ bool ClientConnector::Run(void)
 	case 0:
 		if(Server->getTimeMS()-lasttime>10000)
 		{
-			Server->Log("Client timeout in ClientConnector::Run lcmd="+lcmd, LL_DEBUG);
+			Server->Log("Client timeout in ClientConnector::Run", LL_DEBUG);
 			if(waitForThread())
 			{
 				do_quit=true;
@@ -459,7 +458,6 @@ void ClientConnector::ReceivePackets(void)
 		}
 		return;
 	}
-	lcmd=cmd;
 	if(state==5 || state==6)
 	{
 		lasttime=Server->getTimeMS();
