@@ -62,27 +62,33 @@ std::vector<SFile> getFiles(const std::wstring &path)
 		if(f.name==L"." || f.name==L".." )
 			continue;
 		
+#ifndef sun
 		f.isdir=(dirp->d_type==DT_DIR);
 		if(!f.isdir || dirp->d_type==DT_UNKNOWN)
 		{
+#endif
 			struct stat64 f_info;
 			int rc=stat64((upath+dirp->d_name).c_str(), &f_info);
 			if(rc==0)
 			{
+#ifndef sun
 				if(dirp->d_type==DT_UNKNOWN)
 				{
+#endif
 					f.isdir=S_ISDIR(f_info.st_mode);
 					if(!f.isdir)
 					{
 						f.last_modified=f_info.st_mtime;
 						f.size=f_info.st_size;
 					}
+#ifndef sun
 				}
 				else
 				{
 					f.last_modified=f_info.st_mtime;
 					f.size=f_info.st_size;
 				}
+#endif
 			}
 			else
 			{
@@ -90,12 +96,14 @@ std::vector<SFile> getFiles(const std::wstring &path)
 				f.last_modified=0;
 				f.size=0;
 			}
+#ifndef sun
 		}
 		else
 		{
 			f.last_modified=0;
 			f.size=0;
 		}
+#endif
 		tmp.push_back(f);
     }
     closedir(dp);
@@ -197,8 +205,10 @@ bool os_remove_nonempty_dir(const std::wstring &path)
 	{
 		if( (std::string)dirp->d_name!="." && (std::string)dirp->d_name!=".." )
 		{
+#ifndef sun
 			if(dirp->d_type==DT_UNKNOWN)
 			{
+#endif
 				struct stat64 f_info;
 				int rc=stat64((upath+"/"+(std::string)dirp->d_name).c_str(), &f_info);
 				if(rc==0)
@@ -231,6 +241,7 @@ bool os_remove_nonempty_dir(const std::wstring &path)
 					}
 					Server->Log("No permission to stat \""+upath+"/"+dirp->d_name+"\" error: "+e, LL_ERROR);
 				}
+#ifndef sun
 			}
 			else if(dirp->d_type==DT_DIR )
 			{
@@ -243,6 +254,7 @@ bool os_remove_nonempty_dir(const std::wstring &path)
 					Server->Log("Error deleting file \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
 				}
 			}
+#endif
 		}
     }
     closedir(dp);

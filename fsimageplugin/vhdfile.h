@@ -2,7 +2,9 @@
 #include "../Interface/File.h"
 #include "IVHDFile.h"
 
+#ifndef sun
 #pragma pack(push)
+#endif
 #pragma pack(1)
 
 struct VHDFooter
@@ -51,7 +53,11 @@ struct VHDDynamicHeader
 	char reserved2[256];
 };
 
+#ifndef sun
 #pragma pack(pop)
+#else
+#pragma pack()
+#endif
 
 class VHDFile : public IVHDFile
 {

@@ -32,5 +32,8 @@
 #	define INVALID_HANDLE_VALUE -1
 #	define Sleep(x) usleep(x*1000)
 #endif
+#ifdef sun
+#	define MSG_NOSIGNAL 0
+#endif
 
 #endif //SOCKET_HEADER_H

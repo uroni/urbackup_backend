@@ -1,7 +1,9 @@
 #include "../../Interface/Types.h"
 #include "../filesystem.h"
 
+#ifndef sun
 #pragma pack(push)
+#endif
 #pragma pack(1)
 
 struct MFTAttribute
@@ -95,7 +97,11 @@ struct NTFSFileRecord
 	//char padding[470];
 };
 
+#ifndef sun
 #pragma pack(pop)
+#else
+#pragma pack()
+#endif
 
 struct RunlistItem
 {
