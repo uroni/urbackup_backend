@@ -66,7 +66,7 @@ struct SCDirs
 {
 	SCDirs(void): ref(NULL) {}
 	int sccount;
-	std::string dir;
+	std::wstring dir;
 	std::wstring target;
 	std::wstring orig_target;
 	bool running;
@@ -99,6 +99,9 @@ private:
 	void indexDirs(void);
 
 	void updateDirs(void);
+
+	void readExcludePattern(void);
+	bool isExcluded(const std::wstring &path);
 
 	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path);
 
@@ -143,6 +146,7 @@ private:
 
 	static volatile bool stop_index;
 
+	std::vector<std::wstring> exlude_dirs;
 
 	unsigned int last_transaction_start;
 };

@@ -163,8 +163,21 @@ void IndexThread::operator()(void)
 		{
 			name=L"##restore##"+convert(Server->getTimeSeconds())+convert(rand()%10000);
 		}
+		else
+		{
+			ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+			if(curr_settings!=NULL)
+			{
+				std::wstring val;
+				if(curr_settings->getValue(L"computername", &val))
+				{
+					name=val;
+				}
+				Server->destroy(curr_settings);
+			}
+		}
 		filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(tcpport, udpport, name);
-		filesrv->shareDir("urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
+		filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
 
 		ServerIdentityMgr::setFileServ(filesrv);
 		ServerIdentityMgr::loadServerIdentities();
@@ -209,6 +222,11 @@ void IndexThread::operator()(void)
 		if(action==0)
 		{
 			//incr backup
+			if(backup_dirs.empty())
+			{
+				contractor->Write("no backup dirs");
+				continue;
+			}
 #ifdef _WIN32
 			if(cd->hasChangedGap())
 			{
@@ -269,6 +287,11 @@ void IndexThread::operator()(void)
 		}
 		else if(action==1)
 		{
+			if(backup_dirs.empty())
+			{
+				contractor->Write("no backup dirs");
+				continue;
+			}
 			//full backup
 			{
 				cd->deleteChangedDirs();
@@ -294,7 +317,8 @@ void IndexThread::operator()(void)
 		{
 			std::string scdir;
 			data.getStr(&scdir);
-			SCDirs *scd=getSCDir(Server->ConvertToUnicode(scdir));
+			std::wstring wscdir=Server->ConvertToUnicode(scdir);
+			SCDirs *scd=getSCDir(wscdir);
 
 			unsigned char fileserv;
 			bool hfs=data.getUChar(&fileserv);
@@ -308,23 +332,23 @@ void IndexThread::operator()(void)
 			{
 				if(scd->running==true)
 				{
-					Server->Log("Removing shadowcopy \""+scd->dir+"\" because of timeout...", LL_WARNING);
+					Server->Log(L"Removing shadowcopy \""+scd->dir+L"\" because of timeout...", LL_WARNING);
 					bool b=release_shadowcopy(*scd);
 					if(!b)
 					{
 #ifdef _WIN32
-						Server->Log("Deleting shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
+						Server->Log(L"Deleting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
 #endif
 					}
 				}
 
-				scd->dir=scdir;
+				scd->dir=wscdir;
 				scd->sccount=1;
 				scd->save_id=-1;
 				scd->starttime=Server->getTimeMS();
 				if(hfs && fileserv==0)
 				{
-					scd->target=Server->ConvertToUnicode(scd->dir);
+					scd->target=scd->dir;
 					scd->fileserv=false;
 				}
 				else
@@ -333,14 +357,14 @@ void IndexThread::operator()(void)
 					scd->fileserv=true;
 				}
 
-				Server->Log("Creating shadowcopy of \""+scd->dir+"\"...", LL_INFO);
+				Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\"...", LL_INFO);
 				bool b=start_shadowcopy(*scd);
 				Server->Log("done.", LL_INFO);
 				if(!b)
 				{
 					contractor->Write("failed");
 #ifdef _WIN32
-					Server->Log("Creating shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
+					Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
 #endif
 				}
 				else
@@ -378,7 +402,7 @@ void IndexThread::operator()(void)
 					{
 						contractor->Write("failed");
 #ifdef _WIN32
-						Server->Log("Deleting shadowcopy of \""+scd->dir+"\" failed.", LL_ERROR);
+						Server->Log(L"Deleting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
 #endif
 					}
 					else
@@ -438,6 +462,7 @@ void IndexThread::operator()(void)
 
 void IndexThread::indexDirs(void)
 {
+	readExcludePattern();
 	updateDirs();
 #ifdef _WIN32
 	cd->restoreSavedChangedDirs();
@@ -458,7 +483,7 @@ void IndexThread::indexDirs(void)
 		std::fstream outfile("urbackup/data/filelist_new.ub", std::ios::out|std::ios::binary);
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
-			SCDirs *scd=getSCDir(widen(backup_dirs[i].tname));
+			SCDirs *scd=getSCDir(backup_dirs[i].tname);
 			if(scd->running)
 			{
 				if(!release_shadowcopy(*scd))
@@ -475,14 +500,14 @@ void IndexThread::indexDirs(void)
 
 			std::wstring mod_path=backup_dirs[i].path;
 
-			Server->Log("Creating shadowcopy of \""+scd->dir+"\" in indexDirs()", LL_INFO);
+			Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_INFO);
 			bool onlyref;
 			bool b=start_shadowcopy(*scd, &onlyref);
 			Server->Log("done.", LL_INFO);
 			if(!b)
 			{
 #ifdef _WIN32
-				Server->Log("Creating shadowcopy of \""+scd->dir+"\" failed in indexDirs().", LL_ERROR);
+				Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
 #endif
 			}
 			else
@@ -507,11 +532,11 @@ void IndexThread::indexDirs(void)
 			}
 #endif
 
-			Server->Log("Indexing \""+backup_dirs[i].tname+"\"...", LL_INFO);
+			Server->Log(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_INFO);
 			index_c_db=0;
 			index_c_fs=0;
 			index_c_db_update=0;
-			outfile << "d\"" << backup_dirs[i].tname << "\"\n";
+			outfile << "d\"" << Server->ConvertToUTF8(backup_dirs[i].tname) << "\"\n";
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			initialCheck( backup_dirs[i].path, mod_path, outfile);
@@ -519,7 +544,7 @@ void IndexThread::indexDirs(void)
 			{
 				for(size_t k=0;k<backup_dirs.size();++k)
 				{
-					SCDirs *scd=getSCDir(widen(backup_dirs[k].tname));
+					SCDirs *scd=getSCDir(backup_dirs[k].tname);
 					release_shadowcopy(*scd);
 				}
 				
@@ -529,7 +554,7 @@ void IndexThread::indexDirs(void)
 			}
 			//db->EndTransaction();
 			outfile << "d\"..\"\n";
-			Server->Log("Indexing of \""+backup_dirs[i].tname+"\" done. "+nconvert(index_c_fs)+" filesystem lookups "+nconvert(index_c_db)+" db lookups and "+nconvert(index_c_db_update)+" db updates" , LL_INFO);
+			Server->Log(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);
 		}
 	}
 
@@ -576,6 +601,10 @@ void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	{
 		if( !files[i].isdir )
 		{
+			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(dir+os_file_sep()+files[i].name) )
+			{
+				continue;
+			}
 			outfile << "f\"" << Server->ConvertToUTF8(files[i].name) << "\" " << files[i].size << " " << files[i].last_modified << "\n";
 		}
 	}
@@ -584,6 +613,11 @@ void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	{
 		if( files[i].isdir )
 		{
+			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(dir+os_file_sep()+files[i].name) )
+			{
+				continue;
+			}
+
 			outfile << "d\"" << Server->ConvertToUTF8(files[i].name) << "\"\n";
 			initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, outfile);
 			outfile << "d\"..\"\n";
@@ -825,7 +859,7 @@ bool IndexThread::start_shadowcopy(SCDirs &dir, bool *onlyref)
 	tsc.path=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
 	tsc.orig_target=dir.orig_target;
 	tsc.filesrv=dir.fileserv;
-	tsc.tname=widen(dir.dir);
+	tsc.tname=dir.dir;
 	dir.save_id=cd->addShadowcopy(tsc);
 	dir.ref->save_id=dir.save_id;
 	dir.ref->ok=true;
@@ -951,7 +985,7 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 						Server->Log(L"Deleting shadowcopy for path \""+scs[i].path+L"\"", LL_INFO);
 						if(scs[i].filesrv)
 						{
-							filesrv->shareDir(wnarrow(scs[i].tname), scs[i].orig_target);
+							filesrv->shareDir(scs[i].tname, scs[i].orig_target);
 						}
 						LONG dels; 
 						GUID ndels; 
@@ -1123,4 +1157,39 @@ void IndexThread::execute_prebackup_hook(void)
 #ifdef _WIN32
 	system(Server->ConvertToUTF8(Server->getServerWorkingDir()+L"\\prefilebackup.bat").c_str());
 #endif
+}
+
+void IndexThread::readExcludePattern(void)
+{
+	ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+	exlude_dirs.clear();
+	if(curr_settings!=NULL)
+	{	
+		std::wstring val;
+		if(curr_settings->getValue(L"exclude_files", &val))
+		{
+			std::vector<std::wstring> toks;
+			Tokenize(val, toks, L";:");
+			exlude_dirs=toks;
+		}
+		Server->destroy(curr_settings);
+	}
+}
+
+bool amatch(const wchar_t *str, const wchar_t *p);
+
+bool IndexThread::isExcluded(const std::wstring &path)
+{
+	for(size_t i=0;i<exlude_dirs.size();++i)
+	{
+		if(!exlude_dirs[i].empty())
+		{
+			bool b=amatch(path.c_str(), exlude_dirs[i].c_str());
+			if(b)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
