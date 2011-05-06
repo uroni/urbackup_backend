@@ -778,7 +778,7 @@ void	Tokenize(std::wstring& str, std::vector<std::wstring> &tokens, std::wstring
 	    ++pos1;
 		// added for ini-file!
 		// increase by length of seps
-		pos0+=(s32)seps.size();
+		++pos0;
 	}
 	  
 	// loop through all tokens and check for empty tokens which may result
