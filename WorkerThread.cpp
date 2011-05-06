@@ -111,9 +111,17 @@ void CWorkerThread::operator()()
 					Server->Log("Incoming data: "+lbuf, LL_INFO);
 #endif
 					client->lock();
-					client->getFCGIProtocolDriver()->process_input(buffer, rc);
+					try
+					{
+						client->getFCGIProtocolDriver()->process_input(buffer, rc);
+					}catch(...){}
 					
-					FCGIRequest* req=client->getFCGIProtocolDriver()->get_request();
+					FCGIRequest* req=NULL;
+					try
+					{
+						req=client->getFCGIProtocolDriver()->get_request();
+					}catch(...){}
+
 					client->unlock();
 
 					if( req!=NULL )
