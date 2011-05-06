@@ -768,6 +768,9 @@ function show_settings2(data)
 			data.settings.update_freq_image_full/=60*60*24;
 			data.settings.startup_backup_delay/=60;
 			
+			data.settings.no_compname_start="<!--";
+			data.settings.no_compname_end="-->";
+			
 			data.settings.client_plural="s";
 			
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
@@ -792,6 +795,9 @@ function show_settings2(data)
 			data.settings.update_freq_image_incr/=60*60*24;
 			data.settings.update_freq_image_full/=60*60*24;
 			data.settings.startup_backup_delay/=60;
+			
+			data.settings.no_compname_start="";
+			data.settings.no_compname_end="";
 						
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
 			ndata+=tmpls.settings_user.evaluate(data.settings);
@@ -875,6 +881,7 @@ function show_settings2(data)
 function getPar(p)
 {
 	var obj=I(p);
+	if(!obj) return "";
 	if(obj.type=="checkbox" )
 	{
 		return "&"+p+"="+(obj.checked?"true":"false");
@@ -883,7 +890,7 @@ function getPar(p)
 	if(p=="update_freq_incr") val*=60*60;
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr") val*=60*60*24;
 	if(p=="startup_backup_delay") val*=60;
-	return "&"+p+"="+(val+"").replace(/\//g,"%2F");
+	return "&"+p+"="+encodeURIComponent(val+"");
 }
 
 g.settings_list=[
@@ -901,7 +908,9 @@ g.settings_list=[
 "max_image_full",
 "allow_overwrite",
 "startup_backup_delay",
-"backup_window"
+"backup_window",
+"computername",
+"exclude_files"
 ];
 
 function validateCommonSettings()
@@ -977,6 +986,11 @@ function saveClientSettings(clientid, skip)
 	pars+=getPar("overwrite");
 	if(!skip)
 	{
+		if(!validate_text_nonempty(["computername"]) )
+		{
+			stopLoading();
+			return;
+		}
 		if(!validateCommonSettings())
 		{
 			stopLoading();

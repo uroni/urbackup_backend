@@ -28,6 +28,8 @@ struct SSettings
 	int max_sim_backups;
 	int max_active_clients;
 	std::string backup_window;
+	std::wstring computername;
+	std::wstring exclude_files;
 };
 
 struct STimeSpan

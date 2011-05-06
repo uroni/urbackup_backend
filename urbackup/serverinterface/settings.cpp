@@ -40,6 +40,8 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("allow_overwrite", settings.getSettings()->allow_overwrite);
 	ret.set("startup_backup_delay", settings.getSettings()->startup_backup_delay);
 	ret.set("backup_window", settings.getSettings()->backup_window);
+	ret.set("computername", settings.getSettings()->computername);
+	ret.set("exclude_files", settings.getSettings()->exclude_files);
 	return ret;
 }
 

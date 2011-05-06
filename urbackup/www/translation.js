@@ -68,6 +68,7 @@ translations.en={
 "validate_name_max_active_clients": "max number of recently active clients",
 "validate_name_max_sim_backups": "max number of simultaneous backups",
 "validate_name_backupfolder": "backup storage path",
+"validate_name_computername": "computer name",
 "too_many_clients_err": "Too many clients"
 }
 translations.de={
@@ -230,5 +231,8 @@ translations.de={
 "validate_name_max_active_clients": "Maximale Anzahl aktiver Clients",
 "validate_name_max_sim_backups": "Maximale Anzahl simultaner Backups",
 "validate_name_backupfolder": "Speicherort für Backups",
-"too_many_clients_err": "Zu viele clients"
+"too_many_clients_err": "Zu viele clients",
+"validate_name_computername": "Computername",
+"tExcluded files (with wildcards)": "Ausgeschlossene Dateien (mit Wildcards):",
+"tComputer name": "Computername"
 }

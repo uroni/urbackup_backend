@@ -51,6 +51,16 @@
 <td>#{tBackup window}</td>
 <td><input type="text" id="backup_window" value="#{backup_window}"/> <a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
 </tr>
+#{no_compname_start}
+<tr>
+<td>#{tComputer name}</td>
+<td><input type="text" id="computername" value="#{computername}"/></td>
+</tr>
+<tr>
+#{no_compname_end}
+<td>#{tExcluded files (with wildcards)}</td>
+<td><input type="text" id="exclude_files" value="#{exclude_files}"/></td>
+</tr>
 <tr>
 <td>#{tAllow client to change settings}</td>
 <td><input type="checkbox" id="allow_overwrite" #{allow_overwrite}/></td>

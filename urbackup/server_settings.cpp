@@ -36,6 +36,8 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"max_image_full");
 	ret.push_back(L"startup_backup_delay");
 	ret.push_back(L"backup_window");
+	ret.push_back(L"exclude_files");
+	ret.push_back(L"computername");
 	return ret;
 }
 
@@ -154,6 +156,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.backup_window=settings_default->getValue("backup_window", "1-7/0-24");
 	settings.max_active_clients=settings_default->getValue("max_active_clients", 100);
 	settings.max_sim_backups=settings_default->getValue("max_sim_backups", 10);
+	settings.exclude_files=settings_default->getValue(L"exclude_files", L"");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -206,6 +209,12 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("backup_window", "");
 	if(!stmp.empty())
 		settings.backup_window=stmp;
+	std::wstring swtmp=settings_client->getValue(L"computername", L"");
+	if(!swtmp.empty())
+		settings.computername=swtmp;
+	swtmp=settings_client->getValue(L"exclude_files", L"");
+	if(!swtmp.empty())
+		settings.exclude_files=swtmp;
 
 	stmp=settings_client->getValue("overwrite", "");
 	if(!stmp.empty())
