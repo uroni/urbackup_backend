@@ -25,9 +25,15 @@ IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
 bool FileServ::pause=false;
 
-FileServ::FileServ(bool *pDostop)
+FileServ::FileServ(bool *pDostop, const std::wstring &servername, THREADPOOL_TICKET serverticket)
+	: servername(servername), serverticket(serverticket)
 {
 	dostop=pDostop;
+}
+
+FileServ::~FileServ(void)
+{
+	delete dostop;
 }
 
 void FileServ::shareDir(const std::wstring &name, const std::wstring &path)
@@ -42,7 +48,8 @@ void FileServ::removeDir(const std::wstring &name)
 
 void FileServ::stopServer(void)
 {
-	*dostop=true;	
+	*dostop=true;
+	Server->getThreadPool()->waitFor(serverticket);
 }
 
 std::wstring FileServ::getShareDir(const std::wstring &name)
@@ -87,4 +94,9 @@ bool FileServ::getPause(void)
 bool FileServ::isPause(void)
 {
 	return pause;
+}
+
+std::wstring FileServ::getServerName(void)
+{
+	return servername;
 }

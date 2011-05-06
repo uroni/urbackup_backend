@@ -34,11 +34,19 @@
 CTCPFileServ::CTCPFileServ(void)
 {
 	udpthread=NULL;
+	udpticket=ILLEGAL_THREADPOOL_TICKET;
 }
 
 CTCPFileServ::~CTCPFileServ(void)
 {
-	udpthread->stop();
+	if(udpthread!=NULL)
+	{
+		udpthread->stop();
+		if(udpticket!=ILLEGAL_THREADPOOL_TICKET)
+		{
+			Server->getThreadPool()->waitFor(udpticket);
+		}
+	}
 	closesocket(mSocket);
 }
 
@@ -159,7 +167,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 		udpthread=new CUDPThread(udpport,pServername);
 		if(!udpthread->hasError())
 		{
-			Server->createThread(udpthread);
+			udpticket=Server->getThreadPool()->execute(udpthread);
 		}
 		else
 		{

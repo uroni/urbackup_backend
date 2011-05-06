@@ -26,7 +26,7 @@ private:
 	void startClients(FileClient &fc);
 	void removeAllClients(void);
 
-	std::map<std::string, SClient> clients;
+	std::map<std::wstring, SClient> clients;
 
 	IQuery *q_get_extra_hostnames;
 	IQuery *q_update_extra_ip;

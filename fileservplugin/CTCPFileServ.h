@@ -11,6 +11,7 @@ class CUDPThread;
 #include "socket_header.h"
 
 #include "CriticalSection.h"
+#include "../Interface/ThreadPool.h"
 
 class CTCPFileServ
 {
@@ -38,6 +39,8 @@ private:
 	CriticalSection cs;
 	_u16 m_tcpport;
 	_u16 m_udpport;
+
+	THREADPOOL_TICKET udpticket;
 };
 
 extern CTCPFileServ *TCPServer;

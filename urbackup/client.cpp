@@ -98,6 +98,7 @@ void IdleCheckerThread::setPause(bool b)
 IMutex *IndexThread::filelist_mutex=NULL;
 IPipe* IndexThread::msgpipe=NULL;
 IFileServ *IndexThread::filesrv=NULL;
+IMutex *IndexThread::filesrv_mutex=NULL;
 
 IndexThread::IndexThread(void)
 {
@@ -105,6 +106,8 @@ IndexThread::IndexThread(void)
 		filelist_mutex=Server->createMutex();
 	if(msgpipe==NULL)
 		msgpipe=Server->createMemoryPipe();
+	if(filesrv_mutex==NULL)
+		filesrv_mutex=Server->createMutex();
 
 	contractor=NULL;
 
@@ -158,29 +161,7 @@ void IndexThread::operator()(void)
 
 	if(Server->getPlugin(Server->getThreadID(), filesrv_pluginid))
 	{
-		std::wstring name;
-		if(Server->getServerParameter("restore_mode")=="true")
-		{
-			name=L"##restore##"+convert(Server->getTimeSeconds())+convert(rand()%10000);
-		}
-		else
-		{
-			ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
-			if(curr_settings!=NULL)
-			{
-				std::wstring val;
-				if(curr_settings->getValue(L"computername", &val))
-				{
-					name=val;
-				}
-				Server->destroy(curr_settings);
-			}
-		}
-		filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(tcpport, udpport, name);
-		filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
-
-		ServerIdentityMgr::setFileServ(filesrv);
-		ServerIdentityMgr::loadServerIdentities();
+		start_filesrv();
 	}
 	else
 	{
@@ -222,6 +203,7 @@ void IndexThread::operator()(void)
 		if(action==0)
 		{
 			//incr backup
+			readBackupDirs();
 			if(backup_dirs.empty())
 			{
 				contractor->Write("no backup dirs");
@@ -287,6 +269,7 @@ void IndexThread::operator()(void)
 		}
 		else if(action==1)
 		{
+			readBackupDirs();
 			if(backup_dirs.empty())
 			{
 				contractor->Write("no backup dirs");
@@ -457,6 +440,13 @@ void IndexThread::operator()(void)
 			stop_index=false;
 		}
 #endif
+		else if(action==7) // restart filesrv
+		{
+			IScopedLock lock(filesrv_mutex);
+			filesrv->stopServer();
+			start_filesrv();
+			readBackupDirs();
+		}
 	}
 }
 
@@ -1149,6 +1139,7 @@ SCDirs* IndexThread::getSCDir(const std::wstring path)
 
 IFileServ *IndexThread::getFileSrv(void)
 {
+	IScopedLock lock(filesrv_mutex);
 	return filesrv;
 }
 
@@ -1192,4 +1183,31 @@ bool IndexThread::isExcluded(const std::wstring &path)
 		}
 	}
 	return false;
+}
+
+void IndexThread::start_filesrv(void)
+{
+	std::wstring name;
+	if(Server->getServerParameter("restore_mode")=="true")
+	{
+		name=L"##restore##"+convert(Server->getTimeSeconds())+convert(rand()%10000);
+	}
+	else
+	{
+		ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+		if(curr_settings!=NULL)
+		{
+			std::wstring val;
+			if(curr_settings->getValue(L"computername", &val))
+			{
+				name=val;
+			}
+			Server->destroy(curr_settings);
+		}
+	}
+	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(tcpport, udpport, name);
+	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
+
+	ServerIdentityMgr::setFileServ(filesrv);
+	ServerIdentityMgr::loadServerIdentities();
 }

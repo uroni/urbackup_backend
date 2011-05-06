@@ -117,12 +117,15 @@ private:
 
 	void execute_prebackup_hook(void);
 
+	void start_filesrv(void);
+
 
 	std::vector<SBackupDir> backup_dirs;
 
 	std::vector<std::wstring> changed_dirs;
 
 	static IMutex *filelist_mutex;
+	static IMutex *filesrv_mutex;
 
 	static IPipe* msgpipe;
 

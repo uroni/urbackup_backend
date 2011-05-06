@@ -1486,6 +1486,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 			std::wstring nv;
 			if(new_settings->getValue(key, &nv) )
 			{
+				
 				toadd+=key+L"="+nv+L"\n";
 				mod=true;
 			}
@@ -1521,6 +1522,16 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 void ClientConnector::replaceSettings(const std::string &pData)
 {
+	ISettingsReader *new_settings=Server->createMemorySettingsReader(pData);
+	std::wstring ncname=new_settings->getValue(L"computername", L"");
+	if(!ncname.empty() && ncname!=IndexThread::getFileSrv()->getServerName())
+	{
+		CWData data;
+		data.addChar(7);
+		data.addVoidPtr(NULL);
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+	}
+	Server->destroy(new_settings);
 	IFile *sf=Server->openFile("urbackup/data/settings.cfg", MODE_WRITE);
 	if(sf==NULL)
 	{

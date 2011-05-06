@@ -24,7 +24,7 @@
 #include <time.h>
 
 IMutex *ServerStatus::mutex=NULL;
-std::map<std::string, SStatus> ServerStatus::status;
+std::map<std::wstring, SStatus> ServerStatus::status;
 unsigned int ServerStatus::last_status_update;
 
 const unsigned int inactive_time_const=30*60*1000;
@@ -58,7 +58,7 @@ void ServerStatus::updateActive(void)
 	last_status_update=Server->getTimeMS();
 }
 
-void ServerStatus::setOnline(const std::string &clientname, bool bonline)
+void ServerStatus::setOnline(const std::wstring &clientname, bool bonline)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
@@ -76,7 +76,7 @@ void ServerStatus::setOnline(const std::string &clientname, bool bonline)
 	}
 }
 
-void ServerStatus::setROnline(const std::string &clientname, bool bonline)
+void ServerStatus::setROnline(const std::wstring &clientname, bool bonline)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
@@ -87,28 +87,28 @@ void ServerStatus::setROnline(const std::string &clientname, bool bonline)
 	}
 }
 
-void ServerStatus::setDone(const std::string &clientname, bool bdone)
+void ServerStatus::setDone(const std::wstring &clientname, bool bdone)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->done=bdone;
 }
 
-void ServerStatus::setIP(const std::string &clientname, unsigned int ip)
+void ServerStatus::setIP(const std::wstring &clientname, unsigned int ip)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->ip_addr=ip;
 }
 
-void ServerStatus::setWrongIdent(const std::string &clientname, bool b)
+void ServerStatus::setWrongIdent(const std::wstring &clientname, bool b)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->wrong_ident=b;
 }
 
-void ServerStatus::setTooManyClients(const std::string &clientname, bool b)
+void ServerStatus::setTooManyClients(const std::wstring &clientname, bool b)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
@@ -119,17 +119,17 @@ std::vector<SStatus> ServerStatus::getStatus(void)
 {
 	IScopedLock lock(mutex);
 	std::vector<SStatus> ret;
-	for(std::map<std::string, SStatus>::iterator it=status.begin();it!=status.end();++it)
+	for(std::map<std::wstring, SStatus>::iterator it=status.begin();it!=status.end();++it)
 	{
 		ret.push_back(it->second);
 	}
 	return ret;
 }
 
-SStatus ServerStatus::getStatus(const std::string &clientname)
+SStatus ServerStatus::getStatus(const std::wstring &clientname)
 {
 	IScopedLock lock(mutex);
-	std::map<std::string, SStatus>::iterator iter=status.find(clientname);
+	std::map<std::wstring, SStatus>::iterator iter=status.find(clientname);
 	if(iter!=status.end())
 		return iter->second;
 	else
@@ -162,7 +162,7 @@ ACTION_IMPL(server_status)
 		if(status[i].done==false)
 		{
 			ITable *tab=tmpl->getTable(L"CLIENTS."+convert(i));
-			tab->addString(L"NAME", widen(status[i].client) );
+			tab->addString(L"NAME", status[i].client );
 			if(status[i].has_status)
 			{
 				tab->addString(L"PCDONE", convert(status[i].pcdone) );

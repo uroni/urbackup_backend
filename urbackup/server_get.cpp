@@ -57,7 +57,7 @@ const unsigned int curr_image_version=1;
 int BackupServerGet::running_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
 
-BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::string &pName)
+BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -130,7 +130,7 @@ void BackupServerGet::operator ()(void)
 		if(!b)
 		{
 			pipe->Write("ok");
-			Server->Log("server_get Thread for client "+clientname+" finished, because the identity was not recognized", LL_INFO);
+			Server->Log(L"server_get Thread for client "+clientname+L" finished, because the identity was not recognized", LL_INFO);
 
 			ServerStatus::setWrongIdent(clientname, true);
 			ServerLogger::reset(clientid);
@@ -139,7 +139,7 @@ void BackupServerGet::operator ()(void)
 		}
 	}
 
-	if( clientname.find("##restore##")==0 )
+	if( clientname.find(L"##restore##")==0 )
 	{
 		ServerChannelThread channel_thread(this, getClientaddr());
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
@@ -156,7 +156,7 @@ void BackupServerGet::operator ()(void)
 		Server->getThreadPool()->waitFor(channel_thread_id);
 
 		pipe->Write("ok");
-		Server->Log("server_get Thread for client "+clientname+" finished, restore thread");
+		Server->Log(L"server_get Thread for client "+clientname+L" finished, restore thread");
 		delete this;
 		return;
 	}
@@ -171,7 +171,7 @@ void BackupServerGet::operator ()(void)
 	if(clientid==-1)
 	{
 		pipe->Write("ok");
-		Server->Log("server_get Thread for client "+clientname+" finished, because there were too many clients", LL_INFO);
+		Server->Log(L"server_get Thread for client "+clientname+L" finished, because there were too many clients", LL_INFO);
 
 		ServerStatus::setTooManyClients(clientname, true);
 		ServerLogger::reset(clientid);
@@ -186,9 +186,9 @@ void BackupServerGet::operator ()(void)
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	if(!os_create_dir(os_file_prefix()+backupfolder+os_file_sep()+widen(clientname)) && !os_directory_exists(os_file_prefix()+backupfolder+os_file_sep()+widen(clientname)) )
+	if(!os_create_dir(os_file_prefix()+backupfolder+os_file_sep()+clientname) && !os_directory_exists(os_file_prefix()+backupfolder+os_file_sep()+clientname) )
 	{
-		Server->Log("Could not create or read directory for client \""+clientname+"\"", LL_ERROR);
+		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
 		pipe->Write("ok");
 		delete server_settings;
 		delete this;
@@ -401,7 +401,7 @@ void BackupServerGet::operator ()(void)
 			unsigned int ptime=Server->getTimeMS()-ttime;
 			if(hbu && !has_error)
 			{
-				ServerLogger::Log(clientid, "Time taken for backing up client "+clientname+": "+nconvert(ptime), LL_INFO);
+				ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+convert(ptime), LL_INFO);
 				if(!r_success)
 				{
 					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
@@ -417,7 +417,7 @@ void BackupServerGet::operator ()(void)
 
 			if( r_image )
 			{
-				ServerLogger::Log(clientid, "Time taken for creating image of client "+clientname+": "+nconvert(ptime), LL_INFO);
+				ServerLogger::Log(clientid, L"Time taken for creating image of client "+clientname+L": "+convert(ptime), LL_INFO);
 				if(!r_success)
 				{
 					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
@@ -507,7 +507,7 @@ void BackupServerGet::operator ()(void)
 	Server->destroy(settings_client);
 	delete server_settings;
 	pipe->Write("ok");
-	Server->Log("server_get Thread for client "+clientname+" finished");
+	Server->Log(L"server_get Thread for client "+clientname+L" finished");
 
 	delete this;
 }
@@ -571,7 +571,7 @@ int BackupServerGet::getClientID(void)
 		}
 		else
 		{
-			Server->Log("Too many clients. Didn't accept client '"+clientname+"'", LL_INFO);
+			Server->Log(L"Too many clients. Didn't accept client '"+clientname+L"'", LL_INFO);
 			return -1;
 		}
 	}
@@ -780,7 +780,7 @@ bool BackupServerGet::request_filelist_construct(bool full)
 	IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
 	if(cc==NULL)
 	{
-		ServerLogger::Log(clientid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
 		return false;
 	}
 
@@ -796,7 +796,7 @@ bool BackupServerGet::request_filelist_construct(bool full)
 		size_t rc=cc->Read(&ret, full_backup_construct_timeout);
 		if(rc==0)
 		{
-			ServerLogger::Log(clientid, "Constructing of filelist of \""+clientname+"\" failed - TIMEOUT(1)", LL_ERROR);
+			ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
 			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
@@ -809,7 +809,7 @@ bool BackupServerGet::request_filelist_construct(bool full)
 			delete [] pck;
 			if(ret!="DONE")
 			{
-				ServerLogger::Log(clientid, "Constructing of filelist of \""+clientname+"\" failed: "+ret, LL_ERROR);
+				ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
 				break;
 			}
 			else
@@ -837,7 +837,7 @@ bool BackupServerGet::doFullBackup(void)
 	_u32 rc=fc.Connect(&addr);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(clientid, "Full Backup of "+clientname+" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(clientid, L"Full Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
 		has_error=true;
 		return false;
 	}
@@ -847,7 +847,7 @@ bool BackupServerGet::doFullBackup(void)
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, "Error getting filelist of "+clientname+". Errorcode: "+nconvert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
 		has_error=true;
 		return false;
 	}
@@ -862,7 +862,7 @@ bool BackupServerGet::doFullBackup(void)
 
 	if(clientlist==NULL )
 	{
-		ServerLogger::Log(clientid, "Error creating clientlist for client "+clientname, LL_ERROR);
+		ServerLogger::Log(clientid, L"Error creating clientlist for client "+clientname, LL_ERROR);
 		has_error=true;
 		return false;
 	}
@@ -951,7 +951,7 @@ bool BackupServerGet::doFullBackup(void)
 					bool b=load_file(cf.name, curr_path, fc);
 					if(!b)
 					{
-						ServerLogger::Log(clientid, "Client "+clientname+" went offline.", LL_ERROR);
+						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 						r_done=true;
 						break;
 					}
@@ -966,7 +966,7 @@ bool BackupServerGet::doFullBackup(void)
 	if(r_done==false && c_has_error==false)
 	{
 		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-		std::wstring currdir=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+L"current";
+		std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
 		Server->deleteFile(os_file_prefix()+currdir);
 		os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 
@@ -975,7 +975,7 @@ bool BackupServerGet::doFullBackup(void)
 		{
 			Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 		}
-		currdir+=os_file_sep()+widen(clientname);
+		currdir+=os_file_sep()+clientname;
 		Server->deleteFile(os_file_prefix()+currdir);
 		os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 	}
@@ -1013,7 +1013,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr
 	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+widen(clientname)+L". Errorcode: "+convert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
 		std::wstring temp_fn=fd->getFilenameW();
 		Server->destroy(fd);
 		Server->deleteFile(temp_fn);
@@ -1128,28 +1128,28 @@ bool BackupServerGet::doIncrBackup(void)
 		return false;
 	}
 
-	Server->Log(clientname+": Connecting to client...", LL_DEBUG);
+	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
 	FileClient fc;
 	sockaddr_in addr=getClientaddr();
 	_u32 rc=fc.Connect(&addr);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(clientid, "Incremental Backup of "+clientname+" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
 		has_error=true;
 		return false;
 	}
 	
-	Server->Log(clientname+": Loading filelist...", LL_DEBUG);
+	Server->Log(clientname+L": Loading filelist...", LL_DEBUG);
 	IFile *tmp=Server->openTemporaryFile();
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, "Error getting filelist of "+clientname+". Errorcode: "+nconvert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
 		has_error=true;
 		return false;
 	}
 	
-	Server->Log(clientname+" Starting incremental backup...", LL_DEBUG);
+	Server->Log(clientname+L" Starting incremental backup...", LL_DEBUG);
 
 	SBackup last=getLastIncremental();
 	if(last.incremental==-2)
@@ -1161,12 +1161,12 @@ bool BackupServerGet::doIncrBackup(void)
 	backupid=createBackupSQL(last.incremental+1, clientid, backuppath_single);
 
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	std::wstring last_backuppath=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+last.path;
+	std::wstring last_backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path;
 
 	std::wstring tmpfilename=tmp->getFilenameW();
 	Server->destroy(tmp);
 
-	Server->Log(clientname+": Calculating file tree differences...", LL_DEBUG);
+	Server->Log(clientname+L": Calculating file tree differences...", LL_DEBUG);
 	bool error=false;
 	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error);
 	if(error)
@@ -1199,7 +1199,7 @@ bool BackupServerGet::doIncrBackup(void)
 	_i64 filelist_currpos=0;
 	int indir_currdepth=0;
 	
-	Server->Log(clientname+": Calculating tree difference size...", LL_DEBUG);
+	Server->Log(clientname+L": Calculating tree difference size...", LL_DEBUG);
 	_i64 files_size=getIncrementalSize(tmp, diffs);
 	tmp->Seek(0);
 	_i64 transferred=0;
@@ -1207,7 +1207,7 @@ bool BackupServerGet::doIncrBackup(void)
 	unsigned int laststatsupdate=0;
 	ServerStatus::setServerStatus(status, true);
 	
-	Server->Log(clientname+": Linking unchanged and loading new files...", LL_DEBUG);
+	Server->Log(clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
 	
 	bool c_has_error=false;
 
@@ -1311,7 +1311,7 @@ bool BackupServerGet::doIncrBackup(void)
 							bool b=load_file(cf.name, curr_path, fc);
 							if(!b)
 							{
-								ServerLogger::Log(clientid, "Client "+clientname+" went offline.", LL_ERROR);
+								ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 								r_offline=true;
 							}
 							else
@@ -1356,7 +1356,7 @@ bool BackupServerGet::doIncrBackup(void)
 								bool b2=load_file(cf.name, curr_path, fc);
 								if(!b2)
 								{
-									ServerLogger::Log(clientid, "Client "+clientname+" went offline.", LL_ERROR);
+									ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 									r_offline=true;
 									f_ok=false;
 								}
@@ -1423,7 +1423,7 @@ bool BackupServerGet::doIncrBackup(void)
 			Server->Log("Creating symbolic links. -1", LL_DEBUG);
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-			std::wstring currdir=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+L"current";
+			std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
 			Server->deleteFile(os_file_prefix()+currdir);
 			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 
@@ -1434,7 +1434,7 @@ bool BackupServerGet::doIncrBackup(void)
 			{
 				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
-			currdir+=os_file_sep()+widen(clientname);
+			currdir+=os_file_sep()+clientname;
 			Server->deleteFile(os_file_prefix()+currdir);
 			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
 
@@ -1508,7 +1508,7 @@ bool BackupServerGet::constructBackupPath(void)
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
 	backuppath_single=widen((std::string)buffer);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	backuppath=backupfolder+os_file_sep()+widen(clientname)+os_file_sep()+backuppath_single;
+	backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single;
 	return os_create_dir(os_file_prefix()+backuppath);	
 }
 
@@ -1525,7 +1525,7 @@ std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
 	char buffer[500];
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
 	std::wstring backupfolder_uncompr=server_settings->getSettings()->backupfolder_uncompr;
-	return backupfolder_uncompr+os_file_sep()+widen(clientname)+os_file_sep()+L"Image_"+letter+L"_"+widen((std::string)buffer)+L".vhd";
+	return backupfolder_uncompr+os_file_sep()+clientname+os_file_sep()+L"Image_"+letter+L"_"+widen((std::string)buffer)+L".vhd";
 }
 
 void BackupServerGet::updateLastBackup(void)
@@ -1549,9 +1549,9 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
+			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
 		else
-			Server->Log("Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_DEBUG);
+			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_DEBUG);
 		return "";
 	}
 
@@ -1596,9 +1596,9 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
+			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
 		else
-			Server->Log("Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_DEBUG);
+			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_DEBUG);
 		return false;
 	}
 
@@ -1658,12 +1658,12 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 
 void BackupServerGet::start_shadowcopy(const std::string &path)
 {
-	sendClientMessage("START SC \""+path+"\"", "DONE", L"Activating shadow copy on \""+widen(clientname)+L"\" failed", shadow_copy_timeout);
+	sendClientMessage("START SC \""+path+"\"", "DONE", L"Activating shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
 }
 
 void BackupServerGet::stop_shadowcopy(const std::string &path)
 {
-	sendClientMessage("STOP SC \""+path+"\"", "DONE", L"Removing shadow copy on \""+widen(clientname)+L"\" failed", shadow_copy_timeout);
+	sendClientMessage("STOP SC \""+path+"\"", "DONE", L"Removing shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
 }
 
 void BackupServerGet::notifyClientBackupSuccessfull(void)
@@ -1710,7 +1710,7 @@ bool BackupServerGet::getClientSettings(void)
 	_u32 rc=fc.Connect(&addr);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(clientid, "Getting Client settings of "+clientname+" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(clientid, L"Getting Client settings of "+clientname+L" failed - CONNECT error", LL_ERROR);
 		return false;
 	}
 	
@@ -1723,7 +1723,7 @@ bool BackupServerGet::getClientSettings(void)
 	rc=fc.GetFile("urbackup/settings.cfg", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, "Error getting Client settings of "+clientname+". Errorcode: "+nconvert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting Client settings of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
 		return false;
 	}
 
@@ -1883,7 +1883,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 	IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
 	if(cc==NULL)
 	{
-		ServerLogger::Log(clientid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
 		return false;
 	}
 
@@ -2786,7 +2786,7 @@ void BackupServerGet::checkClientVersion(void)
 			IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
 			if(cc==NULL)
 			{
-				ServerLogger::Log(clientid, "Connecting to ClientService of \""+clientname+"\" failed - CONNECT error", LL_ERROR);
+				ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
 				return;
 			}
 

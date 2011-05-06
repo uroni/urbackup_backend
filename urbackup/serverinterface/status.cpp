@@ -124,7 +124,7 @@ ACTION_IMPL(status)
 			bool online=false;
 			for(size_t j=0;j<client_status.size();++j)
 			{
-				if(client_status[j].client==wnarrow(clientname))
+				if(client_status[j].client==clientname)
 				{
 					if(client_status[j].r_online==true)
 					{
@@ -170,7 +170,7 @@ ACTION_IMPL(status)
 				bool found=false;
 				for(size_t j=0;j<res.size();++j)
 				{
-					if(wnarrow(res[j][L"name"])==client_status[i].client)
+					if(res[j][L"name"]==client_status[i].client)
 					{
 						found=true;
 						break;

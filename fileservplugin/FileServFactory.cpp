@@ -56,7 +56,12 @@ IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned sho
 	bool *dostop=new bool;
 	*dostop=false;
 	ExecThread *et=new ExecThread(tcpport, udpport, name, dostop);
-	Server->createThread(et);
-	FileServ *fs=new FileServ(dostop);
+	THREADPOOL_TICKET t=Server->getThreadPool()->execute(et);
+	FileServ *fs=new FileServ(dostop, name, t);
 	return fs;
+}
+
+void FileServFactory::destroyFileServ(IFileServ *filesrv)
+{
+	delete ((FileServ*)filesrv);
 }

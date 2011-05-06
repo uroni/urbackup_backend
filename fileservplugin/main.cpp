@@ -434,8 +434,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #if EXPORT_METHOD_INT
 		if(*pDostop==true)
 		{
+			TCPServer->KickClients();
 			break;
-			delete pDostop;
 		}
 #endif
 	}

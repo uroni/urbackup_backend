@@ -133,7 +133,7 @@ std::vector<sockaddr_in> FileClient::getServers(void)
         return servers;
 }
 
-std::vector<std::string> FileClient::getServerNames(void)
+std::vector<std::wstring> FileClient::getServerNames(void)
 {
         return servernames;
 }
@@ -271,7 +271,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
                                         sn.resize(err-2);
                                         memcpy((char*)sn.c_str(), &buffer[2], err-2);
 
-                                        servernames.push_back(sn);
+										servernames.push_back(Server->ConvertToUnicode(sn));
                                 }
                                 else
                                 {

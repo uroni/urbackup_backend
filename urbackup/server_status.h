@@ -21,7 +21,7 @@ enum SStatusAction
 struct SStatus
 {
 	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1; prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false; wrong_ident=false;too_many_clients=false; }
-	std::string client;
+	std::wstring client;
 	int clientid;
 	unsigned int starttime;
 	int pcdone;
@@ -42,23 +42,23 @@ class ServerStatus
 {
 public:
 	static void setServerStatus(const SStatus &pStatus, bool setactive=true);
-	static void setOnline(const std::string &clientname, bool bonline);
-	static void setDone(const std::string &clientname, bool bdone);
-	static void setROnline(const std::string &clientname, bool bonline);
-	static void setIP(const std::string &clientname, unsigned int ip);
-	static void setWrongIdent(const std::string &clientname, bool b);
-	static void setTooManyClients(const std::string &clientname, bool b);
+	static void setOnline(const std::wstring &clientname, bool bonline);
+	static void setDone(const std::wstring &clientname, bool bdone);
+	static void setROnline(const std::wstring &clientname, bool bonline);
+	static void setIP(const std::wstring &clientname, unsigned int ip);
+	static void setWrongIdent(const std::wstring &clientname, bool b);
+	static void setTooManyClients(const std::wstring &clientname, bool b);
 
 	static void init_mutex(void);
 
 	static std::vector<SStatus> getStatus(void);
-	static SStatus getStatus(const std::string &clientname);
+	static SStatus getStatus(const std::wstring &clientname);
 
 	static bool isActive(void);
 	static void updateActive(void);
 
 private:
-	static std::map<std::string, SStatus> status;
+	static std::map<std::wstring, SStatus> status;
 	static IMutex *mutex;
 	static unsigned int last_status_update;
 };

@@ -1,14 +1,17 @@
 #include "IFileServ.h"
 #include "../Interface/Mutex.h"
+#include "../Interface/ThreadPool.h"
 #include <vector>
 
 class FileServ : public IFileServ
 {
 public:
-	FileServ(bool *pDostop);
+	FileServ(bool *pDostop, const std::wstring &servername, THREADPOOL_TICKET serverticket);
+	~FileServ(void);
 	void shareDir(const std::wstring &name, const std::wstring &path);
 	void removeDir(const std::wstring &name);
 	void stopServer(void);
+	std::wstring getServerName(void);
 	std::wstring getShareDir(const std::wstring &name);
 	void addIdentity(const std::string &pIdentity);
 	void setPause(bool b);
@@ -22,6 +25,8 @@ public:
 
 private:
 	bool *dostop;
+	THREADPOOL_TICKET serverticket;
+	std::wstring servername;
 
 	static std::vector<std::string> identities;
 	static bool pause;

@@ -33,7 +33,7 @@ public:
 		_u32 GetServers(bool start, const std::vector<in_addr> &addr_hints);
         std::vector<sockaddr_in> getServers(void);
         std::vector<sockaddr_in> getWrongVersionServers(void);
-        std::vector<std::string> getServerNames(void);
+        std::vector<std::wstring> getServerNames(void);
         _u32 getLocalIP(void);
         void setServerName(std::string pName);
         std::string getServerName(void);
@@ -72,7 +72,7 @@ private:
 
         std::vector<sockaddr_in> servers;
         std::vector<sockaddr_in> wvservers;
-        std::vector<std::string> servernames;
+        std::vector<std::wstring> servernames;
         std::vector<std::string> games;
 
         CTCPStack stack;

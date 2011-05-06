@@ -113,15 +113,15 @@ void BackupServer::findClients(FileClient &fc)
 
 void BackupServer::startClients(FileClient &fc)
 {
-	std::vector<std::string> names=fc.getServerNames();
+	std::vector<std::wstring> names=fc.getServerNames();
 	std::vector<sockaddr_in> servers=fc.getServers();
 
 	for(size_t i=0;i<names.size();++i)
 	{
-		std::map<std::string, SClient>::iterator it=clients.find(names[i]);
+		std::map<std::wstring, SClient>::iterator it=clients.find(names[i]);
 		if( it==clients.end() )
 		{
-			Server->Log("New Backupclient: "+names[i]);
+			Server->Log(L"New Backupclient: "+names[i]);
 			ServerStatus::setOnline(names[i], true);
 			IPipe *np=Server->createMemoryPipe();
 
@@ -135,7 +135,7 @@ void BackupServer::startClients(FileClient &fc)
 
 			ServerStatus::setIP(names[i], c.addr.sin_addr.s_addr);
 
-			clients.insert(std::pair<std::string, SClient>(names[i], c) );
+			clients.insert(std::pair<std::wstring, SClient>(names[i], c) );
 		}
 		else if(it->second.offlinecount<max_offline)
 		{
@@ -164,7 +164,7 @@ void BackupServer::startClients(FileClient &fc)
 		c=false;
 
 		size_t i_c=0;
-		for(std::map<std::string, SClient>::iterator it=clients.begin();it!=clients.end();++it)
+		for(std::map<std::wstring, SClient>::iterator it=clients.begin();it!=clients.end();++it)
 		{
 			bool found=false;
 			for(size_t i=0;i<names.size();++i)
@@ -179,7 +179,7 @@ void BackupServer::startClients(FileClient &fc)
 			{
 				if(it->second.offlinecount==max_offline)
 				{
-					Server->Log("Client exitet: "+it->first);
+					Server->Log(L"Client exitet: "+it->first);
 					it->second.pipe->Write("exit");
 					++it->second.offlinecount;
 					ServerStatus::setOnline(it->first, false);
@@ -196,7 +196,7 @@ void BackupServer::startClients(FileClient &fc)
 						}
 						else
 						{
-							Server->Log("Client finished: "+it->first);
+							Server->Log(L"Client finished: "+it->first);
 							ServerStatus::setDone(it->first, true);
 							Server->destroy(it->second.pipe);
 							clients.erase(it);
@@ -229,7 +229,7 @@ void BackupServer::startClients(FileClient &fc)
 
 void BackupServer::removeAllClients(void)
 {
-	for(std::map<std::string, SClient>::iterator it=clients.begin();it!=clients.end();++it)
+	for(std::map<std::wstring, SClient>::iterator it=clients.begin();it!=clients.end();++it)
 	{
 		it->second.pipe->Write("exitnow");
 		std::string msg;
