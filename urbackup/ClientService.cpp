@@ -159,6 +159,9 @@ bool ClientConnector::Run(void)
 					do_quit=true;
 					return true;
 				}
+				IScopedLock lock(backup_mutex);
+				backup_running=0;
+				backup_done=true;
 				return false;
 			}
 			else if(msg=="done")
@@ -172,6 +175,9 @@ bool ClientConnector::Run(void)
 				tcpstack.Send(pipe, msg);
 				lasttime=Server->getTimeMS();
 				state=0;
+				IScopedLock lock(backup_mutex);
+				backup_running=0;
+				backup_done=true;
 			}
 		}break;
 	case 2:
@@ -644,6 +650,11 @@ void ClientConnector::ReceivePackets(void)
 			{
 				Server->Log("Invalid command", LL_ERROR);
 			}			
+		}
+		else if(cmd.find("1GET BACKUP DIRS")==0 && pw_ok==true)
+		{
+			getBackupDirs(1);
+			lasttime=Server->getTimeMS();
 		}
 		else if(cmd.find("GET BACKUP DIRS")==0 && pw_ok==true)
 		{
@@ -1212,15 +1223,19 @@ bool ClientConnector::checkPassword(const std::wstring &pw)
 	return stored_pw==Server->ConvertToUTF8(pw);
 }
 
-void ClientConnector::getBackupDirs(void)
+void ClientConnector::getBackupDirs(int version)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id,path FROM backupdirs");
+	IQuery *q=db->Prepare("SELECT id,name,path FROM backupdirs");
 	db_results res=q->Read();
 	std::string msg;
 	for(size_t i=0;i<res.size();++i)
 	{
 		msg+=Server->ConvertToUTF8(res[i][L"id"])+"\n";
+		if(version!=0)
+		{
+			msg+=Server->ConvertToUTF8(res[i][L"name"])+"|";
+		}
 		msg+=Server->ConvertToUTF8(res[i][L"path"]);
 		if(i+1<res.size())
 			msg+="\n";
@@ -1245,9 +1260,12 @@ bool ClientConnector::saveBackupDirs(str_map &args)
 		dir=args[L"dir_"+convert(i)];
 		if(!dir.empty())
 		{
-			std::string name=replaceChars( ExtractFileName(wnarrow(dir) )  );
-			if(name=="urbackup")
-				name="urbackup_1";
+			std::wstring name;
+			str_map::iterator name_arg=args.find(L"dir_"+convert(i)+L"_name");
+			if(name_arg!=args.end() && !name_arg->second.empty())
+				name=name_arg->second;
+			else
+				name=widen(replaceChars( ExtractFileName(wnarrow(dir) )  ));
 
 			if(dir[dir.size()-1]=='\\' || dir[dir.size()-1]=='/' )
 				dir.erase(dir.size()-1,1);
@@ -1258,10 +1276,10 @@ bool ClientConnector::saveBackupDirs(str_map &args)
 				for(int k=0;k<100;++k)
 				{
 					q2->Reset();
-					q2->Bind(name+"_"+nconvert(k));
+					q2->Bind(name+L"_"+convert(k));
 					if(q2->Read().empty()==true)
 					{
-						name+="_"+nconvert(k);
+						name+=L"_"+convert(k);
 						break;
 					}
 				}

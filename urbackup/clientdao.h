@@ -25,7 +25,7 @@ typedef struct _GUID {
 struct SBackupDir
 {
 	int id;
-	std::string tname;
+	std::wstring tname;
 	std::wstring path;
 };
 

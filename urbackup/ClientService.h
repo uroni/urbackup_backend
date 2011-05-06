@@ -28,7 +28,7 @@ public:
 
 private:
 	bool checkPassword(const std::wstring &cmd);
-	void getBackupDirs(void);
+	void getBackupDirs(int version=0);
 	bool saveBackupDirs(str_map &args);
 	void updateLastBackup(void);
 	void getBackupStatus(void);

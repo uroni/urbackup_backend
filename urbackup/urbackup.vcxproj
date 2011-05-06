@@ -596,6 +596,7 @@
     <ClCompile Include="client_restore.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="escape.cpp" />
+    <ClCompile Include="glob\glob.cpp" />
     <ClCompile Include="os_functions_win.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />

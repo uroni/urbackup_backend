@@ -28,6 +28,9 @@
     <Filter Include="treediff">
       <UniqueIdentifier>{1e3a9954-74c9-4bbf-b99c-4f78b6bd555f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="glob">
+      <UniqueIdentifier>{a6950ae3-9a5d-43aa-a26a-f3429f1cfb83}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bufmgr.cpp">
@@ -194,6 +197,9 @@
     </ClCompile>
     <ClCompile Include="treediff\TreeDiff.cpp">
       <Filter>treediff</Filter>
+    </ClCompile>
+    <ClCompile Include="glob\glob.cpp">
+      <Filter>glob</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

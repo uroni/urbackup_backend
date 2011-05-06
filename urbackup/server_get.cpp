@@ -809,7 +809,7 @@ bool BackupServerGet::request_filelist_construct(bool full)
 			delete [] pck;
 			if(ret!="DONE")
 			{
-				ServerLogger::Log(clientid, "Constructing of filelist of \""+clientname+"\" failed - TIMEOUT(2)", LL_ERROR);
+				ServerLogger::Log(clientid, "Constructing of filelist of \""+clientname+"\" failed: "+ret, LL_ERROR);
 				break;
 			}
 			else
@@ -930,7 +930,7 @@ bool BackupServerGet::doFullBackup(void)
 							std::wstring t=curr_path;
 							t.erase(0,1);
 							ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_INFO);
-							start_shadowcopy(wnarrow(t));
+							start_shadowcopy(Server->ConvertToUTF8(t));
 						}
 					}
 					else
@@ -941,7 +941,7 @@ bool BackupServerGet::doFullBackup(void)
 							std::wstring t=curr_path;
 							t.erase(0,1);
 							ServerLogger::Log(clientid, L"Stoping shadowcopy \""+t+L"\".", LL_INFO);
-							stop_shadowcopy(wnarrow(t));
+							stop_shadowcopy(Server->ConvertToUTF8(t));
 						}
 						curr_path=ExtractFilePath(curr_path);
 					}
@@ -1279,7 +1279,7 @@ bool BackupServerGet::doIncrBackup(void)
 							t.erase(0,1);
 							if(r_offline==false)
 							{
-								start_shadowcopy(wnarrow(t));
+								start_shadowcopy(Server->ConvertToUTF8(t));
 							}
 						}
 					}
@@ -1296,7 +1296,7 @@ bool BackupServerGet::doIncrBackup(void)
 							t.erase(0,1);
 							if(r_offline==false)
 							{
-								stop_shadowcopy(wnarrow(t));
+								stop_shadowcopy(Server->ConvertToUTF8(t));
 							}
 						}
 						curr_path=ExtractFilePath(curr_path);
