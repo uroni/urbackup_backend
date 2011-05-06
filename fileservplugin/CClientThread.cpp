@@ -260,7 +260,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 #endif
 
 				hFile=0;
-				std::vector<std::string> games=get_maps();
+				std::vector<std::wstring> games=get_maps();
 
 
 				Log("Sending game list");
@@ -277,12 +277,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 				{
 					std::string version;
 					std::wstring udir;
-					version=getFile(wnarrow(map_file(widen(games[i])+L"\\version.uri",true,&udir)));
+					version=getFile(wnarrow(map_file(games[i]+L"\\version.uri",true,&udir)));
 
 					if( udir!=L"" )
-						games[i]+="|"+wnarrow(udir);
+						games[i]+=L"|"+udir;
+
+					std::string game=Server->ConvertToUTF8(games[i]);
 					
-					stack.Send(mSocket, (char*)games[i].c_str(), games[i].size() );
+					stack.Send(mSocket, (char*)game.c_str(), game.size() );
 					
 					stack.Send(mSocket, (char*)version.c_str(), version.size() );
 				}
@@ -316,9 +318,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				std::wstring filename=map_file(o_filename);
 
-				if(filename.size()<2 || (filename[0]!='\\' && filename[1]!='\\' ) )
-					filename=L"\\\\?\\"+filename;
-				
 				Log("Mapped name: %s", wnarrow(filename).c_str() );
 
 				if(filename.empty())
@@ -333,6 +332,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 					Log("Info: Base dir lost -1");
 					break;
 				}
+
+				if(filename.size()<2 || (filename[0]!='\\' && filename[1]!='\\' ) )
+					filename=L"\\\\?\\"+filename;			
+				
 				
 #ifndef LINUX
 #ifndef BACKUP_SEM

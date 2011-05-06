@@ -32,7 +32,7 @@ struct s_mapl
 	_u32 lastmaptime;
 };
 
-std::map<std::string, s_mapl> mapbuffer;
+std::map<std::wstring, s_mapl> mapbuffer;
 CriticalSection mapcs;
 
 std::wstring getOsDir(std::wstring input)
@@ -105,7 +105,7 @@ std::wstring map_file(std::wstring fn, bool append_urd, std::wstring *udir=NULL)
 	}
 
 	mapcs.Enter();
-	std::map<std::string, s_mapl>::iterator i=mapbuffer.find(wnarrow(ts));
+	std::map<std::wstring, s_mapl>::iterator i=mapbuffer.find(ts);
 
 	if(i==mapbuffer.end() )
 	{
@@ -119,7 +119,7 @@ std::wstring map_file(std::wstring fn, bool append_urd, std::wstring *udir=NULL)
 	}
 }
 
-void add_share_path(const std::string &name, const std::wstring &path)
+void add_share_path(const std::wstring &name, const std::wstring &path)
 {
 	s_mapl m;
 	m.value=getOsDir(path);
@@ -129,11 +129,11 @@ void add_share_path(const std::string &name, const std::wstring &path)
 	mapcs.Leave();
 }
 
-void remove_share_path(const std::string &name)
+void remove_share_path(const std::wstring &name)
 {
 	mapcs.Enter();
 
-	std::map<std::string, s_mapl>::iterator it=mapbuffer.find(name);
+	std::map<std::wstring, s_mapl>::iterator it=mapbuffer.find(name);
 	if(it!=mapbuffer.end())
 	{
 		mapbuffer.erase(it);
@@ -142,11 +142,11 @@ void remove_share_path(const std::string &name)
 	mapcs.Leave();
 }
 
-std::vector<std::string> get_maps(void)
+std::vector<std::wstring> get_maps(void)
 {
-	std::vector<std::string> ret;
+	std::vector<std::wstring> ret;
 	mapcs.Enter();
-	for(std::map<std::string, s_mapl>::iterator it=mapbuffer.begin();it!=mapbuffer.end();++it)
+	for(std::map<std::wstring, s_mapl>::iterator it=mapbuffer.begin();it!=mapbuffer.end();++it)
 	{
 		ret.push_back(it->first);
 	}

@@ -30,12 +30,12 @@ FileServ::FileServ(bool *pDostop)
 	dostop=pDostop;
 }
 
-void FileServ::shareDir(const std::string &name, const std::wstring &path)
+void FileServ::shareDir(const std::wstring &name, const std::wstring &path)
 {
 	add_share_path(name, path);
 }
 
-void FileServ::removeDir(const std::string &name)
+void FileServ::removeDir(const std::wstring &name)
 {
 	remove_share_path(name);
 }
@@ -45,9 +45,9 @@ void FileServ::stopServer(void)
 	*dostop=true;	
 }
 
-std::wstring FileServ::getShareDir(const std::string &name)
+std::wstring FileServ::getShareDir(const std::wstring &name)
 {
-	return map_file(widen(name));
+	return map_file(name);
 }
 
 void FileServ::addIdentity(const std::string &pIdentity)
