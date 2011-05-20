@@ -1231,6 +1231,8 @@ void ClientConnector::getBackupDirs(int version)
 	std::string msg;
 	for(size_t i=0;i<res.size();++i)
 	{
+		if(res[i][L"name"]==L"*") continue;
+
 		msg+=Server->ConvertToUTF8(res[i][L"id"])+"\n";
 		if(version!=0)
 		{
@@ -1244,13 +1246,19 @@ void ClientConnector::getBackupDirs(int version)
 	db->destroyAllQueries();
 }
 
-bool ClientConnector::saveBackupDirs(str_map &args)
+bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
 	db->Prepare("DELETE FROM backupdirs")->Write();
-	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path) VALUES (?, ?)");
+	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default) VALUES (?, ? ,"+nconvert(server_default?1:0)+")");
+	if(server_default==false)
+	{
+		q->Bind(L"*"); q->Bind(L"*");;
+		q->Write();
+		q->Reset();
+	}
 	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
 	std::wstring dir;
 	size_t i=0;
@@ -1498,6 +1506,39 @@ void ClientConnector::updateSettings(const std::string &pData)
 		}
 	}
 
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	IQuery *q=db->Prepare("SELECT id FROM backupdirs WHERE server_default=0", false);
+	db_results res=q->Read();
+	db->destroyQuery(q);
+	if(res.empty())
+	{
+		std::wstring default_dirs;
+		if(!new_settings->getValue(L"default_dirs", &default_dirs) )
+			new_settings->getValue(L"default_dirs_def", &default_dirs);
+
+		if(!default_dirs.empty())
+		{
+			std::vector<std::wstring> def_dirs_toks;
+			Tokenize(default_dirs, def_dirs_toks, L";");
+			str_map args;
+			for(size_t i=0;i<def_dirs_toks.size();++i)
+			{
+				std::wstring path=def_dirs_toks[i];
+				std::wstring name;
+				if(path.find(L"|")!=std::string::npos)
+				{
+					name=getafter(L"|", path);
+					path=getuntil(L"|", path);
+				}
+				args[L"dir_"+convert(i)]=path;
+				if(!name.empty())
+					args[L"dir_"+convert(i)+L"_name"]=name;
+			}
+
+			saveBackupDirs(args, true);
+		}
+	}
+
 	Server->destroy(curr_settings);
 	Server->destroy(new_settings);
 
@@ -1523,6 +1564,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 void ClientConnector::replaceSettings(const std::string &pData)
 {
 	ISettingsReader *new_settings=Server->createMemorySettingsReader(pData);
+
 	std::wstring ncname=new_settings->getValue(L"computername", L"");
 	if(!ncname.empty() && ncname!=IndexThread::getFileSrv()->getServerName())
 	{
@@ -1531,6 +1573,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		data.addVoidPtr(NULL);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
+	
 	Server->destroy(new_settings);
 	IFile *sf=Server->openFile("urbackup/data/settings.cfg", MODE_WRITE);
 	if(sf==NULL)

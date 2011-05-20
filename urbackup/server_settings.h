@@ -30,6 +30,7 @@ struct SSettings
 	std::string backup_window;
 	std::wstring computername;
 	std::wstring exclude_files;
+	std::wstring default_dirs;
 };
 
 struct STimeSpan

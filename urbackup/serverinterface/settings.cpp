@@ -42,6 +42,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("backup_window", settings.getSettings()->backup_window);
 	ret.set("computername", settings.getSettings()->computername);
 	ret.set("exclude_files", settings.getSettings()->exclude_files);
+	ret.set("default_dirs", settings.getSettings()->default_dirs);
 	return ret;
 }
 

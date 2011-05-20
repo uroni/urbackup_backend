@@ -38,6 +38,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"backup_window");
 	ret.push_back(L"exclude_files");
 	ret.push_back(L"computername");
+	ret.push_back(L"default_dirs");
 	return ret;
 }
 
@@ -157,6 +158,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.max_active_clients=settings_default->getValue("max_active_clients", 100);
 	settings.max_sim_backups=settings_default->getValue("max_sim_backups", 10);
 	settings.exclude_files=settings_default->getValue(L"exclude_files", L"");
+	settings.default_dirs=settings_default->getValue(L"default_dirs", L"");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -215,6 +217,9 @@ void ServerSettings::readSettingsClient(void)
 	swtmp=settings_client->getValue(L"exclude_files", L"");
 	if(!swtmp.empty())
 		settings.exclude_files=swtmp;
+	swtmp=settings_client->getValue(L"default_dirs", L"");
+	if(!swtmp.empty())
+		settings.default_dirs=swtmp;
 
 	stmp=settings_client->getValue("overwrite", "");
 	if(!stmp.empty())

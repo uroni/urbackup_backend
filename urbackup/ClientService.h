@@ -29,7 +29,7 @@ public:
 private:
 	bool checkPassword(const std::wstring &cmd);
 	void getBackupDirs(int version=0);
-	bool saveBackupDirs(str_map &args);
+	bool saveBackupDirs(str_map &args, bool server_default=false);
 	void updateLastBackup(void);
 	void getBackupStatus(void);
 	std::string replaceChars(std::string in);
