@@ -1160,7 +1160,7 @@ void IndexThread::readExcludePattern(void)
 		if(curr_settings->getValue(L"exclude_files", &val))
 		{
 			std::vector<std::wstring> toks;
-			Tokenize(val, toks, L";:");
+			Tokenize(val, toks, L";");
 			exlude_dirs=toks;
 		}
 		Server->destroy(curr_settings);
