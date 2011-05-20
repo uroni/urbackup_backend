@@ -64,7 +64,7 @@ ACTION_IMPL(status)
 			ret.set("details", true);
 		}
 		std::wstring hostname=GET[L"hostname"];
-		if(!hostname.empty())
+		if(!hostname.empty() && rights=="all")
 		{
 			if(GET[L"remove"]==L"true")
 			{
@@ -78,6 +78,25 @@ ACTION_IMPL(status)
 				IQuery *q=db->Prepare("INSERT INTO extra_clients (hostname) SELECT ? AS hostname WHERE NOT EXISTS (SELECT hostname FROM extra_clients WHERE hostname=?)");
 				q->Bind(hostname);
 				q->Bind(hostname);
+				q->Write();
+				q->Reset();
+			}
+		}
+		std::wstring s_remove_client=GET[L"remove_client"];
+		if(!s_remove_client.empty() && helper.getRights("remove_client")=="all")
+		{
+			int remove_client=watoi(s_remove_client);
+			if(GET.find(L"stop_remove_client")!=GET.end())
+			{
+				IQuery *q=db->Prepare("UPDATE clients SET delete_pending=0 WHERE id=?");
+				q->Bind(remove_client);
+				q->Write();
+				q->Reset();
+			}
+			else
+			{
+				IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=?");
+				q->Bind(remove_client);
 				q->Write();
 				q->Reset();
 			}
@@ -96,7 +115,7 @@ ACTION_IMPL(status)
 					filter+=" OR ";
 			}
 		}
-		db_results res=db->Read("SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen, 'localtime') AS lastseen,"
+		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen, 'localtime') AS lastseen,"
 			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image, 'localtime') AS lastbackup_image FROM clients"+filter);
 
 		int backup_ok_mod=3;
@@ -118,6 +137,7 @@ ACTION_IMPL(status)
 			stat.set("lastbackup", res[i][L"lastbackup"]);
 			stat.set("lastseen", res[i][L"lastseen"]);
 			stat.set("lastbackup_image", res[i][L"lastbackup_image"]);
+			stat.set("delete_pending", res[i][L"delete_pending"] );
 
 			std::string ip="-";
 			int i_status=0;
@@ -186,6 +206,7 @@ ACTION_IMPL(status)
 				stat.set("lastseen", (std::string)"-");
 				stat.set("lastbackup_image", (std::string)"-");
 				stat.set("online", client_status[i].r_online);
+				stat.set("delete_pending", 0);
 				std::string ip;
 				unsigned char *ips=(unsigned char*)&client_status[i].ip_addr;
 				ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
@@ -237,6 +258,11 @@ ACTION_IMPL(status)
 
 		ret.set("status", status);
 		ret.set("extra_clients", extra_clients);
+
+		if(helper.getRights("remove_client")=="all")
+		{
+			ret.set("remove_client", true);
+		}
 		
 	}
 	else

@@ -52,7 +52,9 @@ void ServerCleanupThread::operator()(void)
 		if( settings->getValue("autoshutdown", "false")=="true" )
 		{
 			IScopedLock lock(a_mutex);
+
 			createQueries();
+			deletePendingClients();
 			do_cleanup();
 			destroyQueries();
 		}
@@ -116,6 +118,7 @@ void ServerCleanupThread::operator()(void)
 				}
 
 				createQueries();
+				deletePendingClients();
 				do_cleanup();
 				destroyQueries();
 
@@ -688,6 +691,118 @@ void ServerCleanupThread::removeImageSize(int backupid)
 	q_remove_image_size->Reset();
 }
 
+void ServerCleanupThread::removeClient(int clientid)
+{
+	std::wstring clientname;
+	q_get_clientname->Bind(clientid);
+	db_results res=q_get_clientname->Read();
+	if(!res.empty())
+		clientname=res[0][L"name"];
+
+	Server->Log(L"Deleting client with id \""+convert(clientid)+L"\" name \""+clientname+L"\"", LL_INFO);
+	//remove image backups
+	do
+	{
+		q_get_client_images->Bind(clientid);
+		res=q_get_client_images->Read();
+		q_get_client_images->Reset();
+
+		if(!res.empty())
+		{
+			int backupid=watoi(res[0][L"id"]);
+			Server->Log("Removing image with id \""+nconvert(backupid)+"\"", LL_INFO);
+			removeImage(backupid);
+		}
+	}while(!res.empty());
+
+	//remove file backups
+	ServerSettings settings(db);
+	do
+	{
+		q_get_client_filebackups->Bind(clientid);
+		res=q_get_client_filebackups->Read();
+		q_get_client_filebackups->Reset();
+
+		if(!res.empty())
+		{
+			int backupid=watoi(res[0][L"id"]);
+			Server->Log("Removing file backup with id \""+nconvert(backupid)+"\"", LL_INFO);
+			bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+			if(b)
+				Server->Log("Removing file backup with id \""+nconvert(backupid)+"\" successfull.", LL_INFO);
+			else
+				Server->Log("Removing file backup with id \""+nconvert(backupid)+"\" failed.", LL_ERROR);
+		}
+	}while(!res.empty());
+
+	//Update stats
+	{
+		ServerUpdateStats sus;
+		sus();
+	}
+
+	//Remove logentries
+	IQuery *q=db->Prepare("DELETE FROM logs WHERE clientid=?", false);
+	q->Bind(clientid); q->Write();
+	db->destroyQuery(q);
+
+	//history data
+	q=db->Prepare("SELECT hist_id FROM clients_hist WHERE id=?", false);
+	q->Bind(clientid);
+	res=q->Read();
+	db->destroyQuery(q);
+	q=db->Prepare("DELETE FROM clients_hist_id WHERE id=?", false);
+	for(size_t i=0;i<res.size();++i)
+	{
+		q->Bind(res[i][L"hist_id"]);
+		q->Write();
+		q->Reset();
+	}
+	db->destroyQuery(q);
+	q=db->Prepare("DELETE FROM clients_hist WHERE id=?", false);
+	q->Bind(clientid); q->Write();
+	db->destroyQuery(q);
+
+	//settings
+	q=db->Prepare("DELETE FROM settings WHERE clientid=?", false);
+	q->Bind(clientid); q->Write();
+	db->destroyQuery(q);
+
+	//stats
+	q=db->Prepare("DELETE FROM del_stats WHERE clientid=?", false);
+	q->Bind(clientid); q->Write();
+	db->destroyQuery(q);
+
+	//client
+	q=db->Prepare("DELETE FROM clients WHERE id=?", false);
+	q->Bind(clientid); q->Write();
+	db->destroyQuery(q);
+
+	q=db->Prepare("DELETE FROM extra_clients WHERE id=?", false);
+	q->Bind(clientid); q->Write();
+	db->destroyQuery(q);
+
+	//delete dirs
+	os_remove_nonempty_dir(settings.getSettings()->backupfolder+os_file_sep()+clientname);
+	Server->deleteFile(settings.getSettings()->backupfolder+os_file_sep()+L"clients"+os_file_sep()+clientname);
+}
+
+void ServerCleanupThread::deletePendingClients(void)
+{
+	db_results res=db->Read("SELECT id, name FROM clients WHERE delete_pending=1");
+	for(size_t i=0;i<res.size();++i)
+	{
+		SStatus status=ServerStatus::getStatus(res[i][L"name"]);
+		if(status.done==false && status.has_status==true)
+		{
+			Server->Log(L"Cannot remove client \""+res[i][L"name"]+L"\" ( with id "+res[i][L"id"]+L"): Client is online or backup is in progress", LL_WARNING);
+			continue;
+		}
+
+		removeClient(watoi(res[i][L"id"]));
+	}
+}
+
 void ServerCleanupThread::createQueries(void)
 {
 	q_incomplete_images=db->Prepare("SELECT id, path FROM backup_images WHERE complete=0 AND running<datetime('now','-300 seconds')", false);
@@ -710,6 +825,8 @@ void ServerCleanupThread::createQueries(void)
 	q_remove_image_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=(SELECT clientid FROM backup_images WHERE id=?))-(SELECT size_bytes FROM backup_images WHERE id=?) WHERE id=(SELECT clientid FROM backup_images WHERE id=?)",false);
 	q_del_image_stats=db->Prepare("INSERT INTO del_stats (backupid, image, delsize, clientid, incremental) SELECT id, 1 AS image, size_bytes AS delsize, clientid, incremental FROM backup_images WHERE id=?", false);
 	q_image_stats_stop=db->Prepare("UPDATE del_stats SET stoptime=CURRENT_TIMESTAMP WHERE rowid=?", false);
+	q_get_client_images=db->Prepare("SELECT id FROM backup_images WHERE clientid=?", false);
+	q_get_client_filebackups=db->Prepare("SELECT id FROM backups WHERE clientid=?", false);
 }
 
 void ServerCleanupThread::destroyQueries(void)
@@ -734,6 +851,8 @@ void ServerCleanupThread::destroyQueries(void)
 	db->destroyQuery(q_remove_image_size);
 	db->destroyQuery(q_del_image_stats);
 	db->destroyQuery(q_image_stats_stop);
+	db->destroyQuery(q_get_client_images);
+	db->destroyQuery(q_get_client_filebackups);
 }
 
 #endif //CLIENT_ONLY

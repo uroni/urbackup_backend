@@ -82,6 +82,7 @@ void upgrade_1(void);
 void do_restore(void);
 void restore_wizard(void);
 void upgrade(void);
+bool upgrade_client(void);
 
 bool is_server=false;
 
@@ -213,31 +214,38 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		if(FileExists("new.txt") )
 		{
 			Server->Log("Upgrading...", LL_WARNING);
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-			db->Write("DELETE FROM files");
 			Server->deleteFile("new.txt");
-			db->Write("CREATE TABLE IF NOT EXISTS logdata (id INTEGER PRIMARY KEY,logid INTEGER,loglevel INTEGER,message TEXT,idx INTEGER);");
-			db->Write("CREATE TABLE IF NOT EXISTS  logs ( id INTEGER PRIMARY KEY, ttime DATE DEFAULT CURRENT_TIMESTAMP);");
-			db->Write("CREATE TABLE IF NOT EXISTS shadowcopies ( id INTEGER PRIMARY KEY, vssid BLOB, ssetid BLOB, target TEXT, path TEXT);");
-			db->Write("CREATE TABLE IF NOT EXISTS mdirs_backup ( name TEXT );");
-			db->Write("ALTER TABLE shadowcopies ADD tname TEXT;");
-			db->Write("ALTER TABLE shadowcopies ADD orig_target TEXT;");
-			db->Write("ALTER TABLE shadowcopies ADD filesrv INTEGER;");
-			db->Write("CREATE TABLE IF NOT EXISTS journal_ids ( id INTEGER PRIMARY KEY, device_name TEXT, journal_id INTEGER, last_record INTEGER);");
-			db->Write("ALTER TABLE journal_ids ADD index_done INTEGER;");
-			db->Write("UPDATE journal_ids SET index_done=0 WHERE index_done IS NULL");
-			db->Write("CREATE TABLE IF NOT EXISTS map_frn ( id INTEGER PRIMARY KEY, name TEXT, pid INTEGER, frn INTEGER, rid INTEGER)");
-			db->Write("CREATE INDEX IF NOT EXISTS frn_index ON map_frn( frn ASC )");
-			db->Write("CREATE INDEX IF NOT EXISTS frn_pid_index ON map_frn( pid ASC )");
-			db->Write("CREATE TABLE IF NOT EXISTS journal_data ( id INTEGER PRIMARY KEY, device_name TEXT, journal_id INTEGER, usn INTEGER, reason INTEGER, filename TEXT, frn INTEGER, parent_frn INTEGER, next_usn INTEGER)");
-			db->Write("DELETE FROM journal_ids");
-			db->Write("DELETE FROM journal_data");
-			db->Write("DELETE FROM map_frn");
-			db->Write("CREATE INDEX IF NOT EXISTS logdata_index ON logdata( logid ASC )");
-			db->Write("ALTER TABLE logdata ADD ltime DATE;");
-			db->Write("CREATE TABLE IF NOT EXISTS del_dirs ( name TEXT );");
-			db->Write("CREATE TABLE IF NOT EXISTS del_dirs_backup ( name TEXT );");
-			db->Write("ALTER TABLE journal_data ADD attributes INTEGER;");
+			if(!upgrade_client())
+			{
+				IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+				db->Write("DELETE FROM files");			
+				db->Write("CREATE TABLE IF NOT EXISTS logdata (id INTEGER PRIMARY KEY,logid INTEGER,loglevel INTEGER,message TEXT,idx INTEGER);");
+				db->Write("CREATE TABLE IF NOT EXISTS  logs ( id INTEGER PRIMARY KEY, ttime DATE DEFAULT CURRENT_TIMESTAMP);");
+				db->Write("CREATE TABLE IF NOT EXISTS shadowcopies ( id INTEGER PRIMARY KEY, vssid BLOB, ssetid BLOB, target TEXT, path TEXT);");
+				db->Write("CREATE TABLE IF NOT EXISTS mdirs_backup ( name TEXT );");
+				db->Write("ALTER TABLE shadowcopies ADD tname TEXT;");
+				db->Write("ALTER TABLE shadowcopies ADD orig_target TEXT;");
+				db->Write("ALTER TABLE shadowcopies ADD filesrv INTEGER;");
+				db->Write("CREATE TABLE IF NOT EXISTS journal_ids ( id INTEGER PRIMARY KEY, device_name TEXT, journal_id INTEGER, last_record INTEGER);");
+				db->Write("ALTER TABLE journal_ids ADD index_done INTEGER;");
+				db->Write("UPDATE journal_ids SET index_done=0 WHERE index_done IS NULL");
+				db->Write("CREATE TABLE IF NOT EXISTS map_frn ( id INTEGER PRIMARY KEY, name TEXT, pid INTEGER, frn INTEGER, rid INTEGER)");
+				db->Write("CREATE INDEX IF NOT EXISTS frn_index ON map_frn( frn ASC )");
+				db->Write("CREATE INDEX IF NOT EXISTS frn_pid_index ON map_frn( pid ASC )");
+				db->Write("CREATE TABLE IF NOT EXISTS journal_data ( id INTEGER PRIMARY KEY, device_name TEXT, journal_id INTEGER, usn INTEGER, reason INTEGER, filename TEXT, frn INTEGER, parent_frn INTEGER, next_usn INTEGER)");
+				db->Write("DELETE FROM journal_ids");
+				db->Write("DELETE FROM journal_data");
+				db->Write("DELETE FROM map_frn");
+				db->Write("CREATE INDEX IF NOT EXISTS logdata_index ON logdata( logid ASC )");
+				db->Write("ALTER TABLE logdata ADD ltime DATE;");
+				db->Write("CREATE TABLE IF NOT EXISTS del_dirs ( name TEXT );");
+				db->Write("CREATE TABLE IF NOT EXISTS del_dirs_backup ( name TEXT );");
+				db->Write("ALTER TABLE journal_data ADD attributes INTEGER;");
+				db->Write("ALTER TABLE backupdirs ADD server_default INTEGER;");
+				db->Write("UPDATE backupdirs SET server_default=0 WHERE server_default IS NULL");
+				db->Write("CREATE TABLE IF NOT EXISTS misc (tkey TEXT, tvalue TEXT);");
+				db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('db_version', '1');");
+			}
 		}
 	}
 
@@ -513,6 +521,13 @@ void upgrade6_7(void)
 	db->Write("UPDATE backup_images SET version=0 WHERE version IS NULL");
 }
 
+void upgrade7_8(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE clients ADD delete_pending INTEGER");
+	db->Write("UPDATE clients SET delete_pending=0 WHERE delete_pending IS NULL");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -522,7 +537,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=2;
+	int max_v=7;
 	bool do_upgrade=false;
 	if(ver<max_v)
 	{
@@ -559,6 +574,11 @@ void upgrade(void)
 			case 6:
 				upgrade6_7();
 				++ver;
+				break;
+			case 7:
+				upgrade7_8();
+				++ver;
+				break;
 			default:
 				break;
 		}
@@ -581,3 +601,42 @@ void upgrade(void)
 }
 
 #endif //CLIENT_ONLY
+
+bool upgrade_client(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	IQuery *q=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
+	if(q==NULL)
+		return false;
+	db_results res_v=q->Read();
+	if(res_v.empty())
+		return false;
+	
+	int ver=watoi(res_v[0][L"tvalue"]);
+	int old_v;
+	
+	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
+	do
+	{
+		old_v=ver;
+		switch(ver)
+		{
+			case 1:
+				/*upgrade1_2();
+				++ver;*/
+				break;
+			default:
+				break;
+		}
+		
+		if(ver!=old_v)
+		{
+			q_update->Bind(ver);
+			q_update->Write();
+			q_update->Reset();
+		}
+	}
+	while(old_v<ver);
+	
+	db->destroyAllQueries();
+}

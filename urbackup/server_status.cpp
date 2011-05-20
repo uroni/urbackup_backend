@@ -69,6 +69,7 @@ void ServerStatus::setOnline(const std::wstring &clientname, bool bonline)
 	s->online=bonline;
 	s->client=clientname;
 	s->done=false;
+	s->has_status=true;
 	s->r_online=bonline;
 	if(bonline)
 	{

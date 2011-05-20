@@ -30,7 +30,11 @@ public:
 	void removeImage(int backupid);
 	bool findUncompleteImageRef(int backupid);
 
+	void removeClient(int clientid);
+
 	bool deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid);
+
+	void deletePendingClients(void);
 
 	static void updateStats(void);
 	static void initMutex(void);
@@ -62,6 +66,8 @@ private:
 	IQuery *q_remove_image_size;
 	IQuery *q_del_image_stats;
 	IQuery *q_image_stats_stop;
+	IQuery *q_get_client_images;
+	IQuery *q_get_client_filebackups;
 
 	static IMutex *mutex;
 	static ICondition *cond;

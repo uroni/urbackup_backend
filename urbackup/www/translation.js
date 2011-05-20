@@ -69,7 +69,8 @@ translations.en={
 "validate_name_max_sim_backups": "max number of simultaneous backups",
 "validate_name_backupfolder": "backup storage path",
 "validate_name_computername": "computer name",
-"too_many_clients_err": "Too many clients"
+"too_many_clients_err": "Too many clients",
+"really_remove_client": "Do you really want to remove this client? This means all its file and image backups will be deleted!"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -234,5 +235,9 @@ translations.de={
 "too_many_clients_err": "Zu viele clients",
 "validate_name_computername": "Computername",
 "tExcluded files (with wildcards)": "Ausgeschlossene Dateien (mit Wildcards):",
-"tComputer name": "Computername"
+"tComputer name": "Computername",
+"tDefault directories to backup": "Standarmäßig gesicherte Verzeichnisse:",
+"really_remove_client": "Wollen Sie wirklich diesen Client löschen? Das bedeutet, dass alle Datei- und Imagebackups dieses Clients gelöscht werden!",
+"tThis client is going to be removed.": "Dieser Client wird entfernt.",
+"tStop removing client": "Entfernen stoppen"
 }

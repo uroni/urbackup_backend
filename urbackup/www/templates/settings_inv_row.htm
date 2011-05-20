@@ -56,10 +56,14 @@
 <td>#{tComputer name}</td>
 <td><input type="text" id="computername" value="#{computername}"/></td>
 </tr>
-<tr>
 #{no_compname_end}
+<tr>
 <td>#{tExcluded files (with wildcards)}</td>
-<td><input type="text" id="exclude_files" value="#{exclude_files}"/></td>
+<td><input type="text" id="exclude_files" value="#{exclude_files}"/> <a href="http://www.urbackup.org/FAQ.php#exclude_files" target="_blank">?</a></td>
+</tr>
+<tr>
+<td>#{tDefault directories to backup}</td>
+<td><input type="text" id="default_dirs" value="#{default_dirs}"/> <a href="http://www.urbackup.org/FAQ.php#default_dirs" target="_blank">?</a></td>
 </tr>
 <tr>
 <td>#{tAllow client to change settings}</td>

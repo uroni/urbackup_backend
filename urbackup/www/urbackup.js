@@ -338,7 +338,7 @@ function stat_client(id, name)
 	}
 }
 
-function show_status1(details, hostname, remove)
+function show_status1(details, hostname, remove, remove_client, stop_client_remove)
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
@@ -347,7 +347,7 @@ function show_status1(details, hostname, remove)
 	{
 		pars="details=true";
 	}
-	if(hostname)
+	if(hostname && hostname.length>0)
 	{
 		if(pars!="")
 		{
@@ -358,6 +358,16 @@ function show_status1(details, hostname, remove)
 		if(remove)
 		{
 			pars+="&remove=true";
+		}
+	}
+	if(remove_client && (""+remove_client).length>0)
+	{
+		if(pars!="") pars+="&";
+		pars+="remove_client="+remove_client;
+		
+		if(stop_client_remove)
+		{
+			pars+="&stop_remove_client=true";
 		}
 	}
 	new getJSON("status", pars, show_status2);
@@ -404,6 +414,28 @@ function show_status2(data)
 		if(obj.online) obj.online=trans["yes"];
 		else obj.online=trans["no"];
 		
+		obj.Action_remove_start="";
+		obj.Action_remove_end="";
+		
+		if(data.remove_client)
+		{
+			obj.prev_tab_class="tabFLeft";
+			obj.Actions_start="";
+			obj.Actions_end="";
+			
+			if(obj.id=="-")
+			{
+				obj.Action_remove_start="<!--";
+				obj.Action_remove_end="-->";
+			}
+		}
+		else
+		{
+			obj.prev_tab_class="tabFRight";
+			obj.Actions_start="<!--";
+			obj.Actions_end="-->";
+		}
+		
 		switch(obj.status)
 		{
 			case 0: obj.status="ok"; break;
@@ -416,15 +448,45 @@ function show_status2(data)
 			case 12: obj.status=trans["too_many_clients_err"]; break;
 		}	
 		
-		if(data.details)
+		if( obj.delete_pending && obj.delete_pending==1)
 		{
-			rows+=tmpls.status_detail_row.evaluate(obj);
+			if(data.details)
+			{
+				if(data.remove_client)
+					obj.colspan=9;
+				else
+					obj.colspan=8;
+			}
+			else
+			{
+				obj.colspan=5;
+			}
+			
+			if(data.remove_client)
+			{
+				obj.stop_remove_start="";
+				obj.stop_remove_stop="";
+			}
+			else
+			{
+				obj.stop_remove_start="<!--";
+				obj.stop_remove_stop="-->";
+			}
+			
+			rows+=tmpls.status_row_delete_pending.evaluate(obj);
 		}
 		else
 		{
-			if(!obj.rejected)
+			if(data.details)
 			{
-			    rows+=tmpls.status_row.evaluate(obj);
+				rows+=tmpls.status_detail_row.evaluate(obj);
+			}
+			else
+			{
+				if(!obj.rejected)
+				{
+					rows+=tmpls.status_row.evaluate(obj);
+				}
 			}
 		}
 	}
@@ -466,7 +528,25 @@ function show_status2(data)
 		dtl_c2="";
 	}
 	
-	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2});
+	var class_prev;
+	var Actions_start;
+	var Actions_end;
+	if(data.remove_client)
+	{
+		class_prev="tabHeader";
+		Actions_start="";
+		Actions_end="";
+	}
+	else
+	{
+		class_prev="tabHeaderRight";
+		Actions_start="<!--";
+		Actions_end="-->";
+	}
+	
+	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, 
+	extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
+	class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end});
 	
 	if(g.data_f!=ndata)
 	{
@@ -537,7 +617,7 @@ function show_backups2(data)
 	else if(data.files)
 	{
 		var rows="";		
-		var path=data.path;
+		var path=unescapeHTML(data.path);
 		var els=path.split("/");
 		var cp="";
 		var curr_path="";
@@ -576,7 +656,7 @@ function show_backups2(data)
 			}
 			obj.clientid=data.clientid;
 			obj.backupid=data.backupid;
-			obj.path=(data.path+"%2F"+obj.name).replace(/\//g,"%2F");
+			obj.path=encodeURIComponent(path+"/"+obj.name);
 				
 			rows+=tmpls.backups_files_row.evaluate(obj);
 		}
@@ -910,7 +990,8 @@ g.settings_list=[
 "startup_backup_delay",
 "backup_window",
 "computername",
-"exclude_files"
+"exclude_files",
+"default_dirs"
 ];
 
 function validateCommonSettings()
@@ -1618,4 +1699,16 @@ function updateLogsParam()
 		g.nav_params={};
 	g.nav_params[3]=p;
 	build_main_nav();
+}
+function removeClient(clientid)
+{
+	var b=confirm(trans["really_remove_client"]);
+	if(b)
+	{
+		show_status1(false, "", false, clientid);
+	}
+}
+function stopRemove(clientid)
+{
+	show_status1(false, "", false, clientid, true);
 }
