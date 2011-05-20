@@ -162,6 +162,16 @@ function clone(obj){
     return temp;
 }
 
+function escapeHTML(s)
+{
+	return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;').replace(/\//g,'&#x2F;');
+}
+
+function unescapeHTML(s)
+{
+	return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#x27;/g,'\'').replace(/&#x2F;/g,'/');
+}
+
 function sanitizeJSON(data)
 {
 	for(p in data)
@@ -169,7 +179,7 @@ function sanitizeJSON(data)
 		var t=(typeof data[p]);
 		if(t=="string")
 		{
-			data[p]=data[p].escapeHTML();
+			data[p]=escapeHTML(data[p]);
 		}
 		else if(t=="object")
 		{
@@ -261,7 +271,10 @@ function loadGraph(action, parameters, pDivid)
 	
 	this.update_graph = function()
 	{
-		getJSON("isimageready", "image_id="+img_id, f.update);
+		if(""+img_id!="undefined")
+		{
+			getJSON("isimageready", "image_id="+img_id, f.update);
+		}
 	}
 	
 	this.update = function(data)
