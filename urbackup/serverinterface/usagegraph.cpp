@@ -82,8 +82,6 @@ ACTION_IMPL(usagegraph)
 		( ( clientid==-1 && helper.getRights("piegraph")=="all" ) || ( clientid!=-1 && (client_id_found || rights=="all") ) )
 	  )
 	{	
-		helper.releaseAll();
-
 		std::wstring scale=GET[L"scale"];
 
 		std::string t_where="";
