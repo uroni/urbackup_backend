@@ -52,6 +52,7 @@ const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const unsigned int mbr_size=(1024*1024)/2;
 const size_t minfreespace_image=1000*1024*1024; //1000 MB
+const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
 
 int BackupServerGet::running_backups=0;
@@ -825,6 +826,19 @@ bool BackupServerGet::request_filelist_construct(bool full)
 
 bool BackupServerGet::doFullBackup(void)
 {
+	int64 free_space=os_free_space(os_file_prefix()+server_settings->getSettings()->backupfolder);
+	if(free_space!=-1 && free_space<minfreespace_min)
+	{
+		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
+		ServerCleanupThread cleanup;
+		if(!cleanup.do_cleanup(minfreespace_min) )
+		{
+			ServerLogger::Log(clientid, "Could not free space for directory entries. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			return false;
+		}
+	}
+	
+	
 	bool b=request_filelist_construct(true);
 	if(!b)
 	{
@@ -1121,6 +1135,18 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 
 bool BackupServerGet::doIncrBackup(void)
 {
+	int64 free_space=os_free_space(os_file_prefix()+server_settings->getSettings()->backupfolder);
+	if(free_space!=-1 && free_space<minfreespace_min)
+	{
+		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
+		ServerCleanupThread cleanup;
+		if(!cleanup.do_cleanup(minfreespace_min) )
+		{
+			ServerLogger::Log(clientid, "Could not free space for directory entries. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			return false;
+		}
+	}
+	
 	bool b=request_filelist_construct(false);
 	if(!b)
 	{

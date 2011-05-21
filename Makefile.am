@@ -7,7 +7,7 @@ AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
 AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY
 AM_LDFLAGS = $(PTHREAD_LIBS) -ldl
 #$(BOOST_LDFLAGS) $(BOOST_THREAD_LIB)
-SUBDIRS=. downloadplugin fileservplugin fsimageplugin httpserver pychart urbackup
+SUBDIRS=. pychart downloadplugin fileservplugin fsimageplugin httpserver urbackup
 install-data-local: $(srcdir)/init.d $(srcdir)/defaults
 	mkdir $(localstatedir) || true
 	cp $(srcdir)/init.d /etc/init.d/urbackup_srv
