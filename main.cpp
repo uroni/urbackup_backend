@@ -417,7 +417,7 @@ void WINAPI my_service_main(DWORD argc, char_* argv[])
 }
 void my_shutdown_fcn(void)
 {
-	if(c_at !=NULL )
+	/*if(c_at !=NULL )
 	{
 		delete c_at;
 		destroy_mutex_selthread();
@@ -427,25 +427,25 @@ void my_shutdown_fcn(void)
 	{
 		delete Server;
 		Server=NULL;
-	}
+	}*/
 }
 void my_stop_fcn(void)
 {
-	if(c_at !=NULL )
+	/*if(c_at !=NULL )
 	{
 		CAcceptThread *tmp=c_at;
 		c_at=NULL;
 		delete tmp;
 		delete Server;
-		_exit(6);
 	}
 	if(Server!=NULL)
 	{
 		CServer *srv=Server;
 		Server=NULL;
 		delete srv;
-	}
-	_exit(6);
+	}*/
+	nt_service&  service = nt_service::instance(L"CompiledServer");
+	service.stop(0);
 }
 
 void my_init_fcn(void)

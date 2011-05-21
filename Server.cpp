@@ -121,10 +121,6 @@ CServer::~CServer()
 {
 	Log("deleting cached settings...");
 	CFileSettingsReader::cleanup();
-
-	Log("destroying databases...");
-	//Destroy Databases
-	destroyAllDatabases();
 	
 	Log("deleting stream services...");
 	//Delete extra Services
@@ -186,6 +182,10 @@ CServer::~CServer()
 	Log("Shutting down ThreadPool...");
 	threadpool->Shutdown();
 	delete threadpool;
+
+	Log("destroying databases...");
+	//Destroy Databases
+	destroyAllDatabases();
 
 	Log("unloading dlls...");
 	UnloadDLLs();	
