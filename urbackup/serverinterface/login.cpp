@@ -35,6 +35,11 @@ ACTION_IMPL(login)
 
 	JSON::Object ret;
 
+	if(pychart_fak==NULL)
+	{
+		ret.set("use_googlechart", true);
+	}
+
 	std::wstring username=GET[L"username"];
 	if(!username.empty())
 	{

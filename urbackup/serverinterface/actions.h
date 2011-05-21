@@ -17,4 +17,5 @@ namespace Actions
 	ACTION(logs);
 	ACTION(isimageready);
 	ACTION(getimage);
+	ACTION(google_chart);
 }

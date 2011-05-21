@@ -201,6 +201,9 @@
     <ClCompile Include="glob\glob.cpp">
       <Filter>glob</Filter>
     </ClCompile>
+    <ClCompile Include="serverinterface\google_chart.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">

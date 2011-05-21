@@ -175,7 +175,16 @@ ACTION_IMPL(usagegraph)
 		}
 		else
 		{
-			ret.set("error", JSON::Value(3));
+			JSON::Array data;
+			for(size_t i=0;i<bi.data.size();++i)
+			{
+				JSON::Object obj;
+				obj.set("xlabel", bi.xlabels[i]);
+				obj.set("data", bi.data[i]);
+				data.add(obj);
+			}
+			ret.set("data", data);
+			ret.set("ylabel", bi.ylabel);
 		}
 	}
 	else

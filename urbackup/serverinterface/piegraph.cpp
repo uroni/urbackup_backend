@@ -53,7 +53,15 @@ ACTION_IMPL(piegraph)
 		}
 		else
 		{
-			ret.set("error", JSON::Value(3));
+			JSON::Array data;
+			for(size_t i=0;i<pi.data.size();++i)
+			{
+				JSON::Object obj;
+				obj.set("label", pi.labels[i]);
+				obj.set("data", pi.data[i]);
+				data.add(obj);
+			}
+			ret.set("data", data);
 		}
 	}	
 	else

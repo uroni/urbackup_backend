@@ -70,7 +70,14 @@ translations.en={
 "validate_name_backupfolder": "backup storage path",
 "validate_name_computername": "computer name",
 "too_many_clients_err": "Too many clients",
-"really_remove_client": "Do you really want to remove this client? This means all its file and image backups will be deleted!"
+"really_remove_client": "Do you really want to remove this client? This means all its file and image backups will be deleted!",
+"computername": "Computer name",
+"storage_usage_pie_graph_title": "Storage usage",
+"storage_usage_pie_graph_colname1": "Computer name",
+"storage_usage_pie_graph_colname2": "Storage usage",
+"storage_usage_bar_graph_title": "Storage usage",
+"storage_usage_bar_graph_colname1": "Date",
+"storage_usage_bar_graph_colname2": "Storage usage"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -239,5 +246,12 @@ translations.de={
 "tDefault directories to backup": "Standarmäßig gesicherte Verzeichnisse:",
 "really_remove_client": "Wollen Sie wirklich diesen Client löschen? Das bedeutet, dass alle Datei- und Imagebackups dieses Clients gelöscht werden!",
 "tThis client is going to be removed.": "Dieser Client wird entfernt.",
-"tStop removing client": "Entfernen stoppen"
+"tStop removing client": "Entfernen stoppen",
+"Computername": "Computername",
+"storage_usage_pie_graph_title": "Speichernutzung",
+"storage_usage_pie_graph_colname1": "Computername",
+"storage_usage_pie_graph_colname2": "Speichernutzung",
+"storage_usage_bar_graph_title": "Speichernutzungsverlauf",
+"storage_usage_bar_graph_colname1": "Datum",
+"storage_usage_bar_graph_colname2": "Speichernutzung"
 }

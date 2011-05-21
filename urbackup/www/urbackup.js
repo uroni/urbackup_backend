@@ -2,6 +2,7 @@
 g.loading=false;
 g.lang="en";
 g.startup=true;
+g.google_chart_loaded=false;
 
 g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" } ];
 
@@ -9,6 +10,11 @@ function startup()
 {
 	if(!startLoading()) return;
 	new getJSON("login", "", try_anonymous_login);
+	
+	if(g.use_google_chart)
+	{
+		LoadScript("https://www.google.com/jsapi?callback=google_chart_ready", "google_jsapi");
+	}
 }
 
 function refresh_page()
@@ -114,6 +120,15 @@ function stopLoading()
 {
 	I('l_div').style.visibility="hidden";
 	g.loading=false;
+}
+
+function google_chart_ready()
+{
+	google.load("visualization", "1", {packages:["corechart"], callback: chartLoaded});
+}
+
+function chartLoaded()
+{
 }
 
 function build_main_nav()
@@ -314,8 +329,10 @@ function show_statistics3(data)
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
-		new loadGraph("piegraph", "", "piegraph");
-		new loadGraph("usagegraph", "", "usagegraph");
+		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 700, height: 700, 
+			title: trans["storage_usage_pie_graph_title"], colname1: trans["storage_usage_pie_graph_colname1"], colname2: trans["storage_usage_pie_graph_colname2"] } );
+		new loadGraph("usagegraph", "", "usagegraph", {pie: false, width: 800, height: 500, 
+			title: trans["storage_usage_bar_graph_title"], colname1: trans["storage_usage_bar_graph_colname1"], colname2: trans["storage_usage_bar_graph_colname2"] });
 		g.data_f=ndata;
 	}
 }
@@ -333,7 +350,8 @@ function stat_client(id, name)
 		g.settings_nav_pos=idx+1;
 		g.data_f=tmpls.stat_user.evaluate({clientid: id, clientname: name, ses: g.session});
 		I('data_f').innerHTML=g.data_f;
-		new loadGraph("usagegraph", "clientid="+id, "usagegraph");
+		new loadGraph("usagegraph", "clientid="+id, "usagegraph", {pie: true, width: 700, height: 700, 
+			title: trans["storage_usage_pie_graph_title"], colname1: trans["storage_usage_pie_graph_colname1"], colname2: trans["storage_usage_pie_graph_colname2"] });
 		show_statistics2(g.stat_data);
 	}
 }

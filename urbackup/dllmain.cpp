@@ -283,6 +283,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(logs);
 		ADD_ACTION(isimageready);
 		ADD_ACTION(getimage);
+		ADD_ACTION(google_chart);
 		
 		upgrade();
 	}
@@ -639,4 +640,5 @@ bool upgrade_client(void)
 	while(old_v<ver);
 	
 	db->destroyAllQueries();
+	return true;
 }

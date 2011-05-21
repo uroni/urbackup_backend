@@ -256,17 +256,61 @@ loadTmpl = function(name, callback)
 		});
 }
 
-function loadGraph(action, parameters, pDivid)
+function loadGraph(action, parameters, pDivid, pGraphdata)
 {
 	var divid=pDivid;
 	var img_id=-1;
 	var f=this;
+	var graphdata=pGraphdata;
 	
 	this.init_cb = function(data)
-	{
+	{		
 		img_id=data.image_id;
 		
-		setTimeout(f.update_graph, 100);
+		if(""+img_id!="undefined")
+		{
+			setTimeout(f.update_graph, 100);
+		}
+		else
+		{
+			if(graphdata.pie)
+			{
+				var gdata = new google.visualization.DataTable();
+				gdata.addColumn('string', graphdata.colname1);
+				gdata.addColumn('number', graphdata.colname2);
+				gdata.addRows(data.data.length);
+				for(var i=0;i<data.data.length;++i)
+				{
+					var obj=data.data[i];
+					gdata.setValue(i, 0, obj.label);
+					gdata.setValue(i, 1, obj.data);
+				}
+				I(divid).innerHTML="";
+				var chart = new google.visualization.PieChart(I(divid));
+				chart.draw(gdata, {width: graphdata.width, height: graphdata.height, title: graphdata.title});
+			}
+			else
+			{
+				var gdata = new google.visualization.DataTable();
+				gdata.addColumn('string', graphdata.colname1);
+				gdata.addColumn('number', graphdata.colname2);
+				gdata.addRows(data.data.length);
+				for(var i=0;i<data.data.length;++i)
+				{
+					var obj=data.data[i];
+					gdata.setValue(i, 0, obj.xlabel);
+					gdata.setValue(i, 1, obj.data);
+				}
+				
+				I(divid).innerHTML="";
+				var chart = new google.visualization.ColumnChart(I(divid));
+				chart.draw(gdata, {width: graphdata.width, height: graphdata.height, title: graphdata.title,
+					  hAxis: {title: graphdata.xtitle, titleTextStyle: {color: 'red'}},
+					  vAxis: {title: data.ylabel, titleTextStyle: {color: 'blue'}}
+					 });
+
+			}
+		}
 	}
 	
 	this.update_graph = function()
@@ -323,12 +367,16 @@ function checkString(str)
 	return true;
 }
 
-function LoadScript(url)
+function LoadScript(url, id)
 {
-   var e = document.createElement("script");
-   e.src = url;
-   e.type="text/javascript";
-   document.getElementsByTagName("head")[0].appendChild(e); 
+	if(!I(id))
+	{
+	   var e = document.createElement("script");
+	   e.src = url;
+	   e.type="text/javascript";
+	   e.id=id;
+	   document.getElementsByTagName("head")[0].appendChild(e);
+	}
 }
 
 function format_date(d)
