@@ -53,6 +53,8 @@ const unsigned int status_update_intervall=1000;
 const unsigned int mbr_size=(1024*1024)/2;
 const size_t minfreespace_image=1000*1024*1024; //1000 MB
 const unsigned int curr_image_version=1;
+const unsigned int image_timeout=10*24*60*60*1000;
+const unsigned int image_recv_timeout=1*60*60*1000;
 
 int BackupServerGet::running_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
@@ -2020,9 +2022,9 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 	unsigned int stat_update_cnt=0;
 
-	while(Server->getTimeMS()-starttime<=3600000)
+	while(Server->getTimeMS()-starttime<=image_timeout)
 	{
-		size_t r=cc->Read(&buffer[off], 4096-off, 3600000);
+		size_t r=cc->Read(&buffer[off], 4096-off, image_recv_timeout);
 		if(r!=0)
 			r+=off;
 		starttime=Server->getTimeMS();
@@ -2031,7 +2033,8 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 		{
 			if(persistent && nextblock!=0)
 			{
-				while(true)
+				bool reconnected=false;
+				while(Server->getTimeMS()-starttime<=image_timeout)
 				{
 					ServerStatus::setROnline(clientname, false);
 					if(cc!=NULL)
@@ -2057,10 +2060,29 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 					}
 					else
 					{
+						reconnected=true;
 						ServerStatus::setROnline(clientname, true);
 						Server->Log("Reconnected.", LL_DEBUG);
 						break;
 					}
+				}
+
+				if(!reconnected)
+				{
+					ServerLogger::Log(clientid, "Timeout while trying to reconnect", LL_ERROR);
+					Server->destroy(cc);
+					if(vhdfile!=NULL)
+					{
+						vhdfile->freeBuffer(blockdata);
+						vhdfile->doExitNow();
+						Server->getThreadPool()->waitFor(vhdfile_ticket);
+						delete vhdfile;
+						vhdfile=NULL;
+					}
+					if(hashfile!=NULL) Server->destroy(hashfile);
+					if(parenthashfile!=NULL) Server->destroy(parenthashfile);
+					running_updater->stop();
+					return false;
 				}
 
 				if(pParentvhd.empty())
