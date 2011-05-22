@@ -126,7 +126,8 @@ void Pychart::operator()(void)
 
 	while(true)
 	{
-		cond->wait(&lock);
+		if(cis.empty() && bis.empty() && pis.empty())
+			cond->wait(&lock);
 
 		while(!cis.empty())
 		{

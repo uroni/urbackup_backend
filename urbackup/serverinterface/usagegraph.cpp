@@ -82,6 +82,8 @@ ACTION_IMPL(usagegraph)
 		( ( clientid==-1 && helper.getRights("piegraph")=="all" ) || ( clientid!=-1 && (client_id_found || rights=="all") ) )
 	  )
 	{	
+		helper.releaseAll();
+		
 		std::wstring scale=GET[L"scale"];
 
 		std::string t_where="";
@@ -166,6 +168,8 @@ ACTION_IMPL(usagegraph)
 
 		if(pychart_fak!=NULL)
 		{
+			helper.update(tid, &GET, &PARAMS);
+			session=helper.getSession();
 			IPychart *pychart=pychart_fak->getPychart();
 			unsigned int id=pychart->drawBar(bi);
 			session->mInt[L"image_"+convert(id)]=1;
