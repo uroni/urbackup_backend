@@ -748,7 +748,7 @@ void ServerCleanupThread::removeClient(int clientid)
 	db->destroyQuery(q);
 
 	//history data
-	q=db->Prepare("SELECT hist_id FROM clients_hist WHERE id=?", false);
+	/*q=db->Prepare("SELECT hist_id FROM clients_hist WHERE id=?", false);
 	q->Bind(clientid);
 	res=q->Read(); q->Reset();
 	db->destroyQuery(q);
@@ -759,7 +759,7 @@ void ServerCleanupThread::removeClient(int clientid)
 		q->Write();
 		q->Reset();
 	}
-	db->destroyQuery(q);
+	db->destroyQuery(q);*/
 	q=db->Prepare("DELETE FROM clients_hist WHERE id=?", false);
 	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
