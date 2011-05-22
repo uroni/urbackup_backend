@@ -7,7 +7,7 @@ install-data-local: $(srcdir)/backup_server.db $(srcdir)/status.htm $(srcdir)/ww
 	mkdir $(localstatedir)/urbackup/www || true
 	if ! test -e $(localstatedir)/urbackup/backup_server.db; then cp $(srcdir)/backup_server.db $(localstatedir)/urbackup/; fi
 	cp $(srcdir)/status.htm $(localstatedir)/urbackup/
-	cp $(srcdir)/google_chart.js $(localstatedir)/google_chart.js
+	cp $(srcdir)/google_chart.js $(localstatedir)/urbackup/
 	cp $(srcdir)/www/*.js $(localstatedir)/urbackup/www/
 	cp $(srcdir)/www/*.htm $(localstatedir)/urbackup/www/
 	cp $(srcdir)/www/*.css $(localstatedir)/urbackup/www/
