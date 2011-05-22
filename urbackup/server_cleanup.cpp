@@ -695,6 +695,7 @@ void ServerCleanupThread::removeClient(int clientid)
 {
 	std::wstring clientname;
 	q_get_clientname->Bind(clientid);
+	q_get_clientname->Reset();
 	db_results res=q_get_clientname->Read();
 	if(!res.empty())
 		clientname=res[0][L"name"];
@@ -743,13 +744,13 @@ void ServerCleanupThread::removeClient(int clientid)
 
 	//Remove logentries
 	IQuery *q=db->Prepare("DELETE FROM logs WHERE clientid=?", false);
-	q->Bind(clientid); q->Write();
+	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
 	//history data
 	q=db->Prepare("SELECT hist_id FROM clients_hist WHERE id=?", false);
 	q->Bind(clientid);
-	res=q->Read();
+	res=q->Read(); q->Reset();
 	db->destroyQuery(q);
 	q=db->Prepare("DELETE FROM clients_hist_id WHERE id=?", false);
 	for(size_t i=0;i<res.size();++i)
@@ -760,26 +761,26 @@ void ServerCleanupThread::removeClient(int clientid)
 	}
 	db->destroyQuery(q);
 	q=db->Prepare("DELETE FROM clients_hist WHERE id=?", false);
-	q->Bind(clientid); q->Write();
+	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
 	//settings
 	q=db->Prepare("DELETE FROM settings WHERE clientid=?", false);
-	q->Bind(clientid); q->Write();
+	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
 	//stats
 	q=db->Prepare("DELETE FROM del_stats WHERE clientid=?", false);
-	q->Bind(clientid); q->Write();
+	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
 	//client
 	q=db->Prepare("DELETE FROM clients WHERE id=?", false);
-	q->Bind(clientid); q->Write();
+	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
 	q=db->Prepare("DELETE FROM extra_clients WHERE id=?", false);
-	q->Bind(clientid); q->Write();
+	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
 	//delete dirs
