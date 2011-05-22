@@ -695,8 +695,8 @@ void ServerCleanupThread::removeClient(int clientid)
 {
 	std::wstring clientname;
 	q_get_clientname->Bind(clientid);
-	q_get_clientname->Reset();
 	db_results res=q_get_clientname->Read();
+	q_get_clientname->Reset();
 	if(!res.empty())
 		clientname=res[0][L"name"];
 
