@@ -306,7 +306,7 @@ function loadGraph(action, parameters, pDivid, pGraphdata)
 				var chart = new google.visualization.ColumnChart(I(divid));
 				chart.draw(gdata, {width: graphdata.width, height: graphdata.height, title: graphdata.title,
 					  hAxis: {title: graphdata.xtitle, titleTextStyle: {color: 'red'}},
-					  vAxis: {title: data.ylabel, titleTextStyle: {color: 'blue'}}
+					  vAxis: {minValue: 0, title: data.ylabel, titleTextStyle: {color: 'blue'}}
 					 });
 
 			}

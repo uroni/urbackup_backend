@@ -350,7 +350,7 @@ function stat_client(id, name)
 		g.settings_nav_pos=idx+1;
 		g.data_f=tmpls.stat_user.evaluate({clientid: id, clientname: name, ses: g.session});
 		I('data_f').innerHTML=g.data_f;
-		new loadGraph("usagegraph", "clientid="+id, "usagegraph", {pie: true, width: 700, height: 700, 
+		new loadGraph("usagegraph", "clientid="+id, "usagegraph", {pie: false, width: 700, height: 700, 
 			title: trans["storage_usage_pie_graph_title"], colname1: trans["storage_usage_pie_graph_colname1"], colname2: trans["storage_usage_pie_graph_colname2"] });
 		show_statistics2(g.stat_data);
 	}
