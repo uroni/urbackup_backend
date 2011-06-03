@@ -159,7 +159,10 @@ bool TreeReader::readTree(const std::string &fn)
 						isdir=true;
 					}
 					else
+					{
 						Log("Error parsing file readTree - 1");
+						return false;
+					}
 
 					state=1;
 					break;
@@ -254,9 +257,22 @@ bool TreeReader::readTree(const std::string &fn)
 						}
 						else
 						{
-							parents.pop();
+							if(!parents.empty())
+							{
+								parents.pop();
+							}
+							else
+							{
+								Log("TreeReader: parents empty");
+								return false;
+							}
 							if(!firstChild)
 							{
+								if(lastNodes.empty())
+								{
+									Log("TreeReader: lastNodes empty");
+									return false;
+								}
 								lastNodes.top()->setNextSibling(NULL);
 								lastNodes.pop();
 							}

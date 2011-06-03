@@ -1199,9 +1199,8 @@ bool BackupServerGet::doIncrBackup(void)
 	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error);
 	if(error)
 	{
-		ServerLogger::Log(clientid, "Error while calculating tree diff.", LL_ERROR);
-		has_error=true;
-		return false;
+		ServerLogger::Log(clientid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
+		return doFullBackup();
 	}
 
 	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub", MODE_WRITE);
@@ -1577,9 +1576,9 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
+			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_ERROR);
 		else
-			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_DEBUG);
+			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_DEBUG);
 		return "";
 	}
 
@@ -1624,9 +1623,9 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
+			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_ERROR);
 		else
-			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_DEBUG);
+			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_DEBUG);
 		return false;
 	}
 
