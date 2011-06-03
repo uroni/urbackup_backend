@@ -94,7 +94,7 @@ public:
 private:
 
 	void readBackupDirs(void);
-	void initialCheck(const std::wstring &orig_dir, const std::wstring &dir, std::fstream &outfile);
+	void initialCheck(const std::wstring &orig_dir, const std::wstring &dir, std::fstream &outfile, bool first=false);
 
 	void indexDirs(void);
 
@@ -103,7 +103,7 @@ private:
 	void readExcludePattern(void);
 	bool isExcluded(const std::wstring &path);
 
-	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path);
+	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db=true);
 
 	bool start_shadowcopy(SCDirs &dir, bool *onlyref=NULL);
 	bool release_shadowcopy(SCDirs &dir);

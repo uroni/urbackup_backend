@@ -529,7 +529,7 @@ void IndexThread::indexDirs(void)
 			outfile << "d\"" << Server->ConvertToUTF8(backup_dirs[i].tname) << "\"\n";
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
-			initialCheck( backup_dirs[i].path, mod_path, outfile);
+			initialCheck( backup_dirs[i].path, mod_path, outfile, true);
 			if(stop_index)
 			{
 				for(size_t k=0;k<backup_dirs.size();++k)
@@ -563,7 +563,7 @@ void IndexThread::indexDirs(void)
 	}
 }
 
-void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, std::fstream &outfile)
+void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, std::fstream &outfile, bool first)
 {
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
@@ -585,7 +585,7 @@ void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 		return;
 	}
 
-	std::vector<SFile> files=getFilesProxy(orig_dir, dir);
+	std::vector<SFile> files=getFilesProxy(orig_dir, dir, !first);
 	
 	for(size_t i=0;i<files.size();++i)
 	{
@@ -626,14 +626,14 @@ void IndexThread::readBackupDirs(void)
 	}
 }
 
-std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, const std::wstring &path)
+std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db)
 {
 #ifndef _WIN32
 	return getFiles(path);
 #else
 	bool found=std::binary_search(changed_dirs.begin(), changed_dirs.end(), orig_path);
 	std::vector<SFile> tmp;
-	if(found)
+	if(found || use_db==false)
 	{
 		++index_c_fs;
 
@@ -642,13 +642,18 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 			tpath=L"\\\\?\\"+path;
 
 		tmp=getFiles(tpath);
-		if(cd->hasFiles(orig_path) )
+		if(use_db)
 		{
-			++index_c_db_update;
-			cd->modifyFiles(orig_path, tmp);
+			if(cd->hasFiles(orig_path) )
+			{
+				++index_c_db_update;
+				cd->modifyFiles(orig_path, tmp);
+			}
+			else
+			{
+				cd->addFiles(orig_path, tmp);
+			}
 		}
-		else
-			cd->addFiles(orig_path, tmp);
 		return tmp;
 	}
 	else
