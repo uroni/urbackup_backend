@@ -446,6 +446,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 				{
 					Server->Log(L"Error writing to file \""+dest+L"\"", LL_ERROR);
 				}
+				Server->destroy(dst);
 				return false;
 			}
 			else
@@ -476,6 +477,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 					{
 						Server->Log(L"Error writing to file \""+dest+L"\"", LL_ERROR);
 					}
+					Server->destroy(dst);
 					return false;
 				}
 
@@ -490,6 +492,7 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 				if(rc==0)
 				{
 					Server->Log(L"Error writing to file \""+dest+L"\" -2", LL_ERROR);
+					Server->destroy(dst);
 					return false;
 				}
 			}

@@ -124,8 +124,9 @@ FileClient::~FileClient(void)
 {
 	if(socket_open && tcpsock!=NULL)
 	{
-		Server->DisconnectStream(tcpsock);
+		Server->destroy(tcpsock);
 	}
+	closesocket(udpsock);
 }
 
 std::vector<sockaddr_in> FileClient::getServers(void)

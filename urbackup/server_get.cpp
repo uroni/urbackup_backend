@@ -1605,6 +1605,7 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 			ret.resize(packetsize);
 			memcpy(&ret[0], pck, packetsize);
 			delete [] pck;
+			Server->destroy(cc);
 			return ret;
 		}
 	}
@@ -2517,22 +2518,25 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 							}
 
 							IFile *t_file=Server->openFile(os_file_prefix()+imagefn, MODE_READ);
-							db->BeginTransaction();
-							q_set_image_size->Bind(t_file->Size());
-							q_set_image_size->Bind(backupid);
-							q_set_image_size->Write();
-							q_set_image_size->Reset();
-							q_update_images_size->Bind(clientid);
-							q_update_images_size->Bind(t_file->Size());
-							q_update_images_size->Bind(clientid);
-							q_update_images_size->Write();
-							q_update_images_size->Reset();
-							if(vhdfile_err==false)
+							if(t_file!=NULL)
 							{
-							    setBackupImageComplete();
+								db->BeginTransaction();
+								q_set_image_size->Bind(t_file->Size());
+								q_set_image_size->Bind(backupid);
+								q_set_image_size->Write();
+								q_set_image_size->Reset();
+								q_update_images_size->Bind(clientid);
+								q_update_images_size->Bind(t_file->Size());
+								q_update_images_size->Bind(clientid);
+								q_update_images_size->Write();
+								q_update_images_size->Reset();
+								if(vhdfile_err==false)
+								{
+									setBackupImageComplete();
+								}
+								db->EndTransaction();
+								Server->destroy(t_file);
 							}
-							db->EndTransaction();
-							Server->destroy(t_file);
 
 							running_updater->stop();
 							updateRunning(true);
