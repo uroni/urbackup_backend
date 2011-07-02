@@ -510,7 +510,7 @@ void IndexThread::indexDirs(void)
 			std::wstring mod_path=backup_dirs[i].path;
 
 			Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_INFO);
-			bool onlyref;
+			bool onlyref=true;
 			bool b=start_shadowcopy(scd, &onlyref, true, past_refs);
 			Server->Log("done.", LL_INFO);
 
@@ -995,13 +995,15 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 			{
 				cd->deleteShadowcopy(dir->ref->save_id);
 			}
-#ifndef VSS_XP
-#ifndef VSS_S03
-#ifndef SERVER_ONLY
+
 			if(dir->fileserv)
 			{
 				filesrv->shareDir(dir->dir, dir->orig_target);
 			}
+
+#ifndef VSS_XP
+#ifndef VSS_S03
+#ifndef SERVER_ONLY
 
 			LONG dels; 
 			GUID ndels; 
@@ -1055,11 +1057,23 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 	{
 
 #if defined(VSS_XP) || defined(VSS_S03)
+		std::vector<SShadowCopy> scs=cd->getShadowcopies();
+
+		bool found=false;
+
+		for(size_t i=0;i<scs.size();++i)
+		{
+			if( scs[i].target==dir->target || ( dir->ref!=NULL && dir->ref->backupcom==NULL )  )
+			{
+				found=true;
+			}
+		}
+
 		if(found)
 		{
 			for(size_t i=0;i<scs.size();++i)
 			{
-				if(scs[i].target==dir.target || ( dir.ref!=NULL && dir.ref->backupcom==NULL ) )
+				if(scs[i].target==dir->target || ( dir->ref!=NULL && dir->ref->backupcom==NULL ) )
 				{
 					Server->Log(L"Removing shadowcopy entry for path \""+scs[i].path+L"\"", LL_INFO);
 					cd->deleteShadowcopy(scs[i].id);
@@ -1124,6 +1138,9 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 
 bool IndexThread::cleanup_saved_shadowcopies(void)
 {
+#ifndef VSS_XP
+#ifndef VSS_S03
+#ifndef SERVER_ONLY
 		std::vector<SShadowCopy> scs=cd->getShadowcopies();
 
 		bool found=false;
@@ -1138,9 +1155,6 @@ bool IndexThread::cleanup_saved_shadowcopies(void)
 			}
 		}
 
-#ifndef VSS_XP
-#ifndef VSS_S03
-#ifndef SERVER_ONLY
 		if(found)
 		{
 			bool ok=false;
