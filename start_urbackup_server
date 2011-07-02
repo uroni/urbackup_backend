@@ -1,10 +1,11 @@
 #!/bin/sh
 
 NAME="urbackup_srv"
-DAEMON=/usr/bin/urbackup_srv
+PREFIX=/usr
+DAEMON=$PREFIX/bin/urbackup_srv
 if ! test -x $DAEMON
 then
-    DAEMON=/usr/local/bin/urbackup_srv
+    PREFIX=/usr/local
 fi
 
 DAEMON_DIR="/var"
@@ -13,12 +14,7 @@ then
     DAEMON_DIR="/usr/local/var"
 fi
 
-DAEMON_LIBS="/usr/lib"
-if ! test -e $DAEMON_LIBS/liburbackupserver.so
-then
-	DAEMON_LIBS="/usr/local/lib"
-fi
-
+DAEMON_LIBS="$PREFIX/lib"
 PLUGIN_PYCHART="--plugin $DAEMON_LIBS/liburbackupserver_pychart.so"
 if ! test -e $DAEMON_LIBS/liburbackupserver_pychart.so
 then
@@ -32,11 +28,12 @@ print_help()
 {
 	echo "UrBackup server wrapper script. Starts UrBackup Server."
 	echo "Parameters:"
-	echo "--fastcgi_port [port]	Specifies the port where UrBackup server will listen for FastCGI connections. Default: 55413"
-	echo "--http_port [port]	Specifies the port where UrBackup server will listen for HTTP connections. Default: 55414"
-	echo "--logfile [file]	Specifies the log file name. Default: urbackup.log"
-	echo "--loglevel [debug|info|warn|error]	Specifies the log level. Possible values: debug, info, warn, error. Default: warn"
+	echo "--fastcgi_port {port}	Specifies the port where UrBackup server will listen for FastCGI connections. Default: 55413"
+	echo "--http_port {port}	Specifies the port where UrBackup server will listen for HTTP connections. Default: 55414"
+	echo "--logfile {file}	Specifies the log file name. Default: urbackup.log"
+	echo "--loglevel {debug|info|warn|error}	Specifies the log level. Possible values: debug, info, warn, error. Default: warn"
 	echo "--no_deamon	Do not start as a daemon"
+	echo "--pidfile {file}		Save pid of daemon in file"
 	echo ""
 	echo "Have a nice day!"
 	exit 0
@@ -57,7 +54,8 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	HTTP_PORT=55414
 	LOGFILE="urbackup.log"
 	LOGLEVEL="warn"
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel: -- "$@"`
+	PIDFILE="/var/run/urbackup_srv.pid"
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile: -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -65,6 +63,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			-h|--http_port) HTTP_PORT="$2"; shift 2 ;;
 			-l|--logfile) LOGFILE="$2"; shift 2 ;;
 			-v|--loglevel) LOGLEVEL="$2"; shift 2 ;;
+			--pidfile) PIDFILE="$2"; shift 2 ;;
 			--no_daemon) S_DAEMON=""; shift ;;
 			--help) print_help ;;
 			--version) print_version ;;
@@ -73,7 +72,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		esac
 	done
 	
-	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT"
+	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE"
 else
 	DAEMON_ARGS="$*"
 fi
@@ -86,7 +85,6 @@ then
 fi
 
 ulimit -n 10000 > /dev/null 2>&1
-ulimit -c unlimited
 
 export MPLCONFIGDIR=$DAEMON_DIR/urbackup
 

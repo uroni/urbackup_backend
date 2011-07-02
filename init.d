@@ -17,16 +17,9 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="UrBackup server deamon"             # Introduce a short description here
 NAME="urbackup_srv"             # Introduce the short server's name here
-DAEMON=/usr/bin/start_urbackup_server # Introduce the server's location here
-if ! test -x $DAEMON
-then
-    DAEMON=/usr/local/bin/start_urbackup_server
-fi
-DAEMON_REAL=/usr/bin/urbackup_srv
-if ! test -x $DAEMON_REAL
-then
-    DAEMON_REAL=/usr/local/bin/urbackup_srv
-fi
+PREFIX="/usr/local"
+DAEMON=$PREFIX/bin/start_urbackup_server # Introduce the server's location here
+DAEMON_REAL=$PREFIX/bin/urbackup_srv
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 DAEMON_TMPDIR=/tmp

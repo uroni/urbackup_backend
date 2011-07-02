@@ -7,6 +7,7 @@ install-data-local: $(srcdir)/backup_server.db $(srcdir)/status.htm $(srcdir)/ww
 	$(INSTALL_DATA) $(INSTALL_OPTS) -D $(srcdir)/status.htm $(DESTDIR)$(localstatedir)/urbackup/status.htm
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/google_chart.js $(DESTDIR)$(localstatedir)/urbackup/
 	$(INSTALL_DATA) $(INSTALL_OPTS) -d $(DESTDIR)$(localstatedir)/urbackup/www
+	chmod u+x $(DESTDIR)$(localstatedir)/urbackup/www
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/www/*.js $(DESTDIR)$(localstatedir)/urbackup/www/
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/www/*.htm $(DESTDIR)$(localstatedir)/urbackup/www/
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/www/*.css $(DESTDIR)$(localstatedir)/urbackup/www/
