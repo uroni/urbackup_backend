@@ -1,0 +1,96 @@
+#!/bin/sh
+
+NAME="urbackup_srv"
+DAEMON=/usr/bin/urbackup_srv
+if ! test -x $DAEMON
+then
+    DAEMON=/usr/local/bin/urbackup_srv
+fi
+
+DAEMON_DIR="/var"
+if ! test -d $DAEMON_DIR/urbackup
+then
+    DAEMON_DIR="/usr/local/var"
+fi
+
+DAEMON_LIBS="/usr/lib"
+if ! test -e $DAEMON_LIBS/liburbackupserver.so
+then
+	DAEMON_LIBS="/usr/local/lib"
+fi
+
+PLUGIN_PYCHART="--plugin $DAEMON_LIBS/liburbackupserver_pychart.so"
+if ! test -e $DAEMON_LIBS/liburbackupserver_pychart.so
+then
+	PLUGIN_PYCHART=""
+fi
+
+DAEMON_PLUGINS="$PLUGIN_PYCHART --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --server true --user urbackup"
+S_DAEMON="--daemon"
+
+print_help()
+{
+	echo "UrBackup server wrapper script. Starts UrBackup Server."
+	echo "Parameters:"
+	echo "--fastcgi_port [port]	Specifies the port where UrBackup server will listen for FastCGI connections. Default: 55413"
+	echo "--http_port [port]	Specifies the port where UrBackup server will listen for HTTP connections. Default: 55414"
+	echo "--logfile [file]	Specifies the log file name. Default: urbackup.log"
+	echo "--loglevel [debug|info|warn|error]	Specifies the log level. Possible values: debug, info, warn, error. Default: warn"
+	echo "--no_deamon	Do not start as a daemon"
+	echo ""
+	echo "Have a nice day!"
+	exit 0
+}
+
+print_version()
+{
+	echo "UrBackup Server v0.24"
+	echo "Copyright (C) 2011 Martin Raiber"
+	echo "This is free software; see the source for copying conditions. There is NO"
+	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+	exit 0
+}
+
+
+if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
+	FASTCGI_PORT=55413
+	HTTP_PORT=55414
+	LOGFILE="urbackup.log"
+	LOGLEVEL="warn"
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel: -- "$@"`
+	eval set -- "$TEMP"
+	while true ; do
+		case "$1" in
+			-f|--fastcgi_port) FASTCGI_PORT="$2"; shift 2 ;;
+			-h|--http_port) HTTP_PORT="$2"; shift 2 ;;
+			-l|--logfile) LOGFILE="$2"; shift 2 ;;
+			-v|--loglevel) LOGLEVEL="$2"; shift 2 ;;
+			--no_daemon) S_DAEMON=""; shift ;;
+			--help) print_help ;;
+			--version) print_version ;;
+			--) shift; break ;;
+			*) echo "error!" ; exit 1 ;;
+		esac
+	done
+	
+	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT"
+else
+	DAEMON_ARGS="$*"
+fi
+
+
+# Exit if the package is not installed
+if [ ! -x $DAEMON ]
+then
+    echo "Server binary not found"
+fi
+
+ulimit -n 10000 > /dev/null 2>&1
+ulimit -c unlimited
+
+export MPLCONFIGDIR=$DAEMON_DIR/urbackup
+
+DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
+
+cd $DAEMON_DIR
+exec $DAEMON $S_DAEMON $DAEMON_ARGS

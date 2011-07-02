@@ -23,6 +23,8 @@
 #include "../os_functions.h"
 #include "../server_status.h"
 
+extern std::string server_identity;
+
 ACTION_IMPL(status)
 {
 	Helper helper(tid, &GET, &PARAMS);
@@ -258,6 +260,7 @@ ACTION_IMPL(status)
 
 		ret.set("status", status);
 		ret.set("extra_clients", extra_clients);
+		ret.set("server_identity", server_identity);
 
 		if(helper.getRights("remove_client")=="all")
 		{

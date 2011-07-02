@@ -564,7 +564,7 @@ function show_status2(data)
 	
 	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, 
 	extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
-	class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end});
+	class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end, server_identity: data.server_identity});
 	
 	if(g.data_f!=ndata)
 	{
