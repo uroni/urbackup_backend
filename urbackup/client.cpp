@@ -1119,6 +1119,8 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool delit, bool for_imageback
 
 bool IndexThread::cleanup_saved_shadowcopies(void)
 {
+#ifdef _WIN32
+#ifdef ENABLE_VSS
 		std::vector<SShadowCopy> scs=cd->getShadowcopies();
 
 		bool found=false;
@@ -1167,6 +1169,8 @@ bool IndexThread::cleanup_saved_shadowcopies(void)
 #endif
 #endif
 #endif
+#endif //ENABLE_VSS
+#endif //_WIN32
 		return true;
 }
 
