@@ -75,7 +75,10 @@ void CWData::addString(std::string ta)
 	unsigned int len=(unsigned int)ta.size();
 	memcpy(&data[cpos], &len, sizeof(unsigned int) );
 	cpos+=sizeof(unsigned int);
-	memcpy(&data[cpos],ta.c_str(), ta.size() );
+	if(!ta.empty())
+	{
+		memcpy(&data[cpos],ta.c_str(), ta.size() );
+	}
 }
 
 void CWData::addChar(char ta)
@@ -224,8 +227,15 @@ bool CRData::getStr(std::string *ret)
 		return false;
 	}
 
-	ret->resize(strlen);
-	memcpy((char*)ret->c_str(), &data[streampos], strlen);
+	if(strlen>0)
+	{
+		ret->resize(strlen);
+		memcpy((char*)ret->c_str(), &data[streampos], strlen);
+	}
+	else
+	{
+		ret->clear();
+	}
 	streampos+=strlen;
 	return true;
 }
