@@ -49,6 +49,7 @@ extern std::string server_token;
 const unsigned short serviceport=35623;
 const unsigned int full_backup_construct_timeout=4*60*60*1000;
 const unsigned int shadow_copy_timeout=30*60*1000;
+const unsigned int check_time_intervall_tried_backup=30*60*1000;
 const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const unsigned int mbr_size=(1024*1024)/2;
@@ -241,6 +242,7 @@ void BackupServerGet::operator ()(void)
 	}
 
 	bool do_exit_now=false;
+	bool tried_backup=false;
 	
 	while(true)
 	{
@@ -255,6 +257,7 @@ void BackupServerGet::operator ()(void)
 					ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
 				}
 			}
+			tried_backup=false;
 			unsigned int ttime=Server->getTimeMS();
 			status.starttime=ttime;
 			has_error=false;
@@ -384,6 +387,7 @@ void BackupServerGet::operator ()(void)
 			else if(hbu && has_error)
 			{
 				os_remove_nonempty_dir(backuppath);
+				tried_backup=true;
 			}
 
 			status.action_done=false;
@@ -466,7 +470,11 @@ void BackupServerGet::operator ()(void)
 		}
 
 		std::string msg;
-		pipe->Read(&msg, skip_checking?0:check_time_intervall);
+		if(tried_backup)
+			pipe->Read(&msg, skip_checking?0:check_time_intervall_tried_backup);
+		else
+			pipe->Read(&msg, skip_checking?0:check_time_intervall);
+		
 		skip_checking=false;
 		if(msg=="exit")
 			break;
@@ -781,10 +789,11 @@ bool BackupServerGet::request_filelist_construct(bool full)
 {
 	CTCPStack tcpstack;
 
+	Server->Log(clientname+L": Connecting for filelist...", LL_DEBUG);
 	IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
 	if(cc==NULL)
 	{
-		ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error during filelist construction", LL_ERROR);
 		return false;
 	}
 
@@ -793,6 +802,7 @@ bool BackupServerGet::request_filelist_construct(bool full)
 	else
 		tcpstack.Send(cc, server_identity+"START BACKUP#token="+server_token);
 
+	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=full_backup_construct_timeout)

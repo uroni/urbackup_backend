@@ -17,11 +17,16 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="UrBackup server deamon"             # Introduce a short description here
 NAME="urbackup_srv"             # Introduce the short server's name here
-DAEMON=/usr/local/bin/urbackup_srv # Introduce the server's location here
-DAEMON_ARGS="--port 55413 --logfile /var/log/urbackup.log --loglevel warning"             # Arguments to run the daemon with
-DAEMON_DIR="/usr/local/var"
-DAEMON_LIBS="/usr/local/lib"
-DAEMON_PLUGINS="--daemon --plugin $DAEMON_LIBS/libpychart.so --plugin $DAEMON_LIBS/libdownloadplugin.so --plugin $DAEMON_LIBS/libfsimageplugin.so --plugin $DAEMON_LIBS/liburbackup.so --plugin $DAEMON_LIBS/libhttpserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --server true --user urbackup"
+DAEMON=/usr/bin/start_urbackup_server # Introduce the server's location here
+if ! test -x $DAEMON
+then
+    DAEMON=/usr/local/bin/start_urbackup_server
+fi
+DAEMON_REAL=/usr/bin/urbackup_srv
+if ! test -x $DAEMON_REAL
+then
+    DAEMON_REAL=/usr/local/bin/urbackup_srv
+fi
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 DAEMON_TMPDIR=/tmp
@@ -29,8 +34,27 @@ DAEMON_TMPDIR=/tmp
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
 
+#Default options that are passed to the Daemon.
+
+#Port for fastcgi requests
+FASTCGI_PORT=55413
+
+#Port for the webinterface
+HTTP_PORT=55414
+
+#logfile name
+LOGFILE="urbackup.log"
+
+#Either debug,warn,info or error
+LOGLEVEL="error"
+
+#Tmp file directory - be carefull this can get very large
+DAEMON_TMPDIR="/tmp"
+
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+DAEMON_ARGS="--fastcgi_port $FASTCGI_PORT --logfile $LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT"
 
 # Load the VERBOSE setting and other rcS variables
 [ -r /lib/init/vars.sh ] && . /lib/init/vars.sh
@@ -46,19 +70,17 @@ chown urbackup:urbackup $DAEMON_TMPDIR
 ulimit -n 10000 > /dev/null 2>&1
 ulimit -c unlimited
 
-DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
 #
 # Function that starts the daemon/service
 #
 do_start()
 {
 	export TMPDIR=$DAEMON_TMPDIR
-	export MPLCONFIGDIR=$DAEMON_DIR/urbackup
 	# Return
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
+	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON_REAL --test > /dev/null \
 		|| return 1
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- \
 		$DAEMON_ARGS \
@@ -87,7 +109,7 @@ do_stop()
 	# that waits for the process to drop all resources that could be
 	# needed by services started subsequently.  A last resort is to
 	# sleep for some time.
-	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON
+	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $DAEMON_REAL
 	[ "$?" = 2 ] && return 2
 	# Many daemons don't delete their pidfiles when they exit.
 	rm -f $PIDFILE
@@ -166,4 +188,6 @@ case "$1" in
 esac
 
 :
+
+
 

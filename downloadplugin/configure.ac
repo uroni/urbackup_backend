@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([downloadplugin], [0.1], [urpc@gmx.de])
+AC_INIT([urbackupserver_downloadplugin], [0.1], [urpc@gmx.de])
 AC_CONFIG_SRCDIR([dllmain.cpp])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE

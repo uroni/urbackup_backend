@@ -33,6 +33,7 @@
 #include "../Interface/Pipe.h"
 #include "../Interface/Query.h"
 #include "../Interface/Thread.h"
+#include "../Interface/File.h"
 
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../pychart/IPychartFactory.h"
@@ -90,6 +91,27 @@ bool is_server=false;
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
 std::string time_format_str="%m/%d/%Y %H:%M";
+
+bool copy_file(const std::wstring &src, const std::wstring &dst)
+{
+	IFile *fsrc=Server->openFile(src, MODE_READ);
+	if(fsrc==NULL) return false;
+	IFile *fdst=Server->openFile(dst, MODE_WRITE);
+	if(fdst==NULL)
+	{
+		Server->destroy(fsrc);
+		return false;
+	}
+	char buf[4096];
+	size_t rc;
+	while( (rc=fsrc->Read(buf, 4096))>0)
+	{
+		fdst->Write(buf, rc);
+	}
+	
+	Server->destroy(fsrc);
+	Server->destroy(fdst);
+}
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
@@ -264,6 +286,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 #ifndef CLIENT_ONLY
 	if(both || (!both && !is_backup_client) )
 	{
+		if( !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
+		{
+			//Copy file
+			copy_file(L"urbackup/backup_server.db.template", L"urbackup/backup_server.db");
+		}
 		if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER) )
 		{
 			Server->Log("Couldn't open Database backup_server.db", LL_ERROR);

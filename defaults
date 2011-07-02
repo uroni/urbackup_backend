@@ -23,5 +23,3 @@ LOGLEVEL="warn"
 #Tmp file directory - be carefull this can get very large
 DAEMON_TMPDIR="/tmp"
 
-DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT"
-
