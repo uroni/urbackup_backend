@@ -104,13 +104,14 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 	}
 	char buf[4096];
 	size_t rc;
-	while( (rc=fsrc->Read(buf, 4096))>0)
+	while( (rc=(_u32)fsrc->Read(buf, 4096))>0)
 	{
-		fdst->Write(buf, rc);
+		fdst->Write(buf, (_u32)rc);
 	}
 	
 	Server->destroy(fsrc);
 	Server->destroy(fdst);
+	return true;
 }
 
 DLLEXPORT void LoadActions(IServer* pServer)
