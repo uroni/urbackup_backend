@@ -48,7 +48,7 @@ void OutputCallback::operator() (const void* buf, size_t count)
 		Server->Log("Send failed in OutputCallback");
 }
 
-CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned short int uPort )
+CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned short int uPort ) : error(false)
 {
 	WorkerThreadsPerMaster=nWorkerThreadsPerMaster;
 
@@ -57,6 +57,7 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 	if(s<1)
 	{
 		Server->Log("Creating SOCKET failed",LL_ERROR);
+		error=true;
 		return;
 	}
 	Server->Log("done.",LL_INFO);
@@ -72,6 +73,7 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 	if(rc==SOCKET_ERROR)
 	{
 		Server->Log("Failed binding SOCKET to Port "+nconvert(uPort),LL_ERROR);
+		error=true;
 		return;
 	}
 
@@ -178,4 +180,9 @@ void CAcceptThread::AddToSelectThread(CClient *client)
 	SelectThreads.push_back( nt );
 
 	Server->createThread(nt);
+}
+
+bool CAcceptThread::has_error(void)
+{
+	return error;
 }

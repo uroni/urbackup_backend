@@ -14,6 +14,8 @@ public:
 	~CAcceptThread();
 
 	void operator()(bool single=false);
+	
+	bool has_error(void);
 
 private:
 	void AddToSelectThread(CClient *client);
@@ -22,6 +24,7 @@ private:
 
 	SOCKET s;
 	unsigned int WorkerThreadsPerMaster;
+	bool error;
 };
 
 class OutputCallback : public FCGIProtocolDriver::OutputCallback
