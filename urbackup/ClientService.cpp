@@ -72,6 +72,8 @@ std::vector<IPipe*> ClientConnector::channel_ping;
 IMutex *ClientConnector::progress_mutex=NULL;
 volatile bool ClientConnector::img_download_running=false;
 
+const unsigned int x_pingtimeout=180000;
+
 void ClientConnector::init_mutex(void)
 {
 	if(backup_mutex==NULL)
@@ -592,7 +594,7 @@ void ClientConnector::ReceivePackets(void)
 
 			IScopedLock lock(backup_mutex);
 			backup_running=1;
-			last_pingtime=0;
+			last_pingtime=Server->getTimeMS();
 			pcdone=0;
 		}
 		else if(cmd=="START FULL BACKUP" && ident_ok==true)
@@ -609,7 +611,7 @@ void ClientConnector::ReceivePackets(void)
 
 			IScopedLock lock(backup_mutex);
 			backup_running=2;
-			last_pingtime=0;
+			last_pingtime=Server->getTimeMS();
 			pcdone=0;
 		}
 		else if(cmd.find("START SC \"")!=std::string::npos && ident_ok==true)
@@ -758,7 +760,7 @@ void ClientConnector::ReceivePackets(void)
 		{
 			IScopedLock lock(backup_mutex);
 			lasttime=Server->getTimeMS();
-			if(backup_running!=0)
+			if(backup_running!=0 && Server->getTimeMS()-last_pingtime<x_pingtimeout)
 				tcpstack.Send(pipe, "RUNNING");
 			else
 			{
@@ -783,7 +785,7 @@ void ClientConnector::ReceivePackets(void)
 		{
 			IScopedLock lock(backup_mutex);
 			lasttime=Server->getTimeMS();
-			if(backup_running!=0)
+			if(backup_running!=0 && Server->getTimeMS()-last_pingtime<x_pingtimeout)
 				tcpstack.Send(pipe, "RUNNING");
 			else
 			{
@@ -1415,8 +1417,6 @@ void ClientConnector::updateLastBackup(void)
 	}
 	db->destroyAllQueries();
 }
-
-const unsigned int x_pingtimeout=180000;
 
 void ClientConnector::getBackupStatus(void)
 {

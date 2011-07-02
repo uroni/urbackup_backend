@@ -342,7 +342,7 @@ void IndexThread::operator()(void)
 				if(scd->running==true)
 				{
 					Server->Log(L"Removing shadowcopy \""+scd->dir+L"\" because of timeout...", LL_WARNING);
-					bool b=release_shadowcopy(scd);
+					bool b=release_shadowcopy(scd, false, -1, scd);
 					if(!b)
 					{
 #ifdef _WIN32
@@ -396,7 +396,7 @@ void IndexThread::operator()(void)
 			{
 				int save_id=-1;
 				data.getInt(&save_id);
-				if(!release_shadowcopy(scd, false, image_backup==1?true:false, save_id))
+				if(!release_shadowcopy(scd, image_backup==1?true:false, save_id))
 				{
 					Server->Log("Invalid action -- Creating shadow copy failed?", LL_ERROR);
 					contractor->Write("failed");
@@ -752,10 +752,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 	std::wstring wpath=volume_path;
 
-	bool c=true;
-	while( c )
 	{
-		c=false;
 		for(size_t i=0;i<sc_refs.size();++i)
 		{
 			if(sc_refs[i]->target==wpath && sc_refs[i]->ok)
@@ -780,11 +777,19 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						Server->Log("Removing reference because of reference timeout", LL_WARNING);
 					}
 
-					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs.begin();it!=scdirs.end();++it)
+					std::vector<std::wstring> m_keys;
+					for(std::map<std::wstring, SCDirs*>::iterator lit=scdirs.begin();lit!=scdirs.end();++lit)
 					{
-						release_shadowcopy(it->second);
+						m_keys.push_back(lit->first);
 					}
-					c=true;
+					for(size_t k=0;k<m_keys.size();++k)
+					{
+						std::map<std::wstring, SCDirs*>::iterator it=scdirs.find(m_keys[k]);
+						if(it!=scdirs.end() && it->second->ref==sc_refs[i])
+						{
+							release_shadowcopy(it->second, false, -1, dir);
+						}
+					}
 					break;
 				}
 				else
@@ -907,7 +912,6 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 	VSS_SNAPSHOT_PROP snap_props; 
     CHECK_COM_RESULT_RELEASE(backupcom->GetSnapshotProperties(dir->ref->ssetid, &snap_props));
 
-	dir->orig_target=dir->target;
 	dir->target.erase(0,wpath.size());
 	dir->ref->volpath=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
 	dir->target=dir->ref->volpath+os_file_sep()+dir->target;
@@ -952,7 +956,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 #endif
 }
 
-bool IndexThread::release_shadowcopy(SCDirs *dir, bool delit, bool for_imagebackup, int save_id)
+bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save_id, SCDirs *dontdel)
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
@@ -973,6 +977,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool delit, bool for_imageback
 		}
 	}
 
+	bool has_dels=false;
 	bool ok=false;
 
 	if(dir->ref!=NULL && dir->ref->backupcom!=NULL)
@@ -1011,6 +1016,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool delit, bool for_imageback
 			{
 				ok=true;
 			}
+			has_dels=true;
 #endif
 #endif
 #endif
@@ -1081,7 +1087,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool delit, bool for_imageback
 						if(it->second->ref==sc_refs[i])
 						{
 							it->second->ref=NULL;
-							if(it->second!=dir || delit)
+							if(dontdel==NULL || it->second!=dontdel )
 							{
 								delete it->second;
 								scdirs.erase(it);
@@ -1100,9 +1106,8 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool delit, bool for_imageback
 	}
 
 	
-	if(dir->ref!=NULL && dir->ref->backupcom==NULL)
+	if(has_dels)
 	{
-		Server->Log("dir.backupcom=NULL in IndexThread::release_shadowcopy", LL_DEBUG);
 		return ok;
 	}
 	else
