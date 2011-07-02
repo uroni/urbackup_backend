@@ -137,7 +137,8 @@ void ServerCleanupThread::updateStats(void)
 
 void ServerCleanupThread::do_cleanup(void)
 {
-	db->Write("PRAGMA cache_size = 10000");
+	db_results cache_res=db->Read("PRAGMA cache_size");
+	db->Write("PRAGMA cache_size = 100000");
 
 	removeerr.clear();
 	cleanup_images();
@@ -148,7 +149,10 @@ void ServerCleanupThread::do_cleanup(void)
 	sus();
 	Server->Log("Done updating statistics.", LL_INFO);
 
-	db->Write("PRAGMA cache_size = 10");
+	if(!cache_res.empty())
+	{
+		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+	}
 }
 
 bool ServerCleanupThread::do_cleanup(int64 minspace)

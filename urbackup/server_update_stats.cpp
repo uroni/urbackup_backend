@@ -62,6 +62,8 @@ void ServerUpdateStats::destroyQueries(void)
 void ServerUpdateStats::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db_results cache_res=db->Read("PRAGMA cache_size");
+	db->Write("PRAGMA cache_size = 100000");
 
 	createQueries();
 
@@ -86,6 +88,10 @@ void ServerUpdateStats::operator()(void)
 	q_set_file_backup_null->Reset();
 
 	destroyQueries();
+	if(!cache_res.empty())
+	{
+		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+	}
 }
 
 void ServerUpdateStats::update_images(void)
