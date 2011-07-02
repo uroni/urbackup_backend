@@ -519,10 +519,17 @@ void ClientConnector::ReceivePackets(void)
 		{
 			identity=getbetween("#I", "#", cmd);
 			cmd.erase(0, identity.size()+3);
+			size_t tp=cmd.find("#token=");
+			if(tp!=std::string::npos)
+			{
+				server_token=cmd.substr(tp+7);
+				cmd.erase(tp, cmd.size()-tp);
+			}
 		}
 		else if((hashpos=cmd.find("#"))!=std::string::npos)
 		{
 			ParseParamStr(getafter("#", cmd), &params);
+
 			cmd.erase(hashpos, cmd.size()-hashpos);
 			if(!checkPassword(params[L"pw"]))
 			{
@@ -574,11 +581,13 @@ void ClientConnector::ReceivePackets(void)
 		else if(cmd=="START BACKUP" && ident_ok==true)
 		{
 			state=1;
-			const size_t bsize=sizeof(char)+sizeof(IPipe*);
-			char buffer[bsize];
-			buffer[0]=0;
-			memcpy(&buffer[1], &mempipe, sizeof(IPipe*));
-			IndexThread::getMsgPipe()->Write(buffer, bsize);
+
+			CWData data;
+			data.addChar(0);
+			data.addVoidPtr(mempipe);
+			data.addString(server_token);
+			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
 			lasttime=Server->getTimeMS();
 
 			IScopedLock lock(backup_mutex);
@@ -589,11 +598,13 @@ void ClientConnector::ReceivePackets(void)
 		else if(cmd=="START FULL BACKUP" && ident_ok==true)
 		{
 			state=1;
-			const size_t bsize=sizeof(char)+sizeof(IPipe*);
-			char buffer[bsize];
-			buffer[0]=1;
-			memcpy(&buffer[1], &mempipe, sizeof(IPipe*));
-			IndexThread::getMsgPipe()->Write(buffer, bsize);
+
+			CWData data;
+			data.addChar(1);
+			data.addVoidPtr(mempipe);
+			data.addString(server_token);
+			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
 			lasttime=Server->getTimeMS();
 
 			IScopedLock lock(backup_mutex);
@@ -611,6 +622,7 @@ void ClientConnector::ReceivePackets(void)
 				data.addChar(2);
 				data.addVoidPtr(mempipe);
 				data.addString(dir);
+				data.addString(server_token);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				lasttime=Server->getTimeMS();
 			}
@@ -629,6 +641,7 @@ void ClientConnector::ReceivePackets(void)
 				data.addChar(3);
 				data.addVoidPtr(mempipe);
 				data.addString(dir);
+				data.addString(server_token);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				lasttime=Server->getTimeMS();
 			}
@@ -942,7 +955,8 @@ void ClientConnector::ReceivePackets(void)
 					data.addChar(2);
 					data.addVoidPtr(mempipe);
 					data.addString(image_letter);
-					data.addUChar(0);
+					data.addString(server_token);
+					data.addUChar(1); //image backup
 					IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				}
 				else if(shadow_id!=-1)
@@ -1003,7 +1017,9 @@ void ClientConnector::ReceivePackets(void)
 						data.addChar(2);
 						data.addVoidPtr(mempipe);
 						data.addString(image_letter);
-						data.addUChar(0);
+						data.addString(server_token);
+						data.addUChar(1); //image backup
+						data.addUChar(0); //file serv?
 						IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 					}
 					else if(shadow_id!=-1)
@@ -1935,7 +1951,7 @@ void ClientConnector::sendFullImageThread(void)
 
 	if(!has_error)
 	{
-		removeShadowCopyThread();
+		removeShadowCopyThread(save_id);
 		std::string msg;
 		mempipe->Read(&msg);
 		if(msg.find("done")!=0)
@@ -2175,7 +2191,7 @@ void ClientConnector::sendIncrImageThread(void)
 
 	if(!has_error)
 	{
-		removeShadowCopyThread();
+		removeShadowCopyThread(save_id);
 		std::string msg;
 		mempipe->Read(&msg);
 		if(msg.find("done")!=0)
@@ -2188,12 +2204,16 @@ void ClientConnector::sendIncrImageThread(void)
 	do_quit=true;
 }
 
-void ClientConnector::removeShadowCopyThread(void)
+void ClientConnector::removeShadowCopyThread(int save_id)
 {
 	CWData data;
 	data.addChar(3);
 	data.addVoidPtr(mempipe);
 	data.addString(image_letter);
+	data.addString(server_token);
+	data.addUChar(1);
+	data.addInt(save_id);
+
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 }
 

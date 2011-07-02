@@ -174,6 +174,12 @@ void IndexThread::operator()(void)
 	db->Write("CREATE TEMPORARY TABLE files_tmp (num NUMERIC, data BLOB, name TEXT);");
 
 	cd=new ClientDAO(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
+
+#ifdef _WIN32
+#ifdef ENABLE_VSS
+	cleanup_saved_shadowcopies();
+#endif
+#endif
 	
 	//indexDirs();
 
@@ -202,6 +208,8 @@ void IndexThread::operator()(void)
 		data.getVoidPtr((void**)&contractor);
 		if(action==0)
 		{
+			data.getStr(&starttoken);
+
 			//incr backup
 			readBackupDirs();
 			if(backup_dirs.empty())
@@ -266,9 +274,12 @@ void IndexThread::operator()(void)
 			{
 				contractor->Write("error - stop_index 1");
 			}
+			execute_postindex_hook();
 		}
 		else if(action==1)
 		{
+			data.getStr(&starttoken);
+
 			readBackupDirs();
 			if(backup_dirs.empty())
 			{
@@ -287,6 +298,7 @@ void IndexThread::operator()(void)
 			}
 			execute_prebackup_hook();
 			indexDirs();
+			execute_postindex_hook();
 			if(!stop_index)
 			{
 				contractor->Write("done");
@@ -300,23 +312,37 @@ void IndexThread::operator()(void)
 		{
 			std::string scdir;
 			data.getStr(&scdir);
+			data.getStr(&starttoken);
+			uchar image_backup=0;
+			data.getUChar(&image_backup);
 			std::wstring wscdir=Server->ConvertToUnicode(scdir);
 			SCDirs *scd=getSCDir(wscdir);
 
 			unsigned char fileserv;
 			bool hfs=data.getUChar(&fileserv);
 			
-			if(scd->running==true && Server->getTimeMS()-scd->starttime<=shadowcopy_timeout)
+			if(scd->running==true && Server->getTimeSeconds()-scd->starttime<shadowcopy_timeout/1000)
 			{
-				contractor->Write("done-"+nconvert(scd->save_id)+"-"+Server->ConvertToUTF8(scd->target));
-				scd->sccount++;
+				if(scd->ref!=NULL)
+				{
+					scd->ref->dontincrement=true;
+				}
+				if(start_shadowcopy(scd, NULL, false, std::vector<SCRef*>(), image_backup==1?true:false))
+				{
+					contractor->Write("done-"+nconvert(scd->ref->save_id)+"-"+Server->ConvertToUTF8(scd->target));
+				}
+				else
+				{
+					Server->Log(L"Getting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
+					contractor->Write("failed");
+				}
 			}
-			else if(scd->running==false || Server->getTimeMS()-scd->starttime>shadowcopy_timeout)
+			else
 			{
 				if(scd->running==true)
 				{
 					Server->Log(L"Removing shadowcopy \""+scd->dir+L"\" because of timeout...", LL_WARNING);
-					bool b=release_shadowcopy(*scd);
+					bool b=release_shadowcopy(scd);
 					if(!b)
 					{
 #ifdef _WIN32
@@ -326,9 +352,7 @@ void IndexThread::operator()(void)
 				}
 
 				scd->dir=wscdir;
-				scd->sccount=1;
-				scd->save_id=-1;
-				scd->starttime=Server->getTimeMS();
+				scd->starttime=Server->getTimeSeconds();
 				if(hfs && fileserv==0)
 				{
 					scd->target=scd->dir;
@@ -340,10 +364,12 @@ void IndexThread::operator()(void)
 					scd->fileserv=true;
 				}
 
+				scd->orig_target=scd->target;
+
 				Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\"...", LL_INFO);
-				bool b=start_shadowcopy(*scd);
+				bool b=start_shadowcopy(scd, NULL, false, std::vector<SCRef*>(), image_backup==0?false:true);
 				Server->Log("done.", LL_INFO);
-				if(!b)
+				if(!b || scd->ref==NULL)
 				{
 					contractor->Write("failed");
 #ifdef _WIN32
@@ -352,7 +378,7 @@ void IndexThread::operator()(void)
 				}
 				else
 				{
-					contractor->Write("done-"+nconvert(scd->save_id)+"-"+Server->ConvertToUTF8(scd->target));
+					contractor->Write("done-"+nconvert(scd->ref->save_id)+"-"+Server->ConvertToUTF8(scd->target));
 					scd->running=true;
 				}
 			}
@@ -361,11 +387,16 @@ void IndexThread::operator()(void)
 		{
 			std::string scdir;
 			data.getStr(&scdir);
+			data.getStr(&starttoken);
+			uchar image_backup=0;
+			data.getUChar(&image_backup);
 			SCDirs *scd=getSCDir(Server->ConvertToUnicode(scdir));
 
 			if(scd->running==false )
 			{
-				if(!release_shadowcopy(*scd))
+				int save_id=-1;
+				data.getInt(&save_id);
+				if(!release_shadowcopy(scd, false, image_backup==1?true:false, save_id))
 				{
 					Server->Log("Invalid action -- Creating shadow copy failed?", LL_ERROR);
 					contractor->Write("failed");
@@ -377,22 +408,13 @@ void IndexThread::operator()(void)
 			}
 			else
 			{
-				scd->sccount--;
-				if(scd->sccount<=0)
+				bool b=release_shadowcopy(scd, false, image_backup==1?true:false);
+				if(!b)
 				{
-					bool b=release_shadowcopy(*scd);
-					if(!b)
-					{
-						contractor->Write("failed");
+					contractor->Write("failed");
 #ifdef _WIN32
-						Server->Log(L"Deleting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
+					Server->Log(L"Deleting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
 #endif
-					}
-					else
-					{
-						contractor->Write("done");
-					}
-					scd->running=false;
 				}
 				else
 				{
@@ -469,31 +491,29 @@ void IndexThread::indexDirs(void)
 #endif
 	std::sort(changed_dirs.begin(), changed_dirs.end());
 
+	std::vector<SCRef*> past_refs;
+
 	{
 		std::fstream outfile("urbackup/data/filelist_new.ub", std::ios::out|std::ios::binary);
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
 			SCDirs *scd=getSCDir(backup_dirs[i].tname);
-			if(scd->running)
+			if(!scd->running)
 			{
-				if(!release_shadowcopy(*scd))
-				{
-					Server->Log("Releasing shadowcopy failed", LL_ERROR);
-				}
-			}
-			scd->dir=backup_dirs[i].tname;
-			scd->sccount=0;
-			scd->save_id=-1;
-			scd->starttime=Server->getTimeMS();
-			scd->target=filesrv->getShareDir(backup_dirs[i].tname);
-			scd->fileserv=true;
+				scd->dir=backup_dirs[i].tname;
+				scd->starttime=Server->getTimeSeconds();
+				scd->target=filesrv->getShareDir(backup_dirs[i].tname);
+				scd->orig_target=scd->target;
+				scd->fileserv=true;
+			}			
 
 			std::wstring mod_path=backup_dirs[i].path;
 
 			Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_INFO);
 			bool onlyref;
-			bool b=start_shadowcopy(*scd, &onlyref);
+			bool b=start_shadowcopy(scd, &onlyref, true, past_refs);
 			Server->Log("done.", LL_INFO);
+
 			if(!b)
 			{
 #ifdef _WIN32
@@ -508,6 +528,7 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 			if(!b || !onlyref)
 			{
+				past_refs.push_back(scd->ref);
 				DirectoryWatcherThread::update();
 				Server->wait(10000);
 				std::vector<std::wstring> acd=cd->getChangedDirs(false);
@@ -535,7 +556,7 @@ void IndexThread::indexDirs(void)
 				for(size_t k=0;k<backup_dirs.size();++k)
 				{
 					SCDirs *scd=getSCDir(backup_dirs[k].tname);
-					release_shadowcopy(*scd);
+					release_shadowcopy(scd);
 				}
 				
 				outfile.close();
@@ -544,7 +565,7 @@ void IndexThread::indexDirs(void)
 			}
 			//db->EndTransaction();
 			outfile << "d\"..\"\n";
-			Server->Log(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);
+			Server->Log(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);		
 		}
 	}
 
@@ -715,17 +736,14 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 }
 #endif
 
-bool IndexThread::start_shadowcopy(SCDirs &dir, bool *onlyref)
+bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own, std::vector<SCRef*> no_restart_refs, bool for_imagebackup)
 {
 #ifdef _WIN32
-#ifdef ENABLE_VSS	
-	if(dir.ref!=NULL && dir.ref->backupcom==NULL)
-	{
-		release_shadowcopy(dir);
-	}
+#ifdef ENABLE_VSS
+	cleanup_saved_shadowcopies();
 
 	WCHAR volume_path[MAX_PATH]; 
-	BOOL ok = GetVolumePathNameW(dir.target.c_str(), volume_path, MAX_PATH);
+	BOOL ok = GetVolumePathNameW(dir->orig_target.c_str(), volume_path, MAX_PATH);
 	if(!ok)
 	{
 		Server->Log("GetVolumePathName(dir.target, volume_path, MAX_PATH) failed", LL_ERROR);
@@ -734,52 +752,103 @@ bool IndexThread::start_shadowcopy(SCDirs &dir, bool *onlyref)
 
 	std::wstring wpath=volume_path;
 
-	if(dir.ref==NULL || !dir.ref->ok)
+	bool c=true;
+	while( c )
 	{
+		c=false;
 		for(size_t i=0;i<sc_refs.size();++i)
 		{
 			if(sc_refs[i]->target==wpath && sc_refs[i]->ok)
 			{
-				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000)
+				bool do_restart=true;
+				for(size_t k=0;k<no_restart_refs.size();++k)
 				{
-					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs.begin();it!=scdirs.end();++it)
+					if(no_restart_refs[k]==sc_refs[i])
+					{
+						do_restart=false;
+						break;
+					}
+				}
+				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000 || (do_restart==true && restart_own==true && sc_refs[i]->starttokens.size()==1 && sc_refs[i]->starttokens[i]==starttoken) )
+				{
+					if( restart_own==true && sc_refs[i]->starttokens.size()==1 && sc_refs[i]->starttokens[i]==starttoken)
+					{
+						Server->Log("Removing reference because restart own was specified and only own tokens are present", LL_WARNING);
+					}
+					else
 					{
 						Server->Log("Removing reference because of reference timeout", LL_WARNING);
-						release_shadowcopy(*it->second);
 					}
+
+					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs.begin();it!=scdirs.end();++it)
+					{
+						release_shadowcopy(it->second);
+					}
+					c=true;
+					break;
 				}
 				else
 				{
-					dir.ref=sc_refs[i];
-					dir.ref->rcount++;
-
-					dir.orig_target=dir.target;
-					dir.target.erase(0,wpath.size());
-
-					dir.target=dir.ref->volpath+os_file_sep()+dir.target;
-					if(dir.fileserv)
+					dir->ref=sc_refs[i];
+					if(!dir->ref->dontincrement)
 					{
-						filesrv->shareDir(dir.dir, dir.target);
+						dir->ref->rcount++;
+					}
+					else
+					{
+						dir->ref->dontincrement=false;
+					}
+
+					bool found=false;
+					for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
+					{
+						if(sc_refs[i]->starttokens[k]==starttoken)
+						{
+							found=true;
+							break;
+						}
+					}
+
+					if(!found)
+					{
+						Server->Log("Adding server token to ref", LL_INFO);
+						sc_refs[i]->starttokens.push_back(starttoken);
+					}
+
+					dir->target=dir->orig_target;
+					dir->target.erase(0,wpath.size());
+
+					dir->target=dir->ref->volpath+os_file_sep()+dir->target;
+					if(dir->fileserv)
+					{
+						filesrv->shareDir(dir->dir, dir->target);
+					}
+
+					if(for_imagebackup && dir->ref->save_id!=-1)
+					{
+						cd->modShadowcopyRefCount(dir->ref->save_id, 1);
 					}
 
 					if(onlyref!=NULL)
 					{
 						*onlyref=true;
 					}
+
 					Server->Log("Shadowcopy already present.", LL_INFO);
 					return true;
 				}
 			}
 		}
 
-		dir.ref=new SCRef;
-		dir.ref->rcount=1;
-		dir.ref->starttime=Server->getTimeSeconds();
-		dir.ref->target=wpath;
-		sc_refs.push_back(dir.ref);
+		dir->ref=new SCRef;
+		dir->ref->rcount=1;
+		dir->ref->starttime=Server->getTimeSeconds();
+		dir->ref->target=wpath;
+		dir->ref->starttokens.push_back(starttoken);
+		sc_refs.push_back(dir->ref);
 	}
 
-	if(dir.ref->rcount!=1)
+	if(dir->ref->rcount!=1)
 	{
 		Server->Log("Error rcount!=1", LL_ERROR);
 	}
@@ -823,9 +892,9 @@ bool IndexThread::start_shadowcopy(SCDirs &dir, bool *onlyref)
 		}
 	}*/
 
-	CHECK_COM_RESULT_RELEASE(backupcom->StartSnapshotSet(&dir.ref->ssetid));
+	CHECK_COM_RESULT_RELEASE(backupcom->StartSnapshotSet(&dir->ref->ssetid));
 
-	CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(volume_path, GUID_NULL, &dir.ref->ssetid) );
+	CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(volume_path, GUID_NULL, &dir->ref->ssetid) );
 
 	CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, FALSE, VSS_BT_FULL, FALSE)); 
 	
@@ -836,36 +905,40 @@ bool IndexThread::start_shadowcopy(SCDirs &dir, bool *onlyref)
 	wait_for(pb_result);
 
 	VSS_SNAPSHOT_PROP snap_props; 
-    CHECK_COM_RESULT_RELEASE(backupcom->GetSnapshotProperties(dir.ref->ssetid, &snap_props));
+    CHECK_COM_RESULT_RELEASE(backupcom->GetSnapshotProperties(dir->ref->ssetid, &snap_props));
 
-	dir.orig_target=dir.target;
-	dir.target.erase(0,wpath.size());
-	dir.ref->volpath=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
-	dir.target=dir.ref->volpath+os_file_sep()+dir.target;
-	if(dir.fileserv)
+	dir->orig_target=dir->target;
+	dir->target.erase(0,wpath.size());
+	dir->ref->volpath=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
+	dir->target=dir->ref->volpath+os_file_sep()+dir->target;
+	if(dir->fileserv)
 	{
-		filesrv->shareDir(dir.dir, dir.target);
+		filesrv->shareDir(dir->dir, dir->target);
 	}
 
 	SShadowCopy tsc;
 	tsc.vssid=snap_props.m_SnapshotId;
 	tsc.ssetid=snap_props.m_SnapshotSetId;
-	tsc.target=dir.orig_target;
+	tsc.target=dir->orig_target;
 	tsc.path=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
-	tsc.orig_target=dir.orig_target;
-	tsc.filesrv=dir.fileserv;
-	tsc.tname=dir.dir;
-	dir.save_id=cd->addShadowcopy(tsc);
-	dir.ref->save_id=dir.save_id;
-	dir.ref->ok=true;
+	tsc.orig_target=dir->orig_target;
+	tsc.filesrv=dir->fileserv;
+	tsc.vol=wpath;
+	tsc.tname=dir->dir;
+	if(for_imagebackup)
+	{
+		tsc.refs=1;
+	}
+	dir->ref->save_id=cd->addShadowcopy(tsc);
+	dir->ref->ok=true;
 
 	Server->Log(L"Shadowcopy path: "+tsc.path);
 
-	dir.ref->ssetid=snap_props.m_SnapshotId;
+	dir->ref->ssetid=snap_props.m_SnapshotId;
 
 	VssFreeSnapshotProperties(&snap_props);
 
-	dir.ref->backupcom=backupcom;
+	dir->ref->backupcom=backupcom;
 	if(onlyref!=NULL)
 	{
 		*onlyref=false;
@@ -879,43 +952,55 @@ bool IndexThread::start_shadowcopy(SCDirs &dir, bool *onlyref)
 #endif
 }
 
-bool IndexThread::release_shadowcopy(SCDirs &dir)
+bool IndexThread::release_shadowcopy(SCDirs *dir, bool delit, bool for_imagebackup, int save_id)
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
-	if(dir.ref!=NULL && dir.ref->backupcom!=NULL && dir.fileserv)
+	if(dir->ref!=NULL && dir->ref->backupcom!=NULL && dir->fileserv)
 	{
-		filesrv->shareDir(dir.dir, dir.orig_target);
+		filesrv->shareDir(dir->dir, dir->orig_target);
+	}
+
+	if(for_imagebackup)
+	{
+		if(dir->ref!=NULL && dir->ref->save_id!=-1)
+		{
+			cd->modShadowcopyRefCount(dir->ref->save_id, -1);
+		}
+		else if(save_id!=-1)
+		{
+			cd->modShadowcopyRefCount(save_id, -1);
+		}
 	}
 
 	bool ok=false;
 
-	if(dir.ref!=NULL && dir.ref->backupcom!=NULL)
+	if(dir->ref!=NULL && dir->ref->backupcom!=NULL)
 	{
-		if(dir.ref->rcount<=1)
+		if(dir->ref->rcount<=1 || Server->getTimeSeconds()-dir->ref->starttime>shadowcopy_timeout/1000)
 		{
-			IVssBackupComponents *backupcom=dir.ref->backupcom;
+			IVssBackupComponents *backupcom=dir->ref->backupcom;
 			IVssAsync *pb_result;
 			CHECK_COM_RESULT_RELEASE(backupcom->BackupComplete(&pb_result));
 			wait_for(pb_result);
 
-			Server->Log(L"Deleting shadowcopy for path \""+dir.target+L"\" -2", LL_INFO);
+			Server->Log(L"Deleting shadowcopy for path \""+dir->target+L"\" -2", LL_INFO);
 			
-			if(dir.ref->save_id!=-1)
+			if(dir->ref->save_id!=-1)
 			{
-				cd->deleteShadowcopy(dir.ref->save_id);
+				cd->deleteShadowcopy(dir->ref->save_id);
 			}
 #ifndef VSS_XP
 #ifndef VSS_S03
 #ifndef SERVER_ONLY
-			if(dir.fileserv)
+			if(dir->fileserv)
 			{
-				filesrv->shareDir(dir.dir, dir.orig_target);
+				filesrv->shareDir(dir->dir, dir->orig_target);
 			}
 
 			LONG dels; 
 			GUID ndels; 
-			CHECK_COM_RESULT_RELEASE(backupcom->DeleteSnapshots(dir.ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE, 
+			CHECK_COM_RESULT_RELEASE(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE, 
 				&dels, &ndels));
 
 			if(dels==0)
@@ -934,72 +1019,35 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 #endif
 
 			backupcom->Release();
-			dir.ref->backupcom=NULL;
-
-			
+			dir->ref->backupcom=NULL;
+			dir->ref->rcount=1;			
 		}
-		--dir.ref->rcount;
+		--dir->ref->rcount;
 	}
-	else if(dir.ref!=NULL)
+	else if(dir->ref!=NULL)
 	{
-		--dir.ref->rcount;
-	}
+		--dir->ref->rcount;
 
-	{
-		std::vector<SShadowCopy> scs=cd->getShadowcopies();
-
-		bool found=false;
-
-		for(size_t i=0;i<scs.size();++i)
+		bool c=true;
+		while(c)
 		{
-			SCDirs *scd=getSCDir(scs[i].tname);
-			if( (dir.save_id!=-1 && scs[i].id!=dir.save_id && dir.orig_target==scs[i].orig_target) || ( dir.ref==NULL && (scd->running==false || scd->save_id!=scs[i].id ) ) )
+			c=false;
+			for(size_t k=0;k<dir->ref->starttokens.size();++k)
 			{
-				found=true;
-				break;
-			}
-		}
-
-#ifndef VSS_XP
-#ifndef VSS_S03
-#ifndef SERVER_ONLY
-		if(found)
-		{
-			IVssBackupComponents *backupcom=NULL; 
-			CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
-			CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
-			CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
-			
-			for(size_t i=0;i<scs.size();++i)
-			{
-				SCDirs *scd=getSCDir(scs[i].target);
-				if( (dir.save_id!=-1 && scs[i].id!=dir.save_id && dir.orig_target==scs[i].orig_target) || (dir.ref==NULL && (scd->running==false || scd->save_id!=scs[i].id ) ) )
+				if(dir->ref->starttokens[k]==starttoken)
 				{
-					if(scd->ref==NULL || scd->ref->rcount<=1)
-					{
-						Server->Log(L"Deleting shadowcopy for path \""+scs[i].path+L"\"", LL_INFO);
-						if(scs[i].filesrv)
-						{
-							filesrv->shareDir(scs[i].tname, scs[i].orig_target);
-						}
-						LONG dels; 
-						GUID ndels; 
-						CHECK_COM_RESULT(backupcom->DeleteSnapshots(scs[i].vssid, VSS_OBJECT_SNAPSHOT, TRUE, 
-							&dels, &ndels));
-						cd->deleteShadowcopy(scs[i].id);
-						if(dels>0)
-							ok=true;
-					}
-					if(scd->ref!=NULL)
-						--scd->ref->rcount;
+					dir->ref->starttokens.erase(dir->ref->starttokens.begin()+k);
+					c=true;
+					break;
 				}
 			}
-
-			backupcom->Release();
 		}
-#endif
-#endif
-#endif
+	}
+
+	cleanup_saved_shadowcopies();
+
+	{
+
 #if defined(VSS_XP) || defined(VSS_S03)
 		if(found)
 		{
@@ -1024,11 +1072,23 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 			if(sc_refs[i]->rcount<=0)
 			{
 				Server->Log(L"Deleting Shadowcopy for dir \""+sc_refs[i]->target+L"\"", LL_INFO);
-				for(std::map<std::wstring, SCDirs*>::iterator it=scdirs.begin();it!=scdirs.end();++it)
+				bool c=true;
+				while(c)
 				{
-					if(it->second->ref==sc_refs[i])
+					c=false;
+					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs.begin();it!=scdirs.end();++it)
 					{
-						it->second->ref=NULL;
+						if(it->second->ref==sc_refs[i])
+						{
+							it->second->ref=NULL;
+							if(it->second!=dir || delit)
+							{
+								delete it->second;
+								scdirs.erase(it);
+								c=true;
+								break;
+							}
+						}
 					}
 				}
 				delete sc_refs[i];
@@ -1040,7 +1100,7 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 	}
 
 	
-	if(dir.ref!=NULL && dir.ref->backupcom==NULL)
+	if(dir->ref!=NULL && dir->ref->backupcom==NULL)
 	{
 		Server->Log("dir.backupcom=NULL in IndexThread::release_shadowcopy", LL_DEBUG);
 		return ok;
@@ -1055,6 +1115,59 @@ bool IndexThread::release_shadowcopy(SCDirs &dir)
 #else
 	return true;
 #endif
+}
+
+bool IndexThread::cleanup_saved_shadowcopies(void)
+{
+		std::vector<SShadowCopy> scs=cd->getShadowcopies();
+
+		bool found=false;
+
+		for(size_t i=0;i<scs.size();++i)
+		{
+			SCDirs *scd=getSCDir(scs[i].tname);
+			if( ( ((scd->ref!=NULL && scd->ref->save_id!=scs[i].id ) || scd->ref==NULL)  && scs[i].refs<=0) ||
+				scs[i].passedtime>shadowcopy_timeout/1000)
+			{
+				found=true;
+			}
+		}
+
+#ifndef VSS_XP
+#ifndef VSS_S03
+#ifndef SERVER_ONLY
+		if(found)
+		{
+			bool ok=false;
+			IVssBackupComponents *backupcom=NULL; 
+			CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
+			CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
+			CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
+			
+			for(size_t i=0;i<scs.size();++i)
+			{
+				SCDirs *scd=getSCDir(scs[i].tname);
+				if( ( ((scd->ref!=NULL && scd->ref->save_id!=scs[i].id ) || scd->ref==NULL)  && scs[i].refs<=0) ||
+						scs[i].passedtime>shadowcopy_timeout/1000)
+				{
+					Server->Log(L"Deleting shadowcopy for path \""+scs[i].path+L"\"", LL_INFO);
+					LONG dels; 
+					GUID ndels; 
+					CHECK_COM_RESULT(backupcom->DeleteSnapshots(scs[i].vssid, VSS_OBJECT_SNAPSHOT, TRUE, 
+						&dels, &ndels));
+					cd->deleteShadowcopy(scs[i].id);
+					if(dels>0)
+						ok=true;
+				}
+			}
+
+			backupcom->Release();
+			return ok;
+		}
+#endif
+#endif
+#endif
+		return true;
 }
 
 #ifdef _WIN32
@@ -1135,8 +1248,6 @@ SCDirs* IndexThread::getSCDir(const std::wstring path)
 		scdirs.insert(std::pair<std::wstring, SCDirs*>(path, nd) );
 
 		nd->running=false;
-		nd->save_id=-1;
-		nd->sccount=0;
 
 		return nd;
 	}
@@ -1151,7 +1262,14 @@ IFileServ *IndexThread::getFileSrv(void)
 void IndexThread::execute_prebackup_hook(void)
 {
 #ifdef _WIN32
-	system(Server->ConvertToUTF8(Server->getServerWorkingDir()+L"\\prefilebackup.bat").c_str());
+	system(Server->ConvertToUTF8(L"\""+Server->getServerWorkingDir()+L"\\prefilebackup.bat\"").c_str());
+#endif
+}
+
+void IndexThread::execute_postindex_hook(void)
+{
+#ifdef _WIN32
+	system(Server->ConvertToUTF8(L"\""+Server->getServerWorkingDir()+L"\\postfileindex.bat\"").c_str());
 #endif
 }
 

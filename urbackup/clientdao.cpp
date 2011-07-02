@@ -37,8 +37,8 @@ void ClientDAO::prepareQueries(void)
 	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs", false);
 	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=?", false);
 	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=?", false);
-	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv) VALUES (?, ?, ?, ?, ?, ?, ?)", false);
-	q_get_shadowcopies=db->Prepare("SELECT id, vssid, ssetid, target, path, tname, orig_target, filesrv FROM shadowcopies", false);
+	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)", false);
+	q_get_shadowcopies=db->Prepare("SELECT id, vssid, ssetid, target, path, tname, orig_target, filesrv, vol, (strftime('%s','now') - strftime('%s', starttime)) AS passedtime, refs FROM shadowcopies", false);
 	q_remove_shadowcopies=db->Prepare("DELETE FROM shadowcopies WHERE id=?", false);
 	q_save_changed_dirs=db->Prepare("INSERT INTO mdirs_backup SELECT name FROM mdirs", false);
 	q_delete_saved_changed_dirs=db->Prepare("DELETE FROM mdirs_backup", false);
@@ -52,6 +52,8 @@ void ClientDAO::prepareQueries(void)
 	q_copy_del_dirs=db->Prepare("INSERT INTO del_dirs_backup SELECT name FROM del_dirs", false);
 	q_del_del_dirs_copy=db->Prepare("DELETE FROM del_dirs_backup", false);
 	q_remove_del_dir=db->Prepare("DELETE FROM files WHERE name GLOB ?", false);
+	q_get_shadowcopy_refcount=db->Prepare("SELECT refs FROM shadowcopies WHERE id=?", false);
+	q_set_shadowcopy_refcount=db->Prepare("UPDATE shadowcopies SET refs=? WHERE id=?", false);
 }
 
 void ClientDAO::destroyQueries(void)
@@ -79,6 +81,8 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_copy_del_dirs);
 	db->destroyQuery(q_del_del_dirs_copy);
 	db->destroyQuery(q_remove_del_dir);
+	db->destroyQuery(q_get_shadowcopy_refcount);
+	db->destroyQuery(q_set_shadowcopy_refcount);
 }
 
 void ClientDAO::restartQueries(void)
@@ -260,6 +264,9 @@ std::vector<SShadowCopy> ClientDAO::getShadowcopies(void)
 		sc.tname=r[L"tname"];
 		sc.orig_target=r[L"orig_target"];
 		sc.filesrv=r[L"filesrv"]==L"0"?false:true;
+		sc.vol=r[L"vol"];
+		sc.passedtime=watoi(r[L"passedtime"]);
+		sc.refs=watoi(r[L"refs"]);
 		ret.push_back(sc);
 	}
 	return ret;
@@ -274,9 +281,29 @@ int ClientDAO::addShadowcopy(const SShadowCopy &sc)
 	q_insert_shadowcopy->Bind(sc.tname);
 	q_insert_shadowcopy->Bind(sc.orig_target);
 	q_insert_shadowcopy->Bind(sc.filesrv?1:0);
+	q_insert_shadowcopy->Bind(sc.vol);
+	q_insert_shadowcopy->Bind(sc.refs);
 	q_insert_shadowcopy->Write();
 	q_insert_shadowcopy->Reset();
 	return (int)db->getLastInsertID();
+}
+
+int ClientDAO::modShadowcopyRefCount(int id, int m)
+{
+	q_get_shadowcopy_refcount->Bind(id);
+	db_results res=q_get_shadowcopy_refcount->Read();
+	q_get_shadowcopy_refcount->Reset();
+	if(!res.empty())
+	{
+		int refs=watoi(res[0][L"refs"]);
+		refs+=m;
+		q_set_shadowcopy_refcount->Bind(refs);
+		q_set_shadowcopy_refcount->Bind(id);
+		q_set_shadowcopy_refcount->Write();
+		q_set_shadowcopy_refcount->Reset();
+		return refs;
+	}
+	return -1;
 }
 
 void ClientDAO::deleteShadowcopy(int id)

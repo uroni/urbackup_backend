@@ -49,7 +49,7 @@ private:
 struct SCRef
 {
 #ifdef _WIN32
-	SCRef(void): rcount(0), backupcom(NULL), ok(false) {}
+	SCRef(void): rcount(0), backupcom(NULL), ok(false), dontincrement(false) {}
 
 	IVssBackupComponents *backupcom;
 	VSS_ID ssetid;
@@ -60,12 +60,13 @@ struct SCRef
 	std::wstring target;
 	int save_id;
 	bool ok;
+	bool dontincrement;
+	std::vector<std::string> starttokens;
 };
 
 struct SCDirs
 {
 	SCDirs(void): ref(NULL) {}
-	int sccount;
 	std::wstring dir;
 	std::wstring target;
 	std::wstring orig_target;
@@ -73,7 +74,6 @@ struct SCDirs
 	SCRef *ref;
 	unsigned int starttime;
 	bool fileserv;
-	int save_id;
 };
 
 class ClientDAO;
@@ -105,8 +105,9 @@ private:
 
 	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db=true);
 
-	bool start_shadowcopy(SCDirs &dir, bool *onlyref=NULL);
-	bool release_shadowcopy(SCDirs &dir);
+	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool restart_own=false, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false );
+	bool release_shadowcopy(SCDirs *dir, bool delit=false, bool for_imagebackup=false, int save_id=-1);
+	bool cleanup_saved_shadowcopies(void);
 	std::string lookup_shadowcopy(int sid);
 #ifdef _WIN32
 	bool wait_for(IVssAsync *vsasync);
@@ -116,9 +117,11 @@ private:
 	SCDirs* getSCDir(const std::wstring path);
 
 	void execute_prebackup_hook(void);
+	void execute_postindex_hook(void);
 
 	void start_filesrv(void);
 
+	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
 

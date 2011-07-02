@@ -44,6 +44,7 @@
 
 extern IFSImageFactory *image_fak;
 extern std::string server_identity;
+extern std::string server_token;
 
 const unsigned short serviceport=35623;
 const unsigned int full_backup_construct_timeout=4*60*60*1000;
@@ -788,9 +789,9 @@ bool BackupServerGet::request_filelist_construct(bool full)
 	}
 
 	if(full)
-		tcpstack.Send(cc, server_identity+"START FULL BACKUP");
+		tcpstack.Send(cc, server_identity+"START FULL BACKUP#token="+server_token);
 	else
-		tcpstack.Send(cc, server_identity+"START BACKUP");
+		tcpstack.Send(cc, server_identity+"START BACKUP#token="+server_token);
 
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
@@ -1686,12 +1687,12 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 
 void BackupServerGet::start_shadowcopy(const std::string &path)
 {
-	sendClientMessage("START SC \""+path+"\"", "DONE", L"Activating shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
+	sendClientMessage("START SC \""+path+"\"#token="+server_token, "DONE", L"Activating shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
 }
 
 void BackupServerGet::stop_shadowcopy(const std::string &path)
 {
-	sendClientMessage("STOP SC \""+path+"\"", "DONE", L"Removing shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
+	sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", L"Removing shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
 }
 
 void BackupServerGet::notifyClientBackupSuccessfull(void)

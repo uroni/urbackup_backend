@@ -64,6 +64,7 @@ IPychartFactory *pychart_fak;
 IDownloadFactory *download_fak;
 ICryptoFactory *crypto_fak;
 std::string server_identity;
+std::string server_token;
 
 bool is_backup_client=true;
 const unsigned short serviceport=35623;
@@ -174,6 +175,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			ident+='#';
 			writestring(ident, "urbackup/server_ident.key");
 			server_identity=ident;
+		}
+		if((server_token=getFile("urbackup/server_token.key")).size()<5)
+		{
+			Server->Log("Generating Server token...", LL_INFO);
+			std::string token;
+			for(size_t i=0;i<30;++i)
+			{
+				token+=getRandomChar();
+			}
+			writestring(token, "urbackup/server_token.key");
+			server_token=token;
 		}
 		is_server=true;
 
@@ -603,6 +615,17 @@ void upgrade(void)
 
 #endif //CLIENT_ONLY
 
+void upgrade_client1_2(IDatabase *db)
+{
+	db->Write("ALTER TABLE shadowcopies ADD vol TEXT");
+}
+
+void upgrade_client2_3(IDatabase *db)
+{
+	db->Write("ALTER TABLE shadowcopies ADD refs INTEGER");
+	db->Write("ALTER TABLE shadowcopies ADD starttime DATE");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -623,8 +646,12 @@ bool upgrade_client(void)
 		switch(ver)
 		{
 			case 1:
-				/*upgrade1_2();
-				++ver;*/
+				upgrade_client1_2(db);
+				++ver;
+				break;
+			case 2:
+				upgrade_client2_3(db);
+				++ver;
 				break;
 			default:
 				break;

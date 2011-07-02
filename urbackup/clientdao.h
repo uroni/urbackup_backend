@@ -31,6 +31,7 @@ struct SBackupDir
 
 struct SShadowCopy
 {
+	SShadowCopy() : refs(0) {}
 	int id;
 	GUID vssid;
 	GUID ssetid;
@@ -38,7 +39,10 @@ struct SShadowCopy
 	std::wstring path;
 	std::wstring tname;
 	std::wstring orig_target;
+	std::wstring vol;
 	bool filesrv;
+	int refs;
+	int passedtime;
 };
 
 class ClientDAO
@@ -66,6 +70,7 @@ public:
 	std::vector<SShadowCopy> getShadowcopies(void);
 	int addShadowcopy(const SShadowCopy &sc);
 	void deleteShadowcopy(int id);
+	int modShadowcopyRefCount(int id, int m);
 
 	void deleteSavedChangedDirs(void);
 	void restoreSavedChangedDirs(void);
@@ -107,4 +112,6 @@ private:
 	IQuery *q_copy_del_dirs;
 	IQuery *q_del_del_dirs_copy;
 	IQuery *q_remove_del_dir;
+	IQuery *q_get_shadowcopy_refcount;
+	IQuery *q_set_shadowcopy_refcount;
 };
