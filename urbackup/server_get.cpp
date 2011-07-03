@@ -785,7 +785,7 @@ void BackupServerGet::resetEntryState(void)
 	state=0;
 }
 
-bool BackupServerGet::request_filelist_construct(bool full)
+bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 {
 	CTCPStack tcpstack;
 
@@ -798,9 +798,9 @@ bool BackupServerGet::request_filelist_construct(bool full)
 	}
 
 	if(full)
-		tcpstack.Send(cc, server_identity+"START FULL BACKUP#token="+server_token);
+		tcpstack.Send(cc, server_identity+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
 	else
-		tcpstack.Send(cc, server_identity+"START BACKUP#token="+server_token);
+		tcpstack.Send(cc, server_identity+"START BACKUP#token="+(with_token?("#token="+server_token):""));
 
 	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
@@ -810,7 +810,16 @@ bool BackupServerGet::request_filelist_construct(bool full)
 		size_t rc=cc->Read(&ret, full_backup_construct_timeout);
 		if(rc==0)
 		{
-			ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
+			if(Server->getTimeMS()-starttime<=20000) //Compatibility with older clients
+			{
+				Server->destroy(cc);
+				Server->Log(clientname+L": Trying old filelist request", LL_DEBUG);
+				return request_filelist_construct(full, false);
+			}
+			else
+			{
+				ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
+			}
 			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());

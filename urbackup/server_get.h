@@ -55,7 +55,7 @@ private:
 	void start_shadowcopy(const std::string &path);
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
-	bool request_filelist_construct(bool full);
+	bool request_filelist_construct(bool full, bool with_token=true);
 	bool load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc);
 	bool doIncrBackup(void);
 	SBackup getLastIncremental(void);
