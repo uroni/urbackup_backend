@@ -800,7 +800,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 	if(full)
 		tcpstack.Send(cc, server_identity+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
 	else
-		tcpstack.Send(cc, server_identity+"START BACKUP#token="+(with_token?("#token="+server_token):""));
+		tcpstack.Send(cc, server_identity+"START BACKUP"+(with_token?("#token="+server_token):""));
 
 	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
