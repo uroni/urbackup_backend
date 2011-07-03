@@ -810,7 +810,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 		size_t rc=cc->Read(&ret, full_backup_construct_timeout);
 		if(rc==0)
 		{
-			if(Server->getTimeMS()-starttime<=20000) //Compatibility with older clients
+			if(Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
 			{
 				Server->destroy(cc);
 				Server->Log(clientname+L": Trying old filelist request", LL_DEBUG);
