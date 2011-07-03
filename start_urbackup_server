@@ -6,6 +6,7 @@ DAEMON=$PREFIX/bin/urbackup_srv
 if ! test -x $DAEMON
 then
     PREFIX=/usr/local
+    DAEMON=$PREFIX/bin/urbackup_srv
 fi
 
 DAEMON_DIR="/var"
