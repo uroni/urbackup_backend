@@ -24,6 +24,12 @@
 <td>#{tMax number of recently active clients}:</td>
 <td><input type="text" id="max_active_clients" value="#{max_active_clients}" /></td>
 </tr>
+#{ONLY_WIN32_BEGIN}
+<tr>
+<td>#{tNondefault temporary file directory}:</td>
+<td><input type="text" id="tmpdir" value="#{tmpdir}" /></td>
+</tr>
+#{ONLY_WIN32_END}
 #{settings_inv}
 </table>
 <br />

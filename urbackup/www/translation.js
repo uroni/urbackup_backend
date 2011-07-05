@@ -254,5 +254,6 @@ translations.de={
 "storage_usage_bar_graph_title": "Speichernutzungsverlauf",
 "storage_usage_bar_graph_colname1": "Datum",
 "storage_usage_bar_graph_colname2": "Speichernutzung",
-"tServer identity": "Serveridentität"
+"tServer identity": "Serveridentität",
+"tNondefault temporary file directory": "Vom Standard abweichender temporärer Dateiordner"
 }

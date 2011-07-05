@@ -132,6 +132,8 @@ public:
 	void setServerWorkingDir(const std::wstring &wdir);
 
 	void ShutdownPlugins(void);
+
+	void setTemporaryDirectory(const std::wstring &dir);
 private:
 
 	bool UnloadDLLs(void);
@@ -200,6 +202,8 @@ private:
 	std::wstring action_context;
 
 	std::wstring workingdir;
+
+	std::wstring tmpdir;
 };
 
 #ifndef DEF_SERVER

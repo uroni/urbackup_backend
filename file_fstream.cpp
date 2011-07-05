@@ -47,7 +47,7 @@ bool File::Open(std::wstring pfn, int mode)
 		return false;
 }
 
-bool File::OpenTemporaryFile(void)
+bool File::OpenTemporaryFile(const std::wstring &dir)
 {
 	return Open(tmpnam(NULL), MODE_TEMP);
 } 

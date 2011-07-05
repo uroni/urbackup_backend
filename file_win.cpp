@@ -67,24 +67,39 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 }
 
-bool File::OpenTemporaryFile(void)
+bool File::OpenTemporaryFile(const std::wstring &tmpdir)
 {
-	wchar_t tmpp[MAX_PATH];
-	DWORD l;
-	if((l=GetTempPathW(MAX_PATH, tmpp))==0 || l>MAX_PATH )
+	if(tmpdir.empty())
 	{
-		wcscpy_s(tmpp,L"C:\\");
-	}
+		wchar_t tmpp[MAX_PATH];
+		DWORD l;
+		if((l=GetTempPathW(MAX_PATH, tmpp))==0 || l>MAX_PATH )
+		{
+			wcscpy_s(tmpp,L"C:\\");
+		}
 
-	wchar_t filename[MAX_PATH];
-	if( GetTempFileNameW(tmpp, L"cps", 0, filename)==0 )
+		wchar_t filename[MAX_PATH];
+		if( GetTempFileNameW(tmpp, L"urbackup.t", 0, filename)==0 )
+		{
+			hfile=NULL;
+			int err=GetLastError();
+			return false;
+		}
+
+		return Open(filename, MODE_TEMP);
+	}
+	else
 	{
-		hfile=NULL;
-		int err=GetLastError();
-		return false;
-	}
+		wchar_t filename[MAX_PATH];
+		if( GetTempFileNameW(tmpdir.c_str(), L"urbackup.t", 0, filename)==0 )
+		{
+			hfile=NULL;
+			int err=GetLastError();
+			return false;
+		}
 
-	return Open(filename, MODE_TEMP);
+		return Open(filename, MODE_TEMP);
+	}
 }
 
 std::string File::Read(_u32 tr)

@@ -1037,6 +1037,7 @@ function saveGeneralSettings()
 	pars+=getPar("autoupdate_clients");
 	pars+=getPar("max_sim_backups");
 	pars+=getPar("max_active_clients");
+	pars+=getPar("tmpdir");
 	for(var i=0;i<g.settings_list.length;++i)
 	{
 		pars+=getPar(g.settings_list[i]);

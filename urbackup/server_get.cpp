@@ -933,7 +933,14 @@ bool BackupServerGet::doFullBackup(void)
 			if(ctime-laststatsupdate>status_update_intervall)
 			{
 				laststatsupdate=ctime;
-				status.pcdone=(std::min)(100,(int)(((float)transferred)/((float)files_size/100.f)+0.5f));
+				if(files_size==0)
+				{
+					status.pcdone=100;
+				}
+				else
+				{
+					status.pcdone=(std::min)(100,(int)(((float)transferred)/((float)files_size/100.f)+0.5f));
+				}
 				status.hashqueuesize=(_u32)hashpipe->getNumElements();
 				status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 				ServerStatus::setServerStatus(status, true);
@@ -967,6 +974,8 @@ bool BackupServerGet::doFullBackup(void)
 							t.erase(0,1);
 							ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_INFO);
 							start_shadowcopy(Server->ConvertToUTF8(t));
+							Server->wait(10000);
+							request_filelist_construct(true, true);
 						}
 					}
 					else
@@ -1271,7 +1280,14 @@ bool BackupServerGet::doIncrBackup(void)
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
 					laststatsupdate=ctime;
-					status.pcdone=(std::min)(100,(int)(((float)transferred)/((float)files_size/100.f)+0.5f));
+					if(files_size==0)
+					{
+						status.pcdone=100;
+					}
+					else
+					{
+						status.pcdone=(std::min)(100,(int)(((float)transferred)/((float)files_size/100.f)+0.5f));
+					}
 					status.hashqueuesize=(_u32)hashpipe->getNumElements();
 					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 					ServerStatus::setServerStatus(status, true);
@@ -1799,8 +1815,8 @@ bool BackupServerGet::getClientSettings(void)
 		mod=true;
 	
 	std::string tmp_fn=tmp->getFilename();
-	Server->deleteFile(tmp_fn);
 	Server->destroy(tmp);
+	Server->deleteFile(tmp_fn);
 
 	if(mod)
 	{

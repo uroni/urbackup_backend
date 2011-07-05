@@ -1164,7 +1164,7 @@ IFile* CServer::openFile(std::wstring pFilename, int pMode)
 IFile* CServer::openTemporaryFile(void)
 {
 	File *file=new File;
-	if(!file->OpenTemporaryFile() )
+	if(!file->OpenTemporaryFile(tmpdir) )
 	{
 		Server->Log("Error creating temporary file", LL_ERROR);
 		delete file;
@@ -1379,4 +1379,9 @@ std::wstring CServer::getServerWorkingDir(void)
 void CServer::setServerWorkingDir(const std::wstring &wdir)
 {
 	workingdir=wdir;
+}
+
+void CServer::setTemporaryDirectory(const std::wstring &dir)
+{
+	tmpdir=dir;
 }

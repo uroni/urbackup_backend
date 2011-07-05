@@ -27,6 +27,7 @@
 #include "../Interface/SettingsReader.h"
 #include "server_status.h"
 #include "../stringtools.h"
+#include "os_functions.h"
 #include <memory.h>
 
 const unsigned int waittime=50*1000; //1 min
@@ -41,6 +42,29 @@ void BackupServer::operator()(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings");
+
+#ifdef _WIN32
+	std::wstring tmpdir;
+	if(settings->getValue(L"tmpdir", &tmpdir) && !tmpdir.empty())
+	{
+		os_remove_nonempty_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+		os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory(tmpdir+os_file_sep()+L"urbackup_tmp");
+	}
+	else
+	{
+		wchar_t tmpp[MAX_PATH];
+		DWORD l;
+		if((l=GetTempPathW(MAX_PATH, tmpp))==0 || l>MAX_PATH )
+		{
+			wcscpy_s(tmpp,L"C:\\");
+		}
+
+		os_remove_nonempty_dir((std::wstring)tmpp+os_file_sep()+L"urbackup_tmp");
+		os_create_dir((std::wstring)tmpp+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory((std::wstring)tmpp+os_file_sep()+L"urbackup_tmp");
+	}
+#endif
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM extra_clients");
 	q_update_extra_ip=db->Prepare("UPDATE extra_clients SET lastip=? WHERE id=?");

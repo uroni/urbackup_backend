@@ -1499,7 +1499,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 	ISettingsReader *new_settings=Server->createMemorySettingsReader(pData);
 
 	std::vector<std::wstring> settings_names=getSettingsList();
-	std::wstring toadd=L"\n";
+	std::wstring new_settings_str=L"";
 	bool mod=false;
 	for(size_t i=0;i<settings_names.size();++i)
 	{
@@ -1511,14 +1511,18 @@ void ClientConnector::updateSettings(const std::string &pData)
 			if(new_settings->getValue(key, &nv) )
 			{
 				
-				toadd+=key+L"="+nv+L"\n";
+				new_settings_str+=key+L"="+nv+L"\n";
 				mod=true;
 			}
 			else if(new_settings->getValue(key+L"_def", &nv) )
 			{
-				toadd+=key+L"_def="+nv+L"\n";
+				new_settings_str+=key+L"_def="+nv+L"\n";
 				mod=true;
 			}
+		}
+		else
+		{
+			new_settings_str+=key+L"="+v+L"\n";
 		}
 	}
 
@@ -1560,19 +1564,14 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	if(mod)
 	{
-		IFile *sf=Server->openFile("urbackup/data/settings.cfg", MODE_RW );
+		IFile *sf=Server->openFile("urbackup/data/settings.cfg", MODE_WRITE );
 		if(sf==NULL)
 		{
-			sf=Server->openFile("urbackup/data/settings.cfg", MODE_WRITE);
-			if(sf==NULL)
-			{
-				Server->Log("Error opening settings file!", LL_ERROR);
-				return;
-			}
+			Server->Log("Error opening settings file!", LL_ERROR);
+			return;
 		}
 
-		sf->Seek(sf->Size());
-		sf->Write(Server->ConvertToUTF8(toadd));
+		sf->Write(Server->ConvertToUTF8(new_settings_str));
 		Server->destroy(sf);
 	}
 }

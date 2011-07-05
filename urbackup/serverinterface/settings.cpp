@@ -21,6 +21,7 @@
 #include "action_header.h"
 #include "../server_settings.h"
 #include "../../Interface/SettingsReader.h"
+#include "../os_functions.h"
 
 JSON::Object getJSONClientSettings(ServerSettings &settings)
 {
@@ -55,6 +56,7 @@ struct SGeneralSettings
 	bool autoupdate_clients;
 	int max_sim_backups;
 	int max_active_clients;
+	std::wstring tmpdir;
 };
 
 struct SClientSettings
@@ -85,6 +87,8 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.max_active_clients=watoi(value);
 		else if(key==L"max_sim_backups")
 			ret.max_sim_backups=watoi(value);
+		else if(key==L"tmpdir")
+			ret.tmpdir=value;
 	}
 	return ret;
 }
@@ -139,6 +143,15 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 	updateSetting(L"autoupdate_clients", settings.autoupdate_clients?L"true":L"false",  q_get, q_update, q_insert);
 	updateSetting(L"max_sim_backups", convert(settings.max_sim_backups),  q_get, q_update, q_insert);
 	updateSetting(L"max_active_clients", convert(settings.max_active_clients),  q_get, q_update, q_insert);
+	updateSetting(L"tmpdir", settings.tmpdir,  q_get, q_update, q_insert);
+
+#ifdef _WIN32
+	if(!settings.tmpdir.empty())
+	{
+		os_create_dir(settings.tmpdir+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory(settings.tmpdir+os_file_sep()+L"urbackup_tmp");
+	}
+#endif
 }
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
@@ -478,6 +491,7 @@ ACTION_IMPL(settings)
 				settings.autoupdate_clients=(GET[L"autoupdate_clients"]==L"true");
 				settings.max_active_clients=watoi(GET[L"max_active_clients"]);
 				settings.max_sim_backups=watoi(GET[L"max_sim_backups"]);
+				settings.tmpdir=GET[L"tmpdir"];
 				updateClientSettings(0, GET, db);
 				saveGeneralSettings(settings, db);
 
@@ -500,6 +514,7 @@ ACTION_IMPL(settings)
 				obj.set("autoupdate_clients", settings.autoupdate_clients);
 				obj.set("max_sim_backups", settings.max_sim_backups);
 				obj.set("max_active_clients", settings.max_active_clients);
+				obj.set("tmpdir", settings.tmpdir);
 
 				ret.set("settings", obj);
 			}
@@ -509,6 +524,14 @@ ACTION_IMPL(settings)
 	{
 		ret.set("error", 1);
 	}
+#ifdef _WIN32
+	ret.set("ONLY_WIN32_BEGIN", "");
+	ret.set("ONLY_WIN32_END", "");
+#else
+	ret.set("ONLY_WIN32_BEGIN", "<!--");
+	ret.set("ONLY_WIN32_END", "-->");
+#endif
+
 	helper.Write(ret.get(false));
 }
 

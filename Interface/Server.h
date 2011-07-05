@@ -129,6 +129,8 @@ public:
 	virtual void clearPostFiles(POSTFILE_KEY pfkey)=0;
 
 	virtual std::wstring getServerWorkingDir(void)=0;
+
+	virtual void setTemporaryDirectory(const std::wstring &dir)=0;
 };
 
 #ifndef NO_INTERFACE
