@@ -1,3 +1,6 @@
+#ifndef SELECTTHREAD_H
+#define SELECTTHREAD_H
+
 #include "Interface/Thread.h"
 #include "Interface/Mutex.h"
 #include "Interface/Condition.h"
@@ -37,3 +40,5 @@ private:
 	
 	bool run;
 };
+
+#endif //SELECTTHREAD_H
