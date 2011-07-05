@@ -1485,6 +1485,7 @@ std::string UnescapeHTML(const std::string &html)
 	ret=greplace("&gt;", ">", ret);
 	ret=greplace("&quot;", "\"", ret);
 	ret=greplace("#x27;", "'", ret);
+	return ret;
 }
 
 std::wstring UnescapeHTML(const std::wstring &html)
@@ -1494,4 +1495,5 @@ std::wstring UnescapeHTML(const std::wstring &html)
 	ret=greplace(L"&gt;", L">", ret);
 	ret=greplace(L"&quot;", L"\"", ret);
 	ret=greplace(L"#x27;", L"'", ret);
+	return ret;
 }
