@@ -153,7 +153,7 @@ ACTION_IMPL(backups)
 			if(r_ok)
 			{
 				int backupid=watoi(GET[L"backupid"]);
-				std::wstring u_path=UnescapeSQLString(GET[L"path"]);
+				std::wstring u_path=UnescapeHTML(GET[L"path"]);
 				std::wstring path;
 				std::vector<std::wstring> t_path;
 				Tokenize(u_path, t_path, L"/");

@@ -1477,3 +1477,21 @@ std::string conv_filename(std::string fn)
 
         return fn;
 }
+
+std::string UnescapeHTML(const std::string &html)
+{
+	std::string ret=greplace("&amp;", "&", html);
+	ret=greplace("&lt;", "<", ret);
+	ret=greplace("&gt;", ">", ret);
+	ret=greplace("&quot;", "\"", ret);
+	ret=greplace("#x27;", "'", ret);
+}
+
+std::wstring UnescapeHTML(const std::wstring &html)
+{
+	std::wstring ret=greplace(L"&amp;", L"&", html);
+	ret=greplace(L"&lt;", L"<", ret);
+	ret=greplace(L"&gt;", L">", ret);
+	ret=greplace(L"&quot;", L"\"", ret);
+	ret=greplace(L"#x27;", L"'", ret);
+}

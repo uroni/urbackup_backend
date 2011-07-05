@@ -96,5 +96,6 @@ std::wstring strlower(const std::wstring &str);
 std::string trim(const std::string &str);
 void replaceNonAlphaNumeric(std::string &str, char rch);
 std::string conv_filename(std::string fn);
-
+std::string UnescapeHTML(const std::string &html);
+std::wstring UnescapeHTML(const std::wstring &html)
 #endif
