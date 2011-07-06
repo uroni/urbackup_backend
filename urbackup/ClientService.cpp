@@ -932,6 +932,7 @@ void ClientConnector::ReceivePackets(void)
 				str_map params;
 				ParseParamStr(s_params, &params);
 
+				server_token=Server->ConvertToUTF8(params[L"token"]);
 				image_letter=Server->ConvertToUTF8(params[L"letter"]);
 				shadowdrive=Server->ConvertToUTF8(params[L"shadowdrive"]);
 				if(params.find(L"start")!=params.end())
@@ -959,6 +960,7 @@ void ClientConnector::ReceivePackets(void)
 					data.addString(image_letter);
 					data.addString(server_token);
 					data.addUChar(1); //image backup
+					data.addUChar(0); //filesrv
 					IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				}
 				else if(shadow_id!=-1)
@@ -986,6 +988,8 @@ void ClientConnector::ReceivePackets(void)
 				std::string s_params=cmd.substr(11);
 				str_map params;
 				ParseParamStr(s_params, &params);
+
+				server_token=Server->ConvertToUTF8(params[L"token"]);
 
 				str_map::iterator f_hashsize=params.find(L"hashsize");
 				if(f_hashsize!=params.end())
@@ -1231,6 +1235,10 @@ void ClientConnector::ReceivePackets(void)
 				}
 			}
 			return;
+		}
+		else
+		{
+			tcpstack.Send(pipe, "ERR");
 		}
 	}
 }

@@ -348,6 +348,10 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		}
 		db->destroyAllQueries();
 	}
+	else if(msg=="ERR")
+	{
+		Server->wait(60000);
+	}
 	return "";
 }
 

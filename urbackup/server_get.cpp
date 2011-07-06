@@ -813,7 +813,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			if(Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
 			{
 				Server->destroy(cc);
-				Server->Log(clientname+L": Trying old filelist request", LL_DEBUG);
+				Server->Log(clientname+L": Trying old filelist request", LL_WARNING);
 				return request_filelist_construct(full, false);
 			}
 			else
@@ -1953,7 +1953,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 	if(pParentvhd.empty())
 	{
-		tcpstack.Send(cc, server_identity+"FULL IMAGE letter=C:");
+		tcpstack.Send(cc, server_identity+"FULL IMAGE letter=C:&token="+server_token);
 	}
 	else
 	{
@@ -1964,7 +1964,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 			Server->destroy(cc);
 			return false;
 		}
-		std::string ts=server_identity+"INCR IMAGE letter=C:&hashsize="+nconvert(hashfile->Size());
+		std::string ts=server_identity+"INCR IMAGE letter=C:&hashsize="+nconvert(hashfile->Size())+"&token="+server_token;
 		size_t rc=tcpstack.Send(cc, ts);
 		if(rc==0)
 		{
