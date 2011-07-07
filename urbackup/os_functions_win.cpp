@@ -18,7 +18,9 @@
 
 #include "os_functions.h"
 #include "../stringtools.h"
-//#define _WIN32_WINNT 0x0500
+#ifdef _WIN_PRE_VISTA
+#define _WIN32_WINNT 0x0500
+#endif
 #include <winsock2.h>
 #include <windows.h>
 #include <stdlib.h>
