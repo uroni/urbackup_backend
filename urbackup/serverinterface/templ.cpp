@@ -80,6 +80,7 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("logs_filter");
 	templates.push_back("logs_none");
 	templates.push_back("dir_error");
+	templates.push_back("tmpdir_error");
 	templates.push_back("status_detail");
 	templates.push_back("status_detail_extra_empty");
 	templates.push_back("status_detail_extra_row");

@@ -170,6 +170,7 @@ IFile* Pychart::drawGraphInt(const SChartInfo &ci)
 	object main_namespace = main_module.attr("__dict__");
 
 	IFile *tmp=Server->openTemporaryFile();
+	if(tmp==NULL) return NULL;
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
 
@@ -196,6 +197,7 @@ IFile* Pychart::drawPieInt(const SPieInfo &pi)
 	object main_namespace = main_module.attr("__dict__");
 
 	IFile *tmp=Server->openTemporaryFile();
+	if(tmp==NULL) return NULL;
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
 
@@ -221,6 +223,7 @@ IFile* Pychart::drawBarInt(const SBarInfo &pi)
 	object main_namespace = main_module.attr("__dict__");
 
 	IFile *tmp=Server->openTemporaryFile();
+	if(tmp==NULL) return NULL;
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
 

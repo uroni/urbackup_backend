@@ -1038,6 +1038,8 @@ void ClientConnector::ReceivePackets(void)
 						IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 					}
 					hashdatafile=Server->openTemporaryFile();
+					if(hashdatafile==NULL)
+						continue;
 
 					if(tcpstack.getBuffersize()>0)
 					{
@@ -1205,6 +1207,9 @@ void ClientConnector::ReceivePackets(void)
 		else if( cmd.find("CLIENTUPDATE ")==0 && ident_ok==true )
 		{
 			hashdatafile=Server->openTemporaryFile();
+			if(hashdatafile==NULL)
+				continue;
+
 			hashdataleft=atoi(cmd.substr(13).c_str());
 			hashdataok=false;
 			state=6;

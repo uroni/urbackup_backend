@@ -58,6 +58,7 @@ void ServerUpdate::operator()(void)
 	}
 
 	IFile *tmp=Server->openTemporaryFile();
+	if(tmp==NULL) return;
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
 	dl->download("http://www.urserver.de/urbackup/update/version.txt", tfn);

@@ -514,6 +514,12 @@ function show_status2(data)
 		dir_error=tmpls.dir_error.evaluate();
 	}
 	
+	var tmpdir_error="";
+	if(data.tmpdir_error)
+	{
+		tmpdir_error=tmpls.tmpdir_error.evaluate();
+	}
+	
 	var extra_clients_rows="";
 	
 	if(data.extra_clients.length>0)
@@ -562,7 +568,7 @@ function show_status2(data)
 		Actions_end="-->";
 	}
 	
-	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, 
+	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
 	extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
 	class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end, server_identity: data.server_identity});
 	

@@ -57,6 +57,15 @@ ACTION_IMPL(status)
 			{
 				ret.set("dir_error" ,true);
 			}
+			IFile *tmp=Server->openTemporaryFile();
+			if(tmp==NULL)
+			{
+				ret.set("tmpdir_error", true);
+			}
+			else
+			{
+				Server->destroy(tmp);
+			}
 		}
 
 		bool details=false;

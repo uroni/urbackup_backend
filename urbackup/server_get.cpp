@@ -879,6 +879,7 @@ bool BackupServerGet::doFullBackup(void)
 	}
 	
 	IFile *tmp=Server->openTemporaryFile();
+	if(tmp==NULL) return false;
 
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
@@ -1198,6 +1199,8 @@ bool BackupServerGet::doIncrBackup(void)
 	
 	Server->Log(clientname+L": Loading filelist...", LL_DEBUG);
 	IFile *tmp=Server->openTemporaryFile();
+	if(tmp==NULL) return false;
+
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
