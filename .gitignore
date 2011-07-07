@@ -86,3 +86,5 @@ pychart/build_/*
 pychart/dist_/*
 info.txt
 urbackup/server_token.key
+Release Server PreVista/*
+urbackup/Release Server PreVista/*
