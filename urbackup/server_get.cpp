@@ -976,7 +976,6 @@ bool BackupServerGet::doFullBackup(void)
 							ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_INFO);
 							start_shadowcopy(Server->ConvertToUTF8(t));
 							Server->wait(10000);
-							request_filelist_construct(true, true);
 						}
 					}
 					else
