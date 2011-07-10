@@ -193,9 +193,14 @@ bool CClientThread::RecvMessage(void)
 		Log("1 min Timeout deleting Buffers (%i KB) and waiting 1h more...", (NBUFFERS*READSIZE)/1024 );
 		delete bufmgr;
 		lon.tv_sec=3600;
-		FD_ZERO(&fdset);
-		FD_SET(mSocket,&fdset);
-		rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+		int n=0;
+		while(stopped==false && rc==0 && n<60)
+		{
+			FD_ZERO(&fdset);
+			FD_SET(mSocket,&fdset);
+			rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+			++n;
+		}
 		Log("Reallocating Buffers...");
 #ifdef _WIN32
 		bufmgr=new CBufMgr(NBUFFERS,READSIZE);

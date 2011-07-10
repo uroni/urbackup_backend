@@ -69,8 +69,8 @@ private:
 	void DisableNagle(void);
 
 	SOCKET mSocket;
-	bool stopped;
-	bool killable;
+	volatile bool stopped;
+	volatile bool killable;
 
 	int currfilepart;
 	int sendfilepart;

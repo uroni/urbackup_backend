@@ -26,6 +26,6 @@ private:
 	bool UdpStep(void);
 
 	bool has_error;
-	bool do_stop;
+	volatile bool do_stop;
 };
 

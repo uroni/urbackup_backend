@@ -47,11 +47,12 @@ CTCPFileServ::~CTCPFileServ(void)
 			Server->getThreadPool()->waitFor(udpticket);
 		}
 	}
-	closesocket(mSocket);
 }
 
 void CTCPFileServ::KickClients()
 {
+	closesocket(mSocket);
+
 	cs.Enter();
 	for(size_t i=0;i<clientthreads.size();++i)
 	{
