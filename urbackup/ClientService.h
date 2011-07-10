@@ -78,6 +78,8 @@ private:
 	static int pcdone2;
 	static IMutex *progress_mutex;
 	static volatile bool img_download_running;
+	static db_results cached_status;
+	static std::string backup_source_token;
 
 	std::string image_letter;
 

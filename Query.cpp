@@ -34,7 +34,7 @@ CQuery::CQuery(const std::string &pStmt_str, sqlite3_stmt *prepared_statement, C
 CQuery::~CQuery()
 {
 	int err=sqlite3_finalize(ps);
-	if( err!=SQLITE_OK )
+	if( err!=SQLITE_OK && err!=SQLITE_BUSY && err!=SQLITE_IOERR_BLOCKED )
 		Server->Log("SQL: "+(std::string)sqlite3_errmsg(db->getDatabase())+ " Stmt: ["+stmt_str+"]", LL_ERROR);
 }
 
@@ -119,21 +119,30 @@ void CQuery::Reset(void)
 	curr_idx=1;
 }
 
-bool CQuery::Write(void)
+bool CQuery::Write(int timeoutms)
 {
-	return Execute();
+	return Execute(timeoutms);
 }
 
-bool CQuery::Execute(void)
+bool CQuery::Execute(int timeoutms)
 {
 	bool transaction_lock=false;
 	int tries=60; //10min
-	int err=sqlite3_step(ps);
-	while( err==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_LOCKED )
+	if(timeoutms>=0)
 	{
-		if(err==SQLITE_BUSY)
+		sqlite3_busy_timeout(db->getDatabase(), timeoutms);
+	}
+	int err=sqlite3_step(ps);
+	while( err==SQLITE_IOERR_BLOCKED || err==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_LOCKED )
+	{
+		if(err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED)
 		{
-			if(transaction_lock==false)
+			if(timeoutms>=0)
+			{
+				sqlite3_busy_timeout(db->getDatabase(), 50);
+				break;
+			}
+			else if(transaction_lock==false)
 			{
 				if(db->LockForTransaction())
 				{
@@ -175,21 +184,58 @@ bool CQuery::Execute(void)
 
 	if( err!=SQLITE_DONE )
 	{
-		Server->Log("Error in CQuery::Execute - "+(std::string)sqlite3_errmsg(db->getDatabase()) +"  Stmt: ["+stmt_str+"]", LL_ERROR);
+		if(timeoutms<0)
+		{
+			Server->Log("Error in CQuery::Execute - "+(std::string)sqlite3_errmsg(db->getDatabase()) +"  Stmt: ["+stmt_str+"]", LL_ERROR);
+		}
 		return false;
 	}
 
 	return true;
 }
 
-db_nresults CQuery::ReadN(void)
+db_nresults CQuery::ReadN(int *timeoutms)
 {
 	int err;
 	db_nresults rows;
 
-	while( (err=sqlite3_step(ps))==SQLITE_BUSY || err==SQLITE_ROW)
+	bool transaction_lock=false;
+	int tries=60; //10min
+
+	if(timeoutms!=NULL && *timeoutms>=0)
 	{
-		if( err==SQLITE_ROW )
+		sqlite3_busy_timeout(db->getDatabase(), *timeoutms);
+	}
+
+	while( (err=sqlite3_step(ps))==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_IOERR_BLOCKED)
+	{
+		if( err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED )
+		{
+			if(timeoutms!=NULL && *timeoutms>=0)
+			{
+				sqlite3_busy_timeout(db->getDatabase(), 50);
+				break;
+			}
+			else if(transaction_lock==false)
+			{
+				if(db->LockForTransaction())
+				{
+					transaction_lock=true;
+				}
+				sqlite3_busy_timeout(db->getDatabase(), 10000);
+			}
+			else
+			{
+				--tries;
+				if(tries<0)
+				{
+				  Server->Log("SQLITE: Giving up waiting for query  Stmt: ["+stmt_str+"]", LL_ERROR);
+				  break;
+				}
+				Server->Log("SQLITE_BUSY in CQuery::ReadN  Stmt: ["+stmt_str+"]", LL_INFO);
+			}
+		}
+		else if( err==SQLITE_ROW )
 		{
 			db_nsingle_result res;
 			int column=0;
@@ -208,17 +254,69 @@ db_nresults CQuery::ReadN(void)
 		}
 	}
 
+	if(timeoutms!=NULL)
+	{
+		if(err!=SQLITE_DONE)
+		{
+			*timeoutms=1;
+		}
+		else
+		{
+			*timeoutms=0;
+		}
+	}
+
+	if(transaction_lock)
+	{
+		sqlite3_busy_timeout(db->getDatabase(), 50);
+		db->UnlockForTransaction();
+	}
+
 	return rows;
 }
 
-db_results CQuery::Read(void)
+db_results CQuery::Read(int *timeoutms)
 {
 	int err;
 	db_results rows;
 
-	while( (err=sqlite3_step(ps))==SQLITE_BUSY || err==SQLITE_ROW)
+	bool transaction_lock=false;
+	int tries=60; //10min
+
+	if(timeoutms!=NULL && *timeoutms>=0)
 	{
-		if( err==SQLITE_ROW )
+		sqlite3_busy_timeout(db->getDatabase(), *timeoutms);
+	}
+
+	while( (err=sqlite3_step(ps))==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_IOERR_BLOCKED )
+	{
+		if( err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED )
+		{
+			if(timeoutms!=NULL && *timeoutms>=0)
+			{
+				sqlite3_busy_timeout(db->getDatabase(), 50);
+				break;
+			}
+			else if(transaction_lock==false)
+			{
+				if(db->LockForTransaction())
+				{
+					transaction_lock=true;
+				}
+				sqlite3_busy_timeout(db->getDatabase(), 10000);
+			}
+			else
+			{
+				--tries;
+				if(tries<0)
+				{
+				  Server->Log("SQLITE: Giving up waiting for query  Stmt: ["+stmt_str+"]", LL_ERROR);
+				  break;
+				}
+				Server->Log("SQLITE_BUSY in CQuery::Read  Stmt: ["+stmt_str+"]", LL_INFO);
+			}
+		}
+		else if( err==SQLITE_ROW )
 		{
 			db_single_result res;
 			int column=0;
@@ -290,6 +388,24 @@ db_results CQuery::Read(void)
 		{
 			Server->wait(1000);
 		}
+	}
+
+	if(timeoutms!=NULL)
+	{
+		if(err!=SQLITE_DONE)
+		{
+			*timeoutms=1;
+		}
+		else
+		{
+			*timeoutms=0;
+		}
+	}
+
+	if(transaction_lock)
+	{
+		sqlite3_busy_timeout(db->getDatabase(), 50);
+		db->UnlockForTransaction();
 	}
 
 	return rows;

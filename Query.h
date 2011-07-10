@@ -24,12 +24,12 @@ public:
 
 	virtual void Reset(void);
 
-	virtual bool Write(void);
-	db_results Read(void);
-	db_nresults ReadN(void);
+	virtual bool Write(int timeoutms=-1);
+	db_results Read(int *timeoutms=NULL);
+	db_nresults ReadN(int *timeoutms=NULL);
 
 private:
-	bool Execute(void);
+	bool Execute(int timeoutms);
 
 	sqlite3_stmt *ps;
 	std::string stmt_str;

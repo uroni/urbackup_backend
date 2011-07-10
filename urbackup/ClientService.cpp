@@ -71,6 +71,8 @@ std::vector<IPipe*> ClientConnector::channel_exit;
 std::vector<IPipe*> ClientConnector::channel_ping;
 IMutex *ClientConnector::progress_mutex=NULL;
 volatile bool ClientConnector::img_download_running=false;
+db_results ClientConnector::cached_status;
+std::string ClientConnector::backup_source_token;
 
 const unsigned int x_pingtimeout=180000;
 
@@ -596,6 +598,7 @@ void ClientConnector::ReceivePackets(void)
 			backup_running=1;
 			last_pingtime=Server->getTimeMS();
 			pcdone=0;
+			backup_source_token=server_token;
 		}
 		else if(cmd=="START FULL BACKUP" && ident_ok==true)
 		{
@@ -613,6 +616,7 @@ void ClientConnector::ReceivePackets(void)
 			backup_running=2;
 			last_pingtime=Server->getTimeMS();
 			pcdone=0;
+			backup_source_token=server_token;
 		}
 		else if(cmd.find("START SC \"")!=std::string::npos && ident_ok==true)
 		{
@@ -728,7 +732,11 @@ void ClientConnector::ReceivePackets(void)
 			tcpstack.Send(pipe, "OK");
 			lasttime=Server->getTimeMS();
 			IScopedLock lock(backup_mutex);
-			pcdone=atoi(getbetween("-","-", cmd).c_str());
+			int pcdone_new=atoi(getbetween("-","-", cmd).c_str());
+			if(pcdone_new>pcdone && (backup_source_token.empty() || backup_source_token==server_token) )
+			{
+				pcdone=pcdone_new;
+			}
 		}
 		else if(cmd=="CHANNEL" && ident_ok==true)
 		{
@@ -1258,22 +1266,30 @@ void ClientConnector::getBackupDirs(int version)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	IQuery *q=db->Prepare("SELECT id,name,path FROM backupdirs");
-	db_results res=q->Read();
-	std::string msg;
-	for(size_t i=0;i<res.size();++i)
+	int timeoutms=300;
+	db_results res=q->Read(&timeoutms);
+	if(timeoutms==0)
 	{
-		if(res[i][L"name"]==L"*") continue;
-
-		msg+=Server->ConvertToUTF8(res[i][L"id"])+"\n";
-		if(version!=0)
+		std::string msg;
+		for(size_t i=0;i<res.size();++i)
 		{
-			msg+=Server->ConvertToUTF8(res[i][L"name"])+"|";
+			if(res[i][L"name"]==L"*") continue;
+
+			msg+=Server->ConvertToUTF8(res[i][L"id"])+"\n";
+			if(version!=0)
+			{
+				msg+=Server->ConvertToUTF8(res[i][L"name"])+"|";
+			}
+			msg+=Server->ConvertToUTF8(res[i][L"path"]);
+			if(i+1<res.size())
+				msg+="\n";
 		}
-		msg+=Server->ConvertToUTF8(res[i][L"path"]);
-		if(i+1<res.size())
-			msg+="\n";
+		tcpstack.Send(pipe, msg);
 	}
-	tcpstack.Send(pipe, msg);
+	else
+	{
+		pipe->shutdown();
+	}	
 	db->destroyAllQueries();
 }
 
@@ -1439,8 +1455,17 @@ void ClientConnector::getBackupStatus(void)
 	IQuery *q=db->Prepare("SELECT strftime('"+time_format_str+"',last_backup, 'localtime') AS last_backup FROM status");
 	if(q==NULL)
 		return;
+	int timeoutms=300;
+	db_results res=q->Read(&timeoutms);
+	if(timeoutms==1)
+	{
+		res=cached_status;
+	}
+	else
+	{
+		cached_status=res;
+	}
 
-	db_results res=q->Read();
 	std::string ret;
 	if(res.size()>0)
 	{
@@ -1669,11 +1694,10 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 std::string ClientConnector::getLogpoints(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	int timeoutms=300;
 	IQuery *q=db->Prepare("SELECT id, strftime('"+time_format_str+"',ttime, 'localtime') AS ltime FROM logs ORDER BY ttime DESC LIMIT 100");
-	db_results res=q->Read();
-
+	db_results res=q->Read(&timeoutms);
 	std::string ret;
-
 	for(size_t i=0;i<res.size();++i)
 	{
 		ret+=Server->ConvertToUTF8(res[i][L"id"])+"-";
@@ -1689,7 +1713,8 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 	IQuery *q=db->Prepare("SELECT loglevel, message FROM logdata WHERE logid=? AND loglevel>=? ORDER BY idx ASC");
 	q->Bind(logid);
 	q->Bind(loglevel);
-	db_results res=q->Read();
+	int timeoutms=300;
+	db_results res=q->Read(&timeoutms);
 	for(size_t i=0;i<res.size();++i)
 	{
 		data+=Server->ConvertToUTF8(res[i][L"loglevel"])+"-";
@@ -1706,6 +1731,7 @@ bool ClientConnector::sendFullImage(void)
 	IScopedLock lock(backup_mutex);
 	backup_running=3;
 	pcdone=0;
+	backup_source_token=server_token;
 	return true;
 }
 
@@ -1718,6 +1744,7 @@ bool ClientConnector::sendIncrImage(void)
 	backup_running=4;
 	pcdone=0;
 	pcdone2=0;
+	backup_source_token=server_token;
 	return true;
 }
 

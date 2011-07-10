@@ -19,9 +19,9 @@ public:
 
 	virtual void Reset(void)=0;
 
-	virtual bool Write(void)=0;
-	virtual db_nresults ReadN(void)=0;
-	virtual db_results Read(void)=0;
+	virtual bool Write(int timeoutms=-1)=0;
+	virtual db_nresults ReadN(int *timeoutms=NULL)=0;
+	virtual db_results Read(int *timeoutms=NULL)=0;
 };
 
 

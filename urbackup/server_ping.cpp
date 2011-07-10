@@ -24,6 +24,7 @@
 #include "../stringtools.h"
 
 const unsigned int ping_intervall=10000;
+extern std::string server_token;
 
 ServerPingThread::ServerPingThread(BackupServerGet *pServer_get) : server_get(pServer_get)
 {
@@ -34,7 +35,7 @@ void ServerPingThread::operator()(void)
 {
 	while(stop==false)
 	{
-		server_get->sendClientMessage("PING RUNNING -"+nconvert(server_get->getPCDone())+"-", "OK", L"Error sending 'running' ping to client", 30000, false);
+		server_get->sendClientMessage("PING RUNNING -"+nconvert(server_get->getPCDone())+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false);
 		Server->wait(ping_intervall);
 	}
 	Server->wait(1000);
