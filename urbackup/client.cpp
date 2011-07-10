@@ -27,6 +27,7 @@
 #include "fileclient/data.h"
 #include "database.h"
 #include "ServerIdentityMgr.h"
+#include "ClientService.h"
 #include <algorithm>
 #include <fstream>
 #include <stdlib.h>
@@ -329,6 +330,10 @@ void IndexThread::operator()(void)
 				}
 				if(start_shadowcopy(scd, NULL, false, std::vector<SCRef*>(), image_backup==1?true:false))
 				{
+					if(image_backup==1)
+					{
+						++scd->rcount;
+					}
 					contractor->Write("done-"+nconvert(scd->ref->save_id)+"-"+Server->ConvertToUTF8(scd->target));
 				}
 				else
@@ -505,7 +510,7 @@ void IndexThread::indexDirs(void)
 				scd->target=filesrv->getShareDir(backup_dirs[i].tname);
 				scd->orig_target=scd->target;
 				scd->fileserv=true;
-			}			
+			}
 
 			std::wstring mod_path=backup_dirs[i].path;
 
@@ -524,6 +529,7 @@ void IndexThread::indexDirs(void)
 			{
 				mod_path=scd->target;
 				scd->running=true;
+				++scd->rcount;
 			}
 #ifdef _WIN32
 			if(!b || !onlyref)
@@ -782,11 +788,13 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 					{
 						m_keys.push_back(lit->first);
 					}
+					SCRef *curr=sc_refs[i];
 					for(size_t k=0;k<m_keys.size();++k)
 					{
 						std::map<std::wstring, SCDirs*>::iterator it=scdirs.find(m_keys[k]);
-						if(it!=scdirs.end() && it->second->ref==sc_refs[i])
+						if(it!=scdirs.end() && it->second->ref==curr)
 						{
+							Server->Log(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
 							release_shadowcopy(it->second, false, -1, dir);
 						}
 					}
@@ -819,6 +827,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						Server->Log("Adding server token to ref", LL_INFO);
 						sc_refs[i]->starttokens.push_back(starttoken);
 					}
+
+					Server->Log(L"orig_target="+dir->orig_target+L" volpath="+dir->ref->volpath, LL_DEBUG);
 
 					dir->target=dir->orig_target;
 					dir->target.erase(0,wpath.size());
@@ -960,9 +970,16 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
-	if(dir->ref!=NULL && dir->ref->backupcom!=NULL && dir->fileserv)
+	--dir->rcount;
+
+	if(dir->rcount<=0)
 	{
-		filesrv->shareDir(dir->dir, dir->orig_target);
+		if(dir->ref!=NULL && dir->ref->backupcom!=NULL && dir->fileserv)
+		{
+			filesrv->shareDir(dir->dir, dir->orig_target);
+		}
+
+		dir->target=dir->orig_target;
 	}
 
 	if(for_imagebackup)
@@ -994,11 +1011,6 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 			if(dir->ref->save_id!=-1)
 			{
 				cd->deleteShadowcopy(dir->ref->save_id);
-			}
-
-			if(dir->fileserv)
-			{
-				filesrv->shareDir(dir->dir, dir->orig_target);
 			}
 
 #ifndef VSS_XP
@@ -1149,11 +1161,19 @@ bool IndexThread::cleanup_saved_shadowcopies(void)
 
 		for(size_t i=0;i<scs.size();++i)
 		{
-			SCDirs *scd=getSCDir(scs[i].tname);
-			if( ( ((scd->ref!=NULL && scd->ref->save_id!=scs[i].id ) || scd->ref==NULL)  && scs[i].refs<=0) ||
-				scs[i].passedtime>shadowcopy_timeout/1000)
+			bool f2=true;
+			for(size_t j=0;j<sc_refs.size();++j)
+			{
+				if(sc_refs[j]->save_id==scs[i].id)
+				{
+					f2=false;
+					break;
+				}
+			}
+			if(f2==true && (scs[i].refs<=0 || scs[i].passedtime>shadowcopy_timeout/1000))
 			{
 				found=true;
+				break;
 			}
 		}
 
@@ -1168,9 +1188,16 @@ bool IndexThread::cleanup_saved_shadowcopies(void)
 			
 			for(size_t i=0;i<scs.size();++i)
 			{
-				SCDirs *scd=getSCDir(scs[i].tname);
-				if( ( ((scd->ref!=NULL && scd->ref->save_id!=scs[i].id ) || scd->ref==NULL)  && scs[i].refs<=0) ||
-						scs[i].passedtime>shadowcopy_timeout/1000)
+				bool f2=true;
+				for(size_t j=0;j<sc_refs.size();++j)
+				{
+					if(sc_refs[j]->save_id==scs[i].id)
+					{
+						f2=false;
+						break;
+					}
+				}
+				if( f2==true && (scs[i].refs<=0 || scs[i].passedtime>shadowcopy_timeout/1000))
 				{
 					Server->Log(L"Deleting shadowcopy for path \""+scs[i].path+L"\"", LL_INFO);
 					LONG dels; 
