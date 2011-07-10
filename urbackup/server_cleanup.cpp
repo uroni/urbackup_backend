@@ -95,7 +95,7 @@ void ServerCleanupThread::operator()(void)
 			}
 		}
 		db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		IQuery *q=db->Prepare("SELECT strftime('%H','now') AS time", false);
+		IQuery *q=db->Prepare("SELECT strftime('%H','now', 'localtime') AS time", false);
 		db_results res=q->Read();
 		db->destroyQuery(q);
 		if(res.empty())
