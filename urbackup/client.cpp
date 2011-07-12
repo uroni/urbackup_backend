@@ -330,10 +330,6 @@ void IndexThread::operator()(void)
 				}
 				if(start_shadowcopy(scd, NULL, false, std::vector<SCRef*>(), image_backup==1?true:false))
 				{
-					if(image_backup==1)
-					{
-						++scd->rcount;
-					}
 					contractor->Write("done-"+nconvert(scd->ref->save_id)+"-"+Server->ConvertToUTF8(scd->target));
 				}
 				else
@@ -529,7 +525,6 @@ void IndexThread::indexDirs(void)
 			{
 				mod_path=scd->target;
 				scd->running=true;
-				++scd->rcount;
 			}
 #ifdef _WIN32
 			if(!b || !onlyref)
@@ -772,9 +767,18 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						break;
 					}
 				}
-				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000 || (do_restart==true && restart_own==true && sc_refs[i]->starttokens.size()==1 && sc_refs[i]->starttokens[i]==starttoken) )
+				bool only_own_tokens=true;
+				for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
 				{
-					if( restart_own==true && sc_refs[i]->starttokens.size()==1 && sc_refs[i]->starttokens[i]==starttoken)
+					if( sc_refs[i]->starttokens[k]!=starttoken && (Server->getTimeSeconds()-ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]))<3600)
+					{
+						only_own_tokens=false;
+						break;
+					}
+				}
+				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000 || (do_restart==true && restart_own==true && only_own_tokens==true ) )
+				{
+					if( only_own_tokens==true)
 					{
 						Server->Log("Removing reference because restart own was specified and only own tokens are present", LL_WARNING);
 					}
@@ -806,26 +810,11 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 					if(!dir->ref->dontincrement)
 					{
 						dir->ref->rcount++;
+						sc_refs[i]->starttokens.push_back(starttoken);
 					}
 					else
 					{
 						dir->ref->dontincrement=false;
-					}
-
-					bool found=false;
-					for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
-					{
-						if(sc_refs[i]->starttokens[k]==starttoken)
-						{
-							found=true;
-							break;
-						}
-					}
-
-					if(!found)
-					{
-						Server->Log("Adding server token to ref", LL_INFO);
-						sc_refs[i]->starttokens.push_back(starttoken);
 					}
 
 					Server->Log(L"orig_target="+dir->orig_target+L" volpath="+dir->ref->volpath, LL_DEBUG);
@@ -970,17 +959,6 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
-	--dir->rcount;
-
-	if(dir->rcount<=0)
-	{
-		if(dir->ref!=NULL && dir->ref->backupcom!=NULL && dir->fileserv)
-		{
-			filesrv->shareDir(dir->dir, dir->orig_target);
-		}
-
-		dir->target=dir->orig_target;
-	}
 
 	if(for_imagebackup)
 	{
@@ -1044,22 +1022,14 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 		}
 		--dir->ref->rcount;
 	}
-	else if(dir->ref!=NULL)
+	if(dir->ref!=NULL)
 	{
-		--dir->ref->rcount;
-
-		bool c=true;
-		while(c)
+		for(size_t k=0;k<dir->ref->starttokens.size();++k)
 		{
-			c=false;
-			for(size_t k=0;k<dir->ref->starttokens.size();++k)
+			if(dir->ref->starttokens[k]==starttoken)
 			{
-				if(dir->ref->starttokens[k]==starttoken)
-				{
-					dir->ref->starttokens.erase(dir->ref->starttokens.begin()+k);
-					c=true;
-					break;
-				}
+				dir->ref->starttokens.erase(dir->ref->starttokens.begin()+k);
+				break;
 			}
 		}
 	}
@@ -1112,6 +1082,12 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 					{
 						if(it->second->ref==sc_refs[i])
 						{
+							if(it->second->fileserv)
+							{
+								filesrv->shareDir(it->second->dir, it->second->orig_target);
+							}
+							it->second->target=it->second->orig_target;
+
 							it->second->ref=NULL;
 							if(dontdel==NULL || it->second!=dontdel )
 							{

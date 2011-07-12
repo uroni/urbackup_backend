@@ -4,6 +4,8 @@
 #include "../Interface/File.h"
 #include "fileclient/tcpstack.h"
 
+#include <map>
+
 class ClientService : public IService
 {
 public:
@@ -25,6 +27,8 @@ public:
 	virtual bool wantReceive(void);
 
 	void operator()(void);
+
+	static unsigned int getLastTokenTime(const std::string & tok);
 
 private:
 	bool checkPassword(const std::wstring &cmd);
@@ -80,6 +84,7 @@ private:
 	static volatile bool img_download_running;
 	static db_results cached_status;
 	static std::string backup_source_token;
+	static std::map<std::string, unsigned int> last_token_times;
 
 	std::string image_letter;
 

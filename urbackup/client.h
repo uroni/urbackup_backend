@@ -66,7 +66,7 @@ struct SCRef
 
 struct SCDirs
 {
-	SCDirs(void): ref(NULL), rcount(0) {}
+	SCDirs(void): ref(NULL) {}
 	std::wstring dir;
 	std::wstring target;
 	std::wstring orig_target;
@@ -74,7 +74,6 @@ struct SCDirs
 	SCRef *ref;
 	unsigned int starttime;
 	bool fileserv;
-	int rcount;
 };
 
 class ClientDAO;

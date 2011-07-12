@@ -73,6 +73,7 @@ IMutex *ClientConnector::progress_mutex=NULL;
 volatile bool ClientConnector::img_download_running=false;
 db_results ClientConnector::cached_status;
 std::string ClientConnector::backup_source_token;
+std::map<std::string, unsigned int> ClientConnector::last_token_times;
 
 const unsigned int x_pingtimeout=180000;
 
@@ -737,6 +738,7 @@ void ClientConnector::ReceivePackets(void)
 			{
 				pcdone=pcdone_new;
 			}
+			last_token_times[server_token]=Server->getTimeSeconds();
 		}
 		else if(cmd=="CHANNEL" && ident_ok==true)
 		{
@@ -2504,4 +2506,19 @@ void ClientConnector::waitForPings(IScopedLock *lock)
 		lock->relock(backup_mutex);
 	}
 	Server->Log("done. (Waiting for pings)", LL_DEBUG);
+}
+
+unsigned int ClientConnector::getLastTokenTime(const std::string & tok)
+{
+	IScopedLock lock(backup_mutex);
+
+	std::map<std::string, unsigned int>::iterator it=last_token_times.find(tok);
+	if(it!=last_token_times.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		return 0;
+	}
 }
