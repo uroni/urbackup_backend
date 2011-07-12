@@ -3,7 +3,9 @@
 \usepackage[latin1]{inputenc}
 \usepackage{graphicx}
 \usepackage{longtable}
+\usepackage[T1]{fontenc}
 \usepackage{a4wide}
+\usepackage{textcomp}
 \begin{document}
 
 \hypersetup{%
@@ -61,6 +63,7 @@ piegraph* & View statistics\\
 users* & Get client names\\
 general\_settings* & Change general settings (like backup storage path)\\
 usermod* & Create, change and delete users\\
+remove\_client* & Remove clients and delete all their backups\\
 \hline
 \end{tabular}
 
@@ -141,7 +144,7 @@ This section will show in detail how a backup is performed.
 
 \subsection{Image backup}
 
-The server detects that the time to the last full image backup is larger then the interval for full image backups, the time to the last incremental backup is larger than the interval for incremental image backups or the client requested an image backup. The server then opens up a connection to the client command service requesting the image of a volume (for now only the C: volume). The client answers by sending a error code or by sending the image. The image is sent sector for sector with each sector preceded by its position on the hard disk. The client only sends sectors used by the filesystem. If the backup is incremental the client calculates a hash of 256 kbyte chunks and compares it to the previous image backup. If the hash of the chunk has not changed it does not transfer this chunk to the server, otherwise it does. The server writes the received data into a temporary file. The temporary files have a maximum size of 1GB. After this size is exceeded the server continues with a new temporary file. The image data is written to a VHD file in parallel in a separated Thread and is located in the client directory in the backup storage location. The VHD file's name is 'Image\_<Volume>\_<YYMMDD\_HHMM>.vhd'. <Volume> being currently always 'C' and YY the current year, MM the current month, DD the current day in the month and HHMM the hour and minute the image backup was started.
+The server detects that the time to the last full image backup is larger then the interval for full image backups, the time to the last incremental backup is larger than the interval for incremental image backups or the client requested an image backup. The server then opens up a connection to the client command service requesting the image of a volume (for now only the C: volume). The client answers by sending a error code or by sending the image. The image is sent sector for sector with each sector preceded by its position on the hard disk. The client only sends sectors used by the filesystem. If the backup is incremental the client calculates a hash of 256 kbyte chunks and compares it to the previous image backup. If the hash of the chunk has not changed it does not transfer this chunk to the server, otherwise it does. The server writes the received data into a temporary file. The temporary files have a maximum size of 1GB. After this size is exceeded the server continues with a new temporary file. The image data is written to a VHD file in parallel in a separated Thread and is located in the client directory in the backup storage location. The VHD file's name is 'Image\_\textless Volume\textgreater\_\textless YYMMDD\_HHMM\textgreater.vhd'.\textless Volume\textgreater  being currently always 'C' and YY the current year, MM the current month, DD the current day in the month and HHMM the hour and minute the image backup was started.
 
 \section{Server settings}
 \label{server_settings}
@@ -222,6 +225,10 @@ Delay after system startup & The server will wait for this number of minutes aft
 \hline
 Backup window & The server will only start backing up clients within this window. See section \ref{subsub_backup_window} for details. & 1-7/0-24\\
 \hline
+Excluded files & Allows you to define which files should be excluded from backups. See section \ref{subsub_excluded_files} for details & "" \\
+\hline
+Default directories to backup & Default directories which are backed up. See section \ref{subsub_default_dirs} for details & ""\\
+\hline
 Allow client(s) to change settings & If this option is checked the clients can change their client specific settings via the client interface. If you do not check this the server settings always override the clients' settings. & true\\
 \hline
 \end{longtable}
@@ -235,6 +242,44 @@ Mon-Sun/0-24: An equivalent notation of the above\\
 Mon-Fri/8:00-9:00, 19:30-20:30;Sat,Sun/0-24: On weekdays backup between 8 and 9 and between 19:30 and 20:30. On Saturday and Sunday the whole time.
 
 As one can see a number can denote a day of the week (1-Monday, 2-Thuesday, 3-Wednesday, 4-Thursday, 5-Friday, 6-Saturday, 7-Sunday). You can also use the abbreviations of the days (Mon, Thues, Wed, Thurs, Fri, Sat, Sun). The times can either consist of only full hours or of hours with minutes. The hours are on the 24 hour clock. You can set multiple days and times per window definition, separated per ",". You can also set multiple window definitions. Separate them with ";".
+
+\subsubsection{Excluded files}
+\label{subsub_excluded_files}
+
+You can exlude files with wildcard matching. For example if you want to exlude all MP3s and movie files enter something like this:
+\begin{verbatim}
+*.mp3;*.avi;*.mkv;*.mp4;*.mpg;*.mpeg
+\end{verbatim}
+If you want to exclude a directory e.g. Temp you can do it like this:
+\begin{verbatim}
+*/Temp/*
+\end{verbatim}
+You can also give the full local name
+\begin{verbatim}
+C:\Users\User\AppData\Local\Temp\*
+\end{verbatim}
+or the name you gave the location e.g.
+\begin{verbatim}
+C_\Users\User\AppData\Local\Temp
+\end{verbatim}
+
+Rules are separated by a semicolon (";")
+
+\subsubsection{Default directories to backup}
+\label{subsub_default_dirs}
+
+Enter the different locations separated by a semicolon (";") e.g.
+\begin{verbatim}
+C:\Users;C:\Program Files
+\end{verbatim}
+If you want to give the backup locations a different name you can add one with the pipe symbol ("|") e.g:
+\begin{verbatim}
+C:\Users|User files;C:\Program Files|Programs
+\end{verbatim}
+gives the "Users" directory the name "User files" and the "Program files" directory the name "Programs".
+
+Those locations are only the default locations. Even if you check "Seperate settings for this client" and disable "Allow client to change settings", once the client modified the paths, changes in this field are not used by the client anymore.
+
 
 \section{Storage}
 
