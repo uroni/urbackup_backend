@@ -15,6 +15,8 @@ public:
 	
 	bool isWorking(void);
 
+	bool hasError(void);
+
 private:
 	void prepareSQL(void);
 	void addFile(unsigned int backupid, IFile *tf, const std::wstring &tfn, const std::string &sha2);
@@ -49,4 +51,5 @@ private:
 	int clientid;
 	
 	volatile bool working;
+	volatile bool has_error;
 };

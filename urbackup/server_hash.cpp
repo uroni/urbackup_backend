@@ -51,6 +51,7 @@ BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid
 	tmp_count=0;
 	space_logcnt=0;
 	working=false;
+	has_error=false;
 }
 
 BackupServerHash::~BackupServerHash(void)
@@ -344,12 +345,20 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 			}
 			else
 			{
-				copyFile(tf, tfn);
+				bool r=copyFile(tf, tfn);
+				if(!r)
+				{
+					has_error=true;
+				}
 				std::wstring temp_fn=tf->getFilenameW();
 				Server->destroy(tf);
 				Server->deleteFile(temp_fn);
-				addFileSQL(backupid, tfn, sha2, t_filesize, t_filesize);
-				++tmp_count;
+
+				if(r)
+				{
+					addFileSQL(backupid, tfn, sha2, t_filesize, t_filesize);
+					++tmp_count;
+				}
 			}
 		}
 	}
@@ -525,6 +534,13 @@ int BackupServerHash::countFilesInTmp(void)
 bool BackupServerHash::isWorking(void)
 {
 	return working;
+}
+
+bool BackupServerHash::hasError(void)
+{
+	volatile bool r=has_error;
+	has_error=false;
+	return r;
 }
 
 #endif //CLIENT_ONLY

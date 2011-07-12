@@ -414,6 +414,10 @@ void BackupServerGet::operator ()(void)
 				{
 					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
 				}
+				else if( bsh->hasError() )
+				{
+					ServerLogger::Log(clientid, "Backup not complete because of disk problems", LL_ERROR);
+				}
 				else
 				{
 					updateLastBackup();
