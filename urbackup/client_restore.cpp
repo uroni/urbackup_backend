@@ -179,6 +179,8 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 	return ret;
 }
 
+volatile bool restore_retry_ok=false;
+
 int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1)
 {
 	std::string pw=getFile("pw.txt");
@@ -320,6 +322,11 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 					else
 					{
 						first=false;
+
+						if(pos!=-1 && !restore_retry_ok)
+						{
+							restore_retry_ok=true;
+						}
 					}
 
 					if(r-off>=sizeof(_i64) )
@@ -558,11 +565,18 @@ class RestoreThread : public IThread
 public:
 	RestoreThread(int pImg_id, std::string pImg_time, std::string pOutfile) : img_id(pImg_id), img_time(pImg_time), outfile(pOutfile)
 	{
+		done=false;
 	}
 
 	void operator()(void)
 	{
 		rc=downloadImage(img_id, img_time, outfile, false);
+		done=true;
+	}
+
+	bool isDone(void)
+	{
+		return done;
 	}
 
 	int getRC(void)
@@ -571,6 +585,7 @@ public:
 	}
 private:
 	int rc;
+	volatile bool done;
 	int img_id;
 	std::string img_time;
 	std::string outfile;
@@ -881,7 +896,18 @@ void restore_wizard(void)
 			{
 				RestoreThread rt(selimage.id, nconvert(selimage.time_s), "/dev/"+seldrive+nconvert( selpart ));
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
-				system("./cserver --plugin urbackup/.libs/liburbackup.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0");
+				while(true)
+				{
+					system("./cserver --plugin urbackup/.libs/liburbackup.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0");
+					while(!rt.isDone() && !restore_retry_ok)
+					{
+						Server->wait(1000);
+					}
+					if(rt.isDone())
+						break;
+					if(restore_retry_ok)
+						restore_retry_ok=false;
+				}
 				Server->getThreadPool()->waitFor(rt_ticket);
 				int rc=rt.getRC();
 				std::string errmsg;
