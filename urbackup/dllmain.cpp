@@ -280,6 +280,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				db->Write("UPDATE backupdirs SET server_default=0 WHERE server_default IS NULL");
 				db->Write("CREATE TABLE IF NOT EXISTS misc (tkey TEXT, tvalue TEXT);");
 				db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('db_version', '1');");
+				upgrade_client();
 			}
 		}
 	}
