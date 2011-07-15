@@ -179,7 +179,7 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 	return ret;
 }
 
-int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr)
+int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1)
 {
 	std::string pw=getFile("pw.txt");
 	CTCPStack tcpstack;
@@ -192,7 +192,13 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 		return 10;
 	}
 
-	tcpstack.Send(c, "DOWNLOAD IMAGE#pw="+pw+"&img_id="+nconvert(img_id)+"&time="+img_time+"&mbr="+nconvert(mbr));
+	std::string s_offset;
+	if(offset!=-1)
+	{
+		s_offset="&offset="+nconvert(offset);
+	}
+
+	tcpstack.Send(c, "DOWNLOAD IMAGE#pw="+pw+"&img_id="+nconvert(img_id)+"&time="+img_time+"&mbr="+nconvert(mbr)+s_offset);
 
 	std::string restore_out=outfile;
 	IFile *out=Server->openFile(restore_out, MODE_RW);
@@ -251,6 +257,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 		unsigned int off=0;
 		char blockdata[4096];
 		bool first=true;
+		bool has_data=false;
 		_i64 pos=0;
 		while(pos<imgsize)
 		{
@@ -260,8 +267,30 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 			off=0;
 			if( r==0 )
 			{
-				Server->Log("Read Timeout -2", LL_ERROR);
-				Server->destroy(c);Server->destroy(out);return 4;
+				Server->Log("Read Timeout: Retrying", LL_WARNING);
+				Server->destroy(c);Server->destroy(out);
+				if(has_data)
+				{
+					int tries=5;
+					int rc;
+					do
+					{
+						Server->wait(30000);
+						rc=downloadImage(img_id, img_time, outfile, mbr, pos);
+						if(rc==0)
+						{
+							return rc;
+						}
+						--tries;
+					}
+					while(tries>0);
+					return rc;
+				}
+				else
+				{
+					Server->Log("Read Timeout: No data", LL_ERROR);
+					return 4;
+				}
 			}
 			while(true)
 			{
@@ -273,12 +302,20 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 						if(imgsize>=pos && imgsize-pos<4096)
 							tw=(_u32)(imgsize-pos);
 
-						_u32 w=out->Write(blockdata, tw);
-						if(w!=4096)
+						_u32 woff=0;
+						do
 						{
-							Server->Log("Writing to output file failed", LL_ERROR);
-							Server->destroy(c);Server->destroy(out);return 6;
+							_u32 w=out->Write(&blockdata[woff], tw-woff);
+							if(w==0)
+							{
+								Server->Log("Writing to output file failed", LL_ERROR);
+								Server->destroy(c);Server->destroy(out);return 6;
+							}
+							woff+=w;
 						}
+						while(tw-woff>0);
+
+						has_data=true;
 					}
 					else
 					{

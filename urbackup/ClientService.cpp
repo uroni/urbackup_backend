@@ -2369,7 +2369,12 @@ void ClientConnector::downloadImage(str_map params)
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
 		IPipe *c=channel_pipes[i];
-		tcpstack.Send(c, "DOWNLOAD IMAGE img_id="+wnarrow(params[L"img_id"])+"&time="+wnarrow(params[L"time"])+"&mbr="+wnarrow(params[L"mbr"]));
+		std::string offset;
+		if(params.find(L"offset")!=params.end())
+		{
+			offset="&offset="+wnarrow(params[L"offset"]);
+		}
+		tcpstack.Send(c, "DOWNLOAD IMAGE img_id="+wnarrow(params[L"img_id"])+"&time="+wnarrow(params[L"time"])+"&mbr="+wnarrow(params[L"mbr"])+offset);
 
 		Server->Log("Downloading from channel "+nconvert((int)i), LL_DEBUG);
 
@@ -2422,7 +2427,7 @@ void ClientConnector::downloadImage(str_map params)
 			size_t r=c->Read(&buf[off], 4096-off, 180000);
 			if( r==0 )
 			{
-				Server->Log("Read Timeout -2", LL_ERROR);
+				Server->Log("Read Timeout -2 CS", LL_ERROR);
 				removeChannelpipe(c);
 				return;
 			}

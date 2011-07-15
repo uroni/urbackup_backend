@@ -262,6 +262,11 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 				}
 			}
 
+			uint64 offset=0;
+			str_map::iterator it1=params.find(L"offset");
+			if(it1!=params.end())
+				offset=(uint64)os_atoi64(wnarrow(it1->second));
+
 			ServerStatus::updateActive();
 
 			IVHDFile *vhdfile=image_fak->createVHDFile(res[0][L"path"], true, 0);
@@ -282,8 +287,8 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 				unsigned int blocksize=vhdfile->getBlocksize();
 				char buffer[4096];
 				size_t read;
-				uint64 currpos=0;
-				_i64 currblock=skip%blocksize;
+				uint64 currpos=offset;
+				_i64 currblock=(currpos+skip)%blocksize;
 
 				vhdfile->Seek(skip);
 				/*vhdfile->Read(buffer, 512, read);
@@ -327,6 +332,13 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 					}
 					else
 					{
+						if(Server->getTimeMS()-lasttime>100000)
+						{
+							input->Write((char*)&currpos, sizeof(uint64));
+							memset(buffer, 0, 4096);
+							input->Write(buffer, (_u32)4096);
+							lasttime=Server->getTimeMS();
+						}
 						read=4096;
 						vhdfile->Seek(skip+currpos+4096);
 					}					
