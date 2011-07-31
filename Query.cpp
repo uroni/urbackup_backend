@@ -146,6 +146,7 @@ bool CQuery::Execute(int timeoutms)
 			{
 				if(db->LockForTransaction())
 				{
+					Server->Log("LockForTransaction in CQuery::Execute Stmt: ["+stmt_str+"]", LL_DEBUG);
 					transaction_lock=true;
 				}
 				sqlite3_busy_timeout(db->getDatabase(), 10000);
@@ -220,6 +221,7 @@ db_nresults CQuery::ReadN(int *timeoutms)
 			{
 				if(db->LockForTransaction())
 				{
+					Server->Log("LockForTransaction in CQuery::ReadN Stmt: ["+stmt_str+"]", LL_DEBUG);
 					transaction_lock=true;
 				}
 				sqlite3_busy_timeout(db->getDatabase(), 10000);
@@ -301,6 +303,7 @@ db_results CQuery::Read(int *timeoutms)
 			{
 				if(db->LockForTransaction())
 				{
+					Server->Log("LockForTransaction in CQuery::Read Stmt: ["+stmt_str+"]", LL_DEBUG);
 					transaction_lock=true;
 				}
 				sqlite3_busy_timeout(db->getDatabase(), 10000);

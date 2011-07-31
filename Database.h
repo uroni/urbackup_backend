@@ -49,5 +49,8 @@ private:
 	std::map<int, IQuery*> prepared_queries;
 
 	static IMutex* lock_mutex;
+	static IMutex* count_lock_mutex;
+	static int lock_count;
+	static ICondition *unlock_cond;
 };
 

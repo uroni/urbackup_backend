@@ -22,7 +22,9 @@
 #include "sqlite/sqlite3.h"
 
 IMutex * CDatabase::lock_mutex=NULL;
-
+IMutex* CDatabase::count_lock_mutex=NULL;
+int CDatabase::lock_count=0;
+ICondition *CDatabase::unlock_cond=NULL;
 
 /*
 #ifdef _WIN32
@@ -100,11 +102,15 @@ bool CDatabase::Open(std::string pFile)
 void CDatabase::initMutex(void)
 {
 	lock_mutex=Server->createMutex();
+	count_lock_mutex=Server->createMutex();
+	unlock_cond=Server->createCondition();
 }
 
 void CDatabase::destroyMutex(void)
 {
 	Server->destroy(lock_mutex);
+	Server->destroy(count_lock_mutex);
+	Server->destroy(unlock_cond);
 }
 
 db_nresults CDatabase::ReadN(std::string pQuery)
@@ -170,8 +176,16 @@ bool CDatabase::EndTransaction(void)
 	}
 	else
 	{
-		lock_mutex->Lock();
-		lock_mutex->Unlock();
+		IScopedLock lock(count_lock_mutex);
+		while(lock_count>0)
+		{
+			lock.relock(NULL);
+			{
+				IScopedLock unlock(lock_mutex);
+				unlock_cond->wait(&unlock);
+			}
+			lock.relock(count_lock_mutex);
+		}
 	}
 	return true;
 }
@@ -307,10 +321,28 @@ sqlite3 *CDatabase::getDatabase(void)
 
 bool CDatabase::LockForTransaction(void)
 {
-	return lock_mutex->TryLock();
+	if(lock_mutex->TryLock())
+	{
+		IScopedLock lock(count_lock_mutex);
+		++lock_count;
+	}
+	else
+	{
+		{
+			IScopedLock lock(count_lock_mutex);
+			++lock_count;
+		}
+		lock_mutex->Lock();
+	}
+	return true;
 }
 
 void CDatabase::UnlockForTransaction(void)
 {
 	lock_mutex->Unlock();
+	{
+		IScopedLock lock(count_lock_mutex);
+		--lock_count;
+	}
+	unlock_cond->notify_all();
 }

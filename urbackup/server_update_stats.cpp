@@ -9,7 +9,7 @@
 #include "os_functions.h"
 #include "../stringtools.h"
 
-const bool update_stats_use_transactions=false;
+const bool update_stats_use_transactions=true;
 const bool update_stats_autocommit=true;
 
 void ServerUpdateStats::createQueries(void)
