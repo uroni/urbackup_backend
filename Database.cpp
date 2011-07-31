@@ -163,11 +163,13 @@ void CDatabase::InsertResults(const db_nsingle_result &pResult)
 void CDatabase::BeginTransaction(void)
 {
 	Write("BEGIN IMMEDIATE;");
+	in_transaction=true;
 }
 
 bool CDatabase::EndTransaction(void)
 {
 	Write("END;");
+	in_transaction=false;
 	IScopedLock lock(lock_mutex);
 	while(lock_count>0)
 	{
