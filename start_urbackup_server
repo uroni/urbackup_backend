@@ -13,6 +13,10 @@ DAEMON_DIR="/var"
 if ! test -d $DAEMON_DIR/urbackup
 then
     DAEMON_DIR="/usr/local/var"
+    if ! test -d $DAEMON_DIR/urbackup
+    then
+	DAEMON_DIR="/usr/var"
+    fi
 fi
 
 DAEMON_LIBS="$PREFIX/lib"

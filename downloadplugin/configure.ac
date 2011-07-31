@@ -23,6 +23,10 @@ AC_HEADER_STDBOOL
 AC_C_CONST
 AC_TYPE_SIZE_T
 
+AX_LIB_SOCKET_NSL
+
+AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
+
 # Checks for library functions.
 
 AC_CONFIG_FILES([Makefile])

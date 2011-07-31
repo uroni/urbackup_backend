@@ -171,9 +171,15 @@ bool CDatabase::EndTransaction(void)
 	Write("END;");
 	in_transaction=false;
 	IScopedLock lock(lock_mutex);
+	bool waited=false;
 	while(lock_count>0)
 	{
 		unlock_cond->wait(&lock);
+		waited=true;
+	}
+	if(waited)
+	{
+		Server->wait(1000);
 	}
 	return true;
 }
