@@ -168,6 +168,11 @@ bool CDatabase::EndTransaction(void)
 	{
 		lock_mutex->Unlock();
 	}
+	else
+	{
+		lock_mutex->Lock();
+		lock_mutex->Unlock();
+	}
 	return true;
 }
 
