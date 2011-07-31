@@ -271,9 +271,17 @@ void ServerUpdateStats::update_files(void)
 
 		if(!update_stats_autocommit)
 		{
+			if(update_stats_use_transactions)
+			{
+				db->EndTransaction();
+			}
 			Server->Log("Running wal checkpoint...", LL_DEBUG);
 			db->Write("PRAGMA wal_checkpoint");
-			Server->Log("done.", LL_DEBUG);
+			Server->Log("done. (wal chkp)", LL_DEBUG);
+			if(update_stats_use_transactions)
+			{
+				db->BeginTransaction();
+			}
 		}
 	}
 	while(!res.empty());
@@ -379,9 +387,17 @@ void ServerUpdateStats::update_files(void)
 		}
 		if(!update_stats_autocommit)
 		{
+			if(update_stats_use_transactions)
+			{
+				db->EndTransaction();
+			}
 			Server->Log("Running wal checkpoint...", LL_DEBUG);
 			db->Write("PRAGMA wal_checkpoint");
 			Server->Log("done.", LL_DEBUG);
+			if(update_stats_use_transactions)
+			{
+				db->BeginTransaction();
+			}
 		}
 	}
 	while(!res.empty());
