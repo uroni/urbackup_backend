@@ -9,6 +9,9 @@
 #include "os_functions.h"
 #include "../stringtools.h"
 
+const bool update_stats_use_transactions=true;
+const bool update_stats_autocommit=true;
+
 void ServerUpdateStats::createQueries(void)
 {
 	q_get_images=db->Prepare("SELECT clientid,path FROM backup_images WHERE complete=1 AND running<datetime('now','-300 seconds')", false);
@@ -145,8 +148,19 @@ void ServerUpdateStats::update_files(void)
 {
 	std::map<int, _i64> size_data=getSizes();
 	unsigned int last_update_time=Server->getTimeMS();
+	unsigned int last_commit_time=Server->getTimeMS();
 
 	std::map<int, SDelInfo> del_sizes;
+
+	if(!update_stats_autocommit)
+	{
+		db->Write("PRAGMA wal_autocheckpoint=0");
+	}
+
+	if(update_stats_use_transactions)
+	{
+		db->BeginTransaction();
+	}
 
 	Server->Log("Updating deleted files...");
 	db_results res;
@@ -244,7 +258,22 @@ void ServerUpdateStats::update_files(void)
 			{
 				updateSizes(size_data);
 				updateDels(del_sizes);
+				last_update_time=Server->getTimeMS();
 			}
+
+			if(update_stats_use_transactions && Server->getTimeMS()-last_commit_time>300)
+			{
+				db->EndTransaction();
+				db->BeginTransaction();
+				last_commit_time=Server->getTimeMS();
+			}
+		}
+
+		if(!update_stats_autocommit)
+		{
+			Server->Log("Running wal checkpoint...", LL_DEBUG);
+			db->Write("PRAGMA wal_checkpoint");
+			Server->Log("done.", LL_DEBUG);
 		}
 	}
 	while(!res.empty());
@@ -252,11 +281,21 @@ void ServerUpdateStats::update_files(void)
 	updateSizes(size_data);
 	updateDels(del_sizes);
 
+	if(update_stats_use_transactions)
+	{
+		db->EndTransaction();
+	}
+
 	Server->Log("Updating file stats...",LL_INFO);
 
 	last_update_time=Server->getTimeMS();
 
 	std::map<int, _i64> backup_sizes;
+
+	if(update_stats_use_transactions)
+	{
+		db->BeginTransaction();
+	}
 	
 	last_pc=0;
 	do
@@ -328,13 +367,41 @@ void ServerUpdateStats::update_files(void)
 			{
 				updateSizes(size_data);
 				updateBackups(backup_sizes);
+				last_update_time=Server->getTimeMS();
 			}
+
+			if(update_stats_use_transactions && Server->getTimeMS()-last_commit_time>300)
+			{
+				db->EndTransaction();
+				db->BeginTransaction();
+				last_commit_time=Server->getTimeMS();
+			}
+		}
+		if(!update_stats_autocommit)
+		{
+			Server->Log("Running wal checkpoint...", LL_DEBUG);
+			db->Write("PRAGMA wal_checkpoint");
+			Server->Log("done.", LL_DEBUG);
 		}
 	}
 	while(!res.empty());
 
 	updateSizes(size_data);
 	updateBackups(backup_sizes);
+
+	if(update_stats_use_transactions)
+	{
+		db->EndTransaction();
+	}
+
+	if(!update_stats_autocommit)
+	{
+		Server->Log("Running wal checkpoint...", LL_DEBUG);
+		db->Write("PRAGMA wal_checkpoint");
+		Server->Log("done.", LL_DEBUG);
+
+		db->Write("PRAGMA wal_autocheckpoint=10000");
+	}
 }
 
 std::map<int, _i64> ServerUpdateStats::calculateSizeDeltas(const std::wstring &pShaHash, _i64 filesize,  _i64 *rsize)

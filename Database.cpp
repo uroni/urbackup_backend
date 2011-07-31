@@ -92,6 +92,7 @@ bool CDatabase::Open(std::string pFile)
 	{
 		sqlite3_busy_timeout(db, 50);
 		Write("PRAGMA foreign_keys = ON");
+		Write("PRAGMA synchronous=NORMAL");
 		return true;
 	}
 }
@@ -166,7 +167,6 @@ bool CDatabase::EndTransaction(void)
 	if(lock_mutex->TryLock())
 	{
 		lock_mutex->Unlock();
-		Server->wait(100);
 	}
 	return true;
 }
