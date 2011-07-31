@@ -142,7 +142,7 @@ bool CQuery::Execute(int timeoutms)
 				sqlite3_busy_timeout(db->getDatabase(), 50);
 				break;
 			}
-			else if(transaction_lock==false)
+			else if(!db->isInTransaction() && transaction_lock==false)
 			{
 				if(db->LockForTransaction())
 				{
@@ -164,7 +164,7 @@ bool CQuery::Execute(int timeoutms)
 		}
 		else if(err==SQLITE_LOCKED)
 		{
-			if(db->LockForTransaction())
+			if(!db->isInTransaction() && db->LockForTransaction())
 			{
 				transaction_lock=true;
 			}				
@@ -217,7 +217,7 @@ db_nresults CQuery::ReadN(int *timeoutms)
 				sqlite3_busy_timeout(db->getDatabase(), 50);
 				break;
 			}
-			else if(transaction_lock==false)
+			else if(!db->isInTransaction() && transaction_lock==false)
 			{
 				if(db->LockForTransaction())
 				{
@@ -299,7 +299,7 @@ db_results CQuery::Read(int *timeoutms)
 				sqlite3_busy_timeout(db->getDatabase(), 50);
 				break;
 			}
-			else if(transaction_lock==false)
+			else if(!db->isInTransaction() && transaction_lock==false)
 			{
 				if(db->LockForTransaction())
 				{

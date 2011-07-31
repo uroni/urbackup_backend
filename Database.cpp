@@ -22,7 +22,6 @@
 #include "sqlite/sqlite3.h"
 
 IMutex * CDatabase::lock_mutex=NULL;
-IMutex* CDatabase::count_lock_mutex=NULL;
 int CDatabase::lock_count=0;
 ICondition *CDatabase::unlock_cond=NULL;
 
@@ -84,6 +83,7 @@ CDatabase::~CDatabase()
 
 bool CDatabase::Open(std::string pFile)
 {
+	in_transaction=false;
 	if( sqlite3_open(pFile.c_str(), &db) )
 	{
 		Server->Log("Could not open db ["+pFile+"]");
@@ -102,14 +102,12 @@ bool CDatabase::Open(std::string pFile)
 void CDatabase::initMutex(void)
 {
 	lock_mutex=Server->createMutex();
-	count_lock_mutex=Server->createMutex();
 	unlock_cond=Server->createCondition();
 }
 
 void CDatabase::destroyMutex(void)
 {
 	Server->destroy(lock_mutex);
-	Server->destroy(count_lock_mutex);
 	Server->destroy(unlock_cond);
 }
 
@@ -170,22 +168,10 @@ void CDatabase::BeginTransaction(void)
 bool CDatabase::EndTransaction(void)
 {
 	Write("END;");
-	if(lock_mutex->TryLock())
+	IScopedLock lock(lock_mutex);
+	while(lock_count>0)
 	{
-		lock_mutex->Unlock();
-	}
-	else
-	{
-		IScopedLock lock(count_lock_mutex);
-		while(lock_count>0)
-		{
-			lock.relock(NULL);
-			{
-				IScopedLock unlock(lock_mutex);
-				unlock_cond->wait(&unlock);
-			}
-			lock.relock(count_lock_mutex);
-		}
+		unlock_cond->wait(&lock);
 	}
 	return true;
 }
@@ -211,7 +197,7 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 		{
 			if(transaction_lock==false)
 			{
-				if(LockForTransaction())
+				if(!isInTransaction() && LockForTransaction())
 				{
 					transaction_lock=true;
 				}
@@ -321,28 +307,19 @@ sqlite3 *CDatabase::getDatabase(void)
 
 bool CDatabase::LockForTransaction(void)
 {
-	if(lock_mutex->TryLock())
-	{
-		IScopedLock lock(count_lock_mutex);
-		++lock_count;
-	}
-	else
-	{
-		{
-			IScopedLock lock(count_lock_mutex);
-			++lock_count;
-		}
-		lock_mutex->Lock();
-	}
+	lock_mutex->Lock();
+	++lock_count;
 	return true;
 }
 
 void CDatabase::UnlockForTransaction(void)
 {
+	--lock_count;
 	lock_mutex->Unlock();
-	{
-		IScopedLock lock(count_lock_mutex);
-		--lock_count;
-	}
 	unlock_cond->notify_all();
+}
+
+bool CDatabase::isInTransaction(void)
+{
+	return in_transaction;
 }

@@ -36,6 +36,7 @@ public:
 
 	bool LockForTransaction(void);
 	void UnlockForTransaction(void);
+	bool isInTransaction(void);
 	
 	static void initMutex(void);
 	static void destroyMutex(void);
@@ -44,12 +45,12 @@ private:
 
 	db_nresults results;
 	sqlite3 *db;
+	bool in_transaction;
 
 	std::vector<CQuery*> queries;
 	std::map<int, IQuery*> prepared_queries;
 
 	static IMutex* lock_mutex;
-	static IMutex* count_lock_mutex;
 	static int lock_count;
 	static ICondition *unlock_cond;
 };
