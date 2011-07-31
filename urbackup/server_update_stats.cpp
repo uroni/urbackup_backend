@@ -171,6 +171,20 @@ void ServerUpdateStats::update_files(void)
 		q_get_delfiles->Reset();
 		for(size_t i=0;i<res.size();++i)
 		{
+			if(Server->getTimeMS()-last_update_time>2000)
+			{
+				updateSizes(size_data);
+				updateDels(del_sizes);
+				last_update_time=Server->getTimeMS();
+			}
+
+			if(update_stats_use_transactions && Server->getTimeMS()-last_commit_time>300)
+			{
+				db->EndTransaction();
+				db->BeginTransaction();
+				last_commit_time=Server->getTimeMS();
+			}
+
 			int pc=(int)((float)i/(float)res.size()*100.f+0.5f);
 			if(pc!=last_pc)
 			{
@@ -253,20 +267,6 @@ void ServerUpdateStats::update_files(void)
 			q_del_delfile->Bind(id);
 			q_del_delfile->Write();
 			q_del_delfile->Reset();
-
-			if(Server->getTimeMS()-last_update_time>2000)
-			{
-				updateSizes(size_data);
-				updateDels(del_sizes);
-				last_update_time=Server->getTimeMS();
-			}
-
-			if(update_stats_use_transactions && Server->getTimeMS()-last_commit_time>300)
-			{
-				db->EndTransaction();
-				db->BeginTransaction();
-				last_commit_time=Server->getTimeMS();
-			}
 		}
 
 		if(!update_stats_autocommit)
@@ -304,6 +304,20 @@ void ServerUpdateStats::update_files(void)
 		q_get_ncount_files->Reset();
 		for(size_t i=0;i<res.size();++i)
 		{
+			if(Server->getTimeMS()-last_update_time>2000)
+			{
+				updateSizes(size_data);
+				updateBackups(backup_sizes);
+				last_update_time=Server->getTimeMS();
+			}
+
+			if(update_stats_use_transactions && Server->getTimeMS()-last_commit_time>300)
+			{
+				db->EndTransaction();
+				db->BeginTransaction();
+				last_commit_time=Server->getTimeMS();
+			}
+
 			int pc=(int)((float)i/(float)res.size()*100.f+0.5f);
 			if(pc!=last_pc)
 			{
@@ -362,20 +376,6 @@ void ServerUpdateStats::update_files(void)
 			q_mark_done->Bind(id);
 			q_mark_done->Write();
 			q_mark_done->Reset();
-
-			if(Server->getTimeMS()-last_update_time>2000)
-			{
-				updateSizes(size_data);
-				updateBackups(backup_sizes);
-				last_update_time=Server->getTimeMS();
-			}
-
-			if(update_stats_use_transactions && Server->getTimeMS()-last_commit_time>300)
-			{
-				db->EndTransaction();
-				db->BeginTransaction();
-				last_commit_time=Server->getTimeMS();
-			}
 		}
 		if(!update_stats_autocommit)
 		{
