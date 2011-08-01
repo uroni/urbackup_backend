@@ -167,8 +167,16 @@ void ServerUpdateStats::update_files(void)
 	int last_pc=0;
 	do
 	{
+		if(update_stats_use_transactions)
+		{
+			db->EndTransaction();
+		}
 		res=q_get_delfiles->Read();
 		q_get_delfiles->Reset();
+		if(update_stats_use_transactions)
+		{
+			db->BeginTransaction();
+		}
 		for(size_t i=0;i<res.size();++i)
 		{
 			if(Server->getTimeMS()-last_update_time>2000)
@@ -308,8 +316,16 @@ void ServerUpdateStats::update_files(void)
 	last_pc=0;
 	do
 	{
+		if(update_stats_use_transactions)
+		{
+			db->EndTransaction();
+		}
 		res=q_get_ncount_files->Read();
 		q_get_ncount_files->Reset();
+		if(update_stats_use_transactions)
+		{
+			db->BeginTransaction();
+		}
 		for(size_t i=0;i<res.size();++i)
 		{
 			if(Server->getTimeMS()-last_update_time>2000)
