@@ -1008,7 +1008,7 @@ bool BackupServerGet::doFullBackup(void)
 				}
 			}
 		}
-		clientlist->Write(buffer, read);
+		writeFileRepeat(clientlist, buffer, read);
 		if(read<4096)
 			break;
 	}
@@ -1317,12 +1317,12 @@ bool BackupServerGet::doIncrBackup(void)
 
 					if(indirchange==false || r_offline==false )
 					{
-						clientlist->Write("d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
+						writeFileRepeat(clientlist, "d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
 					}
 					else if(cf.name==L".." && indir_currdepth>0)
 					{
 						--indir_currdepth;
-						clientlist->Write("d\"..\"\n");
+						writeFileRepeat(clientlist, "d\"..\"\n");
 					}
 
 					if(cf.name!=L"..")
@@ -1386,7 +1386,7 @@ bool BackupServerGet::doIncrBackup(void)
 							else
 							{
 								transferred+=cf.size;
-								clientlist->Write("f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+								writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
 							}
 						}
 					}
@@ -1438,7 +1438,7 @@ bool BackupServerGet::doIncrBackup(void)
 
 						if(f_ok)
 						{
-							clientlist->Write("f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+							writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
 						}
 					}
 				}
@@ -1472,12 +1472,19 @@ bool BackupServerGet::doIncrBackup(void)
 				{
 					_u32 written=0;
 					_u32 rc;
+					int tries=50;
 					do
 					{
 						rc=clientlist->Write(buf+written, r-written);
 						written+=rc;
+						if(rc==0)
+						{
+							Server->Log("Failed to write to file... waiting...", LL_WARNING);
+							Server->wait(10000);
+							--tries;
+						}
 					}
-					while(written<r && rc>0);
+					while(written<r && (rc>0 || tries>0) );
 					if(rc==0)
 					{
 						ServerLogger::Log(clientid, "Fatal error copying clientlist. Write error.", LL_ERROR);
@@ -3082,6 +3089,35 @@ void BackupServerGet::stopBackupRunning(void)
 {
 	IScopedLock lock(running_backup_mutex);
 	--running_backups;
+}
+
+void BackupServerGet::writeFileRepeat(IFile *f, const std::string &str)
+{
+	writeFileRepeat(f, str.c_str(), str.size());
+}
+
+void BackupServerGet::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
+{
+	_u32 written=0;
+	_u32 rc;
+	int tries=50;
+	do
+	{
+		rc=f->Write(buf+written, bsize-written);
+		written+=rc;
+		if(rc==0)
+		{
+			Server->Log("Failed to write to file... waiting...", LL_WARNING);
+			Server->wait(10000);
+			--tries;
+		}
+	}
+	while(written<bsize && (rc>0 || tries>0) );
+
+	if(rc==0)
+	{
+		Server->Log("Fatal error writing to file in writeFileRepeat. Write error.", LL_ERROR);
+	}
 }
 
 #endif //CLIENT_ONLY
