@@ -33,7 +33,7 @@
 
 const size_t freespace_mod=50*1024*1024; //50 MB
 const size_t c_backup_count=1000;
-const int c_copy_limit=100;
+const int c_copy_limit=1000;
 
 IMutex * delete_mutex=NULL;
 
