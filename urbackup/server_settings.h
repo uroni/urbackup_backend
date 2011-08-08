@@ -1,3 +1,6 @@
+#ifndef SERVER_SETTINS_H
+#define SERVER_SETTINS_H
+
 #include "../Interface/SettingsReader.h"
 #include "../Interface/Database.h"
 #include "../Interface/Mutex.h"
@@ -31,6 +34,7 @@ struct SSettings
 	std::wstring computername;
 	std::wstring exclude_files;
 	std::wstring default_dirs;
+	std::string cleanup_window;
 };
 
 struct STimeSpan
@@ -59,7 +63,9 @@ public:
 	static void updateAll(void);
 
 	std::vector<STimeSpan> getBackupWindow(void);
+	std::vector<STimeSpan> getCleanupWindow(void);
 private:
+	std::vector<STimeSpan> getWindow(std::string window);
 	float parseTimeDet(std::string t);
 	STimeSpan parseTime(std::string t);
 	int parseDayOfWeek(std::string dow);
@@ -80,3 +86,5 @@ private:
 };
 
 std::vector<std::wstring> getSettingsList(void);
+
+#endif //SERVER_SETTINS_H

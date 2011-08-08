@@ -29,6 +29,7 @@
 #include "server_update_stats.h"
 #include "server_update.h"
 #include "server_status.h"
+#include "server_get.h"
 
 IMutex *ServerCleanupThread::mutex=NULL;
 ICondition *ServerCleanupThread::cond=NULL;
@@ -103,7 +104,9 @@ void ServerCleanupThread::operator()(void)
 		else
 		{
 			int chour=watoi(res[0][L"time"]);
-			if( chour==3 || chour==4 )
+			ServerSettings settings(db);
+			std::vector<STimeSpan> tw=settings.getCleanupWindow();
+			if( (!tw.empty() && BackupServerGet::isInBackupWindow(tw)) || ( tw.empty() && (chour==3 || chour==4) ) )
 			{
 				IScopedLock lock(a_mutex);
 

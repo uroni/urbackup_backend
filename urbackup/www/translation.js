@@ -78,7 +78,8 @@ translations.en={
 "storage_usage_pie_graph_colname2": "Storage usage",
 "storage_usage_bar_graph_title": "Storage usage",
 "storage_usage_bar_graph_colname1": "Date",
-"storage_usage_bar_graph_colname2": "Storage usage"
+"storage_usage_bar_graph_colname2": "Storage usage",
+"validate_err_notregexp_cleanup_window": "Format for cleanup window wrong"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -257,5 +258,7 @@ translations.de={
 "storage_usage_bar_graph_colname1": "Datum",
 "storage_usage_bar_graph_colname2": "Speichernutzung",
 "tServer identity": "Serveridentität",
-"tNondefault temporary file directory": "Vom Standard abweichender temporärer Dateiordner"
+"tNondefault temporary file directory": "Vom Standard abweichender temporärer Dateiordner",
+"tCleanup time window": "Aufräum Zeitfenster",
+"validate_err_notregexp_cleanup_window": "Falsches Format für das Aufräum Zeitfenster"
 }

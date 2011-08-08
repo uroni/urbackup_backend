@@ -1035,6 +1035,7 @@ function saveGeneralSettings()
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
 	if(!validateCommonSettings() ) return;
+	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;
 	
 	var pars="";
 	pars+=getPar("backupfolder");
@@ -1044,6 +1045,7 @@ function saveGeneralSettings()
 	pars+=getPar("max_sim_backups");
 	pars+=getPar("max_active_clients");
 	pars+=getPar("tmpdir");
+	pars+=getPar("cleanup_window");
 	for(var i=0;i<g.settings_list.length;++i)
 	{
 		pars+=getPar(g.settings_list[i]);
