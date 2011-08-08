@@ -159,6 +159,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.max_sim_backups=settings_default->getValue("max_sim_backups", 10);
 	settings.exclude_files=settings_default->getValue(L"exclude_files", L"");
 	settings.default_dirs=settings_default->getValue(L"default_dirs", L"");
+	settings.cleanup_window=settings_default->getValue("cleanup_window", "1-7/3-4");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -232,9 +233,20 @@ void ServerSettings::readSettingsClient(void)
 		settings.allow_overwrite=(stmp=="true");
 }
 
+std::vector<STimeSpan> ServerSettings::getCleanupWindow(void)
+{
+	std::string window=getSettings()->cleanup_window;
+	return getWindow(window);
+}
+
 std::vector<STimeSpan> ServerSettings::getBackupWindow(void)
 {
 	std::string window=getSettings()->backup_window;
+	return getWindow(window);
+}
+
+std::vector<STimeSpan> ServerSettings::getWindow(std::string window)
+{
 	std::vector<std::string> toks;
 	Tokenize(window, toks, ";");
 

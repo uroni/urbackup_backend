@@ -40,6 +40,8 @@ public:
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 
+	static bool isInBackupWindow(std::vector<STimeSpan> bw);
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -79,7 +81,6 @@ private:
 	void updateRunning(bool image);
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
-	bool isInBackupWindow(void);
 	bool isBackupsRunningOkay(void);
 	void startBackupRunning(void);
 	void stopBackupRunning(void);
@@ -88,8 +89,8 @@ private:
 	bool constructBackupPath(void);
 	void resetEntryState(void);
 	bool getNextEntry(char ch, SFile &data);
-	std::string remLeadingZeros(std::string t);
-	std::string strftimeInt(std::string fs);
+	static std::string remLeadingZeros(std::string t);
+	static std::string strftimeInt(std::string fs);
 
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
 

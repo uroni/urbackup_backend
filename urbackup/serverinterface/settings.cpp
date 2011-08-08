@@ -49,7 +49,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 
 struct SGeneralSettings
 {
-	SGeneralSettings(void): no_images(false), autoshutdown(false), autoupdate_clients(true), max_sim_backups(10), max_active_clients(100) {}
+	SGeneralSettings(void): no_images(false), autoshutdown(false), autoupdate_clients(true), max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4") {}
 	std::wstring backupfolder;
 	bool no_images;
 	bool autoshutdown;
@@ -57,6 +57,7 @@ struct SGeneralSettings
 	int max_sim_backups;
 	int max_active_clients;
 	std::wstring tmpdir;
+	std::wstring cleanup_window;
 };
 
 struct SClientSettings
@@ -89,6 +90,8 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.max_sim_backups=watoi(value);
 		else if(key==L"tmpdir")
 			ret.tmpdir=value;
+		else if(key==L"cleanup_window")
+			ret.cleanup_window=value;
 	}
 	return ret;
 }
@@ -144,6 +147,7 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 	updateSetting(L"max_sim_backups", convert(settings.max_sim_backups),  q_get, q_update, q_insert);
 	updateSetting(L"max_active_clients", convert(settings.max_active_clients),  q_get, q_update, q_insert);
 	updateSetting(L"tmpdir", settings.tmpdir,  q_get, q_update, q_insert);
+	updateSetting(L"cleanup_window", settings.cleanup_window,  q_get, q_update, q_insert);
 
 #ifdef _WIN32
 	if(!settings.tmpdir.empty())
@@ -492,6 +496,7 @@ ACTION_IMPL(settings)
 				settings.max_active_clients=watoi(GET[L"max_active_clients"]);
 				settings.max_sim_backups=watoi(GET[L"max_sim_backups"]);
 				settings.tmpdir=GET[L"tmpdir"];
+				settings.cleanup_window=GET[L"cleanup_window"];
 				updateClientSettings(0, GET, db);
 				saveGeneralSettings(settings, db);
 
@@ -515,6 +520,7 @@ ACTION_IMPL(settings)
 				obj.set("max_sim_backups", settings.max_sim_backups);
 				obj.set("max_active_clients", settings.max_active_clients);
 				obj.set("tmpdir", settings.tmpdir);
+				obj.set("cleanup_window", settings.cleanup_window);
 
 				ret.set("settings", obj);
 			}

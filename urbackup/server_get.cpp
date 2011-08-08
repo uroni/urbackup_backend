@@ -243,6 +243,7 @@ void BackupServerGet::operator ()(void)
 
 	bool do_exit_now=false;
 	bool tried_backup=false;
+	bool file_backup_err=false;
 	
 	while(true)
 	{
@@ -271,7 +272,8 @@ void BackupServerGet::operator ()(void)
 			status.hashqueuesize=0;
 			status.prepare_hashqueuesize=0;
 			ServerStatus::setServerStatus(status);
-			if( isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow()) || do_full_backup_now ) )
+
+			if( !file_backup_err && isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) )
 			{
 				ScopedActiveThread sat;
 
@@ -296,7 +298,7 @@ void BackupServerGet::operator ()(void)
 					r_success=doFullBackup();
 				}
 			}
-			else if(isBackupsRunningOkay() && ( (isUpdateIncr() && isInBackupWindow()) || do_incr_backup_now ) )
+			else if( !file_backup_err && isBackupsRunningOkay() && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) )
 			{
 				ScopedActiveThread sat;
 
@@ -321,7 +323,7 @@ void BackupServerGet::operator ()(void)
 					r_success=doIncrBackup();
 				}
 			}
-			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateFullImage() && isInBackupWindow()) || do_full_image_now) )
+			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) )
 			{
 				ScopedActiveThread sat;
 
@@ -339,7 +341,7 @@ void BackupServerGet::operator ()(void)
 
 				r_success=doImage(L"", 0, 0);
 			}
-			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow()) || do_incr_image_now) )
+			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
 			{
 				ScopedActiveThread sat;
 
@@ -368,6 +370,8 @@ void BackupServerGet::operator ()(void)
 				}
 			}
 
+			file_backup_err=false;
+
 			if(hbu && !has_error)
 			{
 				if(r_success)
@@ -386,6 +390,7 @@ void BackupServerGet::operator ()(void)
 			}
 			else if(hbu && has_error)
 			{
+				file_backup_err=true;
 				os_remove_nonempty_dir(backuppath);
 				tried_backup=true;
 			}
@@ -474,6 +479,8 @@ void BackupServerGet::operator ()(void)
 		}
 
 		std::string msg;
+		if(file_backup_err)
+			pipe->Read(&msg, 0);
 		if(tried_backup)
 			pipe->Read(&msg, skip_checking?0:check_time_intervall_tried_backup);
 		else
@@ -3044,9 +3051,8 @@ std::string BackupServerGet::remLeadingZeros(std::string t)
 	return r;
 }
 
-bool BackupServerGet::isInBackupWindow(void)
+bool BackupServerGet::isInBackupWindow(std::vector<STimeSpan> bw)
 {
-	std::vector<STimeSpan> bw=server_settings->getBackupWindow();
 	if(bw.empty()) return true;
 	int dow=atoi(strftimeInt("%w").c_str());
 	if(dow==0) dow=7;
