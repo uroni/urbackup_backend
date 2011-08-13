@@ -35,6 +35,9 @@
 #include "ClientSend.h"
 #include "ServerIdentityMgr.h"
 #include "settings.h"
+#ifdef _WIN32
+#include "win_sysvol.h"
+#endif
 
 #include <memory.h>
 #include <stdlib.h>
@@ -962,7 +965,24 @@ void ClientConnector::ReceivePackets(void)
 					shadow_id=-1;
 				}
 
-				if(startpos==0)
+				no_shadowcopy=false;
+
+				if(image_letter=="SYSVOL")
+				{
+					std::wstring mpath;
+					std::wstring sysvol=getSysVolume(mpath);
+					if(!mpath.empty())
+					{
+						image_letter=Server->ConvertToUTF8(mpath);
+					}
+					else
+					{
+						image_letter=Server->ConvertToUTF8(sysvol);
+						no_shadowcopy=true;
+					}
+				}
+
+				if(startpos==0 && !no_shadowcopy)
 				{
 					CWData data;
 					data.addChar(2);
@@ -982,6 +1002,16 @@ void ClientConnector::ReceivePackets(void)
 					data.addInt(shadow_id);
 					IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 				}
+
+				if(no_shadowcopy)
+				{
+					shadowdrive=image_letter;
+					if(!shadowdrive.empty() && shadowdrive[0]!='\\')
+					{
+						shadowdrive="\\\\.\\"+image_letter;
+					}
+				}
+
 				lasttime=Server->getTimeMS();
 				sendFullImage();
 			}
@@ -1025,7 +1055,7 @@ void ClientConnector::ReceivePackets(void)
 						shadow_id=-1;
 					}
 
-
+					no_shadowcopy=false;
 
 					if(startpos==0)
 					{
@@ -1094,6 +1124,13 @@ void ClientConnector::ReceivePackets(void)
 			ParseParamStr(s_params, &params);
 
 			std::wstring dl=params[L"driveletter"];
+
+			if(dl==L"SYSVOL")
+			{
+				std::wstring mpath;
+				dl=getSysVolume(mpath);
+			}
+
 			bool b=false;
 			if(!dl.empty())
 			{
@@ -1842,7 +1879,7 @@ void ClientConnector::sendFullImageThread(void)
 	bool run=true;
 	while(run)
 	{
-		if(shadowdrive.empty())
+		if(shadowdrive.empty() && !no_shadowcopy)
 		{
 			std::string msg;
 			mempipe->Read(&msg);
@@ -1900,6 +1937,10 @@ void ClientConnector::sendFullImageThread(void)
 	#else
 				*cptr=0;
 	#endif
+				if(no_shadowcopy)
+				{
+					*cptr=0;
+				}
 				++cptr;
 				unsigned int shadowdrive_size=(unsigned int)shadowdrive.size();
 				memcpy(cptr, &shadowdrive_size, sizeof(unsigned int));
@@ -1990,7 +2031,7 @@ void ClientConnector::sendFullImageThread(void)
 	has_error=false;
 #endif
 
-	if(!has_error)
+	if(!has_error && !no_shadowcopy)
 	{
 		removeShadowCopyThread(save_id);
 		std::string msg;
@@ -2247,21 +2288,31 @@ void ClientConnector::sendIncrImageThread(void)
 
 void ClientConnector::removeShadowCopyThread(int save_id)
 {
-	CWData data;
-	data.addChar(3);
-	data.addVoidPtr(mempipe);
-	data.addString(image_letter);
-	data.addString(server_token);
-	data.addUChar(1);
-	data.addInt(save_id);
+	if(!no_shadowcopy)
+	{
+		CWData data;
+		data.addChar(3);
+		data.addVoidPtr(mempipe);
+		data.addString(image_letter);
+		data.addString(server_token);
+		data.addUChar(1);
+		data.addInt(save_id);
 
-	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+	}
 }
 
-bool ClientConnector::sendMBR(const std::wstring &dl)
+bool ClientConnector::sendMBR(std::wstring dl)
 {
 #ifdef _WIN32
-	HANDLE hVolume=CreateFileW((L"\\\\.\\"+dl+L":").c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	std::wstring vpath=dl;
+	if(!vpath.empty() && vpath[0]!='\\')
+	{
+		dl+=L":";
+		vpath=L"\\\\.\\"+dl;
+	}
+
+	HANDLE hVolume=CreateFileW(vpath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
 		Server->Log(L"CreateFile of volume '"+dl+L"' failed. - sendMBR", LL_ERROR);
@@ -2283,7 +2334,7 @@ bool ClientConnector::sendMBR(const std::wstring &dl)
 	DWORD voln_sern;
 	wchar_t fsn[MAX_PATH+1];
 	DWORD fsn_size=MAX_PATH+1;
-	b=GetVolumeInformationW((dl+L":\\").c_str(), voln, voln_size, &voln_sern, NULL, NULL, fsn, fsn_size);
+	b=GetVolumeInformationW((dl+L"\\").c_str(), voln, voln_size, &voln_sern, NULL, NULL, fsn, fsn_size);
 	if(b==0)
 	{
 		Server->Log(L"GetVolumeInformationW failed. Volume: '"+dl+L"'", LL_ERROR);

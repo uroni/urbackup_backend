@@ -23,7 +23,7 @@ std::string trim2(const std::string &str)
     }
     else
     {
-	return str.substr( startpos, endpos-startpos+1);
+		return str.substr( startpos, endpos-startpos+1);
     }
 }
 
@@ -124,6 +124,7 @@ struct SImage
 	std::string time_str;
 	_i64 time_s;
 	int id;
+	std::vector<SImage> assoc;
 };
 
 std::vector<SImage> getBackupimages(std::string clientname, int *ec)
@@ -171,6 +172,14 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 					si.time_s=os_atoi64(t2[1]);
 					si.time_str=t2[2];
 					ret.push_back(si);
+				}
+				else if(t2.size()==4 && t2[0]=="#" && !ret.empty())
+				{
+					SImage si;
+					si.id=atoi(t2[1].c_str());
+					si.time_s=os_atoi64(t2[2]);
+					si.time_str=t2[3];
+					ret[ret.size()-1].assoc.push_back(si);
 				}
 			}
 		}
@@ -598,9 +607,11 @@ void restore_wizard(void)
 	std::string clientname;
 	std::vector<SImage> images;
 	SImage selimage;
+	SImage r_selimage;
 	std::string seldrive;
 	int selpart;
 	std::string err;
+	bool res_sysvol=false;
 	while(true)
 	{
 
@@ -745,6 +756,7 @@ void restore_wizard(void)
 
 					std::string out=getFile("out");
 					selimage=images[atoi(out.c_str())-1];
+					r_selimage=selimage;
 					++state;
 				}
 			}break;
@@ -898,7 +910,7 @@ void restore_wizard(void)
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
 				while(true)
 				{
-					system("./cserver --plugin urbackup/.libs/liburbackup.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0");
+					system(("./cserver --plugin urbackup/.libs/liburbackup.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration"+(std::string)(res_sysvol?"_sysvol":"")+"`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0").c_str());
 					while(!rt.isDone() && !restore_retry_ok)
 					{
 						Server->wait(1000);
@@ -944,7 +956,17 @@ void restore_wizard(void)
 				}
 				else
 				{
-					++state;
+					if(r_selimage.assoc.size()>0)
+					{
+						selimage=r_selimage.assoc[0];
+						r_selimage.assoc.erase(r_selimage.assoc.begin());
+						res_sysvol=true;
+						state=4;
+					}
+					else
+					{
+						++state;
+					}
 				}
 			}break;
 		case 6:

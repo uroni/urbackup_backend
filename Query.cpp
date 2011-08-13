@@ -126,6 +126,7 @@ bool CQuery::Write(int timeoutms)
 
 bool CQuery::Execute(int timeoutms)
 {
+	//Server->Log("Write: "+stmt_str);
 	bool transaction_lock=false;
 	int tries=60; //10min
 	if(timeoutms>=0)
@@ -182,6 +183,8 @@ bool CQuery::Execute(int timeoutms)
 		sqlite3_busy_timeout(db->getDatabase(), 50);
 		db->UnlockForTransaction();
 	}
+
+	//Server->Log("Write done: "+stmt_str);
 
 	if( err!=SQLITE_DONE )
 	{

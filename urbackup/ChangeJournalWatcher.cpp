@@ -334,7 +334,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		}
 		else
 		{
-			Server->Log(L"Unknown error for Volume '"+vol+L"' - watchDir", LL_ERROR);
+			Server->Log(L"Unknown error for Volume '"+vol+L"' - watchDir ec: "+convert((int)err), LL_ERROR);
 			listener->On_ResetAll(vol);
 			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
@@ -726,7 +726,7 @@ void ChangeJournalWatcher::update(bool force_write)
 				}
 				else
 				{
-					Server->Log(L"Unknown error for Volume '"+it->first+L"' - update", LL_ERROR);
+					Server->Log(L"Unknown error for Volume '"+it->first+L"' - update err="+convert((int)err), LL_ERROR);
 					listener->On_ResetAll(it->first);
 					has_error=true;
 				}

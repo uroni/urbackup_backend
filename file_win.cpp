@@ -20,6 +20,9 @@
 #include "file.h"
 #include "types.h"
 #include "stringtools.h"
+#ifdef _DEBUG
+#include "Server.h"
+#endif
 
 #ifdef MODE_WIN
 
@@ -62,6 +65,9 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 	else
 	{
+#ifdef _DEBUG
+		Server->Log("EC: "+nconvert((int)GetLastError()));
+#endif
 		hfile=NULL;
 		return false;
 	}

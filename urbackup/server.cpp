@@ -60,9 +60,16 @@ void BackupServer::operator()(void)
 			wcscpy_s(tmpp,L"C:\\");
 		}
 
-		os_remove_nonempty_dir((std::wstring)tmpp+os_file_sep()+L"urbackup_tmp");
-		os_create_dir((std::wstring)tmpp+os_file_sep()+L"urbackup_tmp");
-		Server->setTemporaryDirectory((std::wstring)tmpp+os_file_sep()+L"urbackup_tmp");
+		std::wstring w_tmp=tmpp;
+
+		if(!w_tmp.empty() && w_tmp[w_tmp.size()-1]=='\\')
+		{
+			w_tmp.erase(w_tmp.size()-1, 1);		}
+
+
+		os_remove_nonempty_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
+		os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
 	}
 #endif
 
@@ -169,14 +176,26 @@ void BackupServer::startClients(FileClient &fc)
 			}
 			else
 			{
-				it->second.addr=servers[i];
-				std::string msg;
-				msg.resize(7+sizeof(sockaddr_in));
-				msg[0]='a'; msg[1]='d'; msg[2]='d'; msg[3]='r'; msg[4]='e'; msg[5]='s'; msg[6]='s';
-				memcpy(&msg[7], &it->second.addr, sizeof(sockaddr_in));
-				it->second.pipe->Write(msg);
+				bool last=true;
+				for(size_t j=i+1;j<names.size();++j)
+				{
+					if(names[j]==names[i])
+					{
+						last=false;
+						break;
+					}
+				}
+				if(last)
+				{
+					it->second.addr=servers[i];
+					std::string msg;
+					msg.resize(7+sizeof(sockaddr_in));
+					msg[0]='a'; msg[1]='d'; msg[2]='d'; msg[3]='r'; msg[4]='e'; msg[5]='s'; msg[6]='s';
+					memcpy(&msg[7], &it->second.addr, sizeof(sockaddr_in));
+					it->second.pipe->Write(msg);
 
-				ServerStatus::setIP(names[i], it->second.addr.sin_addr.s_addr);
+					ServerStatus::setIP(names[i], it->second.addr.sin_addr.s_addr);
+				}
 			}
 		}
 	}
