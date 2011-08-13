@@ -204,6 +204,9 @@
     <ClCompile Include="serverinterface\google_chart.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="win_sysvol.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -343,6 +346,9 @@
     </ClInclude>
     <ClInclude Include="treediff\TreeDiff.h">
       <Filter>treediff</Filter>
+    </ClInclude>
+    <ClInclude Include="win_sysvol.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

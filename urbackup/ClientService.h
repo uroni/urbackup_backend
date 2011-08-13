@@ -50,7 +50,7 @@ private:
 	void ImageErr(const std::string &msg);
 	void ImageErrRunning(const std::string &msg);
 	void removeShadowCopyThread(int save_id);
-	bool sendMBR(const std::wstring &dl);
+	bool sendMBR(std::wstring dl);
 	std::string receivePacket(IPipe *p);
 	void downloadImage(str_map params);
 	void removeChannelpipe(IPipe *cp);
@@ -97,6 +97,7 @@ private:
 	IFile *hashdatafile;
 	unsigned int hashdataleft;
 	volatile bool hashdataok;
+	bool no_shadowcopy;
 
 	std::string server_token;
 

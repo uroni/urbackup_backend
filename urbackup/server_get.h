@@ -73,10 +73,10 @@ private:
 	void setBackupImageComplete(void);
 	void sendClientLogdata(void);
 	void saveClientLogdata(int image, int incremental);
-	bool doImage(const std::wstring &pParentvhd, int incremental, int incremental_ref);
+	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref);
 	std::string getMBR(const std::wstring &dl);
 	unsigned int writeMBR(ServerVHDWriter *vhdfile, uint64 volsize);
-	int createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path);
+	int createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path, std::string letter);
 	SBackup getLastIncrementalImage(void);
 	void updateRunning(bool image);
 	void checkClientVersion(void);
@@ -84,6 +84,8 @@ private:
 	bool isBackupsRunningOkay(void);
 	void startBackupRunning(void);
 	void stopBackupRunning(void);
+
+	void saveImageAssociation(int image_id, int assoc_id);
 	
 	std::wstring constructImagePath(const std::wstring &letter);
 	bool constructBackupPath(void);
@@ -91,6 +93,7 @@ private:
 	bool getNextEntry(char ch, SFile &data);
 	static std::string remLeadingZeros(std::string t);
 	static std::string strftimeInt(std::string fs);
+
 
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
 
@@ -141,6 +144,7 @@ private:
 	IQuery *q_save_logdata;
 	IQuery *q_get_unsent_logdata;
 	IQuery *q_set_logdata_sent;
+	IQuery *q_save_image_assoc;
 
 	int state;
 	std::string t_name;

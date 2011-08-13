@@ -126,6 +126,7 @@ void BackupServerGet::unloadSQL(void)
 	db->destroyQuery(q_save_logdata);
 	db->destroyQuery(q_get_unsent_logdata);
 	db->destroyQuery(q_set_logdata_sent);
+	db->destroyQuery(q_save_image_assoc);
 }
 
 void BackupServerGet::operator ()(void)
@@ -339,7 +340,7 @@ void BackupServerGet::operator ()(void)
 
 				startBackupRunning();
 
-				r_success=doImage(L"", 0, 0);
+				r_success=doImage("C:", L"", 0, 0);
 			}
 			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
 			{
@@ -366,8 +367,13 @@ void BackupServerGet::operator ()(void)
 				}
 				else
 				{
-					r_success=doImage(last.path, last.incremental+1, last.incremental_ref);
+					r_success=doImage("C:", last.path, last.incremental+1, last.incremental_ref);
 				}
+			}
+
+			if(r_image && r_success)
+			{
+				doImage("SYSVOL", L"", 0, 0);
 			}
 
 			file_backup_err=false;
@@ -547,13 +553,13 @@ void BackupServerGet::prepareSQL(void)
 	q_update_setting=db->Prepare("UPDATE settings SET value=? WHERE key=? AND clientid=?", false);
 	q_insert_setting=db->Prepare("INSERT INTO settings (key, value, clientid) VALUES (?,?,?)", false);
 	q_set_complete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
-	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version), false);
-	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version), false); 
-	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, "+nconvert(curr_image_version)+")", false);
+	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter='C:'", false);
+	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter='C:'", false); 
+	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, "+nconvert(curr_image_version)+",?)", false);
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
 	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=CURRENT_TIMESTAMP WHERE id=?", false);
-	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter='C:' ORDER BY backuptime DESC LIMIT 1", false);
 	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
@@ -561,6 +567,7 @@ void BackupServerGet::prepareSQL(void)
 	q_save_logdata=db->Prepare("INSERT INTO logs (clientid, logdata, errors, warnings, infos, image, incremental) VALUES (?,?,?,?,?,?,?)", false);
 	q_get_unsent_logdata=db->Prepare("SELECT id, strftime('%s', created) AS created, logdata FROM logs WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
+	q_save_image_assoc=db->Prepare("INSERT INTO assoc_images (img_id, assoc_id) VALUES (?,?)", false);
 }
 
 int BackupServerGet::getClientID(void)
@@ -651,12 +658,13 @@ int BackupServerGet::createBackupSQL(int incremental, int clientid, std::wstring
 	return (int)db->getLastInsertID();
 }
 
-int BackupServerGet::createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path)
+int BackupServerGet::createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path, std::string letter)
 {
 	q_create_backup_image->Bind(clientid);
 	q_create_backup_image->Bind(path);
 	q_create_backup_image->Bind(incremental);
 	q_create_backup_image->Bind(incremental_ref);
+	q_create_backup_image->Bind(letter);
 	q_create_backup_image->Write();
 	q_create_backup_image->Reset();
 	return (int)db->getLastInsertID();
@@ -721,6 +729,14 @@ void BackupServerGet::updateRunning(bool image)
 		q_update_running_file->Write();
 		q_update_running_file->Reset();
 	}
+}
+
+void BackupServerGet::saveImageAssociation(int image_id, int assoc_id)
+{
+	q_save_image_assoc->Bind(image_id);
+	q_save_image_assoc->Bind(assoc_id);
+	q_save_image_assoc->Write();
+	q_save_image_assoc->Reset();
 }
 
 bool BackupServerGet::getNextEntry(char ch, SFile &data)
@@ -1961,7 +1977,7 @@ void writeZeroblockdata(void)
 	delete []zeroes;
 }
 
-bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, int incremental_ref)
+bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref)
 {
 	CTCPStack tcpstack;
 	IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
@@ -1971,9 +1987,15 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 		return false;
 	}
 
+	std::string sletter=pLetter;
+	if(pLetter!="SYSVOL")
+	{
+		sletter=pLetter[0];
+	}
+
 	if(pParentvhd.empty())
 	{
-		tcpstack.Send(cc, server_identity+"FULL IMAGE letter=C:&token="+server_token);
+		tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&token="+server_token);
 	}
 	else
 	{
@@ -1984,7 +2006,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 			Server->destroy(cc);
 			return false;
 		}
-		std::string ts=server_identity+"INCR IMAGE letter=C:&hashsize="+nconvert(hashfile->Size())+"&token="+server_token;
+		std::string ts=server_identity+"INCR IMAGE letter="+pLetter+"&hashsize="+nconvert(hashfile->Size())+"&token="+server_token;
 		size_t rc=tcpstack.Send(cc, ts);
 		if(rc==0)
 		{
@@ -2016,7 +2038,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 		Server->destroy(hashfile);
 	}
 
-	std::wstring imagefn=constructImagePath(L"C");
+	std::wstring imagefn=constructImagePath(widen(sletter));
 	
 	int64 free_space=os_free_space(os_file_prefix()+ExtractFilePath(imagefn));
 	if(free_space!=-1 && free_space<minfreespace_image)
@@ -2032,7 +2054,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 	}
 
 	{
-		std::string mbrd=getMBR(L"C");
+		std::string mbrd=getMBR(widen(sletter));
 		if(mbrd.empty())
 		{
 			ServerLogger::Log(clientid, "Error getting MBR data", LL_ERROR);
@@ -2060,12 +2082,17 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 			}
 		}
 	}
+	int o_backupid=backupid;
 
 	if(pParentvhd.empty())
-		backupid=createBackupImageSQL(0,0, clientid, imagefn);
+		backupid=createBackupImageSQL(0,0, clientid, imagefn, pLetter);
 	else
-		backupid=createBackupImageSQL(incremental, incremental_ref, clientid, imagefn);
+		backupid=createBackupImageSQL(incremental, incremental_ref, clientid, imagefn, pLetter);
 
+	if(pLetter=="SYSVOL")
+	{
+		saveImageAssociation(o_backupid, backupid);
+	}
 
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
@@ -2169,7 +2196,7 @@ bool BackupServerGet::doImage(const std::wstring &pParentvhd, int incremental, i
 
 				if(pParentvhd.empty())
 				{
-					tcpstack.Send(cc, server_identity+"FULL IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+nconvert(nextblock)+"&shadowid="+nconvert(shadow_id));
+					tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(nextblock)+"&shadowid="+nconvert(shadow_id));
 				}
 				else
 				{
@@ -3109,7 +3136,7 @@ void BackupServerGet::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 	int tries=50;
 	do
 	{
-		rc=f->Write(buf+written, bsize-written);
+		rc=f->Write(buf+written, (_u32)(bsize-written));
 		written+=rc;
 		if(rc==0)
 		{

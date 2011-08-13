@@ -726,6 +726,7 @@
     <ClCompile Include="fileclient\FileClient.cpp" />
     <ClCompile Include="fileclient\tcpstack.cpp" />
     <ClCompile Include="sha2\sha2.c" />
+    <ClCompile Include="win_sysvol.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h" />
@@ -774,6 +775,7 @@
     <ClInclude Include="server_status.h" />
     <ClInclude Include="fileclient\tcpstack.h" />
     <ClInclude Include="sha2\sha2.h" />
+    <ClInclude Include="win_sysvol.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

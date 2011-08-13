@@ -570,6 +570,14 @@ void upgrade7_8(void)
 	db->Write("UPDATE clients SET delete_pending=0 WHERE delete_pending IS NULL");
 }
 
+void upgrade8_9(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE backup_images ADD letter TEXT");
+	db->Write("UPDATE backup_images SET letter='C:' WHERE letter IS NULL");
+	db->Write("CREATE TABLE assoc_images ( img_id INTEGER REFERENCES backup_images(id) ON DELETE CASCADE, assoc_id INTEGER REFERENCES backup_images(id) ON DELETE CASCADE)");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -619,6 +627,10 @@ void upgrade(void)
 				break;
 			case 7:
 				upgrade7_8();
+				++ver;
+				break;
+			case 8:
+				upgrade8_9();
 				++ver;
 				break;
 			default:
