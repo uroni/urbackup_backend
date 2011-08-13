@@ -340,7 +340,20 @@ void BackupServerGet::operator ()(void)
 
 				startBackupRunning();
 
+				ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
+				int sysvol_id=-1;
+				if(doImage("SYSVOL", L"", 0, 0))
+				{
+					sysvol_id=backupid;
+				}
+				ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+
 				r_success=doImage("C:", L"", 0, 0);
+
+				if(r_success && sysvol_id!=-1)
+				{
+					saveImageAssociation(backupid, sysvol_id);
+				}
 			}
 			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
 			{
@@ -359,6 +372,14 @@ void BackupServerGet::operator ()(void)
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
+				ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
+				int sysvol_id=-1;
+				if(doImage("SYSVOL", L"", 0, 0))
+				{
+					sysvol_id=backupid;
+				}
+				ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+
 				SBackup last=getLastIncrementalImage();
 				if(last.incremental==-2)
 				{
@@ -369,11 +390,11 @@ void BackupServerGet::operator ()(void)
 				{
 					r_success=doImage("C:", last.path, last.incremental+1, last.incremental_ref);
 				}
-			}
 
-			if(r_image && r_success)
-			{
-				doImage("SYSVOL", L"", 0, 0);
+				if(r_success && sysvol_id!=-1)
+				{
+					saveImageAssociation(backupid, sysvol_id);
+				}
 			}
 
 			file_backup_err=false;
@@ -2081,18 +2102,12 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				return false;
 			}
 		}
-	}
-	int o_backupid=backupid;
+	}
 
 	if(pParentvhd.empty())
 		backupid=createBackupImageSQL(0,0, clientid, imagefn, pLetter);
 	else
 		backupid=createBackupImageSQL(incremental, incremental_ref, clientid, imagefn, pLetter);
-
-	if(pLetter=="SYSVOL")
-	{
-		saveImageAssociation(o_backupid, backupid);
-	}
 
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
