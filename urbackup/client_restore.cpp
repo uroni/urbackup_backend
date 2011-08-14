@@ -346,13 +346,18 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 						if(s>imgsize)
 						{
 							Server->Log("invalid seek value: "+nconvert(s), LL_ERROR);
+							pos=s;
+							break;
 						}
-						if(s<pos)
+						else if(s<pos)
 						{
 							Server->Log("Position out of order!", LL_ERROR);
 						}
-						out->Seek(s);
-						pos=s;
+						else
+						{
+							out->Seek(s);
+							pos=s;
+						}
 						off+=sizeof(_i64);
 					}
 					else if(r-off>0)
@@ -971,8 +976,11 @@ void restore_wizard(void)
 			}break;
 		case 6:
 			{
-				system("dialog --msgbox \"`cat urbackup/restore/restore_success`\" 7 50");
-				system("init 6");
+				int r=system("dialog --yesno \"`cat urbackup/restore/restore_success`\" 7 50");
+				if(r==0)
+				{
+					system("init 6");
+				}
 				exit(0);
 			}break;
 		case 99:
