@@ -188,6 +188,11 @@ This option limits the number of file and image backups the server will start si
 
 This option limits the number of clients the server accepts. An active client is a client the server has seen in the last two month. If you have multiple servers in a network you can use this option to balance their load and storage usage. Default: 100.
 
+\subsubsection{Cleanup time window}
+
+UrBackup will do its cleanup during this time. This is when old backups and clients are deleted. You can specifiy the weekday and the hour as intervals. The syntax is the same as for the backup window. Thus please see section \ref{subsub_backup_window} for details on how to specifiy such time windows.
+The default value is 1-7/3-4 which means that the cleanup will be started on each day (1-Monday - 7-Sunday) between 3 am and 4 am.
+
 \subsection{Client specific settings}
 
 \begin{longtable}{|p{0.2\textwidth}|p{0.6\textwidth}|p{0.2\textwidth}|}
