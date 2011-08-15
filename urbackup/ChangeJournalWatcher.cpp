@@ -60,6 +60,7 @@ void ChangeJournalWatcher::createQueries(void)
 	q_set_index_done=db->Prepare("UPDATE journal_ids SET index_done=? WHERE device_name=?");
 	q_del_journal_data=db->Prepare("DELETE FROM journal_data WHERE device_name=?");
 	q_del_entry_frn=db->Prepare("DELETE FROM map_frn WHERE frn=? AND rid=?");
+	q_del_journal_id=db->Prepare("DELETE FROM journal_ids WHERE device_name=?");
 }
 
 void ChangeJournalWatcher::deleteJournalData(const std::wstring &vol)
@@ -67,6 +68,13 @@ void ChangeJournalWatcher::deleteJournalData(const std::wstring &vol)
 	q_del_journal_data->Bind(vol);
 	q_del_journal_data->Write();
 	q_del_journal_data->Reset();
+}
+
+void ChangeJournalWatcher::deleteJournalId(const std::wstring &vol)
+{
+	q_del_journal_id->Bind(vol);
+	q_del_journal_id->Write();
+	q_del_journal_id->Reset();
 }
 
 void ChangeJournalWatcher::setIndexDone(const std::wstring &vol, int s)
@@ -728,6 +736,7 @@ void ChangeJournalWatcher::update(bool force_write)
 				{
 					Server->Log(L"Unknown error for Volume '"+it->first+L"' - update err="+convert((int)err), LL_ERROR);
 					listener->On_ResetAll(it->first);
+					deleteJournalId(it->first);
 					has_error=true;
 				}
 			}

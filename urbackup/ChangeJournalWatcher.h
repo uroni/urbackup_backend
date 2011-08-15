@@ -71,6 +71,7 @@ private:
 	std::vector<UsnInt> getJournalData( const std::wstring &vol);
 	void setIndexDone(const std::wstring &vol, int s);
 	void deleteJournalData(const std::wstring &vol);
+	void deleteJournalId(const std::wstring &vol);
 
 	void deleteWithChildren( _i64 frn, _i64 rid);
 	std::wstring getFilename(_i64 frn, _i64 rid);
@@ -104,6 +105,7 @@ private:
 	IQuery *q_set_index_done;
 	IQuery *q_del_journal_data;
 	IQuery *q_del_entry_frn;
+	IQuery *q_del_journal_id;
 
 	unsigned int last_index_update;
 
