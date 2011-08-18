@@ -66,7 +66,6 @@ IMutex *ClientConnector::backup_mutex=NULL;
 unsigned int ClientConnector::incr_update_intervall=0;
 unsigned int ClientConnector::last_pingtime=0;
 IPipe *ClientConnector::channel_pipe=NULL;
-unsigned int ClientConnector::last_channel_ping=0;
 int ClientConnector::pcdone=0;
 int ClientConnector::pcdone2=0;
 std::vector<IPipe*> ClientConnector::channel_pipes;
@@ -105,6 +104,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	do_quit=false;
 	is_channel=false;
 	want_receive=true;
+	last_channel_ping=0;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -128,6 +128,14 @@ bool ClientConnector::Run(void)
 				if(channel_pipes[i]==pipe)
 				{
 					channel_pipes.erase(channel_pipes.begin()+i);
+					break;
+				}
+			}
+			for(size_t i=0;i<channel_ping.size();++i)
+			{
+				if(channel_ping[i]==pipe)
+				{
+					channel_ping.erase(channel_ping.begin()+i);
 					break;
 				}
 			}
@@ -261,17 +269,21 @@ bool ClientConnector::Run(void)
 			}
 			if(Server->getTimeMS()-last_channel_ping>60000)
 			{
-				channel_ping.push_back(pipe);
-				tcpstack.Send(pipe, "PING");
-				last_channel_ping=Server->getTimeMS();
+				bool found=false;
 				for(size_t i=0;i<channel_ping.size();++i)
 				{
 					if(channel_ping[i]==pipe)
 					{
-						channel_ping.erase(channel_ping.begin()+i);
+						found=true;
 						break;
 					}
 				}
+				if(!found)
+				{
+					channel_ping.push_back(pipe);
+				}
+				tcpstack.Send(pipe, "PING");
+				last_channel_ping=Server->getTimeMS();
 			}
 		}break;
 	case 4:
@@ -458,6 +470,11 @@ void ClientConnector::ReceivePackets(void)
 	if(rc==0 )
 	{
 		Server->Log("rc=0 hasError="+nconvert(pipe->hasError())+" state="+nconvert(state), LL_DEBUG);
+#ifdef _WIN32
+#ifdef _DEBUG
+		Server->Log("Err: "+nconvert((int)GetLastError()), LL_DEBUG);
+#endif
+#endif
 		if(is_channel && pipe->hasError())
 		{
 			do_quit=true;
@@ -737,7 +754,7 @@ void ClientConnector::ReceivePackets(void)
 			lasttime=Server->getTimeMS();
 			IScopedLock lock(backup_mutex);
 			int pcdone_new=atoi(getbetween("-","-", cmd).c_str());
-			if(pcdone_new>pcdone && (backup_source_token.empty() || backup_source_token==server_token) )
+			if(backup_source_token.empty() || backup_source_token==server_token )
 			{
 				pcdone=pcdone_new;
 			}
@@ -760,6 +777,15 @@ void ClientConnector::ReceivePackets(void)
 		else if(cmd=="PONG" && is_channel==true )
 		{
 			lasttime=Server->getTimeMS();
+			IScopedLock lock(backup_mutex);
+			for(size_t i=0;i<channel_ping.size();++i)
+			{
+				if(channel_ping[i]==pipe)
+				{
+					channel_ping.erase(channel_ping.begin()+i);
+					break;
+				}
+			}
 		}
 		else if(cmd=="PING" && is_channel==true )
 		{
@@ -2558,7 +2584,7 @@ void ClientConnector::waitForPings(IScopedLock *lock)
 	while(!channel_ping.empty())
 	{
 		lock->relock(NULL);
-		Server->wait(1000);
+		Server->wait(10);
 		lock->relock(backup_mutex);
 	}
 	Server->Log("done. (Waiting for pings)", LL_DEBUG);

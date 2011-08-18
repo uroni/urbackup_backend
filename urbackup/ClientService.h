@@ -77,7 +77,7 @@ private:
 	static std::vector<IPipe*> channel_pipes;
 	static std::vector<IPipe*> channel_exit;
 	static std::vector<IPipe*> channel_ping;
-	static unsigned int last_channel_ping;
+	unsigned int last_channel_ping;
 	static int pcdone;
 	static int pcdone2;
 	static IMutex *progress_mutex;
