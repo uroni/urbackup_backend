@@ -2602,12 +2602,6 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 							if(vhdfile!=NULL)
 							{
-								if(pingthread!=NULL)
-								{
-									pingthread->setStop(true);
-									Server->getThreadPool()->waitFor(pingthread_ticket);
-									pingthread=NULL;
-								}
 								vhdfile->doExit();
 								Server->getThreadPool()->waitFor(vhdfile_ticket);
 								vhdfile_err=vhdfile->hasError();
