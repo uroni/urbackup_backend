@@ -2078,7 +2078,10 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		std::string mbrd=getMBR(widen(sletter));
 		if(mbrd.empty())
 		{
-			ServerLogger::Log(clientid, "Error getting MBR data", LL_ERROR);
+			if(pLetter!="SYSVOL")
+			{
+				ServerLogger::Log(clientid, "Error getting MBR data", LL_ERROR);
+			}
 		}
 		else
 		{
@@ -2319,7 +2322,14 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						std::string err;
 						err.resize(r-sizeof(uint64) );
 						memcpy(&err[0], &buffer[off], r-off);
-						ServerLogger::Log(clientid, "Request of image backup failed. Reason: "+err, LL_ERROR);
+						if(pLetter!="SYSVOL")
+						{
+							ServerLogger::Log(clientid, "Request of image backup failed. Reason: "+err, LL_ERROR);
+						}
+						else
+						{
+							ServerLogger::Log(clientid, "Request of SYSVOL failed. Reason: "+err, LL_INFO);
+						}
 					}
 					else
 					{
@@ -2895,7 +2905,7 @@ std::string BackupServerGet::getMBR(const std::wstring &dl)
 			ServerLogger::Log(clientid, L"Could not read version information in MBR", LL_ERROR);
 		}
 	}
-	else
+	else if(dl!=L"SYSVOL")
 	{
 		ServerLogger::Log(clientid, L"Could not read MBR", LL_ERROR);
 	}
