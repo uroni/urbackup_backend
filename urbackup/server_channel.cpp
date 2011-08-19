@@ -36,8 +36,8 @@ const unsigned short serviceport=35623;
 extern std::string server_identity;
 extern IFSImageFactory *image_fak;
 
-ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get, sockaddr_in pClientaddr) :
-server_get(pServer_get), clientaddr(pClientaddr)
+ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get) :
+server_get(pServer_get)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -53,7 +53,7 @@ void ServerChannelThread::operator()(void)
 	{
 		if(input==NULL)
 		{
-			IPipe *np=Server->ConnectStream(inet_ntoa(clientaddr.sin_addr), serviceport, 10000);
+			IPipe *np=Server->ConnectStream(inet_ntoa(server_get->getClientaddr().sin_addr), serviceport, 10000);
 			if(np==NULL)
 			{
 				Server->Log("Connecting Channel to ClientService failed - CONNECT error -55", LL_DEBUG);

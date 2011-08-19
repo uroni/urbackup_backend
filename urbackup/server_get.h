@@ -37,6 +37,8 @@ public:
 	void sendToPipe(const std::string &msg);
 	int getPCDone(void);
 
+	sockaddr_in getClientaddr(void);
+
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 
@@ -99,8 +101,6 @@ private:
 
 	void writeFileRepeat(IFile *f, const std::string &str);
 	void writeFileRepeat(IFile *f, const char *buf, size_t bsize);
-
-	sockaddr_in getClientaddr(void);
 
 	int64 updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize);
 

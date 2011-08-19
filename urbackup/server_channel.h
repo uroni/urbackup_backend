@@ -9,7 +9,7 @@ class BackupServerGet;
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(BackupServerGet *pServer_get, sockaddr_in pClientaddr);
+	ServerChannelThread(BackupServerGet *pServer_get);
 
 	void operator()(void);
 
@@ -21,7 +21,6 @@ private:
 	unsigned int lasttime;
 
 	BackupServerGet *server_get;
-	sockaddr_in clientaddr;
 	IPipe *exitpipe;
 	IPipe *input;
 	CTCPStack tcpstack;

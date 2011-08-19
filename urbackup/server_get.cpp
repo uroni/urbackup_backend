@@ -147,7 +147,7 @@ void BackupServerGet::operator ()(void)
 
 	if( clientname.find(L"##restore##")==0 )
 	{
-		ServerChannelThread channel_thread(this, getClientaddr());
+		ServerChannelThread channel_thread(this);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 		while(true)
@@ -213,7 +213,7 @@ void BackupServerGet::operator ()(void)
 	BackupServerPrepareHash *bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
 	Server->getThreadPool()->execute(bsh);
 	Server->getThreadPool()->execute(bsh_prepare);
-	ServerChannelThread channel_thread(this, getClientaddr());
+	ServerChannelThread channel_thread(this);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 	sendSettings();
