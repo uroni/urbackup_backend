@@ -115,6 +115,7 @@ void ServerChannelThread::operator()(void)
 				{
 					if(input->hasError())
 					{
+						Server->Log("Lost channel connection to client. has_error=true", LL_DEBUG);
 						IScopedLock lock(mutex);
 						Server->destroy(input);
 						input=NULL;
@@ -122,6 +123,7 @@ void ServerChannelThread::operator()(void)
 					}
 					else
 					{
+						Server->Log("Lost channel connection to client. has_error=false", LL_DEBUG);
 						Server->wait(1000);
 					}
 				}

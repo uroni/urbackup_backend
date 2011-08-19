@@ -35,7 +35,9 @@ void ServerPingThread::operator()(void)
 {
 	while(stop==false)
 	{
+		Server->Log("Sending ping running...", LL_DEBUG);
 		server_get->sendClientMessage("PING RUNNING -"+nconvert(server_get->getPCDone())+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false);
+		Server->Log("Done sending ping running.", LL_DEBUG);
 		Server->wait(ping_intervall);
 	}
 	Server->wait(1000);

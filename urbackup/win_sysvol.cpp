@@ -21,6 +21,22 @@ std::wstring getVolumeLabel(PWCHAR VolumeName)
 	return voln;
 }
 
+std::wstring getFilesystem(PWCHAR VolumeName)
+{
+	wchar_t voln[MAX_PATH+1];
+	DWORD voln_size=MAX_PATH+1;
+	DWORD voln_sern;
+	wchar_t fsn[MAX_PATH+1];
+	DWORD fsn_size=MAX_PATH+1;
+	BOOL b=GetVolumeInformationW(VolumeName, voln, voln_size, &voln_sern, NULL, NULL, fsn, fsn_size);
+	if(b==0)
+	{
+		return L"";
+	}
+	
+	return fsn;
+}
+
 DWORD getDevNum(const PWCHAR VolumeName)
 {
 	HANDLE hVolume=CreateFileW(VolumeName, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -39,6 +55,39 @@ DWORD getDevNum(const PWCHAR VolumeName)
 	}
 
 	return dev_num.DeviceNumber;
+}
+
+DWORD getPartNum(const PWCHAR VolumeName)
+{
+	HANDLE hVolume=CreateFileW(VolumeName, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(hVolume==INVALID_HANDLE_VALUE)
+	{
+		return 0;
+	}
+
+	STORAGE_DEVICE_NUMBER dev_num;
+	DWORD ret_bytes;
+	BOOL b=DeviceIoControl(hVolume, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &dev_num, sizeof(STORAGE_DEVICE_NUMBER), &ret_bytes, NULL);
+	CloseHandle(hVolume);
+	if(b==0)
+	{
+		return 0;
+	}
+
+	return dev_num.PartitionNumber;
+}
+
+__int64 getPartSize(const PWCHAR VolumeName)
+{
+
+	ULARGE_INTEGER li;
+	BOOL b=GetDiskFreeSpaceExW(VolumeName, NULL, &li, NULL);
+	if(b==0)
+	{
+		return 0;
+	}	
+
+	return li.QuadPart;
 }
 
 std::vector<std::wstring> GetVolumePaths(PWCHAR VolumeName)
@@ -155,6 +204,7 @@ std::wstring getSysVolume(std::wstring &mpath)
     size_t Index                = 0;
     BOOL   Success              = FALSE;
     WCHAR  VolumeName[MAX_PATH] = L"";
+	WCHAR  VolumeNameNt[MAX_PATH] = L"";
 
     FindHandle = FindFirstVolumeW(VolumeName, ARRAYSIZE(VolumeName));
 
@@ -184,7 +234,10 @@ std::wstring getSysVolume(std::wstring &mpath)
             break;
         }
 
+		memcpy(VolumeNameNt, VolumeName, sizeof(WCHAR)*(Index+1));
+
         VolumeName[Index] = L'\0';
+		VolumeNameNt[Index]= L'\0';
 
         CharCount = QueryDosDeviceW(&VolumeName[4], DeviceName, ARRAYSIZE(DeviceName)); 
 
@@ -209,7 +262,9 @@ std::wstring getSysVolume(std::wstring &mpath)
 		VolumeName[Index] = L'\\';
 
 		
-		if( strlower(getVolumeLabel(VolumeName))==L"system reserved")
+		if( ( strlower(getVolumeLabel(VolumeName))==L"system reserved" 
+			|| (vpaths.empty() &&  getPartSize(VolumeName)<200*1024*1024) ) 
+			&& strlower(getFilesystem(VolumeName))==L"ntfs")
 		{
 			VolumeName[Index] = L'\0';
 			system_vols.push_back(VolumeName);
@@ -223,6 +278,7 @@ std::wstring getSysVolume(std::wstring &mpath)
 				system_vols_paths.push_back(L"");
 			}
 		}
+		VolumeName[Index] = L'\\';
 
         Success = FindNextVolumeW(FindHandle, VolumeName, ARRAYSIZE(VolumeName));
 
