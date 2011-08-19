@@ -28,7 +28,7 @@ public:
 	size_t getFilesFullNum(int clientid, int &backupid_top);
 	size_t getFilesIncrNum(int clientid, int &backupid_top);
 
-	void removeImage(int backupid, bool update_stat=true, _int64 size_correction=0);
+	void removeImage(int backupid, bool update_stat=true, int64 size_correction=0);
 	bool findUncompleteImageRef(int backupid);
 
 	void removeClient(int clientid);
@@ -42,7 +42,7 @@ public:
 private:
 
 	void removeImageSize(int backupid);
-	_int64 getImageSize(int backupid);
+	int64 getImageSize(int backupid);
 	std::vector<int> getAssocImages(int backupid);
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);

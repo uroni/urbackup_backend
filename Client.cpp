@@ -50,6 +50,10 @@ FCGIProtocolDriver * CClient::getFCGIProtocolDriver()
 	return driver;
 }
 
+#ifndef TCP_CORK
+#define TCP_CORK TCP_NOPUSH
+#endif
+
 void CClient::set(SOCKET ps, OutputCallback *poutput, FCGIProtocolDriver * pdriver )
 {
 	IScopedLock l(mutex);

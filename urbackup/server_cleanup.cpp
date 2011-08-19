@@ -258,10 +258,10 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 			if(!findUncompleteImageRef(backupid) )
 			{
 				std::vector<int> assoc=getAssocImages(backupid);
-				_int64 corr=0;
+				int64 corr=0;
 				for(size_t i=0;i<assoc.size();++i)
 				{
-					_int64 is=getImageSize(assoc[i]);
+					int64 is=getImageSize(assoc[i]);
 					if(is!=-1) corr+=is;
 					removeImage(assoc[i], false);
 				}
@@ -301,10 +301,10 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 			if(!findUncompleteImageRef(backupid) )
 			{
 				std::vector<int> assoc=getAssocImages(backupid);
-				_int64 corr=0;
+				int64 corr=0;
 				for(size_t i=0;i<assoc.size();++i)
 				{
-					_int64 is=getImageSize(assoc[i]);
+					int64 is=getImageSize(assoc[i]);
 					if(is!=-1) corr+=is;
 					removeImage(assoc[i], false);
 				}
@@ -323,7 +323,7 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	}
 }
 
-void ServerCleanupThread::removeImage(int backupid, bool update_stat, _int64 size_correction)
+void ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size_correction)
 {
 	q_get_image_refs->Bind(backupid);
 	db_results res=q_get_image_refs->Read();
@@ -849,7 +849,7 @@ std::vector<int> ServerCleanupThread::getAssocImages(int backupid)
 	return ret;
 }
 
-_int64 ServerCleanupThread::getImageSize(int backupid)
+int64 ServerCleanupThread::getImageSize(int backupid)
 {
 	q_get_image_size->Bind(backupid);
 	db_results res=q_get_image_size->Read();

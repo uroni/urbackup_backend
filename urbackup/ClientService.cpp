@@ -37,6 +37,8 @@
 #include "settings.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
+#else
+std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 #endif
 
 #include <memory.h>

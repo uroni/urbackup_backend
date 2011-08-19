@@ -14,8 +14,9 @@ install-exec-local: $(srcdir)/defaults $(srcdir)/init.d
 	if ! test -e $(sysconfdir)/default/urbackup_srv; then $(INSTALL) -D $(srcdir)/defaults $(sysconfdir)/default/urbackup_srv; fi
 
 	mkdir -p $(DESTDIR)$(localstatedir)/urbackup
-	chown urbackup:urbackup $(DESTDIR)$(localstatedir)/urbackup
 	adduser --system --quiet --group --home $(DESTDIR)$(localstatedir)/urbackup urbackup || true
+	chown urbackup:urbackup $(DESTDIR)$(localstatedir)/urbackup
+	
 	
 noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h file.h Mutex_boost.h Condition_boost.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h
 EXTRA_DIST=docs/start_urbackup_server.1 docs/urbackup_srv.1 init.d defaults start_urbackup_server 
