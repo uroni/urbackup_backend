@@ -2197,19 +2197,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				if(!reconnected)
 				{
 					ServerLogger::Log(clientid, "Timeout while trying to reconnect", LL_ERROR);
-					Server->destroy(cc);
-					if(vhdfile!=NULL)
-					{
-						vhdfile->freeBuffer(blockdata);
-						vhdfile->doExitNow();
-						Server->getThreadPool()->waitFor(vhdfile_ticket);
-						delete vhdfile;
-						vhdfile=NULL;
-					}
-					if(hashfile!=NULL) Server->destroy(hashfile);
-					if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-					running_updater->stop();
-					return false;
+					goto do_image_cleanup;
 				}
 
 				if(pParentvhd.empty())
@@ -2223,19 +2211,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					if(rc==0)
 					{
 						ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_ERROR);
-						Server->destroy(cc);
-						if(vhdfile!=NULL)
-						{
-							vhdfile->freeBuffer(blockdata);
-							vhdfile->doExitNow();
-							Server->getThreadPool()->waitFor(vhdfile_ticket);
-							delete vhdfile;
-							vhdfile=NULL;
-						}
-						if(hashfile!=NULL) Server->destroy(hashfile);
-						if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-						running_updater->stop();
-						return false;
+						goto do_image_cleanup;
 					}
 					parenthashfile->Seek(0);
 					char buffer[4096];
@@ -2245,36 +2221,12 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						if(parenthashfile->Read(buffer, (_u32)tsend)!=tsend)
 						{
 							ServerLogger::Log(clientid, "Reading from hashfile failed i="+nconvert(i), LL_ERROR);
-							Server->destroy(cc);
-							if(vhdfile!=NULL)
-							{
-								vhdfile->freeBuffer(blockdata);
-								vhdfile->doExitNow();
-								Server->getThreadPool()->waitFor(vhdfile_ticket);
-								delete vhdfile;
-								vhdfile=NULL;
-							}
-							if(hashfile!=NULL) Server->destroy(hashfile);
-							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-							running_updater->stop();
-							return false;
+							goto do_image_cleanup;
 						}
 						if(!cc->Write(buffer, tsend))
 						{
 							ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
-							Server->destroy(cc);
-							if(vhdfile!=NULL)
-							{
-								vhdfile->freeBuffer(blockdata);
-								vhdfile->doExitNow();
-								Server->getThreadPool()->waitFor(vhdfile_ticket);
-								delete vhdfile;
-								vhdfile=NULL;
-							}
-							if(hashfile!=NULL) Server->destroy(hashfile);
-							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-							running_updater->stop();
-							return false;
+							goto do_image_cleanup;
 						}
 					}
 
@@ -2288,19 +2240,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 			else
 			{
 				ServerLogger::Log(clientid, "Pipe to client unexpectedly closed", LL_ERROR);
-				Server->destroy(cc);
-				if(vhdfile!=NULL)
-				{
-					vhdfile->freeBuffer(blockdata);
-					vhdfile->doExitNow();
-					Server->getThreadPool()->waitFor(vhdfile_ticket);
-					delete vhdfile;
-					vhdfile=NULL;
-				}
-				if(hashfile!=NULL) Server->destroy(hashfile);
-				if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-				running_updater->stop();
-				return false;
+				goto do_image_cleanup;
 			}
 		}
 		else
@@ -2335,20 +2275,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					{
 						ServerLogger::Log(clientid, "Error on client. No reason given.", LL_ERROR);
 					}
-					Server->destroy(cc);
-					
-					if(vhdfile!=NULL)
-					{
-						vhdfile->freeBuffer(blockdata);
-						vhdfile->doExitNow();
-						Server->getThreadPool()->waitFor(vhdfile_ticket);
-						delete vhdfile;
-						vhdfile=NULL;
-					}
-					if(hashfile!=NULL) Server->destroy(hashfile);
-					if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-					running_updater->stop();
-					return false;
+					goto do_image_cleanup;
 				}
 				bool issmall=false;
 				if(r>=sizeof(unsigned int)+sizeof(int64))
@@ -2370,19 +2297,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					if(r_vhdfile==NULL)
 					{
 						ServerLogger::Log(clientid, L"Error opening VHD file \""+imagefn+L"\"", LL_ERROR);
-						Server->destroy(cc);
-						if(vhdfile!=NULL)
-						{
-							vhdfile->freeBuffer(blockdata);
-							vhdfile->doExitNow();
-							Server->getThreadPool()->waitFor(vhdfile_ticket);
-							delete vhdfile;
-							vhdfile=NULL;
-						}
-						if(hashfile!=NULL) Server->destroy(hashfile);
-						if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-						running_updater->stop();
-						return false;
+						goto do_image_cleanup;
 					}
 
 					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid);
@@ -2394,19 +2309,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					if(hashfile==NULL)
 					{
 						ServerLogger::Log(clientid, L"Error opening Hashfile \""+imagefn+L".hash\"", LL_ERROR);
-						Server->destroy(cc);
-						if(vhdfile!=NULL)
-						{
-							vhdfile->freeBuffer(blockdata);
-							vhdfile->doExitNow();
-							Server->getThreadPool()->waitFor(vhdfile_ticket);
-							delete vhdfile;
-							vhdfile=NULL;
-						}
-						if(hashfile!=NULL) Server->destroy(hashfile);
-						if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-						running_updater->stop();
-						return false;
+						goto do_image_cleanup;
 					}
 
 					if(has_parent)
@@ -2415,19 +2318,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						if(parenthashfile==NULL)
 						{
 							ServerLogger::Log(clientid, L"Error opening Parenthashfile \""+pParentvhd+L".hash\"", LL_ERROR);
-							Server->destroy(cc);
-							if(vhdfile!=NULL)
-							{
-								vhdfile->freeBuffer(blockdata);
-								vhdfile->doExitNow();
-								Server->getThreadPool()->waitFor(vhdfile_ticket);
-								delete vhdfile;
-								vhdfile=NULL;
-							}
-							if(hashfile!=NULL) Server->destroy(hashfile);
-							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-							running_updater->stop();
-							return false;
+							goto do_image_cleanup;
 						}
 					}
 
@@ -2495,19 +2386,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				if(issmall)
 				{
 					ServerLogger::Log(clientid, "First packet to small", LL_ERROR);
-					Server->destroy(cc);
-					if(vhdfile!=NULL)
-					{
-						vhdfile->freeBuffer(blockdata);
-						vhdfile->doExitNow();
-						Server->getThreadPool()->waitFor(vhdfile_ticket);
-						delete vhdfile;
-						vhdfile=NULL;
-					}
-					if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-					if(hashfile!=NULL) Server->destroy(hashfile);
-					running_updater->stop();
-					return false;
+					goto do_image_cleanup;
 				}
 
 				if(r==off)
@@ -2559,20 +2438,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						if(vhdfile->hasError())
 						{
 							ServerLogger::Log(clientid, "FATAL ERROR: Could not write to VHD-File", LL_ERROR);
-							Server->destroy(cc);
-							if(vhdfile!=NULL)
-							{
-								vhdfile->freeBuffer(blockdata);
-								vhdfile->doExitNow();
-								std::vector<THREADPOOL_TICKET> wf;wf.push_back(vhdfile_ticket);
-								Server->getThreadPool()->waitFor(wf);
-								delete vhdfile;
-								vhdfile=NULL;
-							}
-							if(hashfile!=NULL) Server->destroy(hashfile);
-							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-							running_updater->stop();
-							return false;
+							goto do_image_cleanup;
 						}
 
 						currblock=-1;
@@ -2715,13 +2581,15 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		}
 	}
 	ServerLogger::Log(clientid, "Timeout while transfering image data", LL_ERROR);
+do_image_cleanup:
 	Server->destroy(cc);
 	if(vhdfile!=NULL)
 	{
-		vhdfile->freeBuffer(blockdata);
+		if(blockdata!=NULL)
+			vhdfile->freeBuffer(blockdata);
+
 		vhdfile->doExitNow();
-		std::vector<THREADPOOL_TICKET> wf;wf.push_back(vhdfile_ticket);
-		Server->getThreadPool()->waitFor(wf);
+		Server->getThreadPool()->waitFor(vhdfile_ticket);
 		delete vhdfile;
 		vhdfile=NULL;
 	}
