@@ -21,8 +21,21 @@
 #include "ntfs.h"
 #include <math.h>
 
-FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev)
+class MemFree
 {
+public:
+	MemFree(char *buf) : buf(buf) {}
+	~MemFree(void) { delete []buf; }
+
+private:
+	char* buf;
+};
+
+FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev), bitmap(NULL)
+{
+	if(has_error)
+		return;
+
 	bitmap=NULL;
 	sectorsize=512;
 	NTFSBootRecord br;
@@ -62,6 +75,7 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev)
 	Server->Log("MFTStart: "+nconvert(br.mftlcn), LL_DEBUG);
 
 	char *mftrecord=new char[mftrecordsize];
+	MemFree mftrecord_free(mftrecord);
 
 	rc=sectorRead(mftstart, mftrecord, mftrecordsize);
 	if(rc!=mftrecordsize )
@@ -142,6 +156,8 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev)
 	}
 	uint64 bitmap_pos=bitmap_lcn*clustersize+(6*mftrecordsize)%clustersize;
 	char *bitmaprecord=new char[mftrecordsize];
+	MemFree bitmaprecord_free(bitmaprecord);
+
 	rc=sectorRead(bitmap_pos, bitmaprecord, mftrecordsize);
 	if(rc==0)
 	{
@@ -169,6 +185,7 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev)
 
 	currpos=0;
 	attr.length=mft.attribute_offset;
+	bool is_bitmap=false;
 	do
 	{
 		currpos+=attr.length;
@@ -181,9 +198,20 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev)
 			fn_uc.resize(fn.filename_length*2);
 			memcpy(&fn_uc[0], bitmaprecord+currpos+attr.attribute_offset+sizeof(MFTAttributeFilename), fn.filename_length*2);
 			Server->Log(L"Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
+			if(Server->ConvertFromUTF16(fn_uc)==L"$Bitmap")
+			{
+				is_bitmap=true;
+			}
 		}
 		Server->Log("Attribute Type: "+nconvert(attr.type)+" nonresident="+nconvert(attr.nonresident)+" length="+nconvert(attr.length), LL_DEBUG);
 	}while( attr.type!=0xFFFFFFFF && attr.type!=0x80);
+
+	if(!is_bitmap)
+	{
+		Server->Log(L"Filename attribute not found or filename wrong", LL_ERROR);
+		has_error=true;
+		return;
+	}
 
 	if(attr.type!=0x80)
 	{
@@ -212,6 +240,7 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev)
 	
 	bitmap=new unsigned char[(unsigned int)bitmapstream.real_size];
 	char *buffer=new char[clustersize];
+	MemFree buffer_free(buffer);
 	bitmap_pos=0;
 	for(uint64 i=bitmapstream.starting_vnc;i<=bitmapstream.last_vnc;++i)
 	{
@@ -233,10 +262,6 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev)
 		memcpy(&bitmap[bitmap_pos], buffer, (size_t)(std::min)(bitmapstream.real_size-bitmap_pos, (uint64)clustersize) );
 		bitmap_pos+=(std::min)(bitmapstream.real_size-bitmap_pos, (uint64)clustersize);
 	}
-
-	delete []buffer;
-	delete []mftrecord;
-	delete []bitmaprecord;
 }
 
 FSNTFS::~FSNTFS(void)

@@ -22,6 +22,9 @@
 
 FSUnknown::FSUnknown(const std::wstring &pDev) : Filesystem(pDev)
 {
+	if(has_error)
+		return;
+
 	int64 bitmap_entries=(int64)(dev->Size()/DEF_BLOCKSIZE);
 	if(dev->Size()%DEF_BLOCKSIZE!=0)
 		++bitmap_entries;

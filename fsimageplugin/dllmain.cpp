@@ -54,12 +54,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	/*int c=0;
 
-	FSNTFS ntfs(L"\\\\.\\Volume{975a91a4-aa07-11dc-98b4-806e6f6e6963}");
+	FSNTFS ntfs(L"\\\\.\\C:");
 	
-	Server->Log("Used Space: "+nconvert(ntfs.calculateUsedSpace())+" of "+nconvert(ntfs.getSize()));
-	Server->Log(nconvert(((float)ntfs.calculateUsedSpace()/(float)ntfs.getSize())*100.0f)+" %");
-
+	if(!ntfs.hasError())
 	{
+		Server->Log("Used Space: "+nconvert(ntfs.calculateUsedSpace())+" of "+nconvert(ntfs.getSize()));
+		Server->Log(nconvert(((float)ntfs.calculateUsedSpace()/(float)ntfs.getSize())*100.0f)+" %");
+	}*/
+
+	/*{
 		IFile *file=Server->openFile("G:\\Root\\Setup\\rsrc\\Prototype.exe",MODE_READ);  //"\\\\.\\Volume{975a91a4-aa07-11dc-98b4-806e6f6e6963}", MODE_READ);
 		VHDFile vhd(L"G:\\test.vhd", false, (uint64)20*(uint64)1024*(uint64)1024*(uint64)1024);
 		vhd.Seek(0);

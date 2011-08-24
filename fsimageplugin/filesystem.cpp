@@ -23,9 +23,14 @@
 
 Filesystem::Filesystem(const std::wstring &pDev)
 {
+	has_error=false;
+
 	dev=Server->openFile(pDev, MODE_READ);
 	if(dev==NULL)
+	{
 		Server->Log("Error opening device file", LL_ERROR);
+		has_error=true;
+	}
 	tmp_buf=NULL;
 }
 

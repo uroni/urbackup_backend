@@ -45,12 +45,33 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev)
 	if(isNTFS(buffer) )
 	{
 		Server->Log("Filesystem type is ntfs", LL_DEBUG);
-		return new FSNTFS(pDev);
+		FSNTFS *fs=new FSNTFS(pDev);
+		if(fs->hasError())
+		{
+			Server->Log("NTFS has error", LL_WARNING);
+			delete fs;
+
+			Server->Log("Unknown filesystem type", LL_DEBUG);
+			FSUnknown *fs2=new FSUnknown(pDev);
+			if(fs2->hasError())
+			{
+				delete fs2;
+				return NULL;
+			}
+			return fs2;
+		}
+		return fs;
 	}
 	else
 	{
 		Server->Log("Unknown filesystem type", LL_DEBUG);
-		return new FSUnknown(pDev);
+		FSUnknown *fs=new FSUnknown(pDev);
+		if(fs->hasError())
+		{
+			delete fs;
+			return NULL;
+		}
+		return fs;
 	}
 }
 
