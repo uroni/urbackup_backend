@@ -11,6 +11,10 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <algorithm>
+#include "fileclient/socket_header.h"
+#ifndef _WIN32
+#include <net/if.h>
+#endif
 
 
 std::string trim2(const std::string &str)
@@ -605,9 +609,58 @@ private:
 	std::string outfile;
 };
 
+bool has_network_device(void)
+{
+#ifdef _WIN32
+	return true;
+#else
+	char          buf[1024];
+	struct ifconf ifc;
+	struct ifreq *ifr;
+	int           sck;
+	int           nInterfaces;
+	int           i;
+
+/* Get a socket handle. */
+	sck = socket(AF_INET, SOCK_DGRAM, 0);
+	if(sck < 0)
+	{
+		return true;
+	}
+
+/* Query available interfaces. */
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_buf = buf;
+	if(ioctl(sck, SIOCGIFCONF, &ifc) < 0)
+	{
+		close(sck);
+		return true;
+	}
+
+/* Iterate through the list of interfaces. */
+	ifr         = ifc.ifc_req;
+	nInterfaces = ifc.ifc_len / sizeof(struct ifreq);
+	for(i = 0; i < nInterfaces; i++)
+	{
+		struct ifreq *item = &ifr[i];
+
+	/* Show the device name and IP address */
+		if(INADDR_LOOPBACK!=((struct sockaddr_in *)&item->ifr_addr)->sin_addr) )
+		{
+			close(sck);
+			return true;
+		}
+	}
+	close(sck);
+	return false;
+#endif
+}
+
+const int start_state=-2;
+
 void restore_wizard(void)
 {
-	int state=-1;
+	int state=start_state;
 	std::vector<std::string> clients;
 	std::string clientname;
 	std::vector<SImage> images;
@@ -622,10 +675,47 @@ void restore_wizard(void)
 
 		switch(state)
 		{
-		case -1:
+		case -2:
 			{
 				system("dialog --msgbox \"`cat urbackup/restore/welcome`\" 10 70");
 				++state;
+			}break;
+		case -1:
+			{
+				if(!has_network_device())
+				{
+					int r=system("dialog --menu \"`cat urbackup/restore/no_network_device`\" 15 50 10 \"n\" \"`cat urbackup/restore/configure_networkcard`\" \"w\" \"`cat urbackup/restore/configure_wlan`\" \"e\" \"`cat urbackup/restore/start_shell`\" \"c\" \"`cat urbackup/restore/continue_restore`\" 2> out");
+					if(r!=0)
+					{
+						state=start_state;
+						break;
+					}
+
+					std::string out=getFile("out");
+					if(out=="n")
+					{
+						system("netcardconfig");
+						state=0;
+					}
+					else if(out=="w")
+					{
+						system("wlcardconfig");
+						state=0;
+					}
+					else if(out=="e")
+					{
+						system("sh");
+						state=0;
+					}
+					else if(out=="c")
+						state=0;
+					else
+						state=99;
+				}
+				else
+				{
+					state=0;
+				}
 			}break;
 		case 0:
 			{
@@ -659,7 +749,7 @@ void restore_wizard(void)
 					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/search_again`\" \"n\" \"`cat urbackup/restore/configure_networkcard`\" \"w\" \"`cat urbackup/restore/configure_wlan`\" \"e\" \"`cat urbackup/restore/start_shell`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
-						state=-1;
+						state=start_state;
 						break;
 					}
 
@@ -694,7 +784,7 @@ void restore_wizard(void)
 					int r=system(("dialog --menu \"`cat urbackup/restore/select`\" 15 50 10 "+mi+"2> out").c_str());
 					if(r!=0)
 					{
-						state=-1;
+						state=start_state;
 						break;
 					}
 					
@@ -733,7 +823,7 @@ void restore_wizard(void)
 					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"a\" \"`cat urbackup/restore/error_j_select`\" \"r\" \"`cat urbackup/restore/search_again`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
-						state=-1;
+						state=start_state;
 						break;
 					}
 
@@ -755,7 +845,7 @@ void restore_wizard(void)
 					int r=system(("dialog --menu \"`cat urbackup/restore/select_date`\" 15 50 10 "+mi+"2> out").c_str());
 					if(r!=0)
 					{
-						state=-1;
+						state=start_state;
 						break;
 					}
 
@@ -802,7 +892,7 @@ void restore_wizard(void)
 					int r=system("dialog --menu \"`cat urbackup/restore/no_disks_found`. `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/search_disk_again`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out");
 					if(r!=0)
 					{
-						state=-1;
+						state=start_state;
 						break;
 					}
 
@@ -824,7 +914,7 @@ void restore_wizard(void)
 				int r=system(scmd.c_str());
 				if(r!=0)
 				{
-					state=-1;
+					state=start_state;
 					break;
 				}
 
@@ -942,7 +1032,7 @@ void restore_wizard(void)
 					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend`: "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_restore`\" \"e\" \"`cat urbackup/restore/error_happend`\" \"o\" \"`cat urbackup/restore/start_shell`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
-						state=-1;
+						state=start_state;
 						break;
 					}
 
@@ -994,7 +1084,7 @@ void restore_wizard(void)
 				int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` `cat urbackup/restore/"+err+"`. `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_restore`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 				if(r!=0)
 				{
-					state=-1;
+					state=start_state;
 					break;
 				}
 
