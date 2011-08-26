@@ -14,6 +14,7 @@
 #include "fileclient/socket_header.h"
 #ifndef _WIN32
 #include <net/if.h>
+#include <sys/ioctl.h>
 #endif
 
 
@@ -643,9 +644,8 @@ bool has_network_device(void)
 	for(i = 0; i < nInterfaces; i++)
 	{
 		struct ifreq *item = &ifr[i];
-
-	/* Show the device name and IP address */
-		if(INADDR_LOOPBACK!=((struct sockaddr_in *)&item->ifr_addr)->sin_addr) )
+		
+		if(htonl(INADDR_LOOPBACK)!=((struct sockaddr_in *)&item->ifr_addr)->sin_addr.s_addr )
 		{
 			close(sck);
 			return true;
