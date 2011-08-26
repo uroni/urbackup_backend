@@ -684,33 +684,55 @@ void restore_wizard(void)
 			{
 				if(!has_network_device())
 				{
-					int r=system("dialog --menu \"`cat urbackup/restore/no_network_device`\" 15 50 10 \"n\" \"`cat urbackup/restore/configure_networkcard`\" \"w\" \"`cat urbackup/restore/configure_wlan`\" \"e\" \"`cat urbackup/restore/start_shell`\" \"c\" \"`cat urbackup/restore/continue_restore`\" 2> out");
-					if(r!=0)
+					system("clear");
+					system("cat urbackup/restore/search_network");
+					int tries=20;
+					bool has_interface=false;
+					do
 					{
-						state=start_state;
-						break;
-					}
+						bool b=has_network_device();
+						if(b)
+						{
+							has_interface=true;
+							break;
+						}
+						--tries;
+					} while(tries>=0);
 
-					std::string out=getFile("out");
-					if(out=="n")
+					if(has_interface==false)
 					{
-						system("netcardconfig");
-						state=0;
+						int r=system("dialog --menu \"`cat urbackup/restore/no_network_device`\" 15 50 10 \"n\" \"`cat urbackup/restore/configure_networkcard`\" \"w\" \"`cat urbackup/restore/configure_wlan`\" \"e\" \"`cat urbackup/restore/start_shell`\" \"c\" \"`cat urbackup/restore/continue_restore`\" 2> out");
+						if(r!=0)
+						{
+							state=start_state;
+							break;
+						}
+
+						std::string out=getFile("out");
+						if(out=="n")
+						{
+							system("netcardconfig");
+							state=0;
+						}
+						else if(out=="w")
+						{
+							system("wlcardconfig");
+							state=0;
+						}
+						else if(out=="e")
+						{
+							system("sh");
+							state=0;
+						}
+						else if(out=="c")
+							state=0;
+						else
+							state=99;
 					}
-					else if(out=="w")
-					{
-						system("wlcardconfig");
-						state=0;
-					}
-					else if(out=="e")
-					{
-						system("sh");
-						state=0;
-					}
-					else if(out=="c")
-						state=0;
 					else
-						state=99;
+					{
+						state=0;
+					}
 				}
 				else
 				{
