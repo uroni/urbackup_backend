@@ -194,7 +194,7 @@ void BackupServer::startClients(FileClient &fc)
 					memcpy(&msg[7], &it->second.addr, sizeof(sockaddr_in));
 					it->second.pipe->Write(msg);
 
-					char *ip=(char*)it->second.addr.sin_addr.s_addr;
+					char *ip=(char*)&it->second.addr.sin_addr.s_addr;
 
 					Server->Log("New client address: "+nconvert(ip[3])+"."+nconvert(ip[2])+"."+nconvert(ip[1])+"."+nconvert(ip[0]), LL_INFO);
 
