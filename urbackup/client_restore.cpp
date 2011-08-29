@@ -697,6 +697,7 @@ void restore_wizard(void)
 							break;
 						}
 						--tries;
+						Server->wait(1000);
 					} while(tries>=0);
 
 					if(has_interface==false)
