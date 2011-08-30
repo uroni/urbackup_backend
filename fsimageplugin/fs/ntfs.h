@@ -140,8 +140,6 @@ private:
 	_u32 sectorRead(int64 pos, char *buffer, _u32 bsize);
 	bool applyFixups(char *data, size_t datasize, char* fixups, size_t fixups_size);
 
-	bool has_error;
-
 	unsigned int sectorsize;
 	unsigned int clustersize;
 	uint64 drivesize;
