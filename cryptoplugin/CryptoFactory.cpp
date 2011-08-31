@@ -28,10 +28,16 @@
 #include <dsa.h>
 #include <osrng.h>
 #include <files.h>
+#include <pwdbased.h>
+#include <sha.h>
+#include <hex.h>
 #else
 #include <crypto++/dsa.h>
 #include <crypto++/osrng.h>
 #include <crypto++/files.h>
+#include <crypto++/pwdbased.h>
+#include <crypto++/sha.h>
+#include <crypto++/hex.h>
 #endif
 
 IAESEncryption* CryptoFactory::createAESEncryption(const std::string &password)
@@ -115,4 +121,20 @@ bool CryptoFactory::verifyFile(const std::string &keyfilename, const std::string
 	}
 
 	return false;
+}
+
+std::string CryptoFactory::generatePasswordHash(const std::string &password, const std::string &salt, size_t iterations)
+{
+	CryptoPP::SecByteBlock derived;
+	derived.resize(CryptoPP::SHA512::DIGESTSIZE);
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> pkcs;
+	pkcs.DeriveKey(derived, CryptoPP::SHA512::DIGESTSIZE, 0, (byte*)password.c_str(), password.size(), (byte*)salt.c_str(), salt.size(), 10000, 0);
+
+	CryptoPP::HexEncoder hexEncoder;
+	hexEncoder.Put(derived,derived.size());
+	hexEncoder.MessageEnd();
+	std::string ret;
+	ret.resize(derived.size()*2);
+	hexEncoder.Get((byte*)&ret[0],ret.size());
+	return ret;
 }

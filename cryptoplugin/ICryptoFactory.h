@@ -11,4 +11,5 @@ public:
 	virtual bool generatePrivatePublicKeyPair(const std::string &name)=0;
 	virtual bool signFile(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename)=0;
 	virtual bool verifyFile(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename)=0;
+	virtual std::string generatePasswordHash(const std::string &password, const std::string &salt, size_t iterations=10000)=0;
 };

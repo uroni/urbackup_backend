@@ -51,6 +51,9 @@ std::string AESEncryption::encrypt(const std::string &data)
 
 	size_t osize=ret.size();
 	ret.resize(osize+data.size());
-	enc->ProcessString((byte*)&ret[osize], (byte*)data.c_str(), data.size() );
+	if(data.size()>0)
+	{
+		enc->ProcessString((byte*)&ret[osize], (byte*)data.c_str(), data.size() );
+	}
 	return ret;
 }
