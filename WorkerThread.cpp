@@ -86,7 +86,7 @@ void CWorkerThread::operator()()
 				client_queue.erase(client_queue.begin());
 				SOCKET s=client->getSocket();	
 
-				clients_mutex->Unlock();
+				lock.relock(NULL);
 
 				_i32 rc=recv(s, buffer, WT_BUFFERSIZE, MSG_NOSIGNAL);
 
@@ -95,7 +95,7 @@ void CWorkerThread::operator()()
 					keep_alive=true;
 					Server->Log("Client disconnected", LL_INFO);
 					Master->RemoveClient( client );
-					clients_mutex->Lock();
+					lock.relock(clients_mutex);
 				}
 				else
 				{
@@ -114,13 +114,25 @@ void CWorkerThread::operator()()
 					try
 					{
 						client->getFCGIProtocolDriver()->process_input(buffer, rc);
-					}catch(...){}
+					}catch(...)
+					{
+						client->unlock();
+						Master->RemoveClient(client);
+						lock.relock(clients_mutex);
+						continue;
+					}
 					
 					FCGIRequest* req=NULL;
 					try
 					{
 						req=client->getFCGIProtocolDriver()->get_request();
-					}catch(...){}
+					}catch(...)
+					{
+						client->unlock();
+						Master->RemoveClient(client);
+						lock.relock(clients_mutex);
+						continue;
+					}
 
 					client->unlock();
 
@@ -147,7 +159,7 @@ void CWorkerThread::operator()()
 						Master->WakeUp();
 					}
 
-					clients_mutex->Lock();
+					lock.relock(clients_mutex);
 				}
 			}
 		}
