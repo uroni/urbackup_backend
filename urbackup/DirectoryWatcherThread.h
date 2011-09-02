@@ -2,6 +2,8 @@
 #include "../Interface/Query.h"
 #include "../Interface/Thread.h"
 #include "../Interface/Database.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/Condition.h"
 #include "watchdir/DirectoryChanges.h"
 #include "Database.h"
 #include "ChangeJournalWatcher.h"
@@ -17,6 +19,8 @@ class DirectoryWatcherThread : public IThread, public IChangeJournalListener
 {
 public:
 	DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs);
+
+	static void init_mutex(void);
 
 	void operator()(void);
 
@@ -35,6 +39,7 @@ public:
 	void OnDirRm(const std::wstring &dir);
 
 	static void update(void);
+	static void update_and_wait(void);
 
 	bool is_stopped(void);
 
@@ -49,6 +54,9 @@ private:
 
 	std::list<SLastEntries> lastentries;
 	std::vector<std::wstring> watching;
+
+	static IMutex *update_mutex;
+	static ICondition *update_cond;
 };
 
 class ChangeListener : public CDirectoryChangeHandler, public IChangeJournalListener

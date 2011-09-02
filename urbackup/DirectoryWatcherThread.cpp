@@ -25,14 +25,13 @@
 #define CHANGE_JOURNAL
 
 IPipe *DirectoryWatcherThread::pipe=NULL;
+IMutex *DirectoryWatcherThread::update_mutex=NULL;
+ICondition *DirectoryWatcherThread::update_cond=NULL;
 
 const unsigned int mindifftime=120000;
 
 DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs)
 {
-	if(pipe==NULL)
-		pipe=Server->createMemoryPipe();
-
 	do_stop=false;
 	watching=watchdirs;
 }
@@ -94,7 +93,7 @@ void DirectoryWatcherThread::operator()(void)
 						break;
 					}
 				}
-				if(w==false)
+				if(w==false && !dir.empty())
 				{
 #ifndef CHANGE_JOURNAL
 					dcw.WatchDirectory(dir, FILE_NOTIFY_CHANGE_FILE_NAME|FILE_NOTIFY_CHANGE_DIR_NAME|FILE_NOTIFY_CHANGE_LAST_WRITE, &cl, TRUE);
@@ -126,11 +125,14 @@ void DirectoryWatcherThread::operator()(void)
 				lastentries.clear();
 				dcw.update();
 				dcw.update_longliving();
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
 			}
 #endif
 			else if( msg[0]=='Q' )
 			{
-				break;
+				continue;
 			}
 			else if( msg[0]=='R' )
 			{
@@ -154,6 +156,20 @@ void DirectoryWatcherThread::update(void)
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 }
 
+void DirectoryWatcherThread::init_mutex(void)
+{
+	pipe=Server->createMemoryPipe();
+	update_mutex=Server->createMutex();
+	update_cond=Server->createCondition();
+}
+
+void DirectoryWatcherThread::update_and_wait(void)
+{
+	IScopedLock lock(update_mutex);
+	std::wstring msg=L"U";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	update_cond->wait(&lock);
+}
 void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
 {
 	bool found=false;

@@ -56,6 +56,7 @@ IServer *Server;
 #include "server_get.h"
 #include "ServerIdentityMgr.h"
 #include "os_functions.h"
+#include "DirectoryWatcherThread.h"
 #include <stdlib.h>
 
 PLUGIN_ID filesrv_pluginid;
@@ -234,6 +235,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(is_backup_client)
 	{
 		ServerIdentityMgr::init_mutex();
+		DirectoryWatcherThread::init_mutex();
 
 		if(getFile("pw.txt").size()<5)
 		{
