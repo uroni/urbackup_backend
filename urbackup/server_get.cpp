@@ -1102,6 +1102,11 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr
 	std::wstring cfn=curr_path+L"/"+fn;
 	if(cfn[0]=='/')
 		cfn.erase(0,1);
+
+	if(!server_token.empty())
+	{
+		cfn=widen(server_token)+L"|"+cfn;
+	}
 	
 	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd);
 	if(rc!=ERR_SUCCESS)

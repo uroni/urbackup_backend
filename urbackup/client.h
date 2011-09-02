@@ -5,6 +5,7 @@
 #include "../Interface/ThreadPool.h"
 #include "os_functions.h"
 #include "clientdao.h"
+#include <map>
 
 #ifdef _WIN32
 #ifndef VSS_XP
@@ -91,6 +92,12 @@ public:
 
 	static void stopIndex(void);
 
+	static void shareDir(const std::wstring &name, const std::wstring &path);
+	static void removeDir(const std::wstring &name);
+	static std::wstring getShareDir(const std::wstring &name);
+	static void share_dirs(const std::string &token);
+	static void unshare_dirs(const std::string &token);
+
 private:
 
 	void readBackupDirs(void);
@@ -155,4 +162,6 @@ private:
 	std::vector<std::wstring> exlude_dirs;
 
 	unsigned int last_transaction_start;
+
+	static std::map<std::wstring, std::wstring> filesrv_share_dirs;
 };

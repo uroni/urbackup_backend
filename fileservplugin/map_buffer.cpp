@@ -53,7 +53,7 @@ std::wstring getFileName(const std::wstring &fn, const std::wstring &value, bool
 	std::wstring urd=L"urinstaller";
 	std::wstring dir=value;
 
-	if( value.find(L"|")!=std::string::npos )
+	/*if( value.find(L"|")!=std::string::npos )
 	{
 		urd=getafter(L"|",value);
 		urd.erase(0,1);
@@ -61,7 +61,7 @@ std::wstring getFileName(const std::wstring &fn, const std::wstring &value, bool
 
 		if( udir!=NULL )
 			*udir=urd;
-	}
+	}*/
 
 	if( append_urd==true )
 #ifdef _WIN32

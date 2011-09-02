@@ -18,6 +18,7 @@ struct SChangeJournal
 	DWORDLONG journal_id;
 	HANDLE hVolume;
 	_i64 rid;
+	bool last_record_update;
 };
 
 struct SDeviceInfo
@@ -82,6 +83,7 @@ private:
 	void updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord);
 
 	void reindex(_i64 rid, std::wstring vol, SChangeJournal *sj);
+	void logEntry(const std::wstring &vol, const UsnInt *UsnRecord);
 
 	IDatabase *db;
 

@@ -30,6 +30,7 @@ ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDataba
 
 	indexing_in_progress=false;
 	has_error=false;
+	last_index_update=0;
 }
 
 ChangeJournalWatcher::~ChangeJournalWatcher(void)
@@ -403,6 +404,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	cj.path.push_back(dir);
 	cj.hVolume=hVolume;
 	cj.rid=rid;
+	cj.last_record_update=false;
 
 	if(!info.has_info)
 	{
@@ -624,6 +626,15 @@ void ChangeJournalWatcher::update(bool force_write)
 			deleteJournalData(it->first);
 		}
 
+		if(it->second.last_record_update)
+		{
+			it->second.last_record_update=false;
+			q_update_lastusn->Bind(it->second.last_record);
+			q_update_lastusn->Bind(it->first);
+			q_update_lastusn->Write();
+			q_update_lastusn->Reset();
+		}
+
 		USN startUsn=it->second.last_record;
 		unsigned int update_bytes=0;
 
@@ -655,11 +666,11 @@ void ChangeJournalWatcher::update(bool force_write)
 				else if(update_bytes>5000)
 				{
 					update_bytes=0;
-					q_update_lastusn->Bind(it->second.last_record);
+					/*q_update_lastusn->Bind(it->second.last_record);
 					q_update_lastusn->Bind(it->first);
 					q_update_lastusn->Write();
 					q_update_lastusn->Reset();
-					startUsn=it->second.last_record;
+					startUsn=it->second.last_record;*/
 				}
 
 				USN nextUsn=*(USN *)&buffer;
@@ -742,7 +753,12 @@ void ChangeJournalWatcher::update(bool force_write)
 			}
 		}
 
-		if(startUsn!=it->second.last_record || force_write)
+		if(startUsn!=it->second.last_record)
+		{
+			it->second.last_record_update=true;
+		}
+
+		if(force_write)
 		{
 			q_update_lastusn->Bind(it->second.last_record);
 			q_update_lastusn->Bind(it->first);
@@ -769,10 +785,60 @@ void ChangeJournalWatcher::update_longliving(void)
 	}
 }
 
+
+void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRecord)
+{
+#define ADD_REASON(x) { if (UsnRecord->Reason & x){ if(!reason.empty()) reason+=L"|"; reason+=L#x; } }
+	std::wstring reason;
+	ADD_REASON(USN_REASON_DATA_OVERWRITE);
+	ADD_REASON(USN_REASON_DATA_EXTEND);
+	ADD_REASON(USN_REASON_DATA_TRUNCATION);
+	ADD_REASON(USN_REASON_NAMED_DATA_OVERWRITE);
+	ADD_REASON(USN_REASON_NAMED_DATA_EXTEND);
+	ADD_REASON(USN_REASON_NAMED_DATA_TRUNCATION);
+	ADD_REASON(USN_REASON_FILE_CREATE);
+	ADD_REASON(USN_REASON_FILE_DELETE);
+	ADD_REASON(USN_REASON_EA_CHANGE);
+	ADD_REASON(USN_REASON_SECURITY_CHANGE);
+	ADD_REASON(USN_REASON_RENAME_OLD_NAME);
+	ADD_REASON(USN_REASON_RENAME_NEW_NAME);
+	ADD_REASON(USN_REASON_INDEXABLE_CHANGE);
+	ADD_REASON(USN_REASON_BASIC_INFO_CHANGE);
+	ADD_REASON(USN_REASON_HARD_LINK_CHANGE);
+	ADD_REASON(USN_REASON_COMPRESSION_CHANGE);
+	ADD_REASON(USN_REASON_ENCRYPTION_CHANGE);
+	ADD_REASON(USN_REASON_OBJECT_ID_CHANGE);
+	ADD_REASON(USN_REASON_REPARSE_POINT_CHANGE);
+	ADD_REASON(USN_REASON_STREAM_CHANGE);
+	ADD_REASON(USN_REASON_TRANSACTED_CHANGE);
+	ADD_REASON(USN_REASON_CLOSE);
+	std::wstring attributes;
+#define ADD_ATTRIBUTE(x) { if(UsnRecord->attributes & x){ if(!attributes.empty()) attributes+=L"|"; attributes+=L#x; } }
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_READONLY);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_HIDDEN);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_SYSTEM);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_DIRECTORY);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_ARCHIVE);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_DEVICE);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_NORMAL);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_TEMPORARY);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_SPARSE_FILE);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_REPARSE_POINT);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_COMPRESSED);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_OFFLINE);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_NOT_CONTENT_INDEXED);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_ENCRYPTED);
+	ADD_ATTRIBUTE(FILE_ATTRIBUTE_VIRTUAL);
+	std::wstring lstr=L"Change: "+vol+L" [fn="+UsnRecord->Filename+L",reason="+reason+L",attributes="+
+						attributes+L",USN="+convert(UsnRecord->Usn)+L"]";
+	Server->Log(lstr, LL_DEBUG);
+}
+
 const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REASON_HARD_LINK_CHANGE | USN_REASON_NAMED_DATA_EXTEND | USN_REASON_NAMED_DATA_OVERWRITE| USN_REASON_NAMED_DATA_TRUNCATION| USN_REASON_REPARSE_POINT_CHANGE| USN_REASON_SECURITY_CHANGE| USN_REASON_STREAM_CHANGE| USN_REASON_DATA_TRUNCATION | USN_REASON_BASIC_INFO_CHANGE | USN_REASON_DATA_OVERWRITE | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME;
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
 {
+	//logEntry(vol, UsnRecord);
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
 	if(dir_id!=-1) //Is a directory
 	{
