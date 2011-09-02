@@ -724,8 +724,12 @@ function tabMouseOver(obj)
 		{
 			if(idx>0)
 			{
-				g.mouse_over_styles.push(obj.childNodes[i].style.backgroundColor);
+				g.mouse_over_styles.push({backgroundColor: obj.childNodes[i].style.backgroundColor, color: obj.childNodes[i].style.color});
 				obj.childNodes[i].style.backgroundColor='blue';
+				if(obj.childNodes[i].childNodes.length>0 && obj.childNodes[i].childNodes[0].nodeType==3)
+				{
+					obj.childNodes[i].style.color='white';
+				}
 			}
 			else
 			{
@@ -738,15 +742,17 @@ function tabMouseOver(obj)
 function tabMouseOut(obj)
 {
 	var idx=0;
-	var mos=0;
+	var mos=g.mouse_over_styles.length-1;
 	for(var i=0;i<obj.childNodes.length;++i)
 	{
 		if(obj.childNodes[i].style)
 		{
 			if(idx>0)
 			{
-				obj.childNodes[i].style.backgroundColor=g.mouse_over_styles[mos];
-				++mos;
+				obj.childNodes[i].style.backgroundColor=g.mouse_over_styles[mos].backgroundColor;
+				obj.childNodes[i].style.color=g.mouse_over_styles[mos].color;
+				g.mouse_over_styles.pop();
+				--mos;
 			}
 			else
 			{
