@@ -4,8 +4,10 @@
 #include "../Interface/Database.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
+#ifdef _WIN32
 #include "watchdir/DirectoryChanges.h"
-#include "Database.h"
+#endif
+#include "database.h"
 #include "ChangeJournalWatcher.h"
 #include <list>
 
