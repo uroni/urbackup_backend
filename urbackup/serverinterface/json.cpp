@@ -177,11 +177,33 @@ namespace JSON
 	{
 		init(val);
 	}
+	
+	Value::Value(const char *val)
+	{
+		init(val);
+	}
+	
+	Value::Value(const wchar_t *val)
+	{
+		init(val);
+	}
 
 	void Value::init(void)
 	{
 		data_type=null_type;
 		data=NULL;
+	}
+	
+	void Value::init(const char *val)
+	{
+		data_type=str_type;
+		data=new std::string(val);
+	}
+	
+	void Value::init(const wchar_t *val)
+	{
+		data_type=wstr_type;
+		data=new std::wstring(val);
 	}
 
 	void Value::init(const std::string &val)

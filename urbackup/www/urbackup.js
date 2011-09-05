@@ -883,6 +883,9 @@ function show_settings2(data)
 			
 			data.settings.client_plural="s";
 			
+			data.settings.ONLY_WIN32_BEGIN=unescapeHTML(data.settings.ONLY_WIN32_BEGIN);
+			data.settings.ONLY_WIN32_END=unescapeHTML(data.settings.ONLY_WIN32_END);
+			
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
 			ndata+=tmpls.settings_general.evaluate(data.settings);
 			

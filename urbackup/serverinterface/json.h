@@ -72,13 +72,19 @@ namespace JSON
 		Value(const std::string &val);
 		Value(const std::wstring &val);
 		Value(const Object &val); 
-		Value(const Array &val);
+		Value(const Array &val)
+		
+		
+		
+		;
 		Value(bool val);
 		Value(int val);
 		Value(unsigned int val);
 		Value(_i64 val);
 		Value(uint64 val);
 		Value(double val);
+		Value(const char* val);
+		Value(const wchar_t* val);
 		~Value();
 
 		Value & operator=(const Value &other);
@@ -111,6 +117,8 @@ namespace JSON
 		void init(_i64 val);
 		void init(uint64 val);
 		void init(double val);
+		void init(const char* val);
+		void init(const wchar_t* val);
 
 		std::string escape(const std::string &t);
 

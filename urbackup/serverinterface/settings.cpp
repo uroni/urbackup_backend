@@ -521,6 +521,13 @@ ACTION_IMPL(settings)
 				obj.set("max_active_clients", settings.max_active_clients);
 				obj.set("tmpdir", settings.tmpdir);
 				obj.set("cleanup_window", settings.cleanup_window);
+				#ifdef _WIN32
+				obj.set("ONLY_WIN32_BEGIN","");
+				obj.set("ONLY_WIN32_END","");
+				#else
+				obj.set("ONLY_WIN32_BEGIN","<!--");
+				obj.set("ONLY_WIN32_END","-->");
+				#endif //_WIN32
 
 				ret.set("settings", obj);
 			}
