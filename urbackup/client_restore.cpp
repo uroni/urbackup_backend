@@ -615,6 +615,9 @@ bool has_network_device(void)
 #ifdef _WIN32
 	return true;
 #else
+#ifdef sun
+	return true;
+#else
 	char          buf[1024];
 	struct ifconf ifc;
 	struct ifreq *ifr;
@@ -653,7 +656,8 @@ bool has_network_device(void)
 	}
 	close(sck);
 	return false;
-#endif
+#endif //sun
+#endif //_WIN32
 }
 
 const int start_state=-2;
