@@ -851,7 +851,7 @@ void ClientConnector::ReceivePackets(void)
 		{
 			IScopedLock lock(backup_mutex);
 			lasttime=Server->getTimeMS();
-			if(backup_running!=0)
+			if(backup_running!=0 && Server->getTimeMS()-last_pingtime<x_pingtimeout )
 				tcpstack.Send(pipe, "RUNNING");
 			else
 			{
@@ -876,7 +876,7 @@ void ClientConnector::ReceivePackets(void)
 		{
 			IScopedLock lock(backup_mutex);
 			lasttime=Server->getTimeMS();
-			if(backup_running!=0)
+			if(backup_running!=0 && Server->getTimeMS()-last_pingtime<x_pingtimeout)
 				tcpstack.Send(pipe, "RUNNING");
 			else
 			{
