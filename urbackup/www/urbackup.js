@@ -742,7 +742,7 @@ function tabMouseOver(obj)
 function tabMouseOut(obj)
 {
 	var idx=0;
-	var mos=g.mouse_over_styles.length-1;
+	var mos=0;
 	for(var i=0;i<obj.childNodes.length;++i)
 	{
 		if(obj.childNodes[i].style)
@@ -751,8 +751,7 @@ function tabMouseOut(obj)
 			{
 				obj.childNodes[i].style.backgroundColor=g.mouse_over_styles[mos].backgroundColor;
 				obj.childNodes[i].style.color=g.mouse_over_styles[mos].color;
-				g.mouse_over_styles.pop();
-				--mos;
+				++mos;
 			}
 			else
 			{
@@ -760,6 +759,10 @@ function tabMouseOut(obj)
 			}
 			++idx;
 		}
+	}
+	if(mos>0)
+	{
+		g.mouse_over_styles.length=0;
 	}
 }
 function tabMouseClickClients(clientid)
