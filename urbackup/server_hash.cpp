@@ -72,7 +72,16 @@ BackupServerHash::~BackupServerHash(void)
 void BackupServerHash::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	db->Write("CREATE TEMPORARY TABLE files_tmp ( backupid INTEGER, fullpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER);");
+	{
+	    bool r;
+	    do
+	    {
+		r=db->Write("CREATE TEMPORARY TABLE files_tmp ( backupid INTEGER, fullpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER);");
+		if(!r)
+		    Server->wait(1000);
+		    
+	    }while(!r);
+	}
 	int big_cache_size=0;
 	prepareSQL();
 	copyFilesFromTmp();
