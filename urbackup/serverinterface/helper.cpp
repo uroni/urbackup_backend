@@ -192,7 +192,7 @@ std::string Helper::getTimeFormatString(void)
 	}
 	else
 	{
-		return "%m/%d/%Y %H:%M";
+		return "%Y-%m-%d %H:%M";
 	}
 }
 
