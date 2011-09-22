@@ -275,7 +275,7 @@ translations.de={
 "tWarning": "Warnung",
 "tMail server name": "Mailserver name",
 "tMail server port": "Mailserver port",
-"tMail server username (empty for none)": "enutzername (leer für keinen)",
+"tMail server username (empty for none)": "Benutzername (leer für keinen)",
 "tMail server password": "Passwort",
 "tSender E-Mail Address": "Absender E-Mail Adresse",
 "tSend mails only with SSL/TLS": "E-Mails nur mit SSL/TLS Sicherung schicken",

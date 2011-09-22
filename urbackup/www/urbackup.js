@@ -1079,7 +1079,7 @@ g.mail_settings_list=[
 "mail_password",
 "mail_from",
 "mail_ssl_only",
-"mail_check_certificate",
+"mail_check_certificate"
 ];
 
 function validateCommonSettings()
