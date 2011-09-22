@@ -90,3 +90,11 @@ Release Server PreVista/*
 urbackup/Release Server PreVista/*
 Debug WinXP/*
 urbackup/Debug WinXP/*
+urlplugin/lib64/*
+urlplugin/lib86/*
+urlplugin/*.dll
+libcurl.dll
+libeay32.dll
+ssleay32.dll
+urlplugin/x64/*
+zlib1.dll
