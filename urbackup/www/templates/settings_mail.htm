@@ -1,0 +1,36 @@
+﻿<br />
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+<tr>
+<td>#{tMail server name}:</td>
+<td><input type="text" size="40" id="mail_servername" value="#{mail_servername}"/> </td>
+</tr>
+<tr>
+<td>#{tMail server port}:</td>
+<td><input type="text" size="40" id="mail_serverport" value="#{mail_serverport}"/> </td>
+</tr>
+<tr>
+<td>#{tMail server username (empty for none)}:</td>
+<td><input type="text" size="40" id="mail_username" value="#{mail_username}"/> </td>
+</tr>
+<tr>
+<td>#{tMail server password}:</td>
+<td><input type="text" size="40" id="mail_password" value="#{mail_password}"/> </td>
+</tr>
+<tr>
+<td>#{tSender E-Mail Address}:</td>
+<td><input type="text" id="mail_from" value="#{mail_from}" /></td>
+</tr>
+<tr>
+<td>#{tSend mails only with SSL/TLS}:</td>
+<td><input type="checkbox" id="mail_ssl_only" value="false" #{mail_ssl_only}/></td>
+</tr>
+<td>#{tCheck SSL/TLS certificate}:</td>
+<td><input type="checkbox" id="mail_check_certificate" value="false" #{mail_check_certificate}/></td>
+</tr>
+</table>
+<br />
+<br />
+<input type="button" value="#{tSave}" onClick="saveMailSettings()" />
+<br />
+#{tSend test mail to this email address after saving the settings (leave empty to not send a test mail)}:<br />
+<input type="text" size="40" id="testmailaddr" value=""/>

@@ -4,6 +4,7 @@
 #include "../Interface/SettingsReader.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/ThreadPool.h"
+#include "../urlplugin/IUrlFactory.h"
 #include "fileclient/FileClient.h"
 #include "os_functions.h"
 #include "server_hash.h"
@@ -43,6 +44,7 @@ public:
 	static void destroy_mutex(void);
 
 	static bool isInBackupWindow(std::vector<STimeSpan> bw);
+	static MailServer getMailServerSettings(void);
 
 private:
 	void unloadSQL(void);
@@ -74,7 +76,9 @@ private:
 	void setBackupDone(void);
 	void setBackupImageComplete(void);
 	void sendClientLogdata(void);
+	std::wstring getUserRights(int userid, std::string domain);
 	void saveClientLogdata(int image, int incremental);
+	void sendLogdataMail(int image, int incremental, int errors, int warnings, int infos, std::wstring &data);
 	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref);
 	std::string getMBR(const std::wstring &dl);
 	unsigned int writeMBR(ServerVHDWriter *vhdfile, uint64 volsize);
@@ -145,6 +149,11 @@ private:
 	IQuery *q_get_unsent_logdata;
 	IQuery *q_set_logdata_sent;
 	IQuery *q_save_image_assoc;
+	IQuery *q_get_users;
+	IQuery *q_get_rights;
+	IQuery *q_get_report_settings;
+	IQuery *q_format_unixtime;
+
 
 	int state;
 	std::string t_name;

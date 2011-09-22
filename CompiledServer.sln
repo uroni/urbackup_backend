@@ -51,6 +51,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "downloadplugin", "downloadp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jswiki", "jswiki\jswiki.vcxproj", "{81EE2F6D-6A48-423B-8BBB-B97DB74EDD0F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "urlplugin", "urlplugin\urlplugin.vcxproj", "{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug WinXP|Win32 = Debug WinXP|Win32
@@ -364,6 +366,18 @@ Global
 		{81EE2F6D-6A48-423B-8BBB-B97DB74EDD0F}.Release|Win32.ActiveCfg = Release|Win32
 		{81EE2F6D-6A48-423B-8BBB-B97DB74EDD0F}.Release|Win32.Build.0 = Release|Win32
 		{81EE2F6D-6A48-423B-8BBB-B97DB74EDD0F}.Release|x64.ActiveCfg = Release|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug WinXP|Win32.ActiveCfg = Debug|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug WinXP|Win32.Build.0 = Debug|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug WinXP|x64.ActiveCfg = Debug|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug XP|Win32.ActiveCfg = Debug|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug XP|Win32.Build.0 = Debug|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug XP|x64.ActiveCfg = Debug|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug|Win32.Build.0 = Debug|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug|x64.ActiveCfg = Debug|x64
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release|Win32.ActiveCfg = Release|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release|Win32.Build.0 = Release|Win32
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

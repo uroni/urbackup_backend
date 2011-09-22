@@ -8,13 +8,19 @@
 #include "../Interface/File.h"
 #include "os_functions.h"
 #include "../stringtools.h"
+#include "server_settings.h"
 
 const bool update_stats_use_transactions=true;
 const bool update_stats_autocommit=true;
 
+ServerUpdateStats::ServerUpdateStats(bool image_repair_mode)
+	: image_repair_mode(image_repair_mode)
+{
+}
+
 void ServerUpdateStats::createQueries(void)
 {
-	q_get_images=db->Prepare("SELECT clientid,path FROM backup_images WHERE complete=1 AND running<datetime('now','-300 seconds')", false);
+	q_get_images=db->Prepare("SELECT id,clientid,path FROM backup_images WHERE complete=1 AND running<datetime('now','-300 seconds')", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=? WHERE id=?", false);
 	q_get_ncount_files=db->Prepare("SELECT files.rowid AS id, shahash, filesize, rsize, clientid, backupid FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE did_count=0 LIMIT 10000", false);
 	q_has_client=db->Prepare("SELECT count(*) AS c FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE shahash=? AND filesize=? AND clientid=?", false);
@@ -70,25 +76,32 @@ void ServerUpdateStats::operator()(void)
 
 	createQueries();
 
-	q_create_hist->Write();
-	q_create_hist->Reset();
+	if(!image_repair_mode)
+	{
+		q_create_hist->Write();
+		q_create_hist->Reset();
 
-	q_save_client_hist->Bind(db->getLastInsertID());
-	q_save_client_hist->Write();
-	q_save_client_hist->Reset();
+		q_save_client_hist->Bind(db->getLastInsertID());
+		q_save_client_hist->Write();
+		q_save_client_hist->Reset();
+	}
 
 	update_images();
-	update_files();
 
-	q_create_hist->Write();
-	q_create_hist->Reset();
+	if(!image_repair_mode)
+	{
+		update_files();
 
-	q_save_client_hist->Bind(db->getLastInsertID());
-	q_save_client_hist->Write();
-	q_save_client_hist->Reset();
+		q_create_hist->Write();
+		q_create_hist->Reset();
 
-	q_set_file_backup_null->Write();
-	q_set_file_backup_null->Reset();
+		q_save_client_hist->Bind(db->getLastInsertID());
+		q_save_client_hist->Write();
+		q_save_client_hist->Reset();
+
+		q_set_file_backup_null->Write();
+		q_set_file_backup_null->Reset();
+	}
 
 	destroyQueries();
 	if(!cache_res.empty())
@@ -97,9 +110,17 @@ void ServerUpdateStats::operator()(void)
 	}
 }
 
+void ServerUpdateStats::repairImages(void)
+{
+	ServerUpdateStats sus(true);
+	sus();
+}
+
 void ServerUpdateStats::update_images(void)
 {
-	Server->Log("Updating image stats...",LL_INFO);
+	if(!image_repair_mode)
+		Server->Log("Updating image stats...",LL_INFO);
+
 	db_results res=q_get_images->Read();
 	q_get_images->Reset();
 
@@ -119,6 +140,12 @@ void ServerUpdateStats::update_images(void)
 		IFile * file=Server->openFile(os_file_prefix()+fn, MODE_READ);
 		if(file==NULL)
 		{
+			bool b=repairImagePath(res[i]);
+			if(b)
+			{
+				update_images();
+				return;
+			}
 			Server->Log(L"Error opening file '"+fn+L"'", LL_ERROR);
 			continue;
 		}
@@ -583,6 +610,42 @@ void ServerUpdateStats::updateDels(std::map<int, SDelInfo> &data)
 			q_update_del_size->Reset();
 		}
 	}
+}
+
+bool ServerUpdateStats::repairImagePath(str_map img)
+{
+	int clientid=watoi(img[L"clientid"]);
+	ServerSettings settings(db, clientid);
+	IQuery *q=db->Prepare("SELECT name FROM clients WHERE id=?", false);
+	q->Bind(clientid);
+	db_results res=q->Read();
+	q->Reset();
+	db->destroyQuery(q);
+	if(!res.empty())
+	{
+		std::wstring clientname=res[0][L"name"];
+		std::wstring imgname=ExtractFileName(img[L"path"]);
+
+		std::wstring new_name=settings.getSettings()->backupfolder+os_file_sep()+clientname+os_file_sep()+imgname;
+
+		IFile * file=Server->openFile(os_file_prefix()+new_name, MODE_READ);
+		if(file==NULL)
+		{
+			Server->Log(L"Repairing image failed", LL_INFO);
+			return false;
+		}
+		Server->destroy(file);
+
+		q=db->Prepare("UPDATE backup_images SET path=? WHERE id=?", false);
+		q->Bind(new_name);
+		q->Bind(img[L"id"]);
+		q->Write();
+		q->Reset();
+		db->destroyQuery(q);
+
+		return true;
+	}
+	return false;
 }
 
 #endif //CLIENT_ONLY

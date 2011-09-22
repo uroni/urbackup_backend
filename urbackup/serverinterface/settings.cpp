@@ -21,7 +21,24 @@
 #include "action_header.h"
 #include "../server_settings.h"
 #include "../../Interface/SettingsReader.h"
+#include "../../urlplugin/IUrlFactory.h"
 #include "../os_functions.h"
+#include "../server_get.h"
+
+extern IUrlFactory *url_fak;
+
+std::vector<std::wstring> getMailSettingsList(void)
+{
+	std::vector<std::wstring> tmp;
+	tmp.push_back(L"mail_servername");
+	tmp.push_back(L"mail_serverport");
+	tmp.push_back(L"mail_username");
+	tmp.push_back(L"mail_password");
+	tmp.push_back(L"mail_from");
+	tmp.push_back(L"mail_ssl_only");
+	tmp.push_back(L"mail_check_certificate");
+	return tmp;
+}
 
 JSON::Object getJSONClientSettings(ServerSettings &settings)
 {
@@ -96,6 +113,29 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 	return ret;
 }
 
+void getMailSettings(JSON::Object &obj, IDatabase *db)
+{
+	std::vector<std::wstring> slist=getMailSettingsList();
+	IQuery *q=db->Prepare("SELECT key, value FROM settings WHERE clientid=0 AND key=?");
+	for(size_t i=0;i<slist.size();++i)
+	{
+		q->Bind(slist[i]);
+		db_results res=q->Read();
+		q->Reset();
+		if(!res.empty())
+		{
+			obj.set(Server->ConvertToUTF8(slist[i]), res[0][L"value"]);
+		}
+		else
+		{
+			std::string v="";
+			if(slist[i]==L"mail_serverport")
+				v="25";
+			obj.set(Server->ConvertToUTF8(slist[i]), v);
+		}
+	}
+}
+
 SClientSettings getClientSettings(IDatabase *db, int clientid)
 {
 	IQuery *q=db->Prepare("SELECT key, value FROM settings WHERE clientid=?");
@@ -156,6 +196,23 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 		Server->setTemporaryDirectory(settings.tmpdir+os_file_sep()+L"urbackup_tmp");
 	}
 #endif
+}
+
+void updateMailSettings(str_map &GET, IDatabase *db)
+{
+	IQuery *q_get=db->Prepare("SELECT value FROM settings WHERE clientid=0 AND key=?");
+	IQuery *q_update=db->Prepare("UPDATE settings SET value=? WHERE key=? AND clientid=0");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings (key, value, clientid) VALUES (?,?,0)");
+
+	std::vector<std::wstring> settings=getMailSettingsList();
+	for(size_t i=0;i<settings.size();++i)
+	{
+		str_map::iterator it=GET.find(settings[i]);
+		if(it!=GET.end())
+		{
+			updateSetting(settings[i], it->second, q_get, q_update, q_insert);
+		}
+	}
 }
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
@@ -288,6 +345,11 @@ ACTION_IMPL(settings)
 			if(helper.getRights("usermod")=="all" )
 			{
 				navitems.set("users", true);
+			}
+
+			if(helper.getRights("mail_settings")=="all")
+			{
+				navitems.set("mail", true);
 			}
 
 			JSON::Array clients;
@@ -531,6 +593,43 @@ ACTION_IMPL(settings)
 
 				ret.set("settings", obj);
 			}
+		}
+		if(sa==L"mail_save" && helper.getRights("mail_settings")=="all")
+		{
+			updateMailSettings(GET, db);
+			ret.set("saved_ok", true);
+			std::wstring testmailaddr=GET[L"testmailaddr"];
+			if(!testmailaddr.empty())
+			{
+				MailServer mail_server=BackupServerGet::getMailServerSettings();
+				if(url_fak!=NULL)
+				{
+					std::vector<std::string> to;
+					to.push_back(Server->ConvertToUTF8(testmailaddr));
+					std::string errmsg;
+					bool b=url_fak->sendMail(mail_server, to, "UrBackup mail test", "This is a test mail from UrBackup", &errmsg);
+					if(!b)
+					{
+						ret.set("mail_test", errmsg);
+					}
+					else
+					{
+						ret.set("mail_test", "ok");
+					}
+				}
+				else
+				{
+					ret.set("mail_test", "Mail module not loaded");
+				}
+			}
+			sa=L"mail";
+		}
+		if( sa==L"mail" && helper.getRights("mail_settings")=="all")
+		{
+			JSON::Object obj;
+			getMailSettings(obj, db);
+			ret.set("settings", obj);
+			ret.set("sa", sa);
 		}
 	}
 	else

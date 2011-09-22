@@ -86,6 +86,9 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("status_detail_extra_row");
 	templates.push_back("status_detail_row");
 	templates.push_back("status_row_delete_pending");
+	templates.push_back("settings_mail");
+	templates.push_back("settings_mail_test_ok");
+	templates.push_back("settings_mail_test_failed");
 
 	IFile *out=Server->openFile("urbackup/www/templates.js", MODE_WRITE);
 	if(out==NULL)

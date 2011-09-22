@@ -39,6 +39,7 @@
 #include "../pychart/IPychartFactory.h"
 #include "../downloadplugin/IDownloadFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
+#include "../urlplugin/IUrlFactory.h"
 
 IServer *Server;
 
@@ -67,6 +68,7 @@ IFSImageFactory *image_fak;
 IPychartFactory *pychart_fak;
 IDownloadFactory *download_fak;
 ICryptoFactory *crypto_fak;
+IUrlFactory *url_fak=NULL;
 std::string server_identity;
 std::string server_token;
 
@@ -371,7 +373,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Error loading IDownloadFactory", LL_ERROR);
 		}
-
+		url_fak=(IUrlFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("url", params));
+		if(url_fak==NULL)
+		{
+			Server->Log("Error loading IUrlFactory", LL_ERROR);
+		}
 
 		server_exit_pipe=Server->createMemoryPipe();
 		BackupServer *backup_server=new BackupServer(server_exit_pipe);
@@ -584,6 +590,14 @@ void upgrade8_9(void)
 	db->Write("CREATE TABLE assoc_images ( img_id INTEGER REFERENCES backup_images(id) ON DELETE CASCADE, assoc_id INTEGER REFERENCES backup_images(id) ON DELETE CASCADE)");
 }
 
+void upgrade9_10(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE si_users ADD report_mail TEXT");
+	db->Write("ALTER TABLE si_users ADD report_loglevel INTEGER");
+	db->Write("ALTER TABLE si_users ADD report_sendonly INTEGER");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -637,6 +651,10 @@ void upgrade(void)
 				break;
 			case 8:
 				upgrade8_9();
+				++ver;
+				break;
+			case 9:
+				upgrade9_10();
 				++ver;
 				break;
 			default:
