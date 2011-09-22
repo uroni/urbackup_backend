@@ -1,5 +1,6 @@
 #include "UrlFactory.h"
 #include "../Interface/Server.h"
+#include <memory.h>
 #include <curl/curl.h>
 
 #include "../stringtools.h"

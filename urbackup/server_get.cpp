@@ -2161,7 +2161,7 @@ MailServer BackupServerGet::getMailServerSettings(void)
 
 	MailServer ms;
 	ms.servername=settings->getValue("mail_servername", "");
-	ms.port=(unsigned short)watoi(settings->getValue(L"mail_serverport", L"25"));
+	ms.port=(unsigned short)watoi(settings->getValue(L"mail_serverport", L"587"));
 	ms.username=settings->getValue("mail_username", "");
 	ms.password=settings->getValue("mail_password", "");
 	ms.mailfrom=settings->getValue("mail_from", "");
