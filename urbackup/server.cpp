@@ -149,6 +149,7 @@ void BackupServer::startClients(FileClient &fc)
 
 	for(size_t i=0;i<names.size();++i)
 	{
+		names[i]=Server->ConvertToUnicode(conv_filename(Server->ConvertToUTF8(names[i])));
 		std::map<std::wstring, SClient>::iterator it=clients.find(names[i]);
 		if( it==clients.end() )
 		{
@@ -196,7 +197,7 @@ void BackupServer::startClients(FileClient &fc)
 
 					char *ip=(char*)&it->second.addr.sin_addr.s_addr;
 
-					Server->Log("New client address: "+nconvert(ip[3])+"."+nconvert(ip[2])+"."+nconvert(ip[1])+"."+nconvert(ip[0]), LL_INFO);
+					Server->Log("New client address: "+nconvert((unsigned char)ip[0])+"."+nconvert((unsigned char)ip[1])+"."+nconvert((unsigned char)ip[2])+"."+nconvert((unsigned char)ip[3]), LL_INFO);
 
 					ServerStatus::setIP(names[i], it->second.addr.sin_addr.s_addr);
 				}
