@@ -280,7 +280,7 @@ translations.de={
 "tSender E-Mail Address": "Absender E-Mail Adresse",
 "tSend mails only with SSL/TLS": "E-Mails nur mit SSL/TLS Sicherung schicken",
 "tCheck SSL/TLS certificate": "SSL/TLS Zertifikat prüfen",
-"tSend test mail to this email address after saving the settings (leave empty to not send a test mail)": "Sende test E-Mail an diese Adresse nach speichern der Einstellungen (leer lassen um keine Test E-Mail zu senden)",
+"tSend test mail to this email address after saving the settings (leave empty to not send a test mail)": "Sende Test E-Mail an diese Adresse nach Speichern der Einstellungen (leer lassen um keine Test E-Mail zu senden)",
 "tTest Mail sent successfully": "Test E-Mail erfolgreich gesendet",
 "tSending test mail failed. Error:": "Senden der Test E-Mail fehlgeschlagen. Fehler:"
 }

@@ -957,9 +957,9 @@ function show_settings2(data)
 		}
 		else if(data.sa=="mail")
 		{
-			if(data.settings.mail_ssl_only) data.settings.mail_ssl_only="checked=\"checked\"";
+			if(data.settings.mail_ssl_only=="true") data.settings.mail_ssl_only="checked=\"checked\"";
 			else data.settings.mail_ssl_only="";
-			if(data.settings.mail_check_certificate) data.settings.mail_check_certificate="checked=\"checked\"";
+			if(data.settings.mail_check_certificate=="true") data.settings.mail_check_certificate="checked=\"checked\"";
 			else data.settings.mail_check_certificate="";
 			
 			ndata+=tmpls.settings_mail.evaluate(data.settings);
