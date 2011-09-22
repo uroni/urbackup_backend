@@ -79,7 +79,8 @@ translations.en={
 "storage_usage_bar_graph_title": "Storage usage",
 "storage_usage_bar_graph_colname1": "Date",
 "storage_usage_bar_graph_colname2": "Storage usage",
-"validate_err_notregexp_cleanup_window": "Format for cleanup window wrong"
+"validate_err_notregexp_cleanup_window": "Format for cleanup window wrong",
+"mail_settings": "Mail"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -168,7 +169,7 @@ translations.de={
 "tStorage allocation": "Speicherbelegung",
 "tImages": "Images",
 "tFiles": "Dateien",
-"tAll": "Gesamt",
+"tSum": "Gesamt",
 "tStorage usage": "Speichernutzungsverlauf",
 "tNo Users": "Keine Benutzer",
 "tRemove": "Löschen",
@@ -260,5 +261,26 @@ translations.de={
 "tServer identity": "Serveridentität",
 "tNondefault temporary file directory": "Vom Standard abweichender temporärer Dateiordner",
 "tCleanup time window": "Aufräum Zeitfenster",
-"validate_err_notregexp_cleanup_window": "Falsches Format für das Aufräum Zeitfenster"
+"validate_err_notregexp_cleanup_window": "Falsches Format für das Aufräum Zeitfenster",
+"mail_settings": "E-Mail",
+"tReports": "Reports",
+"tSend reports to": "Reports senden an",
+"tE-Mail addresses seperated by ';'": "E-Mail Adresssen getrennt durch ';'",
+"tSend": "Sende", 
+"tBackups with a log message of at least log level": "Backups mit Benachrichtigungen mit wenigstens Wichtigkeit",
+"tFailed": "Fehlgeschlagene",
+"tSuccessfull": "Erfolgreiche",
+"tInfo": "Info",
+"tError": "Fehler",
+"tWarning": "Warnung",
+"tMail server name": "Mailserver name",
+"tMail server port": "Mailserver port",
+"tMail server username (empty for none)": "enutzername (leer für keinen)",
+"tMail server password": "Passwort",
+"tSender E-Mail Address": "Absender E-Mail Adresse",
+"tSend mails only with SSL/TLS": "E-Mails nur mit SSL/TLS Sicherung schicken",
+"tCheck SSL/TLS certificate": "SSL/TLS Zertifikat prüfen",
+"tSend test mail to this email address after saving the settings (leave empty to not send a test mail)": "Sende test E-Mail an diese Adresse nach speichern der Einstellungen (leer lassen um keine Test E-Mail zu senden)",
+"tTest Mail sent successfully": "Test E-Mail erfolgreich gesendet",
+"tSending test mail failed. Error:": "Senden der Test E-Mail fehlgeschlagen. Fehler:"
 }

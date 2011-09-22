@@ -33,16 +33,19 @@
 #include "server_log.h"
 #include "server_writer.h"
 #include "server_cleanup.h"
+#include "server_update_stats.h"
 #include "escape.h"
 #include "mbr_code.h"
 #include "zero_hash.h"
 #include "server_running.h"
 #include "treediff/TreeDiff.h"
+#include "../urlplugin/IUrlFactory.h"
 #include <time.h>
 #include <algorithm>
 #include <memory.h>
 
 extern IFSImageFactory *image_fak;
+extern IUrlFactory *url_fak;
 extern std::string server_identity;
 extern std::string server_token;
 
@@ -127,6 +130,10 @@ void BackupServerGet::unloadSQL(void)
 	db->destroyQuery(q_get_unsent_logdata);
 	db->destroyQuery(q_set_logdata_sent);
 	db->destroyQuery(q_save_image_assoc);
+	db->destroyQuery(q_get_users);
+	db->destroyQuery(q_get_rights);
+	db->destroyQuery(q_get_report_settings);
+	db->destroyQuery(q_format_unixtime);
 }
 
 void BackupServerGet::operator ()(void)
@@ -589,6 +596,10 @@ void BackupServerGet::prepareSQL(void)
 	q_get_unsent_logdata=db->Prepare("SELECT id, strftime('%s', created) AS created, logdata FROM logs WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 	q_save_image_assoc=db->Prepare("INSERT INTO assoc_images (img_id, assoc_id) VALUES (?,?)", false);
+	q_get_users=db->Prepare("SELECT id FROM si_users WHERE report_mail IS NOT NULL AND report_mail<>''", false);
+	q_get_rights=db->Prepare("SELECT t_right FROM si_permissions WHERE clientid=? AND t_domain=?", false);
+	q_get_report_settings=db->Prepare("SELECT report_mail, report_loglevel, report_sendonly FROM si_users WHERE id=?", false);
+	q_format_unixtime=db->Prepare("SELECT datetime(?, 'unixepoch', 'localtime') AS time", false);
 }
 
 int BackupServerGet::getClientID(void)
@@ -1983,7 +1994,185 @@ void BackupServerGet::saveClientLogdata(int image, int incremental)
 	q_save_logdata->Write();
 	q_save_logdata->Reset();
 
+	sendLogdataMail(image, incremental, errors, warnings, infos, logdata);
+
 	ServerLogger::reset(clientid);
+}
+
+std::wstring BackupServerGet::getUserRights(int userid, std::string domain)
+{
+	if(domain!="all")
+	{
+		if(getUserRights(userid, "all")==L"all")
+			return L"all";
+	}
+	q_get_rights->Bind(userid);
+	q_get_rights->Bind(domain);
+	db_results res=q_get_rights->Read();
+	q_get_rights->Reset();
+	if(!res.empty())
+	{
+		return res[0][L"t_right"];
+	}
+	else
+	{
+		return L"none";
+	}
+}
+
+void BackupServerGet::sendLogdataMail(int image, int incremental, int errors, int warnings, int infos, std::wstring &data)
+{
+	MailServer mail_server=getMailServerSettings();
+	if(mail_server.servername.empty())
+		return;
+
+	if(url_fak==NULL)
+		return;
+
+	db_results res_users=q_get_users->Read();
+	q_get_users->Reset();
+	for(size_t i=0;i<res_users.size();++i)
+	{
+		std::wstring logr=getUserRights(watoi(res_users[i][L"id"]), "logs");
+		bool has_r=false;
+		if(logr!=L"all")
+		{
+			std::vector<std::wstring> toks;
+			Tokenize(logr, toks, L",");
+			for(size_t j=0;j<toks.size();++j)
+			{
+				if(toks[j]==res_users[i][L"id"])
+				{
+					has_r=true;
+				}
+			}
+		}
+		else
+		{
+			has_r=true;
+		}
+
+		if(has_r)
+		{
+			q_get_report_settings->Bind(watoi(res_users[i][L"id"]));
+			db_results res=q_get_report_settings->Read();
+			q_get_report_settings->Reset();
+
+			if(!res.empty())
+			{
+				std::wstring report_mail=res[0][L"report_mail"];
+				int report_loglevel=watoi(res[0][L"report_loglevel"]);
+				int report_sendonly=watoi(res[0][L"report_sendonly"]);
+
+				if( ( report_loglevel==0 && infos>0 )
+					|| ( report_loglevel<=1 && warnings>0 )
+					|| ( report_loglevel<=2 && errors>0 ) )
+				{
+					std::vector<std::string> to_addrs;
+					Tokenize(Server->ConvertToUTF8(report_mail), to_addrs, ",;");
+
+					std::string subj="UrBackup: ";
+					std::string msg="UrBackup just did ";
+					if(incremental>0)
+					{
+						msg+="an incremental ";
+						subj="Incremental ";
+					}
+					else
+					{
+						msg+="a full ";
+						subj="Full";
+					}
+
+					if(image>0)
+					{
+						msg+="image ";
+						subj+="image ";
+					}
+					else
+					{
+						msg+="file ";
+						subj+="file ";
+					}
+					subj+="backup of \""+Server->ConvertToUTF8(clientname)+"\"\n";
+					msg+="backup of \""+Server->ConvertToUTF8(clientname)+"\".\n";
+					msg+="\nReport:\n";
+					msg+="( "+nconvert(infos);
+					if(infos!=1) msg+=" infos, ";
+					else msg+=" info, ";
+					msg+=nconvert(warnings);
+					if(warnings!=1) msg+=" warnings, ";
+					else msg+=" warning, ";
+					msg+=nconvert(errors);
+					if(errors!=1) msg+=" errors";
+					else msg+=" error";
+					msg+=" )\n\n";
+					std::vector<std::wstring> msgs;
+					Tokenize(data, msgs, L"\n");
+					bool not_complete=false;
+					for(size_t j=0;j<msgs.size();++j)
+					{
+						std::wstring ll;
+						if(!msgs[j].empty()) ll=msgs[j][0];
+						int li=watoi(ll);
+						msgs[j].erase(0, 2);
+						std::wstring tt=getuntil(L"-", msgs[j]);
+						std::wstring m=getafter(L"-", msgs[j]);
+						if(li==2 && m.find(L"not complete")!=std::string::npos )
+							not_complete=true;
+
+						q_format_unixtime->Bind(tt);
+						db_results ft=q_format_unixtime->Read();
+						q_format_unixtime->Reset();
+						if( !ft.empty() )
+						{
+							tt=ft[0][L"time"];
+						}
+						std::string lls="info";
+						if(li==1) lls="warning";
+						else if(li==2) lls="error";
+						msg+=Server->ConvertToUTF8(tt)+"("+lls+"): "+Server->ConvertToUTF8(m)+"\n";
+					}
+					if(not_complete)
+						subj+=" - failed";
+					else
+						subj+=" - success";
+
+					if( report_sendonly==0 ||
+						( report_sendonly==1 && not_complete ) ||
+						( report_sendonly==2 && !not_complete) )
+					{
+						std::string errmsg;
+						bool b=url_fak->sendMail(mail_server, to_addrs, subj, msg, &errmsg);
+						if(!b)
+						{
+							Server->Log("Sending mail failed. "+errmsg, LL_WARNING);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+MailServer BackupServerGet::getMailServerSettings(void)
+{
+	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), "settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
+
+	MailServer ms;
+	ms.servername=settings->getValue("mail_servername", "");
+	ms.port=(unsigned short)watoi(settings->getValue(L"mail_serverport", L"25"));
+	ms.username=settings->getValue("mail_username", "");
+	ms.password=settings->getValue("mail_password", "");
+	ms.mailfrom=settings->getValue("mail_from", "");
+	if(ms.mailfrom.empty())
+		ms.mailfrom="report@urbackup.org";
+
+	ms.ssl_only=settings->getValue("mail_ssl_only", "false")=="true"?true:false;
+	ms.check_certificate=settings->getValue("mail_check_certificate", "false")=="true"?true:false;
+
+	Server->destroy(settings);
+	return ms;
 }
 
 const unsigned int stat_update_skip=20;
@@ -2029,6 +2218,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		if(hashfile==NULL)
 		{
 			ServerLogger::Log(clientid, "Error opening hashfile", LL_ERROR);
+			Server->Log("Starting image path repair...", LL_INFO);
+			ServerUpdateStats::repairImages();
 			Server->destroy(cc);
 			return false;
 		}

@@ -169,6 +169,21 @@ function build_main_nav()
 	I('main_nav').innerHTML=ndata;
 }
 
+function getPar(p)
+{
+	var obj=I(p);
+	if(!obj) return "";
+	if(obj.type=="checkbox" )
+	{
+		return "&"+p+"="+(obj.checked?"true":"false");
+	}
+	var val=obj.value;
+	if(p=="update_freq_incr") val*=60*60;
+	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr") val*=60*60*24;
+	if(p=="startup_backup_delay") val*=60;
+	return "&"+p+"="+encodeURIComponent(val+"");
+}
+
 function show_progress1()
 {
 	if(!startLoading()) return;
@@ -805,6 +820,7 @@ function show_settings2(data)
 		var nav=data.navitems;
 		var idx=0;
 		g.user_nav_pos_offset=0;
+		g.mail_nav_pos_offset=0;
 		if(nav.general)
 		{
 			if(g.settings_nav_pos==idx)
@@ -814,6 +830,22 @@ function show_settings2(data)
 			else
 			{
 				n+="<a href=\"javascript: generalSettings()\">"+trans["general_settings"]+"</a>";
+			}
+			++idx;
+			++g.user_nav_pos_offset;
+			++g.mail_nav_pos_offset;
+		}
+		if(nav.mail)
+		{
+			if(n!="" ) n+=" | ";
+			
+			if(g.settings_nav_pos==idx)
+			{
+				n+="<strong>"+trans["mail_settings"]+"</strong>";
+			}
+			else
+			{
+				n+="<a href=\"javascript: mailSettings()\">"+trans["mail_settings"]+"</a>";
 			}
 			++idx;
 			++g.user_nav_pos_offset;
@@ -839,7 +871,7 @@ function show_settings2(data)
 			
 			if(nav.clients.length>0)
 			{			
-				n+=" | ";
+				if(n!="") n+=" | ";
 				n+="<select size=\"1\" style=\"width: 150px\" onchange=\"clientSettings()\" id=\"settingsclient\">";
 				if(g.settings_nav_pos<idx)
 				{
@@ -923,6 +955,31 @@ function show_settings2(data)
 				ndata+=tmpls.settings_save_ok.evaluate();
 			}
 		}
+		else if(data.sa=="mail")
+		{
+			if(data.settings.mail_ssl_only) data.settings.mail_ssl_only="checked=\"checked\"";
+			else data.settings.mail_ssl_only="";
+			if(data.settings.mail_check_certificate) data.settings.mail_check_certificate="checked=\"checked\"";
+			else data.settings.mail_check_certificate="";
+			
+			ndata+=tmpls.settings_mail.evaluate(data.settings);
+			
+			if(data.saved_ok)
+			{
+				ndata+=tmpls.settings_save_ok.evaluate();
+			}
+			if(data.mail_test)
+			{
+				if(data.mail_test=="ok")
+				{
+					ndata+=tmpls.settings_mail_test_ok.evaluate();
+				}
+				else
+				{
+					ndata+=tmpls.settings_mail_test_failed.evaluate({mail_err: data.mail_test});
+				}
+			}
+		}
 		else if(data.sa=="listusers")
 		{
 			if(data.add_ok)
@@ -994,20 +1051,6 @@ function show_settings2(data)
 		updateUserOverwrite();
 	}
 }
-function getPar(p)
-{
-	var obj=I(p);
-	if(!obj) return "";
-	if(obj.type=="checkbox" )
-	{
-		return "&"+p+"="+(obj.checked?"true":"false");
-	}
-	var val=obj.value;
-	if(p=="update_freq_incr") val*=60*60;
-	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr") val*=60*60*24;
-	if(p=="startup_backup_delay") val*=60;
-	return "&"+p+"="+encodeURIComponent(val+"");
-}
 
 g.settings_list=[
 "update_freq_incr",
@@ -1029,6 +1072,15 @@ g.settings_list=[
 "exclude_files",
 "default_dirs"
 ];
+g.mail_settings_list=[
+"mail_servername",
+"mail_serverport",
+"mail_username",
+"mail_password",
+"mail_from",
+"mail_ssl_only",
+"mail_check_certificateservername",
+];
 
 function validateCommonSettings()
 {
@@ -1044,6 +1096,7 @@ function validateCommonSettings()
 
 function saveGeneralSettings()
 {
+	if(!startLoading()) return;
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
 	if(!validateCommonSettings() ) return;
@@ -1064,6 +1117,17 @@ function saveGeneralSettings()
 	}
 	new getJSON("settings", "sa=general_save"+pars, show_settings2);
 }
+function saveMailSettings()
+{	
+	if(!startLoading()) return;
+	var pars="";
+	for(var i=0;i<g.mail_settings_list.length;++i)
+	{
+		pars+=getPar(g.mail_settings_list[i]);
+	}
+	pars+=getPar("testmailaddr");
+	new getJSON("settings", "sa=mail_save"+pars, show_settings2);
+}
 function clientSettings()
 {
 	var selidx=I('settingsclient').selectedIndex;
@@ -1082,9 +1146,14 @@ function generalSettings()
 	g.settings_nav_pos=0;
 	new getJSON("settings", "sa=general", show_settings2);
 }
+function mailSettings()
+{
+	if(!startLoading()) return;
+	g.settings_nav_pos=g.mail_nav_pos_offset;
+	new getJSON("settings", "sa=mail", show_settings2);
+}
 function updateUserOverwrite(clientid)
 {
-	
 	var checked=I('overwrite').checked;
 	
 	for(var i=0;i<g.settings_list.length;++i)
@@ -1501,6 +1570,19 @@ function submitChangeUserRights(uid)
 	new getJSON("settings", "sa=updaterights&userid="+uid+"&rights="+generateRightsParam(rights), show_settings2);
 }
 
+function saveReportSettings()
+{
+	if(!startLoading()) return;
+	clearTimeout(g.refresh_timeout);
+	
+	var params="d=d";
+	params+=getPar("report_mail");
+	params+=getPar("report_sendonly");
+	params+=getPar("report_loglevel");
+	
+	new getJSON("logs", params, show_logs2);
+}
+
 function show_logs1(params)
 {
 	if(!startLoading()) return;
@@ -1586,7 +1668,20 @@ function show_logs2(data)
 		if(data.logs.length==0)
 			rows=tmpls.logs_none.evaluate();
 			
-		ndata+=tmpls.logs_table.evaluate({ rows:rows });
+			
+		var sel="selected=\"selected\"";
+		
+		var td={};
+		td.rows=rows;
+		td.report_mail=data.report_mail;
+		td.sel_all=(data.report_sendonly==0)?sel:"";
+		td.sel_failed=(data.report_sendonly==1)?sel:"";
+		td.sel_succ=(data.report_sendonly==2)?sel:"";
+		td.sel_info=(data.report_loglevel==0)?sel:"";
+		td.sel_warn=(data.report_loglevel==1)?sel:"";
+		td.sel_error=(data.report_loglevel==2)?sel:"";
+			
+		ndata+=tmpls.logs_table.evaluate(td);
 	}
 	
 	if(data.log)
@@ -1609,6 +1704,11 @@ function show_logs2(data)
 		}
 		ndata+=tmpls.log_single.evaluate({rows:rows, name: data.log.clientname, params: params});
 	}
+	
+	if(data.saved_ok)
+	{
+		ndata+=tmpls.settings_save_ok.evaluate();
+	}	
 	
 	if(g.data_f!=ndata)
 	{

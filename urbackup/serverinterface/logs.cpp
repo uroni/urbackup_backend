@@ -130,6 +130,45 @@ ACTION_IMPL(logs)
 			}
 			ret.set("logs", logs);
 			ret.set("ll", ll);
+
+			if(GET.find(L"report_mail")!=GET.end())
+			{
+				IQuery *q=db->Prepare("UPDATE si_users SET report_mail=?, report_loglevel=? WHERE id=?");
+				q->Bind(GET[L"report_mail"]);
+				q->Bind(watoi(GET[L"report_loglevel"]));
+				q->Bind(session->id);
+				q->Write();
+				q->Reset();
+			}
+
+			if(GET.find(L"report_mail")!=GET.end())
+			{
+				IQuery *q=db->Prepare("UPDATE si_users SET report_mail=?, report_loglevel=?, report_sendonly=? WHERE id=?");
+				q->Bind(GET[L"report_mail"]);
+				q->Bind(watoi(GET[L"report_loglevel"]));
+				q->Bind(watoi(GET[L"report_sendonly"]));
+				q->Bind(session->id);
+				q->Write();
+				ret.set("saved_ok", true);
+			}
+
+			IQuery *mq=db->Prepare("SELECT report_mail, report_loglevel, report_sendonly FROM si_users WHERE id=? AND report_mail IS NOT NULL");
+			mq->Bind(session->id);
+			res=mq->Read();
+			mq->Reset();
+			
+			if(!res.empty())
+			{
+				ret.set("report_mail", res[0][L"report_mail"]);
+				ret.set("report_loglevel", watoi(res[0][L"report_loglevel"]));
+				ret.set("report_sendonly", watoi(res[0][L"report_sendonly"]));
+			}
+			else
+			{
+				ret.set("report_mail", "");
+				ret.set("report_sendonly", "");
+				ret.set("report_loglevel", "");
+			}
 		}
 		else
 		{

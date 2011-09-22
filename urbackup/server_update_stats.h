@@ -14,6 +14,8 @@ struct SDelInfo
 class ServerUpdateStats : public IThread
 {
 public:
+	ServerUpdateStats(bool image_repair_mode=false);
+
 	void operator()(void);
 
 	void update_files(void);
@@ -21,6 +23,8 @@ public:
 
 	void createQueries(void);
 	void destroyQueries(void);
+
+	static void repairImages(void);
 private:
 
 	std::map<int, _i64> calculateSizeDeltas(const std::wstring &pShaHash, _i64 filesize, _i64 *rsize);
@@ -31,6 +35,10 @@ private:
 	void add_del(std::map<int, SDelInfo> &data, int backupid, _i64 filesize, int clientid, int incremental);
 	void updateBackups(std::map<int, _i64> &data);
 	void updateDels(std::map<int, SDelInfo> &data);
+
+	bool repairImagePath(str_map img);
+
+	bool image_repair_mode;
 
 	IQuery *q_get_images;
 	IQuery *q_update_images_size;
