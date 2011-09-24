@@ -44,8 +44,11 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
 	}
-	curl_easy_setopt(curl, CURLOPT_USERNAME, server.username.c_str());
-	curl_easy_setopt(curl, CURLOPT_PASSWORD, server.password.c_str());
+	if(!server.username.empty())
+	{
+	    curl_easy_setopt(curl, CURLOPT_USERNAME, server.username.c_str());
+	    curl_easy_setopt(curl, CURLOPT_PASSWORD, server.password.c_str());
+	}
 	curl_easy_setopt(curl, CURLOPT_MAIL_FROM, server.mailfrom.c_str());
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
 

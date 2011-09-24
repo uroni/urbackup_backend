@@ -2168,8 +2168,8 @@ MailServer BackupServerGet::getMailServerSettings(void)
 	if(ms.mailfrom.empty())
 		ms.mailfrom="report@urbackup.org";
 
-	ms.ssl_only=settings->getValue("mail_ssl_only", "false")=="true"?true:false;
-	ms.check_certificate=settings->getValue("mail_check_certificate", "false")=="true"?true:false;
+	ms.ssl_only=(settings->getValue("mail_ssl_only", "false")=="true")?true:false;
+	ms.check_certificate=(settings->getValue("mail_check_certificate", "false")=="true")?true:false;
 
 	Server->destroy(settings);
 	return ms;
