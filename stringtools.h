@@ -52,6 +52,7 @@ std::wstring replaceonce(std::wstring tor, std::wstring tin, std::wstring data);
 void Tokenize(const std::string& str, std::vector<std::string> &tokens, std::string seps);
 void Tokenize(const std::wstring& str, std::vector<std::wstring> &tokens, std::wstring seps);
 void TokenizeMail(const std::string& str, std::vector<std::string> &tokens, std::string seps);
+void TokenizeMail(const std::wstring& str, std::vector<std::wstring> &tokens, std::wstring seps);
 bool isnumber(char ch);
 bool isletter(char ch);
 bool isnumber(wchar_t ch);
