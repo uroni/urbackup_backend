@@ -31,6 +31,24 @@ static size_t read_callback(void *ptr, size_t size, size_t nmemb, void *userp)
   return 0;
 }
 
+std::string format_time(std::string fs)
+{
+	time_t rawtime;		
+	char buffer [100];
+	time ( &rawtime );
+#ifdef _WIN32
+	struct tm  timeinfo;
+	localtime_s(&timeinfo, &rawtime);
+	strftime (buffer,100,fs.c_str(),&timeinfo);
+#else
+	struct tm *timeinfo;
+	timeinfo = localtime ( &rawtime );
+	strftime (buffer,100,fs.c_str(),timeinfo);
+#endif	
+	std::string r(buffer);
+	return r;
+}
+
 bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::string> &to, 
 		const std::string &subject,	const std::string &message, std::string *errmsg)
 {
@@ -59,7 +77,9 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	std::string header;
 	header+="From: "+server.mailfrom+"\n"
 		"Subject: "+subject+"\n"
+		"Date: "+format_time("%F %T")+"\n"
 		"\n";
+
 	rd.text=header+message;
 	curl_easy_setopt(curl, CURLOPT_READDATA, &rd);
 	std::string errbuf;
