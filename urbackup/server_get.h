@@ -77,8 +77,8 @@ private:
 	void setBackupImageComplete(void);
 	void sendClientLogdata(void);
 	std::wstring getUserRights(int userid, std::string domain);
-	void saveClientLogdata(int image, int incremental);
-	void sendLogdataMail(int image, int incremental, int errors, int warnings, int infos, std::wstring &data);
+	void saveClientLogdata(int image, int incremental, bool r_success);
+	void sendLogdataMail(bool r_success, int image, int incremental, int errors, int warnings, int infos, std::wstring &data);
 	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref);
 	std::string getMBR(const std::wstring &dl);
 	unsigned int writeMBR(ServerVHDWriter *vhdfile, uint64 volsize);

@@ -484,7 +484,7 @@ void BackupServerGet::operator ()(void)
 			if(hbu || r_image)
 			{
 				stopBackupRunning();
-				saveClientLogdata(r_image?1:0, r_incremental?1:0);
+				saveClientLogdata(r_image?1:0, r_incremental?1:0, r_success && !has_error);
 				sendClientLogdata();
 			}
 			if(hbu)
@@ -1977,7 +1977,7 @@ void BackupServerGet::sendClientLogdata(void)
 	}
 }
 
-void BackupServerGet::saveClientLogdata(int image, int incremental)
+void BackupServerGet::saveClientLogdata(int image, int incremental, bool r_success)
 {
 	int errors=0;
 	int warnings=0;
@@ -1994,7 +1994,7 @@ void BackupServerGet::saveClientLogdata(int image, int incremental)
 	q_save_logdata->Write();
 	q_save_logdata->Reset();
 
-	sendLogdataMail(image, incremental, errors, warnings, infos, logdata);
+	sendLogdataMail(r_success, image, incremental, errors, warnings, infos, logdata);
 
 	ServerLogger::reset(clientid);
 }
@@ -2020,7 +2020,7 @@ std::wstring BackupServerGet::getUserRights(int userid, std::string domain)
 	}
 }
 
-void BackupServerGet::sendLogdataMail(int image, int incremental, int errors, int warnings, int infos, std::wstring &data)
+void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental, int errors, int warnings, int infos, std::wstring &data)
 {
 	MailServer mail_server=getMailServerSettings();
 	if(mail_server.servername.empty())
@@ -2064,9 +2064,12 @@ void BackupServerGet::sendLogdataMail(int image, int incremental, int errors, in
 				int report_loglevel=watoi(res[0][L"report_loglevel"]);
 				int report_sendonly=watoi(res[0][L"report_sendonly"]);
 
-				if( ( report_loglevel==0 && infos>0 )
+				if( ( ( report_loglevel==0 && infos>0 )
 					|| ( report_loglevel<=1 && warnings>0 )
-					|| ( report_loglevel<=2 && errors>0 ) )
+					|| ( report_loglevel<=2 && errors>0 ) ) &&
+					(report_sendonly==0 ||
+						( report_sendonly==1 && !r_success ) ||
+						( report_sendonly==2 && r_success)) )
 				{
 					std::vector<std::string> to_addrs;
 					Tokenize(Server->ConvertToUTF8(report_mail), to_addrs, ",;");
@@ -2081,7 +2084,7 @@ void BackupServerGet::sendLogdataMail(int image, int incremental, int errors, in
 					else
 					{
 						msg+="a full ";
-						subj="Full";
+						subj="Full ";
 					}
 
 					if(image>0)
@@ -2108,8 +2111,8 @@ void BackupServerGet::sendLogdataMail(int image, int incremental, int errors, in
 					else msg+=" error";
 					msg+=" )\n\n";
 					std::vector<std::wstring> msgs;
-					Tokenize(data, msgs, L"\n");
-					bool not_complete=false;
+					TokenizeMail(data, msgs, L"\n");
+					
 					for(size_t j=0;j<msgs.size();++j)
 					{
 						std::wstring ll;
@@ -2118,8 +2121,6 @@ void BackupServerGet::sendLogdataMail(int image, int incremental, int errors, in
 						msgs[j].erase(0, 2);
 						std::wstring tt=getuntil(L"-", msgs[j]);
 						std::wstring m=getafter(L"-", msgs[j]);
-						if(li==2 && m.find(L"not complete")!=std::string::npos )
-							not_complete=true;
 
 						q_format_unixtime->Bind(tt);
 						db_results ft=q_format_unixtime->Read();
@@ -2133,21 +2134,16 @@ void BackupServerGet::sendLogdataMail(int image, int incremental, int errors, in
 						else if(li==2) lls="error";
 						msg+=Server->ConvertToUTF8(tt)+"("+lls+"): "+Server->ConvertToUTF8(m)+"\n";
 					}
-					if(not_complete)
+					if(!r_success)
 						subj+=" - failed";
 					else
 						subj+=" - success";
 
-					if( report_sendonly==0 ||
-						( report_sendonly==1 && not_complete ) ||
-						( report_sendonly==2 && !not_complete) )
+					std::string errmsg;
+					bool b=url_fak->sendMail(mail_server, to_addrs, subj, msg, &errmsg);
+					if(!b)
 					{
-						std::string errmsg;
-						bool b=url_fak->sendMail(mail_server, to_addrs, subj, msg, &errmsg);
-						if(!b)
-						{
-							Server->Log("Sending mail failed. "+errmsg, LL_WARNING);
-						}
+						Server->Log("Sending mail failed. "+errmsg, LL_WARNING);
 					}
 				}
 			}

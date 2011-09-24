@@ -827,7 +827,51 @@ void TokenizeMail(const std::string& str, std::vector<std::string> &tokens, std:
 	    ++pos1;
 		// added for ini-file!
 		// increase by length of seps
-		pos0+=(s32)seps.size();
+		++pos0;
+	}
+}
+
+void TokenizeMail(const std::wstring& str, std::vector<std::wstring> &tokens, std::wstring seps)
+{
+	// one-space line for storing blank lines in the file
+	std::wstring blankLine = L"";
+
+	// pos0 and pos1 store the scope of the current turn, i stores
+	// the position of the symbol \".
+	s32 pos0 = 0, pos1 = 0;
+	while(true)
+	{ 
+		// find the next seperator
+		pos1 = (s32)str.find_first_of(seps.c_str(), pos0);
+		// find the next \" 
+	    
+		// if the end is reached..
+	    if(pos1 == std::string::npos)
+	    {
+			// ..push back the string to the end
+			std::wstring nt=str.substr(pos0, str.size());
+			if( !nt.empty() )
+				tokens.push_back(nt);
+			break;
+	    }  
+		// if two seperators are found in a row, the file has a blank
+		// line, in this case the one-space string is pushed as a token
+		else if( pos1==pos0 )
+		{
+			tokens.push_back(blankLine);
+		}
+	    else
+            // if no match is found, we have a simple token with the range
+			// stored in pos0/1
+			tokens.push_back(str.substr(pos0, (pos1 - pos0)));
+
+		// equalize pos
+		pos0=pos1;
+		// increase 
+	    ++pos1;
+		// added for ini-file!
+		// increase by length of seps
+		++pos0;
 	}
 }
 
