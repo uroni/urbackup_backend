@@ -81,7 +81,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	std::string header;
 	header+="From: "+server.mailfrom+"\n"
 		"Subject: "+subject+"\n"
-		"Date: "+format_time("%F %T")+"\n"
+		"Date: "+format_time("%a, %d %b %Y %H:%M:%S %z")+"\n"
 		"\n";
 
 	rd.text=header+message;
