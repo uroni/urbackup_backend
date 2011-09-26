@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackupserver_fileservplugin], [0.1], [urpc@gmx.de])
+AC_INIT([urbackupclient_fileservplugin], [0.1], [urpc@gmx.de])
 AC_CONFIG_SRCDIR([dllmain.cpp])
 AC_CONFIG_HEADER([config.h])
 
@@ -14,6 +14,8 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 
 # Checks for libraries.
+
+AX_LIB_SOCKET_NSL
 
 # Checks for header files.
 AC_HEADER_STDC

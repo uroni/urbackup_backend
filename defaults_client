@@ -1,0 +1,18 @@
+# Defaults for urbackup_client initscript
+# sourced by /etc/init.d/urbackup_client
+# installed at /etc/default/urbackup_client by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# Additional options that are passed to the Daemon.
+
+#logfile name
+LOGFILE="urbackup_client.log"
+
+#Either debug,warn,info or error
+LOGLEVEL="warn"
+
+#Tmp file directory - be carefull this can get very large
+DAEMON_TMPDIR="/tmp"

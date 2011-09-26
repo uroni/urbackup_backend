@@ -248,6 +248,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			writestring(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), "pw.txt");
 		}
 
+		if( !FileExists("urbackup/backup_client.db") && FileExists("urbackup/backup_client.db.template") )
+		{
+			//Copy file
+			copy_file(L"urbackup/backup_client.db.template", L"urbackup/backup_client.db");
+		}
+
 		if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT) )
 		{
 			Server->Log("Couldn't open Database backup_client.db", LL_ERROR);

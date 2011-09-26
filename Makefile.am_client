@@ -1,20 +1,17 @@
 ACLOCAL_AMFLAGS = -I m4
-bin_PROGRAMS = urbackup_srv
-urbackup_srv_SOURCES = AcceptThread.cpp Client.cpp Database.cpp Query.cpp SelectThread.cpp Server.cpp ServerLinux.cpp ServiceAcceptor.cpp ServiceWorker.cpp SessionMgr.cpp StreamPipe.cpp Template.cpp WorkerThread.cpp main.cpp md5.cpp stringtools.cpp libfastcgi/fastcgi.cpp Mutex_lin.cpp LoadbalancerClient.cpp DBSettingsReader.cpp file_common.cpp file_fstream.cpp file_linux.cpp FileSettingsReader.cpp LookupService.cpp SettingsReader.cpp Table.cpp OutputStream.cpp ThreadPool.cpp MemoryPipe.cpp Condition_lin.cpp MemorySettingsReader.cpp sqlite/sqlite3.c
-urbackup_srv_LDADD = 
-bin_SCRIPTS = start_urbackup_server
+bin_PROGRAMS = urbackup_client
+urbackup_client_SOURCES = AcceptThread.cpp Client.cpp Database.cpp Query.cpp SelectThread.cpp Server.cpp ServerLinux.cpp ServiceAcceptor.cpp ServiceWorker.cpp SessionMgr.cpp StreamPipe.cpp Template.cpp WorkerThread.cpp main.cpp md5.cpp stringtools.cpp libfastcgi/fastcgi.cpp Mutex_lin.cpp LoadbalancerClient.cpp DBSettingsReader.cpp file_common.cpp file_fstream.cpp file_linux.cpp FileSettingsReader.cpp LookupService.cpp SettingsReader.cpp Table.cpp OutputStream.cpp ThreadPool.cpp MemoryPipe.cpp Condition_lin.cpp MemorySettingsReader.cpp sqlite/sqlite3.c
+urbackup_client_LDADD = 
+bin_SCRIPTS = start_urbackup_client
 AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
 AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY
 AM_LDFLAGS = $(PTHREAD_LIBS) -ldl
-SUBDIRS=. pychart urlplugin downloadplugin fsimageplugin httpserver urbackup
-install-exec-local: "$(srcdir)/defaults" "$(srcdir)/init.d"
-	$(INSTALL) -D "$(srcdir)/init.d_server" "$(sysconfdir)/init.d/urbackup_srv"
-	if ! test -e "$(sysconfdir)/default/urbackup_srv"; then $(INSTALL) -D "$(srcdir)/defaults_server" "$(sysconfdir)/default/urbackup_srv"; fi
+SUBDIRS=. client fileservplugin fsimageplugin urbackup
+install-exec-local: "$(srcdir)/defaults_client" "$(srcdir)/init.d_client"
+	$(INSTALL) -D "$(srcdir)/init.d_client" "$(sysconfdir)/init.d/urbackup_client"
+	if ! test -e "$(sysconfdir)/default/urbackup_client"; then $(INSTALL) -D "$(srcdir)/defaults_client" "$(sysconfdir)/default/urbackup_client"; fi
 
 	mkdir -p "$(DESTDIR)$(localstatedir)/urbackup"
-	adduser --system --quiet --group --home "$(DESTDIR)$(localstatedir)/urbackup" urbackup || true
-	chown urbackup:urbackup "$(DESTDIR)$(localstatedir)/urbackup"
-	
 	
 noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h file.h Mutex_boost.h Condition_boost.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h
-EXTRA_DIST=docs/start_urbackup_server.1 docs/urbackup_srv.1 init.d_server defaults_server start_urbackup_server 
+EXTRA_DIST=docs/start_urbackup_client.1 docs/urbackup_client.1 init.d_client defaults_client start_urbackup_client
