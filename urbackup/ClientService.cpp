@@ -1270,14 +1270,18 @@ void ClientConnector::ReceivePackets(void)
 			if(version_1.empty() ) version_1="0";
 			if(version_2.empty() ) version_2="0";
 
+			#ifdef _WIN32
 			if( atoi(version_1.c_str())<n_version && atoi(version_2.c_str())<n_version )
 			{
 				tcpstack.Send(pipe, "update");
 			}
 			else
 			{
+			#endif
 				tcpstack.Send(pipe, "noop");
+			#ifdef _WIN32
 			}
+			#endif
 		}
 		else if( cmd.find("CLIENTUPDATE ")==0 && ident_ok==true )
 		{
