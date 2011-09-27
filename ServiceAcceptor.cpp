@@ -67,23 +67,35 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	listen(s, 10000);
 
 	Server->Log(name+": Server started up sucessfully!",LL_INFO);
+	
+#ifndef _WIN32
+	pipe(xpipe);
+#endif
 }
 
 CServiceAcceptor::~CServiceAcceptor()
 {
 	do_exit=true;
+#ifndef _WIN32
+	char ch=0;
+	write(xpipe[1], &ch, 1);
+#endif
 	closesocket(s);
 	for(size_t i=0;i<workers.size();++i)
 	{
 		workers[i]->stop();
 	}
 	size_t c=0;
+	Server->Log("c=0/"+nconvert(workers.size()+1));
 	while(c<workers.size()+1)
 	{
 		std::string r;
 		exitpipe->Read(&r);
 		if(r=="ok")
+		{
 			++c;
+			Server->Log("c="+nconvert(c)+"/"+nconvert(workers.size()+1));
+		}
 	}
 	Server->destroy(exitpipe);
 	for(size_t i=0;i<workers.size();++i)
@@ -100,15 +112,22 @@ void CServiceAcceptor::operator()(void)
 		socklen_t addrsize=sizeof(sockaddr_in);
 
 		FD_ZERO(&fdset);
+		
+		SOCKET maxs=s;
 
 		FD_SET(s, &fdset);
+#ifndef _WIN32
+		FD_SET(xpipe[0], &fdset);
+		if(xpipe[0]>maxs)
+			maxs=xpipe[0]+1;
+#endif
 
 		timeval lon;
 	
 		lon.tv_sec=100;
 		lon.tv_usec=0;
 
-		_i32 rc=select((int)s+1, &fdset, 0, 0, &lon);
+		_i32 rc=select((int)maxs, &fdset, 0, 0, &lon);
 
 		if( FD_ISSET(s,&fdset) && do_exit==false)
 		{
@@ -127,6 +146,7 @@ void CServiceAcceptor::operator()(void)
 			}
 		}
 	}
+	Server->Log("ServiceAcceptor finished", LL_DEBUG);
 	exitpipe->Write("ok");
 }
 

@@ -589,6 +589,7 @@ void IndexThread::indexDirs(void)
 
 void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, std::fstream &outfile, bool first)
 {
+	Server->Log(L"Indexing "+dir, LL_DEBUG);
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
 		/*db->EndTransaction();

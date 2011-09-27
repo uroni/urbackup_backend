@@ -81,6 +81,12 @@ std::map<std::string, unsigned int> ClientConnector::last_token_times;
 
 const unsigned int x_pingtimeout=180000;
 
+#ifdef _WIN32
+const std::string pw_file="pw.txt";
+#else
+const std::string pw_file="urbackup/pw.txt";
+#endif
+
 void ClientConnector::init_mutex(void)
 {
 	if(backup_mutex==NULL)
@@ -643,6 +649,7 @@ void ClientConnector::ReceivePackets(void)
 		}
 		else if(cmd.find("START SC \"")!=std::string::npos && ident_ok==true)
 		{
+#ifdef _WIN32
 			if(cmd[cmd.size()-1]=='"')
 			{
 				state=2;
@@ -659,9 +666,13 @@ void ClientConnector::ReceivePackets(void)
 			{
 				Server->Log("Invalid command", LL_ERROR);
 			}
+#else
+			tcpstack.Send(pipe, "DONE");
+#endif
 		}
 		else if(cmd.find("STOP SC \"")!=std::string::npos && ident_ok==true)
 		{
+#ifdef _WIN32
 			if(cmd[cmd.size()-1]=='"')
 			{
 				state=2;
@@ -678,6 +689,9 @@ void ClientConnector::ReceivePackets(void)
 			{
 				Server->Log("Invalid command", LL_ERROR);
 			}
+#else
+			tcpstack.Send(pipe, "DONE");
+#endif
 		}
 		else if(cmd.find("INCRINTERVALL \"")!=std::string::npos && ident_ok==true)
 		{
@@ -1320,6 +1334,14 @@ void ClientConnector::ReceivePackets(void)
 			}
 			return;
 		}
+		else if(cmd.find("CAPA")==0  && ident_ok==true)
+		{
+#ifdef _WIN32
+			tcpstack.Send(pipe, "FILE,IMAGE,UPDATE,MBR");
+#else
+			tcpstack.Send(pipe, "FILE");
+#endif
+		}
 		else
 		{
 			tcpstack.Send(pipe, "ERR");
@@ -1329,7 +1351,7 @@ void ClientConnector::ReceivePackets(void)
 
 bool ClientConnector::checkPassword(const std::wstring &pw)
 {
-	static std::string stored_pw=getFile("pw.txt");
+	static std::string stored_pw=getFile(pw_file);
 	return stored_pw==Server->ConvertToUTF8(pw);
 }
 
@@ -1439,6 +1461,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 	while(!dir.empty());
 	db->EndTransaction();
 
+#ifdef _WIN32
 	for(size_t i=0;i<new_watchdirs.size();++i)
 	{
 		//Add watch
@@ -1471,6 +1494,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			want_receive=false;
 		}
 	}
+#endif
 	db->destroyAllQueries();
 	return true;
 }

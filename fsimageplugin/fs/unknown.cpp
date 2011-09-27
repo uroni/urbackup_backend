@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "unknown.h"
+#include <memory.h>
 
 #define DEF_BLOCKSIZE 4096
 
