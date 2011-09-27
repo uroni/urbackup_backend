@@ -551,7 +551,7 @@ std::wstring convert(unsigned int i){
 	ss << i;
 	return ss.str();
 }
-#else
+#endif
 //--------------------------------------------------------------------
 /**
 *	integer in string
@@ -571,7 +571,7 @@ std::wstring convert(unsigned long long int i){
 	ss << i;
 	return ss.str();
 }
-#endif
+
 
 //--------------------------------------------------------------------
 /**

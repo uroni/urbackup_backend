@@ -81,6 +81,12 @@ std::map<std::string, unsigned int> ClientConnector::last_token_times;
 
 const unsigned int x_pingtimeout=180000;
 
+#ifdef _WIN32
+const std::string pw_file="pw.txt";
+#else
+const std::string pw_file="urbackup/pw.txt";
+#endif
+
 void ClientConnector::init_mutex(void)
 {
 	if(backup_mutex==NULL)
@@ -1320,6 +1326,14 @@ void ClientConnector::ReceivePackets(void)
 			}
 			return;
 		}
+		else if(cmd.find("CAPA")==0  && ident_ok==true)
+		{
+#ifdef _WIN32
+			tcpstack.Send(pipe, "FILE,IMAGE,UPDATE,MBR");
+#else
+			tcpstack.Send(pipe, "FILE");
+#endif
+		}
 		else
 		{
 			tcpstack.Send(pipe, "ERR");
@@ -1329,7 +1343,7 @@ void ClientConnector::ReceivePackets(void)
 
 bool ClientConnector::checkPassword(const std::wstring &pw)
 {
-	static std::string stored_pw=getFile("pw.txt");
+	static std::string stored_pw=getFile(pw_file);
 	return stored_pw==Server->ConvertToUTF8(pw);
 }
 

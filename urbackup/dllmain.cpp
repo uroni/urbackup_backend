@@ -97,6 +97,14 @@ std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
 std::string time_format_str="%m/%d/%Y %H:%M";
 
+#ifdef _WIN32
+const std::string pw_file="pw.txt";
+const std::string new_file="new.txt";
+#else
+const std::string pw_file="urbackup/pw.txt";
+const std::string new_file="urbackup/new.txt";
+#endif
+
 bool copy_file(const std::wstring &src, const std::wstring &dst)
 {
 	IFile *fsrc=Server->openFile(src, MODE_READ);
@@ -243,9 +251,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		DirectoryWatcherThread::init_mutex();
 #endif
 
-		if(getFile("pw.txt").size()<5)
+		if(getFile(pw_file).size()<5)
 		{
-			writestring(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), "pw.txt");
+			writestring(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), pw_file);
 		}
 
 		if( !FileExists("urbackup/backup_client.db") && FileExists("urbackup/backup_client.db.template") )
@@ -260,10 +268,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			return;
 		}
 
-		if(FileExists("new.txt") )
+		if(FileExists(new_file) )
 		{
 			Server->Log("Upgrading...", LL_WARNING);
-			Server->deleteFile("new.txt");
+			Server->deleteFile(new_file);
 			if(!upgrade_client())
 			{
 				IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -354,11 +362,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		str_map params;
 		filesrv_pluginid=Server->StartPlugin("fileserv", params);
 
+#ifdef _WIN32
 		crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
 		if( crypto_fak==NULL )
 		{
 			Server->Log("Error loading Cryptoplugin", LL_ERROR);
 		}
+#endif
 
 		IndexThread *it=new IndexThread();
 		Server->createThread(it);
