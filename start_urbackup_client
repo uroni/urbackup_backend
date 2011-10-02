@@ -21,7 +21,7 @@ fi
 
 DAEMON_LIBS="$PREFIX/lib"
 
-DAEMON_PLUGINS="--plugin $DAEMON_LIBS/liburbackupclient_fileservplugin.so --plugin $DAEMON_LIBS/liburbackupclient_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupclient.so --workingdir $DAEMON_DIR --server false"
+DAEMON_PLUGINS="--plugin $DAEMON_LIBS/liburbackupclient_fileservplugin.so --plugin $DAEMON_LIBS/liburbackupclient_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupclient.so --workingdir $DAEMON_DIR --server false --no-server"
 S_DAEMON="--daemon"
 
 print_help()

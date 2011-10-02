@@ -39,6 +39,11 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"exclude_files");
 	ret.push_back(L"computername");
 	ret.push_back(L"default_dirs");
+	ret.push_back(L"allow_config_paths");
+	ret.push_back(L"allow_starting_file_backups");
+	ret.push_back(L"allow_starting_image_backups");
+	ret.push_back(L"allow_pause");
+	ret.push_back(L"allow_log_view");
 	return ret;
 }
 
@@ -121,12 +126,20 @@ void ServerSettings::doUpdate(void)
 	do_update=true;
 }
 
-SSettings *ServerSettings::getSettings(void)
+SSettings *ServerSettings::getSettings(bool *was_updated)
 {
 	if(do_update)
 	{
+		if(was_updated!=NULL)
+			*was_updated=true;
+
 		do_update=false;
 		update();
+	}
+	else
+	{
+		if(was_updated!=NULL)
+			*was_updated=false;
 	}
 	return &settings;
 }
@@ -160,6 +173,11 @@ void ServerSettings::readSettingsDefault(void)
 	settings.exclude_files=settings_default->getValue(L"exclude_files", L"");
 	settings.default_dirs=settings_default->getValue(L"default_dirs", L"");
 	settings.cleanup_window=settings_default->getValue("cleanup_window", "1-7/3-4");
+	settings.allow_config_paths=(settings_default->getValue("allow_config_paths", "true")=="true");
+	settings.allow_starting_file_backups=(settings_default->getValue("allow_starting_file_backups", "true")=="true");
+	settings.allow_starting_image_backups=(settings_default->getValue("allow_starting_image_backups", "true")=="true");
+	settings.allow_pause=(settings_default->getValue("allow_pause", "true")=="true");
+	settings.allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -221,6 +239,22 @@ void ServerSettings::readSettingsClient(void)
 	swtmp=settings_client->getValue(L"default_dirs", L"");
 	if(!swtmp.empty())
 		settings.default_dirs=swtmp;
+	stmp=settings_client->getValue("allow_config_paths", "");
+	if(!stmp.empty())
+		settings.allow_config_paths=(stmp=="true");
+	stmp=settings_client->getValue("allow_starting_file_backups", "");
+	if(!stmp.empty())
+		settings.allow_starting_file_backups=(stmp=="true");
+	stmp=settings_client->getValue("allow_starting_image_backups", "");
+	if(!stmp.empty())
+		settings.allow_starting_image_backups=(stmp=="true");
+	stmp=settings_client->getValue("allow_pause", "");
+	if(!stmp.empty())
+		settings.allow_pause=(stmp=="true");
+	stmp=settings_client->getValue("allow_log_view", "");
+	if(!stmp.empty())
+		settings.allow_log_view=(stmp=="true");
+
 
 	stmp=settings_client->getValue("overwrite", "");
 	if(!stmp.empty())

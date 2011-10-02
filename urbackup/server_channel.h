@@ -6,10 +6,13 @@
 
 class BackupServerGet;
 
+class ServerSettings;
+
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(BackupServerGet *pServer_get);
+	ServerChannelThread(BackupServerGet *pServer_get, int clientid);
+	~ServerChannelThread(void);
 
 	void operator()(void);
 
@@ -19,13 +22,19 @@ public:
 
 private:
 	unsigned int lasttime;
+	int clientid;
+
+	int constructCapabilities(void);
 
 	BackupServerGet *server_get;
 	IPipe *exitpipe;
 	IPipe *input;
 	CTCPStack tcpstack;
 
+	ServerSettings *settings;
+
 	IMutex *mutex;
 
 	volatile bool do_exit;
+	bool combat_mode;
 };

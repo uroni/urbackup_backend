@@ -35,6 +35,11 @@ struct SSettings
 	std::wstring exclude_files;
 	std::wstring default_dirs;
 	std::string cleanup_window;
+	bool allow_pause;
+	bool allow_starting_file_backups;
+	bool allow_starting_image_backups;
+	bool allow_config_paths;
+	bool allow_log_view;
 };
 
 struct STimeSpan
@@ -57,7 +62,7 @@ public:
 
 	void doUpdate(void);
 	
-	SSettings *getSettings(void);
+	SSettings *getSettings(bool *was_updated=NULL);
 
 	static void init_mutex(void);
 	static void updateAll(void);

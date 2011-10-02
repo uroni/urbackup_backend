@@ -555,3 +555,9 @@ function validate_text_regex(a)
 	}
 	return true;
 }
+
+function getCheckboxValue(v)
+{
+	if(v) return "checked=\"checked\"";
+	else return "";
+}

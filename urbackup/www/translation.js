@@ -208,7 +208,7 @@ translations.de={
 "tMinimal number of full image backups": "Minimale Anzahl an vollen Image-Backups",
 "tDelay after system startup": "Verzögerung bei Systemstart",
 "tmin": "min",
-"tAllow client to change settings": "Client erlauben Einstellungen zu verändern",
+"tAllow changing settings": "Clients erlauben Einstellungen zu verändern",
 "tBackup storage path": "Speicherort für Backups",
 "tDo not do image backups": "Keine Imagebackups ausführen",
 "tAutomatically shut down server": "Server automatisch herunterfahren",
@@ -282,5 +282,10 @@ translations.de={
 "tCheck SSL/TLS certificate": "SSL/TLS Zertifikat prüfen",
 "tSend test mail to this email address after saving the settings (leave empty to not send a test mail)": "Sende Test E-Mail an diese Adresse nach Speichern der Einstellungen (leer lassen um keine Test E-Mail zu senden)",
 "tTest Mail sent successfully": "Test E-Mail erfolgreich gesendet",
-"tSending test mail failed. Error:": "Senden der Test E-Mail fehlgeschlagen. Fehler:"
+"tSending test mail failed. Error:": "Senden der Test E-Mail fehlgeschlagen. Fehler:",
+"tAllow changing the directories to backup": "Ändern der zu sichernden Verzeichnisse erlauben",
+"tAllow clientside starting of file backups": "Clients erlauben Dateibackups zu starten",
+"tAllow clientside starting of image backups": "Clients erlauben Imagebackups zu starten",
+"tAllow clientside viewing of backup logs": "Clients erlauben Logs anzuschauen",
+"tAllow pausing backups": "Clients erlauben Backups zu pausieren"
 }

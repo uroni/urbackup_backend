@@ -30,24 +30,41 @@
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../fsimageplugin/IVHDFile.h"
 #include "server_status.h"
+#include "server_settings.h"
+#include "capa_bits.h"
 #include <memory.h>
 
 const unsigned short serviceport=35623;
 extern std::string server_identity;
 extern IFSImageFactory *image_fak;
 
-ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get) :
-server_get(pServer_get)
+ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get, int clientid) :
+server_get(pServer_get), clientid(clientid), settings(NULL)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
 	input=NULL;
+	if(clientid!=-1)
+	{
+		combat_mode=false;
+	}
+	else
+	{
+		combat_mode=true;
+	}
+}
+
+ServerChannelThread::~ServerChannelThread(void)
+{
+	delete settings;
 }
 
 void ServerChannelThread::operator()(void)
 {
 	unsigned int lastpingtime=0;
 	lasttime=0;
+
+	settings=new ServerSettings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), clientid);
 
 	while(do_exit==false)
 	{
@@ -65,7 +82,14 @@ void ServerChannelThread::operator()(void)
 					IScopedLock lock(mutex);
 					input=np;
 				}
-				tcpstack.Send(input, server_identity+"CHANNEL");
+				if(combat_mode)
+				{
+					tcpstack.Send(input, server_identity+"CHANNEL");
+				}
+				else
+				{
+					tcpstack.Send(input, server_identity+"1CHANNEL capa="+nconvert(constructCapabilities()));
+				}
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
 			}
@@ -110,6 +134,16 @@ void ServerChannelThread::operator()(void)
 						if(!r.empty())
 							tcpstack.Send(input, r);
 					}
+
+					bool was_updated;
+					settings->getSettings(&was_updated);
+					if(was_updated && !combat_mode)
+					{
+						IScopedLock lock(mutex);
+						Server->destroy(input);
+						input=NULL;
+						tcpstack.reset();
+					}
 				}
 				else if(rc==0)
 				{
@@ -149,7 +183,11 @@ void ServerChannelThread::doExit(void)
 
 std::string ServerChannelThread::processMsg(const std::string &msg)
 {
-	if(msg=="START BACKUP INCR")
+	if(msg=="ERR")
+	{
+		combat_mode=true;
+	}
+	else if(msg=="START BACKUP INCR")
 	{
 		server_get->sendToPipe("START BACKUP INCR");
 	}
@@ -376,6 +414,27 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		Server->wait(60000);
 	}
 	return "";
+}
+
+int ServerChannelThread::constructCapabilities(void)
+{
+	int capa=0;
+	SSettings *cs=settings->getSettings();
+
+	if(!cs->allow_overwrite)
+		capa|=DONT_SHOW_SETTINGS;
+	if(!cs->allow_pause)
+		capa|=DONT_ALLOW_PAUSE;
+	if(!cs->allow_starting_file_backups)
+		capa|=DONT_ALLOW_STARTING_FILE_BACKUPS;
+	if(!cs->allow_starting_image_backups)
+		capa|=DONT_ALLOW_STARTING_IMAGE_BACKUPS;
+	if(!cs->allow_config_paths)
+		capa|=DONT_ALLOW_CONFIG_PATHS;
+	if(!cs->allow_log_view)
+		capa|=DONT_SHOW_LOGS;
+
+	return capa;
 }
 
 #endif //CLIENT_ONLY

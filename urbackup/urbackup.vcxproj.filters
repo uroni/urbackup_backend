@@ -350,5 +350,8 @@
     <ClInclude Include="win_sysvol.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="capa_bits.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

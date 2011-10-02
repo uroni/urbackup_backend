@@ -35,6 +35,7 @@
 #include "ClientSend.h"
 #include "ServerIdentityMgr.h"
 #include "settings.h"
+#include "capa_bits.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #else
@@ -73,6 +74,7 @@ int ClientConnector::pcdone2=0;
 std::vector<IPipe*> ClientConnector::channel_pipes;
 std::vector<IPipe*> ClientConnector::channel_exit;
 std::vector<IPipe*> ClientConnector::channel_ping;
+std::vector<int> ClientConnector::channel_capa;
 IMutex *ClientConnector::progress_mutex=NULL;
 volatile bool ClientConnector::img_download_running=false;
 db_results ClientConnector::cached_status;
@@ -130,6 +132,7 @@ bool ClientConnector::Run(void)
 				if(channel_pipes[i]==pipe)
 				{
 					channel_pipes.erase(channel_pipes.begin()+i);
+					channel_capa.erase(channel_capa.begin()+i);
 					break;
 				}
 			}
@@ -239,6 +242,7 @@ bool ClientConnector::Run(void)
 						if(channel_pipes[i]==pipe)
 						{
 							channel_pipes.erase(channel_pipes.begin()+i);
+							channel_capa.erase(channel_capa.begin()+i);
 							break;
 						}
 					}
@@ -762,7 +766,7 @@ void ClientConnector::ReceivePackets(void)
 			}
 			last_token_times[server_token]=Server->getTimeSeconds();
 		}
-		else if(cmd=="CHANNEL" && ident_ok==true)
+		else if( (cmd=="CHANNEL" || cmd.find("1CHANNEL")==0 ) && ident_ok==true)
 		{
 			if(!img_download_running)
 			{
@@ -774,6 +778,16 @@ void ClientConnector::ReceivePackets(void)
 				last_channel_ping=Server->getTimeMS();
 				lasttime=Server->getTimeMS();
 				Server->Log("New channel: Number of Channels: "+nconvert((int)channel_pipes.size()), LL_DEBUG);
+
+				int capa=0;
+				if(cmd.find("1CHANNEL ")==0)
+				{
+					std::string s_params=cmd.substr(9);
+					str_map params;
+					ParseParamStr(s_params, &params);
+					capa=watoi(params[L"capa"]);
+				}
+				channel_capa.push_back(capa);
 			}
 		}
 		else if(cmd=="PONG" && is_channel==true )
@@ -1590,6 +1604,19 @@ void ClientConnector::getBackupStatus(void)
 	{
 		ret+="#NP";
 	}
+
+	int capa=0;
+	if(channel_capa.size()==0)
+	{
+		capa|=DONT_ALLOW_STARTING_FILE_BACKUPS;
+		capa|=DONT_ALLOW_STARTING_IMAGE_BACKUPS;
+	}
+	else if(channel_capa.size()==1)
+	{
+		capa=channel_capa[0];
+	}
+
+	ret+="#capa="+nconvert(capa);
 
 	tcpstack.Send(pipe, ret);
 

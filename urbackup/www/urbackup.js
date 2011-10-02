@@ -897,14 +897,16 @@ function show_settings2(data)
 	{
 		if(data.sa=="general")
 		{
-			if(data.settings.no_images) data.settings.no_images="checked=\"checked\"";
-			else data.settings.no_images="";
-			if(data.settings.allow_overwrite) data.settings.allow_overwrite="checked=\"checked\"";
-			else data.settings.allow_overwrite="";
-			if(data.settings.autoshutdown) data.settings.autoshutdown="checked=\"checked\"";
-			else data.settings.autoshutdown="";
-			if(data.settings.autoupdate_clients) data.settings.autoupdate_clients="checked=\"checked\"";
-			else data.settings.autoupdate_clients="";
+			data.settings.no_images=getCheckboxValue(data.settings.no_images);
+			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
+			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
+			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
+			
+			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
+			data.settings.allow_starting_file_backups=getCheckboxValue(data.settings.allow_starting_file_backups);
+			data.settings.allow_starting_image_backups=getCheckboxValue(data.settings.allow_starting_image_backups);
+			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
+			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			
 			
 			data.settings.update_freq_incr/=60*60;
@@ -931,12 +933,13 @@ function show_settings2(data)
 		}
 		else if(data.sa=="clientsettings")
 		{
-			if(data.settings.overwrite)
-				data.settings.overwrite="checked=\"checked\"";
-			else
-				data.settings.overwrite="";
-			if(data.settings.allow_overwrite) data.settings.allow_overwrite="checked=\"checked\"";
-			else data.settings.allow_overwrite="";
+			data.settings.overwrite=getCheckboxValue(data.settings.overwrite);
+			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
+			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
+			data.settings.allow_starting_file_backups=getCheckboxValue(data.settings.allow_starting_file_backups);
+			data.settings.allow_starting_image_backups=getCheckboxValue(data.settings.allow_starting_image_backups);
+			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
+			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			
 			data.settings.update_freq_incr/=60*60;
 			data.settings.update_freq_full/=60*60*24;
@@ -1070,7 +1073,12 @@ g.settings_list=[
 "backup_window",
 "computername",
 "exclude_files",
-"default_dirs"
+"default_dirs",
+"allow_config_paths",
+"allow_starting_file_backups",
+"allow_starting_image_backups",
+"allow_pause",
+"allow_log_view"
 ];
 g.mail_settings_list=[
 "mail_servername",

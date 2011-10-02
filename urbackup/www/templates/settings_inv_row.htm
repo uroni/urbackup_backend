@@ -66,6 +66,26 @@
 <td><input type="text" id="default_dirs" value="#{default_dirs}"/> <a href="http://www.urbackup.org/FAQ.php#default_dirs" target="_blank">?</a></td>
 </tr>
 <tr>
-<td>#{tAllow client to change settings}</td>
+<td>#{tAllow changing the directories to backup}:</td>
+<td><input type="checkbox" id="allow_config_paths" #{allow_config_paths}/></td>
+</tr>
+<tr>
+<td>#{tAllow clientside starting of file backups}</td>
+<td><input type="checkbox" id="allow_starting_file_backups" #{allow_starting_file_backups}/></td>
+</tr>
+<tr>
+<td>#{tAllow clientside starting of image backups}</td>
+<td><input type="checkbox" id="allow_starting_image_backups" #{allow_starting_image_backups}/></td>
+</tr>
+<tr>
+<td>#{tAllow clientside viewing of backup logs}</td>
+<td><input type="checkbox" id="allow_log_view" #{allow_log_view}/></td>
+</tr>
+<tr>
+<td>#{tAllow pausing backups}:</td>
+<td><input type="checkbox" id="allow_pause" #{allow_pause}/></td>
+</tr>
+<tr>
+<td>#{tAllow changing settings}</td>
 <td><input type="checkbox" id="allow_overwrite" #{allow_overwrite}/></td>
 </tr>

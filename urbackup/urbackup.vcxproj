@@ -732,6 +732,7 @@
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
     <ClInclude Include="bufmgr.h" />
+    <ClInclude Include="capa_bits.h" />
     <ClInclude Include="client.h" />
     <ClInclude Include="clientdao.h" />
     <ClInclude Include="ClientSend.h" />
