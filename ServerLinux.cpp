@@ -22,7 +22,7 @@
 
 bool CServer::LoadDLL(const std::string &name)
 {
-	HMODULE dll = dlopen( name.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+	HMODULE dll = dlopen( name.c_str(), RTLD_NOW | RTLD_GLOBAL);
 
 	if(dll==NULL)
 	{

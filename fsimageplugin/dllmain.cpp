@@ -31,12 +31,12 @@
 #include "../Interface/Action.h"
 #include "../Interface/File.h"
 #include "../stringtools.h"
+#include "../urbackup/sha2/sha2.h"
 
 #include <stdlib.h>
 
 #include "vhdfile.h"
 #include "fs/ntfs.h"
-#include "../urbackup/sha2/sha2.h"
 
 #include "pluginmgr.h"
 

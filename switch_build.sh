@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 cbuild=""
 
@@ -10,8 +10,9 @@ switch_m_build()
 
 switch_build()
 {
+	pwd
 	cp Makefile.am_$cbuild Makefile.am
-	cp configure.ac_$cbuild Makefile.am
+	cp configure.ac_$cbuild configure.ac
 }
 
 switch()
@@ -24,11 +25,11 @@ switch()
 	switch_build
 }
 
-if [ "x$1" == "xserver" ]
-	cbuild="server"
+if [[ "x$1" == "xserver" ]]
 then
-	
-elif [ "x$1" =="xclient" ]
+	cbuild="server"	
+elif [[ "x$1" == "xclient" ]]
+then
 	cbuild="client"
 else
 	echo "No valid build enviroment. Available: client, server"

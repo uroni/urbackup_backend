@@ -1,19 +1,19 @@
 #!/bin/sh
 
 NAME="urbackup_client"
-PREFIX=/usr
+PREFIX=/usr/local
 DAEMON=$PREFIX/bin/urbackup_client
 if ! test -x $DAEMON
 then
-    PREFIX=/usr/local
+    PREFIX=/usr
     DAEMON=$PREFIX/bin/urbackup_client
 fi
 
-DAEMON_DIR="/var"
-if ! test -d $DAEMON_DIR/urbackup
+DAEMON_DIR="/usr/local/var"
+if ! test -e $DAEMON_DIR/urbackup/backup_client.db.template
 then
-    DAEMON_DIR="/usr/local/var"
-    if ! test -d $DAEMON_DIR/urbackup
+    DAEMON_DIR="/var"
+    if ! test -e $DAEMON_DIR/urbackup/backup_client.db.template
     then
 	DAEMON_DIR="/usr/var"
     fi
@@ -30,7 +30,7 @@ print_help()
 	echo "Parameters:"
 	echo "--logfile {file}	Specifies the log file name. Default: urbackup_client.log"
 	echo "--loglevel {debug|info|warn|error}	Specifies the log level. Possible values: debug, info, warn, error. Default: warn"
-	echo "--no_deamon	Do not start as a daemon"
+	echo "--no_daemon	Do not start as a daemon"
 	echo "--pidfile {file}		Save pid of daemon in file"
 	echo ""
 	echo "Have a nice day!"

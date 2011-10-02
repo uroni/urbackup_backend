@@ -20,6 +20,7 @@
 #include "../../stringtools.h"
 #include "ntfs.h"
 #include <math.h>
+#include <memory.h>
 
 class MemFree
 {
@@ -59,7 +60,7 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev), bitmap(NULL)
 
 	Server->Log("Sectorsize: "+nconvert(sectorsize), LL_DEBUG);
 	Server->Log("Clustersize: "+nconvert(clustersize), LL_DEBUG);
-	Server->Log("ClustersPerMFTNode Offset: "+nconvert((unsigned int)&br.mftlcn-(unsigned int)&br), LL_DEBUG);
+	Server->Log("ClustersPerMFTNode Offset: "+nconvert((uint64)&br.mftlcn-(uint64)&br), LL_DEBUG);
 
 	unsigned int mftrecordsize;
 	if(br.clusterspermftrecord<0)

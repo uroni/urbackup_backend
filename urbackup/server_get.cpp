@@ -84,6 +84,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	do_update_settings=false;
 	do_full_image_now=false;
 	do_incr_image_now=false;
+	
+	can_backup_images=true;
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -211,6 +213,8 @@ void BackupServerGet::operator ()(void)
 	prepareSQL();
 
 	updateLastseen();	
+	
+	updateCapabilites();
 
 	status.client=clientname;
 	status.clientid=clientid;
@@ -331,7 +335,7 @@ void BackupServerGet::operator ()(void)
 					r_success=doIncrBackup();
 				}
 			}
-			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) )
+			else if(can_backup_images && !server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) )
 			{
 				ScopedActiveThread sat;
 
@@ -362,7 +366,7 @@ void BackupServerGet::operator ()(void)
 					saveImageAssociation(backupid, sysvol_id);
 				}
 			}
-			else if(!server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
+			else if(can_backup_images && !server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
 			{
 				ScopedActiveThread sat;
 
@@ -1811,6 +1815,18 @@ void BackupServerGet::notifyClientBackupSuccessfull(void)
 void BackupServerGet::sendClientBackupIncrIntervall(void)
 {
 	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incrintervall to client failed", 10000);
+}
+
+void BackupServerGet::updateCapabilities(void)
+{
+	std::string cap=sendClientMessage("CAPA", L"Querying capabilities failed", 10000, false);
+	if(cap!="ERR")
+	{
+		if(cap.find("IMAGE")==std::string::npos)
+		{
+			can_backup_images=false;
+		}
+	}
 }
 
 void BackupServerGet::sendSettings(void)

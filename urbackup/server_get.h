@@ -99,6 +99,7 @@ private:
 	bool getNextEntry(char ch, SFile &data);
 	static std::string remLeadingZeros(std::string t);
 	static std::string strftimeInt(std::string fs);
+	void updateCapabilities(void);
 
 
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
@@ -170,6 +171,8 @@ private:
 
 	SStatus status;
 	bool has_error;
+	
+	bool can_backup_images;
 
 	bool do_full_backup_now;
 	bool do_incr_backup_now;
