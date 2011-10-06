@@ -127,8 +127,8 @@ void CThreadPool::Shutdown(void)
 		Server->wait(100);
 		lock.relock(mutex);
 
-		//max 1 sec warten
-		if( max>=10 )
+		//max 300 smec warten
+		if( max>=3 )
 		{
 			Server->Log("Maximum wait time for thread pool exceeded. Shutting down the hard way", LL_ERROR);
 			break;

@@ -64,7 +64,7 @@ std::vector<SFile> getFiles(const std::wstring &path)
 		
 #ifndef sun
 		f.isdir=(dirp->d_type==DT_DIR);
-		if(!f.isdir || dirp->d_type==DT_UNKNOWN)
+		if(!f.isdir || dirp->d_type==DT_UNKNOWN || (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR) )
 		{
 #endif
 			struct stat64 f_info;
@@ -72,12 +72,16 @@ std::vector<SFile> getFiles(const std::wstring &path)
 			if(rc==0)
 			{
 #ifndef sun
-				if(dirp->d_type==DT_UNKNOWN)
+				if(dirp->d_type==DT_UNKNOWN || (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR) )
 				{
 #endif
 					f.isdir=S_ISDIR(f_info.st_mode);
 					if(!f.isdir)
 					{
+						if(!S_ISREG(f_info.st_mode) )
+						{
+							continue;
+						}
 						f.last_modified=f_info.st_mtime;
 						f.size=f_info.st_size;
 					}
@@ -93,8 +97,7 @@ std::vector<SFile> getFiles(const std::wstring &path)
 			else
 			{
 				Server->Log("No permission to stat \""+upath+dirp->d_name+"\"", LL_ERROR);
-				f.last_modified=0;
-				f.size=0;
+				continue;
 			}
 #ifndef sun
 		}

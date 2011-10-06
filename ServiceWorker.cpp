@@ -74,7 +74,7 @@ void CServiceWorker::operator()(void)
 				if( clients.empty() )
 				{
 					IScopedLock lock(mutex);
-					if(new_clients.empty())
+					if(new_clients.empty() && !do_stop)
 					{
 						Server->Log(name+": Sleeping..."+nconvert(Server->getTimeMS()), LL_DEBUG);
 						cond->wait(&lock);
@@ -139,6 +139,7 @@ void CServiceWorker::operator()(void)
 			}
 		}				 
 	}
+	Server->Log("ServiceWorker finished", LL_DEBUG);
 	exit->Write("ok");
 }
 

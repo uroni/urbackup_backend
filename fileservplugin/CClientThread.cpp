@@ -338,9 +338,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 					break;
 				}
 
+#ifdef _WIN32
 				if(filename.size()<2 || (filename[0]!='\\' && filename[1]!='\\' ) )
 					filename=L"\\\\?\\"+filename;			
-				
+#endif
 				
 #ifndef LINUX
 #ifndef BACKUP_SEM

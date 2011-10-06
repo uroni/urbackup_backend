@@ -25,6 +25,9 @@ private:
 
 	IService * service;
 	IPipe *exitpipe;
+#ifndef _WIN32
+	int xpipe[2];
+#endif
 
 	bool do_exit;
 };

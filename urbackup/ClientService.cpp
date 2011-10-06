@@ -653,6 +653,7 @@ void ClientConnector::ReceivePackets(void)
 		}
 		else if(cmd.find("START SC \"")!=std::string::npos && ident_ok==true)
 		{
+#ifdef _WIN32
 			if(cmd[cmd.size()-1]=='"')
 			{
 				state=2;
@@ -669,9 +670,13 @@ void ClientConnector::ReceivePackets(void)
 			{
 				Server->Log("Invalid command", LL_ERROR);
 			}
+#else
+			tcpstack.Send(pipe, "DONE");
+#endif
 		}
 		else if(cmd.find("STOP SC \"")!=std::string::npos && ident_ok==true)
 		{
+#ifdef _WIN32
 			if(cmd[cmd.size()-1]=='"')
 			{
 				state=2;
@@ -688,6 +693,9 @@ void ClientConnector::ReceivePackets(void)
 			{
 				Server->Log("Invalid command", LL_ERROR);
 			}
+#else
+			tcpstack.Send(pipe, "DONE");
+#endif
 		}
 		else if(cmd.find("INCRINTERVALL \"")!=std::string::npos && ident_ok==true)
 		{
@@ -1467,6 +1475,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 	while(!dir.empty());
 	db->EndTransaction();
 
+#ifdef _WIN32
 	for(size_t i=0;i<new_watchdirs.size();++i)
 	{
 		//Add watch
@@ -1499,6 +1508,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			want_receive=false;
 		}
 	}
+#endif
 	db->destroyAllQueries();
 	return true;
 }
