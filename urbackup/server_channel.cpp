@@ -154,6 +154,7 @@ void ServerChannelThread::operator()(void)
 						Server->destroy(input);
 						input=NULL;
 						tcpstack.reset();
+						Server->wait(1000);
 					}
 					else
 					{

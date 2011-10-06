@@ -1078,7 +1078,8 @@ g.settings_list=[
 "allow_starting_file_backups",
 "allow_starting_image_backups",
 "allow_pause",
-"allow_log_view"
+"allow_log_view",
+"image_letters"
 ];
 g.mail_settings_list=[
 "mail_servername",
@@ -1097,6 +1098,7 @@ function validateCommonSettings()
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
 	if(!validate_text_regex([{ id: "backup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return false;
+	if(!validate_text_regex([{ id: "image_letters", regexp: /([A-Za-z][;,])*/i }] ) ) return false;
 	return true;
 }
 

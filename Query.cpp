@@ -155,10 +155,9 @@ bool CQuery::Execute(int timeoutms)
 			else
 			{
 				--tries;
-				if(tries<0)
+				if(tries==-1)
 				{
-				  Server->Log("SQLITE: Giving up waiting for query  Stmt: ["+stmt_str+"]", LL_ERROR);
-				  break;
+				  Server->Log("SQLITE: Long running query  Stmt: ["+stmt_str+"]", LL_ERROR);
 				}
 				Server->Log("SQLITE_BUSY in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_INFO);
 			}
@@ -232,10 +231,9 @@ db_nresults CQuery::ReadN(int *timeoutms)
 			else
 			{
 				--tries;
-				if(tries<0)
+				if(tries==-1)
 				{
-				  Server->Log("SQLITE: Giving up waiting for query  Stmt: ["+stmt_str+"]", LL_ERROR);
-				  break;
+				  Server->Log("SQLITE: Long running query  Stmt: ["+stmt_str+"]", LL_ERROR);
 				}
 				Server->Log("SQLITE_BUSY in CQuery::ReadN  Stmt: ["+stmt_str+"]", LL_INFO);
 			}
@@ -314,10 +312,9 @@ db_results CQuery::Read(int *timeoutms)
 			else
 			{
 				--tries;
-				if(tries<0)
+				if(tries==-1)
 				{
-				  Server->Log("SQLITE: Giving up waiting for query  Stmt: ["+stmt_str+"]", LL_ERROR);
-				  break;
+				  Server->Log("SQLITE: Long runnning query  Stmt: ["+stmt_str+"]", LL_ERROR);
 				}
 				Server->Log("SQLITE_BUSY in CQuery::Read  Stmt: ["+stmt_str+"]", LL_INFO);
 			}

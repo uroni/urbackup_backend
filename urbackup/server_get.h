@@ -55,6 +55,8 @@ private:
 	bool isUpdateIncr(void);
 	bool isUpdateFullImage(void);
 	bool isUpdateIncrImage(void);
+	bool isUpdateFullImage(const std::string &letter);
+	bool isUpdateIncrImage(const std::string &letter);
 	bool doFullBackup(void);
 	int createBackupSQL(int incremental, int clientid, std::wstring path);
 	void hashFile(std::wstring dstpath, IFile *fd);
@@ -83,7 +85,7 @@ private:
 	std::string getMBR(const std::wstring &dl);
 	unsigned int writeMBR(ServerVHDWriter *vhdfile, uint64 volsize);
 	int createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path, std::string letter);
-	SBackup getLastIncrementalImage(void);
+	SBackup getLastIncrementalImage(const std::string &letter);
 	void updateRunning(bool image);
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);

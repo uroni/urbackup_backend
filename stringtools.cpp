@@ -552,15 +552,18 @@ std::wstring convert(unsigned int i){
 	return ss.str();
 }
 #endif
+#if !defined(_WIN32) || !defined(_WIN64)
 //--------------------------------------------------------------------
 /**
 *	integer in string
 */
+
 std::string nconvert(unsigned long long int i){
 	ostringstream ss;
 	ss << i;
 	return ss.str();
 }
+
 
 //--------------------------------------------------------------------
 /**
@@ -571,7 +574,7 @@ std::wstring convert(unsigned long long int i){
 	ss << i;
 	return ss.str();
 }
-
+#endif
 
 //--------------------------------------------------------------------
 /**
@@ -722,7 +725,7 @@ void	Tokenize(const std::string& str, std::vector<std::string> &tokens, std::str
 	    ++pos1;
 		// added for ini-file!
 		// increase by length of seps
-		pos0+=(s32)seps.size();
+		++pos0;
 	}
 	  
 	// loop through all tokens and check for empty tokens which may result

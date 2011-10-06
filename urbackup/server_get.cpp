@@ -214,7 +214,7 @@ void BackupServerGet::operator ()(void)
 
 	updateLastseen();	
 	
-	updateCapabilites();
+	updateCapabilities();
 
 	status.client=clientname;
 	status.clientid=clientid;
@@ -351,19 +351,34 @@ void BackupServerGet::operator ()(void)
 
 				startBackupRunning();
 
-				ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
-				int sysvol_id=-1;
-				if(doImage("SYSVOL", L"", 0, 0))
+				r_success=true;
+				std::vector<std::string> vols=server_settings->getBackupVolumes();
+				for(size_t i=0;i<vols.size();++i)
 				{
-					sysvol_id=backupid;
-				}
-				ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
-
-				r_success=doImage("C:", L"", 0, 0);
-
-				if(r_success && sysvol_id!=-1)
-				{
-					saveImageAssociation(backupid, sysvol_id);
+					if(isUpdateFullImage(vols[i]+":"))
+					{
+						int sysvol_id=-1;
+						if(strlower(vols[i])=="c")
+						{
+							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
+				
+							if(doImage("SYSVOL", L"", 0, 0))
+							{
+								sysvol_id=backupid;
+							}
+							ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+						}
+						bool b=doImage(vols[i]+":", L"", 0, 0);
+						if(!b)
+						{
+							r_success=false;
+							break;
+						}
+						else if(sysvol_id!=-1)
+						{
+							saveImageAssociation(backupid, sysvol_id);
+						}
+					}
 				}
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
@@ -383,28 +398,42 @@ void BackupServerGet::operator ()(void)
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-				ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
-				int sysvol_id=-1;
-				if(doImage("SYSVOL", L"", 0, 0))
+				std::vector<std::string> vols=server_settings->getBackupVolumes();
+				for(size_t i=0;i<vols.size();++i)
 				{
-					sysvol_id=backupid;
-				}
-				ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+					std::string letter=vols[i]+":";
+					if(isUpdateIncrImage(letter))
+					{
+						int sysvol_id=-1;
+						if(strlower(letter)=="c:")
+						{
+							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
+							if(doImage("SYSVOL", L"", 0, 0))
+							{
+								sysvol_id=backupid;
+							}
+							ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+						}
+						SBackup last=getLastIncrementalImage(letter);
+						if(last.incremental==-2)
+						{
+							ServerLogger::Log(clientid, "Error retrieving last backup.", LL_ERROR);
+							r_success=false;
+							break;
+						}
+						else
+						{
+							r_success=doImage(letter, last.path, last.incremental+1, last.incremental_ref);
+						}
 
-				SBackup last=getLastIncrementalImage();
-				if(last.incremental==-2)
-				{
-					ServerLogger::Log(clientid, "Error retrieving last backup.", LL_ERROR);
-					r_success=false;
-				}
-				else
-				{
-					r_success=doImage("C:", last.path, last.incremental+1, last.incremental_ref);
-				}
+						if(r_success && sysvol_id!=-1)
+						{
+							saveImageAssociation(backupid, sysvol_id);
+						}
 
-				if(r_success && sysvol_id!=-1)
-				{
-					saveImageAssociation(backupid, sysvol_id);
+						if(!r_success)
+							break;
+					}
 				}
 			}
 
@@ -585,13 +614,13 @@ void BackupServerGet::prepareSQL(void)
 	q_update_setting=db->Prepare("UPDATE settings SET value=? WHERE key=? AND clientid=?", false);
 	q_insert_setting=db->Prepare("INSERT INTO settings (key, value, clientid) VALUES (?,?,?)", false);
 	q_set_complete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
-	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter='C:'", false);
-	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter='C:'", false); 
+	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false);
+	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false); 
 	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, "+nconvert(curr_image_version)+",?)", false);
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
 	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=CURRENT_TIMESTAMP WHERE id=?", false);
-	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter='C:' ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
 	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
@@ -663,9 +692,10 @@ SBackup BackupServerGet::getLastIncremental(void)
 	}
 }
 
-SBackup BackupServerGet::getLastIncrementalImage(void)
+SBackup BackupServerGet::getLastIncrementalImage(const std::string &letter)
 {
 	q_get_last_incremental_image->Bind(clientid);
+	q_get_last_incremental_image->Bind(letter);
 	db_results res=q_get_last_incremental_image->Read();
 	q_get_last_incremental_image->Reset();
 	if(res.size()>0)
@@ -729,23 +759,51 @@ bool BackupServerGet::isUpdateIncr(void)
 	return res.empty();
 }
 
-bool BackupServerGet::isUpdateFullImage(void)
+bool BackupServerGet::isUpdateFullImage(const std::string &letter)
 {
 	if(server_settings->getSettings()->update_freq_image_full<0)
 		return false;
 
 	q_update_image_full->Bind(clientid);
+	q_update_image_full->Bind(letter);
 	db_results res=q_update_image_full->Read();
 	q_update_image_full->Reset();
 	return res.empty();
 }
 
+bool BackupServerGet::isUpdateFullImage(void)
+{
+	std::vector<std::string> vols=server_settings->getBackupVolumes();
+	for(size_t i=0;i<vols.size();++i)
+	{
+		if( isUpdateFullImage(vols[i]+":") )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool BackupServerGet::isUpdateIncrImage(void)
+{
+	std::vector<std::string> vols=server_settings->getBackupVolumes();
+	for(size_t i=0;i<vols.size();++i)
+	{
+		if( isUpdateIncrImage(vols[i]+":") )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool BackupServerGet::isUpdateIncrImage(const std::string &letter)
 {
 	if(server_settings->getSettings()->update_freq_image_full<=0)
 		return false;
 
 	q_update_image_incr->Bind(clientid);
+	q_update_image_incr->Bind(letter);
 	db_results res=q_update_image_incr->Read();
 	q_update_image_incr->Reset();
 	return res.empty();
@@ -2324,7 +2382,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	unsigned int starttime=Server->getTimeMS();
 	bool first=true;
 	char buffer[4096];
-	unsigned int blocksize;
+	unsigned int blocksize=0xFFFFFFFF;
 	unsigned int blockleft=0;
 	int64 currblock=-1;
 	char *blockdata=NULL;

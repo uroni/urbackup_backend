@@ -924,6 +924,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	}
 	else
 	{
+		closesocket(s);
 		return NULL;
 	}
 }

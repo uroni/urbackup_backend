@@ -44,7 +44,7 @@ const unsigned int idletime=60000;
 const unsigned int nonidlesleeptime=500;
 const unsigned short tcpport=35621;
 const unsigned short udpport=35622;
-const unsigned int shadowcopy_timeout=24*60*60*1000;
+const unsigned int shadowcopy_timeout=7*24*60*60*1000;
 
 #ifndef SERVER_ONLY
 #define ENABLE_VSS
@@ -324,7 +324,7 @@ void IndexThread::operator()(void)
 			
 			if(scd->running==true && Server->getTimeSeconds()-scd->starttime<shadowcopy_timeout/1000)
 			{
-				if(scd->ref!=NULL)
+				if(scd->ref!=NULL && image_backup==0)
 				{
 					scd->ref->dontincrement=true;
 				}

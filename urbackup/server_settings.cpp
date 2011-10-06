@@ -44,6 +44,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"allow_starting_image_backups");
 	ret.push_back(L"allow_pause");
 	ret.push_back(L"allow_log_view");
+	ret.push_back(L"image_volumes");
 	return ret;
 }
 
@@ -178,6 +179,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.allow_starting_image_backups=(settings_default->getValue("allow_starting_image_backups", "true")=="true");
 	settings.allow_pause=(settings_default->getValue("allow_pause", "true")=="true");
 	settings.allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
+	settings.image_letters=settings_default->getValue("image_letters", "C");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -254,6 +256,9 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("allow_log_view", "");
 	if(!stmp.empty())
 		settings.allow_log_view=(stmp=="true");
+	stmp=settings_client->getValue("image_letters", "");
+	if(!stmp.empty())
+		settings.image_letters=stmp;
 
 
 	stmp=settings_client->getValue("overwrite", "");
@@ -277,6 +282,14 @@ std::vector<STimeSpan> ServerSettings::getBackupWindow(void)
 {
 	std::string window=getSettings()->backup_window;
 	return getWindow(window);
+}
+
+std::vector<std::string> ServerSettings::getBackupVolumes(void)
+{
+	std::string vols=getSettings()->image_letters;
+	std::vector<std::string> ret;
+	Tokenize(vols, ret, ";,");
+	return ret;
 }
 
 std::vector<STimeSpan> ServerSettings::getWindow(std::string window)

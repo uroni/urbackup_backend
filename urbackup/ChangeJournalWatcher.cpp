@@ -510,7 +510,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	med.HighUsn = sj->last_record;
 
 	// Process MFT in 64k chunks
-	BYTE pData[sizeof(DWORDLONG) + 0x10000];
+	BYTE *pData=new BYTE[sizeof(DWORDLONG) + 0x10000];
 	DWORDLONG fnLast = 0;
 	DWORD cb;
 	while (DeviceIoControl(sj->hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med),pData, sizeof(pData), &cb, NULL) != FALSE)
@@ -545,6 +545,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 		med.StartFileReferenceNumber = * (DWORDLONG *) pData;
 	}
 
+	delete []pData;
 	db->destroyQuery(q_add_frn_tmp);
 	q_add_frn_tmp=NULL;
 	db->Write("INSERT INTO map_frn (name, pid, frn, rid) SELECT name, pid, frn, rid FROM map_frn_tmp");

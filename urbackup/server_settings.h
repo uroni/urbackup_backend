@@ -40,6 +40,7 @@ struct SSettings
 	bool allow_starting_image_backups;
 	bool allow_config_paths;
 	bool allow_log_view;
+	std::string image_letters;
 };
 
 struct STimeSpan
@@ -69,6 +70,8 @@ public:
 
 	std::vector<STimeSpan> getBackupWindow(void);
 	std::vector<STimeSpan> getCleanupWindow(void);
+	std::vector<std::string> getBackupVolumes(void);
+
 private:
 	std::vector<STimeSpan> getWindow(std::string window);
 	float parseTimeDet(std::string t);
