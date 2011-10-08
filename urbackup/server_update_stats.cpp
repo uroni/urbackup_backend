@@ -9,12 +9,14 @@
 #include "os_functions.h"
 #include "../stringtools.h"
 #include "server_settings.h"
+#include "server_status.h"
+#include "server_get.h"
 
 const bool update_stats_use_transactions=true;
 const bool update_stats_autocommit=true;
 
-ServerUpdateStats::ServerUpdateStats(bool image_repair_mode)
-	: image_repair_mode(image_repair_mode)
+ServerUpdateStats::ServerUpdateStats(bool image_repair_mode, bool interruptible)
+	: image_repair_mode(image_repair_mode), interruptible(interruptible)
 {
 }
 
@@ -194,6 +196,16 @@ void ServerUpdateStats::update_files(void)
 	int last_pc=0;
 	do
 	{
+		if(interruptible)
+		{
+			if( BackupServerGet::getNumberOfRunningFileBackups()>0 )
+			{
+				break;
+			}
+		}
+
+		ServerStatus::updateActive();
+
 		if(update_stats_use_transactions)
 		{
 			db->EndTransaction();
@@ -343,6 +355,16 @@ void ServerUpdateStats::update_files(void)
 	last_pc=0;
 	do
 	{
+		if(interruptible)
+		{
+			if( BackupServerGet::getNumberOfRunningFileBackups()>0 )
+			{
+				break;
+			}
+		}
+		
+		ServerStatus::updateActive();
+
 		if(update_stats_use_transactions)
 		{
 			db->EndTransaction();

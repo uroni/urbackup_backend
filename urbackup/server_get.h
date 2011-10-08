@@ -46,6 +46,9 @@ public:
 	static bool isInBackupWindow(std::vector<STimeSpan> bw);
 	static MailServer getMailServerSettings(void);
 
+	static int getNumberOfRunningBackups(void);
+	static int getNumberOfRunningFileBackups(void);
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -90,8 +93,8 @@ private:
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
 	bool isBackupsRunningOkay(void);
-	void startBackupRunning(void);
-	void stopBackupRunning(void);
+	void startBackupRunning(bool file);
+	void stopBackupRunning(bool file);
 
 	void saveImageAssociation(int image_id, int assoc_id);
 	
@@ -183,5 +186,6 @@ private:
 	bool do_incr_image_now;
 
 	static int running_backups;
+	static int running_file_backups;
 	static IMutex *running_backup_mutex;
 };

@@ -63,6 +63,7 @@ const unsigned int image_timeout=10*24*60*60*1000;
 const unsigned int image_recv_timeout=1*60*60*1000;
 
 int BackupServerGet::running_backups=0;
+int BackupServerGet::running_file_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
 
 BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName)
@@ -296,7 +297,7 @@ void BackupServerGet::operator ()(void)
 				do_full_backup_now=false;
 
 				hbu=true;
-				startBackupRunning();
+				startBackupRunning(true);
 				if(!constructBackupPath())
 				{
 					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
@@ -320,7 +321,7 @@ void BackupServerGet::operator ()(void)
 				ServerLogger::Log(clientid, "Doing incremental file backup...", LL_DEBUG);
 				do_incr_backup_now=false;
 				hbu=true;
-				startBackupRunning();
+				startBackupRunning(true);
 				r_incremental=true;
 				if(!constructBackupPath())
 				{
@@ -349,7 +350,7 @@ void BackupServerGet::operator ()(void)
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-				startBackupRunning();
+				startBackupRunning(true);
 
 				r_success=true;
 				std::vector<std::string> vols=server_settings->getBackupVolumes();
@@ -393,7 +394,7 @@ void BackupServerGet::operator ()(void)
 				r_image=true;
 				r_incremental=true;
 
-				startBackupRunning();
+				startBackupRunning(true);
 			
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
@@ -516,13 +517,13 @@ void BackupServerGet::operator ()(void)
 
 			if(hbu || r_image)
 			{
-				stopBackupRunning();
+				stopBackupRunning(!r_image);
 				saveClientLogdata(r_image?1:0, r_incremental?1:0, r_success && !has_error);
 				sendClientLogdata();
 			}
 			if(hbu)
 			{
-				ServerCleanupThread::updateStats();
+				ServerCleanupThread::updateStats(true);
 			}
 
 			if(pingthread!=NULL)
@@ -3265,16 +3266,36 @@ bool BackupServerGet::isBackupsRunningOkay(void)
 	}
 }
 
-void BackupServerGet::startBackupRunning(void)
+void BackupServerGet::startBackupRunning(bool file)
 {
 	IScopedLock lock(running_backup_mutex);
 	++running_backups;
+	if(file)
+	{
+		++running_file_backups;
+	}
 }
 
-void BackupServerGet::stopBackupRunning(void)
+void BackupServerGet::stopBackupRunning(bool file)
 {
 	IScopedLock lock(running_backup_mutex);
 	--running_backups;
+	if(file)
+	{
+		--running_file_backups;
+	}
+}
+
+int BackupServerGet::getNumberOfRunningBackups(void)
+{
+	IScopedLock lock(running_backup_mutex);
+	return running_backups;
+}
+
+int BackupServerGet::getNumberOfRunningFileBackups(void)
+{
+	IScopedLock lock(running_backup_mutex);
+	return running_file_backups;
 }
 
 void BackupServerGet::writeFileRepeat(IFile *f, const std::string &str)

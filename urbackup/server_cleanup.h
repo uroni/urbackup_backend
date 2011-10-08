@@ -37,7 +37,7 @@ public:
 
 	void deletePendingClients(void);
 
-	static void updateStats(void);
+	static void updateStats(bool interruptible);
 	static void initMutex(void);
 private:
 
@@ -80,6 +80,7 @@ private:
 	static IMutex *a_mutex;
 
 	static bool update_stats;
+	static bool update_stats_interruptible;
 	
 	std::vector<int> removeerr;
 };

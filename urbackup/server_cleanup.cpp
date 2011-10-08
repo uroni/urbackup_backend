@@ -35,6 +35,7 @@ IMutex *ServerCleanupThread::mutex=NULL;
 ICondition *ServerCleanupThread::cond=NULL;
 bool ServerCleanupThread::update_stats=false;
 IMutex *ServerCleanupThread::a_mutex=NULL;
+bool ServerCleanupThread::update_stats_interruptible=false;
 
 void ServerCleanupThread::initMutex(void)
 {
@@ -88,7 +89,7 @@ void ServerCleanupThread::operator()(void)
 
 				{
 					IScopedLock lock(a_mutex);
-					ServerUpdateStats sus;
+					ServerUpdateStats sus(false, update_stats_interruptible);
 					sus();					
 				}
 
@@ -131,10 +132,11 @@ void ServerCleanupThread::operator()(void)
 	}
 }
 
-void ServerCleanupThread::updateStats(void)
+void ServerCleanupThread::updateStats(bool interruptible)
 {
 	IScopedLock lock(mutex);
 	update_stats=true;
+	update_stats_interruptible=interruptible;
 	cond->notify_all();
 }
 
@@ -325,6 +327,8 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 
 void ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size_correction)
 {
+	ServerStatus::updateActive();
+
 	q_get_image_refs->Bind(backupid);
 	db_results res=q_get_image_refs->Read();
 	q_get_image_refs->Reset();
@@ -368,6 +372,8 @@ void ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 			q_image_stats_stop->Reset();
 		}
 	}
+
+	ServerStatus::updateActive();
 }
 
 bool ServerCleanupThread::findUncompleteImageRef(int backupid)
@@ -624,6 +630,8 @@ size_t ServerCleanupThread::getFilesIncrNum(int clientid, int &backupid_top)
 
 bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid)
 {
+	ServerStatus::updateActive();
+
 	std::wstring clientname;
 	q_get_clientname->Bind(clientid);
 	db_results res=q_get_clientname->Read();
@@ -710,6 +718,8 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 		q_remove_file_backup->Reset();
 		db->EndTransaction();
 	}
+
+	ServerStatus::updateActive();
 	
 	return !err;
 }

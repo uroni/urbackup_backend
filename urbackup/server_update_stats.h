@@ -14,7 +14,7 @@ struct SDelInfo
 class ServerUpdateStats : public IThread
 {
 public:
-	ServerUpdateStats(bool image_repair_mode=false);
+	ServerUpdateStats(bool image_repair_mode=false, bool interruptible=false);
 
 	void operator()(void);
 
@@ -39,6 +39,7 @@ private:
 	bool repairImagePath(str_map img);
 
 	bool image_repair_mode;
+	bool interruptible;
 
 	IQuery *q_get_images;
 	IQuery *q_update_images_size;
