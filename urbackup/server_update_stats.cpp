@@ -12,8 +12,10 @@
 #include "server_status.h"
 #include "server_get.h"
 
-const bool update_stats_use_transactions=true;
+const bool update_stats_use_transactions_del=true;
+const bool update_stats_use_transactions_done=false;
 const bool update_stats_autocommit=true;
+const bool update_stats_bulk_done_files=true;
 
 ServerUpdateStats::ServerUpdateStats(bool image_repair_mode, bool interruptible)
 	: image_repair_mode(image_repair_mode), interruptible(interruptible)
@@ -43,6 +45,7 @@ void ServerUpdateStats::createQueries(void)
 	q_get_transfer=db->Prepare("SELECT rowid AS id FROM files WHERE shahash=? AND filesize=? AND did_count=1 AND rsize=0 LIMIT 1", false);
 	q_create_hist=db->Prepare("INSERT INTO clients_hist_id (created) VALUES (CURRENT_TIMESTAMP)", false);
 	q_get_all_clients=db->Prepare("SELECT id FROM clients", false);
+	q_mark_done_bulk_files=db->Prepare("UPDATE files SET did_count=1 WHERE rowid IN ( SELECT rowid FROM files WHERE did_count=0 LIMIT 10000 )");
 }
 
 void ServerUpdateStats::destroyQueries(void)
@@ -68,6 +71,7 @@ void ServerUpdateStats::destroyQueries(void)
 	db->destroyQuery(q_get_transfer);
 	db->destroyQuery(q_create_hist);
 	db->destroyQuery(q_get_all_clients);
+	db->destroyQuery(q_mark_done_bulk_files);
 }
 
 void ServerUpdateStats::operator()(void)
@@ -186,7 +190,7 @@ void ServerUpdateStats::update_files(void)
 		db->Write("PRAGMA wal_autocheckpoint=0");
 	}
 
-	if(update_stats_use_transactions)
+	if(update_stats_use_transactions_del)
 	{
 		db->BeginTransaction();
 	}
@@ -206,13 +210,13 @@ void ServerUpdateStats::update_files(void)
 
 		ServerStatus::updateActive();
 
-		if(update_stats_use_transactions)
+		if(update_stats_use_transactions_del)
 		{
 			db->EndTransaction();
 		}
 		res=q_get_delfiles->Read();
 		q_get_delfiles->Reset();
-		if(update_stats_use_transactions)
+		if(update_stats_use_transactions_del)
 		{
 			db->BeginTransaction();
 		}
@@ -225,7 +229,7 @@ void ServerUpdateStats::update_files(void)
 				last_update_time=Server->getTimeMS();
 			}
 
-			if(update_stats_use_transactions && Server->getTimeMS()-last_commit_time>300)
+			if(update_stats_use_transactions_del && Server->getTimeMS()-last_commit_time>1000)
 			{
 				db->EndTransaction();
 				db->BeginTransaction();
@@ -318,14 +322,14 @@ void ServerUpdateStats::update_files(void)
 
 		if(!update_stats_autocommit)
 		{
-			if(update_stats_use_transactions)
+			if(update_stats_use_transactions_del)
 			{
 				db->EndTransaction();
 			}
 			Server->Log("Running wal checkpoint...", LL_DEBUG);
 			db->Write("PRAGMA wal_checkpoint");
 			Server->Log("done. (wal chkp)", LL_DEBUG);
-			if(update_stats_use_transactions)
+			if(update_stats_use_transactions_del)
 			{
 				db->BeginTransaction();
 			}
@@ -336,7 +340,7 @@ void ServerUpdateStats::update_files(void)
 	updateSizes(size_data);
 	updateDels(del_sizes);
 
-	if(update_stats_use_transactions)
+	if(update_stats_use_transactions_del)
 	{
 		db->EndTransaction();
 	}
@@ -347,7 +351,7 @@ void ServerUpdateStats::update_files(void)
 
 	std::map<int, _i64> backup_sizes;
 
-	if(update_stats_use_transactions)
+	if(update_stats_use_transactions_done)
 	{
 		db->BeginTransaction();
 	}
@@ -365,26 +369,26 @@ void ServerUpdateStats::update_files(void)
 		
 		ServerStatus::updateActive();
 
-		if(update_stats_use_transactions)
+		if(update_stats_use_transactions_done)
 		{
 			db->EndTransaction();
 		}
 		res=q_get_ncount_files->Read();
 		q_get_ncount_files->Reset();
-		if(update_stats_use_transactions)
+		if(update_stats_use_transactions_done)
 		{
 			db->BeginTransaction();
 		}
 		for(size_t i=0;i<res.size();++i)
 		{
-			if(Server->getTimeMS()-last_update_time>2000)
+			if(!update_stats_bulk_done_files && Server->getTimeMS()-last_update_time>2000)
 			{
 				updateSizes(size_data);
 				updateBackups(backup_sizes);
 				last_update_time=Server->getTimeMS();
 			}
 
-			if(update_stats_use_transactions && Server->getTimeMS()-last_commit_time>300)
+			if(update_stats_use_transactions_done && Server->getTimeMS()-last_commit_time>300)
 			{
 				db->EndTransaction();
 				db->BeginTransaction();
@@ -415,9 +419,12 @@ void ServerUpdateStats::update_files(void)
 				{
 					if(watoi(r[0][L"c"])>0)
 					{
-						q_mark_done->Bind(id);
-						q_mark_done->Write();
-						q_mark_done->Reset();
+						if(!update_stats_bulk_done_files)
+						{
+							q_mark_done->Bind(id);
+							q_mark_done->Write();
+							q_mark_done->Reset();
+						}
 						continue;
 					}
 				}
@@ -446,20 +453,45 @@ void ServerUpdateStats::update_files(void)
 			}
 			add(size_data, pre_sizes, 1);
 
-			q_mark_done->Bind(id);
-			q_mark_done->Write();
-			q_mark_done->Reset();
+			if(!update_stats_bulk_done_files)
+			{
+				q_mark_done->Bind(id);
+				q_mark_done->Write();
+				q_mark_done->Reset();
+			}
 		}
 		if(!update_stats_autocommit)
 		{
-			if(update_stats_use_transactions)
+			if(update_stats_use_transactions_done)
 			{
 				db->EndTransaction();
 			}
 			Server->Log("Running wal checkpoint...", LL_DEBUG);
 			db->Write("PRAGMA wal_checkpoint");
 			Server->Log("done.", LL_DEBUG);
-			if(update_stats_use_transactions)
+			if(update_stats_use_transactions_done)
+			{
+				db->BeginTransaction();
+			}
+		}
+
+		if(update_stats_bulk_done_files)
+		{
+			if(update_stats_use_transactions_done)
+			{
+				db->EndTransaction();
+			}
+
+			db->BeginTransaction();
+
+			q_mark_done_bulk_files->Write();
+			q_mark_done_bulk_files->Reset();
+			updateSizes(size_data);
+			updateBackups(backup_sizes);
+
+			db->EndTransaction();
+
+			if(update_stats_use_transactions_done)
 			{
 				db->BeginTransaction();
 			}
@@ -470,7 +502,7 @@ void ServerUpdateStats::update_files(void)
 	updateSizes(size_data);
 	updateBackups(backup_sizes);
 
-	if(update_stats_use_transactions)
+	if(update_stats_use_transactions_done)
 	{
 		db->EndTransaction();
 	}

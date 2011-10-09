@@ -46,6 +46,7 @@ private:
 	IQuery *q_get_ncount_files;
 	IQuery *q_has_client;
 	IQuery *q_mark_done;
+	IQuery *q_mark_done_bulk_files;
 	IQuery *q_get_clients;
 	IQuery *q_get_sizes;
 	IQuery *q_size_update;
