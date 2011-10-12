@@ -241,6 +241,17 @@ void ServerSettings::readSettingsClient(void)
 	swtmp=settings_client->getValue(L"default_dirs", L"");
 	if(!swtmp.empty())
 		settings.default_dirs=swtmp;
+	stmp=settings_client->getValue("image_letters", "");
+	if(!stmp.empty())
+		settings.image_letters=stmp;
+	
+	
+	stmp=settings_client->getValue("overwrite", "");
+	if(!stmp.empty())
+		settings.overwrite=(stmp=="true");
+	if(!settings.overwrite)
+		return;
+
 	stmp=settings_client->getValue("allow_config_paths", "");
 	if(!stmp.empty())
 		settings.allow_config_paths=(stmp=="true");
@@ -256,17 +267,6 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("allow_log_view", "");
 	if(!stmp.empty())
 		settings.allow_log_view=(stmp=="true");
-	stmp=settings_client->getValue("image_letters", "");
-	if(!stmp.empty())
-		settings.image_letters=stmp;
-
-
-	stmp=settings_client->getValue("overwrite", "");
-	if(!stmp.empty())
-		settings.overwrite=(stmp=="true");
-	if(!settings.overwrite)
-		return;
-
 	stmp=settings_client->getValue("allow_overwrite", "");
 	if(!stmp.empty())
 		settings.allow_overwrite=(stmp=="true");
