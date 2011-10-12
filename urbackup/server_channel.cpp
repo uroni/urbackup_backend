@@ -434,7 +434,7 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_ALLOW_CONFIG_PATHS;
 	if(!cs->allow_log_view)
 		capa|=DONT_SHOW_LOGS;
-	if(!cs->no_images)
+	if(cs->no_images)
 		capa|=DONT_DO_IMAGE_BACKUPS;
 
 	return capa;
