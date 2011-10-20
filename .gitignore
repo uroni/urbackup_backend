@@ -100,3 +100,4 @@ urlplugin/x64/*
 zlib1.dll
 urlplugin/Release/*
 urbackup/shutdown_now
+urlplugin/Debug/*

@@ -229,14 +229,14 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		//TODO language
-		IQuery *q=db->Prepare("SELECT id,strftime('%s', backuptime) AS timestamp, strftime('%d.%m.%Y %H:%M',backuptime) AS backuptime FROM (backup_images INNER JOIN (SELECT * FROM clients WHERE name=?) b ON backup_images.clientid=b.id) a WHERE a.complete=1 AND a.letter='C:' ORDER BY backuptime DESC");
+		IQuery *q=db->Prepare("SELECT id,strftime('%s', backuptime) AS timestamp, strftime('%d.%m.%Y %H:%M',backuptime) AS backuptime, letter FROM (backup_images INNER JOIN (SELECT * FROM clients WHERE name=?) b ON backup_images.clientid=b.id) a WHERE a.complete=1 AND length(a.letter)<=2 ORDER BY backuptime DESC");
 		q->Bind(name);
 		db_results res=q->Read();
 		std::string r;
 		q=db->Prepare("SELECT id,strftime('%s', backuptime) AS timestamp, strftime('%d.%m.%Y %H:%M',backuptime) AS backuptime FROM (backup_images INNER JOIN (SELECT * FROM assoc_images WHERE img_id=?) b ON backup_images.id=b.assoc_id) a WHERE a.complete=1 ORDER BY backuptime DESC");
 		for(size_t i=0;i<res.size();++i)
 		{
-			r+=Server->ConvertToUTF8(res[i][L"id"])+"|"+Server->ConvertToUTF8(res[i][L"timestamp"])+"|"+Server->ConvertToUTF8(res[i][L"backuptime"])+"\n";
+			r+=Server->ConvertToUTF8(res[i][L"id"])+"|"+Server->ConvertToUTF8(res[i][L"timestamp"])+"|"+Server->ConvertToUTF8(res[i][L"backuptime"])+"|"+Server->ConvertToUTF8(res[i][L"letter"])+"\n";
 			
 			q->Bind(watoi(res[i][L"id"]));
 			db_results res2=q->Read();

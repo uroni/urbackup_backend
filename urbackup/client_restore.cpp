@@ -130,6 +130,7 @@ struct SImage
 	_i64 time_s;
 	int id;
 	std::vector<SImage> assoc;
+	std::string letter;
 };
 
 std::vector<SImage> getBackupimages(std::string clientname, int *ec)
@@ -170,12 +171,16 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 			{
 				std::vector<std::string> t2;
 				Tokenize(toks[i], t2, "|");
-				if(t2.size()==3)
+				if(t2.size()==3 || (t2.size()==4 && t2[0]!="#") )
 				{
 					SImage si;
 					si.id=atoi(t2[0].c_str());
 					si.time_s=os_atoi64(t2[1]);
 					si.time_str=t2[2];
+					if(t2.size()==4)
+					{
+						si.letter=t2[3];
+					}
 					ret.push_back(si);
 				}
 				else if(t2.size()==4 && t2[0]=="#" && !ret.empty())
@@ -867,7 +872,10 @@ void restore_wizard(void)
 					std::string mi;
 					for(size_t i=0;i<images.size();++i)
 					{
-						mi+="\""+nconvert((int)i+1)+"\" \""+images[i].time_str+"\" ";
+						if(!images[i].letter.empty())
+							images[i].letter=" "+images[i].letter;
+
+						mi+="\""+nconvert((int)i+1)+"\" \""+images[i].time_str+images[i].letter+"\" ";
 					}
 					int r=system(("dialog --menu \"`cat urbackup/restore/select_date`\" 15 50 10 "+mi+"2> out").c_str());
 					if(r!=0)
@@ -1093,12 +1101,23 @@ void restore_wizard(void)
 			}break;
 		case 6:
 			{
-				int r=system("dialog --yesno \"`cat urbackup/restore/restore_success`\" 7 50");
-				if(r==0)
+				int r=system("dialog --menu \"`cat urbackup/restore/restore_success`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_computer`\" \"o\" \"`cat urbackup/restore/restore_other`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out");
+				if(r!=0)
 				{
-					system("init 6");
+					state=start_state;
+					break;
 				}
-				exit(0);
+
+				std::string out=getFile("out");
+				if(out=="r")
+					system("init 6");
+				else if(out=="o")
+					state=2;
+				else if(out=="s")
+					exit(0);
+				else
+					system("init 6");
+
 			}break;
 		case 99:
 			{
