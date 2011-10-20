@@ -513,7 +513,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	BYTE *pData=new BYTE[sizeof(DWORDLONG) + 0x10000];
 	DWORDLONG fnLast = 0;
 	DWORD cb;
-	while (DeviceIoControl(sj->hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med),pData, sizeof(pData), &cb, NULL) != FALSE)
+	while (DeviceIoControl(sj->hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med),pData, sizeof(DWORDLONG) + 0x10000, &cb, NULL) != FALSE)
 	{
 		if(indexing_in_progress)
 		{
@@ -706,7 +706,10 @@ void ChangeJournalWatcher::update(bool force_write)
 					}
 					else
 					{
-						saveJournalData(it->second.journal_id, it->first, TUsnRecord, nextUsn);
+						if(fn!="backup_client.db" && fn!="backup_client.db-journal")
+						{
+							saveJournalData(it->second.journal_id, it->first, TUsnRecord, nextUsn);	
+						}
 					}
 
 					TUsnRecord = (PUSN_RECORD)(((PCHAR)TUsnRecord) + TUsnRecord->RecordLength);
