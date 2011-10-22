@@ -5,5 +5,5 @@ INSTALL_OPTS=-o urbackup -g urbackup
 install-data-local: backup_client.db
 	$(INSTALL_DATA) $(INSTALL_OPTS) -D "$(srcdir)/backup_client.db" "$(DESTDIR)$(localstatedir)/urbackup/backup_client.db.template"
 
-noinst_HEADERS = DirectoryWatcherThread.h os_functions.h settings.h ChangeJournalWatcher.h zero_hash.h bufmgr.h watchdir/DelayedDirectoryChangeHandler.h watchdir/Event.h watchdir/CriticalSection.h watchdir/DirectoryChanges.h sha2/sha2.h database.h escape.h ClientSend.h clientdao.h client.h ClientService.h ../fileservplugin/IFileServFactory.h ../fileservplugin/IFileServ.h fileclient/data.h fileclient/tcpstack.h fileclient/FileClient.h server_settings.h
+noinst_HEADERS = DirectoryWatcherThread.h os_functions.h settings.h ChangeJournalWatcher.h zero_hash.h bufmgr.h watchdir/DelayedDirectoryChangeHandler.h watchdir/Event.h watchdir/CriticalSection.h watchdir/DirectoryChanges.h sha2/sha2.h database.h escape.h ClientSend.h clientdao.h client.h ClientService.h ../fileservplugin/IFileServFactory.h ../fileservplugin/IFileServ.h fileclient/data.h fileclient/tcpstack.h fileclient/FileClient.h server_settings.h capa_bits.h
 EXTRA_DIST = backup_client.db

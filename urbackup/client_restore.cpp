@@ -17,6 +17,12 @@
 #include <sys/ioctl.h>
 #endif
 
+#ifdef _WIN32
+const std::string pw_file="pw.txt";
+#else
+const std::string pw_file="urbackup/pw.txt";
+#endif
+
 
 std::string trim2(const std::string &str)
 {
@@ -48,8 +54,9 @@ std::string getResponse(IPipe *c)
 		tcpstack.AddData(buffer, rc );
 
 		resp=tcpstack.getPacket(&packetsize);
-		if(packetsize==0)
+		if(resp!=NULL && packetsize==0)
 		{
+			delete []resp;
 			return "";
 		}
 	}
@@ -57,12 +64,13 @@ std::string getResponse(IPipe *c)
 	std::string ret;
 	ret.resize(packetsize);
 	memcpy(&ret[0], resp, packetsize);
+	delete []resp;
 	return ret;
 }
 
 std::vector<std::string> getBackupclients(int *ec)
 {
-	std::string pw=getFile("pw.txt");
+	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
 	std::vector<std::string> ret;
 	*ec=0;
@@ -135,7 +143,7 @@ struct SImage
 
 std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 {
-	std::string pw=getFile("pw.txt");
+	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
 	std::vector<SImage> ret;
 	*ec=0;
@@ -202,7 +210,7 @@ volatile bool restore_retry_ok=false;
 
 int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1)
 {
-	std::string pw=getFile("pw.txt");
+	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
 	std::vector<SImage> ret;
 
@@ -417,7 +425,7 @@ void do_restore(void)
 		exit(1);return;
 	}
 
-	std::string pw=getFile("pw.txt");
+	std::string pw=getFile(pw_file);
 
 	CTCPStack tcpstack;
 
@@ -721,17 +729,17 @@ void restore_wizard(void)
 						std::string out=getFile("out");
 						if(out=="n")
 						{
-							system("netcardconfig");
+							system("LC_ALL=C netcardconfig");
 							state=0;
 						}
 						else if(out=="w")
 						{
-							system("wlcardconfig");
+							system("LC_ALL=C wlcardconfig");
 							state=0;
 						}
 						else if(out=="e")
 						{
-							system("sh");
+							system("bash");
 							state=0;
 						}
 						else if(out=="c")
@@ -790,17 +798,17 @@ void restore_wizard(void)
 						state=0;
 					else if(out=="n")
 					{
-						system("netcardconfig");
+						system("LC_ALL=C netcardconfig");
 						state=0;
 					}
 					else if(out=="w")
 					{
-						system("wlcardconfig");
+						system("LC_ALL=C wlcardconfig");
 						state=0;
 					}
 					else if(out=="e")
 					{
-						system("sh");
+						system("bash");
 						state=0;
 					}
 					else
@@ -1078,7 +1086,7 @@ void restore_wizard(void)
 						state=3;
 					else if(out=="e")
 					{
-						system("sh");
+						system("bash");
 						state=0;
 					}
 					else
@@ -1114,7 +1122,7 @@ void restore_wizard(void)
 				else if(out=="o")
 					state=2;
 				else if(out=="s")
-					exit(0);
+					system("bash");
 				else
 					system("init 6");
 

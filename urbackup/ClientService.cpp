@@ -1213,7 +1213,14 @@ void ClientConnector::ReceivePackets(void)
 				for(size_t i=0;i<channel_pipes.size();++i)
 				{
 					tcpstack.Send(channel_pipes[i], "GET BACKUPCLIENTS");
+					if(channel_pipes[i]->hasError())
+						Server->Log("Channel has error after request -1", LL_DEBUG);
 					std::string nc=receivePacket(channel_pipes[i]);
+					if(channel_pipes[i]->hasError())
+						Server->Log("Channel has error after read -1", LL_DEBUG);
+						
+					Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
+					
 					if(!nc.empty())
 					{
 						clients+=nc+"\n";
@@ -2468,10 +2475,13 @@ std::string ClientConnector::receivePacket(IPipe *p)
 
 		size_t packetsize;
 		char *pck=tcpstack.getPacket(&packetsize);
-		if(pck!=NULL && packetsize>0)
+		if(pck!=NULL)
 		{
 			ret.resize(packetsize);
-			memcpy(&ret[0], pck, packetsize);
+			if(packetsize>0)
+			{
+				memcpy(&ret[0], pck, packetsize);
+			}
 			delete [] pck;
 			return ret;
 		}

@@ -54,12 +54,20 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	if( rc>0 )
 	{
 		rc=recv(s, buffer, (int)bsize, MSG_NOSIGNAL);
+		if(rc<=0)
+		{
+			has_error=true;
+			return 0;
+		}
 	}
 	if( rc>0 )
 		return rc;
 	else
 	{
-		has_error=true;
+		if(rc<0)
+		{
+		    has_error=true;
+		}
 		return 0;
 	}
 }

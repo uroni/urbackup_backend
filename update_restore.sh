@@ -15,7 +15,7 @@ cd fileservplugin
 make
 cd ..
 
-LANG=en
+LANG=de
 
 cp urbackup_srv restore_cd/cserver
 cp urbackup/.libs/liburbackupserver.so restore_cd/urbackup/.libs/liburbackup.so

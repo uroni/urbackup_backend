@@ -42,7 +42,10 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen)
 	MAX_PACKETSIZE len=(MAX_PACKETSIZE)msglen;
 
 	memcpy(buffer, &len, sizeof(MAX_PACKETSIZE) );
-	memcpy(&buffer[sizeof(MAX_PACKETSIZE)], buf, msglen);
+	if(msglen>0)
+	{
+	    memcpy(&buffer[sizeof(MAX_PACKETSIZE)], buf, msglen);
+	}
 
 	size_t currpos=0;
 
@@ -75,7 +78,7 @@ size_t CTCPStack::Send(IPipe* p, const std::string &msg)
 
 char* CTCPStack::getPacket(size_t* packetsize)
 {
-	if(buffer.size()>1)
+	if(buffer.size()>=sizeof(MAX_PACKETSIZE))
 	{
 		MAX_PACKETSIZE len;
 		memcpy(&len, &buffer[0], sizeof(MAX_PACKETSIZE) );
@@ -92,7 +95,7 @@ char* CTCPStack::getPacket(size_t* packetsize)
 
 			buffer.erase(buffer.begin(), buffer.begin()+len+sizeof(MAX_PACKETSIZE));
 
-            buf[len]=0;
+	                buf[len]=0;
 
 			return buf;
 		}
