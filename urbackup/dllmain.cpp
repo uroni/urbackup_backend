@@ -432,7 +432,11 @@ DLLEXPORT void UnloadActions(void)
 		db->Write("PRAGMA wal_checkpoint");
 		Server->destroyAllDatabases();
 		db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+#ifdef _WIN32
+#ifdef _DEBUG
 		db->Write("PRAGMA journal_mode=DELETE");
+#endif
+#endif
 	}
 #endif
 }
