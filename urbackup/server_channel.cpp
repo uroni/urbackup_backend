@@ -98,6 +98,7 @@ void ServerChannelThread::operator()(void)
 		{
 			if(Server->getTimeMS()-lasttime>180000)
 			{
+				Server->Log("Resetting channel because of timeout.", LL_DEBUG);
 				IScopedLock lock(mutex);
 				Server->destroy(input);
 				input=NULL;
