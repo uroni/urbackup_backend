@@ -161,6 +161,24 @@ bool EnumerateInterfaces()
         }
      }
 
+	 for(size_t i=0;i<ips.size();++i)
+	 {
+		 bool found=false;
+		 for(size_t j=0;j<new_ips.size();++j)
+		 {
+			 if(ips[i]==new_ips[j])
+			 {
+				 found=true;
+				 break;
+			 }
+		 }
+
+		 if(!found)
+		 {
+			 new_ifs=true;
+		 }
+	 }
+
 	 ips=new_ips;
 
 	 return new_ifs;
