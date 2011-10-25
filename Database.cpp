@@ -84,7 +84,7 @@ CDatabase::~CDatabase()
 bool CDatabase::Open(std::string pFile)
 {
 	in_transaction=false;
-	if( sqlite3_open(pFile.c_str(), &db) )
+	if( sqlite3_open_v2(pFile.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_SHAREDCACHE, NULL) )
 	{
 		Server->Log("Could not open db ["+pFile+"]");
 		sqlite3_close(db);
