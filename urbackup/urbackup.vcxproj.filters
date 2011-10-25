@@ -147,9 +147,6 @@
     <ClCompile Include="serverinterface\helper.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
-    <ClCompile Include="serverinterface\salt.cpp">
-      <Filter>serverinterface</Filter>
-    </ClCompile>
     <ClCompile Include="serverinterface\templ.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
@@ -205,6 +202,9 @@
       <Filter>serverinterface</Filter>
     </ClCompile>
     <ClCompile Include="win_sysvol.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\salt.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
