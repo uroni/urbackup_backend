@@ -286,6 +286,16 @@ void BackupServerGet::operator ()(void)
 			status.prepare_hashqueuesize=0;
 			ServerStatus::setServerStatus(status);
 
+			if(do_incr_image_now)
+			{
+				if(!can_backup_images)
+					Server->Log("Cannot do image backup because can_backup_images=false", LL_DEBUG);
+				if(server_settings->getSettings()->no_images)
+					Server->Log("Cannot do image backup because no_images=true", LL_DEBUG);
+				if(!isBackupsRunningOkay())
+					Server->Log("Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
+			}
+
 			if( !file_backup_err && isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) )
 			{
 				ScopedActiveThread sat;
@@ -344,7 +354,7 @@ void BackupServerGet::operator ()(void)
 				ServerStatus::setServerStatus(status, true);
 
 				ServerLogger::Log(clientid, "Doing full image backup...", LL_DEBUG);
-				do_full_image_now=false;
+				
 				r_image=true;
 
 				pingthread=new ServerPingThread(this);
@@ -356,7 +366,7 @@ void BackupServerGet::operator ()(void)
 				std::vector<std::string> vols=server_settings->getBackupVolumes();
 				for(size_t i=0;i<vols.size();++i)
 				{
-					if(isUpdateFullImage(vols[i]+":"))
+					if(isUpdateFullImage(vols[i]+":") || do_full_image_now)
 					{
 						int sysvol_id=-1;
 						if(strlower(vols[i])=="c")
@@ -381,6 +391,8 @@ void BackupServerGet::operator ()(void)
 						}
 					}
 				}
+
+				do_full_image_now=false;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
 			{
@@ -390,7 +402,7 @@ void BackupServerGet::operator ()(void)
 				ServerStatus::setServerStatus(status, true);
 
 				ServerLogger::Log(clientid, "Doing incremental image backup...", LL_DEBUG);
-				do_incr_image_now=false;
+				
 				r_image=true;
 				r_incremental=true;
 
@@ -403,7 +415,7 @@ void BackupServerGet::operator ()(void)
 				for(size_t i=0;i<vols.size();++i)
 				{
 					std::string letter=vols[i]+":";
-					if(isUpdateIncrImage(letter))
+					if(isUpdateIncrImage(letter) || do_incr_image_now)
 					{
 						int sysvol_id=-1;
 						if(strlower(letter)=="c:")
@@ -436,6 +448,8 @@ void BackupServerGet::operator ()(void)
 							break;
 					}
 				}
+
+				do_incr_image_now=false;
 			}
 
 			file_backup_err=false;
@@ -572,6 +586,8 @@ void BackupServerGet::operator ()(void)
 			IScopedLock lock(clientaddr_mutex);
 			memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
 		}
+
+		Server->Log("msg="+msg, LL_DEBUG);
 	}
 
 	//destroy channel
@@ -1879,10 +1895,11 @@ void BackupServerGet::sendClientBackupIncrIntervall(void)
 void BackupServerGet::updateCapabilities(void)
 {
 	std::string cap=sendClientMessage("CAPA", L"Querying capabilities failed", 10000, false);
-	if(cap!="ERR")
+	if(cap!="ERR" && !cap.empty())
 	{
 		if(cap.find("IMAGE")==std::string::npos)
 		{
+			Server->Log("Client doesn't have IMAGE capability", LL_DEBUG);
 			can_backup_images=false;
 		}
 	}
