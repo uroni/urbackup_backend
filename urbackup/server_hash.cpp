@@ -193,7 +193,7 @@ void BackupServerHash::operator()(void)
 
 void BackupServerHash::prepareSQL(void)
 {
-	q_find_file_hash=db->Prepare("SELECT fullpath, backupid FROM ( SELECT fullpath, backupid,created FROM files WHERE shahash=? AND filesize=? UNION ALL SELECT fullpath, backupid,created FROM files_tmp WHERE shahash=? AND filesize=?) ORDER BY created DESC LIMIT 1", false);
+	q_find_file_hash=db->Prepare("SELECT fullpath, backupid FROM files WHERE shahash=? AND filesize=? ORDER BY created DESC LIMIT 1", false);
 	q_delete_files_tmp=db->Prepare("DELETE FROM files_tmp WHERE backupid=?", false);
 	q_add_file=db->Prepare("INSERT INTO files_tmp (backupid, fullpath, shahash, filesize, rsize) VALUES (?, ?, ?, ?, ?)", false);
 	q_del_file=db->Prepare("DELETE FROM files WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
@@ -206,6 +206,8 @@ void BackupServerHash::prepareSQL(void)
 
 void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize)
 {
+	addFileTmp(backupid, fp, shahash, filesize);
+
 	q_add_file->Bind(backupid);
 	q_add_file->Bind(fp);
 	q_add_file->Bind(shahash.c_str(), (_u32)shahash.size());
@@ -213,6 +215,16 @@ void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const st
 	q_add_file->Bind(rsize);
 	q_add_file->Write();
 	q_add_file->Reset();
+}
+
+void BackupServerHash::addFileTmp(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize)
+{
+	std::vector<std::pair<int, std::wstring> > tmp;
+	tmp.push_back(std::pair<int, std::wstring>(backupid, fp));
+	std::pair<std::pair<std::string, _i64>, std::vector<std::pair<int, std::wstring> > > nv(
+		std::pair<std::string, _i64>(shahash, filesize),
+		tmp );
+	files_tmp.insert(nv);
 }
 
 void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid)
@@ -238,13 +250,19 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	q_del_file_tmp->Bind(backupid);
 	q_del_file_tmp->Write();
 	q_del_file_tmp->Reset();	
+
+	deleteFileTmp(pHash, fp, filesize, backupid);
 }
 
 void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstring &tfn, const std::string &sha2)
 {
 	_i64 t_filesize=tf->Size();
 	int f_backupid;
-	std::wstring ff=findFileHash(sha2, t_filesize, f_backupid);
+	std::wstring ff;
+	if(t_filesize>0)
+	{
+		ff=findFileHash(sha2, t_filesize, f_backupid);
+	}
 	std::wstring ff_last=ff;
 	bool copy=true;
 
@@ -302,7 +320,11 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 	{
 		ServerLogger::Log(clientid, L"HT: Copying file: \""+tfn+L"\"", LL_DEBUG);
 		int64 fs=tf->Size();
-		int64 available_space=os_free_space(os_file_prefix()+ExtractFilePath(tfn));
+		int64 available_space=0;
+		if(fs>0)
+		{
+			available_space=os_free_space(os_file_prefix()+ExtractFilePath(tfn));
+		}
 		if(available_space==-1)
 		{
 			if(space_logcnt==0)
@@ -324,7 +346,7 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 
 			bool free_ok=true;
 
-			if( available_space<=fs )
+			if( fs>0 && available_space<=fs )
 			{
 				if(space_logcnt==0)
 				{
@@ -405,8 +427,10 @@ bool BackupServerHash::freeSpace(int64 fs, const std::wstring &fp)
 
 std::wstring BackupServerHash::findFileHash(const std::string &pHash, _i64 filesize, int &backupid)
 {
-	q_find_file_hash->Bind(pHash.c_str(), (_u32)pHash.size());
-	q_find_file_hash->Bind(filesize);
+	std::wstring ret=findFileHashTmp(pHash, filesize, backupid);
+	if(!ret.empty())
+		return ret;
+
 	q_find_file_hash->Bind(pHash.c_str(), (_u32)pHash.size());
 	q_find_file_hash->Bind(filesize);
 	db_results res=q_find_file_hash->Read();
@@ -421,6 +445,39 @@ std::wstring BackupServerHash::findFileHash(const std::string &pHash, _i64 files
 	{
 		backupid=-1;
 		return L"";
+	}
+}
+
+std::wstring BackupServerHash::findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid)
+{
+	std::map<std::pair<std::string, _i64>, std::vector<std::pair<int, std::wstring> > >::iterator iter=files_tmp.find(std::pair<std::string, _i64>(pHash, filesize));
+
+	if(iter!=files_tmp.end())
+	{
+		if(!iter->second.empty())
+		{
+			backupid=iter->second[iter->second.size()-1].first;
+			return iter->second[iter->second.size()-1].second;
+		}
+	}
+
+	return L"";
+}
+
+void BackupServerHash::deleteFileTmp(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid)
+{
+	std::map<std::pair<std::string, _i64>, std::vector<std::pair<int, std::wstring> > >::iterator iter=files_tmp.find(std::pair<std::string, _i64>(pHash, filesize));
+
+	if(iter!=files_tmp.end())
+	{
+		for(size_t i=0;i<iter->second.size();++i)
+		{
+			if(iter->second[i].first==backupid && iter->second[i].second==fp)
+			{
+				iter->second.erase(iter->second.begin()+i);
+				--i;
+			}
+		}
 	}
 }
 
@@ -529,6 +586,8 @@ void BackupServerHash::copyFilesFromTmp(void)
 	q_copy_files->Reset();
 	q_delete_all_files_tmp->Write();
 	q_delete_all_files_tmp->Reset();
+
+	files_tmp.clear();
 }
 
 int BackupServerHash::countFilesInTmp(void)
