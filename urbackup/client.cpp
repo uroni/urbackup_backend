@@ -1353,7 +1353,10 @@ void IndexThread::start_filesrv(void)
 			std::wstring val;
 			if(curr_settings->getValue(L"computername", &val))
 			{
-				name=val;
+				if(!val.empty())
+				{
+					name=val;
+				}
 			}
 			Server->destroy(curr_settings);
 		}
