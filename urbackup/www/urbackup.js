@@ -1185,11 +1185,6 @@ function saveClientSettings(clientid, skip)
 	pars+=getPar("overwrite");
 	if(!skip)
 	{
-		if(!validate_text_nonempty(["computername"]) )
-		{
-			stopLoading();
-			return;
-		}
 		if(!validateCommonSettings())
 		{
 			stopLoading();
