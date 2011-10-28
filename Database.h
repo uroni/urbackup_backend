@@ -1,7 +1,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "Interface/Database.h"
+#include "Interface/DatabaseInt.h"
 #include "Interface/Types.h"
 #include "Interface/Mutex.h"
 #include "Interface/Condition.h"
@@ -9,7 +9,7 @@
 struct sqlite3;
 class CQuery;
 
-class CDatabase : public IDatabase
+class CDatabase : public IDatabaseInt
 {
 public:
 	bool Open(std::string pFile);
@@ -40,6 +40,9 @@ public:
 	
 	static void initMutex(void);
 	static void destroyMutex(void);
+
+	virtual bool Import(const std::string &pFile);
+	virtual bool Dump(const std::string &pFile);
 	
 private:
 

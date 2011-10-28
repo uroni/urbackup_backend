@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include "Interface/Types.h"
+#include "Interface/Database.h"
 
 #include "SettingsReader.h"
 #include "stringtools.h"

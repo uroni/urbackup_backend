@@ -15,24 +15,32 @@
 *    You should have received a copy of the GNU General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
+#ifndef NO_SQLITE
+
+#if defined(_WIN32) || defined(WIN32)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 
 #include "vld.h"
+#include "Interface/File.h"
+#ifndef BDBPLUGIN
 #include "Server.h"
+#else
+#include <db.h>
+#include "Interface/Server.h"
+#endif
 #include "Query.h"
 #include "sqlite/sqlite3.h"
+extern "C"
+{
+	#include "sqlite/shell.h"
+}
+#include "Database.h"
 
 IMutex * CDatabase::lock_mutex=NULL;
 int CDatabase::lock_count=0;
 ICondition *CDatabase::unlock_cond=NULL;
 
-/*
-#ifdef _WIN32
-#ifdef _DEBUG
-#pragma comment ( lib , "sqlite/sqlite3_dll_debug.lib" )
-#else if _RELEASE
-#pragma comment ( lib , "sqlite/sqlite3_dll_release.lib" )
-#endif
-#endif*/
 
 struct UnlockNotification {
   bool fired;                           
@@ -84,7 +92,7 @@ CDatabase::~CDatabase()
 bool CDatabase::Open(std::string pFile)
 {
 	in_transaction=false;
-	if( sqlite3_open_v2(pFile.c_str(), &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_SHAREDCACHE, NULL) )
+	if( sqlite3_open(pFile.c_str(), &db) )
 	{
 		Server->Log("Could not open db ["+pFile+"]");
 		sqlite3_close(db);
@@ -285,6 +293,7 @@ _i64 CDatabase::getLastInsertID(void)
 
 bool CDatabase::WaitForUnlock(void)
 {
+#ifndef BDBPLUGIN
 	int rc;
 	UnlockNotification un;
 	un.fired = false;
@@ -306,6 +315,9 @@ bool CDatabase::WaitForUnlock(void)
 	Server->destroy(un.cond);
 
 	return rc==SQLITE_OK;
+#else
+	return false;
+#endif
 }
 
 sqlite3 *CDatabase::getDatabase(void)
@@ -331,3 +343,66 @@ bool CDatabase::isInTransaction(void)
 {
 	return in_transaction;
 }
+
+bool CDatabase::Import(const std::string &pFile)
+{
+	IFile *file=Server->openFile(pFile, MODE_READ);
+	if(file==NULL)
+		return false;
+
+	unsigned int r;
+	char buf[4096];
+	std::string query;
+	int state=0;
+	do
+	{
+		r=file->Read(buf, 4096);
+		for(unsigned int i=0;i<r;++i)
+		{
+			if(buf[i]==';' && state==0)
+			{
+				if(!Write(query))
+					return false;
+
+				query.clear();
+				continue;
+			}
+			else if(buf[i]=='\'' && state==0)
+			{
+				state=1;
+			}
+			else if(buf[i]=='\'' && state==1 )
+			{
+				state=0;
+			}
+			
+			query+=buf[i];
+		}
+	}
+	while(r>0);
+
+	Server->destroy(file);
+	return true;
+}
+
+bool CDatabase::Dump(const std::string &pFile)
+{
+	callback_data cd;
+	cd.db=db;
+	cd.out=fopen(pFile.c_str(), "wb");
+	if(cd.out==0)
+	{
+		return false;
+	}
+
+	char *cmd=new char[6];
+	cmd[0]='.'; cmd[1]='d'; cmd[2]='u'; cmd[3]='m'; cmd[4]='p'; cmd[5]=0;
+	do_meta_command(cmd, &cd);
+	delete []cmd;
+
+	fclose(cd.out);
+
+	return true;
+}
+
+#endif

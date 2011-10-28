@@ -295,6 +295,8 @@
     <ClCompile Include="ServiceWorker.cpp" />
     <ClCompile Include="SessionMgr.cpp" />
     <ClCompile Include="SettingsReader.cpp" />
+    <ClCompile Include="SQLiteFactory.cpp" />
+    <ClCompile Include="sqlite\shell.c" />
     <ClCompile Include="StreamPipe.cpp" />
     <ClCompile Include="stringtools.cpp" />
     <ClCompile Include="Table.cpp" />
@@ -315,6 +317,8 @@
     <ClInclude Include="file.h" />
     <ClInclude Include="file_memory.h" />
     <ClInclude Include="FileSettingsReader.h" />
+    <ClInclude Include="Interface\DatabaseFactory.h" />
+    <ClInclude Include="Interface\DatabaseInt.h" />
     <ClInclude Include="libs.h" />
     <ClInclude Include="LoadbalancerClient.h" />
     <ClInclude Include="LookupService.h" />
@@ -331,6 +335,8 @@
     <ClInclude Include="SessionMgr.h" />
     <ClInclude Include="SettingsReader.h" />
     <ClInclude Include="socket_header.h" />
+    <ClInclude Include="SQLiteFactory.h" />
+    <ClInclude Include="sqlite\shell.h" />
     <ClInclude Include="StreamPipe.h" />
     <ClInclude Include="stringtools.h" />
     <ClInclude Include="Table.h" />

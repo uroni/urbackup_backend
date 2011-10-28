@@ -28,6 +28,7 @@
 
 #include "Interface/PluginMgr.h"
 #include "Interface/Thread.h"
+#include "Interface/DatabaseFactory.h"
 
 #include "Server.h"
 #include "Template.h"
@@ -45,7 +46,9 @@
 #include "utf8/utf8.h"
 #include "MemoryPipe.h"
 #include "MemorySettingsReader.h"
-//#include "file_memory.h"
+#include "Database.h"
+#include "SQLiteFactory.h"
+
 
 
 #ifdef THREAD_BOOST
@@ -99,21 +102,26 @@ CServer::CServer()
 void CServer::setup(void)
 {
 	CFileSettingsReader::setup();
-	CDatabase::initMutex();
+	
 	sessmgr=new CSessionMgr();
 	threadpool=new CThreadPool();
+
+#ifndef NO_SQLITE
+	CDatabase::initMutex();
+	registerDatabaseFactory("sqlite", new SQLiteFactory );
+#endif
 }
 
 void CServer::destroyAllDatabases(void)
 {
-	for(std::map<DATABASE_ID, std::pair<std::string, std::map<THREAD_ID, CDatabase*> > >::iterator i=databases.begin();
+	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
-		for( std::map<THREAD_ID, CDatabase*>::iterator j=i->second.second.begin();j!=i->second.second.end();++j)
+		for( std::map<THREAD_ID, IDatabaseInt*>::iterator j=i->second.tmap.begin();j!=i->second.tmap.end();++j)
 		{
 			delete j->second;
 		}
-		i->second.second.clear();
+		i->second.tmap.clear();
 	}
 }
 
@@ -187,6 +195,12 @@ CServer::~CServer()
 	//Destroy Databases
 	destroyAllDatabases();
 
+	Log("deleting database factories...");
+	for(std::map<std::string, IDatabaseFactory*>::iterator it=database_factories.begin();it!=database_factories.end();++it)
+	{
+		it->second->Remove();
+	}
+
 	Log("unloading dlls...");
 	UnloadDLLs();	
 	
@@ -202,7 +216,9 @@ CServer::~CServer()
 	destroy(rps_mutex);
 	destroy(postfiles_mutex);
 	destroy(param_mutex);
+#ifndef NO_SQLITE
 	CDatabase::destroyMutex();
+#endif
 
 	std::cout << "Server cleanup done..." << std::endl;
 }
@@ -658,23 +674,35 @@ THREAD_ID CServer::getThreadID(void)
 #endif //THREAD_BOOST
 }
 
-bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier)
+bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine)
 {
 	IScopedLock lock(db_mutex);
 
-	std::fstream c(pFile.c_str(), std::ios::in);
-	if( c.is_open()==false )
-		return false;
+	if(pEngine=="sqlite")
+	{
+		std::fstream c(pFile.c_str(), std::ios::in);
+		if( c.is_open()==false )
+			return false;
 
-	c.close();
+		c.close();
+	}
 
-	std::map<DATABASE_ID, std::pair<std::string, std::map<THREAD_ID, CDatabase*> > >::iterator iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
 	if( iter!=databases.end() )
+	{
+		Log("Database already openend", LL_ERROR);
 		return false;
+	}
 
-	std::map<THREAD_ID, CDatabase*> thread_map;
-	std::pair<std::string, std::map<THREAD_ID, CDatabase*> > tpair(pFile, thread_map);
-	databases.insert( std::pair<DATABASE_ID, std::pair<std::string, std::map<THREAD_ID, CDatabase*> > >(pIdentifier, tpair)  );
+	std::map<std::string, IDatabaseFactory*>::iterator iter2=database_factories.find(pEngine);
+	if(iter2==database_factories.end())
+	{
+		Log("Database engine not found", LL_ERROR);
+		return false;
+	}
+
+	SDatabase ndb(iter2->second, pFile);
+	databases.insert( std::pair<DATABASE_ID, SDatabase >(pIdentifier, ndb)  );
 
 	return true;
 }
@@ -683,24 +711,24 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 {
 	IScopedLock lock(db_mutex);
 
-	std::map<DATABASE_ID, std::pair<std::string, std::map<THREAD_ID, CDatabase*> > >::iterator database_iter=databases.find(pIdentifier);
+	std::map<DATABASE_ID, SDatabase >::iterator database_iter=databases.find(pIdentifier);
 	if( database_iter==databases.end() )
 	{
 		Log("Database with identifier \""+nconvert((int)pIdentifier)+"\" couldn't be opened", LL_ERROR);
 		return NULL;
 	}
 
-	std::map<THREAD_ID, CDatabase*>::iterator thread_iter=database_iter->second.second.find( tid );
-	if( thread_iter==database_iter->second.second.end() )
+	std::map<THREAD_ID, IDatabaseInt*>::iterator thread_iter=database_iter->second.tmap.find( tid );
+	if( thread_iter==database_iter->second.tmap.end() )
 	{
-		CDatabase *db=new CDatabase;
-		if(db->Open(database_iter->second.first)==false )
+		IDatabaseInt *db=database_iter->second.factory->createDatabase();
+		if(db->Open(database_iter->second.file)==false )
 		{
-			Log("Database \""+database_iter->second.first+"\" couldn't be opened", LL_ERROR);
+			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
 		}
 
-		database_iter->second.second.insert( std::pair< THREAD_ID, CDatabase* >( tid, db ) );
+		database_iter->second.tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
 
 		return db;
 	}
@@ -714,11 +742,11 @@ void CServer::ClearDatabases(THREAD_ID tid)
 {
 	IScopedLock lock(db_mutex);
 
-	for(std::map<DATABASE_ID, std::pair<std::string, std::map<THREAD_ID, CDatabase*> > >::iterator i=databases.begin();
+	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
-		std::map<THREAD_ID, CDatabase*>::iterator iter=i->second.second.find(tid);
-		if( iter!=i->second.second.end() )
+		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second.tmap.find(tid);
+		if( iter!=i->second.tmap.end() )
 		{
 			iter->second->destroyAllQueries();
 		}
@@ -1385,4 +1413,15 @@ void CServer::setServerWorkingDir(const std::wstring &wdir)
 void CServer::setTemporaryDirectory(const std::wstring &dir)
 {
 	tmpdir=dir;
+}
+
+void CServer::registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory)
+{
+	database_factories[pEngineName]=factory;
+}
+
+bool CServer::hasDatabaseFactory(const std::string &pEngineName)
+{
+	std::map<std::string, IDatabaseFactory*>::iterator it=database_factories.find(pEngineName);
+	return it!=database_factories.end();
 }

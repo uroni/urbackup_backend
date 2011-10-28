@@ -15,13 +15,19 @@
 *    You should have received a copy of the GNU General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
+#ifndef NO_SQLITE
+
 
 #include "vld.h"
 #include "Query.h"
+#ifndef BDBPLUGIN
 #include "Server.h"
+#else
+#include "Interface/Server.h"
+#include "db.h"
+#endif
 #include "sqlite/sqlite3.h"
-#include "stringtools.h"
-#include "utf8/utf8.h"
+#include "Database.h"
 #include <memory.h>
 
 CQuery::CQuery(const std::string &pStmt_str, sqlite3_stmt *prepared_statement, CDatabase *pDB) : stmt_str(pStmt_str)
@@ -413,3 +419,5 @@ db_results CQuery::Read(int *timeoutms)
 
 	return rows;
 }
+
+#endif

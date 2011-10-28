@@ -5,8 +5,9 @@
 #include <string>
 #include <map>
 #include "Query.h"
+#include "Object.h"
 
-class IDatabase
+class IDatabase : public IObject
 {
 public:
 	virtual db_nresults ReadN(std::string pQuery)=0; 
@@ -22,6 +23,8 @@ public:
 
 	virtual _i64 getLastInsertID(void)=0;
 
+	virtual bool Import(const std::string &pFile)=0;
+	virtual bool Dump(const std::string &pFile)=0;
 };
 
 #endif

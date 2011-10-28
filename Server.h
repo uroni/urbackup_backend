@@ -11,7 +11,6 @@
 
 #include "Interface/Server.h"
 #include "Interface/Action.h"
-#include "Database.h"
 #include <vector>
 #include <fstream>
 
@@ -25,11 +24,20 @@ typedef void *HMODULE;
 #endif
 
 class FCGIRequest;
-class CDatabase;
+class IDatabaseInt;
+class IDatabaseFactory;
 class CSessionMgr;
 class CServiceAcceptor;
 class CThreadPool;
 class IOutputStream;
+
+struct SDatabase
+{
+	SDatabase(IDatabaseFactory *factory, const std::string &file) : factory(factory), file(file) {}
+	IDatabaseFactory *factory;
+	std::string file;
+	std::map<THREAD_ID, IDatabaseInt*> tmap;
+};
 
 
 class CServer : public IServer
@@ -82,7 +90,7 @@ public:
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData);
 
-	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier);
+	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite");
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier);
 	virtual void destroyAllDatabases(void);
 	virtual ISessionMgr *getSessionMgr(void);
@@ -134,6 +142,9 @@ public:
 	void ShutdownPlugins(void);
 
 	void setTemporaryDirectory(const std::wstring &dir);
+
+	virtual void registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory);
+	virtual bool hasDatabaseFactory(const std::string &pEngineName);
 private:
 
 	bool UnloadDLLs(void);
@@ -175,7 +186,7 @@ private:
 #endif
 #endif
 
-	std::map<DATABASE_ID, std::pair<std::string, std::map<THREAD_ID, CDatabase*> > > databases;
+	std::map<DATABASE_ID, SDatabase > databases;
 
 	CSessionMgr *sessmgr;
 
@@ -204,6 +215,8 @@ private:
 	std::wstring workingdir;
 
 	std::wstring tmpdir;
+
+	std::map<std::string, IDatabaseFactory*> database_factories;
 };
 
 #ifndef DEF_SERVER

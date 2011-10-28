@@ -26,6 +26,7 @@ class IOutputStream;
 class IThreadPool;
 class ICondition;
 class IScopedLock;
+class IDatabaseFactory;
 
 struct SPostfile
 {
@@ -82,7 +83,7 @@ public:
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData)=0;
 
-	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier)=0;
+	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite")=0;
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)=0;
 	virtual void destroyAllDatabases(void)=0;
 	virtual ISessionMgr *getSessionMgr(void)=0;
@@ -131,6 +132,9 @@ public:
 	virtual std::wstring getServerWorkingDir(void)=0;
 
 	virtual void setTemporaryDirectory(const std::wstring &dir)=0;
+
+	virtual void registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory)=0;
+	virtual bool hasDatabaseFactory(const std::string &pEngineName)=0;
 };
 
 #ifndef NO_INTERFACE

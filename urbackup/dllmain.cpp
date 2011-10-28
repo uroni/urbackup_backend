@@ -310,20 +310,91 @@ DLLEXPORT void LoadActions(IServer* pServer)
 #ifndef CLIENT_ONLY
 	if(both || (!both && !is_backup_client) )
 	{
+		std::string bdb_config="mutex_set_max 1000000\r\nset_tx_max 500000\r\nset_lg_regionmax 524288\r\nset_lg_bsize 4194304\r\nset_lg_max 20971520\r\nset_lk_max_locks 10000\r\nset_lk_max_lockers 10000\r\nset_lk_max_objects 10000\r\n";
+
 		if( !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
 		{
-			//Copy file
 			copy_file(L"urbackup/backup_server.db.template", L"urbackup/backup_server.db");
 		}
-		if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER) )
+		else if( !FileExists("urbackup/backup_server.db") && !FileExists("urbackup/backup_server.bdb") && FileExists("urbackup/backup_server.bdb.template") )
 		{
-			Server->Log("Couldn't open Database backup_server.db", LL_ERROR);
-			return;
+			copy_file(L"urbackup/backup_server.bdb.template", L"urbackup/backup_server.bdb");
+		}
+		if( !FileExists("urbackup/backup_server.db") )
+		{
+			bool init=false;
+			if(!FileExists("urbackup/backup_server.bdb") )
+			{
+				os_create_dir(L"urbackup/backup_server.bdb-journal");
+				writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
+				init=true;
+			}
+			if(! Server->openDatabase("urbackup/backup_server.bdb", URBACKUPDB_SERVER, "bdb") )
+			{
+				Server->Log("Couldn't open Database backup_server.bdb", LL_ERROR);
+				return;
+			}
+
+			if(init)
+			{
+				IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+				db->Import("urbackup/backup_server_init.sql");
+			}
 		}
 		else
 		{
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-			db->Write("PRAGMA journal_mode=WAL");
+			if(Server->hasDatabaseFactory("bdb") )
+			{
+				Server->Log("Warning: Switching to Berkley DB", LL_WARNING);
+				if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER_TMP) )
+				{
+					Server->Log("Couldn't open Database backup_server.db", LL_ERROR);
+					return;
+				}
+
+				IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_TMP);
+				Server->deleteFile("urbackup/backup_server.dat");
+				if(db->Dump("urbackup/backup_server.dat"))
+				{
+					Server->destroyAllDatabases();
+
+					os_create_dir(L"urbackup/backup_server.bdb-journal");
+					writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
+
+					if(! Server->openDatabase("urbackup/backup_server.bdb", URBACKUPDB_SERVER, "bdb") )
+					{
+						Server->Log("Couldn't open Database backup_server.bdb", LL_ERROR);
+						return;
+					}
+					db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+					if(db->Import("urbackup/backup_server.dat") )
+					{
+						Server->deleteFile("urbackup/backup_server.dat");
+						rename("urbackup/backup_server.db", "urbackup/backup_server_old_sqlite.db");
+					}
+					else
+					{
+						Server->Log("Importing data into new BerkleyDB database failed", LL_ERROR);
+					}
+				}
+				else
+				{
+					Server->Log("Dumping Database failed", LL_ERROR);
+				}
+			}
+			else
+			{
+				if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER) )
+				{
+					Server->Log("Couldn't open Database backup_server.db", LL_ERROR);
+					return;
+				}
+				else
+				{
+					IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+					db->Write("PRAGMA journal_mode=WAL");
+				}
+			}
 		}
 
 		ServerStatus::init_mutex();
@@ -621,7 +692,14 @@ void upgrade9_10(void)
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	db_results res_v=db->Read("SELECT tvalue FROM misc WHERE tkey='db_version'");
+	IQuery *qp=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
+	if(qp==NULL)
+	{
+		Server->Log("Importing data...");
+		db->Import("urbackup/backup_server.dat");
+		qp=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
+	}
+	db_results res_v=qp->Read();
 	if(res_v.empty())
 		return;
 	

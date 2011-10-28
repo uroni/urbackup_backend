@@ -138,6 +138,12 @@
     <ClCompile Include="sqlite\sqlite3.c">
       <Filter>sqlite</Filter>
     </ClCompile>
+    <ClCompile Include="SQLiteFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sqlite\shell.c">
+      <Filter>sqlite</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcceptThread.h">
@@ -315,6 +321,18 @@
       <Filter>win_service</Filter>
     </ClInclude>
     <ClInclude Include="sqlite\sqlite3.h">
+      <Filter>sqlite</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\DatabaseFactory.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\DatabaseInt.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLiteFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sqlite\shell.h">
       <Filter>sqlite</Filter>
     </ClInclude>
   </ItemGroup>
