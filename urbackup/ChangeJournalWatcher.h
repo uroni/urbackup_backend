@@ -113,6 +113,7 @@ private:
 
 	bool has_error;
 	bool indexing_in_progress;
+	std::wstring indexing_volume;
 
 	std::map<std::wstring, bool> open_write_files;
 	std::vector<std::wstring> error_dirs;

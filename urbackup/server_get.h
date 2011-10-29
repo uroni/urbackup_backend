@@ -104,7 +104,7 @@ private:
 	bool getNextEntry(char ch, SFile &data);
 	static std::string remLeadingZeros(std::string t);
 	static std::string strftimeInt(std::string fs);
-	void updateCapabilities(void);
+	bool updateCapabilities(void);
 
 
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
