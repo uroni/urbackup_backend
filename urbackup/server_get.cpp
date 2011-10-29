@@ -87,6 +87,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	do_incr_image_now=false;
 	
 	can_backup_images=true;
+
+	filesrv_protocol_version=0;
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -1006,7 +1008,7 @@ bool BackupServerGet::doFullBackup(void)
 		return false;
 	}
 
-	FileClient fc;
+	FileClient fc(filesrv_protocol_version);
 	sockaddr_in addr=getClientaddr();
 	_u32 rc=fc.Connect(&addr);
 	if(rc!=ERR_CONNECTED)
@@ -1329,7 +1331,7 @@ bool BackupServerGet::doIncrBackup(void)
 	}
 
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
-	FileClient fc;
+	FileClient fc(filesrv_protocol_version);
 	sockaddr_in addr=getClientaddr();
 	_u32 rc=fc.Connect(&addr);
 	if(rc!=ERR_CONNECTED)
@@ -1902,6 +1904,10 @@ void BackupServerGet::updateCapabilities(void)
 			Server->Log("Client doesn't have IMAGE capability", LL_DEBUG);
 			can_backup_images=false;
 		}
+		if(cap.find("FILESRV1")!=std::string::npos)
+		{
+			filesrv_protocol_version=1;
+		}
 	}
 }
 
@@ -1934,7 +1940,7 @@ void BackupServerGet::sendSettings(void)
 
 bool BackupServerGet::getClientSettings(void)
 {
-	FileClient fc;
+	FileClient fc(filesrv_protocol_version);
 	sockaddr_in addr=getClientaddr();
 	_u32 rc=fc.Connect(&addr);
 	if(rc!=ERR_CONNECTED)
