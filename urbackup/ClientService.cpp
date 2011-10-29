@@ -1362,9 +1362,9 @@ void ClientConnector::ReceivePackets(void)
 		else if(cmd.find("CAPA")==0  && ident_ok==true)
 		{
 #ifdef _WIN32
-			tcpstack.Send(pipe, "FILE,IMAGE,UPDATE,MBR,FILESRV1");
+			tcpstack.Send(pipe, "FILE=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=1");
 #else
-			tcpstack.Send(pipe, "FILE,FILESRV1");
+			tcpstack.Send(pipe, "FILE=1&FILESRV=1");
 #endif
 		}
 		else

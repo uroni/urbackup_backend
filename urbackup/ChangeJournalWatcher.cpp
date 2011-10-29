@@ -370,7 +370,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 			q_update_journal_id->Reset();
 		}
 
-		if(do_index==false && info.last_record<data.FirstUsn)
+		if(do_index==false && (info.last_record<data.FirstUsn || info.last_record>data.NextUsn) )
 		{
 			Server->Log(L"Last record not readable at '"+vol+L"' - reindexing", LL_WARNING);
 			listener->On_ResetAll(vol);
@@ -430,12 +430,14 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	setIndexDone(vol, 0);
 
 	indexing_in_progress=true;
+	indexing_volume=vol;
 	last_index_update=Server->getTimeMS();
 	resetRoot(rid);
 	deleteJournalData(vol);
 	indexRootDirs2(vol, sj);
 	listener->On_ResetAll(vol);
 	indexing_in_progress=false;
+	indexing_volume.clear();
 
 	if(dwt->is_stopped()==false)
 	{
@@ -629,6 +631,12 @@ void ChangeJournalWatcher::update(bool force_write)
 
 		if(it->second.last_record_update)
 		{
+			if(started_transaction==false)
+			{
+				started_transaction=true;
+				db->BeginTransaction();
+			}
+
 			it->second.last_record_update=false;
 			q_update_lastusn->Bind(it->second.last_record);
 			q_update_lastusn->Bind(it->first);
@@ -639,6 +647,7 @@ void ChangeJournalWatcher::update(bool force_write)
 		USN startUsn=it->second.last_record;
 		unsigned int update_bytes=0;
 
+		bool remove_it=false;
 		bool c=true;
 		while(c)
 		{
@@ -723,27 +732,47 @@ void ChangeJournalWatcher::update(bool force_write)
 				if(err==ERROR_JOURNAL_ENTRY_DELETED)
 				{
 					Server->Log(L"Error for Volume '"+it->first+L"': Journal entry deleted", LL_ERROR);
-					it->second.last_record=0;
 					USN_JOURNAL_DATA data;
 					DWORD r_bytes;
 					BOOL bv=DeviceIoControl(it->second.hVolume, FSCTL_QUERY_USN_JOURNAL, NULL, 0, &data, sizeof(USN_JOURNAL_DATA), &r_bytes, NULL);
-					if(bv!=0 && indexing_in_progress==false)
+					if(indexing_in_progress==false)
 					{
-						it->second.last_record=data.NextUsn;
-						Server->Log(L"Reindexing Volume '"+it->first+L"'", LL_ERROR);
-						if(started_transaction)
+						if(bv!=0 )
 						{
-							started_transaction=false;
-							db->EndTransaction();
+							it->second.last_record=data.NextUsn;
+							Server->Log(L"Reindexing Volume '"+it->first+L"'", LL_ERROR);
+							if(started_transaction)
+							{
+								started_transaction=false;
+								db->EndTransaction();
+							}
+							reindex(it->second.rid, it->first, &it->second);
+							return;
 						}
-						reindex(it->second.rid, it->first, &it->second);
-						return;
+						else if(indexing_in_progress==false)
+						{
+							Server->Log("Journal Data not acessible. Errorcode: "+nconvert((int)GetLastError()), LL_ERROR);
+							has_error=true;
+							error_dirs.push_back(it->first);
+						}
 					}
-					else if(indexing_in_progress==false)
+					else
 					{
-						Server->Log("Journal Data not acessible. Errorcode: "+nconvert((int)GetLastError()), LL_ERROR);
-						has_error=true;
-						error_dirs.push_back(it->first);
+						if(indexing_volume==it->first)
+						{
+							Server->Log("Access error during indexing. Change journal too small?", LL_ERROR);
+							has_error=true;
+							error_dirs.push_back(it->first);
+						}
+						else
+						{
+							Server->Log("Journal Data deleted on nonindexing volume.", LL_ERROR);
+							has_error=true;
+							error_dirs.push_back(it->first);
+							deleteJournalId(it->first);
+							CloseHandle(it->second.hVolume);
+							remove_it=true;
+						}
 					}
 					listener->On_ResetAll(it->first);
 				}
@@ -753,6 +782,9 @@ void ChangeJournalWatcher::update(bool force_write)
 					listener->On_ResetAll(it->first);
 					deleteJournalId(it->first);
 					has_error=true;
+					CloseHandle(it->second.hVolume);
+					remove_it=true;
+					error_dirs.push_back(it->first);
 				}
 			}
 		}
@@ -768,6 +800,12 @@ void ChangeJournalWatcher::update(bool force_write)
 			q_update_lastusn->Bind(it->first);
 			q_update_lastusn->Write();
 			q_update_lastusn->Reset();
+		}
+
+		if(remove_it)
+		{
+			wdirs.erase(it);
+			break;
 		}
 	}
 

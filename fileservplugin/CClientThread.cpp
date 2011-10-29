@@ -511,20 +511,17 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				off64_t filesize=stat_buf.st_size;
 				
-				if( offset_set==false )
-				{
-					CWData data;
-					data.addUChar(ID_FILESIZE);
-					data.addUInt64(filesize);
+				CWData data;
+				data.addUChar(ID_FILESIZE);
+				data.addUInt64(filesize);
 
-					int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
-					if(rc==SOCKET_ERROR)
-					{
-						Log("Error: Socket Error - DBG: SendSize");
-						CloseHandle(hFile);
-						hFile=0;
-						return false;
-					}
+				int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
+				if(rc==SOCKET_ERROR)
+				{
+					Log("Error: Socket Error - DBG: SendSize");
+					CloseHandle(hFile);
+					hFile=0;
+					return false;
 				}
 				
 				if(filesize==0)

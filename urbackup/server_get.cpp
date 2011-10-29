@@ -217,7 +217,14 @@ void BackupServerGet::operator ()(void)
 
 	updateLastseen();	
 	
-	updateCapabilities();
+	if(!updateCapabilities())
+	{
+		Server->Log(L"Could not get client capabilities", LL_ERROR);
+		pipe->Write("ok");
+		delete server_settings;
+		delete this;
+		return;
+	}
 
 	status.client=clientname;
 	status.clientid=clientid;
@@ -1894,21 +1901,26 @@ void BackupServerGet::sendClientBackupIncrIntervall(void)
 	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incrintervall to client failed", 10000);
 }
 
-void BackupServerGet::updateCapabilities(void)
+bool BackupServerGet::updateCapabilities(void)
 {
 	std::string cap=sendClientMessage("CAPA", L"Querying capabilities failed", 10000, false);
 	if(cap!="ERR" && !cap.empty())
 	{
-		if(cap.find("IMAGE")==std::string::npos)
+		str_map params;
+		ParseParamStr(cap, &params);
+		if(params[L"IMAGE"]!=L"1")
 		{
 			Server->Log("Client doesn't have IMAGE capability", LL_DEBUG);
 			can_backup_images=false;
 		}
-		if(cap.find("FILESRV1")!=std::string::npos)
+		str_map::iterator it=params.find(L"FILESRV");
+		if(it!=params.end())
 		{
-			filesrv_protocol_version=1;
+			filesrv_protocol_version=watoi(it->second);
 		}
 	}
+
+	return !cap.empty();
 }
 
 void BackupServerGet::sendSettings(void)
