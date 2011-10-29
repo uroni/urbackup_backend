@@ -108,7 +108,7 @@ _i32 selectc(SOCKET socket, int usec)
 }
        
 
-FileClient::FileClient(void)
+FileClient::FileClient(int protocol_version) : protocol_version(protocol_version)
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -443,10 +443,12 @@ bool FileClient::Reconnect(void)
 		tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
 		if(tcpsock!=NULL)
 		{
+			Server->Log("Reconnected successfully,", LL_DEBUG);
 			socket_open=true;
 			return true;
 		}
 	}
+	Server->Log("Reconnecting failed.", LL_DEBUG);
 	socket_open=false;
 	return false;
 }
@@ -482,10 +484,12 @@ bool FileClient::Reconnect(void)
 
         if( rc==0 )
         {
+			Server->Log("Server timeout (2) in FileClient", LL_DEBUG);
 			bool b=Reconnect();
 			--tries;
 			if(!b || tries<=0 )
 			{
+				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
 				return ERR_TIMEOUT;
 			}
 			else
@@ -499,6 +503,9 @@ bool FileClient::Reconnect(void)
 
 				stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 				starttime=Server->getTimeMS();
+
+				if(protocol_version>0)
+					firstpacket=true;
 			}
 		}
         else
@@ -541,6 +548,7 @@ bool FileClient::Reconnect(void)
 						{
 							Server->Log("Failed to write to file... waiting...", LL_WARNING);
 							Server->wait(10000);
+							starttime=Server->getTimeMS();
 						}
 					}
 
@@ -555,10 +563,12 @@ bool FileClient::Reconnect(void)
             
 	    if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
 		{
+				Server->Log("Server timeout in FileClient. Trying to reconnect...", LL_INFO);
 				bool b=Reconnect();
 				--tries;
 				if(!b || tries<=0 )
 				{
+					Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
 					return ERR_TIMEOUT;
 				}
 				else
@@ -572,6 +582,9 @@ bool FileClient::Reconnect(void)
 
 					stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 					starttime=Server->getTimeMS();
+
+					if(protocol_version>0)
+						firstpacket=true;
 				}
 		}
 	}

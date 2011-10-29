@@ -387,20 +387,17 @@ bool CClientThread::ProcessPacket(CRData *data)
 				GetFileSizeEx(hFile, &filesize);
 
 
-				if( offset_set==false )
-				{
-					CWData data;
-					data.addUChar(ID_FILESIZE);
-					data.addUInt64(filesize.QuadPart);
+				CWData data;
+				data.addUChar(ID_FILESIZE);
+				data.addUInt64(filesize.QuadPart);
 
-					int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
-					if(rc==SOCKET_ERROR)
-					{
-						Log("Error: Socket Error - DBG: SendSize");
-						CloseHandle(hFile);
-						hFile=NULL;
-						return false;
-					}
+				int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
+				if(rc==SOCKET_ERROR)
+				{
+					Log("Error: Socket Error - DBG: SendSize");
+					CloseHandle(hFile);
+					hFile=NULL;
+					return false;
 				}
 
 				if(filesize.QuadPart==0)

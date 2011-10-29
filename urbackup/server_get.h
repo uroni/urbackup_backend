@@ -188,4 +188,6 @@ private:
 	static int running_backups;
 	static int running_file_backups;
 	static IMutex *running_backup_mutex;
+
+	int filesrv_protocol_version;
 };

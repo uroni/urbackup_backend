@@ -27,7 +27,7 @@ typedef __int64 _u64;
 class FileClient
 {
 public:
-        FileClient(void);
+        FileClient(int protocol_version=0);
         ~FileClient(void);
 
 		_u32 GetServers(bool start, const std::vector<in_addr> &addr_hints);
@@ -86,6 +86,8 @@ private:
 	sockaddr_in server_addr;
 
 	int connection_id;
+
+		int protocol_version;
 };
 
 const _u32 ERR_CONTINUE=0;
