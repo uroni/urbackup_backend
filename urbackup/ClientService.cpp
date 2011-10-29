@@ -769,16 +769,20 @@ void ClientConnector::ReceivePackets(void)
 		}
 		else if(cmd.find("PING RUNNING")==0 && ident_ok==true)
 		{
-			last_pingtime=Server->getTimeMS();
 			tcpstack.Send(pipe, "OK");
-			lasttime=Server->getTimeMS();
 			IScopedLock lock(backup_mutex);
+			lasttime=Server->getTimeMS();
+			last_pingtime=Server->getTimeMS();
 			int pcdone_new=atoi(getbetween("-","-", cmd).c_str());
 			if(backup_source_token.empty() || backup_source_token==server_token )
 			{
 				pcdone=pcdone_new;
 			}
 			last_token_times[server_token]=Server->getTimeSeconds();
+
+#ifdef _WIN32
+			SetThreadExecutionState(ES_SYSTEM_REQUIRED);
+#endif
 		}
 		else if( (cmd=="CHANNEL" || cmd.find("1CHANNEL")==0 ) && ident_ok==true)
 		{
@@ -1358,9 +1362,9 @@ void ClientConnector::ReceivePackets(void)
 		else if(cmd.find("CAPA")==0  && ident_ok==true)
 		{
 #ifdef _WIN32
-			tcpstack.Send(pipe, "FILE,IMAGE,UPDATE,MBR");
+			tcpstack.Send(pipe, "FILE,IMAGE,UPDATE,MBR,FILESRV1");
 #else
-			tcpstack.Send(pipe, "FILE");
+			tcpstack.Send(pipe, "FILE,FILESRV1");
 #endif
 		}
 		else
