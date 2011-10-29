@@ -310,16 +310,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 #ifndef CLIENT_ONLY
 	if(both || (!both && !is_backup_client) )
 	{
-		std::string bdb_config="mutex_set_max 1000000\r\nset_tx_max 500000\r\nset_lg_regionmax 524288\r\nset_lg_bsize 4194304\r\nset_lg_max 20971520\r\nset_lk_max_locks 10000\r\nset_lk_max_lockers 10000\r\nset_lk_max_objects 10000\r\n";
+		std::string bdb_config="mutex_set_max 1000000\r\nset_tx_max 500000\r\nset_lg_regionmax 10485760\r\nset_lg_bsize 4194304\r\nset_lg_max 20971520\r\nset_lk_max_locks 10000\r\nset_lk_max_lockers 10000\r\nset_lk_max_objects 10000\r\nset_cachesize 0 314572800 1";
 
-		if( !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
+		if( !FileExists("urbackup/backup_server.bdb") && !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
 		{
 			copy_file(L"urbackup/backup_server.db.template", L"urbackup/backup_server.db");
 		}
-		else if( !FileExists("urbackup/backup_server.db") && !FileExists("urbackup/backup_server.bdb") && FileExists("urbackup/backup_server.bdb.template") )
-		{
-			copy_file(L"urbackup/backup_server.bdb.template", L"urbackup/backup_server.bdb");
-		}
+		
 		if( !FileExists("urbackup/backup_server.db") )
 		{
 			bool init=false;

@@ -4,15 +4,21 @@ cbuild=""
 
 switch_m_build()
 {
-	cp defaults_$cbuild defaults
-	cp init.d_$cbuild init.d
+	if test -e defaults_$cbuild
+	then
+		cp defaults_$cbuild defaults
+		cp init.d_$cbuild init.d
+	fi
 }
 
 switch_build()
 {
-	pwd
-	cp Makefile.am_$cbuild Makefile.am
-	cp configure.ac_$cbuild configure.ac
+	if test -e Makefile.am_$cbuild
+	then
+		pwd
+		cp Makefile.am_$cbuild Makefile.am
+		cp configure.ac_$cbuild configure.ac
+	fi
 }
 
 switch()
@@ -31,6 +37,9 @@ then
 elif [[ "x$1" == "xclient" ]]
 then
 	cbuild="client"
+elif [[ "x$1" == "xbdbplugin" ]]
+then
+	cbuild="bdbplugin"
 else
 	echo "No valid build enviroment. Available: client, server"
 	exit 0

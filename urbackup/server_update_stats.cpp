@@ -15,7 +15,7 @@
 const bool update_stats_use_transactions_del=true;
 const bool update_stats_use_transactions_done=false;
 const bool update_stats_autocommit=true;
-const bool update_stats_bulk_done_files=true;
+bool update_stats_bulk_done_files=true;
 
 ServerUpdateStats::ServerUpdateStats(bool image_repair_mode, bool interruptible)
 	: image_repair_mode(image_repair_mode), interruptible(interruptible)
@@ -77,8 +77,12 @@ void ServerUpdateStats::destroyQueries(void)
 void ServerUpdateStats::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	db_results cache_res=db->Read("PRAGMA cache_size");
-	db->Write("PRAGMA cache_size = 100000");
+	db_results cache_res;
+	if(db->getEngineName()=="sqlite")
+	{
+		cache_res=db->Read("PRAGMA cache_size");
+		db->Write("PRAGMA cache_size = 100000");
+	}
 
 	createQueries();
 
@@ -184,6 +188,11 @@ void ServerUpdateStats::update_files(void)
 	unsigned int last_commit_time=Server->getTimeMS();
 
 	std::map<int, SDelInfo> del_sizes;
+	
+	if(db->getEngineName()=="bdb")
+	{
+		update_stats_bulk_done_files=false;
+	}
 
 	if(!update_stats_autocommit)
 	{

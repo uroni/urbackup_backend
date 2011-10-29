@@ -142,8 +142,12 @@ void ServerCleanupThread::updateStats(bool interruptible)
 
 void ServerCleanupThread::do_cleanup(void)
 {
-	db_results cache_res=db->Read("PRAGMA cache_size");
-	db->Write("PRAGMA cache_size = 100000");
+	db_results cache_res;
+	if(db->getEngineName()=="sqlite")
+	{
+		cache_res=db->Read("PRAGMA cache_size");
+		db->Write("PRAGMA cache_size = 100000");
+	}
 
 	removeerr.clear();
 	cleanup_images();

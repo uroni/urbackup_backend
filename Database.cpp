@@ -26,7 +26,12 @@
 #ifndef BDBPLUGIN
 #include "Server.h"
 #else
+#ifdef LINUX
+#include "bdbplugin/config.h"
+#include DB_HEADER
+#else
 #include <db.h>
+#endif
 #include "Interface/Server.h"
 #endif
 #include "Query.h"
@@ -403,6 +408,15 @@ bool CDatabase::Dump(const std::string &pFile)
 	fclose(cd.out);
 
 	return true;
+}
+
+std::string CDatabase::getEngineName(void)
+{
+	#ifndef BDBPLUGIN
+	return "sqlite";
+	#else
+	return "bdb";
+	#endif
 }
 
 #endif
