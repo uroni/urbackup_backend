@@ -26,10 +26,10 @@ void ServerUpdateStats::createQueries(void)
 {
 	q_get_images=db->Prepare("SELECT id,clientid,path FROM backup_images WHERE complete=1 AND running<datetime('now','-300 seconds')", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=? WHERE id=?", false);
-	q_get_ncount_files=db->Prepare("SELECT files.rowid AS id, shahash, filesize, rsize, clientid, backupid FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE did_count=0 LIMIT 10000", false);
-	q_has_client=db->Prepare("SELECT count(*) AS c FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE shahash=? AND filesize=? AND clientid=?", false);
+	q_get_ncount_files=db->Prepare("SELECT a.rowid AS id, shahash, filesize, rsize, clientid, backupid FROM ((SELECT * FROM files WHERE did_count=0 LIMIT 10000) a INNER JOIN backups ON a.backupid=backups.id)", false);
+	q_has_client=db->Prepare("SELECT count(*) AS c FROM ((SELECT backupid FROM files WHERE shahash=? AND filesize=?) a INNER JOIN backups ON a.backupid=backups.id) WHERE clientid=?", false);
 	q_mark_done=db->Prepare("UPDATE files SET did_count=1 WHERE rowid=?", false);
-	q_get_clients=db->Prepare("SELECT clientid, SUM(rsize) AS s_rsize FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE shahash=? AND filesize=? AND did_count=1 GROUP BY clientid", false);
+	q_get_clients=db->Prepare("SELECT clientid, SUM(rsize) AS s_rsize FROM ((SELECT * FROM files WHERE shahash=? AND filesize=? AND did_count=1) a INNER JOIN backups ON a.backupid=backups.id) GROUP BY clientid", false);
 	q_get_sizes=db->Prepare("SELECT id,bytes_used_files FROM clients", false);
 	q_size_update=db->Prepare("UPDATE clients SET bytes_used_files=? WHERE id=?", false);
 	q_get_delfiles=db->Prepare("SELECT files_del.rowid AS id, shahash, filesize, rsize, clientid, backupid, incremental, is_del FROM files_del LIMIT 10000", false);
