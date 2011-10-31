@@ -689,6 +689,13 @@ void upgrade9_10(void)
 	db->Write("ALTER TABLE si_users ADD report_sendonly INTEGER");
 }
 
+void upgrade10_11(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE files ADD clientid INTEGER");
+	db->Write("UPDATE files SET clientid=(SELECT clientid FROM backups WHERE backups.id=backupid)");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -753,6 +760,10 @@ void upgrade(void)
 				break;
 			case 9:
 				upgrade9_10();
+				++ver;
+				break;
+			case 10:
+				upgrade10_11();
 				++ver;
 				break;
 			default:
