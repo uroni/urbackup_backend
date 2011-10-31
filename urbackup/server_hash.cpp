@@ -76,7 +76,7 @@ void BackupServerHash::operator()(void)
 	    bool r;
 	    do
 	    {
-		r=db->Write("CREATE TEMPORARY TABLE files_tmp ( backupid INTEGER, fullpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER);");
+		r=db->Write("CREATE TEMPORARY TABLE files_tmp ( backupid INTEGER, fullpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER);");
 		if(!r)
 		    Server->wait(1000);
 		    
@@ -195,13 +195,13 @@ void BackupServerHash::prepareSQL(void)
 {
 	q_find_file_hash=db->Prepare("SELECT fullpath, backupid FROM files WHERE shahash=? AND filesize=? ORDER BY created DESC LIMIT 1", false);
 	q_delete_files_tmp=db->Prepare("DELETE FROM files_tmp WHERE backupid=?", false);
-	q_add_file=db->Prepare("INSERT INTO files_tmp (backupid, fullpath, shahash, filesize, rsize) VALUES (?, ?, ?, ?, ?)", false);
+	q_add_file=db->Prepare("INSERT INTO files_tmp (backupid, fullpath, shahash, filesize, rsize, clientid) VALUES (?, ?, ?, ?, ?, ?)", false);
 	q_del_file=db->Prepare("DELETE FROM files WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
 	q_del_file_tmp=db->Prepare("DELETE FROM files_tmp WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
-	q_copy_files=db->Prepare("INSERT INTO files (backupid, fullpath, shahash, filesize, created, rsize, did_count) SELECT backupid, fullpath, shahash, filesize, created, rsize, 0 AS did_count FROM files_tmp", false);
+	q_copy_files=db->Prepare("INSERT INTO files (backupid, fullpath, shahash, filesize, created, rsize, did_count, clientid) SELECT backupid, fullpath, shahash, filesize, created, rsize, 0 AS did_count, clientid FROM files_tmp", false);
 	q_delete_all_files_tmp=db->Prepare("DELETE FROM files_tmp", false);
 	q_count_files_tmp=db->Prepare("SELECT count(*) AS c FROM files_tmp", false);
-	q_move_del_file=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 0 AS is_del FROM (files INNER JOIN backups ON files.backupid=backups.id) WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
+	q_move_del_file=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 0 AS is_del FROM files WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
 }
 
 void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize)
@@ -213,6 +213,7 @@ void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const st
 	q_add_file->Bind(shahash.c_str(), (_u32)shahash.size());
 	q_add_file->Bind(filesize);
 	q_add_file->Bind(rsize);
+	q_add_file->Bind(clientid);
 	q_add_file->Write();
 	q_add_file->Reset();
 }

@@ -298,6 +298,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				DisableNagle();
 			}break;
+		case ID_GET_FILE_RESUME:
 		case ID_GET_FILE:
 			{
 				std::string s_filename;
@@ -387,17 +388,20 @@ bool CClientThread::ProcessPacket(CRData *data)
 				GetFileSizeEx(hFile, &filesize);
 
 
-				CWData data;
-				data.addUChar(ID_FILESIZE);
-				data.addUInt64(filesize.QuadPart);
-
-				int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
-				if(rc==SOCKET_ERROR)
+				if( offset_set==false || id==ID_GET_FILE_RESUME )
 				{
-					Log("Error: Socket Error - DBG: SendSize");
-					CloseHandle(hFile);
-					hFile=NULL;
-					return false;
+					CWData data;
+					data.addUChar(ID_FILESIZE);
+					data.addUInt64(filesize.QuadPart);
+
+					int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
+					if(rc==SOCKET_ERROR)
+					{
+						Log("Error: Socket Error - DBG: SendSize");
+						CloseHandle(hFile);
+						hFile=NULL;
+						return false;
+					}
 				}
 
 				if(filesize.QuadPart==0)
@@ -511,17 +515,20 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				off64_t filesize=stat_buf.st_size;
 				
-				CWData data;
-				data.addUChar(ID_FILESIZE);
-				data.addUInt64(filesize);
-
-				int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
-				if(rc==SOCKET_ERROR)
+				if( offset_set==false || id==ID_GET_FILE_RESUME )
 				{
-					Log("Error: Socket Error - DBG: SendSize");
-					CloseHandle(hFile);
-					hFile=0;
-					return false;
+					CWData data;
+					data.addUChar(ID_FILESIZE);
+					data.addUInt64(filesize);
+
+					int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
+					if(rc==SOCKET_ERROR)
+					{
+						Log("Error: Socket Error - DBG: SendSize");
+						CloseHandle(hFile);
+						hFile=0;
+						return false;
+					}
 				}
 				
 				if(filesize==0)

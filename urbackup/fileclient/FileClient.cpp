@@ -495,7 +495,7 @@ bool FileClient::Reconnect(void)
 			else
 			{
 				CWData data;
-				data.addUChar( ID_GET_FILE );
+				data.addUChar( protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE );
 				data.addString( remotefn );
 				data.addString( server_identity );
 				if( firstpacket==false )
@@ -574,7 +574,7 @@ bool FileClient::Reconnect(void)
 				else
 				{
 					CWData data;
-					data.addUChar( ID_GET_FILE );
+					data.addUChar( protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE );
 					data.addString( remotefn );
 					data.addString( server_identity );
 					if( firstpacket==false )
