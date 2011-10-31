@@ -712,7 +712,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=7;
+	int max_v=11;
 	bool do_upgrade=false;
 	if(ver<max_v)
 	{

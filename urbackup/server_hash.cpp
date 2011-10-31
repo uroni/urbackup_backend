@@ -201,7 +201,7 @@ void BackupServerHash::prepareSQL(void)
 	q_copy_files=db->Prepare("INSERT INTO files (backupid, fullpath, shahash, filesize, created, rsize, did_count, clientid) SELECT backupid, fullpath, shahash, filesize, created, rsize, 0 AS did_count, clientid FROM files_tmp", false);
 	q_delete_all_files_tmp=db->Prepare("DELETE FROM files_tmp", false);
 	q_count_files_tmp=db->Prepare("SELECT count(*) AS c FROM files_tmp", false);
-	q_move_del_file=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 0 AS is_del FROM files WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
+	q_move_del_file=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, b.clientid, incremental, 0 AS is_del FROM (files a INNER JOIN backups b ON a.backupid=b.id) WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
 }
 
 void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize)

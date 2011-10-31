@@ -889,7 +889,7 @@ void ServerCleanupThread::createQueries(void)
 	q_remove_file_backup=db->Prepare("DELETE FROM backups WHERE id=?", false);
 	q_get_filebackup_info=db->Prepare("SELECT id, backuptime, path FROM backups WHERE id=?", false);
 	q_get_image_info=db->Prepare("SELECT id, backuptime, path FROM backup_images WHERE id=?", false);
-	q_move_files=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 1 AS is_del FROM files WHERE backupid=?", false);
+	q_move_files=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, b.clientid, incremental, 1 AS is_del FROM ((SELECT * FROM files WHERE backupid=?) a INNER JOIN backups b ON a.backupid=b.id)", false);
 	q_remove_image_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=(SELECT clientid FROM backup_images WHERE id=?))-(SELECT size_bytes FROM backup_images WHERE id=?) WHERE id=(SELECT clientid FROM backup_images WHERE id=?)",false);
 	q_del_image_stats=db->Prepare("INSERT INTO del_stats (backupid, image, delsize, clientid, incremental) SELECT id, 1 AS image, (size_bytes+?) AS delsize, clientid, incremental FROM backup_images WHERE id=?", false);
 	q_image_stats_stop=db->Prepare("UPDATE del_stats SET stoptime=CURRENT_TIMESTAMP WHERE rowid=?", false);
