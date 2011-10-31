@@ -696,6 +696,14 @@ void upgrade10_11(void)
 	db->Write("UPDATE files SET clientid=(SELECT clientid FROM backups WHERE backups.id=backupid)");
 }
 
+void upgrade11_12(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("DROP INDEX files_idx");
+	db->Write("CREATE INDEX files_idx ON files (shahash, filesize, clientid)");
+	db->Write("CREATE INDEX files_did_count ON files (did_count)");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -712,7 +720,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=11;
+	int max_v=12;
 	bool do_upgrade=false;
 	if(ver<max_v)
 	{
@@ -764,6 +772,10 @@ void upgrade(void)
 				break;
 			case 10:
 				upgrade10_11();
+				++ver;
+				break;
+			case 11:
+				upgrade11_12();
 				++ver;
 				break;
 			default:
