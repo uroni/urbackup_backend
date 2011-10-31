@@ -4,6 +4,7 @@
 typedef unsigned char uchar;
 
 const uchar ID_GET_FILE=0;
+const uchar ID_GET_FILE_RESUME=6;
 	const uchar ID_COULDNT_OPEN=0;
 	const uchar ID_FILESIZE=1;
 	const uchar ID_BASE_DIR_LOST=2;
