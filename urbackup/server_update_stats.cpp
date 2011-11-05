@@ -12,7 +12,7 @@
 #include "server_status.h"
 #include "server_get.h"
 
-const bool update_stats_use_transactions_del=true;
+bool update_stats_use_transactions_del=true;
 const bool update_stats_use_transactions_done=false;
 const bool update_stats_autocommit=true;
 bool update_stats_bulk_done_files=true;
@@ -26,10 +26,10 @@ void ServerUpdateStats::createQueries(void)
 {
 	q_get_images=db->Prepare("SELECT id,clientid,path FROM backup_images WHERE complete=1 AND running<datetime('now','-300 seconds')", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=? WHERE id=?", false);
-	q_get_ncount_files=db->Prepare("SELECT a.rowid AS id, shahash, filesize, rsize, clientid, backupid FROM files WHERE did_count=0 LIMIT 10000", false);
+	q_get_ncount_files=db->Prepare("SELECT rowid AS id, shahash, filesize, rsize, clientid, backupid FROM files WHERE did_count=0 LIMIT 10000", false);
 	q_has_client=db->Prepare("SELECT count(*) AS c FROM files WHERE shahash=? AND filesize=? AND clientid=?", false);
 	q_mark_done=db->Prepare("UPDATE files SET did_count=1 WHERE rowid=?", false);
-	q_get_clients=db->Prepare("SELECT clientid, SUM(rsize) AS s_rsize FROM files WHERE shahash=? AND filesize=? AND did_count=1 GROUP BY clientid", false);
+	q_get_clients=db->Prepare("SELECT clientid, SUM(rsize) AS s_rsize FROM files WHERE shahash=? AND filesize=? AND +did_count=1 GROUP BY clientid", false);
 	q_get_sizes=db->Prepare("SELECT id,bytes_used_files FROM clients", false);
 	q_size_update=db->Prepare("UPDATE clients SET bytes_used_files=? WHERE id=?", false);
 	q_get_delfiles=db->Prepare("SELECT files_del.rowid AS id, shahash, filesize, rsize, clientid, backupid, incremental, is_del FROM files_del LIMIT 10000", false);
@@ -42,7 +42,7 @@ void ServerUpdateStats::createQueries(void)
 	q_save_client_hist=db->Prepare("INSERT INTO clients_hist (id, name, lastbackup, lastseen, lastbackup_image, bytes_used_files, bytes_used_images, hist_id) SELECT id, name, lastbackup, lastseen, lastbackup_image, bytes_used_files, bytes_used_images, ? AS hist_id FROM clients", false);
 	q_set_file_backup_null=db->Prepare("UPDATE backups SET size_bytes=0 WHERE size_bytes=-1 AND complete=1", false);
 	q_transfer_bytes=db->Prepare("UPDATE files SET rsize=? WHERE rowid=?", false);
-	q_get_transfer=db->Prepare("SELECT rowid AS id FROM files WHERE shahash=? AND filesize=? AND did_count=1 AND rsize=0 LIMIT 1", false);
+	q_get_transfer=db->Prepare("SELECT rowid AS id FROM files WHERE shahash=? AND filesize=? AND +did_count=1 AND +rsize=0 LIMIT 1", false);
 	q_create_hist=db->Prepare("INSERT INTO clients_hist_id (created) VALUES (CURRENT_TIMESTAMP)", false);
 	q_get_all_clients=db->Prepare("SELECT id FROM clients", false);
 	q_mark_done_bulk_files=db->Prepare("UPDATE files SET did_count=1 WHERE rowid IN ( SELECT rowid FROM files WHERE did_count=0 LIMIT 10000 )");
@@ -192,6 +192,7 @@ void ServerUpdateStats::update_files(void)
 	if(db->getEngineName()=="bdb")
 	{
 		update_stats_bulk_done_files=false;
+		update_stats_use_transactions_del=false;
 	}
 
 	if(!update_stats_autocommit)

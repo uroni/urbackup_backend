@@ -56,8 +56,8 @@ AC_DEFUN([AX_BERKELEY_DB_SQL],
       AC_MSG_CHECKING([for Berkeley DB SQL>= $minversion])
   fi
 
-  for version in "" 5.1 5.0 4.9 4.8 4.7 4.6 4.5 4.4 4.3 4.2 4.1 4.0 3.6 3.5 3.4 3.3 3.2 3.1 ; do
-  for version2 in "" 5.1 5.0 4.9 4.8 4.7 4.6 4.5 4.4 4.3 4.2 4.1 4.0 3.6 3.5 3.4 3.3 3.2 3.1 ; do
+  for version in 5.2 5.1 5.0 4.9 4.8 4.7 4.6 4.5 4.4 4.3 4.2 4.1 4.0 3.6 3.5 3.4 3.3 3.2 3.1 ""; do
+  for version2 in "" 5.2 5.1 5.0 4.9 4.8 4.7 4.6 4.5 4.4 4.3 4.2 4.1 4.0 3.6 3.5 3.4 3.3 3.2 3.1; do
 
     if test -z $version ; then
 	if test -z $version2 ; then
@@ -72,7 +72,7 @@ AC_DEFUN([AX_BERKELEY_DB_SQL],
 		continue 1;
 	fi
         db_lib="-ldb_sql-$version -ldb-$version -ldl"
-        try_headers="db$version/db.h db`echo $version | sed -e 's,\..*,,g'`/db.h"
+        try_headers="db$version/db.h db`echo $version | sed -e 's,\..*,,g'`/db.h db.h"
         
 
     fi
