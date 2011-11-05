@@ -242,7 +242,12 @@ void BackupServerGet::operator ()(void)
 	ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
 	if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
 	{
-		ServerLogger::Log(clientid, "Getting client settings failed -1", LL_ERROR);
+		ServerLogger::Log(clientid, "Getting client settings failed. Retrying...", LL_INFO);
+		Server->wait(200000);
+		if(!getClientSettings())
+		{
+			ServerLogger::Log(clientid, "Getting client settings failed -1", LL_ERROR);
+		}
 	}
 
 	ServerLogger::Log(clientid, "Sending backup incr intervall...", LL_DEBUG);
@@ -287,7 +292,7 @@ void BackupServerGet::operator ()(void)
 			bool hbu=false;
 			bool r_success=false;
 			bool r_image=false;
-			bool r_incremental=false;
+			r_incremental=false;
 			pingthread=NULL;
 			pingthread_ticket=ILLEGAL_THREADPOOL_TICKET;
 			status.pcdone=0;
@@ -1710,6 +1715,7 @@ void BackupServerGet::hashFile(std::wstring dstpath, IFile *fd)
 	CWData data;
 	data.addString(Server->ConvertToUTF8(fd->getFilenameW()));
 	data.addUInt(l_backup_id);
+	data.addChar(r_incremental==true?1:0);
 	data.addString(Server->ConvertToUTF8(dstpath));
 
 	ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);

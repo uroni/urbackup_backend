@@ -19,12 +19,12 @@ public:
 
 private:
 	void prepareSQL(void);
-	void addFile(unsigned int backupid, IFile *tf, const std::wstring &tfn, const std::string &sha2);
+	void addFile(unsigned int backupid, char incremental, IFile *tf, const std::wstring &tfn, const std::string &sha2);
 	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid);
 	std::wstring findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid);
 	bool copyFile(IFile *tf, const std::wstring &dest);
 	bool freeSpace(int64 fs, const std::wstring &fp);
-	void addFileSQL(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize);
+	void addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize);
 	void addFileTmp(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize);
 	void deleteFileSQL(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid);
 	void deleteFileTmp(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid);
@@ -54,7 +54,7 @@ private:
 
 
 	int clientid;
-	
+
 	volatile bool working;
 	volatile bool has_error;
 };

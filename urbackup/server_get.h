@@ -176,6 +176,8 @@ private:
 
 	SStatus status;
 	bool has_error;
+
+	bool r_incremental;
 	
 	bool can_backup_images;
 

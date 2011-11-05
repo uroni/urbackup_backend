@@ -76,7 +76,7 @@ void BackupServerHash::operator()(void)
 	    bool r;
 	    do
 	    {
-		r=db->Write("CREATE TEMPORARY TABLE files_tmp ( backupid INTEGER, fullpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER);");
+		r=db->Write("CREATE TEMPORARY TABLE files_tmp ( backupid INTEGER, fullpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER, incremental INTEGER);");
 		if(!r)
 		    Server->wait(1000);
 		    
@@ -162,6 +162,9 @@ void BackupServerHash::operator()(void)
 			unsigned int backupid;
 			rd.getUInt(&backupid);
 
+			char incremental;
+			rd.getChar(&incremental);
+
 			std::string tfn;
 			rd.getStr(&tfn);
 
@@ -177,7 +180,7 @@ void BackupServerHash::operator()(void)
 			}
 			else
 			{
-				addFile(backupid, tf, Server->ConvertToUnicode(tfn), sha2);
+				addFile(backupid, incremental, tf, Server->ConvertToUnicode(tfn), sha2);
 			}
 		}
 
@@ -195,16 +198,16 @@ void BackupServerHash::prepareSQL(void)
 {
 	q_find_file_hash=db->Prepare("SELECT fullpath, backupid FROM files WHERE shahash=? AND filesize=? ORDER BY created DESC LIMIT 1", false);
 	q_delete_files_tmp=db->Prepare("DELETE FROM files_tmp WHERE backupid=?", false);
-	q_add_file=db->Prepare("INSERT INTO files_tmp (backupid, fullpath, shahash, filesize, rsize, clientid) VALUES (?, ?, ?, ?, ?, ?)", false);
+	q_add_file=db->Prepare("INSERT INTO files_tmp (backupid, fullpath, shahash, filesize, rsize, clientid, incremental) VALUES (?, ?, ?, ?, ?, ?, ?)", false);
 	q_del_file=db->Prepare("DELETE FROM files WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
 	q_del_file_tmp=db->Prepare("DELETE FROM files_tmp WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
-	q_copy_files=db->Prepare("INSERT INTO files (backupid, fullpath, shahash, filesize, created, rsize, did_count, clientid) SELECT backupid, fullpath, shahash, filesize, created, rsize, 0 AS did_count, clientid FROM files_tmp", false);
+	q_copy_files=db->Prepare("INSERT INTO files (backupid, fullpath, shahash, filesize, created, rsize, did_count, clientid, incremental) SELECT backupid, fullpath, shahash, filesize, created, rsize, 0 AS did_count, clientid, incremental FROM files_tmp", false);
 	q_delete_all_files_tmp=db->Prepare("DELETE FROM files_tmp", false);
 	q_count_files_tmp=db->Prepare("SELECT count(*) AS c FROM files_tmp", false);
-	q_move_del_file=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, b.clientid, incremental, 0 AS is_del FROM (files a INNER JOIN backups b ON a.backupid=b.id) WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
+	q_move_del_file=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 0 AS is_del FROM files WHERE shahash=? AND fullpath=? AND filesize=? AND backupid=?", false);
 }
 
-void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize)
+void BackupServerHash::addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::string &shahash, _i64 filesize, _i64 rsize)
 {
 	addFileTmp(backupid, fp, shahash, filesize);
 
@@ -214,6 +217,7 @@ void BackupServerHash::addFileSQL(int backupid, const std::wstring &fp, const st
 	q_add_file->Bind(filesize);
 	q_add_file->Bind(rsize);
 	q_add_file->Bind(clientid);
+	q_add_file->Bind(incremental);
 	q_add_file->Write();
 	q_add_file->Reset();
 }
@@ -255,7 +259,7 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	deleteFileTmp(pHash, fp, filesize, backupid);
 }
 
-void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstring &tfn, const std::string &sha2)
+void BackupServerHash::addFile(unsigned int backupid, char incremental, IFile *tf, const std::wstring &tfn, const std::string &sha2)
 {
 	_i64 t_filesize=tf->Size();
 	int f_backupid;
@@ -294,7 +298,7 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 			std::wstring temp_fn=tf->getFilenameW();
 			Server->destroy(tf);
 			Server->deleteFile(temp_fn);
-			addFileSQL(backupid, tfn, sha2, t_filesize, 0);
+			addFileSQL(backupid, incremental, tfn, sha2, t_filesize, 0);
 			++tmp_count;
 			break;
 		}
@@ -388,7 +392,7 @@ void BackupServerHash::addFile(unsigned int backupid, IFile *tf, const std::wstr
 
 				if(r)
 				{
-					addFileSQL(backupid, tfn, sha2, t_filesize, t_filesize);
+					addFileSQL(backupid, incremental, tfn, sha2, t_filesize, t_filesize);
 					++tmp_count;
 				}
 			}

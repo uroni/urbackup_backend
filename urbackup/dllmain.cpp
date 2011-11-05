@@ -268,6 +268,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			return;
 		}
 
+#ifdef _WIN32
+		if( !FileExists("prefilebackup.bat") && FileExists("prefilebackup_new.bat") )
+		{
+			copy_file(L"prefilebackup_new.bat", L"prefilebackup.bat");
+			Server->deleteFile("prefilebackup_new.bat");
+		}
+#endif
+
 		if(FileExists(new_file) )
 		{
 			Server->Log("Upgrading...", LL_WARNING);
@@ -704,6 +712,19 @@ void upgrade11_12(void)
 	db->Write("CREATE INDEX files_did_count ON files (did_count)");
 }
 
+void upgrade12_13(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE files ADD incremental INTEGER");
+	db->Write("UPDATE files SET incremental=(SELECT incremental FROM backups WHERE backups.id=backupid)");
+}
+
+void upgrade13_14(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE INDEX files_backupid ON files (backupid)");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -720,7 +741,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=12;
+	int max_v=14;
 	bool do_upgrade=false;
 	if(ver<max_v)
 	{
@@ -776,6 +797,14 @@ void upgrade(void)
 				break;
 			case 11:
 				upgrade11_12();
+				++ver;
+				break;
+			case 12:
+				upgrade12_13();
+				++ver;
+				break;
+			case 13:
+				upgrade13_14();
 				++ver;
 				break;
 			default:
