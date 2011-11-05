@@ -30,7 +30,7 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#serial 6
+#serial 7
 
 AC_DEFUN([AX_BERKELEY_DB_SQL],
 [
@@ -39,13 +39,13 @@ AC_DEFUN([AX_BERKELEY_DB_SQL],
   minversion=ifelse([$1], ,,$1)
 
   DB_HEADER=""
-  DB_LIBS=""
+  DB_SQL_LIBS=""
 
   if test -z $minversion ; then
       minvermajor=0
       minverminor=0
       minverpatch=0
-      AC_MSG_CHECKING([for Berkeley DB])
+      AC_MSG_CHECKING([for Berkeley DB SQL])
   else
       minvermajor=`echo $minversion | cut -d. -f1`
       minverminor=`echo $minversion | cut -d. -f2`
@@ -53,18 +53,32 @@ AC_DEFUN([AX_BERKELEY_DB_SQL],
       minvermajor=${minvermajor:-0}
       minverminor=${minverminor:-0}
       minverpatch=${minverpatch:-0}
-      AC_MSG_CHECKING([for Berkeley DB >= $minversion])
+      AC_MSG_CHECKING([for Berkeley DB SQL>= $minversion])
   fi
 
-  for version in "" 5.1 5.0 4.9 4.8 4.7 4.6 4.5 4.4 4.3 4.2 4.1 4.0 3.6 3.5 3.4 3.3 3.2 3.1 ; do
+  for version in 5.2 5.1 5.0 4.9 4.8 4.7 4.6 4.5 4.4 4.3 4.2 4.1 4.0 3.6 3.5 3.4 3.3 3.2 3.1 ""; do
+  for version2 in "" 5.2 5.1 5.0 4.9 4.8 4.7 4.6 4.5 4.4 4.3 4.2 4.1 4.0 3.6 3.5 3.4 3.3 3.2 3.1; do
 
     if test -z $version ; then
-        db_lib="-ldb_sql -ldb"
-        try_headers="db.h"
+	if test -z $version2 ; then
+	    db_lib="-ldb_sql -ldb -ldl"
+            try_headers="db.h"
+        else
+    	    db_lib="-ldb_sql-$version2 -ldb -ldl"
+            try_headers="db.h"
+        fi
     else
-        db_lib="-ldb_sql-$version -ldb-$version"
-        try_headers="db$version/db.h db`echo $version | sed -e 's,\..*,,g'`/db.h"
+	if test "x$version2" != "x"; then
+		continue 1;
+	fi
+        db_lib="-ldb_sql-$version -ldb-$version -ldl"
+        try_headers="db$version/db.h db`echo $version | sed -e 's,\..*,,g'`/db.h db.h"
+        
+
     fi
+    
+    #echo $db_lib
+    #echo $try_headers
 
     LIBS="$old_LIBS $db_lib"
 
@@ -92,20 +106,21 @@ AC_DEFUN([AX_BERKELEY_DB_SQL],
                     AC_MSG_RESULT([header $db_hdr, library $db_lib])
 
                     DB_HEADER="$db_hdr"
-                    DB_LIBS="$db_lib"
+                    DB_SQL_LIBS="$db_lib"
                 ])
         fi
     done
   done
+  done
 
   LIBS="$old_LIBS"
 
-  if test -z $DB_HEADER ; then
+  if test -z "$DB_HEADER" ; then
     AC_MSG_RESULT([not found])
     ifelse([$3], , :, [$3])
   else
     AC_DEFINE_UNQUOTED(DB_HEADER, ["$DB_HEADER"], ["Berkeley DB Header File"])
-    AC_SUBST(DB_LIBS)
+    AC_SUBST(DB_SQL_LIBS)
     ifelse([$2], , :, [$2])
   fi
 ])

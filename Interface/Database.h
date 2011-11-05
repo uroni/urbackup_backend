@@ -25,6 +25,8 @@ public:
 
 	virtual bool Import(const std::string &pFile)=0;
 	virtual bool Dump(const std::string &pFile)=0;
+	
+	virtual std::string getEngineName(void)=0;
 };
 
 #endif

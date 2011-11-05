@@ -26,7 +26,12 @@
 #ifndef BDBPLUGIN
 #include "Server.h"
 #else
+#ifdef LINUX
+#include "bdbplugin/config.h"
+#include DB_HEADER
+#else
 #include <db.h>
+#endif
 #include "Interface/Server.h"
 #endif
 #include "Query.h"
@@ -100,9 +105,21 @@ bool CDatabase::Open(std::string pFile)
 	}
 	else
 	{
-		sqlite3_busy_timeout(db, 50);
-		Write("PRAGMA foreign_keys = ON");
+		
+		#ifdef BDBPLUGIN
+		db_results res=Read("PRAGMA multiversion");
+		if(!res.empty() && res[0][L"multiversion"]!=L"1")
+		{
+		    Write("PRAGMA multiversion=ON");
+		}
+		Write("PRAGMA synchronous=ON");
+		Write("PRAGMA snapshot_isolation=ON");
+		//Write("PRAGMA bdbsql_error_file='urbackup/bdb_errors.log'");
+		#else
 		Write("PRAGMA synchronous=NORMAL");
+		#endif
+		Write("PRAGMA foreign_keys = ON");
+		sqlite3_busy_timeout(db, 50);
 		return true;
 	}
 }
@@ -403,6 +420,15 @@ bool CDatabase::Dump(const std::string &pFile)
 	fclose(cd.out);
 
 	return true;
+}
+
+std::string CDatabase::getEngineName(void)
+{
+	#ifndef BDBPLUGIN
+	return "sqlite";
+	#else
+	return "bdb";
+	#endif
 }
 
 #endif

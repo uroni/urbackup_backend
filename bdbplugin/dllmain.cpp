@@ -28,7 +28,12 @@
 #include "../Interface/Server.h"
 #include "../Database.h"
 #include "BDBFactory.h"
+#ifdef LINUX
+#include "config.h"
+#include DB_HEADER
+#else
 #include <db.h>
+#endif
 #include "../sqlite/sqlite3.h"
 
 IServer *Server=NULL;

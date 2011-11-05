@@ -32,7 +32,13 @@ then
 	PLUGIN_URL=""
 fi
 
-DAEMON_PLUGINS="$PLUGIN_PYCHART $PLUGIN_URL --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --server true --user urbackup"
+PLUGIN_BDB="--plugin $DAEMON_LIBS/liburbackupserver_bdbplugin.so"
+if ! test -e $DAEMON_LIBS/liburbackupserver_bdbplugin.so
+then
+	PLUGIN_BDB=""
+fi
+
+DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --server true --user urbackup"
 S_DAEMON="--daemon"
 
 print_help()

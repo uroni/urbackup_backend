@@ -24,7 +24,12 @@
 #include "Server.h"
 #else
 #include "Interface/Server.h"
-#include "db.h"
+#ifdef LINUX
+#include "bdbplugin/config.h"
+#include DB_HEADER
+#else
+#include <db.h>
+#endif
 #endif
 #include "sqlite/sqlite3.h"
 #include "Database.h"

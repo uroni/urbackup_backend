@@ -14,8 +14,10 @@ AC_PROG_LIBTOOL
 
 # Checks for libraries.
 
-AX_BERKELEY_DB(5.1,, AC_MSG_ERROR([Sorry, you need BerkleyDB. Please look for distribution packages(libdb-dev) or get it from http://www.oracle.com/technetwork/database/berkeleydb/]))
-AX_BERKELEY_DB_SQL(5.1,, AC_MSG_ERROR([Sorry, you need SQL support for BerkleyDB. Please look for distribution packages(libdb-sql-dev) or get it from http://www.oracle.com/technetwork/database/berkeleydb/]))
+#AX_BERKELEY_DB(5.1,, AC_MSG_ERROR([Sorry, you need BerkleyDB. Please look for distribution packages(libdb-dev) or get it from http://www.oracle.com/technetwork/database/berkeleydb/]))
+AX_BERKELEY_DB_SQL(5.2,, [
+    AC_MSG_ERROR([Sorry, you need BerkleyDB with SQL support. Please look for distribution packages(libdb-sql-dev) or get it from http://www.oracle.com/technetwork/database/berkeleydb/])
+])
 
 # Checks for header files.
 AC_HEADER_STDC
