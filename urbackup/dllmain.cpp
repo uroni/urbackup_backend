@@ -749,6 +749,7 @@ void upgrade(void)
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
 	do
 	{
+		db->BeginTransaction();
 		old_v=ver;
 		switch(ver)
 		{
@@ -814,6 +815,8 @@ void upgrade(void)
 			q_update->Write();
 			q_update->Reset();
 		}
+		
+		db->EndTransaction();
 	}
 	while(old_v<ver);
 	
