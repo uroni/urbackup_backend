@@ -69,10 +69,10 @@ ServerSettings::ServerSettings(IDatabase *db, int pClientid) : clientid(pClienti
 		g_settings.push_back(this);
 	}
 
-	settings_default=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
+	settings_default=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
 	if(clientid!=-1)
 	{
-		settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings WHERE key=? AND clientid="+nconvert(clientid));
+		settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(clientid));
 	}
 	else
 	{

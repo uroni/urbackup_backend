@@ -91,7 +91,7 @@ struct SClientSettings
 
 SGeneralSettings getGeneralSettings(IDatabase *db)
 {
-	IQuery *q=db->Prepare("SELECT key, value FROM settings WHERE clientid=0");
+	IQuery *q=db->Prepare("SELECT key, value FROM settings_db.settings WHERE clientid=0");
 	db_results res=q->Read();
 	q->Reset();
 	SGeneralSettings ret;
@@ -122,7 +122,7 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 void getMailSettings(JSON::Object &obj, IDatabase *db)
 {
 	std::vector<std::wstring> slist=getMailSettingsList();
-	IQuery *q=db->Prepare("SELECT key, value FROM settings WHERE clientid=0 AND key=?");
+	IQuery *q=db->Prepare("SELECT key, value FROM settings_db.settings WHERE clientid=0 AND key=?");
 	for(size_t i=0;i<slist.size();++i)
 	{
 		q->Bind(slist[i]);
@@ -144,7 +144,7 @@ void getMailSettings(JSON::Object &obj, IDatabase *db)
 
 SClientSettings getClientSettings(IDatabase *db, int clientid)
 {
-	IQuery *q=db->Prepare("SELECT key, value FROM settings WHERE clientid=?");
+	IQuery *q=db->Prepare("SELECT key, value FROM settings_db.settings WHERE clientid=?");
 	q->Bind(clientid);
 	db_results res=q->Read();
 	q->Reset();
@@ -182,9 +182,9 @@ void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q
 
 void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings WHERE clientid=0 AND key=?");
-	IQuery *q_update=db->Prepare("UPDATE settings SET value=? WHERE key=? AND clientid=0");
-	IQuery *q_insert=db->Prepare("INSERT INTO settings (key, value, clientid) VALUES (?,?,0)");
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,0)");
 
 	updateSetting(L"backupfolder", settings.backupfolder, q_get, q_update, q_insert);
 	updateSetting(L"no_images", settings.no_images?L"true":L"false", q_get, q_update, q_insert);
@@ -206,9 +206,9 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 
 void updateMailSettings(str_map &GET, IDatabase *db)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings WHERE clientid=0 AND key=?");
-	IQuery *q_update=db->Prepare("UPDATE settings SET value=? WHERE key=? AND clientid=0");
-	IQuery *q_insert=db->Prepare("INSERT INTO settings (key, value, clientid) VALUES (?,?,0)");
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,0)");
 
 	std::vector<std::wstring> settings=getMailSettingsList();
 	for(size_t i=0;i<settings.size();++i)
@@ -223,18 +223,18 @@ void updateMailSettings(str_map &GET, IDatabase *db)
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings WHERE clientid="+nconvert(clientid)+" AND key=?");
-	IQuery *q_update=db->Prepare("UPDATE settings SET value=? WHERE key=? AND clientid="+nconvert(clientid));
-	IQuery *q_insert=db->Prepare("INSERT INTO settings (key, value, clientid) VALUES (?,?,"+nconvert(clientid)+")");
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+nconvert(clientid));
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+nconvert(clientid)+")");
 
 	updateSetting(L"overwrite", settings.overwrite?L"true":L"false", q_get, q_update, q_insert);
 }
 
 void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings WHERE key=? AND clientid=?");
-	IQuery *q_update=db->Prepare("UPDATE settings SET value=? WHERE key=? AND clientid=?");
-	IQuery *q_insert=db->Prepare("INSERT INTO settings (key, value, clientid) VALUES (?,?,?)");
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)");
 
 	std::vector<std::wstring> sset=getSettingsList();
 	sset.push_back(L"allow_overwrite");
@@ -272,7 +272,7 @@ void updateRights(int t_userid, std::string s_rights, IDatabase *db)
 	str_map rights;
 	ParseParamStr(s_rights, &rights);
 	
-	IQuery *q_del=db->Prepare("DELETE FROM si_permissions WHERE clientid=?");
+	IQuery *q_del=db->Prepare("DELETE FROM settings_db.si_permissions WHERE clientid=?");
 	q_del->Bind(t_userid);
 	q_del->Write();
 	q_del->Reset();
@@ -286,7 +286,7 @@ void updateRights(int t_userid, std::string s_rights, IDatabase *db)
 
 		if(!elms.empty())
 		{
-			IQuery *q_insert=db->Prepare("INSERT INTO si_permissions (t_domain, t_right, clientid) VALUES (?,?,?)");
+			IQuery *q_insert=db->Prepare("INSERT INTO settings_db.si_permissions (t_domain, t_right, clientid) VALUES (?,?,?)");
 
 			for(size_t i=0;i<elms.size();++i)
 			{
@@ -454,7 +454,7 @@ ACTION_IMPL(settings)
 			std::wstring salt=GET[L"salt"];
 			std::wstring pwmd5=GET[L"pwmd5"];
 
-			IQuery *q_find=db->Prepare("SELECT id FROM si_users WHERE name=?");
+			IQuery *q_find=db->Prepare("SELECT id FROM settings_db.si_users WHERE name=?");
 			q_find->Bind(name);
 			db_results res=q_find->Read();
 			q_find->Reset();
@@ -462,7 +462,7 @@ ACTION_IMPL(settings)
 
 			if(res.empty())
 			{
-				IQuery *q=db->Prepare("INSERT INTO si_users (name, password_md5, salt) VALUES (?,?,?)");
+				IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt) VALUES (?,?,?)");
 				q->Bind(name);
 				q->Bind(pwmd5);
 				q->Bind(salt);
@@ -489,7 +489,7 @@ ACTION_IMPL(settings)
 			std::wstring salt=GET[L"salt"];
 			std::wstring pwmd5=GET[L"pwmd5"];
 			int t_userid=watoi(GET[L"userid"]);
-			IQuery *q=db->Prepare("UPDATE si_users SET salt=?, password_md5=? WHERE id=?");
+			IQuery *q=db->Prepare("UPDATE settings_db.si_users SET salt=?, password_md5=? WHERE id=?");
 			
 			q->Bind(salt);
 			q->Bind(pwmd5);
@@ -511,7 +511,7 @@ ACTION_IMPL(settings)
 		{
 			int userid=watoi(GET[L"userid"]);
 
-			IQuery *q=db->Prepare("DELETE FROM si_users WHERE id=?");
+			IQuery *q=db->Prepare("DELETE FROM settings_db.si_users WHERE id=?");
 			q->Bind(userid);
 			q->Write();
 			q->Reset();
@@ -520,10 +520,10 @@ ACTION_IMPL(settings)
 		}
 		if(sa==L"listusers" && helper.getRights("usermod")=="all" )
 		{
-			IQuery *q=db->Prepare("SELECT id,name FROM si_users");
+			IQuery *q=db->Prepare("SELECT id,name FROM settings_db.si_users");
 			db_results res=q->Read();
 			q->Reset();
-			q=db->Prepare("SELECT t_right, t_domain FROM si_permissions WHERE clientid=?");
+			q=db->Prepare("SELECT t_right, t_domain FROM settings_db.si_permissions WHERE clientid=?");
 			JSON::Array users;
 			for(size_t i=0;i<res.size();++i)
 			{

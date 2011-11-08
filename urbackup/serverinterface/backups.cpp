@@ -174,7 +174,7 @@ ACTION_IMPL(backups)
 				q->Bind(t_clientid);
 				db_results res=q->Read();
 				q->Reset();
-				q=db->Prepare("SELECT value FROM settings WHERE key='backupfolder'");
+				q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder'");
 				db_results res_bf=q->Read();
 				q->Reset();
 				if(!res.empty() && !res_bf.empty() )

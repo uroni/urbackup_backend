@@ -41,7 +41,7 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 void BackupServer::operator()(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
-	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings");
+	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings_db.settings");
 
 #ifdef _WIN32
 	std::wstring tmpdir;

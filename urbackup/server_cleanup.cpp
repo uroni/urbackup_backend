@@ -50,7 +50,7 @@ void ServerCleanupThread::operator()(void)
 
 	{
 		ScopedActiveThread sat;
-		ISettingsReader *settings=Server->createDBSettingsReader(db, "settings");
+		ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings");
 		if( settings->getValue("autoshutdown", "false")=="true" )
 		{
 			IScopedLock lock(a_mutex);
@@ -111,7 +111,7 @@ void ServerCleanupThread::operator()(void)
 			{
 				IScopedLock lock(a_mutex);
 
-				ISettingsReader *settings=Server->createDBSettingsReader(db, "settings");
+				ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings");
 
 				ScopedActiveThread sat;
 
@@ -710,6 +710,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	}
 	if(del)
 	{
+		db->DetachDBs();
 		db->BeginTransaction();
 		q_move_files->Bind(backupid);
 		q_move_files->Write();
@@ -721,6 +722,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 		q_remove_file_backup->Write();
 		q_remove_file_backup->Reset();
 		db->EndTransaction();
+		db->AttachDBs();
 	}
 
 	ServerStatus::updateActive();
@@ -811,7 +813,7 @@ void ServerCleanupThread::removeClient(int clientid)
 	db->destroyQuery(q);
 
 	//settings
-	q=db->Prepare("DELETE FROM settings WHERE clientid=?", false);
+	q=db->Prepare("DELETE FROM settings_db.settings WHERE clientid=?", false);
 	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 

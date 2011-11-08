@@ -53,7 +53,7 @@ ACTION_IMPL(login)
 		SUser *session=helper.getSession();
 		if(session!=NULL)
 		{
-			IQuery *q=db->Prepare("SELECT id, name, password_md5 FROM si_users WHERE name=?");
+			IQuery *q=db->Prepare("SELECT id, name, password_md5 FROM settings_db.si_users WHERE name=?");
 			q->Bind(username);
 			db_results res=q->Read();
 			if(!res.empty())
@@ -92,7 +92,7 @@ ACTION_IMPL(login)
 	else
 	{
 		ret.set("lang", helper.getLanguage());
-		db_results res=db->Read("SELECT count(*) AS c FROM si_users");
+		db_results res=db->Read("SELECT count(*) AS c FROM settings_db.si_users");
 		if(watoi(res[0][L"c"])>0)
 		{
 			ret.set("success", JSON::Value(false) );

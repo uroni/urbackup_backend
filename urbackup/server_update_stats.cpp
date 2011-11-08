@@ -202,6 +202,7 @@ void ServerUpdateStats::update_files(void)
 
 	if(update_stats_use_transactions_del)
 	{
+		db->DetachDBs();
 		db->BeginTransaction();
 	}
 
@@ -353,6 +354,7 @@ void ServerUpdateStats::update_files(void)
 	if(update_stats_use_transactions_del)
 	{
 		db->EndTransaction();
+		db->AttachDBs();
 	}
 
 	Server->Log("Updating file stats...",LL_INFO);
@@ -363,6 +365,7 @@ void ServerUpdateStats::update_files(void)
 
 	if(update_stats_use_transactions_done)
 	{
+		db->DetachDBs();
 		db->BeginTransaction();
 	}
 	
@@ -515,6 +518,7 @@ void ServerUpdateStats::update_files(void)
 	if(update_stats_use_transactions_done)
 	{
 		db->EndTransaction();
+		db->AttachDBs();
 	}
 
 	if(!update_stats_autocommit)

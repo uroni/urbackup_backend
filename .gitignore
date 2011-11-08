@@ -116,3 +116,5 @@ urbackup/backup_server_old_sqlite.db
 urbackup/db_recover.exe
 urbackup/db_stat.exe
 urbackup/dbsql.exe
+urbackup/backup_server_old_sqlite.db*
+urbackup/backup_server_settings.db*

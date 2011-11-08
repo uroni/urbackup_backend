@@ -133,7 +133,7 @@ ACTION_IMPL(logs)
 
 			if(GET.find(L"report_mail")!=GET.end())
 			{
-				IQuery *q=db->Prepare("UPDATE si_users SET report_mail=?, report_loglevel=? WHERE id=?");
+				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET report_mail=?, report_loglevel=? WHERE id=?");
 				q->Bind(GET[L"report_mail"]);
 				q->Bind(watoi(GET[L"report_loglevel"]));
 				q->Bind(session->id);
@@ -143,7 +143,7 @@ ACTION_IMPL(logs)
 
 			if(GET.find(L"report_mail")!=GET.end())
 			{
-				IQuery *q=db->Prepare("UPDATE si_users SET report_mail=?, report_loglevel=?, report_sendonly=? WHERE id=?");
+				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET report_mail=?, report_loglevel=?, report_sendonly=? WHERE id=?");
 				q->Bind(GET[L"report_mail"]);
 				q->Bind(watoi(GET[L"report_loglevel"]));
 				q->Bind(watoi(GET[L"report_sendonly"]));
@@ -152,7 +152,7 @@ ACTION_IMPL(logs)
 				ret.set("saved_ok", true);
 			}
 
-			IQuery *mq=db->Prepare("SELECT report_mail, report_loglevel, report_sendonly FROM si_users WHERE id=? AND report_mail IS NOT NULL");
+			IQuery *mq=db->Prepare("SELECT report_mail, report_loglevel, report_sendonly FROM settings_db.si_users WHERE id=? AND report_mail IS NOT NULL");
 			mq->Bind(session->id);
 			res=mq->Read();
 			mq->Reset();

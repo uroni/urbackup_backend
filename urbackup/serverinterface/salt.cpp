@@ -37,7 +37,7 @@ ACTION_IMPL(salt)
 	SUser *session=helper.getSession();
 	if(session!=NULL)
 	{
-		IQuery *q=helper.getDatabase()->Prepare("SELECT salt FROM si_users WHERE name=?");
+		IQuery *q=helper.getDatabase()->Prepare("SELECT salt FROM settings_db.si_users WHERE name=?");
 		q->Bind(username);
 		db_results res=q->Read();
 	

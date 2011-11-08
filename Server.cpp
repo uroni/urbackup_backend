@@ -114,6 +114,8 @@ void CServer::setup(void)
 
 void CServer::destroyAllDatabases(void)
 {
+	IScopedLock lock(db_mutex);
+
 	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
 		i!=databases.end();++i)
 	{
@@ -722,7 +724,7 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 	if( thread_iter==database_iter->second.tmap.end() )
 	{
 		IDatabaseInt *db=database_iter->second.factory->createDatabase();
-		if(db->Open(database_iter->second.file)==false )
+		if(db->Open(database_iter->second.file, database_iter->second.attach)==false )
 		{
 			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
@@ -1424,4 +1426,20 @@ bool CServer::hasDatabaseFactory(const std::string &pEngineName)
 {
 	std::map<std::string, IDatabaseFactory*>::iterator it=database_factories.find(pEngineName);
 	return it!=database_factories.end();
+}
+
+bool CServer::attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier)
+{
+	IScopedLock lock(db_mutex);
+
+	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
+	if( iter==databases.end() )
+	{
+		return false;
+	}
+
+	if(std::find(iter->second.attach.begin(), iter->second.attach.end(), std::pair<std::string,std::string>(pFile, pName))==iter->second.attach.end())
+	{
+		iter->second.attach.push_back(std::pair<std::string,std::string>(pFile, pName));
+	}
 }

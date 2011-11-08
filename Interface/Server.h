@@ -135,6 +135,8 @@ public:
 
 	virtual void registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory)=0;
 	virtual bool hasDatabaseFactory(const std::string &pEngineName)=0;
+
+	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier)=0;
 };
 
 #ifndef NO_INTERFACE

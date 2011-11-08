@@ -12,7 +12,7 @@ class CQuery;
 class CDatabase : public IDatabaseInt
 {
 public:
-	bool Open(std::string pFile);
+	bool Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach);
 	~CDatabase();
 	virtual db_nresults ReadN(std::string pQuery); 
 	virtual db_results Read(std::string pQuery); 
@@ -45,6 +45,9 @@ public:
 	virtual bool Dump(const std::string &pFile);
 	
 	virtual std::string getEngineName(void);
+
+	virtual void DetachDBs(void);
+	virtual void AttachDBs(void);
 private:
 
 	db_nresults results;
@@ -57,5 +60,7 @@ private:
 	static IMutex* lock_mutex;
 	static int lock_count;
 	static ICondition *unlock_cond;
+
+	std::vector<std::pair<std::string,std::string> > attached_dbs;
 };
 

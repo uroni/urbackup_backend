@@ -130,7 +130,7 @@ ACTION_IMPL(status)
 			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image, 'localtime') AS lastbackup_image FROM clients"+filter);
 
 		int backup_ok_mod=3;
-		db_results res_t=db->Read("SELECT value FROM settings WHERE key='backup_ok_mod' AND clientid=0");
+		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod' AND clientid=0");
 		if(res_t.size()>0)
 		{
 			backup_ok_mod=watoi(res_t[0][L"value"]);

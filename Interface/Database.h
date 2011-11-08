@@ -27,6 +27,9 @@ public:
 	virtual bool Dump(const std::string &pFile)=0;
 	
 	virtual std::string getEngineName(void)=0;
+
+	virtual void DetachDBs(void)=0;
+	virtual void AttachDBs(void)=0;
 };
 
 #endif

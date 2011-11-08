@@ -94,8 +94,9 @@ CDatabase::~CDatabase()
 	sqlite3_close(db);
 }
 
-bool CDatabase::Open(std::string pFile)
+bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach)
 {
+	attached_dbs=attach;
 	in_transaction=false;
 	if( sqlite3_open(pFile.c_str(), &db) )
 	{
@@ -120,6 +121,8 @@ bool CDatabase::Open(std::string pFile)
 		#endif
 		Write("PRAGMA foreign_keys = ON");
 		sqlite3_busy_timeout(db, 50);
+		AttachDBs();
+
 		return true;
 	}
 }
@@ -429,6 +432,16 @@ std::string CDatabase::getEngineName(void)
 	#else
 	return "bdb";
 	#endif
+}
+
+void CDatabase::AttachDBs(void)
+{
+	for(size_t i=0;i<attached_dbs.size();++i)	{		Write("ATTACH DATABASE '"+attached_dbs[i].first+"' AS "+attached_dbs[i].second);	}
+}
+
+void CDatabase::DetachDBs(void)
+{
+	for(size_t i=0;i<attached_dbs.size();++i)	{		Write("DETACH DATABASE "+attached_dbs[i].second);	}
 }
 
 #endif

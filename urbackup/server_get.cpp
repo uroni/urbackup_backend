@@ -198,8 +198,8 @@ void BackupServerGet::operator ()(void)
 		return;
 	}
 
-	settings=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
-	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings WHERE key=? AND clientid="+nconvert(clientid));
+	settings=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
+	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(clientid));
 
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
@@ -642,8 +642,8 @@ void BackupServerGet::prepareSQL(void)
 	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0)", false);
 	q_get_last_incremental=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=CURRENT_TIMESTAMP WHERE id=?", false);
-	q_update_setting=db->Prepare("UPDATE settings SET value=? WHERE key=? AND clientid=?", false);
-	q_insert_setting=db->Prepare("INSERT INTO settings (key, value, clientid) VALUES (?,?,?)", false);
+	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
+	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
 	q_set_complete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
 	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false);
 	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false); 
@@ -660,9 +660,9 @@ void BackupServerGet::prepareSQL(void)
 	q_get_unsent_logdata=db->Prepare("SELECT id, strftime('%s', created) AS created, logdata FROM logs WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 	q_save_image_assoc=db->Prepare("INSERT INTO assoc_images (img_id, assoc_id) VALUES (?,?)", false);
-	q_get_users=db->Prepare("SELECT id FROM si_users WHERE report_mail IS NOT NULL AND report_mail<>''", false);
-	q_get_rights=db->Prepare("SELECT t_right FROM si_permissions WHERE clientid=? AND t_domain=?", false);
-	q_get_report_settings=db->Prepare("SELECT report_mail, report_loglevel, report_sendonly FROM si_users WHERE id=?", false);
+	q_get_users=db->Prepare("SELECT id FROM settings_db.si_users WHERE report_mail IS NOT NULL AND report_mail<>''", false);
+	q_get_rights=db->Prepare("SELECT t_right FROM settings_db.si_permissions WHERE clientid=? AND t_domain=?", false);
+	q_get_report_settings=db->Prepare("SELECT report_mail, report_loglevel, report_sendonly FROM settings_db.si_users WHERE id=?", false);
 	q_format_unixtime=db->Prepare("SELECT datetime(?, 'unixepoch', 'localtime') AS time", false);
 }
 
@@ -2269,7 +2269,7 @@ void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental
 
 MailServer BackupServerGet::getMailServerSettings(void)
 {
-	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), "settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
+	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), "settings_db.settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
 
 	MailServer ms;
 	ms.servername=settings->getValue("mail_servername", "");

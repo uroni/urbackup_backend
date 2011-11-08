@@ -37,6 +37,7 @@ struct SDatabase
 	IDatabaseFactory *factory;
 	std::string file;
 	std::map<THREAD_ID, IDatabaseInt*> tmap;
+	std::vector<std::pair<std::string,std::string> > attach;
 };
 
 
@@ -145,6 +146,8 @@ public:
 
 	virtual void registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory);
 	virtual bool hasDatabaseFactory(const std::string &pEngineName);
+
+	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier);
 private:
 
 	bool UnloadDLLs(void);

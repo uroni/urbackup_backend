@@ -6,7 +6,7 @@
 class IDatabaseInt : public IDatabase
 {
 public:
-	virtual bool Open(std::string pFile)=0;
+	virtual bool Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach)=0;
 };
 
 #endif

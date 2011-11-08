@@ -160,7 +160,7 @@ std::string Helper::getRightsInt(const std::string &domain)
 {
 	if(session==NULL) return "none";
 
-	IQuery *q=getDatabase()->Prepare("SELECT t_right FROM si_permissions WHERE clientid=? AND t_domain=?");
+	IQuery *q=getDatabase()->Prepare("SELECT t_right FROM settings_db.si_permissions WHERE clientid=? AND t_domain=?");
 	q->Bind(session->id);
 	q->Bind(domain);
 	db_results res=q->Read();

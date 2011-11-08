@@ -319,6 +319,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(both || (!both && !is_backup_client) )
 	{
 		std::string bdb_config="mutex_set_max 1000000\r\nset_tx_max 500000\r\nset_lg_regionmax 10485760\r\nset_lg_bsize 4194304\r\nset_lg_max 20971520\r\nset_lk_max_locks 100000\r\nset_lk_max_lockers 10000\r\nset_lk_max_objects 100000\r\nset_cachesize 0 104857600 1";
+		bool use_berkeleydb=false;
 
 		if( !FileExists("urbackup/backup_server.bdb") && !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
 		{
@@ -345,11 +346,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 				db->Import("urbackup/backup_server_init.sql");
 			}
+
+			use_berkeleydb=true;
 		}
 		else
-		{
+		{			
 			if(Server->hasDatabaseFactory("bdb") )
 			{
+				use_berkeleydb=true;
+
 				Server->Log("Warning: Switching to Berkley DB", LL_WARNING);
 				if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER_TMP) )
 				{
@@ -380,11 +385,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 					else
 					{
 						Server->Log("Importing data into new BerkleyDB database failed", LL_ERROR);
+						return;
 					}
 				}
 				else
 				{
 					Server->Log("Dumping Database failed", LL_ERROR);
+					return;
 				}
 			}
 			else
@@ -394,17 +401,32 @@ DLLEXPORT void LoadActions(IServer* pServer)
 					Server->Log("Couldn't open Database backup_server.db", LL_ERROR);
 					return;
 				}
-				else
-				{
-					IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-					db->Write("PRAGMA journal_mode=WAL");
-				}
 			}
 		}
 
 		ServerStatus::init_mutex();
 		ServerSettings::init_mutex();
 		BackupServerGet::init_mutex();
+
+		{
+			std::string aname="urbackup/backup_server_settings.db";
+			if(use_berkeleydb)
+				aname="urbackup/backup_server_settings.bdb";
+
+			Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
+			Server->destroyAllDatabases();
+
+			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			db->Write("PRAGMA settings_db.journal_mode=WAL");
+		}
+		
+		upgrade();
+
+		if(!use_berkeleydb)
+		{
+			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			db->Write("PRAGMA journal_mode=WAL");
+		}
 
 		ADD_ACTION(server_status);
 		ADD_ACTION(progress);
@@ -422,9 +444,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(logs);
 		ADD_ACTION(isimageready);
 		ADD_ACTION(getimage);
-		ADD_ACTION(google_chart);
-		
-		upgrade();
+		ADD_ACTION(google_chart);		
 	}
 #endif
 
@@ -722,6 +742,36 @@ void upgrade13_14(void)
 	db->Write("CREATE INDEX files_backupid ON files (backupid)");
 }
 
+void upgrade14_15(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE settings_db.settings ("
+			  "key TEXT,"
+			  "value TEXT , clientid INTEGER);");
+	db->Write("CREATE TABLE settings_db.si_users"
+				"("
+				"id INTEGER PRIMARY KEY,"
+				"name TEXT,"
+				"password_md5 TEXT,"
+				"salt TEXT,"
+				"report_mail TEXT,"
+				"report_loglevel INTEGER,"
+				"report_sendonly INTEGER"
+				");");
+	db->Write("CREATE TABLE settings_db.si_permissions"
+				"("
+				"clientid INTEGER REFERENCES si_users(id) ON DELETE CASCADE,"
+				"t_right TEXT,"
+				"t_domain TEXT"
+				");");
+	db->Write("INSERT INTO settings_db.settings SELECT * FROM settings");
+	db->Write("INSERT INTO settings_db.si_users SELECT * FROM si_users");
+	db->Write("INSERT INTO settings_db.si_permissions SELECT * FROM si_permissions");
+	db->Write("DROP TABLE settings");
+	db->Write("DROP TABLE si_users");
+	db->Write("DROP TABLE si_permissions");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -738,12 +788,13 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=14;
+	int max_v=15;
 	bool do_upgrade=false;
 	if(ver<max_v)
 	{
 		do_upgrade=true;
 		Server->Log("Upgrading...", LL_WARNING);
+		db->Write("PRAGMA journal_mode=DELETE");
 	}
 	
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
@@ -803,6 +854,10 @@ void upgrade(void)
 				break;
 			case 13:
 				upgrade13_14();
+				++ver;
+				break;
+			case 14:
+				upgrade14_15();
 				++ver;
 				break;
 			default:
