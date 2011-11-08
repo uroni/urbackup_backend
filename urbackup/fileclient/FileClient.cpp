@@ -438,7 +438,7 @@ bool FileClient::Reconnect(void)
 	Server->destroy(tcpsock);
 	connect_starttime=Server->getTimeMS();
 
-	for(size_t i=0;i<8;++i)
+	while(Server->getTimeMS()-connect_starttime<300000)
 	{
 		tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
 		if(tcpsock!=NULL)
@@ -446,6 +446,10 @@ bool FileClient::Reconnect(void)
 			Server->Log("Reconnected successfully,", LL_DEBUG);
 			socket_open=true;
 			return true;
+		}
+		else
+		{
+			Server->wait(1000);
 		}
 	}
 	Server->Log("Reconnecting failed.", LL_DEBUG);
