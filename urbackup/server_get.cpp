@@ -1461,9 +1461,14 @@ bool BackupServerGet::doIncrBackup(void)
 						indir_currdepth=0;
 
 						if(cf.name!=L"..")
-							indir_currdepth=1;
+						{
+							if(r_offline==false )
+								indir_currdepth=1;
+						}
 						else
+						{
 							--changelevel;
+						}
 					}
 					else if(indirchange==true && r_offline==false)
 					{
