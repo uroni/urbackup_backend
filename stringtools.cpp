@@ -340,7 +340,11 @@ void strupper(std::wstring *pStr)
 {
 	for(size_t i=0;i<pStr->size();++i)
 	{
+#ifdef _WIN32
+		(*pStr)[i]=towupper((*pStr)[i] );
+#else
 		(*pStr)[i]=toupper((*pStr)[i] );
+#endif
 	}
 }
 

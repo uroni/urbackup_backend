@@ -1315,6 +1315,12 @@ void IndexThread::readExcludePattern(void)
 			std::vector<std::wstring> toks;
 			Tokenize(val, toks, L";");
 			exlude_dirs=toks;
+#ifdef _WIN32
+			for(size_t i=0;i<exlude_dirs.size();++i)
+			{
+				strupper(&exlude_dirs[i]);
+			}
+#endif
 		}
 		Server->destroy(curr_settings);
 	}
@@ -1324,6 +1330,10 @@ bool amatch(const wchar_t *str, const wchar_t *p);
 
 bool IndexThread::isExcluded(const std::wstring &path)
 {
+	std::wstring wpath=path;
+#ifdef _WIN32
+	strupper(&wpath);
+#endif
 	for(size_t i=0;i<exlude_dirs.size();++i)
 	{
 		if(!exlude_dirs[i].empty())
