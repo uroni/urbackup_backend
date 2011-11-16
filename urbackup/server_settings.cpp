@@ -180,6 +180,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.allow_pause=(settings_default->getValue("allow_pause", "true")=="true");
 	settings.allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
 	settings.image_letters=settings_default->getValue("image_letters", "C");
+	settings.backup_database=(settings_default->getValue("backup_database", "true")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)

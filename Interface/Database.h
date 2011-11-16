@@ -30,6 +30,8 @@ public:
 
 	virtual void DetachDBs(void)=0;
 	virtual void AttachDBs(void)=0;
+
+	virtual bool Backup(const std::string &pFile)=0;
 };
 
 #endif

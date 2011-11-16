@@ -901,6 +901,8 @@ function show_settings2(data)
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
 			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
+			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
+			
 			
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
 			data.settings.allow_starting_file_backups=getCheckboxValue(data.settings.allow_starting_file_backups);
@@ -1121,6 +1123,7 @@ function saveGeneralSettings()
 	pars+=getPar("max_active_clients");
 	pars+=getPar("tmpdir");
 	pars+=getPar("cleanup_window");
+	pars+=getPar("backup_database");
 	for(var i=0;i<g.settings_list.length;++i)
 	{
 		pars+=getPar(g.settings_list[i]);

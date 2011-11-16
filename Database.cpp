@@ -41,6 +41,7 @@ extern "C"
 	#include "sqlite/shell.h"
 }
 #include "Database.h"
+#include "stringtools.h"
 
 IMutex * CDatabase::lock_mutex=NULL;
 int CDatabase::lock_count=0;
@@ -442,6 +443,57 @@ void CDatabase::AttachDBs(void)
 void CDatabase::DetachDBs(void)
 {
 	for(size_t i=0;i<attached_dbs.size();++i)	{		Write("DETACH DATABASE "+attached_dbs[i].second);	}
+}
+
+bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
+{
+	int rc;                     /* Function return code */
+  sqlite3 *pBackupDB;             /* Database connection opened on zFilename */
+  sqlite3_backup *pBackup;    /* Backup handle used to copy data */
+
+  /* Open the database file identified by zFilename. */
+  rc = sqlite3_open(pFile.c_str(), &pBackupDB);
+  if( rc==SQLITE_OK ){
+
+    /* Open the sqlite3_backup object used to accomplish the transfer */
+	  pBackup = sqlite3_backup_init(pBackupDB, pDB.c_str(), db, "main");
+    if( pBackup ){
+
+      /* Each iteration of this loop copies 5 database pages from database
+      ** pDb to the backup database. If the return value of backup_step()
+      ** indicates that there are still further pages to copy, sleep for
+      ** 250 ms before repeating. */
+      do {
+        rc = sqlite3_backup_step(pBackup, 5);
+      } while( rc==SQLITE_OK || rc==SQLITE_BUSY || rc==SQLITE_LOCKED );
+
+      /* Release resources allocated by backup_init(). */
+      (void)sqlite3_backup_finish(pBackup);
+    }
+    rc = sqlite3_errcode(pBackupDB);
+  }
+  
+  /* Close the database connection opened on database file zFilename
+  ** and return the result of this function. */
+  (void)sqlite3_close(pBackupDB);
+  return rc==0;
+}
+
+bool CDatabase::Backup(const std::string &pFile)
+{
+	std::string path=ExtractFilePath(pFile);
+	bool b=backup_db(pFile, "main");
+	if(!b)
+		return false;
+
+	for(size_t i=0;i<attached_dbs.size();++i)
+	{
+		b=backup_db(path+"/"+ExtractFileName(attached_dbs[i].first), attached_dbs[i].second);
+		if(!b)
+			return false;
+	}
+
+	return true;
 }
 
 #endif

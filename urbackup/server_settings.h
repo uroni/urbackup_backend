@@ -41,6 +41,7 @@ struct SSettings
 	bool allow_config_paths;
 	bool allow_log_view;
 	std::string image_letters;
+	bool backup_database;
 };
 
 struct STimeSpan

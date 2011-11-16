@@ -37,6 +37,8 @@ bool ServerCleanupThread::update_stats=false;
 IMutex *ServerCleanupThread::a_mutex=NULL;
 bool ServerCleanupThread::update_stats_interruptible=false;
 
+const unsigned int min_cleanup_interval=12*60*60;
+
 void ServerCleanupThread::initMutex(void)
 {
 	mutex=Server->createMutex();
@@ -47,6 +49,7 @@ void ServerCleanupThread::initMutex(void)
 void ServerCleanupThread::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	unsigned int last_cleanup=0;
 
 	{
 		ScopedActiveThread sat;
@@ -59,6 +62,8 @@ void ServerCleanupThread::operator()(void)
 			deletePendingClients();
 			do_cleanup();
 			destroyQueries();
+
+			backup_database();
 		}
 
 		if( settings->getValue("autoupdate_clients", "true")=="true" )
@@ -107,7 +112,7 @@ void ServerCleanupThread::operator()(void)
 			int chour=watoi(res[0][L"time"]);
 			ServerSettings settings(db);
 			std::vector<STimeSpan> tw=settings.getCleanupWindow();
-			if( (!tw.empty() && BackupServerGet::isInBackupWindow(tw)) || ( tw.empty() && (chour==3 || chour==4) ) )
+			if( (!tw.empty() && BackupServerGet::isInBackupWindow(tw)) || ( tw.empty() && (chour==3 || chour==4) ) && Server->getTimeSeconds()-last_cleanup>min_cleanup_interval)
 			{
 				IScopedLock lock(a_mutex);
 
@@ -126,7 +131,11 @@ void ServerCleanupThread::operator()(void)
 				do_cleanup();
 				destroyQueries();
 
+				backup_database();
+
 				Server->destroy(settings);
+
+				last_cleanup=Server->getTimeSeconds();
 			}
 		}
 	}
@@ -931,6 +940,38 @@ void ServerCleanupThread::destroyQueries(void)
 	db->destroyQuery(q_get_client_filebackups);
 	db->destroyQuery(q_get_assoc_img);
 	db->destroyQuery(q_get_image_size);
+}
+
+void ServerCleanupThread::backup_database(void)
+{
+	ServerSettings settings(db);
+
+	if(settings.getSettings()->backup_database)
+	{
+		std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
+		if(!os_directory_exists(bfolder) )
+		{
+			os_create_dir(bfolder);
+		}
+		else
+		{
+			rename(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db").c_str(), Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db~").c_str() );
+			rename(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server_settings.db").c_str(), Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server_settings.db~").c_str() );
+		}
+
+		Server->Log("Starting database backup...", LL_INFO);
+		bool b=db->Backup(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db"));
+		Server->Log("Database backup done.", LL_INFO);
+		if(!b)
+		{
+			Server->Log("Backing up database failed", LL_ERROR);
+		}
+		else
+		{
+			Server->deleteFile(bfolder+os_file_sep()+L"backup_server.db~");
+			Server->deleteFile(bfolder+os_file_sep()+L"backup_server_settings.db~");
+		}
+	}
 }
 
 #endif //CLIENT_ONLY
