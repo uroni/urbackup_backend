@@ -30,6 +30,7 @@
 #include "server_update.h"
 #include "server_status.h"
 #include "server_get.h"
+#include <stdio.h>
 
 IMutex *ServerCleanupThread::mutex=NULL;
 ICondition *ServerCleanupThread::cond=NULL;
