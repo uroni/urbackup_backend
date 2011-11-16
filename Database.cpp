@@ -456,7 +456,7 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
   if( rc==SQLITE_OK ){
 
     /* Open the sqlite3_backup object used to accomplish the transfer */
-	  pBackup = sqlite3_backup_init(pBackupDB, pDB.c_str(), db, "main");
+	  pBackup = sqlite3_backup_init(pBackupDB, "main", db, pDB.c_str());
     if( pBackup ){
 
       /* Each iteration of this loop copies 5 database pages from database
@@ -470,7 +470,15 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
       /* Release resources allocated by backup_init(). */
       (void)sqlite3_backup_finish(pBackup);
     }
+	else
+	{
+		Server->Log("Opening backup connection failed", LL_INFO);
+	}
     rc = sqlite3_errcode(pBackupDB);
+	if(rc!=0)
+	{
+		Server->Log("Database backup failed with error code: "+nconvert(rc)+" err: "+sqlite3_errmsg(pBackupDB), LL_INFO);
+	}
   }
   
   /* Close the database connection opened on database file zFilename
