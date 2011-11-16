@@ -416,8 +416,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
 			Server->destroyAllDatabases();
 
-			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-			db->Write("PRAGMA settings_db.journal_mode=WAL");
+			//IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			//db->Write("PRAGMA settings_db.journal_mode=WAL");
 		}
 		
 		upgrade();
@@ -426,6 +426,19 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			db->Write("PRAGMA journal_mode=WAL");
+		}
+		
+		if( FileExists("urbackup/backupfolder") )
+		{
+			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			db_results res=db->Read("SELECT value FROM settings_db.settings WHERE key='backupfolder' AND clientid=0");
+			if(res.empty())
+			{
+				IQuery *q=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('backupfolder', ?, 0)");
+				q->Bind(getFile("urbackup/backupfolder"));
+				q->Write();
+				db->destroyQuery(q);
+			}
 		}
 
 		ADD_ACTION(server_status);

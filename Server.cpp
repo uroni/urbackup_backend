@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <memory.h>
 #ifndef _WIN32
 #include <errno.h>
