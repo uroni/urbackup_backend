@@ -346,9 +346,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 #ifndef LINUX
 #ifndef BACKUP_SEM
-				hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_FLAG_SEQUENTIAL_SCAN, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+				hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
-				hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+				hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #endif
 
 				if(hFile == INVALID_HANDLE_VALUE)
@@ -441,10 +441,17 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					if(FileServ::isPause() )
 					{
-						unsigned int starttime=GetTickCount();
+						DWORD starttime=GetTickCount();
 						while(GetTickCount()-starttime<5000)
 						{
 							SleepEx(500,true);
+
+							int rc=SendData();
+							if(rc==-1)
+							{
+								Log("Error: Send failed in file pause loop -2");
+								CloseThread(hFile);
+							}
 						}
 					}
 				}
