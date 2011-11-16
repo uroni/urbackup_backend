@@ -1442,4 +1442,6 @@ bool CServer::attachToDatabase(const std::string &pFile, const std::string &pNam
 	{
 		iter->second.attach.push_back(std::pair<std::string,std::string>(pFile, pName));
 	}
+
+	return true;
 }

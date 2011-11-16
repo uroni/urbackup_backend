@@ -48,7 +48,11 @@ public:
 
 	virtual void DetachDBs(void);
 	virtual void AttachDBs(void);
+
+	virtual bool Backup(const std::string &pFile);
 private:
+	
+	bool backup_db(const std::string &pFile, const std::string &pDB);
 
 	db_nresults results;
 	sqlite3 *db;

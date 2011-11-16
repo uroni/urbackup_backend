@@ -72,7 +72,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 
 struct SGeneralSettings
 {
-	SGeneralSettings(void): no_images(false), autoshutdown(false), autoupdate_clients(true), max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4") {}
+	SGeneralSettings(void): no_images(false), autoshutdown(false), autoupdate_clients(true), max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true) {}
 	std::wstring backupfolder;
 	bool no_images;
 	bool autoshutdown;
@@ -81,6 +81,7 @@ struct SGeneralSettings
 	int max_active_clients;
 	std::wstring tmpdir;
 	std::wstring cleanup_window;
+	bool backup_database;
 };
 
 struct SClientSettings
@@ -115,6 +116,8 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.tmpdir=value;
 		else if(key==L"cleanup_window")
 			ret.cleanup_window=value;
+		else if(key==L"backup_database" && value==L"false")
+			ret.backup_database=false;
 	}
 	return ret;
 }
@@ -194,6 +197,7 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 	updateSetting(L"max_active_clients", convert(settings.max_active_clients),  q_get, q_update, q_insert);
 	updateSetting(L"tmpdir", settings.tmpdir,  q_get, q_update, q_insert);
 	updateSetting(L"cleanup_window", settings.cleanup_window,  q_get, q_update, q_insert);
+	updateSetting(L"backup_database", settings.backup_database?L"true":L"false",  q_get, q_update, q_insert);
 
 #ifdef _WIN32
 	if(!settings.tmpdir.empty())
@@ -561,6 +565,7 @@ ACTION_IMPL(settings)
 				settings.no_images=(GET[L"no_images"]==L"true");
 				settings.autoshutdown=(GET[L"autoshutdown"]==L"true");
 				settings.autoupdate_clients=(GET[L"autoupdate_clients"]==L"true");
+				settings.backup_database=(GET[L"backup_database"]==L"true");
 				settings.max_active_clients=watoi(GET[L"max_active_clients"]);
 				settings.max_sim_backups=watoi(GET[L"max_sim_backups"]);
 				settings.tmpdir=GET[L"tmpdir"];
@@ -589,6 +594,7 @@ ACTION_IMPL(settings)
 				obj.set("max_active_clients", settings.max_active_clients);
 				obj.set("tmpdir", settings.tmpdir);
 				obj.set("cleanup_window", settings.cleanup_window);
+				obj.set("backup_database", settings.backup_database);
 				#ifdef _WIN32
 				obj.set("ONLY_WIN32_BEGIN","");
 				obj.set("ONLY_WIN32_END","");

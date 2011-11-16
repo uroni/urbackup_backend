@@ -39,6 +39,8 @@ public:
 
 	static void updateStats(bool interruptible);
 	static void initMutex(void);
+
+	void backup_database(void);
 private:
 
 	void removeImageSize(int backupid);
