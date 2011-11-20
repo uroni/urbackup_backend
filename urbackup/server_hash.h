@@ -19,7 +19,7 @@ public:
 
 private:
 	void prepareSQL(void);
-	void addFile(unsigned int backupid, char incremental, IFile *tf, const std::wstring &tfn, const std::string &sha2);
+	void addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn, const std::string &sha2);
 	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid);
 	std::wstring findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid);
 	bool copyFile(IFile *tf, const std::wstring &dest);

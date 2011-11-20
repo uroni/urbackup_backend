@@ -77,8 +77,8 @@ void BackupServerPrepareHash::operator()(void)
 			std::string temp_fn;
 			rd.getStr(&temp_fn);
 
-			unsigned int backupid;
-			rd.getUInt(&backupid);
+			int backupid;
+			rd.getInt(&backupid);
 
 			char incremental;
 			rd.getChar(&incremental);
@@ -101,7 +101,7 @@ void BackupServerPrepareHash::operator()(void)
 				
 				CWData data;
 				data.addString(temp_fn);
-				data.addUInt(backupid);
+				data.addInt(backupid);
 				data.addChar(incremental);
 				data.addString(tfn);
 				data.addString(h);

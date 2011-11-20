@@ -159,8 +159,8 @@ void BackupServerHash::operator()(void)
 			std::string temp_fn;
 			rd.getStr(&temp_fn);
 
-			unsigned int backupid;
-			rd.getUInt(&backupid);
+			int backupid;
+			rd.getInt(&backupid);
 
 			char incremental;
 			rd.getChar(&incremental);
@@ -259,7 +259,7 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	deleteFileTmp(pHash, fp, filesize, backupid);
 }
 
-void BackupServerHash::addFile(unsigned int backupid, char incremental, IFile *tf, const std::wstring &tfn, const std::string &sha2)
+void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn, const std::string &sha2)
 {
 	_i64 t_filesize=tf->Size();
 	int f_backupid;
