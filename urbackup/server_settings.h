@@ -22,6 +22,7 @@ struct SSettings
 	int min_image_full;
 	int max_image_full;
 	bool no_images;
+	bool no_file_backups;
 	bool overwrite;
 	bool allow_overwrite;
 	bool client_overwrite;

@@ -72,9 +72,10 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 
 struct SGeneralSettings
 {
-	SGeneralSettings(void): no_images(false), autoshutdown(false), autoupdate_clients(true), max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true) {}
+	SGeneralSettings(void): no_images(false), no_file_backups(false), autoshutdown(false), autoupdate_clients(true), max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true) {}
 	std::wstring backupfolder;
 	bool no_images;
+	bool no_file_backups;
 	bool autoshutdown;
 	bool autoupdate_clients;
 	int max_sim_backups;
@@ -104,6 +105,8 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.backupfolder=value;
 		else if(key==L"no_images" && value==L"true")
 			ret.no_images=true;
+		else if(key==L"no_file_backups" && value==L"true")
+			ret.no_file_backups=true;
 		else if(key==L"autoshutdown" && value==L"true")
 			ret.autoshutdown=true;
 		else if(key==L"autoupdate_clients" && value==L"false")
@@ -191,6 +194,7 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 
 	updateSetting(L"backupfolder", settings.backupfolder, q_get, q_update, q_insert);
 	updateSetting(L"no_images", settings.no_images?L"true":L"false", q_get, q_update, q_insert);
+	updateSetting(L"no_file_backups", settings.no_file_backups?L"true":L"false", q_get, q_update, q_insert);
 	updateSetting(L"autoshutdown", settings.autoshutdown?L"true":L"false",  q_get, q_update, q_insert);
 	updateSetting(L"autoupdate_clients", settings.autoupdate_clients?L"true":L"false",  q_get, q_update, q_insert);
 	updateSetting(L"max_sim_backups", convert(settings.max_sim_backups),  q_get, q_update, q_insert);
@@ -563,6 +567,7 @@ ACTION_IMPL(settings)
 				SGeneralSettings settings;
 				settings.backupfolder=GET[L"backupfolder"];
 				settings.no_images=(GET[L"no_images"]==L"true");
+				settings.no_file_backups=(GET[L"no_file_backups"]==L"true");
 				settings.autoshutdown=(GET[L"autoshutdown"]==L"true");
 				settings.autoupdate_clients=(GET[L"autoupdate_clients"]==L"true");
 				settings.backup_database=(GET[L"backup_database"]==L"true");
@@ -588,6 +593,7 @@ ACTION_IMPL(settings)
 				JSON::Object obj=getJSONClientSettings(serv_settings);
 				obj.set("backupfolder", settings.backupfolder);
 				obj.set("no_images", settings.no_images);
+				obj.set("no_file_backups", settings.no_file_backups);
 				obj.set("autoshutdown", settings.autoshutdown);
 				obj.set("autoupdate_clients", settings.autoupdate_clients);
 				obj.set("max_sim_backups", settings.max_sim_backups);

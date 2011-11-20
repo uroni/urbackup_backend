@@ -310,7 +310,7 @@ void BackupServerGet::operator ()(void)
 					Server->Log("Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
 			}
 
-			if( !file_backup_err && isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) )
+			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) )
 			{
 				ScopedActiveThread sat;
 
@@ -335,7 +335,7 @@ void BackupServerGet::operator ()(void)
 					r_success=doFullBackup();
 				}
 			}
-			else if( !file_backup_err && isBackupsRunningOkay() && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) )
+			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && isBackupsRunningOkay() && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) )
 			{
 				ScopedActiveThread sat;
 
@@ -984,7 +984,11 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			delete [] pck;
 			if(ret!="DONE")
 			{
-				ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
+				if(ret!="no backup dirs")
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
+				else
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_DEBUG);
+
 				break;
 			}
 			else
@@ -1720,11 +1724,11 @@ bool BackupServerGet::hasChange(size_t line, const std::vector<size_t> &diffs)
 
 void BackupServerGet::hashFile(std::wstring dstpath, IFile *fd)
 {
-	unsigned int l_backup_id=backupid;
+	int l_backup_id=backupid;
 
 	CWData data;
 	data.addString(Server->ConvertToUTF8(fd->getFilenameW()));
-	data.addUInt(l_backup_id);
+	data.addInt(l_backup_id);
 	data.addChar(r_incremental==true?1:0);
 	data.addString(Server->ConvertToUTF8(dstpath));
 

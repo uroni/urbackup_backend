@@ -288,5 +288,6 @@ translations.de={
 "tAllow clientside starting of image backups": "Clients erlauben Imagebackups zu starten",
 "tAllow clientside viewing of backup logs": "Clients erlauben Logs anzuschauen",
 "tAllow pausing backups": "Clients erlauben Backups zu pausieren",
-"tAutomatically backup UrBackup database": "Automatisch UrBackup Datenbank sichern"
+"tAutomatically backup UrBackup database": "Automatisch UrBackup Datenbank sichern",
+"tDo not do file backups": "Keine Dateibackups ausführen"
 }

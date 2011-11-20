@@ -160,6 +160,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.min_image_full=settings_default->getValue("min_image_full", 2);
 	settings.max_image_full=settings_default->getValue("max_image_full", 5);
 	settings.no_images=(settings_default->getValue("no_images", "false")=="true");
+	settings.no_file_backups=(settings_default->getValue("no_file_backups", "false")=="true");
 	settings.overwrite=false;
 	settings.allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
 	settings.backupfolder=settings_default->getValue(L"backupfolder", L"C:\\urbackup");
@@ -290,6 +291,10 @@ std::vector<std::string> ServerSettings::getBackupVolumes(void)
 	std::string vols=getSettings()->image_letters;
 	std::vector<std::string> ret;
 	Tokenize(vols, ret, ";,");
+	for(size_t i=0;i<ret.size();++i)
+	{
+		ret[i]=trim(ret[i]);
+	}
 	return ret;
 }
 
@@ -317,8 +322,8 @@ std::vector<STimeSpan> ServerSettings::getWindow(std::string window)
 			f_o=trim(dow_toks[l]);
 			if(f_o.find("-")!=std::string::npos)
 			{
-				std::string f1=getuntil("-", f_o);
-				std::string b2=getafter("-", f_o);
+				std::string f1=trim(getuntil("-", f_o));
+				std::string b2=trim(getafter("-", f_o));
 
 				int start=parseDayOfWeek(f1);
 				int stop=parseDayOfWeek(b2);
@@ -416,8 +421,8 @@ STimeSpan ServerSettings::parseTime(std::string t)
 {
 	if(t.find("-")!=std::string::npos)
 	{
-		std::string f=getuntil("-", t);
-		std::string b=getafter("-", t);
+		std::string f=trim(getuntil("-", t));
+		std::string b=trim(getafter("-", t));
 
 		return STimeSpan(parseTimeDet(f), parseTimeDet(b) );
 	}

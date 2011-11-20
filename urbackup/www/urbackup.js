@@ -898,6 +898,7 @@ function show_settings2(data)
 		if(data.sa=="general")
 		{
 			data.settings.no_images=getCheckboxValue(data.settings.no_images);
+			data.settings.no_file_backups=getCheckboxValue(data.settings.no_file_backups);
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
 			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
@@ -1117,6 +1118,7 @@ function saveGeneralSettings()
 	var pars="";
 	pars+=getPar("backupfolder");
 	pars+=getPar("no_images");
+	pars+=getPar("no_file_backups");
 	pars+=getPar("autoshutdown");
 	pars+=getPar("autoupdate_clients");
 	pars+=getPar("max_sim_backups");
