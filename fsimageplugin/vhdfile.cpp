@@ -246,6 +246,7 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 VHDFile::~VHDFile()
 {
 	delete file;
+	delete parent;
 }
 
 bool VHDFile::write_header(bool diff)
