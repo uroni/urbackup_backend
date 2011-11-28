@@ -464,7 +464,11 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
       ** indicates that there are still further pages to copy, sleep for
       ** 250 ms before repeating. */
       do {
-        rc = sqlite3_backup_step(pBackup, 5);
+        rc = sqlite3_backup_step(pBackup, -1);
+
+		if(rc!=SQLITE_OK)
+			Server->wait(250);
+
       } while( rc==SQLITE_OK || rc==SQLITE_BUSY || rc==SQLITE_LOCKED );
 
       /* Release resources allocated by backup_init(). */
