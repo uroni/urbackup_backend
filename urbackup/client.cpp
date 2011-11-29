@@ -53,6 +53,7 @@ const unsigned int shadowcopy_timeout=7*24*60*60*1000;
 #define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
 #define CHECK_COM_RESULT_RELEASE_S(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return ""; }}
 #define CHECK_COM_RESULT(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
+#define CHECK_COM_RESULT_OK(x, ok) { HRESULT r; if( (r=(x))!=S_OK ){ ok=false; Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
 
 void IdleCheckerThread::operator()(void)
 {
@@ -984,8 +985,12 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 		{
 			IVssBackupComponents *backupcom=dir->ref->backupcom;
 			IVssAsync *pb_result;
-			CHECK_COM_RESULT_RELEASE(backupcom->BackupComplete(&pb_result));
-			wait_for(pb_result);
+			bool bcom_ok=true;
+			CHECK_COM_RESULT_OK(backupcom->BackupComplete(&pb_result), bcom_ok);
+			if(bcom_ok)
+			{
+				wait_for(pb_result);
+			}
 
 			Server->Log(L"Deleting shadowcopy for path \""+dir->target+L"\" -2", LL_INFO);
 			
@@ -998,20 +1003,23 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 #ifndef VSS_S03
 #ifndef SERVER_ONLY
 
-			LONG dels; 
-			GUID ndels; 
-			CHECK_COM_RESULT_RELEASE(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE, 
-				&dels, &ndels));
+			if(bcom_ok)
+			{
+				LONG dels; 
+				GUID ndels; 
+				CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE, 
+					&dels, &ndels), bcom_ok);
 
-			if(dels==0)
-			{
-				Server->Log("Deleting shadowcopy failed.", LL_ERROR);
+				if(dels==0 || !bcom_ok)
+				{
+					Server->Log("Deleting shadowcopy failed.", LL_ERROR);
+				}
+				else
+				{
+					ok=true;
+				}
+				has_dels=true;
 			}
-			else
-			{
-				ok=true;
-			}
-			has_dels=true;
 #endif
 #endif
 #endif
