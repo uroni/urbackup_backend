@@ -46,6 +46,9 @@ IServer *Server;
 #include "database.h"
 #include "actions.h"
 #include "serverinterface/actions.h"
+#include "serverinterface/helper.h"
+
+SStartupStatus startup_status;
 
 #include "server.h"
 #include "ClientService.h"
@@ -419,6 +422,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			//IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			//db->Write("PRAGMA settings_db.journal_mode=WAL");
 		}
+
+		startup_status.mutex=Server->createMutex();
+		{
+			IScopedLock lock(startup_status.mutex);
+			startup_status.upgrading_database=true;
+		}
+		ADD_ACTION(login);
 		
 		upgrade();
 
@@ -441,9 +451,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 		}
 
+		{
+			IScopedLock lock(startup_status.mutex);
+			startup_status.upgrading_database=false;
+		}
+		
+
 		ADD_ACTION(server_status);
 		ADD_ACTION(progress);
-		ADD_ACTION(login);
 		ADD_ACTION(salt);
 		ADD_ACTION(generate_templ);
 		ADD_ACTION(lastacts);
@@ -802,6 +817,11 @@ void upgrade(void)
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
 	int max_v=15;
+	{
+		IScopedLock lock(startup_status.mutex);
+		startup_status.target_db_version=max_v;
+		startup_status.curr_db_version=ver;
+	}
 	bool do_upgrade=false;
 	if(ver<max_v)
 	{
@@ -882,6 +902,11 @@ void upgrade(void)
 			q_update->Bind(ver);
 			q_update->Write();
 			q_update->Reset();
+
+			{
+				IScopedLock lock(startup_status.mutex);
+				startup_status.curr_db_version=ver;
+			}
 		}
 		
 		db->EndTransaction();

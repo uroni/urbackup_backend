@@ -89,6 +89,7 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("settings_mail");
 	templates.push_back("settings_mail_test_ok");
 	templates.push_back("settings_mail_test_failed");
+	templates.push_back("upgrade_error");
 
 	IFile *out=Server->openFile("urbackup/www/templates.js", MODE_WRITE);
 	if(out==NULL)

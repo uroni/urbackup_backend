@@ -89,6 +89,17 @@ function try_anonymous_login(data)
 		change_lang(lang, false);
 	}
 	
+	if(data.upgrading_database)
+	{
+		var ndata=tmpls.upgrade_error.evaluate(data);
+		if(g.data_f!=ndata)
+		{
+			I('data_f').innerHTML=ndata;
+			g.data_f=ndata;
+		}
+		return;
+	}
+	
 	if(data.success)
 	{
 		g.session=data.session;

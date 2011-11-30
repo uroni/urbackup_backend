@@ -10,3 +10,4 @@
 #include <stdlib.h>
 
 extern IPychartFactory *pychart_fak;
+extern SStartupStatus startup_status;

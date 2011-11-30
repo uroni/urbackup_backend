@@ -1,3 +1,6 @@
+#ifndef ISESSIONMGR_H
+#define ISESSIONMGR_H
+
 #include <string>
 
 #include "User.h"
@@ -12,3 +15,5 @@ public:
 
 	virtual bool RemoveSession(const std::wstring &pSID)=0;
 };
+
+#endif //ISESSIONMGR_H

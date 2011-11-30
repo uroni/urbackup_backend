@@ -2,6 +2,7 @@
 #include "../../Interface/Server.h"
 #include "../../Interface/SessionMgr.h"
 #include "../../Interface/Template.h"
+#include "../../Interface/Mutex.h"
 
 class Helper
 {
@@ -37,4 +38,16 @@ private:
 	str_nmap *PARAMS;
 
 	THREAD_ID tid;
+};
+
+struct SStartupStatus
+{
+	SStartupStatus(void)
+		: upgrading_database(false) {}
+
+	bool upgrading_database;
+	int curr_db_version;
+	int target_db_version;
+
+	IMutex *mutex;
 };

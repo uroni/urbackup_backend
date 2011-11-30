@@ -80,7 +80,8 @@ translations.en={
 "storage_usage_bar_graph_colname1": "Date",
 "storage_usage_bar_graph_colname2": "Storage usage",
 "validate_err_notregexp_cleanup_window": "Format for cleanup window wrong",
-"mail_settings": "Mail"
+"mail_settings": "Mail",
+"tupgrade_error_text": "UrBackup is upgrading its internal database. This may take a while. The server is inaccessible and will not do any backups during this upgrade."
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -289,5 +290,8 @@ translations.de={
 "tAllow clientside viewing of backup logs": "Clients erlauben Logs anzuschauen",
 "tAllow pausing backups": "Clients erlauben Backups zu pausieren",
 "tAutomatically backup UrBackup database": "Automatisch UrBackup Datenbank sichern",
-"tDo not do file backups": "Keine Dateibackups ausführen"
+"tDo not do file backups": "Keine Dateibackups ausführen",
+"tupgrade_error_text": "UrBackup aktualisiert seine interne Datenbank. Das könnte eine Weile dauern. Während der Aktualisierung ist das Webinterface nicht erreichbar und keine Backups werden durchgeführt.",
+"tCurrent version": "Momentane version",
+"tTarget version": "Zielversion"
 }
