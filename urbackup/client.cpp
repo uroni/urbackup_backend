@@ -1327,6 +1327,7 @@ void IndexThread::readExcludePattern(void)
 			for(size_t i=0;i<exlude_dirs.size();++i)
 			{
 				strupper(&exlude_dirs[i]);
+				exlude_dirs[i]=trim(exlude_dirs[i]);
 			}
 #endif
 		}

@@ -73,7 +73,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	curl_slist * recpt=NULL;
 	for(size_t i=0;i<to.size();++i)
 	{
-		recpt=curl_slist_append(recpt, to[i].c_str());
+		recpt=curl_slist_append(recpt, trim(to[i]).c_str());
 	}
 	curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recpt);
 	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
