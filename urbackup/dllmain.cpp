@@ -329,28 +329,28 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			copy_file(L"urbackup/backup_server.db.template", L"urbackup/backup_server.db");
 		}
 		
-		if( !FileExists("urbackup/backup_server.db") )
+		if( !FileExists("urbackup/backup_server.db") && !FileExists("urbackup/backup_server.bdb") && FileExists("urbackup/backup_server_init.sql") )
 		{
 			bool init=false;
-			if(!FileExists("urbackup/backup_server.bdb") )
+			std::string engine="sqlite";
+			std::string db_fn="urbackup/backup_server.db";
+			if(Server->hasDatabaseFactory("bdb") )
 			{
 				os_create_dir(L"urbackup/backup_server.bdb-journal");
 				writestring(bdb_config, "urbackup/backup_server.bdb-journal/DB_CONFIG");
-				init=true;
+				engine="bdb";
+				db_fn="urbackup/backup_server.bdb";
+				use_berkeleydb=true;
 			}
-			if(! Server->openDatabase("urbackup/backup_server.bdb", URBACKUPDB_SERVER, "bdb") )
+			
+			if(! Server->openDatabase(db_fn, URBACKUPDB_SERVER, engine) )
 			{
-				Server->Log("Couldn't open Database backup_server.bdb", LL_ERROR);
+				Server->Log("Couldn't open Database "+db_fn, LL_ERROR);
 				return;
 			}
 
-			if(init)
-			{
-				IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-				db->Import("urbackup/backup_server_init.sql");
-			}
-
-			use_berkeleydb=true;
+			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			db->Import("urbackup/backup_server_init.sql");
 		}
 		else
 		{			
@@ -444,7 +444,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			db_results res=db->Read("SELECT value FROM settings_db.settings WHERE key='backupfolder' AND clientid=0");
 			if(res.empty())
 			{
-				IQuery *q=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('backupfolder', ?, 0)");
+				IQuery *q=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('backupfolder', ?, 0)", false);
 				q->Bind(getFile("urbackup/backupfolder"));
 				q->Write();
 				db->destroyQuery(q);
