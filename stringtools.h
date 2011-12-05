@@ -95,6 +95,7 @@ bool CheckForIllegalChars(const std::string &str);
 int watoi(std::wstring str);
 std::wstring strlower(const std::wstring &str);
 std::string trim(const std::string &str);
+std::wstring trim(const std::wstring &str);
 void replaceNonAlphaNumeric(std::string &str, char rch);
 std::string conv_filename(std::string fn);
 std::string UnescapeHTML(const std::string &html);

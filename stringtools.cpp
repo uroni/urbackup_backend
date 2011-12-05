@@ -1506,6 +1506,20 @@ std::string trim(const std::string &str)
 	}
 }
 
+std::wstring trim(const std::wstring &str)
+{
+	size_t startpos = str.find_first_not_of(L" \t");
+	size_t endpos = str.find_last_not_of(L" \t");
+	if(( wstring::npos == startpos ) || ( wstring::npos == endpos))  
+	{
+		return L"";
+	}
+	else
+	{
+		return str.substr( startpos, endpos-startpos+1 );
+	}
+}
+
 void replaceNonAlphaNumeric(std::string &str, char rch)
 {
 	for(size_t i=0;i<str.size();++i)
