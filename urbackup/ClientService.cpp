@@ -44,6 +44,7 @@ std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 
 #include <memory.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #ifndef _WIN32
 #define _atoi64 atoll
@@ -80,6 +81,7 @@ volatile bool ClientConnector::img_download_running=false;
 db_results ClientConnector::cached_status;
 std::string ClientConnector::backup_source_token;
 std::map<std::string, unsigned int> ClientConnector::last_token_times;
+int ClientConnector::last_capa=0;
 
 const unsigned int x_pingtimeout=180000;
 
@@ -95,6 +97,17 @@ void ClientConnector::init_mutex(void)
 	{
 		backup_mutex=Server->createMutex();
 		progress_mutex=Server->createMutex();
+	}
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	db_results res=db->Read("SELECT tvalue FROM misc WHERE tkey='last_capa'");
+	if(!res.empty())
+	{
+		last_capa=watoi(res[0][L"last_capa"]);
+	}
+	else
+	{
+		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_capa', '0');");
+		last_capa=0;
 	}
 }
 
@@ -1647,12 +1660,29 @@ void ClientConnector::getBackupStatus(void)
 	int capa=0;
 	if(channel_capa.size()==0)
 	{
+		capa=last_capa;
 		capa|=DONT_ALLOW_STARTING_FILE_BACKUPS;
 		capa|=DONT_ALLOW_STARTING_IMAGE_BACKUPS;
 	}
-	else if(channel_capa.size()==1)
+	else
 	{
-		capa=channel_capa[0];
+		capa=INT_MAX;
+		for(size_t i=0;i<channel_capa.size();++i)
+		{
+			capa=capa & channel_capa[i];
+		}
+		
+		if(capa!=last_capa)
+		{
+			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'");
+			if(cq!=NULL)
+			{
+				cq->Bind(capa);
+				cq->Write();
+				cq->Reset();
+				last_capa=capa;
+			}
+		}
 	}
 
 	ret+="#capa="+nconvert(capa);
@@ -1714,12 +1744,12 @@ void ClientConnector::updateSettings(const std::string &pData)
 			str_map args;
 			for(size_t i=0;i<def_dirs_toks.size();++i)
 			{
-				std::wstring path=def_dirs_toks[i];
+				std::wstring path=trim(def_dirs_toks[i]);
 				std::wstring name;
 				if(path.find(L"|")!=std::string::npos)
 				{
-					name=getafter(L"|", path);
-					path=getuntil(L"|", path);
+					name=trim(getafter(L"|", path));
+					path=trim(getuntil(L"|", path));
 				}
 				args[L"dir_"+convert(i)]=path;
 				if(!name.empty())

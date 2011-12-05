@@ -86,6 +86,7 @@ private:
 	static db_results cached_status;
 	static std::string backup_source_token;
 	static std::map<std::string, unsigned int> last_token_times;
+	static int last_capa;
 
 	std::string image_letter;
 
