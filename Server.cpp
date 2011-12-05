@@ -681,15 +681,6 @@ bool CServer::openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::stri
 {
 	IScopedLock lock(db_mutex);
 
-	if(pEngine=="sqlite")
-	{
-		std::fstream c(pFile.c_str(), std::ios::in);
-		if( c.is_open()==false )
-			return false;
-
-		c.close();
-	}
-
 	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
 	if( iter!=databases.end() )
 	{
