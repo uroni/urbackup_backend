@@ -1596,6 +1596,8 @@ function saveReportSettings()
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
 	
+	logs_add_mail();
+	
 	var params="d=d";
 	params+=getPar("report_mail");
 	params+=getPar("report_sendonly");
@@ -1741,6 +1743,56 @@ function show_logs2(data)
 	{
 		I('logfilter').selectedIndex=2-g.logfilter;
 	}
+	
+	if(data.logs)
+	{
+		logs_draw_mail();
+	}
+}
+function logs_draw_mail()
+{
+	var d="";
+	var a=I('report_mail').value.split(';');
+	for(var i=0;i<a.length;++i)
+	{
+		if(a[i]!="")
+		{
+			d+=tmpls.logs_report_mail.evaluate( {report_single_mail: a[i], num: i} );
+		}
+	}
+	I('s_report_mails').innerHTML=d;
+}
+function logs_add_mail()
+{
+	if(I('report_new_mail').value!='')
+	{
+		if( I('report_mail').value=='' )
+		{
+			I('report_mail').value=I('report_new_mail').value;
+		}
+		else
+		{
+			I('report_mail').value+=';'+I('report_new_mail').value;
+		}
+		I('report_new_mail').value="";
+		logs_draw_mail();
+	}
+}
+function logs_rm_mail(idx)
+{
+	var a=I('report_mail').value.split(';');
+	var n="";
+	for(var i=0;i<a.length;++i)
+	{
+		if(n.length>0) n+=";";
+		
+		if(i!=idx)
+		{
+			n+=a[i];
+		}
+	}
+	I('report_mail').value=n;
+	logs_draw_mail();
 }
 function createLog(d, ll)
 {

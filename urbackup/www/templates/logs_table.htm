@@ -14,7 +14,10 @@
 
 <h1>#{tReports}</h1>
 #{tSend reports to}
-<input type="text" size="40" id="report_mail" value="#{report_mail}"/> (#{tE-Mail addresses separated by ';'}). <br />
+<span id="s_report_mails">
+</span>
+<input type="hidden" id="report_mail" value="#{report_mail}"/>
+<input type="text" size="20" id="report_new_mail" value=""/><a href="javascript: logs_add_mail()">[+]</a>. <br />
 #{tSend}
 <select size="1" style="width: 150px" id="report_sendonly">
 <option value="0" #{sel_all}>#{tAll}</option>

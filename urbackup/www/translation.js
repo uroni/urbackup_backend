@@ -266,7 +266,6 @@ translations.de={
 "mail_settings": "E-Mail",
 "tReports": "Reports",
 "tSend reports to": "Reports senden an",
-"tE-Mail addresses separated by ';'": "E-Mail Adresssen getrennt durch ';'",
 "tSend": "Sende", 
 "tBackups with a log message of at least log level": "Backups mit Benachrichtigungen mit wenigstens Wichtigkeit",
 "tFailed": "Fehlgeschlagene",
