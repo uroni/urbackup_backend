@@ -18,7 +18,7 @@
 
 #ifndef CLIENT_ONLY
 
-#ifndef _WIN32
+#ifdef _WIN32
 #ifdef _DEBUG
 #define GEN_TEMPL
 #endif
