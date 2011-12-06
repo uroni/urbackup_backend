@@ -18,13 +18,12 @@
 
 #ifndef CLIENT_ONLY
 
+#ifndef _WIN32
 #ifdef _DEBUG
 #define GEN_TEMPL
 #endif
-
-#ifndef _WIN32
-#define GEN_TEMPL
 #endif
+
 
 #include "action_header.h"
 #include "../../Interface/File.h"
