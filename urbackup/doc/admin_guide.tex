@@ -13,7 +13,7 @@
 }
 
 \author{Martin Raiber}
-\title{Administration Manual for UrBackup}
+\title{Administration Manual for\\UrBackup Server 0.25}
 
 \maketitle
 
@@ -62,6 +62,7 @@ logs & View the logs which were creating during backups\\
 piegraph* & View statistics\\
 users* & Get client names\\
 general\_settings* & Change general settings (like backup storage path)\\
+mail\_settings & Change the mail server settings \\
 usermod* & Create, change and delete users\\
 remove\_client* & Remove clients and delete all their backups\\
 \hline
@@ -144,7 +145,7 @@ This section will show in detail how a backup is performed.
 
 \subsection{Image backup}
 
-The server detects that the time to the last full image backup is larger then the interval for full image backups, the time to the last incremental backup is larger than the interval for incremental image backups or the client requested an image backup. The server then opens up a connection to the client command service requesting the image of a volume (for now only the C: volume). The client answers by sending a error code or by sending the image. The image is sent sector for sector with each sector preceded by its position on the hard disk. The client only sends sectors used by the filesystem. If the backup is incremental the client calculates a hash of 256 kbyte chunks and compares it to the previous image backup. If the hash of the chunk has not changed it does not transfer this chunk to the server, otherwise it does. The server writes the received data into a temporary file. The temporary files have a maximum size of 1GB. After this size is exceeded the server continues with a new temporary file. The image data is written to a VHD file in parallel in a separated Thread and is located in the client directory in the backup storage location. The VHD file's name is 'Image\_\textless Volume\textgreater\_\textless YYMMDD\_HHMM\textgreater.vhd'.\textless Volume\textgreater  being currently always 'C' and YY the current year, MM the current month, DD the current day in the month and HHMM the hour and minute the image backup was started.
+The server detects that the time to the last full image backup is larger then the interval for full image backups, the time to the last incremental backup is larger than the interval for incremental image backups or the client requested an image backup. The server then opens up a connection to the client command service requesting the image of a volume. The client answers by sending an error code or by sending the image. The image is sent sector for sector with each sector preceded by its position on the hard disk. The client only sends sectors used by the filesystem. If the backup is incremental the client calculates a hash of 256 kbyte chunks and compares it to the previous image backup. If the hash of the chunk has not changed it does not transfer this chunk to the server, otherwise it does. The server writes the received data into a temporary file. The temporary files have a maximum size of 1GB. After this size is exceeded the server continues with a new temporary file. The image data is written to a VHD file in parallel in a separated Thread and is located in the client directory in the backup storage location. The VHD file's name is 'Image\_\textless Volume\textgreater\_\textless YYMMDD\_HHMM\textgreater.vhd'.\textless Volume\textgreater  being the drive letter of the backuped partition and YY the current year, MM the current month, DD the current day in the month and HHMM the hour and minute the image backup was started.
 
 \section{Server settings}
 \label{server_settings}
@@ -161,7 +162,11 @@ The backup storage path is where all backup data is saved. To function properly 
 
 \subsubsection{Do not do image backups}
 
-If you check this the server will not do image backups at all. Default: Not checked.
+If checked the server will not do image backups at all. Default: Not checked.
+
+\subsubsection{Do not do file backups}
+
+If checked the server does no file backups. Default: Not checked.
 
 \subsubsection{Automatically shut down server}
 
@@ -192,6 +197,47 @@ This option limits the number of clients the server accepts. An active client is
 
 UrBackup will do its cleanup during this time. This is when old backups and clients are deleted. You can specifiy the weekday and the hour as intervals. The syntax is the same as for the backup window. Thus please see section \ref{subsub_backup_window} for details on how to specifiy such time windows.
 The default value is 1-7/3-4 which means that the cleanup will be started on each day (1-Monday - 7-Sunday) between 3 am and 4 am.
+
+\subsubsection{Automatically backup UrBackup database}
+
+If checked UrBackup will save a backup of its internal database in a subdirectory called 'urbackup' in the backup storage path. This backup is done daily within the cleanup time window.
+
+\subsection{Mail settings}
+
+\subsubsection{Mail server settings}
+
+If you want the UrBackup server to send mail reports a mail server should be configured in the 'Mail' settings page. The specific settings and their description are:
+
+\begin{longtable}{|p{0.2\textwidth}|p{0.4\textwidth}|p{0.4\textwidth}|}
+\hline
+Settings  & Description & Example\\
+\hline\hline
+Mail server name & Domain name or IP address of mail server & mail.example.com \\
+\hline
+Mail server port & Port of SMTP service. Most of the time 25 or 587 & 587 \\
+\hline
+Mail server username & Username if SMTP server requires one & test@example.com \\
+\hline
+Mail server password & Password for username if SMTP server requires credentials & password1 \\
+\hline
+Sender E-Mail Address & E-Mail address UrBackup's mail reports will come from & urbackup@example.com \\
+\hline
+Send mails only with SSL/TLS & Only send mails if a secure connection to the mail server can be established (protects password) & \\
+\hline
+Check SSL/TLS certificate & Check if the server certificate is valid and only send mail if it is & \\
+\hline
+\end{longtable}
+
+To test whether the entered settings work one can sepecify an email address to which UrBackup will then send a test mail.
+
+\subsubsection{Configure reports}
+
+To specify which activities with which errors should be sent via mail you have to go to the 'Logs' page. There on the bottom is a section called 'Reports'.
+There you can say to which email addresses reports should be sent(e.g. user1@example.com;user2@example.com) and if UrBackup should only send reports about backups that
+failed/succeeded and contained a log message of a certain level.\\
+If you select the log level 'Info' and 'All' a report about every backup will be sent, because every backup causes at least one info level log message. If you select 'Warning' or 'Error' backups without incidents will not get sent to you.
+
+Every web interface user can configure these values differently. UrBackup only sents reports of client backups to the user supplied address if the user has the 'logs' permission for the specific client. Thus if you want to send reports about one client to a specific email address you have to create a user for this client, login as that user and configure the reporting for that user. The user 'admin' can access logs of all clients and thus also gets reports about all clients.
 
 \subsection{Client specific settings}
 
@@ -234,7 +280,19 @@ Excluded files & Allows you to define which files should be excluded from backup
 \hline
 Default directories to backup & Default directories which are backed up. See section \ref{subsub_default_dirs} for details & ""\\
 \hline
-Allow client(s) to change settings & If this option is checked the clients can change their client specific settings via the client interface. If you do not check this the server settings always override the clients' settings. & true\\
+Volumes to backup & Specifies of which volumes an image backup is done. Separate different drive letters by a semicolon or comma. E.g. 'C;D' & C \\
+\hline
+Allow client-side changing of the directories to backup & Allow client(s) to change the directories of which a file backup is done & Checked \\
+\hline
+Allow client-side starting of file backups & Allow the client(s) to start a file backup & Checked \\
+\hline
+Allow client-side starting of image backups & Allow the client(s) to start an image backup & Checked \\
+\hline
+Allow client-side viewing of backup logs & Allow the client(s) to view the logs & Checked \\
+\hline
+Allow client-side pausing of backups & Allow the client(s) to pause backups & Checked \\
+\hline
+Allow client-side changing of settings & If this option is checked the clients can change their client specific settings via the client interface. If you do not check this the server settings always override the clients' settings. & Checked\\
 \hline
 \end{longtable}
 
