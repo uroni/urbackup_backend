@@ -36,28 +36,36 @@
 #include "../Interface/File.h"
 
 #include "../fsimageplugin/IFSImageFactory.h"
+#ifndef CLIENT_ONLY
 #include "../pychart/IPychartFactory.h"
 #include "../downloadplugin/IDownloadFactory.h"
+#endif
 #include "../cryptoplugin/ICryptoFactory.h"
+#ifndef CLIENT_ONLY
 #include "../urlplugin/IUrlFactory.h"
+#endif
 
 IServer *Server;
 
 #include "database.h"
+#ifndef CLIENT_ONLY
 #include "actions.h"
 #include "serverinterface/actions.h"
 #include "serverinterface/helper.h"
-
 SStartupStatus startup_status;
-
 #include "server.h"
+#endif
+
+
 #include "ClientService.h"
 #include "client.h"
 #include "../stringtools.h"
+#ifndef CLIENT_ONLY
 #include "server_status.h"
 #include "server_log.h"
 #include "server_cleanup.h"
 #include "server_get.h"
+#endif
 #include "ServerIdentityMgr.h"
 #include "os_functions.h"
 #ifdef _WIN32
@@ -68,10 +76,12 @@ SStartupStatus startup_status;
 PLUGIN_ID filesrv_pluginid;
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
+#ifndef CLIENT_ONLY
 IPychartFactory *pychart_fak;
 IDownloadFactory *download_fak;
-ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
+#endif
+ICryptoFactory *crypto_fak;
 std::string server_identity;
 std::string server_token;
 

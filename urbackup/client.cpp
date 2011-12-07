@@ -22,6 +22,8 @@
 #include "../Interface/SettingsReader.h"
 #ifdef _WIN32
 #include "DirectoryWatcherThread.h"
+#else
+#include <errno.h>
 #endif
 #include "../stringtools.h"
 #include "fileclient/data.h"
@@ -1301,6 +1303,8 @@ void IndexThread::execute_prebackup_hook(void)
 {
 #ifdef _WIN32
 	system(Server->ConvertToUTF8(L"\""+Server->getServerWorkingDir()+L"\\prefilebackup.bat\"").c_str());
+#else
+	system("/etc/urbackup/prefilebackup");
 #endif
 }
 
@@ -1308,6 +1312,39 @@ void IndexThread::execute_postindex_hook(void)
 {
 #ifdef _WIN32
 	system(Server->ConvertToUTF8(L"\""+Server->getServerWorkingDir()+L"\\postfileindex.bat\"").c_str());
+#else
+	system("/etc/urbackup/postfileindex");
+#endif
+}
+
+void IndexThread::execute_postbackup_hook(void)
+{
+#ifdef _WIN32
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+	memset(&si, 0, sizeof(STARTUPINFO) );
+	memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
+	si.cb=sizeof(STARTUPINFO);
+	if(!CreateProcessW(NULL, L"C:\\Windows\\system32\\cmd.exe", (Server->getServerWorkingDir()+L"\\postfilebackup.bat").c_str(), NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
+	{
+		Server->Log("Executing postfilebackup.bat failed: "+nconvert(GetLastError), LL_INFO);
+	}
+	else
+	{
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+	}
+#else
+	pid_t pid;
+	pid = fork();
+	if( pid==0 )
+	{
+	    char *a1=(char*)"/etc/urbackup/postfilebackup";
+	    char* const argv[]={ a1, NULL };
+	    execv(a1, argv);
+	    Server->Log("Error in execv /etc/urbackup/postfilebackup: "+nconvert(errno), LL_INFO);
+	    exit(1);
+	}
 #endif
 }
 
