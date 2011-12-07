@@ -58,7 +58,7 @@ std::vector<SFile> getFiles(const std::wstring &path)
     while ((dirp = readdir(dp)) != NULL)
 	{
 		SFile f;
-		f.name=widen(dirp->d_name);
+		f.name=Server->ConvertToUnicode(dirp->d_name);
 		if(f.name==L"." || f.name==L".." )
 			continue;
 		
@@ -68,7 +68,7 @@ std::vector<SFile> getFiles(const std::wstring &path)
 		{
 #endif
 			struct stat64 f_info;
-			int rc=stat64((upath+dirp->d_name).c_str(), &f_info);
+			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
 			if(rc==0)
 			{
 #ifndef sun

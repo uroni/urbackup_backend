@@ -759,13 +759,17 @@ void ClientConnector::ReceivePackets(void)
 			updateLastBackup();
 			tcpstack.Send(pipe, "OK");
 
-			IScopedLock lock(backup_mutex);
-			if(backup_running==1 || backup_running==2)
 			{
-				backup_running=0;
-				backup_done=true;
+				IScopedLock lock(backup_mutex);
+				if(backup_running==1 || backup_running==2)
+				{
+					backup_running=0;
+					backup_done=true;
+				}
+				lasttime=Server->getTimeMS();
 			}
-			lasttime=Server->getTimeMS();
+			
+			IndexThread::execute_postbackup_hook();
 		}
 		else if(cmd.find("STATUS")==0 && pw_ok==true)
 		{

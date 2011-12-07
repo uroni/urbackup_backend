@@ -97,6 +97,8 @@ public:
 	static std::wstring getShareDir(const std::wstring &name);
 	static void share_dirs(const std::string &token);
 	static void unshare_dirs(const std::string &token);
+	
+	static void execute_postbackup_hook(void);
 
 private:
 

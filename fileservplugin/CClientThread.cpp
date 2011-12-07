@@ -320,11 +320,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 				_i64 start_offset=0;
 				bool offset_set=data->getInt64(&start_offset);
 
-				Log("Sending file %s",wnarrow(o_filename).c_str());
+				Log("Sending file %s",Server->ConvertToUTF8(o_filename).c_str());
 
 				std::wstring filename=map_file(o_filename);
 
-				Log("Mapped name: %s", wnarrow(filename).c_str() );
+				Log("Mapped name: %s", Server->ConvertToUTF8(filename).c_str() );
 
 				if(filename.empty())
 				{
@@ -483,7 +483,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					hFile=NULL;
 				}
 #else //LINUX
-				hFile=open64(wnarrow(filename).c_str(), O_RDONLY|O_LARGEFILE);
+				hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
 				
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
