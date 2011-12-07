@@ -1320,14 +1320,14 @@ void IndexThread::execute_postindex_hook(void)
 void IndexThread::execute_postbackup_hook(void)
 {
 #ifdef _WIN32
-	STARTUPINFO si;
+	STARTUPINFOW si;
 	PROCESS_INFORMATION pi;
 	memset(&si, 0, sizeof(STARTUPINFO) );
 	memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
 	si.cb=sizeof(STARTUPINFO);
-	if(!CreateProcessW(NULL, L"C:\\Windows\\system32\\cmd.exe", (Server->getServerWorkingDir()+L"\\postfilebackup.bat").c_str(), NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
+	if(!CreateProcessW(L"C:\\Windows\\system32\\cmd.exe", (LPWSTR)(L"cmd.exe /C \""+Server->getServerWorkingDir()+L"\\postfilebackup.bat\"").c_str(), NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
 	{
-		Server->Log("Executing postfilebackup.bat failed: "+nconvert(GetLastError), LL_INFO);
+		Server->Log("Executing postfilebackup.bat failed: "+nconvert((int)GetLastError()), LL_INFO);
 	}
 	else
 	{
