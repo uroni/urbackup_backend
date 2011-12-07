@@ -488,7 +488,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
 #ifdef CHECK_BASE_PATH
-					std::wstring basePath=map_file(getuntil(L"/",filename)+L"/");
+					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
 					if(!isDirectory(basePath))
 					{
 						char ch=ID_BASE_DIR_LOST;
