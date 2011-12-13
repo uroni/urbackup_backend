@@ -24,6 +24,12 @@ std::vector<std::string> ServerIdentityMgr::identities;
 IMutex *ServerIdentityMgr::mutex=NULL;
 IFileServ *ServerIdentityMgr::filesrv=NULL;
 
+#ifdef _WIN32
+const std::string server_ident_file="server_idents.txt";
+#else
+const std::string server_ident_file="urbackup/server_idents.txt";
+#endif
+
 void ServerIdentityMgr::init_mutex(void)
 {
 	mutex=Server->createMutex();
@@ -41,7 +47,7 @@ void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity)
 		if(i+1<identities.size())
 			data+="\n";
 	}
-	writestring(data, "server_idents.txt" );
+	writestring(data, server_ident_file );
 }
 
 bool ServerIdentityMgr::checkServerIdentity(const std::string &pIdentity)
@@ -61,7 +67,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 {
 	IScopedLock lock(mutex);
 	identities.clear();
-	std::string data=getFile("server_idents.txt");
+	std::string data=getFile(server_ident_file);
 	int numl=linecount(data);
 	for(int i=0;i<numl;++i)
 	{
