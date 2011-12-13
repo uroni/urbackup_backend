@@ -177,16 +177,16 @@ void BackupServer::startClients(FileClient &fc)
 			}
 			else
 			{
-				bool last=true;
-				for(size_t j=i+1;j<names.size();++j)
+				bool none_fits=true;
+				for(size_t j=0;j<names.size();++j)
 				{
-					if(names[j]==names[i])
+					if(i!=j && names[j]==names[i] && it->second.addr.sin_addr.s_addr==servers[j].sin_addr.s_addr)
 					{
-						last=false;
+						none_fits=false;
 						break;
 					}
 				}
-				if(last)
+				if(none_fits)
 				{
 					it->second.addr=servers[i];
 					std::string msg;
@@ -200,6 +200,8 @@ void BackupServer::startClients(FileClient &fc)
 					Server->Log("New client address: "+nconvert((unsigned char)ip[0])+"."+nconvert((unsigned char)ip[1])+"."+nconvert((unsigned char)ip[2])+"."+nconvert((unsigned char)ip[3]), LL_INFO);
 
 					ServerStatus::setIP(names[i], it->second.addr.sin_addr.s_addr);
+
+					it->second.offlinecount=0;
 				}
 			}
 		}
