@@ -959,9 +959,9 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 	unsigned int starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=full_backup_construct_timeout)
 	{
-		size_t rc=cc->Read(&ret, full_backup_construct_timeout);
+		size_t rc=cc->Read(&ret, 60000);
 		if(rc==0)
-		{
+		{			
 			if(Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
 			{
 				Server->destroy(cc);
@@ -970,9 +970,16 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			}
 			else
 			{
-				ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
+				if(pingthread->isTimeout())
+				{
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
+					break;
+				}
+				else
+				{
+					continue;
+				}
 			}
-			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
 
@@ -2493,7 +2500,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					if(cc==NULL)
 					{
 						std::string msg;
-						if(pipe->Read(&msg, 0)>0)
+						std::vector<std::string> msgs;
+						while(pipe->Read(&msg, 0)>0)
 						{
 							if(msg.find("address")==0)
 							{
@@ -2502,10 +2510,13 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							}
 							else
 							{
-								pipe->Write(msg);
+								msgs.push_back(msg);
 							}
-							Server->wait(60000);
 						}
+						for(size_t i=0;i<msgs.size();++i)
+							pipe->Write(msgs[i]);
+
+						Server->wait(60000);
 					}
 					else
 					{

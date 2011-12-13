@@ -29,15 +29,30 @@ extern std::string server_token;
 ServerPingThread::ServerPingThread(BackupServerGet *pServer_get) : server_get(pServer_get)
 {
 	stop=false;
+	is_timeout=false;
 }
 
 void ServerPingThread::operator()(void)
 {
+	unsigned int last_ping_ok=Server->getTimeMS();
 	while(stop==false)
 	{
 		//Server->Log("Sending ping running...", LL_DEBUG);
-		server_get->sendClientMessage("PING RUNNING -"+nconvert(server_get->getPCDone())+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false);
+		if(server_get->sendClientMessage("PING RUNNING -"+nconvert(server_get->getPCDone())+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false))
+		{
+			last_ping_ok=Server->getTimeMS();
+		}
 		//Server->Log("Done sending ping running.", LL_DEBUG);
+
+		if(Server->getTimeMS()-last_ping_ok>ping_intervall*6)
+		{
+			is_timeout=true;
+		}
+		else
+		{
+			is_timeout=false;
+		}
+
 		Server->wait(ping_intervall);
 	}
 	Server->wait(1000);
@@ -47,6 +62,11 @@ void ServerPingThread::operator()(void)
 void ServerPingThread::setStop(bool b)
 {
 	stop=b;
+}
+
+bool ServerPingThread::isTimeout(void)
+{
+	return is_timeout;
 }
 
 #endif //CLIENT_ONLY
