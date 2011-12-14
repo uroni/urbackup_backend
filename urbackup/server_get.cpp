@@ -89,6 +89,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	can_backup_images=true;
 
 	filesrv_protocol_version=0;
+	file_protocol_version=1;
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -939,6 +940,12 @@ void BackupServerGet::resetEntryState(void)
 
 bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 {
+	unsigned int timeout_time=full_backup_construct_timeout;
+	if(file_protocol_version>=2)
+	{
+		timeout_time=120000;
+	}
+
 	CTCPStack tcpstack;
 
 	Server->Log(clientname+L": Connecting for filelist...", LL_DEBUG);
@@ -949,20 +956,23 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 		return false;
 	}
 
+	std::string pver="";
+	if(file_protocol_version==2) pver="2";
+
 	if(full)
-		tcpstack.Send(cc, server_identity+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
+		tcpstack.Send(cc, server_identity+pver+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
 	else
-		tcpstack.Send(cc, server_identity+"START BACKUP"+(with_token?("#token="+server_token):""));
+		tcpstack.Send(cc, server_identity+pver+"START BACKUP"+(with_token?("#token="+server_token):""));
 
 	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
-	while(Server->getTimeMS()-starttime<=full_backup_construct_timeout)
+	while(Server->getTimeMS()-starttime<=timeout_time)
 	{
 		size_t rc=cc->Read(&ret, 60000);
 		if(rc==0)
 		{			
-			if(Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
+			if(file_protocol_version<2 && Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
 			{
 				Server->destroy(cc);
 				Server->Log(clientname+L": Trying old filelist request", LL_WARNING);
@@ -970,7 +980,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			}
 			else
 			{
-				if(pingthread->isTimeout())
+				if(file_protocol_version>=2 || pingthread->isTimeout() )
 				{
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
 					break;
@@ -991,7 +1001,9 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			delete [] pck;
 			if(ret!="DONE")
 			{
-				if(ret!="no backup dirs")
+				if(ret=="BUSY")
+					starttime=Server->getTimeMS();
+				else if(ret!="no backup dirs")
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
 				else
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_DEBUG);
@@ -1945,6 +1957,12 @@ bool BackupServerGet::updateCapabilities(void)
 		{
 			filesrv_protocol_version=watoi(it->second);
 		}
+
+		it=params.find(L"FILE");
+		if(it!=params.end())
+		{
+			file_protocol_version=watoi(it->second);
+		}		
 	}
 
 	return !cap.empty();

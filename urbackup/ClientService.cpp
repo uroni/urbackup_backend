@@ -128,6 +128,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	is_channel=false;
 	want_receive=true;
 	last_channel_ping=0;
+	file_version=1;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -218,6 +219,11 @@ bool ClientConnector::Run(void)
 				IScopedLock lock(backup_mutex);
 				backup_running=0;
 				backup_done=true;
+			}
+			else if(file_version>1 && Server->getTimeMS()-last_update_time>30000)
+			{
+				last_update_time=Server->getTimeMS();
+				tcpstack.Send(pipe, "BUSY");
 			}
 		}break;
 	case 2:
@@ -628,8 +634,10 @@ void ClientConnector::ReceivePackets(void)
 				}
 			}
 		}
-		else if(cmd=="START BACKUP" && ident_ok==true)
+		else if( (cmd=="START BACKUP" || cmd=="2START BACKUP") && ident_ok==true)
 		{
+			if(cmd=="2START BACKUP") file_version=2;
+
 			state=1;
 
 			CWData data;
@@ -646,8 +654,10 @@ void ClientConnector::ReceivePackets(void)
 			pcdone=0;
 			backup_source_token=server_token;
 		}
-		else if(cmd=="START FULL BACKUP" && ident_ok==true)
+		else if( (cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP") && ident_ok==true)
 		{
+			if(cmd=="2START FULL BACKUP") file_version=2;
+
 			state=1;
 
 			CWData data;
@@ -1379,9 +1389,9 @@ void ClientConnector::ReceivePackets(void)
 		else if(cmd.find("CAPA")==0  && ident_ok==true)
 		{
 #ifdef _WIN32
-			tcpstack.Send(pipe, "FILE=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=1");
+			tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=1");
 #else
-			tcpstack.Send(pipe, "FILE=1&FILESRV=1");
+			tcpstack.Send(pipe, "FILE=2&FILESRV=1");
 #endif
 		}
 		else

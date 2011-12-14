@@ -192,4 +192,5 @@ private:
 	static IMutex *running_backup_mutex;
 
 	int filesrv_protocol_version;
+	int file_protocol_version;
 };
