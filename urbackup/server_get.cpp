@@ -1002,13 +1002,19 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			if(ret!="DONE")
 			{
 				if(ret=="BUSY")
+				{
 					starttime=Server->getTimeMS();
+				}
 				else if(ret!="no backup dirs")
+				{
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
+					break;
+				}
 				else
+				{
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_DEBUG);
-
-				break;
+					break;
+				}				
 			}
 			else
 			{
