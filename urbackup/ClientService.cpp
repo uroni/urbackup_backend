@@ -2122,6 +2122,7 @@ void ClientConnector::sendFullImageThread(void)
 				{
 					Server->Log("Pipe broken -2", LL_ERROR);
 					run=false;
+					has_error=true;
 					break;
 				}
 
@@ -2151,6 +2152,7 @@ void ClientConnector::sendFullImageThread(void)
 			{
 				Server->Log("Pipe broken -3", LL_ERROR);
 				run=false;
+				has_error=true;
 				break;
 			}
 
@@ -2162,7 +2164,7 @@ void ClientConnector::sendFullImageThread(void)
 
 	Server->Log("Sending full image done", LL_INFO);
 
-	#ifdef VSS_XP //persistence
+#ifdef VSS_XP //persistence
 	has_error=false;
 #endif
 #ifdef VSS_S03
@@ -2354,7 +2356,7 @@ void ClientConnector::sendIncrImageThread(void)
 						}
 						else
 						{
-							Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
+							//Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
 							int64 bs=-125;
 							char* buffer=cs->getBuffer();
 							memcpy(buffer, &bs, sizeof(int64) );
