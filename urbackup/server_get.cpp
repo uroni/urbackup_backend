@@ -61,6 +61,7 @@ const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
 const unsigned int image_timeout=10*24*60*60*1000;
 const unsigned int image_recv_timeout=1*60*60*1000;
+const unsigned int image_recv_timeout_after_first=10*60*1000;
 
 int BackupServerGet::running_backups=0;
 int BackupServerGet::running_file_backups=0;
@@ -2500,11 +2501,13 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	sha256_ctx shactx;
 	sha256_init(&shactx);
 
+	unsigned int curr_image_recv_timeout=image_recv_timeout;
+
 	unsigned int stat_update_cnt=0;
 
 	while(Server->getTimeMS()-starttime<=image_timeout)
 	{
-		size_t r=cc->Read(&buffer[off], 4096-off, image_recv_timeout);
+		size_t r=cc->Read(&buffer[off], 4096-off, curr_image_recv_timeout);
 		if(r!=0)
 			r+=off;
 		starttime=Server->getTimeMS();
@@ -2745,6 +2748,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					ServerLogger::Log(clientid, "First packet to small", LL_ERROR);
 					goto do_image_cleanup;
 				}
+
+				curr_image_recv_timeout=image_recv_timeout_after_first;
 
 				if(r==off)
 				{
