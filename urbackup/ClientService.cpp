@@ -271,6 +271,14 @@ bool ClientConnector::Run(void)
 							break;
 						}
 					}
+					for(size_t i=0;i<channel_ping.size();++i)
+					{
+						if(channel_ping[i]==pipe)
+						{
+							channel_ping.erase(channel_ping.begin()+i);
+							break;
+						}
+					}
 				}
 				if(waitForThread())
 				{
