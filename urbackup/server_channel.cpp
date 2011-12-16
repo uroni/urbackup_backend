@@ -320,6 +320,8 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 
 			ServerStatus::updateActive();
 
+			lasttime=Server->getTimeMS();
+
 			IVHDFile *vhdfile=image_fak->createVHDFile(res[0][L"path"], true, 0);
 			if(!vhdfile->isOpen())
 			{
@@ -383,7 +385,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 					}
 					else
 					{
-						if(Server->getTimeMS()-lasttime>100000)
+						if(Server->getTimeMS()-lasttime>30000)
 						{
 							input->Write((char*)&currpos, sizeof(uint64));
 							memset(buffer, 0, 4096);
