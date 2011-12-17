@@ -2900,6 +2900,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							if(hashfile!=NULL) Server->destroy(hashfile);
 							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
 							running_updater->stop();
+							delete []zeroblockdata;
 							return false;
 						}
 						else if(currblock==-125) //ping
@@ -2958,6 +2959,7 @@ do_image_cleanup:
 	if(hashfile!=NULL) Server->destroy(hashfile);
 	if(parenthashfile!=NULL) Server->destroy(parenthashfile);
 	running_updater->stop();
+	delete []zeroblockdata;
 	return false;
 }
 
@@ -3019,44 +3021,47 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize)
 {
 	unsigned char *blockdata=NULL;
-	if(parent_fn)
+	if(parent_fn && nextblock<currblock)
 		blockdata=new unsigned char[blocksize];
 
-	if(currblock-nextblock>vhd_blocksize)
+	if(currblock-nextblock>=vhd_blocksize)
 	{
-		while(true)
+		if(nextblock%vhd_blocksize!=0)
 		{
-			if(!parent_fn)
+			while(true)
 			{
-				sha256_update(shactx, zeroblockdata, blocksize);
-			}
-			else
-			{
+				if(!parent_fn)
 				{
-					IScopedLock lock(parentfile->getVHDMutex());
-					IVHDFile *vhd=parentfile->getVHD();
-					vhd->Seek(mbr_offset+nextblock*blocksize);
-					size_t read;
-					bool b=vhd->Read((char*)blockdata, blocksize, read);
-					if(!b)
-						Server->Log("Reading from VHD failed", LL_ERROR);
+					sha256_update(shactx, zeroblockdata, blocksize);
 				}
-				sha256_update(shactx, blockdata, blocksize);
-			}
+				else
+				{
+					{
+						IScopedLock lock(parentfile->getVHDMutex());
+						IVHDFile *vhd=parentfile->getVHD();
+						vhd->Seek(mbr_offset+nextblock*blocksize);
+						size_t read;
+						bool b=vhd->Read((char*)blockdata, blocksize, read);
+						if(!b)
+							Server->Log("Reading from VHD failed", LL_ERROR);
+					}
+					sha256_update(shactx, blockdata, blocksize);
+				}
 
-			++nextblock;
+				++nextblock;
 
-			if(nextblock%vhd_blocksize==0)
-			{
-				unsigned char dig[sha_size];
-				sha256_final(shactx, dig);
-				hashfile->Write((char*)dig, sha_size);
-				sha256_init(shactx);
-				break;
+				if(nextblock%vhd_blocksize==0 && nextblock!=0)
+				{
+					unsigned char dig[sha_size];
+					sha256_final(shactx, dig);
+					hashfile->Write((char*)dig, sha_size);
+					sha256_init(shactx);
+					break;
+				}
 			}
 		}
 
-		while(currblock-nextblock>vhd_blocksize)
+		while(currblock-nextblock>=vhd_blocksize)
 		{
 			if(!parent_fn)
 			{
