@@ -944,6 +944,11 @@ void upgrade_client2_3(IDatabase *db)
 	db->Write("ALTER TABLE shadowcopies ADD starttime DATE");
 }
 
+void upgrade_client3_4(IDatabase *db)
+{
+	db->Write("ALTER TABLE shadowcopies ADD starttoken TEXT");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -960,6 +965,8 @@ bool upgrade_client(void)
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
 	do
 	{
+		db->BeginTransaction();
+
 		old_v=ver;
 		switch(ver)
 		{
@@ -969,6 +976,10 @@ bool upgrade_client(void)
 				break;
 			case 2:
 				upgrade_client2_3(db);
+				++ver;
+				break;
+			case 3:
+				upgrade_client3_4(db);
 				++ver;
 				break;
 			default:
@@ -981,6 +992,8 @@ bool upgrade_client(void)
 			q_update->Write();
 			q_update->Reset();
 		}
+
+		db->EndTransaction();
 	}
 	while(old_v<ver);
 	
