@@ -172,6 +172,7 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="filesystem.cpp" />
     <ClCompile Include="FSImageFactory.cpp" />
+    <ClCompile Include="fs\ntfs_win.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="vhdfile.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="..\urbackup\sha2\sha2.h" />
     <ClInclude Include="filesystem.h" />
     <ClInclude Include="FSImageFactory.h" />
+    <ClInclude Include="fs\ntfs_win.h" />
     <ClInclude Include="IFilesystem.h" />
     <ClInclude Include="IFSImageFactory.h" />
     <ClInclude Include="IVHDFile.h" />

@@ -21,6 +21,10 @@
 #include "../Interface/File.h"
 
 #include "fs/ntfs.h"
+#ifdef _WIN32
+#include "fs/ntfs_win.h"
+#define FSNTFS FSNTFSWIN
+#endif
 #include "fs/unknown.h"
 #include "vhdfile.h"
 
