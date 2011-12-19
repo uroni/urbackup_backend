@@ -2132,7 +2132,7 @@ void BackupServerGet::sendClientLogdata(void)
 	{
 		std::string logdata=Server->ConvertToUTF8(res[i][L"logdata"]);
 		escapeClientMessage(logdata);
-		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000);
+		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false);
 		q_set_logdata_sent->Bind(res[i][L"id"]);
 		q_set_logdata_sent->Write();
 		q_set_logdata_sent->Reset();
