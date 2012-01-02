@@ -52,17 +52,21 @@ DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
 
-	/*int c=0;
+	std::string devinfo=Server->getServerParameter("devinfo");
 
-	FSNTFS ntfs(L"\\\\.\\C:");
-	
-	if(!ntfs.hasError())
+	if(!devinfo.empty())
 	{
-		Server->Log("Used Space: "+nconvert(ntfs.calculateUsedSpace())+" of "+nconvert(ntfs.getSize()));
-		Server->Log(nconvert(((float)ntfs.calculateUsedSpace()/(float)ntfs.getSize())*100.0f)+" %");
-	}*/
-
-	/*{
+		FSNTFS ntfs(L"\\\\.\\"+widen(devinfo)+L":");
+	
+		if(!ntfs.hasError())
+		{
+			Server->Log("Used Space: "+nconvert(ntfs.calculateUsedSpace())+" of "+nconvert(ntfs.getSize()));
+			Server->Log(nconvert(((float)ntfs.calculateUsedSpace()/(float)ntfs.getSize())*100.0f)+" %");
+		}
+	}
+	/*
+	int c=0;
+	{
 		IFile *file=Server->openFile("G:\\Root\\Setup\\rsrc\\Prototype.exe",MODE_READ);  //"\\\\.\\Volume{975a91a4-aa07-11dc-98b4-806e6f6e6963}", MODE_READ);
 		VHDFile vhd(L"G:\\test.vhd", false, (uint64)20*(uint64)1024*(uint64)1024*(uint64)1024);
 		vhd.Seek(0);
@@ -302,6 +306,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		float vhdsize_gb=(vhdsize/1024)/1024.f/1024.f;
 		uint64 vhdsize_mb=vhdsize/1024/1024;
 		std::cout << ("VHD Info: Size: "+nconvert(vhdsize_gb)+" GB "+nconvert(vhdsize_mb)+" MB") << std::endl;
+		std::cout << "Blocksize: " << in.getBlocksize() << " Bytes" << std::endl;
 		
 		uint64 new_blocks=0;
 		uint64 total_blocks=0;
@@ -369,21 +374,45 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		int diff=0;
 		int diff_w=0;
 		int last_pc=0;
+		unsigned char dig_z[32];
+		bool has_dig_z=false;
 		for(;currpos<size;currpos+=blocksize)
 		{
 			bool has_sector=in.this_has_sector();
 
-			for(unsigned int i=0;i<blocksize;i+=512)
+			if(!has_sector && !has_dig_z)
 			{
-				size_t read;
-				in.Read(buf, 512, read);
-				sha256_update(&ctx, (unsigned char*)buf, 512);
+				for(unsigned int i=0;i<blocksize;i+=512)
+				{
+					size_t read;
+					in.Read(buf, 512, read);
+					sha256_update(&ctx, (unsigned char*)buf, 512);
+				}
+				sha256_final(&ctx, dig_z);
+				sha256_init(&ctx);
+				has_dig_z=true;
 			}
 			unsigned char dig_r[32];
 			unsigned char dig_f[32];
-			hashfile->Read((char*)dig_f, 32);
-			sha256_final(&ctx, dig_r);
-			sha256_init(&ctx);
+
+			if(has_sector)
+			{
+				for(unsigned int i=0;i<blocksize;i+=512)
+				{
+					size_t read;
+					in.Read(buf, 512, read);
+					sha256_update(&ctx, (unsigned char*)buf, 512);
+				}
+				
+				hashfile->Read((char*)dig_f, 32);
+				sha256_final(&ctx, dig_r);
+				sha256_init(&ctx);
+			}
+			else
+			{
+				hashfile->Read((char*)dig_f, 32);
+				memcpy(dig_r, dig_z, 32);
+			}
 
 			if(memcmp(dig_r, dig_f, 32)!=0)
 			{
@@ -412,6 +441,128 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->Log("Wrong differences: "+nconvert(diff_w));
 		exit(7);
 	}
+
+	std::string vhd_cmp=Server->getServerParameter("vhd_cmp");
+	if(!vhd_cmp.empty())
+	{
+		VHDFile in(Server->ConvertToUnicode(vhd_cmp), true,0);
+		if(in.isOpen()==false)
+		{
+			Server->Log("Error opening VHD-File \""+vhd_cmp+"\"", LL_ERROR);
+			exit(4);
+		}
+
+		std::string other=Server->getServerParameter("other");
+		VHDFile other_in(Server->ConvertToUnicode(other), true,0);
+		if(other_in.isOpen()==false)
+		{
+			Server->Log("Error opening VHD-File \""+other+"\"", LL_ERROR);
+			exit(4);
+		}
+
+		unsigned int blocksize=in.getBlocksize();
+		int skip=1024*512;
+		in.Seek(skip);
+		other_in.Seek(skip);
+		uint64 currpos=skip;
+		uint64 size=(std::min)(in.getSize(), other_in.getSize());
+
+		char buf1[512];
+		char buf2[512];
+		int diff=0;
+		int last_pc=0;
+
+		for(;currpos<size;currpos+=blocksize)
+		{
+			in.Seek(currpos);
+			other_in.Seek(currpos);
+			bool has_sector=in.this_has_sector() || other_in.this_has_sector();
+
+			if(in.this_has_sector() && !other_in.this_has_sector())
+			{
+				Server->Log("Sector only in file 1 at pos "+nconvert(currpos));
+			}
+			if(!in.this_has_sector() && other_in.this_has_sector())
+			{
+				Server->Log("Sector only in file 2 at pos "+nconvert(currpos));
+			}
+
+			if(has_sector)
+			{
+				bool hdiff=false;
+				for(unsigned int i=0;i<blocksize;i+=512)
+				{
+					size_t read;
+					in.Read(buf1, 512, read);
+					other_in.Read(buf2, 512, read);
+					int mr=memcmp(buf1, buf2, 512);
+					if(mr!=0)
+					{
+						int n=0;
+						for(size_t i=0;i<512;++i)
+						{
+							if(buf1[i]!=buf2[i])
+							{
+								++n;
+							}
+						}
+						if(n==2)
+						{
+							NTFSFileRecord *fr=(NTFSFileRecord*)buf1;
+							if(fr->magic[0]=='F' && fr->magic[1]=='I' && fr->magic[2]=='L' && fr->magic[3]=='E' )
+							{
+								MFTAttribute attr;
+								attr.length=fr->attribute_offset;
+								int pos=0;
+								do
+								{
+									pos+=attr.length;
+									memcpy((char*)&attr, buf1+pos, sizeof(MFTAttribute) );
+									if(attr.type==0x30 && attr.nonresident==0) //FILENAME
+									{
+										MFTAttributeFilename fn;
+										memcpy((char*)&fn, buf1+pos+attr.attribute_offset, sizeof(MFTAttributeFilename) );
+										std::string fn_uc;
+										fn_uc.resize(fn.filename_length*2);
+										memcpy(&fn_uc[0], buf1+pos+attr.attribute_offset+sizeof(MFTAttributeFilename), fn.filename_length*2);
+										Server->Log(L"Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
+									}
+									Server->Log("Attribute Type: "+nconvert(attr.type)+" nonresident="+nconvert(attr.nonresident)+" length="+nconvert(attr.length), LL_DEBUG);
+								}while( attr.type!=0xFFFFFFFF && attr.type!=0x80);
+							}
+
+							for(size_t i=0;i<512;++i)
+							{
+								if(buf1[i]!=buf2[i])
+								{
+									Server->Log("Position "+nconvert(i)+": "+nconvert((int)buf1[i])+"<->"+nconvert((int)buf2[i]));
+								}
+							}
+						}
+						hdiff=true;
+						break;
+					}
+				}
+				
+				if(hdiff)
+				{
+					++diff;
+					Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos));
+				}
+			}
+		
+			int pc=(int)((float)((float)currpos/(float)size)*100.f+0.5f);
+			if(pc!=last_pc)
+			{
+				last_pc=pc;
+				Server->Log("Checking hashfile: "+nconvert(pc)+"%");
+			}
+			
+		}
+		Server->Log("Different blocks: "+nconvert(diff));
+		exit(7);
+	}
+
 	imagepluginmgr=new CImagePluginMgr;
 
 	Server->RegisterPluginThreadsafeModel( imagepluginmgr, "fsimageplugin");

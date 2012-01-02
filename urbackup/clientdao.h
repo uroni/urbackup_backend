@@ -40,6 +40,7 @@ struct SShadowCopy
 	std::wstring tname;
 	std::wstring orig_target;
 	std::wstring vol;
+	std::wstring starttoken;
 	bool filesrv;
 	int refs;
 	int passedtime;

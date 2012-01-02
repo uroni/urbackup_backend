@@ -61,6 +61,7 @@ const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
 const unsigned int image_timeout=10*24*60*60*1000;
 const unsigned int image_recv_timeout=1*60*60*1000;
+const unsigned int image_recv_timeout_after_first=10*60*1000;
 
 int BackupServerGet::running_backups=0;
 int BackupServerGet::running_file_backups=0;
@@ -89,6 +90,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	can_backup_images=true;
 
 	filesrv_protocol_version=0;
+	file_protocol_version=1;
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -939,6 +941,12 @@ void BackupServerGet::resetEntryState(void)
 
 bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 {
+	unsigned int timeout_time=full_backup_construct_timeout;
+	if(file_protocol_version>=2)
+	{
+		timeout_time=120000;
+	}
+
 	CTCPStack tcpstack;
 
 	Server->Log(clientname+L": Connecting for filelist...", LL_DEBUG);
@@ -949,20 +957,23 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 		return false;
 	}
 
+	std::string pver="";
+	if(file_protocol_version==2) pver="2";
+
 	if(full)
-		tcpstack.Send(cc, server_identity+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
+		tcpstack.Send(cc, server_identity+pver+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
 	else
-		tcpstack.Send(cc, server_identity+"START BACKUP"+(with_token?("#token="+server_token):""));
+		tcpstack.Send(cc, server_identity+pver+"START BACKUP"+(with_token?("#token="+server_token):""));
 
 	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
-	while(Server->getTimeMS()-starttime<=full_backup_construct_timeout)
+	while(Server->getTimeMS()-starttime<=timeout_time)
 	{
-		size_t rc=cc->Read(&ret, full_backup_construct_timeout);
+		size_t rc=cc->Read(&ret, 60000);
 		if(rc==0)
-		{
-			if(Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
+		{			
+			if(file_protocol_version<2 && Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
 			{
 				Server->destroy(cc);
 				Server->Log(clientname+L": Trying old filelist request", LL_WARNING);
@@ -970,9 +981,16 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			}
 			else
 			{
-				ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
+				if(file_protocol_version>=2 || pingthread->isTimeout() )
+				{
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
+					break;
+				}
+				else
+				{
+					continue;
+				}
 			}
-			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
 
@@ -984,12 +1002,20 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			delete [] pck;
 			if(ret!="DONE")
 			{
-				if(ret!="no backup dirs")
+				if(ret=="BUSY")
+				{
+					starttime=Server->getTimeMS();
+				}
+				else if(ret!="no backup dirs")
+				{
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
+					break;
+				}
 				else
+				{
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_DEBUG);
-
-				break;
+					break;
+				}				
 			}
 			else
 			{
@@ -1938,6 +1964,12 @@ bool BackupServerGet::updateCapabilities(void)
 		{
 			filesrv_protocol_version=watoi(it->second);
 		}
+
+		it=params.find(L"FILE");
+		if(it!=params.end())
+		{
+			file_protocol_version=watoi(it->second);
+		}		
 	}
 
 	return !cap.empty();
@@ -2100,7 +2132,7 @@ void BackupServerGet::sendClientLogdata(void)
 	{
 		std::string logdata=Server->ConvertToUTF8(res[i][L"logdata"]);
 		escapeClientMessage(logdata);
-		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000);
+		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false);
 		q_set_logdata_sent->Bind(res[i][L"id"]);
 		q_set_logdata_sent->Write();
 		q_set_logdata_sent->Reset();
@@ -2469,11 +2501,13 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	sha256_ctx shactx;
 	sha256_init(&shactx);
 
+	unsigned int curr_image_recv_timeout=image_recv_timeout;
+
 	unsigned int stat_update_cnt=0;
 
 	while(Server->getTimeMS()-starttime<=image_timeout)
 	{
-		size_t r=cc->Read(&buffer[off], 4096-off, image_recv_timeout);
+		size_t r=cc->Read(&buffer[off], 4096-off, curr_image_recv_timeout);
 		if(r!=0)
 			r+=off;
 		starttime=Server->getTimeMS();
@@ -2493,7 +2527,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					if(cc==NULL)
 					{
 						std::string msg;
-						if(pipe->Read(&msg, 0)>0)
+						std::vector<std::string> msgs;
+						while(pipe->Read(&msg, 0)>0)
 						{
 							if(msg.find("address")==0)
 							{
@@ -2502,10 +2537,13 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							}
 							else
 							{
-								pipe->Write(msg);
+								msgs.push_back(msg);
 							}
-							Server->wait(60000);
 						}
+						for(size_t i=0;i<msgs.size();++i)
+							pipe->Write(msgs[i]);
+
+						Server->wait(60000);
 					}
 					else
 					{
@@ -2711,6 +2749,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					goto do_image_cleanup;
 				}
 
+				curr_image_recv_timeout=image_recv_timeout_after_first;
+
 				if(r==off)
 				{
 					off=0;
@@ -2860,6 +2900,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							if(hashfile!=NULL) Server->destroy(hashfile);
 							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
 							running_updater->stop();
+							delete []zeroblockdata;
 							return false;
 						}
 						else if(currblock==-125) //ping
@@ -2918,6 +2959,7 @@ do_image_cleanup:
 	if(hashfile!=NULL) Server->destroy(hashfile);
 	if(parenthashfile!=NULL) Server->destroy(parenthashfile);
 	running_updater->stop();
+	delete []zeroblockdata;
 	return false;
 }
 
@@ -2979,44 +3021,47 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize)
 {
 	unsigned char *blockdata=NULL;
-	if(parent_fn)
+	if(parent_fn && nextblock<currblock)
 		blockdata=new unsigned char[blocksize];
 
-	if(currblock-nextblock>vhd_blocksize)
+	if(currblock-nextblock>=vhd_blocksize)
 	{
-		while(true)
+		if(nextblock%vhd_blocksize!=0)
 		{
-			if(!parent_fn)
+			while(true)
 			{
-				sha256_update(shactx, zeroblockdata, blocksize);
-			}
-			else
-			{
+				if(!parent_fn)
 				{
-					IScopedLock lock(parentfile->getVHDMutex());
-					IVHDFile *vhd=parentfile->getVHD();
-					vhd->Seek(mbr_offset+nextblock*blocksize);
-					size_t read;
-					bool b=vhd->Read((char*)blockdata, blocksize, read);
-					if(!b)
-						Server->Log("Reading from VHD failed", LL_ERROR);
+					sha256_update(shactx, zeroblockdata, blocksize);
 				}
-				sha256_update(shactx, blockdata, blocksize);
-			}
+				else
+				{
+					{
+						IScopedLock lock(parentfile->getVHDMutex());
+						IVHDFile *vhd=parentfile->getVHD();
+						vhd->Seek(mbr_offset+nextblock*blocksize);
+						size_t read;
+						bool b=vhd->Read((char*)blockdata, blocksize, read);
+						if(!b)
+							Server->Log("Reading from VHD failed", LL_ERROR);
+					}
+					sha256_update(shactx, blockdata, blocksize);
+				}
 
-			++nextblock;
+				++nextblock;
 
-			if(nextblock%vhd_blocksize==0)
-			{
-				unsigned char dig[sha_size];
-				sha256_final(shactx, dig);
-				hashfile->Write((char*)dig, sha_size);
-				sha256_init(shactx);
-				break;
+				if(nextblock%vhd_blocksize==0 && nextblock!=0)
+				{
+					unsigned char dig[sha_size];
+					sha256_final(shactx, dig);
+					hashfile->Write((char*)dig, sha_size);
+					sha256_init(shactx);
+					break;
+				}
 			}
 		}
 
-		while(currblock-nextblock>vhd_blocksize)
+		while(currblock-nextblock>=vhd_blocksize)
 		{
 			if(!parent_fn)
 			{

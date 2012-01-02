@@ -64,6 +64,8 @@ private:
 	int state;
 	IPipe *mempipe;
 	unsigned int lasttime;
+	unsigned int last_update_time;
+	int file_version;
 	CTCPStack tcpstack;
 	volatile bool do_quit;
 	bool is_channel;

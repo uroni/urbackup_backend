@@ -128,6 +128,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	is_channel=false;
 	want_receive=true;
 	last_channel_ping=0;
+	file_version=1;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -219,6 +220,11 @@ bool ClientConnector::Run(void)
 				backup_running=0;
 				backup_done=true;
 			}
+			else if(file_version>1 && Server->getTimeMS()-last_update_time>30000)
+			{
+				last_update_time=Server->getTimeMS();
+				tcpstack.Send(pipe, "BUSY");
+			}
 		}break;
 	case 2:
 		{
@@ -262,6 +268,14 @@ bool ClientConnector::Run(void)
 						{
 							channel_pipes.erase(channel_pipes.begin()+i);
 							channel_capa.erase(channel_capa.begin()+i);
+							break;
+						}
+					}
+					for(size_t i=0;i<channel_ping.size();++i)
+					{
+						if(channel_ping[i]==pipe)
+						{
+							channel_ping.erase(channel_ping.begin()+i);
 							break;
 						}
 					}
@@ -628,8 +642,10 @@ void ClientConnector::ReceivePackets(void)
 				}
 			}
 		}
-		else if(cmd=="START BACKUP" && ident_ok==true)
+		else if( (cmd=="START BACKUP" || cmd=="2START BACKUP") && ident_ok==true)
 		{
+			if(cmd=="2START BACKUP") file_version=2;
+
 			state=1;
 
 			CWData data;
@@ -646,8 +662,10 @@ void ClientConnector::ReceivePackets(void)
 			pcdone=0;
 			backup_source_token=server_token;
 		}
-		else if(cmd=="START FULL BACKUP" && ident_ok==true)
+		else if( (cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP") && ident_ok==true)
 		{
+			if(cmd=="2START FULL BACKUP") file_version=2;
+
 			state=1;
 
 			CWData data;
@@ -1379,9 +1397,9 @@ void ClientConnector::ReceivePackets(void)
 		else if(cmd.find("CAPA")==0  && ident_ok==true)
 		{
 #ifdef _WIN32
-			tcpstack.Send(pipe, "FILE=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=1");
+			tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=1");
 #else
-			tcpstack.Send(pipe, "FILE=1&FILESRV=1");
+			tcpstack.Send(pipe, "FILE=2&FILESRV=1");
 #endif
 		}
 		else
@@ -2045,6 +2063,7 @@ void ClientConnector::sendFullImageThread(void)
 			unsigned int blocksize=(unsigned int)fs->getBlocksize();
 			int64 drivesize=fs->getSize();
 			int64 blockcnt=fs->calculateUsedSpace()/blocksize;
+			int64 ncurrblocks=0;
 
 			if(startpos==0)
 			{
@@ -2112,9 +2131,12 @@ void ClientConnector::sendFullImageThread(void)
 				{
 					Server->Log("Pipe broken -2", LL_ERROR);
 					run=false;
+					has_error=true;
 					break;
 				}
 
+				ncurrblocks+=secs.size();
+				
 				if(IdleCheckerThread::getPause())
 				{
 					Server->wait(5000);
@@ -2141,6 +2163,7 @@ void ClientConnector::sendFullImageThread(void)
 			{
 				Server->Log("Pipe broken -3", LL_ERROR);
 				run=false;
+				has_error=true;
 				break;
 			}
 
@@ -2152,7 +2175,7 @@ void ClientConnector::sendFullImageThread(void)
 
 	Server->Log("Sending full image done", LL_INFO);
 
-	#ifdef VSS_XP //persistence
+#ifdef VSS_XP //persistence
 	has_error=false;
 #endif
 #ifdef VSS_S03
@@ -2181,11 +2204,15 @@ void ClientConnector::sendIncrImageThread(void)
 {
 	char *blockbuf=NULL;
 	char *blockdatabuf=NULL;
+	bool *has_blocks=NULL;
+	char *zeroblockbuf=NULL;
 
 	bool has_error=true;
 
 	int save_id=-1;
 	int update_cnt=0;
+
+	unsigned int lastsendtime=Server->getTimeMS();
 
 	bool run=true;
 	while(run)
@@ -2271,9 +2298,17 @@ void ClientConnector::sendIncrImageThread(void)
 				}
 			}
 
+			delete []blockbuf;
 			blockbuf=new char[vhdblocks*blocksize];
+			delete []has_blocks;
+			has_blocks=new bool[vhdblocks];
+			delete []zeroblockbuf;
+			zeroblockbuf=new char[blocksize];
+			memset(zeroblockbuf, 0, blocksize);
+
 			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
 			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs);
+
 
 			for(int64 i=startpos,blocks=drivesize/blocksize;i<blocks;i+=vhdblocks)
 			{
@@ -2298,6 +2333,7 @@ void ClientConnector::sendIncrImageThread(void)
 				if(has_data)
 				{
 					sha256_init(&shactx);
+					bool mixed=false;
 					for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 					{
 						char *dpos=blockbuf+(j-i)*blocksize;
@@ -2308,11 +2344,13 @@ void ClientConnector::sendIncrImageThread(void)
 								Server->wait(5000);
 							}
 							sha256_update(&shactx, (unsigned char*)dpos, blocksize);
+							has_blocks[j-i]=true;
 						}
 						else
 						{
-							memset(dpos, 0, blocksize);
-							sha256_update(&shactx, (unsigned char*)dpos, blocksize);
+							sha256_update(&shactx, (unsigned char*)zeroblockbuf, blocksize);
+							has_blocks[j-i]=false;
+							mixed=true;
 						}
 					}
 					unsigned char digest[c_hashsize];
@@ -2327,28 +2365,40 @@ void ClientConnector::sendIncrImageThread(void)
 						}
 						if(memcmp(hashdata_buf, digest, c_hashsize)!=0)
 						{
+							//Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
 							for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 							{
-								char* cb=cs->getBuffer();
-								memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
-								memcpy(cb, &j, sizeof(int64) );
-								cs->sendBuffer(cb, sizeof(int64)+blocksize);
-
-								if(cs->hasError())
+								if(has_blocks[j-i])
 								{
-									Server->Log("Pipe broken -2", LL_ERROR);
-									run=false;
-									break;
+									char* cb=cs->getBuffer();
+									memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
+									memcpy(cb, &j, sizeof(int64) );
+									cs->sendBuffer(cb, sizeof(int64)+blocksize);
+
+									lastsendtime=Server->getTimeMS();
+
+									if(cs->hasError())
+									{
+										Server->Log("Pipe broken -2", LL_ERROR);
+										run=false;
+										break;
+									}
 								}
 							}							
 						}
 						else
 						{
-							Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
-							int64 bs=-125;
-							char* buffer=cs->getBuffer();
-							memcpy(buffer, &bs, sizeof(int64) );
-							cs->sendBuffer(buffer, sizeof(int64));
+							//Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
+							unsigned int tt=Server->getTimeMS();
+							if(tt-lastsendtime>10000)
+							{
+								int64 bs=-125;
+								char* buffer=cs->getBuffer();
+								memcpy(buffer, &bs, sizeof(int64) );
+								cs->sendBuffer(buffer, sizeof(int64));
+
+								lastsendtime=tt;
+							}
 						}
 					}
 					else
@@ -2358,6 +2408,19 @@ void ClientConnector::sendIncrImageThread(void)
 						break;
 					}
 					if(!run)break;
+				}
+				else
+				{
+					unsigned int tt=Server->getTimeMS();
+					if(tt-lastsendtime>10000)
+					{
+						int64 bs=-125;
+						char* buffer=cs->getBuffer();
+						memcpy(buffer, &bs, sizeof(int64) );
+						cs->sendBuffer(buffer, sizeof(int64));
+
+						lastsendtime=tt;
+					}
 				}
 			}
 
@@ -2387,6 +2450,8 @@ void ClientConnector::sendIncrImageThread(void)
 	}
 
 	delete [] blockbuf;
+	delete [] has_blocks;
+	delete [] zeroblockbuf;
 
 	Server->destroy(hashdatafile);
 

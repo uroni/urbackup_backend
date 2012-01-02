@@ -21,6 +21,10 @@
 #include "../Interface/File.h"
 
 #include "fs/ntfs.h"
+#ifdef _WIN32
+#include "fs/ntfs_win.h"
+#define FSNTFS FSNTFSWIN
+#endif
 #include "fs/unknown.h"
 #include "vhdfile.h"
 
@@ -29,14 +33,14 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev)
 	IFile *dev=Server->openFile(pDev, MODE_READ);
 	if(dev==NULL)
 	{
-		Server->Log("Error opening device file", LL_ERROR);
+		Server->Log(L"Error opening device file ("+pDev+L")", LL_ERROR);
 		return NULL;
 	}
 	char buffer[1024];
 	_u32 rc=dev->Read(buffer, 1024);
 	if(rc!=1024)
 	{
-		Server->Log("Error reading data from device", LL_ERROR);
+		Server->Log(L"Error reading data from device ("+pDev+L")", LL_ERROR);
 		return NULL;
 	}
 

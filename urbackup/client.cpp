@@ -396,10 +396,11 @@ void IndexThread::operator()(void)
 			data.getUChar(&image_backup);
 			SCDirs *scd=getSCDir(Server->ConvertToUnicode(scdir));
 
+			int save_id=-1;
+			data.getInt(&save_id);
+
 			if(scd->running==false )
-			{
-				int save_id=-1;
-				data.getInt(&save_id);
+			{				
 				if(!release_shadowcopy(scd, image_backup==1?true:false, save_id))
 				{
 					Server->Log("Invalid action -- Creating shadow copy failed?", LL_ERROR);
@@ -412,7 +413,7 @@ void IndexThread::operator()(void)
 			}
 			else
 			{
-				bool b=release_shadowcopy(scd, false, image_backup==1?true:false);
+				bool b=release_shadowcopy(scd, image_backup==1?true:false, save_id);
 				if(!b)
 				{
 					contractor->Write("failed");
@@ -747,7 +748,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
-	cleanup_saved_shadowcopies();
+	cleanup_saved_shadowcopies(true);
 
 	WCHAR volume_path[MAX_PATH]; 
 	BOOL ok = GetVolumePathNameW(dir->orig_target.c_str(), volume_path, MAX_PATH);
@@ -934,6 +935,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 	tsc.filesrv=dir->fileserv;
 	tsc.vol=wpath;
 	tsc.tname=dir->dir;
+	tsc.starttoken=widen(starttoken);
 	if(for_imagebackup)
 	{
 		tsc.refs=1;
@@ -1137,7 +1139,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 #endif
 }
 
-bool IndexThread::cleanup_saved_shadowcopies(void)
+bool IndexThread::cleanup_saved_shadowcopies(bool start)
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
@@ -1159,7 +1161,7 @@ bool IndexThread::cleanup_saved_shadowcopies(void)
 					break;
 				}
 			}
-			if(f2==true && (scs[i].refs<=0 || scs[i].passedtime>shadowcopy_timeout/1000))
+			if(f2==true && (scs[i].refs<=0 || scs[i].passedtime>shadowcopy_timeout/1000 || (start && scs[i].filesrv==false && scs[i].refs==1 && !starttoken.empty() && scs[i].starttoken==widen(starttoken) ) ) )
 			{
 				found=true;
 				break;
@@ -1186,7 +1188,7 @@ bool IndexThread::cleanup_saved_shadowcopies(void)
 						break;
 					}
 				}
-				if( f2==true && (scs[i].refs<=0 || scs[i].passedtime>shadowcopy_timeout/1000))
+				if( f2==true && (scs[i].refs<=0 || scs[i].passedtime>shadowcopy_timeout/1000 || (start && scs[i].filesrv==false && scs[i].refs==1 && !starttoken.empty() &&scs[i].starttoken==widen(starttoken) ) ) )
 				{
 					Server->Log(L"Deleting shadowcopy for path \""+scs[i].path+L"\"", LL_INFO);
 					LONG dels; 
