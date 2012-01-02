@@ -292,5 +292,6 @@ translations.de={
 "tDo not do file backups": "Keine Dateibackups ausführen",
 "tupgrade_error_text": "UrBackup aktualisiert seine interne Datenbank. Das könnte eine Weile dauern. Während der Aktualisierung ist das Webinterface nicht erreichbar und keine Backups werden durchgeführt.",
 "tCurrent version": "Momentane version",
-"tTarget version": "Zielversion"
+"tTarget version": "Zielversion",
+"tVolumes to backup": "Zu sichernde Laufwerke"
 }
