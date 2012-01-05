@@ -21,6 +21,8 @@
 #include "action_header.h"
 #include "../os_functions.h"
 
+extern IUrlFactory *url_fak;
+
 std::string constructFilter(const std::vector<int> &clientid, std::string key);
 
 ACTION_IMPL(logs)
@@ -168,6 +170,17 @@ ACTION_IMPL(logs)
 				ret.set("report_mail", "");
 				ret.set("report_sendonly", "");
 				ret.set("report_loglevel", "");
+			}
+
+			if(url_fak!=NULL)
+			{
+				ret.set("HAS_MAIL_START", "");
+				ret.set("HAS_MAIL_STOP", "");
+			}
+			else
+			{
+				ret.set("HAS_MAIL_START", "<!--");
+				ret.set("HAS_MAIL_STOP", "-->");
 			}
 		}
 		else

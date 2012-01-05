@@ -361,7 +361,7 @@ ACTION_IMPL(settings)
 				navitems.set("users", true);
 			}
 
-			if(helper.getRights("mail_settings")=="all")
+			if(helper.getRights("mail_settings")=="all" && url_fak!=NULL )
 			{
 				navitems.set("mail", true);
 			}

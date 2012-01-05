@@ -516,7 +516,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		pychart_fak=(IPychartFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("pychart", params));
 		if(pychart_fak==NULL)
 		{
-			Server->Log("Error loading IPychartFactory", LL_ERROR);
+			Server->Log("Error loading IPychartFactory", LL_INFO);
 		}
 		download_fak=(IDownloadFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("download", params));
 		if(download_fak==NULL)
@@ -526,7 +526,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		url_fak=(IUrlFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("url", params));
 		if(url_fak==NULL)
 		{
-			Server->Log("Error loading IUrlFactory", LL_ERROR);
+			Server->Log("Error loading IUrlFactory", LL_INFO);
 		}
 
 		server_exit_pipe=Server->createMemoryPipe();
