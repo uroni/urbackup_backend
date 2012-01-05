@@ -20,6 +20,7 @@
 
 #include "action_header.h"
 #include "../os_functions.h"
+#include "../../urlplugin/IUrlFactory.h"
 
 extern IUrlFactory *url_fak;
 
