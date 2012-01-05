@@ -267,7 +267,7 @@ function loadGraph(action, parameters, pDivid, pGraphdata)
 	{		
 		img_id=data.image_id;
 		
-		if(""+img_id!="undefined")
+		if(typeof img_id!="undefined")
 		{
 			setTimeout(f.update_graph, 100);
 		}
@@ -315,7 +315,7 @@ function loadGraph(action, parameters, pDivid, pGraphdata)
 	
 	this.update_graph = function()
 	{
-		if(""+img_id!="undefined")
+		if(typeof img_id!="undefined" && I(divid))
 		{
 			getJSON("isimageready", "image_id="+img_id, f.update);
 		}
