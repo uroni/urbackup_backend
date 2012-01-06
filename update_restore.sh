@@ -1,5 +1,7 @@
 #!/bin/sh
 
+./switch_build.sh server
+
 if test -e Makefile.am~b
 then
     cp Makefile.am~b Makefile.am

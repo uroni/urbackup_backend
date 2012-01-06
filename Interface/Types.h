@@ -15,15 +15,18 @@ typedef int POSTFILE_KEY;
 #ifdef LINUX
 typedef long long int __int64;
 typedef unsigned long long int uint64;
+#elif _WIN32
+typedef unsigned __int64 uint64
+#else
+typedef long long int __int64;
+typedef unsigned long long int uint64;
 #endif
+
 #ifndef NULL
 #define NULL    0
 #endif
 
 typedef __int64 int64;
-#ifndef LINUX
-typedef unsigned __int64 uint64;
-#endif
 typedef unsigned char uchar;
 typedef int _i32;
 typedef __int64 _i64;
