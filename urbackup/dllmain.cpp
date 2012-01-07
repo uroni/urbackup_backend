@@ -438,7 +438,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			IScopedLock lock(startup_status.mutex);
 			startup_status.upgrading_database=true;
 		}
+
 		ADD_ACTION(login);
+		ADD_ACTION(google_chart);
 		
 		upgrade();
 
@@ -481,8 +483,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(settings);
 		ADD_ACTION(logs);
 		ADD_ACTION(isimageready);
-		ADD_ACTION(getimage);
-		ADD_ACTION(google_chart);		
+		ADD_ACTION(getimage);		
 	}
 #endif
 
