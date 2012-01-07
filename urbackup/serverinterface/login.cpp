@@ -22,17 +22,6 @@
 
 ACTION_IMPL(login)
 {
-	Helper helper(tid, &GET, &PARAMS);
-	IDatabase *db=helper.getDatabase();
-
-	bool has_session=false;
-	std::wstring ses;
-	if(!GET[L"ses"].empty())
-	{
-		ses=GET[L"ses"];
-		has_session=true;
-	}
-
 	JSON::Object ret;
 
 	{
@@ -42,9 +31,20 @@ ACTION_IMPL(login)
 			ret.set("upgrading_database", startup_status.upgrading_database);
 			ret.set("curr_db_version", startup_status.curr_db_version);
 			ret.set("target_db_version", startup_status.target_db_version);
-			helper.Write(ret.get(false));
+			Server->Write( tid, ret.get(false) );
 			return;
 		}
+	}
+
+	Helper helper(tid, &GET, &PARAMS);
+	IDatabase *db=helper.getDatabase();
+
+	bool has_session=false;
+	std::wstring ses;
+	if(!GET[L"ses"].empty())
+	{
+		ses=GET[L"ses"];
+		has_session=true;
 	}
 
 	if(pychart_fak==NULL)
