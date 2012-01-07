@@ -1,6 +1,7 @@
 #!/bin/bash
 
 cbuild=""
+CPWD=`pwd`
 
 switch_m_build()
 {
@@ -31,6 +32,21 @@ switch()
 	switch_build
 }
 
+clean_build()
+{
+	c=`cat $CPWD/curr_build`
+	echo "Last build: $c"
+	if [[ "x$c" == "xserver" ]] && [[ "x$cbuild" == "xclient" ]]
+	then
+		make clean
+	fi
+	if [[ "x$c" == "xclient" ]] && [[ "x$cbuild" == "xserver" ]]
+	then
+		make clean
+	fi
+	echo "$cbuild" > $CPWD/curr_build
+}
+
 if [[ "x$1" == "xserver" ]]
 then
 	cbuild="server"	
@@ -46,4 +62,5 @@ else
 fi
 
 switch
+clean_build
 echo "Switched to $cbuild"

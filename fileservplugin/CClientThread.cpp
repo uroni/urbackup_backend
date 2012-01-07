@@ -27,6 +27,8 @@
 #include "CriticalSection.h"
 #include "FileServ.h"
 
+#include <algorithm>
+
 
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
@@ -549,7 +551,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				while( foffset < filesize )
 				{
-					sendfile64(mSocket, hFile, &foffset, 32768);
+					size_t count=(std::max)((size_t)32768, (size_t)(filesize-foffset));
+					sendfile64(mSocket, hFile, &foffset, count);
 					if(FileServ::isPause() )
 					{
 						Sleep(500);

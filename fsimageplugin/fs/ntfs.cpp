@@ -22,6 +22,12 @@
 #include <math.h>
 #include <memory.h>
 
+#ifndef _WIN32
+#define UD_UINT64 0xFFFFFFFFFFFFFFFFULL
+#else
+#define UD_UINT64 0xFFFFFFFFFFFFFFFF
+#endif
+
 class MemFree
 {
 public:
@@ -149,7 +155,7 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev), bitmap(NULL)
 
 	unsigned int bitmap_vcn=(6*mftrecordsize)/clustersize;
 	uint64 bitmap_lcn=mftrunlist.getLCN(bitmap_vcn);
-	if(bitmap_lcn==0xFFFFFFFFFFFFFFFF)
+	if(bitmap_lcn==UD_UINT64)
 	{
 		Server->Log("Error mapping VCN to LCN", LL_ERROR);
 		has_error=true;
@@ -246,7 +252,7 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev), bitmap(NULL)
 	for(uint64 i=bitmapstream.starting_vnc;i<=bitmapstream.last_vnc;++i)
 	{
 		uint64 lcn=bitmaprunlist.getLCN(i);
-		if(lcn==0xFFFFFFFFFFFFFFFF)
+		if(lcn==UD_UINT64)
 		{
 			Server->Log("Error mapping VCN->LCN. -2", LL_ERROR);
 			has_error=true;
@@ -393,5 +399,5 @@ uint64 Runlist::getLCN(uint64 vcn)
 
 		coffset+=item.length;
 	}
-	return 0xFFFFFFFFFFFFFFFF;
+	return UD_UINT64;
 }
