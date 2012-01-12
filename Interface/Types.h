@@ -16,7 +16,7 @@ typedef int POSTFILE_KEY;
 typedef long long int __int64;
 typedef unsigned long long int uint64;
 #elif _WIN32
-typedef unsigned __int64 uint64
+typedef unsigned __int64 uint64;
 #else
 typedef long long int __int64;
 typedef unsigned long long int uint64;
