@@ -20,6 +20,10 @@
 #include "Server.h"
 #include "stringtools.h"
 #include <windows.h>
+#include <dbghelp.h>
+#include <shellapi.h>
+#include <shlobj.h>
+#include <Strsafe.h>
 
 bool CServer::LoadDLL(const std::string &name)
 {
@@ -50,4 +54,52 @@ void CServer::UnloadDLLs2(void)
 	{
 		FreeLibrary( unload_handles[i] );
 	}
+}
+
+int CServer::WriteDump(void* pExceptionPointers)
+{
+	BOOL bMiniDumpSuccessful;
+    WCHAR szPath[MAX_PATH]; 
+    WCHAR szFileName[MAX_PATH]; 
+    WCHAR* szAppName = L"UrBackup";
+    WCHAR* szVersion = L"v0.25";
+    DWORD dwBufferSize = MAX_PATH;
+    HANDLE hDumpFile;
+    SYSTEMTIME stLocalTime;
+    MINIDUMP_EXCEPTION_INFORMATION ExpParam;
+
+    GetLocalTime( &stLocalTime );
+    GetTempPath( dwBufferSize, szPath );
+
+    StringCchPrintf( szFileName, MAX_PATH, L"%s%s", szPath, szAppName );
+    CreateDirectory( szFileName, NULL );
+
+    StringCchPrintf( szFileName, MAX_PATH, L"%s%s\\%s-%04d%02d%02d-%02d%02d%02d-%ld-%ld.dmp", 
+               szPath, szAppName, szVersion, 
+               stLocalTime.wYear, stLocalTime.wMonth, stLocalTime.wDay, 
+               stLocalTime.wHour, stLocalTime.wMinute, stLocalTime.wSecond, 
+               GetCurrentProcessId(), GetCurrentThreadId());
+    hDumpFile = CreateFile(szFileName, GENERIC_READ|GENERIC_WRITE, 
+                FILE_SHARE_WRITE|FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
+
+	if(hDumpFile!=INVALID_HANDLE_VALUE)
+	{
+		ExpParam.ThreadId = GetCurrentThreadId();
+		ExpParam.ExceptionPointers = (EXCEPTION_POINTERS*)pExceptionPointers;
+		ExpParam.ClientPointers = TRUE;
+
+		bMiniDumpSuccessful = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), 
+						hDumpFile, MiniDumpWithDataSegs, &ExpParam, NULL, NULL);
+
+		if(!bMiniDumpSuccessful)
+		{
+			Server->Log("Writing minidump failed: Last error="+nconvert((int)GetLastError()), LL_ERROR);
+		}
+
+		CloseHandle(hDumpFile);
+	}
+
+	Server->Log(L"Fatal exception. Crash dump written to \""+(std::wstring)szFileName+L"\"", LL_ERROR);
+
+    return EXCEPTION_EXECUTE_HANDLER;
 }

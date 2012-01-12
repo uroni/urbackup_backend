@@ -1095,6 +1095,16 @@ IPipe *CServer::createMemoryPipe(void)
 }
 
 #ifdef THREAD_BOOST
+void thread_helper_f(IThread *t)
+{
+	__try
+	{
+		(*t)();
+	}
+	__except(CServer::WriteDump(GetExceptionInformation()))
+	{
+	}
+}
 #else
 #ifndef _WIN32
 void *thread_helper_f(void * t)
@@ -1108,7 +1118,7 @@ void *thread_helper_f(void * t)
 void CServer::createThread(IThread *thread)
 {
 #ifdef THREAD_BOOST
-	boost::thread tr(boost::ref(*thread));
+	boost::thread tr(thread_helper_f, thread);
 	tr.yield();
 #else
 #ifdef _WIN32

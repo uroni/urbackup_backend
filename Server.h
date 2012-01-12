@@ -148,6 +148,8 @@ public:
 	virtual bool hasDatabaseFactory(const std::string &pEngineName);
 
 	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier);
+
+	static int WriteDump(void* pExceptionPointers);
 private:
 
 	bool UnloadDLLs(void);

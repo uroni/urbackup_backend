@@ -53,3 +53,7 @@ void CServer::UnloadDLLs2(void)
 		dlclose( unload_handles[i] );
 	}
 }
+
+int CServer::WriteDump(void* pExceptionPointers)
+{
+}

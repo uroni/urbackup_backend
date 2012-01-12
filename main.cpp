@@ -75,6 +75,8 @@ void DisplayHelp(void)
 
 CAcceptThread *c_at=NULL;
 
+int main_fkt(int argc, char *argv[]);
+
 #ifndef AS_SERVICE
 int main(int argc, char *argv[])
 {
@@ -82,6 +84,19 @@ int main(int argc, char *argv[])
 int my_init_fcn_t(int argc, char *argv[])
 {
 #endif
+	#ifdef _WIN32
+	__try{
+#endif
+	return main_fkt(argc, argv);
+#ifdef _WIN32
+	}__except(CServer::WriteDump(GetExceptionInformation()) )
+	{
+	}
+#endif
+}
+
+int main_fkt(int argc, char *argv[])
+{
 	Server=new CServer;
 	Server->setup();
 
