@@ -376,7 +376,7 @@ void BackupServerGet::operator ()(void)
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-				startBackupRunning(true);
+				startBackupRunning(false);
 
 				r_success=true;
 				std::vector<std::string> vols=server_settings->getBackupVolumes();
@@ -422,7 +422,7 @@ void BackupServerGet::operator ()(void)
 				r_image=true;
 				r_incremental=true;
 
-				startBackupRunning(true);
+				startBackupRunning(false);
 			
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
