@@ -94,6 +94,13 @@ bool TreeReader::readTree(const std::string &fn)
 					}break;
 				case 6:
 					{
+						if(ch=='"')
+							state=7;
+						else
+							state=10;
+					}break;
+				case 7:
+					{
 						if(ch=='\n')
 						{
 							state=0;
@@ -110,7 +117,7 @@ bool TreeReader::readTree(const std::string &fn)
 			}		
 		}
 	}
-	while(read==buffer_size);
+	while(read>0);
 
 	in.clear();
 	in.seekg(0, std::ios::beg);
