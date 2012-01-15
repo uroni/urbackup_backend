@@ -128,19 +128,10 @@ void ServerVHDWriter::operator()(void)
 				break;
 			}
 
-			if(written>=free_space_lim/2)
+			if(!filebuffer && written>=free_space_lim/2)
 			{
 				written=0;
-				std::wstring p=ExtractFilePath(vhd->getFilename());
-				int64 fs=os_free_space(os_file_prefix()+p);
-				if(fs!=-1 && fs <= free_space_lim )
-				{
-					Server->Log("Not enough free space. Waiting for cleanup...");
-					if(!cleanupSpace())
-					{
-						Server->Log("Not enough free space.", LL_WARNING);
-					}
-				}
+				checkFreeSpaceAndCleanup();
 			}
 		}
 	}
@@ -157,6 +148,24 @@ void ServerVHDWriter::operator()(void)
 	}
 
 	image_fak->destroyVHDFile(vhd);
+}
+
+void ServerVHDWriter::checkFreeSpaceAndCleanup(void)
+{
+	std::wstring p;
+	{
+		IScopedLock lock(vhd_mutex);
+		p=ExtractFilePath(vhd->getFilename());
+	}
+	int64 fs=os_free_space(os_file_prefix()+p);
+	if(fs!=-1 && fs <= free_space_lim )
+	{
+		Server->Log("Not enough free space. Waiting for cleanup...");
+		if(!cleanupSpace())
+		{
+			Server->Log("Not enough free space.", LL_WARNING);
+		}
+	}
 }
 
 void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
@@ -295,6 +304,7 @@ ServerFileBufferWriter::ServerFileBufferWriter(ServerVHDWriter *pParent, unsigne
 	cond=Server->createCondition();
 	exit=false;
 	exit_now=false;
+	written=free_space_lim;
 }
 
 ServerFileBufferWriter::~ServerFileBufferWriter(void)
@@ -362,7 +372,15 @@ void ServerFileBufferWriter::operator()(void)
 						Server->Log("Error reading from tmp.f", LL_ERROR);
 					}
 					parent->writeVHD(item.pos, blockbuf, tw);
+					written+=tw;
+
 					tpos+=item.bsize;
+
+					if( written>=free_space_lim/2)
+					{
+						written=0;
+						parent->checkFreeSpaceAndCleanup();
+					}
 				}
 				else
 				{

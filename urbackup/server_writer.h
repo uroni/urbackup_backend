@@ -35,6 +35,7 @@ public:
 
 	void freeBuffer(char *buf);
 
+	void checkFreeSpaceAndCleanup(void); 
 	bool cleanupSpace(void);
 
 	void doExit(void);
@@ -102,4 +103,6 @@ private:
 
 	volatile bool exit;
 	volatile bool exit_now;
+
+	unsigned int written;
 };
