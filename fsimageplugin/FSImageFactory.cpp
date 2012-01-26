@@ -96,14 +96,14 @@ void FSImageFactory::destroyFilesystem(IFilesystem *fs)
 	delete fs;
 }
 
-IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize)
+IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode)
 {
-	return new VHDFile(fn, pRead_only, pDstsize, pBlocksize);
+	return new VHDFile(fn, pRead_only, pDstsize, pBlocksize, fast_mode);
 }
 
-IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only)
+IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode)
 {
-	return new VHDFile(fn, parent_fn, pRead_only);
+	return new VHDFile(fn, parent_fn, pRead_only, fast_mode);
 }
 
 void FSImageFactory::destroyVHDFile(IVHDFile *vhd)

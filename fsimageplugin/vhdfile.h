@@ -62,8 +62,8 @@ struct VHDDynamicHeader
 class VHDFile : public IVHDFile
 {
 public:
-	VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024);
-	VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only);
+	VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false);
+	VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode=false);
 	~VHDFile();
 
 	void Seek(uint64 offset);
@@ -97,6 +97,7 @@ private:
 
 	inline bool isBitmapSet(unsigned int offset);
 	inline void setBitmapBit(unsigned int offset, bool v);
+	void switchBitmap(uint64 new_offset);
 
 	unsigned int calculate_chs(void);
 	unsigned int calculate_checksum(const unsigned char * data, size_t dsize);
@@ -130,4 +131,9 @@ private:
 	uint64 currblock;
 
 	uint64 curr_offset;
+
+	uint64 bitmap_offset;
+	bool bitmap_dirty;
+
+	bool fast_mode;
 };
