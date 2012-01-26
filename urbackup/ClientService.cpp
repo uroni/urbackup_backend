@@ -1473,7 +1473,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			if(name_arg!=args.end() && !name_arg->second.empty())
 				name=name_arg->second;
 			else
-				name=widen(replaceChars( ExtractFileName(wnarrow(dir) )  ));
+				name=ExtractFileName(dir);
 
 			if(dir[dir.size()-1]=='\\' || dir[dir.size()-1]=='/' )
 				dir.erase(dir.size()-1,1);
