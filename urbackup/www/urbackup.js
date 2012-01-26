@@ -618,7 +618,7 @@ function addExtraClient()
 
 function removeExtraClient(id)
 {
-	show_status1(true, id, true);
+	show_status1(true, id+"", true);
 }
 
 function show_backups1()
