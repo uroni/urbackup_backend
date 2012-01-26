@@ -2650,9 +2650,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					memset(zeroblockdata, 0, blocksize);
 
 					if(!has_parent)
-						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize);
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize, true);
 					else
-						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, pParentvhd, false);
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, pParentvhd, false, true);
 
 					if(r_vhdfile==NULL)
 					{
