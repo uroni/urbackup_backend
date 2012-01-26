@@ -39,7 +39,14 @@ ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigne
 
 	clientid=pClientid;
 	vhd=pVHD;
-	bufmgr=new CBufMgr2(nbufs, blocksize);
+	if(filebuffer)
+	{
+		bufmgr=new CBufMgr2(nbufs, sizeof(FileBufferVHDItem)+blocksize);
+	}
+	else
+	{
+		bufmgr=new CBufMgr2(nbufs, blocksize);
+	}
 
 	if(filebuffer)
 	{
@@ -104,13 +111,11 @@ void ServerVHDWriter::operator()(void)
 					}
 					else
 					{
-						FileBufferVHDItem fbi;
-						fbi.pos=item.pos;
-						fbi.bsize=item.bsize;
-						writeRetry(currfile, (char*)&fbi, sizeof(FileBufferVHDItem));
-						currfile_size+=sizeof(FileBufferVHDItem);
-						writeRetry(currfile, item.buf, item.bsize);
-						currfile_size+=item.bsize;
+						FileBufferVHDItem *fbi=(FileBufferVHDItem*)(item.buf-sizeof(FileBufferVHDItem));
+						fbi->pos=item.pos;
+						fbi->bsize=item.bsize;
+						writeRetry(currfile, (char*)fbi, sizeof(FileBufferVHDItem)+item.bsize);
+						currfile_size+=item.bsize+sizeof(FileBufferVHDItem);
 
 						if(currfile_size>filebuf_lim)
 						{
@@ -121,7 +126,7 @@ void ServerVHDWriter::operator()(void)
 					}
 				}
 
-				bufmgr->releaseBuffer(item.buf);
+				freeBuffer(item.buf);
 			}
 			else if(do_exit)
 			{
@@ -205,7 +210,10 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 
 char *ServerVHDWriter::getBuffer(void)
 {
-	return bufmgr->getBuffer();
+	if(filebuffer)
+		return bufmgr->getBuffer()+sizeof(FileBufferVHDItem);
+	else
+		return bufmgr->getBuffer();
 }
 
 void ServerVHDWriter::writeBuffer(uint64 pos, char *buf, unsigned int bsize)
@@ -221,7 +229,10 @@ void ServerVHDWriter::writeBuffer(uint64 pos, char *buf, unsigned int bsize)
 
 void ServerVHDWriter::freeBuffer(char *buf)
 {
-	bufmgr->releaseBuffer(buf);
+	if(filebuffer)
+		bufmgr->releaseBuffer(buf-sizeof(FileBufferVHDItem));
+	else
+		bufmgr->releaseBuffer(buf);
 }
 
 void ServerVHDWriter::doExit(void)
@@ -289,14 +300,19 @@ void ServerVHDWriter::freeFile(IFile *buf)
 void ServerVHDWriter::writeRetry(IFile *f, char *buf, unsigned int bsize)
 {
 	unsigned int off=0;
-	unsigned int r;
-	while( (r=f->Write(buf+off, bsize-off))!=bsize-off)
+	while( off<bsize )
 	{
+		unsigned int r=f->Write(buf+off, bsize-off);
 		off+=r;
-		Server->Log("Error writing to file \""+f->getFilename()+"\". Retrying", LL_WARNING);
-		Server->wait(10000);
+		if(off<bsize)
+		{
+			Server->Log("Error writing to file \""+f->getFilename()+"\". Retrying", LL_WARNING);
+			Server->wait(10000);
+		}
 	}
 }
+
+//-------------FilebufferWriter-----------------
 
 ServerFileBufferWriter::ServerFileBufferWriter(ServerVHDWriter *pParent, unsigned int pBlocksize) : parent(pParent), blocksize(pBlocksize)
 {
@@ -320,8 +336,8 @@ ServerFileBufferWriter::~ServerFileBufferWriter(void)
 
 void ServerFileBufferWriter::operator()(void)
 {
-	char *blockbuf=new char[blocksize];
-	unsigned int blockbuf_size=blocksize;
+	char *blockbuf=new char[blocksize+sizeof(FileBufferVHDItem)];
+	unsigned int blockbuf_size=blocksize+sizeof(FileBufferVHDItem);
 
 	while(!exit_now)
 	{
@@ -350,31 +366,55 @@ void ServerFileBufferWriter::operator()(void)
 			{
 				if(!parent->hasError())
 				{
-					FileBufferVHDItem item;
-					if(tmp->Read((char*)&item, sizeof(FileBufferVHDItem))!=sizeof(FileBufferVHDItem))
+					unsigned int tw=blockbuf_size;
+					bool old_method=false;
+					if(tw<sizeof(FileBufferVHDItem) || tmp->Read(blockbuf, tw)!=tw)
 					{
-						Server->Log("Error reading FileBufferVHDItem", LL_ERROR);
+						old_method=true;
 					}
-					tpos+=sizeof(FileBufferVHDItem);
-					unsigned int tw=item.bsize;
-					if(tpos+tw>tsize)
+					else
 					{
-						Server->Log("Size field is wrong", LL_ERROR);
+						FileBufferVHDItem *item=(FileBufferVHDItem*)blockbuf;
+						if(tw==item->bsize+sizeof(FileBufferVHDItem) )
+						{
+							parent->writeVHD(item->pos, blockbuf+sizeof(FileBufferVHDItem), item->bsize);
+							written+=item->bsize;
+							tpos+=item->bsize+sizeof(FileBufferVHDItem);
+						}
+						else
+						{
+							old_method=true;
+						}
 					}
-					if(tw>blockbuf_size)
-					{
-						delete []blockbuf;
-						blockbuf=new char[tw];
-						blockbuf_size=tw;
-					}
-					if(tmp->Read(blockbuf, tw)!=tw)
-					{
-						Server->Log("Error reading from tmp.f", LL_ERROR);
-					}
-					parent->writeVHD(item.pos, blockbuf, tw);
-					written+=tw;
 
-					tpos+=item.bsize;
+					if(old_method==true)
+					{
+						tmp->Seek(tpos);
+						FileBufferVHDItem item;
+						if(tmp->Read((char*)&item, sizeof(FileBufferVHDItem))!=sizeof(FileBufferVHDItem))
+						{
+							Server->Log("Error reading FileBufferVHDItem", LL_ERROR);
+						}
+						tpos+=sizeof(FileBufferVHDItem);
+						unsigned int tw=item.bsize;
+						if(tpos+tw>tsize)
+						{
+							Server->Log("Size field is wrong", LL_ERROR);
+						}
+						if(tw>blockbuf_size)
+						{
+							delete []blockbuf;
+							blockbuf=new char[tw+sizeof(FileBufferVHDItem)];
+							blockbuf_size=tw+sizeof(FileBufferVHDItem);
+						}
+						if(tmp->Read(blockbuf, tw)!=tw)
+						{
+							Server->Log("Error reading from tmp.f", LL_ERROR);
+						}
+						parent->writeVHD(item.pos, blockbuf, tw);
+						written+=tw;
+						tpos+=item.bsize;
+					}
 
 					if( written>=free_space_lim/2)
 					{
