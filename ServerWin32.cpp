@@ -62,7 +62,7 @@ int CServer::WriteDump(void* pExceptionPointers)
     WCHAR szPath[MAX_PATH]; 
     WCHAR szFileName[MAX_PATH]; 
     WCHAR* szAppName = L"UrBackup";
-    WCHAR* szVersion = L"v0.25";
+    WCHAR* szVersion = L"v0.25.1";
     DWORD dwBufferSize = MAX_PATH;
     HANDLE hDumpFile;
     SYSTEMTIME stLocalTime;

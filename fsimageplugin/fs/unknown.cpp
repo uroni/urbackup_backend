@@ -17,7 +17,12 @@
 **************************************************************************/
 
 #include "unknown.h"
+#include "../../Interface/Server.h"
 #include <memory.h>
+
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 #define DEF_BLOCKSIZE 4096
 
@@ -26,7 +31,31 @@ FSUnknown::FSUnknown(const std::wstring &pDev) : Filesystem(pDev)
 	if(has_error)
 		return;
 
-	int64 bitmap_entries=(int64)(dev->Size()/DEF_BLOCKSIZE);
+#ifdef _WIN32
+	HANDLE hDev=CreateFileW( pDev.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+	if(hDev==INVALID_HANDLE_VALUE)
+	{
+		Server->Log("Error opening device -2", LL_ERROR);
+		has_error=true;
+		return;
+	}
+
+	DWORD r_bytes;
+	GET_LENGTH_INFORMATION li;
+	BOOL b=DeviceIoControl(hDev, IOCTL_DISK_GET_LENGTH_INFO,  NULL,  0, &li,  sizeof(GET_LENGTH_INFORMATION), &r_bytes, NULL);
+	if(!b)
+	{
+		Server->Log("Error in DeviceIoControl(IOCTL_DISK_GET_LENGTH_INFO)", LL_ERROR);
+		has_error=true;
+		CloseHandle(hDev);
+		return;
+	}
+	drivesize=li.Length.QuadPart;
+#else
+	drivesize=dev->Size();
+#endif
+
+	int64 bitmap_entries=(int64)(drivesize/DEF_BLOCKSIZE);
 	if(dev->Size()%DEF_BLOCKSIZE!=0)
 		++bitmap_entries;
 

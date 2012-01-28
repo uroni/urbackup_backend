@@ -13,4 +13,5 @@ public:
 
 private:
 	unsigned char *bitmap;
+	int64 drivesize;
 };

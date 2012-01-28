@@ -92,6 +92,7 @@ int my_init_fcn_t(int argc, char *argv[])
 	}__except(CServer::WriteDump(GetExceptionInformation()) )
 	{
 	}
+	return 101;
 #endif
 }
 

@@ -27,35 +27,53 @@ FSNTFSWIN::FSNTFSWIN(const std::wstring &pDev)
 		return;
 	}
 
+	DWORD r_bytes;
+	NTFS_VOLUME_DATA_BUFFER vdb;
+	b=DeviceIoControl(hDev, FSCTL_GET_NTFS_VOLUME_DATA,  NULL,  0, &vdb,  sizeof(NTFS_VOLUME_DATA_BUFFER), &r_bytes, NULL);
+	if(!b)
+	{
+		Server->Log("Error in DeviceIoControl(FSCTL_GET_NTFS_VOLUME_DATA)", LL_ERROR);
+		has_error=true;
+		CloseHandle(hDev);
+		return;
+	}
+
 	sectorsize=bytes_per_sector;
 	clustersize=sectorsize*sectors_per_cluster;
-	drivesize=(uint64)TotalNumberOfClusters*(uint64)clustersize;
+	drivesize=vdb.NumberSectors.QuadPart*sectorsize;
+
+	uint64 numberOfClusters=drivesize/clustersize;
 
 	STARTING_LCN_INPUT_BUFFER start;
 	LARGE_INTEGER li;
 	li.QuadPart=0;
 	start.StartingLcn=li;
 
-	size_t new_size=TotalNumberOfClusters/8;
-	if(TotalNumberOfClusters%8!=0)
+	size_t new_size=(size_t)(numberOfClusters/8);
+	if(numberOfClusters%8!=0)
 		++new_size;
 			
+	size_t n_clusters=new_size;
+
 	new_size+=sizeof(VOLUME_BITMAP_BUFFER);
 
 	VOLUME_BITMAP_BUFFER *vbb=(VOLUME_BITMAP_BUFFER*)(new char[new_size]);
 
-	DWORD r_bytes;
+	
 	b=DeviceIoControl(hDev, FSCTL_GET_VOLUME_BITMAP, &start, sizeof(STARTING_LCN_INPUT_BUFFER), vbb, (DWORD)new_size, &r_bytes, NULL);
 	if(!b)
 	{
-		Server->Log("DeviceIoControl(1) failed", LL_ERROR);
+		Server->Log("DeviceIoControl(FSCTL_GET_VOLUME_BITMAP) failed", LL_ERROR);
 		has_error=true;
 		CloseHandle(hDev);
 		return;
 	}
 
-	bitmap=new unsigned char[(unsigned int)(vbb->BitmapSize.QuadPart/8)];
-	memcpy(bitmap, vbb->Buffer, (size_t)(vbb->BitmapSize.QuadPart/8));
+	Server->Log("TotalNumberOfClusters="+nconvert((size_t)TotalNumberOfClusters)+" numberOfClusters="+nconvert(numberOfClusters)+" n_clusters="+nconvert(n_clusters)+" StartingLcn="+nconvert(vbb->StartingLcn.QuadPart)+" BitmapSize="+nconvert(vbb->BitmapSize.QuadPart)+" r_bytes="+nconvert((size_t)r_bytes), LL_DEBUG);
+
+	bitmap=new unsigned char[(unsigned int)(n_clusters)];
+	memset(bitmap, 0xFF, n_clusters);
+	memcpy(bitmap+(unsigned int)(vbb->StartingLcn.QuadPart/8), vbb->Buffer, (size_t)(vbb->BitmapSize.QuadPart/8));
 
 	delete []vbb;
 

@@ -27,6 +27,12 @@
 #endif
 #include "fs/unknown.h"
 #include "vhdfile.h"
+#include "../stringtools.h"
+
+void PrintInfo(IFilesystem *fs)
+{
+	Server->Log("FSINFO: blocksize="+nconvert(fs->getBlocksize())+" size="+nconvert(fs->getSize())+" has_error="+nconvert(fs->hasError())+" used_space="+nconvert(fs->calculateUsedSpace()), LL_DEBUG);
+}
 
 IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev)
 {
@@ -50,6 +56,27 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev)
 	{
 		Server->Log("Filesystem type is ntfs", LL_DEBUG);
 		FSNTFS *fs=new FSNTFS(pDev);
+		
+		/*
+		int64 idx=0;
+		while(idx<fs->getSize()/fs->getBlocksize())
+		{
+			std::string b1;
+			std::string b2;
+			int64 idx_start=idx;
+			for(size_t i=0;i<100;++i)
+			{
+				b1+=nconvert((int)fs->readBlock(idx, NULL));
+				b2+=nconvert((int)fs2->readBlock(idx, NULL));
+				++idx;
+			}
+			if(b1!=b2)
+			{
+				Server->Log(nconvert(idx_start)+" fs1: "+b1, LL_DEBUG);
+				Server->Log(nconvert(idx_start)+" fs2: "+b2, LL_DEBUG);
+			}
+		}*/
+
 		if(fs->hasError())
 		{
 			Server->Log("NTFS has error", LL_WARNING);
@@ -62,8 +89,10 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev)
 				delete fs2;
 				return NULL;
 			}
+			PrintInfo(fs2);
 			return fs2;
 		}
+		PrintInfo(fs);
 		return fs;
 	}
 	else
@@ -75,6 +104,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev)
 			delete fs;
 			return NULL;
 		}
+		PrintInfo(fs);
 		return fs;
 	}
 }
