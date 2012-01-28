@@ -79,14 +79,14 @@ ACTION_IMPL(status)
 		{
 			if(GET[L"remove"]==L"true")
 			{
-				IQuery *q=db->Prepare("DELETE FROM extra_clients WHERE id=?");
+				IQuery *q=db->Prepare("DELETE FROM settings_db.extra_clients WHERE id=?");
 				q->Bind(hostname);
 				q->Write();
 				q->Reset();
 			}
 			else
 			{
-				IQuery *q=db->Prepare("INSERT INTO extra_clients (hostname) SELECT ? AS hostname WHERE NOT EXISTS (SELECT hostname FROM extra_clients WHERE hostname=?)");
+				IQuery *q=db->Prepare("INSERT INTO settings_db.extra_clients (hostname) SELECT ? AS hostname WHERE NOT EXISTS (SELECT hostname FROM settings_db.extra_clients WHERE hostname=?)");
 				q->Bind(hostname);
 				q->Bind(hostname);
 				q->Write();
@@ -241,7 +241,7 @@ ACTION_IMPL(status)
 
 		if(rights=="all")
 		{
-			res=db->Read("SELECT id, hostname, lastip FROM extra_clients");
+			res=db->Read("SELECT id, hostname, lastip FROM settings_db.extra_clients");
 			for(size_t i=0;i<res.size();++i)
 			{
 				JSON::Object extra_client;

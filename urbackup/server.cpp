@@ -73,8 +73,8 @@ void BackupServer::operator()(void)
 	}
 #endif
 
-	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM extra_clients");
-	q_update_extra_ip=db->Prepare("UPDATE extra_clients SET lastip=? WHERE id=?");
+	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
+	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
 
 	FileClient fc;
 

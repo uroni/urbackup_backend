@@ -811,6 +811,14 @@ void upgrade14_15(void)
 	db->Write("DROP TABLE si_permissions");
 }
 
+void upgrade15_16(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE settings_db.extra_clients ( id INTEGER PRIMARY KEY, hostname TEXT, lastip INTEGER)");
+	db->Write("INSERT INTO settings_db.extra_clients SELECT * FROM extra_clients");
+	db->Write("DROP TABLE extra_clients");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -827,7 +835,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=15;
+	int max_v=16;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -902,6 +910,10 @@ void upgrade(void)
 				break;
 			case 14:
 				upgrade14_15();
+				++ver;
+				break;
+			case 15:
+				upgrade15_16();
 				++ver;
 				break;
 			default:

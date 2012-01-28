@@ -849,7 +849,7 @@ void ServerCleanupThread::removeClient(int clientid)
 	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
-	q=db->Prepare("DELETE FROM extra_clients WHERE id=?", false);
+	q=db->Prepare("DELETE FROM settings_db.extra_clients WHERE id=?", false);
 	q->Bind(clientid); q->Write(); q->Reset();
 	db->destroyQuery(q);
 
