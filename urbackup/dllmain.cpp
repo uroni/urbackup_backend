@@ -547,17 +547,23 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 DLLEXPORT void UnloadActions(void)
 {
+	bool shutdown_ok=false;
 	if(server_exit_pipe!=NULL)
 	{
 		std::string msg="exit";
-		while(msg!="ok")
+		unsigned int starttime=Server->getTimeMS();
+		while(msg!="ok" && Server->getTimeMS()-starttime<500)
 		{
 			server_exit_pipe->Write(msg);
 			Server->wait(100);
 			server_exit_pipe->Read(&msg);
 		}
 
-		Server->destroy(server_exit_pipe);
+		if(msg=="ok")
+		{
+			Server->destroy(server_exit_pipe);
+			shutdown_ok=true;
+		}
 	}
 	
 #ifndef CLIENT_ONLY
@@ -568,13 +574,10 @@ DLLEXPORT void UnloadActions(void)
 
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		db->Write("PRAGMA wal_checkpoint");
-		Server->destroyAllDatabases();
-#ifdef _WIN32
-#ifdef _DEBUG
-		db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		db->Write("PRAGMA journal_mode=DELETE");
-#endif
-#endif
+		if(!shutdown_ok)
+			db->BeginTransaction();
+		else
+			Server->destroyAllDatabases();
 	}
 #endif
 }
