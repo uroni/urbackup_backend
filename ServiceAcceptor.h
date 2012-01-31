@@ -30,4 +30,6 @@ private:
 #endif
 
 	bool do_exit;
+
+	bool has_error;
 };

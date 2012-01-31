@@ -62,6 +62,15 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 	}
 	Server->Log("done.",LL_INFO);
 
+	int optval=1;
+	int rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+	if(rc==SOCKET_ERROR)
+	{
+		Server->Log("Failed setting SO_REUSEADDR for port "+nconvert(uPort),LL_ERROR);
+		error=true;
+		return;
+	}
+
 	sockaddr_in addr;
 
 	memset(&addr, 0, sizeof(sockaddr_in));
@@ -69,7 +78,7 @@ CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned sho
 	addr.sin_port=htons(uPort);
 	addr.sin_addr.s_addr=INADDR_ANY;
 
-	int rc=bind(s,(sockaddr*)&addr,sizeof(addr));
+	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)
 	{
 		Server->Log("Failed binding SOCKET to Port "+nconvert(uPort),LL_ERROR);

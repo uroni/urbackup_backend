@@ -35,6 +35,7 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	service=pService;
 	exitpipe=Server->createMemoryPipe();
 	do_exit=false;
+	has_error=false;
 
 	int rc;
 #ifdef _WIN32
@@ -47,6 +48,16 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	if(s<1)
 	{
 		Server->Log(name+": Creating SOCKET failed",LL_ERROR);
+		has_error=true;
+		return;
+	}
+
+	int optval=1;
+	rc=setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+	if(rc==SOCKET_ERROR)
+	{
+		Server->Log("Failed setting SO_REUSEADDR for port "+nconvert(port),LL_ERROR);
+		has_error=true;
 		return;
 	}
 
@@ -61,6 +72,7 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	if(rc==SOCKET_ERROR)
 	{
 		Server->Log(name+": Failed binding SOCKET to Port "+nconvert(port),LL_ERROR);
+		has_error=true;
 		return;
 	}
 
@@ -75,6 +87,9 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 
 CServiceAcceptor::~CServiceAcceptor()
 {
+	if(has_error)
+		return;
+
 	do_exit=true;
 #ifndef _WIN32
 	char ch=0;
@@ -106,6 +121,9 @@ CServiceAcceptor::~CServiceAcceptor()
 
 void CServiceAcceptor::operator()(void)
 {
+	if(has_error)
+		return;
+
 	while(do_exit==false)
 	{
 		fd_set fdset;
@@ -129,21 +147,29 @@ void CServiceAcceptor::operator()(void)
 
 		_i32 rc=select((int)maxs, &fdset, 0, 0, &lon);
 
-		if( FD_ISSET(s,&fdset) && do_exit==false)
+		if(rc>=0)
 		{
-			sockaddr_in naddr;
-			SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
-			if(ns>0)
+			if( FD_ISSET(s,&fdset) && do_exit==false)
 			{
-				Server->Log(name+": New Connection incomming "+nconvert(Server->getTimeMS())+" s: "+nconvert((int)ns), LL_DEBUG);
+				sockaddr_in naddr;
+				SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
+				if(ns>0)
+				{
+					Server->Log(name+": New Connection incomming "+nconvert(Server->getTimeMS())+" s: "+nconvert((int)ns), LL_DEBUG);
 
-#ifdef _WIN32
-				int window_size=512*1024;
-				setsockopt(ns, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
-				setsockopt(ns, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
-#endif
-				AddToWorker(ns);				
+	#ifdef _WIN32
+					int window_size=512*1024;
+					setsockopt(ns, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
+					setsockopt(ns, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
+	#endif
+					AddToWorker(ns);				
+				}
 			}
+		}
+		else
+		{
+			Server->Log("Select error in CServiceAcceptor Thread.", LL_ERROR);
+			break;
 		}
 	}
 	Server->Log("ServiceAcceptor finished", LL_DEBUG);

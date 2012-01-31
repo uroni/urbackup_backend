@@ -136,6 +136,13 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 		getsockopt(mSocket, SOL_SOCKET, SO_SNDBUF,(char *) &window_size, &window_size_len );
 		Log("Info: Window size=%i", window_size);
 #endif
+		int optval=1;
+		rc=setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Failed setting SO_REUSEADDR in CTCPFileServ::Start");
+			return false;
+		}
 
 		sockaddr_in addr;
 
