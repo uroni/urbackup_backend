@@ -457,7 +457,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if(res.empty())
 			{
 				IQuery *q=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('backupfolder', ?, 0)", false);
-				q->Bind(getFile("urbackup/backupfolder"));
+				std::string bf=getFile("urbackup/backupfolder");
+				if(linecount(bf)>0)
+					bf=getline(0, bf);
+				q->Bind(trim(bf));
 				q->Write();
 				db->destroyQuery(q);
 			}
