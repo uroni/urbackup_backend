@@ -8,10 +8,13 @@
 
 #include "IFilesystem.h"
 
+class VHDFile;
+
 class Filesystem : public IFilesystem
 {
 public:
 	Filesystem(const std::wstring &pDev);
+	Filesystem(IFile *pDev);
 	virtual ~Filesystem();
 	virtual int64 getBlocksize(void)=0;
 	virtual int64 getSize(void)=0;
@@ -29,6 +32,8 @@ protected:
 	unsigned int tmpbufsize;
 
 	bool has_error;
+
+	bool own_dev;
 };
 
 #endif //FILESYSTEM_H_5

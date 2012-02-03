@@ -38,7 +38,19 @@ private:
 	char* buf;
 };
 
-FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev), bitmap(NULL)
+FSNTFS::FSNTFS(const std::wstring &pDev, bool check_mft_mirror, bool fix)
+	: Filesystem(pDev), bitmap(NULL)
+{
+	init(check_mft_mirror, fix);
+}
+
+FSNTFS::FSNTFS(IFile *pDev, bool check_mft_mirror, bool fix)
+	: Filesystem(pDev), bitmap(NULL)
+{
+	init(check_mft_mirror, fix);
+}
+
+void FSNTFS::init(bool check_mft_mirror, bool fix)
 {
 	if(has_error)
 		return;
@@ -269,6 +281,16 @@ FSNTFS::FSNTFS(const std::wstring &pDev) : Filesystem(pDev), bitmap(NULL)
 		memcpy(&bitmap[bitmap_pos], buffer, (size_t)(std::min)(bitmapstream.real_size-bitmap_pos, (uint64)clustersize) );
 		bitmap_pos+=(std::min)(bitmapstream.real_size-bitmap_pos, (uint64)clustersize);
 	}
+
+	if(check_mft_mirror)
+	{
+		if(!checkMFTMirror(mftrecordsize, mftrunlist, mft, true) )
+		{
+			Server->Log("MFT mirror check failed", LL_ERROR);
+			has_error=true;
+			return;
+		}
+	}
 }
 
 FSNTFS::~FSNTFS(void)
@@ -333,6 +355,189 @@ const unsigned char * FSNTFS::getBitmap(void)
 {
 	return bitmap;
 }
+
+bool FSNTFS::checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTFSFileRecord &mft, bool fix)
+{
+	unsigned int mirr_vcn=(1*mftrecordsize)/clustersize;
+	uint64 mirr_lcn=mftrunlist.getLCN(mirr_vcn);
+	if(mirr_lcn==UD_UINT64)
+	{
+		Server->Log("Error mapping VCN to LCN", LL_ERROR);
+		return false;
+	}
+	uint64 mirr_pos=mirr_lcn*clustersize+(1*mftrecordsize)%clustersize;
+	char *mirrrecord=new char[mftrecordsize];
+	MemFree mirrrecord_free(mirrrecord);
+
+	_u32 rc=sectorRead(mirr_pos, mirrrecord, mftrecordsize);
+	if(rc==0)
+	{
+		Server->Log("Error reading bitmap MFT entry", LL_DEBUG);
+		return false;
+	}
+
+	NTFSFileRecord mftmirr;
+	memcpy((char*)&mftmirr, mirrrecord, sizeof(NTFSFileRecord) );
+
+	if(!applyFixups(mirrrecord, mftrecordsize, mirrrecord+mftmirr.sequence_offset, mftmirr.sequence_size*2 ) )
+	{
+		Server->Log("Applying fixups failed", LL_ERROR);
+		return false;
+	}
+	
+	if(mftmirr.magic[0]!='F' || mftmirr.magic[1]!='I' || mftmirr.magic[2]!='L' || mftmirr.magic[3]!='E' )
+	{
+		has_error=true;
+		return false;
+	}
+
+	_u32 currpos=0;
+	MFTAttribute attr;
+	attr.length=mft.attribute_offset;
+	bool is_mftmirr=false;
+	do
+	{
+		currpos+=attr.length;
+		memcpy((char*)&attr, mirrrecord+currpos, sizeof(MFTAttribute) );
+		if(attr.type==0x30 && attr.nonresident==0) //FILENAME
+		{
+			MFTAttributeFilename fn;
+			memcpy((char*)&fn, mirrrecord+currpos+attr.attribute_offset, sizeof(MFTAttributeFilename) );
+			std::string fn_uc;
+			fn_uc.resize(fn.filename_length*2);
+			memcpy(&fn_uc[0], mirrrecord+currpos+attr.attribute_offset+sizeof(MFTAttributeFilename), fn.filename_length*2);
+			Server->Log(L"Filename="+Server->ConvertFromUTF16(fn_uc) , LL_DEBUG);
+			if(Server->ConvertFromUTF16(fn_uc)==L"$MFTMirr")
+			{
+				is_mftmirr=true;
+			}
+		}
+		Server->Log("Attribute Type: "+nconvert(attr.type)+" nonresident="+nconvert(attr.nonresident)+" length="+nconvert(attr.length), LL_DEBUG);
+	}while( attr.type!=0xFFFFFFFF && attr.type!=0x80);
+
+	if(!is_mftmirr)
+	{
+		Server->Log(L"Filename attribute not found or filename wrong", LL_ERROR);
+		return false;
+	}
+
+	if(attr.type!=0x80)
+	{
+		Server->Log("Data Attribute of MftMirr not found", LL_ERROR);
+		return false;
+	}
+
+	if(attr.nonresident!=1)
+	{
+		Server->Log("DATA is resident!! - unexpected -2", LL_ERROR);
+		return false;
+	}
+
+	MFTAttributeNonResident mftmirrstream;
+	memcpy((char*)&mftmirrstream, mirrrecord+currpos, sizeof(MFTAttributeNonResident) );
+	if(mftmirrstream.compression_size!=0)
+	{
+		Server->Log("MFT Rundata is compressed. Can't handle that. -2", LL_ERROR);
+		return false;
+	}
+
+	Runlist mirrrunlist(mirrrecord+currpos+mftmirrstream.run_offset );
+	
+	unsigned char *mftmirr_data=new unsigned char[(unsigned int)mftmirrstream.real_size];
+	char *buffer=new char[clustersize];
+	MemFree buffer_free(buffer);
+	mirr_pos=0;
+	for(uint64 i=mftmirrstream.starting_vnc;i<=mftmirrstream.last_vnc;++i)
+	{
+		uint64 lcn=mirrrunlist.getLCN(i);
+		if(lcn==UD_UINT64)
+		{
+			Server->Log("Error mapping VCN->LCN. -2", LL_ERROR);
+			return false;
+		}
+		dev->Seek(lcn*clustersize);
+		rc=dev->Read(buffer, clustersize);
+		if(rc!=clustersize)
+		{
+			Server->Log("Error reading cluster "+nconvert(lcn)+" code: 529", LL_ERROR);
+			return false;
+		}
+		memcpy(&mftmirr_data[mirr_pos], buffer, (size_t)(std::min)(mftmirrstream.real_size-mirr_pos, (uint64)clustersize) );
+		mirr_pos+=(std::min)(mftmirrstream.real_size-mirr_pos, (uint64)clustersize);
+	}
+
+	bool has_fix=false;
+
+	for(uint64 i=0;i<mftmirrstream.real_size/mftrecordsize;++i)
+	{
+		uint64 currfile_vcn=(i*mftrecordsize)/clustersize;
+		uint64 currfile_lcn=mftrunlist.getLCN(currfile_vcn);
+		if(currfile_lcn==UD_UINT64)
+		{
+			Server->Log("Error mapping VCN to LCN", LL_ERROR);
+			return false;
+		}
+		uint64 currfile_pos=currfile_lcn*clustersize+(1*mftrecordsize)%clustersize;
+		char *currfilerecord=new char[mftrecordsize];
+		MemFree currfilerecord_free(currfilerecord);
+
+		_u32 rc=sectorRead(currfile_pos, currfilerecord, mftrecordsize);
+		if(rc==0)
+		{
+			Server->Log("Error reading currfile MFT entry", LL_DEBUG);
+			return false;
+		}
+
+		NTFSFileRecord *A=(NTFSFileRecord *)currfilerecord;
+		NTFSFileRecord *B=(NTFSFileRecord *)(mftmirr_data+i*mftrecordsize);
+
+		if(A->lsn!=B->lsn)
+		{
+			Server->Log("MFT file record in MFT mirror differs in file record "+nconvert(i)+": Logfile sequence number differs", LL_WARNING);
+		}
+
+		if(memcmp(currfilerecord, mftmirr_data+i*mftrecordsize, mftrecordsize)!=0)
+		{
+			Server->Log("MFT file record in MFT mirror differs in file record "+nconvert(i), LL_WARNING);
+			if(fix)
+			{
+				memcpy(mftmirr_data+i*mftrecordsize, currfilerecord, mftrecordsize);
+				has_fix=true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	if(has_fix)
+	{
+		mirr_pos=0;
+		for(uint64 i=mftmirrstream.starting_vnc;i<=mftmirrstream.last_vnc;++i)
+		{
+			uint64 lcn=mirrrunlist.getLCN(i);
+			if(lcn==UD_UINT64)
+			{
+				Server->Log("Error mapping VCN->LCN. -2", LL_ERROR);
+				return false;
+			}
+			dev->Seek(lcn*clustersize);
+			rc=dev->Write((const char*)(mftmirr_data+i*clustersize), clustersize);
+			if(rc!=clustersize)
+			{
+				Server->Log("Error writing cluster "+nconvert(lcn)+" code: 652", LL_WARNING);
+				return false;
+			}
+		}
+
+		Server->Log("Fixed MFT mirror", LL_ERROR);
+	}
+
+	return true;
+}
+
+//-------------- RUNLIST -----------------
 
 Runlist::Runlist(char *pData) : data(pData)
 {
@@ -401,3 +606,4 @@ uint64 Runlist::getLCN(uint64 vcn)
 	}
 	return UD_UINT64;
 }
+

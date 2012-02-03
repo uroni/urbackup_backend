@@ -39,7 +39,7 @@ print_help()
 
 print_version()
 {
-	echo "UrBackup Client v0.39.1"
+	echo "UrBackup Client v0.39.2"
 	echo "Copyright (C) 2011 Martin Raiber"
 	echo "This is free software; see the source for copying conditions. There is NO"
 	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."

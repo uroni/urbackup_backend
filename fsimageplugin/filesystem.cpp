@@ -32,11 +32,20 @@ Filesystem::Filesystem(const std::wstring &pDev)
 		has_error=true;
 	}
 	tmp_buf=NULL;
+	own_dev=true;
+}
+
+Filesystem::Filesystem(IFile *pDev)
+	: dev(pDev)
+{
+	has_error=false;
+	tmp_buf=NULL;
+	own_dev=false;
 }
 
 Filesystem::~Filesystem()
 {
-	if(dev!=NULL)
+	if(dev!=NULL && own_dev)
 	{
 		Server->destroy(dev);
 	}

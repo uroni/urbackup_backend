@@ -59,20 +59,26 @@ struct VHDDynamicHeader
 #pragma pack()
 #endif
 
-class VHDFile : public IVHDFile
+class VHDFile : public IVHDFile, public IFile
 {
 public:
 	VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false);
 	VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode=false);
 	~VHDFile();
 
-	void Seek(uint64 offset);
+	virtual std::string Read(_u32 tr);
+	virtual _u32 Read(char* buffer, _u32 bsize);
+	virtual _u32 Write(const std::string &tw);
+	virtual _u32 Write(const char* buffer, _u32 bsize);
+	virtual _i64 Size(void);
+	
+	bool Seek(_i64 offset);
 	bool Read(char* buffer, size_t bsize, size_t &read);
-	bool Write(char *buffer, size_t bsize);
 	uint64 getSize(void);
 	char *getUID(void);
 	unsigned int getTimestamp(void);
-	std::wstring getFilename(void);
+	std::string getFilename(void);
+	std::wstring getFilenameW(void);
 
 	bool has_sector(void);
 	bool this_has_sector(void);
@@ -80,6 +86,8 @@ public:
 	unsigned int getBlocksize();
 
 	bool isOpen(void);
+
+	void addVolumeOffset(_i64 offset);
 
 private:
 
@@ -136,4 +144,6 @@ private:
 	bool bitmap_dirty;
 
 	bool fast_mode;
+
+	_i64 volume_offset;
 };

@@ -563,6 +563,39 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(7);
 	}
 
+	std::string vhd_fixmftmirr=Server->getServerParameter("vhd_checkmftmirr");
+	if(!vhd_fixmftmirr.empty())
+	{
+		VHDFile vhd(Server->ConvertToUnicode(vhd_fixmftmirr), false, 0);
+		vhd.addVolumeOffset(1024*512);
+
+		if(vhd.isOpen()==false)
+		{
+			Server->Log("Could not open vhd file", LL_ERROR);
+			exit(7);
+		}
+
+		if(Server->getServerParameter("fix")!="true")
+		{
+			FSNTFS fs(&vhd, true);
+			if(fs.hasError())
+			{
+				Server->Log("NTFS filesystem has errors", LL_ERROR);
+			}
+			exit(7);
+		}
+		else
+		{
+			FSNTFS fs(&vhd, true, true);
+			if(fs.hasError())
+			{
+				Server->Log("NTFS filesystem has errors", LL_ERROR);
+			}
+			exit(7);
+		}
+		exit(0);
+	}
+
 	imagepluginmgr=new CImagePluginMgr;
 
 	Server->RegisterPluginThreadsafeModel( imagepluginmgr, "fsimageplugin");

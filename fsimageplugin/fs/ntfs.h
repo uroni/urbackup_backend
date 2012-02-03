@@ -124,10 +124,13 @@ private:
 	char *pos;
 };
 
+class IFile;
+
 class FSNTFS : public Filesystem
 {
 public:
-	FSNTFS(const std::wstring &pDev);
+	FSNTFS(const std::wstring &pDev, bool check_mft_mirror=false, bool fix=false);
+	FSNTFS(IFile *pDev, bool check_mft_mirror=false, bool fix=false);
 	~FSNTFS(void);
 
 	int64 getBlocksize(void);
@@ -135,6 +138,9 @@ public:
 	const unsigned char * getBitmap(void);
 
 private:
+
+	void init(bool check_mft_mirror, bool fix);
+
 	unsigned char *bitmap;
 
 	_u32 sectorRead(int64 pos, char *buffer, _u32 bsize);
@@ -143,4 +149,6 @@ private:
 	unsigned int sectorsize;
 	unsigned int clustersize;
 	uint64 drivesize;
+
+	bool checkMFTMirror(unsigned int mftrecordsize, Runlist &mftrunlist, NTFSFileRecord &mft, bool fix);
 };
