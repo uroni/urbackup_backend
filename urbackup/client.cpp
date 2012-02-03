@@ -1366,9 +1366,33 @@ void IndexThread::readExcludePattern(void)
 			for(size_t i=0;i<exlude_dirs.size();++i)
 			{
 				strupper(&exlude_dirs[i]);
-				exlude_dirs[i]=trim(exlude_dirs[i]);
 			}
 #endif
+			for(size_t i=0;i<exlude_dirs.size();++i)
+			{
+				std::wstring ep=trim(exlude_dirs[i]);
+				std::wstring nep;
+				nep.reserve(ep.size()*2);
+				for(size_t j=0;j<ep.size();++j)
+				{
+					wchar_t ch=ep[j];
+					if(ch=='\\' && j+1<ep.size() && ep[j+1]=='\\')
+					{
+						nep+=L"\\\\";
+						++j;
+					}
+					else if(ch=='\\' && ( j+1>=ep.size() || (ep[j+1]!='?' && ep[j+1]!='*' && ep[j+1]!='[' ) ) )
+					{
+						nep+=L"\\\\";
+					}
+					else
+					{
+						nep+=ch;
+					}
+				}
+				exlude_dirs[i]=nep;
+			}
+			
 		}
 		Server->destroy(curr_settings);
 	}
@@ -1386,7 +1410,7 @@ bool IndexThread::isExcluded(const std::wstring &path)
 	{
 		if(!exlude_dirs[i].empty())
 		{
-			bool b=amatch(path.c_str(), exlude_dirs[i].c_str());
+			bool b=amatch(wpath.c_str(), exlude_dirs[i].c_str());
 			if(b)
 			{
 				return true;
