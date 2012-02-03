@@ -259,8 +259,11 @@ db_nresults CQuery::ReadN(int *timeoutms)
 				std::string data;
 				const void *blob=sqlite3_column_blob(ps, column);
 				int blob_size=sqlite3_column_bytes(ps, column);
-				data.resize(blob_size);
-				memcpy(&data[0], blob, blob_size);
+				if(blob_size>0 && blob!=NULL)
+				{
+					data.resize(blob_size);
+					memcpy(&data[0], blob, blob_size);
+				}
 				res.insert( std::pair<std::string, std::string>(column_name, data) );
 				++column;
 			}
