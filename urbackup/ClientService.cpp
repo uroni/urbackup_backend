@@ -1446,6 +1446,29 @@ void ClientConnector::getBackupDirs(int version)
 	db->destroyAllQueries();
 }
 
+std::wstring removeChars(std::wstring in)
+{
+	wchar_t illegalchars[] = {'*', ':', '/' , '\\'};
+	std::wstring ret;
+	for(size_t i=0;i<in.size();++i)
+	{
+		bool found=false;
+		for(size_t j=0;j<sizeof(illegalchars);++j)
+		{
+			if(illegalchars[j]==in[i])
+			{
+				found=true;
+				break;
+			}
+		}
+		if(!found)
+		{
+			ret+=in[i];
+		}
+	}
+	return ret;
+}
+
 bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -1474,6 +1497,8 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 				name=name_arg->second;
 			else
 				name=ExtractFileName(dir);
+
+			name=removeChars(name);
 
 			if(dir[dir.size()-1]=='\\' || dir[dir.size()-1]=='/' )
 				dir.erase(dir.size()-1,1);
