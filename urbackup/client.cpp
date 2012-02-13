@@ -1381,7 +1381,7 @@ void IndexThread::readExcludePattern(void)
 						nep+=L"\\\\";
 						++j;
 					}
-					else if(ch=='\\' && ( j+1>=ep.size() || (ep[j+1]!='?' && ep[j+1]!='*' && ep[j+1]!='[' ) ) )
+					else if(ch=='\\' && ( j+1>=ep.size() || (ep[j+1]!='[' ) ) )
 					{
 						nep+=L"\\\\";
 					}
