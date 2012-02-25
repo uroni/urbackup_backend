@@ -31,7 +31,7 @@
 #include "../Interface/Action.h"
 #include "../Interface/File.h"
 #include "../stringtools.h"
-#include "../urbackup/sha2/sha2.h"
+#include "../urbackupcommon/sha2/sha2.h"
 
 #include <stdlib.h>
 

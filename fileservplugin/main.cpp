@@ -35,12 +35,6 @@ CCampusThread *ct=NULL;
 #endif
 CTCPFileServ *TCPServer=NULL;
 
-#ifdef _DEBUG
-#ifdef _WIN32
-#pragma comment(lib, "vld.lib")
-#endif
-#endif
-
 #ifdef LINUX
 #include <sys/types.h>
 #include <sys/stat.h>

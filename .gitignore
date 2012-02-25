@@ -118,3 +118,8 @@ urbackup/db_stat.exe
 urbackup/dbsql.exe
 urbackup/backup_server_old_sqlite.db*
 urbackup/backup_server_settings.db*
+UrBackupBackend.opensdf
+UrBackupBackend.sdf
+UrBackupBackend.suo
+urbackupclient/Debug/*
+urbackupserver/Debug/*

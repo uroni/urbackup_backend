@@ -68,9 +68,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bitmask.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="bufmgr.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>

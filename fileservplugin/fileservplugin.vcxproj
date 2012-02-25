@@ -191,7 +191,6 @@
     <ClCompile Include="tcpstack.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bitmask.h" />
     <ClInclude Include="bufmgr.h" />
     <ClInclude Include="CampusThread.h" />
     <ClInclude Include="CClientThread.h" />
