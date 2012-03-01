@@ -25,17 +25,14 @@
 #include "../Interface/File.h"
 #include "../Interface/ThreadPool.h"
 #include "../stringtools.h"
-#include "../urbackupcommon/escape.h"
 #include "database.h"
 #include "../urbackupcommon/fileclient/data.h"
-#include "../fsimageplugin/IFSImageFactory.h"
 #include "../fsimageplugin/IFilesystem.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urbackupcommon/sha2/sha2.h"
-#include "ClientSend.h"
 #include "ServerIdentityMgr.h"
 #include "../urbackupcommon/settings.h"
-#include "../urbackupcommon/capa_bits.h"
+#include "ImageThread.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #else
@@ -50,9 +47,7 @@ std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 #define _atoi64 atoll
 #endif
 
-extern IFSImageFactory *image_fak;
 extern ICryptoFactory *crypto_fak;
-extern unsigned char *zero_hash;
 extern std::string time_format_str;
 
 ICustomClient* ClientService::createClient()
@@ -83,8 +78,6 @@ db_results ClientConnector::cached_status;
 std::string ClientConnector::backup_source_token;
 std::map<std::string, unsigned int> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
-
-const unsigned int x_pingtimeout=180000;
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -122,7 +115,8 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	tid=pTID;
 	pipe=pPipe;
 	state=CCSTATE_NORMAL;
-	thread_action=TA_NONE;
+	image_inf.thread_action=TA_NONE;
+	image_inf.image_thread=NULL;
 	mempipe=Server->createMemoryPipe();
 	lasttime=Server->getTimeMS();
 	do_quit=false;
@@ -172,6 +166,8 @@ bool ClientConnector::Run(void)
 			do_quit=true;
 			return true;
 		}
+		delete image_inf.image_thread;
+		image_inf.image_thread=NULL;
 		return false;
 	}
 
@@ -319,8 +315,10 @@ bool ClientConnector::Run(void)
 	case CCSTATE_IMAGE:
 	case CCSTATE_IMAGE_HASHDATA:
 		{
-			if(Server->getThreadPool()->isRunning(thread_ticket)==false )
+			if(Server->getThreadPool()->isRunning(image_inf.thread_ticket)==false )
 			{
+				delete image_inf.image_thread;
+				image_inf.image_thread=NULL;
 				return false;
 			}
 		}break;
@@ -589,7 +587,7 @@ void ClientConnector::ReceivePackets(void)
 			if(!checkPassword(params[L"pw"]))
 			{
 				Server->Log("Password wrong!", LL_ERROR);
-				break;
+				continue;
 			}
 			else
 			{
@@ -602,801 +600,158 @@ void ClientConnector::ReceivePackets(void)
 			ident_ok=true;
 		}
 
-		if(cmd=="ADD IDENTITY")
+		if(cmd=="ADD IDENTITY" )
 		{
-			if(identity.empty())
-			{
-				tcpstack.Send(pipe, "Identity empty");
-			}
-			else
-			{
-				if(Server->getServerParameter("restore_mode")=="true" && !ident_ok )
-				{
-					ServerIdentityMgr::addServerIdentity(identity);
-						tcpstack.Send(pipe, "OK");
-				}
-				else if( ident_ok )
-				{
-					tcpstack.Send(pipe, "OK");
-				}
-				else
-				{
-					if( ServerIdentityMgr::numServerIdentities()==0 )
-					{
-						ServerIdentityMgr::addServerIdentity(identity);
-						tcpstack.Send(pipe, "OK");
-					}
-					else
-					{
-						tcpstack.Send(pipe, "failed");
-					}
-				}
-			}
+			CMD_ADD_IDENTITY(identity, cmd, ident_ok); continue;
 		}
-		else if( (cmd=="START BACKUP" || cmd=="2START BACKUP") && ident_ok==true)
+		else if(cmd.find("FULL IMAGE ")==0 )
 		{
-			if(cmd=="2START BACKUP") file_version=2;
+			CMD_FULL_IMAGE(cmd, ident_ok); continue;
+		}
+		else if(cmd.find("INCR IMAGE ")==0 )
+		{
+			CMD_INCR_IMAGE(cmd, ident_ok); continue;
+		}
 
-			state=CCSTATE_START_FILEBACKUP;
-
-			CWData data;
-			data.addChar(0);
-			data.addVoidPtr(mempipe);
-			data.addString(server_token);
-			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-
-			lasttime=Server->getTimeMS();
-
-			IScopedLock lock(backup_mutex);
-			backup_running=RUNNING_INCR_FILE;
-			last_pingtime=Server->getTimeMS();
-			pcdone=0;
-			backup_source_token=server_token;
-		}
-		else if( (cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP") && ident_ok==true)
+		if(ident_ok) //Commands from Server
 		{
-			if(cmd=="2START FULL BACKUP") file_version=2;
-
-			state=CCSTATE_START_FILEBACKUP;
-
-			CWData data;
-			data.addChar(1);
-			data.addVoidPtr(mempipe);
-			data.addString(server_token);
-			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-
-			lasttime=Server->getTimeMS();
-
-			IScopedLock lock(backup_mutex);
-			backup_running=RUNNING_FULL_FILE;
-			last_pingtime=Server->getTimeMS();
-			pcdone=0;
-			backup_source_token=server_token;
+			if( (cmd=="START BACKUP" || cmd=="2START BACKUP") )
+			{
+				CMD_START_INCR_FILEBACKUP(cmd); continue;
+			}
+			else if( (cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP") && ident_ok==true)
+			{
+				CMD_START_FULL_FILEBACKUP(cmd); continue;
+			}
+			else if(cmd.find("START SC \"")==0 )
+			{
+				CMD_START_SHADOWCOPY(cmd); continue;
+			}
+			else if(cmd.find("STOP SC \"")==0 )
+			{
+				CMD_STOP_SHADOWCOPY(cmd); continue;
+			}
+			else if(cmd.find("INCRINTERVALL \"")==0 )
+			{
+				CMD_SET_INCRINTERVAL(cmd); continue;
+			}
+			else if(cmd=="DID BACKUP" )
+			{
+				CMD_DID_BACKUP(cmd); continue;
+			}
+			else if(cmd.find("SETTINGS ")==0 )
+			{
+				CMD_UPDATE_SETTINGS(cmd); continue;
+			}
+			else if(cmd.find("PING RUNNING")==0 )
+			{
+				CMD_PING_RUNNING(cmd); continue;
+			}
+			else if( (cmd=="CHANNEL" || cmd.find("1CHANNEL")==0 ) )
+			{
+				CMD_CHANNEL(cmd, &g_lock); continue;
+			}
+			else if(cmd.find("2LOGDATA ")==0 )
+			{
+				CMD_LOGDATA(cmd); continue;
+			}
+			else if( cmd.find("MBR ")==0 )
+			{
+				CMD_MBR(cmd); continue;
+			}
+			else if( cmd.find("VERSION ")==0 )
+			{
+				CMD_VERSION_UPDATE(cmd); continue;
+			}
+			else if( cmd.find("CLIENTUPDATE ")==0 )
+			{
+				CMD_CLIENT_UPDATE(cmd); continue;
+			}
+			else if(cmd.find("CAPA")==0 )
+			{
+				CMD_CAPA(cmd); continue;
+			}
 		}
-		else if(cmd.find("START SC \"")!=std::string::npos && ident_ok==true)
+		if(pw_ok) //Commands from client frontend
 		{
-#ifdef _WIN32
-			if(cmd[cmd.size()-1]=='"')
+			if((cmd.find("1GET BACKUP DIRS")==0 || cmd.find("GET BACKUP DIRS")==0) )
 			{
-				state=CCSTATE_SHADOWCOPY;
-				std::string dir=cmd.substr(10, cmd.size()-11);
-				CWData data;
-				data.addChar(2);
-				data.addVoidPtr(mempipe);
-				data.addString(dir);
-				data.addString(server_token);
-				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-				lasttime=Server->getTimeMS();
+				CMD_GET_BACKUPDIRS(cmd); continue;
 			}
-			else
+			else if(cmd.find("SAVE BACKUP DIRS")==0 )
 			{
-				Server->Log("Invalid command", LL_ERROR);
+				CMD_SAVE_BACKUPDIRS(cmd, params); continue;
 			}
-#else
-			tcpstack.Send(pipe, "DONE");
-#endif
+			else if(cmd.find("GET INCRINTERVALL")==0 )
+			{
+				CMD_GET_INCRINTERVAL(cmd); continue;
+			}
+			else if(cmd.find("STATUS")==0 )
+			{
+				CMD_STATUS(cmd); continue;
+			}
+			else if(cmd.find("START BACKUP INCR")==0 )
+			{
+				CMD_TOCHANNEL_START_INCR_FILEBACKUP(cmd); continue;			
+			}
+			else if(cmd.find("START BACKUP FULL")==0 )
+			{
+				CMD_TOCHANNEL_START_FULL_FILEBACKUP(cmd); continue;
+			}
+			else if(cmd.find("START IMAGE FULL")==0 )
+			{
+				CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(cmd); continue;
+			}
+			else if(cmd.find("START IMAGE INCR")==0 )
+			{
+				CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(cmd); continue;
+			}
+			else if(cmd.find("UPDATE SETTINGS ")==0 )
+			{
+				CMD_TOCHANNEL_UPDATE_SETTINGS(cmd); continue;
+			}
+			else if(cmd.find("PAUSE ")==0 )
+			{
+				CMD_PAUSE(cmd); continue;
+			}
+			else if(cmd.find("GET LOGPOINTS")==0 )
+			{
+				CMD_GET_LOGPOINTS(cmd); continue;
+			}
+			else if(cmd.find("GET LOGDATA")==0 )
+			{
+				CMD_GET_LOGDATA(cmd, params); continue;
+			}
+			else if( cmd.find("GET BACKUPCLIENTS")==0 )
+			{
+				CMD_RESTORE_GET_BACKUPCLIENTS(cmd); continue;
+			}
+			else if( cmd.find("GET BACKUPIMAGES ")==0 )
+			{
+				CMD_RESTORE_GET_BACKUPIMAGES(cmd); continue;
+			}
+			else if( cmd.find("DOWNLOAD IMAGE")==0 )
+			{
+				CMD_RESTORE_DOWNLOAD_IMAGE(cmd, params); continue;
+			}
+			else if( cmd.find("GET DOWNLOADPROGRESS")==0 )
+			{
+				CMD_RESTORE_DOWNLOADPROGRESS(cmd); continue;		
+			}
 		}
-		else if(cmd.find("STOP SC \"")!=std::string::npos && ident_ok==true)
+		if(is_channel) //Channel commands from server
 		{
-#ifdef _WIN32
-			if(cmd[cmd.size()-1]=='"')
+			if(cmd=="PONG" )
 			{
-				state=CCSTATE_SHADOWCOPY;
-				std::string dir=cmd.substr(9, cmd.size()-10);
-				CWData data;
-				data.addChar(3);
-				data.addVoidPtr(mempipe);
-				data.addString(dir);
-				data.addString(server_token);
-				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-				lasttime=Server->getTimeMS();
+				CMD_CHANNEL_PONG(cmd); continue;
 			}
-			else
+			else if(cmd=="PING" )
 			{
-				Server->Log("Invalid command", LL_ERROR);
-			}
-#else
-			tcpstack.Send(pipe, "DONE");
-#endif
-		}
-		else if(cmd.find("INCRINTERVALL \"")!=std::string::npos && ident_ok==true)
-		{
-			if(cmd[cmd.size()-1]=='"')
-			{
-				std::string intervall=cmd.substr(15, cmd.size()-16);
-				incr_update_intervall=atoi(intervall.c_str());
-				tcpstack.Send(pipe, "OK");
-				lasttime=Server->getTimeMS();
-			}
-			else
-			{
-				Server->Log("Invalid command", LL_ERROR);
-			}			
-		}
-		else if(cmd.find("1GET BACKUP DIRS")==0 && pw_ok==true)
-		{
-			getBackupDirs(1);
-			lasttime=Server->getTimeMS();
-		}
-		else if(cmd.find("GET BACKUP DIRS")==0 && pw_ok==true)
-		{
-			getBackupDirs();
-			lasttime=Server->getTimeMS();
-		}
-		else if(cmd.find("SAVE BACKUP DIRS")==0 && pw_ok==true)
-		{
-			if(saveBackupDirs(params))
-			{
-				tcpstack.Send(pipe, "OK");
-			}
-			lasttime=Server->getTimeMS();
-		}
-		else if(cmd.find("GET INCRINTERVALL")==0 && pw_ok==true)
-		{
-			if(incr_update_intervall==0 )
-			{
-				tcpstack.Send(pipe, nconvert(0));
-			}
-			else
-			{
-				tcpstack.Send(pipe, nconvert(incr_update_intervall+10*60) );
-			}
-			lasttime=Server->getTimeMS();
-		}
-		else if(cmd=="DID BACKUP" && ident_ok==true)
-		{
-			updateLastBackup();
-			tcpstack.Send(pipe, "OK");
-
-			{
-				IScopedLock lock(backup_mutex);
-				if(backup_running==RUNNING_INCR_FILE || backup_running==RUNNING_FULL_FILE)
-				{
-					backup_running=RUNNING_NONE;
-					backup_done=true;
-				}
-				lasttime=Server->getTimeMS();
-			}
-			
-			IndexThread::execute_postbackup_hook();
-		}
-		else if(cmd.find("STATUS")==0 && pw_ok==true)
-		{
-			getBackupStatus();			
-			lasttime=Server->getTimeMS();
-		}
-		else if(cmd.find("SETTINGS ")==0 && ident_ok==true)
-		{
-			std::string s_settings=cmd.substr(9);
-			unescapeMessage(s_settings);
-			updateSettings( s_settings );
-			tcpstack.Send(pipe, "OK");
-			lasttime=Server->getTimeMS();
-		}
-		else if(cmd.find("PING RUNNING")==0 && ident_ok==true)
-		{
-			tcpstack.Send(pipe, "OK");
-			IScopedLock lock(backup_mutex);
-			lasttime=Server->getTimeMS();
-			last_pingtime=Server->getTimeMS();
-			int pcdone_new=atoi(getbetween("-","-", cmd).c_str());
-			if(backup_source_token.empty() || backup_source_token==server_token )
-			{
-				pcdone=pcdone_new;
-			}
-			last_token_times[server_token]=Server->getTimeSeconds();
-
-#ifdef _WIN32
-			SetThreadExecutionState(ES_SYSTEM_REQUIRED);
-#endif
-		}
-		else if( (cmd=="CHANNEL" || cmd.find("1CHANNEL")==0 ) && ident_ok==true)
-		{
-			if(!img_download_running)
-			{
-				g_lock.relock(backup_mutex);
-				channel_pipe=pipe;
-				channel_pipes.push_back(pipe);
-				is_channel=true;
-				state=CCSTATE_CHANNEL;
-				last_channel_ping=Server->getTimeMS();
-				lasttime=Server->getTimeMS();
-				Server->Log("New channel: Number of Channels: "+nconvert((int)channel_pipes.size()), LL_DEBUG);
-
-				int capa=0;
-				if(cmd.find("1CHANNEL ")==0)
-				{
-					std::string s_params=cmd.substr(9);
-					str_map params;
-					ParseParamStr(s_params, &params);
-					capa=watoi(params[L"capa"]);
-				}
-				channel_capa.push_back(capa);
+				CMD_CHANNEL_PING(cmd); continue;
 			}
 		}
-		else if(cmd=="PONG" && is_channel==true )
-		{
-			lasttime=Server->getTimeMS();
-			IScopedLock lock(backup_mutex);
-			for(size_t i=0;i<channel_ping.size();++i)
-			{
-				if(channel_ping[i]==pipe)
-				{
-					channel_ping.erase(channel_ping.begin()+i);
-					break;
-				}
-			}
-		}
-		else if(cmd=="PING" && is_channel==true )
-		{
-			lasttime=Server->getTimeMS();
-			if(tcpstack.Send(pipe, "PONG")==0)
-			{
-				do_quit=true;
-			}
-		}
-		else if(cmd.find("START BACKUP INCR")==0 && pw_ok==true )
-		{
-			IScopedLock lock(backup_mutex);
-			lasttime=Server->getTimeMS();
-			if(backup_running!=RUNNING_NONE && Server->getTimeMS()-last_pingtime<x_pingtimeout)
-				tcpstack.Send(pipe, "RUNNING");
-			else
-			{
-				bool ok=false;
-				if(channel_pipe!=NULL)
-				{
-					_u32 rc=(_u32)tcpstack.Send(channel_pipe, "START BACKUP INCR");
-					if(rc!=0)
-						ok=true;
-				}
-				if(!ok)
-				{
-					tcpstack.Send(pipe, "FAILED");
-				}
-				else
-				{
-					tcpstack.Send(pipe, "OK");
-				}
-			}
-		}
-		else if(cmd.find("START BACKUP FULL")==0 && pw_ok==true )
-		{
-			IScopedLock lock(backup_mutex);
-			lasttime=Server->getTimeMS();
-			if(backup_running!=RUNNING_NONE && Server->getTimeMS()-last_pingtime<x_pingtimeout)
-				tcpstack.Send(pipe, "RUNNING");
-			else
-			{
-				bool ok=false;
-				if(channel_pipe!=NULL)
-				{
-					_u32 rc=(_u32)tcpstack.Send(channel_pipe, "START BACKUP FULL");
-					if(rc!=0)
-						ok=true;
-				}
-				if(!ok)
-				{
-					tcpstack.Send(pipe, "FAILED");
-				}
-				else
-				{
-					tcpstack.Send(pipe, "OK");
-				}
-			}
-		}
-		else if(cmd.find("START IMAGE FULL")==0 && pw_ok==true )
-		{
-			IScopedLock lock(backup_mutex);
-			lasttime=Server->getTimeMS();
-			if(backup_running!=RUNNING_NONE && Server->getTimeMS()-last_pingtime<x_pingtimeout )
-				tcpstack.Send(pipe, "RUNNING");
-			else
-			{
-				bool ok=false;
-				if(channel_pipe!=NULL)
-				{
-					_u32 rc=(_u32)tcpstack.Send(channel_pipe, "START IMAGE FULL");
-					if(rc!=0)
-						ok=true;
-				}
-				if(!ok)
-				{
-					tcpstack.Send(pipe, "FAILED");
-				}
-				else
-				{
-					tcpstack.Send(pipe, "OK");
-				}
-			}
-		}
-		else if(cmd.find("START IMAGE INCR")==0 && pw_ok==true )
-		{
-			IScopedLock lock(backup_mutex);
-			lasttime=Server->getTimeMS();
-			if(backup_running!=RUNNING_NONE && Server->getTimeMS()-last_pingtime<x_pingtimeout)
-				tcpstack.Send(pipe, "RUNNING");
-			else
-			{
-				bool ok=false;
-				if(channel_pipe!=NULL)
-				{
-					_u32 rc=(_u32)tcpstack.Send(channel_pipe, "START IMAGE INCR");
-					if(rc!=0)
-						ok=true;
-				}
-				if(!ok)
-				{
-					tcpstack.Send(pipe, "FAILED");
-				}
-				else
-				{
-					tcpstack.Send(pipe, "OK");
-				}
-			}
-		}
-		else if(cmd.find("UPDATE SETTINGS ")==0 && pw_ok==true )
-		{
-			std::string s_settings=cmd.substr(16);
-			lasttime=Server->getTimeMS();
-			unescapeMessage(s_settings);
-			replaceSettings( s_settings );
-
-			IScopedLock lock(backup_mutex);
-			bool ok=false;
-			for(size_t o=0;o<channel_pipes.size();++o)
-			{
-				_u32 rc=(_u32)tcpstack.Send(channel_pipes[o], "UPDATE SETTINGS");
-				if(rc!=0)
-					ok=true;
-			}
-			if(!ok)
-			{
-				tcpstack.Send(pipe, "FAILED");
-			}
-			else
-			{
-				tcpstack.Send(pipe, "OK");
-			}
-		}
-		else if(cmd.find("2LOGDATA ")==0 && ident_ok==true)
-		{
-			std::string ldata=cmd.substr(9);
-			size_t cpos=ldata.find(" ");
-			std::string created=getuntil(" ", ldata);
-			lasttime=Server->getTimeMS();
-			saveLogdata(created, getafter(" ",ldata));
-			tcpstack.Send(pipe, "OK");
-		}
-		else if(cmd.find("PAUSE ")==0 && pw_ok==true)
-		{
-			lasttime=Server->getTimeMS();
-			std::string b=cmd.substr(6);
-			bool ok=false;
-			if(b=="true")
-			{
-				ok=true;
-				IdleCheckerThread::setPause(true);
-				IndexThread::getFileSrv()->setPause(true);
-			}
-			else if(b=="false")
-			{
-				ok=true;
-				IdleCheckerThread::setPause(false);
-				IndexThread::getFileSrv()->setPause(false);
-			}
-			if(ok) tcpstack.Send(pipe, "OK");
-			else   tcpstack.Send(pipe, "FAILED");
-		}
-		else if(cmd.find("GET LOGPOINTS")==0 && pw_ok==true)
-		{
-			lasttime=Server->getTimeMS();
-			tcpstack.Send(pipe, getLogpoints() );
-		}
-		else if(cmd.find("GET LOGDATA")==0 && pw_ok==true )
-		{
-			lasttime=Server->getTimeMS();
-			int logid=watoi(params[L"logid"]);
-			int loglevel=watoi(params[L"loglevel"]);
-			std::string ret;
-			getLogLevel(logid, loglevel, ret);
-			tcpstack.Send(pipe, ret);
-		}
-		else if(cmd.find("FULL IMAGE ")==0)
-		{
-			if(ident_ok==true)
-			{
-				lasttime=Server->getTimeMS();
-				std::string s_params=cmd.substr(11);
-				str_map params;
-				ParseParamStr(s_params, &params);
-
-				server_token=Server->ConvertToUTF8(params[L"token"]);
-				image_letter=Server->ConvertToUTF8(params[L"letter"]);
-				shadowdrive=Server->ConvertToUTF8(params[L"shadowdrive"]);
-				if(params.find(L"start")!=params.end())
-				{
-					startpos=(uint64)_atoi64(Server->ConvertToUTF8(params[L"start"]).c_str());
-				}
-				else
-				{
-					startpos=0;
-				}
-				if(params.find(L"shadowid")!=params.end())
-				{
-					shadow_id=watoi(params[L"shadowid"]);
-				}
-				else
-				{
-					shadow_id=-1;
-				}
-
-				no_shadowcopy=false;
-
-				if(image_letter=="SYSVOL")
-				{
-					std::wstring mpath;
-					std::wstring sysvol=getSysVolume(mpath);
-					if(!mpath.empty())
-					{
-						image_letter=Server->ConvertToUTF8(mpath);
-					}
-					else
-					{
-						image_letter=Server->ConvertToUTF8(sysvol);
-						no_shadowcopy=true;
-					}
-				}
-
-				if(startpos==0 && !no_shadowcopy)
-				{
-					CWData data;
-					data.addChar(2);
-					data.addVoidPtr(mempipe);
-					data.addString(image_letter);
-					data.addString(server_token);
-					data.addUChar(1); //image backup
-					data.addUChar(0); //filesrv
-					IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-				}
-				else if(shadow_id!=-1)
-				{
-					shadowdrive.clear();
-					CWData data;
-					data.addChar(4);
-					data.addVoidPtr(mempipe);
-					data.addInt(shadow_id);
-					IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-				}
-
-				if(no_shadowcopy)
-				{
-					shadowdrive=image_letter;
-					if(!shadowdrive.empty() && shadowdrive[0]!='\\')
-					{
-						shadowdrive="\\\\.\\"+image_letter;
-					}
-				}
-
-				lasttime=Server->getTimeMS();
-				sendFullImage();
-			}
-			else
-			{
-				ImageErr("Ident reset (1)");
-			}
-		}
-		else if(cmd.find("INCR IMAGE ")==0  && ident_ok==true)
-		{
-			if(ident_ok==true)
-			{
-				lasttime=Server->getTimeMS();
-				std::string s_params=cmd.substr(11);
-				str_map params;
-				ParseParamStr(s_params, &params);
-
-				server_token=Server->ConvertToUTF8(params[L"token"]);
-
-				str_map::iterator f_hashsize=params.find(L"hashsize");
-				if(f_hashsize!=params.end())
-				{
-					hashdataok=false;
-					hashdataleft=watoi(f_hashsize->second);
-					image_letter=Server->ConvertToUTF8(params[L"letter"]);
-					shadowdrive=Server->ConvertToUTF8(params[L"shadowdrive"]);
-					if(params.find(L"start")!=params.end())
-					{
-						startpos=(uint64)_atoi64(Server->ConvertToUTF8(params[L"start"]).c_str());
-					}
-					else
-					{
-						startpos=0;
-					}
-					if(params.find(L"shadowid")!=params.end())
-					{
-						shadow_id=watoi(params[L"shadowid"]);
-					}
-					else
-					{
-						shadow_id=-1;
-					}
-
-					no_shadowcopy=false;
-
-					if(startpos==0)
-					{
-						CWData data;
-						data.addChar(2);
-						data.addVoidPtr(mempipe);
-						data.addString(image_letter);
-						data.addString(server_token);
-						data.addUChar(1); //image backup
-						data.addUChar(0); //file serv?
-						IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-					}
-					else if(shadow_id!=-1)
-					{
-						shadowdrive.clear();
-						CWData data;
-						data.addChar(4);
-						data.addVoidPtr(mempipe);
-						data.addInt(shadow_id);
-						IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-					}
-					hashdatafile=Server->openTemporaryFile();
-					if(hashdatafile==NULL)
-						continue;
-
-					if(tcpstack.getBuffersize()>0)
-					{
-						if(hashdatafile->Write(tcpstack.getBuffer(), (_u32)tcpstack.getBuffersize())!=tcpstack.getBuffersize())
-						{
-							Server->Log("Error writing to hashdata temporary file -1", LL_ERROR);
-							do_quit=true;
-							return;
-						}
-						if(hashdataleft>=tcpstack.getBuffersize())
-						{
-							hashdataleft-=(_u32)tcpstack.getBuffersize();
-							//Server->Log("Hashdataleft: "+nconvert(hashdataleft), LL_DEBUG);
-						}
-						else
-						{
-							Server->Log("Too much hashdata - error -1", LL_ERROR);
-						}
-
-						if(hashdataleft==0)
-						{
-							hashdataok=true;
-							state=CCSTATE_IMAGE;
-							return;
-						}
-					}
-
-					lasttime=Server->getTimeMS();
-					sendIncrImage();
-				}
-				else
-				{
-					ImageErr("Ident reset (2)");
-				}
-			}
-		}
-		else if( cmd.find("MBR ")==0 && ident_ok==true )
-		{
-			lasttime=Server->getTimeMS();
-			std::string s_params=cmd.substr(4);
-			str_map params;
-			ParseParamStr(s_params, &params);
-
-			std::wstring dl=params[L"driveletter"];
-
-			if(dl==L"SYSVOL")
-			{
-				std::wstring mpath;
-				dl=getSysVolume(mpath);
-			}
-
-			bool b=false;
-			if(!dl.empty())
-			{
-				b=sendMBR(dl);
-			}
-			if(!b)
-			{
-				CWData r;r.addChar(0);
-				tcpstack.Send(pipe, r);
-			}
-		}
-		else if( cmd.find("GET BACKUPCLIENTS")==0 && pw_ok==true )
-		{
-			lasttime=Server->getTimeMS();
-			IScopedLock lock(backup_mutex);
-			waitForPings(&lock);
-			if(channel_pipes.size()==0)
-			{
-				tcpstack.Send(pipe, "0");
-			}
-			else
-			{
-				std::string clients;
-				for(size_t i=0;i<channel_pipes.size();++i)
-				{
-					tcpstack.Send(channel_pipes[i], "GET BACKUPCLIENTS");
-					if(channel_pipes[i]->hasError())
-						Server->Log("Channel has error after request -1", LL_DEBUG);
-					std::string nc=receivePacket(channel_pipes[i]);
-					if(channel_pipes[i]->hasError())
-						Server->Log("Channel has error after read -1", LL_DEBUG);
-						
-					Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
-					
-					if(!nc.empty())
-					{
-						clients+=nc+"\n";
-					}
-				}
-				tcpstack.Send(pipe, "1"+clients);
-			}
-		}
-		else if( cmd.find("GET BACKUPIMAGES ")==0 && pw_ok==true )
-		{
-			lasttime=Server->getTimeMS();
-			IScopedLock lock(backup_mutex);
-			waitForPings(&lock);
-			if(channel_pipes.size()==0)
-			{
-				tcpstack.Send(pipe, "0");
-			}
-			else
-			{
-				std::string imgs;
-				for(size_t i=0;i<channel_pipes.size();++i)
-				{
-					tcpstack.Send(channel_pipes[i], cmd);
-					std::string nc=receivePacket(channel_pipes[i]);
-					if(!nc.empty())
-					{
-						imgs+=nc+"\n";
-					}
-				}
-				tcpstack.Send(pipe, "1"+imgs);
-			}
-		}
-		else if( cmd.find("DOWNLOAD IMAGE")==0 && pw_ok==true )
-		{
-			lasttime=Server->getTimeMS();
-			Server->Log("Downloading image...", LL_DEBUG);
-			IScopedLock lock(backup_mutex);
-			waitForPings(&lock);
-			Server->Log("In mutex...",LL_DEBUG);
-			img_download_running=true;
-			downloadImage(params);
-			img_download_running=false;
-			Server->Log("Donwload done -2", LL_DEBUG);
-			do_quit=true;
-		}
-		else if( cmd.find("GET DOWNLOADPROGRESS")==0 && pw_ok==true)
-		{
-			Server->Log("Sending progress...", LL_DEBUG);
-			lasttime=Server->getTimeMS();
-			if(img_download_running==false)
-			{
-				pipe->Write("100");
-				do_quit=true;
-			}
-			else
-			{
-				while(img_download_running)
-				{
-					{
-						int progress=0;
-						{
-							IScopedLock lock(progress_mutex);
-							progress=pcdone;
-						}
-						if(!pipe->Write(nconvert(progress)+"\n", 10000))
-						{
-							break;
-						}
-					}
-					{
-						Server->wait(1000);
-					}
-				}
-				do_quit=true;
-			}
-		}
-		else if( cmd.find("VERSION ")==0 && ident_ok==true )
-		{
-			int n_version=atoi(cmd.substr(8).c_str());
-			std::string version_1=getFile("version.txt");
-			std::string version_2=getFile("curr_version.txt");
-			if(version_1.empty() ) version_1="0";
-			if(version_2.empty() ) version_2="0";
-
-			#ifdef _WIN32
-			if( atoi(version_1.c_str())<n_version && atoi(version_2.c_str())<n_version )
-			{
-				tcpstack.Send(pipe, "update");
-			}
-			else
-			{
-			#endif
-				tcpstack.Send(pipe, "noop");
-			#ifdef _WIN32
-			}
-			#endif
-		}
-		else if( cmd.find("CLIENTUPDATE ")==0 && ident_ok==true )
-		{
-			hashdatafile=Server->openTemporaryFile();
-			if(hashdatafile==NULL)
-				continue;
-
-			hashdataleft=atoi(cmd.substr(13).c_str());
-			hashdataok=false;
-			state=CCSTATE_UPDATE_DATA;
-
-			if(tcpstack.getBuffersize()>0)
-			{
-				if(hashdatafile->Write(tcpstack.getBuffer(), (_u32)tcpstack.getBuffersize())!=tcpstack.getBuffersize())
-				{
-					Server->Log("Error writing to hashdata temporary file -1update", LL_ERROR);
-					do_quit=true;
-					return;
-				}
-				if(hashdataleft>=tcpstack.getBuffersize())
-				{
-					hashdataleft-=(_u32)tcpstack.getBuffersize();
-					//Server->Log("Hashdataleft: "+nconvert(hashdataleft), LL_DEBUG);
-				}
-				else
-				{
-					Server->Log("Too much hashdata - error -1update", LL_ERROR);
-				}
-
-				if(hashdataleft==0)
-				{
-					hashdataok=true;
-					state=CCSTATE_UPDATE_FINISH;
-					return;
-				}
-			}
-			return;
-		}
-		else if(cmd.find("CAPA")==0  && ident_ok==true)
-		{
-#ifdef _WIN32
-			tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=1");
-#else
-			tcpstack.Send(pipe, "FILE=2&FILESRV=1");
-#endif
-		}
-		else
-		{
-			tcpstack.Send(pipe, "ERR");
-		}
+		
+		tcpstack.Send(pipe, "ERR");
 	}
 }
 
@@ -1404,37 +759,6 @@ bool ClientConnector::checkPassword(const std::wstring &pw)
 {
 	static std::string stored_pw=getFile(pw_file);
 	return stored_pw==Server->ConvertToUTF8(pw);
-}
-
-void ClientConnector::getBackupDirs(int version)
-{
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id,name,path FROM backupdirs");
-	int timeoutms=300;
-	db_results res=q->Read(&timeoutms);
-	if(timeoutms==0)
-	{
-		std::string msg;
-		for(size_t i=0;i<res.size();++i)
-		{
-			if(res[i][L"name"]==L"*") continue;
-
-			msg+=Server->ConvertToUTF8(res[i][L"id"])+"\n";
-			if(version!=0)
-			{
-				msg+=Server->ConvertToUTF8(res[i][L"name"])+"|";
-			}
-			msg+=Server->ConvertToUTF8(res[i][L"path"]);
-			if(i+1<res.size())
-				msg+="\n";
-		}
-		tcpstack.Send(pipe, msg);
-	}
-	else
-	{
-		pipe->shutdown();
-	}	
-	db->destroyAllQueries();
 }
 
 std::wstring removeChars(std::wstring in)
@@ -1615,118 +939,6 @@ void ClientConnector::updateLastBackup(void)
 				q->Write();
 		}
 	}
-	db->destroyAllQueries();
-}
-
-void ClientConnector::getBackupStatus(void)
-{
-	IScopedLock lock(backup_mutex);
-
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT strftime('"+time_format_str+"',last_backup, 'localtime') AS last_backup FROM status");
-	if(q==NULL)
-		return;
-	int timeoutms=300;
-	db_results res=q->Read(&timeoutms);
-	if(timeoutms==1)
-	{
-		res=cached_status;
-	}
-	else
-	{
-		cached_status=res;
-	}
-
-	std::string ret;
-	if(res.size()>0)
-	{
-		ret+=Server->ConvertToUTF8(res[0][L"last_backup"]);
-	}
-
-	if(backup_running==RUNNING_NONE)
-	{
-		if(backup_done)
-			ret+="#DONE";
-		else
-			ret+="#NOA";
-
-		backup_done=false;
-	}
-	else if(backup_running==RUNNING_INCR_FILE)
-	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#INCR";
-	}
-	else if(backup_running==RUNNING_FULL_FILE)
-	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#FULL";
-	}
-	else if(backup_running==RUNNING_FULL_IMAGE)
-	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#FULLI";
-	}
-	else if(backup_running==RUNNING_INCR_IMAGE)
-	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#INCRI";
-	}
-
-	if(backup_running!=RUNNING_INCR_IMAGE)
-		ret+="#"+nconvert(pcdone);
-	else
-		ret+="#"+nconvert(pcdone2);
-
-	if(IdleCheckerThread::getPause())
-	{
-		ret+="#P";
-	}
-	else
-	{
-		ret+="#NP";
-	}
-
-	int capa=0;
-	if(channel_capa.size()==0)
-	{
-		capa=last_capa;
-		capa|=DONT_ALLOW_STARTING_FILE_BACKUPS;
-		capa|=DONT_ALLOW_STARTING_IMAGE_BACKUPS;
-	}
-	else
-	{
-		capa=INT_MAX;
-		for(size_t i=0;i<channel_capa.size();++i)
-		{
-			capa=capa & channel_capa[i];
-		}
-		
-		if(capa!=last_capa)
-		{
-			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'");
-			if(cq!=NULL)
-			{
-				cq->Bind(capa);
-				cq->Write();
-				cq->Reset();
-				last_capa=capa;
-			}
-		}
-	}
-
-	ret+="#capa="+nconvert(capa);
-
-	tcpstack.Send(pipe, ret);
-
 	db->destroyAllQueries();
 }
 
@@ -1926,8 +1138,9 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 
 bool ClientConnector::sendFullImage(void)
 {
-	thread_action=TA_FULL_IMAGE;
-	thread_ticket=Server->getThreadPool()->execute(this);
+	image_inf.thread_action=TA_FULL_IMAGE;
+	image_inf.image_thread=new ImageThread(this, pipe, &mempipe, &image_inf, server_token, hashdatafile);
+	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
 	state=CCSTATE_IMAGE;
 	IScopedLock lock(backup_mutex);
 	backup_running=RUNNING_FULL_IMAGE;
@@ -1938,8 +1151,9 @@ bool ClientConnector::sendFullImage(void)
 
 bool ClientConnector::sendIncrImage(void)
 {
-	thread_action=TA_INCR_IMAGE;
-	thread_ticket=Server->getThreadPool()->execute(this);
+	image_inf.thread_action=TA_INCR_IMAGE;
+	image_inf.image_thread=new ImageThread(this, pipe, &mempipe, &image_inf, server_token, hashdatafile);
+	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
 	state=CCSTATE_IMAGE_HASHDATA;
 	IScopedLock lock(backup_mutex);
 	backup_running=RUNNING_INCR_IMAGE;
@@ -1949,566 +1163,12 @@ bool ClientConnector::sendIncrImage(void)
 	return true;
 }
 
-void ClientConnector::operator ()(void)
-{
-#ifdef _WIN32
-#ifdef THREAD_MODE_BACKGROUND_BEGIN
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
-#endif
-#endif
-	if(thread_action==TA_FULL_IMAGE)
-	{
-		sendFullImageThread();
-	}
-	else if(thread_action==TA_INCR_IMAGE)
-	{
-		int timeouts=1800;
-		while(hashdataok==false)
-		{
-			Server->wait(1000);
-			--timeouts;
-			if(timeouts<=0 || do_quit==true )
-			{
-				break;
-			}
-		}
-		if(timeouts>0 || do_quit==true )
-		{
-			sendIncrImageThread();
-		}
-	}
-	{
-		IScopedLock lock(backup_mutex);
-		if(backup_running==RUNNING_FULL_IMAGE || backup_running==RUNNING_INCR_IMAGE)
-		{
-			backup_running=RUNNING_NONE;
-		}
-	}
-#ifdef _WIN32
-#ifdef THREAD_MODE_BACKGROUND_END
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
-#endif
-#endif
-}
-
 bool ClientConnector::waitForThread(void)
 {
-	if(thread_action!=TA_NONE && Server->getThreadPool()->isRunning(thread_ticket ) )
+	if(image_inf.thread_action!=TA_NONE && Server->getThreadPool()->isRunning(image_inf.thread_ticket ) )
 		return true;
 	else
 		return false;
-}
-
-void ClientConnector::ImageErr(const std::string &msg)
-{
-	/*Server->Log(msg, LL_ERROR);
-	unsigned int bs=0xFFFFFFFF;
-	char *buffer=new char[sizeof(unsigned int)+msg.size()];
-	memcpy(buffer, &bs, sizeof(unsigned int) );
-	memcpy(&buffer[sizeof(unsigned int)], msg.c_str(), msg.size());
-	pipe->Write(buffer, sizeof(unsigned int)+msg.size());
-	delete [] buffer;*/
-	Server->Log(msg, LL_ERROR);
-#ifdef _WIN32
-	uint64 bs=0xFFFFFFFFFFFFFFFF;
-#else
-	uint64 bs=0xFFFFFFFFFFFFFFFFLLU;
-#endif
-	char *buffer=new char[sizeof(uint64)+msg.size()];
-	memcpy(buffer, &bs, sizeof(uint64) );
-	memcpy(&buffer[sizeof(uint64)], msg.c_str(), msg.size());
-	pipe->Write(buffer, sizeof(uint64)+msg.size());
-	delete [] buffer;
-}
-
-void ClientConnector::ImageErrRunning(const std::string &msg)
-{
-	Server->Log(msg, LL_ERROR);
-	int64 bs=-124;
-	char *buffer=new char[sizeof(int64)+msg.size()];
-	memcpy(buffer, &bs, sizeof(int64) );
-	memcpy(&buffer[sizeof(int64)], msg.c_str(), msg.size());
-	pipe->Write(buffer, sizeof(int64)+msg.size());
-	delete [] buffer;
-}
-
-void ClientConnector::sendFullImageThread(void)
-{
-	bool has_error=true;
-
-	int save_id=-1;
-
-	bool run=true;
-	while(run)
-	{
-		if(shadowdrive.empty() && !no_shadowcopy)
-		{
-			std::string msg;
-			mempipe->Read(&msg);
-			if(msg.find("done")==0)
-			{
-				shadowdrive=getafter("-", msg);
-				save_id=atoi(getuntil("-", shadowdrive).c_str());
-				shadowdrive=getafter("-", shadowdrive);
-				if(shadowdrive.size()>0 && shadowdrive[shadowdrive.size()-1]=='\\')
-					shadowdrive.erase(shadowdrive.begin()+shadowdrive.size()-1);
-				if(shadowdrive.empty())
-				{
-					ImageErr("Creating Shadow drive failed. Stopping. -2");
-					run=false;
-				}
-			}
-			else
-			{
-				ImageErr("Creating Shadow drive failed. Stopping.");
-				run=false;
-			}
-			mempipe->Write("exit");
-			mempipe=Server->createMemoryPipe();
-		}
-		else
-		{
-			IFilesystem *fs=image_fak->createFilesystem(Server->ConvertToUnicode(shadowdrive));
-			if(fs==NULL)
-			{
-				ImageErr("Opening Shadow drive filesystem failed. Stopping.");
-				run=false;
-				break;
-			}
-
-			unsigned int blocksize=(unsigned int)fs->getBlocksize();
-			int64 drivesize=fs->getSize();
-			int64 blockcnt=fs->calculateUsedSpace()/blocksize;
-			int64 ncurrblocks=0;
-
-			if(startpos==0)
-			{
-				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+shadowdrive.size()+sizeof(int)];
-				char *cptr=buffer;
-				memcpy(cptr, &blocksize, sizeof(unsigned int));
-				cptr+=sizeof(unsigned int);
-				memcpy(cptr, &drivesize, sizeof(int64) );
-				cptr+=sizeof(int64);
-				memcpy(cptr, &blockcnt, sizeof(int64) );
-				cptr+=sizeof(int64);
-	#ifndef VSS_XP //persistence
-	#ifndef VSS_S03
-				*cptr=1;
-	#else
-				*cptr=0;
-	#endif
-	#else
-				*cptr=0;
-	#endif
-				if(no_shadowcopy)
-				{
-					*cptr=0;
-				}
-				++cptr;
-				unsigned int shadowdrive_size=(unsigned int)shadowdrive.size();
-				memcpy(cptr, &shadowdrive_size, sizeof(unsigned int));
-				cptr+=sizeof(unsigned int);
-				memcpy(cptr, &shadowdrive[0], shadowdrive.size());
-				cptr+=shadowdrive.size();
-				memcpy(cptr, &save_id, sizeof(int));
-				cptr+=sizeof(int);
-
-				bool b=pipe->Write(buffer, sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+shadowdrive.size()+sizeof(int) );
-				if(!b)
-				{
-					Server->Log("Pipe broken -1", LL_ERROR);
-					run=false;
-					break;
-				}
-			}
-			
-			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
-			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs);
-
-			unsigned int needed_bufs=64;
-			std::vector<char*> bufs;
-			for(int64 i=startpos,blocks=drivesize/blocksize;i<blocks;i+=64)
-			{
-				std::vector<char*> n_bufs=cs->getBuffers(needed_bufs);
-				bufs.insert(bufs.end(), n_bufs.begin(), n_bufs.end() );
-				needed_bufs=0;
-
-				unsigned int n=(unsigned int)(std::min)(blocks-i, (int64)64);
-				std::vector<int64> secs=fs->readBlocks(i, n, bufs, sizeof(int64));
-				needed_bufs+=(_u32)secs.size();
-				for(size_t j=0;j<secs.size();++j)
-				{
-					memcpy(bufs[j], &secs[j], sizeof(int64) );
-					cs->sendBuffer(bufs[j], sizeof(int64)+blocksize);
-				}
-				if(!secs.empty())
-					bufs.erase(bufs.begin(), bufs.begin()+secs.size() );
-				if(cs->hasError() )
-				{
-					Server->Log("Pipe broken -2", LL_ERROR);
-					run=false;
-					has_error=true;
-					break;
-				}
-
-				ncurrblocks+=secs.size();
-				
-				if(IdleCheckerThread::getPause())
-				{
-					Server->wait(5000);
-				}
-			}
-
-			for(size_t i=0;i<bufs.size();++i)
-			{
-				cs->freeBuffer(bufs[i]);
-			}
-			cs->doExit();
-			std::vector<THREADPOOL_TICKET> wf;
-			wf.push_back(send_ticket);
-			Server->getThreadPool()->waitFor(wf);
-			delete cs;
-
-			if(!run)break;
-
-			char lastbuffer[sizeof(int64)];
-			int64 lastn=-123;
-			memcpy(lastbuffer,&lastn, sizeof(int64));
-			bool b=pipe->Write(lastbuffer, sizeof(int64));
-			if(!b)
-			{
-				Server->Log("Pipe broken -3", LL_ERROR);
-				run=false;
-				has_error=true;
-				break;
-			}
-
-			has_error=false;
-
-			run=false;
-		}
-	}
-
-	Server->Log("Sending full image done", LL_INFO);
-
-#ifdef VSS_XP //persistence
-	has_error=false;
-#endif
-#ifdef VSS_S03
-	has_error=false;
-#endif
-
-	if(!has_error && !no_shadowcopy)
-	{
-		removeShadowCopyThread(save_id);
-		std::string msg;
-		mempipe->Read(&msg);
-		if(msg.find("done")!=0)
-		{
-			Server->Log("Removing shadow copy failed in image streaming: "+msg, LL_ERROR);
-		}
-		mempipe->Write("exit");
-		mempipe=Server->createMemoryPipe();
-	}
-	do_quit=true;
-}
-
-const unsigned int c_vhdblocksize=(1024*1024/2);
-const unsigned int c_hashsize=32;
-
-void ClientConnector::sendIncrImageThread(void)
-{
-	char *blockbuf=NULL;
-	char *blockdatabuf=NULL;
-	bool *has_blocks=NULL;
-	char *zeroblockbuf=NULL;
-
-	bool has_error=true;
-
-	int save_id=-1;
-	int update_cnt=0;
-
-	unsigned int lastsendtime=Server->getTimeMS();
-
-	bool run=true;
-	while(run)
-	{
-		if(shadowdrive.empty())
-		{
-			std::string msg;
-			mempipe->Read(&msg);
-			if(msg.find("done")==0)
-			{
-				shadowdrive=getafter("-", msg);
-				save_id=atoi(getuntil("-", shadowdrive).c_str());
-				shadowdrive=getafter("-", shadowdrive);
-				if(shadowdrive.size()>0 && shadowdrive[shadowdrive.size()-1]=='\\')
-					shadowdrive.erase(shadowdrive.begin()+shadowdrive.size()-1);
-				if(shadowdrive.empty())
-				{
-					ImageErr("Creating Shadow drive failed. Stopping. -2");
-					run=false;
-				}
-			}
-			else
-			{
-				ImageErr("Creating Shadow drive failed. Stopping.");
-				run=false;
-			}
-			mempipe->Write("exit");
-			mempipe=Server->createMemoryPipe();
-		}
-		else
-		{
-			IFilesystem *fs=image_fak->createFilesystem(Server->ConvertToUnicode(shadowdrive));
-			if(fs==NULL)
-			{
-				ImageErr("Opening Shadow drive filesystem failed. Stopping.");
-				run=false;
-				break;
-			}
-
-			sha256_ctx shactx;
-			unsigned int vhdblocks;
-
-			unsigned int blocksize=(unsigned int)fs->getBlocksize();
-			int64 drivesize=fs->getSize();
-			int64 blockcnt=fs->calculateUsedSpace()/blocksize;
-			vhdblocks=c_vhdblocksize/blocksize;
-			int64 currvhdblock=0;
-			int64 numblocks=drivesize/blocksize;
-
-			if(startpos==0)
-			{
-				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+shadowdrive.size()+sizeof(int)];
-				char *cptr=buffer;
-				memcpy(cptr, &blocksize, sizeof(unsigned int));
-				cptr+=sizeof(unsigned int);
-				memcpy(cptr, &drivesize, sizeof(int64) );
-				cptr+=sizeof(int64);
-				memcpy(cptr, &blockcnt, sizeof(int64) );
-				cptr+=sizeof(int64);
-	#ifndef VSS_XP //persistence
-	#ifndef VSS_S03
-				*cptr=1;
-	#else
-				*cptr=0;
-	#endif
-	#else
-				*cptr=0;
-	#endif
-				++cptr;
-				unsigned int shadowdrive_size=(unsigned int)shadowdrive.size();
-				memcpy(cptr, &shadowdrive_size, sizeof(unsigned int));
-				cptr+=sizeof(unsigned int);
-				memcpy(cptr, &shadowdrive[0], shadowdrive.size());
-				cptr+=shadowdrive.size();
-				memcpy(cptr, &save_id, sizeof(int));
-				cptr+=sizeof(int);
-				bool b=pipe->Write(buffer, sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+shadowdrive.size()+sizeof(int) );
-				if(!b)
-				{
-					Server->Log("Pipe broken -1", LL_ERROR);
-					run=false;
-					break;
-				}
-			}
-
-			delete []blockbuf;
-			blockbuf=new char[vhdblocks*blocksize];
-			delete []has_blocks;
-			has_blocks=new bool[vhdblocks];
-			delete []zeroblockbuf;
-			zeroblockbuf=new char[blocksize];
-			memset(zeroblockbuf, 0, blocksize);
-
-			ClientSend *cs=new ClientSend(pipe, blocksize+sizeof(int64), 2000);
-			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs);
-
-
-			for(int64 i=startpos,blocks=drivesize/blocksize;i<blocks;i+=vhdblocks)
-			{
-				++update_cnt;
-				if(update_cnt>10)
-				{
-					IScopedLock lock(backup_mutex);
-					pcdone2=(int)(((float)i/(float)blocks)*100.f+0.5f);
-					update_cnt=0;
-				}
-				currvhdblock=i/vhdblocks;
-				bool has_data=false;
-				for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
-				{
-					if( fs->readBlock(j, NULL) )
-					{
-						has_data=true;
-						break;
-					}
-				}
-
-				if(has_data)
-				{
-					sha256_init(&shactx);
-					bool mixed=false;
-					for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
-					{
-						char *dpos=blockbuf+(j-i)*blocksize;
-						if( fs->readBlock(j, dpos) )
-						{
-							if(IdleCheckerThread::getPause())
-							{
-								Server->wait(5000);
-							}
-							sha256_update(&shactx, (unsigned char*)dpos, blocksize);
-							has_blocks[j-i]=true;
-						}
-						else
-						{
-							sha256_update(&shactx, (unsigned char*)zeroblockbuf, blocksize);
-							has_blocks[j-i]=false;
-							mixed=true;
-						}
-					}
-					unsigned char digest[c_hashsize];
-					sha256_final(&shactx, digest);
-					if(hashdatafile->Size()>=(currvhdblock+1)*c_hashsize)
-					{
-						hashdatafile->Seek(currvhdblock*c_hashsize);
-						char hashdata_buf[c_hashsize];
-						if( hashdatafile->Read(hashdata_buf, c_hashsize)!=c_hashsize )
-						{
-							Server->Log("Reading hashdata failed!", LL_ERROR);
-						}
-						if(memcmp(hashdata_buf, digest, c_hashsize)!=0)
-						{
-							//Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
-							for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
-							{
-								if(has_blocks[j-i])
-								{
-									char* cb=cs->getBuffer();
-									memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
-									memcpy(cb, &j, sizeof(int64) );
-									cs->sendBuffer(cb, sizeof(int64)+blocksize);
-
-									lastsendtime=Server->getTimeMS();
-
-									if(cs->hasError())
-									{
-										Server->Log("Pipe broken -2", LL_ERROR);
-										run=false;
-										break;
-									}
-								}
-							}							
-						}
-						else
-						{
-							//Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
-							unsigned int tt=Server->getTimeMS();
-							if(tt-lastsendtime>10000)
-							{
-								int64 bs=-125;
-								char* buffer=cs->getBuffer();
-								memcpy(buffer, &bs, sizeof(int64) );
-								cs->sendBuffer(buffer, sizeof(int64));
-
-								lastsendtime=tt;
-							}
-						}
-					}
-					else
-					{
-						ImageErrRunning("Hashdata from server too small");
-						run=false;
-						break;
-					}
-					if(!run)break;
-				}
-				else
-				{
-					unsigned int tt=Server->getTimeMS();
-					if(tt-lastsendtime>10000)
-					{
-						int64 bs=-125;
-						char* buffer=cs->getBuffer();
-						memcpy(buffer, &bs, sizeof(int64) );
-						cs->sendBuffer(buffer, sizeof(int64));
-
-						lastsendtime=tt;
-					}
-				}
-			}
-
-			cs->doExit();
-			std::vector<THREADPOOL_TICKET> wf;
-			wf.push_back(send_ticket);
-			Server->getThreadPool()->waitFor(wf);
-			delete cs;
-
-			if(!run)break;
-
-			char lastbuffer[sizeof(int64)];
-			int64 lastn=-123;
-			memcpy(lastbuffer,&lastn, sizeof(int64));
-			bool b=pipe->Write(lastbuffer, sizeof(int64));
-			if(!b)
-			{
-				Server->Log("Pipe broken -3", LL_ERROR);
-				run=false;
-				break;
-			}
-
-			has_error=false;
-
-			run=false;
-		}
-	}
-
-	delete [] blockbuf;
-	delete [] has_blocks;
-	delete [] zeroblockbuf;
-
-	Server->destroy(hashdatafile);
-
-	Server->Log("Sending image done", LL_INFO);
-
-#ifdef VSS_XP //persistence
-	has_error=false;
-#endif
-#ifdef VSS_S03
-	has_error=false;
-#endif
-
-	if(!has_error)
-	{
-		removeShadowCopyThread(save_id);
-		std::string msg;
-		mempipe->Read(&msg);
-		if(msg.find("done")!=0)
-		{
-			Server->Log("Removing shadow copy failed in image streaming: "+msg, LL_ERROR);
-		}
-		mempipe->Write("exit");
-		mempipe=Server->createMemoryPipe();
-	}
-	do_quit=true;
-}
-
-void ClientConnector::removeShadowCopyThread(int save_id)
-{
-	if(!no_shadowcopy)
-	{
-		CWData data;
-		data.addChar(3);
-		data.addVoidPtr(mempipe);
-		data.addString(image_letter);
-		data.addString(server_token);
-		data.addUChar(1);
-		data.addInt(save_id);
-
-		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
-	}
 }
 
 bool ClientConnector::sendMBR(std::wstring dl)
@@ -2789,4 +1449,87 @@ unsigned int ClientConnector::getLastTokenTime(const std::string & tok)
 	{
 		return 0;
 	}
+}
+
+void ClientConnector::tochannelSendStartbackup(RunningAction backup_type)
+{
+	std::string ts;
+	if(backup_type==RUNNING_INCR_FILE)
+		ts="START BACKUP INCR";
+	else if(backup_type==RUNNING_FULL_FILE)
+		ts="START BACKUP FULL";
+	else if(backup_type==RUNNING_FULL_IMAGE)
+		ts="START IMAGE FULL";
+	else if(backup_type==RUNNING_INCR_IMAGE)
+		ts="START IMAGE INCR";
+	else
+		return;
+
+	IScopedLock lock(backup_mutex);
+	lasttime=Server->getTimeMS();
+	if(backup_running!=RUNNING_NONE && Server->getTimeMS()-last_pingtime<x_pingtimeout)
+		tcpstack.Send(pipe, "RUNNING");
+	else
+	{
+		bool ok=false;
+		if(channel_pipe!=NULL)
+		{
+			_u32 rc=(_u32)tcpstack.Send(channel_pipe, "START BACKUP INCR");
+			if(rc!=0)
+				ok=true;
+		}
+		if(!ok)
+		{
+			tcpstack.Send(pipe, "FAILED");
+		}
+		else
+		{
+			tcpstack.Send(pipe, "OK");
+		}
+	}
+}
+
+void ClientConnector::doQuitClient(void)
+{
+	do_quit=true;
+}
+
+void ClientConnector::updatePCDone2(int nv)
+{
+	IScopedLock lock(backup_mutex);
+	pcdone2=nv;
+}
+
+bool ClientConnector::isQuitting(void)
+{
+	return do_quit;
+}
+
+bool ClientConnector::isHashdataOkay(void)
+{
+	return hashdataok;
+}
+
+void ClientConnector::resetImageBackupStatus(void)
+{
+	IScopedLock lock(backup_mutex);
+	if(backup_running==RUNNING_FULL_IMAGE || backup_running==RUNNING_INCR_IMAGE)
+	{
+		backup_running=RUNNING_NONE;
+	}
+}
+
+void ClientConnector::ImageErr(const std::string &msg)
+{
+	Server->Log(msg, LL_ERROR);
+#ifdef _WIN32
+	uint64 bs=0xFFFFFFFFFFFFFFFF;
+#else
+	uint64 bs=0xFFFFFFFFFFFFFFFFLLU;
+#endif
+	char *buffer=new char[sizeof(uint64)+msg.size()];
+	memcpy(buffer, &bs, sizeof(uint64) );
+	memcpy(&buffer[sizeof(uint64)], msg.c_str(), msg.size());
+	pipe->Write(buffer, sizeof(uint64)+msg.size());
+	delete [] buffer;
 }

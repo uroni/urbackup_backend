@@ -42,7 +42,23 @@ enum RunningAction
 	RUNNING_INCR_IMAGE=4
 };
 
-class ClientConnector : public ICustomClient, public IThread
+class ImageThread;
+
+struct ImageInformation
+{
+	ThreadAction thread_action;
+	THREADPOOL_TICKET thread_ticket;
+	std::string shadowdrive;
+	uint64 startpos;
+	int shadow_id;
+	std::string image_letter;
+	bool no_shadowcopy;
+	ImageThread *image_thread;
+};
+
+const unsigned int x_pingtimeout=180000;
+
+class ClientConnector : public ICustomClient
 {
 public:
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe);
@@ -55,30 +71,28 @@ public:
 
 	virtual bool wantReceive(void);
 
-	void operator()(void);
 
 	static unsigned int getLastTokenTime(const std::string & tok);
 
+	void doQuitClient(void);
+	bool isQuitting(void);
+	void updatePCDone2(int nv);
+	bool isHashdataOkay(void);
+	void resetImageBackupStatus(void);
+
 private:
 	bool checkPassword(const std::wstring &cmd);
-	void getBackupDirs(int version=0);
 	bool saveBackupDirs(str_map &args, bool server_default=false);
 	void updateLastBackup(void);
-	void getBackupStatus(void);
 	std::string replaceChars(std::string in);
 	void updateSettings(const std::string &pData);
 	void replaceSettings(const std::string &pData);
 	void saveLogdata(const std::string &created, const std::string &pData);
 	std::string getLogpoints(void);
 	void getLogLevel(int logid, int loglevel, std::string &data);
+	bool waitForThread(void);
 	bool sendFullImage(void);
 	bool sendIncrImage(void);
-	bool waitForThread(void);
-	void sendFullImageThread(void);
-	void sendIncrImageThread(void);
-	void ImageErr(const std::string &msg);
-	void ImageErrRunning(const std::string &msg);
-	void removeShadowCopyThread(int save_id);
 	bool sendMBR(std::wstring dl);
 	std::string receivePacket(IPipe *p);
 	void downloadImage(str_map params);
@@ -87,11 +101,49 @@ private:
 	bool writeUpdateFile(IFile *datafile, std::string outfn);
 	std::string getSha512Hash(IFile *fn);
 	bool checkHash(std::string shah);
+	void tochannelSendStartbackup(RunningAction backup_type);
+	void ImageErr(const std::string &msg);
+
+	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
+	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
+	void CMD_START_FULL_FILEBACKUP(const std::string &cmd);
+	void CMD_START_SHADOWCOPY(const std::string &cmd);
+	void CMD_STOP_SHADOWCOPY(const std::string &cmd);
+	void CMD_SET_INCRINTERVAL(const std::string &cmd);
+	void CMD_GET_BACKUPDIRS(const std::string &cmd);
+	void CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &params);
+	void CMD_GET_INCRINTERVAL(const std::string &cmd);
+	void CMD_DID_BACKUP(const std::string &cmd);
+	void CMD_STATUS(const std::string &cmd);
+	void CMD_UPDATE_SETTINGS(const std::string &cmd);
+	void CMD_PING_RUNNING(const std::string &cmd);
+	void CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock);
+	void CMD_CHANNEL_PONG(const std::string &cmd);
+	void CMD_CHANNEL_PING(const std::string &cmd);
+	void CMD_TOCHANNEL_START_INCR_FILEBACKUP(const std::string &cmd);
+	void CMD_TOCHANNEL_START_FULL_FILEBACKUP(const std::string &cmd);
+	void CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(const std::string &cmd);
+	void CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cmd);
+	void CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd);
+	void CMD_LOGDATA(const std::string &cmd);
+	void CMD_PAUSE(const std::string &cmd);
+	void CMD_GET_LOGPOINTS(const std::string &cmd);
+	void CMD_GET_LOGDATA(const std::string &cmd, str_map &params);
+	void CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok);
+	void CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok);
+	void CMD_MBR(const std::string &cmd);
+	void CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd);
+	void CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd);
+	void CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params);
+	void CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd);
+	void CMD_VERSION_UPDATE(const std::string &cmd);
+	void CMD_CLIENT_UPDATE(const std::string &cmd);
+	void CMD_CAPA(const std::string &cmd);
 
 	IPipe *pipe;
+	IPipe *mempipe;
 	THREAD_ID tid;
 	ClientConnectorState state;
-	IPipe *mempipe;
 	unsigned int lasttime;
 	unsigned int last_update_time;
 	int file_version;
@@ -119,18 +171,11 @@ private:
 	static std::map<std::string, unsigned int> last_token_times;
 	static int last_capa;
 
-	std::string image_letter;
-
-	ThreadAction thread_action;
-	THREADPOOL_TICKET thread_ticket;
-	std::string thread_ret;
-	std::string shadowdrive;
-	uint64 startpos;
-	int shadow_id;
 	IFile *hashdatafile;
 	unsigned int hashdataleft;
 	volatile bool hashdataok;
-	bool no_shadowcopy;
+
+	ImageInformation image_inf;
 
 	std::string server_token;
 

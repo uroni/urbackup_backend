@@ -90,6 +90,12 @@
     <ClCompile Include="..\urbackupcommon\settingslist.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="ClientServiceCMD.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="watchdir\CriticalSection.h">
@@ -150,6 +156,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
