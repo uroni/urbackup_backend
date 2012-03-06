@@ -15,6 +15,7 @@ public:
 	virtual void ReceivePackets(void)=0;
 
 	virtual bool wantReceive(void){ return true; }
+	virtual bool closeSocket(void){ return true; }
 };
 
 #endif

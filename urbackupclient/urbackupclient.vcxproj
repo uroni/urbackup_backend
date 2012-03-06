@@ -70,6 +70,7 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="glob\glob.cpp" />
     <ClCompile Include="ImageThread.cpp" />
+    <ClCompile Include="InternetClient.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
     <ClCompile Include="watchdir\CriticalSection.cpp" />
     <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp" />
@@ -92,6 +93,7 @@
     <ClInclude Include="database.h" />
     <ClInclude Include="DirectoryWatcherThread.h" />
     <ClInclude Include="ImageThread.h" />
+    <ClInclude Include="InternetClient.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
     <ClInclude Include="watchdir\CriticalSection.h" />
     <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h" />

@@ -78,3 +78,47 @@ std::string AESDecryption::decrypt(const std::string &data)
 		return ret;
 	}
 }
+
+size_t AESDecryption::decrypt(char *data, size_t data_size)
+{
+	size_t offset=0;
+	if(dec==NULL)
+	{
+		size_t done=0;
+		if(!iv_buffer.empty() &&  iv_buffer.size()+data_size>=16)
+		{
+			CryptoPP::SecByteBlock m_IV;
+			m_IV.resize(16);
+			memcpy(m_IV.BytePtr(), &iv_buffer[0], 16);
+			memcpy(m_IV.BytePtr()+iv_buffer.size(), data, 16-iv_buffer.size());
+			dec=new CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption(m_sbbKey.begin(),m_sbbKey.size(), m_IV.begin() );
+			done=16-iv_buffer.size();
+		}
+		else if(iv_buffer.empty() && data_size>=16)
+		{
+			CryptoPP::SecByteBlock m_IV;
+			m_IV.resize(16);
+			memcpy(m_IV.BytePtr(), data, 16);
+			dec=new CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption(m_sbbKey.begin(),m_sbbKey.size(), m_IV.begin() );
+			done=16;
+		}
+		else
+		{
+			std::string db;
+			db.resize(data_size);
+			memcpy((char*)db.c_str(), data, data_size);
+			iv_buffer+=db;
+			done=data_size;
+		}
+		if(done<data_size)
+		{
+			dec->ProcessString((byte*)(data+done), data_size-done);
+		}
+		return done;
+	}
+	else
+	{
+		dec->ProcessString((byte*)data, data_size);
+		return 0;
+	}
+}

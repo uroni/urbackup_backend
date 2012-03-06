@@ -96,8 +96,11 @@ void CServiceWorker::operator()(void)
 				{
 					IScopedLock lock(mutex);
 					Server->Log(name+": Removing user"+nconvert(Server->getTimeMS()), LL_DEBUG);
-					service->destroyClient( clients[i].first );
-					delete clients[i].second;
+					if(clients[i].first->closeSocket())
+					{
+						delete clients[i].second;
+					}
+					service->destroyClient( clients[i].first );					
 					clients.erase( clients.begin()+i );
 					IScopedLock lock2(nc_mutex);
 					--nClients;

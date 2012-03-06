@@ -1,0 +1,285 @@
+#include "InternetClient.h"
+
+#include "../Interface/Server.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/SettingsReader.h"
+#include "../Interface/ThreadPool.h"
+
+#include "client.h"
+#include "ClientService.h"
+
+#include "../urbackupcommon/fileclient/data.h"
+#include "../urbackupcommon/fileclient/tcpstack.h"
+#include "../urbackupcommon/InternetServiceIDs.h"
+#include "../urbackupcommon/InternetServicePipe.h"
+
+IMutex *InternetClient::mutex=NULL;
+bool InternetClient::connected=NULL;
+size_t InternetClient::n_connections=NULL;
+unsigned int InternetClient::last_lan_connection=0;
+bool InternetClient::update_settings=false;
+SServerSettings InternetClient::server_settings;
+
+const unsigned int ic_lan_timeout=10*60*1000;
+const unsigned int spare_connections=1;
+const unsigned int ic_auth_timeout=60000;
+const unsigned int ic_ping_timeout=31*60*1000;
+
+const char SERVICE_COMMANDS=0;
+const char SERVICE_FILESRV=1;
+
+void InternetClient::init_mutex(void)
+{
+	mutex=Server->createMutex();
+}
+
+void InternetClient::hasLANConnection(void)
+{
+	IScopedLock lock(mutex);
+	last_lan_connection=Server->getTimeMS();
+}
+
+bool InternetClient::isConnected(void)
+{
+	IScopedLock lock(mutex);
+	return connected;
+}
+
+void InternetClient::setHasConnection(bool b)
+{
+	IScopedLock lock(mutex);
+	connected=b;
+}
+
+void InternetClient::newConnection(void)
+{
+	IScopedLock lock(mutex);
+	++n_connections;
+}
+
+void InternetClient::rmConnection(void)
+{
+	IScopedLock lock(mutex);
+	--n_connections;
+}
+
+void InternetClient::updateSettings(void)
+{
+	IScopedLock lock(mutex);
+	update_settings=true;
+}
+
+void InternetClient::operator()(void)
+{
+	doUpdateSettings();
+	while(true)
+	{
+		IScopedLock lock(mutex);
+		if(update_settings)
+		{
+			doUpdateSettings();
+			update_settings=false;
+		}
+		if(Server->getTimeMS()-last_lan_connection>ic_lan_timeout)
+		{
+			if(!connected)
+			{
+				if(tryToConnect())
+				{
+					connected=true;
+				}
+			}
+			else
+			{
+				if(n_connections<spare_connections)
+				{
+					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings));
+					newConnection();
+				}
+			}
+		}
+	}
+}
+
+void InternetClient::doUpdateSettings(void)
+{
+	server_settings.name.clear();
+
+	ISettingsReader *settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+	if(settings==NULL)
+		return;
+
+	std::string server_name;
+	std::string computername;
+	std::string server_port="55415";
+	std::string authkey;
+	if(!settings->getValue("internet_authkey", &authkey))
+	{
+		Server->destroy(settings);
+		return;
+	}
+	if(!settings->getValue("computername", &computername))
+	{
+		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
+	}
+	if(settings->getValue("internet_server_name", &server_name) || settings->getValue("internet_server_name_def", &server_name) )
+	{
+		if(!settings->getValue("internet_server_port", &server_port) )
+			settings->getValue("internet_server_port_def", &server_port);
+
+		server_settings.name=server_name;
+		server_settings.port=(unsigned short)atoi(server_port.c_str());
+		server_settings.clientname=computername;
+		server_settings.authkey=authkey;
+	}
+}
+
+bool InternetClient::tryToConnect(void)
+{
+	IPipe *cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
+	if(cs!=NULL)
+	{
+		Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
+		newConnection();
+		return true;
+	}
+	return false;
+}
+
+InternetClientThread::InternetClientThread(IPipe *cs, const SServerSettings &server_settings)
+	: cs(cs), server_settings(server_settings)
+{
+}
+
+char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &replysize, unsigned int timeoutms)
+{
+	unsigned int starttime=Server->getTimeMS();
+	char *buf;
+	size_t bufsize;
+	while(Server->getTimeMS()-starttime<timeoutms)
+	{
+		std::string ret;
+		size_t rc=pipe->Read(&ret, timeoutms);
+		if(rc==0)
+		{
+			return NULL;
+		}
+		tcpstack->AddData((char*)ret.c_str(), ret.size());
+		buf=tcpstack->getPacket(&replysize);
+		if(buf!=NULL)
+			return buf;
+	}
+}
+
+void InternetClientThread::operator()(void)
+{
+	if(cs==NULL)
+	{
+		cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
+		if(cs==NULL)
+		{
+			goto cleanup;
+		}
+	}
+
+	InternetServicePipe ics_pipe(cs, server_settings.authkey);
+
+	CTCPStack tcpstack;
+	{
+		CWData data;
+		data.addChar(ID_ISC_AUTH);
+		data.addString(server_settings.clientname);
+		data.addString(ics_pipe.encrypt("##################URBACKUP--AUTH#########################") );
+		tcpstack.Send(cs, data);
+	}
+
+	{
+		char *buf;
+		size_t bufsize;
+		buf=getReply(&tcpstack, cs, bufsize, ic_auth_timeout);	
+		if(buf==NULL)
+		{
+			goto cleanup;
+		}
+		CRData rd(buf, bufsize);
+		char id;
+		if(!rd.getChar(&id)) 
+		{
+			delete []buf;
+			goto cleanup;
+		}
+		if(id==ID_ISC_AUTH_FAILED)
+		{
+			std::string errmsg="None";
+			rd.getStr(&errmsg);
+			Server->Log("Internet server auth failed. Error: "+errmsg, LL_ERROR);
+			delete []buf;
+			goto cleanup;
+		}
+		else if(id!=ID_ISC_AUTH)
+		{
+			Server->Log("Unknown response id -1", LL_ERROR);
+			delete []buf;
+			goto cleanup;
+		}
+	}
+
+	while(true)
+	{
+		char *buf;
+		size_t bufsize;
+		buf=getReply(&tcpstack, &ics_pipe, bufsize, ic_ping_timeout);
+		if(buf==NULL)
+		{
+			goto cleanup;
+		}
+
+		CRData rd(buf, bufsize);
+		char id;
+		if(!rd.getChar(&id)) 
+		{
+			delete []buf;
+			goto cleanup;
+		}
+		if(id==ID_ISC_PING)
+		{
+			CWData data;
+			data.addChar(ID_ISC_PONG);
+			tcpstack.Send(&ics_pipe, data);
+		}
+		else if(id==ID_ISC_CONNECT)
+		{
+			char service=0;
+			rd.getChar(&service);
+
+			if(service==SERVICE_COMMANDS)
+			{
+				ClientConnector clientservice;
+				runServiceWrapper(&ics_pipe, &clientservice);
+			}
+		}
+	}
+
+cleanup:
+	if(cs!=NULL)
+		Server->destroy(cs);
+	InternetClient::rmConnection();
+}
+
+void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
+{
+	client->Init(Server->getThreadID(), pipe);
+	while(true)
+	{
+		bool b=client->Run();
+		if(!b)
+		{
+			return;
+		}
+
+		if(pipe->isReadable(10))
+		{
+			client->ReceivePackets();
+		}
+	}
+}

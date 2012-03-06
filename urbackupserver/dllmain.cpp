@@ -64,6 +64,7 @@ IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
 IPychartFactory *pychart_fak;
 IDownloadFactory *download_fak;
+ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
 
 std::string server_identity;
@@ -361,6 +362,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(url_fak==NULL)
 	{
 		Server->Log("Error loading IUrlFactory", LL_INFO);
+	}
+	crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
+	if( crypto_fak==NULL )
+	{
+		Server->Log("Error loading Cryptoplugin. Internet service will not work.", LL_ERROR);
 	}
 
 	server_exit_pipe=Server->createMemoryPipe();

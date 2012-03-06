@@ -42,6 +42,11 @@ AESEncryption::~AESEncryption()
 
 std::string AESEncryption::encrypt(const std::string &data)
 {
+	return encrypt(data.c_str(), data.size());
+}
+
+std::string AESEncryption::encrypt(const char *data, size_t data_size)
+{
 	std::string ret;
 	if(iv_done==false)
 	{
@@ -50,10 +55,26 @@ std::string AESEncryption::encrypt(const std::string &data)
 	}
 
 	size_t osize=ret.size();
-	ret.resize(osize+data.size());
-	if(data.size()>0)
+	ret.resize(osize+data_size);
+	if(data_size>0)
 	{
-		enc->ProcessString((byte*)&ret[osize], (byte*)data.c_str(), data.size() );
+		enc->ProcessString((byte*)&ret[osize], (byte*)data, data_size);
+	}
+	return ret;
+}
+
+std::string AESEncryption::encrypt(char *data, size_t data_size)
+{
+	std::string ret;
+	if(iv_done==false)
+	{
+		ret.resize(16);
+		memcpy((char*)ret.c_str(), m_IV.BytePtr(), 16);
+	}
+
+	if(data_size>0)
+	{
+		enc->ProcessString((byte*)data, data_size);
 	}
 	return ret;
 }

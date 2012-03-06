@@ -258,10 +258,12 @@
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\data.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="InternetServiceConnector.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
     <ClCompile Include="serverinterface\getimage.cpp" />
@@ -307,6 +309,8 @@
     <ClInclude Include="..\urbackupcommon\escape.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\data.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
+    <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h" />
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
     <ClInclude Include="..\urbackupcommon\os_functions.h" />
     <ClInclude Include="..\urbackupcommon\settings.h" />
     <ClInclude Include="..\urbackupcommon\settingslist.h" />
@@ -316,6 +320,7 @@
     <ClInclude Include="database.h" />
     <ClInclude Include="fileclient\packet_ids.h" />
     <ClInclude Include="fileclient\socket_header.h" />
+    <ClInclude Include="InternetServiceConnector.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="serverinterface\actions.h" />
     <ClInclude Include="serverinterface\action_header.h" />
