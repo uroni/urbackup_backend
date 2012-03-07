@@ -38,8 +38,8 @@ const unsigned short serviceport=35623;
 extern std::string server_identity;
 extern IFSImageFactory *image_fak;
 
-ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get, int clientid) :
-server_get(pServer_get), clientid(clientid), settings(NULL)
+ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode) :
+server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(internet_mode)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -70,7 +70,7 @@ void ServerChannelThread::operator()(void)
 	{
 		if(input==NULL)
 		{
-			IPipe *np=Server->ConnectStream(inet_ntoa(server_get->getClientaddr().sin_addr), serviceport, 10000);
+			IPipe *np=server_get->getClientCommandConnection();
 			if(np==NULL)
 			{
 				Server->Log("Connecting Channel to ClientService failed - CONNECT error -55", LL_DEBUG);
@@ -213,7 +213,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		server_get->sendToPipe("START IMAGE INCR");
 	}
-	else if(msg=="GET BACKUPCLIENTS")
+	else if(msg=="GET BACKUPCLIENTS" && !internet_mode)
 	{
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		db_results res=db->Read("SELECT name,id FROM clients");
@@ -225,7 +225,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		tcpstack.Send(input, clients);
 		ServerStatus::updateActive();
 	}
-	else if(msg.find("GET BACKUPIMAGES ")==0 )
+	else if(msg.find("GET BACKUPIMAGES ")==0 && !internet_mode)
 	{
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -253,7 +253,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 
 		ServerStatus::updateActive();
 	}
-	else if(msg.find("DOWNLOAD IMAGE ")==0)
+	else if(msg.find("DOWNLOAD IMAGE ")==0 && !internet_mode)
 	{
 		std::string s_params=msg.substr(15);
 		str_map params;

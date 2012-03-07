@@ -50,6 +50,7 @@ IServer *Server;
 #ifdef _WIN32
 #include "DirectoryWatcherThread.h"
 #endif
+#include "InternetClient.h"
 #include <stdlib.h>
 
 PLUGIN_ID filesrv_pluginid;
@@ -245,6 +246,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	IndexThread *it=new IndexThread();
 	Server->createThread(it);
+
+	InternetClient::start();
 
 	Server->Log("Started UrBackupClient Backend...", LL_INFO);
 	Server->wait(1000);	

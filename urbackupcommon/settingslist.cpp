@@ -26,5 +26,8 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"allow_pause");
 	ret.push_back(L"allow_log_view");
 	ret.push_back(L"image_letters");
+	ret.push_back(L"internet_server");
+	ret.push_back(L"internet_server_port");
+	ret.push_back(L"internet_authkey");
 	return ret;
 }

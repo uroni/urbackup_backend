@@ -18,6 +18,7 @@
 
 #include "../vld.h"
 #include "../Interface/Server.h"
+#include "../Interface/Pipe.h"
 #include "CClientThread.h"
 #include "CTCPFileServ.h"
 #include "map_buffer.h"
@@ -103,6 +104,27 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 
 	close_the_socket=true;
 	errcount=0;
+	clientpipe=NULL;
+}
+
+CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent)
+{
+	stopped=false;
+	killable=false;
+
+	parent=pParent;
+
+#ifdef _WIN32
+	bufmgr=new CBufMgr(NBUFFERS,READSIZE);
+#else
+	bufmgr=NULL;
+#endif
+
+	hFile=0;
+
+	close_the_socket=true;
+	errcount=0;
+	clientpipe=pClientpipe;
 }
 
 CClientThread::~CClientThread()
@@ -112,6 +134,8 @@ CClientThread::~CClientThread()
 
 void CClientThread::EnableNagle(void)
 {
+	if(clientpipe==NULL)
+	{
 #ifdef DISABLE_NAGLE
 #ifdef _WIN32
 	BOOL opt=FALSE;
@@ -132,10 +156,13 @@ void CClientThread::EnableNagle(void)
 	}
 #endif
 #endif
+	}
 }
 
 void CClientThread::DisableNagle(void)
 {
+	if(clientpipe==NULL)
+	{
 #ifdef DISABLE_NAGLE
 #ifdef _WIN32
 	BOOL opt=TRUE;
@@ -144,6 +171,7 @@ void CClientThread::DisableNagle(void)
 		Log("Error: Setting TCP_NODELAY failed");
 #endif
 #endif
+	}
 }
 
 void CClientThread::operator()(void)
@@ -167,7 +195,8 @@ void CClientThread::operator()(void)
 
 	if( close_the_socket==true )
 	{
-		closesocket(mSocket);
+		if(clientpipe==NULL)
+			closesocket(mSocket);
 	}
 
 	if( hFile!=0 )
@@ -181,15 +210,24 @@ void CClientThread::operator()(void)
 
 bool CClientThread::RecvMessage(void)
 {
-	fd_set fdset;
-	FD_ZERO(&fdset);
-	FD_SET(mSocket,&fdset);
-
+	_i32 rc;
 	timeval lon;
 	lon.tv_usec=0;
 	lon.tv_sec=60;
+	if(clientpipe==NULL)
+	{
+		fd_set fdset;
+		FD_ZERO(&fdset);
+		FD_SET(mSocket,&fdset);
 
-	_i32 rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+		_i32 rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+	}
+	else
+	{
+		rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
+		if(clientpipe->hasError())
+			rc=-1;
+	}
 	if( rc==0 )
 	{
 		Log("1 min Timeout deleting Buffers (%i KB) and waiting 1h more...", (NBUFFERS*READSIZE)/1024 );
@@ -198,9 +236,19 @@ bool CClientThread::RecvMessage(void)
 		int n=0;
 		while(stopped==false && rc==0 && n<60)
 		{
-			FD_ZERO(&fdset);
-			FD_SET(mSocket,&fdset);
-			rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+			if(clientpipe==NULL)
+			{
+				fd_set fdset;
+				FD_ZERO(&fdset);
+				FD_SET(mSocket,&fdset);
+				rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+			}
+			else
+			{
+				rc=clientpipe->isReadable(lon.tv_sec*1000);
+				if(clientpipe->hasError())
+					rc=-1;
+			}
 			++n;
 		}
 		Log("Reallocating Buffers...");
@@ -217,7 +265,15 @@ bool CClientThread::RecvMessage(void)
 	}
 	else
 	{
-		rc=recv(mSocket, buffer, BUFFERSIZE, MSG_NOSIGNAL);
+		if(clientpipe==NULL)
+		{
+			rc=recv(mSocket, buffer, BUFFERSIZE, MSG_NOSIGNAL);
+		}
+		else
+		{
+			rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE);
+		}
+
 
 		if(rc<1)
 		{
@@ -245,6 +301,18 @@ bool CClientThread::RecvMessage(void)
 		}
 	}
 	return true;
+}
+
+int CClientThread::SendInt(const char *buf, size_t bsize)
+{
+	if(clientpipe==NULL)
+	{
+		return send(mSocket, buf, (int)bsize, MSG_NOSIGNAL);
+	}
+	else
+	{
+		return (int)(clientpipe->Write(buf, bsize)?bsize:SOCKET_ERROR);
+	}
 }
 
 bool CClientThread::ProcessPacket(CRData *data)
@@ -278,7 +346,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 				data.addUChar( ID_GAMELIST );
 				data.addUInt( (unsigned int)games.size() );
 
-				stack.Send(mSocket, data );
+				if(clientpipe==NULL)
+					stack.Send(mSocket, data );
+				else
+					stack.Send(clientpipe, data);
 
 				for(size_t i=0;i<games.size();++i)
 				{
@@ -291,9 +362,16 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					std::string game=Server->ConvertToUTF8(games[i]);
 					
-					stack.Send(mSocket, (char*)game.c_str(), game.size() );
-					
-					stack.Send(mSocket, (char*)version.c_str(), version.size() );
+					if(clientpipe==NULL)
+					{
+						stack.Send(mSocket, (char*)game.c_str(), game.size() );					
+						stack.Send(mSocket, (char*)version.c_str(), version.size() );
+					}
+					else
+					{
+						stack.Send(clientpipe, (char*)game.c_str(), game.size() );					
+						stack.Send(clientpipe, (char*)version.c_str(), version.size() );
+					}
 				}
 				
 				Log("done.");
@@ -331,7 +409,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(filename.empty())
 				{
 					char ch=ID_BASE_DIR_LOST;
-					int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
+					int rc=SendInt(&ch, 1);
+
 					if(rc==SOCKET_ERROR)
 					{
 						Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -1");
@@ -361,7 +440,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if(!isDirectory(basePath))
 					{
 						char ch=ID_BASE_DIR_LOST;
-						int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
+						int rc=SendInt(&ch, 1);
 						if(rc==SOCKET_ERROR)
 						{
 							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST");
@@ -373,7 +452,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 #endif
 					
 					char ch=ID_COULDNT_OPEN;
-					int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
+					int rc=SendInt(&ch, 1);
 					if(rc==SOCKET_ERROR)
 					{
 						Log("Error: Socket Error - DBG: Send COULDNT OPEN");
@@ -396,7 +475,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					data.addUChar(ID_FILESIZE);
 					data.addUInt64(filesize.QuadPart);
 
-					int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
+					int rc=SendInt(data.getDataPtr(), data.getDataSize());
 					if(rc==SOCKET_ERROR)
 					{
 						Log("Error: Socket Error - DBG: SendSize");
@@ -494,7 +573,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if(!isDirectory(basePath))
 					{
 						char ch=ID_BASE_DIR_LOST;
-						int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
+						int rc=SendInt(&ch, 1);
 						if(rc==SOCKET_ERROR)
 						{
 							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST");
@@ -506,7 +585,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 #endif
 					hFile=0;
 					char ch=ID_COULDNT_OPEN;
-					int rc=send(mSocket, &ch, 1, MSG_NOSIGNAL);
+					int rc=SendInt(&ch, 1);
 					if(rc==SOCKET_ERROR)
 					{
 						Log("Error: Socket Error - DBG: Send COULDNT OPEN");
@@ -530,7 +609,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					data.addUChar(ID_FILESIZE);
 					data.addUInt64(filesize);
 
-					int rc=send(mSocket, data.getDataPtr(), data.getDataSize(), MSG_NOSIGNAL );	
+					int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
 					if(rc==SOCKET_ERROR)
 					{
 						Log("Error: Socket Error - DBG: SendSize");
@@ -705,17 +784,24 @@ int CClientThread::SendData(void)
 
 	SSendData* ldata=t_send[0];
 
-	fd_set fdset;
-				
-	FD_ZERO(&fdset);
-	FD_SET(mSocket, &fdset);
-
-	timeval lon;
-	lon.tv_sec=CLIENT_TIMEOUT;
-	lon.tv_usec=0;
-
 	_i32 ret;
-	ret=select((int)mSocket+1, 0, &fdset,0, &lon);
+	if(clientpipe==NULL)
+	{
+		fd_set fdset;
+				
+		FD_ZERO(&fdset);
+		FD_SET(mSocket, &fdset);
+
+		timeval lon;
+		lon.tv_sec=CLIENT_TIMEOUT;
+		lon.tv_usec=0;
+
+		ret=select((int)mSocket+1, 0, &fdset,0, &lon);
+	}
+	else
+	{
+		ret=clientpipe->isWritable(CLIENT_TIMEOUT*1000)?1:0;
+	}
 	if(ret < 1)
 	{
 		Log("Client Timeout occured.");
@@ -728,7 +814,7 @@ int CClientThread::SendData(void)
 	{
 		if( ldata->bsize>0 )
 		{
-			_i32 rc=send(mSocket, ldata->buffer, ldata->bsize, MSG_NOSIGNAL );		
+			_i32 rc=SendInt(ldata->buffer, ldata->bsize);
 			if( rc==SOCKET_ERROR )
 			{
 				int err;

@@ -418,7 +418,7 @@ bool CDatabase::Dump(const std::string &pFile)
 
 	char *cmd=new char[6];
 	cmd[0]='.'; cmd[1]='d'; cmd[2]='u'; cmd[3]='m'; cmd[4]='p'; cmd[5]=0;
-	do_meta_command(cmd, &cd);
+	do_meta_command_r(cmd, &cd);
 	delete []cmd;
 
 	fclose(cd.out);

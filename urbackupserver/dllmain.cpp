@@ -32,6 +32,7 @@
 #include "../Interface/SessionMgr.h"
 #include "../Interface/Pipe.h"
 #include "../Interface/Query.h"
+
 #include "../Interface/Thread.h"
 #include "../Interface/File.h"
 
@@ -56,7 +57,9 @@ SStartupStatus startup_status;
 #include "server_log.h"
 #include "server_cleanup.h"
 #include "server_get.h"
+#include "server_settings.h"
 #include "..\urbackupcommon\os_functions.h"
+#include "InternetServiceConnector.h"
 
 #include <stdlib.h>
 
@@ -374,9 +377,19 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	Server->createThread(backup_server);
 	Server->wait(500);
 
+	InternetServiceConnector::init_mutex();
+
+	{
+		ServerSettings settings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));	
+		unsigned int port=atoi(Server->getServerParameter("internet_port", "55415").c_str());
+		Server->StartCustomStreamService(new InternetService, "InternetService", port);
+	}
+
 	ServerCleanupThread::initMutex();
 	ServerCleanupThread *server_cleanup=new ServerCleanupThread();
 	Server->createThread(server_cleanup);
+
+	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }
 
 DLLEXPORT void UnloadActions(void)
@@ -653,6 +666,22 @@ void upgrade15_16(void)
 	db->Write("DROP TABLE extra_clients");
 }
 
+void upgrade16_17(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db_results res=db->Read("SELECT id FROM clients");
+	IQuery *q=db->Prepare("INSERT INTO settings_db.settings (key,value, clientid) VALUES ('internet_authkey',?,?)", false);
+	for(size_t i=0;i<res.size();++i)
+	{
+		std::string key=ServerSettings::generateRandomAuthKey();
+		q->Bind(key);
+		q->Bind(res[i][L"id"]);
+		q->Write();
+		q->Reset();
+	}
+	db->destroyQuery(q);
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -669,7 +698,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=16;
+	int max_v=17;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -748,6 +777,10 @@ void upgrade(void)
 				break;
 			case 15:
 				upgrade15_16();
+				++ver;
+				break;
+			case 16:
+				upgrade16_17();
 				++ver;
 				break;
 			default:

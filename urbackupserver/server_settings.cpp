@@ -154,11 +154,17 @@ void ServerSettings::readSettingsDefault(void)
 	settings.allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
 	settings.image_letters=settings_default->getValue("image_letters", "C");
 	settings.backup_database=(settings_default->getValue("backup_database", "true")=="true");
+	settings.internet_server_port=(unsigned short)(atoi(settings_default->getValue("internet_server_port", "55415").c_str()));
+	settings.internet_server_name=settings_default->getValue("internet_server_name", "");
 }
 
 void ServerSettings::readSettingsClient(void)
 {	
-	std::string stmp=settings_client->getValue("client_overwrite", "");
+	std::string stmp=settings_client->getValue("internet_authkey", generateRandomAuthKey());
+	if(!stmp.empty())
+		settings.internet_authkey=stmp;
+
+	stmp=settings_client->getValue("client_overwrite", "");
 	if(!stmp.empty())
 		settings.client_overwrite=(stmp=="true");
 	if(!settings.client_overwrite)
@@ -402,6 +408,15 @@ STimeSpan ServerSettings::parseTime(std::string t)
 	{
 		return STimeSpan();
 	}
+}
+
+std::string ServerSettings::generateRandomAuthKey(void)
+{
+	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	std::string key;
+	for(int j=0;j<10;++j)
+		key+=rchars[rand()%rchars.size()];
+	return key;
 }
 
 #endif //CLIENT_ONLY

@@ -6,13 +6,25 @@
 #include "../urbackupcommon/fileclient/data.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
+#include "server_settings.h"
 #include "database.h"
 
 const unsigned int ping_interval=30*60*1000;
 const unsigned int ping_timeout=30000;
+const unsigned int offline_timeout=30000;
 
-std::queue<InternetServiceConnector*> InternetServiceConnector::spare_connections;
+std::map<std::string, SClientData> InternetServiceConnector::client_data;
 IMutex *InternetServiceConnector::mutex=NULL;
+
+ICustomClient* InternetService::createClient()
+{
+	return new InternetServiceConnector;
+}
+
+void InternetService::destroyClient( ICustomClient * pClient)
+{
+	delete ((InternetServiceConnector*)pClient);
+}
 
 InternetServiceConnector::InternetServiceConnector(void)
 {
@@ -37,6 +49,14 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	state=ISS_AUTH;
 	connection_done_cond=NULL;
 	tcpstack.reset();
+	challenge=ServerSettings::generateRandomAuthKey();
+	{
+		CWData data;
+		data.addChar(ID_ISC_CHALLENGE);
+		data.addString(challenge);
+		tcpstack.Send(cs, data);
+	}
+	lastpingtime=Server->getTimeMS();
 }
 
 bool InternetServiceConnector::Run(void)
@@ -45,7 +65,6 @@ bool InternetServiceConnector::Run(void)
 	{
 		if(stop_connecting)
 		{
-			connection_quit_cond->notify_all();
 			return false;
 		}
 		if(free_connection)
@@ -84,7 +103,10 @@ bool InternetServiceConnector::Run(void)
 		if(Server->getTimeMS()-lastpingtime>ping_timeout)
 		{
 			Server->Log("Ping timeout in InternetServiceConnector::Run", LL_DEBUG);
+			IScopedLock lock(local_mutex);
 			state=ISS_QUIT;
+			delete is_pipe;
+			is_pipe=NULL;
 			return false;
 		}
 	}
@@ -122,32 +144,34 @@ void InternetServiceConnector::ReceivePackets(void)
 				{
 					if(id==ID_ISC_AUTH)
 					{
-						std::string clientname;
 						std::string encdata;
 						std::string errmsg;
 
 						if(rd.getStr(&clientname) && rd.getStr(&encdata) )
 						{
 							IDatabase *db=Server->getDatabase(tid, URBACKUPDB_SERVER);
-							IQuery *q=db->Prepare("SELECT key FROM clients WHERE name=?", false);
+							IQuery *q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='internet_authkey' AND clientid=(SELECT id FROM clients WHERE name=?)", false);
 							q->Bind(clientname);
 							db_results res=q->Read();
 							db->destroyQuery(q);
 							if(!res.empty())
 							{
-								is_pipe=new InternetServicePipe(cs, Server->ConvertToUTF8(res[0][L"key"]));
+								is_pipe=new InternetServicePipe(cs, Server->ConvertToUTF8(res[0][L"value"]));
 								
 								std::string auth_str=is_pipe->decrypt(encdata);
-								if(auth_str=="##################URBACKUP--AUTH#########################")
+								if(auth_str=="##################URBACKUP--AUTH#########################-"+challenge)
 								{
 									state=ISS_AUTHED;
 
 									IScopedLock lock(mutex);
-									spare_connections.push(this);
+									client_data[clientname].spare_connections.push(this);
+									client_data[clientname].last_seen=Server->getTimeMS();
 								}
 								else
 								{
 									errmsg="Auth failed";
+									delete is_pipe;
+									is_pipe=NULL;
 								}
 							}
 							else
@@ -179,6 +203,8 @@ void InternetServiceConnector::ReceivePackets(void)
 					if(id==ID_ISC_PONG)
 					{
 						pinging=false;
+						IScopedLock lock(mutex);
+						client_data[clientname].last_seen=Server->getTimeMS();
 					}
 				}break;
 			case ISS_CONNECTING:
@@ -189,6 +215,9 @@ void InternetServiceConnector::ReceivePackets(void)
 
 						is_connected=true;
 						connection_done_cond->notify_all();
+
+						IScopedLock lock(mutex);
+						client_data[clientname].last_seen=Server->getTimeMS();
 					}
 				}break;
 			}
@@ -202,26 +231,31 @@ void InternetServiceConnector::init_mutex(void)
 	mutex=Server->createMutex();
 }
 
-IPipe *InternetServiceConnector::getConnection(char service, int timeoutms)
+IPipe *InternetServiceConnector::getConnection(const std::string &clientname, char service, int timeoutms)
 {
+
 	unsigned int starttime=Server->getTimeMS();
 	do
 	{
 		IScopedLock lock(mutex);
-		if(spare_connections.empty())
+		std::map<std::string, SClientData>::iterator iter=client_data.find(clientname);
+		if(iter==client_data.end())
+			return NULL;
+
+		if(iter->second.spare_connections.empty())
 		{
 			lock.relock(NULL);
 			Server->wait(100);
 		}
 		else
 		{
-			InternetServiceConnector *isc=spare_connections.front();
+			InternetServiceConnector *isc=iter->second.spare_connections.front();
+			iter->second.spare_connections.pop();
 			ICondition *cond_ok=Server->createCondition();
-			ICondition *cond_quit=Server->createCondition();
-			if(isc->Connect(cond_ok, cond_quit, service))
+			if(isc->Connect(cond_ok, service))
 			{
 				unsigned int rtime=Server->getTimeMS()-starttime;
-				if(rtime<timeoutms)
+				if((int)rtime<timeoutms)
 					rtime=timeoutms-rtime;
 				else
 					rtime=0;
@@ -233,12 +267,15 @@ IPipe *InternetServiceConnector::getConnection(char service, int timeoutms)
 				if(!isc->isConnected())
 				{
 					isc->stopConnecting();
-					cond_quit->wait(&lock);
+					Server->Log("Connecting on internet connection failed", LL_DEBUG);
 				}
 				else
 				{
+					IPipe *ret=isc->getISPipe();
 					isc->freeConnection();
-					return isc->getISPipe();
+					Server->Log("Established internet connection", LL_DEBUG);
+					
+					return ret;
 				}
 			}
 			else
@@ -246,7 +283,10 @@ IPipe *InternetServiceConnector::getConnection(char service, int timeoutms)
 				Server->Log("Error: Could not start connection process", LL_ERROR);
 			}
 		}
-	}while(timeoutms==-1 || Server->getTimeMS()-starttime<timeoutms);
+	}while(timeoutms==-1 || Server->getTimeMS()-starttime<(unsigned int)timeoutms);
+
+	Server->Log("Establishing internet connection failed", LL_DEBUG);
+	return NULL;
 }
 
 bool InternetServiceConnector::wantReceive(void)
@@ -267,13 +307,12 @@ bool InternetServiceConnector::closeSocket(void)
 		return true;
 }
 
-bool InternetServiceConnector::Connect(ICondition *n_cond, ICondition *q_cond, char service)
+bool InternetServiceConnector::Connect(ICondition *n_cond, char service)
 {
 	IScopedLock lock(local_mutex);
 	if(do_connect==false)
 	{
 		connection_done_cond=n_cond;
-		connection_quit_cond=q_cond;
 		target_service=service;
 		do_connect=true;
 		return true;
@@ -283,6 +322,7 @@ bool InternetServiceConnector::Connect(ICondition *n_cond, ICondition *q_cond, c
 
 IPipe *InternetServiceConnector::getISPipe(void)
 {
+	IScopedLock lock(local_mutex);
 	return is_pipe;
 }
 
@@ -299,4 +339,35 @@ bool InternetServiceConnector::isConnected(void)
 void InternetServiceConnector::freeConnection(void)
 {
 	free_connection=true;
+}
+
+std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
+{
+	std::vector<std::string> ret;
+
+	IScopedLock lock(mutex);
+	unsigned int ct=Server->getTimeMS();
+	std::vector<std::string> todel;
+	for(std::map<std::string, SClientData>::iterator it=client_data.begin();it!=client_data.end();++it)
+	{
+		if(!it->second.spare_connections.empty())
+		{
+			if(ct-it->second.last_seen<offline_timeout)
+			{
+				ret.push_back(it->first);
+			}
+		}
+		else
+		{
+			todel.push_back(it->first);
+		}
+	}
+
+	for(size_t i=0;i<todel.size();++i)
+	{
+		std::map<std::string, SClientData>::iterator it=client_data.find(todel[i]);
+		client_data.erase(it);
+	}
+
+	return ret;
 }

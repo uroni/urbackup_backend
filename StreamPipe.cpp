@@ -109,7 +109,10 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 	}
 	else
 	{
-		has_error=true;
+		if(rc<0)
+		{
+			has_error=true;
+		}
 		return false;
 	}
 
@@ -163,7 +166,10 @@ bool CStreamPipe::isWritable(int timeoutms)
 		return true;
 	else
 	{
-		has_error=true;
+		if(rc<0)
+		{
+			has_error=true;
+		}
 		return false;
 	}
 }
@@ -188,7 +194,10 @@ bool CStreamPipe::isReadable(int timeoutms)
 		return true;
 	else
 	{
-		has_error=true;
+		if(rc<0)
+		{
+			has_error=true;
+		}
 		return false;
 	}
 }

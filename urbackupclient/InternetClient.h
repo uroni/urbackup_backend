@@ -7,6 +7,8 @@ class IPipe;
 class ISettingsReader;
 class CTCPStack;
 class ICustomClient;
+class IScopedLock;
+class ICondition;
 
 struct SServerSettings
 {
@@ -16,7 +18,7 @@ struct SServerSettings
 	std::string authkey;
 };
 
-class InternetClient
+class InternetClient : public IThread
 {
 public:
 	static void init_mutex(void);
@@ -27,10 +29,14 @@ public:
 	static void newConnection(void);
 	static void rmConnection(void);
 
+	static void start(void);
+
 	void operator()(void);
 
 	void doUpdateSettings(void);
-	bool tryToConnect(void);
+	bool tryToConnect(IScopedLock *lock);
+
+	static void setHasAuthErr(void);
 
 	static void updateSettings(void);
 
@@ -41,6 +47,8 @@ private:
 	static unsigned int last_lan_connection;
 	static bool update_settings;
 	static SServerSettings server_settings;
+	static ICondition *wakeup_cond;
+	static bool auth_err;
 };
 
 class InternetClientThread : public IThread

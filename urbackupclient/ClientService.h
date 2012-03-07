@@ -80,6 +80,8 @@ public:
 	bool isHashdataOkay(void);
 	void resetImageBackupStatus(void);
 
+	void setIsInternetConnection(void);
+
 private:
 	bool checkPassword(const std::wstring &cmd);
 	bool saveBackupDirs(str_map &args, bool server_default=false);
@@ -182,4 +184,6 @@ private:
 	bool want_receive;
 
 	std::vector<IPipe*> contractors;
+
+	bool internet_conn;
 };

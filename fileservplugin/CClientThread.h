@@ -19,6 +19,7 @@
 #include "settings.h"
 
 class CTCPFileServ;
+class IPipe;
 
 struct SSendData
 {
@@ -48,6 +49,7 @@ class CClientThread : public IThread
 {
 public:
 	CClientThread(SOCKET pSocket, CTCPFileServ* pParent);
+	CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent);
 	~CClientThread();
 
 	bool isStopped(void);
@@ -67,6 +69,8 @@ private:
 
 	void EnableNagle(void);
 	void DisableNagle(void);
+
+	int SendInt(const char *buf, size_t bsize);
 
 	SOCKET mSocket;
 	volatile bool stopped;
@@ -89,4 +93,5 @@ private:
 	bool close_the_socket;
 
 	CTCPFileServ *parent;
+	IPipe *clientpipe;
 };

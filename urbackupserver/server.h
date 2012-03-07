@@ -12,6 +12,7 @@ struct SClient
 	IPipe *pipe;
 	int offlinecount;
 	sockaddr_in addr;
+	bool internet_connection;
 };
 
 class BackupServer : public IThread

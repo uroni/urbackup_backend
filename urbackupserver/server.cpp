@@ -28,6 +28,7 @@
 #include "server_status.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
+#include "InternetServiceConnector.h"
 #include <memory.h>
 
 const unsigned int waittime=50*1000; //1 min
@@ -40,6 +41,7 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 
 void BackupServer::operator()(void)
 {
+	Server->wait(5000);
 	IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings_db.settings");
 
@@ -144,8 +146,21 @@ void BackupServer::findClients(FileClient &fc)
 
 void BackupServer::startClients(FileClient &fc)
 {
-	std::vector<std::wstring> names=fc.getServerNames();
-	std::vector<sockaddr_in> servers=fc.getServers();
+	std::vector<std::wstring> names;//=fc.getServerNames();
+	std::vector<sockaddr_in> servers;//=fc.getServers();
+
+	std::vector<bool> inetclient;
+	inetclient.resize(names.size());
+	std::fill(inetclient.begin(), inetclient.end(), false);
+	std::vector<std::string> anames=InternetServiceConnector::getOnlineClients();
+	for(size_t i=0;i<anames.size();++i)
+	{
+		names.push_back(Server->ConvertToUnicode(anames[i]));
+		inetclient.push_back(true);
+		sockaddr_in n;
+		memset(&n, 0, sizeof(sockaddr_in));
+		servers.push_back(n);
+	}
 
 	for(size_t i=0;i<names.size();++i)
 	{
@@ -153,17 +168,33 @@ void BackupServer::startClients(FileClient &fc)
 		std::map<std::wstring, SClient>::iterator it=clients.find(names[i]);
 		if( it==clients.end() )
 		{
+			if(inetclient[i]==true)
+			{
+				bool skip=false;
+				for(size_t j=0;j<names.size();++j)
+				{
+					if(i!=j && names[i]==names[j] && inetclient[j]==false)
+					{
+						skip=true;
+						break;
+					}
+				}
+				if(skip)
+					continue;
+			}
+
 			Server->Log(L"New Backupclient: "+names[i]);
 			ServerStatus::setOnline(names[i], true);
 			IPipe *np=Server->createMemoryPipe();
 
-			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i]);
+			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i], inetclient[i]);
 			Server->getThreadPool()->execute(client);
 
 			SClient c;
 			c.pipe=np;
 			c.offlinecount=0;
 			c.addr=servers[i];
+			c.internet_connection=inetclient[i];
 
 			ServerStatus::setIP(names[i], c.addr.sin_addr.s_addr);
 
@@ -171,7 +202,13 @@ void BackupServer::startClients(FileClient &fc)
 		}
 		else if(it->second.offlinecount<max_offline)
 		{
-			if(it->second.addr.sin_addr.s_addr==servers[i].sin_addr.s_addr)
+			bool found_lan=false;
+			if(inetclient[i]==false && it->second.internet_connection==true)
+			{
+				found_lan=true;
+			}
+
+			if(it->second.addr.sin_addr.s_addr==servers[i].sin_addr.s_addr && !found_lan)
 			{
 				it->second.offlinecount=0;
 			}
@@ -186,13 +223,14 @@ void BackupServer::startClients(FileClient &fc)
 						break;
 					}
 				}
-				if(none_fits)
+				if(none_fits || found_lan)
 				{
 					it->second.addr=servers[i];
 					std::string msg;
-					msg.resize(7+sizeof(sockaddr_in));
+					msg.resize(7+sizeof(sockaddr_in)+1);
 					msg[0]='a'; msg[1]='d'; msg[2]='d'; msg[3]='r'; msg[4]='e'; msg[5]='s'; msg[6]='s';
 					memcpy(&msg[7], &it->second.addr, sizeof(sockaddr_in));
+					msg[7+sizeof(sockaddr_in)]=(inetclient[i]==true?1:0);
 					it->second.pipe->Write(msg);
 
 					char *ip=(char*)&it->second.addr.sin_addr.s_addr;

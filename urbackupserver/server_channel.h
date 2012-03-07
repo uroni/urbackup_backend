@@ -11,7 +11,7 @@ class ServerSettings;
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(BackupServerGet *pServer_get, int clientid);
+	ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -37,4 +37,5 @@ private:
 
 	volatile bool do_exit;
 	bool combat_mode;
+	bool internet_mode;
 };

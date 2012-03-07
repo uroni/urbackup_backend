@@ -20,15 +20,23 @@
 #include "map_buffer.h"
 #include "../stringtools.h"
 #include "../Interface/Server.h"
+#include "CClientThread.h"
+#include "../Interface/ThreadPool.h"
 
 IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
 bool FileServ::pause=false;
 
-FileServ::FileServ(bool *pDostop, const std::wstring &servername, THREADPOOL_TICKET serverticket)
-	: servername(servername), serverticket(serverticket)
+std::string getSystemServerName(void);
+
+FileServ::FileServ(bool *pDostop, const std::wstring &pServername, THREADPOOL_TICKET serverticket)
+	: servername(pServername), serverticket(serverticket)
 {
 	dostop=pDostop;
+	if(servername.empty())
+	{
+		servername=Server->ConvertToUnicode(getSystemServerName());
+	}
 }
 
 FileServ::~FileServ(void)
@@ -99,4 +107,10 @@ bool FileServ::isPause(void)
 std::wstring FileServ::getServerName(void)
 {
 	return servername;
+}
+
+void FileServ::runClient(IPipe *cp)
+{
+	CClientThread cc(cp, NULL);
+	cc();
 }

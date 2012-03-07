@@ -16,7 +16,7 @@ InternetServicePipe::~InternetServicePipe(void)
 	dec->Remove();
 }
 
-size_t InternetServicePipe::Read(char *buffer, size_t bsize, int timeoutms=-1)
+size_t InternetServicePipe::Read(char *buffer, size_t bsize, int timeoutms)
 {
 	size_t rc=cs->Read(buffer, bsize, timeoutms);
 	if(rc>0)
@@ -32,6 +32,7 @@ size_t InternetServicePipe::Read(char *buffer, size_t bsize, int timeoutms=-1)
 		}
 		return rc;
 	}
+	return 0;
 }
 
 std::string InternetServicePipe::decrypt(const std::string &data)
@@ -44,14 +45,14 @@ std::string InternetServicePipe::encrypt(const std::string &data)
 	return enc->encrypt(data);
 }
 
-bool InternetServicePipe::Write(const char *buffer, size_t bsize, int timeoutms=-1)
+bool InternetServicePipe::Write(const char *buffer, size_t bsize, int timeoutms)
 {
 	std::string encbuf=enc->encrypt(buffer, bsize);
 	bool b=cs->Write(encbuf, timeoutms);
 	return b;
 }
 
-size_t InternetServicePipe::Read(std::string *ret, int timeoutms=-1)
+size_t InternetServicePipe::Read(std::string *ret, int timeoutms)
 {
 	size_t rc=cs->Read(ret, timeoutms);
 	if(rc>0)
@@ -72,9 +73,10 @@ size_t InternetServicePipe::Read(std::string *ret, int timeoutms=-1)
 		}
 		return rc;
 	}
+	return 0;
 }
 
-bool InternetServicePipe::Write(const std::string &str, int timeoutms=-1)
+bool InternetServicePipe::Write(const std::string &str, int timeoutms)
 {
 	return Write(str.c_str(), str.size(), timeoutms);
 }
@@ -82,12 +84,12 @@ bool InternetServicePipe::Write(const std::string &str, int timeoutms=-1)
 /**
 * @param timeoutms -1 for blocking >=0 to block only for x ms. Default: nonblocking
 */
-bool InternetServicePipe::isWritable(int timeoutms=0)
+bool InternetServicePipe::isWritable(int timeoutms)
 {
 	return cs->isWritable();
 }
 
-bool InternetServicePipe::isReadable(int timeoutms=0)
+bool InternetServicePipe::isReadable(int timeoutms)
 {
 	return cs->isReadable();
 }

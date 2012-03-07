@@ -23,9 +23,11 @@
 #include "../../Interface/SettingsReader.h"
 #include "../../urlplugin/IUrlFactory.h"
 #include "../../urbackupcommon/os_functions.h"
+#include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server_get.h"
 
 extern IUrlFactory *url_fak;
+extern ICryptoFactory *crypto_fak;
 
 std::vector<std::wstring> getMailSettingsList(void)
 {
@@ -72,7 +74,9 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 
 struct SGeneralSettings
 {
-	SGeneralSettings(void): no_images(false), no_file_backups(false), autoshutdown(false), autoupdate_clients(true), max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true) {}
+	SGeneralSettings(void): no_images(false), no_file_backups(false), autoshutdown(false), autoupdate_clients(true),
+		max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true),
+		internet_server_port(55415){}
 	std::wstring backupfolder;
 	bool no_images;
 	bool no_file_backups;
@@ -83,6 +87,8 @@ struct SGeneralSettings
 	std::wstring tmpdir;
 	std::wstring cleanup_window;
 	bool backup_database;
+	std::string internet_server;
+	unsigned short internet_server_port;
 };
 
 struct SClientSettings
@@ -121,6 +127,10 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.cleanup_window=value;
 		else if(key==L"backup_database" && value==L"false")
 			ret.backup_database=false;
+		else if(key==L"internet_server" )
+			ret.internet_server=Server->ConvertToUTF8(value);
+		else if(key==L"internet_server_port" )
+			ret.internet_server_port=(unsigned short)watoi(value);
 	}
 	return ret;
 }
@@ -227,6 +237,16 @@ void updateMailSettings(str_map &GET, IDatabase *db)
 			updateSetting(settings[i], it->second, q_get, q_update, q_insert);
 		}
 	}
+}
+
+void updateInternetSettings(SGeneralSettings settings, IDatabase *db)
+{
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,0)");
+
+	updateSetting(L"internet_server", Server->ConvertToUnicode(settings.internet_server), q_get, q_update, q_insert);
+	updateSetting(L"internet_server_port", convert(settings.internet_server_port), q_get, q_update, q_insert);
 }
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
@@ -364,6 +384,10 @@ ACTION_IMPL(settings)
 			if(helper.getRights("mail_settings")=="all" && url_fak!=NULL )
 			{
 				navitems.set("mail", true);
+			}
+			if(helper.getRights("internet_settings")=="all" && crypto_fak!=NULL)
+			{
+				navitems.set("internet", true);
 			}
 
 			JSON::Array clients;
@@ -648,6 +672,25 @@ ACTION_IMPL(settings)
 			getMailSettings(obj, db);
 			ret.set("settings", obj);
 			ret.set("sa", sa);
+		}
+		if( sa==L"internet_save" && helper.getRights("internet_save")=="all" )
+		{
+			SGeneralSettings settings;
+			settings.internet_server=Server->ConvertToUTF8(GET[L"internet_server"] );
+			settings.internet_server_port=watoi(GET[L"internet_server_port"]);
+			updateInternetSettings(settings, db);
+			ret.set("saved_ok", true);
+			sa=L"internet";
+		}
+		if( sa==L"internet" && helper.getRights("internet_settings")=="all")
+		{
+			JSON::Object obj;
+			SGeneralSettings settings=getGeneralSettings(db);
+			obj.set("internet_server", settings.internet_server);
+			obj.set("internet_server_port", settings.internet_server_port);
+			ret.set("settings", obj);
+			ret.set("sa", sa);
+			
 		}
 	}
 	else

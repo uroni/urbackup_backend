@@ -6,6 +6,7 @@
 #define MAX_PACKETSIZE	unsigned int
 
 class CWData;
+class IPipe;
 
 class CTCPStack
 {
@@ -16,6 +17,8 @@ public:
 
 	int Send(SOCKET sock, char* buf, size_t msglen);
 	int Send(SOCKET sock, CWData data);
+	int Send(IPipe* pipe, char* buf, size_t msglen);
+	int Send(IPipe* pipe, CWData data);
 
         void reset(void);
 

@@ -42,6 +42,7 @@ public:
         bool ListDownloaded(void);
 
         _u32 Connect(sockaddr_in *addr=NULL);
+		_u32 Connect(IPipe *cp);
 
         //---needs Connection
         _u32 GetGameList(void);

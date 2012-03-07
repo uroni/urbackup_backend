@@ -5,6 +5,8 @@
 
 #include "../Interface/Object.h"
 
+class IPipe;
+
 class IFileServ : public IObject
 {
 public:
@@ -16,6 +18,7 @@ public:
 	virtual void addIdentity(const std::string &pIdentity)=0;
 	virtual void setPause(bool b)=0;
 	virtual bool getPause(void)=0;
+	virtual void runClient(IPipe *cp)=0;
 };
 
 #endif //IFILESERV_H

@@ -1097,13 +1097,17 @@ IPipe *CServer::createMemoryPipe(void)
 #ifdef THREAD_BOOST
 void thread_helper_f(IThread *t)
 {
+#ifndef _DEBUG
 	__try
 	{
+#endif
 		(*t)();
+#ifndef _DEBUG
 	}
 	__except(CServer::WriteDump(GetExceptionInformation()))
 	{
 	}
+#endif
 }
 #else
 #ifndef _WIN32
@@ -1421,11 +1425,15 @@ void CServer::setTemporaryDirectory(const std::wstring &dir)
 
 void CServer::registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory)
 {
+	IScopedLock lock(db_mutex);
+
 	database_factories[pEngineName]=factory;
 }
 
 bool CServer::hasDatabaseFactory(const std::string &pEngineName)
 {
+	IScopedLock lock(db_mutex);
+
 	std::map<std::string, IDatabaseFactory*>::iterator it=database_factories.find(pEngineName);
 	return it!=database_factories.end();
 }

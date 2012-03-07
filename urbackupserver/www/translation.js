@@ -81,7 +81,8 @@ translations.en={
 "storage_usage_bar_graph_colname2": "Storage usage",
 "validate_err_notregexp_cleanup_window": "Format for cleanup window wrong",
 "mail_settings": "Mail",
-"tupgrade_error_text": "UrBackup is upgrading its internal database. This may take a while. The server is inaccessible and will not do any backups during this upgrade."
+"tupgrade_error_text": "UrBackup is upgrading its internal database. This may take a while. The server is inaccessible and will not do any backups during this upgrade.",
+"internet_server_settings": "Internet accessibility"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -293,5 +294,6 @@ translations.de={
 "tupgrade_error_text": "UrBackup aktualisiert seine interne Datenbank. Das könnte eine Weile dauern. Während der Aktualisierung ist das Webinterface nicht erreichbar und keine Backups werden durchgeführt.",
 "tCurrent version": "Momentane version",
 "tTarget version": "Zielversion",
-"tVolumes to backup": "Zu sichernde Laufwerke"
+"tVolumes to backup": "Zu sichernde Laufwerke",
+"internet_server_settings": "Internetzugriff"
 }

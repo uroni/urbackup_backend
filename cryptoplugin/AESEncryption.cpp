@@ -52,6 +52,7 @@ std::string AESEncryption::encrypt(const char *data, size_t data_size)
 	{
 		ret.resize(16);
 		memcpy((char*)ret.c_str(), m_IV.BytePtr(), 16);
+		iv_done=true;
 	}
 
 	size_t osize=ret.size();
@@ -70,6 +71,7 @@ std::string AESEncryption::encrypt(char *data, size_t data_size)
 	{
 		ret.resize(16);
 		memcpy((char*)ret.c_str(), m_IV.BytePtr(), 16);
+		iv_done=true;
 	}
 
 	if(data_size>0)

@@ -117,6 +117,16 @@ IndexThread::IndexThread(void)
 	contractor=NULL;
 
 	dwt=NULL;
+
+	if(Server->getPlugin(Server->getThreadID(), filesrv_pluginid))
+	{
+		start_filesrv();
+	}
+	else
+	{
+		filesrv=NULL;
+		Server->Log("Error starting fileserver", LL_ERROR);
+	}
 }
 
 IMutex* IndexThread::getFilelistMutex(void)
@@ -163,16 +173,6 @@ void IndexThread::operator()(void)
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
 #endif
-
-	if(Server->getPlugin(Server->getThreadID(), filesrv_pluginid))
-	{
-		start_filesrv();
-	}
-	else
-	{
-		filesrv=NULL;
-		Server->Log("Error starting fileserver", LL_ERROR);
-	}
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 

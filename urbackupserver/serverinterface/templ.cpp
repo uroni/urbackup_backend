@@ -32,7 +32,7 @@ ACTION_IMPL(generate_templ)
 {
 #ifdef GEN_TEMPL
 
-	IFile *tf=Server->openFile("urbackup/www/templates/progress_row.htm", MODE_READ);
+	IFile *tf=Server->openFile("urbackupserver/www/templates/progress_row.htm", MODE_READ);
 	if(tf==NULL) return;
 	else
 		Server->destroy(tf);
@@ -90,8 +90,9 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("settings_mail_test_failed");
 	templates.push_back("upgrade_error");
 	templates.push_back("logs_report_mail");
+	templates.push_back("settings_internet");
 
-	IFile *out=Server->openFile("urbackup/www/templates.js", MODE_WRITE);
+	IFile *out=Server->openFile("urbackupserver/www/templates.js", MODE_WRITE);
 	if(out==NULL)
 		return;
 
@@ -99,7 +100,7 @@ ACTION_IMPL(generate_templ)
 
 	for(size_t i=0;i<templates.size();++i)
 	{
-		IFile *f=Server->openFile("urbackup/www/templates/"+templates[i]+".htm", MODE_READ);
+		IFile *f=Server->openFile("urbackupserver/www/templates/"+templates[i]+".htm", MODE_READ);
 		if(f==NULL)
 		{
 			Server->Log("Template not found: "+templates[i], LL_ERROR);

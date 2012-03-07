@@ -33,7 +33,7 @@
 #include "../stringtools.h"
 #include <memory.h>
 
-std::string getServerName(void)
+std::string getSystemServerName(void)
 {
 #ifdef _WIN32
 	char hostname[MAX_PATH];
@@ -66,6 +66,14 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 	{
 		udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
+		int optval=1;
+		int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Failed setting SO_REUSEADDR in CUDPThread::CUDPThread");
+			return;
+		}
+
 		sockaddr_in addr_udp;
 
 		addr_udp.sin_family=AF_INET;
@@ -73,7 +81,7 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 		addr_udp.sin_addr.s_addr=INADDR_ANY;
 
 		Log("Binding udp socket...");
-		int rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
+		rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
@@ -110,7 +118,7 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 	if( servername!="" )
 		mServername=servername;
 	else
-		mServername=getServerName();
+		mServername=getSystemServerName();
 
 	Log("Servername: -%s-",mServername.c_str());
 }

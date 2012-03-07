@@ -27,6 +27,11 @@
 #include "data.h"
 #include "socket_header.h"
 
+#include "../Interface/Pipe.h"
+
+#define MAX_PACKET 4096
+#define SEND_TIMEOUT 10000
+
 void CTCPStack::AddData(char* buf, size_t datasize)
 {
 	size_t osize=buffer.size();
@@ -55,6 +60,40 @@ int  CTCPStack::Send(SOCKET sock, CWData data)
 	return Send(sock, data.getDataPtr(), data.getDataSize() );
 }
 
+int CTCPStack::Send(IPipe* p, char* buf, size_t msglen)
+{
+	char* buffer=new char[msglen+sizeof(MAX_PACKETSIZE)];
+
+	MAX_PACKETSIZE len=(MAX_PACKETSIZE)msglen;
+
+	memcpy(buffer, &len, sizeof(MAX_PACKETSIZE) );
+	if(msglen>0)
+	{
+	    memcpy(&buffer[sizeof(MAX_PACKETSIZE)], buf, msglen);
+	}
+
+	size_t currpos=0;
+
+	while(currpos<msglen+sizeof(MAX_PACKETSIZE))
+	{
+		size_t ts=(std::min)((size_t)MAX_PACKET, msglen+sizeof(MAX_PACKETSIZE)-currpos);
+		bool b=p->Write(&buffer[currpos], ts, SEND_TIMEOUT );
+		currpos+=ts;
+		if(!b)
+		{
+			delete[] buffer;
+			return 0;
+		}
+	}
+	delete[] buffer;
+
+	return (int)msglen;
+}
+
+int CTCPStack::Send(IPipe* pipe, CWData data)
+{
+	return Send(pipe, data.getDataPtr(), data.getDataSize() );
+}
 
 
 char* CTCPStack::getPacket(size_t* packetsize)

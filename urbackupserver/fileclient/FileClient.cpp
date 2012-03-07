@@ -323,7 +323,27 @@ _u32 FileClient::Connect(sockaddr_in *addr)
 		return ERR_ERROR;
 	else
 		return ERR_CONNECTED;
-}       
+}    
+
+_u32 FileClient::Connect(IPipe *cp)
+{
+	if( socket_open==true )
+    {
+            Server->destroy(tcpsock);
+    }
+
+	tcpsock=cp;
+
+	if(tcpsock!=NULL)
+	{
+		socket_open=true;
+	}
+
+	if(tcpsock==NULL)
+		return ERR_ERROR;
+	else
+		return ERR_CONNECTED;
+}
 
 _u32 FileClient::GetGameList(void)
 {

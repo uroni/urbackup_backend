@@ -832,6 +832,7 @@ function show_settings2(data)
 		var idx=0;
 		g.user_nav_pos_offset=0;
 		g.mail_nav_pos_offset=0;
+		g.internet_nav_pos_offset=0;
 		if(nav.general)
 		{
 			if(g.settings_nav_pos==idx)
@@ -845,6 +846,7 @@ function show_settings2(data)
 			++idx;
 			++g.user_nav_pos_offset;
 			++g.mail_nav_pos_offset;
+			++g.internet_nav_pos_offset;
 		}
 		if(nav.mail)
 		{
@@ -860,6 +862,22 @@ function show_settings2(data)
 			}
 			++idx;
 			++g.user_nav_pos_offset;
+			++g.internet_nav_pos_offset;
+		}
+		if(nav.internet)
+		{
+			if(n!="" ) n+=" | ";
+			
+			if(g.settings_nav_pos==idx)
+			{
+				n+="<strong>"+trans["internet_server_settings"]+"</strong>";
+			}
+			else
+			{
+				n+="<a href=\"javascript: internetSettings()\">"+trans["internet_server_settings"]+"</a>";
+			}
+			++g.user_nav_pos_offset;
+			++idx;
 		}
 		if(nav.users)
 		{	
@@ -997,6 +1015,14 @@ function show_settings2(data)
 				}
 			}
 		}
+		else if(data.sa=="internet")
+		{
+			ndata+=tmpls.settings_internet.evaluate(data.settings);
+			if(data.saved_ok)
+			{
+				ndata+=tmpls.settings_save_ok.evaluate();
+			}
+		}
 		else if(data.sa=="listusers")
 		{
 			if(data.add_ok)
@@ -1104,6 +1130,10 @@ g.mail_settings_list=[
 "mail_ssl_only",
 "mail_check_certificate"
 ];
+g.internet_settings_list=[
+"internet_server",
+"internet_server_port"
+];
 
 function validateCommonSettings()
 {
@@ -1125,7 +1155,7 @@ function saveGeneralSettings()
 	if(!validateCommonSettings() ) return;
 	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;
 	if(!startLoading()) return;
-	
+			
 	var pars="";
 	pars+=getPar("backupfolder");
 	pars+=getPar("no_images");
@@ -1154,6 +1184,17 @@ function saveMailSettings()
 	pars+=getPar("testmailaddr");
 	new getJSON("settings", "sa=mail_save"+pars, show_settings2);
 }
+function saveInternetSettings()
+{	
+	if(!validate_text_int(["internet_server_port"]) ) return;
+	if(!startLoading()) return;
+	var pars="";
+	for(var i=0;i<g.internet_settings_list.length;++i)
+	{
+		pars+=getPar(g.internet_settings_list[i]);
+	}
+	new getJSON("settings", "sa=internet_save"+pars, show_settings2);
+}
 function clientSettings()
 {
 	var selidx=I('settingsclient').selectedIndex;
@@ -1177,6 +1218,12 @@ function mailSettings()
 	if(!startLoading()) return;
 	g.settings_nav_pos=g.mail_nav_pos_offset;
 	new getJSON("settings", "sa=mail", show_settings2);
+}
+function internetSettings()
+{
+	if(!startLoading()) return;
+	g.settings_nav_pos=g.internet_nav_pos_offset;
+	new getJSON("settings", "sa=internet", show_settings2);
 }
 function updateUserOverwrite(clientid)
 {

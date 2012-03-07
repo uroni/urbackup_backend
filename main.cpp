@@ -85,14 +85,19 @@ int my_init_fcn_t(int argc, char *argv[])
 {
 #endif
 	#ifdef _WIN32
+#ifndef _DEBUG
 	__try{
+#endif
 #endif
 	return main_fkt(argc, argv);
 #ifdef _WIN32
+#ifndef _DEBUG
 	}__except(CServer::WriteDump(GetExceptionInformation()) )
 	{
 	}
 	return 101;
+#endif
+return 101;
 #endif
 }
 

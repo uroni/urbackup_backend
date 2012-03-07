@@ -305,7 +305,7 @@ void termination_handler(int signum)
 }
 #endif
 
-std::string getServerName(void);
+std::string getSystemServerName(void);
 
 #ifdef CONSOLE_ON
 int main(int argc, char* argv[])

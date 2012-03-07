@@ -123,3 +123,6 @@ UrBackupBackend.sdf
 UrBackupBackend.suo
 urbackupclient/Debug/*
 urbackupserver/Debug/*
+urbackupclient/x64/*
+urbackup/backup_server.db-mj7A77A7934
+urbackupserver/x64/*

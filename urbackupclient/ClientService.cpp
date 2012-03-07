@@ -33,6 +33,7 @@
 #include "ServerIdentityMgr.h"
 #include "../urbackupcommon/settings.h"
 #include "ImageThread.h"
+#include "InternetClient.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #else
@@ -124,6 +125,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	want_receive=true;
 	last_channel_ping=0;
 	file_version=1;
+	internet_conn=false;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -530,7 +532,7 @@ void ClientConnector::ReceivePackets(void)
 		if(hashdataleft>=cmd.size())
 		{
 			hashdataleft-=(_u32)cmd.size();
-			Server->Log("Hashdataleft: "+nconvert(hashdataleft), LL_DEBUG);
+			//Server->Log("Hashdataleft: "+nconvert(hashdataleft), LL_DEBUG);
 		}
 		else
 		{
@@ -1024,6 +1026,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 		sf->Write(Server->ConvertToUTF8(new_settings_str));
 		Server->destroy(sf);
+
+		InternetClient::updateSettings();
 	}
 }
 
@@ -1532,4 +1536,9 @@ void ClientConnector::ImageErr(const std::string &msg)
 	memcpy(&buffer[sizeof(uint64)], msg.c_str(), msg.size());
 	pipe->Write(buffer, sizeof(uint64)+msg.size());
 	delete [] buffer;
+}
+
+void ClientConnector::setIsInternetConnection(void)
+{
+	internet_conn=true;
 }

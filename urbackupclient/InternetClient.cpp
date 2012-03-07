@@ -2,6 +2,7 @@
 
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
+#include "../Interface/Condition.h"
 #include "../Interface/SettingsReader.h"
 #include "../Interface/ThreadPool.h"
 
@@ -19,6 +20,8 @@ size_t InternetClient::n_connections=NULL;
 unsigned int InternetClient::last_lan_connection=0;
 bool InternetClient::update_settings=false;
 SServerSettings InternetClient::server_settings;
+ICondition *InternetClient::wakeup_cond=NULL;
+bool InternetClient::auth_err=false;
 
 const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
@@ -31,6 +34,7 @@ const char SERVICE_FILESRV=1;
 void InternetClient::init_mutex(void)
 {
 	mutex=Server->createMutex();
+	wakeup_cond=Server->createCondition();
 }
 
 void InternetClient::hasLANConnection(void)
@@ -61,6 +65,7 @@ void InternetClient::rmConnection(void)
 {
 	IScopedLock lock(mutex);
 	--n_connections;
+	wakeup_cond->notify_all();
 }
 
 void InternetClient::updateSettings(void)
@@ -69,14 +74,22 @@ void InternetClient::updateSettings(void)
 	update_settings=true;
 }
 
+void InternetClient::setHasAuthErr(void)
+{
+	IScopedLock lock(mutex);
+	auth_err=true;
+}
+
 void InternetClient::operator()(void)
 {
+	Server->wait(3000);
 	doUpdateSettings();
 	while(true)
 	{
 		IScopedLock lock(mutex);
 		if(update_settings)
 		{
+
 			doUpdateSettings();
 			update_settings=false;
 		}
@@ -84,9 +97,14 @@ void InternetClient::operator()(void)
 		{
 			if(!connected)
 			{
-				if(tryToConnect())
+				if(tryToConnect(&lock))
 				{
 					connected=true;
+				}
+				else
+				{
+					lock.relock(NULL);
+					Server->wait(ic_lan_timeout/2);
 				}
 			}
 			else
@@ -95,6 +113,14 @@ void InternetClient::operator()(void)
 				{
 					Server->getThreadPool()->execute(new InternetClientThread(NULL, server_settings));
 					newConnection();
+				}
+				else
+				{
+					wakeup_cond->wait(&lock);
+					if(auth_err)
+					{
+						Server->wait(ic_lan_timeout/2);
+					}
 				}
 			}
 		}
@@ -113,7 +139,7 @@ void InternetClient::doUpdateSettings(void)
 	std::string computername;
 	std::string server_port="55415";
 	std::string authkey;
-	if(!settings->getValue("internet_authkey", &authkey))
+	if(!settings->getValue("internet_authkey", &authkey) && !settings->getValue("internet_authkey_def", &authkey))
 	{
 		Server->destroy(settings);
 		return;
@@ -122,7 +148,7 @@ void InternetClient::doUpdateSettings(void)
 	{
 		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
 	}
-	if(settings->getValue("internet_server_name", &server_name) || settings->getValue("internet_server_name_def", &server_name) )
+	if(settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name) )
 	{
 		if(!settings->getValue("internet_server_port", &server_port) )
 			settings->getValue("internet_server_port_def", &server_port);
@@ -134,9 +160,13 @@ void InternetClient::doUpdateSettings(void)
 	}
 }
 
-bool InternetClient::tryToConnect(void)
+bool InternetClient::tryToConnect(IScopedLock *lock)
 {
-	IPipe *cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
+	std::string name=server_settings.name;
+	unsigned short port=server_settings.port;
+	lock->relock(NULL);
+	IPipe *cs=Server->ConnectStream(name, port, 10000);
+	lock->relock(mutex);
 	if(cs!=NULL)
 	{
 		Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
@@ -144,6 +174,12 @@ bool InternetClient::tryToConnect(void)
 		return true;
 	}
 	return false;
+}
+
+void InternetClient::start(void)
+{
+	init_mutex();
+	Server->createThread(new InternetClient);
 }
 
 InternetClientThread::InternetClientThread(IPipe *cs, const SServerSettings &server_settings)
@@ -155,7 +191,6 @@ char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &r
 {
 	unsigned int starttime=Server->getTimeMS();
 	char *buf;
-	size_t bufsize;
 	while(Server->getTimeMS()-starttime<timeoutms)
 	{
 		std::string ret;
@@ -169,27 +204,59 @@ char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &r
 		if(buf!=NULL)
 			return buf;
 	}
+	return NULL;
 }
 
 void InternetClientThread::operator()(void)
 {
+	CTCPStack tcpstack;
+
 	if(cs==NULL)
 	{
 		cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
 		if(cs==NULL)
 		{
-			goto cleanup;
+			InternetClient::rmConnection();
+			return;
 		}
 	}
 
 	InternetServicePipe ics_pipe(cs, server_settings.authkey);
 
-	CTCPStack tcpstack;
+	std::string challenge;
+	{
+		char *buf;
+		size_t bufsize;
+		buf=getReply(&tcpstack, cs, bufsize, ic_auth_timeout);	
+		if(buf==NULL)
+		{
+			goto cleanup;
+		}
+		CRData rd(buf, bufsize);
+		char id;
+		if(!rd.getChar(&id)) 
+		{
+			delete []buf;
+			goto cleanup;
+		}
+		if(id==ID_ISC_CHALLENGE)
+		{
+			rd.getStr(&challenge);
+		}
+		else
+		{
+			Server->Log("Unknown response id -2", LL_ERROR);
+			delete []buf;
+			goto cleanup;
+		}
+
+		delete []buf;
+	}
 	{
 		CWData data;
 		data.addChar(ID_ISC_AUTH);
 		data.addString(server_settings.clientname);
-		data.addString(ics_pipe.encrypt("##################URBACKUP--AUTH#########################") );
+		data.addString(ics_pipe.encrypt("##################URBACKUP--AUTH#########################-"+challenge) );
 		tcpstack.Send(cs, data);
 	}
 
@@ -216,7 +283,7 @@ void InternetClientThread::operator()(void)
 			delete []buf;
 			goto cleanup;
 		}
-		else if(id!=ID_ISC_AUTH)
+		else if(id!=ID_ISC_AUTH_OK)
 		{
 			Server->Log("Unknown response id -1", LL_ERROR);
 			delete []buf;
@@ -252,10 +319,23 @@ void InternetClientThread::operator()(void)
 			char service=0;
 			rd.getChar(&service);
 
+			if(service==SERVICE_COMMANDS || service==SERVICE_FILESRV)
+			{
+				CWData data;
+				data.addChar(ID_ISC_CONNECT_OK);
+				tcpstack.Send(&ics_pipe, data);
+
+				InternetClient::rmConnection();
+			}
+
 			if(service==SERVICE_COMMANDS)
 			{
 				ClientConnector clientservice;
 				runServiceWrapper(&ics_pipe, &clientservice);
+			}
+			else if(service==SERVICE_FILESRV)
+			{
+				IndexThread::getFileSrv()->runClient(&ics_pipe);
 			}
 		}
 	}
@@ -263,12 +343,18 @@ void InternetClientThread::operator()(void)
 cleanup:
 	if(cs!=NULL)
 		Server->destroy(cs);
+	InternetClient::setHasAuthErr();
 	InternetClient::rmConnection();
 }
 
 void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 {
 	client->Init(Server->getThreadID(), pipe);
+	ClientConnector * cc=dynamic_cast<ClientConnector*>(client);
+	if(cc!=NULL)
+	{
+		cc->setIsInternetConnection();
+	}
 	while(true)
 	{
 		bool b=client->Run();
@@ -280,6 +366,11 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 		if(pipe->isReadable(10))
 		{
 			client->ReceivePackets();
+		}
+		else if(pipe->hasError())
+		{
+			client->ReceivePackets();
+			Server->wait(20);
 		}
 	}
 }

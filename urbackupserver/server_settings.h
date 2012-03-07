@@ -43,6 +43,9 @@ struct SSettings
 	bool allow_log_view;
 	std::string image_letters;
 	bool backup_database;
+	std::string internet_server_name;
+	unsigned short internet_server_port;
+	std::string internet_authkey;
 };
 
 struct STimeSpan
@@ -69,6 +72,7 @@ public:
 
 	static void init_mutex(void);
 	static void updateAll(void);
+	static std::string generateRandomAuthKey(void);
 
 	std::vector<STimeSpan> getBackupWindow(void);
 	std::vector<STimeSpan> getCleanupWindow(void);

@@ -17,6 +17,7 @@ class ServerVHDWriter;
 class IFile;
 class IPipe;
 class ServerPingThread;
+class FileClient;
 
 struct SBackup
 {
@@ -28,7 +29,7 @@ struct SBackup
 class BackupServerGet : public IThread
 {
 public:
-	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName);
+	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection);
 	~BackupServerGet(void);
 
 	void operator()(void);
@@ -48,6 +49,8 @@ public:
 
 	static int getNumberOfRunningBackups(void);
 	static int getNumberOfRunningFileBackups(void);
+
+	IPipe *getClientCommandConnection(int timeoutms=10000);
 
 private:
 	void unloadSQL(void);
@@ -95,6 +98,8 @@ private:
 	bool isBackupsRunningOkay(void);
 	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
+
+	_u32 getClientFilesrvConnection(FileClient *fc, int timeoutms=10000);
 
 	void saveImageAssociation(int image_id, int assoc_id);
 	
@@ -193,4 +198,6 @@ private:
 
 	int filesrv_protocol_version;
 	int file_protocol_version;
+
+	bool internet_connection;
 };

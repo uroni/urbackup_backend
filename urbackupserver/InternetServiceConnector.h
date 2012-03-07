@@ -22,6 +22,14 @@ enum InternetServiceState
 	ISS_QUIT
 };
 
+class InternetServiceConnector;
+
+struct SClientData
+{
+	std::queue<InternetServiceConnector*> spare_connections;
+	unsigned int last_seen;
+};
+
 const char SERVICE_COMMANDS=0;
 const char SERVICE_FILESRV=1;
 
@@ -37,9 +45,10 @@ public:
 
 	static void init_mutex(void);
 
-	static IPipe *getConnection(char service, int timeoutms=-1);
+	static IPipe *getConnection(const std::string &clientname, char service, int timeoutms=-1);
+	static std::vector<std::string> getOnlineClients(void);
 
-	bool Connect(ICondition *n_cond, ICondition *q_cond, char service);
+	bool Connect(ICondition *n_cond, char service);
 	bool stopConnecting(void);
 	bool isConnected(void);
 	void freeConnection(void);
@@ -50,7 +59,7 @@ public:
 	IPipe *getISPipe(void);
 private:
 
-	static std::queue<InternetServiceConnector*> spare_connections;
+	static std::map<std::string, SClientData> client_data;
 	static IMutex *mutex;
 
 	int state;
@@ -60,7 +69,6 @@ private:
 	InternetServicePipe *is_pipe;
 	IMutex *local_mutex;
 	ICondition * volatile connection_done_cond;
-	ICondition * volatile connection_quit_cond;
 
 	CTCPStack tcpstack;
 
@@ -74,4 +82,7 @@ private:
 	volatile bool free_connection;
 
 	volatile char target_service;
+
+	std::string clientname;
+	std::string challenge;
 };
