@@ -20,6 +20,7 @@
 #include "../urbackupcommon/settingslist.h"
 #include <stdlib.h>
 
+	ret.push_back(L"include_files");
 #ifndef CLIENT_ONLY
 
 #include "server_settings.h"
@@ -218,6 +219,9 @@ void ServerSettings::readSettingsClient(void)
 	swtmp=settings_client->getValue(L"exclude_files", L"");
 	if(!swtmp.empty())
 		settings.exclude_files=swtmp;
+	swtmp=settings_client->getValue(L"include_files", L"");
+	if(!swtmp.empty())
+		settings.include_files=swtmp;
 	swtmp=settings_client->getValue(L"default_dirs", L"");
 	if(!swtmp.empty())
 		settings.default_dirs=swtmp;

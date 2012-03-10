@@ -86,6 +86,7 @@ void init_mutex1(void);
 void writeZeroblockdata(void);
 bool testEscape(void);
 void upgrade(void);
+bool test_amatch(void);
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
@@ -126,6 +127,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	/*if(!testEscape())
 	{
 		Server->Log("Escape test failed! Stopping.", LL_ERROR);
+		return;
+	}*/
+	/*if(!test_amatch())
+	{
+		Server->Log("Amatch test failed! Stopping.", LL_ERROR);
 		return;
 	}*/
 	

@@ -103,14 +103,16 @@ public:
 private:
 
 	void readBackupDirs(void);
-	void initialCheck(const std::wstring &orig_dir, const std::wstring &dir, std::fstream &outfile, bool first=false);
+	bool initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first=false);
 
 	void indexDirs(void);
 
 	void updateDirs(void);
 
-	void readExcludePattern(void);
+	std::wstring sanitizePattern(const std::wstring &p);
+	void readPatterns(void);
 	bool isExcluded(const std::wstring &path);
+	bool isIncluded(const std::wstring &path);
 
 	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db=true);
 
@@ -162,6 +164,7 @@ private:
 	static volatile bool stop_index;
 
 	std::vector<std::wstring> exlude_dirs;
+	std::vector<std::wstring> include_dirs;
 
 	unsigned int last_transaction_start;
 

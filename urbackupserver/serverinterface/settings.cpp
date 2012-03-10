@@ -62,6 +62,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("backup_window", settings.getSettings()->backup_window);
 	ret.set("computername", settings.getSettings()->computername);
 	ret.set("exclude_files", settings.getSettings()->exclude_files);
+	ret.set("include_files", settings.getSettings()->include_files);
 	ret.set("default_dirs", settings.getSettings()->default_dirs);
 	ret.set("allow_config_paths", settings.getSettings()->allow_config_paths);
 	ret.set("allow_starting_file_backups", settings.getSettings()->allow_starting_file_backups);
