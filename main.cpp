@@ -394,6 +394,7 @@ int main_fkt(int argc, char *argv[])
 	
 	((CSessionMgr*)Server->getSessionMgr())->startTimeoutSessionThread();
 
+	Server->startupComplete();
 
 	if(no_server==false )
 	{

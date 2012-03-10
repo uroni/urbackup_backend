@@ -99,6 +99,7 @@ const _u32 ERR_SOCKET_ERROR=4;
 const _u32 ERR_CONNECTED=5;
 const _u32 ERR_ERROR=6;
 const _u32 ERR_BASE_DIR_LOST=7;
+const _u32 ERR_HASH=8;
 
 const _u32 sleeptime=50;
 

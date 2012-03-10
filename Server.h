@@ -150,6 +150,9 @@ public:
 	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier);
 
 	static int WriteDump(void* pExceptionPointers);
+
+	virtual void waitForStartupComplete(void);
+	void startupComplete(void);
 private:
 
 	bool UnloadDLLs(void);
@@ -172,6 +175,10 @@ private:
 	IMutex* rps_mutex;
 	IMutex* postfiles_mutex;
 	IMutex* param_mutex;
+	IMutex* startup_complete_mutex;
+
+	ICondition *startup_complete_cond;
+	bool startup_complete;
 
 	std::map< std::wstring, std::map<std::wstring, IAction*> > actions;
 

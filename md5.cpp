@@ -276,6 +276,16 @@ unsigned char *MD5::raw_digest(){
   return s;
 }
 
+unsigned char    *MD5::raw_digest_int ()
+{
+	if (!finalized){
+    cerr << "MD5::raw_digest:  Can't get digest if you haven't "<<
+      "finalized the digest!" <<endl;
+    return ( (unsigned char*) "");
+  }
+	return digest;
+}
+
 
 #pragma warning ( disable : 4996 )
 

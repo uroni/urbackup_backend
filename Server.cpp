@@ -87,6 +87,8 @@ CServer::CServer()
 	curr_postfilekey=0;
 	loglevel=LL_INFO;
 	logfile_a=false;
+
+	startup_complete=false;
 	
 	log_mutex=createMutex();
 	action_mutex=createMutex();
@@ -98,6 +100,8 @@ CServer::CServer()
 	rps_mutex=createMutex();
 	postfiles_mutex=createMutex();
 	param_mutex=createMutex();
+	startup_complete_mutex=createMutex();
+	startup_complete_cond=createCondition();
 }
 
 void CServer::setup(void)
@@ -219,6 +223,8 @@ CServer::~CServer()
 	destroy(rps_mutex);
 	destroy(postfiles_mutex);
 	destroy(param_mutex);
+	destroy(startup_complete_mutex);
+	destroy(startup_complete_cond);
 #ifndef NO_SQLITE
 	CDatabase::destroyMutex();
 #endif
@@ -267,11 +273,11 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 #ifdef _WIN32
 		struct tm  timeinfo;
 		localtime_s(&timeinfo, &rawtime);
-		strftime (buffer,100,"%x %X: ",&timeinfo);
+		strftime (buffer,100,"%Y-%m-%d %X: ",&timeinfo);
 #else
 		struct tm *timeinfo;
 		timeinfo = localtime ( &rawtime );
-		strftime (buffer,100,"%x %X: ",timeinfo);
+		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
 #endif	
 
 
@@ -311,11 +317,11 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 #ifdef _WIN32
 		struct tm  timeinfo;
 		localtime_s(&timeinfo, &rawtime);
-		strftime (buffer,100,"%x %X: ",&timeinfo);
+		strftime (buffer,100,"%Y-%m-%d %X: ",&timeinfo);
 #else
 		struct tm *timeinfo;
 		timeinfo = localtime ( &rawtime );
-		strftime (buffer,100,"%x %X: ",timeinfo);
+		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
 #endif		
 
 		if( LogLevel==LL_ERROR )
@@ -1454,4 +1460,20 @@ bool CServer::attachToDatabase(const std::string &pFile, const std::string &pNam
 	}
 
 	return true;
+}
+
+void CServer::waitForStartupComplete(void)
+{
+	IScopedLock lock(startup_complete_mutex);
+	if(!startup_complete)
+	{
+		startup_complete_cond->wait(&lock);
+	}
+}
+
+void CServer::startupComplete(void)
+{
+	IScopedLock lock(startup_complete_mutex);
+	startup_complete=true;
+	startup_complete_cond->notify_all();
 }

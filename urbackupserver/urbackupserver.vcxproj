@@ -254,6 +254,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\data.cpp" />
@@ -304,6 +305,7 @@
     <ClCompile Include="fileclient\FileClient.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />

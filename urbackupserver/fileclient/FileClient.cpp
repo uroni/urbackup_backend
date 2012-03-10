@@ -25,6 +25,8 @@
 #include "../../urbackupcommon/fileclient/data.h"
 #include "../../stringtools.h"
 
+#include "../../md5.h"
+
 #include <iostream>
 #include <memory.h>
 
@@ -34,7 +36,7 @@
 
 const std::string str_tmpdir="C:\\Windows\\Temp";
 extern std::string server_identity;
-
+const _u64 c_checkpoint_dist=512*1024;
 
 void Log(std::string str)
 {
@@ -485,14 +487,15 @@ bool FileClient::Reconnect(void)
 	int tries=50;
 
     CWData data;
-    data.addUChar( ID_GET_FILE );
+    data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
     data.addString( remotefn );
 	data.addString( server_identity );
 
     stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 
-	_u64 filesize;
+	_u64 filesize=0;
 	_u64 received=0;
+	_u64 next_checkpoint=c_checkpoint_dist;
 	bool firstpacket=true;
 
 	if(file==NULL)
@@ -501,6 +504,11 @@ bool FileClient::Reconnect(void)
     starttime=Server->getTimeMS();
 
 	char buf[BUFFERSIZE];
+	int state=0;
+	char hash_buf[16];
+	_u32 hash_r;
+	MD5 hash_func;
+
 
 	while(true)
 	{        
@@ -519,11 +527,22 @@ bool FileClient::Reconnect(void)
 			else
 			{
 				CWData data;
-				data.addUChar( protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE );
+				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
 				data.addString( remotefn );
 				data.addString( server_identity );
+
+				if( protocol_version>1 )
+				{
+					if(next_checkpoint>c_checkpoint_dist)
+						received=next_checkpoint-c_checkpoint_dist;
+					else
+						received=0;
+				}
+
 				if( firstpacket==false )
 					data.addInt64( received ); 
+
+				file->Seek(received);
 
 				stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 				starttime=Server->getTimeMS();
@@ -558,16 +577,66 @@ bool FileClient::Reconnect(void)
                             {
                                     return ERR_SUCCESS;
                             }
+
+							if(protocol_version>1)
+							{
+								if(filesize<next_checkpoint)
+									next_checkpoint=filesize;
+							}
+							else
+							{
+								next_checkpoint=filesize;
+							}
                     }
                     firstpacket=false;
             }
 
-            if( (_u32) rc > off )
+			if( state==1 && (_u32) rc > off )
+			{
+				_u32 tc=(std::min)((_u32)rc-off, hash_r);
+				memcpy(&hash_buf[16-hash_r], &buf[off],  tc);
+				off+=tc;
+				hash_r-=tc;
+
+				if(hash_r==0)
+				{
+					hash_func.finalize();
+					if(memcmp(hash_func.raw_digest_int(), hash_buf, 16)!=0)
+					{
+						Server->Log("Error while downloading file: hash wrong -1", LL_ERROR);
+						return ERR_HASH;
+					}
+					hash_func.init();
+					state=0;
+				}
+
+				if(received >= filesize)
+				{
+					return ERR_SUCCESS;
+				}
+			}
+
+            if( state==0 && (_u32) rc > off )
             {
-					_u32 written=off;
+				_u32 written=off;
+				_u64 write_remaining=next_checkpoint-received;
+				_u32 hash_off=0;
+				bool c=true;
+				while(c)
+				{
+					c=false;
 					while(written<rc)
 					{
-						written+=file->Write(&buf[written], (_u32)rc-written);
+						_u32 tw=(_u32)rc-written;
+						if((_u64)tw>write_remaining)
+							tw=(_u32)write_remaining;
+
+						_u32 cw=file->Write(&buf[written], tw);
+						hash_func.update((unsigned char*)&buf[written], tw);
+						written+=cw;
+						write_remaining-=cw;
+						if(write_remaining==0)
+							break;
 						if(written<rc)
 						{
 							Server->Log("Failed to write to file... waiting...", LL_WARNING);
@@ -576,12 +645,52 @@ bool FileClient::Reconnect(void)
 						}
 					}
 
-                    received+=rc-off;
+					if(write_remaining==0 && protocol_version>1) 
+					{
+						next_checkpoint+=c_checkpoint_dist;
+						if(next_checkpoint>filesize)
+							next_checkpoint=filesize;
 
-					if( received >= filesize)
-                    {
-						return ERR_SUCCESS;
+						hash_r=(_u32)rc-written;
+						if(hash_r>0)
+						{
+							memcpy(hash_buf, &buf[written], (std::min)(hash_r, (_u32)16));
+
+							if(hash_r>16)
+							{
+								hash_r=16;
+								c=true;
+								write_remaining=next_checkpoint-received;
+								written+=16;
+							}
+						}
+
+						hash_off+=hash_r;
+
+						if(hash_r<16)
+						{
+							hash_r=16-hash_r;
+							state=1;
+						}
+						else
+						{
+							hash_func.finalize();
+							if(memcmp(hash_func.raw_digest_int(), hash_buf, 16)!=0)
+							{
+								Server->Log("Error while downloading file: hash wrong -2", LL_ERROR);
+								return ERR_HASH;
+							}
+							hash_func.init();
+						}
 					}
+				}
+
+                received+=rc-off-hash_off;
+
+				if( received >= filesize && state==0)
+                {
+					return ERR_SUCCESS;
+				}
             }
 		}
             
@@ -601,8 +710,19 @@ bool FileClient::Reconnect(void)
 					data.addUChar( protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE );
 					data.addString( remotefn );
 					data.addString( server_identity );
+
+					if( protocol_version>1 )
+					{
+						if(next_checkpoint>c_checkpoint_dist)
+							received=next_checkpoint-c_checkpoint_dist;
+						else
+							received=0;
+					}
+
 					if( firstpacket==false )
 						data.addInt64( received ); 
+
+					file->Seek(received);
 
 					stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 					starttime=Server->getTimeMS();

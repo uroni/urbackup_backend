@@ -66,9 +66,11 @@ public:
 
 // methods to acquire finalized result
   unsigned char    *raw_digest ();  // digest as a 16-byte binary array
+  unsigned char    *raw_digest_int ();  // digest as a 16-byte binary array
   char *            hex_digest ();  // digest as a 33-byte ascii-hex string
   friend ostream&   operator<< (ostream&, MD5 context);
 
+  void init             ();               // called by all constructors
 
 
 private:
@@ -86,7 +88,6 @@ private:
   uint1 finalized;
 
 // last, the private methods, mostly static:
-  void init             ();               // called by all constructors
   void transform        (uint1 *buffer);  // does the real update work.  Note 
                                           // that length is implied to be 64.
 

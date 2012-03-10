@@ -29,6 +29,8 @@ public:
 
 	virtual size_t getNumElements(void);
 
+	void destroyBackendPipeOnDelete(bool b);
+
 	IPipe *getRealPipe(void);
 
 private:
@@ -36,4 +38,6 @@ private:
 
 	IAESEncryption *enc;
 	IAESDecryption *dec;
+
+	bool destroy_cs;
 };

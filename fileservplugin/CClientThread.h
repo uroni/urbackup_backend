@@ -17,6 +17,7 @@
 #include "data.h"
 #include "types.h"
 #include "settings.h"
+#include "../md5.h"
 
 class CTCPFileServ;
 class IPipe;
@@ -94,4 +95,11 @@ private:
 
 	CTCPFileServ *parent;
 	IPipe *clientpipe;
+
+	MD5 hash_func;
+	_i64 next_checkpoint;
+	_i64 sent_bytes;
+	_i64 curr_filesize;
+
+	uchar cmd_id;
 };

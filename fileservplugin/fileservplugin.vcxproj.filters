@@ -66,6 +66,9 @@
     <ClCompile Include="tcpstack.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\md5.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
@@ -126,6 +129,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="types.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\md5.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

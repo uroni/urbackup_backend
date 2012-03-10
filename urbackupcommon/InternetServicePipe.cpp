@@ -1,10 +1,12 @@
 #include "InternetServicePipe.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 
+#include "../Interface/Server.h"
+
 extern ICryptoFactory *crypto_fak;
 
 InternetServicePipe::InternetServicePipe(IPipe *cs, const std::string &key)
-	: cs(cs)
+	: cs(cs), destroy_cs(false)
 {
 	enc=crypto_fak->createAESEncryption(key);
 	dec=crypto_fak->createAESDecryption(key);
@@ -14,6 +16,10 @@ InternetServicePipe::~InternetServicePipe(void)
 {
 	enc->Remove();
 	dec->Remove();
+	if(destroy_cs)
+	{
+		Server->destroy(cs);
+	}
 }
 
 size_t InternetServicePipe::Read(char *buffer, size_t bsize, int timeoutms)
@@ -86,12 +92,12 @@ bool InternetServicePipe::Write(const std::string &str, int timeoutms)
 */
 bool InternetServicePipe::isWritable(int timeoutms)
 {
-	return cs->isWritable();
+	return cs->isWritable(timeoutms);
 }
 
 bool InternetServicePipe::isReadable(int timeoutms)
 {
-	return cs->isReadable();
+	return cs->isReadable(timeoutms);
 }
 
 bool InternetServicePipe::hasError(void)
@@ -112,4 +118,9 @@ size_t InternetServicePipe::getNumElements(void)
 IPipe *InternetServicePipe::getRealPipe(void)
 {
 	return cs;
+}
+
+void InternetServicePipe::destroyBackendPipeOnDelete(bool b)
+{
+	destroy_cs=b;
 }

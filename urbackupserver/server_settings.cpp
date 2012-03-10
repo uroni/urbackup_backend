@@ -19,8 +19,6 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/settingslist.h"
 #include <stdlib.h>
-
-	ret.push_back(L"include_files");
 #ifndef CLIENT_ONLY
 
 #include "server_settings.h"
@@ -157,6 +155,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings.backup_database=(settings_default->getValue("backup_database", "true")=="true");
 	settings.internet_server_port=(unsigned short)(atoi(settings_default->getValue("internet_server_port", "55415").c_str()));
 	settings.internet_server_name=settings_default->getValue("internet_server_name", "");
+	settings.internet_image_backups=(settings_default->getValue("internet_image_backups", "false")=="true");
+	settings.internet_full_file_backups=(settings_default->getValue("internet_full_file_backups", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)

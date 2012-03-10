@@ -1478,7 +1478,7 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type)
 		bool ok=false;
 		if(channel_pipe!=NULL)
 		{
-			_u32 rc=(_u32)tcpstack.Send(channel_pipe, "START BACKUP INCR");
+			_u32 rc=(_u32)tcpstack.Send(channel_pipe, ts);
 			if(rc!=0)
 				ok=true;
 		}

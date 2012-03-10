@@ -260,7 +260,9 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 	}
 	CQuery *q=new CQuery(pQuery, prepared_statement, this);
 	if( autodestroy )
+	{
 		queries.push_back(q);
+	}
 
 	return q;
 }

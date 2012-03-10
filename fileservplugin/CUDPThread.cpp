@@ -120,7 +120,7 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 	else
 		mServername=getSystemServerName();
 
-	Log("Servername: -%s-",mServername.c_str());
+	Log("Servername: -"+mServername+"-");
 }
 
 std::string CUDPThread::getServername()

@@ -8,13 +8,16 @@
 #include "../urbackupcommon/InternetServicePipe.h"
 #include "server_settings.h"
 #include "database.h"
+#include "../stringtools.h"
 
-const unsigned int ping_interval=30*60*1000;
+const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
-const unsigned int offline_timeout=30000;
+const unsigned int offline_timeout=ping_interval+10000;
 
 std::map<std::string, SClientData> InternetServiceConnector::client_data;
 IMutex *InternetServiceConnector::mutex=NULL;
+
+const std::string auth_text="##################URBACKUP--AUTH#########################-";
 
 ICustomClient* InternetService::createClient()
 {
@@ -159,13 +162,15 @@ void InternetServiceConnector::ReceivePackets(void)
 								is_pipe=new InternetServicePipe(cs, Server->ConvertToUTF8(res[0][L"value"]));
 								
 								std::string auth_str=is_pipe->decrypt(encdata);
-								if(auth_str=="##################URBACKUP--AUTH#########################-"+challenge)
+								if(auth_str==auth_text+challenge)
 								{
 									state=ISS_AUTHED;
 
 									IScopedLock lock(mutex);
 									client_data[clientname].spare_connections.push(this);
 									client_data[clientname].last_seen=Server->getTimeMS();
+
+									Server->Log("Authed client for '"+clientname+"' - "+nconvert(client_data[clientname].spare_connections.size())+" spare connections", LL_DEBUG);
 								}
 								else
 								{
@@ -193,7 +198,13 @@ void InternetServiceConnector::ReceivePackets(void)
 						}
 						else
 						{
+							std::string client_challenge;
+							rd.getStr(&client_challenge);
 							data.addChar(ID_ISC_AUTH_OK);
+							if(is_pipe!=NULL)
+							{
+								data.addString(is_pipe->encrypt(auth_text+client_challenge));
+							}
 						}
 						tcpstack.Send(cs, data);
 					}					
@@ -273,6 +284,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 				{
 					IPipe *ret=isc->getISPipe();
 					isc->freeConnection();
+					((InternetServicePipe*)ret)->destroyBackendPipeOnDelete(true);
 					Server->Log("Established internet connection", LL_DEBUG);
 					
 					return ret;
@@ -291,7 +303,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 
 bool InternetServiceConnector::wantReceive(void)
 {
-	if(state!=ISS_USED)
+	if(state!=ISS_USED )
 		return true;
 	else
 		return false;
@@ -299,7 +311,9 @@ bool InternetServiceConnector::wantReceive(void)
 
 bool InternetServiceConnector::closeSocket(void)
 {
-	if(state!=ISS_USED)
+	if(stop_connecting)
+		return true;
+	else if(state!=ISS_USED)
 		return true;
 	else if(free_connection)
 		return false;

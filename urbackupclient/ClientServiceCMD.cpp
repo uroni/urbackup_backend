@@ -892,8 +892,8 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 void ClientConnector::CMD_CAPA(const std::string &cmd)
 {
 #ifdef _WIN32
-	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=1");
+	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2");
 #else
-	tcpstack.Send(pipe, "FILE=2&FILESRV=1");
+	tcpstack.Send(pipe, "FILE=2&FILESRV=2");
 #endif
 }

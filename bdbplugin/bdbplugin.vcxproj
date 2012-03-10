@@ -150,6 +150,7 @@
     <ClCompile Include="..\Database.cpp" />
     <ClCompile Include="..\Query.cpp" />
     <ClCompile Include="..\sqlite\shell.c" />
+    <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="BDBFactory.cpp" />
     <ClCompile Include="dllmain.cpp" />
   </ItemGroup>

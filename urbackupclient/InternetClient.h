@@ -62,6 +62,7 @@ public:
 	void runServiceWrapper(IPipe *pipe, ICustomClient *client);
 
 private:
+	std::string generateRandomAuthKey(void);
 	IPipe *cs;
 	SServerSettings server_settings;
 };

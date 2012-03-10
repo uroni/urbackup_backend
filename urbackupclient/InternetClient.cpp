@@ -31,10 +31,21 @@ const unsigned int ic_ping_timeout=31*60*1000;
 const char SERVICE_COMMANDS=0;
 const char SERVICE_FILESRV=1;
 
+const std::string auth_text="##################URBACKUP--AUTH#########################-";
+
 void InternetClient::init_mutex(void)
 {
 	mutex=Server->createMutex();
 	wakeup_cond=Server->createCondition();
+}
+
+std::string InternetClientThread::generateRandomAuthKey(void)
+{
+	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	std::string key;
+	for(int j=0;j<10;++j)
+		key+=rchars[rand()%rchars.size()];
+	return key;
 }
 
 void InternetClient::hasLANConnection(void)
@@ -82,6 +93,7 @@ void InternetClient::setHasAuthErr(void)
 
 void InternetClient::operator()(void)
 {
+	Server->waitForStartupComplete();
 	Server->wait(3000);
 	doUpdateSettings();
 	while(true)
@@ -119,6 +131,7 @@ void InternetClient::operator()(void)
 					wakeup_cond->wait(&lock);
 					if(auth_err)
 					{
+						lock.relock(NULL);
 						Server->wait(ic_lan_timeout/2);
 					}
 				}
@@ -210,6 +223,8 @@ char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &r
 void InternetClientThread::operator()(void)
 {
 	CTCPStack tcpstack;
+	bool finish_ok=false;
+	bool rm_connection=true;
 
 	if(cs==NULL)
 	{
@@ -256,7 +271,9 @@ void InternetClientThread::operator()(void)
 		CWData data;
 		data.addChar(ID_ISC_AUTH);
 		data.addString(server_settings.clientname);
-		data.addString(ics_pipe.encrypt("##################URBACKUP--AUTH#########################-"+challenge) );
+		data.addString(ics_pipe.encrypt(auth_text+challenge) );
+		challenge=generateRandomAuthKey();
+		data.addString(challenge);
 		tcpstack.Send(cs, data);
 	}
 
@@ -289,7 +306,21 @@ void InternetClientThread::operator()(void)
 			delete []buf;
 			goto cleanup;
 		}
+		else
+		{
+			std::string enc_d;
+			rd.getStr(&enc_d);
+			enc_d=ics_pipe.decrypt(enc_d);
+			if(enc_d!=auth_text+challenge)
+			{
+				Server->Log("Server authentification failed", LL_ERROR);
+				delete []buf;
+				goto cleanup;
+			}
+		}
 	}
+
+	finish_ok=true;
 
 	while(true)
 	{
@@ -326,25 +357,40 @@ void InternetClientThread::operator()(void)
 				tcpstack.Send(&ics_pipe, data);
 
 				InternetClient::rmConnection();
+				rm_connection=false;
+			}
+			else
+			{
+				Server->Log("Client service not found", LL_ERROR);
+				goto cleanup;
 			}
 
 			if(service==SERVICE_COMMANDS)
 			{
 				ClientConnector clientservice;
 				runServiceWrapper(&ics_pipe, &clientservice);
+				goto cleanup;
 			}
 			else if(service==SERVICE_FILESRV)
 			{
 				IndexThread::getFileSrv()->runClient(&ics_pipe);
+				goto cleanup;
 			}
+		}
+		else
+		{
+			Server->Log("Unknown command id", LL_ERROR);
+			goto cleanup;
 		}
 	}
 
 cleanup:
 	if(cs!=NULL)
 		Server->destroy(cs);
-	InternetClient::setHasAuthErr();
-	InternetClient::rmConnection();
+	if(!finish_ok)
+		InternetClient::setHasAuthErr();
+	if(rm_connection)
+		InternetClient::rmConnection();
 }
 
 void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
@@ -363,13 +409,20 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 			return;
 		}
 
-		if(pipe->isReadable(10))
+		if(client->wantReceive())
 		{
-			client->ReceivePackets();
+			if(pipe->isReadable(10))
+			{
+				client->ReceivePackets();
+			}
+			else if(pipe->hasError())
+			{
+				client->ReceivePackets();
+				Server->wait(20);
+			}
 		}
-		else if(pipe->hasError())
+		else
 		{
-			client->ReceivePackets();
 			Server->wait(20);
 		}
 	}

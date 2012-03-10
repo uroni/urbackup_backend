@@ -38,6 +38,8 @@ CriticalSection cs;
 
 int curr_tid=0;
 
+const _i64 c_checkpoint_dist=512*1024;
+
 #ifdef _WIN32
 bool isDirectory(const std::wstring &path)
 {
@@ -282,7 +284,7 @@ bool CClientThread::RecvMessage(void)
 		}
 		else
 		{
-			Log("Received data...");
+			//Log("Received data...");
 			stack.AddData(buffer, rc);				
 		}
 
@@ -307,7 +309,15 @@ int CClientThread::SendInt(const char *buf, size_t bsize)
 {
 	if(clientpipe==NULL)
 	{
-		return send(mSocket, buf, (int)bsize, MSG_NOSIGNAL);
+		size_t written=0;
+		while(written<bsize)
+		{
+			int rc=send(mSocket, buf+written, (int)(bsize-written), MSG_NOSIGNAL);
+			if(rc<0)
+				return rc;
+			written+=rc;
+		}
+		return (int)written;
 	}
 	else
 	{
@@ -380,6 +390,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 			}break;
 		case ID_GET_FILE_RESUME:
 		case ID_GET_FILE:
+		case ID_GET_FILE_RESUME_HASH:
 			{
 				std::string s_filename;
 				if(data->getStr(&s_filename)==false)
@@ -400,11 +411,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 				_i64 start_offset=0;
 				bool offset_set=data->getInt64(&start_offset);
 
-				Log("Sending file %s",Server->ConvertToUTF8(o_filename).c_str());
+				Log("Sending file "+Server->ConvertToUTF8(o_filename));
 
 				std::wstring filename=map_file(o_filename);
 
-				Log("Mapped name: %s", Server->ConvertToUTF8(filename).c_str() );
+				Log("Mapped name: "+Server->ConvertToUTF8(filename) );
 
 				if(filename.empty())
 				{
@@ -418,6 +429,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 					Log("Info: Base dir lost -1");
 					break;
+				}
+
+				cmd_id=id;
+
+				if( id==ID_GET_FILE_RESUME_HASH )
+				{
+					hash_func.init();
 				}
 
 #ifdef _WIN32
@@ -464,12 +482,19 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				currfilepart=0;
 				sendfilepart=0;
+				sent_bytes=0;
 
 				LARGE_INTEGER filesize;
 				GetFileSizeEx(hFile, &filesize);
 
+				curr_filesize=filesize.QuadPart;
 
-				if( offset_set==false || id==ID_GET_FILE_RESUME )
+				next_checkpoint=start_offset+c_checkpoint_dist;
+				if(next_checkpoint>curr_filesize)
+					next_checkpoint=curr_filesize;
+
+
+				if( offset_set==false || id==ID_GET_FILE_RESUME || id==ID_GET_FILE_RESUME_HASH )
 				{
 					CWData data;
 					data.addUChar(ID_FILESIZE);
@@ -551,7 +576,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if(rc==-1)
 					{
 						Log("Error: Send failed in off file loop -3");
-						CloseThread(hFile);
+						CloseHandle(hFile);
+						hFile=NULL;
+						break;
 					}
 					else if(rc==0)
 						SleepEx(1,true);
@@ -603,7 +630,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				off64_t filesize=stat_buf.st_size;
 				
-				if( offset_set==false || id==ID_GET_FILE_RESUME )
+				if( offset_set==false || id==ID_GET_FILE_RESUME || id==ID_GET_FILE_RESUME_HASH )
 				{
 					CWData data;
 					data.addUChar(ID_FILESIZE);
@@ -627,20 +654,61 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 				
 				off64_t foffset=start_offset;
+
+				unsigned int s_bsize=8192;
+
+				if(id==ID_GET_FILE || id==ID_GET_FILE_RESUME )
+					s_bsize=32768;
+
+				char buf[s_bsize];
+
+				bool has_error=false;
 				
 				while( foffset < filesize )
 				{
-					size_t count=(std::max)((size_t)32768, (size_t)(filesize-foffset));
-					sendfile64(mSocket, hFile, &foffset, count);
+					size_t count=(std::max)((size_t)s_bsize, (size_t)(filesize-foffset));
+					if( clientpipe==NULL && ( id==ID_GET_FILE || id==ID_GET_FILE_RESUME ) )
+					{
+						sendfile64(mSocket, hFile, &foffset, count);
+					}
+					else
+					{
+						ssize_t rc=read(hFile, buf, count);
+						if(rc>0)
+						{
+							rc=SendInt(buf, rc);
+							if(rc==SOCKET_ERROR)
+							{
+								LOG("Error: Sending data failed");
+								CloseHandle(hFile);
+								return false;
+							}
+							else if(id==ID_GET_FILE_RESUME_HASH)
+							{
+								hash_func.update((unsigned char*)buf, rc);
+							}
+						}
+						else
+						{
+							Log("Error: Reading from file failed");
+							CloseHandle(hFile);
+							return false;
+						}
+					}
 					if(FileServ::isPause() )
 					{
 						Sleep(500);
 					}
 				}
+
+				if(id==ID_GET_FILE_RESUME_HASH)
+				{
+					hash_func.finalize();
+					SendInt((char*)hash_func.raw_digest_int(), 16);
+				}
 				
 				CloseHandle(hFile);
 				hFile=0;
-				
 #endif
 
 			}break;
@@ -814,26 +882,58 @@ int CClientThread::SendData(void)
 	{
 		if( ldata->bsize>0 )
 		{
-			_i32 rc=SendInt(ldata->buffer, ldata->bsize);
-			if( rc==SOCKET_ERROR )
+			unsigned int sent=0;
+			while(sent<ldata->bsize)
 			{
-				int err;
-#ifdef _WIN32
-				err=WSAGetLastError();
-#else
-				err=errno;
-#endif
-				Log("SOCKET_ERROR in SendData(). BSize: %i WSAGetLastError: %i Packet: %i", ldata->bsize, ldata->buffer );
-				
-				if( ldata->delbuf==true )
+				_i32 ts;
+				if(cmd_id==ID_GET_FILE_RESUME_HASH)
+					ts=(std::min)((unsigned int)(next_checkpoint-sent_bytes), ldata->bsize-sent);
+				else
+					ts=ldata->bsize;
+
+				_i32 rc=SendInt(&ldata->buffer[sent], ts);
+				if( rc==SOCKET_ERROR )
 				{
-					bufmgr->releaseBuffer(ldata->delbufptr);
-					ldata->delbuf=false;
+					int err;
+	#ifdef _WIN32
+					err=WSAGetLastError();
+	#else
+					err=errno;
+	#endif
+					Log("SOCKET_ERROR in SendData(). BSize: "+nconvert(ldata->bsize)+" WSAGetLastError: "+nconvert(err) );
+				
+					if( ldata->delbuf==true )
+					{
+						bufmgr->releaseBuffer(ldata->delbufptr);
+						ldata->delbuf=false;
+					}
+					t_send.erase( t_send.begin() );
+					delete ldata;
+					return -1;
 				}
-				t_send.erase( t_send.begin() );
-				delete ldata;
-				return -1;
+				else if(cmd_id==ID_GET_FILE_RESUME_HASH)
+				{
+					hash_func.update((unsigned char*)&ldata->buffer[sent], ts);
+				}
+				sent+=ts;
+				sent_bytes+=ts;
+				if(cmd_id==ID_GET_FILE_RESUME_HASH)
+				{
+					if(next_checkpoint-sent_bytes==0)
+					{
+						hash_func.finalize();
+						SendInt((char*)hash_func.raw_digest_int(), 16);
+						next_checkpoint+=c_checkpoint_dist;
+						if(next_checkpoint>curr_filesize)
+							next_checkpoint=curr_filesize;
+						hash_func.init();
+					}
+				}
 			}
+		}
+		else
+		{
+			Log("ldata is null");
 		}
 
 		if( ldata->delbuf==true )
