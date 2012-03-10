@@ -1017,6 +1017,11 @@ function show_settings2(data)
 		}
 		else if(data.sa=="internet")
 		{
+			if(data.settings.internet_full_file_backups=="true") data.settings.internet_full_file_backups="checked=\"checked\"";
+			else data.settings.internet_full_file_backups="";
+			if(data.settings.internet_image_backups=="true") data.settings.internet_image_backups="checked=\"checked\"";
+			else data.settings.internet_image_backups="";
+
 			ndata+=tmpls.settings_internet.evaluate(data.settings);
 			if(data.saved_ok)
 			{

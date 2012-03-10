@@ -77,7 +77,7 @@ struct SGeneralSettings
 {
 	SGeneralSettings(void): no_images(false), no_file_backups(false), autoshutdown(false), autoupdate_clients(true),
 		max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true),
-		internet_server_port(55415){}
+		internet_server_port(55415), internet_image_backups(false), internet_full_file_backups(false) {}
 	std::wstring backupfolder;
 	bool no_images;
 	bool no_file_backups;
@@ -90,6 +90,8 @@ struct SGeneralSettings
 	bool backup_database;
 	std::string internet_server;
 	unsigned short internet_server_port;
+	bool internet_full_file_backups;
+	bool internet_image_backups;
 };
 
 struct SClientSettings
@@ -132,6 +134,10 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.internet_server=Server->ConvertToUTF8(value);
 		else if(key==L"internet_server_port" )
 			ret.internet_server_port=(unsigned short)watoi(value);
+		else if(key==L"internet_image_backups" && value==L"true")
+			ret.internet_image_backups=true;
+		else if(key==L"internet_full_file_backups" && value==L"true")
+			ret.internet_full_file_backups=true;
 	}
 	return ret;
 }
@@ -248,6 +254,8 @@ void updateInternetSettings(SGeneralSettings settings, IDatabase *db)
 
 	updateSetting(L"internet_server", Server->ConvertToUnicode(settings.internet_server), q_get, q_update, q_insert);
 	updateSetting(L"internet_server_port", convert(settings.internet_server_port), q_get, q_update, q_insert);
+	updateSetting(L"internet_image_backups", settings.internet_image_backups?L"true":L"false",  q_get, q_update, q_insert);
+	updateSetting(L"internet_full_file_backups", settings.internet_full_file_backups?L"true":L"false",  q_get, q_update, q_insert);
 }
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
@@ -600,6 +608,7 @@ ACTION_IMPL(settings)
 				settings.max_sim_backups=watoi(GET[L"max_sim_backups"]);
 				settings.tmpdir=GET[L"tmpdir"];
 				settings.cleanup_window=GET[L"cleanup_window"];
+
 				updateClientSettings(0, GET, db);
 				saveGeneralSettings(settings, db);
 
@@ -679,6 +688,8 @@ ACTION_IMPL(settings)
 			SGeneralSettings settings;
 			settings.internet_server=Server->ConvertToUTF8(GET[L"internet_server"] );
 			settings.internet_server_port=watoi(GET[L"internet_server_port"]);
+			settings.internet_full_file_backups=(GET[L"internet_full_file_backups"]==L"true");
+			settings.internet_image_backups=(GET[L"internet_image_backups"]==L"true");
 			updateInternetSettings(settings, db);
 			ret.set("saved_ok", true);
 			sa=L"internet";
@@ -689,6 +700,8 @@ ACTION_IMPL(settings)
 			SGeneralSettings settings=getGeneralSettings(db);
 			obj.set("internet_server", settings.internet_server);
 			obj.set("internet_server_port", settings.internet_server_port);
+			obj.set("internet_image_backups", settings.internet_image_backups);
+			obj.set("internet_full_file_backups", settings.internet_full_file_backups);
 			ret.set("settings", obj);
 			ret.set("sa", sa);
 			
