@@ -1087,6 +1087,7 @@ g.settings_list=[
 "backup_window",
 "computername",
 "exclude_files",
+"include_files",
 "default_dirs",
 "allow_config_paths",
 "allow_starting_file_backups",

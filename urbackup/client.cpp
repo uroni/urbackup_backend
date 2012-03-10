@@ -34,6 +34,15 @@
 #include <fstream>
 #include <stdlib.h>
 
+//For truncating files
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <sys\stat.h>
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#endif
 
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
@@ -477,9 +486,11 @@ void IndexThread::operator()(void)
 	}
 }
 
+const char * filelist_fn="urbackup/data/filelist_new.ub";
+
 void IndexThread::indexDirs(void)
 {
-	readExcludePattern();
+	readPatterns();
 	updateDirs();
 #ifdef _WIN32
 	cd->restoreSavedChangedDirs();
@@ -499,7 +510,7 @@ void IndexThread::indexDirs(void)
 	std::vector<SCRef*> past_refs;
 
 	{
-		std::fstream outfile("urbackup/data/filelist_new.ub", std::ios::out|std::ios::binary);
+		std::fstream outfile(filelist_fn, std::ios::out|std::ios::binary);
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
 			SCDirs *scd=getSCDir(backup_dirs[i].tname);
@@ -555,7 +566,7 @@ void IndexThread::indexDirs(void)
 			outfile << "d\"" << Server->ConvertToUTF8(backup_dirs[i].tname) << "\"\n";
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
-			initialCheck( backup_dirs[i].path, mod_path, outfile, true);
+			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true);
 			if(stop_index)
 			{
 				for(size_t k=0;k<backup_dirs.size();++k)
@@ -565,12 +576,37 @@ void IndexThread::indexDirs(void)
 				}
 				
 				outfile.close();
-				removeFile(L"urbackup/data/filelist_new.ub");
+				removeFile(Server->ConvertToUnicode(filelist_fn));
 				return;
 			}
 			//db->EndTransaction();
 			outfile << "d\"..\"\n";
 			Server->Log(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);		
+		}
+		std::streampos pos=outfile.tellp();
+		outfile.seekg(std::ios::end, 0);
+		if(pos!=outfile.tellg())
+		{
+			outfile.close();
+#ifdef _WIN32
+			int fh;
+			if( _sopen_s( &fh, filelist_fn, _O_RDWR | _O_CREAT, _SH_DENYNO,
+                 _S_IREAD | _S_IWRITE ) == 0 )
+			{
+				if( _chsize( fh, (long)pos ) != 0 )
+					Server->Log("Error changing filelist size", LL_ERROR);
+				_close( fh );
+			}
+			else
+			{
+				Server->Log("Error opening filelist for truncation", LL_ERROR);
+			}
+#else
+			if( ftruncate(filelist_fn, (off_t)pos) !=0 )
+			{
+				Server->Log("Error truncating filelist", LL_ERROR);
+			}
+#endif
 		}
 	}
 
@@ -591,8 +627,10 @@ void IndexThread::indexDirs(void)
 	share_dirs(starttoken);
 }
 
-void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, std::fstream &outfile, bool first)
+bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first)
 {
+	bool has_include=false;
+
 	Server->Log(L"Indexing "+dir, LL_DEBUG);
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
@@ -611,7 +649,7 @@ void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 
 	if(stop_index)
 	{
-		return;
+		return false;
 	}
 
 	std::vector<SFile> files=getFilesProxy(orig_dir, dir, !first);
@@ -620,10 +658,15 @@ void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	{
 		if( !files[i].isdir )
 		{
-			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(dir+os_file_sep()+files[i].name) )
+			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(named_path+os_file_sep()+files[i].name) )
 			{
 				continue;
 			}
+			if( !isIncluded(orig_dir+os_file_sep()+files[i].name) && !isIncluded(named_path+os_file_sep()+files[i].name) )
+			{
+				continue;
+			}
+			has_include=true;
 			outfile << "f\"" << Server->ConvertToUTF8(files[i].name) << "\" " << files[i].size << " " << files[i].last_modified << "\n";
 		}
 	}
@@ -632,16 +675,37 @@ void IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	{
 		if( files[i].isdir )
 		{
-			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(dir+os_file_sep()+files[i].name) )
+			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(named_path+os_file_sep()+files[i].name) )
 			{
 				continue;
 			}
+			bool curr_included=false;
+			if( isIncluded(orig_dir+os_file_sep()+files[i].name) || isIncluded(named_path+os_file_sep()+files[i].name) )
+			{
+				has_include=true;
+				curr_included=true;
+			}
 
+			std::streampos pos=outfile.tellp();
 			outfile << "d\"" << Server->ConvertToUTF8(files[i].name) << "\"\n";
-			initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, outfile);
+			bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile);			
 			outfile << "d\"..\"\n";
+
+			if(!b)
+			{
+				if(!curr_included)
+				{
+					outfile.seekp(pos);
+				}
+			}
+			else
+			{
+				has_include=true;
+			}
 		}
 	}
+
+	return has_include;
 }
 
 void IndexThread::readBackupDirs(void)
@@ -1350,7 +1414,46 @@ void IndexThread::execute_postbackup_hook(void)
 #endif
 }
 
-void IndexThread::readExcludePattern(void)
+std::wstring IndexThread::sanitizePattern(const std::wstring &p)
+{
+	std::wstring ep=trim(p);
+	std::wstring nep;
+	nep.reserve(ep.size()*2);
+	for(size_t j=0;j<ep.size();++j)
+	{
+		wchar_t ch=ep[j];
+		if(ch=='/')
+		{
+			nep+=os_file_sep();
+		}
+		else if(ch=='\\' && j+1<ep.size() && ep[j+1]=='\\')
+		{
+			if(os_file_sep()==L"\\")
+			{
+				nep+=L"\\\\";
+			}
+			else
+			{
+				nep+=os_file_sep();
+			}
+			++j;
+		}
+		else if(ch=='\\' && ( j+1>=ep.size() || (ep[j+1]!='[' ) ) )
+		{
+			if(os_file_sep()==L"\\")
+				nep+=L"\\\\";
+			else
+				nep+=os_file_sep();
+		}
+		else
+		{
+			nep+=ch;
+		}
+	}
+	return nep;
+}
+
+void IndexThread::readPatterns(void)
 {
 	ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
 	exlude_dirs.clear();
@@ -1370,29 +1473,34 @@ void IndexThread::readExcludePattern(void)
 #endif
 			for(size_t i=0;i<exlude_dirs.size();++i)
 			{
-				std::wstring ep=trim(exlude_dirs[i]);
-				std::wstring nep;
-				nep.reserve(ep.size()*2);
-				for(size_t j=0;j<ep.size();++j)
+				if(exlude_dirs[i].find('\\')==std::wstring::npos
+					&& exlude_dirs[i].find('/')==std::wstring::npos
+					&& exlude_dirs[i].find('*')==std::wstring::npos )
 				{
-					wchar_t ch=ep[j];
-					if(ch=='\\' && j+1<ep.size() && ep[j+1]=='\\')
-					{
-						nep+=L"\\\\";
-						++j;
-					}
-					else if(ch=='\\' && ( j+1>=ep.size() || (ep[j+1]!='[' ) ) )
-					{
-						nep+=L"\\\\";
-					}
-					else
-					{
-						nep+=ch;
-					}
+					exlude_dirs[i]=L"*/"+trim(exlude_dirs[i]);
 				}
-				exlude_dirs[i]=nep;
+			}
+			for(size_t i=0;i<exlude_dirs.size();++i)
+			{
+				exlude_dirs[i]=sanitizePattern(exlude_dirs[i]);
 			}
 			
+		}
+		if(curr_settings->getValue(L"include_files", &val))
+		{
+			std::vector<std::wstring> toks;
+			Tokenize(val, toks, L";");
+			include_dirs=toks;
+#ifdef _WIN32
+			for(size_t i=0;i<include_dirs.size();++i)
+			{
+				strupper(&include_dirs[i]);
+			}
+#endif
+			for(size_t i=0;i<include_dirs.size();++i)
+			{
+				include_dirs[i]=sanitizePattern(include_dirs[i]);
+			}			
 		}
 		Server->destroy(curr_settings);
 	}
@@ -1418,6 +1526,28 @@ bool IndexThread::isExcluded(const std::wstring &path)
 		}
 	}
 	return false;
+}
+
+bool IndexThread::isIncluded(const std::wstring &path)
+{
+	std::wstring wpath=path;
+#ifdef _WIN32
+	strupper(&wpath);
+#endif
+	bool has_pattern=false;
+	for(size_t i=0;i<include_dirs.size();++i)
+	{
+		if(!include_dirs[i].empty())
+		{
+			has_pattern=true;
+			bool b=amatch(wpath.c_str(), include_dirs[i].c_str());
+			if(b)
+			{
+				return true;
+			}
+		}
+	}
+	return !has_pattern;
 }
 
 void IndexThread::start_filesrv(void)

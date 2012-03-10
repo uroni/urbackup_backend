@@ -103,6 +103,7 @@ void do_restore(void);
 void restore_wizard(void);
 void upgrade(void);
 bool upgrade_client(void);
+bool test_amatch(void);
 
 bool is_server=false;
 
@@ -147,6 +148,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	/*if(!testEscape())
 	{
 		Server->Log("Escape test failed! Stopping.", LL_ERROR);
+		return;
+	}*/
+	/*if(!test_amatch())
+	{
+		Server->Log("Amatch test failed! Stopping.", LL_ERROR);
 		return;
 	}*/
 	
