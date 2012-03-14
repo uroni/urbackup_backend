@@ -161,7 +161,7 @@ ACTION_IMPL(backups)
 				{
 					if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".." && t_path[i].find(L"/")==std::string::npos && t_path[i].find(L"\\")==std::string::npos )
 					{
-						path+=t_path[i]+os_file_sep();
+						path+=UnescapeSQLString(t_path[i])+os_file_sep();
 					}
 				}
 
