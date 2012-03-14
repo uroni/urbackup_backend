@@ -675,9 +675,9 @@ var Template = Class.create({
       if (object == null)
 	  {
 		var m=match[3];
-		if(m.length>0 && m[0]=='t')
+		if(typeof m!="undefined" && m.length>0 && m.charAt(0)=='t')
 		{
-			if(trans[m])
+			if(typeof trans[m]!="undefined")
 				return match[1]+trans[m];
 			else
 				return match[1]+m.substring(1);
@@ -698,9 +698,9 @@ var Template = Class.create({
         ctx = ctx[comp];
         if (null == ctx || '' == match[3])
 		{
-			if(null == ctx && comp.length>0 && comp[0]=='t')
+			if(null == ctx && comp.length>0 && comp.charAt(0)=='t')
 			{
-				if(trans[comp])
+				if(typeof trans[comp]!="undefined")
 					return before +trans[comp];
 				else
 					return before +comp.substring(1);

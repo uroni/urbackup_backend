@@ -14,7 +14,7 @@ function startup()
 	if(g.use_google_chart)
 	{
 		LoadScript("https://www.google.com/jsapi?callback=google_chart_ready", "google_jsapi");
-	}
+	}	
 }
 
 function refresh_page()
@@ -640,7 +640,9 @@ function show_backups2(data)
 		var rows="";
 		for(var i=0;i<data.clients.length;++i)
 		{
-			var obj=data.clients[i];			
+			var obj=data.clients[i];
+			if(obj.lastbackup.length==0)
+				obj.lastbackup="&nbsp;";
 			rows+=tmpls.backups_clients_row.evaluate(obj);
 		}
 		ndata=tmpls.backups_clients.evaluate({rows: rows, ses: g.session});
@@ -684,7 +686,7 @@ function show_backups2(data)
 		if(els.length>1 && (els[1].length>0 || els.length>2))
 		{
 			cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+data.backupid+")\">"+data.backuptime+"</a> > ";
-			rows+=tmpls.backups_files_row.evaluate({size:"", name:"..", proc:"Files", path: last_path, clientid: data.clientid, backupid:data.backupid});
+			rows+=tmpls.backups_files_row.evaluate({size:"&nbsp;", name:"..", proc:"Files", path: last_path, clientid: data.clientid, backupid:data.backupid});
 		}
 		else
 		{
@@ -696,17 +698,17 @@ function show_backups2(data)
 			var obj=data.files[i];
 			if(obj.dir)
 			{
-				obj.size="";
+				obj.size="&nbsp;";
 				obj.proc="Files";
 			}
 			else
 			{
-				obj.size=format_size(obj.size);
+				obj.size=format_size(obj.size);				
 				obj.proc="FilesDL";
 			}
 			obj.clientid=data.clientid;
 			obj.backupid=data.backupid;
-			obj.path=encodeURIComponent(path+"/"+obj.name);
+			obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
 				
 			rows+=tmpls.backups_files_row.evaluate(obj);
 		}
@@ -775,13 +777,16 @@ function tabMouseOut(obj)
 		{
 			if(idx>0)
 			{
-				obj.childNodes[i].style.backgroundColor=g.mouse_over_styles[mos].backgroundColor;
-				obj.childNodes[i].style.color=g.mouse_over_styles[mos].color;
+				if(typeof g.mouse_over_styles[mos]!="undefined")
+				{
+					obj.childNodes[i].style.backgroundColor=g.mouse_over_styles[mos].backgroundColor;
+					obj.childNodes[i].style.color=g.mouse_over_styles[mos].color;
+				}
 				++mos;
 			}
 			else
 			{
-				obj.childNodes[i].innerHTML="";
+				obj.childNodes[i].innerHTML="&nbsp;";
 			}
 			++idx;
 		}
@@ -799,7 +804,7 @@ function tabMouseClickClients(clientid)
 function tabMouseClickBackups(clientid, backupid)
 {
 	if(!startLoading()) return;
-	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path=/", show_backups2);
+	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path=%2F", show_backups2);
 }
 function tabMouseClickFiles(clientid, backupid, path)
 {
