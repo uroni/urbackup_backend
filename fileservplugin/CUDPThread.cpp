@@ -169,7 +169,7 @@ bool CUDPThread::UdpStep(void)
 
 	if(rc>0)
 	{
-		Log("Receiving UDP packet...");
+		//Log("Receiving UDP packet...");
 		char buffer[BUFFERSIZE];
 		socklen_t addrsize=sizeof(sockaddr_in);
 		sockaddr_in sender;

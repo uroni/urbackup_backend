@@ -640,7 +640,9 @@ function show_backups2(data)
 		var rows="";
 		for(var i=0;i<data.clients.length;++i)
 		{
-			var obj=data.clients[i];			
+			var obj=data.clients[i];
+			if(obj.lastbackup.length==0)
+				obj.lastbackup="&nbsp;";
 			rows+=tmpls.backups_clients_row.evaluate(obj);
 		}
 		ndata=tmpls.backups_clients.evaluate({rows: rows, ses: g.session});

@@ -222,7 +222,7 @@ bool CClientThread::RecvMessage(void)
 		FD_ZERO(&fdset);
 		FD_SET(mSocket,&fdset);
 
-		_i32 rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+		rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
 	}
 	else
 	{

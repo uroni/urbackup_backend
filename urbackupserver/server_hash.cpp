@@ -224,12 +224,7 @@ void BackupServerHash::addFileSQL(int backupid, char incremental, const std::wst
 
 void BackupServerHash::addFileTmp(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize)
 {
-	std::vector<std::pair<int, std::wstring> > tmp;
-	tmp.push_back(std::pair<int, std::wstring>(backupid, fp));
-	std::pair<std::pair<std::string, _i64>, std::vector<std::pair<int, std::wstring> > > nv(
-		std::pair<std::string, _i64>(shahash, filesize),
-		tmp );
-	files_tmp.insert(nv);
+	files_tmp[std::pair<std::string, _i64>(shahash, filesize)].push_back(std::pair<int, std::wstring>(backupid, fp));
 }
 
 void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid)
@@ -297,6 +292,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 			copy=false;
 			std::wstring temp_fn=tf->getFilenameW();
 			Server->destroy(tf);
+			tf=NULL;
 			Server->deleteFile(temp_fn);
 			addFileSQL(backupid, incremental, tfn, sha2, t_filesize, 0);
 			++tmp_count;
@@ -343,6 +339,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 			}
 			std::wstring temp_fn=tf->getFilenameW();
 			Server->destroy(tf);
+			tf=NULL;
 			Server->deleteFile(temp_fn);
 		}
 		else
@@ -377,6 +374,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				}
 				std::wstring temp_fn=tf->getFilenameW();
 				Server->destroy(tf);
+				tf=NULL;
 				Server->deleteFile(temp_fn);
 			}
 			else
@@ -388,6 +386,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				}
 				std::wstring temp_fn=tf->getFilenameW();
 				Server->destroy(tf);
+				tf=NULL;
 				Server->deleteFile(temp_fn);
 
 				if(r)

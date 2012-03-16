@@ -171,6 +171,8 @@ void IndexThread::updateDirs(void)
 
 void IndexThread::operator()(void)
 {
+	Server->waitForStartupComplete();
+
 #ifdef _WIN32
 #ifndef SERVER_ONLY
 	CHECK_COM_RESULT(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED));
