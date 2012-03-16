@@ -279,17 +279,20 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		bool b=os_create_hardlink(os_file_prefix()+tfn, os_file_prefix()+ff);
 		if(!b)
 		{
-			IFile *tf=Server->openFile(os_file_prefix()+ff, MODE_READ);
-			if(tf==NULL)
+			IFile *ctf=Server->openFile(os_file_prefix()+ff, MODE_READ);
+			if(ctf==NULL)
+			{
 				ServerLogger::Log(clientid, "HT: Hardlinking failed (File doesn't exist)", LL_DEBUG);
+				deleteFileSQL(sha2, ff, t_filesize, f_backupid);
+				ff=findFileHash(sha2, t_filesize, f_backupid);
+				if(!ff.empty()) ff_last=ff;
+			}
 			else
 			{
-				Server->destroy(tf);
+				Server->destroy(ctf);
 				ServerLogger::Log(clientid, "HT: Hardlinking failed (Maximum hardlink count reached?)", LL_DEBUG);
-			}
-			deleteFileSQL(sha2, ff, t_filesize, f_backupid);
-			ff=findFileHash(sha2, t_filesize, f_backupid);
-			if(!ff.empty()) ff_last=ff;
+				break;
+			}			
 		}
 		else
 		{
