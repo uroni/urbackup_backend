@@ -34,6 +34,7 @@ struct SSettings
 	std::string backup_window;
 	std::wstring computername;
 	std::wstring exclude_files;
+	std::wstring include_files;
 	std::wstring default_dirs;
 	std::string cleanup_window;
 	bool allow_pause;

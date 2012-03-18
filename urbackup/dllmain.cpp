@@ -103,12 +103,13 @@ void do_restore(void);
 void restore_wizard(void);
 void upgrade(void);
 bool upgrade_client(void);
+bool test_amatch(void);
 
 bool is_server=false;
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
-std::string time_format_str="%m/%d/%Y %H:%M";
+std::string time_format_str="%Y-%m-%d %H:%M";
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -147,6 +148,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	/*if(!testEscape())
 	{
 		Server->Log("Escape test failed! Stopping.", LL_ERROR);
+		return;
+	}*/
+	/*if(!test_amatch())
+	{
+		Server->Log("Amatch test failed! Stopping.", LL_ERROR);
 		return;
 	}*/
 	

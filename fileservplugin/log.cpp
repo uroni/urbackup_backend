@@ -58,30 +58,38 @@ void Log(const char *pStr,...)
 	{
 		if( i+1<tmpstr.size() && tmpstr[i]=='%')
 		{
+			std::string rep;
+			bool tr=false;
 			if(tmpstr[i+1]=='s' )
 			{
-				std::string tmp=va_arg( args, char*);
-				tmpstr=replaceonce("%s",tmp,tmpstr);
+				rep=va_arg( args, char*);
+				tr=true;
 			}
 			else if(tmpstr[i+1]=='f')
 			{
-				std::string tmp=nconvert((float)(va_arg( args, double)) );
-				tmpstr=replaceonce("%f",tmp,tmpstr);
+				rep=nconvert((float)(va_arg( args, double)) );
+				tr=true;
 			}
 			else if(tmpstr[i+1]=='d')
 			{
-				std::string tmp=nconvert((float)(va_arg( args, double)) );
-				tmpstr=replaceonce("%d",tmp,tmpstr);
+				rep=nconvert((float)(va_arg( args, double)) );
+				tr=true;
 			}
 			else if(tmpstr[i+1]=='i')
 			{
-				std::string tmp=nconvert((int)(va_arg( args, int)) );
-				tmpstr=replaceonce("%i",tmp,tmpstr);
+				rep=nconvert((int)(va_arg( args, int)) );
+				tr=true;
 			}
 			else if(tmpstr[i+1]=='x')
 			{
-				std::string tmp=nconvert((int)(va_arg( args, int)) );
-				tmpstr=replaceonce("%x",tmp,tmpstr);
+				rep=nconvert((int)(va_arg( args, int)) );
+				tr=true;
+			}
+			if(tr)
+			{
+				tmpstr.erase(i, 2);
+				tmpstr.insert(i, rep);
+				i+=rep.size();
 			}
 		}
 	}

@@ -224,12 +224,7 @@ void BackupServerHash::addFileSQL(int backupid, char incremental, const std::wst
 
 void BackupServerHash::addFileTmp(int backupid, const std::wstring &fp, const std::string &shahash, _i64 filesize)
 {
-	std::vector<std::pair<int, std::wstring> > tmp;
-	tmp.push_back(std::pair<int, std::wstring>(backupid, fp));
-	std::pair<std::pair<std::string, _i64>, std::vector<std::pair<int, std::wstring> > > nv(
-		std::pair<std::string, _i64>(shahash, filesize),
-		tmp );
-	files_tmp.insert(nv);
+	files_tmp[std::pair<std::string, _i64>(shahash, filesize)].push_back(std::pair<int, std::wstring>(backupid, fp));
 }
 
 void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid)
@@ -279,17 +274,20 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		bool b=os_create_hardlink(os_file_prefix()+tfn, os_file_prefix()+ff);
 		if(!b)
 		{
-			IFile *tf=Server->openFile(os_file_prefix()+ff, MODE_READ);
-			if(tf==NULL)
+			IFile *ctf=Server->openFile(os_file_prefix()+ff, MODE_READ);
+			if(ctf==NULL)
+			{
 				ServerLogger::Log(clientid, "HT: Hardlinking failed (File doesn't exist)", LL_DEBUG);
+				deleteFileSQL(sha2, ff, t_filesize, f_backupid);
+				ff=findFileHash(sha2, t_filesize, f_backupid);
+				if(!ff.empty()) ff_last=ff;
+			}
 			else
 			{
-				Server->destroy(tf);
+				Server->destroy(ctf);
 				ServerLogger::Log(clientid, "HT: Hardlinking failed (Maximum hardlink count reached?)", LL_DEBUG);
-			}
-			deleteFileSQL(sha2, ff, t_filesize, f_backupid);
-			ff=findFileHash(sha2, t_filesize, f_backupid);
-			if(!ff.empty()) ff_last=ff;
+				break;
+			}			
 		}
 		else
 		{

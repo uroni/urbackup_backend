@@ -44,27 +44,44 @@ bool amatch(const wchar_t *str, const wchar_t *p)
 	int negate;
 	int match;
 	int c;
+	bool np;
 
 	while (*p) {
-		if (!*str && *p != '*')
+		if (!*str && *p != '*' && *p!=':')
 			return false;
 
 		switch (c = *p++) {
 
+		case ':':
 		case '*':
-			while (*p == '*')
+			np=false;
+			if( c==':')
+				np=true;
+
+			while (*p == '*' || *p==':')
 				p++;
 
-			if (!*p)
-				return true;
+			if(!np)
+			{
+				if (!*p)
+					return true;
+			}
 
 			if (*p != '?' && *p != '[' && *p != '\\')
-				while (*str && *p != *str)
+				while (*str && (!np || (*str!='/' && *str!='\\') ) && *p != *str)
 					str++;
+
+			if(np)
+			{
+				if(!*p && !*str)
+					return true;
+			}
 
 			while (*str) {
 				if (amatch(str, p))
 					return true;
+				if( np && (*str=='\\' || *str=='/') )
+					break;
 				str++;
 			}
 			return false;
@@ -143,3 +160,71 @@ bool amatch(const wchar_t *str, const wchar_t *p)
 	return !*str;
 }
 
+bool test_amatch(void)
+{
+	if(amatch(L"foo bar", L"* bar")==false)
+		return false;
+
+	if(amatch(L"foo\\ bar", L"*\\ bar")==false)
+		return false;
+
+	if(amatch(L"abcdef", L"*")==false)
+		return false;
+	if(amatch(L"abcdef", L":")==false)
+		return false;
+	if(amatch(L"abcdef", L"abcdef:")==false)
+		return false;
+	if(amatch(L"abcdef", L"abcdef:\\\\")==true)
+		return false;
+	if(amatch(L"abcdef/", L":")==true)
+		return false;
+	if(amatch(L"abcdef/", L":/")==false)
+		return false;
+	if(amatch(L"abcdef\\", L":")==true)
+		return false;
+	if(amatch(L"abcdef\\", L":\\\\")==false)
+		return false;
+
+	if(amatch(L"abcdef/asd", L":/asd")==false)
+		return false;
+	if(amatch(L"abcdef\\asd", L":asd")==true)
+		return false;
+	if(amatch(L"abcdef\\asd", L":\\\\asd")==false)
+		return false;
+
+	if(amatch(L"abcdef/asd", L":/:")==false)
+		return false;
+	if(amatch(L"abcdef\\asd", L"::")==true)
+		return false;
+	if(amatch(L"abcdef\\asd", L":\\\\:")==false)
+		return false;
+	if(amatch(L"abcdef\\", L":\\\\:")==false)
+		return false;
+
+	if(amatch(L"cvab_abba", L"*ab*ab*ba")==false)
+		return false;
+	if(amatch(L"cvab_abba", L"*abab*ba")==true)
+		return false;
+
+	if(amatch(L"cvab_abba", L":ab:ab:ba")==false)
+		return false;
+	if(amatch(L"cvab_abba", L"abab:ba")==true)
+		return false;
+
+	if(amatch(L"Users/Bernd/Documents", L"Users/:/Documents")==false)
+		return false;
+	if(amatch(L"Users/Bernd/bla/Documents", L"Users/:/Documents")==true)
+		return false;
+	if(amatch(L"Users/Bernd/bla/Documents", L"Users/*/Documents")==false)
+		return false;
+	if(amatch(L"Users/Bernd/Documents", L"Users/:/:/Documents")==true)
+		return false;
+	if(amatch(L"Users/Bernd/bla/Documents", L"Users/:/:/Documents")==false)
+		return false;
+	if(amatch(L"Users/Bernd/bla/Documents/xyz", L"Users/:/:/Documents/*")==false)
+		return false;
+	if(amatch(L"Users/Bernd/bla/Documents2/xyz", L"Users/:/:/Documents/*")==true)
+		return false;
+
+	return true;
+}

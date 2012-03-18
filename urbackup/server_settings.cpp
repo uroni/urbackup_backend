@@ -37,6 +37,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"startup_backup_delay");
 	ret.push_back(L"backup_window");
 	ret.push_back(L"exclude_files");
+	ret.push_back(L"include_files");
 	ret.push_back(L"computername");
 	ret.push_back(L"default_dirs");
 	ret.push_back(L"allow_config_paths");
@@ -240,6 +241,9 @@ void ServerSettings::readSettingsClient(void)
 	swtmp=settings_client->getValue(L"exclude_files", L"");
 	if(!swtmp.empty())
 		settings.exclude_files=swtmp;
+	swtmp=settings_client->getValue(L"include_files", L"");
+	if(!swtmp.empty())
+		settings.include_files=swtmp;
 	swtmp=settings_client->getValue(L"default_dirs", L"");
 	if(!swtmp.empty())
 		settings.default_dirs=swtmp;

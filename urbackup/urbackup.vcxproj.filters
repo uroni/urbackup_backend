@@ -15,9 +15,6 @@
     <Filter Include="fileclient">
       <UniqueIdentifier>{f70d5b3e-4aa3-4fea-9439-c17050638704}</UniqueIdentifier>
     </Filter>
-    <Filter Include="sha2">
-      <UniqueIdentifier>{94c028c2-e88e-4a63-ab20-e68be5608bbb}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Quelldateien">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -30,6 +27,9 @@
     </Filter>
     <Filter Include="serverinterface">
       <UniqueIdentifier>{3ff5bf0a-dd61-4c91-880e-180063d4f39c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sha2">
+      <UniqueIdentifier>{94c028c2-e88e-4a63-ab20-e68be5608bbb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
