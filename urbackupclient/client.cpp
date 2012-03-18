@@ -586,7 +586,7 @@ void IndexThread::indexDirs(void)
 			Server->Log(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);		
 		}
 		std::streampos pos=outfile.tellp();
-		outfile.seekg(std::ios::end, 0);
+		outfile.seekg(0, std::ios::end);
 		if(pos!=outfile.tellg())
 		{
 			outfile.close();
@@ -604,7 +604,7 @@ void IndexThread::indexDirs(void)
 				Server->Log("Error opening filelist for truncation", LL_ERROR);
 			}
 #else
-			if( ftruncate(filelist_fn, (off_t)pos) !=0 )
+			if( truncate(filelist_fn, (off_t)pos) !=0 )
 			{
 				Server->Log("Error truncating filelist", LL_ERROR);
 			}
