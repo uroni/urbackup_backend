@@ -1986,11 +1986,16 @@ void BackupServerGet::sendSettings(void)
 	if(!stmp.empty())
 		client_overwrite=(stmp=="true");
 
+	bool allow_overwrite=false;
+	stmp=settings_client->getValue("allow_overwrite", "");
+	if(!stmp.empty())
+		allow_overwrite=(stmp=="true");
+
 	for(size_t i=0;i<settings_names.size();++i)
 	{
 		std::wstring key=settings_names[i];
 		std::wstring value;
-		if( !client_overwrite || !settings_client->getValue(key, &value) )
+		if( (!client_overwrite && !allow_overwrite) || !settings_client->getValue(key, &value) )
 		{
 			if(!settings->getValue(key, &value) )
 				key=L"";

@@ -238,11 +238,9 @@ void ServerSettings::readSettingsClient(void)
 	std::wstring swtmp=settings_client->getValue(L"computername", L"");
 	if(!swtmp.empty())
 		settings.computername=swtmp;
-	swtmp=settings_client->getValue(L"exclude_files", L"");
-	if(!swtmp.empty())
+	if(settings_client->getValue(L"exclude_files", &swtmp))
 		settings.exclude_files=swtmp;
-	swtmp=settings_client->getValue(L"include_files", L"");
-	if(!swtmp.empty())
+	if(settings_client->getValue(L"include_files", &swtmp))
 		settings.include_files=swtmp;
 	swtmp=settings_client->getValue(L"default_dirs", L"");
 	if(!swtmp.empty())
