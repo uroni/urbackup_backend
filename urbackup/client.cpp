@@ -1464,7 +1464,7 @@ void IndexThread::readPatterns(void)
 	if(curr_settings!=NULL)
 	{	
 		std::wstring val;
-		if(curr_settings->getValue(L"exclude_files", &val))
+		if(curr_settings->getValue(L"exclude_files", &val) || curr_settings->getValue(L"exclude_files_def", &val) )
 		{
 			std::vector<std::wstring> toks;
 			Tokenize(val, toks, L";");
@@ -1490,7 +1490,7 @@ void IndexThread::readPatterns(void)
 			}
 			
 		}
-		if(curr_settings->getValue(L"include_files", &val))
+		if(curr_settings->getValue(L"include_files", &val) || curr_settings->getValue(L"include_files_def", &val) )
 		{
 			std::vector<std::wstring> toks;
 			Tokenize(val, toks, L";");
