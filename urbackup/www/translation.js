@@ -293,5 +293,6 @@ translations.de={
 "tupgrade_error_text": "UrBackup aktualisiert seine interne Datenbank. Das könnte eine Weile dauern. Während der Aktualisierung ist das Webinterface nicht erreichbar und keine Backups werden durchgeführt.",
 "tCurrent version": "Momentane version",
 "tTarget version": "Zielversion",
-"tVolumes to backup": "Zu sichernde Laufwerke"
+"tVolumes to backup": "Zu sichernde Laufwerke",
+"tIncluded files (with wildcards)": "Eingeschlossene Dateien (mit Wildcards):"
 }
