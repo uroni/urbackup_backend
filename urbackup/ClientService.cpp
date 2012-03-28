@@ -2162,9 +2162,9 @@ void ClientConnector::sendFullImageThread(void)
 
 				ncurrblocks+=secs.size();
 				
-				if(IdleCheckerThread::getPause())
+				if(!secs.empty() && IdleCheckerThread::getPause())
 				{
-					Server->wait(5000);
+					Server->wait(30000);
 				}
 			}
 
@@ -2364,10 +2364,6 @@ void ClientConnector::sendIncrImageThread(void)
 						char *dpos=blockbuf+(j-i)*blocksize;
 						if( fs->readBlock(j, dpos) )
 						{
-							if(IdleCheckerThread::getPause())
-							{
-								Server->wait(5000);
-							}
 							sha256_update(&shactx, (unsigned char*)dpos, blocksize);
 							has_blocks[j-i]=true;
 						}
@@ -2446,6 +2442,11 @@ void ClientConnector::sendIncrImageThread(void)
 
 						lastsendtime=tt;
 					}
+				}
+
+				if(IdleCheckerThread::getPause())
+				{
+					Server->wait(30000);
 				}
 			}
 
