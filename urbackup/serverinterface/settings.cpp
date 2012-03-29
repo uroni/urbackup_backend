@@ -68,6 +68,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("allow_pause", settings.getSettings()->allow_pause);
 	ret.set("allow_log_view", settings.getSettings()->allow_log_view);
 	ret.set("image_letters", settings.getSettings()->image_letters);
+	ret.set("client_set_settings", settings.getSettings()->client_set_settings);
 	return ret;
 }
 

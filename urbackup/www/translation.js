@@ -294,5 +294,6 @@ translations.de={
 "tCurrent version": "Momentane version",
 "tTarget version": "Zielversion",
 "tVolumes to backup": "Zu sichernde Laufwerke",
-"tIncluded files (with wildcards)": "Eingeschlossene Dateien (mit Wildcards):"
+"tIncluded files (with wildcards)": "Eingeschlossene Dateien (mit Wildcards):",
+"tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings.": "Warnung: Die Clientkonfiguration wird die Einstellungen hier überschreiben. Um dieses Verhalten zu ändern erlauben Sie dem Client nicht Einstellungen zu ändern."
 }

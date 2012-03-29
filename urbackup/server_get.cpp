@@ -91,6 +91,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 
 	filesrv_protocol_version=0;
 	file_protocol_version=1;
+	set_settings_version=0;
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -1969,7 +1970,13 @@ bool BackupServerGet::updateCapabilities(void)
 		if(it!=params.end())
 		{
 			file_protocol_version=watoi(it->second);
-		}		
+		}	
+
+		it=params.find(L"SET_SETTINGS");
+		if(it!=params.end())
+		{
+			set_settings_version=watoi(it->second);
+		}
 	}
 
 	return !cap.empty();
@@ -2033,6 +2040,9 @@ bool BackupServerGet::getClientSettings(void)
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(clientid, L"Error getting Client settings of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		std::string tmp_fn=tmp->getFilename();
+		Server->destroy(tmp);
+		Server->deleteFile(tmp_fn);
 		return false;
 	}
 
@@ -2041,6 +2051,27 @@ bool BackupServerGet::getClientSettings(void)
 	std::vector<std::wstring> setting_names=getSettingsList();
 
 	bool mod=false;
+
+	if(set_settings_version>0)
+	{
+		std::string tmp_str;
+		if(!sr->getValue("client_set_settings", &tmp_str) || tmp_str!="true" )
+		{
+			Server->destroy(sr);
+			std::string tmp_fn=tmp->getFilename();
+			Server->destroy(tmp);
+			Server->deleteFile(tmp_fn);
+			return true;
+		}
+		else
+		{
+			bool b=updateClientSetting(L"client_set_settings", L"true");
+			if(b)
+				mod=true;
+		}
+	}
+
+	
 	for(size_t i=0;i<setting_names.size();++i)
 	{
 		std::wstring &key=setting_names[i];
