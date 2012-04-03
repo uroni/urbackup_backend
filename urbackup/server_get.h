@@ -193,4 +193,5 @@ private:
 
 	int filesrv_protocol_version;
 	int file_protocol_version;
+	int set_settings_version;
 };

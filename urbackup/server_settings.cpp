@@ -183,6 +183,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
 	settings.image_letters=settings_default->getValue("image_letters", "C");
 	settings.backup_database=(settings_default->getValue("backup_database", "true")=="true");
+	settings.client_set_settings=false;
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -190,6 +191,7 @@ void ServerSettings::readSettingsClient(void)
 	std::string stmp=settings_client->getValue("client_overwrite", "");
 	if(!stmp.empty())
 		settings.client_overwrite=(stmp=="true");
+
 	if(!settings.client_overwrite)
 		return;
 
@@ -248,6 +250,9 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("image_letters", "");
 	if(!stmp.empty())
 		settings.image_letters=stmp;
+	stmp=settings_client->getValue("client_set_settings", "");
+	if(stmp=="true")
+		settings.client_set_settings=true;
 	
 	
 	stmp=settings_client->getValue("overwrite", "");
