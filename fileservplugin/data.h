@@ -37,6 +37,9 @@ public:
 	unsigned int getLeft(void);
 	unsigned int getStreampos(void);
 
+	const char *getCurrentPtr(void);
+	bool incrementPtr(size_t amount);
+
 private:
 
 	const char* data;

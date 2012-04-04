@@ -12,6 +12,7 @@ class CWData;
 class CTCPStack
 {
 public:
+	CTCPStack(bool add_checksum=false);
 	void AddData(char* buf, size_t datasize);
 
 	char* getPacket(size_t* packsize);
@@ -25,9 +26,13 @@ public:
 	char *getBuffer();
 	size_t getBuffersize();
 
+	void setAddChecksum(bool b);
+
 private:
 	
 	std::vector<char> buffer;
+
+	bool add_checksum;
 };
 
 #endif //TCPSTACK_H

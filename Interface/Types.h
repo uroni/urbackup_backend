@@ -77,5 +77,15 @@ private:
 nullptr = {};
 #endif
 
+#ifdef _WIN32
+#if defined(_WIN64)
+typedef unsigned __int64 SOCKET;
+#else
+typedef __w64 unsigned int SOCKET;
+#endif
+#else
+typedef int SOCKET;
+#endif
+
 
 #endif

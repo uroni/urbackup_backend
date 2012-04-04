@@ -51,4 +51,6 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest);
 
 std::wstring os_file_prefix(void);
 
+bool os_file_truncate(const std::wstring &fn, int64 fsize);
+
 #endif //OS_FUNCTIONS_H

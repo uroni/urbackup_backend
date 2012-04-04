@@ -52,6 +52,7 @@ server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(inter
 	{
 		combat_mode=true;
 	}
+	tcpstack.setAddChecksum(internet_mode);
 }
 
 ServerChannelThread::~ServerChannelThread(void)

@@ -108,6 +108,19 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir)
 	}
 }
 
+bool File::Open(void *handle)
+{
+	hfile=(HANDLE)handle;
+	if( hfile!=INVALID_HANDLE_VALUE )
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 std::string File::Read(_u32 tr)
 {
 	std::string ret;
@@ -122,7 +135,12 @@ std::string File::Read(_u32 tr)
 _u32 File::Read(char* buffer, _u32 bsize)
 {
 	DWORD read;
-	ReadFile(hfile, buffer, bsize, &read, NULL );
+	BOOL b=ReadFile(hfile, buffer, bsize, &read, NULL );
+	if(b==FALSE)
+	{
+		int err=GetLastError();
+		Server->Log("Read error: "+nconvert(err));
+	}
 	return (_u32)read;
 }
 

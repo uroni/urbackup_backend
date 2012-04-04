@@ -63,10 +63,16 @@
     <ClCompile Include="..\stringtools.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="tcpstack.cpp">
+    <ClCompile Include="..\md5.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\md5.cpp">
+    <ClCompile Include="ChunkSendThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\adler32.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -125,13 +131,19 @@
     <ClInclude Include="socket_header.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="tcpstack.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="types.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\md5.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ChunkSendThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="chunk_settings.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

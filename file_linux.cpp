@@ -89,6 +89,11 @@ bool File::OpenTemporaryFile(const std::wstring &dir)
 		return true;
 }
 
+bool File::Open(void *handle)
+{
+	fd=(int)handle;
+}
+
 std::string File::Read(_u32 tr)
 {
 	std::string ret;

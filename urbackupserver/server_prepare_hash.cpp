@@ -25,6 +25,8 @@
 #include "../stringtools.h"
 #include "server_log.h"
 #include "../urbackupcommon/os_functions.h"
+#include "../fileservplugin/chunk_settings.h"
+#include "../md5.h"
 
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pExitpipe, IPipe *pOutput, IPipe *pExitpipe_hash, int pClientid)
 {
@@ -137,6 +139,52 @@ std::string BackupServerPrepareHash::hash(IFile *f)
 bool BackupServerPrepareHash::isWorking(void)
 {
 	return working;
+}
+
+unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
+
+std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutput)
+{
+	f->Seek(0);
+
+	hashoutput->Seek(0);
+	_i64 fsize=f->Size();
+	hashoutput->Write((char*)&fsize, sizeof(_i64));
+
+	sha512_ctx ctx;
+	sha512_init(&ctx);
+
+	_i64 n_chunks=c_checkpoint_dist/c_small_hash_dist;
+	char buf[c_small_hash_dist];
+	char zbuf[big_hash_size]={};
+	_i64 hashoutputpos=sizeof(_i64);
+	for(_i64 pos=0;pos<fsize;)
+	{
+		_i64 epos=pos+c_checkpoint_dist;
+		MD5 big_hash;
+		_i64 hashoutputpos_start=hashoutputpos;
+		hashoutput->Write(zbuf, big_hash_size);
+		hashoutputpos+=big_hash_size;
+		for(;pos<epos && pos<fsize;pos+=c_small_hash_dist)
+		{
+			_u32 r=f->Read(buf, c_small_hash_dist);
+			_u32 small_hash=adler32(adler32(0, NULL, 0), buf, r);
+			big_hash.update((unsigned char*)buf, r);
+			hashoutput->Write((char*)&small_hash, small_hash_size);
+			hashoutputpos+=small_hash_size;
+
+			sha512_update(&ctx, (unsigned char*)buf, r);
+		}
+		hashoutput->Seek(hashoutputpos_start);
+		big_hash.finalize();
+		hashoutput->Write((const char*)big_hash.raw_digest_int(),  big_hash_size);
+		hashoutput->Seek(hashoutputpos);
+	}
+
+	std::string ret;
+	ret.resize(64);
+	sha512_final(&ctx, (unsigned char*)&ret[0]);
+	return ret;
 }
 
 #endif //CLIENT_ONLY

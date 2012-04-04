@@ -24,6 +24,12 @@ typedef int _i32;
 typedef unsigned short _u16;
 typedef __int64 _u64;
 
+#define SERVER_TIMEOUT_BACKUPPED 120000
+#define SERVER_TIMEOUT 120000
+#define LOG
+
+class CRData;
+
 class FileClient
 {
 public:
@@ -100,6 +106,7 @@ const _u32 ERR_CONNECTED=5;
 const _u32 ERR_ERROR=6;
 const _u32 ERR_BASE_DIR_LOST=7;
 const _u32 ERR_HASH=8;
+const _u32 ERR_INT_ERROR=9;
 
 const _u32 sleeptime=50;
 

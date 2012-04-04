@@ -957,6 +957,11 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	}
 }
 
+IPipe *CServer::PipeFromSocket(SOCKET pSocket)
+{
+	return new CStreamPipe(pSocket);
+}
+
 void CServer::DisconnectStream(IPipe *pipe)
 {
 	CStreamPipe *sp=(CStreamPipe*)pipe;
@@ -1190,13 +1195,24 @@ void CServer::addRequest(void)
 
 IFile* CServer::openFile(std::string pFilename, int pMode)
 {
-	return openFile(widen(pFilename), pMode);
+	return openFile(ConvertToUnicode(pFilename), pMode);
 }
 
 IFile* CServer::openFile(std::wstring pFilename, int pMode)
 {
 	File *file=new File;
 	if(!file->Open(pFilename, pMode) )
+	{
+		delete file;
+		return NULL;
+	}
+	return file;
+}
+
+IFile* CServer::openFileFromHandle(void *handle)
+{
+	File *file=new File;
+	if(!file->Open(handle) )
 	{
 		delete file;
 		return NULL;

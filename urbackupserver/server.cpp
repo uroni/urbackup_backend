@@ -146,8 +146,8 @@ void BackupServer::findClients(FileClient &fc)
 
 void BackupServer::startClients(FileClient &fc)
 {
-	std::vector<std::wstring> names=fc.getServerNames();
-	std::vector<sockaddr_in> servers=fc.getServers();
+	std::vector<std::wstring> names;//=fc.getServerNames();
+	std::vector<sockaddr_in> servers;//=fc.getServers();
 
 	std::vector<bool> inetclient;
 	inetclient.resize(names.size());

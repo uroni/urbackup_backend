@@ -255,6 +255,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\md5.cpp" />
+    <ClCompile Include="..\urbackupcommon\adler32.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\data.cpp" />
@@ -264,6 +265,7 @@
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="fileclient\FileClientChunked.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
@@ -320,6 +322,7 @@
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
     <ClInclude Include="database.h" />
+    <ClInclude Include="fileclient\FileClientChunked.h" />
     <ClInclude Include="fileclient\packet_ids.h" />
     <ClInclude Include="fileclient\socket_header.h" />
     <ClInclude Include="InternetServiceConnector.h" />

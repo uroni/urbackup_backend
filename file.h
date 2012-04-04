@@ -37,6 +37,7 @@ class File : public IFile
 public:
 	~File();
 	bool Open(std::wstring pfn, int mode=MODE_READ);
+	bool Open(void *handle);
 	bool OpenTemporaryFile(const std::wstring &tmpdir=L"");
 	std::string Read(_u32 tr);
 	_u32 Read(char* buffer, _u32 bsize);

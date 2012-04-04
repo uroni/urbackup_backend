@@ -10,10 +10,12 @@
 
 #include <deque>
 #include <vector>
+#include <queue>
 
 #include "../Interface/Thread.h"
+#include "../Interface/ThreadPool.h"
 #include "bufmgr.h"
-#include "tcpstack.h"
+#include "../urbackupcommon/fileclient/tcpstack.h"
 #include "data.h"
 #include "types.h"
 #include "settings.h"
@@ -21,6 +23,11 @@
 
 class CTCPFileServ;
 class IPipe;
+class IFile;
+class IMutex;
+class ICondition;
+
+#include "chunk_settings.h"
 
 struct SSendData
 {
@@ -30,7 +37,16 @@ struct SSendData
 	bool last;
 
 	bool delbuf;
+	
 	char* delbufptr;
+};
+
+struct SChunk
+{
+	_i64 startpos;
+	char transfer_all;
+	char big_hash[big_hash_size];
+	char small_hash[small_hash_size*(c_checkpoint_dist/c_small_hash_dist)];
 };
 
 struct SLPData
@@ -46,6 +62,12 @@ struct SLPData
 	unsigned int bsize;
 };
 
+enum EClientState
+{
+	CS_NONE,
+	CS_BLOCKHASH
+};
+
 class CClientThread : public IThread
 {
 public:
@@ -59,6 +81,9 @@ public:
 	void operator()(void);
 
 	void StopThread(void);
+
+	int SendInt(const char *buf, size_t bsize);
+	bool getNextChunk(SChunk *chunk);
 private:
 
 	bool RecvMessage(void);
@@ -71,9 +96,10 @@ private:
 	void EnableNagle(void);
 	void DisableNagle(void);
 
-	int SendInt(const char *buf, size_t bsize);
+	bool GetFileBlockdiff(CRData *data);
+	bool Handle_ID_BLOCK_REQUEST(CRData *data);
 
-	SOCKET mSocket;
+
 	volatile bool stopped;
 	volatile bool killable;
 
@@ -101,5 +127,15 @@ private:
 	_i64 sent_bytes;
 	_i64 curr_filesize;
 
+	IMutex *mutex;
+	ICondition *cond;
+	std::queue<SChunk> next_chunks;
+
 	uchar cmd_id;
+
+	EClientState state;
+	THREADPOOL_TICKET chunk_send_thread_ticket;
+
+	SOCKET int_socket;
+	bool has_socket;
 };

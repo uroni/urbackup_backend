@@ -19,6 +19,9 @@
 #include "../vld.h"
 #include "../Interface/Server.h"
 #include "../Interface/Pipe.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/Condition.h"
+#include "../Interface/File.h"
 #include "CClientThread.h"
 #include "CTCPFileServ.h"
 #include "map_buffer.h"
@@ -27,6 +30,7 @@
 #include "../stringtools.h"
 #include "CriticalSection.h"
 #include "FileServ.h"
+#include "ChunkSendThread.h"
 
 #include <algorithm>
 
@@ -37,8 +41,6 @@
 CriticalSection cs;
 
 int curr_tid=0;
-
-const _i64 c_checkpoint_dist=512*1024;
 
 #ifdef _WIN32
 bool isDirectory(const std::wstring &path)
@@ -80,12 +82,12 @@ bool isDirectory(const std::wstring &path)
 
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 {
-	mSocket=pSocket;
-
 	DisableNagle();
 
 	stopped=false;
 	killable=false;
+	has_socket=true;
+	int_socket=pSocket;
 
 	parent=pParent;
 
@@ -100,48 +102,70 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 #ifdef _WIN32
 	int window_size;
 	int window_size_len=sizeof(window_size);
-	getsockopt(mSocket, SOL_SOCKET, SO_SNDBUF,(char *) &window_size, &window_size_len );
-	Log("Info: Window size=%i", window_size);
+	getsockopt(pSocket, SOL_SOCKET, SO_SNDBUF,(char *) &window_size, &window_size_len );
+	Log("Info: Window size="+nconvert(window_size));
 #endif
 
 	close_the_socket=true;
 	errcount=0;
-	clientpipe=NULL;
+	clientpipe=Server->PipeFromSocket(pSocket);
+	mutex=NULL;
+	cond=NULL;
+	state=CS_NONE;
+	chunk_send_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
 }
 
 CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent)
 {
 	stopped=false;
 	killable=false;
+	has_socket=false;
 
 	parent=pParent;
 
-#ifdef _WIN32
-	bufmgr=new CBufMgr(NBUFFERS,READSIZE);
-#else
 	bufmgr=NULL;
-#endif
 
 	hFile=0;
 
-	close_the_socket=true;
+	close_the_socket=false;
 	errcount=0;
 	clientpipe=pClientpipe;
+	state=CS_NONE;
+	mutex=NULL;
+	cond=NULL;
+	chunk_send_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
+
+	stack.setAddChecksum(true);
 }
 
 CClientThread::~CClientThread()
 {
+	if(chunk_send_thread_ticket!=ILLEGAL_THREADPOOL_TICKET)
+	{
+		{
+			IScopedLock lock(mutex);
+			while(!next_chunks.empty())
+				next_chunks.pop();
+		}
+		cond->notify_all();
+		Server->getThreadPool()->waitFor(chunk_send_thread_ticket);
+	}
 	delete bufmgr;
+	if(mutex!=NULL)
+	{
+		Server->destroy(mutex);
+		Server->destroy(cond);
+	}
 }
 
 void CClientThread::EnableNagle(void)
 {
-	if(clientpipe==NULL)
+	if(has_socket)
 	{
 #ifdef DISABLE_NAGLE
 #ifdef _WIN32
 	BOOL opt=FALSE;
-	int err=setsockopt(mSocket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
+	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
 	if( err==SOCKET_ERROR )
 		Log("Error: Setting TCP_NODELAY failed");
 #else
@@ -163,12 +187,12 @@ void CClientThread::EnableNagle(void)
 
 void CClientThread::DisableNagle(void)
 {
-	if(clientpipe==NULL)
+	if(has_socket)
 	{
 #ifdef DISABLE_NAGLE
 #ifdef _WIN32
 	BOOL opt=TRUE;
-	int err=setsockopt(mSocket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
+	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
 	if( err==SOCKET_ERROR )
 		Log("Error: Setting TCP_NODELAY failed");
 #endif
@@ -195,16 +219,15 @@ void CClientThread::operator()(void)
 	}
 	ReleaseMemory();
 
-	if( close_the_socket==true )
-	{
-		if(clientpipe==NULL)
-			closesocket(mSocket);
-	}
-
 	if( hFile!=0 )
 	{
 		CloseHandle( hFile );
 		hFile=0;
+	}
+
+	if(close_the_socket)
+	{
+		Server->destroy(clientpipe);
 	}
 
 	killable=true;
@@ -216,47 +239,26 @@ bool CClientThread::RecvMessage(void)
 	timeval lon;
 	lon.tv_usec=0;
 	lon.tv_sec=60;
-	if(clientpipe==NULL)
-	{
-		fd_set fdset;
-		FD_ZERO(&fdset);
-		FD_SET(mSocket,&fdset);
-
-		rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
-	}
-	else
-	{
-		rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
-		if(clientpipe->hasError())
-			rc=-1;
-	}
+	rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
+	if(clientpipe->hasError())
+		rc=-1;
 	if( rc==0 )
 	{
-		Log("1 min Timeout deleting Buffers (%i KB) and waiting 1h more...", (NBUFFERS*READSIZE)/1024 );
-		delete bufmgr;
-		lon.tv_sec=3600;
-		int n=0;
-		while(stopped==false && rc==0 && n<60)
+		if(state==CS_NONE)
 		{
-			if(clientpipe==NULL)
-			{
-				fd_set fdset;
-				FD_ZERO(&fdset);
-				FD_SET(mSocket,&fdset);
-				rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
-			}
-			else
+			Log("1 min Timeout deleting Buffers (%i KB) and waiting 1h more...", (NBUFFERS*READSIZE)/1024 );
+			delete bufmgr;
+			bufmgr=NULL;
+			lon.tv_sec=3600;
+			int n=0;
+			while(stopped==false && rc==0 && n<60)
 			{
 				rc=clientpipe->isReadable(lon.tv_sec*1000);
 				if(clientpipe->hasError())
 					rc=-1;
+				++n;
 			}
-			++n;
 		}
-		Log("Reallocating Buffers...");
-#ifdef _WIN32
-		bufmgr=new CBufMgr(NBUFFERS,READSIZE);
-#endif
 	}
 	
 	if( rc<1)
@@ -267,14 +269,7 @@ bool CClientThread::RecvMessage(void)
 	}
 	else
 	{
-		if(clientpipe==NULL)
-		{
-			rc=recv(mSocket, buffer, BUFFERSIZE, MSG_NOSIGNAL);
-		}
-		else
-		{
-			rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE);
-		}
+		rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE);
 
 
 		if(rc<1)
@@ -307,22 +302,7 @@ bool CClientThread::RecvMessage(void)
 
 int CClientThread::SendInt(const char *buf, size_t bsize)
 {
-	if(clientpipe==NULL)
-	{
-		size_t written=0;
-		while(written<bsize)
-		{
-			int rc=send(mSocket, buf+written, (int)(bsize-written), MSG_NOSIGNAL);
-			if(rc<0)
-				return rc;
-			written+=rc;
-		}
-		return (int)written;
-	}
-	else
-	{
-		return (int)(clientpipe->Write(buf, bsize)?bsize:SOCKET_ERROR);
-	}
+	return (int)(clientpipe->Write(buf, bsize)?bsize:SOCKET_ERROR);
 }
 
 bool CClientThread::ProcessPacket(CRData *data)
@@ -356,10 +336,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				data.addUChar( ID_GAMELIST );
 				data.addUInt( (unsigned int)games.size() );
 
-				if(clientpipe==NULL)
-					stack.Send(mSocket, data );
-				else
-					stack.Send(clientpipe, data);
+				stack.Send(clientpipe, data);
 
 				for(size_t i=0;i<games.size();++i)
 				{
@@ -372,16 +349,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					std::string game=Server->ConvertToUTF8(games[i]);
 					
-					if(clientpipe==NULL)
-					{
-						stack.Send(mSocket, (char*)game.c_str(), game.size() );					
-						stack.Send(mSocket, (char*)version.c_str(), version.size() );
-					}
-					else
-					{
-						stack.Send(clientpipe, (char*)game.c_str(), game.size() );					
-						stack.Send(clientpipe, (char*)version.c_str(), version.size() );
-					}
+
+					stack.Send(clientpipe, (char*)game.c_str(), game.size() );					
+					stack.Send(clientpipe, (char*)version.c_str(), version.size() );
 				}
 				
 				Log("done.");
@@ -440,7 +410,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 #ifdef _WIN32
 				if(filename.size()<2 || (filename[0]!='\\' && filename[1]!='\\' ) )
+				{
 					filename=L"\\\\?\\"+filename;			
+				}
+
+				if(bufmgr==NULL)
+				{
+					bufmgr=new CBufMgr(NBUFFERS,READSIZE);
+				}
 #endif
 				
 #ifndef LINUX
@@ -712,6 +689,19 @@ bool CClientThread::ProcessPacket(CRData *data)
 #endif
 
 			}break;
+		case ID_GET_FILE_BLOCKDIFF:
+			{
+				bool b=GetFileBlockdiff(data);
+				if(!b)
+					return false;
+			}break;
+		case ID_BLOCK_REQUEST:
+			{
+				if(state==CS_BLOCKHASH)
+				{
+					Handle_ID_BLOCK_REQUEST(data);
+				}
+			}break;
 		}
 	}
 	if( stopped==true )
@@ -853,23 +843,8 @@ int CClientThread::SendData(void)
 	SSendData* ldata=t_send[0];
 
 	_i32 ret;
-	if(clientpipe==NULL)
-	{
-		fd_set fdset;
-				
-		FD_ZERO(&fdset);
-		FD_SET(mSocket, &fdset);
+	ret=clientpipe->isWritable(CLIENT_TIMEOUT*1000)?1:0;
 
-		timeval lon;
-		lon.tv_sec=CLIENT_TIMEOUT;
-		lon.tv_usec=0;
-
-		ret=select((int)mSocket+1, 0, &fdset,0, &lon);
-	}
-	else
-	{
-		ret=clientpipe->isWritable(CLIENT_TIMEOUT*1000)?1:0;
-	}
 	if(ret < 1)
 	{
 		Log("Client Timeout occured.");
@@ -973,19 +948,22 @@ void CClientThread::ReleaseMemory(void)
 {
 #ifdef _WIN32
 	Log("Deleting Memory...");
-	while( bufmgr->nfreeBufffer()!=NBUFFERS )
+	if(bufmgr!=NULL)
 	{
-		while( SleepEx(1000,true)!=0 );
-
-		for(size_t i=0;i<t_send.size();++i)
+		while( bufmgr->nfreeBufffer()!=NBUFFERS )
 		{
-			if( t_send[i]->delbuf==true )
-				bufmgr->releaseBuffer( t_send[i]->delbufptr );
-			delete t_send[i];
+			while( SleepEx(1000,true)!=0 );
+
+			for(size_t i=0;i<t_send.size();++i)
+			{
+				if( t_send[i]->delbuf==true )
+					bufmgr->releaseBuffer( t_send[i]->delbufptr );
+				delete t_send[i];
+			}
+
+
+			t_send.clear();
 		}
-
-
-		t_send.clear();
 	}
 	Log("done.");
 #endif
@@ -1012,3 +990,170 @@ bool CClientThread::isKillable(void)
 	return killable;
 }
 
+bool CClientThread::GetFileBlockdiff(CRData *data)
+{
+	std::string s_filename;
+	if(data->getStr(&s_filename)==false)
+		return false;
+
+#ifdef CHECK_IDENT
+	std::string ident;
+	data->getStr(&ident);
+	if(!FileServ::checkIdentity(ident))
+	{
+		Log("Identity check failed -2");
+		return false;
+	}
+#endif
+
+	std::wstring o_filename=Server->ConvertToUnicode(s_filename);
+
+	_i64 start_offset=0;
+	data->getInt64(&start_offset);
+
+	_i64 hash_size=0;
+	data->getInt64(&hash_size);
+
+	Log("Sending file "+Server->ConvertToUTF8(o_filename));
+
+	std::wstring filename=map_file(o_filename);
+
+	Log("Mapped name: "+Server->ConvertToUTF8(filename) );
+
+	if(filename.empty())
+	{
+		char ch=ID_BASE_DIR_LOST;
+		int rc=SendInt(&ch, 1);
+
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -1");
+			return false;
+		}
+		Log("Info: Base dir lost -1");
+		return true;
+	}
+
+	hash_func.init();
+
+#ifdef _WIN32
+	if(filename.size()<2 || (filename[0]!='\\' && filename[1]!='\\' ) )
+		filename=L"\\\\?\\"+filename;			
+#endif
+				
+#ifndef BACKUP_SEM
+	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+#else
+	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+#endif
+
+	if(hFile == INVALID_HANDLE_VALUE)
+	{
+		hFile=NULL;
+#ifdef CHECK_BASE_PATH
+		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
+		if(!isDirectory(basePath))
+		{
+			char ch=ID_BASE_DIR_LOST;
+			int rc=SendInt(&ch, 1);
+			if(rc==SOCKET_ERROR)
+			{
+				Log("Error: Socket Error - DBG: Send BASE_DIR_LOST");
+				return false;
+			}
+			Log("Info: Base dir lost");
+			return true;
+		}
+#endif
+					
+		char ch=ID_COULDNT_OPEN;
+		int rc=SendInt(&ch, 1);
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Error: Socket Error - DBG: Send COULDNT OPEN");
+			return false;
+		}
+		Log("Info: Couldn't open file");
+		return true;
+	}
+
+	currfilepart=0;
+	sendfilepart=0;
+	sent_bytes=0;
+
+	LARGE_INTEGER filesize;
+	GetFileSizeEx(hFile, &filesize);
+
+	curr_filesize=filesize.QuadPart;
+
+	next_checkpoint=start_offset+c_checkpoint_dist;
+	if(next_checkpoint>curr_filesize)
+		next_checkpoint=curr_filesize;
+
+
+	CWData sdata;
+	sdata.addUChar(ID_FILESIZE);
+	sdata.addUInt64(filesize.QuadPart);
+	SendInt(sdata.getDataPtr(), sdata.getDataSize());
+
+	if(mutex==NULL)
+	{
+		mutex=Server->createMutex();
+		cond=Server->createCondition();
+	}
+
+	state=CS_BLOCKHASH;
+
+	Server->getThreadPool()->execute(new ChunkSendThread(this, Server->openFileFromHandle(hFile)) );
+	hFile=NULL;
+
+	return true;
+}
+
+bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
+{
+	SChunk chunk;
+	bool b=data->getInt64(&chunk.startpos);
+	if(!b)
+		return false;
+	b=data->getChar(&chunk.transfer_all);
+	if(!b)
+		return false;
+
+	if(data->getLeft()==big_hash_size+small_hash_size*(c_checkpoint_dist/c_small_hash_dist))
+	{
+		memcpy(chunk.big_hash, data->getCurrentPtr(), big_hash_size);
+		data->incrementPtr(big_hash_size);
+		memcpy(chunk.small_hash, data->getCurrentPtr(), small_hash_size*(c_checkpoint_dist/c_small_hash_dist));
+	}
+	else if(chunk.transfer_all==0)
+	{
+		return false;
+	}
+
+	IScopedLock lock(mutex);
+	next_chunks.push(chunk);
+	cond->notify_all();
+
+	return true;
+}
+
+bool CClientThread::getNextChunk(SChunk *chunk)
+{
+	IScopedLock lock(mutex);
+	while(next_chunks.empty() && state==CS_BLOCKHASH)
+	{
+		cond->wait(&lock);
+	}
+
+	if(!next_chunks.empty())
+	{
+		*chunk=next_chunks.front();
+		next_chunks.pop();
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}

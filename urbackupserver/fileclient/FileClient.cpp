@@ -30,10 +30,6 @@
 #include <iostream>
 #include <memory.h>
 
-#define SERVER_TIMEOUT_BACKUPPED 120000
-#define SERVER_TIMEOUT 120000
-#define LOG
-
 const std::string str_tmpdir="C:\\Windows\\Temp";
 extern std::string server_identity;
 const _u64 c_checkpoint_dist=512*1024;

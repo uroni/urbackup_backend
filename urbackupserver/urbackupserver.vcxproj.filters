@@ -171,6 +171,15 @@
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\md5.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="fileclient\FileClientChunked.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\adler32.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -295,6 +304,12 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\md5.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="fileclient\FileClientChunked.h">
+      <Filter>fileclient</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -34,16 +34,6 @@
 #include <fstream>
 #include <stdlib.h>
 
-//For truncating files
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#include <sys\stat.h>
-#else
-#include <unistd.h>
-#include <sys/types.h>
-#endif
-
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
@@ -590,25 +580,11 @@ void IndexThread::indexDirs(void)
 		if(pos!=outfile.tellg())
 		{
 			outfile.close();
-#ifdef _WIN32
-			int fh;
-			if( _sopen_s( &fh, filelist_fn, _O_RDWR | _O_CREAT, _SH_DENYNO,
-                 _S_IREAD | _S_IWRITE ) == 0 )
+			bool b=os_file_truncate(Server->ConvertToUnicode(filelist_fn), pos);
+			if(!b)
 			{
-				if( _chsize( fh, (long)pos ) != 0 )
-					Server->Log("Error changing filelist size", LL_ERROR);
-				_close( fh );
+				Server->Log("Error changing filelist size", LL_ERROR);
 			}
-			else
-			{
-				Server->Log("Error opening filelist for truncation", LL_ERROR);
-			}
-#else
-			if( truncate(filelist_fn, (off_t)pos) !=0 )
-			{
-				Server->Log("Error truncating filelist", LL_ERROR);
-			}
-#endif
 		}
 	}
 

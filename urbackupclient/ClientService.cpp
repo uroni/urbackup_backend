@@ -602,6 +602,11 @@ void ClientConnector::ReceivePackets(void)
 			ident_ok=true;
 		}
 
+		if( (ident_ok || is_channel) && !internet_conn )
+		{
+			InternetClient::hasLANConnection();
+		}
+
 		if(cmd=="ADD IDENTITY" )
 		{
 			CMD_ADD_IDENTITY(identity, cmd, ident_ok); continue;
@@ -1541,4 +1546,5 @@ void ClientConnector::ImageErr(const std::string &msg)
 void ClientConnector::setIsInternetConnection(void)
 {
 	internet_conn=true;
+	tcpstack.setAddChecksum(true);
 }

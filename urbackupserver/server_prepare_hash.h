@@ -12,6 +12,8 @@ public:
 	
 	bool isWorking(void);
 
+	static std::string build_chunk_hashs(IFile *f, IFile *hashoutput);
+
 private:
 	std::string hash(IFile *f);
 

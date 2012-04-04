@@ -59,7 +59,7 @@ void writeZeroblockdata(void)
 
 bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref)
 {
-	CTCPStack tcpstack;
+	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
 	if(cc==NULL)
 	{

@@ -34,6 +34,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 void getMousePos(int &x, int &y)
 {
@@ -317,4 +319,13 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 std::wstring os_file_prefix(void)
 {
 	return L"";
+}
+
+bool os_file_truncate(const std::wstring &fn, int64 fsize)
+{
+	if( truncate(Server->ConvertToUTF8(fn).c_str(), (off_t)fsize) !=0 )
+	{
+		return false;
+	}
+	return true;
 }

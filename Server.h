@@ -113,6 +113,7 @@ public:
 
 	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort);
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
+	virtual IPipe *PipeFromSocket(SOCKET pSocket);
 	virtual void DisconnectStream(IPipe *pipe);
 
 	virtual bool RegisterPluginPerThreadModel(IPluginMgr *pPluginMgr, std::string pName);
@@ -127,6 +128,7 @@ public:
 
 	virtual IFile* openFile(std::string pFilename, int pMode=0);
 	virtual IFile* openFile(std::wstring pFilename, int pMode=0);
+	virtual IFile* openFileFromHandle(void *handle);
 	virtual IFile* openTemporaryFile(void);
 	virtual IFile* openMemoryFile(void);
 	virtual bool deleteFile(std::string pFilename);

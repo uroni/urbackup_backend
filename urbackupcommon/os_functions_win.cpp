@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <algorithm>
 
+#include <io.h>
+#include <fcntl.h>
+#include <sys\stat.h>
+
 void getMousePos(int &x, int &y)
 {
 	POINT mousepos;
@@ -216,4 +220,24 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 std::wstring os_file_prefix(void)
 {
 	return L"\\\\?\\";
+}
+
+bool os_file_truncate(const std::wstring &fn, int64 fsize)
+{
+	int fh;
+	if( _wsopen_s ( &fh, fn.c_str(), _O_RDWR | _O_CREAT, _SH_DENYNO,
+            _S_IREAD | _S_IWRITE ) == 0 )
+	{
+		if( _chsize_s( fh, fsize ) != 0 )
+		{
+			_close( fh );
+			return false;
+		}
+		_close( fh );
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }

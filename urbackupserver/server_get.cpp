@@ -23,6 +23,7 @@
 #include "database.h"
 #include "../stringtools.h"
 #include "fileclient/FileClient.h"
+#include "fileclient/FileClientChunked.h"
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
@@ -172,6 +173,29 @@ void BackupServerGet::operator ()(void)
 		delete this;
 		return;
 	}
+
+	//TEst----------------------------------
+	CopyFileA("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll", "D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll", false);
+	IFile *tfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44.dll");
+	IFile *old_tfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll");
+	IFile *hashfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll.hash", MODE_RW);
+	std::string hash=BackupServerPrepareHash::build_chunk_hashs(old_tfile, hashfile);
+
+	IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, 10000);
+	CTCPStack stack(internet_connection);
+	FileClientChunked fctest(cp, &stack);
+	IFile *outputfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll", MODE_RW);
+	IFile *hashoutput=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll.hashoutput", MODE_WRITE);
+	_u32 rc=fctest.GetFileChunked("urbackup/boost_python-vc100-gd-1_44.dll", outputfile, hashfile, hashoutput);
+	std::wstring fname=outputfile->getFilenameW();
+	Server->destroy(outputfile);
+	if(rc==ERR_SUCCESS)
+	{
+		os_file_truncate(fname, fctest.getSize());
+	}
+	Server->Log("Return code: "+nconvert(rc));
+	return;
+	//End Test------------------------------
 
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -953,7 +977,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 		timeout_time=120000;
 	}
 
-	CTCPStack tcpstack;
+	CTCPStack tcpstack(internet_connection);
 
 	Server->Log(clientname+L": Connecting for filelist...", LL_DEBUG);
 	IPipe *cc=getClientCommandConnection(10000);
@@ -1818,7 +1842,7 @@ void BackupServerGet::updateLastImageBackup(void)
 
 std::string BackupServerGet::sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr)
 {
-	CTCPStack tcpstack;
+	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
@@ -1866,7 +1890,7 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 
 bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr)
 {
-	CTCPStack tcpstack;
+	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
@@ -2392,7 +2416,7 @@ void BackupServerGet::checkClientVersion(void)
 			}			
 			size_t datasize=3*sizeof(unsigned int)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
 
-			CTCPStack tcpstack;
+			CTCPStack tcpstack(internet_connection);
 			IPipe *cc=getClientCommandConnection(10000);
 			if(cc==NULL)
 			{

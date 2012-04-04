@@ -52,6 +52,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	state=ISS_AUTH;
 	connection_done_cond=NULL;
 	tcpstack.reset();
+	tcpstack.setAddChecksum(true);
 	challenge=ServerSettings::generateRandomAuthKey();
 	{
 		CWData data;

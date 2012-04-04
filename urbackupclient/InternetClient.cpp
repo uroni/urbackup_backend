@@ -137,6 +137,10 @@ void InternetClient::operator()(void)
 				}
 			}
 		}
+		else
+		{
+			Server->wait(ic_lan_timeout);
+		}
 	}
 }
 
@@ -157,7 +161,7 @@ void InternetClient::doUpdateSettings(void)
 		Server->destroy(settings);
 		return;
 	}
-	if(!settings->getValue("computername", &computername))
+	if(!settings->getValue("computername", &computername) || computername.empty())
 	{
 		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
 	}
@@ -222,7 +226,7 @@ char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &r
 
 void InternetClientThread::operator()(void)
 {
-	CTCPStack tcpstack;
+	CTCPStack tcpstack(true);
 	bool finish_ok=false;
 	bool rm_connection=true;
 
