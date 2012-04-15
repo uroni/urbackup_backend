@@ -28,8 +28,6 @@ switch()
 	switch_m_build
 	cd fsimageplugin
 	switch_build
-	cd ../urbackup
-	switch_build
 }
 
 clean_build()

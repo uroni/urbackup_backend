@@ -2,6 +2,8 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../Interface/Server.h"
 #include <limits.h>
+#include <memory.h>
+#include <string.h>
 
 extern ICryptoFactory *crypto_fak;
 const size_t max_send_size=20000;

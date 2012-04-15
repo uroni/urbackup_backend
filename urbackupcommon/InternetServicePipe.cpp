@@ -2,6 +2,7 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 
 #include "../Interface/Server.h"
+#include <string.h>
 
 extern ICryptoFactory *crypto_fak;
 

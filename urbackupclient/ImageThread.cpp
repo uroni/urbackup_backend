@@ -13,6 +13,9 @@
 #include "ClientSend.h"
 #include "client.h"
 
+#include <memory.h>
+#include <stdlib.h>
+
 extern IFSImageFactory *image_fak;
 
 ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe **mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile)

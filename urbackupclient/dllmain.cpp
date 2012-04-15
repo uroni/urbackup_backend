@@ -46,7 +46,7 @@ IServer *Server;
 #include "client.h"
 #include "../stringtools.h"
 #include "ServerIdentityMgr.h"
-#include "..\urbackupcommon\os_functions.h"
+#include "../urbackupcommon/os_functions.h"
 #ifdef _WIN32
 #include "DirectoryWatcherThread.h"
 #endif

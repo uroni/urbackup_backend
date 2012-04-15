@@ -13,6 +13,13 @@
 std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 #endif
 
+#include <stdlib.h>
+#include <limits.h>
+
+#ifndef _WIN32
+#define _atoi64 atoll
+#endif
+
 extern std::string time_format_str;
 
 void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok)

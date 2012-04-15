@@ -6,7 +6,7 @@ bin_SCRIPTS = start_urbackup_server
 AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
 AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY
 AM_LDFLAGS = $(PTHREAD_LIBS) -ldl
-SUBDIRS=. pychart urlplugin downloadplugin fsimageplugin httpserver urbackup
+SUBDIRS=. pychart urlplugin cryptoplugin downloadplugin fsimageplugin httpserver urbackupserver
 install-exec-local: defaults_server init.d_server
 	$(INSTALL) -D "$(srcdir)/init.d_server" "$(sysconfdir)/init.d/urbackup_srv"
 	if ! test -e "$(sysconfdir)/default/urbackup_srv"; then $(INSTALL) -D "$(srcdir)/defaults_server" "$(sysconfdir)/default/urbackup_srv"; fi
