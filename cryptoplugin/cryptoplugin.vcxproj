@@ -177,6 +177,8 @@
     <ClCompile Include="CryptoFactory.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
+    <ClCompile Include="ZlibCompression.cpp" />
+    <ClCompile Include="ZlibDecompression.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AESDecryption.h" />
@@ -185,7 +187,11 @@
     <ClInclude Include="IAESDecryption.h" />
     <ClInclude Include="IAESEncryption.h" />
     <ClInclude Include="ICryptoFactory.h" />
+    <ClInclude Include="IZlibCompression.h" />
+    <ClInclude Include="IZlibDecompression.h" />
     <ClInclude Include="pluginmgr.h" />
+    <ClInclude Include="ZlibCompression.h" />
+    <ClInclude Include="ZlibDecompression.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

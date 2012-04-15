@@ -23,6 +23,8 @@
 
 #include "AESEncryption.h"
 #include "AESDecryption.h"
+#include "ZlibCompression.h"
+#include "ZlibDecompression.h"
 
 #ifdef _WIN32
 #include <dsa.h>
@@ -137,4 +139,14 @@ std::string CryptoFactory::generatePasswordHash(const std::string &password, con
 	ret.resize(derived.size()*2);
 	hexEncoder.Get((byte*)&ret[0],ret.size());
 	return ret;
+}
+
+IZlibCompression* CryptoFactory::createZlibCompression(int compression_level)
+{
+	return new ZlibCompression(compression_level);
+}
+
+IZlibDecompression* CryptoFactory::createZlibDecompression(void)
+{
+	return new ZlibDecompression;
 }

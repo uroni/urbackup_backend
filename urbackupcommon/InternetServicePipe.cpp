@@ -124,3 +124,8 @@ void InternetServicePipe::destroyBackendPipeOnDelete(bool b)
 {
 	destroy_cs=b;
 }
+
+void InternetServicePipe::setBackendPipe(IPipe *pCS)
+{
+	cs=pCS;
+}

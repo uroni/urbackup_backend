@@ -30,6 +30,7 @@ public:
 	virtual size_t getNumElements(void);
 
 	void destroyBackendPipeOnDelete(bool b);
+	void setBackendPipe(IPipe *pCS);
 
 	IPipe *getRealPipe(void);
 
