@@ -34,11 +34,6 @@
 #include "../urbackupcommon/settings.h"
 #include "ImageThread.h"
 #include "InternetClient.h"
-#ifdef _WIN32
-#include "win_sysvol.h"
-#else
-std::wstring getSysVolume(std::wstring &mpath){ return L""; }
-#endif
 
 #include <memory.h>
 #include <stdlib.h>
