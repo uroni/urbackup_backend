@@ -83,7 +83,7 @@ public:
 	void StopThread(void);
 
 	int SendInt(const char *buf, size_t bsize);
-	bool getNextChunk(SChunk *chunk);
+	bool getNextChunk(SChunk *chunk, IFile **new_file);
 private:
 
 	bool RecvMessage(void);
@@ -130,6 +130,7 @@ private:
 	IMutex *mutex;
 	ICondition *cond;
 	std::queue<SChunk> next_chunks;
+	IFile *update_file;
 
 	uchar cmd_id;
 

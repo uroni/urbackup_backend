@@ -105,6 +105,9 @@
     <ClCompile Include="..\md5.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="watchdir\CriticalSection.h">
@@ -177,6 +180,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\md5.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\CompressedPipe.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

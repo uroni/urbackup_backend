@@ -688,6 +688,13 @@ void upgrade16_17(void)
 	db->destroyQuery(q);
 }
 
+void upgrade17_18(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE files ADD hashpath TEXT");
+	db->Write("ALTER TABLE files_del ADD hashpath TEXT");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -704,7 +711,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=17;
+	int max_v=18;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -787,6 +794,10 @@ void upgrade(void)
 				break;
 			case 16:
 				upgrade16_17();
+				++ver;
+				break;
+			case 17:
+				upgrade17_18();
 				++ver;
 				break;
 			default:

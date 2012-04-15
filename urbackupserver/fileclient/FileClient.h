@@ -33,7 +33,7 @@ class CRData;
 class FileClient
 {
 public:
-        FileClient(int protocol_version=0);
+        FileClient(int protocol_version=0, bool internet_connection=false);
         ~FileClient(void);
 
 		_u32 GetServers(bool start, const std::vector<in_addr> &addr_hints);
@@ -95,6 +95,7 @@ private:
 	int connection_id;
 
 		int protocol_version;
+		bool internet_connection;
 };
 
 const _u32 ERR_CONTINUE=0;
@@ -107,6 +108,7 @@ const _u32 ERR_ERROR=6;
 const _u32 ERR_BASE_DIR_LOST=7;
 const _u32 ERR_HASH=8;
 const _u32 ERR_INT_ERROR=9;
+const _u32 ERR_CONN_LOST=10;
 
 const _u32 sleeptime=50;
 

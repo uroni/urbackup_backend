@@ -180,6 +180,12 @@
     <ClCompile Include="..\urbackupcommon\adler32.cpp">
       <Filter>fileclient</Filter>
     </ClCompile>
+    <ClCompile Include="ChunkPatcher.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -310,6 +316,15 @@
     </ClInclude>
     <ClInclude Include="fileclient\FileClientChunked.h">
       <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="ChunkPatcher.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\internet_pipe_capabilities.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\CompressedPipe.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

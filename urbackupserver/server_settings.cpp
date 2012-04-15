@@ -157,6 +157,9 @@ void ServerSettings::readSettingsDefault(void)
 	settings.internet_server_name=settings_default->getValue("internet_server_name", "");
 	settings.internet_image_backups=(settings_default->getValue("internet_image_backups", "false")=="true");
 	settings.internet_full_file_backups=(settings_default->getValue("internet_full_file_backups", "false")=="true");
+	settings.internet_encrypt=(settings_default->getValue("internet_encrypt", "true")=="true");
+	settings.internet_compress=(settings_default->getValue("internet_compress", "true")=="true");
+	settings.internet_compression_level=atoi(settings_default->getValue("internet_compress", "6").c_str());
 }
 
 void ServerSettings::readSettingsClient(void)

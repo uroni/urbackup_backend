@@ -66,10 +66,10 @@ volatile bool ClientConnector::backup_done=false;
 IMutex *ClientConnector::backup_mutex=NULL;
 unsigned int ClientConnector::incr_update_intervall=0;
 unsigned int ClientConnector::last_pingtime=0;
-IPipe *ClientConnector::channel_pipe=NULL;
+SChannel ClientConnector::channel_pipe;
 int ClientConnector::pcdone=0;
 int ClientConnector::pcdone2=0;
-std::vector<IPipe*> ClientConnector::channel_pipes;
+std::vector<SChannel> ClientConnector::channel_pipes;
 std::vector<IPipe*> ClientConnector::channel_exit;
 std::vector<IPipe*> ClientConnector::channel_ping;
 std::vector<int> ClientConnector::channel_capa;
@@ -126,6 +126,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	last_channel_ping=0;
 	file_version=1;
 	internet_conn=false;
+	tcpstack.setAddChecksum(false);
 }
 
 ClientConnector::~ClientConnector(void)
@@ -140,13 +141,13 @@ bool ClientConnector::Run(void)
 		if(is_channel)
 		{
 			IScopedLock lock(backup_mutex);
-			if(channel_pipe==pipe)
+			if(channel_pipe.pipe==pipe)
 			{
-				channel_pipe=NULL;
+				channel_pipe=SChannel();
 			}
 			for(size_t i=0;i<channel_pipes.size();++i)
 			{
-				if(channel_pipes[i]==pipe)
+				if(channel_pipes[i].pipe==pipe)
 				{
 					channel_pipes.erase(channel_pipes.begin()+i);
 					channel_capa.erase(channel_capa.begin()+i);
@@ -259,11 +260,12 @@ bool ClientConnector::Run(void)
 			{
 				Server->Log("Client timeout in ClientConnector::Run - Channel", LL_DEBUG);
 				{
-					if(channel_pipe==pipe)
-						channel_pipe=NULL;
+					if(channel_pipe.pipe==pipe)
+						channel_pipe=SChannel();
+
 					for(size_t i=0;i<channel_pipes.size();++i)
 					{
-						if(channel_pipes[i]==pipe)
+						if(channel_pipes[i].pipe==pipe)
 						{
 							channel_pipes.erase(channel_pipes.begin()+i);
 							channel_capa.erase(channel_capa.begin()+i);
@@ -1300,7 +1302,7 @@ void ClientConnector::downloadImage(str_map params)
 
 	for(size_t i=0;i<channel_pipes.size();++i)
 	{
-		IPipe *c=channel_pipes[i];
+		IPipe *c=channel_pipes[i].pipe;
 		std::string offset;
 		if(params.find(L"offset")!=params.end())
 		{
@@ -1481,9 +1483,10 @@ void ClientConnector::tochannelSendStartbackup(RunningAction backup_type)
 	else
 	{
 		bool ok=false;
-		if(channel_pipe!=NULL)
+		if(channel_pipe.pipe!=NULL)
 		{
-			_u32 rc=(_u32)tcpstack.Send(channel_pipe, ts);
+			CTCPStack tmpstack(channel_pipe.internet_connection);
+			_u32 rc=(_u32)tmpstack.Send(channel_pipe.pipe, ts);
 			if(rc!=0)
 				ok=true;
 		}

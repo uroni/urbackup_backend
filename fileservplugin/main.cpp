@@ -208,7 +208,7 @@ bool SetPrivilege(
             lpszPrivilege,   // privilege to lookup 
             &luid ) )        // receives LUID of privilege
     {
-        Log("FileSrv: LookupPrivilegeValue error: %i", (int)GetLastError() ); 
+        Log("LookupPrivilegeValue error: "+nconvert((int)GetLastError()), LL_ERROR ); 
         return false; 
     }
 
@@ -229,14 +229,14 @@ bool SetPrivilege(
            (PTOKEN_PRIVILEGES) NULL, 
            (PDWORD) NULL) )
     { 
-          Log("FileSrv: AdjustTokenPrivileges error: %i", (int)GetLastError() ); 
+          Log("AdjustTokenPrivileges error: "+nconvert((int)GetLastError()), LL_ERROR ); 
           return false; 
     } 
 
     if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
 
     {
-          Log("FileSrv: The token does not have the specified privilege.");
+          Log("The token does not have the specified privilege.", LL_ERROR);
           return false;
     } 
 
@@ -257,7 +257,7 @@ HRESULT ModifyPrivilege(
                           TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
                           &hToken ))
     {
-        Log("Failed OpenProcessToken");
+        Log("Failed OpenProcessToken", LL_ERROR);
         return ERROR_FUNCTION_FAILED;
     }
 
@@ -267,7 +267,7 @@ HRESULT ModifyPrivilege(
                                 &luid ))
     {
         CloseHandle( hToken );
-        Log("Failed LookupPrivilegeValue");
+        Log("Failed LookupPrivilegeValue", LL_ERROR);
         return ERROR_FUNCTION_FAILED;
     }
 
@@ -285,7 +285,7 @@ HRESULT ModifyPrivilege(
                                NULL,
                                NULL))
     {
-        Log("Failed AdjustTokenPrivileges");
+        Log("Failed AdjustTokenPrivileges", LL_ERROR);
         hr = ERROR_FUNCTION_FAILED;
     }
 
@@ -368,11 +368,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	HRESULT hr=ModifyPrivilege(SE_BACKUP_NAME, TRUE);
 	if(!SUCCEEDED(hr))
 	{
-		Log("Failed to modify backup privileges");
+		Log("Failed to modify backup privileges", LL_ERROR);
 	}
 	else
 	{
-		Log("Backup privileges set successfully");
+		Log("Backup privileges set successfully", LL_DEBUG);
 	}
 #endif
 #endif

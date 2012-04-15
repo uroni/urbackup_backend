@@ -13,6 +13,8 @@
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
+#include "../urbackupcommon/internet_pipe_capabilities.h"
+#include "../urbackupcommon/CompressedPipe.h"
 
 IMutex *InternetClient::mutex=NULL;
 bool InternetClient::connected=NULL;
@@ -242,7 +244,13 @@ void InternetClientThread::operator()(void)
 
 	InternetServicePipe ics_pipe(cs, server_settings.authkey);
 
+	IPipe *comm_pipe=NULL;
+	IPipe *comp_pipe=NULL;
+
 	std::string challenge;
+	unsigned int server_capa;
+	unsigned int capa=0;
+	int compression_level;
 	{
 		char *buf;
 		size_t bufsize;
@@ -261,6 +269,8 @@ void InternetClientThread::operator()(void)
 		if(id==ID_ISC_CHALLENGE)
 		{
 			rd.getStr(&challenge);
+			rd.getUInt(&server_capa);
+			rd.getInt(&compression_level);
 		}
 		else
 		{
@@ -324,13 +334,39 @@ void InternetClientThread::operator()(void)
 		}
 	}
 
+	{
+		CWData data;
+		data.addChar(ID_ISC_CAPA);
+
+		capa|=IPC_ENCRYPTED;
+		if(server_capa & IPC_COMPRESSED )
+			capa|=IPC_COMPRESSED;
+
+		data.addUInt(capa);
+
+		tcpstack.Send(&ics_pipe, data);
+	}
+
+	comm_pipe=cs;
+	
+	if( capa & IPC_ENCRYPTED )
+	{
+		ics_pipe.setBackendPipe(comm_pipe);
+		comm_pipe=&ics_pipe;
+	}
+	if( capa & IPC_COMPRESSED )
+	{
+		comp_pipe=new CompressedPipe(comm_pipe, compression_level);
+		comm_pipe=comp_pipe;
+	}
+
 	finish_ok=true;
 
 	while(true)
 	{
 		char *buf;
 		size_t bufsize;
-		buf=getReply(&tcpstack, &ics_pipe, bufsize, ic_ping_timeout);
+		buf=getReply(&tcpstack, comm_pipe, bufsize, ic_ping_timeout);
 		if(buf==NULL)
 		{
 			goto cleanup;
@@ -345,20 +381,23 @@ void InternetClientThread::operator()(void)
 		}
 		if(id==ID_ISC_PING)
 		{
+			delete []buf;
 			CWData data;
 			data.addChar(ID_ISC_PONG);
-			tcpstack.Send(&ics_pipe, data);
+			tcpstack.Send(comm_pipe, data);
 		}
 		else if(id==ID_ISC_CONNECT)
 		{
 			char service=0;
 			rd.getChar(&service);
 
+			delete []buf;
+
 			if(service==SERVICE_COMMANDS || service==SERVICE_FILESRV)
 			{
 				CWData data;
 				data.addChar(ID_ISC_CONNECT_OK);
-				tcpstack.Send(&ics_pipe, data);
+				tcpstack.Send(comm_pipe, data);
 
 				InternetClient::rmConnection();
 				rm_connection=false;
@@ -371,24 +410,30 @@ void InternetClientThread::operator()(void)
 
 			if(service==SERVICE_COMMANDS)
 			{
+				Server->Log("Started connection to SERVICE_COMMANDS", LL_DEBUG);
 				ClientConnector clientservice;
-				runServiceWrapper(&ics_pipe, &clientservice);
+				runServiceWrapper(comm_pipe, &clientservice);
+				Server->Log("SERVICE_COMMANDS finished", LL_DEBUG);
 				goto cleanup;
 			}
 			else if(service==SERVICE_FILESRV)
 			{
-				IndexThread::getFileSrv()->runClient(&ics_pipe);
+				Server->Log("Started connection to SERVICE_FILESRV", LL_DEBUG);
+				IndexThread::getFileSrv()->runClient(comm_pipe);
+				Server->Log("SERVICE_FILESRV finished", LL_DEBUG);
 				goto cleanup;
 			}
 		}
 		else
 		{
+			delete []buf;
 			Server->Log("Unknown command id", LL_ERROR);
 			goto cleanup;
 		}
 	}
 
 cleanup:
+	delete comp_pipe;
 	if(cs!=NULL)
 		Server->destroy(cs);
 	if(!finish_ok)

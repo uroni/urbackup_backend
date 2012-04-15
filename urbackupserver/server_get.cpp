@@ -23,7 +23,6 @@
 #include "database.h"
 #include "../stringtools.h"
 #include "fileclient/FileClient.h"
-#include "fileclient/FileClientChunked.h"
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
@@ -84,6 +83,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 
 	filesrv_protocol_version=0;
 	file_protocol_version=1;
+
+	tcpstack.setAddChecksum(internet_connection);
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -175,11 +176,11 @@ void BackupServerGet::operator ()(void)
 	}
 
 	//TEst----------------------------------
-	CopyFileA("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll", "D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll", false);
+	/*CopyFileA("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll", "D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll", false);
 	IFile *tfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44.dll");
 	IFile *old_tfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll");
 	IFile *hashfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll.hash", MODE_RW);
-	std::string hash=BackupServerPrepareHash::build_chunk_hashs(old_tfile, hashfile);
+	std::string hash=BackupServerPrepareHash::build_chunk_hashs(old_tfile, hashfile, NULL, false, NULL);
 
 	IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, 10000);
 	CTCPStack stack(internet_connection);
@@ -194,7 +195,7 @@ void BackupServerGet::operator ()(void)
 		os_file_truncate(fname, fctest.getSize());
 	}
 	Server->Log("Return code: "+nconvert(rc));
-	return;
+	return;*/
 	//End Test------------------------------
 
 
@@ -289,6 +290,7 @@ void BackupServerGet::operator ()(void)
 	bool do_exit_now=false;
 	bool tried_backup=false;
 	bool file_backup_err=false;
+	bool with_hashes=true;
 	
 	while(true)
 	{
@@ -345,7 +347,7 @@ void BackupServerGet::operator ()(void)
 
 				hbu=true;
 				startBackupRunning(true);
-				if(!constructBackupPath())
+				if(!constructBackupPath(with_hashes))
 				{
 					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
 					r_success=false;
@@ -355,7 +357,7 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					r_success=doFullBackup();
+					r_success=doFullBackup(with_hashes);
 				}
 			}
 			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && isBackupsRunningOkay() && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) )
@@ -370,7 +372,7 @@ void BackupServerGet::operator ()(void)
 				hbu=true;
 				startBackupRunning(true);
 				r_incremental=true;
-				if(!constructBackupPath())
+				if(!constructBackupPath(with_hashes))
 				{
 					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
 					r_success=false;
@@ -380,7 +382,7 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					r_success=doIncrBackup();
+					r_success=doIncrBackup(with_hashes, internet_connection);
 				}
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && isBackupsRunningOkay() && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) )
@@ -1058,7 +1060,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 	return false;
 }
 
-bool BackupServerGet::doFullBackup(void)
+bool BackupServerGet::doFullBackup(bool with_hashes)
 {
 	int64 free_space=os_free_space(os_file_prefix()+server_settings->getSettings()->backupfolder);
 	if(free_space!=-1 && free_space<minfreespace_min)
@@ -1080,7 +1082,7 @@ bool BackupServerGet::doFullBackup(void)
 		return false;
 	}
 
-	FileClient fc(filesrv_protocol_version);
+	FileClient fc(filesrv_protocol_version, internet_connection);
 	_u32 rc=getClientFilesrvConnection(&fc, 10000);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -1179,6 +1181,12 @@ bool BackupServerGet::doFullBackup(void)
 							c_has_error=true;
 							break;
 						}
+						if(with_hashes && !os_create_dir(os_file_prefix()+backuppath_hashes+os_curr_path))
+						{
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
+							c_has_error=true;
+							break;
+						}
 						++depth;
 						if(depth==1)
 						{
@@ -1248,19 +1256,79 @@ bool BackupServerGet::doFullBackup(void)
 	return !r_done;
 }
 
+bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring &curr_path,
+	const std::wstring &last_backuppath, FileClientChunked &fc, FileClient &fc_normal)
+{
+	std::wstring cfn=curr_path+L"/"+fn;
+	if(cfn[0]=='/')
+		cfn.erase(0,1);
+
+	std::wstring dstpath=backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn);
+	std::wstring hashpath=backuppath_hashes+os_file_sep()+convertToOSPathFromFileClient(cfn);
+	std::wstring hashpath_old=last_backuppath+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn);
+	std::wstring filepath_old=last_backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn);
+
+	IFile *file_old=Server->openFile(os_file_prefix()+filepath_old, MODE_READ);
+
+	if(file_old==NULL)
+	{
+		return load_file(fn, curr_path, fc_normal);
+	}
+
+	ServerLogger::Log(clientid, L"Loading file patch for \""+fn+L"\"", LL_DEBUG);
+	IFile *pfd=getTemporaryFileRetry();
+	IFile *hash_tmp=getTemporaryFileRetry();
+
+	if(!server_token.empty())
+	{
+		cfn=widen(server_token)+L"|"+cfn;
+	}
+
+	IFile *hashfile_old=Server->openFile(os_file_prefix()+hashpath_old, MODE_READ);
+	
+	bool delete_hashfile=false;
+
+	if( hashfile_old==NULL && file_old!=NULL)
+	{
+		ServerLogger::Log(clientid, L"Hashes for file \""+filepath_old+L"\" not available. Calulating hashes...", LL_DEBUG);
+		hashfile_old=getTemporaryFileRetry();
+		delete_hashfile=true;
+		BackupServerPrepareHash::build_chunk_hashs(file_old, hashfile_old, NULL, false, NULL);
+		hashfile_old->Seek(0);
+	}
+
+	_u32 rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
+	if(rc!=ERR_SUCCESS)
+	{
+		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		destroyTemporaryFile(pfd);
+		destroyTemporaryFile(hash_tmp);
+	}
+	else
+	{
+		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+fn);		
+		std::wstring dstpath=backuppath+os_curr_path;
+
+		hashFile(dstpath, hashpath, pfd, hash_tmp, Server->ConvertToUTF8(filepath_old));
+	}
+
+	if(delete_hashfile)
+		destroyTemporaryFile(hashfile_old);
+	else
+		Server->destroy(hashfile_old);
+
+	Server->destroy(file_old);
+
+	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
+		return false;
+	else
+		return true;
+}
+
 bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc)
 {
 	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
-	IFile *fd=NULL;
-	while(fd==NULL)
-	{
-		fd=Server->openTemporaryFile();
-		if(fd==NULL)
-		{
-			ServerLogger::Log(clientid, "Error opening temporary file. Retrying...", LL_WARNING);
-			Server->wait(500);
-		}
-	}
+	IFile *fd=getTemporaryFileRetry();
 
 	std::wstring cfn=curr_path+L"/"+fn;
 	if(cfn[0]=='/')
@@ -1275,25 +1343,17 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
-		std::wstring temp_fn=fd->getFilenameW();
-		Server->destroy(fd);
-		Server->deleteFile(temp_fn);
+		destroyTemporaryFile(fd);
 		if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
 			return false;
 	}
 	else
 	{
-		std::wstring os_curr_path=curr_path+L"/"+fn;
-		if(os_file_sep()!=L"/")
-		{
-			for(size_t i=0;i<os_curr_path.size();++i)
-				if(os_curr_path[i]=='/')
-					os_curr_path[i]=os_file_sep()[0];
-		}
-		
+		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
+		std::wstring hashpath=backuppath_hashes+os_curr_path;
 
-		hashFile(dstpath, fd);
+		hashFile(dstpath, hashpath, fd, NULL, "");
 	}
 	return true;
 }
@@ -1380,7 +1440,7 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	return rsize;
 }
 
-bool BackupServerGet::doIncrBackup(void)
+bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 {
 	int64 free_space=os_free_space(os_file_prefix()+server_settings->getSettings()->backupfolder);
 	if(free_space!=-1 && free_space<minfreespace_min)
@@ -1402,11 +1462,23 @@ bool BackupServerGet::doIncrBackup(void)
 	}
 
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
-	FileClient fc(filesrv_protocol_version);
+	FileClient fc(filesrv_protocol_version, internet_connection);
+	FileClientChunked fc_chunked;
+	if(intra_file_diffs)
+	{
+		fc_chunked=getClientChunkedFilesrvConnection(10000);
+		fc_chunked.setDestroyPipe(true);
+		if(fc_chunked.hasError())
+		{
+			ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -1", LL_ERROR);
+			has_error=true;
+			return false;
+		}
+	}
 	_u32 rc=getClientFilesrvConnection(&fc, 10000);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -2", LL_ERROR);
 		has_error=true;
 		return false;
 	}
@@ -1436,6 +1508,7 @@ bool BackupServerGet::doIncrBackup(void)
 
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	std::wstring last_backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path;
+	std::wstring last_backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path+L".hashes";
 
 	std::wstring tmpfilename=tmp->getFilenameW();
 	Server->destroy(tmp);
@@ -1445,8 +1518,17 @@ bool BackupServerGet::doIncrBackup(void)
 	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error);
 	if(error)
 	{
-		ServerLogger::Log(clientid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
-		return doFullBackup();
+		if(!internet_connection)
+		{
+			ServerLogger::Log(clientid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
+			return doFullBackup(with_hashes);
+		}
+		else
+		{
+			ServerLogger::Log(clientid, "Error while calculating tree diff. Not doing full backup because of internet connection.", LL_ERROR);
+			has_error=true;
+			return false;
+		}
 	}
 
 	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub", MODE_WRITE);
@@ -1461,6 +1543,7 @@ bool BackupServerGet::doIncrBackup(void)
 	char buffer[4096];
 	_u32 read;
 	std::wstring curr_path;
+	std::wstring curr_hash_path;
 	SFile cf;
 	int depth=0;
 	int line=0;
@@ -1562,6 +1645,12 @@ bool BackupServerGet::doIncrBackup(void)
 							c_has_error=true;
 							break;
 						}
+						if(with_hashes && !os_create_dir(os_file_prefix()+backuppath_hashes+os_curr_path))
+						{
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
+							c_has_error=true;
+							break;
+						}
 						++depth;
 						if(depth==1)
 						{
@@ -1594,11 +1683,18 @@ bool BackupServerGet::doIncrBackup(void)
 				}
 				else
 				{
+					std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+cf.name);
+
 					if(indirchange==true || hasChange(line, diffs))
 					{
 						if(r_offline==false)
 						{
-							bool b=load_file(cf.name, curr_path, fc);
+							bool b;
+							if(intra_file_diffs)
+								b=load_file_patch(cf.name, curr_path, last_backuppath, fc_chunked, fc);
+							else
+								b=load_file(cf.name, curr_path, fc);
+
 							if(!b)
 							{
 								ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
@@ -1613,18 +1709,8 @@ bool BackupServerGet::doIncrBackup(void)
 					}
 					else
 					{			
-						std::wstring os_curr_path=curr_path+L"/"+cf.name;
-						if(os_file_sep()!=L"/")
-						{
-							for(size_t i=0;i<os_curr_path.size();++i)
-								if(os_curr_path[i]=='/')
-									os_curr_path[i]=os_file_sep()[0];
-						}
-
-						std::wstring srcpath=last_backuppath+os_curr_path;
-
 						bool f_ok=true;
-
+						std::wstring srcpath=last_backuppath+os_curr_path;
 						bool b=os_create_hardlink(os_file_prefix()+backuppath+os_curr_path, os_file_prefix()+srcpath);
 						if(!b)
 						{
@@ -1643,7 +1729,12 @@ bool BackupServerGet::doIncrBackup(void)
 							++link_logcnt;
 							if(r_offline==false)
 							{
-								bool b2=load_file(cf.name, curr_path, fc);
+								bool b2;
+								if(intra_file_diffs)
+									b2=load_file_patch(cf.name, curr_path, last_backuppath, fc_chunked, fc);
+								else
+									b2=load_file(cf.name, curr_path, fc);
+
 								if(!b2)
 								{
 									ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
@@ -1655,6 +1746,10 @@ bool BackupServerGet::doIncrBackup(void)
 							{
 								f_ok=false;
 							}
+						}
+						else if(with_hashes)
+						{
+							os_create_hardlink(os_file_prefix()+backuppath_hashes+os_curr_path, os_file_prefix()+last_backuppath_hashes+os_curr_path);
 						}
 
 						if(f_ok)
@@ -1776,7 +1871,7 @@ bool BackupServerGet::hasChange(size_t line, const std::vector<size_t> &diffs)
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
-void BackupServerGet::hashFile(std::wstring dstpath, IFile *fd)
+void BackupServerGet::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file)
 {
 	int l_backup_id=backupid;
 
@@ -1785,14 +1880,24 @@ void BackupServerGet::hashFile(std::wstring dstpath, IFile *fd)
 	data.addInt(l_backup_id);
 	data.addChar(r_incremental==true?1:0);
 	data.addString(Server->ConvertToUTF8(dstpath));
+	data.addString(Server->ConvertToUTF8(hashpath));
+	if(hashoutput!=NULL)
+	{
+		data.addString(Server->ConvertToUTF8(hashoutput->getFilenameW()));
+		data.addString(old_file);
+	}
 
 	ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
 
 	Server->destroy(fd);
+	if(hashoutput!=NULL)
+	{
+		Server->destroy(hashoutput);
+	}
 	hashpipe_prepare->Write(data.getDataPtr(), data.getDataSize() );
 }
 
-bool BackupServerGet::constructBackupPath(void)
+bool BackupServerGet::constructBackupPath(bool with_hashes)
 {
 	time_t tt=time(NULL);
 #ifdef _WIN32
@@ -1807,7 +1912,12 @@ bool BackupServerGet::constructBackupPath(void)
 	backuppath_single=widen((std::string)buffer);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single;
-	return os_create_dir(os_file_prefix()+backuppath);	
+	if(with_hashes)
+		backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+L".hashes";
+	else
+		backuppath_hashes.clear();
+
+	return os_create_dir(os_file_prefix()+backuppath) && (!with_hashes || os_create_dir(backuppath_hashes));	
 }
 
 std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
@@ -2032,7 +2142,7 @@ void BackupServerGet::sendSettings(void)
 
 bool BackupServerGet::getClientSettings(void)
 {
-	FileClient fc(filesrv_protocol_version);
+	FileClient fc(filesrv_protocol_version, internet_connection);
 	_u32 rc=getClientFilesrvConnection(&fc);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -2697,6 +2807,60 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 		sockaddr_in addr=getClientaddr();
 		return fc->Connect(&addr);
 	}
+}
+
+FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeoutms)
+{
+	if(internet_connection)
+	{
+		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
+		if(cp!=NULL)
+			return FileClientChunked(cp, &tcpstack);
+		else
+			return FileClientChunked();
+	}
+	else
+	{
+		sockaddr_in addr=getClientaddr();
+		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, timeoutms);
+		if(pipe!=NULL)
+			return FileClientChunked(pipe, &tcpstack);
+		else
+			return FileClientChunked();
+	}
+}
+
+std::wstring BackupServerGet::convertToOSPathFromFileClient(std::wstring path)
+{
+	if(os_file_sep()!=L"/")
+	{
+		for(size_t i=0;i<path.size();++i)
+			if(path[i]=='/')
+				path[i]=os_file_sep()[0];
+	}
+	return path;
+}
+
+IFile *BackupServerGet::getTemporaryFileRetry(void)
+{
+	IFile *pfd=NULL;
+	while(pfd==NULL)
+	{
+		pfd=Server->openTemporaryFile();
+		if(pfd==NULL)
+		{
+			ServerLogger::Log(clientid, "Error opening temporary file. Retrying...", LL_WARNING);
+			Server->wait(500);
+		}
+	}
+	return pfd;
+}
+
+void BackupServerGet::destroyTemporaryFile(IFile *tmp)
+{
+	std::wstring fn=tmp->getFilenameW();
+	Server->destroy(tmp);
+	Server->deleteFile(fn);
 }
 
 #endif //CLIENT_ONLY

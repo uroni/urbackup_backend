@@ -18,6 +18,7 @@
 
 #include "os_functions.h"
 #include "../stringtools.h"
+#include "../Interface/Server.h"
 #ifdef _WIN_PRE_VISTA
 #define _WIN32_WINNT 0x0500
 #endif
@@ -186,7 +187,12 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 	if(isDirectory(target))
 		flags|=SYMBOLIC_LINK_FLAG_DIRECTORY;
 
-	return CreateSymbolicLink(lname.c_str(), target.c_str(), flags)!=0;
+	DWORD rc=CreateSymbolicLink(lname.c_str(), target.c_str(), flags);
+	if(rc==FALSE)
+	{
+		Server->Log(L"Creating symbolic link from \""+lname+L"\" to \""+target+L"\" failed with error "+convert((int)GetLastError()), LL_ERROR);
+	}
+	return rc!=0;
 #else
 	return true;
 #endif

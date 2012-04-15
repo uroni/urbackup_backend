@@ -28,12 +28,21 @@ class FileClientChunked
 {
 public:
 	FileClientChunked(IPipe *pipe, CTCPStack *stack);
+	FileClientChunked(void);
+	~FileClientChunked(void);
 
 	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput);
+	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput);
 
 	_i64 getSize(void);
 
+	bool hasError(void);
+
+	void setDestroyPipe(bool b);
+
 private:
+
+	_u32 GetFile(std::string remotefn);
 
 	void State_First(void);
 	void State_Acc(void);
@@ -45,12 +54,27 @@ private:
 	void Hash_nochange(_i64 curr_pos);
 
 	void writeFileRepeat(IFile *f, const char *buf, size_t bsize);
+	void writePatch(_i64 pos, unsigned int length, char *buf, bool in_chunk, bool last);
+	void writePatchInt(_i64 pos, unsigned int length, char *buf, bool in_chunk);
+	void writePatchSize(_i64 remote_fs);
+
+	void invalidateLastPatches(void);
 
 	IFile *m_file;
+	_i64 file_pos;
+	IFile *m_patchfile;
+	_i64 patchfile_pos;
 	IFile *m_chunkhashes;
 	IFile *m_hashoutput;
 	IPipe *pipe;
 	CTCPStack *stack;
+
+	std::vector<_i64> last_chunk_patches;
+	bool patch_mode;
+	char patch_buf[c_chunk_size];
+	unsigned int patch_buf_pos;
+	bool patch_in_chunk;
+	_i64 patch_buf_start;
 
 	_i64 next_chunk;
 	_i64 num_chunks;
@@ -87,4 +111,7 @@ private:
 	bool getfile_done;
 
 	std::map<_i64, SChunkHashes> pending_chunks;
+
+	bool has_error;
+	bool destroy_pipe;
 };

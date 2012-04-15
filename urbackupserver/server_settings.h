@@ -49,6 +49,9 @@ struct SSettings
 	std::string internet_authkey;
 	bool internet_full_file_backups;
 	bool internet_image_backups;
+	bool internet_encrypt;
+	bool internet_compress;
+	int internet_compression_level;
 };
 
 struct STimeSpan

@@ -1,6 +1,8 @@
 #include "ChunkSendThread.h"
 #include "CClientThread.h"
 #include "packet_ids.h"
+#include "log.h"
+#include "../stringtools.h"
 
 #include "../Interface/File.h"
 #include "../Interface/Server.h"
@@ -17,10 +19,19 @@ ChunkSendThread::ChunkSendThread(CClientThread *parent, IFile *file)
 void ChunkSendThread::operator()(void)
 {
 	SChunk chunk;
-	while(parent->getNextChunk(&chunk))
+	IFile *new_file=NULL;
+	while(parent->getNextChunk(&chunk, &new_file))
 	{
-		md5_hash.init();
-		sendChunk(&chunk);
+		if(new_file!=NULL)
+		{
+			Server->destroy(file);
+			file=new_file;
+		}
+		else
+		{
+			md5_hash.init();
+			sendChunk(&chunk);
+		}
 	}
 	Server->destroy(file);
 	delete this;
@@ -42,11 +53,19 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		else
 			blockleft=c_checkpoint_dist;
 
+		md5_hash.init();
+
 		memcpy(chunk_buf+1+sizeof(_i64), &blockleft, sizeof(unsigned int));
+
+		Log("Sending whole block start="+nconvert(chunk->startpos)+" size="+nconvert(blockleft), LL_DEBUG);
 		_u32 r;
 		do
 		{
 			r=file->Read(chunk_buf+off, c_chunk_size);
+			if(r>0)
+			{
+				md5_hash.update((unsigned char*)chunk_buf+off, r);
+			}
 			if(r+off>0)
 			{
 				if(parent->SendInt(chunk_buf, off+r)==SOCKET_ERROR)
@@ -54,7 +73,20 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 				off=0;
 			}
-		}while(r==c_chunk_size);
+
+			if(r<=blockleft)
+				blockleft-=r;
+			else
+				blockleft=0;
+
+		}while(r==c_chunk_size && blockleft>0);
+
+		md5_hash.finalize();
+		*chunk_buf=ID_BLOCK_HASH;
+		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
+		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
+		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
+			return false;
 
 		return true;
 	}
@@ -86,6 +118,9 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				*(cptr-c_chunk_padding)=ID_UPDATE_CHUNK;
 				memcpy(cptr-sizeof(_i64)-sizeof(_u32), &curr_pos, sizeof(_i64));
 				memcpy(cptr-sizeof(_u32), &r, sizeof(_u32));
+
+				Log("Sending chunk start="+nconvert(curr_pos)+" size="+nconvert(r), LL_DEBUG);
+
 				if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
 					return false;
 			}
@@ -96,12 +131,14 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		}
 		curr_pos+=r;
 
-	}while(r==c_chunk_size);
+	}while(r==c_chunk_size && read_total<c_checkpoint_dist);
 
 	md5_hash.finalize();
 
 	if(!sent_update && memcmp(md5_hash.raw_digest_int(), chunk->big_hash, big_hash_size)!=0 )
 	{
+		Log("Sending whole block(2) start="+nconvert(chunk->startpos)+" size="+nconvert(read_total), LL_DEBUG);
+
 		*chunk_buf=ID_WHOLE_BLOCK;
 		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
 		memcpy(chunk_buf+1+sizeof(_i64), &read_total, sizeof(_u32));

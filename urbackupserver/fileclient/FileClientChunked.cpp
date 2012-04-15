@@ -2,6 +2,7 @@
 #include "../../urbackupcommon/fileclient/data.h"
 #include "../../Interface/Server.h"
 #include "../../Interface/File.h"
+#include "../../stringtools.h"
 
 extern std::string server_identity;
 
@@ -11,16 +12,53 @@ const unsigned int chunkhash_single_size=big_hash_size+small_hash_size*(c_checkp
 unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
 FileClientChunked::FileClientChunked(IPipe *pipe, CTCPStack *stack)
-	: pipe(pipe), stack(stack)
+	: pipe(pipe), stack(stack), destroy_pipe(false)
 {
+	has_error=false;
+}
 
+FileClientChunked::FileClientChunked(void)
+	: pipe(NULL), stack(NULL), destroy_pipe(false)
+{
+	has_error=true;
+}
+
+FileClientChunked::~FileClientChunked(void)
+{
+	if(pipe!=NULL && destroy_pipe)
+	{
+		Server->destroy(pipe);
+		pipe=NULL;
+	}
+}
+
+_u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput)
+{
+	m_file=NULL;
+	patch_mode=true;
+
+	m_chunkhashes=chunkhashes;
+	m_hashoutput=hashoutput;
+	m_patchfile=patchfile;
+	m_file=orig_file;
+	patchfile_pos=0;
+	patch_buf_pos=0;
+
+	return GetFile(remotefn);
 }
 
 _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput)
 {
+	patch_mode=false;
 	m_file=file;
 	m_chunkhashes=chunkhashes;
 	m_hashoutput=hashoutput;
+	
+	return GetFile(remotefn);
+}
+
+_u32 FileClientChunked::GetFile(std::string remotefn)
+{
 	getfile_done=false;
 	retval=ERR_SUCCESS;
 
@@ -31,9 +69,9 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 
 	_i64 fileoffset=0;
 
-	chunkhashes->Seek(0);
+	m_chunkhashes->Seek(0);
 	_i64 hashfilesize=0;
-	if(chunkhashes->Read((char*)&hashfilesize, sizeof(_i64))!=sizeof(_i64) )
+	if(m_chunkhashes->Read((char*)&hashfilesize, sizeof(_i64))!=sizeof(_i64) )
 		return ERR_INT_ERROR;
 
 	{
@@ -70,13 +108,13 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 					data.addUChar(ID_BLOCK_REQUEST);
 					data.addInt64(next_chunk*c_checkpoint_dist);
 
-					chunkhashes->Seek(chunkhash_file_off+next_chunk*chunkhash_single_size);
+					m_chunkhashes->Seek(chunkhash_file_off+next_chunk*chunkhash_single_size);
 
 					char buf[chunkhash_single_size+2*sizeof(char)+sizeof(_i64)];
 					buf[0]=ID_BLOCK_REQUEST;
 					*((_i64*)(buf+1))=next_chunk*c_checkpoint_dist;
 					buf[1+sizeof(_i64)]=0;
-					chunkhashes->Read(&buf[2*sizeof(char)+sizeof(_i64)], chunkhash_single_size);
+					m_chunkhashes->Read(&buf[2*sizeof(char)+sizeof(_i64)], chunkhash_single_size);
 					stack->Send( pipe, buf, chunkhash_single_size+2*sizeof(char)+sizeof(_i64));
 
 					char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
@@ -92,6 +130,8 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 					data.addInt64(next_chunk*c_checkpoint_dist);
 					data.addChar(1);
 					stack->Send( pipe, data.getDataPtr(), data.getDataSize());
+
+					pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, SChunkHashes() ));
 				}
 				++queued_chunks;
 				++next_chunk;
@@ -112,9 +152,15 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 		size_t rc=pipe->Read(buf, BUFFERSIZE, 0);
 		if(rc==0)
 		{
+			if(pipe->hasError())
+			{
+				return ERR_CONN_LOST;
+			}
 		}
 		else
 		{
+			starttime=Server->getTimeMS();
+
 			bufptr=buf;
 			remaining_bufptr_bytes=rc;
 			while(bufptr<buf+rc)
@@ -198,6 +244,10 @@ void FileClientChunked::State_Acc(void)
 				msg.getInt64(&remote_filesize);
 				state=CS_ID_FIRST;
 				num_total_chunks=remote_filesize/c_checkpoint_dist+((remote_filesize%c_checkpoint_dist!=0)?1:0);
+				if(patch_mode)
+				{
+					writePatchSize(remote_filesize);
+				}
 				if(remote_filesize==0)
 				{
 					getfile_done=true;
@@ -223,6 +273,17 @@ void FileClientChunked::State_Acc(void)
 				msg.getInt64(&block_start);
 				chunk_start=block_start;
 
+				Server->Log("FileClientChunked: Whole block start="+nconvert(block_start), LL_DEBUG);
+
+				if(pending_chunks.find(block_start)==pending_chunks.end())
+				{
+					Server->Log("Block not requested.", LL_ERROR);
+					retval=ERR_ERROR;
+					getfile_done=true;
+					return;
+				}
+
+				file_pos=block_start;
 				if(!m_file->Seek(block_start))
 					Server->Log("Chunked Transfer: Seeking failed", LL_ERROR);
 
@@ -246,8 +307,21 @@ void FileClientChunked::State_Acc(void)
 				Hash_upto(chunk_start);
 				msg.getUInt(&adler_remaining);
 
-				m_file->Seek(chunk_start);
+				Server->Log("FileClientChunked: Chunk start="+nconvert(chunk_start)+" remaining="+nconvert(adler_remaining), LL_DEBUG);
+
+				file_pos=chunk_start;
 				_i64 block=chunk_start/c_checkpoint_dist;
+
+				if(pending_chunks.find(block*c_checkpoint_dist)==pending_chunks.end())
+				{
+					Server->Log("Chunk not requested.", LL_ERROR);
+					retval=ERR_ERROR;
+					getfile_done=true;
+					return;
+				}
+
+				m_file->Seek(chunk_start);
+				
 				unsigned int chunknum=(chunk_start%c_checkpoint_dist)/c_chunk_size;
 				m_hashoutput->Seek(chunkhash_file_off+block*chunkhash_single_size
 					+big_hash_size+chunknum*small_hash_size);
@@ -294,6 +368,8 @@ void FileClientChunked::Hash_upto(_i64 chunk_start)
 	{
 		block_for_chunk_start=block_start;
 		md5_hash.init();
+		last_chunk_patches.clear();
+		patch_buf_pos=0;
 		hash_for_whole_block=false;
 
 		if(block_start!=chunk_start)
@@ -310,6 +386,7 @@ void FileClientChunked::Hash_upto(_i64 chunk_start)
 				block_start+=r;
 				md5_hash.update((unsigned char*)buf2, (unsigned int)r);
 			}while(block_start<chunk_start);
+			file_pos=chunk_start;
 		}
 	}
 }
@@ -326,9 +403,11 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 				dest_pos=remote_filesize;
 		
 			char buf2[BUFFERSIZE];
+			m_file->Seek(chunk_start);
 			while(chunk_start<dest_pos)
 			{
 				size_t r=m_file->Read(buf2, BUFFERSIZE);
+				file_pos+=r;
 				chunk_start+=r;
 				md5_hash.update((unsigned char*)buf2, (unsigned int)r);
 			}
@@ -342,6 +421,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 	{
 		if(!hash_for_whole_block)
 		{
+			invalidateLastPatches();
 			CWData data;
 			data.addUChar(ID_BLOCK_REQUEST);
 			data.addInt64(curr_pos);
@@ -385,6 +465,8 @@ void FileClientChunked::Hash_nochange(_i64 curr_pos)
 	else
 	{
 		Server->Log("Pending chunk not found -1", LL_ERROR);
+		retval=ERR_ERROR;
+		getfile_done=true;
 	}
 }
 
@@ -394,11 +476,21 @@ void FileClientChunked::State_Block(void)
 
 	remaining_bufptr_bytes-=rbytes;
 	bufptr_bytes_done+=rbytes;
+	whole_block_remaining-=(unsigned int)rbytes;
 	
 	md5_hash.update((unsigned char*)bufptr, (unsigned int)rbytes);
-	writeFileRepeat(m_file, bufptr, rbytes);
+	if(!patch_mode)
+	{
+		writeFileRepeat(m_file, bufptr, rbytes);
+		file_pos+=rbytes;
+	}
+	else
+	{
+		writePatch(file_pos, (unsigned int)rbytes, bufptr, false, whole_block_remaining==0);
+		file_pos+=rbytes;
+	}
 
-	whole_block_remaining-=(unsigned int)rbytes;
+	
 	chunk_start+=(unsigned int)rbytes;
 
 	char *alder_bufptr=bufptr;
@@ -464,7 +556,16 @@ void FileClientChunked::State_Chunk(void)
 	adler_hash=adler32(adler_hash, bufptr, (unsigned int)rbytes);
 	md5_hash.update((unsigned char*)bufptr, (unsigned int)rbytes);
 
-	writeFileRepeat(m_file, bufptr, rbytes);
+	if(!patch_mode)
+	{
+		writeFileRepeat(m_file, bufptr, rbytes);
+		file_pos+=rbytes;
+	}
+	else
+	{
+		writePatch(file_pos, (unsigned int)rbytes, bufptr, true, adler_remaining==0);
+		file_pos+=rbytes;
+	}
 
 	remaining_bufptr_bytes-=rbytes;
 	bufptr_bytes_done+=rbytes;
@@ -479,4 +580,80 @@ void FileClientChunked::State_Chunk(void)
 _i64 FileClientChunked::getSize(void)
 {
 	return remote_filesize;
+}
+
+void FileClientChunked::writePatch(_i64 pos, unsigned int length, char *buf, bool in_chunk, bool last)
+{
+	if(length<=c_chunk_size-patch_buf_pos && (patch_buf_pos==0 || pos==patch_buf_start+patch_buf_pos) )
+	{
+		if(buf!=NULL)
+		{
+			memcpy(&patch_buf[patch_buf_pos], buf, length);
+		}
+		if(patch_buf_pos==0)
+		{
+			patch_buf_start=pos;
+			patch_in_chunk=in_chunk;
+		}
+		patch_buf_pos+=length;
+
+		if(last || patch_buf_pos==c_chunk_size || length==0)
+		{
+			writePatchInt(patch_buf_start, patch_buf_pos,  patch_buf, patch_in_chunk);
+			patch_buf_start=0;
+		}
+	}
+	else
+	{
+		if(patch_buf_start!=0)
+		{
+			writePatchInt(patch_buf_start, patch_buf_pos, patch_buf, patch_in_chunk);
+			patch_buf_start=0;
+		}
+		writePatchInt(pos, length, buf, in_chunk);
+	}
+}
+
+void FileClientChunked::writePatchInt(_i64 pos, unsigned int length, char *buf, bool in_chunk)
+{
+	const unsigned int plen=sizeof(_i64)+sizeof(unsigned int);
+	char pd[plen];
+	memcpy(pd, &pos, sizeof(_i64));
+	memcpy(pd+sizeof(_i64), &length, sizeof(unsigned int));
+	writeFileRepeat(m_patchfile, pd, plen);
+	writeFileRepeat(m_patchfile, buf, length);
+	if(in_chunk)
+	{
+		last_chunk_patches.push_back(patchfile_pos);
+	}
+	patchfile_pos+=plen+length;
+}
+
+void FileClientChunked::writePatchSize(_i64 remote_fs)
+{
+	m_patchfile->Seek(0);
+	writeFileRepeat(m_patchfile, (char*)&remote_fs, sizeof(_i64));
+	patchfile_pos=sizeof(_i64);
+}
+
+bool FileClientChunked::hasError(void)
+{
+	return has_error;
+}
+
+void FileClientChunked::invalidateLastPatches(void)
+{
+	_i64 invalid_pos=-1;
+	for(size_t i=0;i<last_chunk_patches.size();++i)
+	{
+		m_patchfile->Seek(last_chunk_patches[i]);
+		m_patchfile->Write((char*)&invalid_pos, sizeof(_i64));
+	}
+	m_patchfile->Seek(patchfile_pos);
+	patch_buf_pos=0;
+}
+
+void FileClientChunked::setDestroyPipe(bool b)
+{
+	destroy_pipe=b;
 }

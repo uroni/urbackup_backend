@@ -106,7 +106,8 @@ _i32 selectc(SOCKET socket, int usec)
 }
        
 
-FileClient::FileClient(int protocol_version) : protocol_version(protocol_version)
+FileClient::FileClient(int protocol_version, bool internet_connection)
+	: protocol_version(protocol_version), internet_connection(internet_connection)
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -116,6 +117,8 @@ FileClient::FileClient(int protocol_version) : protocol_version(protocol_version
         setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
 
         socket_open=false;
+
+		stack.setAddChecksum(internet_connection);
 }
 
 FileClient::~FileClient(void)

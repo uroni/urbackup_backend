@@ -6,11 +6,13 @@
 #include "../Interface/ThreadPool.h"
 #include "../urlplugin/IUrlFactory.h"
 #include "fileclient/FileClient.h"
+#include "fileclient/FileClientChunked.h"
 #include "../urbackupcommon/os_functions.h"
 #include "server_hash.h"
 #include "server_prepare_hash.h"
 #include "server_status.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "../urbackupcommon/fileclient/tcpstack.h"
 #include "server_settings.h"
 
 class ServerVHDWriter;
@@ -63,15 +65,16 @@ private:
 	bool isUpdateIncrImage(void);
 	bool isUpdateFullImage(const std::string &letter);
 	bool isUpdateIncrImage(const std::string &letter);
-	bool doFullBackup(void);
+	bool doFullBackup(bool with_hashes);
 	int createBackupSQL(int incremental, int clientid, std::wstring path);
-	void hashFile(std::wstring dstpath, IFile *fd);
+	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file);
 	void start_shadowcopy(const std::string &path);
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool with_token=true);
 	bool load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc);
-	bool doIncrBackup(void);
+	bool load_file_patch(const std::wstring &fn, const std::wstring &curr_path, const std::wstring &last_backuppath, FileClientChunked &fc, FileClient &fc_normal);
+	bool doIncrBackup(bool with_hashes, bool intra_file_diffs);
 	SBackup getLastIncremental(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	void updateLastBackup(void);
@@ -100,11 +103,12 @@ private:
 	void stopBackupRunning(bool file);
 
 	_u32 getClientFilesrvConnection(FileClient *fc, int timeoutms=10000);
+	FileClientChunked getClientChunkedFilesrvConnection(int timeoutms=10000);
 
 	void saveImageAssociation(int image_id, int assoc_id);
 	
 	std::wstring constructImagePath(const std::wstring &letter);
-	bool constructBackupPath(void);
+	bool constructBackupPath(bool with_hashes);
 	void resetEntryState(void);
 	bool getNextEntry(char ch, SFile &data);
 	static std::string remLeadingZeros(std::string t);
@@ -119,6 +123,10 @@ private:
 
 	int64 updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize);
 
+	std::wstring convertToOSPathFromFileClient(std::wstring path);
+	IFile *getTemporaryFileRetry(void);
+	void destroyTemporaryFile(IFile *tmp);
+
 	IPipe *pipe;
 	IDatabase *db;
 
@@ -127,6 +135,7 @@ private:
 	std::wstring clientname;
 	
 	std::wstring backuppath;
+	std::wstring backuppath_hashes;
 	std::wstring backuppath_single;
 
 	int clientid;
@@ -200,4 +209,6 @@ private:
 	int file_protocol_version;
 
 	bool internet_connection;
+
+	CTCPStack tcpstack;
 };

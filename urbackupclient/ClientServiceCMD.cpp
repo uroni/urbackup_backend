@@ -375,8 +375,8 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 	if(!img_download_running)
 	{
 		g_lock->relock(backup_mutex);
-		channel_pipe=pipe;
-		channel_pipes.push_back(pipe);
+		channel_pipe=SChannel(pipe, internet_conn);
+		channel_pipes.push_back(SChannel(pipe, internet_conn));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
@@ -449,7 +449,8 @@ void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 	bool ok=false;
 	for(size_t o=0;o<channel_pipes.size();++o)
 	{
-		_u32 rc=(_u32)tcpstack.Send(channel_pipes[o], "UPDATE SETTINGS");
+		CTCPStack tmpstack(channel_pipes[o].internet_connection);
+		_u32 rc=(_u32)tmpstack.Send(channel_pipes[o].pipe, "UPDATE SETTINGS");
 		if(rc!=0)
 			ok=true;
 	}
@@ -737,11 +738,11 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd)
 		std::string clients;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i], "GET BACKUPCLIENTS");
-			if(channel_pipes[i]->hasError())
+			tcpstack.Send(channel_pipes[i].pipe, "GET BACKUPCLIENTS");
+			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
-			std::string nc=receivePacket(channel_pipes[i]);
-			if(channel_pipes[i]->hasError())
+			std::string nc=receivePacket(channel_pipes[i].pipe);
+			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after read -1", LL_DEBUG);
 						
 			Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
@@ -769,8 +770,8 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd)
 		std::string imgs;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i], cmd);
-			std::string nc=receivePacket(channel_pipes[i]);
+			tcpstack.Send(channel_pipes[i].pipe, cmd);
+			std::string nc=receivePacket(channel_pipes[i].pipe);
 			if(!nc.empty())
 			{
 				imgs+=nc+"\n";

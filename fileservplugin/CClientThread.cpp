@@ -112,6 +112,7 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	mutex=NULL;
 	cond=NULL;
 	state=CS_NONE;
+	update_file=NULL;
 	chunk_send_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
 }
 
@@ -133,6 +134,7 @@ CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent)
 	state=CS_NONE;
 	mutex=NULL;
 	cond=NULL;
+	update_file=NULL;
 	chunk_send_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
 
 	stack.setAddChecksum(true);
@@ -144,6 +146,7 @@ CClientThread::~CClientThread()
 	{
 		{
 			IScopedLock lock(mutex);
+			state=CS_NONE;
 			while(!next_chunks.empty())
 				next_chunks.pop();
 		}
@@ -167,7 +170,7 @@ void CClientThread::EnableNagle(void)
 	BOOL opt=FALSE;
 	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
 	if( err==SOCKET_ERROR )
-		Log("Error: Setting TCP_NODELAY failed");
+		Log("Error: Setting TCP_NODELAY failed", LL_ERROR);
 #else
 	static bool once=true;
 	if( once==true )
@@ -177,7 +180,7 @@ void CClientThread::EnableNagle(void)
 		int err=setsockopt(mSocket, IPPROTO_TCP, TCP_CORK, (char*)&opt, sizeof(int) );
 		if( err==SOCKET_ERROR )
 		{
-			Log("Error: Setting TCP_CORK failed. errno: %i", errno);
+			Log("Error: Setting TCP_CORK failed. errno: "+nconvert(errno), LL_ERROR);
 		}
 	}
 #endif
@@ -194,7 +197,7 @@ void CClientThread::DisableNagle(void)
 	BOOL opt=TRUE;
 	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
 	if( err==SOCKET_ERROR )
-		Log("Error: Setting TCP_NODELAY failed");
+		Log("Error: Setting TCP_NODELAY failed", LL_ERROR);
 #endif
 #endif
 	}
@@ -246,7 +249,7 @@ bool CClientThread::RecvMessage(void)
 	{
 		if(state==CS_NONE)
 		{
-			Log("1 min Timeout deleting Buffers (%i KB) and waiting 1h more...", (NBUFFERS*READSIZE)/1024 );
+			Log("1 min Timeout deleting Buffers ("+nconvert((NBUFFERS*READSIZE)/1024 )+" KB) and waiting 1h more...", LL_DEBUG);
 			delete bufmgr;
 			bufmgr=NULL;
 			lon.tv_sec=3600;
@@ -263,7 +266,7 @@ bool CClientThread::RecvMessage(void)
 	
 	if( rc<1)
 	{
-		Log("Select Error/Timeout in RecvMessage");
+		Log("Select Error/Timeout in RecvMessage", LL_DEBUG);
 
 		return false;
 	}
@@ -274,12 +277,12 @@ bool CClientThread::RecvMessage(void)
 
 		if(rc<1)
 		{
-			Log("Recv Error in RecvMessage");
+			Log("Recv Error in RecvMessage", LL_DEBUG);
 			return false;
 		}
 		else
 		{
-			//Log("Received data...");
+			Log("Received data...");
 			stack.AddData(buffer, rc);				
 		}
 
@@ -287,7 +290,7 @@ bool CClientThread::RecvMessage(void)
 		char* packet;
 		while( (packet=stack.getPacket(&packetsize)) != NULL )
 		{
-			Log("Received a Packet.");
+			Log("Received a Packet.", LL_DEBUG);
 			CRData data(packet, packetsize);
 
 			bool b=ProcessPacket( &data );
@@ -319,7 +322,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				data->getStr(&ident);
 				if(!FileServ::checkIdentity(ident))
 				{
-					Log("Identity check failed -1");
+					Log("Identity check failed -1", LL_DEBUG);
 					return false;
 				}
 #endif
@@ -328,7 +331,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				std::vector<std::wstring> games=get_maps();
 
 
-				Log("Sending game list");
+				Log("Sending game list", LL_DEBUG);
 
 				EnableNagle();
 
@@ -354,7 +357,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					stack.Send(clientpipe, (char*)version.c_str(), version.size() );
 				}
 				
-				Log("done.");
+				Log("done.", LL_DEBUG);
 
 				DisableNagle();
 			}break;
@@ -371,7 +374,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				data->getStr(&ident);
 				if(!FileServ::checkIdentity(ident))
 				{
-					Log("Identity check failed -2");
+					Log("Identity check failed -2", LL_DEBUG);
 					return false;
 				}
 #endif
@@ -381,11 +384,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 				_i64 start_offset=0;
 				bool offset_set=data->getInt64(&start_offset);
 
-				Log("Sending file "+Server->ConvertToUTF8(o_filename));
+				Log("Sending file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
 
 				std::wstring filename=map_file(o_filename);
 
-				Log("Mapped name: "+Server->ConvertToUTF8(filename) );
+				Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
 
 				if(filename.empty())
 				{
@@ -394,10 +397,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 					if(rc==SOCKET_ERROR)
 					{
-						Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -1");
+						Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -1", LL_DEBUG);
 						return false;
 					}
-					Log("Info: Base dir lost -1");
+					Log("Info: Base dir lost -1", LL_DEBUG);
 					break;
 				}
 
@@ -438,10 +441,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 						int rc=SendInt(&ch, 1);
 						if(rc==SOCKET_ERROR)
 						{
-							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST");
+							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST", LL_DEBUG);
 							return false;
 						}
-						Log("Info: Base dir lost");
+						Log("Info: Base dir lost", LL_DEBUG);
 						break;
 					}
 #endif
@@ -450,10 +453,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 					int rc=SendInt(&ch, 1);
 					if(rc==SOCKET_ERROR)
 					{
-						Log("Error: Socket Error - DBG: Send COULDNT OPEN");
+						Log("Error: Socket Error - DBG: Send COULDNT OPEN", LL_DEBUG);
 						return false;
 					}
-					Log("Info: Couldn't open file");
+					Log("Info: Couldn't open file", LL_DEBUG);
 					break;
 				}
 
@@ -480,7 +483,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					int rc=SendInt(data.getDataPtr(), data.getDataSize());
 					if(rc==SOCKET_ERROR)
 					{
-						Log("Error: Socket Error - DBG: SendSize");
+						Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
 						CloseHandle(hFile);
 						hFile=NULL;
 						return false;
@@ -502,7 +505,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					else
 					{
 						last=true;
-						Log("Reading last file part");
+						Log("Reading last file part", LL_DEBUG);
 					}
 
 					while(bufmgr->nfreeBufffer()==0 && stopped==false)
@@ -512,7 +515,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						rc=SendData();
 						if(rc==-1)
 						{
-							Log("Error: Send failed in file loop -1");
+							Log("Error: Send failed in file loop -1", LL_DEBUG);
 							CloseThread(hFile);
 						}
 						else if(rc==0)
@@ -532,7 +535,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 							int rc=SendData();
 							if(rc==-1)
 							{
-								Log("Error: Send failed in file pause loop -2");
+								Log("Error: Send failed in file pause loop -2", LL_DEBUG);
 								CloseThread(hFile);
 							}
 						}
@@ -547,12 +550,12 @@ bool CClientThread::ProcessPacket(CRData *data)
 					
 					if( rc==2 && bufmgr->nfreeBufffer()!=NBUFFERS )
 					{
-						Log("Error: File end and not all Buffers are free!-1");
+						Log("Error: File end and not all Buffers are free!-1", LL_WARNING);
 					}
 
 					if(rc==-1)
 					{
-						Log("Error: Send failed in off file loop -3");
+						Log("Error: Send failed in off file loop -3", LL_DEBUG);
 						CloseHandle(hFile);
 						hFile=NULL;
 						break;
@@ -563,7 +566,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				if( stopped==false )
 				{
-					Log("Closed file.");
+					Log("Closed file.", LL_DEBUG);
 					CloseHandle(hFile);
 					hFile=NULL;
 				}
@@ -580,10 +583,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 						int rc=SendInt(&ch, 1);
 						if(rc==SOCKET_ERROR)
 						{
-							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST");
+							Log("Error: Socket Error - DBG: Send BASE_DIR_LOST", LL_DEBUG);
 							return false;
 						}
-						Log("Info: Base dir lost");
+						Log("Info: Base dir lost", LL_DEBUG);
 						break;
 					}
 #endif
@@ -592,10 +595,10 @@ bool CClientThread::ProcessPacket(CRData *data)
 					int rc=SendInt(&ch, 1);
 					if(rc==SOCKET_ERROR)
 					{
-						Log("Error: Socket Error - DBG: Send COULDNT OPEN");
+						Log("Error: Socket Error - DBG: Send COULDNT OPEN", LL_DEBUG);
 						return false;
 					}
-					Log("Info: Couldn't open file");
+					Log("Info: Couldn't open file", LL_DEBUG);
 					break;
 				}
 				
@@ -616,7 +619,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
 					if(rc==SOCKET_ERROR)
 					{
-						Log("Error: Socket Error - DBG: SendSize");
+						Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
 						CloseHandle(hFile);
 						hFile=0;
 						return false;
@@ -667,7 +670,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						}
 						else
 						{
-							Log("Error: Reading from file failed");
+							Log("Error: Reading from file failed", LL_DEBUG);
 							CloseHandle(hFile);
 							return false;
 						}
@@ -748,7 +751,7 @@ void CALLBACK FileIOCompletionRoutine(DWORD dwErrorCode,DWORD dwNumberOfBytesTra
 
 		if( *ldata->sendfilepart!=ldata->filepart )
 		{
-			Log("Warning: Packets out of order.... shifting");
+			Log("Packets out of order.... shifting", LL_DEBUG);
 			ldata->t_unsend->push_back(ldata);
 			delete lpOverlapped;
 			return;
@@ -769,7 +772,7 @@ void CALLBACK FileIOCompletionRoutine(DWORD dwErrorCode,DWORD dwNumberOfBytesTra
 					SLPData *pdata=(*ldata->t_unsend)[i];
 					if( *pdata->sendfilepart==pdata->filepart )
 					{
-						Log("Using shifted packet...");
+						Log("Using shifted packet...", LL_DEBUG);
 						ProcessReadData(pdata);
 						++(*pdata->sendfilepart);
 						refresh=true;
@@ -785,7 +788,7 @@ void CALLBACK FileIOCompletionRoutine(DWORD dwErrorCode,DWORD dwNumberOfBytesTra
 	}
 	else
 	{
-		Log( "Warning: Chunk size=0");
+		Log( "Info: Chunk size=0", LL_DEBUG);
 		delete ldata;
 	}
 	delete lpOverlapped;
@@ -806,8 +809,8 @@ void CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 
 	if( ldata->buffer==NULL ) 
 	{
-		Log("Error: No Free Buffer");
-		Log("Info: Free Buffers=%i", bufmgr->nfreeBufffer() );
+		Log("Error: No Free Buffer", LL_DEBUG);
+		Log("Info: Free Buffers="+nconvert(bufmgr->nfreeBufffer()), LL_DEBUG );
 		return;
 	}
 
@@ -824,7 +827,7 @@ void CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 
 	if( /*GetLastError() != ERROR_SUCCESS ||*/ b==false)
 	{
-		Log("Error: Can't start reading from File");
+		Log("Error: Can't start reading from File", LL_DEBUG);
 		return;
 	}
 }
@@ -847,7 +850,7 @@ int CClientThread::SendData(void)
 
 	if(ret < 1)
 	{
-		Log("Client Timeout occured.");
+		Log("Client Timeout occured.", LL_DEBUG);
 		
 		t_send.erase( t_send.begin() );
 		delete ldata;
@@ -875,7 +878,7 @@ int CClientThread::SendData(void)
 	#else
 					err=errno;
 	#endif
-					Log("SOCKET_ERROR in SendData(). BSize: "+nconvert(ldata->bsize)+" WSAGetLastError: "+nconvert(err) );
+					Log("SOCKET_ERROR in SendData(). BSize: "+nconvert(ldata->bsize)+" WSAGetLastError: "+nconvert(err), LL_DEBUG);
 				
 					if( ldata->delbuf==true )
 					{
@@ -908,7 +911,7 @@ int CClientThread::SendData(void)
 		}
 		else
 		{
-			Log("ldata is null");
+			Log("ldata is null", LL_DEBUG);
 		}
 
 		if( ldata->delbuf==true )
@@ -919,11 +922,11 @@ int CClientThread::SendData(void)
 		
 		if( ldata->last==true )
 		{
-			Log("Info: File End");
+			Log("Info: File End", LL_DEBUG);
 
 			if( t_send.size() > 1 )
 			{
-				Log("Error: Senddata exceeds 1");
+				Log("Error: Senddata exceeds 1", LL_DEBUG);
 			}
 
 			for(size_t i=0;i<t_send.size();++i)
@@ -947,7 +950,7 @@ int CClientThread::SendData(void)
 void CClientThread::ReleaseMemory(void)
 {
 #ifdef _WIN32
-	Log("Deleting Memory...");
+	Log("Deleting Memory...", LL_DEBUG);
 	if(bufmgr!=NULL)
 	{
 		while( bufmgr->nfreeBufffer()!=NBUFFERS )
@@ -965,7 +968,7 @@ void CClientThread::ReleaseMemory(void)
 			t_send.clear();
 		}
 	}
-	Log("done.");
+	Log("done.", LL_DEBUG);
 #endif
 }
 
@@ -982,7 +985,7 @@ bool CClientThread::isStopped(void)
 void CClientThread::StopThread(void)
 {
 	stopped=true;
-	Log("Client thread stopped");
+	Log("Client thread stopped", LL_DEBUG);
 }
 
 bool CClientThread::isKillable(void)
@@ -1001,7 +1004,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	data->getStr(&ident);
 	if(!FileServ::checkIdentity(ident))
 	{
-		Log("Identity check failed -2");
+		Log("Identity check failed -2", LL_DEBUG);
 		return false;
 	}
 #endif
@@ -1014,11 +1017,11 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	_i64 hash_size=0;
 	data->getInt64(&hash_size);
 
-	Log("Sending file "+Server->ConvertToUTF8(o_filename));
+	Log("Sending file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
 
 	std::wstring filename=map_file(o_filename);
 
-	Log("Mapped name: "+Server->ConvertToUTF8(filename) );
+	Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
 
 	if(filename.empty())
 	{
@@ -1027,10 +1030,10 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 		if(rc==SOCKET_ERROR)
 		{
-			Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -1");
+			Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -1", LL_DEBUG);
 			return false;
 		}
-		Log("Info: Base dir lost -1");
+		Log("Info: Base dir lost -1", LL_DEBUG);
 		return true;
 	}
 
@@ -1058,10 +1061,10 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 			int rc=SendInt(&ch, 1);
 			if(rc==SOCKET_ERROR)
 			{
-				Log("Error: Socket Error - DBG: Send BASE_DIR_LOST");
+				Log("Error: Socket Error - DBG: Send BASE_DIR_LOST", LL_DEBUG);
 				return false;
 			}
-			Log("Info: Base dir lost");
+			Log("Info: Base dir lost", LL_DEBUG);
 			return true;
 		}
 #endif
@@ -1070,10 +1073,10 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		int rc=SendInt(&ch, 1);
 		if(rc==SOCKET_ERROR)
 		{
-			Log("Error: Socket Error - DBG: Send COULDNT OPEN");
+			Log("Error: Socket Error - DBG: Send COULDNT OPEN", LL_DEBUG);
 			return false;
 		}
-		Log("Info: Couldn't open file");
+		Log("Info: Couldn't open file", LL_DEBUG);
 		return true;
 	}
 
@@ -1104,7 +1107,16 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	state=CS_BLOCKHASH;
 
-	Server->getThreadPool()->execute(new ChunkSendThread(this, Server->openFileFromHandle(hFile)) );
+	if(chunk_send_thread_ticket==ILLEGAL_THREADPOOL_TICKET)
+	{
+		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this, Server->openFileFromHandle(hFile)) );
+	}
+	else
+	{
+		IScopedLock lock(mutex);
+		update_file=Server->openFileFromHandle(hFile);
+		cond->notify_all();
+	}
 	hFile=NULL;
 
 	return true;
@@ -1138,12 +1150,18 @@ bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
 	return true;
 }
 
-bool CClientThread::getNextChunk(SChunk *chunk)
+bool CClientThread::getNextChunk(SChunk *chunk, IFile **new_file)
 {
 	IScopedLock lock(mutex);
-	while(next_chunks.empty() && state==CS_BLOCKHASH)
+	while(next_chunks.empty() && state==CS_BLOCKHASH && update_file==NULL)
 	{
 		cond->wait(&lock);
+	}
+
+	if(update_file!=NULL)
+	{
+		*new_file=update_file;
+		return true;
 	}
 
 	if(!next_chunks.empty())

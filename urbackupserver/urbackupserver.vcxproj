@@ -147,7 +147,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;_WIN_PRE_VISTA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -257,6 +257,7 @@
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\adler32.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
+    <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\data.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
@@ -264,6 +265,7 @@
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
+    <ClCompile Include="ChunkPatcher.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="fileclient\FileClientChunked.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />
@@ -310,17 +312,20 @@
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
+    <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\data.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
     <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h" />
     <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
+    <ClInclude Include="..\urbackupcommon\internet_pipe_capabilities.h" />
     <ClInclude Include="..\urbackupcommon\os_functions.h" />
     <ClInclude Include="..\urbackupcommon\settings.h" />
     <ClInclude Include="..\urbackupcommon\settingslist.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
+    <ClInclude Include="ChunkPatcher.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="fileclient\FileClientChunked.h" />
     <ClInclude Include="fileclient\packet_ids.h" />

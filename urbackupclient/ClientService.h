@@ -56,6 +56,17 @@ struct ImageInformation
 	ImageThread *image_thread;
 };
 
+struct SChannel
+{
+	SChannel(IPipe *pipe, bool internet_connection)
+		: pipe(pipe), internet_connection(internet_connection) {}
+	SChannel(void)
+		: pipe(NULL), internet_connection(false) {}
+
+	IPipe *pipe;
+	bool internet_connection;
+};
+
 const unsigned int x_pingtimeout=180000;
 
 class ClientConnector : public ICustomClient
@@ -158,8 +169,8 @@ private:
 	static IMutex *backup_mutex;
 	static unsigned int incr_update_intervall;
 	static unsigned int last_pingtime;
-	static IPipe *channel_pipe;
-	static std::vector<IPipe*> channel_pipes;
+	static SChannel channel_pipe;
+	static std::vector<SChannel> channel_pipes;
 	static std::vector<IPipe*> channel_exit;
 	static std::vector<IPipe*> channel_ping;
 	static std::vector<int> channel_capa;

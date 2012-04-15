@@ -126,3 +126,6 @@ urbackupserver/Debug/*
 urbackupclient/x64/*
 urbackup/backup_server.db-mj7A77A7934
 urbackupserver/x64/*
+urbackup/backup_client.db
+urbackup/backup_server.db*
+debug.log

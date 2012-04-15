@@ -51,7 +51,7 @@ CriticalSection logcs;
 void Log(const std::string &str, int loglevel)
 {	
 #ifdef LOG_SERVER
-	Server->Log(str, loglevel);
+	Server->Log("FileSrv: "+str, loglevel);
 #endif
 
 #ifdef LOG_CONSOLE

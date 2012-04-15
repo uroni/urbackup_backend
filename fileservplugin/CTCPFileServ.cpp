@@ -120,27 +120,27 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 		int err=setsockopt(mSocket, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
 
 		if( err==SOCKET_ERROR )
-			Log("Error: Can't modify SO_SNDBUF");
+			Log("Error: Can't modify SO_SNDBUF", LL_DEBUG);
 		else 
-			Log("Info: retval %i", err );
+			Log("Info: retval "+nconvert(err), LL_DEBUG );
 
 
 		err=setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 
 		if( err==SOCKET_ERROR )
-			Log("Error: Can't modify SO_RCVBUF");
+			Log("Error: Can't modify SO_RCVBUF", LL_DEBUG);
 		else 
-			Log("Info: retval %i", err );
+			Log("Info: retval "+nconvert(err), LL_DEBUG );
 
 		socklen_t window_size_len=sizeof(window_size);
 		getsockopt(mSocket, SOL_SOCKET, SO_SNDBUF,(char *) &window_size, &window_size_len );
-		Log("Info: Window size=%i", window_size);
+		Log("Info: Window size="+nconvert(window_size));
 #endif
 		int optval=1;
 		rc=setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
 		if(rc==SOCKET_ERROR)
 		{
-			Log("Failed setting SO_REUSEADDR in CTCPFileServ::Start");
+			Log("Failed setting SO_REUSEADDR in CTCPFileServ::Start", LL_ERROR);
 			return false;
 		}
 
@@ -157,7 +157,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 #ifdef LOG_SERVER
 			Server->Log("Binding tcp socket to port "+nconvert(tcpport)+" failed", LL_ERROR);
 #else
-			Log("Failed. Binding tcp socket.");
+			Log("Failed. Binding tcp socket.", LL_ERROR);
 #endif
 			return false;
 		}
@@ -181,12 +181,12 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 		{
 			delete udpthread;
 			udpthread=NULL;
-			Log("Error starting UDP thread");
+			Log("Error starting UDP thread", LL_ERROR);
 			return false;
 		}
 	}
 
-	Log("Server started up sucessfully");
+	Log("Server started up sucessfully", LL_DEBUG);
 
     return true;
 }
@@ -221,7 +221,7 @@ bool CTCPFileServ::TcpStep(void)
 		if(ns>0)
 		{
 			cs.Enter();
-			Log("New Connection incomming");
+			Log("New Connection incomming", LL_DEBUG);
 			CClientThread *clientthread=new CClientThread(ns, this);
 			Server->createThread(clientthread);
 			clientthreads.push_back(clientthread);
@@ -252,7 +252,7 @@ void CTCPFileServ::DelClientThreads(void)
 				delete clientthreads[i];
 				clientthreads.erase( clientthreads.begin()+i );
 				proc=true;
-				Log("ClientThread deleted. %i KB Memory freed.",(NBUFFERS*READSIZE)/1024);
+				Log("ClientThread deleted. "+nconvert((NBUFFERS*READSIZE)/1024)+" KB Memory freed.",LL_DEBUG);
 				break;
 			}
 		}
