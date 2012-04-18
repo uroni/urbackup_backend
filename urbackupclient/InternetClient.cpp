@@ -16,9 +16,11 @@
 #include "../urbackupcommon/internet_pipe_capabilities.h"
 #include "../urbackupcommon/CompressedPipe.h"
 
+#include <stdlib.h>
+
 IMutex *InternetClient::mutex=NULL;
 bool InternetClient::connected=NULL;
-size_t InternetClient::n_connections=NULL;
+size_t InternetClient::n_connections=0;
 unsigned int InternetClient::last_lan_connection=0;
 bool InternetClient::update_settings=false;
 SServerSettings InternetClient::server_settings;

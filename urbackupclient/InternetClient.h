@@ -1,4 +1,5 @@
 #include <vector>
+#include <string>
 
 #include "../Interface/Thread.h"
 
