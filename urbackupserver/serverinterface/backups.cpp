@@ -42,16 +42,9 @@ ACTION_IMPL(backups)
 	if(session!=NULL && session->id==-1) return;
 	std::wstring sa=GET[L"sa"];
 	std::string rights=helper.getRights("browse_backups");
-	std::vector<int> clientid;
-	if(rights!="all" && rights!="none" )
-	{
-		std::vector<std::string> s_clientid;
-		Tokenize(rights, s_clientid, ",");
-		for(size_t i=0;i<s_clientid.size();++i)
-		{
-			clientid.push_back(atoi(s_clientid[i].c_str()));
-		}
-	}
+	std::string archive_rights=helper.getRights("manual_archive");
+	std::vector<int> clientid=helper.getRightIDs(rights);
+	std::vector<int> clientid_archive=helper.getRightIDs(archive_rights);
 	if(clientid.size()==1 && sa.empty() )
 	{
 		sa=L"backups";
@@ -81,26 +74,28 @@ ACTION_IMPL(backups)
 		else if(sa==L"backups")
 		{
 			int t_clientid=watoi(GET[L"clientid"]);
-			bool r_ok=false;
-			if(rights!="all")
-			{
-				for(size_t i=0;i<clientid.size();++i)
-				{
-					if(clientid[i]==t_clientid)
-					{
-						r_ok=true;
-						break;
-					}
-				}
-			}
-			else
-			{
-				r_ok=true;
-			}
+			bool r_ok=helper.hasRights(t_clientid, rights, clientid);
+			bool archive_ok=helper.hasRights(t_clientid, archive_rights, clientid_archive);
 
 			if(r_ok)
 			{
-				IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
+				if(archive_ok)
+				{
+					if(GET.find(L"archive")!=GET.end())
+					{
+						IQuery *q=db->Prepare("UPDATE backups SET archived=1, archive_timeout=0 WHERE id=?");
+						q->Bind(watoi(GET[L"archive"]));
+						q->Write();
+					}
+					else if(GET.find(L"unarchive")!=GET.end())
+					{
+						IQuery *q=db->Prepare("UPDATE backups SET archived=0 WHERE id=?");
+						q->Bind(watoi(GET[L"unarchive"]));
+						q->Write();
+					}
+				}
+
+				IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
 				q->Bind(t_clientid);
 				db_results res=q->Read();
 				JSON::Array backups;
@@ -111,9 +106,11 @@ ACTION_IMPL(backups)
 					obj.set("backuptime", res[i][L"t_backuptime"]);
 					obj.set("incremental", watoi(res[i][L"incremental"]));
 					obj.set("size_bytes", res[i][L"size_bytes"]);
+					obj.set("archived", res[i][L"archived"]);
 					backups.add(obj);
 				}
 				ret.set("backups", backups);
+				ret.set("can_archive", archive_ok);
 
 				q=db->Prepare("SELECT name FROM clients WHERE id=?");
 				q->Bind(t_clientid);
@@ -133,22 +130,7 @@ ACTION_IMPL(backups)
 		else if(sa==L"files" || sa==L"filesdl")
 		{
 			int t_clientid=watoi(GET[L"clientid"]);
-			bool r_ok=false;
-			if(rights!="all")
-			{
-				for(size_t i=0;i<clientid.size();++i)
-				{
-					if(clientid[i]==t_clientid)
-					{
-						r_ok=true;
-						break;
-					}
-				}
-			}
-			else
-			{
-				r_ok=true;
-			}
+			bool r_ok=helper.hasRights(t_clientid, rights, clientid);
 
 			if(r_ok)
 			{
@@ -229,6 +211,9 @@ ACTION_IMPL(backups)
 						{
 							if(tfiles[i].isdir)
 							{
+								if(path.empty() && tfiles[i].name==L".hashes")
+									continue;
+
 								JSON::Object obj;
 								obj.set("name", tfiles[i].name);
 								obj.set("dir", tfiles[i].isdir);

@@ -186,6 +186,9 @@
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="server_archive.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -324,6 +327,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_archive.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

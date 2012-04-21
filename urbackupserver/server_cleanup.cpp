@@ -909,8 +909,8 @@ void ServerCleanupThread::createQueries(void)
 	q_get_image_refs=db->Prepare("SELECT id,complete FROM backup_images WHERE incremental<>0 AND incremental_ref=?", false);
 	q_get_image_path=db->Prepare("SELECT path FROM backup_images WHERE id=?", false);
 	q_get_incr_num_images=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental<>0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
-	q_get_full_num_files=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental=0 AND running<datetime('now','-300 seconds') ORDER BY backuptime ASC", false);
-	q_get_incr_num_files=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental<>0 AND running<datetime('now','-300 seconds') ORDER BY backuptime ASC", false);
+	q_get_full_num_files=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental=0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
+	q_get_incr_num_files=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental<>0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
 	q_get_clientname=db->Prepare("SELECT name FROM clients WHERE id=?", false);
 	q_get_backuppath=db->Prepare("SELECT path FROM backups WHERE id=?", false);
 	q_delete_files=db->Prepare("DELETE FROM files WHERE backupid=?", false);

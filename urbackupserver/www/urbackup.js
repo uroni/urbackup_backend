@@ -3,6 +3,8 @@ g.loading=false;
 g.lang="en";
 g.startup=true;
 g.google_chart_loaded=false;
+g.no_tab_mouse_click=false;
+g.tabberidx=-1;
 
 g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" } ];
 
@@ -192,6 +194,9 @@ function getPar(p)
 	if(p=="update_freq_incr") val*=60*60;
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr") val*=60*60*24;
 	if(p=="startup_backup_delay") val*=60;
+	if(p=="update_freq_image_full" && I('client_disable_image_backups') && I('client_disable_image_backups').checked )
+		val*=-1;
+		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
 
@@ -659,7 +664,22 @@ function show_backups2(data)
 				obj.incr=trans["yes"];
 			else
 				obj.incr=trans["no"];
-				
+			
+			if(data.can_archive)
+			{
+				if( obj.archived>0 )
+					obj.archived='<a href="#" onclick="unarchive_single('+obj.id+', '+data.clientid+'); return false;">☑</a>';
+				else
+					obj.archived='<a href="#" onclick="archive_single('+obj.id+', '+data.clientid+'); return false;">☐</a>';
+			}
+			else
+			{
+				if( obj.archived>0 )
+					obj.archived='☑';
+				else
+					obj.archived='☐';
+			}
+			
 			obj.clientid=data.clientid;
 				
 			rows+=tmpls.backups_backups_row.evaluate(obj);
@@ -752,11 +772,14 @@ function tabMouseOver(obj)
 		{
 			if(idx>0)
 			{
-				g.mouse_over_styles.push({backgroundColor: obj.childNodes[i].style.backgroundColor, color: obj.childNodes[i].style.color});
-				obj.childNodes[i].style.backgroundColor='blue';
-				if(obj.childNodes[i].childNodes.length>0 && obj.childNodes[i].childNodes[0].nodeType==3)
+				if(obj.childNodes[i].id!="nomouseover")
 				{
-					obj.childNodes[i].style.color='white';
+					g.mouse_over_styles.push({backgroundColor: obj.childNodes[i].style.backgroundColor, color: obj.childNodes[i].style.color});
+					obj.childNodes[i].style.backgroundColor='blue';
+					if(obj.childNodes[i].childNodes.length>0 && obj.childNodes[i].childNodes[0].nodeType==3)
+					{
+						obj.childNodes[i].style.color='white';
+					}
 				}
 			}
 			else
@@ -803,6 +826,7 @@ function tabMouseClickClients(clientid)
 }
 function tabMouseClickBackups(clientid, backupid)
 {
+	if(g.no_tab_mouse_click){ g.no_tab_mouse_click=false; return; }
 	if(!startLoading()) return;
 	new getJSON("backups", "sa=files&clientid="+clientid+"&backupid="+backupid+"&path=%2F", show_backups2);
 }
@@ -927,6 +951,7 @@ function show_settings2(data)
 	}
 	
 	var ndata="";
+	var tabber_set_idx=-1;
 	if(data.sa)
 	{
 		if(data.sa=="general")
@@ -966,6 +991,7 @@ function show_settings2(data)
 			if(data.saved_ok)
 			{
 				ndata+=tmpls.settings_save_ok.evaluate();
+				tabber_set_idx=g.tabberidx;
 			}			
 		}
 		else if(data.sa=="clientsettings")
@@ -977,6 +1003,10 @@ function show_settings2(data)
 			data.settings.allow_starting_image_backups=getCheckboxValue(data.settings.allow_starting_image_backups);
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
+			data.settings.client_disable_image_backups=getCheckboxValue(data.settings.update_freq_image_full<0);
+						
+			if(data.settings.update_freq_image_full<0)
+				data.settings.update_freq_image_full*=-1;
 			
 			data.settings.update_freq_incr/=60*60;
 			data.settings.update_freq_full/=60*60*24;
@@ -993,6 +1023,7 @@ function show_settings2(data)
 			if(data.saved_ok)
 			{
 				ndata+=tmpls.settings_save_ok.evaluate();
+				tabber_set_idx=g.tabberidx;
 			}
 		}
 		else if(data.sa=="mail")
@@ -1093,15 +1124,46 @@ function show_settings2(data)
 			ndata+=tmpls.settings_users_start.evaluate({ rows:rows });
 		}
 	}
+	
+	g.archive_item_id=0;
+	
+	var update_tabber=false;
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
+		update_tabber=true;
 	}
 	
 	if(data.sa && data.sa=="clientsettings")
 	{
 		updateUserOverwrite();
+	}
+	
+	if(update_tabber)
+	{
+		var tabberOptions = { manualStartup:true,
+								'onClick': function(argsObj) {
+									g.tabberidx = argsObj.index; } };
+		tabberAutomatic(tabberOptions);
+		if(tabber_set_idx!=-1)
+		{
+			I('settings_tabber').tabber.tabShow(tabber_set_idx);
+		}
+		else
+		{
+			g.tabberidx=-1;
+		}
+	}
+	
+	if(update_tabber && data.sa && (data.sa=="clientsettings" || data.sa=="general") )
+	{
+		for(var i=0;i<data.archive_settings.length;++i)
+		{
+			var obj=data.archive_settings[i];
+			addArchiveItemInt(getTimelengthUnit(obj.archive_every, obj.archive_every_unit), obj.archive_every_unit,
+					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival);
+		}
 	}
 }
 
@@ -1156,9 +1218,20 @@ function validateCommonSettings()
 	if(!validate_text_regex([{ id: "image_letters", regexp: /([A-Za-z][;,])*/i }] ) ) return false;
 	return true;
 }
-
-
-
+function getArchivePars()
+{
+	var pars="";
+	for(var i=0;i<g.archive_item_id;++i)
+	{
+		pars+=getPar("archive_next_"+i);
+		pars+=getPar("archive_every_"+i);
+		pars+=getPar("archive_every_unit_"+i);
+		pars+=getPar("archive_for_"+i);
+		pars+=getPar("archive_for_unit_"+i);
+		pars+=getPar("archive_backup_type_"+i);
+	}
+	return pars;
+}
 function saveGeneralSettings()
 {
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
@@ -1178,6 +1251,7 @@ function saveGeneralSettings()
 	pars+=getPar("tmpdir");
 	pars+=getPar("cleanup_window");
 	pars+=getPar("backup_database");
+	pars+=getArchivePars();
 	for(var i=0;i<g.settings_list.length;++i)
 	{
 		pars+=getPar(g.settings_list[i]);
@@ -1247,6 +1321,14 @@ function updateUserOverwrite(clientid)
 	
 	I('user_submit').disabled=!checked;
 	
+	//Archive
+	I('archive_add').disabled=!checked;
+	I('archive_every').disabled=!checked;
+	I('archive_for').disabled=!checked;
+	I('archive_every_unit').disabled=!checked;
+	I('archive_for_unit').disabled=!checked;
+	I('archive_backup_type').disabled=!checked;
+	
 	if(clientid)
 	{
 		saveClientSettings(clientid, true);
@@ -1264,7 +1346,7 @@ function saveClientSettings(clientid, skip)
 			stopLoading();
 			return;
 		}
-		
+		pars+=getArchivePars();
 		for(var i=0;i<g.settings_list.length;++i)
 		{
 			pars+=getPar(g.settings_list[i]);
@@ -1981,4 +2063,183 @@ function removeClient(clientid)
 function stopRemove(clientid)
 {
 	show_status1(false, "", false, clientid, true);
+}
+function unarchive_single(backupid, clientid)
+{
+	if(!startLoading()) return;
+	new getJSON("backups", "sa=backups&clientid="+clientid+"&unarchive="+backupid, show_backups2);
+}
+function archive_single(backupid, clientid)
+{
+	if(!startLoading()) return;
+	new getJSON("backups", "sa=backups&clientid="+clientid+"&archive="+backupid, show_backups2);
+}
+function addArchiveItem()
+{
+	validate_text_nonempty(["archive_every", "archive_for"]);
+	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1);
+}
+function getTimelengthSeconds(tl, unit)
+{
+	tl*=60*60;
+	if(unit!='h')
+	{
+		tl*=24;
+		if(unit!='d')
+		{
+			tl*=7;
+			if(unit!='w')
+			{
+				tl*=4.345;
+				if(unit!='m')
+				{
+					tl*=12;
+				}
+			}
+		}
+	}
+	return tl;
+}
+function getTimelengthUnit(tl, unit)
+{
+	tl/=3600;
+	if(unit!='h')
+	{
+		tl/=24;
+		if(unit!='d')
+		{
+			tl/=7;
+			if(unit!='w')
+			{
+				tl/=4.345;
+				if(unit!='m')
+				{
+					tl/=12;
+				}
+			}
+		}
+	}
+	return tl;
+}
+function addPlural(val, str)
+{
+	if(val!=1)
+		return str+"s";
+	else
+		return str;
+}
+function dectorateTimelength(tl, unit)
+{
+	if(unit=='h') tl+=" "+trans[addPlural(tl, "hour")];
+	else if(unit=='d') tl+=" "+trans[addPlural(tl,"day")];
+	else if(unit=='w') tl+=" "+trans[addPlural(tl,"week")];
+	else if(unit=='m') tl+=" "+trans[addPlural(tl,"month")];
+	else if(unit=='y') tl+=" "+trans[addPlural(tl,"year")];
+	else if(unit=='i') tl=trans["forever"];
+	return  tl;
+}
+function backupTypeStr(bt)
+{
+	if(bt=="incr_file") return trans["action_1"];
+	else if(bt=="full_file") return trans["action_2"];
+	else if(bt=="file") return trans["file_backup"];
+}
+function getArchiveTable()
+{
+	archive_table=I('archive_table');
+	
+	if(archive_table.childNodes.length<=2)
+	{
+		for(var i=0;i<archive_table.childNodes.length;++i)
+		{
+			if(archive_table.childNodes[i].childNodes.length>2)
+			{
+				archive_table=archive_table.childNodes[i];
+				break;
+			}
+		}
+	}
+	return archive_table;
+}
+function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival)
+{
+	archive_every_i=getTimelengthSeconds(archive_every, archive_every_unit);
+	archive_for_i=getTimelengthSeconds(archive_for, archive_for_unit);
+	if(archive_for_unit=='i')
+	{
+		archive_for_i=-1;
+	}
+	archive_every=dectorateTimelength(archive_every, archive_every_unit);
+	archive_for=dectorateTimelength(archive_for, archive_for_unit);
+	
+	var new_item=document.createElement('tr');
+	new_item.id="archive_"+g.archive_item_id;
+	new_item.innerHTML=tmpls.settings_archive_row.evaluate( { id: g.archive_item_id, archive_next: next_archival, archive_every_i: archive_every_i, archive_every: archive_every, archive_every_unit: archive_every_unit,
+			archive_for_i: archive_for_i, archive_for: archive_for, archive_for_unit: archive_for_unit,
+			archive_backup_type: archive_backup_type, archive_backup_type_str: backupTypeStr(archive_backup_type) } );
+	
+	var archive_table=getArchiveTable();
+	
+	if(archive_table.childNodes.length>2)
+	{
+		var n=0;
+		for(var i=archive_table.childNodes.length-1;i>=0;--i)
+		{
+			if(archive_table.childNodes[i].nodeName.toLowerCase()=='tr')
+				++n;
+			
+			if(n==2)
+			{
+				archive_table.insertBefore(new_item, archive_table.childNodes[i]);
+				break;
+			}
+		}
+	}
+	
+	++g.archive_item_id;
+}
+function replaceArchiveId(old_id, new_id)
+{
+	var item=I('archive_'+old_id);
+	item.innerHTML=tmpls.settings_archive_row.evaluate( { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
+			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
+			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value) } );
+}
+function deleteArchiveItem(id)
+{
+	var archive_table=getArchiveTable();
+	g.archive_item_id=0;
+	var rmobj;
+	var old_id=0;
+	for(var i=0;i<archive_table.childNodes.length;++i)
+	{
+		var obj=archive_table.childNodes[i];
+		if(obj.nodeName.toLowerCase()=='tr')
+		{
+			if(obj.id=="archive_"+id)
+			{
+				rmobj=obj;
+				++old_id;
+			}
+			else if(obj.id.indexOf("archive_")==0)
+			{
+				replaceArchiveId(old_id, g.archive_item_id);
+				obj.id="archive_"+g.archive_item_id;
+				++g.archive_item_id;
+				++old_id;
+			}
+		}
+	}
+	archive_table.removeChild(rmobj);
+}
+function changeArchiveForUnit()
+{
+	if(I('archive_for_unit').value=='i')
+	{
+		I('archive_for').type="hidden";
+	}
+	else
+	{
+		I('archive_for').type="text";
+	}
 }

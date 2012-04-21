@@ -1,4 +1,6 @@
 ﻿<br />
+<div class="tabber" id="settings_tabber">
+<div class="tabbertab" title="#{tServer}">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
 <td>#{tBackup storage path}:</td>
@@ -42,8 +44,9 @@
 <td>#{tAutomatically backup UrBackup database}:</td>
 <td><input type="checkbox" size="40" id="backup_database" #{backup_database}/> </td>
 </tr>
-#{settings_inv}
 </table>
+</div>#{settings_inv}
+</div>
 <br />
 <br />
 <input type="button" value="#{tSave}" onClick="saveGeneralSettings()" />

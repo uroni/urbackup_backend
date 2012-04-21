@@ -24,7 +24,10 @@ public:
 	void Write(std::string str);
 	void WriteTemplate(ITemplate *tmpl);
 
-	void releaseAll(void);	
+	void releaseAll(void);
+
+	std::vector<int> getRightIDs(std::string rights);
+	bool hasRights(int clientid, std::string rights, std::vector<int> right_ids);
 private:
 	std::string getRightsInt(const std::string &domain);
 

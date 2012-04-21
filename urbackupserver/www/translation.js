@@ -82,7 +82,21 @@ translations.en={
 "validate_err_notregexp_cleanup_window": "Format for cleanup window wrong",
 "mail_settings": "Mail",
 "tupgrade_error_text": "UrBackup is upgrading its internal database. This may take a while. The server is inaccessible and will not do any backups during this upgrade.",
-"internet_server_settings": "Internet accessibility"
+"internet_server_settings": "Internet accessibility",
+"file_backup": "File backup",
+"hours": "hours",
+"days": "days",
+"weeks": "weeks",
+"months": "months",
+"year": "year",
+"hour": "hour",
+"day": "day",
+"week": "week",
+"month": "month",
+"year": "year",
+"validate_name_archive_every": "Archive every",
+"validate_name_archive_for": "Archive for",
+"forever": "forever"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",

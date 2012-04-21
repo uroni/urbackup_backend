@@ -185,5 +185,8 @@
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="..\urbackupcommon\capa_bits.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

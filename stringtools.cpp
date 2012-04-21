@@ -30,6 +30,7 @@
 #endif
 
 #include "utf8/utf8.h"
+#include "Interface/Types.h"
 
 
 using namespace std;
@@ -1491,6 +1492,16 @@ int watoi(std::wstring str)
 	return atoi(wnarrow(str).c_str());
 #endif
 }
+
+_i64 watoi64(std::wstring str)
+{
+#ifdef _WIN32
+	return _wtoi64(str.c_str());
+#else
+	return atoll(wnarrow(str).c_str());
+#endif
+}
+
 
 std::string trim(const std::string &str)
 {

@@ -1,18 +1,12 @@
-﻿<tr>
+﻿<div class="tabbertab" title="#{tFile backups}">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+<tr>
 <td>#{tInterval for incremental file backups}</td>
 <td><input type="text" id="update_freq_incr" value="#{update_freq_incr}"/> #{thours}</td>
 </tr>
 <tr>
 <td>#{tInterval for full file backups}</td>
 <td><input type="text" id="update_freq_full" value="#{update_freq_full}"/> #{tdays}</td>
-</tr>
-<tr>
-<td>#{tInverval for incremental image backups}</td>
-<td><input type="text" id="update_freq_image_incr" value="#{update_freq_image_incr}"/> #{tdays}</td>
-</tr>
-<tr>
-<td>#{tInterval for full image backups}</td>
-<td><input type="text" id="update_freq_image_full" value="#{update_freq_image_full}"/> #{tdays}</td>
 </tr>
 <tr>
 <td>#{tMaximal number of incremental file backups}</td>
@@ -29,6 +23,38 @@
 <td>#{tMinimal number of full file backups}</td>
 <td><input type="text" id="min_file_full" value="#{min_file_full}"/></td>
 </tr>
+<tr>
+<td>#{tExcluded files (with wildcards)}</td>
+<td><input type="text" id="exclude_files" value="#{exclude_files}"/> <a href="http://www.urbackup.org/FAQ.php#exclude_files" target="_blank">?</a></td>
+</tr>
+<tr>
+<td>#{tIncluded files (with wildcards)}</td>
+<td><input type="text" id="include_files" value="#{include_files}"/> <a href="http://www.urbackup.org/FAQ.php#include_files" target="_blank">?</a></td>
+</tr>
+<tr>
+<td>#{tDefault directories to backup}</td>
+<td><input type="text" id="default_dirs" value="#{default_dirs}"/> <a href="http://www.urbackup.org/FAQ.php#default_dirs" target="_blank">?</a></td>
+</tr>
+<tr>
+</table>
+</div>
+
+<div class="tabbertab" title="#{tImage backups}">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+#{no_compname_start}
+<tr>
+<td>#{tDisable image backups}</td>
+<td><input type="checkbox" id="client_disable_image_backups" #{client_disable_image_backups}</td>
+</tr>
+#{no_compname_end}
+<tr>
+<td>#{tInverval for incremental image backups}</td>
+<td><input type="text" id="update_freq_image_incr" value="#{update_freq_image_incr}"/> #{tdays}</td>
+</tr>
+<tr>
+<td>#{tInterval for full image backups}</td>
+<td><input type="text" id="update_freq_image_full" value="#{update_freq_image_full}"/> #{tdays}</td>
+</tr>
 <td>#{tMaximal number of incremental image backups}</td>
 <td><input type="text" id="max_image_incr" value="#{max_image_incr}"/></td>
 </tr>
@@ -44,35 +70,14 @@
 <td><input type="text" id="min_image_full" value="#{min_image_full}"/></td>
 </tr>
 <tr>
-<td>#{tDelay after system startup}</td>
-<td><input type="text" id="startup_backup_delay" value="#{startup_backup_delay}"/> #{tmin}</td>
-</tr>
-<tr>
-<td>#{tBackup window}</td>
-<td><input type="text" id="backup_window" value="#{backup_window}"/> <a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
-</tr>
-#{no_compname_start}
-<tr>
-<td>#{tComputer name}</td>
-<td><input type="text" id="computername" value="#{computername}"/></td>
-</tr>
-#{no_compname_end}
-<tr>
-<td>#{tExcluded files (with wildcards)}</td>
-<td><input type="text" id="exclude_files" value="#{exclude_files}"/> <a href="http://www.urbackup.org/FAQ.php#exclude_files" target="_blank">?</a></td>
-</tr>
-<tr>
-<td>#{tIncluded files (with wildcards)}</td>
-<td><input type="text" id="include_files" value="#{include_files}"/> <a href="http://www.urbackup.org/FAQ.php#include_files" target="_blank">?</a></td>
-</tr>
-<tr>
-<td>#{tDefault directories to backup}</td>
-<td><input type="text" id="default_dirs" value="#{default_dirs}"/> <a href="http://www.urbackup.org/FAQ.php#default_dirs" target="_blank">?</a></td>
-</tr>
-<tr>
 <td>#{tVolumes to backup}</td>
 <td><input type="text" id="image_letters" value="#{image_letters}"/> <a href="http://www.urbackup.org/FAQ.php#image_letters" target="_blank">?</a></td>
 </tr>
+</table>
+</div>
+
+<div class="tabbertab" title="#{tPermissions}">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
 <td>#{tAllow client-side changing of the directories to backup}</td>
 <td><input type="checkbox" id="allow_config_paths" #{allow_config_paths}/></td>
@@ -97,3 +102,44 @@
 <td>#{tAllow client-side changing of settings}</td>
 <td><input type="checkbox" id="allow_overwrite" #{allow_overwrite}/></td>
 </tr>
+</table>
+</div>
+
+<div class="tabbertab" title="#{tClient}">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+<tr>
+<td>#{tDelay after system startup}</td>
+<td><input type="text" id="startup_backup_delay" value="#{startup_backup_delay}"/> #{tmin}</td>
+</tr>
+<tr>
+<td>#{tBackup window}</td>
+<td><input type="text" id="backup_window" value="#{backup_window}"/> <a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
+</tr>
+#{no_compname_start}
+<tr>
+<td>#{tComputer name}</td>
+<td><input type="text" id="computername" value="#{computername}"/></td>
+</tr>
+#{no_compname_end}
+</table>
+</div>
+
+<div class="tabbertab" title="#{tArchival}">
+<table cellspacing="0" cellpadding="0" id="archive_table">
+<tr>
+	<th style="width: 200px" class="tabHeader">#{tArchive every}</th>
+	<th style="width: 200px" class="tabHeader">#{tArchive for}</th>
+	<th style="width: 150px" class="tabHeader">#{tBackup type}</th>
+	<th style="width: 100px" class="tabHeaderRight">&nbsp;</th>
+</tr>
+<tr>
+	<td class="tabFRight" colspan="4" style="height:1px"></td>
+</tr>
+<tr>
+	<td class="tabFLeft"><input type="text" style="width: 50px" id="archive_every"> <select size="1" style="width: 80px;" id="archive_every_unit"><option value="h">#{thours}</option><option value="d" selected="selected">#{tdays}</option><option value="w">#{tweeks}</option><option value="m">#{tmonth}</option><option value="y">#{tyears}</option></select></td>
+	<td class="tabFLeft"><input type="text" style="width: 50px" id="archive_for"> <select size="1" style="width: 80px;" onchange="changeArchiveForUnit()" id="archive_for_unit"><option value="h">#{thours}</option><option value="d" selected="selected">#{tdays}</option><option value="w">#{tweeks}</option><option value="m">#{tmonth}</option><option value="y">#{tyears}</option><option value="i">#{tforever}</option></select></td>
+	<td class="tabFLeft"><select size="1" style="width: 150px;" id="archive_backup_type"><option value="file">#{tFile backup}</option><option value="incr_file">#{tIncremental file backup}</option><option value="full_file">#{tFull file backup}</option></select></td>
+	<td class="tabFRight"><input type="button" value="#{tAdd}" id="archive_add" onclick="addArchiveItem()" /></td>
+</tr>
+</table>
+</div>
