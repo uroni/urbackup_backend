@@ -1,11 +1,14 @@
 <br />
+<div style="height:20px">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
 <td>#{tSeparate settings for this client}</td>
 <td><input type="checkbox" onclick="updateUserOverwrite(#{clientid})" id="overwrite" #{overwrite} /></td>
 </tr>
-#{settings_inv}
 </table>
+</div>
+<br />
+<div class="tabber" id="settings_tabber">#{settings_inv}</div>
 <br />
 <br />
 <input type="button" value="#{tSave}" onClick="saveClientSettings(#{clientid})" id="user_submit" />

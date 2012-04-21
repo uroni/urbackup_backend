@@ -91,6 +91,7 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("upgrade_error");
 	templates.push_back("logs_report_mail");
 	templates.push_back("settings_internet");
+	templates.push_back("settings_archive_row");
 
 	IFile *out=Server->openFile("urbackupserver/www/templates.js", MODE_WRITE);
 	if(out==NULL)
@@ -119,6 +120,9 @@ ACTION_IMPL(generate_templ)
 				else if(buf[i]=='"') tw+="\\\"";
 				else tw+=buf[i];
 			}
+			if(tw.size()>=3 && tw[0]==-17 && tw[1]==-69 && tw[2]==-65) //remove BOM
+				tw.erase(0, 3);
+
 			out->Write(tw);
 		}
 		out->Write("\");\n");

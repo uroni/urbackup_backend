@@ -201,4 +201,40 @@ std::string Helper::getLanguage(void)
 	return language;
 }
 
+std::vector<int> Helper::getRightIDs(std::string rights)
+{
+	std::vector<int> clientid;
+	if(rights!="all" && rights!="none" )
+	{
+		std::vector<std::string> s_clientid;
+		Tokenize(rights, s_clientid, ",");
+		for(size_t i=0;i<s_clientid.size();++i)
+		{
+			clientid.push_back(atoi(s_clientid[i].c_str()));
+		}
+	}
+	return clientid;
+}
+
+bool Helper::hasRights(int clientid, std::string rights, std::vector<int> right_ids)
+{
+	bool r_ok=false;
+	if(rights!="all")
+	{
+		for(size_t i=0;i<right_ids.size();++i)
+		{
+			if(right_ids[i]==clientid)
+			{
+				r_ok=true;
+				break;
+			}
+		}
+	}
+	else
+	{
+		r_ok=true;
+	}
+	return r_ok;
+}
+
 #endif //CLIENT_ONLY

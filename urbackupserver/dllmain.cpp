@@ -57,6 +57,7 @@ SStartupStatus startup_status;
 #include "server_log.h"
 #include "server_cleanup.h"
 #include "server_get.h"
+#include "server_archive.h"
 #include "server_settings.h"
 #include "..\urbackupcommon\os_functions.h"
 #include "InternetServiceConnector.h"
@@ -395,6 +396,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ServerCleanupThread *server_cleanup=new ServerCleanupThread();
 	Server->createThread(server_cleanup);
 
+	Server->createThread(new ServerAutomaticArchive);
+
 	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }
 
@@ -695,6 +698,20 @@ void upgrade17_18(void)
 	db->Write("ALTER TABLE files_del ADD hashpath TEXT");
 }
 
+void upgrade18_19(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE backups ADD archived INTEGER");
+	db->Write("UPDATE backups SET archived=0 WHERE archived IS NULL");
+}
+
+void upgrade19_20(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE settings_db.automatic_archival ( id INTEGER PRIMARY KEY, next_archival INTEGER, interval INTEGER, interval_unit TEXT, length INTEGER, length_unit TEXT, backup_types INTEGER, clientid INTEGER)");
+	db->Write("ALTER TABLE backups ADD archive_timeout INTEGER");
+}
+
 void upgrade(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -711,7 +728,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=18;
+	int max_v=19;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -798,6 +815,14 @@ void upgrade(void)
 				break;
 			case 17:
 				upgrade17_18();
+				++ver;
+				break;
+			case 18:
+				upgrade18_19();
+				++ver;
+				break;
+			case 19:
+				upgrade19_20();
 				++ver;
 				break;
 			default:

@@ -288,6 +288,7 @@
     <ClCompile Include="serverinterface\usage.cpp" />
     <ClCompile Include="serverinterface\usagegraph.cpp" />
     <ClCompile Include="serverinterface\users.cpp" />
+    <ClCompile Include="server_archive.cpp" />
     <ClCompile Include="server_channel.cpp" />
     <ClCompile Include="server_cleanup.cpp" />
     <ClCompile Include="server_get.cpp" />
@@ -336,6 +337,7 @@
     <ClInclude Include="serverinterface\action_header.h" />
     <ClInclude Include="serverinterface\helper.h" />
     <ClInclude Include="serverinterface\json.h" />
+    <ClInclude Include="server_archive.h" />
     <ClInclude Include="server_channel.h" />
     <ClInclude Include="server_cleanup.h" />
     <ClInclude Include="server_get.h" />

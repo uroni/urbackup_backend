@@ -25,6 +25,7 @@
 #include "../../urbackupcommon/os_functions.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server_get.h"
+#include "../server_archive.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -342,6 +343,88 @@ void updateRights(int t_userid, std::string s_rights, IDatabase *db)
 	}
 }
 
+void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
+{
+	int i=0;
+	IQuery *q=db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid=?");
+	q->Bind(clientid);
+	q->Write();
+	q=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid) VALUES (?, ?, ?, ?, ?, ?, ?)");
+	while(GET.find(L"archive_every_"+convert(i))!=GET.end())
+	{
+		int archive_next=watoi(GET[L"archive_next_"+convert(i)]);
+		int archive_every=watoi(GET[L"archive_every_"+convert(i)]);
+		int archive_for=watoi(GET[L"archive_for_"+convert(i)]);
+		std::wstring backup_type_str=GET[L"archive_backup_type_"+convert(i)];
+		int backup_types=ServerAutomaticArchive::getBackupTypes(backup_type_str);
+
+		if(archive_next<0)
+		{
+			q->Bind(Server->getTimeSeconds());
+		}
+		else
+		{
+			q->Bind(archive_next);
+		}
+		q->Bind(archive_every);
+		q->Bind(GET[L"archive_every_unit_"+convert(i)]);
+		q->Bind(archive_for);
+		q->Bind(GET[L"archive_for_unit_"+convert(i)]);
+		q->Bind(backup_types);
+		q->Bind(clientid);
+		q->Write();
+		q->Reset();
+
+		++i;
+	}
+
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
+	if(clientid!=0)
+	{		
+		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+nconvert(clientid));
+		IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+nconvert(clientid)+")");
+
+		updateSetting(L"overwrite_archive_settings", L"true", q_get, q_update, q_insert);
+	}
+	else
+	{
+		db->Write("DELETE FROM settings_db.settings WHERE key='archive_settings_copied'");
+	}
+}
+
+void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
+{
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
+	q_get->Bind("overwrite");
+	db_results res=q_get->Read();
+	q_get->Reset();
+	if(res.empty() || res[0][L"value"]!=L"true")
+		clientid=0;
+
+	q_get->Bind("overwrite_archive_settings");
+	res=q_get->Read();
+	if(res.empty() || res[0][L"value"]!=L"true")
+		clientid=0;
+
+	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types FROM settings_db.automatic_archival WHERE clientid=?");
+	q->Bind(clientid);
+	res=q->Read();
+
+	JSON::Array arr;
+	for(size_t i=0;i<res.size();++i)
+	{
+		JSON::Object ca;
+		ca.set("next_archival", res[i][L"next_archival"]);
+		ca.set("archive_every", watoi(res[i][L"interval"]));
+		ca.set("archive_every_unit", res[i][L"interval_unit"]);
+		ca.set("archive_for", watoi(res[i][L"length"]));
+		ca.set("archive_for_unit", res[i][L"length_unit"]);
+		ca.set("archive_backup_type", ServerAutomaticArchive::getBackupType(watoi(res[i][L"backup_types"])));
+		arr.add(ca);
+	}
+	obj.set("archive_settings", arr);
+}
+
 ACTION_IMPL(settings)
 {
 	Helper helper(tid, &GET, &PARAMS);
@@ -466,6 +549,7 @@ ACTION_IMPL(settings)
 					if(s.overwrite)
 					{
 						updateClientSettings(t_clientid, GET, db);
+						updateArchiveSettings(t_clientid, GET, db);
 					}
 					
 					saveClientSettings(s, db, t_clientid);
@@ -484,6 +568,8 @@ ACTION_IMPL(settings)
 				obj.set("overwrite", s.overwrite);
 				obj.set("clientid", t_clientid);
 				ret.set("settings",  obj);
+
+				getArchiveSettings(ret, db, t_clientid);
 				
 				sa=L"clientsettings";
 				ret.set("sa", sa);
@@ -610,6 +696,7 @@ ACTION_IMPL(settings)
 				settings.cleanup_window=GET[L"cleanup_window"];
 
 				updateClientSettings(0, GET, db);
+				updateArchiveSettings(0, GET, db);
 				saveGeneralSettings(settings, db);
 
 				ServerSettings::updateAll();
@@ -644,6 +731,8 @@ ACTION_IMPL(settings)
 				#endif //_WIN32
 
 				ret.set("settings", obj);
+
+				getArchiveSettings(ret, db, t_clientid);
 			}
 		}
 		if(sa==L"mail_save" && helper.getRights("mail_settings")=="all")
@@ -704,7 +793,6 @@ ACTION_IMPL(settings)
 			obj.set("internet_full_file_backups", settings.internet_full_file_backups);
 			ret.set("settings", obj);
 			ret.set("sa", sa);
-			
 		}
 	}
 	else
