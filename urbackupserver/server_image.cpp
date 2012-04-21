@@ -30,6 +30,8 @@
 #include "zero_hash.h"
 #include "server_running.h"
 
+#include <memory.h>
+#include <stdlib.h>
 
 const unsigned int stat_update_skip=20;
 const unsigned int sector_size=512;

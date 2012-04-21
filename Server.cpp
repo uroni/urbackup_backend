@@ -119,6 +119,7 @@ void CServer::setup(void)
 
 void CServer::destroyAllDatabases(void)
 {
+	Log("Destroying all databases...", LL_DEBUG);
 	IScopedLock lock(db_mutex);
 
 	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
@@ -727,6 +728,8 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
 		}
+		
+		Log("Created new database connection for "+database_iter->second.file, LL_DEBUG);
 
 		database_iter->second.tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
 

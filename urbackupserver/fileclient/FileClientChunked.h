@@ -1,4 +1,4 @@
-
+#include "../../Interface/Types.h"
 #include "FileClient.h"
 #include "../../md5.h"
 #include "../../fileservplugin/chunk_settings.h"

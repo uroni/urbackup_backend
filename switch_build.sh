@@ -28,6 +28,8 @@ switch()
 	switch_m_build
 	cd fsimageplugin
 	switch_build
+	cd ../cryptoplugin
+	switch_build
 }
 
 clean_build()

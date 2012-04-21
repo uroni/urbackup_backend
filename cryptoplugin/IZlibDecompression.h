@@ -2,6 +2,7 @@
 #define IZLIBDECOMPRESSION_H
 
 #include <vector>
+#include <string>
 
 #include "../Interface/Object.h"
 

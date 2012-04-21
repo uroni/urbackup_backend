@@ -84,7 +84,9 @@ typedef unsigned __int64 SOCKET;
 typedef __w64 unsigned int SOCKET;
 #endif
 #else
+#ifndef SOCKET
 typedef int SOCKET;
+#endif
 #endif
 
 

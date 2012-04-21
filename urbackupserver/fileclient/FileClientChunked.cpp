@@ -4,6 +4,8 @@
 #include "../../Interface/File.h"
 #include "../../stringtools.h"
 
+#include <memory.h>
+
 extern std::string server_identity;
 
 const unsigned int chunkhash_file_off=sizeof(_i64);

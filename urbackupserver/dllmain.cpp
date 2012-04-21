@@ -58,7 +58,7 @@ SStartupStatus startup_status;
 #include "server_cleanup.h"
 #include "server_get.h"
 #include "server_settings.h"
-#include "..\urbackupcommon\os_functions.h"
+#include "../urbackupcommon/os_functions.h"
 #include "InternetServiceConnector.h"
 
 #include <stdlib.h>
@@ -697,6 +697,7 @@ void upgrade17_18(void)
 
 void upgrade(void)
 {
+	Server->destroyAllDatabases();
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	IQuery *qp=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
 	if(qp==NULL)
@@ -722,12 +723,17 @@ void upgrade(void)
 	{
 		do_upgrade=true;
 		Server->Log("Upgrading...", LL_WARNING);
+		Server->Log("Converting database to journal mode...", LL_WARNING);
 		db->Write("PRAGMA journal_mode=DELETE");
 	}
 	
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
 	do
 	{
+		if(ver<max_v)
+		{
+		    Server->Log("Upgrading database to version "+nconvert(ver+1), LL_WARNING);
+		}
 		db->BeginTransaction();
 		old_v=ver;
 		switch(ver)

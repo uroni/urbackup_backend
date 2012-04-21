@@ -5,6 +5,7 @@ AC_PREREQ(2.61)
 AC_INIT([cryptoplugin], [0.1], [urpc@gmx.de])
 AC_CONFIG_SRCDIR([dllmain.cpp])
 AC_CONFIG_HEADER([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE
 
@@ -18,9 +19,7 @@ AC_PROG_LIBTOOL
 # Checks for header files.
 AC_HEADER_STDC
 
-#MULE_CHECK_CRYPTOPP([8.0], [{}], [echo "Crypto++ not found. Please install."; exit 44;]);
-#MULE_CHECK_CRYPTOPP
-
+MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install."; exit 44;])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

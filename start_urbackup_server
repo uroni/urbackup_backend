@@ -38,7 +38,13 @@ then
 	PLUGIN_BDB=""
 fi
 
-DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --server true --user urbackup"
+PLUGIN_CRYPTO="--plugin $DAEMON_LIBS/liburbackupserver_cryptoplugin.so"
+if ! test -e $DAEMON_LIBS/liburbackupserver_cryptoplugin.so
+then
+	PLUGIN_CRYPTO=""
+fi
+
+DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --user urbackup"
 S_DAEMON="--daemon"
 
 print_help()
@@ -58,7 +64,7 @@ print_help()
 
 print_version()
 {
-	echo "UrBackup Server v0.25.1"
+	echo "UrBackup Server v1.0"
 	echo "Copyright (C) 2011 Martin Raiber"
 	echo "This is free software; see the source for copying conditions. There is NO"
 	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."

@@ -626,15 +626,16 @@ bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::wstring &des
 {
 	IFile *dst=openFileRetry(dest, MODE_WRITE);
 	if(dst==NULL) return false;
+	ObjectScope dst_s(dst);
 
 	if(tf->Size()>0)
 	{
 		IFile *dst_hash=openFileRetry(hash_dest, MODE_WRITE);
 		if(dst_hash==NULL)
 		{
-			Server->destroy(dst);
 			return false;
 		}
+		ObjectScope dst_hash_s(dst_hash);
 
 		std::string r=BackupServerPrepareHash::build_chunk_hashs(tf, dst_hash, this, false, dst);
 		if(r=="")
