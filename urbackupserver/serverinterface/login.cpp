@@ -75,6 +75,7 @@ ACTION_IMPL(login)
 				std::string r_password=Server->GenerateHexMD5(Server->ConvertToUTF8(session->mStr[L"rnd"]+password_md5));
 				if(r_password!=ui_password)
 				{
+					Server->wait(1000);
 					ret.set("error", JSON::Value(2));
 				}
 				else

@@ -92,6 +92,7 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("logs_report_mail");
 	templates.push_back("settings_internet");
 	templates.push_back("settings_archive_row");
+	templates.push_back("status_modify_clients");
 
 	IFile *out=Server->openFile("urbackupserver/www/templates.js", MODE_WRITE);
 	if(out==NULL)

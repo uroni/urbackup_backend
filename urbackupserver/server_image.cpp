@@ -214,6 +214,11 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 	while(Server->getTimeMS()-starttime<=image_timeout)
 	{
+		if(ServerStatus::isBackupStopped(clientname))
+		{
+			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_WARNING);
+			goto do_image_cleanup;
+		}
 		size_t r=cc->Read(&buffer[off], 4096-off, curr_image_recv_timeout);
 		if(r!=0)
 			r+=off;

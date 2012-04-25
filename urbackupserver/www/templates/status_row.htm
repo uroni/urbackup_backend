@@ -1,8 +1,11 @@
 <tr>
 	<td class="tabFLeft">#{name}</td>
 	<td class="tabFLeft">#{lastseen}</td>
-	<td class="tabFLeft">#{lastbackup}</td>
-	<td class="tabFLeft">#{lastbackup_image}</td>
+	<td class="tabFLeft">#{lastbackup}#{start_file_backup}</td>
+	<td class="tabFLeft">#{lastbackup_image}#{start_image_backup}</td>
 	<td class="tabFLeft" style="#{file_style}"><div style="background-color:white">#{file_ok_t}</div></td>
-	<td class="tabFRight" style="#{image_style}"><div style="background-color:white">#{image_ok_t}</div></td>
+	<td class="#{style_pre_last}" style="#{image_style}"><div style="background-color:white">#{image_ok_t}</div></td>
+	#{dtl_c1}
+	<td class="tabFRight" style="text-align: center; margin: auto"><input type="checkbox" name="status_selected" value="#{id}" /></td>
+	#{dtl_c2}
 </tr>

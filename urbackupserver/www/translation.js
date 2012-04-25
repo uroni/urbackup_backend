@@ -96,7 +96,13 @@ translations.en={
 "year": "year",
 "validate_name_archive_every": "Archive every",
 "validate_name_archive_for": "Archive for",
-"forever": "forever"
+"forever": "forever",
+"backup_in_progress": "Backup in progress...",
+"really_remove_clients": "Do you really want to remove these clients? This means all their file and image backups will be deleted!",
+"no_client_selected": "No client has been selected",
+"queued_backup": "Queued backup",
+"starting_backup_failed": "Starting backup failed",
+"trying_to_stop_backup": "Trying to stop backup. This might take a while."
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",

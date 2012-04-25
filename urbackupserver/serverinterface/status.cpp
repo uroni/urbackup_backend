@@ -22,8 +22,28 @@
 #include "../server_settings.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../server_status.h"
+#include "../../Interface/Pipe.h"
+
+#include <algorithm>
 
 extern std::string server_identity;
+
+
+bool start_backup(IPipe *comm_pipe, std::wstring backup_type)
+{
+	if(backup_type==L"full_file")
+		comm_pipe->Write("START BACKUP FULL");
+	else if(backup_type==L"incr_file")
+		comm_pipe->Write("START BACKUP INCR");
+	else if(backup_type==L"full_image")
+		comm_pipe->Write("START IMAGE FULL");
+	else if(backup_type==L"incr_image")
+		comm_pipe->Write("START IMAGE INCR");
+	else
+		return false;
+
+	return true;
+}
 
 ACTION_IMPL(status)
 {
@@ -96,20 +116,40 @@ ACTION_IMPL(status)
 		std::wstring s_remove_client=GET[L"remove_client"];
 		if(!s_remove_client.empty() && helper.getRights("remove_client")=="all")
 		{
-			int remove_client=watoi(s_remove_client);
+			std::vector<std::wstring> remove_client;
+			Tokenize(s_remove_client, remove_client, L",");
 			if(GET.find(L"stop_remove_client")!=GET.end())
 			{
-				IQuery *q=db->Prepare("UPDATE clients SET delete_pending=0 WHERE id=?");
-				q->Bind(remove_client);
-				q->Write();
-				q->Reset();
+				for(size_t i=0;i<remove_client.size();++i)
+				{
+					IQuery *q=db->Prepare("UPDATE clients SET delete_pending=0 WHERE id=?");
+					q->Bind(remove_client[i]);
+					q->Write();
+					q->Reset();
+				}
 			}
 			else
 			{
-				IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=?");
-				q->Bind(remove_client);
-				q->Write();
-				q->Reset();
+				for(size_t i=0;i<remove_client.size();++i)
+				{
+					IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=?");
+					q->Bind(remove_client[i]);
+					q->Write();
+					q->Reset();
+				}
+			}
+		}
+
+		std::wstring s_start_client=GET[L"start_client"];
+		std::vector<int> start_client;
+		std::wstring start_type=GET[L"start_type"];
+		if(!s_start_client.empty() && helper.getRights("start_backup_for_client")=="all")
+		{
+			std::vector<std::wstring> sv_start_client;
+			Tokenize(s_start_client, sv_start_client, L",");
+			for(size_t i=0;i<sv_start_client.size();++i)
+			{
+				start_client.push_back(watoi(sv_start_client[i]));
 			}
 		}
 
@@ -153,12 +193,14 @@ ACTION_IMPL(status)
 			std::string ip="-";
 			int i_status=0;
 			bool online=false;
+			SStatus *curr_status=NULL;
 			for(size_t j=0;j<client_status.size();++j)
 			{
 				if(client_status[j].client==clientname)
 				{
 					if(client_status[j].r_online==true)
 					{
+						curr_status=&client_status[j];
 						online=true;
 					}
 					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
@@ -170,6 +212,26 @@ ACTION_IMPL(status)
 						i_status=12;
 					else
 						i_status=client_status[j].statusaction;
+				}
+			}
+
+			if(std::find(start_client.begin(), start_client.end(), clientid)!=start_client.end())
+			{
+				stat.set("start_type", start_type);
+				if(!online || curr_status->comm_pipe==NULL)
+				{
+					stat.set("start_ok", false);
+				}
+				else
+				{
+					if(start_backup(curr_status->comm_pipe, start_type) )
+					{
+						stat.set("start_ok", true);
+					}
+					else
+					{
+						stat.set("start_ok", false);
+					}
 				}
 			}
 
@@ -265,6 +327,7 @@ ACTION_IMPL(status)
 				extra_clients.add(extra_client);
 			}
 			ret.set("allow_extra_clients", true);
+			ret.set("allow_modify_clients", true);
 		}
 
 		ret.set("status", status);

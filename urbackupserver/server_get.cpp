@@ -279,6 +279,8 @@ void BackupServerGet::operator ()(void)
 
 	sendClientLogdata();
 
+	ServerStatus::setCommPipe(clientname, pipe);
+
 	bool skip_checking=false;
 
 	if( server_settings->getSettings()->startup_backup_delay>0 )
@@ -334,6 +336,8 @@ void BackupServerGet::operator ()(void)
 				if(!internet_no_images )
 					Server->Log("Cannot do image backup because internet_no_images=true", LL_DEBUG);
 			}
+
+			ServerStatus::stopBackup(clientname, false);
 
 			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && !internet_no_full_file && isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) )
 			{
@@ -1140,6 +1144,12 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 
 	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
 	{
+		if(ServerStatus::isBackupStopped(clientname))
+		{
+			r_done=true;
+			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_WARNING);
+			break;
+		}
 		filelist_currpos+=read;
 		for(size_t i=0;i<read;++i)
 		{
@@ -1566,9 +1576,20 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	Server->Log(clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
 	
 	bool c_has_error=false;
+	bool backup_stopped=false;
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
+		if(!backup_stopped)
+		{
+			if(ServerStatus::isBackupStopped(clientname))
+			{
+				r_offline=true;
+				backup_stopped=true;
+				ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_WARNING);
+			}
+		}
+
 		filelist_currpos+=read;
 
 		for(size_t i=0;i<read;++i)

@@ -203,11 +203,11 @@ void InternetServiceConnector::ReceivePackets(void)
 								if(auth_str==auth_text+challenge)
 								{
 									state=ISS_CAPA;
-
 									comm_pipe=is_pipe;
 								}
 								else
 								{
+									Server->wait(1000);
 									errmsg="Auth failed";
 									delete is_pipe;
 									is_pipe=NULL;

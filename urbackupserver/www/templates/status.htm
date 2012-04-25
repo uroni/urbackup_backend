@@ -10,9 +10,13 @@
 	<th style="width: 200px" class="tabHeader">#{tLast file backup}</th>
 	<th style="width: 200px" class="tabHeader">#{tLast image backup}</th>
 	<th style="width: 150px" class="tabHeader">#{tFile backup status}</th>
-	<th style="width: 200px" class="tabHeaderRight">#{tImage backup status}</th>
+	<th style="width: 150px" class="tabHeader">#{tImage backup status}</th>
+	<th style="width: 50px"  class="tabHeaderRight">&nbsp;</th>
 </tr>
 #{rows}
 </table>
-<br><br>
-#{dtl_c1}<a href="javascript: show_status1(true);">#{tShow details}</a>#{dtl_c2}
+<br />
+#{modify_clients}
+#{dtl_c1}
+| <a href="javascript: show_status1(true);">#{tShow details}</a>
+#{dtl_c2}
