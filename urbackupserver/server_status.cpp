@@ -116,6 +116,27 @@ void ServerStatus::setTooManyClients(const std::wstring &clientname, bool b)
 	s->too_many_clients=b;
 }
 
+void ServerStatus::setCommPipe(const std::wstring &clientname, IPipe *p)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->comm_pipe=p;
+}
+
+void ServerStatus::stopBackup(const std::wstring &clientname, bool b)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->stop_backup=b;
+}
+
+bool ServerStatus::isBackupStopped(const std::wstring &clientname)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	return s->stop_backup;
+}
+
 std::vector<SStatus> ServerStatus::getStatus(void)
 {
 	IScopedLock lock(mutex);

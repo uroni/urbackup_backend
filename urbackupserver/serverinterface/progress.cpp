@@ -44,6 +44,41 @@ ACTION_IMPL(progress)
 	if(session!=NULL && session->id==-1) return;
 	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
+		if(GET.find(L"stop_clientid")!=GET.end())
+		{
+			int stop_clientid=watoi(GET[L"stop_clientid"]);
+			std::string stop_rights=helper.getRights("stop_backup");
+			bool stop_ok=false;
+			if(stop_rights=="all")
+			{
+				stop_ok=true;
+			}
+			else
+			{
+				std::vector<std::string> s_cid;
+				Tokenize(stop_rights, s_cid, ",");
+				for(size_t i=0;i<s_cid.size();++i)
+				{
+					if(atoi(s_cid[i].c_str())==stop_clientid)
+					{
+						stop_ok=true;
+					}
+				}
+			}
+
+			if(stop_ok)
+			{
+				IDatabase *db=helper.getDatabase();
+				IQuery *q_get_name=db->Prepare("SELECT name FROM clients WHERE id=?");
+				q_get_name->Bind(stop_clientid);
+				db_results res=q_get_name->Read();
+				if(!res.empty())
+				{
+					ServerStatus::stopBackup(res[0][L"name"], true);
+				}
+			}
+		}
+
 		JSON::Array pg;
 		std::vector<SStatus> clients=ServerStatus::getStatus();
 		for(size_t i=0;i<clients.size();++i)
@@ -61,6 +96,7 @@ ACTION_IMPL(progress)
 			{
 				JSON::Object obj;
 				obj.set("name", JSON::Value(clients[i].client));
+				obj.set("clientid", JSON::Value(clients[i].clientid));
 				obj.set("action", JSON::Value((int)clients[i].statusaction));
 				obj.set("pcdone", JSON::Value(clients[i].pcdone));
 				obj.set("queue", JSON::Value(clients[i].prepare_hashqueuesize+clients[i].hashqueuesize) );

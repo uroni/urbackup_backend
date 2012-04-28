@@ -18,9 +18,13 @@ enum SStatusAction
 	sa_full_image=4
 };
 
+class IPipe;
+
 struct SStatus
 {
-	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1; prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false; wrong_ident=false;too_many_clients=false; }
+	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1;
+		prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false; wrong_ident=false;too_many_clients=false;
+		comm_pipe=NULL; stop_backup=false;}
 	std::wstring client;
 	int clientid;
 	unsigned int starttime;
@@ -36,6 +40,8 @@ struct SStatus
 	unsigned int ip_addr;
 	bool wrong_ident;
 	bool too_many_clients;
+	IPipe *comm_pipe;
+	bool stop_backup;
 };
 
 class ServerStatus
@@ -48,6 +54,9 @@ public:
 	static void setIP(const std::wstring &clientname, unsigned int ip);
 	static void setWrongIdent(const std::wstring &clientname, bool b);
 	static void setTooManyClients(const std::wstring &clientname, bool b);
+	static void setCommPipe(const std::wstring &clientname, IPipe *p);
+	static void stopBackup(const std::wstring &clientname, bool b);
+	static bool isBackupStopped(const std::wstring &clientname);
 
 	static void init_mutex(void);
 
