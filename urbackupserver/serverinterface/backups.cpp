@@ -95,7 +95,7 @@ ACTION_IMPL(backups)
 					}
 				}
 
-				IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
+				IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
 				q->Bind(t_clientid);
 				db_results res=q->Read();
 				JSON::Array backups;
@@ -107,6 +107,16 @@ ACTION_IMPL(backups)
 					obj.set("incremental", watoi(res[i][L"incremental"]));
 					obj.set("size_bytes", res[i][L"size_bytes"]);
 					obj.set("archived", res[i][L"archived"]);
+					_i64 archive_timeout=0;
+					if(!res[i][L"archive_timeout"].empty())
+					{
+						archive_timeout=watoi64(res[i][L"archive_timeout"]);
+						if(archive_timeout!=0)
+						{
+							archive_timeout-=Server->getTimeSeconds();
+						}
+					}
+					obj.set("archive_timeout", archive_timeout);
 					backups.add(obj);
 				}
 				ret.set("backups", backups);
@@ -187,7 +197,7 @@ ACTION_IMPL(backups)
 						{
 							Server->setContentType(tid, "application/octet-stream");
 							Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(ExtractFileName(path))+"\"");
-							IFile *in=Server->openFile(os_file_prefix()+currdir, MODE_READ);
+							IFile *in=Server->openFile(os_file_prefix(currdir), MODE_READ);
 							if(in!=NULL)
 							{
 								Server->addHeader(tid, "Content-Length: "+nconvert(in->Size()) );
@@ -204,7 +214,7 @@ ACTION_IMPL(backups)
 							}
 						}
 
-						std::vector<SFile> tfiles=getFiles(os_file_prefix()+currdir);
+						std::vector<SFile> tfiles=getFiles(os_file_prefix(currdir));
 
 						JSON::Array files;
 						for(size_t i=0;i<tfiles.size();++i)

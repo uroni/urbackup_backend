@@ -3,6 +3,8 @@
 #include "../Interface/Database.h"
 #include "database.h"
 #include "../stringtools.h"
+#include "../urbackupcommon/os_functions.h"
+#include <algorithm>
 
 void ServerAutomaticArchive::operator()(void)
 {
@@ -67,7 +69,7 @@ void ServerAutomaticArchive::archiveBackups(void)
 			copyArchiveSettings(clientid);
 		}
 
-		IQuery *q_get_archived=db->Prepare("SELECT id, next_archival, interval, length, backup_types FROM settings_db.automatic_archival WHERE clientid=?");
+		IQuery *q_get_archived=db->Prepare("SELECT id, next_archival, interval, length, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=?");
 		q_get_archived->Bind(clientid);
 		db_results res_archived=q_get_archived->Read();
 
@@ -75,9 +77,11 @@ void ServerAutomaticArchive::archiveBackups(void)
 		for(size_t j=0;j<res_archived.size();++j)
 		{
 			_i64 next_archival=watoi64(res_archived[j][L"next_archival"]);
-			
+
+			std::wstring &archive_window=res_archived[j][L"archive_window"];
+						
 			_i64 curr_time=Server->getTimeSeconds();
-			if(next_archival<curr_time)
+			if(next_archival<curr_time && (archive_window.empty() || isInArchiveWindow(archive_window)) )
 			{
 				int backupid=getNonArchivedFileBackup(watoi(res_archived[j][L"backup_types"]), clientid);
 				if(backupid!=0)
@@ -169,7 +173,7 @@ std::wstring ServerAutomaticArchive::getBackupType(int backup_types)
 
 void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 {
-	db_results res_all=db->Read("SELECT id, next_archival, interval, interval_unit, length, length_unit, backup_types FROM settings_db.automatic_archival WHERE clientid=0");
+	db_results res_all=db->Read("SELECT id, next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=0");
 
 
 	std::vector<std::wstring> next_archivals;
@@ -179,14 +183,16 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 		std::wstring &length=res_all[i][L"length"];
 		std::wstring &backup_types=res_all[i][L"backup_types"];
 		std::wstring &id=res_all[i][L"id"];
+		std::wstring &archive_window=res_all[i][L"archive_window"];
 		std::wstring next_archival=res_all[i][L"next_archival"];
 
-		IQuery *q_next=db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND interval=? AND length=? AND backup_types=?");
-		IQuery *q_num=db->Prepare("SELECT count(*) AS num FROM settings_db.automatic_archival WHERE clientid=0 AND interval=? AND length=? AND backup_types=? AND id<?");
+		IQuery *q_next=db->Prepare("SELECT next_archival FROM settings_db.automatic_archival WHERE clientid=? AND interval=? AND length=? AND backup_types=? AND archive_window=?");
+		IQuery *q_num=db->Prepare("SELECT count(*) AS num FROM settings_db.automatic_archival WHERE clientid=0 AND interval=? AND length=? AND backup_types=? AND archive_window=? AND id<?");
 
 		q_num->Bind(interval);
 		q_num->Bind(length);
 		q_num->Bind(backup_types);
+		q_num->Bind(archive_window);
 		q_num->Bind(id);
 		db_results res_num=q_num->Read();
 		int num=watoi(res_num[0][L"num"]);
@@ -195,12 +201,18 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 		q_next->Bind(interval);
 		q_next->Bind(length);
 		q_next->Bind(backup_types);
+		q_next->Bind(archive_window);
 
 
 		db_results res_next=q_next->Read();
 		if(num<res_next.size())
 		{
 			next_archival=res_next[num][L"next_archival"];
+			_i64 na=watoi64(next_archival);
+			if(na==0)
+			{
+				next_archival=convert(Server->getTimeSeconds());
+			}
 		}
 
 		next_archivals.push_back(next_archival);
@@ -208,8 +220,8 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 
 
 	IQuery *q_del_all=db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid=?");
-	IQuery *q_insert_all=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid)"
-									"VALUES (?,?,?,?,?,?,?)");
+	IQuery *q_insert_all=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window)"
+									"VALUES (?,?,?,?,?,?,?,?)");
 
 	q_del_all->Bind(clientid);
 	q_del_all->Write();
@@ -219,6 +231,7 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 		std::wstring &interval=res_all[i][L"interval"];
 		std::wstring &length=res_all[i][L"length"];
 		std::wstring &backup_types=res_all[i][L"backup_types"];		
+		std::wstring &archive_window=res_all[i][L"archive_window"];
 
 		q_insert_all->Bind(next_archivals[i]);
 		q_insert_all->Bind(interval);
@@ -227,6 +240,7 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 		q_insert_all->Bind(res_all[i][L"length_unit"]);
 		q_insert_all->Bind(backup_types);
 		q_insert_all->Bind(clientid);
+		q_insert_all->Bind(archive_window);		
 		q_insert_all->Write();
 		q_insert_all->Reset();
 	}	
@@ -234,4 +248,66 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 	IQuery *q_insert_copied=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('archive_settings_copied','true',?)");
 	q_insert_copied->Bind(clientid);
 	q_insert_copied->Write();
+}
+
+bool ServerAutomaticArchive::isInArchiveWindow(const std::wstring &window_def)
+{
+	std::vector<std::wstring> toks;
+	Tokenize(window_def, toks, L";");
+	bool matched_dom=false;
+	for(size_t i=0;i<toks.size();++i)
+	{
+		if(trim(toks[i])==L"*")
+			continue;
+
+		std::vector<std::wstring> stoks;
+		Tokenize(toks[i], stoks, L",");
+
+		std::vector<int> nums;
+		for(size_t j=0;j<stoks.size();++j)
+		{
+			int n=watoi(stoks[j]);
+			if(i==3)//dom
+			{
+				if(n==7) n=0;
+			}
+			nums.push_back(n);
+		}
+
+		int ref_num=-1;
+		if(i==0) // hour
+		{
+			ref_num=atoi(os_strftime("%H").c_str());
+		}
+		else if(i==1) // dom
+		{
+			ref_num=atoi(os_strftime("%d").c_str());
+		}
+		else if(i==2) // mon
+		{
+			ref_num=atoi(os_strftime("%m").c_str());
+		}
+		else if(i==3) // dom
+		{
+			ref_num=atoi(os_strftime("%w").c_str());
+			if(ref_num==7) ref_num=0;
+		}
+
+		if( std::find(nums.begin(), nums.end(), ref_num)==nums.end() )
+		{
+			if(i!=1)
+			{
+				if(i==3 && matched_dom==true)
+					continue;
+
+				return false;
+			}
+		}
+		else
+		{
+			if(i==1) matched_dom=true;
+		}
+	}
+
+	return true;
 }

@@ -94,6 +94,9 @@ translations.en={
 "week": "week",
 "month": "month",
 "year": "year",
+"years": "years",
+"min": "minute",
+"mins": "minutes",
 "validate_name_archive_every": "Archive every",
 "validate_name_archive_for": "Archive for",
 "forever": "forever",
@@ -102,7 +105,10 @@ translations.en={
 "no_client_selected": "No client has been selected",
 "queued_backup": "Queued backup",
 "starting_backup_failed": "Starting backup failed",
-"trying_to_stop_backup": "Trying to stop backup. This might take a while."
+"trying_to_stop_backup": "Trying to stop backup. This might take a while.",
+"unarchived_in": "Will stop being archived in",
+"validate_err_notregexp_archive_window": "Format for archive window wrong",
+"wait_for_archive_window": "Waiting for window/next run"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",

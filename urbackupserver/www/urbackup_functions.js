@@ -433,6 +433,61 @@ function format_size(s)
 	return s+" "+suffix;
 }
 
+function format_time_seconds(t, s)
+{
+	var ret="";
+	var x_min=60;
+	var x_hour=x_min*60;
+	var x_day=x_hour*24;
+	var x_week=x_day*7;
+	var x_month=x_week*4.345;
+	var x_year=x_month*12;
+	var x_tp={year: x_year, month: x_month, week: x_week, day: x_day, hour: x_hour, min: x_min};
+	
+	var neg=false;
+	if(t<0)
+	{
+		neg=true;
+		t*=-1;
+	}
+
+	for(x in x_tp)
+	{
+		var y=Math.floor(t/x_tp[x]);
+		if(y>0)
+		{
+			if(ret!="")
+				ret+=" ";
+				
+			if(neg)
+				ret+="-";
+				
+			ret+=y;
+			var c_s=(s==true);
+			if(c_s)
+			{
+				if(x=="hour") ret+="h";
+				else if(x=="min") ret+="m";
+				else c_s=false;
+			}
+			
+			if(!c_s)
+			{
+				ret+=" ";
+				if(y>1)
+					ret+=trans[x+"s"];
+				else
+					ret+=trans[x];
+			}
+			
+				
+			t-=x_tp[x]*y;
+		}
+	}
+	
+	return ret;
+}
+
 function tmpl_replace(data, key, content)
 {
 	var idx1=data.indexOf("<!--"+key+"{-->");

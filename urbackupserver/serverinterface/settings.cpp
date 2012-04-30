@@ -350,18 +350,26 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 	IQuery *q=db->Prepare("DELETE FROM settings_db.automatic_archival WHERE clientid=?");
 	q->Bind(clientid);
 	q->Write();
-	q=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid) VALUES (?, ?, ?, ?, ?, ?, ?)");
+	q=db->Prepare("INSERT INTO settings_db.automatic_archival (next_archival, interval, interval_unit, length, length_unit, backup_types, clientid, archive_window) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
 	while(GET.find(L"archive_every_"+convert(i))!=GET.end())
 	{
-		int archive_next=watoi(GET[L"archive_next_"+convert(i)]);
+		_i64 archive_next=watoi64(GET[L"archive_next_"+convert(i)]);
 		int archive_every=watoi(GET[L"archive_every_"+convert(i)]);
 		int archive_for=watoi(GET[L"archive_for_"+convert(i)]);
 		std::wstring backup_type_str=GET[L"archive_backup_type_"+convert(i)];
 		int backup_types=ServerAutomaticArchive::getBackupTypes(backup_type_str);
 
+
 		if(archive_next<0)
 		{
-			q->Bind(Server->getTimeSeconds());
+			if(clientid==0)
+			{
+				q->Bind(0);
+			}
+			else
+			{
+				q->Bind(Server->getTimeSeconds());
+			}
 		}
 		else
 		{
@@ -373,6 +381,7 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 		q->Bind(GET[L"archive_for_unit_"+convert(i)]);
 		q->Bind(backup_types);
 		q->Bind(clientid);
+		q->Bind(GET[L"archive_window_"+convert(i)]);
 		q->Write();
 		q->Reset();
 
@@ -414,6 +423,8 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 	JSON::Array arr;
 	for(size_t i=0;i<res.size();++i)
 	{
+		_i64 archive_next=watoi64(res[i][L"next_archival"]);
+
 		JSON::Object ca;
 		ca.set("next_archival", res[i][L"next_archival"]);
 		ca.set("archive_every", watoi(res[i][L"interval"]));
@@ -421,6 +432,18 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 		ca.set("archive_for", watoi(res[i][L"length"]));
 		ca.set("archive_for_unit", res[i][L"length_unit"]);
 		ca.set("archive_backup_type", ServerAutomaticArchive::getBackupType(watoi(res[i][L"backup_types"])));
+		ca.set("archive_window", res[i][L"archive_window"]);
+
+		if(archive_next>0 && clientid!=0)
+		{
+			_i64 tl=archive_next-(_i64)Server->getTimeSeconds();
+			ca.set("archive_timeleft", tl);
+		}
+		else
+		{
+			ca.set("archive_timeleft", "-");
+		}
+
 		arr.add(ca);
 	}
 	obj.set("archive_settings", arr);

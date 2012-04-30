@@ -751,18 +751,28 @@ function show_backups2(data)
 				obj.incr=trans["yes"];
 			else
 				obj.incr=trans["no"];
+				
+			var link_title="";
+			var stopwatch_img="";
+			
+			if(obj.archive_timeout!=0)
+			{
+				link_title='title="'+trans["unarchived_in"]+' '+format_time_seconds(obj.archive_timeout)+'"';
+				stopwatch_img='<img src="stopwatch.png" />';
+			}
+			
 			
 			if(data.can_archive)
 			{
 				if( obj.archived>0 )
-					obj.archived='<a href="#" onclick="unarchive_single('+obj.id+', '+data.clientid+'); return false;">☑</a>';
+					obj.archived='<span '+link_title+'><a href="#" onclick="unarchive_single('+obj.id+', '+data.clientid+'); return false;">☑</a>'+stopwatch_img+'</span>';
 				else
 					obj.archived='<a href="#" onclick="archive_single('+obj.id+', '+data.clientid+'); return false;">☐</a>';
 			}
 			else
 			{
 				if( obj.archived>0 )
-					obj.archived='☑';
+					obj.archived='<span '+link_title+'>☑'+stopwatch_img+'</span>';
 				else
 					obj.archived='☐';
 			}
@@ -1067,6 +1077,9 @@ function show_settings2(data)
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
 			
+			data.settings.global_settings_start="";
+			data.settings.global_settings_end="";
+			
 			data.settings.client_plural="s";
 			
 			data.settings.ONLY_WIN32_BEGIN=unescapeHTML(data.settings.ONLY_WIN32_BEGIN);
@@ -1103,6 +1116,8 @@ function show_settings2(data)
 			
 			data.settings.no_compname_start="";
 			data.settings.no_compname_end="";
+			data.settings.global_settings_start="<!--";
+			data.settings.global_settings_end="-->";
 						
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
 			ndata+=tmpls.settings_user.evaluate(data.settings);
@@ -1249,7 +1264,7 @@ function show_settings2(data)
 		{
 			var obj=data.archive_settings[i];
 			addArchiveItemInt(getTimelengthUnit(obj.archive_every, obj.archive_every_unit), obj.archive_every_unit,
-					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival);
+					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_timeleft);
 		}
 	}
 }
@@ -1303,7 +1318,7 @@ function validateCommonSettings()
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
 	if(!validate_text_regex([{ id: "backup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return false;
-	if(!validate_text_regex([{ id: "image_letters", regexp: /([A-Za-z][;,])*/i }] ) ) return false;
+	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,])*$/i }] ) ) return false;
 	return true;
 }
 function getArchivePars()
@@ -1317,6 +1332,7 @@ function getArchivePars()
 		pars+=getPar("archive_for_"+i);
 		pars+=getPar("archive_for_unit_"+i);
 		pars+=getPar("archive_backup_type_"+i);
+		pars+=getPar("archive_window_"+i);
 	}
 	return pars;
 }
@@ -1413,6 +1429,7 @@ function updateUserOverwrite(clientid)
 	I('archive_add').disabled=!checked;
 	I('archive_every').disabled=!checked;
 	I('archive_for').disabled=!checked;
+	I('archive_window').disabled=!checked;
 	I('archive_every_unit').disabled=!checked;
 	I('archive_for_unit').disabled=!checked;
 	I('archive_backup_type').disabled=!checked;
@@ -2214,8 +2231,9 @@ function archive_single(backupid, clientid)
 }
 function addArchiveItem()
 {
-	validate_text_nonempty(["archive_every", "archive_for"]);
-	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1);
+	if(!validate_text_nonempty(["archive_every", "archive_for"])) return;
+	if(!validate_text_regex([{id: "archive_window", regexp: /^((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*)$/i } ]) ) return;
+	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, "-");
 }
 function getTimelengthSeconds(tl, unit)
 {
@@ -2299,7 +2317,7 @@ function getArchiveTable()
 	}
 	return archive_table;
 }
-function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival)
+function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival, archive_window, archive_timeleft)
 {
 	archive_every_i=getTimelengthSeconds(archive_every, archive_every_unit);
 	archive_for_i=getTimelengthSeconds(archive_for, archive_for_unit);
@@ -2312,9 +2330,32 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 	
 	var new_item=document.createElement('tr');
 	new_item.id="archive_"+g.archive_item_id;
-	new_item.innerHTML=tmpls.settings_archive_row.evaluate( { id: g.archive_item_id, archive_next: next_archival, archive_every_i: archive_every_i, archive_every: archive_every, archive_every_unit: archive_every_unit,
+	
+	var row_vals={ id: g.archive_item_id, archive_next: next_archival, archive_every_i: archive_every_i, archive_every: archive_every, archive_every_unit: archive_every_unit,
 			archive_for_i: archive_for_i, archive_for: archive_for, archive_for_unit: archive_for_unit,
-			archive_backup_type: archive_backup_type, archive_backup_type_str: backupTypeStr(archive_backup_type) } );
+			archive_backup_type: archive_backup_type, archive_backup_type_str: backupTypeStr(archive_backup_type), archive_window: archive_window };
+			
+	row_vals.next_start="<!--";
+	row_vals.next_end="-->";
+	
+	if(archive_timeleft!="-")
+	{
+		if(archive_timeleft<0)
+		{
+			archive_timeleft=trans["wait_for_archive_window"];
+		}
+		else
+		{
+			archive_timeleft=format_time_seconds(archive_timeleft, true);
+		}
+		
+		row_vals.next_start="";
+		row_vals.next_end="";
+		row_vals.archive_timeleft=archive_timeleft;
+		new_item.title=archive_timeleft;
+	}
+	
+	new_item.innerHTML=tmpls.settings_archive_row.evaluate( row_vals );
 	
 	var archive_table=getArchiveTable();
 	
@@ -2341,7 +2382,7 @@ function replaceArchiveId(old_id, new_id)
 	var item=I('archive_'+old_id);
 	item.innerHTML=tmpls.settings_archive_row.evaluate( { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
 			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
-			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value) } );
+			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value } );
 }
 function deleteArchiveItem(id)
 {
