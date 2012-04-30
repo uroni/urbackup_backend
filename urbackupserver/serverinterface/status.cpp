@@ -69,11 +69,11 @@ ACTION_IMPL(status)
 	{
 		{
 			ServerSettings settings(db);
-			if(!os_directory_exists(os_file_prefix()+settings.getSettings()->backupfolder) || !os_directory_exists(os_file_prefix()+settings.getSettings()->backupfolder_uncompr) || settings.getSettings()->backupfolder.empty())
+			if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)) || !os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder_uncompr)) || settings.getSettings()->backupfolder.empty())
 			{
 				ret.set("dir_error", true);
 			}
-			else if(!os_directory_exists(os_file_prefix()+settings.getSettings()->backupfolder+os_file_sep()+L"clients") && !os_create_dir(os_file_prefix()+settings.getSettings()->backupfolder+os_file_sep()+L"clients") )
+			else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+L"clients")) && !os_create_dir(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+L"clients")) )
 			{
 				ret.set("dir_error" ,true);
 			}

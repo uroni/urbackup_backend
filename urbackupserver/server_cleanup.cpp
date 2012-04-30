@@ -202,7 +202,7 @@ int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *sett
 	if(minspace!=-1)
 	{
 		std::wstring path=settings->getSettings()->backupfolder;
-		int64 available_space=os_free_space(os_file_prefix()+path);
+		int64 available_space=os_free_space(os_file_prefix(path));
 		if(available_space==-1)
 		{
 			Server->Log(L"Error getting free space for path \""+path+L"\"", LL_ERROR);
@@ -702,14 +702,14 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	}
 
 	std::wstring path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath;
-	bool b=os_remove_nonempty_dir(os_file_prefix()+path);
+	bool b=os_remove_nonempty_dir(os_file_prefix(path));
 	bool del=true;
 	bool err=false;
 	if(!b)
 	{
-		if(!os_directory_exists(os_file_prefix()+path))
+		if(!os_directory_exists(os_file_prefix(path)))
 		{
-			if(os_directory_exists(os_file_prefix()+backupfolder))
+			if(os_directory_exists(os_file_prefix(backupfolder)))
 			{
 			    del=true;
 			}
@@ -723,7 +723,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 			err=true;
 		}
 	}
-	if(os_directory_exists(os_file_prefix()+path) )
+	if(os_directory_exists(os_file_prefix(path)) )
 	{
 		del=false;
 		Server->Log(L"Directory still exists. Deleting backup failed. Path: \""+path+L"\"", LL_ERROR);
