@@ -55,6 +55,13 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 {
 	CURL *curl=curl_easy_init();
 
+	std::string mailfrom=server.mailfrom;
+
+	if(mailfrom.find("<")==std::string::npos)
+	{
+		mailfrom="<"+mailfrom+">";
+	}
+
 	curl_easy_setopt(curl, CURLOPT_URL, ("smtp://"+server.servername+":"+nconvert(server.port)).c_str());
 	curl_easy_setopt(curl, CURLOPT_USE_SSL, server.ssl_only?CURLUSESSL_ALL:CURLUSESSL_TRY);
 	if(!server.check_certificate)
@@ -67,7 +74,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	    curl_easy_setopt(curl, CURLOPT_USERNAME, server.username.c_str());
 	    curl_easy_setopt(curl, CURLOPT_PASSWORD, server.password.c_str());
 	}
-	curl_easy_setopt(curl, CURLOPT_MAIL_FROM, server.mailfrom.c_str());
+	curl_easy_setopt(curl, CURLOPT_MAIL_FROM, mailfrom.c_str());
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
 
 	curl_slist * recpt=NULL;
@@ -79,7 +86,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
 	RDUserS rd;
 	std::string header;
-	header+="From: "+server.mailfrom+"\n"
+	header+="From: "+mailfrom+"\n"
 		"Subject: "+subject+"\n"
 		"Date: "+format_time("%a, %d %b %Y %H:%M:%S %z")+"\n"
 		"\n";
