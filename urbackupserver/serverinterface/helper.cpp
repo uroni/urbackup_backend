@@ -22,6 +22,8 @@
 #include "../../stringtools.h"
 #include "../database.h"
 
+#include <stdlib.h>
+
 Helper::Helper(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 {
 	session=NULL;

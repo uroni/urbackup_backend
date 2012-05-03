@@ -2142,8 +2142,6 @@ function updateLogsParam()
 }
 function removeClient(clientid)
 {
-	if(!startLoading()) return;
-	
 	var b=confirm(trans["really_remove_client"]);
 	if(b)
 	{
@@ -2152,8 +2150,6 @@ function removeClient(clientid)
 }
 function removeClients()
 {
-	if(!startLoading()) return;
-	
 	var cbs=document.getElementsByName("status_selected");
 	var ids=[];
 	for(var i=0;i<cbs.length;++i)
@@ -2165,7 +2161,7 @@ function removeClients()
 	}
 	if(ids.length==1)
 	{
-		removeClient(cbs[0].value);
+		removeClient(ids[0]);
 		return;
 	}
 	else if(ids.length>0)
@@ -2199,7 +2195,6 @@ function selectNoClients()
 }
 function stopRemove(clientid)
 {
-	if(!startLoading()) return;
 	show_status1(g.status_detail, "", false, [clientid], true);
 }
 function unarchive_single(backupid, clientid)
