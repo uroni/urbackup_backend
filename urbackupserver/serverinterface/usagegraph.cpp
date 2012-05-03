@@ -166,9 +166,10 @@ ACTION_IMPL(usagegraph)
 		bi.sizey=500;
 		bi.barwidth=1.f;
 
+		helper.update(tid, &GET, &PARAMS);
+
 		if(pychart_fak!=NULL)
 		{
-			helper.update(tid, &GET, &PARAMS);
 			session=helper.getSession();
 			IPychart *pychart=pychart_fak->getPychart();
 			unsigned int id=pychart->drawBar(bi);
