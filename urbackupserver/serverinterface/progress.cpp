@@ -92,15 +92,18 @@ ACTION_IMPL(progress)
 					break;
 				}
 			}
-			if(clients[i].r_online && clients[i].statusaction!=sa_none && clients[i].action_done==false && (rights=="all" || found==true) )
+			if(clients[i].statusaction!=sa_none && clients[i].action_done==false && (rights=="all" || found==true) )
 			{
-				JSON::Object obj;
-				obj.set("name", JSON::Value(clients[i].client));
-				obj.set("clientid", JSON::Value(clients[i].clientid));
-				obj.set("action", JSON::Value((int)clients[i].statusaction));
-				obj.set("pcdone", JSON::Value(clients[i].pcdone));
-				obj.set("queue", JSON::Value(clients[i].prepare_hashqueuesize+clients[i].hashqueuesize) );
-				pg.add(obj);
+				if(clients[i].r_online || clients[i].statusaction==sa_incr_image || clients[i].statusaction==sa_full_image)
+				{
+					JSON::Object obj;
+					obj.set("name", JSON::Value(clients[i].client));
+					obj.set("clientid", JSON::Value(clients[i].clientid));
+					obj.set("action", JSON::Value((int)clients[i].statusaction));
+					obj.set("pcdone", JSON::Value(clients[i].pcdone));
+					obj.set("queue", JSON::Value(clients[i].prepare_hashqueuesize+clients[i].hashqueuesize) );
+					pg.add(obj);
+				}
 			}
 		}
 		ret.set("progress", pg);
