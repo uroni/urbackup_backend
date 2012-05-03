@@ -386,7 +386,9 @@ int ServerSettings::parseDayOfWeek(std::string dow)
 {
 	if(dow.size()==1 && isnumber(dow[0])==true)
 	{
-		return atoi(dow.c_str());
+		int r=atoi(dow.c_str());
+		if(r==0) r=7;
+		return r;
 	}
 	else
 	{

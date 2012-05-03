@@ -112,7 +112,6 @@ private:
 	void resetEntryState(void);
 	bool getNextEntry(char ch, SFile &data);
 	static std::string remLeadingZeros(std::string t);
-	static std::string strftimeInt(std::string fs);
 	bool updateCapabilities(void);
 
 

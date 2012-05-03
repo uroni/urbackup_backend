@@ -162,7 +162,7 @@ void ServerVHDWriter::checkFreeSpaceAndCleanup(void)
 		IScopedLock lock(vhd_mutex);
 		p=ExtractFilePath(vhd->getFilenameW());
 	}
-	int64 fs=os_free_space(os_file_prefix()+p);
+	int64 fs=os_free_space(os_file_prefix(p));
 	if(fs!=-1 && fs <= free_space_lim )
 	{
 		Server->Log("Not enough free space. Waiting for cleanup...");
@@ -182,7 +182,7 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 	if(!b)
 	{
 		std::wstring p=ExtractFilePath(vhd->getFilenameW());
-		int64 fs=os_free_space(os_file_prefix()+p);
+		int64 fs=os_free_space(os_file_prefix(p));
 		if(fs!=-1 && fs <= free_space_lim )
 		{
 			Server->Log("Not enough free space. Waiting for cleanup...");

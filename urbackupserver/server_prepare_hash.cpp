@@ -100,11 +100,11 @@ void BackupServerPrepareHash::operator()(void)
 				rd.getStr(&old_file_fn);
 			}
 
-			IFile *tf=Server->openFile(os_file_prefix()+Server->ConvertToUnicode(temp_fn), MODE_READ);
+			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
 			IFile *old_file=NULL;
 			if(diff_file)
 			{
-				old_file=Server->openFile(os_file_prefix()+Server->ConvertToUnicode(old_file_fn), MODE_READ);
+				old_file=Server->openFile(os_file_prefix(Server->ConvertToUnicode(old_file_fn)), MODE_READ);
 				if(old_file==NULL)
 				{
 					ServerLogger::Log(clientid, "Error opening file \""+old_file_fn+"\" from pipe for reading. File: old_file", LL_ERROR);

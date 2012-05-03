@@ -36,9 +36,9 @@
 #include "server_cleanup.h"
 #include "treediff/TreeDiff.h"
 #include "../urlplugin/IUrlFactory.h"
-#include <time.h>
 #include <algorithm>
 #include <memory.h>
+#include <time.h>
 
 extern IUrlFactory *url_fak;
 extern std::string server_identity;
@@ -223,7 +223,7 @@ void BackupServerGet::operator ()(void)
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	if(!os_create_dir(os_file_prefix()+backupfolder+os_file_sep()+clientname) && !os_directory_exists(os_file_prefix()+backupfolder+os_file_sep()+clientname) )
+	if(!os_create_dir(os_file_prefix(backupfolder+os_file_sep()+clientname)) && !os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+clientname)) )
 	{
 		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
 		pipe->Write("ok");
@@ -1066,7 +1066,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 
 bool BackupServerGet::doFullBackup(bool with_hashes)
 {
-	int64 free_space=os_free_space(os_file_prefix()+server_settings->getSettings()->backupfolder);
+	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
 	{
 		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
@@ -1185,13 +1185,13 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!os_create_dir(os_file_prefix()+backuppath+os_curr_path))
+						if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
 						}
-						if(with_hashes && !os_create_dir(os_file_prefix()+backuppath_hashes+os_curr_path))
+						if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+os_curr_path)))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
@@ -1241,17 +1241,17 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	{
 		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 		std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
-		Server->deleteFile(os_file_prefix()+currdir);
-		os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+		Server->deleteFile(os_file_prefix(currdir));
+		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 		currdir=backupfolder+os_file_sep()+L"clients";
-		if(!os_create_dir(os_file_prefix()+currdir) && !os_directory_exists(os_file_prefix()+currdir))
+		if(!os_create_dir(os_file_prefix(currdir)) && !os_directory_exists(os_file_prefix(currdir)))
 		{
 			Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 		}
 		currdir+=os_file_sep()+clientname;
-		Server->deleteFile(os_file_prefix()+currdir);
-		os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+		Server->deleteFile(os_file_prefix(currdir));
+		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 	}
 	running_updater->stop();
 	updateRunning(false);
@@ -1278,7 +1278,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	std::wstring hashpath_old=last_backuppath+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn);
 	std::wstring filepath_old=last_backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn);
 
-	IFile *file_old=Server->openFile(os_file_prefix()+filepath_old, MODE_READ);
+	IFile *file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
 
 	if(file_old==NULL)
 	{
@@ -1294,7 +1294,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		cfn=widen(server_token)+L"|"+cfn;
 	}
 
-	IFile *hashfile_old=Server->openFile(os_file_prefix()+hashpath_old, MODE_READ);
+	IFile *hashfile_old=Server->openFile(os_file_prefix(hashpath_old), MODE_READ);
 	
 	bool delete_hashfile=false;
 
@@ -1452,7 +1452,7 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 
 bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 {
-	int64 free_space=os_free_space(os_file_prefix()+server_settings->getSettings()->backupfolder);
+	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
 	{
 		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
@@ -1660,13 +1660,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!os_create_dir(os_file_prefix()+backuppath+os_curr_path))
+						if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
 						}
-						if(with_hashes && !os_create_dir(os_file_prefix()+backuppath_hashes+os_curr_path))
+						if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+os_curr_path)))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
@@ -1732,7 +1732,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 					{			
 						bool f_ok=true;
 						std::wstring srcpath=last_backuppath+os_curr_path;
-						bool b=os_create_hardlink(os_file_prefix()+backuppath+os_curr_path, os_file_prefix()+srcpath);
+						bool b=os_create_hardlink(os_file_prefix(backuppath+os_curr_path), os_file_prefix(srcpath));
 						if(!b)
 						{
 							if(link_logcnt<5)
@@ -1770,7 +1770,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 						}
 						else if(with_hashes)
 						{
-							os_create_hardlink(os_file_prefix()+backuppath_hashes+os_curr_path, os_file_prefix()+last_backuppath_hashes+os_curr_path);
+							os_create_hardlink(os_file_prefix(backuppath_hashes+os_curr_path), os_file_prefix(last_backuppath_hashes+os_curr_path));
 						}
 
 						if(f_ok)
@@ -1837,19 +1837,19 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
-			Server->deleteFile(os_file_prefix()+currdir);
-			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+			Server->deleteFile(os_file_prefix(currdir));
+			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 			Server->Log("Creating symbolic links. -2", LL_DEBUG);
 
 			currdir=backupfolder+os_file_sep()+L"clients";
-			if(!os_create_dir(os_file_prefix()+currdir) && !os_directory_exists(os_file_prefix()+currdir))
+			if(!os_create_dir(os_file_prefix(currdir)) && !os_directory_exists(os_file_prefix(currdir)))
 			{
 				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
 			currdir+=os_file_sep()+clientname;
-			Server->deleteFile(os_file_prefix()+currdir);
-			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+			Server->deleteFile(os_file_prefix(currdir));
+			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 			Server->Log("Symbolic links created.", LL_DEBUG);
 
@@ -1938,7 +1938,7 @@ bool BackupServerGet::constructBackupPath(bool with_hashes)
 	else
 		backuppath_hashes.clear();
 
-	return os_create_dir(os_file_prefix()+backuppath) && (!with_hashes || os_create_dir(backuppath_hashes));	
+	return os_create_dir(os_file_prefix(backuppath)) && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));	
 }
 
 std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
@@ -2674,24 +2674,6 @@ sockaddr_in BackupServerGet::getClientaddr(void)
 	return clientaddr;
 }
 
-std::string BackupServerGet::strftimeInt(std::string fs)
-{
-	time_t rawtime;		
-	char buffer [100];
-	time ( &rawtime );
-#ifdef _WIN32
-	struct tm  timeinfo;
-	localtime_s(&timeinfo, &rawtime);
-	strftime (buffer,100,fs.c_str(),&timeinfo);
-#else
-	struct tm *timeinfo;
-	timeinfo = localtime ( &rawtime );
-	strftime (buffer,100,fs.c_str(),timeinfo);
-#endif	
-	std::string r(buffer);
-	return r;
-}
-
 std::string BackupServerGet::remLeadingZeros(std::string t)
 {
 	std::string r;
@@ -2712,10 +2694,10 @@ std::string BackupServerGet::remLeadingZeros(std::string t)
 bool BackupServerGet::isInBackupWindow(std::vector<STimeSpan> bw)
 {
 	if(bw.empty()) return true;
-	int dow=atoi(strftimeInt("%w").c_str());
+	int dow=atoi(os_strftime("%w").c_str());
 	if(dow==0) dow=7;
 	
-	float hm=(float)atoi(remLeadingZeros(strftimeInt("%H")).c_str())+(float)atoi(remLeadingZeros(strftimeInt("%M")).c_str())*(1.f/60.f);
+	float hm=(float)atoi(remLeadingZeros(os_strftime("%H")).c_str())+(float)atoi(remLeadingZeros(os_strftime("%M")).c_str())*(1.f/60.f);
 	for(size_t i=0;i<bw.size();++i)
 	{
 		if(bw[i].dayofweek==dow)

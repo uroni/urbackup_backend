@@ -147,7 +147,7 @@ void ServerUpdateStats::update_images(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		std::wstring &fn=res[i][L"path"];
-		IFile * file=Server->openFile(os_file_prefix()+fn, MODE_READ);
+		IFile * file=Server->openFile(os_file_prefix(fn), MODE_READ);
 		if(file==NULL)
 		{
 			bool b=repairImagePath(res[i]);
@@ -696,7 +696,7 @@ bool ServerUpdateStats::repairImagePath(str_map img)
 
 		std::wstring new_name=settings.getSettings()->backupfolder+os_file_sep()+clientname+os_file_sep()+imgname;
 
-		IFile * file=Server->openFile(os_file_prefix()+new_name, MODE_READ);
+		IFile * file=Server->openFile(os_file_prefix(new_name), MODE_READ);
 		if(file==NULL)
 		{
 			Server->Log(L"Repairing image failed", LL_INFO);

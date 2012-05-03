@@ -49,8 +49,10 @@ bool os_directory_exists(const std::wstring &path);
 
 bool os_lookuphostname(std::string pServer, unsigned int *dest);
 
-std::wstring os_file_prefix(void);
+std::wstring os_file_prefix(std::wstring path);
 
 bool os_file_truncate(const std::wstring &fn, int64 fsize);
+
+std::string os_strftime(std::string fs);
 
 #endif //OS_FUNCTIONS_H

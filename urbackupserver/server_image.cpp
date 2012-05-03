@@ -81,7 +81,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	}
 	else
 	{
-		IFile *hashfile=Server->openFile(os_file_prefix()+pParentvhd+L".hash");
+		IFile *hashfile=Server->openFile(os_file_prefix(pParentvhd+L".hash"));
 		if(hashfile==NULL)
 		{
 			ServerLogger::Log(clientid, "Error opening hashfile", LL_ERROR);
@@ -124,7 +124,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 	std::wstring imagefn=constructImagePath(widen(sletter));
 	
-	int64 free_space=os_free_space(os_file_prefix()+ExtractFilePath(imagefn));
+	int64 free_space=os_free_space(os_file_prefix(ExtractFilePath(imagefn)));
 	if(free_space!=-1 && free_space<minfreespace_image)
 	{
 		ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
@@ -148,7 +148,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		}
 		else
 		{
-			IFile *mbr_file=Server->openFile(os_file_prefix()+imagefn+L".mbr", MODE_WRITE);
+			IFile *mbr_file=Server->openFile(os_file_prefix(imagefn+L".mbr"), MODE_WRITE);
 			if(mbr_file!=NULL)
 			{
 				_u32 w=mbr_file->Write(mbrd);
@@ -233,6 +233,11 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				bool reconnected=false;
 				while(Server->getTimeMS()-starttime<=image_timeout)
 				{
+					if(ServerStatus::isBackupStopped(clientname))
+					{
+						ServerLogger::Log(clientid, L"Server admin stopped backup. (2)", LL_WARNING);
+						goto do_image_cleanup;
+					}
 					ServerStatus::setROnline(clientname, false);
 					if(cc!=NULL)
 						Server->destroy(cc);
@@ -364,9 +369,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					memset(zeroblockdata, 0, blocksize);
 
 					if(!has_parent)
-						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize, true);
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize, true);
 					else
-						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, pParentvhd, false, true);
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), pParentvhd, false, true);
 
 					if(r_vhdfile==NULL)
 					{
@@ -379,7 +384,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 					blockdata=vhdfile->getBuffer();
 
-					hashfile=Server->openFile(os_file_prefix()+imagefn+L".hash", MODE_WRITE);
+					hashfile=Server->openFile(os_file_prefix(imagefn+L".hash"), MODE_WRITE);
 					if(hashfile==NULL)
 					{
 						ServerLogger::Log(clientid, L"Error opening Hashfile \""+imagefn+L".hash\"", LL_ERROR);
@@ -388,7 +393,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 					if(has_parent)
 					{
-						parenthashfile=Server->openFile(os_file_prefix()+pParentvhd+L".hash", MODE_READ);
+						parenthashfile=Server->openFile(os_file_prefix(pParentvhd+L".hash"), MODE_READ);
 						if(parenthashfile==NULL)
 						{
 							ServerLogger::Log(clientid, L"Error opening Parenthashfile \""+pParentvhd+L".hash\"", LL_ERROR);
@@ -561,7 +566,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								vhdfile=NULL;
 							}
 
-							IFile *t_file=Server->openFile(os_file_prefix()+imagefn, MODE_READ);
+							IFile *t_file=Server->openFile(os_file_prefix(imagefn), MODE_READ);
 							if(t_file!=NULL)
 							{
 								db->BeginTransaction();

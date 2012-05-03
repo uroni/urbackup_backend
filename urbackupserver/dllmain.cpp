@@ -712,6 +712,13 @@ void upgrade19_20(void)
 	db->Write("ALTER TABLE backups ADD archive_timeout INTEGER");
 }
 
+void upgrade20_21(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE settings_db.automatic_archival ADD archive_window TEXT");
+	db->Write("UPDATE settings_db.automatic_archival SET archive_window='*;*;*;*' WHERE archive_window IS NULL");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -729,7 +736,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=19;
+	int max_v=21;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -829,6 +836,10 @@ void upgrade(void)
 				break;
 			case 19:
 				upgrade19_20();
+				++ver;
+				break;
+			case 20:
+				upgrade20_21();
 				++ver;
 				break;
 			default:

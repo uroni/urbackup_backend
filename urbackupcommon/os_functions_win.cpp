@@ -30,6 +30,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <sys\stat.h>
+#include <time.h>
 
 void getMousePos(int &x, int &y)
 {
@@ -223,9 +224,12 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 	return true;
 }
 
-std::wstring os_file_prefix(void)
+std::wstring os_file_prefix(std::wstring path)
 {
-	return L"\\\\?\\";
+	if(path.size()>=2 && path[0]=='\\' && path[1]=='\\' )
+		return path;
+	else
+		return L"\\\\?\\"+path;
 }
 
 bool os_file_truncate(const std::wstring &fn, int64 fsize)
@@ -246,4 +250,16 @@ bool os_file_truncate(const std::wstring &fn, int64 fsize)
 	{
 		return false;
 	}
+}
+
+std::string os_strftime(std::string fs)
+{
+	time_t rawtime;		
+	char buffer [100];
+	time ( &rawtime );
+	struct tm  timeinfo;
+	localtime_s(&timeinfo, &rawtime);
+	strftime (buffer,100,fs.c_str(),&timeinfo);
+	std::string r(buffer);
+	return r;
 }

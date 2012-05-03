@@ -23,6 +23,8 @@ private:
 	void archiveFileBackup(int backupid, int length);
 	void updateInterval(int archiveid, int interval);
 
+	bool isInArchiveWindow(const std::wstring &window_def);
+
 	void copyArchiveSettings(int clientid);
 
 	IDatabase *db;

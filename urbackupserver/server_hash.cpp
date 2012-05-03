@@ -186,7 +186,7 @@ void BackupServerHash::operator()(void)
 				rd.getStr(&old_file_fn);
 			}
 
-			IFile *tf=Server->openFile(os_file_prefix()+Server->ConvertToUnicode(temp_fn), MODE_READ);
+			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
 
 			if(tf==NULL)
 			{
@@ -294,10 +294,10 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 	while(!ff.empty())
 	{
 		tries_once=true;
-		bool b=os_create_hardlink(os_file_prefix()+tfn, os_file_prefix()+ff);
+		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff));
 		if(!b)
 		{
-			IFile *ctf=Server->openFile(os_file_prefix()+ff, MODE_READ);
+			IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
 			if(ctf==NULL)
 			{
 				ServerLogger::Log(clientid, "HT: Hardlinking failed (File doesn't exist)", LL_DEBUG);
@@ -316,10 +316,10 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		{
 			if(!f_hashpath.empty())
 			{
-				b=os_create_hardlink(os_file_prefix()+hash_fn, os_file_prefix()+f_hashpath);
+				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(f_hashpath));
 				if(!b)
 				{
-					IFile *ctf=Server->openFile(os_file_prefix()+f_hashpath, MODE_READ);
+					IFile *ctf=Server->openFile(os_file_prefix(f_hashpath), MODE_READ);
 					if(ctf==NULL)
 					{
 						ServerLogger::Log(clientid, "HT: Hardlinking hash file failed (File doesn't exist)", LL_DEBUG);
@@ -395,7 +395,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		int64 available_space=0;
 		if(fs>0)
 		{
-			available_space=os_free_space(os_file_prefix()+ExtractFilePath(tfn));
+			available_space=os_free_space(os_file_prefix(ExtractFilePath(tfn)));
 		}
 		if(available_space==-1)
 		{
@@ -429,7 +429,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				{
 					Server->Log("HT: No free space available deleting backups...", LL_WARNING);
 				}
-				free_ok=freeSpace(fs, os_file_prefix()+tfn);
+				free_ok=freeSpace(fs, os_file_prefix(tfn));
 			}
 
 			if(!free_ok)
@@ -579,7 +579,7 @@ IFile* BackupServerHash::openFileRetry(const std::wstring &dest, int mode)
 	int count_t=0;
 	while(dst==NULL)
 	{
-		dst=Server->openFile(os_file_prefix()+dest, mode);
+		dst=Server->openFile(os_file_prefix(dest), mode);
 		if(dst==NULL)
 		{
 			ServerLogger::Log(clientid, L"Error opening file... \""+dest+L"\" retrying...", LL_DEBUG);
@@ -678,7 +678,7 @@ bool BackupServerHash::hasError(void)
 
 bool BackupServerHash::createChunkHashes(IFile *tf, const std::wstring hash_fn)
 {
-	IFile *hashoutput=Server->openFile(os_file_prefix()+hash_fn, MODE_WRITE);
+	IFile *hashoutput=Server->openFile(os_file_prefix(hash_fn), MODE_WRITE);
 	if(hashoutput==NULL) return false;
 
 	bool b=BackupServerPrepareHash::build_chunk_hashs(tf, hashoutput, this, false, NULL)=="";
