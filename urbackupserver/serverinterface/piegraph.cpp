@@ -29,6 +29,8 @@ ACTION_IMPL(piegraph)
 	if(session!=NULL && session->id==-1) return;
 	if(session!=NULL && helper.getRights("piegraph")=="all" )
 	{
+		helper.releaseAll();
+
 		IDatabase *db=helper.getDatabase();
 		IQuery *q=db->Prepare("SELECT (bytes_used_files+bytes_used_images) AS used, name FROM clients ORDER BY (bytes_used_files+bytes_used_images) DESC");
 		db_results res=q->Read();
@@ -44,6 +46,7 @@ ACTION_IMPL(piegraph)
 		pi.sizex=700;
 		pi.sizey=700;
 
+		helper.update(tid, &GET, &PARAMS);
 		if(pychart_fak!=NULL)
 		{
 			IPychart *pychart=pychart_fak->getPychart();
