@@ -136,11 +136,13 @@ _u32 File::Read(char* buffer, _u32 bsize)
 {
 	DWORD read;
 	BOOL b=ReadFile(hfile, buffer, bsize, &read, NULL );
+#ifdef _DEBUG
 	if(b==FALSE)
 	{
 		int err=GetLastError();
 		Server->Log("Read error: "+nconvert(err));
 	}
+#endif
 	return (_u32)read;
 }
 

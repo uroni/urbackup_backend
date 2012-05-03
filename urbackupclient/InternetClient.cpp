@@ -143,6 +143,7 @@ void InternetClient::operator()(void)
 		}
 		else
 		{
+			lock.relock(NULL);
 			Server->wait(ic_lan_timeout);
 		}
 	}

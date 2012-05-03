@@ -129,3 +129,6 @@ urbackupserver/x64/*
 urbackup/backup_client.db
 urbackup/backup_server.db*
 debug.log
+urbackupclient/Release Server 2003/*
+urbackupclient/Release WinXP/*
+urbackupclient/Release/*

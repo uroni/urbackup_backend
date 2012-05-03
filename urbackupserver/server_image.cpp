@@ -231,6 +231,11 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				bool reconnected=false;
 				while(Server->getTimeMS()-starttime<=image_timeout)
 				{
+					if(ServerStatus::isBackupStopped(clientname))
+					{
+						ServerLogger::Log(clientid, L"Server admin stopped backup. (2)", LL_WARNING);
+						goto do_image_cleanup;
+					}
 					ServerStatus::setROnline(clientname, false);
 					if(cc!=NULL)
 						Server->destroy(cc);
