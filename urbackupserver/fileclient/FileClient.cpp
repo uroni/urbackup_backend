@@ -548,6 +548,8 @@ bool FileClient::Reconnect(void)
 
 				if(protocol_version>0)
 					firstpacket=true;
+
+				hash_func.init();
 			}
 		}
         else
