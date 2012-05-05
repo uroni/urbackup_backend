@@ -495,6 +495,7 @@ bool FileClient::Reconnect(void)
 	_u64 filesize=0;
 	_u64 received=0;
 	_u64 next_checkpoint=c_checkpoint_dist;
+	_u64 last_checkpoint=0;
 	bool firstpacket=true;
 
 	if(file==NULL)
@@ -532,10 +533,7 @@ bool FileClient::Reconnect(void)
 
 				if( protocol_version>1 )
 				{
-					if(next_checkpoint>c_checkpoint_dist)
-						received=next_checkpoint-c_checkpoint_dist;
-					else
-						received=0;
+					received=last_checkpoint;
 				}
 
 				if( firstpacket==false )
@@ -550,6 +548,7 @@ bool FileClient::Reconnect(void)
 					firstpacket=true;
 
 				hash_func.init();
+				state=0;
 			}
 		}
         else
@@ -648,6 +647,7 @@ bool FileClient::Reconnect(void)
 
 					if(write_remaining==0 && protocol_version>1) 
 					{
+						last_checkpoint=next_checkpoint;
 						next_checkpoint+=c_checkpoint_dist;
 						if(next_checkpoint>filesize)
 							next_checkpoint=filesize;
@@ -714,10 +714,7 @@ bool FileClient::Reconnect(void)
 
 					if( protocol_version>1 )
 					{
-						if(next_checkpoint>c_checkpoint_dist)
-							received=next_checkpoint-c_checkpoint_dist;
-						else
-							received=0;
+						received=last_checkpoint;
 					}
 
 					if( firstpacket==false )
@@ -730,6 +727,9 @@ bool FileClient::Reconnect(void)
 
 					if(protocol_version>0)
 						firstpacket=true;
+
+					hash_func.init();
+					state=0;
 				}
 		}
 	}
