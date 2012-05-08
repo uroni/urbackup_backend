@@ -39,6 +39,11 @@ public:
 
 	IPipe *getRealPipe(void);
 
+	void setThrottle(size_t bps);
+
+	virtual size_t getTransferedBytes(void);
+	virtual void resetTransferedBytes(void);
+
 private:
 	void Process(const char *buffer, size_t bsize);
 	size_t ReadToBuffer(char *buffer, size_t bsize);

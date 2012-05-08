@@ -130,3 +130,18 @@ void InternetServicePipe::setBackendPipe(IPipe *pCS)
 {
 	cs=pCS;
 }
+
+void InternetServicePipe::setThrottle(size_t bps)
+{
+	cs->setThrottle(bps);
+}
+
+size_t InternetServicePipe::getTransferedBytes(void)
+{
+	return cs->getTransferedBytes();
+}
+
+void InternetServicePipe::resetTransferedBytes(void)
+{
+	cs->resetTransferedBytes();
+}

@@ -30,6 +30,11 @@ public:
 	* only works with memory pipe
 	**/
 	virtual size_t getNumElements(void)=0;
+
+	virtual void setThrottle(size_t bps)=0;
+
+	virtual size_t getTransferedBytes(void)=0;
+	virtual void resetTransferedBytes(void)=0;
 };
 
 #endif //IPIPE_H

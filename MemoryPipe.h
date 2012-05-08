@@ -26,6 +26,11 @@ public:
 	virtual void shutdown(void);
 
 	virtual size_t getNumElements(void);
+
+	virtual void setThrottle(size_t bps);
+
+	virtual size_t getTransferedBytes(void);
+	virtual void resetTransferedBytes(void);
 	
 private:
 	std::deque<std::string> queue;

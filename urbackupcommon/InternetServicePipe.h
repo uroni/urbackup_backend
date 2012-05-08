@@ -34,6 +34,11 @@ public:
 
 	IPipe *getRealPipe(void);
 
+	virtual void setThrottle(size_t bps);
+
+	virtual size_t getTransferedBytes(void);
+	virtual void resetTransferedBytes(void);
+
 private:
 	IPipe *cs;
 

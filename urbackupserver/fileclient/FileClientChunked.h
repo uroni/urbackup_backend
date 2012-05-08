@@ -40,6 +40,8 @@ public:
 
 	void setDestroyPipe(bool b);
 
+	size_t getTransferredBytes(void);
+
 private:
 
 	_u32 GetFile(std::string remotefn);
@@ -114,4 +116,6 @@ private:
 
 	bool has_error;
 	bool destroy_pipe;
+
+	size_t transferred_bytes;
 };

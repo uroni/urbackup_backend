@@ -274,3 +274,18 @@ IPipe *CompressedPipe::getRealPipe(void)
 {
 	return cs;
 }
+
+void CompressedPipe::setThrottle(size_t bps)
+{
+	cs->setThrottle(bps);
+}
+
+size_t CompressedPipe::getTransferedBytes(void)
+{
+	return cs->getTransferedBytes();
+}
+
+void CompressedPipe::resetTransferedBytes(void)
+{
+	cs->resetTransferedBytes();
+}

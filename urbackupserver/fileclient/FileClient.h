@@ -55,6 +55,10 @@ public:
         std::vector<std::string> getGameList(void);
 
         _u32 GetFile(std::string remotefn, IFile *file);
+
+		void setThrottle(size_t bps);
+
+		size_t getTransferredBytes(void);
               
 private:
 		bool Reconnect(void);
@@ -96,6 +100,8 @@ private:
 
 		int protocol_version;
 		bool internet_connection;
+
+		size_t transferred_bytes;
 };
 
 const _u32 ERR_CONTINUE=0;

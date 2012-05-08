@@ -198,6 +198,8 @@ function getPar(p)
 	if(p=="startup_backup_delay") val*=60;
 	if(p=="update_freq_image_full" && I('client_disable_image_backups') && I('client_disable_image_backups').checked )
 		val*=-1;
+	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=1024*1024; }
+	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024; }
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
@@ -1074,6 +1076,11 @@ function show_settings2(data)
 			data.settings.update_freq_image_full/=60*60*24;
 			data.settings.startup_backup_delay/=60;
 			
+			if(data.settings.local_speed==-1) data.settings.local_speed="-";
+			else data.settings.local_speed/=1024*1024;
+			if(data.settings.internet_speed==-1) data.settings.internet_speed="-";
+			else data.settings.internet_speed/=1024;
+			
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
 			
@@ -1113,6 +1120,11 @@ function show_settings2(data)
 			data.settings.update_freq_image_incr/=60*60*24;
 			data.settings.update_freq_image_full/=60*60*24;
 			data.settings.startup_backup_delay/=60;
+			
+			if(data.settings.local_speed==-1) data.settings.local_speed="-";
+			else data.settings.local_speed/=1024*1024;
+			if(data.settings.internet_speed==-1) data.settings.local_speed="-";
+			else data.settings.internet_speed/=1024;
 			
 			data.settings.no_compname_start="";
 			data.settings.no_compname_end="";
@@ -1295,7 +1307,9 @@ g.settings_list=[
 "allow_pause",
 "allow_log_view",
 "image_letters",
-"internet_authkey"
+"internet_authkey",
+"internet_speed",
+"local_speed"
 ];
 g.mail_settings_list=[
 "mail_servername",
@@ -1318,7 +1332,7 @@ function validateCommonSettings()
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
 	if(!validate_text_regex([{ id: "backup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return false;
-	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,])*$/i }] ) ) return false;
+	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
 }
 function getArchivePars()

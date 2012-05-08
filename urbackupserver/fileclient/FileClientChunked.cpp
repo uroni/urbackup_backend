@@ -657,3 +657,10 @@ void FileClientChunked::setDestroyPipe(bool b)
 {
 	destroy_pipe=b;
 }
+
+size_t FileClientChunked::getTransferredBytes(void)
+{
+	transferred_bytes+=pipe->getTransferedBytes();
+	pipe->resetTransferedBytes();
+	return transferred_bytes;
+}

@@ -107,7 +107,7 @@ _i32 selectc(SOCKET socket, int usec)
        
 
 FileClient::FileClient(int protocol_version, bool internet_connection)
-	: protocol_version(protocol_version), internet_connection(internet_connection)
+	: protocol_version(protocol_version), internet_connection(internet_connection), transferred_bytes(0)
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -326,6 +326,14 @@ _u32 FileClient::Connect(sockaddr_in *addr)
 		return ERR_CONNECTED;
 }    
 
+void FileClient::setThrottle(size_t bps)
+{
+	if(tcpsock!=NULL)
+	{
+		tcpsock->setThrottle(bps);
+	}
+}
+
 _u32 FileClient::Connect(IPipe *cp)
 {
 	if( socket_open==true )
@@ -456,6 +464,7 @@ bool FileClient::isConnected(void)
 
 bool FileClient::Reconnect(void)
 {
+	transferred_bytes+=tcpsock->getTransferedBytes();
 	Server->destroy(tcpsock);
 	connect_starttime=Server->getTimeMS();
 
@@ -735,7 +744,15 @@ bool FileClient::Reconnect(void)
 	}
 }
         
-        
+size_t FileClient::getTransferredBytes(void)
+{
+	if(tcpsock!=NULL)
+	{
+		transferred_bytes+=tcpsock->getTransferedBytes();
+		tcpsock->resetTransferedBytes();
+	}
+	return transferred_bytes;
+}
         
 #endif //CLIENT_ONLY
 
