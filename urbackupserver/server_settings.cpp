@@ -160,6 +160,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings.internet_encrypt=(settings_default->getValue("internet_encrypt", "true")=="true");
 	settings.internet_compress=(settings_default->getValue("internet_compress", "true")=="true");
 	settings.internet_compression_level=atoi(settings_default->getValue("internet_compress", "6").c_str());
+	settings.internet_speed=atoi(settings_default->getValue("internet_speed", "-1").c_str());
+	settings.local_speed=atoi(settings_default->getValue("local_speed", "-1").c_str());
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -231,6 +233,12 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("image_letters", "");
 	if(!stmp.empty())
 		settings.image_letters=stmp;
+	stmp=settings_client->getValue("internet_speed", "");
+	if(!stmp.empty())
+		settings.internet_speed=atoi(stmp.c_str());
+	stmp=settings_client->getValue("local_speed", "");
+	if(!stmp.empty())
+		settings.local_speed=atoi(stmp.c_str());
 	
 	
 	stmp=settings_client->getValue("overwrite", "");

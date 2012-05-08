@@ -52,6 +52,8 @@ struct SSettings
 	bool internet_encrypt;
 	bool internet_compress;
 	int internet_compression_level;
+	int local_speed;
+	int internet_speed;
 };
 
 struct STimeSpan

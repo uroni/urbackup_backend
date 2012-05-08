@@ -170,7 +170,7 @@ void CClientThread::EnableNagle(void)
 	BOOL opt=FALSE;
 	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
 	if( err==SOCKET_ERROR )
-		Log("Error: Setting TCP_NODELAY failed", LL_ERROR);
+		Log("Error: Setting TCP_NODELAY=FALSE failed", LL_WARNING);
 #else
 	static bool once=true;
 	if( once==true )
@@ -180,7 +180,7 @@ void CClientThread::EnableNagle(void)
 		int err=setsockopt(mSocket, IPPROTO_TCP, TCP_CORK, (char*)&opt, sizeof(int) );
 		if( err==SOCKET_ERROR )
 		{
-			Log("Error: Setting TCP_CORK failed. errno: "+nconvert(errno), LL_ERROR);
+			Log("Error: Setting TCP_CORK failed. errno: "+nconvert(errno), LL_WARNING);
 		}
 	}
 #endif
@@ -197,7 +197,7 @@ void CClientThread::DisableNagle(void)
 	BOOL opt=TRUE;
 	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
 	if( err==SOCKET_ERROR )
-		Log("Error: Setting TCP_NODELAY failed", LL_ERROR);
+		Log("Error: Setting TCP_NODELAY=TRUE failed", LL_WARNING);
 #endif
 #endif
 	}

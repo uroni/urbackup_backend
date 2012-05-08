@@ -55,6 +55,7 @@ const unsigned int shadowcopy_timeout=7*24*60*60*1000;
 #define CHECK_COM_RESULT_RELEASE_S(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return ""; }}
 #define CHECK_COM_RESULT(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
 #define CHECK_COM_RESULT_OK(x, ok) { HRESULT r; if( (r=(x))!=S_OK ){ ok=false; Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
+#define CHECK_COM_RESULT_OK_HR(x, ok, r) { if( (r=(x))!=S_OK ){ ok=false; Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
 
 void IdleCheckerThread::operator()(void)
 {
@@ -945,7 +946,30 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 		}
 	}*/
 
-	CHECK_COM_RESULT_RELEASE(backupcom->StartSnapshotSet(&dir->ref->ssetid));
+	bool b_ok=true;
+	int tries=5;
+	while(b_ok==true)
+	{
+		HRESULT r;
+		CHECK_COM_RESULT_OK_HR(backupcom->StartSnapshotSet(&dir->ref->ssetid), b_ok, r);
+		if(b_ok)
+		{
+			break;
+		}
+
+		if(b_ok==false && tries>=0 && r==VSS_E_SNAPSHOT_SET_IN_PROGRESS )
+		{
+			Server->Log("Retrying starting shadow copy in 30s", LL_WARNING);
+			b_ok=true;
+			--tries;
+		}
+		Server->wait(30000);
+	}
+
+	if(!b_ok)
+	{
+		CHECK_COM_RESULT_RELEASE(backupcom->StartSnapshotSet(&dir->ref->ssetid));
+	}
 
 	CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(volume_path, GUID_NULL, &dir->ref->ssetid) );
 

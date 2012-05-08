@@ -184,3 +184,16 @@ size_t CMemoryPipe::getNumElements(void)
 void CMemoryPipe::shutdown(void)
 {
 }
+
+void CMemoryPipe::setThrottle(size_t bps)
+{
+}
+
+size_t CMemoryPipe::getTransferedBytes(void)
+{
+	return 0;
+}
+
+void CMemoryPipe::resetTransferedBytes(void)
+{
+}

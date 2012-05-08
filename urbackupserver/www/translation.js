@@ -108,7 +108,8 @@ translations.en={
 "trying_to_stop_backup": "Trying to stop backup. This might take a while.",
 "unarchived_in": "Will stop being archived in",
 "validate_err_notregexp_archive_window": "Format for archive window wrong",
-"wait_for_archive_window": "Waiting for window/next run"
+"wait_for_archive_window": "Waiting for window/next run",
+"validate_err_notregexp_image_letters": "Format of image letters wrong"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",

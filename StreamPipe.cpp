@@ -23,8 +23,10 @@
 #ifndef _WIN32
 #include <memory.h>
 #endif
+#include "Server.h"
 
 CStreamPipe::CStreamPipe( SOCKET pSocket)
+	: throttle_bps(0), curr_bytes(0), lastresettime(0), transfered_bytes(0)
 {
 	s=pSocket;
 	has_error=false;
@@ -37,6 +39,8 @@ CStreamPipe::~CStreamPipe()
 
 size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 {
+	doThrottle(bsize);
+
 	fd_set conn;
 	FD_ZERO(&conn);
 	FD_SET(s, &conn);
@@ -74,6 +78,8 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 
 bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 {
+	doThrottle(bsize);
+
 	fd_set conn;
 	FD_ZERO(&conn);
 	FD_SET(s, &conn);
@@ -219,4 +225,58 @@ void CStreamPipe::shutdown(void)
 #else
 	::shutdown(s, SHUT_RDWR);
 #endif
+}
+
+void CStreamPipe::setThrottle(size_t bps)
+{
+	throttle_bps=bps;
+}
+
+void CStreamPipe::doThrottle(size_t new_bytes)
+{
+	transfered_bytes+=new_bytes;
+
+	if(throttle_bps==0) return;
+
+	unsigned int ctime=Server->getTimeMS();
+
+	if(ctime-lastresettime>10000)
+	{
+		lastresettime=ctime;
+		curr_bytes=0;
+	}
+
+	curr_bytes+=new_bytes;
+
+	unsigned int passed_time=ctime-lastresettime;
+	if(passed_time>0)
+	{
+		size_t bps=(curr_bytes*1000)/passed_time;
+		if(bps>throttle_bps)
+		{
+			size_t maxRateTime=(curr_bytes*1000)/throttle_bps;
+			unsigned int sleepTime=(unsigned int)(maxRateTime-passed_time);
+
+			if(sleepTime>9)
+			{
+				Server->wait(sleepTime);
+
+				if(passed_time>1000)
+				{
+					curr_bytes=0;
+					lastresettime=Server->getTimeMS();
+				}
+			}
+		}
+	}
+}
+
+size_t CStreamPipe::getTransferedBytes(void)
+{
+	return transfered_bytes;
+}
+
+void CStreamPipe::resetTransferedBytes(void)
+{
+	transfered_bytes=0;
 }

@@ -59,7 +59,7 @@ int BackupServerGet::running_file_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
 
 BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection)
-	: internet_connection(internet_connection)
+	: internet_connection(internet_connection), server_settings(NULL)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -539,7 +539,7 @@ void BackupServerGet::operator ()(void)
 			unsigned int ptime=Server->getTimeMS()-ttime;
 			if(hbu && !has_error)
 			{
-				ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+convert(ptime), LL_INFO);
+				ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(ptime)), LL_INFO);
 				if(!r_success)
 				{
 					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
@@ -1098,6 +1098,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	IFile *tmp=Server->openTemporaryFile();
 	if(tmp==NULL) return false;
 
+	unsigned int full_backup_starttime=Server->getTimeMS();
+
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
@@ -1257,6 +1259,9 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	updateRunning(false);
 	Server->destroy(clientlist);
 	Server->destroy(tmp);
+
+	size_t transferred_bytes=fc.getTransferredBytes();
+	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((transferred_bytes*1000)/(Server->getTimeMS()-full_backup_starttime) ), LL_INFO );
 
 	setBackupDone();
 	
@@ -1497,6 +1502,9 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	IFile *tmp=Server->openTemporaryFile();
 	if(tmp==NULL) return false;
 
+	unsigned int incr_backup_starttime=Server->getTimeMS();
+	unsigned int incr_backup_stoptime=0;
+
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
@@ -1720,6 +1728,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 							{
 								ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 								r_offline=true;
+								incr_backup_stoptime=Server->getTimeMS();
 							}
 							else
 							{
@@ -1760,6 +1769,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 								{
 									ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 									r_offline=true;
+									incr_backup_stoptime=Server->getTimeMS();
 									f_ok=false;
 								}
 							}
@@ -1879,6 +1889,14 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	updateRunning(false);
 	Server->destroy(tmp);
 	Server->deleteFile(tmpfilename);
+
+	if(incr_backup_stoptime==0)
+	{
+		incr_backup_stoptime=Server->getTimeMS();
+	}
+
+	size_t transferred_bytes=fc.getTransferredBytes()+fc_chunked.getTransferredBytes();
+	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((transferred_bytes*1000)/(incr_backup_stoptime-incr_backup_starttime) ), LL_INFO );
 
 	setBackupDone();
 
@@ -2790,11 +2808,29 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms)
 {
 	if(internet_connection)
 	{
-		return InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_COMMANDS, timeoutms);
+		IPipe *ret=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_COMMANDS, timeoutms);
+		if(server_settings!=NULL)
+		{
+			int internet_speed=server_settings->getSettings()->internet_speed;
+			if(internet_speed>0)
+			{
+				ret->setThrottle(internet_speed);
+			}
+		}
+		return ret;
 	}
 	else
 	{
-		return Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, timeoutms);
+		IPipe *ret=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, timeoutms);
+		if(server_settings!=NULL)
+		{
+			int local_speed=server_settings->getSettings()->local_speed;
+			if(local_speed>0)
+			{
+				ret->setThrottle(local_speed);
+			}
+		}
+		return ret;
 	}
 }
 
@@ -2803,12 +2839,33 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 	if(internet_connection)
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
+
+		if(server_settings!=NULL)
+		{
+			int internet_speed=server_settings->getSettings()->internet_speed;
+			if(internet_speed>0)
+			{
+				cp->setThrottle(internet_speed);
+			}
+		}
+
 		return fc->Connect(cp);
 	}
 	else
 	{
 		sockaddr_in addr=getClientaddr();
-		return fc->Connect(&addr);
+		_u32 ret=fc->Connect(&addr);
+
+		if(server_settings!=NULL)
+		{
+			int local_speed=server_settings->getSettings()->local_speed;
+			if(local_speed>0)
+			{
+				fc->setThrottle(local_speed);
+			}
+		}
+
+		return ret;
 	}
 }
 

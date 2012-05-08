@@ -107,7 +107,7 @@ _i32 selectc(SOCKET socket, int usec)
        
 
 FileClient::FileClient(int protocol_version, bool internet_connection)
-	: protocol_version(protocol_version), internet_connection(internet_connection)
+	: protocol_version(protocol_version), internet_connection(internet_connection), transferred_bytes(0)
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -326,6 +326,14 @@ _u32 FileClient::Connect(sockaddr_in *addr)
 		return ERR_CONNECTED;
 }    
 
+void FileClient::setThrottle(size_t bps)
+{
+	if(tcpsock!=NULL)
+	{
+		tcpsock->setThrottle(bps);
+	}
+}
+
 _u32 FileClient::Connect(IPipe *cp)
 {
 	if( socket_open==true )
@@ -456,6 +464,7 @@ bool FileClient::isConnected(void)
 
 bool FileClient::Reconnect(void)
 {
+	transferred_bytes+=tcpsock->getTransferedBytes();
 	Server->destroy(tcpsock);
 	connect_starttime=Server->getTimeMS();
 
@@ -495,6 +504,7 @@ bool FileClient::Reconnect(void)
 	_u64 filesize=0;
 	_u64 received=0;
 	_u64 next_checkpoint=c_checkpoint_dist;
+	_u64 last_checkpoint=0;
 	bool firstpacket=true;
 
 	if(file==NULL)
@@ -532,10 +542,7 @@ bool FileClient::Reconnect(void)
 
 				if( protocol_version>1 )
 				{
-					if(next_checkpoint>c_checkpoint_dist)
-						received=next_checkpoint-c_checkpoint_dist;
-					else
-						received=0;
+					received=last_checkpoint;
 				}
 
 				if( firstpacket==false )
@@ -550,6 +557,7 @@ bool FileClient::Reconnect(void)
 					firstpacket=true;
 
 				hash_func.init();
+				state=0;
 			}
 		}
         else
@@ -648,6 +656,7 @@ bool FileClient::Reconnect(void)
 
 					if(write_remaining==0 && protocol_version>1) 
 					{
+						last_checkpoint=next_checkpoint;
 						next_checkpoint+=c_checkpoint_dist;
 						if(next_checkpoint>filesize)
 							next_checkpoint=filesize;
@@ -714,10 +723,7 @@ bool FileClient::Reconnect(void)
 
 					if( protocol_version>1 )
 					{
-						if(next_checkpoint>c_checkpoint_dist)
-							received=next_checkpoint-c_checkpoint_dist;
-						else
-							received=0;
+						received=last_checkpoint;
 					}
 
 					if( firstpacket==false )
@@ -730,12 +736,23 @@ bool FileClient::Reconnect(void)
 
 					if(protocol_version>0)
 						firstpacket=true;
+
+					hash_func.init();
+					state=0;
 				}
 		}
 	}
 }
         
-        
+size_t FileClient::getTransferredBytes(void)
+{
+	if(tcpsock!=NULL)
+	{
+		transferred_bytes+=tcpsock->getTransferedBytes();
+		tcpsock->resetTransferedBytes();
+	}
+	return transferred_bytes;
+}
         
 #endif //CLIENT_ONLY
 

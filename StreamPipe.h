@@ -23,8 +23,22 @@ public:
 
 	SOCKET getSocket(void);
 
+	virtual void setThrottle(size_t bps);
+
+	virtual size_t getTransferedBytes(void);
+	virtual void resetTransferedBytes(void);
+
 private:
 	SOCKET s;
 
+	void doThrottle(size_t new_bytes);
+	size_t curr_bytes;
+	unsigned int lastresettime;
+
+	size_t transfered_bytes;
+
+
 	bool has_error;
+
+	size_t throttle_bps;
 };
