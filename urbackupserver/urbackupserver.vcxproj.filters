@@ -23,6 +23,9 @@
       <UniqueIdentifier>{3ff5bf0a-dd61-4c91-880e-180063d4f39c}</UniqueIdentifier>
     </Filter>
     <Filter Include="sha2">
+      <UniqueIdentifier>{94c028c2-e88e-4a63-ab20-e68be5608bbb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sha2">
       <UniqueIdentifier>{70354eae-bf63-425c-ae8a-b5ac6085389f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>

@@ -34,6 +34,15 @@
 #include <fstream>
 #include <stdlib.h>
 
+//For truncating files
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <sys\stat.h>
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#endif
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
@@ -641,7 +650,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			{
 				continue;
 			}
-			if( !isIncluded(orig_dir+os_file_sep()+files[i].name) && !isIncluded(named_path+os_file_sep()+files[i].name) )
+			if( !isIncluded(orig_dir+os_file_sep()+files[i].name, NULL) && !isIncluded(named_path+os_file_sep()+files[i].name, NULL) )
 			{
 				continue;
 			}
@@ -659,27 +668,31 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				continue;
 			}
 			bool curr_included=false;
-			if( isIncluded(orig_dir+os_file_sep()+files[i].name) || isIncluded(named_path+os_file_sep()+files[i].name) )
+			bool adding_worthless1, adding_worthless2;
+			if( isIncluded(orig_dir+os_file_sep()+files[i].name, &adding_worthless1) || isIncluded(named_path+os_file_sep()+files[i].name, &adding_worthless2) )
 			{
 				has_include=true;
 				curr_included=true;
 			}
 
-			std::streampos pos=outfile.tellp();
-			outfile << "d\"" << Server->ConvertToUTF8(files[i].name) << "\"\n";
-			bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile);			
-			outfile << "d\"..\"\n";
+			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
+			{
+				std::streampos pos=outfile.tellp();
+				outfile << "d\"" << Server->ConvertToUTF8(files[i].name) << "\"\n";
+				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile);			
+				outfile << "d\"..\"\n";
 
-			if(!b)
-			{
-				if(!curr_included)
+				if(!b)
 				{
-					outfile.seekp(pos);
+					if(!curr_included)
+					{
+						outfile.seekp(pos);
+					}
 				}
-			}
-			else
-			{
-				has_include=true;
+				else
+				{
+					has_include=true;
+				}
 			}
 		}
 	}
@@ -1462,7 +1475,7 @@ void IndexThread::readPatterns(void)
 	if(curr_settings!=NULL)
 	{	
 		std::wstring val;
-		if(curr_settings->getValue(L"exclude_files", &val))
+		if(curr_settings->getValue(L"exclude_files", &val) || curr_settings->getValue(L"exclude_files_def", &val) )
 		{
 			std::vector<std::wstring> toks;
 			Tokenize(val, toks, L";");
@@ -1488,7 +1501,7 @@ void IndexThread::readPatterns(void)
 			}
 			
 		}
-		if(curr_settings->getValue(L"include_files", &val))
+		if(curr_settings->getValue(L"include_files", &val) || curr_settings->getValue(L"include_files_def", &val) )
 		{
 			std::vector<std::wstring> toks;
 			Tokenize(val, toks, L";");
@@ -1502,7 +1515,74 @@ void IndexThread::readPatterns(void)
 			for(size_t i=0;i<include_dirs.size();++i)
 			{
 				include_dirs[i]=sanitizePattern(include_dirs[i]);
-			}			
+			}
+			include_depth.resize(include_dirs.size());
+			for(size_t i=0;i<include_dirs.size();++i)
+			{
+				std::wstring ip=include_dirs[i];
+				if(ip.find(L"*")==ip.size()-1 || ip.find(L"*")==std::string::npos)
+				{
+					int depth=0;
+					for(size_t j=0;j<ip.size();++j)
+					{
+						if(ip[j]=='/')
+							++depth;
+						else if(ip[j]=='\\' && j+1<ip.size() && ip[j+1]=='\\')
+						{
+							++j;
+							++depth;
+						}
+					}
+					include_depth[i]=depth;
+				}
+				else
+				{
+					include_depth[i]=-1;
+				}
+			}
+			include_prefix.resize(include_dirs.size());
+			for(size_t i=0;i<include_dirs.size();++i)
+			{
+				size_t f1=include_dirs[i].find_first_of(L":");
+				size_t f2=include_dirs[i].find_first_of(L"[");
+				size_t f3=include_dirs[i].find_first_of(L"*");
+				while(f2>0 && f2!=std::string::npos && include_dirs[i][f2-1]=='\\')
+					f2=include_dirs[i].find_first_of(L"[", f2);
+
+				size_t f=(std::min)((std::min)(f1,f2), f3);
+
+				if(f!=std::string::npos)
+				{
+					if(f>0)
+					{
+						include_prefix[i]=include_dirs[i].substr(0, f);
+					}
+				}
+				else
+				{
+					include_prefix[i]=include_dirs[i];
+				}
+
+				std::wstring nep;
+				for(size_t j=0;j<include_prefix[i].size();++j)
+				{
+					wchar_t ch=include_prefix[i][j];
+					if(ch=='/')
+						nep+=os_file_sep();
+					else if(ch=='\\' && j+1<include_prefix[i].size() && include_prefix[i][j+1]=='\\')
+					{
+						nep+=os_file_sep();
+						++j;
+					}
+					else
+					{
+					        nep+=ch;
+					}
+				}			
+				
+				include_prefix[i]=nep;
+			}
+
 		}
 		Server->destroy(curr_settings);
 	}
@@ -1530,12 +1610,26 @@ bool IndexThread::isExcluded(const std::wstring &path)
 	return false;
 }
 
-bool IndexThread::isIncluded(const std::wstring &path)
+bool IndexThread::isIncluded(const std::wstring &path, bool *adding_worthless)
 {
 	std::wstring wpath=path;
 #ifdef _WIN32
 	strupper(&wpath);
 #endif
+	int wpath_level=0;
+	if(adding_worthless!=NULL)
+	{
+		for(size_t i=0;i<wpath.size();++i)
+		{
+			if(wpath[i]=='/')
+				++wpath_level;
+			else if(wpath[i]=='\\')
+				++wpath_level;
+			else if(i==wpath.size()-1)
+				++wpath_level;
+		}
+		*adding_worthless=true;
+	}
 	bool has_pattern=false;
 	for(size_t i=0;i<include_dirs.size();++i)
 	{
@@ -1546,6 +1640,24 @@ bool IndexThread::isIncluded(const std::wstring &path)
 			if(b)
 			{
 				return true;
+			}
+			if(adding_worthless!=NULL)
+			{
+				if( include_depth[i]==-1 )
+				{
+					*adding_worthless=false;
+				}
+				else
+				{
+					bool has_prefix=(wpath.find(include_prefix[i])==0);
+					if( has_prefix )
+					{
+						if( wpath_level<=include_depth[i])
+						{
+							*adding_worthless=false;
+						}
+					}
+				}
 			}
 		}
 	}

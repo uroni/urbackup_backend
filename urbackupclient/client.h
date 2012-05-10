@@ -112,7 +112,7 @@ private:
 	std::wstring sanitizePattern(const std::wstring &p);
 	void readPatterns(void);
 	bool isExcluded(const std::wstring &path);
-	bool isIncluded(const std::wstring &path);
+	bool isIncluded(const std::wstring &path, bool *adding_worthless);
 
 	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db=true);
 
@@ -165,6 +165,8 @@ private:
 
 	std::vector<std::wstring> exlude_dirs;
 	std::vector<std::wstring> include_dirs;
+	std::vector<int> include_depth;
+	std::vector<std::wstring> include_prefix;
 
 	unsigned int last_transaction_start;
 

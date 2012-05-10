@@ -132,3 +132,4 @@ debug.log
 urbackupclient/Release Server 2003/*
 urbackupclient/Release WinXP/*
 urbackupclient/Release/*
+*.orig

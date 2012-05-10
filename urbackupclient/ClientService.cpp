@@ -956,6 +956,12 @@ void ClientConnector::updateSettings(const std::string &pData)
 	std::vector<std::wstring> settings_names=getSettingsList();
 	std::wstring new_settings_str=L"";
 	bool mod=false;
+	std::string tmp_str;
+	bool client_set_settings=false;
+	if(curr_settings->getValue("client_set_settings", &tmp_str) && tmp_str=="true")
+	{
+		client_set_settings=true;
+	}
 	for(size_t i=0;i<settings_names.size();++i)
 	{
 		std::wstring key=settings_names[i];
@@ -965,7 +971,6 @@ void ClientConnector::updateSettings(const std::string &pData)
 			std::wstring nv;
 			if(new_settings->getValue(key, &nv) )
 			{
-				
 				new_settings_str+=key+L"="+nv+L"\n";
 				mod=true;
 			}
@@ -977,7 +982,24 @@ void ClientConnector::updateSettings(const std::string &pData)
 		}
 		else
 		{
-			new_settings_str+=key+L"="+v+L"\n";
+			if(client_set_settings)
+			{
+				new_settings_str+=key+L"="+v+L"\n";
+			}
+			else
+			{
+				std::wstring nv;
+				if(new_settings->getValue(key, &nv) )
+				{				
+					new_settings_str+=key+L"="+nv+L"\n";
+					mod=true;
+				}
+				else if(new_settings->getValue(key+L"_def", &nv) )
+				{
+					new_settings_str+=key+L"_def="+nv+L"\n";
+					mod=true;
+				}
+			}
 		}
 	}
 
@@ -1054,6 +1076,10 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		return;
 	}
 	sf->Write(pData);
+	if(pData.find("\r\nclient_set_settings=true")==std::string::npos)
+	{
+		sf->Write("\r\nclient_set_settings=true");
+	}
 	Server->destroy(sf);
 }
 
