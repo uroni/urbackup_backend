@@ -36,6 +36,7 @@
 #include "server_cleanup.h"
 #include "treediff/TreeDiff.h"
 #include "../urlplugin/IUrlFactory.h"
+#include "../urbackupcommon/mbrdata.h"
 #include <algorithm>
 #include <memory.h>
 #include <time.h>
@@ -2106,27 +2107,27 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 
 void BackupServerGet::start_shadowcopy(const std::string &path)
 {
-	sendClientMessage("START SC \""+path+"\"#token="+server_token, "DONE", L"Activating shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
+	sendClientMessage("START SC \""+path+"\"#token="+server_token, "DONE", L"Activating shadow copy on \""+clientname+L"\" for path \""+Server->ConvertToUnicode(path)+L"\" failed", shadow_copy_timeout);
 }
 
 void BackupServerGet::stop_shadowcopy(const std::string &path)
 {
-	sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", L"Removing shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
+	sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", L"Removing shadow copy on \""+clientname+L"\" for path \""+Server->ConvertToUnicode(path)+L"\" failed", shadow_copy_timeout);
 }
 
 void BackupServerGet::notifyClientBackupSuccessfull(void)
 {
-	sendClientMessage("DID BACKUP", "OK", L"Sending status to client failed", 10000);
+	sendClientMessage("DID BACKUP", "OK", L"Sending status (DID BACKUP) to client failed", 10000);
 }
 
 void BackupServerGet::sendClientBackupIncrIntervall(void)
 {
-	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incrintervall to client failed", 10000);
+	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incremental file backup interval to client failed", 10000);
 }
 
 bool BackupServerGet::updateCapabilities(void)
 {
-	std::string cap=sendClientMessage("CAPA", L"Querying capabilities failed", 10000, false);
+	std::string cap=sendClientMessage("CAPA", L"Querying client capabilities failed", 10000, false);
 	if(cap!="ERR" && !cap.empty())
 	{
 		str_map params;
@@ -2527,6 +2528,12 @@ std::string BackupServerGet::getMBR(const std::wstring &dl)
 			}
 			else
 			{
+				CRData r2(&ret);
+				SMBRData mbrdata(r2);
+				if(!mbrdata.errmsg.empty())
+				{
+					ServerLogger::Log(clientid, "During getting MBR: "+mbrdata.errmsg, LL_WARNING);
+				}
 				return ret;
 			}
 		}
@@ -2537,7 +2544,12 @@ std::string BackupServerGet::getMBR(const std::wstring &dl)
 	}
 	else if(dl!=L"SYSVOL")
 	{
-		ServerLogger::Log(clientid, L"Could not read MBR", LL_ERROR);
+		std::string errmsg;
+		if( r.getStr(&errmsg) && !errmsg.empty())
+		{
+			errmsg=". Error message: "+errmsg;
+		}
+		ServerLogger::Log(clientid, "Could not read MBR"+errmsg, LL_ERROR);
 	}
 
 	return "";

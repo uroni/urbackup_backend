@@ -198,8 +198,8 @@ function getPar(p)
 	if(p=="startup_backup_delay") val*=60;
 	if(p=="update_freq_image_full" && I('client_disable_image_backups') && I('client_disable_image_backups').checked )
 		val*=-1;
-	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=1024*1024; }
-	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024; }
+	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
+	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
@@ -1077,9 +1077,9 @@ function show_settings2(data)
 			data.settings.startup_backup_delay/=60;
 			
 			if(data.settings.local_speed==-1) data.settings.local_speed="-";
-			else data.settings.local_speed/=1024*1024;
+			else data.settings.local_speed/=(1024*1024)/8;
 			if(data.settings.internet_speed==-1) data.settings.internet_speed="-";
-			else data.settings.internet_speed/=1024;
+			else data.settings.internet_speed/=1024/8;
 			
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
@@ -1122,9 +1122,9 @@ function show_settings2(data)
 			data.settings.startup_backup_delay/=60;
 			
 			if(data.settings.local_speed==-1) data.settings.local_speed="-";
-			else data.settings.local_speed/=1024*1024;
-			if(data.settings.internet_speed==-1) data.settings.local_speed="-";
-			else data.settings.internet_speed/=1024;
+			else data.settings.local_speed/=(1024*1024)/8;
+			if(data.settings.internet_speed==-1) data.settings.internet_speed="-";
+			else data.settings.internet_speed/=1024/8;
 			
 			data.settings.no_compname_start="";
 			data.settings.no_compname_end="";

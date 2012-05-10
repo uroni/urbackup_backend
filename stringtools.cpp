@@ -1628,7 +1628,7 @@ std::string PrettyPrintTime(unsigned int ms)
 	{
 		unsigned int t=ms/c_h;
 		if(!ret.empty()) ret+=" ";
-		ret+=nconvert(t)+" h";
+		ret+=nconvert(t)+"h";
 		ms-=t*c_h;
 	}
 
@@ -1636,7 +1636,7 @@ std::string PrettyPrintTime(unsigned int ms)
 	{
 		unsigned int t=ms/c_m;
 		if(!ret.empty()) ret+=" ";
-		ret+=nconvert(t)+" m";
+		ret+=nconvert(t)+"m";
 		ms-=t*c_m;
 	}
 
@@ -1644,7 +1644,7 @@ std::string PrettyPrintTime(unsigned int ms)
 	{
 		unsigned int t=ms/c_s;
 		if(!ret.empty()) ret+=" ";
-		ret+=nconvert(t)+" s";
+		ret+=nconvert(t)+"s";
 		ms-=t*c_s;
 	}
 

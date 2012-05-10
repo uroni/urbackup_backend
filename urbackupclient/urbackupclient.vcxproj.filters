@@ -188,5 +188,8 @@
     <ClInclude Include="..\urbackupcommon\capa_bits.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="..\urbackupcommon\mbrdata.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
