@@ -61,6 +61,8 @@ AX_LIB_SOCKET_NSL
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
 AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
+AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
+AC_SUBST([DLOPEN_LIBS])
 
 P_SUBDIRS="downloadplugin fsimageplugin httpserver urbackupserver"
 
