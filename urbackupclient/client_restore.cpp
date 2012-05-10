@@ -16,6 +16,7 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #endif
+#include "../urbackupcommon/mbrdata.h"
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -517,80 +518,6 @@ void do_restore(void)
 		exit(0);
 	}
 }
-
-class SMBRData
-{
-public:
-	SMBRData(CRData &data)
-	{
-		char ch;
-		if(!data.getChar(&ch))
-		{
-			Server->Log("Cannot read first byte");
-			has_error=true;return;
-		}
-		if(!data.getChar(&version))
-		{
-			Server->Log("Cannot read version");
-			has_error=true;return;
-		}
-		if(version!=0)
-		{
-			Server->Log("Version is wrong");
-			has_error=true;return;
-		}
-		if(!data.getInt(&device_number))
-		{
-			Server->Log("Cannot get device number");
-			has_error=true;return;
-		}
-		if(!data.getInt(&partition_number))
-		{
-			Server->Log("Cannot get partition number");
-			has_error=true;return;
-		}
-		if(!data.getStr(&serial_number))
-		{
-			Server->Log("Cannot get serial number");
-			has_error=true;return;
-		}
-		std::string tmp;
-		if(!data.getStr(&tmp))
-		{
-			Server->Log("Cannot get volume name");
-			has_error=true;return;
-		}
-		volume_name=Server->ConvertToUnicode(tmp);
-		if(!data.getStr(&tmp))
-		{
-			Server->Log("Cannot get fsn name");
-			has_error=true;return;
-		}
-		fsn=Server->ConvertToUnicode(tmp);
-		if(!data.getStr(&mbr_data))
-		{
-			Server->Log("Cannot get mbr data");
-			has_error=true;return;
-		}
-		has_error=false;
-	}
-
-	bool hasError(void)
-	{
-		return has_error;
-	}
-
-	char version;
-	int device_number;
-	int partition_number;
-	std::string serial_number;
-	std::wstring volume_name;
-	std::wstring fsn;
-	std::string mbr_data;
-
-private:
-	bool has_error;
-};
 
 class RestoreThread : public IThread
 {

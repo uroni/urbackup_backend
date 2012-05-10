@@ -720,13 +720,16 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	}
 
 	bool b=false;
+	std::wstring errmsg;
 	if(!dl.empty())
 	{
-		b=sendMBR(dl);
+		b=sendMBR(dl, errmsg);
 	}
 	if(!b)
 	{
-		CWData r;r.addChar(0);
+		CWData r;
+		r.addChar(0);
+		r.addString(Server->ConvertToUTF8(errmsg));
 		tcpstack.Send(pipe, r);
 	}
 }

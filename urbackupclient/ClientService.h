@@ -106,7 +106,7 @@ private:
 	bool waitForThread(void);
 	bool sendFullImage(void);
 	bool sendIncrImage(void);
-	bool sendMBR(std::wstring dl);
+	bool sendMBR(std::wstring dl, std::wstring &errmsg);
 	std::string receivePacket(IPipe *p);
 	void downloadImage(str_map params);
 	void removeChannelpipe(IPipe *cp);

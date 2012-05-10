@@ -1177,7 +1177,7 @@ bool ClientConnector::waitForThread(void)
 		return false;
 }
 
-bool ClientConnector::sendMBR(std::wstring dl)
+bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 {
 #ifdef _WIN32
 	std::wstring vpath=dl;
@@ -1190,19 +1190,129 @@ bool ClientConnector::sendMBR(std::wstring dl)
 	HANDLE hVolume=CreateFileW(vpath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		Server->Log(L"CreateFile of volume '"+dl+L"' failed. - sendMBR", LL_ERROR);
+		errmsg=L"CreateFile of volume '"+dl+L"' failed. - sendMBR";
+		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
 
 	STORAGE_DEVICE_NUMBER dev_num;
 	DWORD ret_bytes;
 	BOOL b=DeviceIoControl(hVolume, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &dev_num, sizeof(STORAGE_DEVICE_NUMBER), &ret_bytes, NULL);
-	CloseHandle(hVolume);
+	
 	if(b==0)
 	{
-		Server->Log(L"DeviceIoControl IOCTL_STORAGE_GET_DEVICE_NUMBER failed. Volume: '"+dl+L"'", LL_ERROR);
-		return false;
+		errmsg=L"DeviceIoControl IOCTL_STORAGE_GET_DEVICE_NUMBER failed. Volume: '"+dl+L"'";
+		Server->Log(errmsg, LL_WARNING);
+
+		VOLUME_DISK_EXTENTS *vde=(VOLUME_DISK_EXTENTS*)new char[sizeof(VOLUME_DISK_EXTENTS)];
+		b=DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, vde, sizeof(VOLUME_DISK_EXTENTS), &ret_bytes, NULL);
+		if(b==0 && GetLastError()==ERROR_MORE_DATA)
+		{
+			DWORD ext_num=vde->NumberOfDiskExtents;
+			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed. Extends: "+convert((int)ext_num);
+			Server->Log(errmsg, LL_WARNING);
+			delete []vde;
+			DWORD vde_size=sizeof(VOLUME_DISK_EXTENTS)+sizeof(DISK_EXTENT)*(ext_num-1);
+			vde=(VOLUME_DISK_EXTENTS*)new char[vde_size];
+			b=DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, vde, vde_size, &ret_bytes, NULL);
+			if(b==0)
+			{
+				errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed twice. Volume: '"+dl+L"'";
+				Server->Log(errmsg, LL_ERROR);
+				delete []vde;
+				CloseHandle(hVolume);
+				return false;
+			}
+		}
+		else if(b==0)
+		{
+			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed. Volume: '"+dl+L"' Error: "+convert((int)GetLastError());
+			Server->Log(errmsg, LL_ERROR);
+			delete []vde;
+			CloseHandle(hVolume);
+			return false;
+		}
+
+		if(vde->NumberOfDiskExtents>0)
+		{
+			HANDLE hDevice=CreateFileW((L"\\\\.\\PhysicalDrive"+convert((int)vde->Extents[0].DiskNumber)).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if(hDevice==INVALID_HANDLE_VALUE)
+			{
+				errmsg=L"CreateFile of device '"+dl+L"' failed. - sendMBR";
+				Server->Log(errmsg, LL_ERROR);
+				delete []vde;
+				CloseHandle(hVolume);
+				return false;
+			}
+
+			DWORD numPartitions=10;
+			DWORD inf_size=sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1);
+
+			DRIVE_LAYOUT_INFORMATION_EX *inf=(DRIVE_LAYOUT_INFORMATION_EX*)new char[sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1)];
+
+			b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf, inf_size, &ret_bytes, NULL);
+			while(b==0 && GetLastError()==ERROR_INSUFFICIENT_BUFFER && numPartitions<1000)
+			{
+				numPartitions*=2;
+				delete []inf;			
+				inf_size=sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1);
+				inf=(DRIVE_LAYOUT_INFORMATION_EX*)new char[inf_size];
+				b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf, inf_size, &ret_bytes, NULL);
+			}
+			if(b==0)
+			{
+				errmsg=L"DeviceIoControl IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed. Volume: '"+dl+L"' Error: "+convert((int)GetLastError());
+				Server->Log(errmsg, LL_ERROR);
+				delete []vde;
+				delete []inf;
+				CloseHandle(hDevice);
+				CloseHandle(hVolume);
+				return false;
+			}
+
+			bool found=false;
+			for(DWORD j=0;j<vde->NumberOfDiskExtents;++j)
+			{
+				for(DWORD i=0;i<inf->PartitionCount;++i)
+				{				
+					if(inf->PartitionEntry[i].StartingOffset.QuadPart==vde->Extents[j].StartingOffset.QuadPart)
+					{
+						dev_num.PartitionNumber=inf->PartitionEntry[i].PartitionNumber;
+						dev_num.DeviceNumber=vde->Extents[j].DiskNumber;
+						found=true;
+					}
+				}
+			}		
+
+			delete []vde;
+			delete []inf;
+
+			CloseHandle(hDevice);
+
+			if(found)
+			{
+				errmsg=L"Dynamic volumes are not supported. It may work with mirrored whole disk volumes though. Volume: '"+dl+L"'";
+				Server->Log(errmsg, LL_WARNING);
+			}
+			else
+			{
+				errmsg=L"Did not find PartitionNumber of dynamic volume. Volume: '"+dl+L"'";
+				Server->Log(errmsg, LL_ERROR);
+				CloseHandle(hVolume);
+				return false;
+			}
+		}
+		else
+		{
+			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS returned no extends. Volume: '"+dl+L"'";
+			Server->Log(errmsg, LL_ERROR);
+			delete []vde;
+			CloseHandle(hVolume);
+			return false;
+		}
 	}
+	
+	CloseHandle(hVolume);
 
 	wchar_t voln[MAX_PATH+1];
 	DWORD voln_size=MAX_PATH+1;
@@ -1212,7 +1322,8 @@ bool ClientConnector::sendMBR(std::wstring dl)
 	b=GetVolumeInformationW((dl+L"\\").c_str(), voln, voln_size, &voln_sern, NULL, NULL, fsn, fsn_size);
 	if(b==0)
 	{
-		Server->Log(L"GetVolumeInformationW failed. Volume: '"+dl+L"'", LL_ERROR);
+		errmsg=L"GetVolumeInformationW failed. Volume: '"+dl+L"'";
+		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
 
@@ -1229,13 +1340,16 @@ bool ClientConnector::sendMBR(std::wstring dl)
 
 	if(dev==NULL)
 	{
-		Server->Log(L"Error opening Device "+convert((int)dev_num.DeviceNumber), LL_ERROR);
+		errmsg=L"Error opening Device "+convert((int)dev_num.DeviceNumber);
+		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}
 
 	std::string mbr_bytes=dev->Read(512);
 
 	mbr.addString(mbr_bytes);
+
+	mbr.addString(Server->ConvertToUTF8(errmsg));
 
 	tcpstack.Send(pipe, mbr);
 
