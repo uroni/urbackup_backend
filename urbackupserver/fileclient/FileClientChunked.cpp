@@ -14,13 +14,13 @@ const unsigned int chunkhash_single_size=big_hash_size+small_hash_size*(c_checkp
 unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
 FileClientChunked::FileClientChunked(IPipe *pipe, CTCPStack *stack)
-	: pipe(pipe), stack(stack), destroy_pipe(false)
+	: pipe(pipe), stack(stack), destroy_pipe(false), transferred_bytes(0)
 {
 	has_error=false;
 }
 
 FileClientChunked::FileClientChunked(void)
-	: pipe(NULL), stack(NULL), destroy_pipe(false)
+	: pipe(NULL), stack(NULL), destroy_pipe(false), transferred_bytes(0)
 {
 	has_error=true;
 }
@@ -662,7 +662,10 @@ void FileClientChunked::setDestroyPipe(bool b)
 
 size_t FileClientChunked::getTransferredBytes(void)
 {
-	transferred_bytes+=pipe->getTransferedBytes();
-	pipe->resetTransferedBytes();
+	if(pipe!=NULL)
+	{
+		transferred_bytes+=pipe->getTransferedBytes();
+		pipe->resetTransferedBytes();
+	}
 	return transferred_bytes;
 }

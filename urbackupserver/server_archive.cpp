@@ -15,6 +15,7 @@ void ServerAutomaticArchive::operator()(void)
 
 	while(true)
 	{
+		archiveTimeout();
 		archiveBackups();
 		Server->wait(60*60*1000);
 	}

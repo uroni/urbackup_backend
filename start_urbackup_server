@@ -2,11 +2,11 @@
 
 NAME="urbackup_srv"
 PREFIX=/usr
-DAEMON=$PREFIX/bin/urbackup_srv
+DAEMON=$PREFIX/sbin/urbackup_srv
 if ! test -x $DAEMON
 then
     PREFIX=/usr/local
-    DAEMON=$PREFIX/bin/urbackup_srv
+    DAEMON=$PREFIX/sbin/urbackup_srv
 fi
 
 DAEMON_DIR="/var"

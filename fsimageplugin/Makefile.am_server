@@ -1,4 +1,4 @@
 lib_LTLIBRARIES = liburbackupserver_fsimageplugin.la
-liburbackupserver_fsimageplugin_la_SOURCES = dllmain.cpp ../stringtools.cpp filesystem.cpp FSImageFactory.cpp pluginmgr.cpp vhdfile.cpp fs/ntfs.cpp fs/unknown.cpp ../urbackup/sha2/sha2.c
+liburbackupserver_fsimageplugin_la_SOURCES = dllmain.cpp ../stringtools.cpp filesystem.cpp FSImageFactory.cpp pluginmgr.cpp vhdfile.cpp fs/ntfs.cpp fs/unknown.cpp ../urbackupcommon/sha2/sha2.c
 noinst_HEADERS = filesystem.h FSImageFactory.h IFilesystem.h IFSImageFactory.h IVHDFile.h pluginmgr.h vhdfile.h fs/ntfs.h fs/unknown.h
 AM_CXXFLAGS = -DLINUX
