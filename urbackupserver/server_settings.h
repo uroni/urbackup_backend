@@ -45,6 +45,7 @@ struct SSettings
 	std::string image_letters;
 	bool backup_database;
 	std::string internet_server_name;
+	bool client_set_settings;
 	unsigned short internet_server_port;
 	std::string internet_authkey;
 	bool internet_full_file_backups;

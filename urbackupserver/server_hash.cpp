@@ -127,7 +127,6 @@ void BackupServerHash::operator()(void)
 		}
 		
 		working=true;
-
 		if(data=="exitnow")
 		{
 			copyFilesFromTmp();

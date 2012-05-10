@@ -1103,6 +1103,20 @@ function show_settings2(data)
 		}
 		else if(data.sa=="clientsettings")
 		{
+		
+			if( data.settings.allow_overwrite==true
+				&& data.settings.overwrite==true
+				&& data.settings.client_set_settings==true )
+			{
+				data.settings.overwrite_warning_start="";
+				data.settings.overwrite_warning_end="";
+			}
+			else
+			{
+				data.settings.overwrite_warning_start="<!--";
+				data.settings.overwrite_warning_end="-->";
+			}
+			
 			data.settings.overwrite=getCheckboxValue(data.settings.overwrite);
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
@@ -1130,6 +1144,8 @@ function show_settings2(data)
 			data.settings.no_compname_end="";
 			data.settings.global_settings_start="<!--";
 			data.settings.global_settings_end="-->";
+			
+			
 						
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
 			ndata+=tmpls.settings_user.evaluate(data.settings);

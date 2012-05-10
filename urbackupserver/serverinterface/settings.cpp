@@ -72,6 +72,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("allow_log_view", settings.getSettings()->allow_log_view);
 	ret.set("image_letters", settings.getSettings()->image_letters);
 	ret.set("internet_authkey", settings.getSettings()->internet_authkey);
+	ret.set("client_set_settings", settings.getSettings()->client_set_settings);
 	ret.set("internet_speed", settings.getSettings()->internet_speed);
 	ret.set("local_speed", settings.getSettings()->local_speed);
 	return ret;

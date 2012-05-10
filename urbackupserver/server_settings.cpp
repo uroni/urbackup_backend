@@ -154,6 +154,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.image_letters=settings_default->getValue("image_letters", "C");
 	settings.backup_database=(settings_default->getValue("backup_database", "true")=="true");
 	settings.internet_server_port=(unsigned short)(atoi(settings_default->getValue("internet_server_port", "55415").c_str()));
+	settings.client_set_settings=false;
 	settings.internet_server_name=settings_default->getValue("internet_server_name", "");
 	settings.internet_image_backups=(settings_default->getValue("internet_image_backups", "false")=="true");
 	settings.internet_full_file_backups=(settings_default->getValue("internet_full_file_backups", "false")=="true");
@@ -173,6 +174,7 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("client_overwrite", "");
 	if(!stmp.empty())
 		settings.client_overwrite=(stmp=="true");
+
 	if(!settings.client_overwrite)
 		return;
 
@@ -221,11 +223,9 @@ void ServerSettings::readSettingsClient(void)
 	std::wstring swtmp=settings_client->getValue(L"computername", L"");
 	if(!swtmp.empty())
 		settings.computername=swtmp;
-	swtmp=settings_client->getValue(L"exclude_files", L"");
-	if(!swtmp.empty())
+	if(settings_client->getValue(L"exclude_files", &swtmp))
 		settings.exclude_files=swtmp;
-	swtmp=settings_client->getValue(L"include_files", L"");
-	if(!swtmp.empty())
+	if(settings_client->getValue(L"include_files", &swtmp))
 		settings.include_files=swtmp;
 	swtmp=settings_client->getValue(L"default_dirs", L"");
 	if(!swtmp.empty())
@@ -236,6 +236,9 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("internet_speed", "");
 	if(!stmp.empty())
 		settings.internet_speed=atoi(stmp.c_str());
+	stmp=settings_client->getValue("client_set_settings", "");
+	if(stmp=="true")
+		settings.client_set_settings=true;
 	stmp=settings_client->getValue("local_speed", "");
 	if(!stmp.empty())
 		settings.local_speed=atoi(stmp.c_str());
