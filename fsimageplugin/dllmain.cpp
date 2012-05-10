@@ -42,9 +42,6 @@
 
 IServer *Server;
 
-#ifndef _WIN32
-#define exit _exit
-#endif
 
 CImagePluginMgr *imagepluginmgr;
 
