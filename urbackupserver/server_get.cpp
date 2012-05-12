@@ -1237,7 +1237,10 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 				}
 			}
 		}
-		writeFileRepeat(clientlist, buffer, read);
+		if(r_done==false)
+		{
+			writeFileRepeat(clientlist, buffer, read);
+		}
 		if(read<4096)
 			break;
 	}
@@ -2862,7 +2865,7 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms)
 	if(internet_connection)
 	{
 		IPipe *ret=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_COMMANDS, timeoutms);
-		if(server_settings!=NULL)
+		if(server_settings!=NULL && ret!=NULL)
 		{
 			int internet_speed=server_settings->getSettings()->internet_speed;
 			if(internet_speed>0)
@@ -2875,7 +2878,7 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms)
 	else
 	{
 		IPipe *ret=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, timeoutms);
-		if(server_settings!=NULL)
+		if(server_settings!=NULL && ret!=NULL)
 		{
 			int local_speed=server_settings->getSettings()->local_speed;
 			if(local_speed>0)
@@ -2893,7 +2896,7 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
 
-		if(server_settings!=NULL)
+		if(server_settings!=NULL && cp!=NULL)
 		{
 			int internet_speed=server_settings->getSettings()->internet_speed;
 			if(internet_speed>0)
