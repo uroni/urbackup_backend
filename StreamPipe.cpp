@@ -240,7 +240,7 @@ void CStreamPipe::doThrottle(size_t new_bytes)
 
 	unsigned int ctime=Server->getTimeMS();
 
-	if(ctime-lastresettime>10000)
+	if(ctime-lastresettime>1000)
 	{
 		lastresettime=ctime;
 		curr_bytes=0;
