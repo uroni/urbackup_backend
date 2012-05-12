@@ -619,7 +619,7 @@ bool FileClient::Reconnect(void)
 					state=0;
 				}
 
-				if(received >= filesize)
+				if(received >= filesize && state==0)
 				{
 					return ERR_SUCCESS;
 				}
@@ -644,6 +644,7 @@ bool FileClient::Reconnect(void)
 						hash_func.update((unsigned char*)&buf[written], tw);
 						written+=cw;
 						write_remaining-=cw;
+						received+=cw;
 						if(write_remaining==0)
 							break;
 						if(written<rc)
@@ -656,7 +657,10 @@ bool FileClient::Reconnect(void)
 
 					if(write_remaining==0 && protocol_version>1) 
 					{
-						last_checkpoint=next_checkpoint;
+						if(next_checkpoint<filesize)
+						{
+							last_checkpoint=next_checkpoint;
+						}
 						next_checkpoint+=c_checkpoint_dist;
 						if(next_checkpoint>filesize)
 							next_checkpoint=filesize;
@@ -673,6 +677,10 @@ bool FileClient::Reconnect(void)
 								write_remaining=next_checkpoint-received;
 								written+=16;
 							}
+						}
+						else
+						{
+							int asfsf=3;
 						}
 
 						hash_off+=hash_r;
@@ -694,8 +702,6 @@ bool FileClient::Reconnect(void)
 						}
 					}
 				}
-
-                received+=rc-off-hash_off;
 
 				if( received >= filesize && state==0)
                 {
