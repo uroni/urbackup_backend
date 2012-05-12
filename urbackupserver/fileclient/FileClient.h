@@ -102,6 +102,7 @@ private:
 		bool internet_connection;
 
 		size_t transferred_bytes;
+		size_t throttle_bps;
 };
 
 const _u32 ERR_CONTINUE=0;
