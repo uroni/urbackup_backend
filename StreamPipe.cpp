@@ -261,7 +261,7 @@ void CStreamPipe::doThrottle(size_t new_bytes)
 			{
 				Server->wait(sleepTime);
 
-				if(passed_time>1000)
+				if(Server->getTimeMS()-lastresettime>1000)
 				{
 					curr_bytes=0;
 					lastresettime=Server->getTimeMS();
