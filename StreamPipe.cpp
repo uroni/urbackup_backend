@@ -257,7 +257,7 @@ void CStreamPipe::doThrottle(size_t new_bytes)
 			size_t maxRateTime=(curr_bytes*1000)/throttle_bps;
 			unsigned int sleepTime=(unsigned int)(maxRateTime-passed_time);
 
-			if(sleepTime>9)
+			if(sleepTime>0)
 			{
 				Server->wait(sleepTime);
 
