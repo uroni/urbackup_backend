@@ -316,6 +316,11 @@ _u32 FileClient::Connect(sockaddr_in *addr)
 	if(tcpsock!=NULL)
 	{
 		socket_open=true;
+
+		for(size_t i=0;i<throttlers.size();++i)
+		{
+			tcpsock->addThrottler(throttlers[i]);
+		}
 	}
 
 	server_addr=*addr;
@@ -326,11 +331,12 @@ _u32 FileClient::Connect(sockaddr_in *addr)
 		return ERR_CONNECTED;
 }    
 
-void FileClient::setThrottle(size_t bps)
+void FileClient::addThrottler(IPipeThrottler *throttler)
 {
+	throttlers.push_back(throttler);
 	if(tcpsock!=NULL)
 	{
-		tcpsock->setThrottle(bps);
+		tcpsock->addThrottler(throttler);
 	}
 }
 
@@ -473,6 +479,10 @@ bool FileClient::Reconnect(void)
 		tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
 		if(tcpsock!=NULL)
 		{
+			for(size_t i=0;i<throttlers.size();++i)
+			{
+				tcpsock->addThrottler(throttlers[i]);
+			}
 			Server->Log("Reconnected successfully,", LL_DEBUG);
 			socket_open=true;
 			return true;

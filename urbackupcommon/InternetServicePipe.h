@@ -34,7 +34,9 @@ public:
 
 	IPipe *getRealPipe(void);
 
-	virtual void setThrottle(size_t bps);
+	virtual void addThrottler(IPipeThrottler *throttler);
+	virtual void addOutgoingThrottler(IPipeThrottler *throttler);
+	virtual void addIncomingThrottler(IPipeThrottler *throttler);
 
 	virtual size_t getTransferedBytes(void);
 	virtual void resetTransferedBytes(void);

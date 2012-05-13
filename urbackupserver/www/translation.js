@@ -109,7 +109,11 @@ translations.en={
 "unarchived_in": "Will stop being archived in",
 "validate_err_notregexp_archive_window": "Format for archive window wrong",
 "wait_for_archive_window": "Waiting for window/next run",
-"validate_err_notregexp_image_letters": "Format of image letters wrong"
+"validate_err_notregexp_image_letters": "Format of image letters wrong",
+"validate_name_global_local_speed": "total max backup speed for local network",
+"validate_name_global_internet_speed": "total max backup speed for internet connection",
+"validate_name_local_speed": "max backup speed for local network",
+"validate_name_internet_speed": "max backup speed for internet connection"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",

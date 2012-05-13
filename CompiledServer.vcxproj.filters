@@ -144,6 +144,9 @@
     <ClCompile Include="sqlite\shell.c">
       <Filter>sqlite</Filter>
     </ClCompile>
+    <ClCompile Include="PipeThrottler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcceptThread.h">
@@ -334,6 +337,12 @@
     </ClInclude>
     <ClInclude Include="sqlite\shell.h">
       <Filter>sqlite</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeThrottler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\PipeThrottler.h">
+      <Filter>Interface</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

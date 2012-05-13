@@ -1,5 +1,6 @@
 #include "Interface/Pipe.h"
 #include "socket_header.h"
+#include <vector>
 
 class CStreamPipe : public IPipe
 {
@@ -23,22 +24,21 @@ public:
 
 	SOCKET getSocket(void);
 
-	virtual void setThrottle(size_t bps);
+	virtual void addThrottler(IPipeThrottler *throttler);
+	virtual void addOutgoingThrottler(IPipeThrottler *throttler);
+	virtual void addIncomingThrottler(IPipeThrottler *throttler);
 
 	virtual size_t getTransferedBytes(void);
 	virtual void resetTransferedBytes(void);
 
 private:
 	SOCKET s;
-
-	void doThrottle(size_t new_bytes);
-	size_t curr_bytes;
-	unsigned int lastresettime;
+	void doThrottle(size_t new_bytes, bool outgoing);
 
 	size_t transfered_bytes;
 
-
 	bool has_error;
 
-	size_t throttle_bps;
+	std::vector<IPipeThrottler*> incoming_throttlers;
+	std::vector<IPipeThrottler*> outgoing_throttlers;
 };

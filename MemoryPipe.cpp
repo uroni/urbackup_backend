@@ -185,8 +185,19 @@ void CMemoryPipe::shutdown(void)
 {
 }
 
-void CMemoryPipe::setThrottle(size_t bps)
+void CMemoryPipe::addThrottler(IPipeThrottler *throttler)
 {
+	
+}
+
+void CMemoryPipe::addOutgoingThrottler(IPipeThrottler *throttler)
+{
+	
+}
+
+void CMemoryPipe::addIncomingThrottler(IPipeThrottler *throttler)
+{
+	
 }
 
 size_t CMemoryPipe::getTransferedBytes(void)

@@ -590,6 +590,27 @@ function validate_text_int(a)
 	return true;
 }
 
+function validate_text_int_or_empty(a)
+{
+	for(var i=0;i<a.length;++i)
+	{
+		if(!isInt(I(a[i]).value) && I(a[i]).value!="-" && I(a[i]).value!="")
+		{
+			if(trans["validate_err_notint_"+a[i]])
+			{
+				alert(trans["validate_err_notint_"+a[i]]);
+			}
+			else
+			{
+				alert( (new Template(trans["validate_text_notint"])).evaluate({name: trans["validate_name_"+a[i]]}));
+			}
+			I(a[i]).focus();
+			return false;
+		}
+	}
+	return true;
+}
+
 function validate_text_regex(a)
 {
 	for(var i=0;i<a.length;++i)

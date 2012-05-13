@@ -200,6 +200,8 @@ function getPar(p)
 		val*=-1;
 	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
 	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
+	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
+	if(p=="global_internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
@@ -1081,6 +1083,11 @@ function show_settings2(data)
 			if(data.settings.internet_speed==-1) data.settings.internet_speed="-";
 			else data.settings.internet_speed/=1024/8;
 			
+			if(data.settings.global_local_speed==-1) data.settings.global_local_speed="-";
+			else data.settings.global_local_speed/=(1024*1024)/8;
+			if(data.settings.global_internet_speed==-1) data.settings.global_internet_speed="-";
+			else data.settings.global_internet_speed/=1024/8;
+			
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
 			
@@ -1347,6 +1354,7 @@ function validateCommonSettings()
 							"update_freq_image_full", "max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
+	if(!validate_text_int_or_empty(["local_speed", "internet_speed"])) return false;
 	if(!validate_text_regex([{ id: "backup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return false;
 	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
@@ -1370,6 +1378,7 @@ function saveGeneralSettings()
 {
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
+	if(!validate_text_int_or_empty(["global_local_speed", "global_internet_speed"])) return;
 	if(!validateCommonSettings() ) return;
 	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;
 	if(!startLoading()) return;
@@ -1385,6 +1394,8 @@ function saveGeneralSettings()
 	pars+=getPar("tmpdir");
 	pars+=getPar("cleanup_window");
 	pars+=getPar("backup_database");
+	pars+=getPar("global_local_speed");
+	pars+=getPar("global_internet_speed");
 	pars+=getArchivePars();
 	for(var i=0;i<g.settings_list.length;++i)
 	{

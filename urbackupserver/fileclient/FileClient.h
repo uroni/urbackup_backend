@@ -56,7 +56,7 @@ public:
 
         _u32 GetFile(std::string remotefn, IFile *file);
 
-		void setThrottle(size_t bps);
+		void addThrottler(IPipeThrottler *throttler);
 
 		size_t getTransferredBytes(void);
               
@@ -102,6 +102,7 @@ private:
 		bool internet_connection;
 
 		size_t transferred_bytes;
+		std::vector<IPipeThrottler*> throttlers;
 };
 
 const _u32 ERR_CONTINUE=0;

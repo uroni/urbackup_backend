@@ -7,6 +7,9 @@
 #include "../Interface/Query.h"
 #include "fileclient/FileClient.h"
 
+class IPipeThrottler;
+class IMutex;
+
 struct SClient
 {
 	IPipe *pipe;
@@ -22,6 +25,9 @@ public:
 
 	void operator()(void);
 
+	static IPipeThrottler *getGlobalInternetThrottler(size_t speed_bps);
+	static IPipeThrottler *getGlobalLocalThrottler(size_t speed_bps);
+
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);
@@ -33,6 +39,10 @@ private:
 	IQuery *q_update_extra_ip;
 
 	IPipe *exitpipe;
+
+	static IPipeThrottler *global_internet_throttler;
+	static IPipeThrottler *global_local_throttler;
+	static IMutex *throttle_mutex;
 };
 
 #endif //URB_SERVER_H

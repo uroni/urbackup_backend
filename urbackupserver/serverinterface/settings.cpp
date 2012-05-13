@@ -82,7 +82,8 @@ struct SGeneralSettings
 {
 	SGeneralSettings(void): no_images(false), no_file_backups(false), autoshutdown(false), autoupdate_clients(true),
 		max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true),
-		internet_server_port(55415), internet_image_backups(false), internet_full_file_backups(false) {}
+		internet_server_port(55415), internet_image_backups(false), internet_full_file_backups(false),
+		global_local_speed(-1), global_internet_speed(-1) {}
 	std::wstring backupfolder;
 	bool no_images;
 	bool no_file_backups;
@@ -97,6 +98,8 @@ struct SGeneralSettings
 	unsigned short internet_server_port;
 	bool internet_full_file_backups;
 	bool internet_image_backups;
+	int global_local_speed;
+	int global_internet_speed;
 };
 
 struct SClientSettings
@@ -143,6 +146,10 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.internet_image_backups=true;
 		else if(key==L"internet_full_file_backups" && value==L"true")
 			ret.internet_full_file_backups=true;
+		else if(key==L"global_internet_speed")
+			ret.global_internet_speed=watoi(value);
+		else if(key==L"global_local_speed")
+			ret.global_local_speed=watoi(value);
 	}
 	return ret;
 }
@@ -224,6 +231,8 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 	updateSetting(L"tmpdir", settings.tmpdir,  q_get, q_update, q_insert);
 	updateSetting(L"cleanup_window", settings.cleanup_window,  q_get, q_update, q_insert);
 	updateSetting(L"backup_database", settings.backup_database?L"true":L"false",  q_get, q_update, q_insert);
+	updateSetting(L"global_local_speed", convert(settings.global_local_speed),  q_get, q_update, q_insert);
+	updateSetting(L"global_internet_speed", convert(settings.global_internet_speed),  q_get, q_update, q_insert);
 
 #ifdef _WIN32
 	if(!settings.tmpdir.empty())
@@ -721,6 +730,8 @@ ACTION_IMPL(settings)
 				settings.max_sim_backups=watoi(GET[L"max_sim_backups"]);
 				settings.tmpdir=GET[L"tmpdir"];
 				settings.cleanup_window=GET[L"cleanup_window"];
+				settings.global_internet_speed=watoi(GET[L"global_internet_speed"]);
+				settings.global_local_speed=watoi(GET[L"global_local_speed"]);
 
 				updateClientSettings(0, GET, db);
 				updateArchiveSettings(0, GET, db);
@@ -749,6 +760,8 @@ ACTION_IMPL(settings)
 				obj.set("tmpdir", settings.tmpdir);
 				obj.set("cleanup_window", settings.cleanup_window);
 				obj.set("backup_database", settings.backup_database);
+				obj.set("global_local_speed", settings.global_local_speed);
+				obj.set("global_internet_speed", settings.global_internet_speed);
 				#ifdef _WIN32
 				obj.set("ONLY_WIN32_BEGIN","");
 				obj.set("ONLY_WIN32_END","");

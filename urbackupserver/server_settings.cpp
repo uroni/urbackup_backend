@@ -163,6 +163,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings.internet_compression_level=atoi(settings_default->getValue("internet_compress", "6").c_str());
 	settings.internet_speed=atoi(settings_default->getValue("internet_speed", "-1").c_str());
 	settings.local_speed=atoi(settings_default->getValue("local_speed", "-1").c_str());
+	settings.global_internet_speed=atoi(settings_default->getValue("global_internet_speed", "-1").c_str());
+	settings.global_local_speed=atoi(settings_default->getValue("global_local_speed", "-1").c_str());
 }
 
 void ServerSettings::readSettingsClient(void)

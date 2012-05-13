@@ -20,6 +20,7 @@ class IFile;
 class IPipe;
 class ServerPingThread;
 class FileClient;
+class IPipeThrottler;
 
 struct SBackup
 {
@@ -126,6 +127,8 @@ private:
 	IFile *getTemporaryFileRetry(void);
 	void destroyTemporaryFile(IFile *tmp);
 
+	IPipeThrottler *getThrottler(size_t speed_bps);
+
 	IPipe *pipe;
 	IDatabase *db;
 
@@ -210,4 +213,6 @@ private:
 	bool internet_connection;
 
 	CTCPStack tcpstack;
+
+	IPipeThrottler *client_throttler;
 };
