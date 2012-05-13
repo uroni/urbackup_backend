@@ -651,7 +651,7 @@ bool FileClient::Reconnect(void)
 							tw=(_u32)write_remaining;
 
 						_u32 cw=file->Write(&buf[written], tw);
-						hash_func.update((unsigned char*)&buf[written], tw);
+						hash_func.update((unsigned char*)&buf[written], cw);
 						written+=cw;
 						write_remaining-=cw;
 						received+=cw;
