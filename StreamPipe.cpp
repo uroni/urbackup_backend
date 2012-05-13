@@ -248,7 +248,7 @@ void CStreamPipe::doThrottle(size_t new_bytes, bool outgoing)
 	}
 }
 
-size_t CStreamPipe::getTransferedBytes(void)
+_i64 CStreamPipe::getTransferedBytes(void)
 {
 	return transfered_bytes;
 }

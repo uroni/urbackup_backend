@@ -40,7 +40,7 @@ public:
 
 	void setDestroyPipe(bool b);
 
-	size_t getTransferredBytes(void);
+	_i64 getTransferredBytes(void);
 
 private:
 
@@ -117,5 +117,5 @@ private:
 	bool has_error;
 	bool destroy_pipe;
 
-	size_t transferred_bytes;
+	_i64 transferred_bytes;
 };

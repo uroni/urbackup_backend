@@ -31,7 +31,7 @@ public:
 	virtual void addOutgoingThrottler(IPipeThrottler *throttler);
 	virtual void addIncomingThrottler(IPipeThrottler *throttler);
 
-	virtual size_t getTransferedBytes(void);
+	virtual _i64 getTransferedBytes(void);
 	virtual void resetTransferedBytes(void);
 	
 private:

@@ -760,7 +760,7 @@ bool FileClient::Reconnect(void)
 	}
 }
         
-size_t FileClient::getTransferredBytes(void)
+_i64 FileClient::getTransferredBytes(void)
 {
 	if(tcpsock!=NULL)
 	{

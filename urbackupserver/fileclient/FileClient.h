@@ -58,7 +58,7 @@ public:
 
 		void addThrottler(IPipeThrottler *throttler);
 
-		size_t getTransferredBytes(void);
+		_i64 getTransferredBytes(void);
               
 private:
 		bool Reconnect(void);
@@ -101,7 +101,7 @@ private:
 		int protocol_version;
 		bool internet_connection;
 
-		size_t transferred_bytes;
+		_i64 transferred_bytes;
 		std::vector<IPipeThrottler*> throttlers;
 };
 

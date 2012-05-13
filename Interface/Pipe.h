@@ -4,6 +4,7 @@
 #include <string>
 
 #include "Object.h"
+#include "Types.h"
 
 class IPipeThrottler;
 
@@ -37,7 +38,7 @@ public:
 	virtual void addOutgoingThrottler(IPipeThrottler *throttler)=0;
 	virtual void addIncomingThrottler(IPipeThrottler *throttler)=0;
 
-	virtual size_t getTransferedBytes(void)=0;
+	virtual _i64 getTransferedBytes(void)=0;
 	virtual void resetTransferedBytes(void)=0;
 };
 

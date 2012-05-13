@@ -290,7 +290,7 @@ void CompressedPipe::addIncomingThrottler(IPipeThrottler *throttler)
 	cs->addIncomingThrottler(throttler);
 }
 
-size_t CompressedPipe::getTransferedBytes(void)
+_i64 CompressedPipe::getTransferedBytes(void)
 {
 	return cs->getTransferedBytes();
 }

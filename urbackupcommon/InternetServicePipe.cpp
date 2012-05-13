@@ -146,7 +146,7 @@ void InternetServicePipe::addIncomingThrottler(IPipeThrottler *throttler)
 	cs->addIncomingThrottler(throttler);
 }
 
-size_t InternetServicePipe::getTransferedBytes(void)
+_i64 InternetServicePipe::getTransferedBytes(void)
 {
 	return cs->getTransferedBytes();
 }

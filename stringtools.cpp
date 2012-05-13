@@ -1574,7 +1574,7 @@ std::wstring UnescapeHTML(const std::wstring &html)
 	return ret;
 }
 
-std::string PrettyPrintBytes(size_t bytes)
+std::string PrettyPrintBytes(_i64 bytes)
 {
 	if(bytes<1024)
 		return nconvert(bytes)+" bytes";

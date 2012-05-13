@@ -28,14 +28,14 @@ public:
 	virtual void addOutgoingThrottler(IPipeThrottler *throttler);
 	virtual void addIncomingThrottler(IPipeThrottler *throttler);
 
-	virtual size_t getTransferedBytes(void);
+	virtual _i64 getTransferedBytes(void);
 	virtual void resetTransferedBytes(void);
 
 private:
 	SOCKET s;
 	void doThrottle(size_t new_bytes, bool outgoing);
 
-	size_t transfered_bytes;
+	_i64 transfered_bytes;
 
 	bool has_error;
 

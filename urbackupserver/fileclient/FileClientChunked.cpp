@@ -660,7 +660,7 @@ void FileClientChunked::setDestroyPipe(bool b)
 	destroy_pipe=b;
 }
 
-size_t FileClientChunked::getTransferredBytes(void)
+_i64 FileClientChunked::getTransferredBytes(void)
 {
 	if(pipe!=NULL)
 	{

@@ -568,7 +568,7 @@ void BackupServerGet::operator ()(void)
 
 			if( r_image )
 			{
-				ServerLogger::Log(clientid, L"Time taken for creating image of client "+clientname+L": "+convert(ptime), LL_INFO);
+				ServerLogger::Log(clientid, L"Time taken for creating image of client "+clientname+L": "+widen(PrettyPrintTime(ptime)), LL_INFO);
 				if(!r_success)
 				{
 					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
@@ -1272,8 +1272,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	Server->destroy(clientlist);
 	Server->destroy(tmp);
 
-	size_t transferred_bytes=fc.getTransferredBytes();
-	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((transferred_bytes*1000)/(Server->getTimeMS()-full_backup_starttime) ), LL_INFO );
+	_i64 transferred_bytes=fc.getTransferredBytes();
+	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(Server->getTimeMS()-full_backup_starttime)) ), LL_INFO );
 
 	setBackupDone();
 	
@@ -1907,8 +1907,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 		incr_backup_stoptime=Server->getTimeMS();
 	}
 
-	size_t transferred_bytes=fc.getTransferredBytes()+fc_chunked.getTransferredBytes();
-	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((transferred_bytes*1000)/(incr_backup_stoptime-incr_backup_starttime) ), LL_INFO );
+	_i64 transferred_bytes=fc.getTransferredBytes()+fc_chunked.getTransferredBytes();
+	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(incr_backup_stoptime-incr_backup_starttime)) ), LL_INFO );
 
 	setBackupDone();
 

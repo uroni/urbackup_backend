@@ -210,7 +210,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	sha256_ctx shactx;
 	sha256_init(&shactx);
 
-	size_t transferred_bytes=0;
+	_i64 transferred_bytes=0;
 	unsigned int image_backup_starttime=Server->getTimeMS();
 
 	unsigned int curr_image_recv_timeout=image_recv_timeout;
@@ -597,7 +597,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							running_updater->stop();
 							updateRunning(true);
 
-							ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((transferred_bytes*1000)/(Server->getTimeMS()-image_backup_starttime) ), LL_INFO );
+							ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(Server->getTimeMS()-image_backup_starttime)) ), LL_INFO );
 
 							return !vhdfile_err;
 						}
@@ -674,7 +674,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	ServerLogger::Log(clientid, "Timeout while transfering image data", LL_ERROR);
 do_image_cleanup:
 	transferred_bytes+=cc->getTransferedBytes();
-	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((transferred_bytes*1000)/(Server->getTimeMS()-image_backup_starttime) ), LL_INFO );
+	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(Server->getTimeMS()-image_backup_starttime) )), LL_INFO );
 	Server->destroy(cc);
 	if(vhdfile!=NULL)
 	{

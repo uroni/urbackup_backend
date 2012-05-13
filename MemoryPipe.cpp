@@ -200,7 +200,7 @@ void CMemoryPipe::addIncomingThrottler(IPipeThrottler *throttler)
 	
 }
 
-size_t CMemoryPipe::getTransferedBytes(void)
+_i64 CMemoryPipe::getTransferedBytes(void)
 {
 	return 0;
 }

@@ -103,7 +103,7 @@ void replaceNonAlphaNumeric(std::string &str, char rch);
 std::string conv_filename(std::string fn);
 std::string UnescapeHTML(const std::string &html);
 std::wstring UnescapeHTML(const std::wstring &html);
-std::string PrettyPrintBytes(size_t bytes);
+std::string PrettyPrintBytes(_i64 bytes);
 std::string PrettyPrintSpeed(size_t bps);
 std::string PrettyPrintTime(unsigned int ms);
 #endif
