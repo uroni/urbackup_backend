@@ -49,6 +49,7 @@
 #include "MemorySettingsReader.h"
 #include "Database.h"
 #include "SQLiteFactory.h"
+#include "PipeThrottler.h"
 
 
 
@@ -1495,4 +1496,9 @@ void CServer::startupComplete(void)
 	IScopedLock lock(startup_complete_mutex);
 	startup_complete=true;
 	startup_complete_cond->notify_all();
+}
+
+IPipeThrottler* CServer::createPipeThrottler(size_t bps)
+{
+	return new PipeThrottler(bps);
 }

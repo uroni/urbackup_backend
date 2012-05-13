@@ -37,6 +37,8 @@
 #include "treediff/TreeDiff.h"
 #include "../urlplugin/IUrlFactory.h"
 #include "../urbackupcommon/mbrdata.h"
+#include "../Interface/PipeThrottler.h"
+#include "server.h"
 #include <algorithm>
 #include <memory.h>
 #include <time.h>
@@ -60,7 +62,7 @@ int BackupServerGet::running_file_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
 
 BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection)
-	: internet_connection(internet_connection), server_settings(NULL)
+	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -95,6 +97,11 @@ BackupServerGet::~BackupServerGet(void)
 		unloadSQL();
 
 	Server->destroy(clientaddr_mutex);
+
+	if(client_throttler!=NULL)
+	{
+		Server->destroy(client_throttler);
+	}
 }
 
 void BackupServerGet::init_mutex(void)
@@ -2860,6 +2867,20 @@ void BackupServerGet::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 	}
 }
 
+IPipeThrottler *BackupServerGet::getThrottler(size_t speed_bps)
+{
+	if(client_throttler==NULL)
+	{
+		client_throttler=Server->createPipeThrottler(speed_bps);
+	}
+	else
+	{
+		client_throttler->changeThrottleLimit(speed_bps);
+	}
+
+	return client_throttler;
+}
+
 IPipe *BackupServerGet::getClientCommandConnection(int timeoutms)
 {
 	if(internet_connection)
@@ -2870,7 +2891,12 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms)
 			int internet_speed=server_settings->getSettings()->internet_speed;
 			if(internet_speed>0)
 			{
-				ret->setThrottle(internet_speed);
+				ret->addThrottler(getThrottler(internet_speed));
+			}
+			int global_internet_speed=server_settings->getSettings()->global_internet_speed;
+			if(global_internet_speed>0)
+			{
+				ret->addThrottler(BackupServer::getGlobalInternetThrottler(global_internet_speed));
 			}
 		}
 		return ret;
@@ -2883,7 +2909,12 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms)
 			int local_speed=server_settings->getSettings()->local_speed;
 			if(local_speed>0)
 			{
-				ret->setThrottle(local_speed);
+				ret->addThrottler(getThrottler(local_speed));
+			}
+			int global_local_speed=server_settings->getSettings()->global_local_speed;
+			if(global_local_speed>0)
+			{
+				ret->addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
 			}
 		}
 		return ret;
@@ -2896,16 +2927,23 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
 
-		if(server_settings!=NULL && cp!=NULL)
+		_u32 ret=fc->Connect(cp);
+
+		if(server_settings!=NULL)
 		{
 			int internet_speed=server_settings->getSettings()->internet_speed;
 			if(internet_speed>0)
 			{
-				cp->setThrottle(internet_speed);
+				fc->addThrottler(getThrottler(internet_speed));
+			}
+			int global_internet_speed=server_settings->getSettings()->global_internet_speed;
+			if(global_internet_speed>0)
+			{
+				fc->addThrottler(BackupServer::getGlobalInternetThrottler(global_internet_speed));
 			}
 		}
 
-		return fc->Connect(cp);
+		return ret;
 	}
 	else
 	{
@@ -2917,7 +2955,12 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 			int local_speed=server_settings->getSettings()->local_speed;
 			if(local_speed>0)
 			{
-				fc->setThrottle(local_speed);
+				fc->addThrottler(getThrottler(local_speed));
+			}
+			int global_local_speed=server_settings->getSettings()->global_local_speed;
+			if(global_local_speed>0)
+			{
+				fc->addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
 			}
 		}
 

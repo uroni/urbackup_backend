@@ -29,13 +29,19 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include "InternetServiceConnector.h"
+#include "../Interface/PipeThrottler.h"
 #include <memory.h>
 
 const unsigned int waittime=50*1000; //1 min
 const int max_offline=5;
 
+IPipeThrottler *BackupServer::global_internet_throttler=NULL;
+IPipeThrottler *BackupServer::global_local_throttler=NULL;
+IMutex *BackupServer::throttle_mutex=NULL;
+
 BackupServer::BackupServer(IPipe *pExitpipe)
 {
+	throttle_mutex=Server->createMutex();
 	exitpipe=pExitpipe;
 }
 
@@ -329,6 +335,42 @@ void BackupServer::removeAllClients(void)
 		}
 		Server->destroy(it->second.pipe);
 	}
+}
+
+IPipeThrottler *BackupServer::getGlobalInternetThrottler(size_t speed_bps)
+{
+	IScopedLock lock(throttle_mutex);
+
+	if(global_internet_throttler==NULL && speed_bps==0 )
+		return NULL;
+
+	if(global_internet_throttler==NULL)
+	{
+		global_internet_throttler=Server->createPipeThrottler(speed_bps);
+	}
+	else
+	{
+		global_internet_throttler->changeThrottleLimit(speed_bps);
+	}
+	return global_internet_throttler;
+}
+
+IPipeThrottler *BackupServer::getGlobalLocalThrottler(size_t speed_bps)
+{
+	IScopedLock lock(throttle_mutex);
+
+	if(global_local_throttler==NULL && speed_bps==0 )
+		return NULL;
+
+	if(global_local_throttler==NULL)
+	{
+		global_local_throttler=Server->createPipeThrottler(speed_bps);
+	}
+	else
+	{
+		global_local_throttler->changeThrottleLimit(speed_bps);
+	}
+	return global_local_throttler;
 }
 
 

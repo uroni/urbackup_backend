@@ -24,9 +24,10 @@
 #include <memory.h>
 #endif
 #include "Server.h"
+#include "Interface/PipeThrottler.h"
 
 CStreamPipe::CStreamPipe( SOCKET pSocket)
-	: throttle_bps(0), curr_bytes(0), lastresettime(0), transfered_bytes(0)
+	: transfered_bytes(0)
 {
 	s=pSocket;
 	has_error=false;
@@ -39,7 +40,7 @@ CStreamPipe::~CStreamPipe()
 
 size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 {
-	doThrottle(bsize);
+	doThrottle(bsize, false);
 
 	fd_set conn;
 	FD_ZERO(&conn);
@@ -78,7 +79,7 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 
 bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 {
-	doThrottle(bsize);
+	doThrottle(bsize, true);
 
 	fd_set conn;
 	FD_ZERO(&conn);
@@ -227,46 +228,22 @@ void CStreamPipe::shutdown(void)
 #endif
 }
 
-void CStreamPipe::setThrottle(size_t bps)
-{
-	throttle_bps=bps;
-}
-
-void CStreamPipe::doThrottle(size_t new_bytes)
+void CStreamPipe::doThrottle(size_t new_bytes, bool outgoing)
 {
 	transfered_bytes+=new_bytes;
 
-	if(throttle_bps==0) return;
-
-	unsigned int ctime=Server->getTimeMS();
-
-	if(ctime-lastresettime>1000)
+	if(outgoing)
 	{
-		lastresettime=ctime;
-		curr_bytes=0;
-	}
-
-	curr_bytes+=new_bytes;
-
-	unsigned int passed_time=ctime-lastresettime;
-	if(passed_time>0)
-	{
-		size_t bps=(curr_bytes*1000)/passed_time;
-		if(bps>throttle_bps)
+		for(size_t i=0;i<outgoing_throttlers.size();++i)
 		{
-			size_t maxRateTime=(curr_bytes*1000)/throttle_bps;
-			unsigned int sleepTime=(unsigned int)(maxRateTime-passed_time);
-
-			if(sleepTime>9)
-			{
-				Server->wait(sleepTime);
-
-				if(Server->getTimeMS()-lastresettime>1000)
-				{
-					curr_bytes=0;
-					lastresettime=Server->getTimeMS();
-				}
-			}
+			outgoing_throttlers[i]->addBytes(new_bytes);
+		}
+	}
+	else
+	{
+		for(size_t i=0;i<incoming_throttlers.size();++i)
+		{
+			incoming_throttlers[i]->addBytes(new_bytes);
 		}
 	}
 }
@@ -279,4 +256,20 @@ size_t CStreamPipe::getTransferedBytes(void)
 void CStreamPipe::resetTransferedBytes(void)
 {
 	transfered_bytes=0;
+}
+
+void CStreamPipe::addThrottler(IPipeThrottler *throttler)
+{
+	incoming_throttlers.push_back(throttler);
+	outgoing_throttlers.push_back(throttler);
+}
+
+void CStreamPipe::addOutgoingThrottler(IPipeThrottler *throttler)
+{
+	outgoing_throttlers.push_back(throttler);
+}
+
+void CStreamPipe::addIncomingThrottler(IPipeThrottler *throttler)
+{
+	incoming_throttlers.push_back(throttler);
 }

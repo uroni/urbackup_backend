@@ -55,6 +55,8 @@ struct SSettings
 	int internet_compression_level;
 	int local_speed;
 	int internet_speed;
+	int global_internet_speed;
+	int global_local_speed;
 };
 
 struct STimeSpan

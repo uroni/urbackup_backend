@@ -5,6 +5,8 @@
 
 #include "Object.h"
 
+class IPipeThrottler;
+
 class IPipe : public IObject
 {
 public:
@@ -31,7 +33,9 @@ public:
 	**/
 	virtual size_t getNumElements(void)=0;
 
-	virtual void setThrottle(size_t bps)=0;
+	virtual void addThrottler(IPipeThrottler *throttler)=0;
+	virtual void addOutgoingThrottler(IPipeThrottler *throttler)=0;
+	virtual void addIncomingThrottler(IPipeThrottler *throttler)=0;
 
 	virtual size_t getTransferedBytes(void)=0;
 	virtual void resetTransferedBytes(void)=0;

@@ -107,7 +107,7 @@ _i32 selectc(SOCKET socket, int usec)
        
 
 FileClient::FileClient(int protocol_version, bool internet_connection)
-	: protocol_version(protocol_version), internet_connection(internet_connection), transferred_bytes(0), throttle_bps(0)
+	: protocol_version(protocol_version), internet_connection(internet_connection), transferred_bytes(0)
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -317,9 +317,9 @@ _u32 FileClient::Connect(sockaddr_in *addr)
 	{
 		socket_open=true;
 
-		if(throttle_bps!=0)
+		for(size_t i=0;i<throttlers.size();++i)
 		{
-			tcpsock->setThrottle(throttle_bps);
+			tcpsock->addThrottler(throttlers[i]);
 		}
 	}
 
@@ -331,13 +331,13 @@ _u32 FileClient::Connect(sockaddr_in *addr)
 		return ERR_CONNECTED;
 }    
 
-void FileClient::setThrottle(size_t bps)
+void FileClient::addThrottler(IPipeThrottler *throttler)
 {
+	throttlers.push_back(throttler);
 	if(tcpsock!=NULL)
 	{
-		tcpsock->setThrottle(bps);
+		tcpsock->addThrottler(throttler);
 	}
-	throttle_bps=bps;
 }
 
 _u32 FileClient::Connect(IPipe *cp)
@@ -479,9 +479,9 @@ bool FileClient::Reconnect(void)
 		tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
 		if(tcpsock!=NULL)
 		{
-			if(throttle_bps!=0)
+			for(size_t i=0;i<throttlers.size();++i)
 			{
-				tcpsock->setThrottle(throttle_bps);
+				tcpsock->addThrottler(throttlers[i]);
 			}
 			Server->Log("Reconnected successfully,", LL_DEBUG);
 			socket_open=true;

@@ -90,6 +90,7 @@ public:
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData);
+	virtual IPipeThrottler* createPipeThrottler(size_t bps);
 
 	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite");
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier);

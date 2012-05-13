@@ -294,6 +294,7 @@
     <ClCompile Include="MemorySettingsReader.cpp" />
     <ClCompile Include="Mutex_boost.cpp" />
     <ClCompile Include="OutputStream.cpp" />
+    <ClCompile Include="PipeThrottler.cpp" />
     <ClCompile Include="Query.cpp" />
     <ClCompile Include="SelectThread.cpp" />
     <ClCompile Include="Server.cpp" />
@@ -326,6 +327,7 @@
     <ClInclude Include="FileSettingsReader.h" />
     <ClInclude Include="Interface\DatabaseFactory.h" />
     <ClInclude Include="Interface\DatabaseInt.h" />
+    <ClInclude Include="Interface\PipeThrottler.h" />
     <ClInclude Include="libs.h" />
     <ClInclude Include="LoadbalancerClient.h" />
     <ClInclude Include="LookupService.h" />
@@ -334,6 +336,7 @@
     <ClInclude Include="MemorySettingsReader.h" />
     <ClInclude Include="Mutex_boost.h" />
     <ClInclude Include="OutputStream.h" />
+    <ClInclude Include="PipeThrottler.h" />
     <ClInclude Include="Query.h" />
     <ClInclude Include="SelectThread.h" />
     <ClInclude Include="Server.h" />
