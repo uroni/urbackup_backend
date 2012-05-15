@@ -32,10 +32,10 @@ void PipeThrottler::addBytes(size_t new_bytes)
 	unsigned int passed_time=ctime-lastresettime;
 	if(passed_time>0)
 	{
-		size_t bps=(curr_bytes*1000)/passed_time;
+		size_t bps=(size_t)(((_i64)curr_bytes*1000)/passed_time);
 		if(bps>throttle_bps)
 		{
-			size_t maxRateTime=(curr_bytes*1000)/throttle_bps;
+			size_t maxRateTime=(size_t)(((_i64)curr_bytes*1000)/throttle_bps);
 			unsigned int sleepTime=(unsigned int)(maxRateTime-passed_time);
 
 			if(sleepTime>0)
