@@ -393,9 +393,21 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	InternetServiceConnector::init_mutex();
 
 	{
-		ServerSettings settings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));	
-		unsigned int port=atoi(Server->getServerParameter("internet_port", "55415").c_str());
-		Server->StartCustomStreamService(new InternetService, "InternetService", port);
+		ServerSettings settings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
+		if(settings.getSettings()->internet_mode_enabled)
+		{
+			std::string tmp=Server->getServerParameter("internet_port", "");
+			unsigned int port;
+			if(!tmp.empty())
+			{
+				port=atoi(tmp.c_str());
+			}
+			else
+			{
+				port=settings.getSettings()->internet_server_port;
+			}
+			Server->StartCustomStreamService(new InternetService, "InternetService", port);
+		}
 	}
 
 	ServerCleanupThread::initMutex();

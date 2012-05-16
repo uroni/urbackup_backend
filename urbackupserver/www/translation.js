@@ -82,7 +82,6 @@ translations.en={
 "validate_err_notregexp_cleanup_window": "Format for cleanup window wrong",
 "mail_settings": "Mail",
 "tupgrade_error_text": "UrBackup is upgrading its internal database. This may take a while. The server is inaccessible and will not do any backups during this upgrade.",
-"internet_server_settings": "Internet accessibility",
 "file_backup": "File backup",
 "hours": "hours",
 "days": "days",
@@ -113,7 +112,9 @@ translations.en={
 "validate_name_global_local_speed": "total max backup speed for local network",
 "validate_name_global_internet_speed": "total max backup speed for internet connection",
 "validate_name_local_speed": "max backup speed for local network",
-"validate_name_internet_speed": "max backup speed for internet connection"
+"validate_name_internet_speed": "max backup speed for internet connection",
+"enter_clientname": "Please enter a client name",
+"internet_client_added": "Added new client. You can see the client's auth key (or password) in the settings."
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",

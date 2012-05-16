@@ -43,7 +43,20 @@
 </tr>
 </table>
 </form>
-<br>
+<br />
+<h3>#{tInternet clients}</h3>
+<br />
+#{internet_client_added}
+#{tAdd additional internet clients}:
+<form action="#" onsubmit="addInternetClient(); return false;">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+<tr>
+<td>#{tClient name}:</td>
+<td><input type="text" size="40" id="clientname" value=""/> </td>
+<td><input type="submit" value="#{tAdd}"/></td>
+</tr>
+</table>
+</form>
 <h3>#{tServer identity}</h3>
 #{server_identity}
 <br>

@@ -677,8 +677,8 @@ var Template = Class.create({
 		var m=match[3];
 		if(typeof m!="undefined" && m.length>0 && m.charAt(0)=='t')
 		{
-			if(typeof trans[m]!="undefined")
-				return match[1]+trans[m];
+			if(typeof curr_trans[m]!="undefined")
+				return match[1]+curr_trans[m];
 			else
 				return match[1]+m.substring(1);
 		}
@@ -700,8 +700,8 @@ var Template = Class.create({
 		{
 			if(null == ctx && comp.length>0 && comp.charAt(0)=='t')
 			{
-				if(typeof trans[comp]!="undefined")
-					return before +trans[comp];
+				if(typeof curr_trans[comp]!="undefined")
+					return before +curr_trans[comp];
 				else
 					return before +comp.substring(1);
 			}

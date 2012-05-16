@@ -11,10 +11,17 @@ public:
 
 	static void init_mutex(void);
 
-	static void setFileServ(IFileServ *pFilesrv); 
+	static void setFileServ(IFileServ *pFilesrv);
+
+	static bool isNewIdentity(const std::string &pIdentity);
+	static bool hasOnlineServer(void);
 
 private:
+	static void writeServerIdentities(void);
+
 	static std::vector<std::string> identities;
+	static std::vector<unsigned int> online_identities;
+	static std::vector<std::string> new_identities;
 
 	static IMutex *mutex;
 

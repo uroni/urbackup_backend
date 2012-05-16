@@ -165,6 +165,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.local_speed=atoi(settings_default->getValue("local_speed", "-1").c_str());
 	settings.global_internet_speed=atoi(settings_default->getValue("global_internet_speed", "-1").c_str());
 	settings.global_local_speed=atoi(settings_default->getValue("global_local_speed", "-1").c_str());
+	settings.internet_mode_enabled=(settings_default->getValue("internet_mode_enabled", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -244,6 +245,21 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("local_speed", "");
 	if(!stmp.empty())
 		settings.local_speed=atoi(stmp.c_str());
+	stmp=settings_client->getValue("internet_mode_enabled", "");
+	if(!stmp.empty() && stmp=="true")
+		settings.internet_mode_enabled=true;
+	stmp=settings_client->getValue("internet_full_file_backups", "");
+	if(!stmp.empty() && stmp=="true")
+		settings.internet_full_file_backups=true;
+	stmp=settings_client->getValue("internet_image_backups", "");
+	if(!stmp.empty() && stmp=="true")
+		settings.internet_image_backups=true;
+	stmp=settings_client->getValue("internet_compress", "");
+	if(!stmp.empty() && stmp=="true")
+		settings.internet_compress=true;
+	stmp=settings_client->getValue("internet_encrypt", "");
+	if(!stmp.empty() && stmp=="true")
+		settings.internet_encrypt=true;
 	
 	
 	stmp=settings_client->getValue("overwrite", "");

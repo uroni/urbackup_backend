@@ -1,38 +1,38 @@
 ﻿<div class="tabbertab" title="#{tFile backups}">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
-<td>#{tInterval for incremental file backups}</td>
+<td>#{tInterval for incremental file backups}:</td>
 <td><input type="text" id="update_freq_incr" value="#{update_freq_incr}"/> #{thours}</td>
 </tr>
 <tr>
-<td>#{tInterval for full file backups}</td>
+<td>#{tInterval for full file backups}:</td>
 <td><input type="text" id="update_freq_full" value="#{update_freq_full}"/> #{tdays}</td>
 </tr>
 <tr>
-<td>#{tMaximal number of incremental file backups}</td>
+<td>#{tMaximal number of incremental file backups}:</td>
 <td><input type="text" id="max_file_incr" value="#{max_file_incr}"/></td>
 </tr>
 <tr>
-<td>#{tMinimal number of incremental file backups}</td>
+<td>#{tMinimal number of incremental file backups}:</td>
 <td><input type="text" id="min_file_incr" value="#{min_file_incr}"/></td>
 </tr>
-<td>#{tMaximal number of full file backups}</td>
+<td>#{tMaximal number of full file backups}:</td>
 <td><input type="text" id="max_file_full" value="#{max_file_full}"/></td>
 </tr>
 <tr>
-<td>#{tMinimal number of full file backups}</td>
+<td>#{tMinimal number of full file backups}:</td>
 <td><input type="text" id="min_file_full" value="#{min_file_full}"/></td>
 </tr>
 <tr>
-<td>#{tExcluded files (with wildcards)}</td>
+<td>#{tExcluded files (with wildcards)}:</td>
 <td><input type="text" id="exclude_files" value="#{exclude_files}"/> <a href="http://www.urbackup.org/FAQ.php#exclude_files" target="_blank">?</a></td>
 </tr>
 <tr>
-<td>#{tIncluded files (with wildcards)}</td>
+<td>#{tIncluded files (with wildcards)}:</td>
 <td><input type="text" id="include_files" value="#{include_files}"/> <a href="http://www.urbackup.org/FAQ.php#include_files" target="_blank">?</a></td>
 </tr>
 <tr>
-<td>#{tDefault directories to backup}</td>
+<td>#{tDefault directories to backup}:</td>
 <td><input type="text" id="default_dirs" value="#{default_dirs}"/> <a href="http://www.urbackup.org/FAQ.php#default_dirs" target="_blank">?</a></td>
 </tr>
 <tr>
@@ -43,34 +43,34 @@
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 #{no_compname_start}
 <tr>
-<td>#{tDisable image backups}</td>
+<td>#{tDisable image backups}:</td>
 <td><input type="checkbox" id="client_disable_image_backups" #{client_disable_image_backups}</td>
 </tr>
 #{no_compname_end}
 <tr>
-<td>#{tInverval for incremental image backups}</td>
+<td>#{tInverval for incremental image backups}:</td>
 <td><input type="text" id="update_freq_image_incr" value="#{update_freq_image_incr}"/> #{tdays}</td>
 </tr>
 <tr>
-<td>#{tInterval for full image backups}</td>
+<td>#{tInterval for full image backups}:</td>
 <td><input type="text" id="update_freq_image_full" value="#{update_freq_image_full}"/> #{tdays}</td>
 </tr>
-<td>#{tMaximal number of incremental image backups}</td>
+<td>#{tMaximal number of incremental image backups}:</td>
 <td><input type="text" id="max_image_incr" value="#{max_image_incr}"/></td>
 </tr>
 <tr>
-<td>#{tMinimal number of incremental image backups}</td>
+<td>#{tMinimal number of incremental image backups}:</td>
 <td><input type="text" id="min_image_incr" value="#{min_image_incr}"/></td>
 </tr>
-<td>#{tMaximal number of full image backups}</td>
+<td>#{tMaximal number of full image backups}:</td>
 <td><input type="text" id="max_image_full" value="#{max_image_full}"/></td>
 </tr>
 <tr>
-<td>#{tMinimal number of full image backups}</td>
+<td>#{tMinimal number of full image backups}:</td>
 <td><input type="text" id="min_image_full" value="#{min_image_full}"/></td>
 </tr>
 <tr>
-<td>#{tVolumes to backup}</td>
+<td>#{tVolumes to backup}:</td>
 <td><input type="text" id="image_letters" value="#{image_letters}"/> <a href="http://www.urbackup.org/FAQ.php#image_letters" target="_blank">?</a></td>
 </tr>
 </table>
@@ -79,27 +79,27 @@
 <div class="tabbertab" title="#{tPermissions}">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
-<td>#{tAllow client-side changing of the directories to backup}</td>
+<td>#{tAllow client-side changing of the directories to backup}:</td>
 <td><input type="checkbox" id="allow_config_paths" #{allow_config_paths}/></td>
 </tr>
 <tr>
-<td>#{tAllow client-side starting of file backups}</td>
+<td>#{tAllow client-side starting of file backups}:</td>
 <td><input type="checkbox" id="allow_starting_file_backups" #{allow_starting_file_backups}/></td>
 </tr>
 <tr>
-<td>#{tAllow client-side starting of image backups}</td>
+<td>#{tAllow client-side starting of image backups}:</td>
 <td><input type="checkbox" id="allow_starting_image_backups" #{allow_starting_image_backups}/></td>
 </tr>
 <tr>
-<td>#{tAllow client-side viewing of backup logs}</td>
+<td>#{tAllow client-side viewing of backup logs}:</td>
 <td><input type="checkbox" id="allow_log_view" #{allow_log_view}/></td>
 </tr>
 <tr>
-<td>#{tAllow client-side pausing of backups}</td>
+<td>#{tAllow client-side pausing of backups}:</td>
 <td><input type="checkbox" id="allow_pause" #{allow_pause}/></td>
 </tr>
 <tr>
-<td>#{tAllow client-side changing of settings}</td>
+<td>#{tAllow client-side changing of settings}:</td>
 <td><input type="checkbox" id="allow_overwrite" #{allow_overwrite}/></td>
 </tr>
 </table>
@@ -108,7 +108,7 @@
 <div class="tabbertab" title="#{tClient}">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
-<td>#{tDelay after system startup}</td>
+<td>#{tDelay after system startup}:</td>
 <td><input type="text" id="startup_backup_delay" value="#{startup_backup_delay}"/> #{tmin}</td>
 </tr>
 <tr>
@@ -120,18 +120,10 @@
 <td>#{tComputer name}</td>
 <td><input type="text" id="computername" value="#{computername}"/></td>
 </tr>
-<tr>
-<td>#{tInternet auth key}</td>
-<td><input type="text" id="internet_authkey" value="#{internet_authkey}"/></td>
-</tr>
 #{no_compname_end}
 <tr>
-<td>#{tMax backup speed for local network}</td>
+<td>#{tMax backup speed for local network}:</td>
 <td><input type="text" id="local_speed" value="#{local_speed}"/> MBit/s</td>
-</tr>
-<tr>
-<td>#{tMax backup speed for internet connection}</td>
-<td><input type="text" id="internet_speed" value="#{internet_speed}"/> KBit/s</td>
 </tr>
 </table>
 </div>
@@ -168,3 +160,60 @@
 </tr>
 </table>
 </div>
+
+#{internet_settings_start}
+<div class="tabbertab" title="#{tInternet}">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+#{global_settings_start}
+<tr>
+<td>#{tEnable internet mode (requires server restart)}:</td>
+<td><input type="checkbox" id="internet_mode_enabled" value="false" #{internet_mode_enabled}/></td>
+</tr>
+<tr>
+<td>#{tInternet server name/IP}:</td>
+<td><input type="text" size="40" id="internet_server" value="#{internet_server}"/> </td>
+</tr>
+<tr>
+<td>#{tInternet server port}:</td>
+<td><input type="text" size="40" id="internet_server_port" value="#{internet_server_port}"/> </td>
+</tr>
+#{global_settings_end}
+#{no_compname_start}
+<tr>
+<td>#{tEnable internet mode}:</td>
+<td><input type="checkbox" id="internet_mode_enabled" value="false" #{internet_mode_enabled}/></td>
+</tr>
+<tr>
+<td>#{tInternet auth key}</td>
+<td><input type="text" id="internet_authkey" value="#{internet_authkey}"/></td>
+</tr>
+#{no_compname_end}
+<tr>
+<td>#{tDo image backups over internet}:</td>
+<td><input type="checkbox" id="internet_image_backups" value="false" #{internet_image_backups}/></td>
+</tr>
+<tr>
+<td>#{tDo full file backups over internet}:</td>
+<td><input type="checkbox" id="internet_full_file_backups" value="false" #{internet_full_file_backups}/></td>
+</tr>
+<tr>
+<td>#{tMax backup speed for internet connection}:</td>
+<td><input type="text" id="internet_speed" value="#{internet_speed}"/> KBit/s</td>
+</tr>
+#{global_settings_start}
+<tr>
+<td>#{tTotal max backup speed for internet connection}:</td>
+<td><input type="text" id="global_internet_speed" value="#{global_internet_speed}"/> KBit/s</td>
+</tr>
+#{global_settings_end}
+<tr>
+<td>#{tEncrypted transfer}:</td>
+<td><input type="checkbox" id="internet_encrypt" value="false" #{internet_encrypt}/></td>
+</tr>
+<tr>
+<td>#{tCompressed transfer}:</td>
+<td><input type="checkbox" id="internet_compress" value="false" #{internet_compress}/></td>
+</tr>
+</table>
+</div>
+#{internet_settings_end}

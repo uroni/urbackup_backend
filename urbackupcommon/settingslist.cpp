@@ -32,5 +32,11 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"internet_authkey");
 	ret.push_back(L"internet_speed");
 	ret.push_back(L"local_speed");
+	ret.push_back(L"internet_client_enabled");
+	ret.push_back(L"internet_image_backups");
+	ret.push_back(L"internet_full_file_backups");
+	ret.push_back(L"internet_encrypt");
+	ret.push_back(L"internet_compress");
+	ret.push_back(L"internet_mode_enabled");
 	return ret;
 }

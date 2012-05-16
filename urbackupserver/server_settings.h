@@ -57,6 +57,7 @@ struct SSettings
 	int internet_speed;
 	int global_internet_speed;
 	int global_local_speed;
+	bool internet_mode_enabled;
 };
 
 struct STimeSpan

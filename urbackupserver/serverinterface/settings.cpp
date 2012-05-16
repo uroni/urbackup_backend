@@ -75,6 +75,11 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("client_set_settings", settings.getSettings()->client_set_settings);
 	ret.set("internet_speed", settings.getSettings()->internet_speed);
 	ret.set("local_speed", settings.getSettings()->local_speed);
+	ret.set("internet_mode_enabled", settings.getSettings()->internet_mode_enabled);
+	ret.set("internet_compress", settings.getSettings()->internet_mode_enabled);
+	ret.set("internet_encrypt", settings.getSettings()->internet_encrypt);
+	ret.set("internet_image_backups", settings.getSettings()->internet_image_backups);
+	ret.set("internet_full_file_backups", settings.getSettings()->internet_full_file_backups);
 	return ret;
 }
 
@@ -82,7 +87,7 @@ struct SGeneralSettings
 {
 	SGeneralSettings(void): no_images(false), no_file_backups(false), autoshutdown(false), autoupdate_clients(true),
 		max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true),
-		internet_server_port(55415), internet_image_backups(false), internet_full_file_backups(false),
+		internet_server_port(55415),
 		global_local_speed(-1), global_internet_speed(-1) {}
 	std::wstring backupfolder;
 	bool no_images;
@@ -96,8 +101,6 @@ struct SGeneralSettings
 	bool backup_database;
 	std::string internet_server;
 	unsigned short internet_server_port;
-	bool internet_full_file_backups;
-	bool internet_image_backups;
 	int global_local_speed;
 	int global_internet_speed;
 };
@@ -142,10 +145,6 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.internet_server=Server->ConvertToUTF8(value);
 		else if(key==L"internet_server_port" )
 			ret.internet_server_port=(unsigned short)watoi(value);
-		else if(key==L"internet_image_backups" && value==L"true")
-			ret.internet_image_backups=true;
-		else if(key==L"internet_full_file_backups" && value==L"true")
-			ret.internet_full_file_backups=true;
 		else if(key==L"global_internet_speed")
 			ret.global_internet_speed=watoi(value);
 		else if(key==L"global_local_speed")
@@ -268,8 +267,6 @@ void updateInternetSettings(SGeneralSettings settings, IDatabase *db)
 
 	updateSetting(L"internet_server", Server->ConvertToUnicode(settings.internet_server), q_get, q_update, q_insert);
 	updateSetting(L"internet_server_port", convert(settings.internet_server_port), q_get, q_update, q_insert);
-	updateSetting(L"internet_image_backups", settings.internet_image_backups?L"true":L"false",  q_get, q_update, q_insert);
-	updateSetting(L"internet_full_file_backups", settings.internet_full_file_backups?L"true":L"false",  q_get, q_update, q_insert);
 }
 
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
@@ -513,7 +510,7 @@ ACTION_IMPL(settings)
 			{
 				navitems.set("mail", true);
 			}
-			if(helper.getRights("internet_settings")=="all" && crypto_fak!=NULL)
+			if(crypto_fak!=NULL)
 			{
 				navitems.set("internet", true);
 			}
@@ -592,6 +589,10 @@ ACTION_IMPL(settings)
 					if(GET[L"no_ok"]!=L"true")
 					{
 						ret.set("saved_ok", true);
+					}
+					else
+					{
+						ret.set("saved_part", true);
 					}
 
 					ServerSettings::updateAll();
@@ -732,9 +733,12 @@ ACTION_IMPL(settings)
 				settings.cleanup_window=GET[L"cleanup_window"];
 				settings.global_internet_speed=watoi(GET[L"global_internet_speed"]);
 				settings.global_local_speed=watoi(GET[L"global_local_speed"]);
+				settings.internet_server=Server->ConvertToUTF8(GET[L"internet_server"] );
+				settings.internet_server_port=watoi(GET[L"internet_server_port"]);
 
 				updateClientSettings(0, GET, db);
 				updateArchiveSettings(0, GET, db);
+				updateInternetSettings(settings, db);
 				saveGeneralSettings(settings, db);
 
 				ServerSettings::updateAll();
@@ -762,6 +766,8 @@ ACTION_IMPL(settings)
 				obj.set("backup_database", settings.backup_database);
 				obj.set("global_local_speed", settings.global_local_speed);
 				obj.set("global_internet_speed", settings.global_internet_speed);
+				obj.set("internet_server", settings.internet_server);
+				obj.set("internet_server_port", settings.internet_server_port);
 				#ifdef _WIN32
 				obj.set("ONLY_WIN32_BEGIN","");
 				obj.set("ONLY_WIN32_END","");
@@ -812,28 +818,6 @@ ACTION_IMPL(settings)
 			ret.set("settings", obj);
 			ret.set("sa", sa);
 		}
-		if( sa==L"internet_save" && helper.getRights("internet_save")=="all" )
-		{
-			SGeneralSettings settings;
-			settings.internet_server=Server->ConvertToUTF8(GET[L"internet_server"] );
-			settings.internet_server_port=watoi(GET[L"internet_server_port"]);
-			settings.internet_full_file_backups=(GET[L"internet_full_file_backups"]==L"true");
-			settings.internet_image_backups=(GET[L"internet_image_backups"]==L"true");
-			updateInternetSettings(settings, db);
-			ret.set("saved_ok", true);
-			sa=L"internet";
-		}
-		if( sa==L"internet" && helper.getRights("internet_settings")=="all")
-		{
-			JSON::Object obj;
-			SGeneralSettings settings=getGeneralSettings(db);
-			obj.set("internet_server", settings.internet_server);
-			obj.set("internet_server_port", settings.internet_server_port);
-			obj.set("internet_image_backups", settings.internet_image_backups);
-			obj.set("internet_full_file_backups", settings.internet_full_file_backups);
-			ret.set("settings", obj);
-			ret.set("sa", sa);
-		}
 	}
 	else
 	{
@@ -851,3 +835,4 @@ ACTION_IMPL(settings)
 }
 
 #endif //CLIENT_ONLY
+

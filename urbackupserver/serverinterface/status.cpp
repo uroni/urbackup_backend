@@ -23,6 +23,7 @@
 #include "../../urbackupcommon/os_functions.h"
 #include "../server_status.h"
 #include "../../Interface/Pipe.h"
+#include "../server_get.h"
 
 #include <algorithm>
 
@@ -111,6 +112,15 @@ ACTION_IMPL(status)
 				q->Bind(hostname);
 				q->Write();
 				q->Reset();
+			}
+		}
+		if(GET.find(L"clientname")!=GET.end())
+		{
+			bool new_client=false;
+			int id=BackupServerGet::getClientID(db, GET[L"clientname"], NULL, &new_client);
+			if(new_client)
+			{
+				ret.set("added_new_client", true);
 			}
 		}
 		std::wstring s_remove_client=GET[L"remove_client"];

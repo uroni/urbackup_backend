@@ -70,7 +70,7 @@ function change_lang(l, refresh)
 	
 	I('languages').innerHTML=c;
 	
-	window.trans=window.translations[l];
+	window.curr_trans=window.translations[l];
 
 	if(refresh)
 	{
@@ -173,11 +173,11 @@ function build_main_nav()
 				p=g.nav_params[i+1];
 			if(i+1==g.main_nav_pos)
 			{
-				ndata+=tmpls.main_nav_sel.evaluate({func: nav_items[i], name: trans["nav_item_"+(i+1)], params: p});
+				ndata+=tmpls.main_nav_sel.evaluate({func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
 			}
 			else
 			{
-				ndata+=tmpls.main_nav.evaluate({func: nav_items[i], name: trans["nav_item_"+(i+1)], params: p});
+				ndata+=tmpls.main_nav.evaluate({func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
 			}
 		}
 	}
@@ -209,10 +209,12 @@ function getPar(p)
 function show_progress1(stop_clientid)
 {
 	if(!startLoading()) return;		
+	g.refresh_timeout=0;
 	show_progress11();
 }
 function show_progress11()
 {
+	if(g.refresh_timeout==-1) return;
 	clearTimeout(g.refresh_timeout);
 	g.refresh_timeout=setTimeout(show_progress11, 10000);
 	
@@ -232,6 +234,10 @@ function show_progress11()
 }
 function show_progress2(data)
 {
+	if(g.refresh_timeout==-1)
+	{
+		return;
+	}
 	stopLoading();
 	if(g.main_nav_pos!=5) return;
 	
@@ -241,7 +247,7 @@ function show_progress2(data)
 	{
 		for(var i=0;i<data.progress.length;++i)
 		{
-			data.progress[i].action=trans["action_"+data.progress[i].action];
+			data.progress[i].action=trans("action_"+data.progress[i].action);
 			rows+=tmpls.progress_row.evaluate(data.progress[i]);
 		}
 		tdata=tmpls.progress_table.evaluate({"rows": rows});
@@ -275,9 +281,9 @@ function show_progress2(data)
 			var a="action_"+action;
 			if(obj.del)
 				a+="_d";
-			obj.action=trans[a];
+			obj.action=trans(a);
 			if(obj.size_bytes==-1)
-				obj.size=trans["unknown"];
+				obj.size=trans("unknown");
 			else
 				obj.size=format_size(obj.size_bytes);
 			if(obj.del)
@@ -312,6 +318,7 @@ function show_statistics1()
 {	
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
 	new getJSON("users", "", show_statistics2);
 	new getJSON("usage", "", show_statistics3);
 	
@@ -324,10 +331,10 @@ function show_statistics2(data)
 	stopLoading();
 	if(g.main_nav_pos!=2) return;
 	
-	var ndata="<a href=\"javascript: show_statistics1()\">"+trans["overview"]+"</a>";
+	var ndata="<a href=\"javascript: show_statistics1()\">"+trans("overview")+"</a>";
 	if(g.settings_nav_pos==0)
 	{
-		ndata="<strong>"+trans["overview"]+"</strong>";
+		ndata="<strong>"+trans("overview")+"</strong>";
 	}
 	if(data.users.length>0)
 	{		
@@ -335,7 +342,7 @@ function show_statistics2(data)
 		ndata+="<select size=\"1\" style=\"width: 150px\" onchange=\"stat_client()\" id=\"statclient\">";
 		if(g.settings_nav_pos<1)
 		{
-			ndata+="<option value=\"n\">"+trans["clients"]+"</option>";
+			ndata+="<option value=\"n\">"+trans("clients")+"</option>";
 		}
 		for(var i=0;i<data.users.length;++i)
 		{		
@@ -375,9 +382,9 @@ function show_statistics3(data)
 	{
 		I('data_f').innerHTML=ndata;
 		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 700, height: 700, 
-			title: trans["storage_usage_pie_graph_title"], colname1: trans["storage_usage_pie_graph_colname1"], colname2: trans["storage_usage_pie_graph_colname2"] } );
+			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") } );
 		new loadGraph("usagegraph", "", "usagegraph", {pie: false, width: 800, height: 500, 
-			title: trans["storage_usage_bar_graph_title"], colname1: trans["storage_usage_bar_graph_colname1"], colname2: trans["storage_usage_bar_graph_colname2"] });
+			title: trans("storage_usage_bar_graph_title"), colname1: trans("storage_usage_bar_graph_colname1"), colname2: trans("storage_usage_bar_graph_colname2") });
 		g.data_f=ndata;
 	}
 }
@@ -396,15 +403,16 @@ function stat_client(id, name)
 		g.data_f=tmpls.stat_user.evaluate({clientid: id, clientname: name, ses: g.session});
 		I('data_f').innerHTML=g.data_f;
 		new loadGraph("usagegraph", "clientid="+id, "usagegraph", {pie: false, width: 700, height: 700, 
-			title: trans["storage_usage_pie_graph_title"], colname1: trans["storage_usage_pie_graph_colname1"], colname2: trans["storage_usage_pie_graph_colname2"] });
+			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") });
 		show_statistics2(g.stat_data);
 	}
 }
 
-function show_status1(details, hostname, remove, remove_client, stop_client_remove, start_backup_type)
+function show_status1(details, hostname, action, remove_client, stop_client_remove, start_backup_type)
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
 	var pars="";
 	
 	if(typeof details=="undefined")
@@ -422,11 +430,18 @@ function show_status1(details, hostname, remove, remove_client, stop_client_remo
 		{
 			pars+="&";
 		}
-		pars+="hostname="+hostname;
-		
-		if(remove)
+		if(typeof action=="undefined" || action==0 || action==1)
 		{
-			pars+="&remove=true";
+			pars+="hostname="+hostname;
+			
+			if(action==1)
+			{
+				pars+="&remove=true";
+			}
+		}
+		else if(action==2)
+		{
+			pars+="clientname="+hostname;			
 		}
 	}
 	if(start_backup_type && start_backup_type.length>0)
@@ -464,30 +479,30 @@ function show_status2(data)
 		if(obj.file_ok)
 		{
 			obj.file_style="background-color: green";
-			obj.file_ok_t=trans["ok"];
+			obj.file_ok_t=trans("ok");
 		}
 		else
 		{
 			obj.file_style="background-color: red";
-			obj.file_ok_t=trans["no_recent_backup"];
+			obj.file_ok_t=trans("no_recent_backup");
 		}
 		
 		if(obj.image_ok)
 		{
 			obj.image_style="background-color: green";
-			obj.image_ok_t=trans["ok"];
+			obj.image_ok_t=trans("ok");
 		}
 		else
 		{
 			obj.image_style="background-color: red";
-			obj.image_ok_t=trans["no_recent_backup"];
+			obj.image_ok_t=trans("no_recent_backup");
 		}
 		
-		if(obj.lastbackup=="") obj.lastbackup=trans["backup_never"];
-		if(obj.lastbackup_image=="") obj.lastbackup_image=trans["backup_never"];
+		if(obj.lastbackup=="") obj.lastbackup=trans("backup_never");
+		if(obj.lastbackup_image=="") obj.lastbackup_image=trans("backup_never");
 		
-		if(obj.online) obj.online=trans["yes"];
-		else obj.online=trans["no"];
+		if(obj.online) obj.online=trans("yes");
+		else obj.online=trans("no");
 		
 		obj.Action_remove_start="";
 		obj.Action_remove_end="";
@@ -518,11 +533,11 @@ function show_status2(data)
 		{
 			if(obj.status>=1 && obj.status<=2)
 			{
-				obj.start_file_backup=trans["backup_in_progress"];
+				obj.start_file_backup=trans("backup_in_progress");
 			}
 			else
 			{
-				obj.start_image_backup=trans["backup_in_progress"];
+				obj.start_image_backup=trans("backup_in_progress");
 			}
 		}	
 				
@@ -533,9 +548,9 @@ function show_status2(data)
 			case 2: obj.status="full_file"; break;
 			case 3: obj.status="incr_image"; break;
 			case 4: obj.status="full_image"; break;
-			case 10: obj.status=trans["starting"]; break;
-			case 11: obj.status=trans["ident_err"]; break;
-			case 12: obj.status=trans["too_many_clients_err"]; break;
+			case 10: obj.status=trans("starting"); break;
+			case 11: obj.status=trans("ident_err"); break;
+			case 12: obj.status=trans("too_many_clients_err"); break;
 		}
 		
 		if(data.allow_modify_clients)
@@ -556,16 +571,16 @@ function show_status2(data)
 			if(obj.start_ok)
 			{
 				if( obj.start_type=="incr_file" || obj.start_type=="full_file" )
-					obj.start_file_backup=trans["queued_backup"];
+					obj.start_file_backup=trans("queued_backup");
 				else if( obj.start_type=="incr_image" || obj.start_type=="full_image" )
-					obj.start_image_backup=trans["queued_backup"];
+					obj.start_image_backup=trans("queued_backup");
 			}
 			else
 			{
 				if( obj.start_type=="incr_file" || obj.start_type=="full_file" )
-					obj.start_file_backup=trans["starting_backup_failed"];
+					obj.start_file_backup=trans("starting_backup_failed");
 				else if( obj.start_type=="incr_image" || obj.start_type=="full_image" )
-					obj.start_image_backup=trans["starting_backup_failed"];
+					obj.start_image_backup=trans("starting_backup_failed");
 			}
 		}
 		
@@ -629,6 +644,14 @@ function show_status2(data)
 		tmpdir_error=tmpls.tmpdir_error.evaluate();
 	}
 	
+	var dlt_mod_start="<!--";
+	var dlt_mod_end="-->";
+	if(data.allow_modify_clients)
+	{
+		dlt_mod_start="";
+		dlt_mod_end="";
+	}
+	
 	var extra_clients_rows="";
 	
 	if(data.extra_clients.length>0)
@@ -637,8 +660,8 @@ function show_status2(data)
 		{
 			var obj=data.extra_clients[i];
 			
-			if(obj.online) obj.online=trans["yes"];
-			else obj.online=trans["no"];
+			if(obj.online) obj.online=trans("yes");
+			else obj.online=trans("no");
 			
 			extra_clients_rows+=tmpls.status_detail_extra_row.evaluate(obj);
 		}
@@ -689,10 +712,17 @@ function show_status2(data)
 		Actions_end="-->";
 	}
 	
+	var internet_client_added="";
+	if(data.added_new_client)
+	{
+		internet_client_added="<strong>"+trans("internet_client_added")+"</strong><br />";
+	}
+	
 	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
 		extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
 		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
-		server_identity: data.server_identity, modify_clients: modify_clients});
+		server_identity: data.server_identity, modify_clients: modify_clients,
+		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added});
 	
 	if(g.data_f!=ndata)
 	{
@@ -704,23 +734,34 @@ function addExtraClient()
 {
 	if(I('hostname').value.length==0)
 	{
-		alert(trans["enter_hostname"]);
+		alert(trans("enter_hostname"));
 		I('hostname').focus();
 		return;
 	}
 	
 	show_status1(true, I('hostname').value);
 }
-
+function addInternetClient()
+{
+	if(I('clientname').value.length==0)
+	{
+		alert(trans("enter_clientname"));
+		I('clientname').focus();
+		return;
+	}
+	
+	show_status1(true, I('clientname').value, 2);
+}
 function removeExtraClient(id)
 {
-	show_status1(true, id+"", true);
+	show_status1(true, id+"", 1);
 }
 
 function show_backups1()
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
 	new getJSON("backups", "", show_backups2);
 	
 	g.main_nav_pos=4;
@@ -752,16 +793,16 @@ function show_backups2(data)
 			obj.size_bytes=format_size(obj.size_bytes);
 			obj.incr=obj.incremental>0;
 			if( obj.incr )
-				obj.incr=trans["yes"];
+				obj.incr=trans("yes");
 			else
-				obj.incr=trans["no"];
+				obj.incr=trans("no");
 				
 			var link_title="";
 			var stopwatch_img="";
 			
 			if(obj.archive_timeout!=0)
 			{
-				link_title='title="'+trans["unarchived_in"]+' '+format_time_seconds(obj.archive_timeout)+'"';
+				link_title='title="'+trans("unarchived_in")+' '+format_time_seconds(obj.archive_timeout)+'"';
 				stopwatch_img='<img src="stopwatch.png" />';
 			}
 			
@@ -945,6 +986,7 @@ function show_settings1()
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
 	new getJSON("settings", "", show_settings2);
 	
 	g.main_nav_pos=1;
@@ -962,16 +1004,15 @@ function show_settings2(data)
 		var idx=0;
 		g.user_nav_pos_offset=0;
 		g.mail_nav_pos_offset=0;
-		g.internet_nav_pos_offset=0;
 		if(nav.general)
 		{
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans["general_settings"]+"</strong>";
+				n+="<strong>"+trans("general_settings")+"</strong>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: generalSettings()\">"+trans["general_settings"]+"</a>";
+				n+="<a href=\"javascript: generalSettings()\">"+trans("general_settings")+"</a>";
 			}
 			++idx;
 			++g.user_nav_pos_offset;
@@ -984,30 +1025,15 @@ function show_settings2(data)
 			
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans["mail_settings"]+"</strong>";
+				n+="<strong>"+trans("mail_settings")+"</strong>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: mailSettings()\">"+trans["mail_settings"]+"</a>";
+				n+="<a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a>";
 			}
 			++idx;
 			++g.user_nav_pos_offset;
 			++g.internet_nav_pos_offset;
-		}
-		if(nav.internet)
-		{
-			if(n!="" ) n+=" | ";
-			
-			if(g.settings_nav_pos==idx)
-			{
-				n+="<strong>"+trans["internet_server_settings"]+"</strong>";
-			}
-			else
-			{
-				n+="<a href=\"javascript: internetSettings()\">"+trans["internet_server_settings"]+"</a>";
-			}
-			++g.user_nav_pos_offset;
-			++idx;
 		}
 		if(nav.users)
 		{	
@@ -1015,11 +1041,11 @@ function show_settings2(data)
 			
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans["users"]+"</strong>";
+				n+="<strong>"+trans("users")+"</strong>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: userSettings()\">"+trans["users"]+"</a>";
+				n+="<a href=\"javascript: userSettings()\">"+trans("users")+"</a>";
 			}			
 			++idx;
 			++g.user_nav_pos_offset;
@@ -1034,7 +1060,7 @@ function show_settings2(data)
 				n+="<select size=\"1\" style=\"width: 150px\" onchange=\"clientSettings()\" id=\"settingsclient\">";
 				if(g.settings_nav_pos<idx)
 				{
-					n+="<option value=\"n\">"+trans["clients"]+"</option>"
+					n+="<option value=\"n\">"+trans("clients")+"</option>"
 				}
 				for(var i=0;i<nav.clients.length;++i)
 				{		
@@ -1071,6 +1097,12 @@ function show_settings2(data)
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			
+			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
+			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
+			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
+			data.settings.internet_encrypt=getCheckboxValue(data.settings.internet_encrypt);
+			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
+			
 			
 			data.settings.update_freq_incr/=60*60;
 			data.settings.update_freq_full/=60*60*24;
@@ -1099,6 +1131,17 @@ function show_settings2(data)
 			data.settings.ONLY_WIN32_BEGIN=unescapeHTML(data.settings.ONLY_WIN32_BEGIN);
 			data.settings.ONLY_WIN32_END=unescapeHTML(data.settings.ONLY_WIN32_END);
 			
+			if(nav.internet)
+			{
+				data.settings.internet_settings_start="";
+				data.settings.internet_settings_end="";
+			}
+			else
+			{
+				data.settings.internet_settings_start="<!--";
+				data.settings.internet_settings_end="-->";
+			}
+			
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
 			ndata+=tmpls.settings_general.evaluate(data.settings);
 			
@@ -1106,7 +1149,7 @@ function show_settings2(data)
 			{
 				ndata+=tmpls.settings_save_ok.evaluate();
 				tabber_set_idx=g.tabberidx;
-			}			
+			}
 		}
 		else if(data.sa=="clientsettings")
 		{
@@ -1132,6 +1175,11 @@ function show_settings2(data)
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			data.settings.client_disable_image_backups=getCheckboxValue(data.settings.update_freq_image_full<0);
+			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
+			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
+			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
+			data.settings.internet_encrypt=getCheckboxValue(data.settings.internet_encrypt);
+			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
 						
 			if(data.settings.update_freq_image_full<0)
 				data.settings.update_freq_image_full*=-1;
@@ -1152,7 +1200,16 @@ function show_settings2(data)
 			data.settings.global_settings_start="<!--";
 			data.settings.global_settings_end="-->";
 			
-			
+			if(nav.internet)
+			{
+				data.settings.internet_settings_start="";
+				data.settings.internet_settings_end="";
+			}
+			else
+			{
+				data.settings.internet_settings_start="<!--";
+				data.settings.internet_settings_end="-->";
+			}
 						
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
 			ndata+=tmpls.settings_user.evaluate(data.settings);
@@ -1160,6 +1217,10 @@ function show_settings2(data)
 			if(data.saved_ok)
 			{
 				ndata+=tmpls.settings_save_ok.evaluate();
+				tabber_set_idx=g.tabberidx;
+			}
+			else if(data.saved_part)
+			{
 				tabber_set_idx=g.tabberidx;
 			}
 		}
@@ -1188,42 +1249,29 @@ function show_settings2(data)
 				}
 			}
 		}
-		else if(data.sa=="internet")
-		{
-			if(data.settings.internet_full_file_backups=="true") data.settings.internet_full_file_backups="checked=\"checked\"";
-			else data.settings.internet_full_file_backups="";
-			if(data.settings.internet_image_backups=="true") data.settings.internet_image_backups="checked=\"checked\"";
-			else data.settings.internet_image_backups="";
-
-			ndata+=tmpls.settings_internet.evaluate(data.settings);
-			if(data.saved_ok)
-			{
-				ndata+=tmpls.settings_save_ok.evaluate();
-			}
-		}
 		else if(data.sa=="listusers")
 		{
 			if(data.add_ok)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans["user_add_done"] });
+				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_add_done") });
 			}
 			if(data.removeuser)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans["user_remove_done"] });
+				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_remove_done") });
 			}
 			if(data.update_right)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans["user_update_right_done"] });
+				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_update_right_done") });
 			}
 			if(data.change_ok)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans["user_pw_change_ok"] });
+				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_pw_change_ok") });
 			}
 			
 			
 			if(data.alread_exists)
 			{
-				alert(trans["user_exists"]);
+				alert(trans("user_exists"));
 				return;
 			}
 		
@@ -1235,7 +1283,7 @@ function show_settings2(data)
 				{
 					var obj=data.users[i];
 					
-					var t_rights=trans["user"];
+					var t_rights=trans("user");
 					
 					g.user_rights[obj.id]=obj.rights;
 					
@@ -1244,7 +1292,7 @@ function show_settings2(data)
 						var right=obj.rights[j];
 						if(right.domain=="all" && right.right=="all")
 						{
-							t_rights=trans["admin"];
+							t_rights=trans("admin");
 						}
 					}
 					
@@ -1332,7 +1380,12 @@ g.settings_list=[
 "image_letters",
 "internet_authkey",
 "internet_speed",
-"local_speed"
+"local_speed",
+"internet_image_backups",
+"internet_full_file_backups",
+"internet_encrypt",
+"internet_compress",
+"internet_mode_enabled"
 ];
 g.mail_settings_list=[
 "mail_servername",
@@ -1380,7 +1433,11 @@ function saveGeneralSettings()
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
 	if(!validate_text_int_or_empty(["global_local_speed", "global_internet_speed"])) return;
 	if(!validateCommonSettings() ) return;
-	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;
+	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;	
+	
+	var internet_pars=getInternetSettings();
+	if(internet_pars=="") return;
+	
 	if(!startLoading()) return;
 			
 	var pars="";
@@ -1401,7 +1458,7 @@ function saveGeneralSettings()
 	{
 		pars+=getPar(g.settings_list[i]);
 	}
-	new getJSON("settings", "sa=general_save"+pars, show_settings2);
+	new getJSON("settings", "sa=general_save"+pars+internet_pars, show_settings2);
 }
 function saveMailSettings()
 {	
@@ -1414,16 +1471,15 @@ function saveMailSettings()
 	pars+=getPar("testmailaddr");
 	new getJSON("settings", "sa=mail_save"+pars, show_settings2);
 }
-function saveInternetSettings()
+function getInternetSettings()
 {	
-	if(!validate_text_int(["internet_server_port"]) ) return;
-	if(!startLoading()) return;
+	if(!validate_text_int(["internet_server_port"]) ) return "";
 	var pars="";
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
 		pars+=getPar(g.internet_settings_list[i]);
 	}
-	new getJSON("settings", "sa=internet_save"+pars, show_settings2);
+	return pars;
 }
 function clientSettings()
 {
@@ -1517,7 +1573,7 @@ function createUser()
 		d="disabled=\"disabled\"";
 		
 	var rights="<select id=\"rights\" size=\"1\" style=\"width: 250px\" "+d+">";
-	rights+="<option value=\"-1\">"+trans["admin"]+"</option>";
+	rights+="<option value=\"-1\">"+trans("admin")+"</option>";
 	
 	for(var i=0;i<g.settings_clients.length;++i)
 	{
@@ -1591,21 +1647,21 @@ function createUser2()
 	
 	if( username.length==0 )
 	{	
-		alert(trans["username_empty"]);
+		alert(trans("username_empty"));
 		I('username').focus();
 		return;
 	}
 	
 	if( password1.length==0 )
 	{
-		alert(trans["password_empty"]);
+		alert(trans("password_empty"));
 		I('password1').focus();
 		return;
 	}
 	
 	if( password1!=password2 )
 	{
-		alert(trans["password_differ"]);
+		alert(trans("password_differ"));
 		I('password1').focus();
 		return;
 	}
@@ -1636,13 +1692,13 @@ g.login1=function ()
 	
 	if( username.length==0 )
 	{	
-		alert(trans["username_empty"]);
+		alert(trans("username_empty"));
 		I('username').focus();
 		return false;
 	}
 	if( password.length==0 )
 	{
-		alert(trans["password_empty"]);
+		alert(trans("password_empty"));
 		I('password').focus();
 		return false;
 	}
@@ -1657,7 +1713,7 @@ function login2(data)
 {
 	if(data.error==0)
 	{
-		alert(trans["user_n_exist"]);
+		alert(trans("user_n_exist"));
 		stopLoading();
 		I('username').focus();
 		return;
@@ -1678,7 +1734,7 @@ function login3(data)
 	stopLoading();
 	if(data.error==2)
 	{
-		alert(trans["password_wrong"]);
+		alert(trans("password_wrong"));
 		I('password').focus();
 		return;
 	}
@@ -1715,8 +1771,9 @@ function login3(data)
 g.session_timeout_cb = function ()
 {
 	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
 	stopLoading();
-	alert(trans["session_timeout"]);
+	alert(trans("session_timeout"));
 	I('main_nav').innerHTML="";
 	I('nav_pos').innerHTML="";
 	g.session="";
@@ -1724,7 +1781,7 @@ g.session_timeout_cb = function ()
 }
 function deleteUser(uid)
 {
-	var c=confirm(trans["really_del_user"]);
+	var c=confirm(trans("really_del_user"));
 	if(c)
 	{
 		if(!startLoading()) return;
@@ -1748,14 +1805,14 @@ function changeUserPW(uid)
 	
 	if( password1.length==0 )
 	{
-		alert(trans["password_empty"]);
+		alert(trans("password_empty"));
 		I('password1').focus();
 		return;
 	}
 	
 	if( password1!=password2 )
 	{
-		alert(trans["password_differ"]);
+		alert(trans("password_differ"));
 		I('password1').focus();
 		return;
 	}
@@ -1780,11 +1837,11 @@ function transRights()
 			var t="";
 			if(right.value=="all")
 			{
-				t=trans["right_all"];
+				t=trans("right_all");
 			}
 			else if(right.value=="none")
 			{
-				t=trans["right_none"];
+				t=trans("right_none");
 			}
 			else
 			{
@@ -1881,6 +1938,7 @@ function saveReportSettings()
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
 	
 	logs_add_mail();
 	
@@ -1896,6 +1954,7 @@ function show_logs1(params)
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
 	if(!params)params="";
 	new getJSON("logs", params, show_logs2);
 	
@@ -1910,9 +1969,9 @@ function show_logs2(data)
 	
 	if(data.clients && !data.log)
 	{
-		var np=trans["filter"]+": ";
+		var np=trans("filter")+": ";
 		np+="<select size=\"1\" onchange=\"logClientChange()\" id=\"logclients\">";
-		np+="<option value=\"-1\">"+trans["all"]+"</option>";
+		np+="<option value=\"-1\">"+trans("all")+"</option>";
 		for(var i=0;i<data.clients.length;++i)
 		{
 			var obj=data.clients[i];
@@ -1970,7 +2029,7 @@ function show_logs2(data)
 			}
 			var a="action_"+action;
 			
-			obj.action=trans[a];
+			obj.action=trans(a);
 			
 			rows+=tmpls.logs_row.evaluate(obj);
 		}
@@ -2114,7 +2173,7 @@ function createLog(d, ll)
 			else if(obj.level==2)
 				obj.lstyle="background-color: red";
 				
-			obj.level=trans["loglevel_"+obj.level];
+			obj.level=trans("loglevel_"+obj.level);
 			
 			rows+=tmpls.log_single_row.evaluate(obj);
 		}
@@ -2200,7 +2259,7 @@ function updateLogsParam()
 }
 function removeClient(clientid)
 {
-	var b=confirm(trans["really_remove_client"]);
+	var b=confirm(trans("really_remove_client"));
 	if(b)
 	{
 		show_status1(g.status_detail, "", false, [clientid]);
@@ -2224,7 +2283,7 @@ function removeClients()
 	}
 	else if(ids.length>0)
 	{	
-		var b=confirm(trans["really_remove_clients"]);
+		var b=confirm(trans("really_remove_clients"));
 		if(b)
 		{
 			show_status1(g.status_detail, "", false, ids);
@@ -2232,7 +2291,7 @@ function removeClients()
 	}
 	else
 	{
-		alert(trans["no_client_selected"]);
+		alert(trans("no_client_selected"));
 	}
 }
 function selectAllClients()
@@ -2322,19 +2381,19 @@ function addPlural(val, str)
 }
 function dectorateTimelength(tl, unit)
 {
-	if(unit=='h') tl+=" "+trans[addPlural(tl, "hour")];
-	else if(unit=='d') tl+=" "+trans[addPlural(tl,"day")];
-	else if(unit=='w') tl+=" "+trans[addPlural(tl,"week")];
-	else if(unit=='m') tl+=" "+trans[addPlural(tl,"month")];
-	else if(unit=='y') tl+=" "+trans[addPlural(tl,"year")];
-	else if(unit=='i') tl=trans["forever"];
+	if(unit=='h') tl+=" "+trans(addPlural(tl, "hour"));
+	else if(unit=='d') tl+=" "+trans(addPlural(tl,"day"));
+	else if(unit=='w') tl+=" "+trans(addPlural(tl,"week"));
+	else if(unit=='m') tl+=" "+trans(addPlural(tl,"month"));
+	else if(unit=='y') tl+=" "+trans(addPlural(tl,"year"));
+	else if(unit=='i') tl=trans("forever");
 	return  tl;
 }
 function backupTypeStr(bt)
 {
-	if(bt=="incr_file") return trans["action_1"];
-	else if(bt=="full_file") return trans["action_2"];
-	else if(bt=="file") return trans["file_backup"];
+	if(bt=="incr_file") return trans("action_1");
+	else if(bt=="full_file") return trans("action_2");
+	else if(bt=="file") return trans("file_backup");
 }
 function getArchiveTable()
 {
@@ -2378,7 +2437,7 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 	{
 		if(archive_timeleft<0)
 		{
-			archive_timeleft=trans["wait_for_archive_window"];
+			archive_timeleft=trans("wait_for_archive_window");
 		}
 		else
 		{
@@ -2475,14 +2534,14 @@ function startBackups()
 	}
 	else
 	{
-		alert(trans["no_client_selected"]);
+		alert(trans("no_client_selected"));
 	}
 }
 function stopBackup(clientid)
 {
 	if(!startLoading()) return;
 	
-	alert(trans["trying_to_stop_backup"]);
+	alert(trans("trying_to_stop_backup"));
 	g.progress_stop_id=clientid;
 	show_progress1(clientid);
 }

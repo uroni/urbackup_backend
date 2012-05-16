@@ -17,6 +17,8 @@ struct SServerSettings
 	unsigned short port;
 	std::string clientname;
 	std::string authkey;
+	bool internet_compress;
+	bool internet_encrypt;
 };
 
 class InternetClient : public IThread

@@ -37,8 +37,8 @@ public:
 
 	void operator()(void);
 
-	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true);
-	std::string sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr=true);
+	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
+	std::string sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
 	void sendToPipe(const std::string &msg);
 	int getPCDone(void);
 
@@ -52,13 +52,13 @@ public:
 
 	static int getNumberOfRunningBackups(void);
 	static int getNumberOfRunningFileBackups(void);
+	static int getClientID(IDatabase *db, const std::wstring &clientname, ServerSettings *server_settings, bool *new_client);
 
 	IPipe *getClientCommandConnection(int timeoutms=10000);
 
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
-	int getClientID(void);
 	void updateLastseen(void);
 	bool isUpdateFull(void);
 	bool isUpdateIncr(void);

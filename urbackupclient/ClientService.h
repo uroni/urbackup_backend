@@ -152,6 +152,7 @@ private:
 	void CMD_VERSION_UPDATE(const std::string &cmd);
 	void CMD_CLIENT_UPDATE(const std::string &cmd);
 	void CMD_CAPA(const std::string &cmd);
+	void CMD_NEW_SERVER(str_map &params);
 
 	IPipe *pipe;
 	IPipe *mempipe;
@@ -183,6 +184,8 @@ private:
 	static std::string backup_source_token;
 	static std::map<std::string, unsigned int> last_token_times;
 	static int last_capa;
+	static IMutex *ident_mutex;
+	static std::vector<std::string> new_server_idents;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;

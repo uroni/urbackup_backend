@@ -55,6 +55,7 @@ const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
+const unsigned int ident_err_retry_time=1*60*60*1000;
 
 
 int BackupServerGet::running_backups=0;
@@ -149,16 +150,27 @@ void BackupServerGet::unloadSQL(void)
 void BackupServerGet::operator ()(void)
 {
 	{
-		bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client failed stopping...", 10000, false);
-		if(!b)
+		bool c=true;
+		while(c)
 		{
-			pipe->Write("ok");
-			Server->Log(L"server_get Thread for client "+clientname+L" finished, because the identity was not recognized", LL_INFO);
+			c=false;
+			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying in 1h...", 10000, false, LL_INFO);
+			if(!b)
+			{
+				ServerStatus::setWrongIdent(clientname, true);
 
-			ServerStatus::setWrongIdent(clientname, true);
-			ServerLogger::reset(clientid);
-			delete this;
-			return;
+				c=true;
+				std::string msg;
+				pipe->Read(&msg, ident_err_retry_time);
+				if(msg=="exit" || msg=="exitnow")
+				{
+					pipe->Write("ok");
+					Server->Log(L"server_get Thread for client \""+clientname+L"\" finished and the identity was not recognized", LL_INFO);
+
+					delete this;
+					return;
+				}
+			}
 		}
 	}
 
@@ -212,7 +224,7 @@ void BackupServerGet::operator ()(void)
 
 	server_settings=new ServerSettings(db);
 
-	clientid=getClientID();
+	clientid=getClientID(db, clientname, server_settings, NULL);
 
 	if(clientid==-1)
 	{
@@ -301,7 +313,7 @@ void BackupServerGet::operator ()(void)
 	bool do_exit_now=false;
 	bool tried_backup=false;
 	bool file_backup_err=false;
-	bool with_hashes=true;
+	bool with_hashes=server_settings->getSettings()->internet_mode_enabled;
 	
 	while(true)
 	{
@@ -355,7 +367,7 @@ void BackupServerGet::operator ()(void)
 				status.statusaction=sa_full_file;
 				ServerStatus::setServerStatus(status, true);
 
-				ServerLogger::Log(clientid, "Doing full file backup...", LL_DEBUG);
+				ServerLogger::Log(clientid, "Starting full file backup...", LL_INFO);
 				do_full_backup_now=false;
 
 				hbu=true;
@@ -380,7 +392,7 @@ void BackupServerGet::operator ()(void)
 				status.statusaction=sa_incr_file;
 				ServerStatus::setServerStatus(status, true);
 
-				ServerLogger::Log(clientid, "Doing incremental file backup...", LL_DEBUG);
+				ServerLogger::Log(clientid, "Starting incremental file backup...", LL_INFO);
 				do_incr_backup_now=false;
 				hbu=true;
 				startBackupRunning(true);
@@ -405,7 +417,7 @@ void BackupServerGet::operator ()(void)
 				status.statusaction=sa_full_image;
 				ServerStatus::setServerStatus(status, true);
 
-				ServerLogger::Log(clientid, "Doing full image backup...", LL_DEBUG);
+				ServerLogger::Log(clientid, "Starting full image backup...", LL_INFO);
 				
 				r_image=true;
 
@@ -453,7 +465,7 @@ void BackupServerGet::operator ()(void)
 				status.statusaction=sa_incr_image;
 				ServerStatus::setServerStatus(status, true);
 
-				ServerLogger::Log(clientid, "Doing incremental image backup...", LL_DEBUG);
+				ServerLogger::Log(clientid, "Starting incremental image backup...", LL_INFO);
 				
 				r_image=true;
 				r_incremental=true;
@@ -705,8 +717,11 @@ void BackupServerGet::prepareSQL(void)
 	q_format_unixtime=db->Prepare("SELECT datetime(?, 'unixepoch', 'localtime') AS time", false);
 }
 
-int BackupServerGet::getClientID(void)
+int BackupServerGet::getClientID(IDatabase *db, const std::wstring &clientname, ServerSettings *server_settings, bool *new_client)
 {
+	if(new_client!=NULL)
+		*new_client=false;
+
 	IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?",false);
 	q->Bind(clientname);
 	db_results res=q->Read();
@@ -724,7 +739,7 @@ int BackupServerGet::getClientID(void)
 
 		db->destroyQuery(q_get_num_clients);
 
-		if(c_clients<server_settings->getSettings()->max_active_clients)
+		if(server_settings==NULL || c_clients<server_settings->getSettings()->max_active_clients)
 		{
 			IQuery *q_insert_newclient=db->Prepare("INSERT INTO clients (name, lastseen,bytes_used_files,bytes_used_images) VALUES (?, CURRENT_TIMESTAMP, 0, 0)", false);
 			q_insert_newclient->Bind(clientname);
@@ -739,6 +754,9 @@ int BackupServerGet::getClientID(void)
 			q_insert_authkey->Write();
 			q_insert_authkey->Reset();
 			db->destroyQuery(q_insert_authkey);
+
+			if(new_client!=NULL)
+				*new_client=true;
 
 			return rid;
 		}
@@ -2001,16 +2019,16 @@ void BackupServerGet::updateLastImageBackup(void)
 	q_set_last_image_backup->Reset();
 }
 
-std::string BackupServerGet::sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr)
+std::string BackupServerGet::sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_ERROR);
+			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		else
-			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_DEBUG);
+			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		return "";
 	}
 
@@ -2025,7 +2043,11 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 		size_t rc=cc->Read(&ret, timeout);
 		if(rc==0)
 		{
-			ServerLogger::Log(clientid, errmsg, LL_ERROR);
+			if(logerr)
+				ServerLogger::Log(clientid, errmsg, max_loglevel);
+			else
+				Server->Log(errmsg, max_loglevel);
+
 			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
@@ -2042,23 +2064,26 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 		}
 	}
 
-	ServerLogger::Log(clientid, L"Timeout: "+errmsg, LL_ERROR);
+	if(logerr)
+		ServerLogger::Log(clientid, L"Timeout: "+errmsg, max_loglevel);
+	else
+		Server->Log(L"Timeout: "+errmsg, max_loglevel);
 
 	Server->destroy(cc);
 
 	return "";
 }
 
-bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr)
+bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_ERROR);
+			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		else
-			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_DEBUG);
+			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		return false;
 	}
 
@@ -2074,9 +2099,9 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 		if(rc==0)
 		{
 			if(logerr)
-				ServerLogger::Log(clientid, errmsg, LL_ERROR);
+				ServerLogger::Log(clientid, errmsg, max_loglevel);
 			else
-				Server->Log(errmsg, LL_ERROR);
+				Server->Log(errmsg, max_loglevel);
 			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
@@ -2091,9 +2116,9 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 			{
 				herr=true;
 				if(logerr)
-					ServerLogger::Log(clientid, errmsg, LL_ERROR);
+					ServerLogger::Log(clientid, errmsg, max_loglevel);
 				else
-					Server->Log(errmsg, LL_ERROR);
+					Server->Log(errmsg, max_loglevel);
 				break;
 			}
 			else
@@ -2106,9 +2131,9 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 	if(!ok && !herr)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, L"Timeout: "+errmsg, LL_ERROR);
+			ServerLogger::Log(clientid, L"Timeout: "+errmsg, max_loglevel);
 		else
-			Server->Log(L"Timeout: "+errmsg, LL_ERROR);
+			Server->Log(L"Timeout: "+errmsg, max_loglevel);
 	}
 
 	Server->destroy(cc);
@@ -2360,7 +2385,7 @@ void BackupServerGet::sendClientLogdata(void)
 	{
 		std::string logdata=Server->ConvertToUTF8(res[i][L"logdata"]);
 		escapeClientMessage(logdata);
-		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false);
+		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false, LL_WARNING);
 		q_set_logdata_sent->Bind(res[i][L"id"]);
 		q_set_logdata_sent->Write();
 		q_set_logdata_sent->Reset();

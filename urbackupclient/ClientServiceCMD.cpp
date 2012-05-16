@@ -41,6 +41,13 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 		}
 		else
 		{
+			ServerIdentityMgr::loadServerIdentities();
+			if( ServerIdentityMgr::checkServerIdentity(identity) )
+			{
+				tcpstack.Send(pipe, "OK");
+				return;
+			}
+
 			if( ServerIdentityMgr::numServerIdentities()==0 )
 			{
 				ServerIdentityMgr::addServerIdentity(identity);
@@ -48,6 +55,11 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 			}
 			else
 			{
+				if( !ServerIdentityMgr::hasOnlineServer() && ServerIdentityMgr::isNewIdentity(identity) )
+				{
+					IScopedLock lock(ident_mutex);
+					new_server_idents.push_back(identity);
+				}
 				tcpstack.Send(pipe, "failed");
 			}
 		}
@@ -342,6 +354,15 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 	}
 
 	ret+="#capa="+nconvert(capa);
+
+	{
+		IScopedLock lock(ident_mutex);
+		if(!new_server_idents.empty())
+		{
+			ret+="&new_ident="+new_server_idents[new_server_idents.size()-1];
+			new_server_idents.erase(new_server_idents.begin()+new_server_idents.size()-1);
+		}
+	}
 
 	tcpstack.Send(pipe, ret);
 
@@ -907,4 +928,18 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 #else
 	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1");
 #endif
+}
+
+void ClientConnector::CMD_NEW_SERVER(str_map &params)
+{
+	std::string ident=Server->ConvertToUTF8(params[L"ident"]);
+	if(!ident.empty())
+	{
+		ServerIdentityMgr::addServerIdentity(ident);
+		tcpstack.Send(pipe, "OK");
+	}
+	else
+	{
+		tcpstack.Send(pipe, "FAILED");
+	}
 }

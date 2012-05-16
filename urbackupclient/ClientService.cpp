@@ -74,6 +74,8 @@ db_results ClientConnector::cached_status;
 std::string ClientConnector::backup_source_token;
 std::map<std::string, unsigned int> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
+IMutex *ClientConnector::ident_mutex=NULL;
+std::vector<std::string> ClientConnector::new_server_idents;
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -87,6 +89,7 @@ void ClientConnector::init_mutex(void)
 	{
 		backup_mutex=Server->createMutex();
 		progress_mutex=Server->createMutex();
+		ident_mutex=Server->createMutex();
 	}
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db_results res=db->Read("SELECT tvalue FROM misc WHERE tkey='last_capa'");
@@ -567,9 +570,10 @@ void ClientConnector::ReceivePackets(void)
 		bool ident_ok=false;
 		str_map params;
 		size_t hashpos;
-		if(cmd.size()>3 && cmd[0]=='#' && cmd[1]=='I' )
+		if(cmd.size()>3 && cmd[0]=='#' && cmd[1]=='I' ) //From server
 		{
 			identity=getbetween("#I", "#", cmd);
+			replaceNonAlphaNumeric(identity, '_');
 			cmd.erase(0, identity.size()+3);
 			size_t tp=cmd.find("#token=");
 			if(tp!=std::string::npos)
@@ -578,7 +582,7 @@ void ClientConnector::ReceivePackets(void)
 				cmd.erase(tp, cmd.size()-tp);
 			}
 		}
-		else if((hashpos=cmd.find("#"))!=std::string::npos)
+		else if((hashpos=cmd.find("#"))!=std::string::npos) //From front-end
 		{
 			ParseParamStr(getafter("#", cmd), &params);
 
@@ -608,11 +612,11 @@ void ClientConnector::ReceivePackets(void)
 		{
 			CMD_ADD_IDENTITY(identity, cmd, ident_ok); continue;
 		}
-		else if(cmd.find("FULL IMAGE ")==0 )
+		else if(next(cmd, 0, "FULL IMAGE ") )
 		{
 			CMD_FULL_IMAGE(cmd, ident_ok); continue;
 		}
-		else if(cmd.find("INCR IMAGE ")==0 )
+		else if(next(cmd, 0, "INCR IMAGE ") )
 		{
 			CMD_INCR_IMAGE(cmd, ident_ok); continue;
 		}
@@ -627,15 +631,15 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_START_FULL_FILEBACKUP(cmd); continue;
 			}
-			else if(cmd.find("START SC \"")==0 )
+			else if(next(cmd, 0, "START SC \"") )
 			{
 				CMD_START_SHADOWCOPY(cmd); continue;
 			}
-			else if(cmd.find("STOP SC \"")==0 )
+			else if(next(cmd, 0, "STOP SC \"") )
 			{
 				CMD_STOP_SHADOWCOPY(cmd); continue;
 			}
-			else if(cmd.find("INCRINTERVALL \"")==0 )
+			else if(next(cmd, 0, "INCRINTERVALL \"") )
 			{
 				CMD_SET_INCRINTERVAL(cmd); continue;
 			}
@@ -643,86 +647,86 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_DID_BACKUP(cmd); continue;
 			}
-			else if(cmd.find("SETTINGS ")==0 )
+			else if(next(cmd, 0, "SETTINGS ") )
 			{
 				CMD_UPDATE_SETTINGS(cmd); continue;
 			}
-			else if(cmd.find("PING RUNNING")==0 )
+			else if(next(cmd, 0, "PING RUNNING") )
 			{
 				CMD_PING_RUNNING(cmd); continue;
 			}
-			else if( (cmd=="CHANNEL" || cmd.find("1CHANNEL")==0 ) )
+			else if( (cmd=="CHANNEL" || next(cmd, 0, "1CHANNEL") ) )
 			{
 				CMD_CHANNEL(cmd, &g_lock); continue;
 			}
-			else if(cmd.find("2LOGDATA ")==0 )
+			else if(next(cmd, 0, "2LOGDATA ") )
 			{
 				CMD_LOGDATA(cmd); continue;
 			}
-			else if( cmd.find("MBR ")==0 )
+			else if( next(cmd, 0, "MBR ") )
 			{
 				CMD_MBR(cmd); continue;
 			}
-			else if( cmd.find("VERSION ")==0 )
+			else if( next(cmd, 0, "VERSION ") )
 			{
 				CMD_VERSION_UPDATE(cmd); continue;
 			}
-			else if( cmd.find("CLIENTUPDATE ")==0 )
+			else if( next(cmd, 0, "CLIENTUPDATE ") )
 			{
 				CMD_CLIENT_UPDATE(cmd); continue;
 			}
-			else if(cmd.find("CAPA")==0 )
+			else if(next(cmd, 0, "CAPA") )
 			{
 				CMD_CAPA(cmd); continue;
 			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{
-			if((cmd.find("1GET BACKUP DIRS")==0 || cmd.find("GET BACKUP DIRS")==0) )
+			if( cmd=="1GET BACKUP DIRS" || cmd=="GET BACKUP DIRS" )
 			{
 				CMD_GET_BACKUPDIRS(cmd); continue;
 			}
-			else if(cmd.find("SAVE BACKUP DIRS")==0 )
+			else if(cmd=="SAVE BACKUP DIRS" )
 			{
 				CMD_SAVE_BACKUPDIRS(cmd, params); continue;
 			}
-			else if(cmd.find("GET INCRINTERVALL")==0 )
+			else if(cmd=="GET INCRINTERVALL" )
 			{
 				CMD_GET_INCRINTERVAL(cmd); continue;
 			}
-			else if(cmd.find("STATUS")==0 )
+			else if(cmd=="STATUS" )
 			{
 				CMD_STATUS(cmd); continue;
 			}
-			else if(cmd.find("START BACKUP INCR")==0 )
+			else if(cmd=="START BACKUP INCR" )
 			{
 				CMD_TOCHANNEL_START_INCR_FILEBACKUP(cmd); continue;			
 			}
-			else if(cmd.find("START BACKUP FULL")==0 )
+			else if(cmd=="START BACKUP FULL" )
 			{
 				CMD_TOCHANNEL_START_FULL_FILEBACKUP(cmd); continue;
 			}
-			else if(cmd.find("START IMAGE FULL")==0 )
+			else if(cmd=="START IMAGE FULL" )
 			{
 				CMD_TOCHANNEL_START_FULL_IMAGEBACKUP(cmd); continue;
 			}
-			else if(cmd.find("START IMAGE INCR")==0 )
+			else if(cmd=="START IMAGE INCR" )
 			{
 				CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(cmd); continue;
 			}
-			else if(cmd.find("UPDATE SETTINGS ")==0 )
+			else if(next(cmd, 0, "UPDATE SETTINGS ") )
 			{
 				CMD_TOCHANNEL_UPDATE_SETTINGS(cmd); continue;
 			}
-			else if(cmd.find("PAUSE ")==0 )
+			else if(next(cmd, 0, "PAUSE ") )
 			{
 				CMD_PAUSE(cmd); continue;
 			}
-			else if(cmd.find("GET LOGPOINTS")==0 )
+			else if(cmd=="GET LOGPOINTS" )
 			{
 				CMD_GET_LOGPOINTS(cmd); continue;
 			}
-			else if(cmd.find("GET LOGDATA")==0 )
+			else if(cmd=="GET LOGDATA" )
 			{
 				CMD_GET_LOGDATA(cmd, params); continue;
 			}
@@ -734,13 +738,17 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_RESTORE_GET_BACKUPIMAGES(cmd); continue;
 			}
-			else if( cmd.find("DOWNLOAD IMAGE")==0 )
+			else if( cmd=="DOWNLOAD IMAGE" )
 			{
 				CMD_RESTORE_DOWNLOAD_IMAGE(cmd, params); continue;
 			}
-			else if( cmd.find("GET DOWNLOADPROGRESS")==0 )
+			else if( cmd=="GET DOWNLOADPROGRESS" )
 			{
 				CMD_RESTORE_DOWNLOADPROGRESS(cmd); continue;		
+			}
+			else if( cmd=="NEW SERVER" )
+			{
+				CMD_NEW_SERVER(params); continue;
 			}
 		}
 		if(is_channel) //Channel commands from server

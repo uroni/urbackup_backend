@@ -15,6 +15,14 @@ if( navigator.appName=="Microsoft Internet Explorer" && g.opera==false )
 	g.ie=true;
 }
 
+function trans(str)
+{
+	if(typeof curr_trans[str]=="undefined")
+		return translations.en[str];
+	else
+		return curr_trans[str];
+}
+
 function Escape(str)
 {
 	return encodeURIComponent(str);
@@ -475,9 +483,9 @@ function format_time_seconds(t, s)
 			{
 				ret+=" ";
 				if(y>1)
-					ret+=trans[x+"s"];
+					ret+=trans(x+"s");
 				else
-					ret+=trans[x];
+					ret+=trans(x);
 			}
 			
 				
@@ -547,13 +555,13 @@ function validate_text_nonempty(a)
 	{
 		if(I(a[i]).value.length==0)
 		{
-			if(trans["validate_err_empty_"+a[i]])
+			if(trans("validate_err_empty_"+a[i]))
 			{
-				alert(trans["validate_err_empty_"+a[i]]);
+				alert(trans("validate_err_empty_"+a[i]));
 			}
 			else
 			{
-				alert( (new Template(trans["validate_text_empty"])).evaluate({name: trans["validate_name_"+a[i]]}));
+				alert( (new Template(trans("validate_text_empty"))).evaluate({name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -575,13 +583,13 @@ function validate_text_int(a)
 	{
 		if(!isInt(I(a[i]).value))
 		{
-			if(trans["validate_err_notint_"+a[i]])
+			if(trans("validate_err_notint_"+a[i]))
 			{
-				alert(trans["validate_err_notint_"+a[i]]);
+				alert(trans("validate_err_notint_"+a[i]));
 			}
 			else
 			{
-				alert( (new Template(trans["validate_text_notint"])).evaluate({name: trans["validate_name_"+a[i]]}));
+				alert( (new Template(trans("validate_text_notint"))).evaluate({name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -596,13 +604,13 @@ function validate_text_int_or_empty(a)
 	{
 		if(!isInt(I(a[i]).value) && I(a[i]).value!="-" && I(a[i]).value!="")
 		{
-			if(trans["validate_err_notint_"+a[i]])
+			if(trans("validate_err_notint_"+a[i]))
 			{
-				alert(trans["validate_err_notint_"+a[i]]);
+				alert(trans("validate_err_notint_"+a[i]));
 			}
 			else
 			{
-				alert( (new Template(trans["validate_text_notint"])).evaluate({name: trans["validate_name_"+a[i]]}));
+				alert( (new Template(trans("validate_text_notint"))).evaluate({name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -617,13 +625,13 @@ function validate_text_regex(a)
 	{
 		if(!a[i].regexp.test(I(a[i].id).value))
 		{
-			if(trans["validate_err_notregexp_"+a[i].id])
+			if(trans("validate_err_notregexp_"+a[i].id))
 			{
-				alert(trans["validate_err_notregexp_"+a[i].id]);
+				alert(trans("validate_err_notregexp_"+a[i].id));
 			}
 			else
 			{
-				alert( (new Template(trans["validate_text_notregexp"])).evaluate({name: trans["validate_name_"+a[i].id]}));
+				alert( (new Template(trans("validate_text_notregexp"))).evaluate({name: trans("validate_name_"+a[i].id)}));
 			}
 			I(a[i].id).focus();
 			return false;

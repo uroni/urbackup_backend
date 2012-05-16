@@ -105,7 +105,6 @@ void InternetClient::operator()(void)
 		IScopedLock lock(mutex);
 		if(update_settings)
 		{
-
 			doUpdateSettings();
 			update_settings=false;
 		}
@@ -157,6 +156,13 @@ void InternetClient::doUpdateSettings(void)
 	if(settings==NULL)
 		return;
 
+	std::string internet_mode_enabled;
+	if(!settings->getValue("internet_mode_enabled", &internet_mode_enabled) || internet_mode_enabled=="false" )
+	{
+		Server->destroy(settings);
+		return;
+	}
+
 	std::string server_name;
 	std::string computername;
 	std::string server_port="55415";
@@ -180,11 +186,27 @@ void InternetClient::doUpdateSettings(void)
 		server_settings.clientname=computername;
 		server_settings.authkey=authkey;
 	}
+	std::string tmp;
+	server_settings.internet_compress=true;
+	if(settings->getValue("internet_compress", &tmp) || settings->getValue("internet_compress_def", &tmp) )
+	{
+		if(tmp=="false")
+			server_settings.internet_compress=false;
+	}
+	server_settings.internet_encrypt=true;
+	if(settings->getValue("internet_encrypt", &tmp) || settings->getValue("internet_encrypt_def", &tmp) )
+	{
+		if(tmp=="false")
+			server_settings.internet_encrypt=false;
+	}
 }
 
 bool InternetClient::tryToConnect(IScopedLock *lock)
 {
 	std::string name=server_settings.name;
+	if(name.empty())
+		return false;
+
 	unsigned short port=server_settings.port;
 	lock->relock(NULL);
 	IPipe *cs=Server->ConnectStream(name, port, 10000);
@@ -341,8 +363,10 @@ void InternetClientThread::operator()(void)
 		CWData data;
 		data.addChar(ID_ISC_CAPA);
 
-		capa|=IPC_ENCRYPTED;
-		if(server_capa & IPC_COMPRESSED )
+		if(server_settings.internet_encrypt )
+			capa|=IPC_ENCRYPTED;
+
+		if(server_settings.internet_compress && server_capa & IPC_COMPRESSED )
 			capa|=IPC_COMPRESSED;
 
 		data.addUInt(capa);
