@@ -73,7 +73,7 @@ private:
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool with_token=true);
-	bool load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc);
+	bool load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes);
 	bool load_file_patch(const std::wstring &fn, const std::wstring &curr_path, const std::wstring &last_backuppath, FileClientChunked &fc, FileClient &fc_normal);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs);
 	SBackup getLastIncremental(void);

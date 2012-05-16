@@ -314,6 +314,9 @@ void BackupServerGet::operator ()(void)
 	bool tried_backup=false;
 	bool file_backup_err=false;
 	bool with_hashes=server_settings->getSettings()->internet_mode_enabled;
+
+	if(internet_connection)
+		with_hashes=true;
 	
 	while(true)
 	{
@@ -1251,7 +1254,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 				}
 				else
 				{
-					bool b=load_file(cf.name, curr_path, fc);
+					bool b=load_file(cf.name, curr_path, fc, with_hashes);
 					if(!b)
 					{
 						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
@@ -1317,7 +1320,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 
 	if(file_old==NULL)
 	{
-		return load_file(fn, curr_path, fc_normal);
+		return load_file(fn, curr_path, fc_normal, true);
 	}
 
 	ServerLogger::Log(clientid, L"Loading file patch for \""+fn+L"\"", LL_DEBUG);
@@ -1370,7 +1373,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		return true;
 }
 
-bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc)
+bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes)
 {
 	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
 	IFile *fd=getTemporaryFileRetry();
@@ -1396,7 +1399,11 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr
 	{
 		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
-		std::wstring hashpath=backuppath_hashes+os_curr_path;
+		std::wstring hashpath;
+		if(with_hashes)
+		{
+			hashpath=backuppath_hashes+os_curr_path;
+		}
 
 		hashFile(dstpath, hashpath, fd, NULL, "");
 	}
@@ -1752,7 +1759,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 							if(intra_file_diffs)
 								b=load_file_patch(cf.name, curr_path, last_backuppath, fc_chunked, fc);
 							else
-								b=load_file(cf.name, curr_path, fc);
+								b=load_file(cf.name, curr_path, fc, with_hashes);
 
 							if(!b)
 							{
@@ -1793,7 +1800,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 								if(intra_file_diffs)
 									b2=load_file_patch(cf.name, curr_path, last_backuppath, fc_chunked, fc);
 								else
-									b2=load_file(cf.name, curr_path, fc);
+									b2=load_file(cf.name, curr_path, fc, with_hashes);
 
 								if(!b2)
 								{
