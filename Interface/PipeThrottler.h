@@ -2,6 +2,7 @@
 #define IPIPETHROTTLER_H
 
 #include "Object.h"
+#include <string>
 
 class IPipeThrottler : public IObject
 {
