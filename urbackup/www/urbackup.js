@@ -4,7 +4,7 @@ g.lang="en";
 g.startup=true;
 g.google_chart_loaded=false;
 
-g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" } ];
+g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" }, { l: "Россия", s: "ru"} ];
 
 function startup()
 {
