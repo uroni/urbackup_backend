@@ -8,7 +8,7 @@ g.tabberidx=-1;
 g.status_detail=false;
 g.progress_stop_id=-1;
 
-g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" } ];
+g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" }, { l: "Россия", s: "ru"} ];
 
 function startup()
 {
