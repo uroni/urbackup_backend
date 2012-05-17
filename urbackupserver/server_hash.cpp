@@ -313,7 +313,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		}
 		else
 		{
-			if(!f_hashpath.empty())
+			if(!hash_fn.empty() && !f_hashpath.empty())
 			{
 				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(f_hashpath));
 				if(!b)
