@@ -1406,14 +1406,28 @@ void IndexThread::execute_postbackup_hook(void)
 	}
 #else
 	pid_t pid;
-	pid = fork();
-	if( pid==0 )
+	pid1 = fork();
+	if( pid1==0 )
 	{
-	    char *a1=(char*)"/etc/urbackup/postfilebackup";
-	    char* const argv[]={ a1, NULL };
-	    execv(a1, argv);
-	    Server->Log("Error in execv /etc/urbackup/postfilebackup: "+nconvert(errno), LL_INFO);
-	    exit(1);
+		pid_t pid2;
+		pid2 = fork();
+		if(pid2==0)
+		{
+			char *a1=(char*)"/etc/urbackup/postfilebackup";
+			char* const argv[]={ a1, NULL };
+			execv(a1, argv);
+			Server->Log("Error in execv /etc/urbackup/postfilebackup: "+nconvert(errno), LL_INFO);
+			exit(1);
+		}
+		else
+		{
+			exit(1);
+		}
+	}
+	else
+	{
+		int status;
+		waitpid(pid1, &status, NULL);
 	}
 #endif
 }
