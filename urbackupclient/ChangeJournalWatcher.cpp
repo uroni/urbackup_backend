@@ -977,7 +977,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				open_write_files[real_fn]=true;
 			}
 
-			if(UsnRecord->Reason & watch_flags)
+			if(UsnRecord->Reason & (watch_flags | USN_REASON_RENAME_OLD_NAME) )
 			{
 				listener->On_FileModified(real_fn);
 			}
