@@ -42,6 +42,7 @@
 #else
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #endif
 
 volatile bool IdleCheckerThread::idle=false;
@@ -1427,7 +1428,7 @@ void IndexThread::execute_postbackup_hook(void)
 	else
 	{
 		int status;
-		waitpid(pid1, &status, NULL);
+		waitpid(pid1, &status, 0);
 	}
 #endif
 }

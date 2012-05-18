@@ -42,6 +42,7 @@ using namespace nt;
 #ifndef _WIN32
 #	include <sys/types.h>
 #	include <pwd.h>
+#	include <sys/wait.h>
 #endif
 
 CServer *Server=NULL;
@@ -301,7 +302,7 @@ int main_fkt(int argc, char *argv[])
 		else
 		{
 			int status;
-			waitpid(pid1, &status, NULL);
+			waitpid(pid1, &status, 0);
 			exit(1);
 		}
 
