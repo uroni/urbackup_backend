@@ -287,16 +287,28 @@ int main_fkt(int argc, char *argv[])
 #ifndef _WIN32
 	if(daemon)
 	{
-		if( fork()==0 )
+		size_t pid1;
+		if( (pid1=fork())==0 )
 		{
 			setsid();
-			for (int i=getdtablesize();i>=0;--i) close(i);
-			int i=open("/dev/null",O_RDWR);
-			dup(i);
-			dup(i);
+			if(fork()==0)
+			{
+				for (int i=getdtablesize();i>=0;--i) close(i);
+				int i=open("/dev/null",O_RDWR);
+				dup(i);
+				dup(i);
+			}
+			else
+			{
+				exit(1);
+			}
 		}
 		else
-			exit(0);
+		{
+			int status;
+			waitpid(pid1, &status, NULL);
+			exit(1);
+		}
 
 		chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
 		
