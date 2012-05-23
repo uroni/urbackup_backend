@@ -16,6 +16,8 @@ bool update_stats_use_transactions_del=true;
 const bool update_stats_use_transactions_done=false;
 const bool update_stats_autocommit=true;
 bool update_stats_bulk_done_files=true;
+const bool update_stats_bulk_del_files=true;
+const size_t client_sum_cache_size=100;
 
 ServerUpdateStats::ServerUpdateStats(bool image_repair_mode, bool interruptible)
 	: image_repair_mode(image_repair_mode), interruptible(interruptible)
@@ -27,12 +29,15 @@ void ServerUpdateStats::createQueries(void)
 	q_get_images=db->Prepare("SELECT id,clientid,path FROM backup_images WHERE complete=1 AND running<datetime('now','-300 seconds')", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=? WHERE id=?", false);
 	q_get_ncount_files=db->Prepare("SELECT rowid AS id, shahash, filesize, rsize, clientid, backupid FROM files WHERE did_count=0 LIMIT 10000", false);
+	q_get_ncount_files_num=db->Prepare("SELECT count(*) AS c FROM files WHERE did_count=0", false);
 	q_has_client=db->Prepare("SELECT count(*) AS c FROM files WHERE shahash=? AND filesize=? AND clientid=?", false);
+	q_has_client_del=db->Prepare("SELECT count(*) AS c FROM files_del WHERE shahash=? AND filesize=? AND clientid=?", false);
 	q_mark_done=db->Prepare("UPDATE files SET did_count=1 WHERE rowid=?", false);
 	q_get_clients=db->Prepare("SELECT clientid, SUM(rsize) AS s_rsize FROM files WHERE shahash=? AND filesize=? AND +did_count=1 GROUP BY clientid", false);
 	q_get_sizes=db->Prepare("SELECT id,bytes_used_files FROM clients", false);
 	q_size_update=db->Prepare("UPDATE clients SET bytes_used_files=? WHERE id=?", false);
 	q_get_delfiles=db->Prepare("SELECT files_del.rowid AS id, shahash, filesize, rsize, clientid, backupid, incremental, is_del FROM files_del LIMIT 10000", false);
+	q_get_delfiles_num=db->Prepare("SELECT count(*) AS c FROM files_del", false);
 	q_del_delfile=db->Prepare("DELETE FROM files_del WHERE rowid=?", false);
 	q_update_backups=db->Prepare("UPDATE backups SET size_bytes=? WHERE id=?", false);
 	q_get_backup_size=db->Prepare("SELECT size_bytes FROM backups WHERE id=?", false);
@@ -45,7 +50,8 @@ void ServerUpdateStats::createQueries(void)
 	q_get_transfer=db->Prepare("SELECT rowid AS id FROM files WHERE shahash=? AND filesize=? AND +did_count=1 AND +rsize=0 LIMIT 1", false);
 	q_create_hist=db->Prepare("INSERT INTO clients_hist_id (created) VALUES (CURRENT_TIMESTAMP)", false);
 	q_get_all_clients=db->Prepare("SELECT id FROM clients", false);
-	q_mark_done_bulk_files=db->Prepare("UPDATE files SET did_count=1 WHERE rowid IN ( SELECT rowid FROM files WHERE did_count=0 LIMIT 10000 )");
+	q_mark_done_bulk_files=db->Prepare("UPDATE files SET did_count=1 WHERE rowid IN ( SELECT rowid FROM files WHERE did_count=0 LIMIT 10000 )", false);
+	q_del_delfile_bulk=db->Prepare("DELETE FROM files_del WHERE rowid IN ( SELECT rowid FROM files_del LIMIT ? )", false);
 }
 
 void ServerUpdateStats::destroyQueries(void)
@@ -72,6 +78,10 @@ void ServerUpdateStats::destroyQueries(void)
 	db->destroyQuery(q_create_hist);
 	db->destroyQuery(q_get_all_clients);
 	db->destroyQuery(q_mark_done_bulk_files);
+	db->destroyQuery(q_get_delfiles_num);
+	db->destroyQuery(q_get_ncount_files_num);
+	db->destroyQuery(q_del_delfile_bulk);
+	db->destroyQuery(q_has_client_del);
 }
 
 void ServerUpdateStats::operator()(void)
@@ -181,11 +191,25 @@ void ServerUpdateStats::update_images(void)
 	}
 }
 
+void ServerUpdateStats::measureSpeed(void)
+{
+	unsigned int ttime=Server->getTimeMS();
+	static unsigned int lasttime=ttime;
+	if(lasttime!=ttime)
+	{
+		float speed=num_updated_files/((ttime-lasttime)/1000.f);
+		Server->Log("File processing speed: "+nconvert(speed)+" files/s", LL_INFO);
+		num_updated_files=0;
+		lasttime=ttime;
+	}
+}
+
 void ServerUpdateStats::update_files(void)
 {
 	std::map<int, _i64> size_data=getSizes();
 	unsigned int last_update_time=Server->getTimeMS();
 	unsigned int last_commit_time=Server->getTimeMS();
+	num_updated_files=0;
 
 	std::map<int, SDelInfo> del_sizes;
 	
@@ -199,6 +223,10 @@ void ServerUpdateStats::update_files(void)
 	{
 		db->Write("PRAGMA wal_autocheckpoint=0");
 	}
+	else
+	{
+		db->Write("PRAGMA wal_autocheckpoint=10000");
+	}
 
 	if(update_stats_use_transactions_del)
 	{
@@ -208,6 +236,18 @@ void ServerUpdateStats::update_files(void)
 
 	Server->Log("Updating deleted files...");
 	db_results res;
+
+	res=q_get_delfiles_num->Read();
+	q_get_delfiles_num->Reset();
+
+	size_t delfiles_num=0;
+	if(res.size()>0)
+		delfiles_num=watoi(res[0][L"c"]);
+
+	size_t bulk_del=0;
+
+	std::map< std::pair<std::wstring, _i64>, bool > already_del;
+
 	int last_pc=0;
 	do
 	{
@@ -233,6 +273,7 @@ void ServerUpdateStats::update_files(void)
 		}
 		for(size_t i=0;i<res.size();++i)
 		{
+			++num_updated_files;
 			if(Server->getTimeMS()-last_update_time>2000)
 			{
 				updateSizes(size_data);
@@ -247,9 +288,10 @@ void ServerUpdateStats::update_files(void)
 				last_commit_time=Server->getTimeMS();
 			}
 
-			int pc=(int)((float)i/(float)res.size()*100.f+0.5f);
+			int pc=(int)((float)i/(float)delfiles_num*100.f+0.5f);
 			if(pc!=last_pc)
 			{
+				measureSpeed();
 				Server->Log( "Updating del files stats: "+nconvert(pc)+"%", LL_INFO);
 				last_pc=pc;
 			}
@@ -273,13 +315,47 @@ void ServerUpdateStats::update_files(void)
 				{
 					if(watoi(r[0][L"c"])>0)
 					{
-						q_del_delfile->Bind(id);
-						q_del_delfile->Write();
-						q_del_delfile->Reset();
+						if(!update_stats_bulk_del_files)
+						{
+							q_del_delfile->Bind(id);
+							q_del_delfile->Write();
+							q_del_delfile->Reset();
+						}
+						else
+						{
+							++bulk_del;
+						}
+						continue;
+					}
+				}
+
+				q_has_client_del->Bind((char*)&shahash[0],(_u32)(shahash.size()*sizeof(wchar_t)));
+				q_has_client_del->Bind(filesize);
+				q_has_client_del->Bind(cid);
+				r=q_has_client_del->Read();
+				q_has_client_del->Reset();
+				if(!r.empty())
+				{
+					if(already_del.find(std::pair<std::wstring, _i64>(shahash, filesize)) != already_del.end() ||
+						watoi(r[0][L"c"])>0)
+					{
+						if(!update_stats_bulk_del_files)
+						{
+							q_del_delfile->Bind(id);
+							q_del_delfile->Write();
+							q_del_delfile->Reset();
+						}
+						else
+						{
+							++bulk_del;
+						}
 						continue;
 					}
 				}
 			}
+
+			already_del[std::pair<std::wstring, _i64>(shahash, filesize)]=true;
+
 			if(rsize!=0)
 			{
 				q_get_transfer->Bind((char*)&shahash[0],(_u32)(shahash.size()*sizeof(wchar_t)));
@@ -331,6 +407,16 @@ void ServerUpdateStats::update_files(void)
 			q_del_delfile->Reset();
 		}
 
+		already_del.clear();
+
+		if(bulk_del>0)
+		{
+			q_del_delfile_bulk->Bind(bulk_del);
+			q_del_delfile_bulk->Write();
+			q_del_delfile_bulk->Reset();
+			bulk_del=0;
+		}
+
 		if(!update_stats_autocommit)
 		{
 			if(update_stats_use_transactions_del)
@@ -368,6 +454,12 @@ void ServerUpdateStats::update_files(void)
 		db->DetachDBs();
 		db->BeginTransaction();
 	}
+
+	size_t ncount_files_num=0;
+	res=q_get_ncount_files_num->Read();
+	q_get_ncount_files_num->Reset();
+	if(res.size()>0)
+		ncount_files_num=watoi(res[0][L"c"]);
 	
 	last_pc=0;
 	do
@@ -394,6 +486,7 @@ void ServerUpdateStats::update_files(void)
 		}
 		for(size_t i=0;i<res.size();++i)
 		{
+			++num_updated_files;
 			if(!update_stats_bulk_done_files && Server->getTimeMS()-last_update_time>2000)
 			{
 				updateSizes(size_data);
@@ -408,9 +501,10 @@ void ServerUpdateStats::update_files(void)
 				last_commit_time=Server->getTimeMS();
 			}
 
-			int pc=(int)((float)i/(float)res.size()*100.f+0.5f);
+			int pc=(int)((float)i/(float)ncount_files_num*100.f+0.5f);
 			if(pc!=last_pc)
 			{
+				measureSpeed();
 				Server->Log( "Updating files stats: "+nconvert(pc)+"%", LL_INFO);
 				last_pc=pc;
 			}
@@ -529,26 +623,29 @@ void ServerUpdateStats::update_files(void)
 
 		db->Write("PRAGMA wal_autocheckpoint=10000");
 	}
+	else
+	{
+		db->Write("PRAGMA wal_autocheckpoint=1000");
+	}
+
+	client_sum_cache.clear();
 }
 
 std::map<int, _i64> ServerUpdateStats::calculateSizeDeltas(const std::wstring &pShaHash, _i64 filesize,  _i64 *rsize)
 {
 	std::map<int, _i64> ret;
-	q_get_clients->Bind((char*)&pShaHash[0],(_u32)(pShaHash.size()*sizeof(wchar_t)));
-	q_get_clients->Bind(filesize);
-	db_results res=q_get_clients->Read();
-	q_get_clients->Reset();
+	std::vector<SClientSumCacheItem> items=getClientSum(pShaHash, filesize);
 	*rsize=0;
-	for(size_t i=0;i<res.size();++i)
+	for(size_t i=0;i<items.size();++i)
 	{
-		*rsize+=os_atoi64(wnarrow(res[i][L"s_rsize"]));
+		*rsize+=items[i].s_rsize;
 	}
 	_i64 c_rsize=*rsize;
-	if(!res.empty())
-		c_rsize/=res.size();
-	for(size_t i=0;i<res.size();++i)
+	if(!items.empty())
+		c_rsize/=items.size();
+	for(size_t i=0;i<items.size();++i)
 	{
-		ret.insert(std::pair<int, _i64>(watoi(res[i][L"clientid"]), c_rsize));
+		ret.insert(std::pair<int, _i64>(items[i].clientid, c_rsize));
 	}
 	return ret;
 }
@@ -714,6 +811,48 @@ bool ServerUpdateStats::repairImagePath(str_map img)
 		return true;
 	}
 	return false;
+}
+
+std::vector<SClientSumCacheItem> ServerUpdateStats::getClientSum(const std::wstring &shahash, _i64 filesize)
+{
+	std::pair<std::wstring, _i64> key(shahash, filesize);
+	std::map<std::pair<std::wstring, _i64>, std::vector<SClientSumCacheItem> >::iterator it=client_sum_cache.find(key);
+	if(it!=client_sum_cache.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		q_get_clients->Bind((char*)&shahash[0],(_u32)(shahash.size()*sizeof(wchar_t)));
+		q_get_clients->Bind(filesize);
+		db_results res=q_get_clients->Read();
+		q_get_clients->Reset();
+
+		std::vector<SClientSumCacheItem> ret;
+		for(size_t i=0;i<res.size();++i)
+		{
+			ret.push_back(SClientSumCacheItem(watoi(res[i][L"clientid"]), os_atoi64(wnarrow(res[i][L"s_rsize"]))));
+		}
+
+		if(client_sum_cache.size()>client_sum_cache_size)
+		{
+			client_sum_cache.clear();
+		}
+
+		client_sum_cache[key]=ret;
+
+		return ret;
+	}
+}
+
+void ServerUpdateStats::invalidateClientSum(const std::wstring &shahash, _i64 filesize)
+{
+	std::pair<std::wstring, _i64> key(shahash, filesize);
+	std::map<std::pair<std::wstring, _i64>, std::vector<SClientSumCacheItem> >::iterator it=client_sum_cache.find(key);
+	if(it!=client_sum_cache.end())
+	{
+		client_sum_cache.erase(it);
+	}
 }
 
 #endif //CLIENT_ONLY

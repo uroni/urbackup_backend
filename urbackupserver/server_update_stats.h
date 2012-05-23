@@ -11,6 +11,15 @@ struct SDelInfo
 	int incremental;
 };
 
+struct SClientSumCacheItem
+{
+	SClientSumCacheItem(int clientid, _i64 s_rsize)
+		: clientid(clientid), s_rsize(s_rsize) {}
+
+	int clientid;
+	_i64 s_rsize;
+};
+
 class ServerUpdateStats : public IThread
 {
 public:
@@ -38,20 +47,26 @@ private:
 
 	bool repairImagePath(str_map img);
 
+	void measureSpeed(void);
+
 	bool image_repair_mode;
 	bool interruptible;
 
 	IQuery *q_get_images;
 	IQuery *q_update_images_size;
 	IQuery *q_get_ncount_files;
+	IQuery *q_get_ncount_files_num;
 	IQuery *q_has_client;
+	IQuery *q_has_client_del;
 	IQuery *q_mark_done;
 	IQuery *q_mark_done_bulk_files;
 	IQuery *q_get_clients;
 	IQuery *q_get_sizes;
 	IQuery *q_size_update;
 	IQuery *q_get_delfiles;
+	IQuery *q_get_delfiles_num;
 	IQuery *q_del_delfile;
+	IQuery *q_del_delfile_bulk;
 	IQuery *q_update_backups;
 	IQuery *q_get_backup_size;
 	IQuery *q_get_del_size;
@@ -65,4 +80,10 @@ private:
 	IQuery *q_get_all_clients;
 
 	IDatabase *db;
+
+	size_t num_updated_files;
+
+	std::map<std::pair<std::wstring, _i64>, std::vector<SClientSumCacheItem> > client_sum_cache;
+	std::vector<SClientSumCacheItem> getClientSum(const std::wstring &shahash, _i64 filesize);
+	void invalidateClientSum(const std::wstring &shahash, _i64 filesize);
 };

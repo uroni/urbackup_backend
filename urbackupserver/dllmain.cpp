@@ -737,6 +737,12 @@ void upgrade20_21(void)
 	db->Write("UPDATE settings_db.automatic_archival SET archive_window='*;*;*;*' WHERE archive_window IS NULL");
 }
 
+void update21_22(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE INDEX files_del_idx ON files_del (shahash, filesize, clientid)");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -754,7 +760,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=21;
+	int max_v=22;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -858,6 +864,10 @@ void upgrade(void)
 				break;
 			case 20:
 				upgrade20_21();
+				++ver;
+				break;
+			case 21:
+				update21_22();
 				++ver;
 				break;
 			default:
