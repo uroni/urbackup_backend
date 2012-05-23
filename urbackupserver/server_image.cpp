@@ -371,6 +371,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					blockcnt=drivesize/blocksize;
 					totalblocks=blockcnt;
 
+					if(drivesize%blocksize!=0)
+						++totalblocks;
+
 					zeroblockdata=new unsigned char[blocksize];
 					memset(zeroblockdata, 0, blocksize);
 
@@ -536,13 +539,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						memcpy(&currblock, &buffer[off], sizeof(int64) );
 						if(currblock==-123)
 						{
-							int64 t_totalblocks=totalblocks;
-							if(t_totalblocks%vhd_blocksize!=0)
-								t_totalblocks+=vhd_blocksize-t_totalblocks%vhd_blocksize;
+							nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
 
-							nextblock=updateNextblock(nextblock, t_totalblocks, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
-
-							if(nextblock%vhd_blocksize==0 && nextblock!=0)
+							if(nextblock!=0)
 							{
 								//Server->Log("Hash written "+nconvert(nextblock), LL_INFO);
 								unsigned char dig[sha_size];
