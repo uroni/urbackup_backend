@@ -20,6 +20,22 @@ struct SClientSumCacheItem
 	_i64 s_rsize;
 };
 
+struct SNumFilesClientCacheItem
+{
+	SNumFilesClientCacheItem(const std::wstring &shahash, _i64 filesize, int clientid)
+		: shahash(shahash), filesize(filesize), clientid(clientid) {}
+	std::wstring shahash;
+	_i64 filesize;
+	int clientid;
+
+	bool operator<(const SNumFilesClientCacheItem &other) const
+	{
+		std::pair<std::wstring, std::pair<_i64, int> > t1(shahash, std::pair<_i64, int>(filesize, clientid) );
+		std::pair<std::wstring, std::pair<_i64, int> > t2(other.shahash, std::pair<_i64, int>(other.filesize, other.clientid) );
+		return t1<t2;
+	}
+};
+
 class ServerUpdateStats : public IThread
 {
 public:
@@ -36,7 +52,7 @@ public:
 	static void repairImages(void);
 private:
 
-	std::map<int, _i64> calculateSizeDeltas(const std::wstring &pShaHash, _i64 filesize, _i64 *rsize);
+	std::map<int, _i64> calculateSizeDeltas(const std::wstring &pShaHash, _i64 filesize, _i64 *rsize, bool with_del);
 	std::map<int, _i64> getSizes(void);
 	void add(std::map<int, _i64> &data, std::map<int, _i64> &delta, int mod=1);
 	void updateSizes(std::map<int, _i64> & size_data);
@@ -78,12 +94,19 @@ private:
 	IQuery *q_get_transfer;
 	IQuery *q_create_hist;
 	IQuery *q_get_all_clients;
+	IQuery *q_get_clients_del;
 
 	IDatabase *db;
 
 	size_t num_updated_files;
 
 	std::map<std::pair<std::wstring, _i64>, std::vector<SClientSumCacheItem> > client_sum_cache;
-	std::vector<SClientSumCacheItem> getClientSum(const std::wstring &shahash, _i64 filesize);
+	std::map<SNumFilesClientCacheItem, _i64> already_deleted_bytes;
+	std::vector<SClientSumCacheItem> getClientSum(const std::wstring &shahash, _i64 filesize, bool with_del);
 	void invalidateClientSum(const std::wstring &shahash, _i64 filesize);
+
+	std::map<SNumFilesClientCacheItem, size_t> files_num_clients_cache;
+	std::map<SNumFilesClientCacheItem, size_t> files_num_clients_del_cache;
+	size_t getFilesNumClient(const SNumFilesClientCacheItem &item);
+	size_t getFilesNumClientDel(const SNumFilesClientCacheItem &item);
 };
