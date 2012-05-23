@@ -75,6 +75,7 @@ public:
 	bool Seek(_i64 offset);
 	bool Read(char* buffer, size_t bsize, size_t &read);
 	uint64 getSize(void);
+	uint64 getRealSize(void)
 	char *getUID(void);
 	unsigned int getTimestamp(void);
 	std::string getFilename(void);

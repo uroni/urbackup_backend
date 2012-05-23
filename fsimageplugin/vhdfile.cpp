@@ -191,7 +191,7 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 		return;
 	}
 
-	dstsize=parent->getSize();
+	dstsize=parent->getRealSize();
 	blocksize=parent->getBlocksize();
 
 	if(file->Size()==0 && !read_only) // created file
@@ -681,7 +681,7 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 	bool firstr=true;
 	read=0;
 
-	if(curr_offset>=getSize())
+	if(curr_offset>=dstsize)
 	{
 		return false;
 	}
@@ -761,7 +761,7 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 				firstr=false;
 			}
 
-			if( curr_offset+wantread>getSize() )
+			if( curr_offset+wantread>dstsize )
 			{
 				return true;
 			}
@@ -808,6 +808,11 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 		++block;
 		blockoffset=0;
 		remaining=blocksize;
+
+		if(curr_offset>=dstsize)
+		{
+			return true;
+		}
 	}
 
 	return true;
@@ -975,7 +980,12 @@ void VHDFile::switchBitmap(uint64 new_offset)
 
 uint64 VHDFile::getSize(void)
 {
-	return endian_swap(footer.current_size)-volume_offset;
+	return dstsize-volume_offset;
+}
+
+uint64 VHDFile::getRealSize(void)
+{
+	return dstsize;
 }
 
 bool VHDFile::has_sector(void)
