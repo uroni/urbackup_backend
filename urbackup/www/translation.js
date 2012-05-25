@@ -485,5 +485,5 @@ translations.ru={
 "tChange password": "Изменить пароль",
 "tLogin": "Войти",
 "tInfos": "Инфо",
-"tSeparate settings for this client": "Отдельные настройки для данного клиента",
+"tSeparate settings for this client": "Отдельные настройки для данного клиента"
 }
