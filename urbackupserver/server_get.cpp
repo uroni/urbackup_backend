@@ -2463,7 +2463,7 @@ void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental
 			Tokenize(logr, toks, L",");
 			for(size_t j=0;j<toks.size();++j)
 			{
-				if(toks[j]==res_users[i][L"id"])
+				if(watoi(toks[j])==clientid)
 				{
 					has_r=true;
 				}
