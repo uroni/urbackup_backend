@@ -1294,7 +1294,10 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	Server->destroy(tmp);
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
-	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(Server->getTimeMS()-full_backup_starttime)) ), LL_INFO );
+	unsigned int passed_time=Server->getTimeMS()-full_backup_starttime;
+	if(passed_time==0) passed_time=1;
+
+	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 
 	setBackupDone();
 	
@@ -1933,7 +1936,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes()+fc_chunked.getTransferredBytes();
-	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(incr_backup_stoptime-incr_backup_starttime)) ), LL_INFO );
+	unsigned int passed_time=incr_backup_stoptime-incr_backup_starttime;
+	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 
 	setBackupDone();
 
