@@ -99,7 +99,7 @@ private:
 	void updateRunning(bool image);
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
-	bool isBackupsRunningOkay(void);
+	bool isBackupsRunningOkay(bool incr, bool file);
 	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
 
