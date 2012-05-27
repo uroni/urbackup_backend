@@ -355,10 +355,20 @@ void BackupServerGet::operator ()(void)
 					Server->Log("Cannot do image backup because can_backup_images=false", LL_DEBUG);
 				if(server_settings->getSettings()->no_images)
 					Server->Log("Cannot do image backup because no_images=true", LL_DEBUG);
-				if(!isBackupsRunningOkay(false, true))
+				if(!isBackupsRunningOkay(false, false))
 					Server->Log("Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
 				if(!internet_no_images )
 					Server->Log("Cannot do image backup because internet_no_images=true", LL_DEBUG);
+			}
+
+			if(do_incr_backup_now)
+			{
+				if(file_backup_err)
+					Server->Log("Cannot do incremental file backup because file_backup_err=true", LL_DEBUG);
+				if(server_settings->getSettings()->no_file_backups)
+					Server->Log("Cannot do incremental file backup because no_file_backups=true", LL_DEBUG);
+				if(!isBackupsRunningOkay(false, true))
+					Server->Log("Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
 			}
 
 			ServerStatus::stopBackup(clientname, false);
