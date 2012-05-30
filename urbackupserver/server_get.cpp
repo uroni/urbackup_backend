@@ -355,16 +355,27 @@ void BackupServerGet::operator ()(void)
 					Server->Log("Cannot do image backup because can_backup_images=false", LL_DEBUG);
 				if(server_settings->getSettings()->no_images)
 					Server->Log("Cannot do image backup because no_images=true", LL_DEBUG);
-				if(!isBackupsRunningOkay())
+				if(!isBackupsRunningOkay(false, false))
 					Server->Log("Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
 				if(!internet_no_images )
 					Server->Log("Cannot do image backup because internet_no_images=true", LL_DEBUG);
 			}
 
+			if(do_incr_backup_now)
+			{
+				if(file_backup_err)
+					Server->Log("Cannot do incremental file backup because file_backup_err=true", LL_DEBUG);
+				if(server_settings->getSettings()->no_file_backups)
+					Server->Log("Cannot do incremental file backup because no_file_backups=true", LL_DEBUG);
+				if(!isBackupsRunningOkay(false, true))
+					Server->Log("Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
+			}
+
 			ServerStatus::stopBackup(clientname, false);
 
-			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && !internet_no_full_file && isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) )
+			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && !internet_no_full_file && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) && isBackupsRunningOkay(true, true) )
 			{
+				hbu=true;
 				ScopedActiveThread sat;
 
 				status.statusaction=sa_full_file;
@@ -373,8 +384,6 @@ void BackupServerGet::operator ()(void)
 				ServerLogger::Log(clientid, "Starting full file backup...", LL_INFO);
 				do_full_backup_now=false;
 
-				hbu=true;
-				startBackupRunning(true);
 				if(!constructBackupPath(with_hashes))
 				{
 					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
@@ -388,8 +397,9 @@ void BackupServerGet::operator ()(void)
 					r_success=doFullBackup(with_hashes);
 				}
 			}
-			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && isBackupsRunningOkay() && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) )
+			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) && isBackupsRunningOkay(true, true) )
 			{
+				hbu=true;
 				ScopedActiveThread sat;
 
 				status.statusaction=sa_incr_file;
@@ -397,8 +407,7 @@ void BackupServerGet::operator ()(void)
 
 				ServerLogger::Log(clientid, "Starting incremental file backup...", LL_INFO);
 				do_incr_backup_now=false;
-				hbu=true;
-				startBackupRunning(true);
+				
 				r_incremental=true;
 				if(!constructBackupPath(with_hashes))
 				{
@@ -413,7 +422,7 @@ void BackupServerGet::operator ()(void)
 					r_success=doIncrBackup(with_hashes, internet_connection);
 				}
 			}
-			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && isBackupsRunningOkay() && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) )
+			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) && isBackupsRunningOkay(true, false) )
 			{
 				ScopedActiveThread sat;
 
@@ -426,8 +435,6 @@ void BackupServerGet::operator ()(void)
 
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
-
-				startBackupRunning(false);
 
 				r_success=true;
 				std::vector<std::string> vols=server_settings->getBackupVolumes();
@@ -461,7 +468,7 @@ void BackupServerGet::operator ()(void)
 
 				do_full_image_now=false;
 			}
-			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
+			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) && isBackupsRunningOkay(true, false) )
 			{
 				ScopedActiveThread sat;
 
@@ -472,8 +479,6 @@ void BackupServerGet::operator ()(void)
 				
 				r_image=true;
 				r_incremental=true;
-
-				startBackupRunning(false);
 			
 				pingthread=new ServerPingThread(this);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
@@ -2829,11 +2834,19 @@ bool BackupServerGet::isInBackupWindow(std::vector<STimeSpan> bw)
 	return false;
 }
 
-bool BackupServerGet::isBackupsRunningOkay(void)
+bool BackupServerGet::isBackupsRunningOkay(bool incr, bool file)
 {
 	IScopedLock lock(running_backup_mutex);
 	if(running_backups<server_settings->getSettings()->max_sim_backups)
 	{
+		if(incr)
+		{
+			++running_backups;
+			if(file)
+			{
+				++running_file_backups;
+			}
+		}
 		return true;
 	}
 	else
