@@ -29,6 +29,7 @@
 #include "server_writer.h"
 #include "zero_hash.h"
 #include "server_running.h"
+#include "../md5.h"
 
 #include <memory.h>
 #include <stdlib.h>
@@ -59,7 +60,7 @@ void writeZeroblockdata(void)
 	delete []zeroes;
 }
 
-bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref)
+bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
@@ -75,9 +76,17 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		sletter=pLetter[0];
 	}
 
+	bool with_checksum=false;
+	std::string chksum_str="";
+	if(transfer_checksum && image_protocol_version>0)
+	{
+		chksum_str="&checksum=1";
+		with_checksum=true;
+	}
+
 	if(pParentvhd.empty())
 	{
-		tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&token="+server_token);
+		tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);
 	}
 	else
 	{
@@ -90,7 +99,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 			Server->destroy(cc);
 			return false;
 		}
-		std::string ts=server_identity+"INCR IMAGE letter="+pLetter+"&hashsize="+nconvert(hashfile->Size())+"&token="+server_token;
+		std::string ts=server_identity+"INCR IMAGE letter="+pLetter+"&hashsize="+nconvert(hashfile->Size())+"&token="+server_token+chksum_str;
 		size_t rc=tcpstack.Send(cc, ts);
 		if(rc==0)
 		{
@@ -191,6 +200,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	IFile *parenthashfile=NULL;
 	int64 blockcnt=0;
 	int64 numblocks=0;
+	int64 blocks=0;
 	int64 totalblocks=0;
 	int64 mbr_offset=0;
 	_u32 off=0;
@@ -202,6 +212,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	int64 vhd_blocksize=(1024*1024)/2;
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, true);
 	Server->getThreadPool()->execute(running_updater);
+	unsigned char verify_checksum[sha_size];
 
 	bool has_parent=false;
 	if(!pParentvhd.empty())
@@ -333,7 +344,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 			if(first)
 			{
 				first=false;
-				if(r>=sizeof(unsigned int))
+				size_t csize=sizeof(unsigned int);
+				_u32 off_start=off;
+				if(r>=csize)
 				{
 					memcpy(&blocksize, buffer, sizeof(unsigned int) );
 					off+=sizeof(unsigned int);
@@ -363,12 +376,14 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					goto do_image_cleanup;
 				}
 				bool issmall=false;
-				if(r>=sizeof(unsigned int)+sizeof(int64))
+				csize+=sizeof(int64);
+				if(r>=csize)
 				{
 					memcpy(&drivesize, &buffer[off], sizeof(int64) );
 					off+=sizeof(int64);
 
 					blockcnt=drivesize/blocksize;
+					blocks=blockcnt;
 					totalblocks=blockcnt;
 
 					if(drivesize%blocksize!=0)
@@ -416,7 +431,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				{
 					issmall=true;
 				}
-				if(r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64))
+				csize+=+sizeof(int64);
+				if(r>=csize)
 				{
 					memcpy(&blockcnt, &buffer[off], sizeof(int64) );
 					off+=sizeof(int64);
@@ -425,7 +441,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				{
 					issmall=true;
 				}
-				if(r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64)+1)
+				csize+=1;
+				if(r>=csize)
 				{
 					char c_persistent=buffer[off];
 					if(c_persistent!=0)
@@ -438,13 +455,15 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				}
 
 				unsigned int shadowdrive_size=0;
-				if(r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64)+1+sizeof(unsigned int))
+				csize+=sizeof(unsigned int);
+				if(r>=csize)
 				{
 					memcpy(&shadowdrive_size, &buffer[off], sizeof(unsigned int));
 					off+=sizeof(unsigned int);
 					if(shadowdrive_size>0)
 					{
-						if( r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64)+1+sizeof(unsigned int)+shadowdrive_size)
+						csize+=shadowdrive_size;
+						if( r>=csize)
 						{
 							shadowdrive.resize(shadowdrive_size);
 							memcpy(&shadowdrive[0],  &buffer[off], shadowdrive_size);
@@ -461,7 +480,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					issmall=true;
 				}
 
-				if(r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64)+1+sizeof(unsigned int)+shadowdrive_size+sizeof(int))
+				csize+=sizeof(int);
+				if(r>=csize)
 				{
 					memcpy(&shadow_id, &buffer[off], sizeof(int));
 					off+=sizeof(int);
@@ -469,6 +489,29 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				else
 				{
 					issmall=true;
+				}
+
+				if(with_checksum)
+				{
+					csize+=sha_size;
+					if(r>=csize)
+					{
+						sha256_init(&shactx);
+						sha256_update(&shactx, (unsigned char*)&buffer[off_start], (unsigned int)csize-sha_size);
+						unsigned char dig[sha_size];
+						sha256_final(&shactx, dig);
+						if(memcmp(dig, &buffer[off], sha_size)!=0)
+						{
+							ServerLogger::Log(clientid, "Checksum for first packet wrong. Stopping image backup.", LL_ERROR);
+							goto do_image_cleanup;
+						}
+						off+=sha_size;
+						sha256_init(&shactx);
+					}
+					else
+					{
+						issmall=true;
+					}
 				}
 
 				if(issmall)
@@ -518,10 +561,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 						if(nextblock%vhd_blocksize==0 && nextblock!=0)
 						{
-							//Server->Log("Hash written "+nconvert(currblock), LL_DEBUG);
-							unsigned char dig[sha_size];
-							sha256_final(&shactx, dig);
-							hashfile->Write((char*)dig, sha_size);
+							Server->Log("Hash written "+nconvert(currblock), LL_DEBUG);
+							sha256_final(&shactx, verify_checksum);
+							hashfile->Write((char*)verify_checksum, sha_size);
 							sha256_init(&shactx);
 						}
 
@@ -533,20 +575,23 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 						currblock=-1;
 					}
-					
+					bool accum=false;
 					if(r-off>=sizeof(int64) )
 					{
 						memcpy(&currblock, &buffer[off], sizeof(int64) );
 						if(currblock==-123)
 						{
-							nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
-
-							if(nextblock!=0)
+							if(!with_checksum)
 							{
-								//Server->Log("Hash written "+nconvert(nextblock), LL_INFO);
-								unsigned char dig[sha_size];
-								sha256_final(&shactx, dig);
-								hashfile->Write((char*)dig, sha_size);
+								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
+
+								if(nextblock!=0)
+								{
+									//Server->Log("Hash written "+nconvert(nextblock), LL_INFO);
+									unsigned char dig[sha_size];
+									sha256_final(&shactx, dig);
+									hashfile->Write((char*)dig, sha_size);
+								}
 							}
 
 							transferred_bytes+=cc->getTransferedBytes();
@@ -638,24 +683,72 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							off+=sizeof(int64);
 							currblock=-1;
 						}
+						else if(currblock==-126) //checksum
+						{
+							if(r-off>=2*sizeof(int64)+sha_size)
+							{
+								int64 hblock;
+								unsigned char dig[sha_size];
+								memcpy(&hblock, &buffer[off+sizeof(int64)], sizeof(int64));
+								memcpy(&dig, &buffer[off+2*sizeof(int64)], sha_size);
+
+
+								if( (nextblock<hblock || hblock==blocks) && hblock>0)
+								{
+									if(nextblock<hblock)
+									{
+										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
+										sha256_update(&shactx, (unsigned char *)zeroblockdata, blocksize);						
+									}
+									if( (nextblock%vhd_blocksize==0 || hblock==blocks) && nextblock!=0)
+									{
+										sha256_final(&shactx, verify_checksum);
+										hashfile->Write((char*)verify_checksum, sha_size);
+										sha256_init(&shactx);
+									}
+								}
+
+								if( memcmp(verify_checksum, dig, sha_size)!=0)
+								{
+									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size), LL_DEBUG);
+									ServerLogger::Log(clientid, "ERROR: Checksum for image block wrong. Stopping image backup.", LL_ERROR);
+									goto do_image_cleanup;
+								}
+
+								off+=2*sizeof(int64)+sha_size;								
+							}
+							else
+							{
+								accum=true;
+							}
+							currblock=-1;
+						}
 						else
 						{
 							off+=sizeof(int64);
 							blockleft=blocksize;
 						}
 					}
-					else if(r-off>0)
-					{
-						char buf2[4096];
-						memcpy(buf2, &buffer[off], r-off);
-						memcpy(buffer, buf2, r-off);
-						off=(_u32)r-off;
-						break;
-					}
 					else
 					{
-						off=0;
-						break;
+						accum=true;
+					}
+
+					if(accum)
+					{
+						if(r-off>0)
+						{
+							char buf2[4096];
+							memcpy(buf2, &buffer[off], r-off);
+							memcpy(buffer, buf2, r-off);
+							off=(_u32)r-off;
+							break;
+						}
+						else
+						{
+							off=0;
+							break;
+						}
 					}
 				}
 				else
@@ -754,9 +847,10 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 
 int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize)
 {
-	unsigned char *blockdata=NULL;
-	if(parent_fn && nextblock<currblock)
-		blockdata=new unsigned char[blocksize];
+	if(nextblock==currblock)
+		return nextblock+1;
+	else if(nextblock>currblock)
+		return nextblock;
 
 	if(currblock-nextblock>=vhd_blocksize)
 	{
@@ -764,24 +858,7 @@ int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_
 		{
 			while(true)
 			{
-				if(!parent_fn)
-				{
-					sha256_update(shactx, zeroblockdata, blocksize);
-				}
-				else
-				{
-					{
-						IScopedLock lock(parentfile->getVHDMutex());
-						IVHDFile *vhd=parentfile->getVHD();
-						vhd->Seek(mbr_offset+nextblock*blocksize);
-						size_t read;
-						bool b=vhd->Read((char*)blockdata, blocksize, read);
-						if(!b)
-							Server->Log("Reading from VHD failed", LL_ERROR);
-					}
-					sha256_update(shactx, blockdata, blocksize);
-				}
-
+				sha256_update(shactx, zeroblockdata, blocksize);
 				++nextblock;
 
 				if(nextblock%vhd_blocksize==0 && nextblock!=0)
@@ -811,7 +888,7 @@ int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_
 				char dig[sha_size];
 				_u32 rc=parenthashfile->Read(dig, sha_size);
 				if(rc!=sha_size)
-					Server->Log("Writing to parenthashfile failed", LL_ERROR);
+					Server->Log("Reading from parenthashfile failed", LL_ERROR);
 				hashfile->Write(dig, sha_size);
 			}
 			nextblock+=vhd_blocksize;
@@ -820,23 +897,7 @@ int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_
 
 	while(nextblock<currblock)
 	{
-		if(!parent_fn)
-		{
-			sha256_update(shactx, zeroblockdata, blocksize);
-		}
-		else
-		{
-			{
-				IScopedLock lock(parentfile->getVHDMutex());
-				IVHDFile *vhd=parentfile->getVHD();
-				vhd->Seek(mbr_offset+nextblock*blocksize);
-				size_t read;
-				bool b=vhd->Read((char*)blockdata, blocksize, read);
-				if(!b)
-					Server->Log("Reading from VHD failed", LL_ERROR);
-			}
-			sha256_update(shactx, blockdata, blocksize);
-		}
+		sha256_update(shactx, zeroblockdata, blocksize);
 		++nextblock;
 		if(nextblock%vhd_blocksize==0 && nextblock!=0)
 		{
@@ -846,6 +907,5 @@ int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_
 			sha256_init(shactx);
 		}
 	}
-	delete [] blockdata;
 	return nextblock+1;
 }

@@ -185,7 +185,7 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 
 	parent=new VHDFile(parent_fn, true, 0);
 
-	if(parent==NULL)
+	if(parent->isOpen()==false)
 	{
 		Server->Log("Error opening parent VHD", LL_ERROR);
 		return;

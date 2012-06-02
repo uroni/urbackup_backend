@@ -133,3 +133,6 @@ urbackupclient/Release Server 2003/*
 urbackupclient/Release WinXP/*
 urbackupclient/Release/*
 *.orig
+urbackup/boost_python-vc100-gd-1_44.dll*
+urbackupserver/Release Server PreVista/*
+urbackupserver/Release Server/*

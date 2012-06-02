@@ -91,7 +91,7 @@ private:
 	std::wstring getUserRights(int userid, std::string domain);
 	void saveClientLogdata(int image, int incremental, bool r_success);
 	void sendLogdataMail(bool r_success, int image, int incremental, int errors, int warnings, int infos, std::wstring &data);
-	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref);
+	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum);
 	std::string getMBR(const std::wstring &dl);
 	unsigned int writeMBR(ServerVHDWriter *vhdfile, uint64 volsize);
 	int createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path, std::string letter);
@@ -211,6 +211,7 @@ private:
 	int file_protocol_version;
 	int set_settings_version;
 	bool internet_connection;
+	int image_protocol_version;
 
 	CTCPStack tcpstack;
 

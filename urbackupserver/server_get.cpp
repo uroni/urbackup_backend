@@ -87,6 +87,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 
 	filesrv_protocol_version=0;
 	file_protocol_version=1;
+	image_protocol_version=0;
 
 	set_settings_version=0;
 	tcpstack.setAddChecksum(internet_connection);
@@ -447,13 +448,13 @@ void BackupServerGet::operator ()(void)
 						{
 							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
 				
-							if(doImage("SYSVOL", L"", 0, 0))
+							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0))
 							{
 								sysvol_id=backupid;
 							}
 							ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
 						}
-						bool b=doImage(vols[i]+":", L"", 0, 0);
+						bool b=doImage(vols[i]+":", L"", 0, 0, image_protocol_version>0);
 						if(!b)
 						{
 							r_success=false;
@@ -493,7 +494,7 @@ void BackupServerGet::operator ()(void)
 						if(strlower(letter)=="c:")
 						{
 							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
-							if(doImage("SYSVOL", L"", 0, 0))
+							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0))
 							{
 								sysvol_id=backupid;
 							}
@@ -508,7 +509,7 @@ void BackupServerGet::operator ()(void)
 						}
 						else
 						{
-							r_success=doImage(letter, last.path, last.incremental+1, last.incremental_ref);
+							r_success=doImage(letter, last.path, last.incremental+1, last.incremental_ref, image_protocol_version>0);
 						}
 
 						if(r_success && sysvol_id!=-1)
@@ -2205,6 +2206,11 @@ bool BackupServerGet::updateCapabilities(void)
 		if(it!=params.end())
 		{
 			set_settings_version=watoi(it->second);
+		}
+		it=params.find(L"IMAGE_VER");
+		if(it!=params.end())
+		{
+			image_protocol_version=watoi(it->second);
 		}
 	}
 

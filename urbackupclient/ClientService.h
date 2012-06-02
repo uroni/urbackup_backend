@@ -54,6 +54,7 @@ struct ImageInformation
 	std::string image_letter;
 	bool no_shadowcopy;
 	ImageThread *image_thread;
+	bool with_checksum;
 };
 
 struct SChannel

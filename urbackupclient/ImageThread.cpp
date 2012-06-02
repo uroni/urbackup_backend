@@ -49,11 +49,15 @@ void ImageThread::ImageErrRunning(const std::string &msg)
 	delete [] buffer;
 }
 
+const unsigned int c_vhdblocksize=(1024*1024/2);
+const unsigned int c_hashsize=32;
+
 void ImageThread::sendFullImageThread(void)
 {
 	bool has_error=true;
 
 	int save_id=-1;
+	bool with_checksum=image_inf->with_checksum;
 
 	bool run=true;
 	while(run)
@@ -97,10 +101,20 @@ void ImageThread::sendFullImageThread(void)
 			int64 drivesize=fs->getSize();
 			int64 blockcnt=fs->calculateUsedSpace()/blocksize;
 			int64 ncurrblocks=0;
+			sha256_ctx shactx;
+			unsigned char *zeroblockbuf=NULL;
+			unsigned int vhdblocks=c_vhdblocksize/blocksize;
+
+			if(with_checksum)
+			{
+				sha256_init(&shactx);
+				zeroblockbuf=new unsigned char[blocksize];
+				memset(zeroblockbuf, 0, blocksize);
+			}
 
 			if(image_inf->startpos==0)
 			{
-				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int)];
+				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int)+c_hashsize];
 				char *cptr=buffer;
 				memcpy(cptr, &blocksize, sizeof(unsigned int));
 				cptr+=sizeof(unsigned int);
@@ -129,8 +143,16 @@ void ImageThread::sendFullImageThread(void)
 				cptr+=image_inf->shadowdrive.size();
 				memcpy(cptr, &save_id, sizeof(int));
 				cptr+=sizeof(int);
-
-				bool b=pipe->Write(buffer, sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int) );
+				size_t bsize=sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int);
+				if(with_checksum)
+				{
+					sha256_update(&shactx, (unsigned char*)buffer, (unsigned int)bsize);
+					sha256_final(&shactx, (unsigned char*)cptr);
+					bsize+=c_hashsize;
+					sha256_init(&shactx);
+				}
+				bool b=pipe->Write(buffer, bsize );
+				delete []buffer;
 				if(!b)
 				{
 					Server->Log("Pipe broken -1", LL_ERROR);
@@ -153,10 +175,46 @@ void ImageThread::sendFullImageThread(void)
 				unsigned int n=(unsigned int)(std::min)(blocks-i, (int64)64);
 				std::vector<int64> secs=fs->readBlocks(i, n, bufs, sizeof(int64));
 				needed_bufs+=(_u32)secs.size();
-				for(size_t j=0;j<secs.size();++j)
+				if(with_checksum)
 				{
-					memcpy(bufs[j], &secs[j], sizeof(int64) );
-					cs->sendBuffer(bufs[j], sizeof(int64)+blocksize);
+					size_t idx=0;
+					size_t n_secs=secs.size();
+					for(int64 j=i;j<i+64 && j<blocks;++j)
+					{
+						if(idx<n_secs && secs[idx]==j)
+						{
+							memcpy(bufs[idx], &secs[idx], sizeof(int64) );
+							sha256_update(&shactx, (unsigned char*)bufs[idx]+sizeof(int64), blocksize);
+							cs->sendBuffer(bufs[idx], sizeof(int64)+blocksize);
+							++idx;
+						}
+						else
+						{
+							sha256_update(&shactx, zeroblockbuf, blocksize);
+						}
+
+						if( (j+1)%vhdblocks==0 || j+1==blocks )
+						{
+							unsigned char dig[c_hashsize];
+							sha256_final(&shactx, dig);
+							sha256_init(&shactx);
+							char* cb=cs->getBuffer();
+							int64 bs=-126;
+							int64 nextblock=j+1;
+							memcpy(cb, &bs, sizeof(int64) );
+							memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
+							memcpy(cb+2*sizeof(int64), dig, c_hashsize);
+							cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize);
+						}
+					}
+				}
+				else
+				{
+					for(size_t j=0;j<secs.size();++j)
+					{
+						memcpy(bufs[j], &secs[j], sizeof(int64) );
+						cs->sendBuffer(bufs[j], sizeof(int64)+blocksize);
+					}
 				}
 				if(!secs.empty())
 					bufs.erase(bufs.begin(), bufs.begin()+secs.size() );
@@ -246,9 +304,6 @@ void ImageThread::removeShadowCopyThread(int save_id)
 	}
 }
 
-const unsigned int c_vhdblocksize=(1024*1024/2);
-const unsigned int c_hashsize=32;
-
 void ImageThread::sendIncrImageThread(void)
 {
 	char *blockbuf=NULL;
@@ -257,6 +312,7 @@ void ImageThread::sendIncrImageThread(void)
 	char *zeroblockbuf=NULL;
 
 	bool has_error=true;
+	bool with_checksum=image_inf->with_checksum;
 
 	int save_id=-1;
 	int update_cnt=0;
@@ -313,7 +369,7 @@ void ImageThread::sendIncrImageThread(void)
 
 			if(image_inf->startpos==0)
 			{
-				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int)];
+				char *buffer=new char[sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int)+c_hashsize];
 				char *cptr=buffer;
 				memcpy(cptr, &blocksize, sizeof(unsigned int));
 				cptr+=sizeof(unsigned int);
@@ -338,7 +394,17 @@ void ImageThread::sendIncrImageThread(void)
 				cptr+=image_inf->shadowdrive.size();
 				memcpy(cptr, &save_id, sizeof(int));
 				cptr+=sizeof(int);
-				bool b=pipe->Write(buffer, sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int) );
+				size_t bsize=sizeof(unsigned int)+sizeof(int64)*2+1+sizeof(unsigned int)+image_inf->shadowdrive.size()+sizeof(int);
+				if(with_checksum)
+				{
+					sha256_init(&shactx);
+					sha256_update(&shactx, (unsigned char*)buffer, (unsigned int)bsize);
+					sha256_final(&shactx, (unsigned char*)cptr);
+					bsize+=c_hashsize;
+					sha256_init(&shactx);
+				}
+				bool b=pipe->Write(buffer, bsize);
+				delete []buffer;
 				if(!b)
 				{
 					Server->Log("Pipe broken -1", LL_ERROR);
@@ -409,14 +475,14 @@ void ImageThread::sendIncrImageThread(void)
 						}
 						if(memcmp(hashdata_buf, digest, c_hashsize)!=0)
 						{
-							//Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
+							Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
 							for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 							{
 								if(has_blocks[j-i])
 								{
 									char* cb=cs->getBuffer();
-									memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
 									memcpy(cb, &j, sizeof(int64) );
+									memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
 									cs->sendBuffer(cb, sizeof(int64)+blocksize);
 
 									lastsendtime=Server->getTimeMS();
@@ -428,7 +494,19 @@ void ImageThread::sendIncrImageThread(void)
 										break;
 									}
 								}
-							}							
+							}
+
+							if(with_checksum)
+							{
+								char* cb=cs->getBuffer();
+								int64 bs=-126;
+								int64 nextblock=(std::min)(blocks, i+vhdblocks);
+								memcpy(cb, &bs, sizeof(int64) );
+								memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
+								memcpy(cb+2*sizeof(int64), digest, c_hashsize);
+								cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize);
+								Server->Log("Block hash="+base64_encode(digest, c_hashsize), LL_DEBUG);
+							}
 						}
 						else
 						{

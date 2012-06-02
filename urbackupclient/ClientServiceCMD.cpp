@@ -567,6 +567,12 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		{
 			image_inf.shadow_id=-1;
 		}
+		image_inf.with_checksum=false;
+		if(params.find(L"checksum")!=params.end())
+		{
+			if(params[L"checksum"]==L"1")
+				image_inf.with_checksum=true;
+		}
 
 		image_inf.no_shadowcopy=false;
 
@@ -657,6 +663,12 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			else
 			{
 				image_inf.shadow_id=-1;
+			}
+			image_inf.with_checksum=false;
+			if(params.find(L"checksum")!=params.end())
+			{
+				if(params[L"checksum"]==L"1")
+					image_inf.with_checksum=true;
 			}
 
 			image_inf.no_shadowcopy=false;
@@ -924,7 +936,7 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 void ClientConnector::CMD_CAPA(const std::string &cmd)
 {
 #ifdef _WIN32
-	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1");
+	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=0");
 #else
 	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1");
 #endif
