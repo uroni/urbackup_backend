@@ -244,6 +244,11 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		{
 			if(persistent && nextblock!=0)
 			{
+				int64 continue_block=nextblock;
+				if(continue_block%vhd_blocksize!=0 )
+				{
+					continue_block=(continue_block/vhd_blocksize)*vhd_blocksize;
+				}
 				bool reconnected=false;
 				while(Server->getTimeMS()-starttime<=image_timeout)
 				{
@@ -298,11 +303,11 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 				if(pParentvhd.empty())
 				{
-					tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(nextblock)+"&shadowid="+nconvert(shadow_id));
+					tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id));
 				}
 				else
 				{
-					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+nconvert(nextblock)+"&shadowid="+nconvert(shadow_id)+"&hashsize="+nconvert(parenthashfile->Size());
+					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id)+"&hashsize="+nconvert(parenthashfile->Size());
 					size_t rc=tcpstack.Send(cc, server_identity+ts);
 					if(rc==0)
 					{
@@ -534,43 +539,46 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				{
 					if(currblock!=-1) // write current block
 					{
-						++numblocks;
-						++stat_update_cnt;
-						if(stat_update_cnt%stat_update_skip==0)
+						if(nextblock<=currblock)
 						{
-							stat_update_cnt=0;
-							if(blockcnt!=0)
+							++numblocks;
+							++stat_update_cnt;
+							if(stat_update_cnt%stat_update_skip==0)
 							{
-								if(has_parent)
+								stat_update_cnt=0;
+								if(blockcnt!=0)
 								{
-									status.pcdone=(int)(((double)currblock/(double)totalblocks)*100.0+0.5);
+									if(has_parent)
+									{
+										status.pcdone=(int)(((double)currblock/(double)totalblocks)*100.0+0.5);
+									}
+									else
+									{
+										status.pcdone=(int)(((double)numblocks/(double)blockcnt)*100.0+0.5);
+									}
+									ServerStatus::setServerStatus(status, true);
 								}
-								else
-								{
-									status.pcdone=(int)(((double)numblocks/(double)blockcnt)*100.0+0.5);
-								}
-								ServerStatus::setServerStatus(status, true);
 							}
-						}
 
-						nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
-						sha256_update(&shactx, (unsigned char *)blockdata, blocksize);
+							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
+							sha256_update(&shactx, (unsigned char *)blockdata, blocksize);
 
-						vhdfile->writeBuffer(mbr_offset+currblock*blocksize, blockdata, blocksize);
-						blockdata=vhdfile->getBuffer();
+							vhdfile->writeBuffer(mbr_offset+currblock*blocksize, blockdata, blocksize);
+							blockdata=vhdfile->getBuffer();
 
-						if(nextblock%vhd_blocksize==0 && nextblock!=0)
-						{
-							Server->Log("Hash written "+nconvert(currblock), LL_DEBUG);
-							sha256_final(&shactx, verify_checksum);
-							hashfile->Write((char*)verify_checksum, sha_size);
-							sha256_init(&shactx);
-						}
+							if(nextblock%vhd_blocksize==0 && nextblock!=0)
+							{
+								Server->Log("Hash written "+nconvert(currblock), LL_DEBUG);
+								sha256_final(&shactx, verify_checksum);
+								hashfile->Write((char*)verify_checksum, sha_size);
+								sha256_init(&shactx);
+							}
 
-						if(vhdfile->hasError())
-						{
-							ServerLogger::Log(clientid, "FATAL ERROR: Could not write to VHD-File", LL_ERROR);
-							goto do_image_cleanup;
+							if(vhdfile->hasError())
+							{
+								ServerLogger::Log(clientid, "FATAL ERROR: Could not write to VHD-File", LL_ERROR);
+								goto do_image_cleanup;
+							}
 						}
 
 						currblock=-1;
