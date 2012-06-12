@@ -27,7 +27,13 @@ struct SChunkHashes
 class FileClientChunked
 {
 public:
-	FileClientChunked(IPipe *pipe, CTCPStack *stack);
+	class ReconnectionCallback
+	{
+	public:
+		virtual IPipe * new_fileclient_connection(void)=0;
+	};
+
+	FileClientChunked(IPipe *pipe, CTCPStack *stack, FileClientChunked::ReconnectionCallback *reconnection_callback);
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
@@ -52,15 +58,19 @@ private:
 	void State_Chunk(void);
 
 	void Hash_finalize(_i64 curr_pos, const char *hash_from_client);
-	void Hash_upto(_i64 chunk_start);
+	void Hash_upto(_i64 chunk_start, bool &new_block);
 	void Hash_nochange(_i64 curr_pos);
 
 	void writeFileRepeat(IFile *f, const char *buf, size_t bsize);
-	void writePatch(_i64 pos, unsigned int length, char *buf, bool in_chunk, bool last);
-	void writePatchInt(_i64 pos, unsigned int length, char *buf, bool in_chunk);
+	void writePatch(_i64 pos, unsigned int length, char *buf, bool last);
+	void writePatchInt(_i64 pos, unsigned int length, char *buf);
 	void writePatchSize(_i64 remote_fs);
 
 	void invalidateLastPatches(void);
+
+	bool Reconnect(void);
+
+	std::string remote_filename;
 
 	IFile *m_file;
 	_i64 file_pos;
@@ -75,7 +85,6 @@ private:
 	bool patch_mode;
 	char patch_buf[c_chunk_size];
 	unsigned int patch_buf_pos;
-	bool patch_in_chunk;
 	_i64 patch_buf_start;
 
 	_i64 next_chunk;
@@ -118,4 +127,6 @@ private:
 	bool destroy_pipe;
 
 	_i64 transferred_bytes;
+
+	FileClientChunked::ReconnectionCallback *reconnection_callback;
 };
