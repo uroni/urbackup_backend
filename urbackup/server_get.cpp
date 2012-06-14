@@ -3384,7 +3384,8 @@ bool BackupServerGet::isInBackupWindow(std::vector<STimeSpan> bw)
 	{
 		if(bw[i].dayofweek==dow)
 		{
-			if(hm>=bw[i].start_hour && hm<=bw[i].stop_hour )
+			if( (bw[i].start_hour<=bw[i].stop_hour && hm>=bw[i].start_hour && hm<=bw[i].stop_hour)
+				|| (bw[i].start_hour>bw[i].stop_hour && (hm>=bw[i].start_hour || hm<=bw[i].stop_hour) ) )
 			{
 				return true;
 			}
