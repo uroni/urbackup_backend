@@ -795,6 +795,7 @@ std::string FileClient::getErrorString(_u32 ec)
 	DEFEC(CONN_LOST);
 	}
 #undef DEFEC
+	return "";
 }
         
 #endif //CLIENT_ONLY

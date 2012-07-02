@@ -114,13 +114,18 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		rc=fc.GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output);
 
 		IFile *tmpfile=Server->openTemporaryFile();
+		Server->Log("Copying to temporary...");
 		copy_file_fd(dstfile, tmpfile);
 
 		tmpfile->Seek(0);
 		m_chunkpatchfile=tmpfile;
 		ChunkPatcher patcher;
 		patcher.setCallback(this);
+		Server->Log("Patching temporary...");
 		patcher.ApplyPatch(dstfile, patchfile);
+
+		Server->Log("Copying back...");
+		copy_file_fd(tmpfile, dstfile);
 
 
 		cleanup_tmpfile(hashfile);

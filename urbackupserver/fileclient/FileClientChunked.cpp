@@ -677,7 +677,14 @@ void FileClientChunked::writePatchSize(_i64 remote_fs)
 {
 	m_patchfile->Seek(0);
 	writeFileRepeat(m_patchfile, (char*)&remote_fs, sizeof(_i64));
-	patchfile_pos=sizeof(_i64);
+	if(patchfile_pos==0)
+	{
+		patchfile_pos=sizeof(_i64);
+	}
+	else
+	{
+		m_patchfile->Seek(patchfile_pos);
+	}
 }
 
 bool FileClientChunked::hasError(void)
@@ -772,6 +779,10 @@ bool FileClientChunked::Reconnect(void)
 			}
 			Server->Log("next_chunk="+nconvert(next_chunk), LL_DEBUG);
 
+			if(patch_mode)
+			{
+				Server->Log("Invalidating "+nconvert(last_chunk_patches.size())+" chunks in patch file", LL_DEBUG);
+			}
 			invalidateLastPatches();
 			pending_chunks.clear();
 
