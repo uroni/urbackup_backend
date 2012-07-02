@@ -142,11 +142,11 @@ _u32 File::Read(char* buffer, _u32 bsize)
 		int err=GetLastError();
 		Server->Log("Read error: "+nconvert(err));
 	}
-	if(read!=bsize)
+	/*if(read!=bsize)
 	{
 		int err=GetLastError();
 		Server->Log("Read error: "+nconvert(err));
-	}
+	}*/
 #endif
 	return (_u32)read;
 }
@@ -188,7 +188,7 @@ void File::Close()
 {
 	if( hfile!=NULL )
 	{
-		CloseHandle( hfile );
+		BOOL b=CloseHandle( hfile );
 		hfile=NULL;
 	}
 }

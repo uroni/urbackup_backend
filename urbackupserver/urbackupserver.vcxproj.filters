@@ -192,6 +192,9 @@
     <ClCompile Include="server_archive.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="filedownload.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -333,6 +336,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="server_archive.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="filedownload.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

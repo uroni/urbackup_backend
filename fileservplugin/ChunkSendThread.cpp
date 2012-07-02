@@ -34,7 +34,6 @@ void ChunkSendThread::operator()(void)
 		}
 		else
 		{
-			md5_hash.init();
 			sendChunk(&chunk);
 		}
 	}
@@ -103,6 +102,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	char* cptr=chunk_buf+c_chunk_padding;
 	_i64 curr_pos=chunk->startpos;
 	unsigned int c_adler=adler32(0, NULL, 0);
+	md5_hash.init();
 	unsigned int small_hash_num=0;
 	do
 	{

@@ -1,3 +1,6 @@
+#ifndef FILECLIENTCHUNKED_H
+#define FILECLIENTCHUNKED_H
+
 #include "../../Interface/Types.h"
 #include "FileClient.h"
 #include "../../md5.h"
@@ -98,7 +101,7 @@ private:
 	char curr_id;
 	unsigned int need_bytes;
 	unsigned int total_need_bytes;
-	char packet_buf[12];
+	char packet_buf[24];
 	size_t packet_buf_off;
 
 	unsigned int whole_block_remaining;
@@ -130,3 +133,5 @@ private:
 
 	FileClientChunked::ReconnectionCallback *reconnection_callback;
 };
+
+#endif //FILECLIENTCHUNKED_H

@@ -776,6 +776,26 @@ _i64 FileClient::getTransferredBytes(void)
 	}
 	return transferred_bytes;
 }
+
+std::string FileClient::getErrorString(_u32 ec)
+{
+#define DEFEC(x) case ERR_##x : return #x;
+	switch(ec)
+	{
+	DEFEC(CONTINUE);
+	DEFEC(SUCCESS);
+	DEFEC(TIMEOUT);
+	DEFEC(FILE_DOESNT_EXIST);
+	DEFEC(SOCKET_ERROR);
+	DEFEC(CONNECTED);
+	DEFEC(ERROR);
+	DEFEC(BASE_DIR_LOST);
+	DEFEC(HASH);
+	DEFEC(INT_ERROR);
+	DEFEC(CONN_LOST);
+	}
+#undef DEFEC
+}
         
 #endif //CLIENT_ONLY
 

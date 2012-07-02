@@ -142,17 +142,6 @@ CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent)
 
 CClientThread::~CClientThread()
 {
-	if(chunk_send_thread_ticket!=ILLEGAL_THREADPOOL_TICKET)
-	{
-		{
-			IScopedLock lock(mutex);
-			state=CS_NONE;
-			while(!next_chunks.empty())
-				next_chunks.pop();
-		}
-		cond->notify_all();
-		Server->getThreadPool()->waitFor(chunk_send_thread_ticket);
-	}
 	delete bufmgr;
 	if(mutex!=NULL)
 	{
@@ -231,6 +220,18 @@ void CClientThread::operator()(void)
 	if(close_the_socket)
 	{
 		Server->destroy(clientpipe);
+	}
+
+	if(chunk_send_thread_ticket!=ILLEGAL_THREADPOOL_TICKET)
+	{
+		{
+			IScopedLock lock(mutex);
+			state=CS_NONE;
+			while(!next_chunks.empty())
+				next_chunks.pop();
+		}
+		cond->notify_all();
+		Server->getThreadPool()->waitFor(chunk_send_thread_ticket);
 	}
 
 	killable=true;

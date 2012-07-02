@@ -67,6 +67,8 @@ public:
 		void addThrottler(IPipeThrottler *throttler);
 
 		_i64 getTransferredBytes(void);
+
+		static std::string getErrorString(_u32 ec);
               
 private:
 		bool Reconnect(void);

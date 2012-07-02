@@ -268,6 +268,7 @@
     <ClCompile Include="ChunkPatcher.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="fileclient\FileClientChunked.cpp" />
+    <ClCompile Include="filedownload.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
@@ -331,6 +332,7 @@
     <ClInclude Include="fileclient\FileClientChunked.h" />
     <ClInclude Include="fileclient\packet_ids.h" />
     <ClInclude Include="fileclient\socket_header.h" />
+    <ClInclude Include="filedownload.h" />
     <ClInclude Include="InternetServiceConnector.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="serverinterface\actions.h" />
