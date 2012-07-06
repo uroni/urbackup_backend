@@ -61,6 +61,7 @@ SStartupStatus startup_status;
 #include "server_settings.h"
 #include "../urbackupcommon/os_functions.h"
 #include "InternetServiceConnector.h"
+#include "filedownload.h"
 
 #include <stdlib.h>
 
@@ -147,6 +148,21 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		os_remove_nonempty_dir(widen(rmtest));
 		return;
+	}
+
+	std::string download_file=Server->getServerParameter("download_file");
+	if(!download_file.empty())
+	{
+		FileDownload dl;
+		unsigned int tcpport=43001;
+		std::string s_tcpport=Server->getServerParameter("tcpport");
+		if(!s_tcpport.empty()) tcpport=atoi(s_tcpport.c_str());
+		int method=0;
+		std::string s_method=Server->getServerParameter("method");
+		if(!s_method.empty()) method=atoi(s_method.c_str());
+		Server->Log("Starting file download...");
+		dl.filedownload(download_file, Server->getServerParameter("servername"), Server->getServerParameter("dstfn"), tcpport, method);
+		exit(1);
 	}
 
 	init_mutex1();

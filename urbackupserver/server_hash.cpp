@@ -748,6 +748,7 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize)
 
 bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest)
 {
+	_i64 dstfsize;
 	{
 		chunk_output_fn=openFileRetry(dest, MODE_WRITE);
 		if(chunk_output_fn==NULL) return false;
@@ -759,13 +760,18 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 
 		bool b=chunk_patcher.ApplyPatch(f_source, patch);
 
+		dstfsize=chunk_output_fn->Size();
+
 		if(has_error || !b)
 		{
 			return false;
 		}
 	}
 
-	os_file_truncate(dest, chunk_patcher.getFilesize());
+	if( dstfsize > chunk_patcher.getFilesize() )
+	{
+		os_file_truncate(dest, chunk_patcher.getFilesize());
+	}
 
 	IFile *f_hash_output=openFileRetry(hash_output, MODE_READ);
 	if(f_hash_output==NULL) return false;

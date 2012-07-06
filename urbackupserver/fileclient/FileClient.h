@@ -33,7 +33,15 @@ class CRData;
 class FileClient
 {
 public:
-        FileClient(int protocol_version=0, bool internet_connection=false);
+
+		class ReconnectionCallback
+		{
+		public:
+			virtual IPipe * new_fileclient_connection(void)=0;
+		};
+
+
+		FileClient(int protocol_version=0, bool internet_connection=false, FileClient::ReconnectionCallback *reconnection_callback=NULL);
         ~FileClient(void);
 
 		_u32 GetServers(bool start, const std::vector<in_addr> &addr_hints);
@@ -59,6 +67,8 @@ public:
 		void addThrottler(IPipeThrottler *throttler);
 
 		_i64 getTransferredBytes(void);
+
+		static std::string getErrorString(_u32 ec);
               
 private:
 		bool Reconnect(void);
@@ -103,6 +113,8 @@ private:
 
 		_i64 transferred_bytes;
 		std::vector<IPipeThrottler*> throttlers;
+
+		FileClient::ReconnectionCallback *reconnection_callback;
 };
 
 const _u32 ERR_CONTINUE=0;

@@ -106,8 +106,8 @@ _i32 selectc(SOCKET socket, int usec)
 }
        
 
-FileClient::FileClient(int protocol_version, bool internet_connection)
-	: protocol_version(protocol_version), internet_connection(internet_connection), transferred_bytes(0)
+FileClient::FileClient(int protocol_version, bool internet_connection, FileClient::ReconnectionCallback *reconnection_callback)
+	: protocol_version(protocol_version), internet_connection(internet_connection), transferred_bytes(0), reconnection_callback(reconnection_callback)
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -476,7 +476,14 @@ bool FileClient::Reconnect(void)
 
 	while(Server->getTimeMS()-connect_starttime<300000)
 	{
-		tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
+		if(reconnection_callback==NULL)
+		{
+			tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
+		}
+		else
+		{
+			tcpsock=reconnection_callback->new_fileclient_connection();
+		}
 		if(tcpsock!=NULL)
 		{
 			for(size_t i=0;i<throttlers.size();++i)
@@ -768,6 +775,27 @@ _i64 FileClient::getTransferredBytes(void)
 		tcpsock->resetTransferedBytes();
 	}
 	return transferred_bytes;
+}
+
+std::string FileClient::getErrorString(_u32 ec)
+{
+#define DEFEC(x) case ERR_##x : return #x;
+	switch(ec)
+	{
+	DEFEC(CONTINUE);
+	DEFEC(SUCCESS);
+	DEFEC(TIMEOUT);
+	DEFEC(FILE_DOESNT_EXIST);
+	DEFEC(SOCKET_ERROR);
+	DEFEC(CONNECTED);
+	DEFEC(ERROR);
+	DEFEC(BASE_DIR_LOST);
+	DEFEC(HASH);
+	DEFEC(INT_ERROR);
+	DEFEC(CONN_LOST);
+	}
+#undef DEFEC
+	return "";
 }
         
 #endif //CLIENT_ONLY

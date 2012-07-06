@@ -239,7 +239,7 @@ bool CompressedPipe::Write(const std::string &str, int timeoutms)
 */
 bool CompressedPipe::isWritable(int timeoutms)
 {
-	return cs->isWritable();
+	return cs->isWritable(timeoutms);
 }
 
 bool CompressedPipe::isReadable(int timeoutms)

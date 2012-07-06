@@ -76,7 +76,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("internet_speed", settings.getSettings()->internet_speed);
 	ret.set("local_speed", settings.getSettings()->local_speed);
 	ret.set("internet_mode_enabled", settings.getSettings()->internet_mode_enabled);
-	ret.set("internet_compress", settings.getSettings()->internet_mode_enabled);
+	ret.set("internet_compress", settings.getSettings()->internet_compress);
 	ret.set("internet_encrypt", settings.getSettings()->internet_encrypt);
 	ret.set("internet_image_backups", settings.getSettings()->internet_image_backups);
 	ret.set("internet_full_file_backups", settings.getSettings()->internet_full_file_backups);

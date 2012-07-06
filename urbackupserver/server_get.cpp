@@ -56,6 +56,7 @@ const unsigned int status_update_intervall=1000;
 const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
 const unsigned int ident_err_retry_time=1*60*60*1000;
+const unsigned int c_filesrv_connect_timeout=10000;
 
 
 int BackupServerGet::running_backups=0;
@@ -1122,7 +1123,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 		return false;
 	}
 
-	FileClient fc(filesrv_protocol_version, internet_connection);
+	FileClient fc(filesrv_protocol_version, internet_connection, this);
 	_u32 rc=getClientFilesrvConnection(&fc, 10000);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -1523,7 +1524,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	}
 
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
-	FileClient fc(filesrv_protocol_version, internet_connection);
+	FileClient fc(filesrv_protocol_version, internet_connection, this);
 	FileClientChunked fc_chunked;
 	if(intra_file_diffs)
 	{
@@ -2256,7 +2257,7 @@ void BackupServerGet::sendSettings(void)
 
 bool BackupServerGet::getClientSettings(void)
 {
-	FileClient fc(filesrv_protocol_version, internet_connection);
+	FileClient fc(filesrv_protocol_version, internet_connection, this);
 	_u32 rc=getClientFilesrvConnection(&fc);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -2830,7 +2831,8 @@ bool BackupServerGet::isInBackupWindow(std::vector<STimeSpan> bw)
 	{
 		if(bw[i].dayofweek==dow)
 		{
-			if(hm>=bw[i].start_hour && hm<=bw[i].stop_hour )
+			if( (bw[i].start_hour<=bw[i].stop_hour && hm>=bw[i].start_hour && hm<=bw[i].stop_hour)
+				|| (bw[i].start_hour>bw[i].stop_hour && (hm>=bw[i].start_hour || hm<=bw[i].stop_hour) ) )
 			{
 				return true;
 			}
@@ -3029,7 +3031,7 @@ FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeout
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
 		if(cp!=NULL)
-			return FileClientChunked(cp, &tcpstack);
+			return FileClientChunked(cp, &tcpstack, this);
 		else
 			return FileClientChunked();
 	}
@@ -3038,7 +3040,7 @@ FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeout
 		sockaddr_in addr=getClientaddr();
 		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, timeoutms);
 		if(pipe!=NULL)
-			return FileClientChunked(pipe, &tcpstack);
+			return FileClientChunked(pipe, &tcpstack, this);
 		else
 			return FileClientChunked();
 	}
@@ -3075,6 +3077,21 @@ void BackupServerGet::destroyTemporaryFile(IFile *tmp)
 	std::wstring fn=tmp->getFilenameW();
 	Server->destroy(tmp);
 	Server->deleteFile(fn);
+}
+
+IPipe * BackupServerGet::new_fileclient_connection(void)
+{
+	if(internet_connection)
+	{
+		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, c_filesrv_connect_timeout);
+		return cp;
+	}
+	else
+	{
+		sockaddr_in addr=getClientaddr();
+		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, c_filesrv_connect_timeout);
+		return pipe;
+	}
 }
 
 #endif //CLIENT_ONLY

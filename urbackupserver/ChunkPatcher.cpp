@@ -23,6 +23,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 		return false;
 	}
 
+	patchf_pos+=sizeof(_i64);
+
 	SPatchHeader next_header;
 	next_header.patch_off=-1;
 	bool has_header=true;
@@ -48,6 +50,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 			while(next_header.patch_size>0)
 			{
 				_u32 r=patch->Read((char*)buf, (std::min)((unsigned int)4096, next_header.patch_size));
+				patchf_pos+=r;
 				cb->next_chunk_patcher_bytes(buf, r);
 				next_header.patch_size-=r;
 			}
@@ -68,7 +71,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 	return true;
 }
 
-bool ChunkPatcher::readNextValidPatch(IFile *patchf, _i64 patchf_pos, SPatchHeader *patch_header)
+bool ChunkPatcher::readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHeader *patch_header)
 {
 	const unsigned int to_read=sizeof(_i64)+sizeof(unsigned int);
 	do
@@ -78,6 +81,7 @@ bool ChunkPatcher::readNextValidPatch(IFile *patchf, _i64 patchf_pos, SPatchHead
 		if(r!=to_read)
 		{
 			patch_header->patch_off=-1;
+			patch_header->patch_size=0;
 			return false;
 		}
 		if(patch_header->patch_off==-1)

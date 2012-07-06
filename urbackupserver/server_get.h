@@ -29,7 +29,7 @@ struct SBackup
 	int incremental_ref;
 };
 
-class BackupServerGet : public IThread
+class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback, public FileClient::ReconnectionCallback
 {
 public:
 	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection);
@@ -55,6 +55,8 @@ public:
 	static int getClientID(IDatabase *db, const std::wstring &clientname, ServerSettings *server_settings, bool *new_client);
 
 	IPipe *getClientCommandConnection(int timeoutms=10000);
+
+	virtual IPipe * new_fileclient_connection(void);
 
 private:
 	void unloadSQL(void);

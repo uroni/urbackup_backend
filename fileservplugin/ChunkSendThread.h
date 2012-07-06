@@ -9,6 +9,7 @@ class ChunkSendThread : public IThread
 {
 public:
 	ChunkSendThread(CClientThread *parent, IFile *file);
+	~ChunkSendThread(void);
 
 	void operator()(void);
 

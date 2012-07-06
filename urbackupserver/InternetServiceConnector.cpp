@@ -461,9 +461,9 @@ IPipe *InternetServiceConnector::getISPipe(void)
 	return comm_pipe;
 }
 
-bool InternetServiceConnector::stopConnecting(void)
+void InternetServiceConnector::stopConnecting(void)
 {
-	return stop_connecting;
+	stop_connecting=true;
 }
 
 bool InternetServiceConnector::isConnected(void)

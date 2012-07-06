@@ -53,7 +53,7 @@ public:
 	static std::vector<std::string> getOnlineClients(void);
 
 	bool Connect(ICondition *n_cond, ICondition *stop_cond, char service);
-	bool stopConnecting(void);
+	void stopConnecting(void);
 	bool isConnected(void);
 	void freeConnection(void);
 	bool hasTimeout(void);

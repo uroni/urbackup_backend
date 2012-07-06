@@ -25,7 +25,7 @@ public:
 	_i64 getFilesize(void);
 
 private:
-	bool readNextValidPatch(IFile *patchf, _i64 patchf_pos, SPatchHeader *patch_header);
+	bool readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHeader *patch_header);
 	_i64 filesize;
 
 	IChunkPatcherCallback *cb;
