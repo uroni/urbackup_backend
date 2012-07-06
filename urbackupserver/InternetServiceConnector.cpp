@@ -114,6 +114,18 @@ bool InternetServiceConnector::Run(void)
 		}
 		return true;
 	}
+	
+	if( has_timeout )
+	{
+		if(free_connection)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
 
 	if(state==ISS_QUIT)
 	{
@@ -492,6 +504,13 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 	for(size_t i=0;i<todel.size();++i)
 	{
 		std::map<std::string, SClientData>::iterator it=client_data.find(todel[i]);
+		while(!it->second.spare_connections.empty())
+		{
+			InternetServiceConnector *isc=it->second.spare_connections.front();
+			it->second.spare_connections.pop();
+			isc->stopConnecting();
+			isc->freeConnection();
+		}
 		client_data.erase(it);
 	}
 

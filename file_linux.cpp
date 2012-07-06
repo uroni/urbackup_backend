@@ -28,6 +28,7 @@
 #ifdef MODE_LIN
 
 #include <errno.h>
+#include <stdint.h>
 
 bool File::Open(std::wstring pfn, int mode)
 {
@@ -91,7 +92,7 @@ bool File::OpenTemporaryFile(const std::wstring &dir)
 
 bool File::Open(void *handle)
 {
-	fd=(int)handle;
+	fd=(int)((intptr_t)handle);
 }
 
 std::string File::Read(_u32 tr)
