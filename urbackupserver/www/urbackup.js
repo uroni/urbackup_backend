@@ -635,7 +635,9 @@ function show_status2(data)
 	var dir_error="";
 	if(data.dir_error)
 	{
-		dir_error=tmpls.dir_error.evaluate();
+		var ext_text="";
+		if(data.dir_error_ext) ext_text="("+data.dir_error_ext+")";
+		dir_error=tmpls.dir_error.evaluate({ext_text: ext_text});
 	}
 	
 	var tmpdir_error="";

@@ -73,10 +73,15 @@ ACTION_IMPL(status)
 			if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)) || !os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder_uncompr)) || settings.getSettings()->backupfolder.empty())
 			{
 				ret.set("dir_error", true);
+				if(settings.getSettings()->backupfolder.empty())
+					ret.set("dir_error_ext", "err_name_empty");
+				if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)) )
+					ret.set("dir_error_ext", "err_folder_not_found");
 			}
 			else if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+L"clients")) && !os_create_dir(os_file_prefix(settings.getSettings()->backupfolder+os_file_sep()+L"clients")) )
 			{
 				ret.set("dir_error" ,true);
+				ret.set("dir_error_ext", "err_cannot_create_subdir");
 			}
 			IFile *tmp=Server->openTemporaryFile();
 			if(tmp==NULL)

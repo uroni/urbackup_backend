@@ -504,6 +504,7 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 	for(size_t i=0;i<todel.size();++i)
 	{
 		std::map<std::string, SClientData>::iterator it=client_data.find(todel[i]);
+<<<<<<< HEAD
 		while(!it->second.spare_connections.empty())
 		{
 			InternetServiceConnector *isc=it->second.spare_connections.front();
@@ -511,6 +512,9 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 			isc->stopConnecting();
 			isc->freeConnection();
 		}
+=======
+		Server->Log("Establish timeout: Deleting internet client \""+it->first+"\"", LL_DEBUG);
+>>>>>>> 98c602b9225d7bb009c813fc3eca26ff9f906ace
 		client_data.erase(it);
 	}
 
