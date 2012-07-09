@@ -620,7 +620,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 {
 	bool has_include=false;
 
-	Server->Log(L"Indexing "+dir, LL_DEBUG);
+	//Server->Log(L"Indexing "+dir, LL_DEBUG);
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
 		/*db->EndTransaction();

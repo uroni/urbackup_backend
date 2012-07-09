@@ -124,6 +124,7 @@ void BackupServerGet::unloadSQL(void)
 	db->destroyQuery(q_update_incr);
 	db->destroyQuery(q_create_backup);
 	db->destroyQuery(q_get_last_incremental);
+	db->destroyQuery(q_get_last_incremental_complete);
 	db->destroyQuery(q_set_last_backup);
 	db->destroyQuery(q_update_setting);
 	db->destroyQuery(q_insert_setting);
@@ -702,6 +703,7 @@ void BackupServerGet::prepareSQL(void)
 	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1", false);
 	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0)", false);
 	q_get_last_incremental=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incremental_complete=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
 	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
@@ -788,6 +790,16 @@ SBackup BackupServerGet::getLastIncremental(void)
 		SBackup b;
 		b.incremental=watoi(res[0][L"incremental"]);
 		b.path=res[0][L"path"];
+
+		q_get_last_incremental_complete->Bind(clientid);
+		res=q_get_last_incremental_complete->Read();
+		q_get_last_incremental_complete->Reset();
+
+		if(res.size()>0)
+		{
+			b.complete=res[0][L"path"];
+		}
+
 		return b;
 	}
 	else
@@ -1315,7 +1327,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 }
 
 bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring &curr_path,
-	const std::wstring &last_backuppath, FileClientChunked &fc, FileClient &fc_normal)
+	const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal)
 {
 	std::wstring cfn=curr_path+L"/"+fn;
 	if(cfn[0]=='/')
@@ -1330,8 +1342,17 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 
 	if(file_old==NULL)
 	{
-		ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
-		return load_file(fn, curr_path, fc_normal, true);
+		if(!last_backuppath_complete.empty())
+		{
+			filepath_old=last_backuppath_complete+os_file_sep()+convertToOSPathFromFileClient(cfn);
+			file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
+		}
+		if(file_old==NULL)
+		{
+			ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
+			return load_file(fn, curr_path, fc_normal, true);
+		}
+		hashpath_old=last_backuppath_complete+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn);
 	}
 
 	ServerLogger::Log(clientid, L"Loading file patch for \""+fn+L"\"", LL_DEBUG);
@@ -1585,6 +1606,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	std::wstring last_backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path;
 	std::wstring last_backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path+L".hashes";
+	std::wstring last_backuppath_complete=backupfolder+os_file_sep()+clientname+os_file_sep()+last.complete;
 
 	std::wstring tmpfilename=tmp->getFilenameW();
 	Server->destroy(tmp);
@@ -1778,7 +1800,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 						{
 							bool b;
 							if(intra_file_diffs)
-								b=load_file_patch(cf.name, curr_path, last_backuppath, fc_chunked, fc);
+								b=load_file_patch(cf.name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
 							else
 								b=load_file(cf.name, curr_path, fc, with_hashes);
 
@@ -1819,7 +1841,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 							{
 								bool b2;
 								if(intra_file_diffs)
-									b2=load_file_patch(cf.name, curr_path, last_backuppath, fc_chunked, fc);
+									b2=load_file_patch(cf.name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
 								else
 									b2=load_file(cf.name, curr_path, fc, with_hashes);
 

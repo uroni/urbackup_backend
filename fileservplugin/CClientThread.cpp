@@ -229,6 +229,11 @@ void CClientThread::operator()(void)
 			state=CS_NONE;
 			while(!next_chunks.empty())
 				next_chunks.pop();
+			if(update_file!=NULL)
+			{
+				Server->destroy(update_file);
+				update_file=NULL;
+			}
 		}
 		cond->notify_all();
 		Server->getThreadPool()->waitFor(chunk_send_thread_ticket);

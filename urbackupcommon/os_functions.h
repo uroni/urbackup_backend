@@ -55,4 +55,6 @@ bool os_file_truncate(const std::wstring &fn, int64 fsize);
 
 std::string os_strftime(std::string fs);
 
+bool os_create_dir_recursive(std::wstring fn);
+
 #endif //OS_FUNCTIONS_H

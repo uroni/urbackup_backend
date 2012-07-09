@@ -263,3 +263,20 @@ std::string os_strftime(std::string fs)
 	std::string r(buffer);
 	return r;
 }
+
+bool os_create_dir_recursive(std::wstring fn)
+{
+	bool b=os_create_dir(fn);
+	if(!b)
+	{
+		b=os_create_dir_recursive(ExtractFilePath(fn));
+		if(!b)
+			return false;
+
+		return os_create_dir(fn);
+	}
+	else
+	{
+		return true;
+	}
+}

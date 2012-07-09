@@ -27,6 +27,7 @@ struct SBackup
 	int incremental;
 	std::wstring path;
 	int incremental_ref;
+	std::wstring complete;
 };
 
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback, public FileClient::ReconnectionCallback
@@ -76,7 +77,7 @@ private:
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool with_token=true);
 	bool load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes);
-	bool load_file_patch(const std::wstring &fn, const std::wstring &curr_path, const std::wstring &last_backuppath, FileClientChunked &fc, FileClient &fc_normal);
+	bool load_file_patch(const std::wstring &fn, const std::wstring &curr_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs);
 	SBackup getLastIncremental(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
@@ -177,6 +178,7 @@ private:
 	IQuery *q_get_rights;
 	IQuery *q_get_report_settings;
 	IQuery *q_format_unixtime;
+	IQuery *q_get_last_incremental_complete;
 
 
 	int state;
