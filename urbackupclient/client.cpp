@@ -1417,7 +1417,7 @@ void IndexThread::execute_postbackup_hook(void)
 		CloseHandle(pi.hThread);
 	}
 #else
-	pid_t pid;
+	pid_t pid1;
 	pid1 = fork();
 	if( pid1==0 )
 	{

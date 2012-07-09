@@ -466,7 +466,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 		if(!hash_for_whole_block)
 		{
 			Server->Log("Block hash wrong. Getting whole block. currpos="+nconvert(curr_pos), LL_DEBUG);
-			system("pause");
+			//system("pause");
 			invalidateLastPatches();
 			CWData data;
 			data.addUChar(ID_BLOCK_REQUEST);

@@ -25,6 +25,7 @@
 #include "fileclient/FileClient.h"
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/fileclient/data.h"
 #include "server_channel.h"
@@ -43,6 +44,28 @@
 #include <memory.h>
 #include <time.h>
 
+=======
+#include "fileclient/tcpstack.h"
+#include "fileclient/data.h"
+#include "../fsimageplugin/IFSImageFactory.h"
+#include "../fsimageplugin/IVHDFile.h"
+#include "server_channel.h"
+#include "server_log.h"
+#include "server_writer.h"
+#include "server_cleanup.h"
+#include "server_update_stats.h"
+#include "escape.h"
+#include "mbr_code.h"
+#include "zero_hash.h"
+#include "server_running.h"
+#include "treediff/TreeDiff.h"
+#include "../urlplugin/IUrlFactory.h"
+#include <time.h>
+#include <algorithm>
+#include <memory.h>
+
+extern IFSImageFactory *image_fak;
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 extern IUrlFactory *url_fak;
 extern std::string server_identity;
 extern std::string server_token;
@@ -53,18 +76,32 @@ const unsigned int shadow_copy_timeout=30*60*1000;
 const unsigned int check_time_intervall_tried_backup=30*60*1000;
 const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
 const unsigned int ident_err_retry_time=1*60*60*1000;
 const unsigned int c_filesrv_connect_timeout=10000;
 
+=======
+const unsigned int mbr_size=(1024*1024)/2;
+const size_t minfreespace_image=1000*1024*1024; //1000 MB
+const size_t minfreespace_min=50*1024*1024;
+const unsigned int curr_image_version=1;
+const unsigned int image_timeout=10*24*60*60*1000;
+const unsigned int image_recv_timeout=1*60*60*1000;
+const unsigned int image_recv_timeout_after_first=10*60*1000;
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 
 int BackupServerGet::running_backups=0;
 int BackupServerGet::running_file_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection)
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL)
+=======
+BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName)
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -91,7 +128,10 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	image_protocol_version=0;
 
 	set_settings_version=0;
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	tcpstack.setAddChecksum(internet_connection);
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -100,6 +140,7 @@ BackupServerGet::~BackupServerGet(void)
 		unloadSQL();
 
 	Server->destroy(clientaddr_mutex);
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 
 	if(client_throttler!=NULL)
 	{
@@ -173,9 +214,516 @@ void BackupServerGet::operator ()(void)
 					return;
 				}
 			}
+=======
+}
+
+void BackupServerGet::init_mutex(void)
+{
+	running_backup_mutex=Server->createMutex();
+}
+
+void BackupServerGet::destroy_mutex(void)
+{
+	Server->destroy(running_backup_mutex);
+}
+
+void BackupServerGet::unloadSQL(void)
+{
+	db->destroyQuery(q_update_lastseen);
+	db->destroyQuery(q_update_full);
+	db->destroyQuery(q_update_incr);
+	db->destroyQuery(q_create_backup);
+	db->destroyQuery(q_get_last_incremental);
+	db->destroyQuery(q_set_last_backup);
+	db->destroyQuery(q_update_setting);
+	db->destroyQuery(q_insert_setting);
+	db->destroyQuery(q_set_complete);
+	db->destroyQuery(q_update_image_full);
+	db->destroyQuery(q_update_image_incr);
+	db->destroyQuery(q_create_backup_image);
+	db->destroyQuery(q_set_image_complete);
+	db->destroyQuery(q_set_last_image_backup);
+	db->destroyQuery(q_get_last_incremental_image);
+	db->destroyQuery(q_set_image_size);
+	db->destroyQuery(q_update_running_file);
+	db->destroyQuery(q_update_running_image);
+	db->destroyQuery(q_update_images_size);
+	db->destroyQuery(q_set_done);
+	db->destroyQuery(q_save_logdata);
+	db->destroyQuery(q_get_unsent_logdata);
+	db->destroyQuery(q_set_logdata_sent);
+	db->destroyQuery(q_save_image_assoc);
+	db->destroyQuery(q_get_users);
+	db->destroyQuery(q_get_rights);
+	db->destroyQuery(q_get_report_settings);
+	db->destroyQuery(q_format_unixtime);
+}
+
+void BackupServerGet::operator ()(void)
+{
+	{
+		bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client failed stopping...", 10000, false);
+		if(!b)
+		{
+			pipe->Write("ok");
+			Server->Log(L"server_get Thread for client "+clientname+L" finished, because the identity was not recognized", LL_INFO);
+
+			ServerStatus::setWrongIdent(clientname, true);
+			ServerLogger::reset(clientid);
+			delete this;
+			return;
 		}
 	}
 
+	if( clientname.find(L"##restore##")==0 )
+	{
+		ServerChannelThread channel_thread(this, -1);
+		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
+
+		while(true)
+		{
+			std::string msg;
+			pipe->Read(&msg);
+			if(msg=="exit" || msg=="exitnow" )
+				break;
+		}
+
+		channel_thread.doExit();
+		Server->getThreadPool()->waitFor(channel_thread_id);
+
+		pipe->Write("ok");
+		Server->Log(L"server_get Thread for client "+clientname+L" finished, restore thread");
+		delete this;
+		return;
+	}
+
+
+	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	server_settings=new ServerSettings(db);
+
+	clientid=getClientID();
+
+	if(clientid==-1)
+	{
+		pipe->Write("ok");
+		Server->Log(L"server_get Thread for client "+clientname+L" finished, because there were too many clients", LL_INFO);
+
+		ServerStatus::setTooManyClients(clientname, true);
+		ServerLogger::reset(clientid);
+		delete server_settings;
+		delete this;
+		return;
+	}
+
+	settings=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
+	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(clientid));
+
+	delete server_settings;
+	server_settings=new ServerSettings(db, clientid);
+	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	if(!os_create_dir(os_file_prefix()+backupfolder+os_file_sep()+clientname) && !os_directory_exists(os_file_prefix()+backupfolder+os_file_sep()+clientname) )
+	{
+		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
+		pipe->Write("ok");
+		delete server_settings;
+		delete this;
+		return;
+	}
+
+	prepareSQL();
+
+	updateLastseen();	
+	
+	if(!updateCapabilities())
+	{
+		Server->Log(L"Could not get client capabilities", LL_ERROR);
+		pipe->Write("ok");
+		delete server_settings;
+		delete this;
+		return;
+	}
+
+	status.client=clientname;
+	status.clientid=clientid;
+	ServerStatus::setServerStatus(status);
+
+	BackupServerHash *bsh=new BackupServerHash(hashpipe, exitpipe, clientid );
+	BackupServerPrepareHash *bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
+	Server->getThreadPool()->execute(bsh);
+	Server->getThreadPool()->execute(bsh_prepare);
+	ServerChannelThread channel_thread(this, clientid);
+	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
+
+	sendSettings();
+
+	ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
+	if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
+	{
+		ServerLogger::Log(clientid, "Getting client settings failed. Retrying...", LL_INFO);
+		Server->wait(200000);
+		if(!getClientSettings())
+		{
+			ServerLogger::Log(clientid, "Getting client settings failed -1", LL_ERROR);
+		}
+	}
+
+	ServerLogger::Log(clientid, "Sending backup incr intervall...", LL_DEBUG);
+	sendClientBackupIncrIntervall();
+
+	if(server_settings->getSettings()->autoupdate_clients)
+	{
+		checkClientVersion();
+	}
+
+	sendClientLogdata();
+
+	bool skip_checking=false;
+
+	if( server_settings->getSettings()->startup_backup_delay>0 )
+	{
+		pipe->isReadable(server_settings->getSettings()->startup_backup_delay*1000);
+		skip_checking=true;
+	}
+
+	bool do_exit_now=false;
+	bool tried_backup=false;
+	bool file_backup_err=false;
+	
+	while(true)
+	{
+		if(!skip_checking)
+		{
+			if(do_update_settings)
+			{
+				ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
+				do_update_settings=false;
+				if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
+				{
+					ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
+				}
+			}
+			tried_backup=false;
+			unsigned int ttime=Server->getTimeMS();
+			status.starttime=ttime;
+			has_error=false;
+			bool hbu=false;
+			bool r_success=false;
+			bool r_image=false;
+			r_incremental=false;
+			pingthread=NULL;
+			pingthread_ticket=ILLEGAL_THREADPOOL_TICKET;
+			status.pcdone=0;
+			status.hashqueuesize=0;
+			status.prepare_hashqueuesize=0;
+			ServerStatus::setServerStatus(status);
+
+			if(do_incr_image_now)
+			{
+				if(!can_backup_images)
+					Server->Log("Cannot do image backup because can_backup_images=false", LL_DEBUG);
+				if(server_settings->getSettings()->no_images)
+					Server->Log("Cannot do image backup because no_images=true", LL_DEBUG);
+				if(!isBackupsRunningOkay())
+					Server->Log("Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
+			}
+
+			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && isBackupsRunningOkay() && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) )
+			{
+				ScopedActiveThread sat;
+
+				status.statusaction=sa_full_file;
+				ServerStatus::setServerStatus(status, true);
+
+				ServerLogger::Log(clientid, "Doing full file backup...", LL_DEBUG);
+				do_full_backup_now=false;
+
+				hbu=true;
+				startBackupRunning(true);
+				if(!constructBackupPath())
+				{
+					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
+					r_success=false;
+				}
+				else
+				{
+					pingthread=new ServerPingThread(this);
+					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
+
+					r_success=doFullBackup();
+				}
+			}
+			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && isBackupsRunningOkay() && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) )
+			{
+				ScopedActiveThread sat;
+
+				status.statusaction=sa_incr_file;
+				ServerStatus::setServerStatus(status, true);
+
+				ServerLogger::Log(clientid, "Doing incremental file backup...", LL_DEBUG);
+				do_incr_backup_now=false;
+				hbu=true;
+				startBackupRunning(true);
+				r_incremental=true;
+				if(!constructBackupPath())
+				{
+					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
+					r_success=false;
+				}
+				else
+				{
+					pingthread=new ServerPingThread(this);
+					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
+
+					r_success=doIncrBackup();
+				}
+			}
+			else if(can_backup_images && !server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) )
+			{
+				ScopedActiveThread sat;
+
+				status.statusaction=sa_full_image;
+				ServerStatus::setServerStatus(status, true);
+
+				ServerLogger::Log(clientid, "Doing full image backup...", LL_DEBUG);
+				
+				r_image=true;
+
+				pingthread=new ServerPingThread(this);
+				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
+
+				startBackupRunning(false);
+
+				r_success=true;
+				std::vector<std::string> vols=server_settings->getBackupVolumes();
+				for(size_t i=0;i<vols.size();++i)
+				{
+					if(isUpdateFullImage(vols[i]+":") || do_full_image_now)
+					{
+						int sysvol_id=-1;
+						if(strlower(vols[i])=="c")
+						{
+							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
+				
+							if(doImage("SYSVOL", L"", 0, 0))
+							{
+								sysvol_id=backupid;
+							}
+							ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+						}
+						bool b=doImage(vols[i]+":", L"", 0, 0);
+						if(!b)
+						{
+							r_success=false;
+							break;
+						}
+						else if(sysvol_id!=-1)
+						{
+							saveImageAssociation(backupid, sysvol_id);
+						}
+					}
+				}
+
+				do_full_image_now=false;
+			}
+			else if(can_backup_images && !server_settings->getSettings()->no_images && isBackupsRunningOkay() && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) )
+			{
+				ScopedActiveThread sat;
+
+				status.statusaction=sa_incr_image;
+				ServerStatus::setServerStatus(status, true);
+
+				ServerLogger::Log(clientid, "Doing incremental image backup...", LL_DEBUG);
+				
+				r_image=true;
+				r_incremental=true;
+
+				startBackupRunning(false);
+			
+				pingthread=new ServerPingThread(this);
+				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
+
+				std::vector<std::string> vols=server_settings->getBackupVolumes();
+				for(size_t i=0;i<vols.size();++i)
+				{
+					std::string letter=vols[i]+":";
+					if(isUpdateIncrImage(letter) || do_incr_image_now)
+					{
+						int sysvol_id=-1;
+						if(strlower(letter)=="c:")
+						{
+							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
+							if(doImage("SYSVOL", L"", 0, 0))
+							{
+								sysvol_id=backupid;
+							}
+							ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+						}
+						SBackup last=getLastIncrementalImage(letter);
+						if(last.incremental==-2)
+						{
+							ServerLogger::Log(clientid, "Error retrieving last backup.", LL_ERROR);
+							r_success=false;
+							break;
+						}
+						else
+						{
+							r_success=doImage(letter, last.path, last.incremental+1, last.incremental_ref);
+						}
+
+						if(r_success && sysvol_id!=-1)
+						{
+							saveImageAssociation(backupid, sysvol_id);
+						}
+
+						if(!r_success)
+							break;
+					}
+				}
+
+				do_incr_image_now=false;
+			}
+
+			file_backup_err=false;
+
+			if(hbu && !has_error)
+			{
+				if(r_success)
+				{
+					notifyClientBackupSuccessfull();
+				}
+				else
+				{
+					if(pingthread!=NULL)
+					{
+						pingthread->setStop(true);
+						Server->getThreadPool()->waitFor(pingthread_ticket);
+					}
+					pingthread=NULL;
+				}
+			}
+			else if(hbu && has_error)
+			{
+				file_backup_err=true;
+				os_remove_nonempty_dir(backuppath);
+				tried_backup=true;
+			}
+
+			status.action_done=false;
+			status.statusaction=sa_none;
+			status.pcdone=100;
+			//Flush buffer before continuing...
+			status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
+			status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
+			hashpipe->Write("flush");
+			while(status.hashqueuesize>0 || status.prepare_hashqueuesize>0)
+			{
+				ServerStatus::setServerStatus(status, true);
+				Server->wait(1000);
+				status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
+				status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
+			}
+			ServerStatus::setServerStatus(status);
+
+			unsigned int ptime=Server->getTimeMS()-ttime;
+			if(hbu && !has_error)
+			{
+				ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+convert(ptime), LL_INFO);
+				if(!r_success)
+				{
+					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
+				}
+				else if( bsh->hasError() )
+				{
+					ServerLogger::Log(clientid, "Backup not complete because of disk problems", LL_ERROR);
+				}
+				else
+				{
+					updateLastBackup();
+					setBackupComplete();
+				}
+				status.pcdone=100;
+				ServerStatus::setServerStatus(status, true);
+			}
+
+			if( r_image )
+			{
+				ServerLogger::Log(clientid, L"Time taken for creating image of client "+clientname+L": "+convert(ptime), LL_INFO);
+				if(!r_success)
+				{
+					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
+				}
+				else
+				{
+					updateLastImageBackup();
+				}
+				status.pcdone=100;
+				ServerStatus::setServerStatus(status, true);
+			}
+
+			if(hbu || r_image)
+			{
+				stopBackupRunning(!r_image);
+				saveClientLogdata(r_image?1:0, r_incremental?1:0, r_success && !has_error);
+				sendClientLogdata();
+			}
+			if(hbu)
+			{
+				ServerCleanupThread::updateStats(true);
+			}
+
+			if(pingthread!=NULL)
+			{
+				pingthread->setStop(true);
+				Server->getThreadPool()->waitFor(pingthread_ticket);
+				pingthread=NULL;
+			}
+
+			/* Predict sleep time -- 
+			unsigned int wtime;
+			if((unsigned int)update_freq_incr*1000>ptime)
+			{
+				wtime=update_freq_incr*1000-ptime;
+			}
+			else
+			{
+				wtime=0;
+			}
+			wtime+=60000;*/
+		}
+
+		std::string msg;
+		if(file_backup_err)
+			pipe->Read(&msg, 0);
+		else if(tried_backup)
+			pipe->Read(&msg, skip_checking?0:check_time_intervall_tried_backup);
+		else
+			pipe->Read(&msg, skip_checking?0:check_time_intervall);
+		
+		skip_checking=false;
+		if(msg=="exit")
+			break;
+		else if(msg=="exitnow")
+		{
+			do_exit_now=true;
+			break;
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+		}
+		else if(msg=="START BACKUP INCR") do_incr_backup_now=true;
+		else if(msg=="START BACKUP FULL") do_full_backup_now=true;
+		else if(msg=="UPDATE SETTINGS") do_update_settings=true;
+		else if(msg=="START IMAGE INCR") do_incr_image_now=true;
+		else if(msg=="START IMAGE FULL") do_full_image_now=true;
+		else if(msg.find("address")==0)
+		{
+			IScopedLock lock(clientaddr_mutex);
+			memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
+		}
+
+		Server->Log("msg="+msg, LL_DEBUG);
+	}
+
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	if( clientname.find(L"##restore##")==0 )
 	{
 		ServerChannelThread channel_thread(this, -1, internet_connection);
@@ -332,6 +880,418 @@ void BackupServerGet::operator ()(void)
 				{
 					ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
 				}
+=======
+	//destroy channel
+	{
+		Server->Log("Stopping channel...", LL_DEBUG);
+		channel_thread.doExit();
+		Server->getThreadPool()->waitFor(channel_thread_id);
+	}
+
+	if(do_exit_now)
+	{
+		hashpipe_prepare->Write("exitnow");
+		std::string msg;
+		exitpipe_prepare->Read(&msg);
+		Server->destroy(exitpipe_prepare);
+	}
+	else
+	{
+		hashpipe_prepare->Write("exit");
+	}
+	
+	
+	Server->destroy(settings);
+	Server->destroy(settings_client);
+	delete server_settings;
+	pipe->Write("ok");
+	Server->Log(L"server_get Thread for client "+clientname+L" finished");
+
+	delete this;
+}
+
+void BackupServerGet::prepareSQL(void)
+{
+	SSettings *s=server_settings->getSettings();
+	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=CURRENT_TIMESTAMP WHERE id=?", false);
+	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1", false);
+	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1", false);
+	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0)", false);
+	q_get_last_incremental=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
+	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=CURRENT_TIMESTAMP WHERE id=?", false);
+	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
+	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
+	q_set_complete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
+	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false);
+	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false); 
+	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, "+nconvert(curr_image_version)+",?)", false);
+	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
+	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
+	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=CURRENT_TIMESTAMP WHERE id=?", false);
+	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
+	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
+	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
+	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
+	q_set_done=db->Prepare("UPDATE backups SET done=1 WHERE id=?", false);
+	q_save_logdata=db->Prepare("INSERT INTO logs (clientid, logdata, errors, warnings, infos, image, incremental) VALUES (?,?,?,?,?,?,?)", false);
+	q_get_unsent_logdata=db->Prepare("SELECT id, strftime('%s', created) AS created, logdata FROM logs WHERE sent=0 AND clientid=?", false);
+	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
+	q_save_image_assoc=db->Prepare("INSERT INTO assoc_images (img_id, assoc_id) VALUES (?,?)", false);
+	q_get_users=db->Prepare("SELECT id FROM settings_db.si_users WHERE report_mail IS NOT NULL AND report_mail<>''", false);
+	q_get_rights=db->Prepare("SELECT t_right FROM settings_db.si_permissions WHERE clientid=? AND t_domain=?", false);
+	q_get_report_settings=db->Prepare("SELECT report_mail, report_loglevel, report_sendonly FROM settings_db.si_users WHERE id=?", false);
+	q_format_unixtime=db->Prepare("SELECT datetime(?, 'unixepoch', 'localtime') AS time", false);
+}
+
+int BackupServerGet::getClientID(void)
+{
+	IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?",false);
+	q->Bind(clientname);
+	db_results res=q->Read();
+	db->destroyQuery(q);
+
+	if(res.size()>0)
+		return watoi(res[0][L"id"]);
+	else
+	{
+		IQuery *q_get_num_clients=db->Prepare("SELECT count(*) AS c FROM clients WHERE lastseen > date('now', '-2 month')", false);
+		db_results res_r=q_get_num_clients->Read();
+		q_get_num_clients->Reset();
+		int c_clients=-1;
+		if(!res_r.empty()) c_clients=watoi(res_r[0][L"c"]);
+
+		db->destroyQuery(q_get_num_clients);
+
+		if(c_clients<server_settings->getSettings()->max_active_clients)
+		{
+			IQuery *q_insert_newclient=db->Prepare("INSERT INTO clients (name, lastseen,bytes_used_files,bytes_used_images) VALUES (?, CURRENT_TIMESTAMP, 0, 0)", false);
+			q_insert_newclient->Bind(clientname);
+			q_insert_newclient->Write();
+			int rid=(int)db->getLastInsertID();
+			q_insert_newclient->Reset();
+			db->destroyQuery(q_insert_newclient);
+			return rid;
+		}
+		else
+		{
+			Server->Log(L"Too many clients. Didn't accept client '"+clientname+L"'", LL_INFO);
+			return -1;
+		}
+	}
+}
+
+SBackup BackupServerGet::getLastIncremental(void)
+{
+	q_get_last_incremental->Bind(clientid);
+	db_results res=q_get_last_incremental->Read();
+	q_get_last_incremental->Reset();
+	if(res.size()>0)
+	{
+		SBackup b;
+		b.incremental=watoi(res[0][L"incremental"]);
+		b.path=res[0][L"path"];
+		return b;
+	}
+	else
+	{
+		SBackup b;
+		b.incremental=-2;
+		return b;
+	}
+}
+
+SBackup BackupServerGet::getLastIncrementalImage(const std::string &letter)
+{
+	q_get_last_incremental_image->Bind(clientid);
+	q_get_last_incremental_image->Bind(letter);
+	db_results res=q_get_last_incremental_image->Read();
+	q_get_last_incremental_image->Reset();
+	if(res.size()>0)
+	{
+		SBackup b;
+		b.incremental=watoi(res[0][L"incremental"]);
+		b.path=res[0][L"path"];
+		b.incremental_ref=watoi(res[0][L"id"]);
+		return b;
+	}
+	else
+	{
+		SBackup b;
+		b.incremental=-2;
+		return b;
+	}
+}
+
+int BackupServerGet::createBackupSQL(int incremental, int clientid, std::wstring path)
+{
+	q_create_backup->Bind(incremental);
+	q_create_backup->Bind(clientid);
+	q_create_backup->Bind(path);
+	q_create_backup->Write();
+	q_create_backup->Reset();
+	return (int)db->getLastInsertID();
+}
+
+int BackupServerGet::createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path, std::string letter)
+{
+	q_create_backup_image->Bind(clientid);
+	q_create_backup_image->Bind(path);
+	q_create_backup_image->Bind(incremental);
+	q_create_backup_image->Bind(incremental_ref);
+	q_create_backup_image->Bind(letter);
+	q_create_backup_image->Write();
+	q_create_backup_image->Reset();
+	return (int)db->getLastInsertID();
+}
+
+void BackupServerGet::updateLastseen(void)
+{
+	q_update_lastseen->Bind(clientid);
+	q_update_lastseen->Write();
+	q_update_lastseen->Reset();
+}
+
+bool BackupServerGet::isUpdateFull(void)
+{
+	q_update_full->Bind(clientid);
+	db_results res=q_update_full->Read();
+	q_update_full->Reset();
+	return res.empty();
+}
+
+bool BackupServerGet::isUpdateIncr(void)
+{
+	q_update_incr->Bind(clientid);
+	db_results res=q_update_incr->Read();
+	q_update_incr->Reset();
+	return res.empty();
+}
+
+bool BackupServerGet::isUpdateFullImage(const std::string &letter)
+{
+	if(server_settings->getSettings()->update_freq_image_full<0)
+		return false;
+
+	q_update_image_full->Bind(clientid);
+	q_update_image_full->Bind(letter);
+	db_results res=q_update_image_full->Read();
+	q_update_image_full->Reset();
+	return res.empty();
+}
+
+bool BackupServerGet::isUpdateFullImage(void)
+{
+	std::vector<std::string> vols=server_settings->getBackupVolumes();
+	for(size_t i=0;i<vols.size();++i)
+	{
+		if( isUpdateFullImage(vols[i]+":") )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool BackupServerGet::isUpdateIncrImage(void)
+{
+	std::vector<std::string> vols=server_settings->getBackupVolumes();
+	for(size_t i=0;i<vols.size();++i)
+	{
+		if( isUpdateIncrImage(vols[i]+":") )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool BackupServerGet::isUpdateIncrImage(const std::string &letter)
+{
+	if(server_settings->getSettings()->update_freq_image_full<=0)
+		return false;
+
+	q_update_image_incr->Bind(clientid);
+	q_update_image_incr->Bind(letter);
+	db_results res=q_update_image_incr->Read();
+	q_update_image_incr->Reset();
+	return res.empty();
+}
+
+void BackupServerGet::updateRunning(bool image)
+{
+	if(image)
+	{
+		q_update_running_image->Bind(backupid);
+		q_update_running_image->Write();
+		q_update_running_image->Reset();
+	}
+	else
+	{
+		q_update_running_file->Bind(backupid);
+		q_update_running_file->Write();
+		q_update_running_file->Reset();
+	}
+}
+
+void BackupServerGet::saveImageAssociation(int image_id, int assoc_id)
+{
+	q_save_image_assoc->Bind(image_id);
+	q_save_image_assoc->Bind(assoc_id);
+	q_save_image_assoc->Write();
+	q_save_image_assoc->Reset();
+}
+
+bool BackupServerGet::getNextEntry(char ch, SFile &data)
+{
+	switch(state)
+	{
+	case 0:
+		if(ch=='f')
+			data.isdir=false;
+		else if(ch=='d')
+			data.isdir=true;
+		else
+			ServerLogger::Log(clientid, "Error parsing file BackupServerGet::getNextEntry - 1", LL_ERROR);
+		state=1;
+		break;
+	case 1:
+		//"
+		state=2;
+		break;
+	case 3:
+		if(ch!='"')
+		{
+			t_name.erase(t_name.size()-1,1);
+			data.name=Server->ConvertToUnicode(t_name);
+			t_name="";
+			if(data.isdir)
+			{
+				resetEntryState();
+				return true;
+			}
+			else
+				state=4;
+		}
+	case 2:
+		if(state==2 && ch=='"')
+			state=3;
+		else if(state==3)
+			state=2;
+		
+		t_name+=ch;
+		break;
+	case 4:
+		if(ch!=' ')
+		{
+			t_name+=ch;
+		}
+		else
+		{
+			data.size=os_atoi64(t_name);
+			t_name="";
+			state=5;
+		}
+		break;
+	case 5:
+		if(ch!='\n')
+		{
+			t_name+=ch;
+		}
+		else
+		{
+			data.last_modified=os_atoi64(t_name);
+			resetEntryState();
+			return true;
+		}
+		break;
+	}
+	return false;
+}
+
+void BackupServerGet::resetEntryState(void)
+{
+	t_name="";
+	state=0;
+}
+
+bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
+{
+	unsigned int timeout_time=full_backup_construct_timeout;
+	if(file_protocol_version>=2)
+	{
+		timeout_time=120000;
+	}
+
+	CTCPStack tcpstack;
+
+	Server->Log(clientname+L": Connecting for filelist...", LL_DEBUG);
+	IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
+	if(cc==NULL)
+	{
+		ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error during filelist construction", LL_ERROR);
+		return false;
+	}
+
+	std::string pver="";
+	if(file_protocol_version==2) pver="2";
+
+	if(full)
+		tcpstack.Send(cc, server_identity+pver+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
+	else
+		tcpstack.Send(cc, server_identity+pver+"START BACKUP"+(with_token?("#token="+server_token):""));
+
+	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
+	std::string ret;
+	unsigned int starttime=Server->getTimeMS();
+	while(Server->getTimeMS()-starttime<=timeout_time)
+	{
+		size_t rc=cc->Read(&ret, 60000);
+		if(rc==0)
+		{			
+			if(file_protocol_version<2 && Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
+			{
+				Server->destroy(cc);
+				Server->Log(clientname+L": Trying old filelist request", LL_WARNING);
+				return request_filelist_construct(full, false);
+			}
+			else
+			{
+				if(file_protocol_version>=2 || pingthread->isTimeout() )
+				{
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed - TIMEOUT(1)", LL_ERROR);
+					break;
+				}
+				else
+				{
+					continue;
+				}
+			}
+		}
+		tcpstack.AddData((char*)ret.c_str(), ret.size());
+
+		size_t packetsize;
+		char *pck=tcpstack.getPacket(&packetsize);
+		if(pck!=NULL && packetsize>0)
+		{
+			ret=pck;
+			delete [] pck;
+			if(ret!="DONE")
+			{
+				if(ret=="BUSY")
+				{
+					starttime=Server->getTimeMS();
+				}
+				else if(ret!="no backup dirs")
+				{
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
+					break;
+				}
+				else
+				{
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_DEBUG);
+					break;
+				}				
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 			}
 			tried_backup=false;
 			unsigned int ttime=Server->getTimeMS();
@@ -353,6 +1313,7 @@ void BackupServerGet::operator ()(void)
 
 			if(do_incr_image_now)
 			{
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 				if(!can_backup_images)
 					Server->Log("Cannot do image backup because can_backup_images=false", LL_DEBUG);
 				if(server_settings->getSettings()->no_images)
@@ -1214,6 +2175,122 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 			{
 				if(cf.isdir==true)
 				{
+=======
+				Server->destroy(cc);
+				return true;
+			}
+		}
+	}
+	Server->destroy(cc);
+	return false;
+}
+
+bool BackupServerGet::doFullBackup(void)
+{
+	int64 free_space=os_free_space(os_file_prefix()+server_settings->getSettings()->backupfolder);
+	if(free_space!=-1 && free_space<minfreespace_min)
+	{
+		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
+		ServerCleanupThread cleanup;
+		if(!cleanup.do_cleanup(minfreespace_min) )
+		{
+			ServerLogger::Log(clientid, "Could not free space for directory entries. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			return false;
+		}
+	}
+	
+	
+	bool b=request_filelist_construct(true);
+	if(!b)
+	{
+		has_error=true;
+		return false;
+	}
+
+	FileClient fc(filesrv_protocol_version);
+	sockaddr_in addr=getClientaddr();
+	_u32 rc=fc.Connect(&addr);
+	if(rc!=ERR_CONNECTED)
+	{
+		ServerLogger::Log(clientid, L"Full Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
+		has_error=true;
+		return false;
+	}
+	
+	IFile *tmp=Server->openTemporaryFile();
+	if(tmp==NULL) return false;
+
+	rc=fc.GetFile("urbackup/filelist.ub", tmp);
+	if(rc!=ERR_SUCCESS)
+	{
+		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		has_error=true;
+		return false;
+	}
+
+	backupid=createBackupSQL(0, clientid, backuppath_single);
+	
+	tmp->Seek(0);
+	
+	resetEntryState();
+
+	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+".ub", MODE_WRITE);
+
+	if(clientlist==NULL )
+	{
+		ServerLogger::Log(clientid, L"Error creating clientlist for client "+clientname, LL_ERROR);
+		has_error=true;
+		return false;
+	}
+	_i64 filelist_size=tmp->Size();
+
+	char buffer[4096];
+	_u32 read;
+	_i64 filelist_currpos=0;
+	std::wstring curr_path;
+	SFile cf;
+	int depth=0;
+	bool r_done=false;
+	unsigned int laststatsupdate=0;
+	ServerStatus::setServerStatus(status, true);
+	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
+	Server->getThreadPool()->execute(running_updater);
+
+	std::vector<size_t> diffs;
+	_i64 files_size=getIncrementalSize(tmp, diffs, true);
+	_i64 transferred=0;
+
+	tmp->Seek(0);
+	
+	bool c_has_error=false;
+
+	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
+	{
+		filelist_currpos+=read;
+		for(size_t i=0;i<read;++i)
+		{
+			unsigned int ctime=Server->getTimeMS();
+			if(ctime-laststatsupdate>status_update_intervall)
+			{
+				laststatsupdate=ctime;
+				if(files_size==0)
+				{
+					status.pcdone=100;
+				}
+				else
+				{
+					status.pcdone=(std::min)(100,(int)(((float)transferred)/((float)files_size/100.f)+0.5f));
+				}
+				status.hashqueuesize=(_u32)hashpipe->getNumElements();
+				status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
+				ServerStatus::setServerStatus(status, true);
+			}
+
+			bool b=getNextEntry(buffer[i], cf);
+			if(b)
+			{
+				if(cf.isdir==true)
+				{
 					if(cf.name!=L"..")
 					{
 						curr_path+=L"/"+cf.name;
@@ -1224,15 +2301,9 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
+						if(!os_create_dir(os_file_prefix()+backuppath+os_curr_path))
 						{
 							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
-							c_has_error=true;
-							break;
-						}
-						if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+os_curr_path)))
-						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
 						}
@@ -1261,6 +2332,426 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 				}
 				else
 				{
+					bool b=load_file(cf.name, curr_path, fc);
+					if(!b)
+					{
+						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+						r_done=true;
+						break;
+					}
+					transferred+=cf.size;
+				}
+			}
+		}
+		writeFileRepeat(clientlist, buffer, read);
+		if(read<4096)
+			break;
+	}
+	if(r_done==false && c_has_error==false)
+	{
+		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+		std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
+		Server->deleteFile(os_file_prefix()+currdir);
+		os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+
+		currdir=backupfolder+os_file_sep()+L"clients";
+		if(!os_create_dir(os_file_prefix()+currdir) && !os_directory_exists(os_file_prefix()+currdir))
+		{
+			Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
+		}
+		currdir+=os_file_sep()+clientname;
+		Server->deleteFile(os_file_prefix()+currdir);
+		os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+	}
+	running_updater->stop();
+	updateRunning(false);
+	Server->destroy(clientlist);
+	Server->destroy(tmp);
+
+	setBackupDone();
+	
+	if(c_has_error)
+		return false;
+
+	return !r_done;
+}
+
+bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc)
+{
+	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
+	IFile *fd=NULL;
+	while(fd==NULL)
+	{
+		fd=Server->openTemporaryFile();
+		if(fd==NULL)
+		{
+			ServerLogger::Log(clientid, "Error opening temporary file. Retrying...", LL_WARNING);
+			Server->wait(500);
+		}
+	}
+
+	std::wstring cfn=curr_path+L"/"+fn;
+	if(cfn[0]=='/')
+		cfn.erase(0,1);
+
+	if(!server_token.empty())
+	{
+		cfn=widen(server_token)+L"|"+cfn;
+	}
+	
+	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd);
+	if(rc!=ERR_SUCCESS)
+	{
+		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		std::wstring temp_fn=fd->getFilenameW();
+		Server->destroy(fd);
+		Server->deleteFile(temp_fn);
+		if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
+			return false;
+	}
+	else
+	{
+		std::wstring os_curr_path=curr_path+L"/"+fn;
+		if(os_file_sep()!=L"/")
+		{
+			for(size_t i=0;i<os_curr_path.size();++i)
+				if(os_curr_path[i]=='/')
+					os_curr_path[i]=os_file_sep()[0];
+		}
+		
+		std::wstring dstpath=backuppath+os_curr_path;
+
+		hashFile(dstpath, fd);
+	}
+	return true;
+}
+
+_i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all)
+{
+	f->Seek(0);
+	_i64 rsize=0;
+	resetEntryState();
+	SFile cf;
+	bool indirchange=false;
+	size_t read;
+	size_t line=0;
+	char buffer[4096];
+	int indir_currdepth=0;
+	int depth=0;
+	int indir_curr_depth=0;
+	int changelevel=0;
+
+	if(all)
+	{
+		indirchange=true;
+	}
+
+	while( (read=f->Read(buffer, 4096))>0 )
+	{
+		for(size_t i=0;i<read;++i)
+		{
+			bool b=getNextEntry(buffer[i], cf);
+			if(b)
+			{
+				if(cf.isdir==true)
+				{
+					if(indirchange==false && hasChange(line, diffs) )
+					{
+						indirchange=true;
+						changelevel=depth;
+						indir_currdepth=0;
+					}
+					else if(indirchange==true)
+					{
+						if(cf.name!=L"..")
+							++indir_currdepth;
+						else
+							--indir_currdepth;
+					}
+
+					if(cf.name==L".." && indir_currdepth>0)
+					{
+						--indir_currdepth;
+					}
+
+					if(cf.name!=L"..")
+					{
+						++depth;
+					}
+					else
+					{
+						--depth;
+						if(indirchange==true && depth==changelevel)
+						{
+							if(!all)
+							{
+								indirchange=false;
+							}
+						}
+					}
+				}
+				else
+				{
+					if(indirchange==true || hasChange(line, diffs))
+					{
+						rsize+=cf.size;
+					}
+				}
+				++line;
+			}
+		}
+
+		if(read<4096)
+			break;
+	}
+
+	return rsize;
+}
+
+bool BackupServerGet::doIncrBackup(void)
+{
+	int64 free_space=os_free_space(os_file_prefix()+server_settings->getSettings()->backupfolder);
+	if(free_space!=-1 && free_space<minfreespace_min)
+	{
+		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
+		ServerCleanupThread cleanup;
+		if(!cleanup.do_cleanup(minfreespace_min) )
+		{
+			ServerLogger::Log(clientid, "Could not free space for directory entries. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			return false;
+		}
+	}
+	
+	bool b=request_filelist_construct(false);
+	if(!b)
+	{
+		has_error=true;
+		return false;
+	}
+
+	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
+	FileClient fc(filesrv_protocol_version);
+	sockaddr_in addr=getClientaddr();
+	_u32 rc=fc.Connect(&addr);
+	if(rc!=ERR_CONNECTED)
+	{
+		ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
+		has_error=true;
+		return false;
+	}
+	
+	Server->Log(clientname+L": Loading filelist...", LL_DEBUG);
+	IFile *tmp=Server->openTemporaryFile();
+	if(tmp==NULL) return false;
+
+	rc=fc.GetFile("urbackup/filelist.ub", tmp);
+	if(rc!=ERR_SUCCESS)
+	{
+		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		has_error=true;
+		return false;
+	}
+	
+	Server->Log(clientname+L" Starting incremental backup...", LL_DEBUG);
+
+	SBackup last=getLastIncremental();
+	if(last.incremental==-2)
+	{
+		ServerLogger::Log(clientid, "Error retrieving last backup.", LL_ERROR);
+		has_error=true;
+		return false;
+	}
+	backupid=createBackupSQL(last.incremental+1, clientid, backuppath_single);
+
+	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	std::wstring last_backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path;
+
+	std::wstring tmpfilename=tmp->getFilenameW();
+	Server->destroy(tmp);
+
+	Server->Log(clientname+L": Calculating file tree differences...", LL_DEBUG);
+	bool error=false;
+	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error);
+	if(error)
+	{
+		ServerLogger::Log(clientid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
+		return doFullBackup();
+	}
+
+	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub", MODE_WRITE);
+
+	tmp=Server->openFile(tmpfilename, MODE_READ);
+
+	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
+	Server->getThreadPool()->execute(running_updater);
+	
+	resetEntryState();
+	
+	char buffer[4096];
+	_u32 read;
+	std::wstring curr_path;
+	SFile cf;
+	int depth=0;
+	int line=0;
+	link_logcnt=0;
+	bool indirchange=false;
+	int changelevel;
+	bool r_offline=false;
+	_i64 filelist_size=tmp->Size();
+	_i64 filelist_currpos=0;
+	int indir_currdepth=0;
+	
+	Server->Log(clientname+L": Calculating tree difference size...", LL_DEBUG);
+	_i64 files_size=getIncrementalSize(tmp, diffs);
+	tmp->Seek(0);
+	_i64 transferred=0;
+	
+	unsigned int laststatsupdate=0;
+	ServerStatus::setServerStatus(status, true);
+	
+	Server->Log(clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
+	
+	bool c_has_error=false;
+
+	while( (read=tmp->Read(buffer, 4096))>0 )
+	{
+		filelist_currpos+=read;
+
+		for(size_t i=0;i<read;++i)
+		{
+			bool b=getNextEntry(buffer[i], cf);
+			if(b)
+			{
+				unsigned int ctime=Server->getTimeMS();
+				if(ctime-laststatsupdate>status_update_intervall)
+				{
+					laststatsupdate=ctime;
+					if(files_size==0)
+					{
+						status.pcdone=100;
+					}
+					else
+					{
+						status.pcdone=(std::min)(100,(int)(((float)transferred)/((float)files_size/100.f)+0.5f));
+					}
+					status.hashqueuesize=(_u32)hashpipe->getNumElements();
+					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
+					ServerStatus::setServerStatus(status, true);
+				}
+				
+				if(cf.isdir==true)
+				{
+					if(indirchange==false && hasChange(line, diffs) )
+					{
+						indirchange=true;
+						changelevel=depth;
+						indir_currdepth=0;
+
+						if(cf.name!=L"..")
+						{
+							if(r_offline==false )
+								indir_currdepth=1;
+						}
+						else
+						{
+							--changelevel;
+						}
+					}
+					else if(indirchange==true && r_offline==false)
+					{
+						if(cf.name!=L"..")
+							++indir_currdepth;
+						else
+							--indir_currdepth;
+					}
+
+					if(indirchange==false || r_offline==false )
+					{
+						writeFileRepeat(clientlist, "d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
+					}
+					else if(cf.name==L".." && indir_currdepth>0)
+					{
+						--indir_currdepth;
+						writeFileRepeat(clientlist, "d\"..\"\n");
+					}
+
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+					if(cf.name!=L"..")
+					{
+						curr_path+=L"/"+cf.name;
+						std::wstring os_curr_path=curr_path;
+						if(os_file_sep()!=L"/")
+						{
+							for(size_t i=0;i<os_curr_path.size();++i)
+								if(os_curr_path[i]=='/')
+									os_curr_path[i]=os_file_sep()[0];
+						}
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+						if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
+=======
+						if(!os_create_dir(os_file_prefix()+backuppath+os_curr_path))
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+						{
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+						if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+os_curr_path)))
+						{
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+						++depth;
+						if(depth==1)
+						{
+							std::wstring t=curr_path;
+							t.erase(0,1);
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+							ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_INFO);
+							start_shadowcopy(Server->ConvertToUTF8(t));
+							Server->wait(10000);
+=======
+							if(r_offline==false)
+							{
+								start_shadowcopy(Server->ConvertToUTF8(t));
+							}
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+						}
+					}
+					else
+					{
+						--depth;
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+=======
+						if(indirchange==true && depth==changelevel)
+						{
+							indirchange=false;
+						}
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+						if(depth==0)
+						{
+							std::wstring t=curr_path;
+							t.erase(0,1);
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+							ServerLogger::Log(clientid, L"Stoping shadowcopy \""+t+L"\".", LL_INFO);
+							stop_shadowcopy(Server->ConvertToUTF8(t));
+=======
+							if(r_offline==false)
+							{
+								stop_shadowcopy(Server->ConvertToUTF8(t));
+							}
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+						}
+						curr_path=ExtractFilePath(curr_path);
+					}
+				}
+				else
+				{
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 					bool b=load_file(cf.name, curr_path, fc, with_hashes);
 					if(!b)
 					{
@@ -1789,6 +3280,40 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 						bool f_ok=true;
 						std::wstring srcpath=last_backuppath+os_curr_path;
 						bool b=os_create_hardlink(os_file_prefix(backuppath+os_curr_path), os_file_prefix(srcpath));
+=======
+					if(indirchange==true || hasChange(line, diffs))
+					{
+						if(r_offline==false)
+						{
+							bool b=load_file(cf.name, curr_path, fc);
+							if(!b)
+							{
+								ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+								r_offline=true;
+							}
+							else
+							{
+								transferred+=cf.size;
+								writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+							}
+						}
+					}
+					else
+					{			
+						std::wstring os_curr_path=curr_path+L"/"+cf.name;
+						if(os_file_sep()!=L"/")
+						{
+							for(size_t i=0;i<os_curr_path.size();++i)
+								if(os_curr_path[i]=='/')
+									os_curr_path[i]=os_file_sep()[0];
+						}
+
+						std::wstring srcpath=last_backuppath+os_curr_path;
+
+						bool f_ok=true;
+
+						bool b=os_create_hardlink(os_file_prefix()+backuppath+os_curr_path, os_file_prefix()+srcpath);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 						if(!b)
 						{
 							if(link_logcnt<5)
@@ -1806,17 +3331,24 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 							++link_logcnt;
 							if(r_offline==false)
 							{
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 								bool b2;
 								if(intra_file_diffs)
 									b2=load_file_patch(cf.name, curr_path, last_backuppath, fc_chunked, fc);
 								else
 									b2=load_file(cf.name, curr_path, fc, with_hashes);
 
+=======
+								bool b2=load_file(cf.name, curr_path, fc);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 								if(!b2)
 								{
 									ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 									r_offline=true;
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 									incr_backup_stoptime=Server->getTimeMS();
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 									f_ok=false;
 								}
 							}
@@ -1825,10 +3357,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 								f_ok=false;
 							}
 						}
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 						else if(with_hashes)
 						{
 							os_create_hardlink(os_file_prefix(backuppath_hashes+os_curr_path), os_file_prefix(last_backuppath_hashes+os_curr_path));
 						}
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 
 						if(f_ok)
 						{
@@ -1894,19 +3429,33 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 			Server->deleteFile(os_file_prefix(currdir));
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
+=======
+			Server->deleteFile(os_file_prefix()+currdir);
+			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 
 			Server->Log("Creating symbolic links. -2", LL_DEBUG);
 
 			currdir=backupfolder+os_file_sep()+L"clients";
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 			if(!os_create_dir(os_file_prefix(currdir)) && !os_directory_exists(os_file_prefix(currdir)))
+=======
+			if(!os_create_dir(os_file_prefix()+currdir) && !os_directory_exists(os_file_prefix()+currdir))
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 			{
 				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
 			currdir+=os_file_sep()+clientname;
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 			Server->deleteFile(os_file_prefix(currdir));
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
+=======
+			Server->deleteFile(os_file_prefix()+currdir);
+			os_link_symbolic(os_file_prefix()+backuppath, os_file_prefix()+currdir);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 
 			Server->Log("Symbolic links created.", LL_DEBUG);
 
@@ -1937,6 +3486,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	Server->destroy(tmp);
 	Server->deleteFile(tmpfilename);
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	if(incr_backup_stoptime==0)
 	{
 		incr_backup_stoptime=Server->getTimeMS();
@@ -1946,6 +3496,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	unsigned int passed_time=incr_backup_stoptime-incr_backup_starttime;
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 	setBackupDone();
 
 	if(c_has_error) return false;
@@ -1958,7 +3510,11 @@ bool BackupServerGet::hasChange(size_t line, const std::vector<size_t> &diffs)
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 void BackupServerGet::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file)
+=======
+void BackupServerGet::hashFile(std::wstring dstpath, IFile *fd)
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 {
 	int l_backup_id=backupid;
 
@@ -1967,16 +3523,20 @@ void BackupServerGet::hashFile(std::wstring dstpath, std::wstring hashpath, IFil
 	data.addInt(l_backup_id);
 	data.addChar(r_incremental==true?1:0);
 	data.addString(Server->ConvertToUTF8(dstpath));
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	data.addString(Server->ConvertToUTF8(hashpath));
 	if(hashoutput!=NULL)
 	{
 		data.addString(Server->ConvertToUTF8(hashoutput->getFilenameW()));
 		data.addString(old_file);
 	}
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 
 	ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
 
 	Server->destroy(fd);
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	if(hashoutput!=NULL)
 	{
 		Server->destroy(hashoutput);
@@ -1985,6 +3545,12 @@ void BackupServerGet::hashFile(std::wstring dstpath, std::wstring hashpath, IFil
 }
 
 bool BackupServerGet::constructBackupPath(bool with_hashes)
+=======
+	hashpipe_prepare->Write(data.getDataPtr(), data.getDataSize() );
+}
+
+bool BackupServerGet::constructBackupPath(void)
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 {
 	time_t tt=time(NULL);
 #ifdef _WIN32
@@ -1999,12 +3565,16 @@ bool BackupServerGet::constructBackupPath(bool with_hashes)
 	backuppath_single=widen((std::string)buffer);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single;
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	if(with_hashes)
 		backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+L".hashes";
 	else
 		backuppath_hashes.clear();
 
 	return os_create_dir(os_file_prefix(backuppath)) && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));	
+=======
+	return os_create_dir(os_file_prefix()+backuppath);	
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 }
 
 std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
@@ -2037,6 +3607,7 @@ void BackupServerGet::updateLastImageBackup(void)
 	q_set_last_image_backup->Reset();
 }
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 std::string BackupServerGet::sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
 {
 	CTCPStack tcpstack(internet_connection);
@@ -2047,6 +3618,18 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		else
 			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
+=======
+std::string BackupServerGet::sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr)
+{
+	CTCPStack tcpstack;
+	IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
+	if(cc==NULL)
+	{
+		if(logerr)
+			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_ERROR);
+		else
+			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_DEBUG);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 		return "";
 	}
 
@@ -2061,11 +3644,15 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 		size_t rc=cc->Read(&ret, timeout);
 		if(rc==0)
 		{
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 			if(logerr)
 				ServerLogger::Log(clientid, errmsg, max_loglevel);
 			else
 				Server->Log(errmsg, max_loglevel);
 
+=======
+			ServerLogger::Log(clientid, errmsg, LL_ERROR);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
@@ -2082,16 +3669,21 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 		}
 	}
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	if(logerr)
 		ServerLogger::Log(clientid, L"Timeout: "+errmsg, max_loglevel);
 	else
 		Server->Log(L"Timeout: "+errmsg, max_loglevel);
+=======
+	ServerLogger::Log(clientid, L"Timeout: "+errmsg, LL_ERROR);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 
 	Server->destroy(cc);
 
 	return "";
 }
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
 {
 	CTCPStack tcpstack(internet_connection);
@@ -2102,6 +3694,18 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		else
 			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
+=======
+bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr)
+{
+	CTCPStack tcpstack;
+	IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
+	if(cc==NULL)
+	{
+		if(logerr)
+			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_ERROR);
+		else
+			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, LL_DEBUG);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 		return false;
 	}
 
@@ -2117,9 +3721,15 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 		if(rc==0)
 		{
 			if(logerr)
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 				ServerLogger::Log(clientid, errmsg, max_loglevel);
 			else
 				Server->Log(errmsg, max_loglevel);
+=======
+				ServerLogger::Log(clientid, errmsg, LL_ERROR);
+			else
+				Server->Log(errmsg, LL_ERROR);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
@@ -2134,9 +3744,15 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 			{
 				herr=true;
 				if(logerr)
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 					ServerLogger::Log(clientid, errmsg, max_loglevel);
 				else
 					Server->Log(errmsg, max_loglevel);
+=======
+					ServerLogger::Log(clientid, errmsg, LL_ERROR);
+				else
+					Server->Log(errmsg, LL_ERROR);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 				break;
 			}
 			else
@@ -2149,9 +3765,15 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 	if(!ok && !herr)
 	{
 		if(logerr)
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 			ServerLogger::Log(clientid, L"Timeout: "+errmsg, max_loglevel);
 		else
 			Server->Log(L"Timeout: "+errmsg, max_loglevel);
+=======
+			ServerLogger::Log(clientid, L"Timeout: "+errmsg, LL_ERROR);
+		else
+			Server->Log(L"Timeout: "+errmsg, LL_ERROR);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 	}
 
 	Server->destroy(cc);
@@ -2161,27 +3783,47 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 
 void BackupServerGet::start_shadowcopy(const std::string &path)
 {
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	sendClientMessage("START SC \""+path+"\"#token="+server_token, "DONE", L"Activating shadow copy on \""+clientname+L"\" for path \""+Server->ConvertToUnicode(path)+L"\" failed", shadow_copy_timeout);
+=======
+	sendClientMessage("START SC \""+path+"\"#token="+server_token, "DONE", L"Activating shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 }
 
 void BackupServerGet::stop_shadowcopy(const std::string &path)
 {
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", L"Removing shadow copy on \""+clientname+L"\" for path \""+Server->ConvertToUnicode(path)+L"\" failed", shadow_copy_timeout);
+=======
+	sendClientMessage("STOP SC \""+path+"\"#token="+server_token, "DONE", L"Removing shadow copy on \""+clientname+L"\" failed", shadow_copy_timeout);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 }
 
 void BackupServerGet::notifyClientBackupSuccessfull(void)
 {
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	sendClientMessage("DID BACKUP", "OK", L"Sending status (DID BACKUP) to client failed", 10000);
+=======
+	sendClientMessage("DID BACKUP", "OK", L"Sending status to client failed", 10000);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 }
 
 void BackupServerGet::sendClientBackupIncrIntervall(void)
 {
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incremental file backup interval to client failed", 10000);
+=======
+	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incrintervall to client failed", 10000);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 }
 
 bool BackupServerGet::updateCapabilities(void)
 {
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	std::string cap=sendClientMessage("CAPA", L"Querying client capabilities failed", 10000, false);
+=======
+	std::string cap=sendClientMessage("CAPA", L"Querying capabilities failed", 10000, false);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 	if(cap!="ERR" && !cap.empty())
 	{
 		str_map params;
@@ -2208,11 +3850,14 @@ bool BackupServerGet::updateCapabilities(void)
 		{
 			set_settings_version=watoi(it->second);
 		}
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 		it=params.find(L"IMAGE_VER");
 		if(it!=params.end())
 		{
 			image_protocol_version=watoi(it->second);
 		}
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 	}
 
 	return !cap.empty();
@@ -2257,8 +3902,14 @@ void BackupServerGet::sendSettings(void)
 
 bool BackupServerGet::getClientSettings(void)
 {
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	FileClient fc(filesrv_protocol_version, internet_connection, this);
 	_u32 rc=getClientFilesrvConnection(&fc);
+=======
+	FileClient fc(filesrv_protocol_version);
+	sockaddr_in addr=getClientaddr();
+	_u32 rc=fc.Connect(&addr);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 	if(rc!=ERR_CONNECTED)
 	{
 		ServerLogger::Log(clientid, L"Getting Client settings of "+clientname+L" failed - CONNECT error", LL_ERROR);
@@ -2408,7 +4059,11 @@ void BackupServerGet::sendClientLogdata(void)
 	{
 		std::string logdata=Server->ConvertToUTF8(res[i][L"logdata"]);
 		escapeClientMessage(logdata);
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false, LL_WARNING);
+=======
+		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 		q_set_logdata_sent->Bind(res[i][L"id"]);
 		q_set_logdata_sent->Write();
 		q_set_logdata_sent->Reset();
@@ -2422,6 +4077,69 @@ void BackupServerGet::saveClientLogdata(int image, int incremental, bool r_succe
 	int infos=0;
 	std::wstring logdata=ServerLogger::getLogdata(clientid, errors, warnings, infos);
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+	q_save_logdata->Bind(clientid);
+	q_save_logdata->Bind(logdata);
+	q_save_logdata->Bind(errors);
+	q_save_logdata->Bind(warnings);
+	q_save_logdata->Bind(infos);
+	q_save_logdata->Bind(image);
+	q_save_logdata->Bind(incremental);
+	q_save_logdata->Write();
+	q_save_logdata->Reset();
+
+	sendLogdataMail(r_success, image, incremental, errors, warnings, infos, logdata);
+
+	ServerLogger::reset(clientid);
+}
+
+std::wstring BackupServerGet::getUserRights(int userid, std::string domain)
+{
+	if(domain!="all")
+	{
+		if(getUserRights(userid, "all")==L"all")
+			return L"all";
+	}
+	q_get_rights->Bind(userid);
+	q_get_rights->Bind(domain);
+	db_results res=q_get_rights->Read();
+	q_get_rights->Reset();
+	if(!res.empty())
+	{
+		return res[0][L"t_right"];
+	}
+	else
+	{
+		return L"none";
+	}
+}
+
+void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental, int errors, int warnings, int infos, std::wstring &data)
+{
+	MailServer mail_server=getMailServerSettings();
+	if(mail_server.servername.empty())
+		return;
+
+	if(url_fak==NULL)
+		return;
+
+	db_results res_users=q_get_users->Read();
+	q_get_users->Reset();
+	for(size_t i=0;i<res_users.size();++i)
+	{
+		std::wstring logr=getUserRights(watoi(res_users[i][L"id"]), "logs");
+		bool has_r=false;
+		if(logr!=L"all")
+		{
+			std::vector<std::wstring> toks;
+			Tokenize(logr, toks, L",");
+			for(size_t j=0;j<toks.size();++j)
+			{
+				if(watoi(toks[j])==clientid)
+				{
+					has_r=true;
+				}
+=======
 	q_save_logdata->Bind(clientid);
 	q_save_logdata->Bind(logdata);
 	q_save_logdata->Bind(errors);
@@ -2609,7 +4327,913 @@ MailServer BackupServerGet::getMailServerSettings(void)
 	return ms;
 }
 
+const unsigned int stat_update_skip=20;
+const unsigned int sector_size=512;
+const unsigned int sha_size=32;
 
+void writeZeroblockdata(void)
+{
+	const int64 vhd_blocksize=(1024*1024/2);
+	unsigned char *zeroes=new unsigned char[vhd_blocksize];
+	memset(zeroes, 0, vhd_blocksize);
+	unsigned char dig[sha_size];
+	sha256(zeroes, vhd_blocksize, dig);
+	IFile *out=Server->openFile("zero.hash", MODE_WRITE);
+	out->Write((char*)dig, sha_size);
+	Server->destroy(out);
+	delete []zeroes;
+}
+
+bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref)
+{
+	CTCPStack tcpstack;
+	IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
+	if(cc==NULL)
+	{
+		ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
+		return false;
+	}
+
+	std::string sletter=pLetter;
+	if(pLetter!="SYSVOL")
+	{
+		sletter=pLetter[0];
+	}
+
+	if(pParentvhd.empty())
+	{
+		tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&token="+server_token);
+	}
+	else
+	{
+		IFile *hashfile=Server->openFile(os_file_prefix()+pParentvhd+L".hash");
+		if(hashfile==NULL)
+		{
+			ServerLogger::Log(clientid, "Error opening hashfile", LL_ERROR);
+			Server->Log("Starting image path repair...", LL_INFO);
+			ServerUpdateStats::repairImages();
+			Server->destroy(cc);
+			return false;
+		}
+		std::string ts=server_identity+"INCR IMAGE letter="+pLetter+"&hashsize="+nconvert(hashfile->Size())+"&token="+server_token;
+		size_t rc=tcpstack.Send(cc, ts);
+		if(rc==0)
+		{
+			ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_ERROR);
+			Server->destroy(cc);
+			Server->destroy(hashfile);
+			return false;
+		}
+		hashfile->Seek(0);
+		char buffer[4096];
+		for(size_t i=0,hsize=(size_t)hashfile->Size();i<hsize;i+=4096)
+		{
+			size_t tsend=(std::min)((size_t)4096, hsize-i);
+			if(hashfile->Read(buffer, (_u32)tsend)!=tsend)
+			{
+				ServerLogger::Log(clientid, "Reading from hashfile failed", LL_ERROR);
+				Server->destroy(cc);
+				Server->destroy(hashfile);
+				return false;
+			}
+			if(!cc->Write(buffer, tsend))
+			{
+				ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
+				Server->destroy(cc);
+				Server->destroy(hashfile);
+				return false;
+			}
+		}
+		Server->destroy(hashfile);
+	}
+
+	std::wstring imagefn=constructImagePath(widen(sletter));
+	
+	int64 free_space=os_free_space(os_file_prefix()+ExtractFilePath(imagefn));
+	if(free_space!=-1 && free_space<minfreespace_image)
+	{
+		ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
+		ServerCleanupThread cleanup;
+		if(!cleanup.do_cleanup(minfreespace_image) )
+		{
+			ServerLogger::Log(clientid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			Server->destroy(cc);
+			return false;
+		}
+	}
+
+	{
+		std::string mbrd=getMBR(widen(sletter));
+		if(mbrd.empty())
+		{
+			if(pLetter!="SYSVOL")
+			{
+				ServerLogger::Log(clientid, "Error getting MBR data", LL_ERROR);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+			}
+		}
+		else
+		{
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+			has_r=true;
+		}
+
+		if(has_r)
+		{
+			q_get_report_settings->Bind(watoi(res_users[i][L"id"]));
+			db_results res=q_get_report_settings->Read();
+			q_get_report_settings->Reset();
+
+			if(!res.empty())
+			{
+				std::wstring report_mail=res[0][L"report_mail"];
+				int report_loglevel=watoi(res[0][L"report_loglevel"]);
+				int report_sendonly=watoi(res[0][L"report_sendonly"]);
+
+				if( ( ( report_loglevel==0 && infos>0 )
+					|| ( report_loglevel<=1 && warnings>0 )
+					|| ( report_loglevel<=2 && errors>0 ) ) &&
+					(report_sendonly==0 ||
+						( report_sendonly==1 && !r_success ) ||
+						( report_sendonly==2 && r_success)) )
+				{
+					std::vector<std::string> to_addrs;
+					Tokenize(Server->ConvertToUTF8(report_mail), to_addrs, ",;");
+
+					std::string subj="UrBackup: ";
+					std::string msg="UrBackup just did ";
+					if(incremental>0)
+					{
+						msg+="an incremental ";
+						subj="Incremental ";
+					}
+					else
+					{
+						msg+="a full ";
+						subj="Full ";
+					}
+
+					if(image>0)
+					{
+						msg+="image ";
+						subj+="image ";
+					}
+					else
+					{
+						msg+="file ";
+						subj+="file ";
+					}
+					subj+="backup of \""+Server->ConvertToUTF8(clientname)+"\"\n";
+					msg+="backup of \""+Server->ConvertToUTF8(clientname)+"\".\n";
+					msg+="\nReport:\n";
+					msg+="( "+nconvert(infos);
+					if(infos!=1) msg+=" infos, ";
+					else msg+=" info, ";
+					msg+=nconvert(warnings);
+					if(warnings!=1) msg+=" warnings, ";
+					else msg+=" warning, ";
+					msg+=nconvert(errors);
+					if(errors!=1) msg+=" errors";
+					else msg+=" error";
+					msg+=" )\n\n";
+					std::vector<std::wstring> msgs;
+					TokenizeMail(data, msgs, L"\n");
+					
+					for(size_t j=0;j<msgs.size();++j)
+					{
+						std::wstring ll;
+						if(!msgs[j].empty()) ll=msgs[j][0];
+						int li=watoi(ll);
+						msgs[j].erase(0, 2);
+						std::wstring tt=getuntil(L"-", msgs[j]);
+						std::wstring m=getafter(L"-", msgs[j]);
+
+						q_format_unixtime->Bind(tt);
+						db_results ft=q_format_unixtime->Read();
+						q_format_unixtime->Reset();
+						if( !ft.empty() )
+						{
+							tt=ft[0][L"time"];
+						}
+						std::string lls="info";
+						if(li==1) lls="warning";
+						else if(li==2) lls="error";
+						msg+=Server->ConvertToUTF8(tt)+"("+lls+"): "+Server->ConvertToUTF8(m)+"\n";
+					}
+					if(!r_success)
+						subj+=" - failed";
+					else
+						subj+=" - success";
+
+					std::string errmsg;
+					bool b=url_fak->sendMail(mail_server, to_addrs, subj, msg, &errmsg);
+					if(!b)
+					{
+						Server->Log("Sending mail failed. "+errmsg, LL_WARNING);
+=======
+			IFile *mbr_file=Server->openFile(os_file_prefix()+imagefn+L".mbr", MODE_WRITE);
+			if(mbr_file!=NULL)
+			{
+				_u32 w=mbr_file->Write(mbrd);
+				if(w!=mbrd.size())
+				{
+					Server->Log("Error writing mbr data.", LL_ERROR);
+					Server->destroy(mbr_file);
+					Server->destroy(cc);
+					return false;
+				}
+				Server->destroy(mbr_file);
+			}
+			else
+			{
+				Server->Log("Error creating file for writing MBR data.", LL_ERROR);
+				Server->destroy(cc);
+				return false;
+			}
+		}
+	}
+
+	if(pParentvhd.empty())
+		backupid=createBackupImageSQL(0,0, clientid, imagefn, pLetter);
+	else
+		backupid=createBackupImageSQL(incremental, incremental_ref, clientid, imagefn, pLetter);
+
+	std::string ret;
+	unsigned int starttime=Server->getTimeMS();
+	bool first=true;
+	char buffer[4096];
+	unsigned int blocksize=0xFFFFFFFF;
+	unsigned int blockleft=0;
+	int64 currblock=-1;
+	char *blockdata=NULL;
+	int64 drivesize;
+	ServerVHDWriter *vhdfile=NULL;
+	THREADPOOL_TICKET vhdfile_ticket;
+	IVHDFile *r_vhdfile=NULL;
+	IFile *hashfile=NULL;
+	IFile *parenthashfile=NULL;
+	int64 blockcnt=0;
+	int64 numblocks=0;
+	int64 totalblocks=0;
+	int64 mbr_offset=0;
+	_u32 off=0;
+	std::string shadowdrive;
+	int shadow_id=-1;
+	bool persistent=false;
+	unsigned char *zeroblockdata=NULL;
+	int64 nextblock=0;
+	int64 vhd_blocksize=(1024*1024)/2;
+	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, true);
+	Server->getThreadPool()->execute(running_updater);
+
+	bool has_parent=false;
+	if(!pParentvhd.empty())
+		has_parent=true;
+
+	sha256_ctx shactx;
+	sha256_init(&shactx);
+
+	unsigned int curr_image_recv_timeout=image_recv_timeout;
+
+	unsigned int stat_update_cnt=0;
+
+	while(Server->getTimeMS()-starttime<=image_timeout)
+	{
+		size_t r=cc->Read(&buffer[off], 4096-off, curr_image_recv_timeout);
+		if(r!=0)
+			r+=off;
+		starttime=Server->getTimeMS();
+		off=0;
+		if(r==0 )
+		{
+			if(persistent && nextblock!=0)
+			{
+				bool reconnected=false;
+				while(Server->getTimeMS()-starttime<=image_timeout)
+				{
+					ServerStatus::setROnline(clientname, false);
+					if(cc!=NULL)
+						Server->destroy(cc);
+					Server->Log("Trying to reconnect in doImage", LL_DEBUG);
+					cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
+					if(cc==NULL)
+					{
+						std::string msg;
+						std::vector<std::string> msgs;
+						while(pipe->Read(&msg, 0)>0)
+						{
+							if(msg.find("address")==0)
+							{
+								IScopedLock lock(clientaddr_mutex);
+								memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
+							}
+							else
+							{
+								msgs.push_back(msg);
+							}
+						}
+						for(size_t i=0;i<msgs.size();++i)
+							pipe->Write(msgs[i]);
+
+						Server->wait(60000);
+					}
+					else
+					{
+						reconnected=true;
+						ServerStatus::setROnline(clientname, true);
+						Server->Log("Reconnected.", LL_DEBUG);
+						break;
+					}
+				}
+
+				if(!reconnected)
+				{
+					ServerLogger::Log(clientid, "Timeout while trying to reconnect", LL_ERROR);
+					goto do_image_cleanup;
+				}
+
+				if(pParentvhd.empty())
+				{
+					tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(nextblock)+"&shadowid="+nconvert(shadow_id));
+				}
+				else
+				{
+					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+nconvert(nextblock)+"&shadowid="+nconvert(shadow_id)+"&hashsize="+nconvert(parenthashfile->Size());
+					size_t rc=tcpstack.Send(cc, server_identity+ts);
+					if(rc==0)
+					{
+						ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_ERROR);
+						goto do_image_cleanup;
+					}
+					parenthashfile->Seek(0);
+					char buffer[4096];
+					for(size_t i=0,hsize=(size_t)parenthashfile->Size();i<hsize;i+=4096)
+					{
+						size_t tsend=(std::min)((size_t)4096, hsize-i);
+						if(parenthashfile->Read(buffer, (_u32)tsend)!=tsend)
+						{
+							ServerLogger::Log(clientid, "Reading from hashfile failed i="+nconvert(i), LL_ERROR);
+							goto do_image_cleanup;
+						}
+						if(!cc->Write(buffer, tsend))
+						{
+							ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
+							goto do_image_cleanup;
+						}
+					}
+
+				}
+				off=0;
+				starttime=Server->getTimeMS();
+
+				blockleft=0;
+				currblock=-1;
+			}
+			else
+			{
+				ServerLogger::Log(clientid, "Pipe to client unexpectedly closed", LL_ERROR);
+				goto do_image_cleanup;
+			}
+		}
+		else
+		{
+			if(first)
+			{
+				first=false;
+				if(r>=sizeof(unsigned int))
+				{
+					memcpy(&blocksize, buffer, sizeof(unsigned int) );
+					off+=sizeof(unsigned int);
+					vhd_blocksize/=blocksize;
+				}
+				if(blocksize==0xFFFFFFFF)
+				{
+					off+=sizeof(unsigned int);
+					if(r>sizeof(uint64))
+					{
+						std::string err;
+						err.resize(r-sizeof(uint64) );
+						memcpy(&err[0], &buffer[off], r-off);
+						if(pLetter!="SYSVOL")
+						{
+							ServerLogger::Log(clientid, "Request of image backup failed. Reason: "+err, LL_ERROR);
+						}
+						else
+						{
+							ServerLogger::Log(clientid, "Request of SYSVOL failed. Reason: "+err, LL_INFO);
+						}
+					}
+					else
+					{
+						ServerLogger::Log(clientid, "Error on client. No reason given.", LL_ERROR);
+					}
+					goto do_image_cleanup;
+				}
+				bool issmall=false;
+				if(r>=sizeof(unsigned int)+sizeof(int64))
+				{
+					memcpy(&drivesize, &buffer[off], sizeof(int64) );
+					off+=sizeof(int64);
+
+					blockcnt=drivesize/blocksize;
+					totalblocks=blockcnt;
+
+					zeroblockdata=new unsigned char[blocksize];
+					memset(zeroblockdata, 0, blocksize);
+
+					if(!has_parent)
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, false, drivesize+(int64)mbr_size, (unsigned int)vhd_blocksize*blocksize, true);
+					else
+						r_vhdfile=image_fak->createVHDFile(os_file_prefix()+imagefn, pParentvhd, false, true);
+
+					if(r_vhdfile==NULL)
+					{
+						ServerLogger::Log(clientid, L"Error opening VHD file \""+imagefn+L"\"", LL_ERROR);
+						goto do_image_cleanup;
+					}
+
+					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid);
+					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile);
+
+					blockdata=vhdfile->getBuffer();
+
+					hashfile=Server->openFile(os_file_prefix()+imagefn+L".hash", MODE_WRITE);
+					if(hashfile==NULL)
+					{
+						ServerLogger::Log(clientid, L"Error opening Hashfile \""+imagefn+L".hash\"", LL_ERROR);
+						goto do_image_cleanup;
+					}
+
+					if(has_parent)
+					{
+						parenthashfile=Server->openFile(os_file_prefix()+pParentvhd+L".hash", MODE_READ);
+						if(parenthashfile==NULL)
+						{
+							ServerLogger::Log(clientid, L"Error opening Parenthashfile \""+pParentvhd+L".hash\"", LL_ERROR);
+							goto do_image_cleanup;
+						}
+					}
+
+					mbr_offset=writeMBR(vhdfile, drivesize);
+				}
+				else
+				{
+					issmall=true;
+				}
+				if(r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64))
+				{
+					memcpy(&blockcnt, &buffer[off], sizeof(int64) );
+					off+=sizeof(int64);
+				}
+				else
+				{
+					issmall=true;
+				}
+				if(r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64)+1)
+				{
+					char c_persistent=buffer[off];
+					if(c_persistent!=0)
+						persistent=true;
+					++off;
+				}
+				else
+				{
+					issmall=true;
+				}
+
+				unsigned int shadowdrive_size=0;
+				if(r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64)+1+sizeof(unsigned int))
+				{
+					memcpy(&shadowdrive_size, &buffer[off], sizeof(unsigned int));
+					off+=sizeof(unsigned int);
+					if(shadowdrive_size>0)
+					{
+						if( r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64)+1+sizeof(unsigned int)+shadowdrive_size)
+						{
+							shadowdrive.resize(shadowdrive_size);
+							memcpy(&shadowdrive[0],  &buffer[off], shadowdrive_size);
+							off+=shadowdrive_size;
+						}
+						else
+						{
+							issmall=true;
+						}
+					}
+				}
+				else
+				{
+					issmall=true;
+				}
+
+				if(r>=sizeof(unsigned int)+sizeof(int64)+sizeof(int64)+1+sizeof(unsigned int)+shadowdrive_size+sizeof(int))
+				{
+					memcpy(&shadow_id, &buffer[off], sizeof(int));
+					off+=sizeof(int);
+				}
+				else
+				{
+					issmall=true;
+				}
+
+				if(issmall)
+				{
+					ServerLogger::Log(clientid, "First packet to small", LL_ERROR);
+					goto do_image_cleanup;
+				}
+
+				curr_image_recv_timeout=image_recv_timeout_after_first;
+
+				if(r==off)
+				{
+					off=0;
+					continue;
+				}
+			}
+			while(true)
+			{
+				if(blockleft==0)
+				{
+					if(currblock!=-1) // write current block
+					{
+						++numblocks;
+						++stat_update_cnt;
+						if(stat_update_cnt%stat_update_skip==0)
+						{
+							stat_update_cnt=0;
+							if(blockcnt!=0)
+							{
+								if(has_parent)
+								{
+									status.pcdone=(int)(((double)currblock/(double)totalblocks)*100.0+0.5);
+								}
+								else
+								{
+									status.pcdone=(int)(((double)numblocks/(double)blockcnt)*100.0+0.5);
+								}
+								ServerStatus::setServerStatus(status, true);
+							}
+						}
+
+						nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
+						sha256_update(&shactx, (unsigned char *)blockdata, blocksize);
+
+						vhdfile->writeBuffer(mbr_offset+currblock*blocksize, blockdata, blocksize);
+						blockdata=vhdfile->getBuffer();
+
+						if(nextblock%vhd_blocksize==0 && nextblock!=0)
+						{
+							//Server->Log("Hash written "+nconvert(currblock), LL_DEBUG);
+							unsigned char dig[sha_size];
+							sha256_final(&shactx, dig);
+							hashfile->Write((char*)dig, sha_size);
+							sha256_init(&shactx);
+						}
+
+						if(vhdfile->hasError())
+						{
+							ServerLogger::Log(clientid, "FATAL ERROR: Could not write to VHD-File", LL_ERROR);
+							goto do_image_cleanup;
+						}
+
+						currblock=-1;
+					}
+					
+					if(r-off>=sizeof(int64) )
+					{
+						memcpy(&currblock, &buffer[off], sizeof(int64) );
+						if(currblock==-123)
+						{
+							int64 t_totalblocks=totalblocks;
+							if(t_totalblocks%vhd_blocksize!=0)
+								t_totalblocks+=vhd_blocksize-t_totalblocks%vhd_blocksize;
+
+							nextblock=updateNextblock(nextblock, t_totalblocks, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
+
+							if(nextblock%vhd_blocksize==0 && nextblock!=0)
+							{
+								//Server->Log("Hash written "+nconvert(nextblock), LL_INFO);
+								unsigned char dig[sha_size];
+								sha256_final(&shactx, dig);
+								hashfile->Write((char*)dig, sha_size);
+							}
+
+							Server->destroy(cc);
+							if(hashfile!=NULL) Server->destroy(hashfile);
+							if(vhdfile!=NULL)
+							{
+								vhdfile->freeBuffer(blockdata);
+							}
+							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
+
+							bool vhdfile_err=false;
+
+							status.action_done=true;
+							ServerStatus::setServerStatus(status);
+
+							if(vhdfile!=NULL)
+							{
+								vhdfile->doExit();
+								Server->getThreadPool()->waitFor(vhdfile_ticket);
+								vhdfile_err=vhdfile->hasError();
+								delete vhdfile;
+								vhdfile=NULL;
+							}
+
+							IFile *t_file=Server->openFile(os_file_prefix()+imagefn, MODE_READ);
+							if(t_file!=NULL)
+							{
+								db->BeginTransaction();
+								q_set_image_size->Bind(t_file->Size());
+								q_set_image_size->Bind(backupid);
+								q_set_image_size->Write();
+								q_set_image_size->Reset();
+								q_update_images_size->Bind(clientid);
+								q_update_images_size->Bind(t_file->Size());
+								q_update_images_size->Bind(clientid);
+								q_update_images_size->Write();
+								q_update_images_size->Reset();
+								if(vhdfile_err==false)
+								{
+									setBackupImageComplete();
+								}
+								db->EndTransaction();
+								Server->destroy(t_file);
+							}
+
+							running_updater->stop();
+							updateRunning(true);
+
+							return !vhdfile_err;
+						}
+						else if(currblock==-124 ||
+#ifndef _WIN32 
+								currblock==0xFFFFFFFFFFFFFFFFLLU)
+#else
+								currblock==0xFFFFFFFFFFFFFFFF)
+#endif
+						{
+							if(r-off>sizeof(int64))
+							{
+								std::string err;
+								err.resize(r-off-sizeof(int64) );
+								memcpy(&err[0], &buffer[off+sizeof(int64)], r-off-sizeof(int64));
+								ServerLogger::Log(clientid, "Error on client occured: "+err, LL_ERROR);
+							}
+							Server->destroy(cc);
+							if(vhdfile!=NULL)
+							{
+								vhdfile->freeBuffer(blockdata);
+								vhdfile->doExitNow();
+								std::vector<THREADPOOL_TICKET> wf;wf.push_back(vhdfile_ticket);
+								Server->getThreadPool()->waitFor(wf);
+								delete vhdfile;
+								vhdfile=NULL;
+							}
+							if(hashfile!=NULL) Server->destroy(hashfile);
+							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
+							running_updater->stop();
+							delete []zeroblockdata;
+							return false;
+						}
+						else if(currblock==-125) //ping
+						{
+							off+=sizeof(int64);
+							currblock=-1;
+						}
+						else
+						{
+							off+=sizeof(int64);
+							blockleft=blocksize;
+						}
+					}
+					else if(r-off>0)
+					{
+						char buf2[4096];
+						memcpy(buf2, &buffer[off], r-off);
+						memcpy(buffer, buf2, r-off);
+						off=(_u32)r-off;
+						break;
+					}
+					else
+					{
+						off=0;
+						break;
+					}
+				}
+				else
+				{
+					unsigned int available=(std::min)(blockleft, (unsigned int)r-off);
+					memcpy(&blockdata[blocksize-blockleft], &buffer[off], available);
+					blockleft-=available;
+					off+=available;
+					if( off>=r )
+					{
+						off=0;
+						break;
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
+					}
+				}
+			}
+		}
+	}
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+}
+
+MailServer BackupServerGet::getMailServerSettings(void)
+{
+	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), "settings_db.settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
+
+	MailServer ms;
+	ms.servername=settings->getValue("mail_servername", "");
+	ms.port=(unsigned short)watoi(settings->getValue(L"mail_serverport", L"587"));
+	ms.username=settings->getValue("mail_username", "");
+	ms.password=settings->getValue("mail_password", "");
+	ms.mailfrom=settings->getValue("mail_from", "");
+	if(ms.mailfrom.empty())
+		ms.mailfrom="report@urbackup.org";
+
+	ms.ssl_only=(settings->getValue("mail_ssl_only", "false")=="true")?true:false;
+	ms.check_certificate=(settings->getValue("mail_check_certificate", "false")=="true")?true:false;
+
+	Server->destroy(settings);
+	return ms;
+}
+
+
+=======
+	ServerLogger::Log(clientid, "Timeout while transfering image data", LL_ERROR);
+do_image_cleanup:
+	Server->destroy(cc);
+	if(vhdfile!=NULL)
+	{
+		if(blockdata!=NULL)
+			vhdfile->freeBuffer(blockdata);
+
+		vhdfile->doExitNow();
+		Server->getThreadPool()->waitFor(vhdfile_ticket);
+		delete vhdfile;
+		vhdfile=NULL;
+	}
+	if(hashfile!=NULL) Server->destroy(hashfile);
+	if(parenthashfile!=NULL) Server->destroy(parenthashfile);
+	running_updater->stop();
+	delete []zeroblockdata;
+	return false;
+}
+
+unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
+{
+	unsigned char *mbr=(unsigned char *)vhdfile->getBuffer();
+	unsigned char *mptr=mbr;
+
+	memcpy(mptr, mbr_code, 440);
+	mptr+=440;
+	int sig=rand();
+	memcpy(mptr, &sig, sizeof(int));
+	mptr+=sizeof(int);
+	*mptr=0;
+	++mptr;
+	*mptr=0;
+	++mptr;
+
+	unsigned char partition[16];
+	partition[0]=0x80;
+	partition[1]=0xfe;
+	partition[2]=0xff;
+	partition[3]=0xff;
+	partition[4]=0x07; //ntfs
+	partition[5]=0xfe;
+	partition[6]=0xff;
+	partition[7]=0xff;
+	partition[8]=0x00;
+	partition[9]=0x04;
+	partition[10]=0x00;
+	partition[11]=0x00;
+
+	unsigned int sectors=(unsigned int)(volsize/((uint64)sector_size));
+
+	memcpy(&partition[12], &sectors, sizeof(unsigned int) );
+
+	memcpy(mptr, partition, 16);
+	mptr+=16;
+	for(int i=0;i<3;++i)
+	{
+		memset(mptr, 0, 16);
+		mptr+=16;
+	}
+	*mptr=0x55;
+	++mptr;
+	*mptr=0xaa;
+	vhdfile->writeBuffer(0, (char*)mbr, 512);
+
+	for(int i=0;i<1023;++i)
+	{
+		char *buf=vhdfile->getBuffer();
+		memset(buf, 0, 512);
+		vhdfile->writeBuffer((i+1)*512, buf, 512);
+	}
+
+	return 1024*512;
+}
+
+int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize)
+{
+	unsigned char *blockdata=NULL;
+	if(parent_fn && nextblock<currblock)
+		blockdata=new unsigned char[blocksize];
+
+	if(currblock-nextblock>=vhd_blocksize)
+	{
+		if(nextblock%vhd_blocksize!=0)
+		{
+			while(true)
+			{
+				if(!parent_fn)
+				{
+					sha256_update(shactx, zeroblockdata, blocksize);
+				}
+				else
+				{
+					{
+						IScopedLock lock(parentfile->getVHDMutex());
+						IVHDFile *vhd=parentfile->getVHD();
+						vhd->Seek(mbr_offset+nextblock*blocksize);
+						size_t read;
+						bool b=vhd->Read((char*)blockdata, blocksize, read);
+						if(!b)
+							Server->Log("Reading from VHD failed", LL_ERROR);
+					}
+					sha256_update(shactx, blockdata, blocksize);
+				}
+
+				++nextblock;
+
+				if(nextblock%vhd_blocksize==0 && nextblock!=0)
+				{
+					unsigned char dig[sha_size];
+					sha256_final(shactx, dig);
+					hashfile->Write((char*)dig, sha_size);
+					sha256_init(shactx);
+					break;
+				}
+			}
+		}
+
+		while(currblock-nextblock>=vhd_blocksize)
+		{
+			if(!parent_fn)
+			{
+				hashfile->Write((char*)zero_hash, sha_size);
+			}
+			else
+			{
+				bool b=parenthashfile->Seek((nextblock/vhd_blocksize)*sha_size);
+				if(!b)
+				{
+					Server->Log("Seeking in parenthashfile failed", LL_ERROR);
+				}
+				char dig[sha_size];
+				_u32 rc=parenthashfile->Read(dig, sha_size);
+				if(rc!=sha_size)
+					Server->Log("Writing to parenthashfile failed", LL_ERROR);
+				hashfile->Write(dig, sha_size);
+			}
+			nextblock+=vhd_blocksize;
+		}
+	}
+
+	while(nextblock<currblock)
+	{
+		if(!parent_fn)
+		{
+			sha256_update(shactx, zeroblockdata, blocksize);
+		}
+		else
+		{
+			{
+				IScopedLock lock(parentfile->getVHDMutex());
+				IVHDFile *vhd=parentfile->getVHD();
+				vhd->Seek(mbr_offset+nextblock*blocksize);
+				size_t read;
+				bool b=vhd->Read((char*)blockdata, blocksize, read);
+				if(!b)
+					Server->Log("Reading from VHD failed", LL_ERROR);
+			}
+			sha256_update(shactx, blockdata, blocksize);
+		}
+		++nextblock;
+		if(nextblock%vhd_blocksize==0 && nextblock!=0)
+		{
+			unsigned char dig[sha_size];
+			sha256_final(shactx, dig);
+			hashfile->Write((char*)dig, sha_size);
+			sha256_init(shactx);
+		}
+	}
+	delete [] blockdata;
+	return nextblock+1;
+}
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 
 std::string BackupServerGet::getMBR(const std::wstring &dl)
 {
@@ -2627,12 +5251,15 @@ std::string BackupServerGet::getMBR(const std::wstring &dl)
 			}
 			else
 			{
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 				CRData r2(&ret);
 				SMBRData mbrdata(r2);
 				if(!mbrdata.errmsg.empty())
 				{
 					ServerLogger::Log(clientid, "During getting MBR: "+mbrdata.errmsg, LL_WARNING);
 				}
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 				return ret;
 			}
 		}
@@ -2643,12 +5270,16 @@ std::string BackupServerGet::getMBR(const std::wstring &dl)
 	}
 	else if(dl!=L"SYSVOL")
 	{
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 		std::string errmsg;
 		if( r.getStr(&errmsg) && !errmsg.empty())
 		{
 			errmsg=". Error message: "+errmsg;
 		}
 		ServerLogger::Log(clientid, "Could not read MBR"+errmsg, LL_ERROR);
+=======
+		ServerLogger::Log(clientid, L"Could not read MBR", LL_ERROR);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 	}
 
 	return "";
@@ -2676,8 +5307,13 @@ void BackupServerGet::checkClientVersion(void)
 			}			
 			size_t datasize=3*sizeof(unsigned int)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 			CTCPStack tcpstack(internet_connection);
 			IPipe *cc=getClientCommandConnection(10000);
+=======
+			CTCPStack tcpstack;
+			IPipe *cc=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, 10000);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 			if(cc==NULL)
 			{
 				ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
@@ -2803,6 +5439,27 @@ sockaddr_in BackupServerGet::getClientaddr(void)
 	return clientaddr;
 }
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
+=======
+std::string BackupServerGet::strftimeInt(std::string fs)
+{
+	time_t rawtime;		
+	char buffer [100];
+	time ( &rawtime );
+#ifdef _WIN32
+	struct tm  timeinfo;
+	localtime_s(&timeinfo, &rawtime);
+	strftime (buffer,100,fs.c_str(),&timeinfo);
+#else
+	struct tm *timeinfo;
+	timeinfo = localtime ( &rawtime );
+	strftime (buffer,100,fs.c_str(),timeinfo);
+#endif	
+	std::string r(buffer);
+	return r;
+}
+
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 std::string BackupServerGet::remLeadingZeros(std::string t)
 {
 	std::string r;
@@ -2823,10 +5480,17 @@ std::string BackupServerGet::remLeadingZeros(std::string t)
 bool BackupServerGet::isInBackupWindow(std::vector<STimeSpan> bw)
 {
 	if(bw.empty()) return true;
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 	int dow=atoi(os_strftime("%w").c_str());
 	if(dow==0) dow=7;
 	
 	float hm=(float)atoi(remLeadingZeros(os_strftime("%H")).c_str())+(float)atoi(remLeadingZeros(os_strftime("%M")).c_str())*(1.f/60.f);
+=======
+	int dow=atoi(strftimeInt("%w").c_str());
+	if(dow==0) dow=7;
+	
+	float hm=(float)atoi(remLeadingZeros(strftimeInt("%H")).c_str())+(float)atoi(remLeadingZeros(strftimeInt("%M")).c_str())*(1.f/60.f);
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 	for(size_t i=0;i<bw.size();++i)
 	{
 		if(bw[i].dayofweek==dow)
@@ -2842,11 +5506,16 @@ bool BackupServerGet::isInBackupWindow(std::vector<STimeSpan> bw)
 	return false;
 }
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 bool BackupServerGet::isBackupsRunningOkay(bool incr, bool file)
+=======
+bool BackupServerGet::isBackupsRunningOkay(void)
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 {
 	IScopedLock lock(running_backup_mutex);
 	if(running_backups<server_settings->getSettings()->max_sim_backups)
 	{
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 		if(incr)
 		{
 			++running_backups;
@@ -2855,6 +5524,8 @@ bool BackupServerGet::isBackupsRunningOkay(bool incr, bool file)
 				++running_file_backups;
 			}
 		}
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 		return true;
 	}
 	else
@@ -2924,6 +5595,7 @@ void BackupServerGet::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 	}
 }
 
+<<<<<<< HEAD:urbackupserver/server_get.cpp
 IPipeThrottler *BackupServerGet::getThrottler(size_t speed_bps)
 {
 	if(client_throttler==NULL)
@@ -3094,4 +5766,6 @@ IPipe * BackupServerGet::new_fileclient_connection(void)
 	}
 }
 
+=======
+>>>>>>> 4b05d521149fd16a375d567b1005ec3442f50dd6:urbackup/server_get.cpp
 #endif //CLIENT_ONLY
