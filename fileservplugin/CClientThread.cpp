@@ -1115,12 +1115,22 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	if(chunk_send_thread_ticket==ILLEGAL_THREADPOOL_TICKET)
 	{
-		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this, Server->openFileFromHandle(hFile)) );
+		IFile * tf=Server->openFileFromHandle(hFile);
+		if(tf==NULL)
+		{
+			Log("Could not open file from handle", LL_ERROR);
+			return false;
+		}
+		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this, tf) );
 	}
 	else
 	{
 		IScopedLock lock(mutex);
 		update_file=Server->openFileFromHandle(hFile);
+		if(update_file==NULL)
+		{
+			Log("Could not open update file from handle", LL_ERROR);
+		}
 		cond->notify_all();
 	}
 	hFile=NULL;

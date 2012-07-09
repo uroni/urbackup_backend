@@ -601,22 +601,25 @@ void FileClientChunked::State_Chunk(void)
 
 	chunk_start+=rbytes;
 
-	adler_hash=adler32(adler_hash, bufptr, (unsigned int)rbytes);
-	md5_hash.update((unsigned char*)bufptr, (unsigned int)rbytes);
-
-	if(!patch_mode)
+	if(rbytes>0)
 	{
-		writeFileRepeat(m_file, bufptr, rbytes);
-		file_pos+=rbytes;
-	}
-	else
-	{
-		writePatch(file_pos, (unsigned int)rbytes, bufptr, adler_remaining==0);
-		file_pos+=rbytes;
-	}
+		adler_hash=adler32(adler_hash, bufptr, (unsigned int)rbytes);
+		md5_hash.update((unsigned char*)bufptr, (unsigned int)rbytes);
 
-	remaining_bufptr_bytes-=rbytes;
-	bufptr_bytes_done+=rbytes;
+		if(!patch_mode)
+		{
+			writeFileRepeat(m_file, bufptr, rbytes);
+			file_pos+=rbytes;
+		}
+		else
+		{
+			writePatch(file_pos, (unsigned int)rbytes, bufptr, adler_remaining==0);
+			file_pos+=rbytes;
+		}
+
+		remaining_bufptr_bytes-=rbytes;
+		bufptr_bytes_done+=rbytes;
+	}
 
 	if(adler_remaining==0)
 	{

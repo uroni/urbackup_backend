@@ -117,37 +117,39 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		r=file->Read(cptr, c_chunk_size);
 
-		md5_hash.update((unsigned char*)cptr, (unsigned int)r);
-		c_adler=adler32(c_adler, cptr, r);
-
-		read_total+=r;
-
-		if(read_total==next_smallhash || r!=c_chunk_size)
+		if(r>0)
 		{
-			if(c_adler!=*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]))
+			md5_hash.update((unsigned char*)cptr, (unsigned int)r);
+			c_adler=adler32(c_adler, cptr, r);
+
+			read_total+=r;
+
+			if(read_total==next_smallhash || r!=c_chunk_size)
 			{
-				sent_update=true;
-				char tmp_backup[c_chunk_padding];
-				memcpy(tmp_backup, cptr-c_chunk_padding, c_chunk_padding);
+				if(c_adler!=*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]))
+				{
+					sent_update=true;
+					char tmp_backup[c_chunk_padding];
+					memcpy(tmp_backup, cptr-c_chunk_padding, c_chunk_padding);
 
-				*(cptr-c_chunk_padding)=ID_UPDATE_CHUNK;
-				memcpy(cptr-sizeof(_i64)-sizeof(_u32), &curr_pos, sizeof(_i64));
-				memcpy(cptr-sizeof(_u32), &r, sizeof(_u32));
+					*(cptr-c_chunk_padding)=ID_UPDATE_CHUNK;
+					memcpy(cptr-sizeof(_i64)-sizeof(_u32), &curr_pos, sizeof(_i64));
+					memcpy(cptr-sizeof(_u32), &r, sizeof(_u32));
 
-				Log("Sending chunk start="+nconvert(curr_pos)+" size="+nconvert(r), LL_DEBUG);
+					Log("Sending chunk start="+nconvert(curr_pos)+" size="+nconvert(r), LL_DEBUG);
 
-				if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
-					return false;
+					if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
+						return false;
 
-				memcpy(cptr-c_chunk_padding, tmp_backup, c_chunk_padding);
+					memcpy(cptr-c_chunk_padding, tmp_backup, c_chunk_padding);
+				}
+
+				c_adler=adler32(0, NULL, 0);
+				++small_hash_num;
+				next_smallhash+=c_small_hash_dist;
 			}
-
-			c_adler=adler32(0, NULL, 0);
-			++small_hash_num;
-			next_smallhash+=c_small_hash_dist;
+			curr_pos+=r;
 		}
-		curr_pos+=r;
-
 	}while(r==c_chunk_size && read_total<c_checkpoint_dist);
 
 	md5_hash.finalize();
