@@ -1140,7 +1140,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		has_error=true;
 		return false;
 	}
@@ -1330,6 +1330,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 
 	if(file_old==NULL)
 	{
+		ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
 		return load_file(fn, curr_path, fc_normal, true);
 	}
 
@@ -1358,7 +1359,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	_u32 rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		destroyTemporaryFile(pfd);
 		destroyTemporaryFile(hash_tmp);
 	}
@@ -1400,7 +1401,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr
 	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		destroyTemporaryFile(fd);
 		if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
 			return false;
@@ -1515,6 +1516,16 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 			return false;
 		}
 	}
+
+	if(with_hashes)
+	{
+		Server->Log(clientname+L": Doing backup with hashes...", LL_DEBUG);
+	}
+
+	if(intra_file_diffs)
+	{
+		Server->Log(clientname+L": Doing backup with intra file diffs...", LL_DEBUG);
+	}
 	
 	bool b=request_filelist_construct(false);
 	if(!b)
@@ -1555,7 +1566,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	rc=fc.GetFile("urbackup/filelist.ub", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		has_error=true;
 		return false;
 	}
@@ -2274,7 +2285,7 @@ bool BackupServerGet::getClientSettings(void)
 	rc=fc.GetFile("urbackup/settings.cfg", tmp);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting Client settings of "+clientname+L". Errorcode: "+convert(rc), LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting Client settings of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		std::string tmp_fn=tmp->getFilename();
 		Server->destroy(tmp);
 		Server->deleteFile(tmp_fn);

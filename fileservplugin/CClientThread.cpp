@@ -1162,6 +1162,7 @@ bool CClientThread::getNextChunk(SChunk *chunk, IFile **new_file)
 	if(update_file!=NULL)
 	{
 		*new_file=update_file;
+		update_file=NULL;
 		return true;
 	}
 

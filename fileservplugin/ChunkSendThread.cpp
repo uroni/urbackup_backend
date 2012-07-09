@@ -29,7 +29,10 @@ void ChunkSendThread::operator()(void)
 	{
 		if(new_file!=NULL)
 		{
-			Server->destroy(file);
+			if(file!=NULL)
+			{
+				Server->destroy(file);
+			}
 			file=new_file;
 		}
 		else
@@ -37,7 +40,11 @@ void ChunkSendThread::operator()(void)
 			sendChunk(&chunk);
 		}
 	}
-	Server->destroy(file);
+	if(file!=NULL)
+	{
+		Server->destroy(file);
+		file=NULL;
+	}
 	delete this;
 }
 

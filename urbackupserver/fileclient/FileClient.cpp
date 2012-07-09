@@ -511,6 +511,7 @@ bool FileClient::Reconnect(void)
 
 	int tries=50;
 
+
     CWData data;
     data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
     data.addString( remotefn );
@@ -567,7 +568,11 @@ bool FileClient::Reconnect(void)
 
 				file->Seek(received);
 
-				stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
+				{
+					Server->Log("FileClient: Error sending request", LL_INFO);
+				}
 				starttime=Server->getTimeMS();
 
 				if(protocol_version>0)

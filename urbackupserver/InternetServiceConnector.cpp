@@ -492,6 +492,7 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 	for(size_t i=0;i<todel.size();++i)
 	{
 		std::map<std::string, SClientData>::iterator it=client_data.find(todel[i]);
+		Server->Log("Establish timeout: Deleting internet client \""+it->first+"\"", LL_DEBUG);
 		client_data.erase(it);
 	}
 
