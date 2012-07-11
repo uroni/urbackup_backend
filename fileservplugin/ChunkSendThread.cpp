@@ -34,6 +34,7 @@ void ChunkSendThread::operator()(void)
 				Server->destroy(file);
 			}
 			file=new_file;
+			new_file=NULL;
 		}
 		else
 		{

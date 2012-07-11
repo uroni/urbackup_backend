@@ -55,7 +55,7 @@ const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
-const unsigned int ident_err_retry_time=1*60*60*1000;
+const unsigned int ident_err_retry_time=10*60*1000;
 const unsigned int c_filesrv_connect_timeout=10000;
 
 
@@ -157,7 +157,7 @@ void BackupServerGet::operator ()(void)
 		while(c)
 		{
 			c=false;
-			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying in 1h...", 10000, false, LL_INFO);
+			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying in 10min...", 10000, false, LL_INFO);
 			if(!b)
 			{
 				ServerStatus::setWrongIdent(clientname, true);
