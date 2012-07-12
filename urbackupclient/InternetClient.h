@@ -40,6 +40,7 @@ public:
 	bool tryToConnect(IScopedLock *lock);
 
 	static void setHasAuthErr(void);
+	static void resetAuthErr(void);
 
 	static void updateSettings(void);
 
@@ -51,7 +52,7 @@ private:
 	static bool update_settings;
 	static SServerSettings server_settings;
 	static ICondition *wakeup_cond;
-	static bool auth_err;
+	static int auth_err;
 };
 
 class InternetClientThread : public IThread

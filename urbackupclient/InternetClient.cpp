@@ -25,12 +25,13 @@ unsigned int InternetClient::last_lan_connection=0;
 bool InternetClient::update_settings=false;
 SServerSettings InternetClient::server_settings;
 ICondition *InternetClient::wakeup_cond=NULL;
-bool InternetClient::auth_err=false;
+int InternetClient::auth_err=0;
 
 const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
 const unsigned int ic_auth_timeout=60000;
 const unsigned int ic_ping_timeout=31*60*1000;
+const int ic_sleep_after_auth_errs=2;
 
 const char SERVICE_COMMANDS=0;
 const char SERVICE_FILESRV=1;
@@ -92,7 +93,13 @@ void InternetClient::updateSettings(void)
 void InternetClient::setHasAuthErr(void)
 {
 	IScopedLock lock(mutex);
-	auth_err=true;
+	++auth_err;
+}
+
+void InternetClient::resetAuthErr(void)
+{
+	IScopedLock lock(mutex);
+	auth_err=0;
 }
 
 void InternetClient::operator()(void)
@@ -132,7 +139,7 @@ void InternetClient::operator()(void)
 				else
 				{
 					wakeup_cond->wait(&lock);
-					if(auth_err)
+					if(auth_err>=ic_sleep_after_auth_errs)
 					{
 						lock.relock(NULL);
 						Server->wait(ic_lan_timeout/2);
@@ -388,6 +395,7 @@ void InternetClientThread::operator()(void)
 	}
 
 	finish_ok=true;
+	InternetClient::resetAuthErr();
 
 	while(true)
 	{
@@ -464,7 +472,10 @@ cleanup:
 	if(cs!=NULL)
 		Server->destroy(cs);
 	if(!finish_ok)
+	{
 		InternetClient::setHasAuthErr();
+		Server->Log("InternetClient: Had an auth error");
+	}
 	if(rm_connection)
 		InternetClient::rmConnection();
 }

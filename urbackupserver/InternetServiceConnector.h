@@ -54,6 +54,7 @@ public:
 
 	bool Connect(ICondition *n_cond, ICondition *stop_cond, char service);
 	void stopConnecting(void);
+	void stopConnectingAndWait(void);
 	bool isConnected(void);
 	void freeConnection(void);
 	bool hasTimeout(void);

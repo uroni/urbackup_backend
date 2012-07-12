@@ -14,7 +14,7 @@
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;
-const unsigned int establish_timeout=10000;
+const unsigned int establish_timeout=60000;
 
 std::map<std::string, SClientData> InternetServiceConnector::client_data;
 IMutex *InternetServiceConnector::mutex=NULL;
@@ -101,6 +101,7 @@ bool InternetServiceConnector::Run(void)
 	{
 		if(stop_connecting)
 		{
+			IScopedLock lock(local_mutex);
 			connection_stop_cond->notify_all();
 			cleanup_pipes();
 			return false;
@@ -175,7 +176,10 @@ void InternetServiceConnector::ReceivePackets(void)
 
 	if(rc==0)
 	{
-		has_timeout=true;
+		if( state!=ISS_CONNECTING && state!=ISS_USED )
+		{
+			has_timeout=true;
+		}
 		return;
 	}
 
@@ -370,8 +374,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 				
 				if(!isc->isConnected())
 				{
-					isc->stopConnecting();
-					cond_stop->wait(&lock);
+					isc->stopConnectingAndWait();
 					Server->destroy(cond_stop);
 					Server->destroy(cond_ok);
 					Server->Log("Connecting on internet connection failed. Service="+nconvert((int)service), LL_DEBUG);
@@ -464,6 +467,13 @@ IPipe *InternetServiceConnector::getISPipe(void)
 void InternetServiceConnector::stopConnecting(void)
 {
 	stop_connecting=true;
+}
+
+void InternetServiceConnector::stopConnectingAndWait(void)
+{
+	IScopedLock lock(local_mutex);
+	stop_connecting=true;
+	connection_stop_cond->wait(&lock);
 }
 
 bool InternetServiceConnector::isConnected(void)
