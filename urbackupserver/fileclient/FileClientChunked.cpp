@@ -420,10 +420,14 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 		char buf2[BUFFERSIZE];
 		do
 		{
-			size_t r=m_file->Read(buf2, (std::min)((_u32)BUFFERSIZE, (_u32)(new_chunk_start-chunk_start)) );
-			if(r<BUFFERSIZE)
+			_u32 toread=(std::min)((_u32)BUFFERSIZE, (_u32)(new_chunk_start-chunk_start));
+			size_t r=m_file->Read(buf2,  toread);
+			if(r<toread)
 			{
+				retval=ERR_INT_ERROR;
+				getfile_done=true;
 				Server->Log("Read error in File chunked - 1", LL_ERROR);
+				break;
 			}
 			Server->Log("Read for hash at chunk_start="+nconvert(chunk_start)+" n="+nconvert(r), LL_DEBUG);
 			chunk_start+=r;
@@ -741,6 +745,10 @@ bool FileClientChunked::Reconnect(void)
 				Server->destroy(pipe);
 			}
 			pipe=nc;
+			for(size_t i=0;i<throttlers.size();++i)
+			{
+				pipe->addThrottler(throttlers[i]);
+			}
 			Server->Log("Reconnected successfully.", LL_DEBUG);
 			remote_filesize=-1;
 			num_total_chunks=0;
@@ -797,4 +805,18 @@ bool FileClientChunked::Reconnect(void)
 		}
 	}
 	return false;
+}
+
+void FileClientChunked::addThrottler(IPipeThrottler *throttler)
+{
+	throttlers.push_back(throttler);
+	if(pipe!=NULL)
+	{
+		pipe->addThrottler(throttler);
+	}
+}
+
+IPipe *FileClientChunked::getPipe()
+{
+	return pipe;
 }

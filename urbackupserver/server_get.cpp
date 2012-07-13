@@ -3060,23 +3060,40 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 
 FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeoutms)
 {
+	FileClientChunked ret;
 	if(internet_connection)
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
 		if(cp!=NULL)
-			return FileClientChunked(cp, &tcpstack, this);
+			ret=FileClientChunked(cp, &tcpstack, this);
 		else
-			return FileClientChunked();
+			ret=FileClientChunked();
 	}
 	else
 	{
 		sockaddr_in addr=getClientaddr();
 		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, timeoutms);
 		if(pipe!=NULL)
-			return FileClientChunked(pipe, &tcpstack, this);
+			ret=FileClientChunked(pipe, &tcpstack, this);
 		else
-			return FileClientChunked();
+			ret=FileClientChunked();
 	}
+
+	if(ret.getPipe()!=NULL && server_settings!=NULL)
+	{
+		int local_speed=server_settings->getSettings()->local_speed;
+		if(local_speed>0)
+		{
+			ret.addThrottler(getThrottler(local_speed));
+		}
+		int global_local_speed=server_settings->getSettings()->global_local_speed;
+		if(global_local_speed>0)
+		{
+			ret.addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
+		}
+	}
+
+	return ret;
 }
 
 std::wstring BackupServerGet::convertToOSPathFromFileClient(std::wstring path)
@@ -3114,17 +3131,17 @@ void BackupServerGet::destroyTemporaryFile(IFile *tmp)
 
 IPipe * BackupServerGet::new_fileclient_connection(void)
 {
+	IPipe *rp=NULL;
 	if(internet_connection)
 	{
-		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, c_filesrv_connect_timeout);
-		return cp;
+		rp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, c_filesrv_connect_timeout);
 	}
 	else
 	{
 		sockaddr_in addr=getClientaddr();
-		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, c_filesrv_connect_timeout);
-		return pipe;
+		rp=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, c_filesrv_connect_timeout);
 	}
+	return rp;
 }
 
 #endif //CLIENT_ONLY

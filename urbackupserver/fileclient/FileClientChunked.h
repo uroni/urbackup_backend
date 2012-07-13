@@ -51,6 +51,10 @@ public:
 
 	_i64 getTransferredBytes(void);
 
+	void addThrottler(IPipeThrottler *throttler);
+
+	IPipe *getPipe();
+
 private:
 
 	_u32 GetFile(std::string remotefn);
@@ -132,6 +136,8 @@ private:
 	_i64 transferred_bytes;
 
 	FileClientChunked::ReconnectionCallback *reconnection_callback;
+
+	std::vector<IPipeThrottler*> throttlers;
 };
 
 #endif //FILECLIENTCHUNKED_H
