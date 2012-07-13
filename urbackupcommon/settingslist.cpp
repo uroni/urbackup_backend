@@ -26,6 +26,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"allow_starting_image_backups");
 	ret.push_back(L"allow_pause");
 	ret.push_back(L"allow_log_view");
+	ret.push_back(L"allow_overwrite");
 	ret.push_back(L"image_letters");
 	ret.push_back(L"internet_server");
 	ret.push_back(L"internet_server_port");

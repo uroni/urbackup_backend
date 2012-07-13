@@ -968,7 +968,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 	bool client_set_settings=false;
 	if(curr_settings->getValue("client_set_settings", &tmp_str) && tmp_str=="true")
 	{
-		client_set_settings=true;
+		if( new_settings->getValue("allow_overwrite", &tmp_str) && tmp_str!="false")
+		{
+			client_set_settings=true;
+		}
 	}
 	for(size_t i=0;i<settings_names.size();++i)
 	{
