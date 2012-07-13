@@ -27,6 +27,7 @@
 #include "../Interface/ThreadPool.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/fileclient/data.h"
+#include "../urbackupcommon/settingslist.h"
 #include "server_channel.h"
 #include "server_log.h"
 #include "InternetServiceConnector.h"
@@ -2257,6 +2258,7 @@ void BackupServerGet::sendSettings(void)
 	std::string s_settings;
 
 	std::vector<std::wstring> settings_names=getSettingsList();
+	std::vector<std::wstring> global_settings_names=getGlobalizedSettingsList();
 
 	std::string stmp=settings_client->getValue("overwrite", "");
 	bool overwrite=true;
@@ -2272,11 +2274,14 @@ void BackupServerGet::sendSettings(void)
 	{
 		std::wstring key=settings_names[i];
 		std::wstring value;
-		if( (!overwrite && !allow_overwrite) || !settings_client->getValue(key, &value) )
+
+		bool globalized=std::find(global_settings_names.begin(), global_settings_names.end(), key)!=global_settings_names.end();
+
+		if( globalized || (!overwrite && !allow_overwrite) || !settings_client->getValue(key, &value) )
 		{
 			if(!settings->getValue(key, &value) )
 				key=L"";
-			else
+			else if(!globalized)
 				key+=L"_def";
 		}
 

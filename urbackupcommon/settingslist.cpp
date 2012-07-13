@@ -41,3 +41,11 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"internet_mode_enabled");
 	return ret;
 }
+
+std::vector<std::wstring> getGlobalizedSettingsList(void)
+{
+	std::vector<std::wstring> ret;
+	ret.push_back(L"internet_server");
+	ret.push_back(L"internet_server_port");
+	return ret;
+}
