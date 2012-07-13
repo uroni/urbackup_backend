@@ -334,6 +334,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 							{
 								if(!copyFile(src, hash_fn))
 								{
+									Server->Log("Error copying hashoutput to destination -1", LL_ERROR);
 									has_error=true;
 									hash_fn.clear();
 								}
@@ -351,6 +352,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 					{
 						if(!copyFile(ctf, hash_fn))
 						{
+							Server->Log("Error copying hashfile to destination -2", LL_ERROR);
 							has_error=true;
 							hash_fn.clear();
 						}
@@ -774,11 +776,16 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 	}
 
 	IFile *f_hash_output=openFileRetry(hash_output, MODE_READ);
-	if(f_hash_output==NULL) return false;
+	if(f_hash_output==NULL)
+	{
+		Server->Log("Error opening hashoutput file -1", LL_ERROR);
+		return false;
+	}
 	ObjectScope f_hash_output_s(f_hash_output);
 
 	if(!copyFile(f_hash_output, hash_dest))
 	{
+		Server->Log("Error copying hashoutput file to destination", LL_ERROR);
 		return false;
 	}
 

@@ -1368,7 +1368,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	
 	bool delete_hashfile=false;
 
-	if( hashfile_old==NULL && file_old!=NULL)
+	if( (hashfile_old==NULL || hashfile_old->Size()==0 ) && file_old!=NULL )
 	{
 		ServerLogger::Log(clientid, L"Hashes for file \""+filepath_old+L"\" not available. Calulating hashes...", LL_DEBUG);
 		hashfile_old=getTemporaryFileRetry();

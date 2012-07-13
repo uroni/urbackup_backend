@@ -74,7 +74,10 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 	m_chunkhashes->Seek(0);
 	_i64 hashfilesize=0;
 	if(m_chunkhashes->Read((char*)&hashfilesize, sizeof(_i64))!=sizeof(_i64) )
+	{
+		Server->Log("Cannot read hashfilesize in FileClientChunked::GetFile", LL_ERROR);
 		return ERR_INT_ERROR;
+	}
 
 	if(patch_mode)
 	{
@@ -362,7 +365,7 @@ void FileClientChunked::State_Acc(void)
 				else if(new_block)
 				{
 					m_hashoutput->Seek(chunkhash_file_off+(chunk_start/c_checkpoint_dist)*chunkhash_single_size);
-					m_hashoutput->Write(it->second.big_hash, chunkhash_single_size);
+					writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
 				}
 
 				m_file->Seek(chunk_start);
