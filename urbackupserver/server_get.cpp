@@ -1399,7 +1399,8 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 
 	Server->destroy(file_old);
 
-	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
+	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
+		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST )
 		return false;
 	else
 		return true;

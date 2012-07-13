@@ -76,6 +76,14 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 	if(m_chunkhashes->Read((char*)&hashfilesize, sizeof(_i64))!=sizeof(_i64) )
 		return ERR_INT_ERROR;
 
+	if(patch_mode)
+	{
+		if(hashfilesize!=m_file->Size())
+		{
+			Server->Log("Hashfile size wrong in FileClientChunked::GetFile", LL_WARNING);
+		}
+	}
+
 	{
 		CWData data;
 		data.addUChar( ID_GET_FILE_BLOCKDIFF );
@@ -441,13 +449,15 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 {
 	if(!hash_for_whole_block)
 	{
-		Server->Log("Not a whole block. currpos="+nconvert(curr_pos), LL_DEBUG);
+		Server->Log("Not a whole block. currpos="+nconvert(curr_pos)+" block_for_chunk_start="+nconvert(block_for_chunk_start), LL_DEBUG);
 		if(curr_pos==block_for_chunk_start && block_for_chunk_start!=-1)
 		{
 			_i64 dest_pos=curr_pos+c_checkpoint_dist;
 
 			if(dest_pos>remote_filesize)
 				dest_pos=remote_filesize;
+
+			Server->Log("dest_pos="+nconvert(dest_pos), LL_DEBUG);
 		
 			char buf2[BUFFERSIZE];
 			m_file->Seek(chunk_start);
@@ -455,6 +465,13 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			{
 				size_t r=m_file->Read(buf2, (std::min)((_u32)BUFFERSIZE, (_u32)(dest_pos-chunk_start)) );
 				Server->Log("Read for hash finalize at block_start="+nconvert(chunk_start)+" n="+nconvert(r), LL_DEBUG);
+				if(r==0)
+				{
+					Server->Log("Read err in Hash_finalize", LL_WARNING);
+					retval=ERR_INT_ERROR;
+					getfile_done=true;
+					break;
+				}
 				file_pos+=r;
 				chunk_start+=r;
 				md5_hash.update((unsigned char*)buf2, (unsigned int)r);
