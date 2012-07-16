@@ -10,8 +10,8 @@
 unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
 
-ChunkSendThread::ChunkSendThread(CClientThread *parent, IFile *file)
-	: parent(parent), file(file)
+ChunkSendThread::ChunkSendThread(CClientThread *parent, IFile *file, _i64 curr_hash_size)
+	: parent(parent), file(file), curr_hash_size(curr_hash_size)
 {
 	chunk_buf=new char[(c_checkpoint_dist/c_chunk_size)*(c_chunk_size)+c_chunk_padding];
 }
@@ -25,7 +25,8 @@ void ChunkSendThread::operator()(void)
 {
 	SChunk chunk;
 	IFile *new_file=NULL;
-	while(parent->getNextChunk(&chunk, &new_file))
+	_i64 new_hash_size;
+	while(parent->getNextChunk(&chunk, &new_file, &new_hash_size))
 	{
 		if(new_file!=NULL)
 		{
@@ -35,6 +36,7 @@ void ChunkSendThread::operator()(void)
 			}
 			file=new_file;
 			new_file=NULL;
+			curr_hash_size=new_hash_size;
 		}
 		else
 		{
@@ -127,7 +129,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 			if(read_total==next_smallhash || r!=c_chunk_size)
 			{
-				if(c_adler!=*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]))
+				if(c_adler!=*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num])
+					|| curr_pos+r>curr_hash_size)
 				{
 					sent_update=true;
 					char tmp_backup[c_chunk_padding];

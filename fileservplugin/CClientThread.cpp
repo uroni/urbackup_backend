@@ -1020,8 +1020,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	_i64 start_offset=0;
 	data->getInt64(&start_offset);
 
-	_i64 hash_size=0;
-	data->getInt64(&hash_size);
+	curr_hash_size=0;
+	data->getInt64(&curr_hash_size);
 
 	Log("Sending file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
 
@@ -1121,7 +1121,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 			Log("Could not open file from handle", LL_ERROR);
 			return false;
 		}
-		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this, tf) );
+		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this, tf, curr_hash_size) );
 	}
 	else
 	{
@@ -1166,7 +1166,7 @@ bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
 	return true;
 }
 
-bool CClientThread::getNextChunk(SChunk *chunk, IFile **new_file)
+bool CClientThread::getNextChunk(SChunk *chunk, IFile **new_file, _i64 *new_hash_size)
 {
 	IScopedLock lock(mutex);
 	while(next_chunks.empty() && state==CS_BLOCKHASH && update_file==NULL)
@@ -1177,6 +1177,7 @@ bool CClientThread::getNextChunk(SChunk *chunk, IFile **new_file)
 	if(update_file!=NULL)
 	{
 		*new_file=update_file;
+		*new_hash_size=curr_hash_size;
 		update_file=NULL;
 		return true;
 	}

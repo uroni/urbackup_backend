@@ -83,7 +83,7 @@ public:
 	void StopThread(void);
 
 	int SendInt(const char *buf, size_t bsize);
-	bool getNextChunk(SChunk *chunk, IFile **new_file);
+	bool getNextChunk(SChunk *chunk, IFile **new_file, _i64 *new_hash_size);
 private:
 
 	bool RecvMessage(void);
@@ -126,6 +126,7 @@ private:
 	_i64 next_checkpoint;
 	_i64 sent_bytes;
 	_i64 curr_filesize;
+	_i64 curr_hash_size;
 
 	IMutex *mutex;
 	ICondition *cond;

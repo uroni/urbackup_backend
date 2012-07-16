@@ -85,6 +85,10 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		{
 			Server->Log("Hashfile size wrong in FileClientChunked::GetFile", LL_WARNING);
 		}
+		else
+		{
+			Server->Log("Old filesize="+nconvert(hashfilesize), LL_DEBUG);
+		}
 	}
 
 	{
@@ -433,6 +437,7 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 		{
 			_u32 toread=(std::min)((_u32)BUFFERSIZE, (_u32)(new_chunk_start-chunk_start));
 			size_t r=m_file->Read(buf2,  toread);
+			Server->Log("Read for hash at chunk_start="+nconvert(chunk_start)+" toread="+nconvert(toread)+" n="+nconvert(r), LL_DEBUG);
 			if(r<toread)
 			{
 				retval=ERR_INT_ERROR;
@@ -440,7 +445,6 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 				Server->Log("Read error in File chunked - 1", LL_ERROR);
 				break;
 			}
-			Server->Log("Read for hash at chunk_start="+nconvert(chunk_start)+" n="+nconvert(r), LL_DEBUG);
 			chunk_start+=r;
 			md5_hash.update((unsigned char*)buf2, (unsigned int)r);
 		}while(chunk_start<new_chunk_start);
