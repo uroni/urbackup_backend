@@ -207,7 +207,8 @@ void InternetServiceConnector::ReceivePackets(void)
 							IDatabase *db=Server->getDatabase(tid, URBACKUPDB_SERVER);
 							IQuery *q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='internet_authkey' AND clientid=(SELECT id FROM clients WHERE name=?)", false);
 							q->Bind(clientname);
-							db_results res=q->Read();
+							int timeoutms=1000;
+							db_results res=q->Read(&timeoutms);
 							db->destroyQuery(q);
 							if(!res.empty())
 							{
