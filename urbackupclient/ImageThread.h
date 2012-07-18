@@ -2,6 +2,7 @@
 #include "../Interface/Pipe.h"
 #include "../Interface/File.h"
 #include "../Interface/Thread.h"
+#include "../Interface/Server.h"
 
 class ClientConnector;
 struct ImageInformation;
@@ -15,7 +16,7 @@ public:
 
 private:
 
-	void ImageErr(const std::string &msg);
+	void ImageErr(const std::string &msg, int loglevel=LL_ERROR);
 	void ImageErrRunning(const std::string &msg);
 
 	void sendFullImageThread(void);

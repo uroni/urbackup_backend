@@ -23,9 +23,9 @@ ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe **mempipe, 
 {
 }
 
-void ImageThread::ImageErr(const std::string &msg)
+void ImageThread::ImageErr(const std::string &msg, int loglevel)
 {
-	Server->Log(msg, LL_ERROR);
+	Server->Log(msg, loglevel);
 #ifdef _WIN32
 	uint64 bs=0xFFFFFFFFFFFFFFFF;
 #else
@@ -89,10 +89,20 @@ void ImageThread::sendFullImageThread(void)
 		}
 		else
 		{
-			IFilesystem *fs=image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive));
+			IFilesystem *fs=NULL;
+			if(!image_inf->shadowdrive.empty())
+			{
+				fs=image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive));
+			}
 			if(fs==NULL)
 			{
-				ImageErr("Opening Shadow drive filesystem failed. Stopping.");
+				int tloglevel=LL_ERROR;
+				if(image_inf->shadowdrive.empty())
+				{
+					tloglevel=LL_INFO;
+				}
+				ImageErr("Opening filesystem on device failed. Stopping.", tloglevel);
+				Server->Log("Device file: \""+image_inf->shadowdrive+"\"", LL_INFO);
 				run=false;
 				break;
 			}
@@ -349,10 +359,20 @@ void ImageThread::sendIncrImageThread(void)
 		}
 		else
 		{
-			IFilesystem *fs=image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive));
+			IFilesystem *fs=NULL;
+			if(!image_inf->shadowdrive.empty())
+			{
+				fs=image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive));
+			}
 			if(fs==NULL)
 			{
-				ImageErr("Opening Shadow drive filesystem failed. Stopping.");
+				int tloglevel=LL_ERROR;
+				if(image_inf->shadowdrive.empty())
+				{
+					tloglevel=LL_INFO;
+				}
+				ImageErr("Opening filesystem on device failed. Stopping.", tloglevel);
+				Server->Log("Device file: \""+image_inf->shadowdrive+"\"", LL_INFO);
 				run=false;
 				break;
 			}
