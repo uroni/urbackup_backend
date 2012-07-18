@@ -340,7 +340,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 			}
 			else
 			{
-				ServerLogger::Log(clientid, "Pipe to client unexpectedly closed", LL_ERROR);
+				ServerLogger::Log(clientid, "Pipe to client unexpectedly closed has_error="+nconvert(cc->hasError()), LL_ERROR);
 				goto do_image_cleanup;
 			}
 		}

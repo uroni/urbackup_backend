@@ -364,6 +364,9 @@ void ServerFileBufferWriter::operator()(void)
 			uint64 tsize=tmp->Size();
 			while(tpos<tsize)
 			{
+				if(exit_now)
+					break;
+
 				if(!parent->hasError())
 				{
 					unsigned int tw=blockbuf_size;
