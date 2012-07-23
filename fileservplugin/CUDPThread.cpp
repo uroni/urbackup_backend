@@ -172,7 +172,7 @@ bool CUDPThread::UdpStep(void)
 		//Log("Receiving UDP packet...");
 		char buffer[BUFFERSIZE];
 		socklen_t addrsize=sizeof(sockaddr_in);
-		sockaddr_in sender;
+		sockaddr_in sender = {};
 		_i32 err = recvfrom(udpsock, buffer, BUFFERSIZE, 0, (sockaddr*)&sender, &addrsize);
 		if(err==SOCKET_ERROR)
 		{
@@ -191,7 +191,7 @@ bool CUDPThread::UdpStep(void)
 				buffer[0]=ID_PONG;
 				buffer[1]=VERSION;
 				memcpy(&buffer[2], mServername.c_str(), mServername.size());
-				int rc=sendto(udpsock, buffer, (int)mServername.size()+2, 0, (sockaddr*)&sender, sizeof(sockaddr_in) );
+				int rc=sendto(udpsock, buffer, (int)mServername.size()+2, 0, (sockaddr*)&sender, addrsize );
 				if( rc==SOCKET_ERROR )
 				{
 					Log("Sending reply failed "+nconvert(rc), LL_DEBUG);
