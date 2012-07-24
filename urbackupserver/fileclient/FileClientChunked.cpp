@@ -132,7 +132,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 					buf[0]=ID_BLOCK_REQUEST;
 					*((_i64*)(buf+1))=next_chunk*c_checkpoint_dist;
 					buf[1+sizeof(_i64)]=0;
-					m_chunkhashes->Read(&buf[2*sizeof(char)+sizeof(_i64)], chunkhash_single_size);
+					_u32 r=m_chunkhashes->Read(&buf[2*sizeof(char)+sizeof(_i64)], chunkhash_single_size);
+					if(r<chunkhash_single_size)
+					{
+						memset(&buf[2*sizeof(char)+sizeof(_i64)+r], 0, chunkhash_single_size-r);
+					}
 					stack->Send( pipe, buf, chunkhash_single_size+2*sizeof(char)+sizeof(_i64));
 
 					char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
