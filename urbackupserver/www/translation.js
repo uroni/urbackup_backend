@@ -114,7 +114,9 @@ translations.en={
 "validate_name_local_speed": "max backup speed for local network",
 "validate_name_internet_speed": "max backup speed for internet connection",
 "enter_clientname": "Please enter a client name",
-"internet_client_added": "Added new client. You can see the client's auth key (or password) in the settings."
+"internet_client_added": "Added new client. You can see the client's auth key (or password) in the settings.",
+"change_pw": "Change password",
+"old_pw_wrong": "Old password is wrong"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -329,7 +331,9 @@ translations.de={
 "tVolumes to backup": "Zu sichernde Laufwerke",
 "internet_server_settings": "Internetzugriff",
 "tIncluded files (with wildcards)": "Eingeschlossene Dateien (mit Wildcards):",
-"tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings.": "Warnung: Die Clientkonfiguration wird die Einstellungen hier überschreiben. Um dieses Verhalten zu ändern erlauben Sie dem Client nicht Einstellungen zu ändern."
+"tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings.": "Warnung: Die Clientkonfiguration wird die Einstellungen hier überschreiben. Um dieses Verhalten zu ändern erlauben Sie dem Client nicht Einstellungen zu ändern.",
+"change_pw": "Passwort ändern",
+"old_pw_wrong": "Altes passwort stimmt nicht"
 }
 translations.ru={
 "action_1": "Добавочный файловый бэкап",

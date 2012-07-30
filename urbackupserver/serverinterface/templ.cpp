@@ -92,6 +92,9 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("logs_report_mail");
 	templates.push_back("settings_archive_row");
 	templates.push_back("status_modify_clients");
+	templates.push_back("change_pw");
+	templates.push_back("change_pw_ok");
+	templates.push_back("change_pw_fail");
 
 	IFile *out=Server->openFile("urbackupserver/www/templates.js", MODE_WRITE);
 	if(out==NULL)

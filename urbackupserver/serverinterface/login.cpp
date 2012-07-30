@@ -65,36 +65,25 @@ ACTION_IMPL(login)
 		SUser *session=helper.getSession();
 		if(session!=NULL)
 		{
-			IQuery *q=db->Prepare("SELECT id, name, password_md5 FROM settings_db.si_users WHERE name=?");
-			q->Bind(username);
-			db_results res=q->Read();
-			if(!res.empty())
+			int user_id;
+			if(helper.checkPassword(username, GET[L"password"], &user_id) )
 			{
-				std::wstring password_md5=res[0][L"password_md5"];
-				std::string ui_password=wnarrow(GET[L"password"]);
-				std::string r_password=Server->GenerateHexMD5(Server->ConvertToUTF8(session->mStr[L"rnd"]+password_md5));
-				if(r_password!=ui_password)
-				{
-					Server->wait(1000);
-					ret.set("error", JSON::Value(2));
-				}
-				else
-				{
-					ret.set("success", JSON::Value(true));
-					session->mStr[L"login"]=L"ok";
-					session->id=watoi(res[0][L"id"]);
+				ret.set("success", JSON::Value(true));
+				session->mStr[L"login"]=L"ok";
+				session->mStr[L"username"]=username;
+				session->id=user_id;
 
-					ret.set("status", helper.getRights("status") );
-					ret.set("graph", helper.getRights("piegraph"));
-					ret.set("progress", helper.getRights("progress") );
-					ret.set("browse_backups", helper.getRights("browse_backups") );
-					ret.set("settings", helper.getRights("settings") );
-					ret.set("logs", helper.getRights("logs") );
-				}
+				ret.set("status", helper.getRights("status") );
+				ret.set("graph", helper.getRights("piegraph"));
+				ret.set("progress", helper.getRights("progress") );
+				ret.set("browse_backups", helper.getRights("browse_backups") );
+				ret.set("settings", helper.getRights("settings") );
+				ret.set("logs", helper.getRights("logs") );
 			}
 			else
 			{
-				ret.set("error", JSON::Value(0));
+				Server->wait(1000);
+				ret.set("error", JSON::Value(2));
 			}
 		}
 		else

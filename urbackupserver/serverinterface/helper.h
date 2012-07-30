@@ -28,6 +28,8 @@ public:
 
 	std::vector<int> getRightIDs(std::string rights);
 	bool hasRights(int clientid, std::string rights, std::vector<int> right_ids);
+
+	bool checkPassword(const std::wstring &username, const std::wstring &password, int *user_id);
 private:
 	std::string getRightsInt(const std::string &domain);
 

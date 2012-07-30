@@ -239,4 +239,32 @@ bool Helper::hasRights(int clientid, std::string rights, std::vector<int> right_
 	return r_ok;
 }
 
+bool Helper::checkPassword(const std::wstring &username, const std::wstring &password, int *user_id)
+{
+	IDatabase *db=getDatabase();
+	IQuery *q=db->Prepare("SELECT id, name, password_md5 FROM settings_db.si_users WHERE name=?");
+	q->Bind(username);
+	db_results res=q->Read();
+	if(!res.empty())
+	{
+		std::wstring password_md5=res[0][L"password_md5"];
+		std::string ui_password=wnarrow(password);
+		std::string r_password=Server->GenerateHexMD5(Server->ConvertToUTF8(session->mStr[L"rnd"]+password_md5));
+		if(r_password!=ui_password)
+		{
+			return false;
+		}
+		else
+		{
+			if(user_id!=NULL)
+			{
+				*user_id=watoi(res[0][L"id"]);
+			}
+			return true;
+		}
+	}
+
+	return false;
+}
+
 #endif //CLIENT_ONLY
