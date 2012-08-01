@@ -1050,11 +1050,15 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		filename=L"\\\\?\\"+filename;			
 #endif
 				
+#ifdef _WIN32
 #ifndef BACKUP_SEM
 	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
 	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #endif
+#else //_WIN32
+	hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
+#endif //_WIN32
 
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
