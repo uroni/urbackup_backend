@@ -26,7 +26,7 @@ ACTION_IMPL(salt)
 
 	JSON::Object ret;
 	std::wstring username=GET[L"username"];
-	if(helper.getSession()==NULL)
+	if(helper.getSession()==NULL && !username.empty())
 	{
 		std::wstring ses=helper.generateSession(username);
 		ret.set("ses", JSON::Value(ses));
@@ -37,6 +37,14 @@ ACTION_IMPL(salt)
 	SUser *session=helper.getSession();
 	if(session!=NULL)
 	{
+		if(username.empty())
+		{
+			str_map::iterator iter=session->mStr.find(L"username");
+			if(iter!=session->mStr.end())
+			{
+				username=iter->second;
+			}
+		}
 		IQuery *q=helper.getDatabase()->Prepare("SELECT salt FROM settings_db.si_users WHERE name=?");
 		q->Bind(username);
 		db_results res=q->Read();

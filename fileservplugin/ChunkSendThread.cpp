@@ -3,6 +3,7 @@
 #include "packet_ids.h"
 #include "log.h"
 #include "../stringtools.h"
+#include "FileServ.h"
 
 #include "../Interface/File.h"
 #include "../Interface/Server.h"
@@ -40,6 +41,10 @@ void ChunkSendThread::operator()(void)
 		}
 		else
 		{
+			if( FileServ::isPause() )
+			{
+				Sleep(500);
+			}
 			sendChunk(&chunk);
 		}
 	}

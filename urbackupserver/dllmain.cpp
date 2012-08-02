@@ -358,6 +358,41 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		IScopedLock lock(startup_status.mutex);
 		startup_status.upgrading_database=false;
 	}
+
+	std::string set_admin_pw=Server->getServerParameter("set_admin_pw");
+	if(!set_admin_pw.empty())
+	{
+		std::string rnd;
+		for(size_t i=0;i<20;++i)
+		{
+			rnd+=getRandomChar();
+		}
+
+		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+		db_results res=db->Read("SELECT value FROM settings_db.si_users WHERE name='admin'");
+		if(res.empty())
+		{
+			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt) VALUES (?,?,?)");
+			q->Bind("admin");
+			q->Bind(Server->GenerateHexMD5(rnd+set_admin_pw));
+			q->Bind(rnd);
+			q->Write();
+			q->Reset();
+		}
+		else
+		{
+			IQuery *q=db->Prepare("UPDATE si_users SET password_md5=?, salt=? WHERE name='admin'");
+			q->Bind(Server->GenerateHexMD5(rnd+set_admin_pw));
+			q->Bind(rnd);
+			q->Write();
+			q->Reset();
+		}
+
+		Server->Log("Changed admin password", LL_INFO);
+		db->destroyAllQueries();
+
+		exit(1);
+	}
 		
 
 	ADD_ACTION(server_status);

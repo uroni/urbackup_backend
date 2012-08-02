@@ -517,23 +517,31 @@ void my_init_fcn(void)
 int main(int argc, char *argv[])
 {
 	SetCurrentDirectoryA(ExtractFilePath(argv[0]).c_str() );
-	std::string args=getFile("args.txt");
-	int lc=linecount(args);
-	srv_argv=new char*[lc+1];
-	srv_argv[0]=new char[strlen(argv[0])+1];
-	strcpy_s(srv_argv[0], strlen(argv[0])+1, argv[0]);
-	for(int i=0;i<lc;++i)
+	if( argc>1 && (std::string)argv[1]=="--cmdline" )
 	{
-		std::string l=getline(i, args);
-		std::cout << l << std::endl;
-		srv_argv[i+1]=new char[l.size()+1];
-		memcpy(srv_argv[i+1], &l[0], l.size());
-		srv_argv[i+1][l.size()]=0;
+		srv_argv=argv;
+		srv_argc=argc;
+	}
+	else
+	{
+		std::string args=getFile("args.txt");
+		int lc=linecount(args);
+		srv_argv=new char*[lc+1];
+		srv_argv[0]=new char[strlen(argv[0])+1];
+		strcpy_s(srv_argv[0], strlen(argv[0])+1, argv[0]);
+		for(int i=0;i<lc;++i)
+		{
+			std::string l=getline(i, args);
+			std::cout << l << std::endl;
+			srv_argv[i+1]=new char[l.size()+1];
+			memcpy(srv_argv[i+1], &l[0], l.size());
+			srv_argv[i+1][l.size()]=0;
+		}
+
+		srv_argc=lc+1;
 	}
 
-	srv_argc=lc+1;
-
-	if( argc>1 && (std::string)argv[1]=="pgo" )
+	if( argc>1 && ( (std::string)argv[1]=="pgo" || (std::string)argv[1]=="cmdline" ) )
 	{
 		my_init_fcn();
 

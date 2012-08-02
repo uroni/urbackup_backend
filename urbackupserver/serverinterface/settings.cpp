@@ -648,20 +648,47 @@ ACTION_IMPL(settings)
 			sa=L"listusers";
 			
 		}
-		if(sa==L"changepw" && helper.getRights("usermod")=="all")
+		if(sa==L"changepw" && ( helper.getRights("usermod")=="all" || GET[L"userid"]==L"own" ) )
 		{
-			std::wstring salt=GET[L"salt"];
-			std::wstring pwmd5=GET[L"pwmd5"];
-			int t_userid=watoi(GET[L"userid"]);
-			IQuery *q=db->Prepare("UPDATE settings_db.si_users SET salt=?, password_md5=? WHERE id=?");
+			bool ok=true;
+			if(GET[L"userid"]==L"own")
+			{
+				if(!helper.checkPassword(session->mStr[L"username"], GET[L"old_pw"], NULL) )
+				{
+					ok=false;
+				}
+			}
+			if(ok)
+			{
+				std::wstring salt=GET[L"salt"];
+				std::wstring pwmd5=GET[L"pwmd5"];
+				int t_userid;
+				if(GET[L"userid"]==L"own")
+				{
+					t_userid=session->id;
+				}
+				else
+				{
+					t_userid=watoi(GET[L"userid"]);
+				}
+				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET salt=?, password_md5=? WHERE id=?");
 			
-			q->Bind(salt);
-			q->Bind(pwmd5);
-			q->Bind(t_userid);
-			q->Write();
-			q->Reset();
-			ret.set("change_ok", true);
-			sa=L"listusers";
+				q->Bind(salt);
+				q->Bind(pwmd5);
+				q->Bind(t_userid);
+				q->Write();
+				q->Reset();
+				ret.set("change_ok", true);
+
+				if(GET[L"userid"]!=L"own")
+				{
+					sa=L"listusers";
+				}
+			}
+			else
+			{
+				ret.set("old_pw_wrong", true);
+			}
 		}
 		if(sa==L"updaterights" && helper.getRights("usermod")=="all")
 		{

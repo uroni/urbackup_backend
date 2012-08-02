@@ -1052,6 +1052,26 @@ function show_settings2(data)
 			++idx;
 			++g.user_nav_pos_offset;
 		}
+		else
+		{
+			if(data.sa=="clientsettings")
+			{
+				++g.settings_nav_pos;
+			}
+			
+			if(n!="" ) n+=" | ";
+			
+			if(g.settings_nav_pos==idx)
+			{
+				n+="<strong>"+trans("change_pw")+"</strong>";
+			}
+			else
+			{
+				n+="<span id=\"change_pw_el\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></span>";
+			}			
+			++idx;
+			++g.user_nav_pos_offset;
+		}
 		if(nav.clients)
 		{
 			g.settings_clients=nav.clients;
@@ -1799,6 +1819,90 @@ function changeUserPassword(uid, name)
 		g.data_f=ndata;
 	}
 	I('password1').focus();
+}
+function changePW(el)
+{
+	I('settingsclient').innerHTML="<option value=\"n\">"+trans("clients")+"</option>"+I('settingsclient').innerHTML;
+	I('settingsclient').selectedIndex=0;
+	I('change_pw_el').innerHTML="<strong>"+trans("change_pw")+"</strong>";
+	var ndata=tmpls.change_pw.evaluate();
+	g.settings_nav_pos=g.user_nav_pos_offset-1;
+	if(g.data_f!=ndata)
+	{
+		I('data_f').innerHTML=ndata;
+		g.data_f=ndata;
+	}
+	I('old_password').focus();
+}
+function doChangePW()
+{	
+	var password1=I('password1').value;
+	var password2=I('password2').value;
+	
+	if( password1.length==0 )
+	{
+		alert(trans("password_empty"));
+		I('password1').focus();
+		return;
+	}
+	
+	if( password1!=password2 )
+	{
+		alert(trans("password_differ"));
+		I('password1').focus();
+		return;
+	}
+	
+	if(!startLoading()) return;
+	new getJSON("salt", "", doChangePW2);
+}
+function doChangePW2(data)
+{
+	if(data.error==0)
+	{
+		alert(trans("user_n_exist"));
+		stopLoading();
+		I('old_password').focus();
+		return;
+	}
+	
+	var password=I('old_password').value;
+	var password1=I('password1').value;
+	
+	var pwmd5=calcMD5(data.rnd+calcMD5(data.salt+password));
+		
+	var salt=randomString();
+	var password_md5=calcMD5(salt+password1);
+	
+	var pars="&userid=own&pwmd5="+password_md5+"&salt="+salt+"&old_pw="+pwmd5;
+	
+	new getJSON("settings", "sa=changepw"+pars, doChangePW3);
+}
+
+function doChangePW3(data)
+{
+	stopLoading();
+	var ndata;
+	if(data.change_ok)
+	{
+		ndata=tmpls.change_pw_ok.evaluate();
+	}
+	else
+	{
+		var fail_reason="";
+		if(data.old_pw_wrong)
+		{
+			alert(trans("old_pw_wrong"));
+			I('old_password').focus();
+			return;
+		}
+		ndata=tmpls.change_pw_fail.evaluate({fail_reason: fail_reason});
+	}
+	if(g.data_f!=ndata)
+	{
+		I('data_f').innerHTML=ndata;
+		g.data_f=ndata;
+	}
 }
 function changeUserPW(uid)
 {	
