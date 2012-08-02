@@ -4,6 +4,9 @@
 #include <string>
 
 #include "Object.h"
+#include "Types.h"
+
+class IPipeThrottler;
 
 class IPipe : public IObject
 {
@@ -30,6 +33,13 @@ public:
 	* only works with memory pipe
 	**/
 	virtual size_t getNumElements(void)=0;
+
+	virtual void addThrottler(IPipeThrottler *throttler)=0;
+	virtual void addOutgoingThrottler(IPipeThrottler *throttler)=0;
+	virtual void addIncomingThrottler(IPipeThrottler *throttler)=0;
+
+	virtual _i64 getTransferedBytes(void)=0;
+	virtual void resetTransferedBytes(void)=0;
 };
 
 #endif //IPIPE_H

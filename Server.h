@@ -90,6 +90,7 @@ public:
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData);
+	virtual IPipeThrottler* createPipeThrottler(size_t bps);
 
 	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite");
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier);
@@ -113,6 +114,7 @@ public:
 
 	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort);
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
+	virtual IPipe *PipeFromSocket(SOCKET pSocket);
 	virtual void DisconnectStream(IPipe *pipe);
 
 	virtual bool RegisterPluginPerThreadModel(IPluginMgr *pPluginMgr, std::string pName);
@@ -127,6 +129,7 @@ public:
 
 	virtual IFile* openFile(std::string pFilename, int pMode=0);
 	virtual IFile* openFile(std::wstring pFilename, int pMode=0);
+	virtual IFile* openFileFromHandle(void *handle);
 	virtual IFile* openTemporaryFile(void);
 	virtual IFile* openMemoryFile(void);
 	virtual bool deleteFile(std::string pFilename);
@@ -150,6 +153,9 @@ public:
 	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier);
 
 	static int WriteDump(void* pExceptionPointers);
+
+	virtual void waitForStartupComplete(void);
+	void startupComplete(void);
 private:
 
 	bool UnloadDLLs(void);
@@ -172,6 +178,10 @@ private:
 	IMutex* rps_mutex;
 	IMutex* postfiles_mutex;
 	IMutex* param_mutex;
+	IMutex* startup_complete_mutex;
+
+	ICondition *startup_complete_cond;
+	bool startup_complete;
 
 	std::map< std::wstring, std::map<std::wstring, IAction*> > actions;
 

@@ -1,0 +1,345 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Headerdateien">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Ressourcendateien">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="fileclient">
+      <UniqueIdentifier>{f70d5b3e-4aa3-4fea-9439-c17050638704}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Quelldateien">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="treediff">
+      <UniqueIdentifier>{1e3a9954-74c9-4bbf-b99c-4f78b6bd555f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="serverinterface">
+      <UniqueIdentifier>{3ff5bf0a-dd61-4c91-880e-180063d4f39c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sha2">
+      <UniqueIdentifier>{94c028c2-e88e-4a63-ab20-e68be5608bbb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="sha2">
+      <UniqueIdentifier>{70354eae-bf63-425c-ae8a-b5ac6085389f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_channel.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_cleanup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_get.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_hash.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_image.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_log.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_ping.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_prepare_hash.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_running.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_settings.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_status.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_update_stats.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_writer.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\stringtools.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="fileclient\FileClient.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="server_update.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="treediff\TreeNode.cpp">
+      <Filter>treediff</Filter>
+    </ClCompile>
+    <ClCompile Include="treediff\TreeReader.cpp">
+      <Filter>treediff</Filter>
+    </ClCompile>
+    <ClCompile Include="treediff\TreeDiff.cpp">
+      <Filter>treediff</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\backups.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\getimage.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\google_chart.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\helper.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\isimageready.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\json.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\lastacts.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\login.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\logs.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\piegraph.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\progress.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\settings.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\status.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\templ.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\usage.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\usagegraph.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\users.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\data.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
+      <Filter>sha2</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\salt.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\settingslist.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\os_functions_win.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\escape.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\bufmgr.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="InternetServiceConnector.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\md5.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="fileclient\FileClientChunked.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\adler32.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="ChunkPatcher.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="server_archive.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="filedownload.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="action_header.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="actions.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="database.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_channel.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_cleanup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_get.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_hash.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_image.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_log.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_ping.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_prepare_hash.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_running.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_settings.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_update_stats.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_writer.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\stringtools.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="fileclient\FileClient.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="server_update.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_status.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="treediff\TreeNode.h">
+      <Filter>treediff</Filter>
+    </ClInclude>
+    <ClInclude Include="treediff\TreeReader.h">
+      <Filter>treediff</Filter>
+    </ClInclude>
+    <ClInclude Include="treediff\TreeDiff.h">
+      <Filter>treediff</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\actions.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\action_header.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\helper.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\json.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\data.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
+      <Filter>sha2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\settingslist.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="fileclient\packet_ids.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="fileclient\socket_header.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\os_functions.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\escape.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\bufmgr.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\capa_bits.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\settings.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="InternetServiceConnector.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\md5.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="fileclient\FileClientChunked.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="ChunkPatcher.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\internet_pipe_capabilities.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\CompressedPipe.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="server_archive.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="filedownload.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

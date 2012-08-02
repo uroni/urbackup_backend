@@ -33,7 +33,7 @@
 #include "../stringtools.h"
 #include <memory.h>
 
-std::string getServerName(void)
+std::string getSystemServerName(void)
 {
 #ifdef _WIN32
 	char hostname[MAX_PATH];
@@ -66,32 +66,40 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 	{
 		udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
+		int optval=1;
+		int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Failed setting SO_REUSEADDR in CUDPThread::CUDPThread", LL_ERROR);
+			return;
+		}
+
 		sockaddr_in addr_udp;
 
 		addr_udp.sin_family=AF_INET;
 		addr_udp.sin_port=htons(udpport);
 		addr_udp.sin_addr.s_addr=INADDR_ANY;
 
-		Log("Binding udp socket...");
-		int rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
+		Log("Binding udp socket...", LL_DEBUG);
+		rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
 			Server->Log("Binding udp socket to port "+nconvert(udpport)+" failed", LL_ERROR);
 #else
-			Log("Failed binding udp socket.");
+			Log("Failed binding udp socket.", LL_ERROR);
 #endif
 			has_error=true;
 			return;
 		}
-		Log("done.");
+		Log("done.", LL_DEBUG);
 
 #ifdef _WIN32
 		DWORD dwBytesReturned = 0;
 		BOOL bNewBehavior = FALSE;
 		DWORD status;
 
-		Log("Disabling new behavior...");
+		Log("Disabling new behavior...", LL_DEBUG);
 		// disable  new behavior using
 		// IOCTL: SIO_UDP_CONNRESET
 		#define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR,12)
@@ -101,7 +109,7 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 					NULL, NULL);
 		if (SOCKET_ERROR == status)
 		{
-			Log("Setting SIO_UDP_CONNRESET via WSAIoctl FAILED!");
+			Log("Setting SIO_UDP_CONNRESET via WSAIoctl FAILED!", LL_WARNING);
 			//return;
 		}
 #endif
@@ -110,9 +118,9 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 	if( servername!="" )
 		mServername=servername;
 	else
-		mServername=getServerName();
+		mServername=getSystemServerName();
 
-	Log("Servername: -%s-",mServername.c_str());
+	Log("Servername: -"+mServername+"-", LL_INFO);
 }
 
 std::string CUDPThread::getServername()
@@ -127,7 +135,7 @@ CUDPThread::~CUDPThread()
 
 void CUDPThread::operator()(void)
 {
-	Log("UDP Thread startet");
+	Log("UDP Thread startet", LL_DEBUG);
 #ifdef _WIN32
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #endif
@@ -135,7 +143,7 @@ void CUDPThread::operator()(void)
 	while(UdpStep()==true && do_stop==false);
 	
 #ifdef LOG_SERVER
-	Server->Log("CUDPThread exited.", LL_ERROR);
+	Server->Log("CUDPThread exited.", LL_DEBUG);
 #endif
 	if(do_stop)
 	{
@@ -161,10 +169,10 @@ bool CUDPThread::UdpStep(void)
 
 	if(rc>0)
 	{
-		Log("Receiving UDP packet...");
+		//Log("Receiving UDP packet...");
 		char buffer[BUFFERSIZE];
 		socklen_t addrsize=sizeof(sockaddr_in);
-		sockaddr_in sender;
+		sockaddr_in sender = {};
 		_i32 err = recvfrom(udpsock, buffer, BUFFERSIZE, 0, (sockaddr*)&sender, &addrsize);
 		if(err==SOCKET_ERROR)
 		{
@@ -178,15 +186,15 @@ bool CUDPThread::UdpStep(void)
 		{
 			if(buffer[0]==ID_PING)
 			{
-				Log("UDP: PING received... sending PONG");
+				Log("UDP: PING received... sending PONG", LL_DEBUG);
 				char *buffer=new char[mServername.size()+2];
 				buffer[0]=ID_PONG;
 				buffer[1]=VERSION;
 				memcpy(&buffer[2], mServername.c_str(), mServername.size());
-				int rc=sendto(udpsock, buffer, (int)mServername.size()+2, 0, (sockaddr*)&sender, sizeof(sockaddr_in) );
+				int rc=sendto(udpsock, buffer, (int)mServername.size()+2, 0, (sockaddr*)&sender, addrsize );
 				if( rc==SOCKET_ERROR )
 				{
-					Log("Sending reply failed %i", rc);
+					Log("Sending reply failed "+nconvert(rc), LL_DEBUG);
 				}
 				delete[] buffer;
 			}

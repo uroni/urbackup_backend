@@ -28,7 +28,7 @@ switch()
 	switch_m_build
 	cd fsimageplugin
 	switch_build
-	cd ../urbackup
+	cd ../cryptoplugin
 	switch_build
 }
 

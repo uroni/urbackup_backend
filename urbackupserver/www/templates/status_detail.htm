@@ -1,0 +1,62 @@
+<h1>#{tBackup status}</h1>
+
+#{dir_error}
+#{tmpdir_error}
+
+<table cellspacing="0" cellpadding="0">
+<tr>			
+	<th style="width: 150px" class="tabHeader">#{tComputer name}</th>
+	<th style="width: 200px" class="tabHeader">#{tOnline}</th>
+	<th style="width: 200px" class="tabHeader">#{tStatus}</th>
+	<th style="width: 150px" class="tabHeader">#{tLast seen}</th>
+	<th style="width: 200px" class="tabHeader">#{tLast file backup}</th>
+	<th style="width: 200px" class="tabHeader">#{tLast image backup}</th>
+	<th style="width: 150px" class="tabHeader">#{tFile backup status}</th>
+	<th style="width: 200px" class="tabHeader">#{tImage backup status}</th>
+	<th style="width: 200px" class="#{class_prev}">#{tIP}</th>
+#{Actions_start}
+	<th style="width: 100px" class="tabHeaderRight">&nbsp;</td>
+#{Actions_end}
+</tr>
+#{rows}
+</table>
+<br />
+#{modify_clients}
+<br />
+<h3>#{tExtra clients}</h3>
+
+<table cellspacing="0" cellpadding="0">
+<tr>			
+	<th style="width: 150px" class="tabHeader">#{tHostname/IP}</th>
+	<th style="width: 200px" class="tabHeader">#{tOnline}</th>
+	<th style="width: 200px" class="tabHeaderRight">#{tActions}</th>
+</tr>
+#{extra_clients_rows}
+</table>
+
+<form action="#" onsubmit="addExtraClient(); return false;">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+<tr>
+<td>#{tHostname/IP}:</td>
+<td><input type="text" size="40" id="hostname" value=""/> </td>
+<td><input type="submit" value="#{tAdd}"/></td>
+</tr>
+</table>
+</form>
+<br />
+<h3>#{tInternet clients}</h3>
+<br />
+#{internet_client_added}
+#{tAdd additional internet clients}:
+<form action="#" onsubmit="addInternetClient(); return false;">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+<tr>
+<td>#{tClient name}:</td>
+<td><input type="text" size="40" id="clientname" value=""/> </td>
+<td><input type="submit" value="#{tAdd}"/></td>
+</tr>
+</table>
+</form>
+<h3>#{tServer identity}</h3>
+#{server_identity}
+<br>

@@ -49,6 +49,7 @@
 #include "MemorySettingsReader.h"
 #include "Database.h"
 #include "SQLiteFactory.h"
+#include "PipeThrottler.h"
 
 
 
@@ -87,6 +88,8 @@ CServer::CServer()
 	curr_postfilekey=0;
 	loglevel=LL_INFO;
 	logfile_a=false;
+
+	startup_complete=false;
 	
 	log_mutex=createMutex();
 	action_mutex=createMutex();
@@ -98,6 +101,8 @@ CServer::CServer()
 	rps_mutex=createMutex();
 	postfiles_mutex=createMutex();
 	param_mutex=createMutex();
+	startup_complete_mutex=createMutex();
+	startup_complete_cond=createCondition();
 }
 
 void CServer::setup(void)
@@ -115,6 +120,7 @@ void CServer::setup(void)
 
 void CServer::destroyAllDatabases(void)
 {
+	Log("Destroying all databases...", LL_DEBUG);
 	IScopedLock lock(db_mutex);
 
 	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
@@ -219,6 +225,8 @@ CServer::~CServer()
 	destroy(rps_mutex);
 	destroy(postfiles_mutex);
 	destroy(param_mutex);
+	destroy(startup_complete_mutex);
+	destroy(startup_complete_cond);
 #ifndef NO_SQLITE
 	CDatabase::destroyMutex();
 #endif
@@ -267,11 +275,11 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 #ifdef _WIN32
 		struct tm  timeinfo;
 		localtime_s(&timeinfo, &rawtime);
-		strftime (buffer,100,"%x %X: ",&timeinfo);
+		strftime (buffer,100,"%Y-%m-%d %X: ",&timeinfo);
 #else
 		struct tm *timeinfo;
 		timeinfo = localtime ( &rawtime );
-		strftime (buffer,100,"%x %X: ",timeinfo);
+		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
 #endif	
 
 
@@ -311,11 +319,11 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 #ifdef _WIN32
 		struct tm  timeinfo;
 		localtime_s(&timeinfo, &rawtime);
-		strftime (buffer,100,"%x %X: ",&timeinfo);
+		strftime (buffer,100,"%Y-%m-%d %X: ",&timeinfo);
 #else
 		struct tm *timeinfo;
 		timeinfo = localtime ( &rawtime );
-		strftime (buffer,100,"%x %X: ",timeinfo);
+		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
 #endif		
 
 		if( LogLevel==LL_ERROR )
@@ -721,6 +729,8 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
 		}
+		
+		Log("Created new database connection for "+database_iter->second.file, LL_DEBUG);
 
 		database_iter->second.tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
 
@@ -951,6 +961,11 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	}
 }
 
+IPipe *CServer::PipeFromSocket(SOCKET pSocket)
+{
+	return new CStreamPipe(pSocket);
+}
+
 void CServer::DisconnectStream(IPipe *pipe)
 {
 	CStreamPipe *sp=(CStreamPipe*)pipe;
@@ -1097,13 +1112,17 @@ IPipe *CServer::createMemoryPipe(void)
 #ifdef THREAD_BOOST
 void thread_helper_f(IThread *t)
 {
+#ifndef _DEBUG
 	__try
 	{
+#endif
 		(*t)();
+#ifndef _DEBUG
 	}
 	__except(CServer::WriteDump(GetExceptionInformation()))
 	{
 	}
+#endif
 }
 #else
 #ifndef _WIN32
@@ -1180,13 +1199,24 @@ void CServer::addRequest(void)
 
 IFile* CServer::openFile(std::string pFilename, int pMode)
 {
-	return openFile(widen(pFilename), pMode);
+	return openFile(ConvertToUnicode(pFilename), pMode);
 }
 
 IFile* CServer::openFile(std::wstring pFilename, int pMode)
 {
 	File *file=new File;
 	if(!file->Open(pFilename, pMode) )
+	{
+		delete file;
+		return NULL;
+	}
+	return file;
+}
+
+IFile* CServer::openFileFromHandle(void *handle)
+{
+	File *file=new File;
+	if(!file->Open(handle) )
 	{
 		delete file;
 		return NULL;
@@ -1421,11 +1451,15 @@ void CServer::setTemporaryDirectory(const std::wstring &dir)
 
 void CServer::registerDatabaseFactory(const std::string &pEngineName, IDatabaseFactory *factory)
 {
+	IScopedLock lock(db_mutex);
+
 	database_factories[pEngineName]=factory;
 }
 
 bool CServer::hasDatabaseFactory(const std::string &pEngineName)
 {
+	IScopedLock lock(db_mutex);
+
 	std::map<std::string, IDatabaseFactory*>::iterator it=database_factories.find(pEngineName);
 	return it!=database_factories.end();
 }
@@ -1446,4 +1480,25 @@ bool CServer::attachToDatabase(const std::string &pFile, const std::string &pNam
 	}
 
 	return true;
+}
+
+void CServer::waitForStartupComplete(void)
+{
+	IScopedLock lock(startup_complete_mutex);
+	if(!startup_complete)
+	{
+		startup_complete_cond->wait(&lock);
+	}
+}
+
+void CServer::startupComplete(void)
+{
+	IScopedLock lock(startup_complete_mutex);
+	startup_complete=true;
+	startup_complete_cond->notify_all();
+}
+
+IPipeThrottler* CServer::createPipeThrottler(size_t bps)
+{
+	return new PipeThrottler(bps);
 }

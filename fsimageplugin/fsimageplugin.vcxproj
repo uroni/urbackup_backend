@@ -168,7 +168,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\urbackup\sha2\sha2.c" />
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="filesystem.cpp" />
     <ClCompile Include="FSImageFactory.cpp" />
@@ -180,7 +180,7 @@
     <ClCompile Include="fs\unknown.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\urbackup\sha2\sha2.h" />
+    <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="filesystem.h" />
     <ClInclude Include="FSImageFactory.h" />
     <ClInclude Include="fs\ntfs_win.h" />

@@ -26,6 +26,13 @@ public:
 	virtual void shutdown(void);
 
 	virtual size_t getNumElements(void);
+
+	virtual void addThrottler(IPipeThrottler *throttler);
+	virtual void addOutgoingThrottler(IPipeThrottler *throttler);
+	virtual void addIncomingThrottler(IPipeThrottler *throttler);
+
+	virtual _i64 getTransferedBytes(void);
+	virtual void resetTransferedBytes(void);
 	
 private:
 	std::deque<std::string> queue;

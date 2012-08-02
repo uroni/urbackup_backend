@@ -30,6 +30,12 @@
     <ClCompile Include="pluginmgr.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="ZlibCompression.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ZlibDecompression.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AESDecryption.h">
@@ -51,6 +57,18 @@
       <Filter>Quelldateien</Filter>
     </ClInclude>
     <ClInclude Include="pluginmgr.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IZlibCompression.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IZlibDecompression.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ZlibCompression.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ZlibDecompression.h">
       <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>

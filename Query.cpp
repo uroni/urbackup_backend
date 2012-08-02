@@ -170,7 +170,10 @@ bool CQuery::Execute(int timeoutms)
 				{
 				  Server->Log("SQLITE: Long running query  Stmt: ["+stmt_str+"]", LL_ERROR);
 				}
-				Server->Log("SQLITE_BUSY in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_INFO);
+				else if(tries>=0)
+				{
+				    Server->Log("SQLITE_BUSY in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_INFO);
+				}
 			}
 		}
 		else if(err==SQLITE_LOCKED)
@@ -183,6 +186,13 @@ bool CQuery::Execute(int timeoutms)
 			{
 				Server->Log("DEADLOCK in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_ERROR);
 				Server->wait(1000);
+				if(timeoutms>=0)
+				{
+					timeoutms-=1000;
+
+					if(timeoutms<=0)
+						break;
+				}
 			}
 		}
 		err=sqlite3_step(ps);
@@ -404,6 +414,13 @@ db_results CQuery::Read(int *timeoutms)
 		else
 		{
 			Server->wait(1000);
+			if(timeoutms!=NULL && *timeoutms>=0)
+			{
+				*timeoutms-=1000;
+
+				if(*timeoutms<=0)
+					break;
+			}
 		}
 	}
 

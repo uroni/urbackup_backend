@@ -204,3 +204,17 @@ unsigned int CRData::getStreampos(void)
 {
 	return (unsigned int)streampos;
 }
+
+const char *CRData::getCurrentPtr(void)
+{
+	return &data[streampos];
+}
+
+bool CRData::incrementPtr(size_t amount)
+{
+	if((unsigned int)amount>getLeft())
+		return false;
+
+	streampos+=amount;
+	return true;
+}

@@ -29,6 +29,10 @@
 
 #include "pluginmgr.h"
 #include "FileServ.h"
+#include "IFileServFactory.h"
+#include "IFileServ.h"
+#include "../stringtools.h"
+#include <stdlib.h>
 
 IServer *Server=NULL;
 
@@ -43,6 +47,26 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	fileservpluginmgr=new CFileServPluginMgr;
 
 	Server->RegisterPluginThreadsafeModel( fileservpluginmgr, "fileserv");
+
+	std::string share_dir=Server->getServerParameter("fileserv_share_dir");
+	if(!share_dir.empty())
+	{
+		str_map params;
+		IFileServFactory *fileserv_fak=(IFileServFactory*)fileservpluginmgr->createPluginInstance(params);
+		unsigned short tcpport=43001;
+		unsigned short udpport=43002;
+
+		std::string s_tcpport=Server->getServerParameter("fileserv_tcpport");
+		if(!s_tcpport.empty())
+			tcpport=atoi(s_tcpport.c_str());
+		std::string s_udpport=Server->getServerParameter("fileserv_udpport");
+		if(!s_udpport.empty())
+			udpport=atoi(s_udpport.c_str());
+
+		IFileServ *fileserv=fileserv_fak->createFileServ(tcpport, udpport);
+		fileserv->shareDir(widen(ExtractFileName(share_dir)), widen(share_dir));
+		fileserv->addIdentity("");
+	}
 
 	Server->Log("Loaded -fileserv- plugin", LL_INFO);
 }

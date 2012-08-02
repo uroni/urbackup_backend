@@ -172,9 +172,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\md5.cpp" />
+    <ClCompile Include="..\urbackupcommon\adler32.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
     <ClCompile Include="bufmgr.cpp" />
     <ClCompile Include="CampusThread.cpp" />
     <ClCompile Include="CClientThread.cpp" />
+    <ClCompile Include="ChunkSendThread.cpp" />
     <ClCompile Include="CriticalSection.cpp" />
     <ClCompile Include="CTCPFileServ.cpp" />
     <ClCompile Include="CUDPThread.cpp" />
@@ -188,13 +192,15 @@
     <ClCompile Include="map_buffer.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
-    <ClCompile Include="tcpstack.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bitmask.h" />
+    <ClInclude Include="..\md5.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
     <ClInclude Include="bufmgr.h" />
     <ClInclude Include="CampusThread.h" />
     <ClInclude Include="CClientThread.h" />
+    <ClInclude Include="ChunkSendThread.h" />
+    <ClInclude Include="chunk_settings.h" />
     <ClInclude Include="CriticalSection.h" />
     <ClInclude Include="CTCPFileServ.h" />
     <ClInclude Include="CUDPThread.h" />
@@ -210,7 +216,6 @@
     <ClInclude Include="pluginmgr.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="socket_header.h" />
-    <ClInclude Include="tcpstack.h" />
     <ClInclude Include="types.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

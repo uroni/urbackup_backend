@@ -30,6 +30,7 @@
 #endif
 
 #include "utf8/utf8.h"
+#include "Interface/Types.h"
 
 
 using namespace std;
@@ -1492,6 +1493,16 @@ int watoi(std::wstring str)
 #endif
 }
 
+_i64 watoi64(std::wstring str)
+{
+#ifdef _WIN32
+	return _wtoi64(str.c_str());
+#else
+	return atoll(wnarrow(str).c_str());
+#endif
+}
+
+
 std::string trim(const std::string &str)
 {
 	size_t startpos = str.find_first_not_of(" \t");
@@ -1560,5 +1571,82 @@ std::wstring UnescapeHTML(const std::wstring &html)
 	ret=greplace(L"&gt;", L">", ret);
 	ret=greplace(L"&quot;", L"\"", ret);
 	ret=greplace(L"&#x27;", L"'", ret);
+	return ret;
+}
+
+std::string PrettyPrintBytes(_i64 bytes)
+{
+	if(bytes<1024)
+		return nconvert(bytes)+" bytes";
+
+	if(bytes<1024*1024)
+		return nconvert(bytes/1024.f)+" KB";
+
+	if(bytes<1024*1024*1024)
+		return nconvert(bytes/(1024.f*1024.f))+" MB";
+
+	if((float)bytes<1024.f*1024*1024*1024)
+		return nconvert(bytes/(1024.f*1024.f*1024.f))+" GB";
+
+	return nconvert(bytes/(1024.f*1024.f*1024.f*1024.f))+" TB";
+}
+
+std::string PrettyPrintSpeed(size_t bps)
+{
+	size_t bit_ps=bps*8;
+
+	if( bit_ps<1000)
+		return nconvert(bit_ps)+" Bit/s";
+
+	if( bit_ps<1000*1000)
+		return nconvert(bit_ps/1000.f)+" KBit/s";
+
+	if( bit_ps<1000*1000*1000)
+		return nconvert(bit_ps/(1000.f*1000.f))+" MBit/s";
+
+	return nconvert(bit_ps/(1000.f*1000.f*1000.f))+" GBit/s";
+}
+
+std::string PrettyPrintTime(unsigned int ms)
+{
+	std::string ret;
+
+	unsigned int c_s=1000;
+	unsigned int c_m=c_s*60;
+	unsigned int c_h=c_m*60;
+	unsigned int c_d=c_h*24;
+
+	if( ms>c_d)
+	{
+		unsigned int t=ms/c_d;
+		if(!ret.empty()) ret+=" ";
+		ret+=nconvert(t)+" days";
+		ms-=t*c_d;
+	}
+
+	if( ms>c_h)
+	{
+		unsigned int t=ms/c_h;
+		if(!ret.empty()) ret+=" ";
+		ret+=nconvert(t)+"h";
+		ms-=t*c_h;
+	}
+
+	if( ms>c_m)
+	{
+		unsigned int t=ms/c_m;
+		if(!ret.empty()) ret+=" ";
+		ret+=nconvert(t)+"m";
+		ms-=t*c_m;
+	}
+
+	if( ms>c_s)
+	{
+		unsigned int t=ms/c_s;
+		if(!ret.empty()) ret+=" ";
+		ret+=nconvert(t)+"s";
+		ms-=t*c_s;
+	}
+
 	return ret;
 }

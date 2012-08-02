@@ -48,58 +48,13 @@ CriticalSection logcs;
 #endif
 
 
-void Log(const char *pStr,...)
-{
-#ifndef LOG_OFF
-	va_list args;
-	va_start( args, pStr );
-	std::string tmpstr=pStr;
-	for(size_t i=0;i<tmpstr.size();++i)
-	{
-		if( i+1<tmpstr.size() && tmpstr[i]=='%')
-		{
-			std::string rep;
-			bool tr=false;
-			if(tmpstr[i+1]=='s' )
-			{
-				rep=va_arg( args, char*);
-				tr=true;
-			}
-			else if(tmpstr[i+1]=='f')
-			{
-				rep=nconvert((float)(va_arg( args, double)) );
-				tr=true;
-			}
-			else if(tmpstr[i+1]=='d')
-			{
-				rep=nconvert((float)(va_arg( args, double)) );
-				tr=true;
-			}
-			else if(tmpstr[i+1]=='i')
-			{
-				rep=nconvert((int)(va_arg( args, int)) );
-				tr=true;
-			}
-			else if(tmpstr[i+1]=='x')
-			{
-				rep=nconvert((int)(va_arg( args, int)) );
-				tr=true;
-			}
-			if(tr)
-			{
-				tmpstr.erase(i, 2);
-				tmpstr.insert(i, rep);
-				i+=rep.size();
-			}
-		}
-	}
-	
+void Log(const std::string &str, int loglevel)
+{	
 #ifdef LOG_SERVER
-	Server->Log(tmpstr, LL_DEBUG);
+	Server->Log("FileSrv: "+str, loglevel);
 #endif
 
 #ifdef LOG_CONSOLE
-
 	logcs.Enter();
 	std::cout << tmpstr << std::endl;
 	logcs.Leave();
@@ -109,6 +64,5 @@ void Log(const char *pStr,...)
 	logfile << tmpstr << "\r\n";
 	logfile.flush();
 	logcs.Leave();
-#endif
 #endif
 }

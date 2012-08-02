@@ -18,6 +18,7 @@ public:
 	~AESDecryption();
 
 	std::string decrypt(const std::string &data);
+	size_t decrypt(char *data, size_t data_size);
 
 private:
 	CryptoPP::SecByteBlock m_sbbKey;

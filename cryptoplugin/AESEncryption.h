@@ -18,6 +18,8 @@ public:
 	~AESEncryption();
 
 	std::string encrypt(const std::string &data);
+	virtual std::string encrypt(char *data, size_t data_size);
+	virtual std::string encrypt(const char *data, size_t data_size);
 
 private:
 

@@ -45,11 +45,11 @@
     <ClCompile Include="fs\unknown.cpp">
       <Filter>fs</Filter>
     </ClCompile>
-    <ClCompile Include="..\urbackup\sha2\sha2.c">
-      <Filter>sha2</Filter>
-    </ClCompile>
     <ClCompile Include="fs\ntfs_win.cpp">
       <Filter>fs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
+      <Filter>sha2</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -80,11 +80,11 @@
     <ClInclude Include="fs\unknown.h">
       <Filter>fs</Filter>
     </ClInclude>
-    <ClInclude Include="..\urbackup\sha2\sha2.h">
-      <Filter>sha2</Filter>
-    </ClInclude>
     <ClInclude Include="fs\ntfs_win.h">
       <Filter>fs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
+      <Filter>sha2</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

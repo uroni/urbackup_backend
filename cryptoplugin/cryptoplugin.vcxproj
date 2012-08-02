@@ -61,9 +61,9 @@
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)$(Configuration)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\</IntDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
@@ -120,9 +120,8 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalOptions>/LTCG %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>cryptlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\Developement\Cryptopp561\Win32\Output\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>D:\Developement\Cryptopp561\x64\Output\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
     </Link>
@@ -178,6 +177,8 @@
     <ClCompile Include="CryptoFactory.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
+    <ClCompile Include="ZlibCompression.cpp" />
+    <ClCompile Include="ZlibDecompression.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AESDecryption.h" />
@@ -186,7 +187,11 @@
     <ClInclude Include="IAESDecryption.h" />
     <ClInclude Include="IAESEncryption.h" />
     <ClInclude Include="ICryptoFactory.h" />
+    <ClInclude Include="IZlibCompression.h" />
+    <ClInclude Include="IZlibDecompression.h" />
     <ClInclude Include="pluginmgr.h" />
+    <ClInclude Include="ZlibCompression.h" />
+    <ClInclude Include="ZlibDecompression.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -5,6 +5,8 @@
 #include <vector>
 #include <map>
 
+#include "Interface/Types.h"
+
 std::string getafter(const std::string &str,const std::string &data);
 std::string getafterinc(const std::string &str,const std::string &data);
 std::wstring getafter(const std::wstring &str,const std::wstring &data);
@@ -93,6 +95,7 @@ std::string base64_encode(unsigned char const* , unsigned int len);
 std::string base64_decode(std::string const& s);
 bool CheckForIllegalChars(const std::string &str);
 int watoi(std::wstring str);
+_i64 watoi64(std::wstring str);
 std::wstring strlower(const std::wstring &str);
 std::string trim(const std::string &str);
 std::wstring trim(const std::wstring &str);
@@ -100,4 +103,7 @@ void replaceNonAlphaNumeric(std::string &str, char rch);
 std::string conv_filename(std::string fn);
 std::string UnescapeHTML(const std::string &html);
 std::wstring UnescapeHTML(const std::wstring &html);
+std::string PrettyPrintBytes(_i64 bytes);
+std::string PrettyPrintSpeed(size_t bps);
+std::string PrettyPrintTime(unsigned int ms);
 #endif

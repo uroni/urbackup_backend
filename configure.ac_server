@@ -2,10 +2,22 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-server], [0.26.1], [martin@urbackup.org])
+AC_INIT([urbackup-server], [1.0], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
+AC_ARG_WITH([pychart],
+     AS_HELP_STRING([--with-pychart], [Do use python to gaphically display statistics in the webinterface. Otherwise google chart is used.]))
+AC_ARG_WITH([mail],
+     AS_HELP_STRING([--without-mail], [Disables server mailing features. Use this to remove the dependency on libcurl.]))
+AC_ARG_WITH([crypto],
+     AS_HELP_STRING([--without-crypto], [Disables cryptography functions. Internet mode will not be available. Use this to remove the dependency on libcrypto++.]))
+AC_ARG_ENABLE([install_initd],
+     AS_HELP_STRING([--enable-install_initd], [Enables installing of supplied init.d file into /etc/init.d]))
+AC_ARG_ENABLE([packaging],
+     AS_HELP_STRING([--enable-packaging], [Will be installed for packaging.]))
+
+    
 
 # Checks for programs.
 AC_PROG_CXX
@@ -52,6 +64,32 @@ AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
 AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
 AC_SUBST([DLOPEN_LIBS])
 
-AC_CONFIG_SUBDIRS([pychart urlplugin downloadplugin fsimageplugin httpserver urbackup])
+P_SUBDIRS="downloadplugin fsimageplugin httpserver urbackupserver"
+
+AS_IF([test "x$with_mail" != "xno"],
+    [P_SUBDIRS="urlplugin $P_SUBDIRS"])
+AS_IF([test "x$with_crypto" != "xno"],
+    [P_SUBDIRS="cryptoplugin $P_SUBDIRS"])
+AS_IF([test "x$with_pychart" = "xyes"],
+    [P_SUBDIRS="pychart $P_SUBDIRS"])
+
+AC_SUBST([P_SUBDIRS])
+
+if test "x$with_pychart" = "xyes"; then
+    AC_CONFIG_SUBDIRS([pychart])
+fi
+
+if test "x$with_crypto" != "xno"; then
+    AC_CONFIG_SUBDIRS([cryptoplugin])
+fi
+
+if test "x$with_mail" != "xno"; then
+    AC_CONFIG_SUBDIRS([urlplugin])
+fi
+
+AM_CONDITIONAL(PACKAGING, test "x$enable_packaging" = xyes)
+AM_CONDITIONAL(INSTALL_INITD, test "x$enable_install_initd" = xyes)
+
+AC_CONFIG_SUBDIRS([downloadplugin fsimageplugin httpserver urbackupserver])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

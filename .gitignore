@@ -118,3 +118,21 @@ urbackup/db_stat.exe
 urbackup/dbsql.exe
 urbackup/backup_server_old_sqlite.db*
 urbackup/backup_server_settings.db*
+UrBackupBackend.opensdf
+UrBackupBackend.sdf
+UrBackupBackend.suo
+urbackupclient/Debug/*
+urbackupserver/Debug/*
+urbackupclient/x64/*
+urbackup/backup_server.db-mj7A77A7934
+urbackupserver/x64/*
+urbackup/backup_client.db
+urbackup/backup_server.db*
+debug.log
+urbackupclient/Release Server 2003/*
+urbackupclient/Release WinXP/*
+urbackupclient/Release/*
+*.orig
+urbackup/boost_python-vc100-gd-1_44.dll*
+urbackupserver/Release Server PreVista/*
+urbackupserver/Release Server/*

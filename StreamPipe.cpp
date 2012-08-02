@@ -23,8 +23,11 @@
 #ifndef _WIN32
 #include <memory.h>
 #endif
+#include "Server.h"
+#include "Interface/PipeThrottler.h"
 
 CStreamPipe::CStreamPipe( SOCKET pSocket)
+	: transfered_bytes(0)
 {
 	s=pSocket;
 	has_error=false;
@@ -37,6 +40,8 @@ CStreamPipe::~CStreamPipe()
 
 size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 {
+	doThrottle(bsize, false);
+
 	fd_set conn;
 	FD_ZERO(&conn);
 	FD_SET(s, &conn);
@@ -74,6 +79,8 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 
 bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 {
+	doThrottle(bsize, true);
+
 	fd_set conn;
 	FD_ZERO(&conn);
 	FD_SET(s, &conn);
@@ -109,7 +116,10 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 	}
 	else
 	{
-		has_error=true;
+		if(rc<0)
+		{
+			has_error=true;
+		}
 		return false;
 	}
 
@@ -163,7 +173,10 @@ bool CStreamPipe::isWritable(int timeoutms)
 		return true;
 	else
 	{
-		has_error=true;
+		if(rc<0)
+		{
+			has_error=true;
+		}
 		return false;
 	}
 }
@@ -188,7 +201,10 @@ bool CStreamPipe::isReadable(int timeoutms)
 		return true;
 	else
 	{
-		has_error=true;
+		if(rc<0)
+		{
+			has_error=true;
+		}
 		return false;
 	}
 }
@@ -210,4 +226,50 @@ void CStreamPipe::shutdown(void)
 #else
 	::shutdown(s, SHUT_RDWR);
 #endif
+}
+
+void CStreamPipe::doThrottle(size_t new_bytes, bool outgoing)
+{
+	transfered_bytes+=new_bytes;
+
+	if(outgoing)
+	{
+		for(size_t i=0;i<outgoing_throttlers.size();++i)
+		{
+			outgoing_throttlers[i]->addBytes(new_bytes);
+		}
+	}
+	else
+	{
+		for(size_t i=0;i<incoming_throttlers.size();++i)
+		{
+			incoming_throttlers[i]->addBytes(new_bytes);
+		}
+	}
+}
+
+_i64 CStreamPipe::getTransferedBytes(void)
+{
+	return transfered_bytes;
+}
+
+void CStreamPipe::resetTransferedBytes(void)
+{
+	transfered_bytes=0;
+}
+
+void CStreamPipe::addThrottler(IPipeThrottler *throttler)
+{
+	incoming_throttlers.push_back(throttler);
+	outgoing_throttlers.push_back(throttler);
+}
+
+void CStreamPipe::addOutgoingThrottler(IPipeThrottler *throttler)
+{
+	outgoing_throttlers.push_back(throttler);
+}
+
+void CStreamPipe::addIncomingThrottler(IPipeThrottler *throttler)
+{
+	incoming_throttlers.push_back(throttler);
 }

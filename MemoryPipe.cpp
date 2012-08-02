@@ -184,3 +184,27 @@ size_t CMemoryPipe::getNumElements(void)
 void CMemoryPipe::shutdown(void)
 {
 }
+
+void CMemoryPipe::addThrottler(IPipeThrottler *throttler)
+{
+	
+}
+
+void CMemoryPipe::addOutgoingThrottler(IPipeThrottler *throttler)
+{
+	
+}
+
+void CMemoryPipe::addIncomingThrottler(IPipeThrottler *throttler)
+{
+	
+}
+
+_i64 CMemoryPipe::getTransferedBytes(void)
+{
+	return 0;
+}
+
+void CMemoryPipe::resetTransferedBytes(void)
+{
+}

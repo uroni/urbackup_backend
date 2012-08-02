@@ -1,0 +1,24 @@
+<td class="tabFLeft">
+<input type="hidden" id="archive_next_#{id}" value="#{archive_next}" />
+<input type="hidden" id="archive_every_#{id}" value="#{archive_every_i}" />
+<input type="hidden" id="archive_every_unit_#{id}" value="#{archive_every_unit}" />
+<span id="archive_every_str_#{id}">#{archive_every}</span>
+</td>
+<td class="tabFLeft">
+<input type="hidden" id="archive_for_unit_#{id}" value="#{archive_for_unit}" />
+<input type="hidden" id="archive_for_#{id}" value="#{archive_for_i}" />
+<span id="archive_for_str_#{id}">#{archive_for}</span>
+</td>
+<td class="tabFLeft">
+<input type="hidden" id="archive_window_#{id}" value="#{archive_window}" />
+<span id="archive_window_str_#{id}">#{archive_window}</span>
+</span>
+<td class="tabFLeft">
+<input type="hidden" id="archive_backup_type_#{id}" value="#{archive_backup_type}" /><span id="archive_backup_type_str_#{id}">#{archive_backup_type_str}</span>
+</td>
+#{next_start}
+<td class="tabFLeft">
+#{archive_timeleft}
+</td>
+#{next_end}
+<td class="tabFRight"><input type="button" value="#{tDelete}" onclick="deleteArchiveItem(#{id})"/>

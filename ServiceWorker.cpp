@@ -76,9 +76,9 @@ void CServiceWorker::operator()(void)
 					IScopedLock lock(mutex);
 					if(new_clients.empty() && !do_stop)
 					{
-						Server->Log(name+": Sleeping..."+nconvert(Server->getTimeMS()), LL_DEBUG);
+						//Server->Log(name+": Sleeping..."+nconvert(Server->getTimeMS()), LL_DEBUG);
 						cond->wait(&lock);
-						Server->Log(name+": Waking up..."+nconvert(Server->getTimeMS()), LL_DEBUG);
+						//Server->Log(name+": Waking up..."+nconvert(Server->getTimeMS()), LL_DEBUG);
 						continue;
 					}
 					else
@@ -95,9 +95,12 @@ void CServiceWorker::operator()(void)
 				if( b==false )
 				{
 					IScopedLock lock(mutex);
-					Server->Log(name+": Removing user"+nconvert(Server->getTimeMS()), LL_DEBUG);
-					service->destroyClient( clients[i].first );
-					delete clients[i].second;
+					//Server->Log(name+": Removing user"+nconvert(Server->getTimeMS()), LL_DEBUG);
+					if(clients[i].first->closeSocket())
+					{
+						delete clients[i].second;
+					}
+					service->destroyClient( clients[i].first );					
 					clients.erase( clients.begin()+i );
 					IScopedLock lock2(nc_mutex);
 					--nClients;
@@ -133,7 +136,7 @@ void CServiceWorker::operator()(void)
 				SOCKET s=clients[i].second->getSocket();
 				if( FD_ISSET(s,&fdset) )
 				{
-					Server->Log("Incoming data for client..", LL_DEBUG);
+					//Server->Log("Incoming data for client..", LL_DEBUG);
 					clients[i].first->ReceivePackets();					
 				}
 			}

@@ -14,4 +14,16 @@ public:
 	}
 };
 
+class ObjectScope
+{
+public:
+	ObjectScope(IObject *obj)
+		: obj(obj) {}
+	~ObjectScope(void){
+		obj->Remove();
+	}
+private:
+	IObject *obj;
+};
+
 #endif //IOBJECT_H

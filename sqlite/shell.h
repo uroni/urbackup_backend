@@ -5,12 +5,18 @@ struct previous_mode_data {
   int colWidth[100];
 };
 
+/*
+** An pointer to an instance of this structure is passed from
+** the main program to the callback.  This is used to communicate
+** state and mode information.
+*/
 struct callback_data {
   sqlite3 *db;           /* The database */
   int echoOn;            /* True to echo input commands */
   int statsOn;           /* True to display memory stats before each finalize */
   int cnt;               /* Number of records displayed so far */
   FILE *out;             /* Write results here */
+  int nErr;              /* Number of errors seen */
   int mode;              /* An output mode setting */
   int writableSchema;    /* True if PRAGMA writable_schema=ON */
   int showHeader;        /* True to show column names in List or Column mode */
@@ -30,4 +36,4 @@ struct callback_data {
   FILE *pLog;            /* Write log output here */
 };
 
-int do_meta_command(char *zLine, struct callback_data *p);
+int do_meta_command_r(char *zLine, struct callback_data *p);

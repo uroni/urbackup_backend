@@ -17,6 +17,8 @@ public:
 	void setPause(bool b);
 	bool getPause(void);
 
+	virtual void runClient(IPipe *cp);
+
 	static bool isPause(void);
 
 	static void init_mutex(void);

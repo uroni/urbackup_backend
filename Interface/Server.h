@@ -27,6 +27,7 @@ class IThreadPool;
 class ICondition;
 class IScopedLock;
 class IDatabaseFactory;
+class IPipeThrottler;
 
 struct SPostfile
 {
@@ -82,6 +83,7 @@ public:
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData)=0;
+	virtual IPipeThrottler* createPipeThrottler(size_t bps)=0;
 
 	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite")=0;
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)=0;
@@ -105,6 +107,7 @@ public:
 
 	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort)=0;
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms=0)=0;
+	virtual IPipe *PipeFromSocket(SOCKET pSocket)=0;
 	virtual void DisconnectStream(IPipe *pipe)=0;
 
 	virtual bool RegisterPluginPerThreadModel(IPluginMgr *pPluginMgr, std::string pName)=0;
@@ -119,6 +122,7 @@ public:
 
 	virtual IFile* openFile(std::string pFilename, int pMode=0)=0;
 	virtual IFile* openFile(std::wstring pFilename, int pMode=0)=0;
+	virtual IFile* openFileFromHandle(void *handle)=0;
 	virtual IFile* openTemporaryFile(void)=0;
 	virtual IFile* openMemoryFile(void)=0;
 	virtual bool deleteFile(std::string pFilename)=0;
@@ -137,6 +141,8 @@ public:
 	virtual bool hasDatabaseFactory(const std::string &pEngineName)=0;
 
 	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier)=0;
+
+	virtual void waitForStartupComplete(void)=0;
 };
 
 #ifndef NO_INTERFACE
