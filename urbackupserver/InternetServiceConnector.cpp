@@ -312,9 +312,13 @@ void InternetServiceConnector::ReceivePackets(void)
 
 						is_connected=true;
 
-						IScopedLock lock(mutex);
-						client_data[clientname].last_seen=Server->getTimeMS();
 						
+						{
+							IScopedLock lock(mutex);
+							client_data[clientname].last_seen=Server->getTimeMS();
+						}
+						
+						IScopedLock lock(local_mutex);
 						connection_done_cond->notify_all();
 						connection_done_cond=NULL;
 					}
@@ -362,6 +366,8 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 
 			if(isc==NULL)
 				continue;
+				
+			lock.relock(NULL);
 
 			ICondition *cond_ok=Server->createCondition();
 			ICondition *cond_stop=Server->createCondition();
@@ -374,8 +380,8 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 					rtime=0;
 
 				if(rtime<100) rtime=100;
-
-				cond_ok->wait(&lock, rtime);
+				
+				isc->localWait(cond_ok, rtime);
 				
 				if(!isc->isConnected())
 				{
@@ -537,4 +543,10 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 bool InternetServiceConnector::hasTimeout(void)
 {
 	return has_timeout;
+}
+
+void InternetServiceConnector::localWait(ICondition *cond, int timems)
+{
+	IScopedLock lock(local_mutex);
+	cond->wait(&lock, timems);
 }

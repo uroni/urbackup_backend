@@ -63,6 +63,8 @@ public:
 	virtual bool closeSocket(void);
 
 	IPipe *getISPipe(void);
+	
+	void localWait(ICondition *cond, int timems);
 private:
 
 	void cleanup_pipes(void);

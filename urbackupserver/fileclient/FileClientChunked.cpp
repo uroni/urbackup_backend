@@ -433,6 +433,11 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 		chunk_start=block_start;
 		Server->Log("Chunk is in new block", LL_DEBUG);
 	}
+	else
+	{
+		new_block=false;
+	}
+	
 	if(chunk_start!=new_chunk_start)
 	{
 		m_file->Seek(chunk_start);
