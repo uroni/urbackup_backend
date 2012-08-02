@@ -1421,6 +1421,7 @@ void IndexThread::execute_postbackup_hook(void)
 	pid1 = fork();
 	if( pid1==0 )
 	{
+		setsid();
 		pid_t pid2;
 		pid2 = fork();
 		if(pid2==0)
