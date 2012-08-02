@@ -6,6 +6,8 @@
 #include <windows.h>
 #include <WinBase.h>
 #define MSG_NOSIGNAL 0
+#else
+#define HANDLE int
 #endif
 
 #include <deque>

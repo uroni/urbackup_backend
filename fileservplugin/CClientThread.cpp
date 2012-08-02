@@ -33,7 +33,7 @@
 #include "ChunkSendThread.h"
 
 #include <algorithm>
-
+#include <memory.h>
 
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
@@ -166,7 +166,7 @@ void CClientThread::EnableNagle(void)
 	{
 		once=false;
 		int opt=1;
-		int err=setsockopt(mSocket, IPPROTO_TCP, TCP_CORK, (char*)&opt, sizeof(int) );
+		int err=setsockopt(int_socket, IPPROTO_TCP, TCP_CORK, (char*)&opt, sizeof(int) );
 		if( err==SOCKET_ERROR )
 		{
 			Log("Error: Setting TCP_CORK failed. errno: "+nconvert(errno), LL_WARNING);
@@ -655,7 +655,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					size_t count=(std::max)((size_t)s_bsize, (size_t)(filesize-foffset));
 					if( clientpipe==NULL && ( id==ID_GET_FILE || id==ID_GET_FILE_RESUME ) )
 					{
-						sendfile64(mSocket, hFile, &foffset, count);
+						sendfile64(int_socket, hFile, &foffset, count);
 					}
 					else
 					{
@@ -665,7 +665,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 							rc=SendInt(buf, rc);
 							if(rc==SOCKET_ERROR)
 							{
-								LOG("Error: Sending data failed");
+								Log("Error: Sending data failed");
 								CloseHandle(hFile);
 								return false;
 							}
@@ -1062,7 +1062,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
-		hFile=NULL;
+		hFile=(HANDLE)NULL;
 #ifdef CHECK_BASE_PATH
 		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
 		if(!isDirectory(basePath))
@@ -1094,10 +1094,17 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	sendfilepart=0;
 	sent_bytes=0;
 
+#ifdef _WIN32
 	LARGE_INTEGER filesize;
 	GetFileSizeEx(hFile, &filesize);
 
 	curr_filesize=filesize.QuadPart;
+#else
+	struct stat64 stat_buf;
+	fstat64(hFile, &stat_buf);
+	
+	curr_filesize=stat_buf.st_size;
+#endif
 
 	next_checkpoint=start_offset+c_checkpoint_dist;
 	if(next_checkpoint>curr_filesize)
@@ -1106,7 +1113,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	CWData sdata;
 	sdata.addUChar(ID_FILESIZE);
-	sdata.addUInt64(filesize.QuadPart);
+	sdata.addUInt64(curr_filesize);
 	SendInt(sdata.getDataPtr(), sdata.getDataSize());
 
 	if(mutex==NULL)
@@ -1119,7 +1126,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	if(chunk_send_thread_ticket==ILLEGAL_THREADPOOL_TICKET)
 	{
-		IFile * tf=Server->openFileFromHandle(hFile);
+		IFile * tf=Server->openFileFromHandle((void*)hFile);
 		if(tf==NULL)
 		{
 			Log("Could not open file from handle", LL_ERROR);
@@ -1130,14 +1137,14 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	else
 	{
 		IScopedLock lock(mutex);
-		update_file=Server->openFileFromHandle(hFile);
+		update_file=Server->openFileFromHandle((void*)hFile);
 		if(update_file==NULL)
 		{
 			Log("Could not open update file from handle", LL_ERROR);
 		}
 		cond->notify_all();
 	}
-	hFile=NULL;
+	hFile=(HANDLE)NULL;
 
 	return true;
 }

@@ -90,6 +90,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				if(parent->SendInt(chunk_buf, off+r)==SOCKET_ERROR)
 					return false;
 
+				if( FileServ::isPause() ) Sleep(500);
+
 				off=0;
 			}
 
@@ -104,8 +106,11 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		*chunk_buf=ID_BLOCK_HASH;
 		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
+
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
 			return false;
+
+		if( FileServ::isPause() ) Sleep(500);
 
 		return true;
 	}
@@ -150,6 +155,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 					if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
 						return false;
 
+					if( FileServ::isPause() ) Sleep(500);
+
 					memcpy(cptr-c_chunk_padding, tmp_backup, c_chunk_padding);
 				}
 
@@ -173,11 +180,15 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		if(parent->SendInt(chunk_buf, read_total+1+sizeof(_i64)+sizeof(_u32))==SOCKET_ERROR)
 			return false;
 
+		if( FileServ::isPause() ) Sleep(500);
+
 		*chunk_buf=ID_BLOCK_HASH;
 		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
 			return false;
+
+		if( FileServ::isPause() ) Sleep(500);
 	}
 	else if(!sent_update)
 	{
@@ -185,6 +196,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64))==SOCKET_ERROR)
 			return false;
+
+		if( FileServ::isPause() ) Sleep(500);
 	}
 	else
 	{
@@ -193,6 +206,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
 			return false;
+
+		if( FileServ::isPause() ) Sleep(500);
 	}
 
 	return true;
