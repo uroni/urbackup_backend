@@ -4,6 +4,8 @@
 #include "log.h"
 #include "../stringtools.h"
 #include "FileServ.h"
+#include "socket_header.h"
+#include <memory.h>
 
 #include "../Interface/File.h"
 #include "../Interface/Server.h"
