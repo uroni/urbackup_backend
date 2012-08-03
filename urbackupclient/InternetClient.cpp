@@ -105,7 +105,7 @@ void InternetClient::resetAuthErr(void)
 void InternetClient::operator()(void)
 {
 	Server->waitForStartupComplete();
-	Server->wait(3000);
+	Server->wait(60000);
 	doUpdateSettings();
 	while(true)
 	{
@@ -115,7 +115,7 @@ void InternetClient::operator()(void)
 			doUpdateSettings();
 			update_settings=false;
 		}
-		if(Server->getTimeMS()-last_lan_connection>ic_lan_timeout)
+		if(last_lan_connection==0 || Server->getTimeMS()-last_lan_connection>ic_lan_timeout)
 		{
 			if(!connected)
 			{
