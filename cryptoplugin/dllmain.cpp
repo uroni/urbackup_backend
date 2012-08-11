@@ -21,6 +21,8 @@
 #define DLLEXPORT extern "C" __declspec (dllexport)
 #else
 #define DLLEXPORT extern "C"
+#define _exit exit
+#include <unistd.h>
 #endif
 
 

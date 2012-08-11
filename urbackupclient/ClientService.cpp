@@ -104,6 +104,11 @@ void ClientConnector::init_mutex(void)
 	}
 }
 
+ClientConnector::ClientConnector(void)
+{
+	mempipe=NULL;
+}
+
 bool ClientConnector::wantReceive(void)
 {
 	return want_receive;
@@ -116,7 +121,10 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	state=CCSTATE_NORMAL;
 	image_inf.thread_action=TA_NONE;
 	image_inf.image_thread=NULL;
-	mempipe=Server->createMemoryPipe();
+	if(mempipe==NULL)
+	{
+		mempipe=Server->createMemoryPipe();
+	}
 	lasttime=Server->getTimeMS();
 	do_quit=false;
 	is_channel=false;
@@ -125,51 +133,62 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	file_version=1;
 	internet_conn=false;
 	tcpstack.setAddChecksum(false);
+	last_update_time=lasttime;
 }
 
 ClientConnector::~ClientConnector(void)
 {
-	mempipe->Write("exit");
+	if(mempipe!=NULL)
+	{
+		Server->destroy(mempipe);
+	}
 }
 
 bool ClientConnector::Run(void)
 {
 	if(do_quit)
 	{
-		if(is_channel)
+		if(state!=CCSTATE_START_FILEBACKUP && state!=CCSTATE_SHADOWCOPY && state!=CCSTATE_WAIT_FOR_CONTRACTORS)
 		{
-			IScopedLock lock(backup_mutex);
-			if(channel_pipe.pipe==pipe)
+			if(is_channel)
 			{
-				channel_pipe=SChannel();
-			}
-			for(size_t i=0;i<channel_pipes.size();++i)
-			{
-				if(channel_pipes[i].pipe==pipe)
+				IScopedLock lock(backup_mutex);
+				if(channel_pipe.pipe==pipe)
 				{
-					channel_pipes.erase(channel_pipes.begin()+i);
-					channel_capa.erase(channel_capa.begin()+i);
-					break;
+					channel_pipe=SChannel();
+				}
+				for(size_t i=0;i<channel_pipes.size();++i)
+				{
+					if(channel_pipes[i].pipe==pipe)
+					{
+						channel_pipes.erase(channel_pipes.begin()+i);
+						channel_capa.erase(channel_capa.begin()+i);
+						break;
+					}
+				}
+				for(size_t i=0;i<channel_ping.size();++i)
+				{
+					if(channel_ping[i]==pipe)
+					{
+						channel_ping.erase(channel_ping.begin()+i);
+						break;
+					}
 				}
 			}
-			for(size_t i=0;i<channel_ping.size();++i)
+			if(waitForThread())
 			{
-				if(channel_ping[i]==pipe)
-				{
-					channel_ping.erase(channel_ping.begin()+i);
-					break;
-				}
+				Server->wait(10);
+				do_quit=true;
+				return true;
 			}
+			delete image_inf.image_thread;
+			image_inf.image_thread=NULL;
+			return false;
 		}
-		if(waitForThread())
+		else
 		{
-			Server->wait(10);
-			do_quit=true;
-			return true;
+			want_receive=false;
 		}
-		delete image_inf.image_thread;
-		image_inf.image_thread=NULL;
-		return false;
 	}
 
 	switch(state)
@@ -191,8 +210,9 @@ bool ClientConnector::Run(void)
 			std::string msg;
 			mempipe->Read(&msg, 0);
 			if(msg=="exit")
-			{
-				mempipe->Write(msg);
+			{
+				mempipe->Write("exit");
+				mempipe=Server->createMemoryPipe();
 				if(waitForThread())
 				{
 					do_quit=true;
@@ -205,12 +225,16 @@ bool ClientConnector::Run(void)
 			}
 			else if(msg=="done")
 			{
+				mempipe->Write("exit");
+				mempipe=Server->createMemoryPipe();
 				tcpstack.Send(pipe, "DONE");
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
 			}
 			else if(!msg.empty())
 			{
+				mempipe->Write("exit");
+				mempipe=Server->createMemoryPipe();
 				tcpstack.Send(pipe, msg);
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
@@ -230,7 +254,8 @@ bool ClientConnector::Run(void)
 			mempipe->Read(&msg, 0);
 			if(msg=="exit")
 			{
-				mempipe->Write(msg);
+				mempipe->Write("exit");
+				mempipe=Server->createMemoryPipe();
 				if(waitForThread())
 				{
 					do_quit=true;
@@ -240,12 +265,16 @@ bool ClientConnector::Run(void)
 			}
 			else if(msg.find("done")==0)
 			{
+				mempipe->Write("exit");
+				mempipe=Server->createMemoryPipe();
 				tcpstack.Send(pipe, "DONE");
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
 			}
 			else if(msg.find("failed")==0)
 			{
+				mempipe->Write("exit");
+				mempipe=Server->createMemoryPipe();
 				tcpstack.Send(pipe, "FAILED");
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;

@@ -164,10 +164,13 @@ void InternetClient::doUpdateSettings(void)
 		return;
 
 	std::string internet_mode_enabled;
-	if(!settings->getValue("internet_mode_enabled", &internet_mode_enabled) || internet_mode_enabled=="false" )
+	if( !settings->getValue("internet_mode_enabled", &internet_mode_enabled) || internet_mode_enabled=="false" )
 	{
-		Server->destroy(settings);
-		return;
+		if( !settings->getValue("internet_mode_enabled_def", &internet_mode_enabled) || internet_mode_enabled=="false" )
+		{
+			Server->destroy(settings);
+			return;
+		}
 	}
 
 	std::string server_name;
@@ -206,6 +209,7 @@ void InternetClient::doUpdateSettings(void)
 		if(tmp=="false")
 			server_settings.internet_encrypt=false;
 	}
+	Server->destroy(settings);
 }
 
 bool InternetClient::tryToConnect(IScopedLock *lock)
