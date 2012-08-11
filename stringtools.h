@@ -70,12 +70,12 @@ bool next(const std::wstring &pData, const size_t & doff, const std::wstring &pS
 char getRandomChar(void);
 std::string getRandomNumber(void);
 void transformHTML(std::string &str);
-void EscapeSQLString(std::string &pStr);
-void EscapeSQLString(std::wstring &pStr);
+std::string EscapeSQLString(const std::string &pStr);
+std::wstring EscapeSQLString(const std::wstring &pStr);
 void EscapeCh(std::string &pStr, char ch='\\');
 void EscapeCh(std::wstring &pStr, wchar_t ch);
-std::string UnescapeSQLString(std::string pStr);
-std::wstring UnescapeSQLString(std::wstring pStr);
+std::string UnescapeSQLString(const std::string &pStr);
+std::wstring UnescapeSQLString(const std::wstring &pStr);
 void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap);
 int round(float f);
 std::string FormatTime(int timeins);

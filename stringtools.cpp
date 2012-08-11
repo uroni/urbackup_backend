@@ -1026,28 +1026,38 @@ void transformHTML(std::string &str)
 	}
 }
 
-void EscapeSQLString(std::wstring &pStr)
+std::wstring EscapeSQLString(const std::wstring &pStr)
 {
+	std::wstring ret;
 	for(size_t i=0;i<pStr.size();++i)
 	{
 		if(pStr[i]=='\'')
 		{
-			pStr.insert(i,L"'");
-			++i;
+			ret+=L"''";
+		}
+		else
+		{
+			ret+=pStr[i];
 		}
 	}
+	return ret;
 }
 
-void EscapeSQLString(std::string &pStr)
+std::string EscapeSQLString(const std::string &pStr)
 {
+	std::string ret;
 	for(size_t i=0;i<pStr.size();++i)
 	{
 		if(pStr[i]=='\'')
 		{
-			pStr.insert(i,"'");
-			++i;
+			ret+="''";
+		}
+		else
+		{
+			ret+=pStr[i];
 		}
 	}
+	return ret;
 }
 
 void EscapeCh(std::string &pStr, char ch)
@@ -1078,24 +1088,40 @@ void EscapeCh(std::wstring &pStr, wchar_t ch)
 	}
 }
 
-std::string UnescapeSQLString(std::string pStr)
+std::string UnescapeSQLString(const std::string &pStr)
 {
+	std::string ret;
 	for(size_t i=0;i+1<pStr.size();++i)
 	{
 		if( pStr[i]=='\'' && pStr[i+1]=='\'' )
-			pStr.erase(i,1);
+		{
+			ret+="'";
+			++i;
+		}
+		else
+		{
+			ret+=pStr[i];
+		}
 	}
-	return pStr;
+	return ret;
 }
 
-std::wstring UnescapeSQLString(std::wstring pStr)
+std::wstring UnescapeSQLString(const std::wstring &pStr)
 {
+	std::wstring ret;
 	for(size_t i=0;i+1<pStr.size();++i)
 	{
 		if( pStr[i]=='\'' && pStr[i+1]=='\'' )
-			pStr.erase(i,1);
+		{
+			ret+=L"'";
+			++i;
+		}
+		else
+		{
+			ret+=pStr[i];
+		}
 	}
-	return pStr;
+	return ret;
 }
 
 wstring htmldecode(string str, bool html, char xc='%');
@@ -1117,7 +1143,7 @@ void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> 
 		{
 			pos=0;
 			std::wstring wv=htmldecode(value, false);
-			EscapeSQLString(wv);
+			wv=EscapeSQLString(wv);
 			pMap->insert( std::pair<std::wstring, std::wstring>(key,wv) );
 			key.clear(); value.clear();
 		}
@@ -1134,7 +1160,7 @@ void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> 
 	if( value.size()>0 || key.size()>0 )
 	{
 		std::wstring wv=htmldecode(value, false);
-		EscapeSQLString(wv);
+		wv=EscapeSQLString(wv);
 		pMap->insert( std::pair<std::wstring, std::wstring>(key,wv) );
 	}
 }
@@ -1240,6 +1266,7 @@ std::string bytesToHex(const unsigned char *b, size_t bsize)
 
 wstring htmldecode(string str, bool html, char xc)
 {
+	std::string tmp;
 	for(size_t i=0;i<str.size();i++)
 	{
 		if(str[i]==xc && i+2<str.size())
@@ -1248,30 +1275,31 @@ wstring htmldecode(string str, bool html, char xc)
 			unsigned char ch=(unsigned char)hexToULong(data);
 			if( html==true && ch!=0  )
 			{
-				str.erase(i,3);
 				if( ch!='-' && ch!=',' && ch!='#' )
-					str.insert(i,"&#"+nconvert((s32)ch)+";" );
+					tmp+="&#"+nconvert((s32)ch)+";";
 				else
 				{
-					std::string c;
-					c.push_back(ch);
-					str.insert(i,c);
+					tmp+=ch;
 				}
 			}
 			else if( ch!=0 )
 			{
-				str[i]=ch;
-				str.erase(i+1,2);
+				tmp+=ch;
 			}
+			i+=2;
+		}
+		else
+		{
+			tmp+=str[i];
 		}
 	}
 	std::wstring ret;
 	try
 	{
 	    if( sizeof(wchar_t)==2 )
-    		utf8::utf8to16(str.begin(), str.end(), back_inserter(ret));
+    		utf8::utf8to16(tmp.begin(), tmp.end(), back_inserter(ret));
     	    else if( sizeof(wchar_t)==4 )
-    		utf8::utf8to32(str.begin(), str.end(), back_inserter(ret));
+    		utf8::utf8to32(tmp.begin(), tmp.end(), back_inserter(ret));
     	}
     	catch(...){}
 	return ret;
