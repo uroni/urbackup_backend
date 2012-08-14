@@ -1,6 +1,8 @@
 #include <string>
 
 #include "../Interface/Thread.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/Condition.h"
 
 class IDatabase;
 
@@ -15,6 +17,9 @@ public:
 
 	static int getBackupTypes(const std::wstring &backup_type_name);
 	static std::wstring getBackupType(int backup_types);
+	static void doQuit(void);
+	static void initMutex(void);
+	static void destroyMutex(void);
 
 private:
 	void archiveTimeout(void);
@@ -28,4 +33,8 @@ private:
 	void copyArchiveSettings(int clientid);
 
 	IDatabase *db;
+
+	static volatile bool do_quit;
+	static ICondition *cond;
+	static IMutex *mutex;
 };

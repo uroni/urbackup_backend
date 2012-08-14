@@ -22,7 +22,12 @@
 
 bool CServer::LoadDLL(const std::string &name)
 {
-	HMODULE dll = dlopen( name.c_str(), RTLD_NOW | RTLD_GLOBAL);
+	int mode=RTLD_NOW | RTLD_GLOBAL;
+	if(getServerParameter("leak_check")=="true")
+	{
+		mode|=RTLD_NODELETE;
+	}
+	HMODULE dll = dlopen( name.c_str(), mode);
 
 	if(dll==NULL)
 	{

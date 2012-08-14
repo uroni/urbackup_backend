@@ -171,6 +171,7 @@ void BackupServerGet::operator ()(void)
 					pipe->Write("ok");
 					Server->Log(L"server_get Thread for client \""+clientname+L"\" finished and the identity was not recognized", LL_INFO);
 
+					cleanup_pipes();
 					delete this;
 					return;
 				}
@@ -196,6 +197,7 @@ void BackupServerGet::operator ()(void)
 
 		pipe->Write("ok");
 		Server->Log(L"server_get Thread for client "+clientname+L" finished, restore thread");
+		cleanup_pipes();
 		delete this;
 		return;
 	}
@@ -238,6 +240,7 @@ void BackupServerGet::operator ()(void)
 		ServerStatus::setTooManyClients(clientname, true);
 		ServerLogger::reset(clientid);
 		delete server_settings;
+		cleanup_pipes();
 		delete this;
 		return;
 	}
@@ -253,6 +256,7 @@ void BackupServerGet::operator ()(void)
 		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
 		pipe->Write("ok");
 		delete server_settings;
+		cleanup_pipes();
 		delete this;
 		return;
 	}
@@ -266,6 +270,7 @@ void BackupServerGet::operator ()(void)
 		Server->Log(L"Could not get client capabilities", LL_ERROR);
 		pipe->Write("ok");
 		delete server_settings;
+		cleanup_pipes();
 		delete this;
 		return;
 	}
@@ -680,6 +685,9 @@ void BackupServerGet::operator ()(void)
 		std::string msg;
 		exitpipe_prepare->Read(&msg);
 		Server->destroy(exitpipe_prepare);
+
+		Server->destroy(hashpipe_prepare);
+		Server->destroy(hashpipe);
 	}
 	else
 	{
@@ -3148,6 +3156,14 @@ IPipe * BackupServerGet::new_fileclient_connection(void)
 		rp=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, c_filesrv_connect_timeout);
 	}
 	return rp;
+}
+
+void BackupServerGet::cleanup_pipes(void)
+{
+	Server->destroy(hashpipe);
+	Server->destroy(hashpipe_prepare);
+	Server->destroy(exitpipe);
+	Server->destroy(exitpipe_prepare);
 }
 
 #endif //CLIENT_ONLY

@@ -48,6 +48,7 @@ public:
 	virtual void ReceivePackets(void);
 
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 
 	static IPipe *getConnection(const std::string &clientname, char service, int timeoutms=-1);
 	static std::vector<std::string> getOnlineClients(void);

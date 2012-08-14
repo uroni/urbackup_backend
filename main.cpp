@@ -233,7 +233,7 @@ int main_fkt(int argc, char *argv[])
 				else
 					p=carg.substr(1, carg.size()-1);
 
-				std::string v="true";
+				std::string v;
 
 				if( narg.size()>0 && narg[0]!='-' )
 				{
@@ -247,6 +247,10 @@ int main_fkt(int argc, char *argv[])
 					{
 						v=p.substr(g+1);
 						p=p.substr(0,g);
+					}
+					else
+					{
+						v="true";
 					}
 				}
 

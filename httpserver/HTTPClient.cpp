@@ -62,6 +62,11 @@ void CHTTPClient::init_mutex(void)
 	share_mutex=Server->createMutex();
 }
 
+void CHTTPClient::destroy_mutex(void)
+{
+	Server->destroy(share_mutex);
+}
+
 void CHTTPClient::ReceivePackets(void)
 {
 	std::string data;
@@ -113,13 +118,25 @@ bool CHTTPClient::Run(void)
 	{
 		if( Server->getThreadPool()->isRunning(request_ticket)==false )
 		{
+			//Server->Log("Connection: "+http_params["CONNECTION"], LL_DEBUG);
 			if( strlower(http_params["CONNECTION"])=="close" )
+			{
 				http_g_state=HTTP_STATE_DONE;
+			}
 			else
 			{
 				http_g_state=HTTP_STATE_KEEPALIVE;
 				http_keepalive_start=Server->getTimeMS();
-				http_keepalive_count=std::min(atoi(http_params["KEEP-ALIVE"].c_str()), HTTP_MAX_KEEPALIVE );
+				//Server->Log("Keep-alive: "+http_params["KEEP-ALIVE"], LL_DEBUG);
+				str_nmap::iterator iter=http_params.find("KEEP-ALIVE");
+				if(iter==http_params.end())
+				{
+					http_keepalive_count=HTTP_MAX_KEEPALIVE;
+				}
+				else
+				{
+					http_keepalive_count=std::min(atoi(iter->second.c_str()), HTTP_MAX_KEEPALIVE );
+				}
 			}
 			if(fileupload)
 			{
@@ -468,8 +485,9 @@ bool CHTTPClient::processRequest(void)
 		}
 		else
 		{
-			request_handler=new CHTTPProxy(http_method, http_query, http_version, http_content, http_params, pipe, NULL, NULL);
-			request_ticket=Server->getThreadPool()->execute(request_handler);
+			CHTTPProxy *proxy_handler=new CHTTPProxy(http_method, http_query, http_version, http_content, http_params, pipe, NULL, NULL);
+			request_ticket=Server->getThreadPool()->execute(proxy_handler);
+			request_handler=proxy_handler;
 		}
 		return true;
 	}
@@ -515,15 +533,19 @@ bool CHTTPClient::processRequest(void)
 				if( path[i]!=".." && path[i]!="." )
 					rp+="/"+path[i];
 			}
-			request_handler=new CHTTPFile(http_service->getRoot()+rp, pipe);
-			request_ticket=Server->getThreadPool()->execute(request_handler);
+			CHTTPFile *file_handler=new CHTTPFile(http_service->getRoot()+rp, pipe);
+			request_ticket=Server->getThreadPool()->execute(file_handler);
+			request_handler=file_handler;
 			return true;
 		}
 
 		std::string gparams=getafter("?", *pl);
 
-		request_handler=new CHTTPAction(widen(name),widen(context),gparams, http_content, http_params, pipe);
-		request_ticket=Server->getThreadPool()->execute(request_handler);
+		pl=NULL;
+
+		CHTTPAction *action_handler=new CHTTPAction(widen(name),widen(context),gparams, http_content, http_params, pipe);
+		request_ticket=Server->getThreadPool()->execute(action_handler);
+		request_handler=action_handler;
 		return true;
 	}
 	else

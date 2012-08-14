@@ -26,6 +26,7 @@ public:
 	virtual bool Run(void);
 
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 
 private:
 
@@ -57,7 +58,7 @@ private:
 
 	int request_num;
 
-	IThread *request_handler;
+	IObject *request_handler;
 	THREADPOOL_TICKET request_ticket;
 	POSTFILE_KEY pfilekey;
 	

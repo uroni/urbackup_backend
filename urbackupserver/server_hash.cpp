@@ -43,6 +43,11 @@ void init_mutex1(void)
 	delete_mutex=Server->createMutex();
 }
 
+void destroy_mutex1(void)
+{
+	Server->destroy(delete_mutex);
+}
+
 BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid)
 {
 	pipe=pPipe;

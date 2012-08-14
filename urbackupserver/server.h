@@ -22,11 +22,14 @@ class BackupServer : public IThread
 {
 public:
 	BackupServer(IPipe *pExitpipe);
+	~BackupServer();
 
 	void operator()(void);
 
 	static IPipeThrottler *getGlobalInternetThrottler(size_t speed_bps);
 	static IPipeThrottler *getGlobalLocalThrottler(size_t speed_bps);
+
+	static void cleanupThrottlers(void);
 
 private:
 	void findClients(FileClient &fc);

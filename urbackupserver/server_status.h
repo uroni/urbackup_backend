@@ -59,6 +59,7 @@ public:
 	static bool isBackupStopped(const std::wstring &clientname);
 
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 
 	static std::vector<SStatus> getStatus(void);
 	static SStatus getStatus(const std::wstring &clientname);

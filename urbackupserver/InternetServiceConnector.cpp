@@ -334,6 +334,11 @@ void InternetServiceConnector::init_mutex(void)
 	mutex=Server->createMutex();
 }
 
+void InternetServiceConnector::destroy_mutex(void)
+{
+	Server->destroy(mutex);
+}
+
 IPipe *InternetServiceConnector::getConnection(const std::string &clientname, char service, int timeoutms)
 {
 

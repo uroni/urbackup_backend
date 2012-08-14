@@ -117,6 +117,8 @@ CServiceAcceptor::~CServiceAcceptor()
 	{
 		delete workers[i];
 	}
+
+	delete service;
 }
 
 void CServiceAcceptor::operator()(void)
@@ -137,8 +139,10 @@ void CServiceAcceptor::operator()(void)
 #ifndef _WIN32
 		FD_SET(xpipe[0], &fdset);
 		if(xpipe[0]>maxs)
-			maxs=xpipe[0]+1;
+			maxs=xpipe[0];
 #endif
+		++maxs;
+
 
 		timeval lon;
 	

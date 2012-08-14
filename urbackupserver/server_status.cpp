@@ -35,6 +35,11 @@ void ServerStatus::init_mutex(void)
 	last_status_update=Server->getTimeMS();
 }
 
+void ServerStatus::destroy_mutex(void)
+{
+	Server->destroy(mutex);
+}
+
 void ServerStatus::setServerStatus(const SStatus &pStatus, bool setactive)
 {
 	IScopedLock lock(mutex);

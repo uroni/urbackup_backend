@@ -132,6 +132,8 @@ private:
 
 	IPipeThrottler *getThrottler(size_t speed_bps);
 
+	void cleanup_pipes(void);
+
 	IPipe *pipe;
 	IDatabase *db;
 

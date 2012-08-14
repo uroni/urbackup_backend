@@ -1,6 +1,6 @@
 #include "../Interface/Types.h"
 #include "../Interface/Thread.h"
-
+#include "../Interface/Object.h"
 
 #include <string>
 #include <queue>
@@ -16,7 +16,7 @@ struct CBuffer
 	int offset;
 };
 
-class CHTTPProxy : public IThread
+class CHTTPProxy : public IThread, public IObject
 {
 public:
 	CHTTPProxy(std::string pHttp_method, std::string pHttp_query, int pHttp_version, const std::string pPOSTStr, const str_nmap &pRawPARAMS, IPipe *pOutput, IPipe *pNotify, IPipe *pTimeoutPipe);

@@ -85,6 +85,7 @@ const unsigned short serviceport=35623;
 std::vector<IAction*> gActions;
 
 void init_mutex1(void);
+void destroy_mutex1(void);
 void writeZeroblockdata(void);
 bool testEscape(void);
 void upgrade(void);
@@ -94,6 +95,10 @@ bool test_amatch(void);
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
 std::string time_format_str="%Y-%m-%d %H:%M";
+
+THREADPOOL_TICKET tt_cleanup_thread;
+THREADPOOL_TICKET tt_automatic_archive_thread;
+bool is_leak_check=false;
 
 #ifdef _WIN32
 const std::string new_file="new.txt";
@@ -411,6 +416,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(isimageready);
 	ADD_ACTION(getimage);
 
+	if(Server->getServerParameter("allow_shutdown")=="true")
+	{
+		ADD_ACTION(shutdown);
+	}
+
 	Server->Log("Started UrBackup...", LL_INFO);
 
 	
@@ -462,24 +472,39 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	ServerCleanupThread::initMutex();
+	ServerAutomaticArchive::initMutex();
 	ServerCleanupThread *server_cleanup=new ServerCleanupThread();
-	Server->createThread(server_cleanup);
 
-	Server->createThread(new ServerAutomaticArchive);
+	is_leak_check=(Server->getServerParameter("leak_check")=="true");
+
+	if(is_leak_check)
+	{
+		tt_cleanup_thread=Server->getThreadPool()->execute(server_cleanup);
+		tt_automatic_archive_thread=Server->getThreadPool()->execute(new ServerAutomaticArchive);
+	}
+	else
+	{
+		Server->createThread(server_cleanup);
+		Server->createThread(new ServerAutomaticArchive);
+	}
 
 	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }
 
 DLLEXPORT void UnloadActions(void)
 {
+	int wtime=500;
+	if(is_leak_check)
+		wtime=2000;
+
 	bool shutdown_ok=false;
 	if(server_exit_pipe!=NULL)
 	{
 		std::string msg="exit";
 		unsigned int starttime=Server->getTimeMS();
-		while(msg!="ok" && Server->getTimeMS()-starttime<500)
+		while(msg!="ok" && Server->getTimeMS()-starttime<wtime)
 		{
-			server_exit_pipe->Write(msg);
+			server_exit_pipe->Write("exit");
 			Server->wait(100);
 			server_exit_pipe->Read(&msg);
 		}
@@ -487,13 +512,43 @@ DLLEXPORT void UnloadActions(void)
 		if(msg=="ok")
 		{
 			Server->destroy(server_exit_pipe);
+			BackupServer::cleanupThrottlers();
 			shutdown_ok=true;
 		}
 	}
 	
 	ServerLogger::destroy_mutex();
 
-	BackupServerGet::destroy_mutex();
+	if(is_leak_check)
+	{
+		std::vector<THREADPOOL_TICKET> tickets;
+		tickets.push_back(tt_automatic_archive_thread);
+		tickets.push_back(tt_cleanup_thread);
+
+		ServerCleanupThread::doQuit();
+		ServerAutomaticArchive::doQuit();
+
+		Server->getThreadPool()->waitFor(tickets);
+
+		ServerCleanupThread::destroyMutex();
+		ServerAutomaticArchive::destroyMutex();
+
+		if(!shutdown_ok)
+		{
+			Server->Log("Could not shut down server. Leaks expected.", LL_ERROR);
+		}
+
+		InternetServiceConnector::destroy_mutex();
+		destroy_mutex1();
+		Server->destroy(startup_status.mutex);
+		ServerSettings::destroy_mutex();
+		ServerStatus::destroy_mutex();
+	}
+
+	if(shutdown_ok)
+	{
+		BackupServerGet::destroy_mutex();
+	}
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("PRAGMA wal_checkpoint");

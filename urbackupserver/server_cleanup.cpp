@@ -37,6 +37,7 @@ ICondition *ServerCleanupThread::cond=NULL;
 bool ServerCleanupThread::update_stats=false;
 IMutex *ServerCleanupThread::a_mutex=NULL;
 bool ServerCleanupThread::update_stats_interruptible=false;
+volatile bool ServerCleanupThread::do_quit=false;
 
 const unsigned int min_cleanup_interval=12*60*60;
 
@@ -47,10 +48,28 @@ void ServerCleanupThread::initMutex(void)
 	a_mutex=Server->createMutex();
 }
 
+void ServerCleanupThread::destroyMutex(void)
+{
+	Server->destroy(mutex);
+	Server->destroy(cond);
+	Server->destroy(a_mutex);
+}
+
 void ServerCleanupThread::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	unsigned int last_cleanup=0;
+
+	{
+		IScopedLock lock(mutex);
+		cond->wait(&lock, 60000);
+
+		if(do_quit)
+		{
+			delete this;
+			return;
+		}
+	}
 
 	{
 		ScopedActiveThread sat;
@@ -84,6 +103,10 @@ void ServerCleanupThread::operator()(void)
 			if(!update_stats)
 			{
 				cond->wait(&lock, 3600000);
+			}
+			if(do_quit)
+			{
+				return;
 			}
 			if(update_stats)
 			{
@@ -140,6 +163,8 @@ void ServerCleanupThread::operator()(void)
 			}
 		}
 	}
+
+	delete this;
 }
 
 void ServerCleanupThread::updateStats(bool interruptible)
@@ -985,6 +1010,12 @@ void ServerCleanupThread::backup_database(void)
 			Server->deleteFile(bfolder+os_file_sep()+L"backup_server_settings.db~");
 		}
 	}
+}
+
+void ServerCleanupThread::doQuit(void)
+{
+	do_quit=true;
+	cond->notify_all();
 }
 
 #endif //CLIENT_ONLY
