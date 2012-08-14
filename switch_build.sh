@@ -34,15 +34,18 @@ switch()
 
 clean_build()
 {
-	c=`cat $CPWD/curr_build`
-	echo "Last build: $c"
-	if [[ "x$c" == "xserver" ]] && [[ "x$cbuild" == "xclient" ]]
+	if test -e "$CPWD/curr_build"
 	then
-		make clean
-	fi
-	if [[ "x$c" == "xclient" ]] && [[ "x$cbuild" == "xserver" ]]
-	then
-		make clean
+		c=`cat $CPWD/curr_build`
+		echo "Last build: $c"
+		if [[ "x$c" == "xserver" ]] && [[ "x$cbuild" == "xclient" ]]
+		then
+			make clean
+		fi
+		if [[ "x$c" == "xclient" ]] && [[ "x$cbuild" == "xserver" ]]
+		then
+			make clean
+		fi
 	fi
 	echo "$cbuild" > $CPWD/curr_build
 }
