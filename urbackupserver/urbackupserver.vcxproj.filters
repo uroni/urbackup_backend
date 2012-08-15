@@ -144,9 +144,6 @@
     <ClCompile Include="serverinterface\users.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
-    <ClCompile Include="..\urbackupcommon\fileclient\data.cpp">
-      <Filter>fileclient</Filter>
-    </ClCompile>
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp">
       <Filter>fileclient</Filter>
     </ClCompile>
@@ -194,6 +191,12 @@
     </ClCompile>
     <ClCompile Include="filedownload.cpp">
       <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\data.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\shutdown.cpp">
+      <Filter>serverinterface</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -278,9 +281,6 @@
     <ClInclude Include="serverinterface\json.h">
       <Filter>serverinterface</Filter>
     </ClInclude>
-    <ClInclude Include="..\urbackupcommon\fileclient\data.h">
-      <Filter>fileclient</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h">
       <Filter>fileclient</Filter>
     </ClInclude>
@@ -340,6 +340,9 @@
     </ClInclude>
     <ClInclude Include="filedownload.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\data.h">
+      <Filter>fileclient</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

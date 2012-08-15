@@ -47,6 +47,7 @@ void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity)
 	IScopedLock lock(mutex);
 	loadServerIdentities();
 	identities.push_back(pIdentity);
+	online_identities.push_back(0);
 	filesrv->addIdentity("#I"+pIdentity+"#");
 	writeServerIdentities();
 }
@@ -119,7 +120,7 @@ size_t ServerIdentityMgr::numServerIdentities(void)
 bool ServerIdentityMgr::isNewIdentity(const std::string &pIdentity)
 {
 	IScopedLock lock(mutex);
-	if( std::find(new_identities.begin(), new_identities.end(), pIdentity)==new_identities.end())
+	if( std::find(new_identities.begin(), new_identities.end(), pIdentity)!=new_identities.end())
 	{
 		return false;
 	}

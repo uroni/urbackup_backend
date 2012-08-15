@@ -348,7 +348,7 @@ translations.ru={
 "nav_item_5": "В работе",
 "nav_item_4": "Бэкапы",
 "nav_item_3": "Логи",
-"nav_item_2": "Статистик��",
+"nav_item_2": "Статистик",
 "nav_item_1": "Настройки",
 "unknown": "Неизвестный",
 "overview": "Обзор",

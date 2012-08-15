@@ -16,6 +16,7 @@ public:
 	void addInt(int ta);
 	void addUInt(unsigned int ta);
 	void addInt64(_i64 ta);
+	void addUInt64(uint64 ta);
 	void addFloat(float ta);
 	void addUShort(unsigned short ta);
 	void addString(std::string ta);
@@ -54,6 +55,7 @@ public:
 	void setStreampos(unsigned int spos);
 	const char *getDataPtr(void);
 	const char *getCurrDataPtr(void);
+	bool incrementPtr(unsigned int amount);
 
 private:
 
