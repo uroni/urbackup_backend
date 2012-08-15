@@ -1,7 +1,7 @@
 #include "../Interface/Server.h"
 #include "ClientService.h"
 #include "ServerIdentityMgr.h"
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../urbackupcommon/capa_bits.h"
 #include "../urbackupcommon/escape.h"
 #include "client.h"

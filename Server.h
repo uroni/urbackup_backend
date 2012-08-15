@@ -156,6 +156,8 @@ public:
 
 	virtual void waitForStartupComplete(void);
 	void startupComplete(void);
+
+	void shutdown(void);
 private:
 
 	bool UnloadDLLs(void);

@@ -143,6 +143,8 @@ public:
 	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier)=0;
 
 	virtual void waitForStartupComplete(void)=0;
+
+	virtual void shutdown(void)=0;
 };
 
 #ifndef NO_INTERFACE

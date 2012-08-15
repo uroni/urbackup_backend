@@ -81,6 +81,8 @@
 
 const size_t SEND_BLOCKSIZE=8192;
 
+extern bool run;
+
 CServer::CServer()
 {	
 	curr_thread_id=0;
@@ -1144,7 +1146,8 @@ void CServer::createThread(IThread *thread)
 	
 #else
 	pthread_t t;
-	pthread_create(&t, NULL, &thread_helper_f,  (void*)thread);	
+	pthread_create(&t, NULL, &thread_helper_f,  (void*)thread);
+	pthread_detach(t);
 #endif
 #endif //THREAD_BOOST
 }
@@ -1501,4 +1504,10 @@ void CServer::startupComplete(void)
 IPipeThrottler* CServer::createPipeThrottler(size_t bps)
 {
 	return new PipeThrottler(bps);
+}
+
+
+void CServer::shutdown(void)
+{
+	run=false;
 }

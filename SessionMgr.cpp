@@ -171,6 +171,7 @@ bool CSessionMgr::RemoveSession(const std::wstring &pSID)
 			iter->second->Remove();
 		}
 
+		delete i->second;
 		mSessions.erase(i);
 		return true;
 	}

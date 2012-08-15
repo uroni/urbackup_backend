@@ -26,6 +26,12 @@
 
 #ifdef MODE_WIN
 
+File::File()
+	: hfile(INVALID_HANDLE_VALUE)
+{
+
+}
+
 bool File::Open(std::wstring pfn, int mode)
 {
 	fn=pfn;

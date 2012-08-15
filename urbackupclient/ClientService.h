@@ -73,6 +73,7 @@ const unsigned int x_pingtimeout=180000;
 class ClientConnector : public ICustomClient
 {
 public:
+	ClientConnector(void);
 	virtual void Init(THREAD_ID pTID, IPipe *pPipe);
 	~ClientConnector(void);
 

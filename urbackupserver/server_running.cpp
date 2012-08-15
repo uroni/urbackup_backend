@@ -27,6 +27,14 @@ ServerRunningUpdater::ServerRunningUpdater(int pBackupid, bool pImage) : backupi
 {
 	do_stop=false;
 	suspended=false;
+	mutex=Server->createMutex();
+	cond=Server->createCondition();
+}
+
+ServerRunningUpdater::~ServerRunningUpdater()
+{
+	Server->destroy(mutex);
+	Server->destroy(cond);
 }
 
 void ServerRunningUpdater::operator()(void)
@@ -49,7 +57,8 @@ void ServerRunningUpdater::operator()(void)
 
 	while(do_stop==false)
 	{
-		Server->wait(60000);
+		IScopedLock lock(mutex);
+		cond->wait(&lock, 60000);
 		if(do_stop==false && suspended==false)
 		{
 			q->Bind(backupid);
@@ -59,12 +68,13 @@ void ServerRunningUpdater::operator()(void)
 	}
 
 	db->destroyQuery(q);
-	Server->wait(1000);
 	delete this;
 }
 
 void ServerRunningUpdater::stop(void)
 {
+	IScopedLock lock(mutex);
+	cond->notify_all();
 	do_stop=true;
 }
 

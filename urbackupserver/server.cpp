@@ -45,9 +45,13 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 	exitpipe=pExitpipe;
 }
 
+BackupServer::~BackupServer()
+{
+	Server->destroy(throttle_mutex);
+}
+
 void BackupServer::operator()(void)
 {
-	Server->wait(5000);
 	IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER), "settings_db.settings");
 
@@ -330,7 +334,7 @@ void BackupServer::removeAllClients(void)
 		while(msg!="ok")
 		{
 			it->second.pipe->Read(&msg);
-			it->second.pipe->Write(msg);
+			it->second.pipe->Write(msg.c_str());
 			Server->wait(500);
 		}
 		Server->destroy(it->second.pipe);
@@ -373,5 +377,16 @@ IPipeThrottler *BackupServer::getGlobalLocalThrottler(size_t speed_bps)
 	return global_local_throttler;
 }
 
+void BackupServer::cleanupThrottlers(void)
+{
+	if(global_internet_throttler!=NULL)
+	{
+		Server->destroy(global_internet_throttler);
+	}
+	if(global_local_throttler!=NULL)
+	{
+		Server->destroy(global_local_throttler);
+	}
+}
 
 #endif //CLIENT_ONLY

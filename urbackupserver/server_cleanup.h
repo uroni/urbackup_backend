@@ -39,8 +39,11 @@ public:
 
 	static void updateStats(bool interruptible);
 	static void initMutex(void);
+	static void destroyMutex(void);
 
 	void backup_database(void);
+
+	static void doQuit(void);
 private:
 
 	void removeImageSize(int backupid);
@@ -85,4 +88,6 @@ private:
 	static bool update_stats_interruptible;
 	
 	std::vector<int> removeerr;
+
+	static volatile bool do_quit;
 };

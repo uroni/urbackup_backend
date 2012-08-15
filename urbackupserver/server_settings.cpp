@@ -33,6 +33,14 @@ void ServerSettings::init_mutex(void)
 		g_mutex=Server->createMutex();
 }
 
+void ServerSettings::destroy_mutex(void)
+{
+	if(g_mutex!=NULL)
+	{
+		Server->destroy(g_mutex);
+	}
+}
+
 ServerSettings::ServerSettings(IDatabase *db, int pClientid) : clientid(pClientid)
 {
 	{

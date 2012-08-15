@@ -35,6 +35,7 @@ const int MODE_TEMP=4;
 class File : public IFile
 {
 public:
+	File();
 	~File();
 	bool Open(std::wstring pfn, int mode=MODE_READ);
 	bool Open(void *handle);

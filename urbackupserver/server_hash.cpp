@@ -23,7 +23,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../Interface/Mutex.h"
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "database.h"
 #include "../urbackupcommon/sha2/sha2.h"
 #include "../stringtools.h"
@@ -41,6 +41,11 @@ IMutex * delete_mutex=NULL;
 void init_mutex1(void)
 {
 	delete_mutex=Server->createMutex();
+}
+
+void destroy_mutex1(void)
+{
+	Server->destroy(delete_mutex);
 }
 
 BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid)

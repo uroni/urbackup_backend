@@ -16,11 +16,9 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#include "../vld.h"
-#include "data.h"
-#ifndef _WIN32
 #include <memory.h>
-#endif
+#include "data.h"
+
 
 char* CWData::getDataPtr(void)
 {
@@ -49,11 +47,18 @@ void CWData::addUInt(unsigned int ta)
 	memcpy(&data[cpos],&ta,sizeof(unsigned int) );
 }
 
-void CWData::addUInt64(unsigned long long int ta)
+void CWData::addInt64(_i64 ta)
 {
 	size_t cpos=data.size();
-	data.resize(cpos+sizeof(unsigned long long int) );
-	memcpy(&data[cpos],&ta,sizeof(unsigned long long int) );
+	data.resize(cpos+sizeof(_i64) );
+	memcpy(&data[cpos],&ta,sizeof(_i64) );
+}
+
+void CWData::addUInt64(uint64 ta)
+{
+	size_t cpos=data.size();
+	data.resize(cpos+sizeof(uint64) );
+	memcpy(&data[cpos],&ta,sizeof(uint64) );
 }
 
 void CWData::addFloat(float ta)
@@ -63,6 +68,13 @@ void CWData::addFloat(float ta)
 	memcpy(&data[cpos],&ta,sizeof(float) );
 }
 
+void CWData::addUShort(unsigned short ta)
+{
+	size_t cpos=data.size();
+	data.resize(cpos+sizeof(unsigned short) );
+	memcpy(&data[cpos],&ta,sizeof(unsigned short) );
+}	
+
 void CWData::addString(std::string ta)
 {
 	size_t cpos=data.size();
@@ -70,7 +82,10 @@ void CWData::addString(std::string ta)
 	unsigned int len=(unsigned int)ta.size();
 	memcpy(&data[cpos], &len, sizeof(unsigned int) );
 	cpos+=sizeof(unsigned int);
-	memcpy(&data[cpos],ta.c_str(), ta.size() );
+	if(!ta.empty())
+	{
+		memcpy(&data[cpos],ta.c_str(), ta.size() );
+	}
 }
 
 void CWData::addChar(char ta)
@@ -87,11 +102,60 @@ void CWData::addUChar(unsigned char ta)
 	data[cpos]=ta;
 }
 
-CRData::CRData(const char* c,size_t datalength)
+void CWData::addVoidPtr(void* ta)
 {
-	data=c;
+	size_t cpos=data.size();
+	data.resize(cpos+sizeof(void*) );
+	memcpy(&data[cpos],&ta,sizeof(void*) );
+}
+
+void CWData::addBuffer(const char* buffer, size_t bsize)
+{
+	size_t cpos=data.size();
+	data.resize(cpos+bsize);
+	memcpy(&data[cpos], buffer, bsize);
+}
+
+CRData::CRData(const char* c,size_t datalength, bool pCopy)
+{
+	data=NULL;
+	set(c,datalength, pCopy);
+}
+
+CRData::CRData(void)
+{
+	data=NULL;
+	streampos=0;
+	datalen=0;
+}
+
+void CRData::set(const char* c,size_t datalength, bool pCopy)
+{
+	copy=pCopy;
+	if( copy==false )
+	{
+		data=c;
+	}
+	else
+	{
+		if( data!=NULL )
+			delete [] data;
+		data=new char[datalength];
+		memcpy((void*)data, c, datalength);
+	}
 	streampos=0;
 	datalen=datalength;
+}
+
+CRData::CRData(const std::string *str)
+{
+	set(str->c_str(), str->size(), false);
+}
+
+CRData::~CRData()
+{
+	if( copy==true )
+		delete []data;
 }
 
 bool CRData::getInt(int *ret)
@@ -142,6 +206,18 @@ bool CRData::getFloat(float *ret)
 	return true;
 }
 
+bool CRData::getUShort( unsigned short *ret)
+{
+	if(streampos+sizeof(unsigned short)>datalen )
+	{
+		return false;
+	}
+
+	memcpy(ret, &data[streampos], sizeof(unsigned short) );
+	streampos+=sizeof(unsigned short);
+	return true;	
+}
+
 bool CRData::getStr(std::string *ret)
 {
 	if(streampos+sizeof(unsigned int)>datalen )
@@ -158,8 +234,15 @@ bool CRData::getStr(std::string *ret)
 		return false;
 	}
 
-	ret->resize(strlen);
-	memcpy((char*)ret->c_str(), &data[streampos], strlen);
+	if(strlen>0)
+	{
+		ret->resize(strlen);
+		memcpy((char*)ret->c_str(), &data[streampos], strlen);
+	}
+	else
+	{
+		ret->clear();
+	}
 	streampos+=strlen;
 	return true;
 }
@@ -190,6 +273,18 @@ bool CRData::getUChar(unsigned char *ret)
 	return true;
 }
 
+bool CRData::getVoidPtr(void **ret)
+{
+	if(streampos+sizeof(void*)>datalen )
+	{
+		return false;
+	}
+
+	memcpy(ret, &data[streampos], sizeof(void*) );
+	streampos+=sizeof(void*);
+	return true;
+}
+
 unsigned int CRData::getSize(void)
 {
 	return (unsigned int)datalen;
@@ -205,12 +300,25 @@ unsigned int CRData::getStreampos(void)
 	return (unsigned int)streampos;
 }
 
-const char *CRData::getCurrentPtr(void)
+const char *CRData::getDataPtr(void)
 {
-	return &data[streampos];
+	return data;
 }
 
-bool CRData::incrementPtr(size_t amount)
+const char *CRData::getCurrDataPtr(void)
+{
+	return data+streampos;
+}
+
+void CRData::setStreampos(unsigned int spos)
+{
+	if( spos <= datalen )
+	{
+		streampos=spos;
+	}
+}
+
+bool CRData::incrementPtr(unsigned int amount)
 {
 	if((unsigned int)amount>getLeft())
 		return false;
@@ -218,3 +326,4 @@ bool CRData::incrementPtr(size_t amount)
 	streampos+=amount;
 	return true;
 }
+

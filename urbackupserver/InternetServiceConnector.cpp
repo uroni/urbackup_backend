@@ -3,7 +3,7 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include "../Interface/Database.h"
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
 #include "../urbackupcommon/CompressedPipe.h"
@@ -332,6 +332,11 @@ void InternetServiceConnector::ReceivePackets(void)
 void InternetServiceConnector::init_mutex(void)
 {
 	mutex=Server->createMutex();
+}
+
+void InternetServiceConnector::destroy_mutex(void)
+{
+	Server->destroy(mutex);
 }
 
 IPipe *InternetServiceConnector::getConnection(const std::string &clientname, char service, int timeoutms)

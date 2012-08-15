@@ -236,13 +236,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	str_map params;
 	filesrv_pluginid=Server->StartPlugin("fileserv", params);
 
-#ifdef _WIN32
 	crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
 	if( crypto_fak==NULL )
 	{
 		Server->Log("Error loading Cryptoplugin", LL_ERROR);
 	}
-#endif
 
 	IndexThread *it=new IndexThread();
 	Server->createThread(it);

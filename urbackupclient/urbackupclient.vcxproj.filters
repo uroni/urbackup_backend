@@ -72,9 +72,6 @@
     <ClCompile Include="..\stringtools.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\urbackupcommon\fileclient\data.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -106,6 +103,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\data.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -155,9 +155,6 @@
     <ClInclude Include="..\urbackupcommon\bufmgr.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="..\urbackupcommon\fileclient\data.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\escape.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -189,6 +186,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\mbrdata.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\data.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

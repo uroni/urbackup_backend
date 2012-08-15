@@ -36,6 +36,10 @@ CServiceWorker::~CServiceWorker()
 		delete clients[i].second;
 	}
 	clients.clear();
+
+	Server->destroy(mutex);
+	Server->destroy(nc_mutex);
+	Server->destroy(cond);
 }
 
 void CServiceWorker::stop(void)

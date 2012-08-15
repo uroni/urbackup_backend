@@ -172,6 +172,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\adler32.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
@@ -182,7 +183,6 @@
     <ClCompile Include="CriticalSection.cpp" />
     <ClCompile Include="CTCPFileServ.cpp" />
     <ClCompile Include="CUDPThread.cpp" />
-    <ClCompile Include="data.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="download.cpp" />
     <ClCompile Include="FileServ.cpp" />
@@ -194,6 +194,7 @@
     <ClCompile Include="..\stringtools.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\data.h" />
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
     <ClInclude Include="bufmgr.h" />
@@ -204,7 +205,6 @@
     <ClInclude Include="CriticalSection.h" />
     <ClInclude Include="CTCPFileServ.h" />
     <ClInclude Include="CUDPThread.h" />
-    <ClInclude Include="data.h" />
     <ClInclude Include="download.h" />
     <ClInclude Include="FileServ.h" />
     <ClInclude Include="FileServFactory.h" />

@@ -30,6 +30,12 @@
 #include <errno.h>
 #include <stdint.h>
 
+File::File()
+	: fd(-1)
+{
+
+}
+
 bool File::Open(std::wstring pfn, int mode)
 {
 	fn=pfn;

@@ -2430,11 +2430,11 @@ function archive_single(backupid, clientid)
 	if(!startLoading()) return;
 	new getJSON("backups", "sa=backups&clientid="+clientid+"&archive="+backupid, show_backups2);
 }
-function addArchiveItem()
+function addArchiveItem(global)
 {
 	if(!validate_text_nonempty(["archive_every", "archive_for"])) return;
 	if(!validate_text_regex([{id: "archive_window", regexp: /^((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*)$/i } ]) ) return;
-	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, "-");
+	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, (global?"-":-1));
 }
 function getTimelengthSeconds(tl, unit)
 {
@@ -2541,7 +2541,7 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 	
 	if(archive_timeleft!="-")
 	{
-		if(archive_timeleft<0)
+		if(archive_timeleft<=0)
 		{
 			archive_timeleft=trans("wait_for_archive_window");
 		}
@@ -2553,7 +2553,6 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 		row_vals.next_start="";
 		row_vals.next_end="";
 		row_vals.archive_timeleft=archive_timeleft;
-		new_item.title=archive_timeleft;
 	}
 	
 	new_item.innerHTML=tmpls.settings_archive_row.evaluate( row_vals );
@@ -2583,7 +2582,8 @@ function replaceArchiveId(old_id, new_id)
 	var item=I('archive_'+old_id);
 	item.innerHTML=tmpls.settings_archive_row.evaluate( { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
 			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
-			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value } );
+			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value,
+			archive_timeleft: I('archive_timeleft_'+old_id).value } );
 }
 function deleteArchiveItem(id)
 {

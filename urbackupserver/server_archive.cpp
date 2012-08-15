@@ -6,6 +6,10 @@
 #include "../urbackupcommon/os_functions.h"
 #include <algorithm>
 
+ICondition *ServerAutomaticArchive::cond=NULL;
+IMutex *ServerAutomaticArchive::mutex=NULL;
+volatile bool ServerAutomaticArchive::do_quit=false;
+
 void ServerAutomaticArchive::operator()(void)
 {
 	Server->waitForStartupComplete();
@@ -13,12 +17,15 @@ void ServerAutomaticArchive::operator()(void)
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
 
-	while(true)
+	while(!do_quit)
 	{
 		archiveTimeout();
 		archiveBackups();
-		Server->wait(60*60*1000);
+		IScopedLock lock(mutex);
+		cond->wait(&lock, 60*60*1000);
 	}
+
+	delete this;
 }
 
 void ServerAutomaticArchive::archiveTimeout(void)
@@ -311,4 +318,23 @@ bool ServerAutomaticArchive::isInArchiveWindow(const std::wstring &window_def)
 	}
 
 	return true;
+}
+
+void ServerAutomaticArchive::doQuit(void)
+{
+	do_quit=true;
+	IScopedLock lock(mutex);
+	cond->notify_all();
+}
+
+void ServerAutomaticArchive::initMutex(void)
+{
+	mutex=Server->createMutex();
+	cond=Server->createCondition();
+}
+
+void ServerAutomaticArchive::destroyMutex(void)
+{
+	Server->destroy(mutex);
+	Server->destroy(cond);
 }

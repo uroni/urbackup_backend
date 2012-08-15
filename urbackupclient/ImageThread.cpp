@@ -5,7 +5,7 @@
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../fsimageplugin/IFilesystem.h"
 
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../urbackupcommon/sha2/sha2.h"
 
 #include "ClientService.h"

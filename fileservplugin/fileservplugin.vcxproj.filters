@@ -33,9 +33,6 @@
     <ClCompile Include="CUDPThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="data.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="dllmain.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -75,6 +72,9 @@
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\common\data.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
@@ -93,9 +93,6 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="CUDPThread.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="data.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="download.h">
@@ -144,6 +141,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\data.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

@@ -92,5 +92,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 DLLEXPORT void UnloadActions(void)
 {
-	//delete http_service;
+	if(Server->getServerParameter("leak_check")=="true")
+	{
+		CHTTPClient::destroy_mutex();
+	}
 }

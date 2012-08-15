@@ -18,7 +18,7 @@
 #include "../Interface/ThreadPool.h"
 #include "bufmgr.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
-#include "data.h"
+#include "../common/data.h"
 #include "types.h"
 #include "settings.h"
 #include "../md5.h"

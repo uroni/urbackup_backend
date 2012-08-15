@@ -9,7 +9,7 @@
 #include "client.h"
 #include "ClientService.h"
 
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
@@ -105,7 +105,7 @@ void InternetClient::resetAuthErr(void)
 void InternetClient::operator()(void)
 {
 	Server->waitForStartupComplete();
-	Server->wait(3000);
+	Server->wait(60000);
 	doUpdateSettings();
 	while(true)
 	{
@@ -115,7 +115,7 @@ void InternetClient::operator()(void)
 			doUpdateSettings();
 			update_settings=false;
 		}
-		if(Server->getTimeMS()-last_lan_connection>ic_lan_timeout)
+		if(last_lan_connection==0 || Server->getTimeMS()-last_lan_connection>ic_lan_timeout)
 		{
 			if(!connected)
 			{
@@ -164,10 +164,13 @@ void InternetClient::doUpdateSettings(void)
 		return;
 
 	std::string internet_mode_enabled;
-	if(!settings->getValue("internet_mode_enabled", &internet_mode_enabled) || internet_mode_enabled=="false" )
+	if( !settings->getValue("internet_mode_enabled", &internet_mode_enabled) || internet_mode_enabled=="false" )
 	{
-		Server->destroy(settings);
-		return;
+		if( !settings->getValue("internet_mode_enabled_def", &internet_mode_enabled) || internet_mode_enabled=="false" )
+		{
+			Server->destroy(settings);
+			return;
+		}
 	}
 
 	std::string server_name;
@@ -206,6 +209,7 @@ void InternetClient::doUpdateSettings(void)
 		if(tmp=="false")
 			server_settings.internet_encrypt=false;
 	}
+	Server->destroy(settings);
 }
 
 bool InternetClient::tryToConnect(IScopedLock *lock)

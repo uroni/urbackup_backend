@@ -83,6 +83,7 @@ public:
 	SSettings *getSettings(bool *was_updated=NULL);
 
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 	static void updateAll(void);
 	static std::string generateRandomAuthKey(void);
 

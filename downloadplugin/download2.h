@@ -1,6 +1,6 @@
 #include <vector>
 #include <deque>
-#include "data.h"
+#include "../common/data.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include "../Interface/Pipe.h"

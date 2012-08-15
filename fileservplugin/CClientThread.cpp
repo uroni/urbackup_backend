@@ -475,9 +475,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				curr_filesize=filesize.QuadPart;
 
-				next_checkpoint=start_offset+c_checkpoint_dist;
-				if(next_checkpoint>curr_filesize)
-					next_checkpoint=curr_filesize;
+				
 
 
 				if( offset_set==false || id==ID_GET_FILE_RESUME || id==ID_GET_FILE_RESUME_HASH )
@@ -615,6 +613,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				fstat64(hFile, &stat_buf);
 				
 				off64_t filesize=stat_buf.st_size;
+				curr_filesize=filesize;
 				
 				if( offset_set==false || id==ID_GET_FILE_RESUME || id==ID_GET_FILE_RESUME_HASH )
 				{
@@ -644,18 +643,38 @@ bool CClientThread::ProcessPacket(CRData *data)
 				unsigned int s_bsize=8192;
 
 				if(id==ID_GET_FILE || id==ID_GET_FILE_RESUME )
+				{
 					s_bsize=32768;
+					next_checkpoint=curr_filesize;
+				}
+				else
+				{
+					next_checkpoint=start_offset+c_checkpoint_dist;
+					if(next_checkpoint>curr_filesize)
+					    next_checkpoint=curr_filesize;
+				}
 
-				char buf[s_bsize];
+				char *buf=new char[s_bsize];
 
 				bool has_error=false;
 				
 				while( foffset < filesize )
 				{
-					size_t count=(std::max)((size_t)s_bsize, (size_t)(filesize-foffset));
+					size_t count=(std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
 					if( clientpipe==NULL && ( id==ID_GET_FILE || id==ID_GET_FILE_RESUME ) )
 					{
-						sendfile64(int_socket, hFile, &foffset, count);
+						ssize_t rc=sendfile64(int_socket, hFile, &foffset, count);
+						if(rc>0)
+						{
+							foffset+=rc;
+						}
+						else
+						{
+							Log("Error: Reading and sending from file failed", LL_DEBUG);
+							CloseHandle(hFile);
+							delete []buf;
+							return false;
+						}
 					}
 					else
 					{
@@ -667,18 +686,33 @@ bool CClientThread::ProcessPacket(CRData *data)
 							{
 								Log("Error: Sending data failed");
 								CloseHandle(hFile);
+								delete []buf;
 								return false;
 							}
 							else if(id==ID_GET_FILE_RESUME_HASH)
 							{
 								hash_func.update((unsigned char*)buf, rc);
 							}
+							
+							foffset+=rc;
 						}
 						else
 						{
 							Log("Error: Reading from file failed", LL_DEBUG);
 							CloseHandle(hFile);
+							delete []buf;
 							return false;
+						}
+						
+						if(id==ID_GET_FILE_RESUME_HASH && foffset==next_checkpoint)
+						{
+							hash_func.finalize();
+							SendInt((char*)hash_func.raw_digest_int(), 16);
+							next_checkpoint+=c_checkpoint_dist;
+							if(next_checkpoint>curr_filesize)
+								next_checkpoint=curr_filesize;
+							
+							hash_func.init();
 						}
 					}
 					if(FileServ::isPause() )
@@ -686,14 +720,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 						Sleep(500);
 					}
 				}
-
-				if(id==ID_GET_FILE_RESUME_HASH)
-				{
-					hash_func.finalize();
-					SendInt((char*)hash_func.raw_digest_int(), 16);
-				}
 				
 				CloseHandle(hFile);
+				delete []buf;
 				hFile=0;
 #endif
 
@@ -1161,9 +1190,9 @@ bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
 
 	if(data->getLeft()==big_hash_size+small_hash_size*(c_checkpoint_dist/c_small_hash_dist))
 	{
-		memcpy(chunk.big_hash, data->getCurrentPtr(), big_hash_size);
+		memcpy(chunk.big_hash, data->getCurrDataPtr(), big_hash_size);
 		data->incrementPtr(big_hash_size);
-		memcpy(chunk.small_hash, data->getCurrentPtr(), small_hash_size*(c_checkpoint_dist/c_small_hash_dist));
+		memcpy(chunk.small_hash, data->getCurrDataPtr(), small_hash_size*(c_checkpoint_dist/c_small_hash_dist));
 	}
 	else if(chunk.transfer_all==0)
 	{

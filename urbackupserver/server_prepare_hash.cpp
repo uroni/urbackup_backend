@@ -19,7 +19,7 @@
 #ifndef CLIENT_ONLY
 
 #include "server_prepare_hash.h"
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include "server_log.h"
