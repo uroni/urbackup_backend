@@ -23,6 +23,11 @@
 
 #ifdef MODE_STL
 
+File::File()
+{
+
+}
+
 bool File::Open(std::wstring pfn, int mode)
 {
 	fn=pfn;

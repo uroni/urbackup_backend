@@ -3,7 +3,7 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include "../Interface/Database.h"
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
 #include "../urbackupcommon/CompressedPipe.h"

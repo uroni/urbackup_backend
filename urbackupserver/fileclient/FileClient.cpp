@@ -22,7 +22,7 @@
 
 #include "FileClient.h"
 
-#include "../../urbackupcommon/fileclient/data.h"
+#include "../../common/data.h"
 #include "../../stringtools.h"
 
 #include "../../md5.h"

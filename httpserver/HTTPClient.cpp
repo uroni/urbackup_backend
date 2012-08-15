@@ -119,7 +119,7 @@ bool CHTTPClient::Run(void)
 		if( Server->getThreadPool()->isRunning(request_ticket)==false )
 		{
 			//Server->Log("Connection: "+http_params["CONNECTION"], LL_DEBUG);
-			if( strlower(http_params["CONNECTION"])=="close" )
+			/*if( strlower(http_params["CONNECTION"])=="close" )
 			{
 				http_g_state=HTTP_STATE_DONE;
 			}
@@ -137,7 +137,8 @@ bool CHTTPClient::Run(void)
 				{
 					http_keepalive_count=std::min(atoi(iter->second.c_str()), HTTP_MAX_KEEPALIVE );
 				}
-			}
+			}*/
+			http_g_state=HTTP_STATE_DONE;
 			if(fileupload)
 			{
 				Server->clearPostFiles(tid);

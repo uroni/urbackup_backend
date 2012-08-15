@@ -17,7 +17,7 @@
 **************************************************************************/
 
 #include "tcpstack.h"
-#include "data.h"
+#include "../../common/data.h"
 #include "../../md5.h"
 #include <memory.h>
 

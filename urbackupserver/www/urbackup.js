@@ -2430,11 +2430,11 @@ function archive_single(backupid, clientid)
 	if(!startLoading()) return;
 	new getJSON("backups", "sa=backups&clientid="+clientid+"&archive="+backupid, show_backups2);
 }
-function addArchiveItem()
+function addArchiveItem(global)
 {
 	if(!validate_text_nonempty(["archive_every", "archive_for"])) return;
 	if(!validate_text_regex([{id: "archive_window", regexp: /^((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*)$/i } ]) ) return;
-	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, "-");
+	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, (global?"-":-1));
 }
 function getTimelengthSeconds(tl, unit)
 {

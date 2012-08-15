@@ -58,6 +58,7 @@ server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(inter
 ServerChannelThread::~ServerChannelThread(void)
 {
 	delete settings;
+	Server->destroy(mutex);
 }
 
 void ServerChannelThread::operator()(void)

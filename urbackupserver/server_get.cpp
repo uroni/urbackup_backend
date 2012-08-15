@@ -26,7 +26,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../urbackupcommon/settingslist.h"
 #include "server_channel.h"
 #include "server_log.h"
@@ -93,6 +93,9 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 
 	set_settings_version=0;
 	tcpstack.setAddChecksum(internet_connection);
+
+	settings=NULL;
+	settings_client=NULL;
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -106,6 +109,9 @@ BackupServerGet::~BackupServerGet(void)
 	{
 		Server->destroy(client_throttler);
 	}
+
+	if(settings!=NULL) Server->destroy(settings);
+	if(settings_client!=NULL) Server->destroy(settings_client);
 }
 
 void BackupServerGet::init_mutex(void)
@@ -685,9 +691,6 @@ void BackupServerGet::operator ()(void)
 		std::string msg;
 		exitpipe_prepare->Read(&msg);
 		Server->destroy(exitpipe_prepare);
-
-		Server->destroy(hashpipe_prepare);
-		Server->destroy(hashpipe);
 	}
 	else
 	{
@@ -696,7 +699,9 @@ void BackupServerGet::operator ()(void)
 	
 	
 	Server->destroy(settings);
+	settings=NULL;
 	Server->destroy(settings_client);
+	settings_client=NULL;
 	delete server_settings;
 	pipe->Write("ok");
 	Server->Log(L"server_get Thread for client "+clientname+L" finished");

@@ -156,7 +156,14 @@
 	#{no_compname_start}
 	<td class="tabFLeft">&nbsp;</td>
 	#{no_compname_end}
-	<td class="tabFRight"><input type="button" value="#{tAdd}" id="archive_add" onclick="addArchiveItem()" /></td>
+	<td class="tabFRight">
+		#{global_settings_start}
+		<input type="button" value="#{tAdd}" id="archive_add" onclick="addArchiveItem(true)" />
+		#{global_settings_end}
+		#{no_compname_start}
+		<input type="button" value="#{tAdd}" id="archive_add" onclick="addArchiveItem(false)" />
+		#{no_compname_end}		
+	</td>
 </tr>
 </table>
 </div>

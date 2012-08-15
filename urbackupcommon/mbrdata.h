@@ -1,4 +1,4 @@
-#include "fileclient/data.h"
+#include "../common/data.h"
 #include "../Interface/Server.h"
 
 class SMBRData

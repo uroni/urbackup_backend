@@ -334,7 +334,7 @@ void BackupServer::removeAllClients(void)
 		while(msg!="ok")
 		{
 			it->second.pipe->Read(&msg);
-			it->second.pipe->Write(msg);
+			it->second.pipe->Write(msg.c_str());
 			Server->wait(500);
 		}
 		Server->destroy(it->second.pipe);
