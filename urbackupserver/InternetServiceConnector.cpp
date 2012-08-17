@@ -95,22 +95,25 @@ void InternetServiceConnector::cleanup(void)
 		Server->destroy(connection_done_cond);
 }
 
+void InternetServiceConnector::do_stop_connecting(void)
+{
+	IScopedLock lock(local_mutex);
+	connection_stop_cond->notify_all();
+	cleanup_pipes();
+}
+
 bool InternetServiceConnector::Run(void)
 {
+	if(stop_connecting)
+	{
+		do_stop_connecting();
+		return false;
+	}
+
 	if(state==ISS_CONNECTING || state==ISS_USED)
 	{
-		if(stop_connecting)
-		{
-			IScopedLock lock(local_mutex);
-			connection_stop_cond->notify_all();
-			cleanup_pipes();
-			return false;
-		}
 		if(free_connection)
 		{
-			if(has_timeout)
-				cleanup_pipes();
-
 			return false;
 		}
 		return true;
@@ -120,6 +123,7 @@ bool InternetServiceConnector::Run(void)
 	{
 		if(free_connection)
 		{
+			cleanup_pipes();
 			return false;
 		}
 		else
@@ -537,7 +541,6 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 			InternetServiceConnector *isc=it->second.spare_connections.front();
 			it->second.spare_connections.pop();
 			isc->stopConnecting();
-			isc->freeConnection();
 		}
 		client_data.erase(it);
 	}

@@ -46,6 +46,8 @@ private:
 	static IPipeThrottler *global_internet_throttler;
 	static IPipeThrottler *global_local_throttler;
 	static IMutex *throttle_mutex;
+
+	bool internet_test_mode;
 };
 
 #endif //URB_SERVER_H
