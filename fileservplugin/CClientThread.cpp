@@ -475,8 +475,9 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				curr_filesize=filesize.QuadPart;
 
-				
-
+				next_checkpoint=start_offset+c_checkpoint_dist;
+				if(next_checkpoint>curr_filesize)
+					next_checkpoint=curr_filesize;
 
 				if( offset_set==false || id==ID_GET_FILE_RESUME || id==ID_GET_FILE_RESUME_HASH )
 				{
