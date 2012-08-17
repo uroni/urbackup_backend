@@ -27,13 +27,13 @@
     <ClCompile Include="DownloadFactory.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="data.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\stringtools.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="DownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\data.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -47,9 +47,6 @@
     <ClInclude Include="DownloadFactory.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="data.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="DownloadThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -57,6 +54,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="IDownloadFactory.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\data.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

@@ -26,7 +26,7 @@
 #include "../Interface/ThreadPool.h"
 #include "../stringtools.h"
 #include "database.h"
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../fsimageplugin/IFilesystem.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urbackupcommon/sha2/sha2.h"

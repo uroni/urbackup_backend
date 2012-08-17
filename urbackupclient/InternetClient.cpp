@@ -9,7 +9,7 @@
 #include "client.h"
 #include "ClientService.h"
 
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"

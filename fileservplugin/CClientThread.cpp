@@ -1190,9 +1190,9 @@ bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
 
 	if(data->getLeft()==big_hash_size+small_hash_size*(c_checkpoint_dist/c_small_hash_dist))
 	{
-		memcpy(chunk.big_hash, data->getCurrentPtr(), big_hash_size);
+		memcpy(chunk.big_hash, data->getCurrDataPtr(), big_hash_size);
 		data->incrementPtr(big_hash_size);
-		memcpy(chunk.small_hash, data->getCurrentPtr(), small_hash_size*(c_checkpoint_dist/c_small_hash_dist));
+		memcpy(chunk.small_hash, data->getCurrDataPtr(), small_hash_size*(c_checkpoint_dist/c_small_hash_dist));
 	}
 	else if(chunk.transfer_all==0)
 	{

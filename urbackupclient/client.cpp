@@ -26,7 +26,7 @@
 #include <errno.h>
 #endif
 #include "../stringtools.h"
-#include "../urbackupcommon/fileclient/data.h"
+#include "../common/data.h"
 #include "database.h"
 #include "ServerIdentityMgr.h"
 #include "ClientService.h"

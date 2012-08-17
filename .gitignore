@@ -136,3 +136,4 @@ urbackupclient/Release/*
 urbackup/boost_python-vc100-gd-1_44.dll*
 urbackupserver/Release Server PreVista/*
 urbackupserver/Release Server/*
+new_server_idents.txt

@@ -254,12 +254,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\adler32.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
-    <ClCompile Include="..\urbackupcommon\fileclient\data.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
@@ -284,6 +284,7 @@
     <ClCompile Include="serverinterface\progress.cpp" />
     <ClCompile Include="serverinterface\salt.cpp" />
     <ClCompile Include="serverinterface\settings.cpp" />
+    <ClCompile Include="serverinterface\shutdown.cpp" />
     <ClCompile Include="serverinterface\status.cpp" />
     <ClCompile Include="serverinterface\templ.cpp" />
     <ClCompile Include="serverinterface\usage.cpp" />
@@ -311,12 +312,12 @@
     <ClCompile Include="fileclient\FileClient.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\data.h" />
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
-    <ClInclude Include="..\urbackupcommon\fileclient\data.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
     <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h" />
     <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />

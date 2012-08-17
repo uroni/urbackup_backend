@@ -54,6 +54,13 @@ void CWData::addInt64(_i64 ta)
 	memcpy(&data[cpos],&ta,sizeof(_i64) );
 }
 
+void CWData::addUInt64(uint64 ta)
+{
+	size_t cpos=data.size();
+	data.resize(cpos+sizeof(uint64) );
+	memcpy(&data[cpos],&ta,sizeof(uint64) );
+}
+
 void CWData::addFloat(float ta)
 {
 	size_t cpos=data.size();
@@ -310,3 +317,13 @@ void CRData::setStreampos(unsigned int spos)
 		streampos=spos;
 	}
 }
+
+bool CRData::incrementPtr(unsigned int amount)
+{
+	if((unsigned int)amount>getLeft())
+		return false;
+
+	streampos+=amount;
+	return true;
+}
+

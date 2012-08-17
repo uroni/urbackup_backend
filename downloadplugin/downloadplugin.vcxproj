@@ -139,8 +139,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
-    <ClCompile Include="data.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="download2.cpp" />
     <ClCompile Include="DownloadFactory.cpp" />
@@ -148,7 +148,7 @@
     <ClCompile Include="pluginmgr.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="data.h" />
+    <ClInclude Include="..\common\data.h" />
     <ClInclude Include="download2.h" />
     <ClInclude Include="DownloadFactory.h" />
     <ClInclude Include="DownloadThread.h" />

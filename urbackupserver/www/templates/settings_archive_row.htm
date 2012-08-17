@@ -18,7 +18,7 @@
 </td>
 #{next_start}
 <td class="tabFLeft">
-#{archive_timeleft}
+<input type="hidden" id="archive_timeleft_#{id}" value="#{archive_timeleft}" /> #{archive_timeleft}
 </td>
 #{next_end}
 <td class="tabFRight"><input type="button" value="#{tDelete}" onclick="deleteArchiveItem(#{id})"/>
