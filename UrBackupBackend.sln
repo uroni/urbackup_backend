@@ -17,12 +17,16 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "urbackupserver", "urbackups
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "urbackupclient", "urbackupclient\urbackupclient.vcxproj", "{28D66E10-BF1E-45E3-B4E0-77920126531B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Server", "CompiledServer.vcxproj", "{8546D6E2-1872-418B-9766-E40F33689BE4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
 		Release Server PreVista|Win32 = Release Server PreVista|Win32
 		Release Server PreVista|x64 = Release Server PreVista|x64
+		Release Service|Win32 = Release Service|Win32
+		Release Service|x64 = Release Service|x64
 		Release x64|Win32 = Release x64|Win32
 		Release x64|x64 = Release x64|x64
 		Release|Win32 = Release|Win32
@@ -35,6 +39,9 @@ Global
 		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release Server PreVista|Win32.ActiveCfg = Release|x64
 		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release Server PreVista|x64.ActiveCfg = Release|x64
 		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release Server PreVista|x64.Build.0 = Release|x64
+		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release Service|Win32.ActiveCfg = Release|x64
+		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release Service|x64.ActiveCfg = Release|x64
+		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release Service|x64.Build.0 = Release|x64
 		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release x64|Win32.ActiveCfg = Release|x64
 		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release x64|x64.ActiveCfg = Release|x64
 		{B1F1AF2E-E544-45F7-864A-883461A4B574}.Release x64|x64.Build.0 = Release|x64
@@ -47,6 +54,9 @@ Global
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release Server PreVista|Win32.ActiveCfg = Release|x64
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release Server PreVista|x64.ActiveCfg = Release|x64
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release Server PreVista|x64.Build.0 = Release|x64
+		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release Service|Win32.ActiveCfg = Release|x64
+		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release Service|x64.ActiveCfg = Release|x64
+		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release Service|x64.Build.0 = Release|x64
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release x64|Win32.ActiveCfg = Release|x64
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release x64|x64.ActiveCfg = Release|x64
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release x64|x64.Build.0 = Release|x64
@@ -59,6 +69,9 @@ Global
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Server PreVista|Win32.ActiveCfg = Release|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Server PreVista|x64.ActiveCfg = Release|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Server PreVista|x64.Build.0 = Release|x64
+		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Service|Win32.ActiveCfg = Release|x64
+		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Service|x64.ActiveCfg = Release|x64
+		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Service|x64.Build.0 = Release|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release x64|Win32.ActiveCfg = Release|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release x64|x64.ActiveCfg = Release|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release x64|x64.Build.0 = Release|x64
@@ -71,6 +84,9 @@ Global
 		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Server PreVista|Win32.ActiveCfg = Release|x64
 		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Server PreVista|x64.ActiveCfg = Release|x64
 		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Server PreVista|x64.Build.0 = Release|x64
+		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Service|Win32.ActiveCfg = Release|x64
+		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Service|x64.ActiveCfg = Release|x64
+		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Service|x64.Build.0 = Release|x64
 		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release x64|Win32.ActiveCfg = Release|x64
 		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release x64|x64.ActiveCfg = Release|x64
 		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release x64|x64.Build.0 = Release|x64
@@ -83,6 +99,9 @@ Global
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release Server PreVista|Win32.ActiveCfg = Release|x64
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release Server PreVista|x64.ActiveCfg = Release|x64
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release Server PreVista|x64.Build.0 = Release|x64
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release Service|Win32.ActiveCfg = Release|x64
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release Service|x64.ActiveCfg = Release|x64
+		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release Service|x64.Build.0 = Release|x64
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release x64|Win32.ActiveCfg = Release|x64
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release x64|x64.ActiveCfg = Release|x64
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Release x64|x64.Build.0 = Release|x64
@@ -95,6 +114,9 @@ Global
 		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release Server PreVista|Win32.ActiveCfg = Release|x64
 		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release Server PreVista|x64.ActiveCfg = Release|x64
 		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release Server PreVista|x64.Build.0 = Release|x64
+		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release Service|Win32.ActiveCfg = Release|x64
+		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release Service|x64.ActiveCfg = Release|x64
+		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release Service|x64.Build.0 = Release|x64
 		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release x64|Win32.ActiveCfg = Release|x64
 		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release x64|x64.ActiveCfg = Release|x64
 		{8FBAA5C1-4E1F-4D9F-9874-231BFA08E638}.Release x64|x64.Build.0 = Release|x64
@@ -109,6 +131,9 @@ Global
 		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release Server PreVista|Win32.Build.0 = Release Server PreVista|Win32
 		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release Server PreVista|x64.ActiveCfg = Release Server PreVista|x64
 		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release Server PreVista|x64.Build.0 = Release Server PreVista|x64
+		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release Service|Win32.ActiveCfg = Release Server|x64
+		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release Service|x64.ActiveCfg = Release Server|x64
+		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release Service|x64.Build.0 = Release Server|x64
 		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release x64|Win32.ActiveCfg = Release Server|x64
 		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release x64|x64.ActiveCfg = Release Server|x64
 		{A4E2527B-4886-4163-9411-10BF66A931BE}.Release x64|x64.Build.0 = Release Server|x64
@@ -122,6 +147,9 @@ Global
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release Server PreVista|Win32.ActiveCfg = Release Server 2003|x64
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release Server PreVista|x64.ActiveCfg = Release Server 2003|x64
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release Server PreVista|x64.Build.0 = Release Server 2003|x64
+		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release Service|Win32.ActiveCfg = Release Server 2003|x64
+		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release Service|x64.ActiveCfg = Release Server 2003|x64
+		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release Service|x64.Build.0 = Release Server 2003|x64
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release x64|Win32.ActiveCfg = Release x64|Win32
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release x64|Win32.Build.0 = Release x64|Win32
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release x64|x64.ActiveCfg = Release x64|x64
@@ -130,6 +158,24 @@ Global
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release|Win32.Build.0 = Release|Win32
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release|x64.ActiveCfg = Release|x64
 		{28D66E10-BF1E-45E3-B4E0-77920126531B}.Release|x64.Build.0 = Release|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Debug|Win32.Build.0 = Debug|Win32
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Debug|x64.ActiveCfg = Debug|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Debug|x64.Build.0 = Debug|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release Server PreVista|Win32.ActiveCfg = Release Service|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release Server PreVista|x64.ActiveCfg = Release Service|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release Server PreVista|x64.Build.0 = Release Service|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release Service|Win32.ActiveCfg = Release Service|Win32
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release Service|Win32.Build.0 = Release Service|Win32
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release Service|x64.ActiveCfg = Release Service|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release Service|x64.Build.0 = Release Service|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release x64|Win32.ActiveCfg = Release Service|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release x64|x64.ActiveCfg = Release Service|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release x64|x64.Build.0 = Release Service|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release|Win32.ActiveCfg = Release|Win32
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release|Win32.Build.0 = Release|Win32
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release|x64.ActiveCfg = Release|x64
+		{8546D6E2-1872-418B-9766-E40F33689BE4}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
