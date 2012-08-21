@@ -43,6 +43,11 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 {
 	throttle_mutex=Server->createMutex();
 	exitpipe=pExitpipe;
+
+	if(Server->getServerParameter("internet_test_mode")=="true")
+		internet_test_mode=true;
+	else
+		internet_test_mode=false;
 }
 
 BackupServer::~BackupServer()
@@ -89,6 +94,8 @@ void BackupServer::operator()(void)
 	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
 
 	FileClient fc;
+
+	Server->wait(1000);
 
 	while(true)
 	{
@@ -156,8 +163,14 @@ void BackupServer::findClients(FileClient &fc)
 
 void BackupServer::startClients(FileClient &fc)
 {
-	std::vector<std::wstring> names=fc.getServerNames();
-	std::vector<sockaddr_in> servers=fc.getServers();
+	std::vector<std::wstring> names;
+	std::vector<sockaddr_in> servers;
+
+	if(!internet_test_mode)
+	{
+		names=fc.getServerNames();
+		servers=fc.getServers();
+	}
 
 	std::vector<bool> inetclient;
 	inetclient.resize(names.size());

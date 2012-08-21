@@ -120,12 +120,17 @@ std::vector<SFile> getFiles(const std::wstring &path)
 
 void removeFile(const std::wstring &path)
 {
-	unlink(wnarrow(path).c_str());
+	unlink(Server->ConvertToUTF8(path).c_str());
 }
 
 void moveFile(const std::wstring &src, const std::wstring &dst)
 {
-	rename(wnarrow(src).c_str(), wnarrow(dst).c_str() );
+	rename(Server->ConvertToUTF8(src).c_str(), Server->ConvertToUTF8(dst).c_str() );
+}
+
+bool os_remove_symlink_dir(const std::wstring &path)
+{
+	return unlink(Server->ConvertToUTF8(path).c_str())==0;	
 }
 
 bool isDirectory(const std::wstring &path)

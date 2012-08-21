@@ -138,6 +138,11 @@ void CServer::destroyAllDatabases(void)
 
 CServer::~CServer()
 {
+	if(getServerParameter("leak_check")!="true") //minimal cleanup
+	{
+		return;
+	}
+
 	Log("deleting cached settings...");
 	CFileSettingsReader::cleanup();
 	

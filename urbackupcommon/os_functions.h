@@ -39,6 +39,8 @@ int64 os_free_space(const std::wstring &path);
 
 bool os_remove_nonempty_dir(const std::wstring &path);
 
+bool os_remove_symlink_dir(const std::wstring &path);
+
 std::wstring os_file_sep(void);
 
 std::string os_file_sepn(void);

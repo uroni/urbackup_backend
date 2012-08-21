@@ -493,7 +493,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 DLLEXPORT void UnloadActions(void)
 {
-	int wtime=500;
+	unsigned int wtime=500;
 	if(is_leak_check)
 		wtime=2000;
 
@@ -506,7 +506,7 @@ DLLEXPORT void UnloadActions(void)
 		{
 			server_exit_pipe->Write("exit");
 			Server->wait(100);
-			server_exit_pipe->Read(&msg);
+			server_exit_pipe->Read(&msg, 0);
 		}
 
 		if(msg=="ok")

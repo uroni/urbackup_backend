@@ -152,6 +152,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.max_active_clients=settings_default->getValue("max_active_clients", 100);
 	settings.max_sim_backups=settings_default->getValue("max_sim_backups", 10);
 	settings.exclude_files=settings_default->getValue(L"exclude_files", L"");
+	settings.include_files=settings_default->getValue(L"include_files", L"");
 	settings.default_dirs=settings_default->getValue(L"default_dirs", L"");
 	settings.cleanup_window=settings_default->getValue("cleanup_window", "1-7/3-4");
 	settings.allow_config_paths=(settings_default->getValue("allow_config_paths", "true")=="true");

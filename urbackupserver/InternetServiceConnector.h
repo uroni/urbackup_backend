@@ -70,6 +70,7 @@ private:
 
 	void cleanup_pipes(void);
 	void cleanup(void);
+	void do_stop_connecting(void);
 
 	static std::map<std::string, SClientData> client_data;
 	static IMutex *mutex;

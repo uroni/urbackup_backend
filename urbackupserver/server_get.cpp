@@ -1309,7 +1309,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	{
 		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 		std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
-		Server->deleteFile(os_file_prefix(currdir));
+		os_remove_symlink_dir(os_file_prefix(currdir));
 		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 		currdir=backupfolder+os_file_sep()+L"clients";
@@ -1942,7 +1942,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
-			Server->deleteFile(os_file_prefix(currdir));
+
+			os_remove_symlink_dir(os_file_prefix(currdir));		
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 			Server->Log("Creating symbolic links. -2", LL_DEBUG);
@@ -1953,7 +1954,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
 			currdir+=os_file_sep()+clientname;
-			Server->deleteFile(os_file_prefix(currdir));
+			os_remove_symlink_dir(os_file_prefix(currdir));
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 			Server->Log("Symbolic links created.", LL_DEBUG);
