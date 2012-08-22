@@ -86,6 +86,7 @@ public:
 	static void destroy_mutex(void);
 	static void updateAll(void);
 	static std::string generateRandomAuthKey(void);
+	static std::string generateRandomBinaryKey(void);
 
 	std::vector<STimeSpan> getBackupWindow(void);
 	std::vector<STimeSpan> getCleanupWindow(void);

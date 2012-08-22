@@ -136,7 +136,7 @@ std::string CryptoFactory::generatePasswordHash(const std::string &password, con
 	hexEncoder.Put(derived,derived.size());
 	hexEncoder.MessageEnd();
 	std::string ret;
-	ret.resize(derived.size()*2);
+	ret.resize(hexEncoder.MaxRetrievable());
 	hexEncoder.Get((byte*)&ret[0],ret.size());
 	return ret;
 }

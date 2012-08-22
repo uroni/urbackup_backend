@@ -10,6 +10,7 @@
 #include "server_settings.h"
 #include "database.h"
 #include "../stringtools.h"
+#include "../cryptoplugin/ICryptoFactory.h"
 
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
@@ -18,8 +19,12 @@ const unsigned int establish_timeout=60000;
 
 std::map<std::string, SClientData> InternetServiceConnector::client_data;
 IMutex *InternetServiceConnector::mutex=NULL;
+IMutex *InternetServiceConnector::onetime_token_mutex=NULL;
+std::map<unsigned int, SOnetimeToken> InternetServiceConnector::onetime_tokens;
+unsigned int InternetServiceConnector::onetime_token_id=0;
 
-const std::string auth_text="##################URBACKUP--AUTH#########################-";
+extern ICryptoFactory *crypto_fak;
+const size_t pbkdf2_iterations=10000;
 
 ICustomClient* InternetService::createClient()
 {
@@ -59,7 +64,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	connection_stop_cond=NULL;
 	tcpstack.reset();
 	tcpstack.setAddChecksum(true);
-	challenge=ServerSettings::generateRandomAuthKey();
+	challenge=ServerSettings::generateRandomBinaryKey();
 	{
 		CWData data;
 		data.addChar(ID_ISC_CHALLENGE);
@@ -205,40 +210,62 @@ void InternetServiceConnector::ReceivePackets(void)
 			{
 			case ISS_AUTH:
 				{
-					if(id==ID_ISC_AUTH)
+					if(id==ID_ISC_AUTH || id==ID_ISC_AUTH_TOKEN)
 					{
-						std::string encdata;
+						size_t iterations=pbkdf2_iterations;
+						if(id==ID_ISC_AUTH_TOKEN)
+						{
+							iterations=1;
+						}
+
+						std::string hmac;
 						std::string errmsg;
 
-						if(rd.getStr(&clientname) && rd.getStr(&encdata) )
+						if(rd.getStr(&clientname) && rd.getStr(&hmac) )
 						{
-							IDatabase *db=Server->getDatabase(tid, URBACKUPDB_SERVER);
-							IQuery *q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='internet_authkey' AND clientid=(SELECT id FROM clients WHERE name=?)", false);
-							q->Bind(clientname);
-							int timeoutms=1000;
-							db_results res=q->Read(&timeoutms);
-							db->destroyQuery(q);
-							if(!res.empty())
+							std::string authkey;
+							std::string token;
+							if(id==ID_ISC_AUTH_TOKEN)
 							{
-								
-								authkey=Server->ConvertToUTF8(res[0][L"value"]);
-								is_pipe=new InternetServicePipe(comm_pipe, authkey);			
-								
-								std::string auth_str=is_pipe->decrypt(encdata);
-								if(auth_str==auth_text+challenge)
+								unsigned int token_id;
+								if(rd.getUInt(&token_id) )
 								{
-									state=ISS_CAPA;
-									comm_pipe=is_pipe;
+									std::string cname;
+									authkey=getOnetimeToken(token_id, &cname);
+									if(authkey.empty())
+									{
+										errmsg="Token not found";
+									}
+									else if(cname!=clientname)
+									{
+										errmsg="Wrong token";
+									}
 								}
 								else
 								{
-									Server->wait(1000);
-									errmsg="Auth failed";
-									delete is_pipe;
-									is_pipe=NULL;
+									errmsg="Missing field -1";
 								}
 							}
 							else
+							{
+								authkey=getAuthkeyFromDB(clientname);
+							}
+
+							if(errmsg.empty() && !authkey.empty())
+							{
+								std::string hmac_loc=crypto_fak->generatePasswordHash(authkey, challenge, pbkdf2_iterations);								
+								if(hmac_loc==hmac)
+								{
+									state=ISS_CAPA;
+									comm_pipe=is_pipe;
+									is_pipe=new InternetServicePipe(comm_pipe, hmac_loc);
+								}
+								else
+								{
+									errmsg="Auth failed";
+								}
+							}
+							else if(errmsg.empty())
 							{
 								errmsg="Unknown client";
 							}
@@ -255,18 +282,22 @@ void InternetServiceConnector::ReceivePackets(void)
 							data.addChar(ID_ISC_AUTH_FAILED);
 							data.addString(errmsg);
 						}
-						else
+						else if(state==ISS_CAPA)
 						{
 							std::string client_challenge;
 							rd.getStr(&client_challenge);
+							
 							data.addChar(ID_ISC_AUTH_OK);
 							if(is_pipe!=NULL)
 							{
-								data.addString(is_pipe->encrypt(auth_text+client_challenge));
+								std::string hmac_loc=crypto_fak->generatePasswordHash(authkey, client_challenge, iterations);
+								data.addString(hmac_loc);
+								std::string new_token=generateOnetimeToken(clientname);
+								data.addString(is_pipe->encrypt(new_token));
 							}
 						}
 						tcpstack.Send(cs, data);
-					}					
+					}
 				}break;
 			case ISS_CAPA:
 				{
@@ -336,11 +367,13 @@ void InternetServiceConnector::ReceivePackets(void)
 void InternetServiceConnector::init_mutex(void)
 {
 	mutex=Server->createMutex();
+	onetime_token_mutex=Server->createMutex();
 }
 
 void InternetServiceConnector::destroy_mutex(void)
 {
 	Server->destroy(mutex);
+	Server->destroy(onetime_token_mutex);
 }
 
 IPipe *InternetServiceConnector::getConnection(const std::string &clientname, char service, int timeoutms)
@@ -558,3 +591,50 @@ void InternetServiceConnector::localWait(ICondition *cond, int timems)
 	IScopedLock lock(local_mutex);
 	cond->wait(&lock, timems);
 }
+
+std::string InternetServiceConnector::generateOnetimeToken(const std::string &clientname)
+{
+	SOnetimeToken token(clientname);
+	unsigned int token_id;
+	{
+		IScopedLock lock(onetime_token_mutex);
+		token_id=onetime_token_id++;
+		onetime_tokens.insert(std::pair<unsigned int, SOnetimeToken>(token_id, token));
+	}
+	std::string ret;
+	ret.resize(sizeof(unsigned int)+token.token.size());
+	memcpy((char*)ret.data(), &token_id, sizeof(unsigned int));
+	memcpy((char*)ret.data()+sizeof(unsigned int), token.token.data(), token.token.size());
+	return ret;
+}
+
+std::string InternetServiceConnector::getOnetimeToken(unsigned int id, std::string *cname)
+{
+	IScopedLock lock(onetime_token_mutex);
+	std::map<unsigned int, SOnetimeToken>::iterator iter=onetime_tokens.find(id);
+	if(iter!=onetime_tokens.end())
+	{
+		*cname=iter->second.clientname;
+		std::string token=iter->second.token;
+		onetime_tokens.erase(iter);
+		return iter->second.token;
+	}
+	return std::string();
+}
+
+std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &clientname)
+{
+	IDatabase *db=Server->getDatabase(tid, URBACKUPDB_SERVER);
+	IQuery *q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='internet_authkey' AND clientid=(SELECT id FROM clients WHERE name=?)", false);
+	q->Bind(clientname);
+	int timeoutms=1000;
+	db_results res=q->Read(&timeoutms);
+	db->destroyQuery(q);
+	if(!res.empty())
+	{								
+		return Server->ConvertToUTF8(res[0][L"value"]);
+	}
+	
+	return std::string();
+}
+

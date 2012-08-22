@@ -1,7 +1,9 @@
 #include "../Interface/Service.h"
 #include "../Interface/CustomClient.h"
+#include "../Interface/Server.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/internet_pipe_capabilities.h"
+#include "server_settings.h"
 #include <queue>
 
 class IMutex;
@@ -32,6 +34,19 @@ struct SClientData
 {
 	std::queue<InternetServiceConnector*> spare_connections;
 	unsigned int last_seen;
+};
+
+struct SOnetimeToken
+{
+	SOnetimeToken(const std::string &clientname)
+		: clientname(clientname)
+	{
+		created=Server->getTimeMS();
+		token=ServerSettings::generateRandomBinaryKey();
+	}
+	std::string token;
+	unsigned int created;
+	std::string clientname;
 };
 
 const char SERVICE_COMMANDS=0;
@@ -72,6 +87,12 @@ private:
 	void cleanup(void);
 	void do_stop_connecting(void);
 
+	std::string  generateOnetimeToken(const std::string &clientname);
+	std::string getOnetimeToken(unsigned int id, std::string *cname);
+	void removeOldTokens(void);
+
+	std::string getAuthkeyFromDB(const std::string &clientname);
+
 	static std::map<std::string, SClientData> client_data;
 	static IMutex *mutex;
 
@@ -105,4 +126,8 @@ private:
 	std::string authkey;
 
 	int compression_level;
+
+	static IMutex *onetime_token_mutex;
+	static std::map<unsigned int, SOnetimeToken> onetime_tokens;
+	static unsigned int onetime_token_id;
 };

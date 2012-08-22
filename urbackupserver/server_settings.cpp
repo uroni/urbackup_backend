@@ -466,4 +466,15 @@ std::string ServerSettings::generateRandomAuthKey(void)
 	return key;
 }
 
+std::string ServerSettings::generateRandomBinaryKey(void)
+{
+	std::string key;
+	key.resize(32);
+
+	for(int j=0;j<32;++j)
+		key[j]=(unsigned char)(rand()%256);
+
+	return key;
+}
+
 #endif //CLIENT_ONLY

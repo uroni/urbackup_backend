@@ -26,6 +26,8 @@ bool InternetClient::update_settings=false;
 SServerSettings InternetClient::server_settings;
 ICondition *InternetClient::wakeup_cond=NULL;
 int InternetClient::auth_err=0;
+std::queue<std::pair<unsigned int, std::string> > InternetClient::onetime_tokens;
+IMutex *InternetClient::onetime_token_mutex=NULL;
 
 const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
@@ -36,20 +38,21 @@ const int ic_sleep_after_auth_errs=2;
 const char SERVICE_COMMANDS=0;
 const char SERVICE_FILESRV=1;
 
-const std::string auth_text="##################URBACKUP--AUTH#########################-";
-
 void InternetClient::init_mutex(void)
 {
 	mutex=Server->createMutex();
 	wakeup_cond=Server->createCondition();
+	onetime_token_mutex=Server->createMutex();
 }
 
-std::string InternetClientThread::generateRandomAuthKey(void)
+std::string InternetClientThread::generateRandomBinaryAuthKey(void)
 {
-	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 	std::string key;
-	for(int j=0;j<10;++j)
-		key+=rchars[rand()%rchars.size()];
+	key.resize(32);
+
+	for(int j=0;j<32;++j)
+		key[j]=(unsigned char)(rand()%256);
+
 	return key;
 }
 
