@@ -6,8 +6,11 @@ class IAESDecryption;
 class InternetServicePipe : public IPipe
 {
 public:
+	InternetServicePipe(void);
 	InternetServicePipe(IPipe *cs, const std::string &key);
 	~InternetServicePipe(void);
+
+	void init(IPipe *pcs, const std::string &key);
 
 	virtual size_t Read(char *buffer, size_t bsize, int timeoutms=-1);
 	virtual bool Write(const char *buffer, size_t bsize, int timeoutms=-1);

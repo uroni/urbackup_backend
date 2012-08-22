@@ -89,7 +89,7 @@ private:
 
 	std::string  generateOnetimeToken(const std::string &clientname);
 	std::string getOnetimeToken(unsigned int id, std::string *cname);
-	void removeOldTokens(void);
+	static void removeOldTokens(void);
 
 	std::string getAuthkeyFromDB(const std::string &clientname);
 
@@ -127,7 +127,11 @@ private:
 
 	int compression_level;
 
+	bool token_auth;
+
 	static IMutex *onetime_token_mutex;
 	static std::map<unsigned int, SOnetimeToken> onetime_tokens;
 	static unsigned int onetime_token_id;
+
+	static unsigned int last_token_remove;
 };

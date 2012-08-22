@@ -44,12 +44,22 @@
 
 IAESEncryption* CryptoFactory::createAESEncryption(const std::string &password)
 {
-	return new AESEncryption(password);
+	return new AESEncryption(password, true);
 }
 
 IAESDecryption* CryptoFactory::createAESDecryption(const std::string &password)
 {
-	return new AESDecryption(password);
+	return new AESDecryption(password, true);
+}
+
+IAESEncryption* CryptoFactory::createAESEncryptionNoDerivation(const std::string &password)
+{
+	return new AESEncryption(password, false);
+}
+
+IAESDecryption* CryptoFactory::createAESDecryptionNoDerivation(const std::string &password)
+{
+	return new AESDecryption(password, false);
 }
 
 bool CryptoFactory::generatePrivatePublicKeyPair(const std::string &keybasename)
@@ -130,7 +140,7 @@ std::string CryptoFactory::generatePasswordHash(const std::string &password, con
 	CryptoPP::SecByteBlock derived;
 	derived.resize(CryptoPP::SHA512::DIGESTSIZE);
 	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> pkcs;
-	pkcs.DeriveKey(derived, CryptoPP::SHA512::DIGESTSIZE, 0, (byte*)password.c_str(), password.size(), (byte*)salt.c_str(), salt.size(), 10000, 0);
+	pkcs.DeriveKey(derived, CryptoPP::SHA512::DIGESTSIZE, 0, (byte*)password.c_str(), password.size(), (byte*)salt.c_str(), salt.size(), (unsigned int)iterations, 0);
 
 	CryptoPP::HexEncoder hexEncoder;
 	hexEncoder.Put(derived,derived.size());
@@ -139,6 +149,16 @@ std::string CryptoFactory::generatePasswordHash(const std::string &password, con
 	ret.resize(hexEncoder.MaxRetrievable());
 	hexEncoder.Get((byte*)&ret[0],ret.size());
 	return ret;
+}
+
+std::string CryptoFactory::generateBinaryPasswordHash(const std::string &password, const std::string &salt, size_t iterations)
+{
+	std::string derived;
+	derived.resize(CryptoPP::SHA512::DIGESTSIZE);
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> pkcs;
+	pkcs.DeriveKey((byte*)derived.data(), CryptoPP::SHA512::DIGESTSIZE, 0, (byte*)password.c_str(), password.size(), (byte*)salt.c_str(), salt.size(), (unsigned int)iterations, 0);
+
+	return derived;
 }
 
 IZlibCompression* CryptoFactory::createZlibCompression(int compression_level)

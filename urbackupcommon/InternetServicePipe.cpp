@@ -6,6 +6,13 @@
 
 extern ICryptoFactory *crypto_fak;
 
+InternetServicePipe::InternetServicePipe(void)
+	: cs(NULL), destroy_cs(false)
+{
+	enc=NULL;
+	dec=NULL;
+}
+
 InternetServicePipe::InternetServicePipe(IPipe *cs, const std::string &key)
 	: cs(cs), destroy_cs(false)
 {
@@ -15,12 +22,20 @@ InternetServicePipe::InternetServicePipe(IPipe *cs, const std::string &key)
 
 InternetServicePipe::~InternetServicePipe(void)
 {
-	enc->Remove();
-	dec->Remove();
-	if(destroy_cs)
+	if(enc!=NULL) enc->Remove();
+	if(dec!=NULL) dec->Remove();
+	if(destroy_cs && cs!=NULL)
 	{
 		Server->destroy(cs);
 	}
+}
+
+void InternetServicePipe::init(IPipe *pcs, const std::string &key)
+{
+	cs=pcs;
+	destroy_cs=false;
+	enc=crypto_fak->createAESEncryption(key);
+	dec=crypto_fak->createAESDecryption(key);
 }
 
 size_t InternetServicePipe::Read(char *buffer, size_t bsize, int timeoutms)

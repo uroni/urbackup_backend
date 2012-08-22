@@ -22,9 +22,10 @@ IMutex *InternetServiceConnector::mutex=NULL;
 IMutex *InternetServiceConnector::onetime_token_mutex=NULL;
 std::map<unsigned int, SOnetimeToken> InternetServiceConnector::onetime_tokens;
 unsigned int InternetServiceConnector::onetime_token_id=0;
+unsigned int InternetServiceConnector::last_token_remove=0;
 
 extern ICryptoFactory *crypto_fak;
-const size_t pbkdf2_iterations=10000;
+const size_t pbkdf2_iterations=20000;
 
 ICustomClient* InternetService::createClient()
 {
@@ -80,6 +81,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 		compression_level=settings->internet_compression_level;
 		data.addUInt(capa);
 		data.addInt(compression_level);
+		data.addUInt((unsigned int)pbkdf2_iterations);
 
 		tcpstack.Send(cs, data);
 	}
@@ -212,18 +214,22 @@ void InternetServiceConnector::ReceivePackets(void)
 				{
 					if(id==ID_ISC_AUTH || id==ID_ISC_AUTH_TOKEN)
 					{
-						size_t iterations=pbkdf2_iterations;
+						unsigned int iterations=(unsigned int)pbkdf2_iterations;
 						if(id==ID_ISC_AUTH_TOKEN)
 						{
 							iterations=1;
+							token_auth=true;
+						}
+						else
+						{
+							token_auth=false;
 						}
 
 						std::string hmac;
 						std::string errmsg;
 
 						if(rd.getStr(&clientname) && rd.getStr(&hmac) )
-						{
-							std::string authkey;
+						{							
 							std::string token;
 							if(id==ID_ISC_AUTH_TOKEN)
 							{
@@ -253,12 +259,12 @@ void InternetServiceConnector::ReceivePackets(void)
 
 							if(errmsg.empty() && !authkey.empty())
 							{
-								std::string hmac_loc=crypto_fak->generatePasswordHash(authkey, challenge, pbkdf2_iterations);								
+								std::string hmac_loc=crypto_fak->generateBinaryPasswordHash(authkey, challenge, iterations);								
 								if(hmac_loc==hmac)
 								{
 									state=ISS_CAPA;
-									comm_pipe=is_pipe;
 									is_pipe=new InternetServicePipe(comm_pipe, hmac_loc);
+									comm_pipe=is_pipe;
 								}
 								else
 								{
@@ -275,6 +281,12 @@ void InternetServiceConnector::ReceivePackets(void)
 							errmsg="Missing fields";
 						}
 
+						std::string client_challenge;
+						if(!rd.getStr(&client_challenge) || client_challenge.size()<32 )
+						{
+							errmsg="Client challenge missing or not long enough";
+						}
+
 						CWData data;
 						if(!errmsg.empty())
 						{
@@ -284,13 +296,21 @@ void InternetServiceConnector::ReceivePackets(void)
 						}
 						else if(state==ISS_CAPA)
 						{
-							std::string client_challenge;
-							rd.getStr(&client_challenge);
+							unsigned int client_iterations;
+							rd.getUInt(&client_iterations);
 							
 							data.addChar(ID_ISC_AUTH_OK);
 							if(is_pipe!=NULL)
 							{
-								std::string hmac_loc=crypto_fak->generatePasswordHash(authkey, client_challenge, iterations);
+								std::string hmac_loc;
+								if(id==ID_ISC_AUTH_TOKEN)
+								{
+									hmac_loc=crypto_fak->generateBinaryPasswordHash(authkey, client_challenge, 1);
+								}
+								else
+								{
+									hmac_loc=crypto_fak->generateBinaryPasswordHash(authkey, client_challenge, (std::max)(iterations, client_iterations) );
+								}
 								data.addString(hmac_loc);
 								std::string new_token=generateOnetimeToken(clientname);
 								data.addString(is_pipe->encrypt(new_token));
@@ -324,7 +344,7 @@ void InternetServiceConnector::ReceivePackets(void)
 								client_data[clientname].last_seen=Server->getTimeMS();
 							}
 
-							Server->Log("Authed+capa for client '"+clientname+"' - "+nconvert(client_data[clientname].spare_connections.size())+" spare connections", LL_DEBUG);
+							Server->Log("Authed+capa for client '"+clientname+"' "+(token_auth?"(token auth) ":"")+"- "+nconvert(client_data[clientname].spare_connections.size())+" spare connections", LL_DEBUG);
 
 							state=ISS_AUTHED;
 						}
@@ -546,6 +566,13 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 
 	IScopedLock lock(mutex);
 	unsigned int ct=Server->getTimeMS();
+
+	if(ct-last_token_remove>30*60*1000)
+	{
+		removeOldTokens();
+		last_token_remove=ct;
+	}
+
 	std::vector<std::string> todel;
 	for(std::map<std::string, SClientData>::iterator it=client_data.begin();it!=client_data.end();++it)
 	{
@@ -617,7 +644,7 @@ std::string InternetServiceConnector::getOnetimeToken(unsigned int id, std::stri
 		*cname=iter->second.clientname;
 		std::string token=iter->second.token;
 		onetime_tokens.erase(iter);
-		return iter->second.token;
+		return token;
 	}
 	return std::string();
 }
@@ -638,3 +665,25 @@ std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &client
 	return std::string();
 }
 
+void InternetServiceConnector::removeOldTokens(void)
+{
+	IScopedLock lock(onetime_token_mutex);
+	unsigned int tt=Server->getTimeMS();
+	std::vector<unsigned int> todel;
+	for(std::map<unsigned int, SOnetimeToken>::iterator it=onetime_tokens.begin();it!=onetime_tokens.end();++it)
+	{
+		if(tt-it->second.created>1*60*60*1000)
+		{
+			todel.push_back(it->first);
+		}
+	}
+
+	for(size_t i=0;i<todel.size();++i)
+	{
+		std::map<unsigned int, SOnetimeToken>::iterator iter=onetime_tokens.find(todel[i]);
+		if(iter!=onetime_tokens.end())
+		{
+			onetime_tokens.erase(iter);
+		}
+	}
+}

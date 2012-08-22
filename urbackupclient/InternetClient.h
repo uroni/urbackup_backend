@@ -49,6 +49,7 @@ public:
 	static void updateSettings(void);
 
 	static void addOnetimeToken(const std::string &token);
+	static std::pair<unsigned int, std::string> getOnetimeToken(void);
 
 private:
 	static IMutex *mutex;
@@ -62,19 +63,6 @@ private:
 	static int auth_err;
 	static std::queue<std::pair<unsigned int, std::string> > onetime_tokens;
 	static bool do_exit;
-};
-
-class InternetClientThread : public IThread
-{
-public:
-	InternetClientThread(IPipe *cs, const SServerSettings &server_settings);
-	void operator()(void);
-
-	char *getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &replysize, unsigned int timeoutms);
-
-	void runServiceWrapper(IPipe *pipe, ICustomClient *client);
-
-private:
 };
 
 class InternetClientThread : public IThread
