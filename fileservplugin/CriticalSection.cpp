@@ -33,6 +33,8 @@
     CriticalSection::~CriticalSection()
     {
         //::DeleteCriticalSection(&cs);
+    	if(mutex!=NULL)
+    		mutex->Remove();
     }
 
     void CriticalSection::Enter()

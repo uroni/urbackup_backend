@@ -27,6 +27,7 @@ SServerSettings InternetClient::server_settings;
 ICondition *InternetClient::wakeup_cond=NULL;
 int InternetClient::auth_err=0;
 std::queue<std::pair<unsigned int, std::string> > InternetClient::onetime_tokens;
+bool InternetClient::do_exit=false;
 IMutex *InternetClient::onetime_token_mutex=NULL;
 
 const unsigned int ic_lan_timeout=10*60*1000;
@@ -45,7 +46,13 @@ void InternetClient::init_mutex(void)
 	onetime_token_mutex=Server->createMutex();
 }
 
-std::string InternetClientThread::generateRandomBinaryAuthKey(void)
+void InternetClient::destroy_mutex(void)
+{
+	Server->destroy(mutex);
+	Server->destroy(wakeup_cond);
+}
+
+std::string InternetClientThread::generateRandomAuthKey(void)
 {
 	std::string key;
 	key.resize(32);
@@ -110,7 +117,7 @@ void InternetClient::operator()(void)
 	Server->waitForStartupComplete();
 	Server->wait(60000);
 	doUpdateSettings();
-	while(true)
+	while(!do_exit)
 	{
 		IScopedLock lock(mutex);
 		if(update_settings)
@@ -128,8 +135,7 @@ void InternetClient::operator()(void)
 				}
 				else
 				{
-					lock.relock(NULL);
-					Server->wait(ic_lan_timeout/2);
+					wakeup_cond->wait(&lock, ic_lan_timeout/2);
 				}
 			}
 			else
@@ -152,10 +158,11 @@ void InternetClient::operator()(void)
 		}
 		else
 		{
-			lock.relock(NULL);
-			Server->wait(ic_lan_timeout);
+			wakeup_cond->wait(&lock, ic_lan_timeout);
 		}
 	}
+
+	delete this;
 }
 
 void InternetClient::doUpdateSettings(void)
@@ -234,10 +241,34 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 	return false;
 }
 
-void InternetClient::start(void)
+THREADPOOL_TICKET InternetClient::start(bool use_pool)
 {
 	init_mutex();
-	Server->createThread(new InternetClient);
+	if(!use_pool)
+	{
+		Server->createThread(new InternetClient);
+		return ILLEGAL_THREADPOOL_TICKET;
+	}
+	else
+	{
+		return Server->getThreadPool()->execute(new InternetClient);
+	}
+}
+
+void InternetClient::stop(THREADPOOL_TICKET tt)
+{
+	{
+		IScopedLock lock(mutex);
+		do_exit=true;
+		wakeup_cond->notify_all();
+	}
+
+	if(tt==ILLEGAL_THREADPOOL_TICKET)
+		Server->wait(1000);
+	else
+		Server->getThreadPool()->waitFor(tt);
+
+	destroy_mutex();
 }
 
 InternetClientThread::InternetClientThread(IPipe *cs, const SServerSettings &server_settings)

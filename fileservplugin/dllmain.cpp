@@ -73,4 +73,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 DLLEXPORT void UnloadActions(void)
 {
+	if(Server->getServerParameter("leak_check")=="true")
+	{
+		FileServ::destroy_mutex();
+	}
 }

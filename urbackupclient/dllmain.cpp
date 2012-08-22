@@ -54,7 +54,6 @@ IServer *Server;
 #include <stdlib.h>
 
 PLUGIN_ID filesrv_pluginid;
-IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
 std::string server_identity;
@@ -80,6 +79,9 @@ const std::string new_file="new.txt";
 const std::string pw_file="urbackup/pw.txt";
 const std::string new_file="urbackup/new.txt";
 #endif
+
+THREADPOOL_TICKET indexthread_ticket;
+THREADPOOL_TICKET internetclient_ticket;
 
 bool copy_file(const std::wstring &src, const std::wstring &dst)
 {
@@ -230,6 +232,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+	bool do_leak_check=(Server->getServerParameter("leak_check")=="true");
+
 	ClientConnector::init_mutex();
 	Server->StartCustomStreamService(new ClientService(), "urbackupserver", serviceport);
 
@@ -243,9 +247,16 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	IndexThread *it=new IndexThread();
-	Server->createThread(it);
+	if(!do_leak_check)
+	{
+		Server->createThread(it);
+	}
+	else
+	{
+		indexthread_ticket=Server->getThreadPool()->execute(it);
+	}
 
-	InternetClient::start();
+	internetclient_ticket=InternetClient::start(do_leak_check);
 
 	Server->Log("Started UrBackupClient Backend...", LL_INFO);
 	Server->wait(1000);	
@@ -253,23 +264,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 DLLEXPORT void UnloadActions(void)
 {
-	bool shutdown_ok=false;
-	if(server_exit_pipe!=NULL)
+	if(Server->getServerParameter("leak_check")=="true")
 	{
-		std::string msg="exit";
-		unsigned int starttime=Server->getTimeMS();
-		while(msg!="ok" && Server->getTimeMS()-starttime<500)
-		{
-			server_exit_pipe->Write(msg);
-			Server->wait(100);
-			server_exit_pipe->Read(&msg);
-		}
+		IndexThread::doStop();
+		Server->getThreadPool()->waitFor(indexthread_ticket);
+		ServerIdentityMgr::destroy_mutex();
 
-		if(msg=="ok")
-		{
-			Server->destroy(server_exit_pipe);
-			shutdown_ok=true;
-		}
+		InternetClient::stop(internetclient_ticket);
+
+		ClientConnector::destroy_mutex();
+
+		Server->destroyAllDatabases();
 	}
 }
 

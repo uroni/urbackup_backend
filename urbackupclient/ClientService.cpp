@@ -104,6 +104,13 @@ void ClientConnector::init_mutex(void)
 	}
 }
 
+void ClientConnector::destroy_mutex(void)
+{
+	Server->destroy(backup_mutex);
+	Server->destroy(ident_mutex);
+	Server->destroy(progress_mutex);
+}
+
 ClientConnector::ClientConnector(void)
 {
 	mempipe=NULL;

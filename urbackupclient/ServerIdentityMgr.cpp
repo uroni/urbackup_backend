@@ -42,6 +42,11 @@ void ServerIdentityMgr::init_mutex(void)
 	mutex=Server->createMutex();
 }
 
+void ServerIdentityMgr::destroy_mutex(void)
+{
+	Server->destroy(mutex);
+}
+
 void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity)
 {
 	IScopedLock lock(mutex);
