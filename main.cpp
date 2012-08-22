@@ -509,6 +509,10 @@ void my_stop_fcn(void)
 		Server=NULL;
 		delete srv;
 	}*/
+	if(Server!=NULL)
+	{
+		Server->ShutdownPlugins();
+	}
 	nt_service&  service = nt_service::instance(L"CompiledServer");
 	service.stop(0);
 }

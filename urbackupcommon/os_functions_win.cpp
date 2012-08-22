@@ -81,12 +81,12 @@ std::vector<SFile> getFiles(const std::wstring &path)
 
 void removeFile(const std::wstring &path)
 {
-	_unlink(wnarrow(path).c_str());
+	_unlink(Server->ConvertToUTF8(path).c_str());
 }
 
 void moveFile(const std::wstring &src, const std::wstring &dst)
 {
-	rename(wnarrow(src).c_str(), wnarrow(dst).c_str() );
+	rename(Server->ConvertToUTF8(src).c_str(), Server->ConvertToUTF8(dst).c_str() );
 }
 
 bool isDirectory(const std::wstring &path)
@@ -174,6 +174,11 @@ bool os_remove_nonempty_dir(const std::wstring &path)
 	FindClose(hf);
 	RemoveDirectoryW(path.c_str());
 	return true;
+}
+
+bool os_remove_symlink_dir(const std::wstring &path)
+{
+	return RemoveDirectoryW(path.c_str())!=FALSE;
 }
 
 std::wstring os_file_sep(void)

@@ -95,6 +95,8 @@ void BackupServer::operator()(void)
 
 	FileClient fc;
 
+	Server->wait(1000);
+
 	while(true)
 	{
 		findClients(fc);
