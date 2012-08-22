@@ -2,6 +2,7 @@
 #include <string>
 
 #include "../Interface/Thread.h"
+#include "../Interface/Types.h"
 
 class IMutex;
 class IPipe;
@@ -25,6 +26,7 @@ class InternetClient : public IThread
 {
 public:
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 	static void hasLANConnection(void);
 	static bool isConnected(void);
 	static void setHasConnection(bool b);
@@ -32,7 +34,8 @@ public:
 	static void newConnection(void);
 	static void rmConnection(void);
 
-	static void start(void);
+	static THREADPOOL_TICKET start(bool use_pool=false);
+	static void stop(THREADPOOL_TICKET tt=ILLEGAL_THREADPOOL_TICKET);
 
 	void operator()(void);
 
@@ -53,6 +56,7 @@ private:
 	static SServerSettings server_settings;
 	static ICondition *wakeup_cond;
 	static int auth_err;
+	static bool do_exit;
 };
 
 class InternetClientThread : public IThread

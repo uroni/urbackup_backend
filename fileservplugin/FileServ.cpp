@@ -76,6 +76,11 @@ void FileServ::init_mutex(void)
 	mutex=Server->createMutex();
 }
 
+void FileServ::destroy_mutex(void)
+{
+	Server->destroy(mutex);
+}
+
 bool FileServ::checkIdentity(const std::string &pIdentity)
 {
 	IScopedLock lock(mutex);

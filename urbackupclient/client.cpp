@@ -139,6 +139,27 @@ IndexThread::IndexThread(void)
 	}
 }
 
+IndexThread::~IndexThread()
+{
+	filesrv->stopServer();
+
+#ifdef _WIN32
+	if(dwt!=NULL)
+	{
+		dwt->stop();
+		Server->getThreadPool()->waitFor(dwt_ticket);
+		delete dwt;
+	}
+#endif
+
+	((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->destroyFileServ(filesrv);
+	Server->destroy(filelist_mutex);
+	Server->destroy(msgpipe);
+	Server->destroy(filesrv_mutex);
+	cd->destroyQueries();
+	delete cd;
+}
+
 IMutex* IndexThread::getFilelistMutex(void)
 {
 	return filelist_mutex;
@@ -486,7 +507,13 @@ void IndexThread::operator()(void)
 			start_filesrv();
 			readBackupDirs();
 		}
+		else if(action==8) //stop
+		{
+			break;
+		}
 	}
+
+	delete this;
 }
 
 const char * filelist_fn="urbackup/data/filelist_new.ub";
@@ -1756,4 +1783,12 @@ void IndexThread::unshare_dirs(const std::string &token)
 
 		filesrv->removeDir(dir);
 	}
+}
+
+void IndexThread::doStop(void)
+{
+	CWData wd;
+	wd.addUChar(8);
+	wd.addVoidPtr(NULL);
+	msgpipe->Write(wd.getDataPtr(), wd.getDataSize());
 }

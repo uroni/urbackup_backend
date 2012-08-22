@@ -10,6 +10,7 @@ public:
 	static size_t numServerIdentities(void);
 
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 
 	static void setFileServ(IFileServ *pFilesrv);
 
