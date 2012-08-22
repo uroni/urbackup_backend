@@ -457,12 +457,13 @@ STimeSpan ServerSettings::parseTime(std::string t)
 	}
 }
 
-std::string ServerSettings::generateRandomAuthKey(void)
+std::string ServerSettings::generateRandomAuthKey(size_t len)
 {
 	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 	std::string key;
-	for(int j=0;j<10;++j)
-		key+=rchars[rand()%rchars.size()];
+	std::vector<unsigned int> rnd_n=Server->getRandomNumbers(len);
+	for(int j=0;j<len;++j)
+		key+=rchars[rnd_n[j]%rchars.size()];
 	return key;
 }
 
@@ -470,10 +471,7 @@ std::string ServerSettings::generateRandomBinaryKey(void)
 {
 	std::string key;
 	key.resize(32);
-
-	for(int j=0;j<32;++j)
-		key[j]=(unsigned char)(rand()%256);
-
+	Server->randomFill((char*)key.data(), 32);
 	return key;
 }
 

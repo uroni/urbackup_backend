@@ -190,23 +190,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if((server_identity=getFile("urbackup/server_ident.key")).size()<5)
 	{
 		Server->Log("Generating Server identity...", LL_INFO);
-		std::string ident="#I";
-		for(size_t i=0;i<30;++i)
-		{
-			ident+=getRandomChar();
-		}
-		ident+='#';
+		std::string ident="#I"+ServerSettings::generateRandomAuthKey(20)+"#";
 		writestring(ident, "urbackup/server_ident.key");
 		server_identity=ident;
 	}
 	if((server_token=getFile("urbackup/server_token.key")).size()<5)
 	{
 		Server->Log("Generating Server token...", LL_INFO);
-		std::string token;
-		for(size_t i=0;i<30;++i)
-		{
-			token+=getRandomChar();
-		}
+		std::string token=ServerSettings::generateRandomAuthKey(20);
 		writestring(token, "urbackup/server_token.key");
 		server_token=token;
 	}
@@ -367,11 +358,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string set_admin_pw=Server->getServerParameter("set_admin_pw");
 	if(!set_admin_pw.empty())
 	{
-		std::string rnd;
-		for(size_t i=0;i<20;++i)
-		{
-			rnd+=getRandomChar();
-		}
+		std::string rnd=ServerSettings::generateRandomAuthKey(20);
 
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		db_results res=db->Read("SELECT value FROM settings_db.si_users WHERE name='admin'");

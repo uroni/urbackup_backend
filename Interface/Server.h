@@ -145,6 +145,10 @@ public:
 	virtual void waitForStartupComplete(void)=0;
 
 	virtual void shutdown(void)=0;
+
+	virtual unsigned int getRandomNumber(void)=0;
+	virtual std::vector<unsigned int> getRandomNumbers(size_t n)=0;
+	virtual void randomFill(char *buf, size_t blen)=0;
 };
 
 #ifndef NO_INTERFACE

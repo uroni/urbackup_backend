@@ -1712,7 +1712,7 @@ void IndexThread::start_filesrv(void)
 	std::wstring name;
 	if(Server->getServerParameter("restore_mode")=="true")
 	{
-		name=L"##restore##"+convert(Server->getTimeSeconds())+convert(rand()%10000);
+		name=L"##restore##"+convert(Server->getTimeSeconds())+convert(Server->getRandomNumber()%10000);
 	}
 	else
 	{
