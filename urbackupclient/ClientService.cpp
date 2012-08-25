@@ -1021,7 +1021,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 				new_settings_str+=key+L"="+nv+L"\n";
 				mod=true;
 			}
-			else if(new_settings->getValue(key+L"_def", &nv) )
+			if(new_settings->getValue(key+L"_def", &nv) )
 			{
 				new_settings_str+=key+L"_def="+nv+L"\n";
 				mod=true;
@@ -1041,7 +1041,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 					new_settings_str+=key+L"="+nv+L"\n";
 					mod=true;
 				}
-				else if(new_settings->getValue(key+L"_def", &nv) )
+				if(new_settings->getValue(key+L"_def", &nv) )
 				{
 					new_settings_str+=key+L"_def="+nv+L"\n";
 					mod=true;

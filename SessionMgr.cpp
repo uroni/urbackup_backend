@@ -201,7 +201,7 @@ unsigned int CSessionMgr::TimeoutSessions(void)
 		    ret=(std::max)(diff, ret);
 		}
 	}
-	return (unsigned int)((SESSION_TIMEOUT_S)*1000)-ret+10;
+	return (unsigned int)((SESSION_TIMEOUT_S)*1000)-ret+1000;
 }
 
 void CSessionMgr::operator()(void)
