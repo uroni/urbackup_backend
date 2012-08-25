@@ -2291,13 +2291,13 @@ void BackupServerGet::sendSettings(void)
 
 		bool globalized=std::find(global_settings_names.begin(), global_settings_names.end(), key)!=global_settings_names.end();
 
-		if( globalized || (!overwrite && !allow_overwrite) || !settings_client->getValue(key, &value) )
+		if( (!overwrite && !allow_overwrite) || !settings_client->getValue(key, &value) )
 		{
 			if(!settings->getValue(key, &value) )
 				key=L"";
-			else if(!globalized)
-				key+=L"_def";
 		}
+		
+		key+=L"_def";
 
 		if(!key.empty())
 		{
