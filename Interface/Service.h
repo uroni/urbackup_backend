@@ -1,4 +1,5 @@
 #include "CustomClient.h"
+#include "Object.h"
 
 class IService : public IObject
 {

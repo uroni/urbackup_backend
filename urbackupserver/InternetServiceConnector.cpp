@@ -12,6 +12,8 @@
 #include "../stringtools.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 
+#include <memory.h>
+
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
 const unsigned int offline_timeout=ping_interval+10000;

@@ -5,6 +5,7 @@ AC_PREREQ(2.61)
 AC_INIT([urbackup-server], [1.0], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
 AC_ARG_WITH([pychart],
      AS_HELP_STRING([--with-pychart], [Do use python to gaphically display statistics in the webinterface. Otherwise google chart is used.]))
