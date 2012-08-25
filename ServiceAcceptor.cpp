@@ -28,6 +28,7 @@
 
 #include "Interface/Mutex.h"
 #include "Interface/Condition.h"
+#include "Interface/Service.h"
 
 CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsigned short port)
 {
