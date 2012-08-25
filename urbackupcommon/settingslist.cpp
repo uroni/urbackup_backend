@@ -49,3 +49,10 @@ std::vector<std::wstring> getGlobalizedSettingsList(void)
 	ret.push_back(L"internet_server_port");
 	return ret;
 }
+
+std::vector<std::wstring> getLocalizedSettingsList(void)
+{
+	std::vector<std::wstring> ret;
+	ret.push_back(L"internet_authkey");
+	return ret;
+}

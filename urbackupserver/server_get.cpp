@@ -2273,6 +2273,7 @@ void BackupServerGet::sendSettings(void)
 
 	std::vector<std::wstring> settings_names=getSettingsList();
 	std::vector<std::wstring> global_settings_names=getGlobalizedSettingsList();
+	std::vector<std::wstring> local_settings_names=getLocalizedSettingsList();
 
 	std::string stmp=settings_client->getValue("overwrite", "");
 	bool overwrite=true;
@@ -2290,8 +2291,9 @@ void BackupServerGet::sendSettings(void)
 		std::wstring value;
 
 		bool globalized=std::find(global_settings_names.begin(), global_settings_names.end(), key)!=global_settings_names.end();
+		bool localized=std::find(local_settings_names.begin(), local_settings_names.end(), key)!=local_settings_names.end();
 
-		if( (!overwrite && !allow_overwrite) || !settings_client->getValue(key, &value) )
+		if( globalized || (!overwrite && !allow_overwrite && !localized) || !settings_client->getValue(key, &value) )
 		{
 			if(!settings->getValue(key, &value) )
 				key=L"";
