@@ -1,7 +1,9 @@
 #include <vector>
 #include <string>
+#include <queue>
 
 #include "../Interface/Thread.h"
+#include "../Interface/Types.h"
 
 class IMutex;
 class IPipe;
@@ -25,6 +27,7 @@ class InternetClient : public IThread
 {
 public:
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 	static void hasLANConnection(void);
 	static bool isConnected(void);
 	static void setHasConnection(bool b);
@@ -32,7 +35,8 @@ public:
 	static void newConnection(void);
 	static void rmConnection(void);
 
-	static void start(void);
+	static THREADPOOL_TICKET start(bool use_pool=false);
+	static void stop(THREADPOOL_TICKET tt=ILLEGAL_THREADPOOL_TICKET);
 
 	void operator()(void);
 
@@ -44,8 +48,12 @@ public:
 
 	static void updateSettings(void);
 
+	static void addOnetimeToken(const std::string &token);
+	static std::pair<unsigned int, std::string> getOnetimeToken(void);
+
 private:
 	static IMutex *mutex;
+	static IMutex *onetime_token_mutex;
 	static bool connected;
 	static size_t n_connections;
 	static unsigned int last_lan_connection;
@@ -53,6 +61,8 @@ private:
 	static SServerSettings server_settings;
 	static ICondition *wakeup_cond;
 	static int auth_err;
+	static std::queue<std::pair<unsigned int, std::string> > onetime_tokens;
+	static bool do_exit;
 };
 
 class InternetClientThread : public IThread
@@ -66,7 +76,7 @@ public:
 	void runServiceWrapper(IPipe *pipe, ICustomClient *client);
 
 private:
-	std::string generateRandomAuthKey(void);
+	std::string generateRandomBinaryAuthKey(void);
 	IPipe *cs;
 	SServerSettings server_settings;
 };

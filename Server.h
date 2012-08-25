@@ -158,6 +158,11 @@ public:
 	void startupComplete(void);
 
 	void shutdown(void);
+
+	void initRandom(unsigned int seed);
+	virtual unsigned int getRandomNumber(void);
+	virtual std::vector<unsigned int> getRandomNumbers(size_t n);
+	virtual void randomFill(char *buf, size_t blen);
 private:
 
 	bool UnloadDLLs(void);
@@ -181,6 +186,7 @@ private:
 	IMutex* postfiles_mutex;
 	IMutex* param_mutex;
 	IMutex* startup_complete_mutex;
+	IMutex* rnd_mutex;
 
 	ICondition *startup_complete_cond;
 	bool startup_complete;

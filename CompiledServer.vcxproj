@@ -292,6 +292,7 @@
     <ClCompile Include="md5.cpp" />
     <ClCompile Include="MemoryPipe.cpp" />
     <ClCompile Include="MemorySettingsReader.cpp" />
+    <ClCompile Include="mt19937ar.cpp" />
     <ClCompile Include="Mutex_boost.cpp" />
     <ClCompile Include="OutputStream.cpp" />
     <ClCompile Include="PipeThrottler.cpp" />
@@ -334,6 +335,7 @@
     <ClInclude Include="md5.h" />
     <ClInclude Include="MemoryPipe.h" />
     <ClInclude Include="MemorySettingsReader.h" />
+    <ClInclude Include="mt19937ar.h" />
     <ClInclude Include="Mutex_boost.h" />
     <ClInclude Include="OutputStream.h" />
     <ClInclude Include="PipeThrottler.h" />

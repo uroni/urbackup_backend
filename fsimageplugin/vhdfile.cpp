@@ -291,8 +291,7 @@ bool VHDFile::write_header(bool diff)
 	else
 		footer.disk_type=endian_swap((unsigned int)3);
 	footer.checksum=0;
-	for(size_t i=0;i<16;++i)
-		footer.uid[i]=rand()%256;
+	Server->randomFill(footer.uid, 16);
 	footer.saved_state=0;
 	memset(footer.reserved, 0, 427);
 

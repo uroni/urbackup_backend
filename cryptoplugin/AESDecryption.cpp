@@ -18,10 +18,18 @@
 
 #include "AESDecryption.h"
 
-AESDecryption::AESDecryption(const std::string &password)
+AESDecryption::AESDecryption(const std::string &password, bool hash_password)
 {
-	m_sbbKey.resize(CryptoPP::SHA256::DIGESTSIZE);
-	CryptoPP::SHA256().CalculateDigest(m_sbbKey, (byte*)password.c_str(), password.size() );
+	if(hash_password)
+	{
+		m_sbbKey.resize(CryptoPP::SHA256::DIGESTSIZE);
+		CryptoPP::SHA256().CalculateDigest(m_sbbKey, (byte*)password.c_str(), password.size() );
+	}
+	else
+	{
+		m_sbbKey.resize(password.size());
+		memcpy(m_sbbKey.BytePtr(), password.c_str(), password.size());
+	}
 
 	dec=NULL;
 }
@@ -36,22 +44,22 @@ std::string AESDecryption::decrypt(const std::string &data)
 	if(dec==NULL)
 	{
 		size_t done=0;
-		if(!iv_buffer.empty() &&  iv_buffer.size()+data.size()>=16)
+		if(!iv_buffer.empty() &&  iv_buffer.size()+data.size()>=CryptoPP::AES::BLOCKSIZE)
 		{
 			CryptoPP::SecByteBlock m_IV;
-			m_IV.resize(16);
-			memcpy(m_IV.BytePtr(), &iv_buffer[0], 16);
-			memcpy(m_IV.BytePtr()+iv_buffer.size(), &data[0], 16-iv_buffer.size());
+			m_IV.resize(CryptoPP::AES::BLOCKSIZE);
+			memcpy(m_IV.BytePtr(), &iv_buffer[0], CryptoPP::AES::BLOCKSIZE);
+			memcpy(m_IV.BytePtr()+iv_buffer.size(), &data[0], CryptoPP::AES::BLOCKSIZE-iv_buffer.size());
 			dec=new CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption(m_sbbKey.begin(),m_sbbKey.size(), m_IV.begin() );
-			done=16-iv_buffer.size();
+			done=CryptoPP::AES::BLOCKSIZE-iv_buffer.size();
 		}
-		else if(data.size()>=16)
+		else if(data.size()>=CryptoPP::AES::BLOCKSIZE)
 		{
 			CryptoPP::SecByteBlock m_IV;
-			m_IV.resize(16);
-			memcpy(m_IV.BytePtr(), &data[0], 16);
+			m_IV.resize(CryptoPP::AES::BLOCKSIZE);
+			memcpy(m_IV.BytePtr(), &data[0], CryptoPP::AES::BLOCKSIZE);
 			dec=new CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption(m_sbbKey.begin(),m_sbbKey.size(), m_IV.begin() );
-			done=16;
+			done=CryptoPP::AES::BLOCKSIZE;
 		}
 		else
 		{
@@ -85,22 +93,22 @@ size_t AESDecryption::decrypt(char *data, size_t data_size)
 	if(dec==NULL)
 	{
 		size_t done=0;
-		if(!iv_buffer.empty() &&  iv_buffer.size()+data_size>=16)
+		if(!iv_buffer.empty() &&  iv_buffer.size()+data_size>=CryptoPP::AES::BLOCKSIZE)
 		{
 			CryptoPP::SecByteBlock m_IV;
-			m_IV.resize(16);
-			memcpy(m_IV.BytePtr(), &iv_buffer[0], 16);
-			memcpy(m_IV.BytePtr()+iv_buffer.size(), data, 16-iv_buffer.size());
+			m_IV.resize(CryptoPP::AES::BLOCKSIZE);
+			memcpy(m_IV.BytePtr(), &iv_buffer[0], CryptoPP::AES::BLOCKSIZE);
+			memcpy(m_IV.BytePtr()+iv_buffer.size(), data, CryptoPP::AES::BLOCKSIZE-iv_buffer.size());
 			dec=new CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption(m_sbbKey.begin(),m_sbbKey.size(), m_IV.begin() );
-			done=16-iv_buffer.size();
+			done=CryptoPP::AES::BLOCKSIZE-iv_buffer.size();
 		}
-		else if(iv_buffer.empty() && data_size>=16)
+		else if(iv_buffer.empty() && data_size>=CryptoPP::AES::BLOCKSIZE)
 		{
 			CryptoPP::SecByteBlock m_IV;
-			m_IV.resize(16);
-			memcpy(m_IV.BytePtr(), data, 16);
+			m_IV.resize(CryptoPP::AES::BLOCKSIZE);
+			memcpy(m_IV.BytePtr(), data, CryptoPP::AES::BLOCKSIZE);
 			dec=new CryptoPP::CFB_Mode<CryptoPP::AES>::Decryption(m_sbbKey.begin(),m_sbbKey.size(), m_IV.begin() );
-			done=16;
+			done=CryptoPP::AES::BLOCKSIZE;
 		}
 		else
 		{

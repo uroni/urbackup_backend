@@ -91,8 +91,9 @@ std::wstring CSessionMgr::GenerateSessionIDWithUser(const std::wstring &pUsernam
 {
 	std::wstring ret;
 	ret.resize(SESSIONID_LEN);
+	std::vector<unsigned int> rnd_n=Server->getRandomNumbers(SESSIONID_LEN);
 	for(int i=0;i<SESSIONID_LEN;++i)
-		ret[i]+=Pool[rand()%Pool.size()];
+		ret[i]+=Pool[rnd_n[i]%Pool.size()];
 
 	IScopedLock lock( sess_mutex );
 	if(update_user)
@@ -200,7 +201,7 @@ unsigned int CSessionMgr::TimeoutSessions(void)
 		    ret=(std::max)(diff, ret);
 		}
 	}
-	return (unsigned int)((SESSION_TIMEOUT_S)*1000)-ret+10;
+	return (unsigned int)((SESSION_TIMEOUT_S)*1000)-ret+1000;
 }
 
 void CSessionMgr::operator()(void)

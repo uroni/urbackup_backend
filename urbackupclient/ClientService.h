@@ -81,6 +81,7 @@ public:
 	virtual void ReceivePackets(void);
 
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 
 	virtual bool wantReceive(void);
 

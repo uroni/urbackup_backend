@@ -17,18 +17,24 @@
 **************************************************************************/
 
 #include "AESEncryption.h"
+#include "../Interface/Server.h"
 
-AESEncryption::AESEncryption(const std::string &password)
+AESEncryption::AESEncryption(const std::string &password, bool hash_password)
 {
-	m_sbbKey.resize(CryptoPP::SHA256::DIGESTSIZE);
-	CryptoPP::SHA256().CalculateDigest(m_sbbKey, (byte*)password.c_str(), password.size() );
-
-	m_IV.resize(16);
-
-	for(int i=0;i<16;++i)
+	if(hash_password)
 	{
-		m_IV[i]=rand()%256;
+		m_sbbKey.resize(CryptoPP::SHA256::DIGESTSIZE);
+		CryptoPP::SHA256().CalculateDigest(m_sbbKey, (byte*)password.c_str(), password.size() );
 	}
+	else
+	{
+		m_sbbKey.resize(password.size());
+		memcpy(m_sbbKey.BytePtr(), password.c_str(), password.size());
+	}
+
+	m_IV.resize(CryptoPP::AES::BLOCKSIZE);
+
+	Server->randomFill((char*)m_IV.BytePtr(), CryptoPP::AES::BLOCKSIZE);
 
 	iv_done=false;
 
@@ -50,8 +56,8 @@ std::string AESEncryption::encrypt(const char *data, size_t data_size)
 	std::string ret;
 	if(iv_done==false)
 	{
-		ret.resize(16);
-		memcpy((char*)ret.c_str(), m_IV.BytePtr(), 16);
+		ret.resize(CryptoPP::AES::BLOCKSIZE);
+		memcpy((char*)ret.c_str(), m_IV.BytePtr(), CryptoPP::AES::BLOCKSIZE);
 		iv_done=true;
 	}
 
@@ -69,8 +75,8 @@ std::string AESEncryption::encrypt(char *data, size_t data_size)
 	std::string ret;
 	if(iv_done==false)
 	{
-		ret.resize(16);
-		memcpy((char*)ret.c_str(), m_IV.BytePtr(), 16);
+		ret.resize(CryptoPP::AES::BLOCKSIZE);
+		memcpy((char*)ret.c_str(), m_IV.BytePtr(), CryptoPP::AES::BLOCKSIZE);
 		iv_done=true;
 	}
 

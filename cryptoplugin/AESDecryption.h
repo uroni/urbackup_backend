@@ -14,7 +14,7 @@
 class AESDecryption : public IAESDecryption
 {
 public:
-	AESDecryption(const std::string &password);
+	AESDecryption(const std::string &password, bool hash_password);
 	~AESDecryption();
 
 	std::string decrypt(const std::string &data);

@@ -1004,16 +1004,6 @@ int getNextNumber(const std::string &pStr, int *read)
 	return 0;
 }
 
-char getRandomChar(void)
-{
-	 return (rand()%25) + 97;
-}
-
-std::string getRandomNumber(void)
-{
-	return nconvert((float)(rand()%10000000)/(float)100);
-}
-
 void transformHTML(std::string &str)
 {
 	for(size_t i=0;i<str.size();++i)

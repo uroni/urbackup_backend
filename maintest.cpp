@@ -50,7 +50,7 @@ public:
 };
 	
 
-int maintest()
+/*int maintest()
 {
 	CThreadPool p;
 	
@@ -95,6 +95,6 @@ int maintest()
 	std::cout << "done.\r\n";
 
 	exit(5);
-}
+}*/
 
 	
