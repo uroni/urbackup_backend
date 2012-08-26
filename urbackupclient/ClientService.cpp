@@ -998,6 +998,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 	ISettingsReader *new_settings=Server->createMemorySettingsReader(pData);
 
 	std::vector<std::wstring> settings_names=getSettingsList();
+	settings_names.push_back(L"client_set_settings");
 	std::wstring new_settings_str=L"";
 	bool mod=false;
 	std::string tmp_str;

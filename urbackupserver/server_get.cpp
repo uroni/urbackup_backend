@@ -2280,10 +2280,13 @@ void BackupServerGet::sendSettings(void)
 	if(!stmp.empty())
 		overwrite=(stmp=="true");
 
-	bool allow_overwrite=false;
+	bool allow_overwrite=true;
 	stmp=settings_client->getValue("allow_overwrite", "");
+	if(stmp.empty())
+		stmp=settings->getValue("allow_overwrite", "");
 	if(!stmp.empty())
 		allow_overwrite=(stmp=="true");
+		
 
 	for(size_t i=0;i<settings_names.size();++i)
 	{
