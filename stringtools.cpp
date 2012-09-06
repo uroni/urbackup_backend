@@ -1081,9 +1081,9 @@ void EscapeCh(std::wstring &pStr, wchar_t ch)
 std::string UnescapeSQLString(const std::string &pStr)
 {
 	std::string ret;
-	for(size_t i=0;i+1<pStr.size();++i)
+	for(size_t i=0;i<pStr.size();++i)
 	{
-		if( pStr[i]=='\'' && pStr[i+1]=='\'' )
+		if( i+1<pStr.size() && pStr[i]=='\'' && pStr[i+1]=='\'' )
 		{
 			ret+="'";
 			++i;
@@ -1099,9 +1099,9 @@ std::string UnescapeSQLString(const std::string &pStr)
 std::wstring UnescapeSQLString(const std::wstring &pStr)
 {
 	std::wstring ret;
-	for(size_t i=0;i+1<pStr.size();++i)
+	for(size_t i=0;i<pStr.size();++i)
 	{
-		if( pStr[i]=='\'' && pStr[i+1]=='\'' )
+		if( i+1<pStr.size() && pStr[i]=='\'' && pStr[i+1]=='\'' )
 		{
 			ret+=L"'";
 			++i;
