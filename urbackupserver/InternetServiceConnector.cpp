@@ -229,6 +229,8 @@ void InternetServiceConnector::ReceivePackets(void)
 
 						std::string hmac;
 						std::string errmsg;
+						std::string client_challenge;
+						std::string hmac_key;
 
 						if(rd.getStr(&clientname) && rd.getStr(&hmac) )
 						{							
@@ -259,13 +261,21 @@ void InternetServiceConnector::ReceivePackets(void)
 								authkey=getAuthkeyFromDB(clientname);
 							}
 
+							
+							if(!rd.getStr(&client_challenge) || client_challenge.size()<32 )
+							{
+								errmsg="Client challenge missing or not long enough";
+							}
+
 							if(errmsg.empty() && !authkey.empty())
 							{
-								std::string hmac_loc=crypto_fak->generateBinaryPasswordHash(authkey, challenge, iterations);								
+								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, iterations);
+
+								std::string hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);								
 								if(hmac_loc==hmac)
 								{
-									state=ISS_CAPA;
-									is_pipe=new InternetServicePipe(comm_pipe, hmac_loc);
+									state=ISS_CAPA;									
+									is_pipe=new InternetServicePipe(comm_pipe, hmac_key);
 									comm_pipe=is_pipe;
 								}
 								else
@@ -281,12 +291,6 @@ void InternetServiceConnector::ReceivePackets(void)
 						else
 						{
 							errmsg="Missing fields";
-						}
-
-						std::string client_challenge;
-						if(!rd.getStr(&client_challenge) || client_challenge.size()<32 )
-						{
-							errmsg="Client challenge missing or not long enough";
 						}
 
 						CWData data;
@@ -305,14 +309,7 @@ void InternetServiceConnector::ReceivePackets(void)
 							if(is_pipe!=NULL)
 							{
 								std::string hmac_loc;
-								if(id==ID_ISC_AUTH_TOKEN)
-								{
-									hmac_loc=crypto_fak->generateBinaryPasswordHash(authkey, client_challenge, 1);
-								}
-								else
-								{
-									hmac_loc=crypto_fak->generateBinaryPasswordHash(authkey, client_challenge, (std::max)(iterations, client_iterations) );
-								}
+								hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);
 								data.addString(hmac_loc);
 								std::string new_token=generateOnetimeToken(clientname);
 								data.addString(is_pipe->encrypt(new_token));

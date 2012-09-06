@@ -418,32 +418,29 @@ void InternetClientThread::operator()(void)
 
 		data.addString(server_settings.clientname);
 
+		std::string client_challenge=generateRandomBinaryAuthKey();
+
 		if(token.second.empty())
 		{
-			authkey=server_settings.authkey;
-			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge, (std::max)(pbkdf2_iterations,server_iterations) );
-			data.addString(hmac_key);
+			authkey=server_settings.authkey;			
+			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, (std::max)(pbkdf2_iterations,server_iterations) );
+			std::string hmac_l=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);
+			data.addString(hmac_l);
 		}
 		else
 		{
 			authkey=token.second;
-			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge, 1);
-			data.addString(hmac_key);
+			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, 1 );
+			std::string hmac_l=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);
+			data.addString(hmac_l);
 			data.addUInt(token.first);
 		}
-		std::string client_challenge=generateRandomBinaryAuthKey();
+		
 		data.addString(client_challenge);
 		data.addUInt(pbkdf2_iterations);
 		tcpstack.Send(cs, data);
 
-		if(token.second.empty())
-		{
-			challenge_response=crypto_fak->generateBinaryPasswordHash(authkey, client_challenge, pbkdf2_iterations);
-		}
-		else
-		{
-			challenge_response=crypto_fak->generateBinaryPasswordHash(authkey, client_challenge, 1);
-		}
+		challenge_response=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);
 	}
 
 	{
