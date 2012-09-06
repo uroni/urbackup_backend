@@ -58,6 +58,7 @@ struct SSettings
 	int global_internet_speed;
 	int global_local_speed;
 	bool internet_mode_enabled;
+	bool silent_update;
 };
 
 struct STimeSpan
@@ -85,7 +86,8 @@ public:
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 	static void updateAll(void);
-	static std::string generateRandomAuthKey(void);
+	static std::string generateRandomAuthKey(size_t len=10);
+	static std::string generateRandomBinaryKey(void);
 
 	std::vector<STimeSpan> getBackupWindow(void);
 	std::vector<STimeSpan> getCleanupWindow(void);
@@ -98,6 +100,7 @@ private:
 	int parseDayOfWeek(std::string dow);
 	void readSettingsDefault(void);
 	void readSettingsClient(void);
+	void readBoolClientSetting(const std::string &name, bool *output);
 
 	SSettings settings;
 

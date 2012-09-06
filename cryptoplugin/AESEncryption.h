@@ -14,7 +14,7 @@
 class AESEncryption : public IAESEncryption
 {
 public:
-	AESEncryption(const std::string &password);
+	AESEncryption(const std::string &password, bool hash_password);
 	~AESEncryption();
 
 	std::string encrypt(const std::string &data);

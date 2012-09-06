@@ -22,6 +22,7 @@ public:
 	static bool isPause(void);
 
 	static void init_mutex(void);
+	static void destroy_mutex(void);
 
 	static bool checkIdentity(const std::string &pIdentity);
 

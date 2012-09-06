@@ -175,6 +175,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.global_internet_speed=atoi(settings_default->getValue("global_internet_speed", "-1").c_str());
 	settings.global_local_speed=atoi(settings_default->getValue("global_local_speed", "-1").c_str());
 	settings.internet_mode_enabled=(settings_default->getValue("internet_mode_enabled", "false")=="true");
+	settings.silent_update=(settings_default->getValue("silent_update", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -248,53 +249,41 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("internet_speed", "");
 	if(!stmp.empty())
 		settings.internet_speed=atoi(stmp.c_str());
-	stmp=settings_client->getValue("client_set_settings", "");
-	if(stmp=="true")
-		settings.client_set_settings=true;
 	stmp=settings_client->getValue("local_speed", "");
 	if(!stmp.empty())
 		settings.local_speed=atoi(stmp.c_str());
-	stmp=settings_client->getValue("internet_mode_enabled", "");
-	if(!stmp.empty() && stmp=="true")
-		settings.internet_mode_enabled=true;
-	stmp=settings_client->getValue("internet_full_file_backups", "");
-	if(!stmp.empty() && stmp=="true")
-		settings.internet_full_file_backups=true;
-	stmp=settings_client->getValue("internet_image_backups", "");
-	if(!stmp.empty() && stmp=="true")
-		settings.internet_image_backups=true;
-	stmp=settings_client->getValue("internet_compress", "");
-	if(!stmp.empty() && stmp=="true")
-		settings.internet_compress=true;
-	stmp=settings_client->getValue("internet_encrypt", "");
-	if(!stmp.empty() && stmp=="true")
-		settings.internet_encrypt=true;
-	
-	
-	stmp=settings_client->getValue("overwrite", "");
-	if(!stmp.empty())
-		settings.overwrite=(stmp=="true");
+
+	readBoolClientSetting("client_set_settings", &settings.client_set_settings);
+	readBoolClientSetting("internet_mode_enabled", &settings.internet_mode_enabled);
+	readBoolClientSetting("internet_full_file_backups", &settings.internet_full_file_backups);
+	readBoolClientSetting("internet_image_backups", &settings.internet_image_backups);
+	readBoolClientSetting("internet_compress", &settings.internet_compress);
+	readBoolClientSetting("internet_encrypt", &settings.internet_encrypt);
+	readBoolClientSetting("silent_update", &settings.silent_update);	
+
+	readBoolClientSetting("overwrite", &settings.overwrite);
+
 	if(!settings.overwrite)
 		return;
 
-	stmp=settings_client->getValue("allow_config_paths", "");
-	if(!stmp.empty())
-		settings.allow_config_paths=(stmp=="true");
-	stmp=settings_client->getValue("allow_starting_file_backups", "");
-	if(!stmp.empty())
-		settings.allow_starting_file_backups=(stmp=="true");
-	stmp=settings_client->getValue("allow_starting_image_backups", "");
-	if(!stmp.empty())
-		settings.allow_starting_image_backups=(stmp=="true");
-	stmp=settings_client->getValue("allow_pause", "");
-	if(!stmp.empty())
-		settings.allow_pause=(stmp=="true");
-	stmp=settings_client->getValue("allow_log_view", "");
-	if(!stmp.empty())
-		settings.allow_log_view=(stmp=="true");
-	stmp=settings_client->getValue("allow_overwrite", "");
-	if(!stmp.empty())
-		settings.allow_overwrite=(stmp=="true");
+	readBoolClientSetting("allow_config_paths", &settings.allow_config_paths);
+	readBoolClientSetting("allow_starting_file_backups", &settings.allow_starting_file_backups);
+	readBoolClientSetting("allow_starting_image_backups", &settings.allow_starting_image_backups);
+	readBoolClientSetting("allow_pause", &settings.allow_pause);
+	readBoolClientSetting("allow_log_view", &settings.allow_log_view);
+	readBoolClientSetting("allow_overwrite", &settings.allow_overwrite);
+}
+
+void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)
+{
+	std::string value;
+	if(settings_client->getValue(name, &value) && !value.empty())
+	{
+		if(value=="true")
+			*output=true;
+		else if(value=="false")
+			*output=false;
+	}
 }
 
 std::vector<STimeSpan> ServerSettings::getCleanupWindow(void)
@@ -457,12 +446,21 @@ STimeSpan ServerSettings::parseTime(std::string t)
 	}
 }
 
-std::string ServerSettings::generateRandomAuthKey(void)
+std::string ServerSettings::generateRandomAuthKey(size_t len)
 {
 	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 	std::string key;
-	for(int j=0;j<10;++j)
-		key+=rchars[rand()%rchars.size()];
+	std::vector<unsigned int> rnd_n=Server->getRandomNumbers(len);
+	for(int j=0;j<len;++j)
+		key+=rchars[rnd_n[j]%rchars.size()];
+	return key;
+}
+
+std::string ServerSettings::generateRandomBinaryKey(void)
+{
+	std::string key;
+	key.resize(32);
+	Server->randomFill((char*)key.data(), 32);
 	return key;
 }
 

@@ -18,6 +18,11 @@
 
 #include <stdlib.h>
 
+#include "../cryptoplugin/ICryptoFactory.h"
+
+extern ICryptoFactory *crypto_fak;
+const unsigned int pbkdf2_iterations=20000;
+
 IMutex *InternetClient::mutex=NULL;
 bool InternetClient::connected=NULL;
 size_t InternetClient::n_connections=0;
@@ -26,6 +31,9 @@ bool InternetClient::update_settings=false;
 SServerSettings InternetClient::server_settings;
 ICondition *InternetClient::wakeup_cond=NULL;
 int InternetClient::auth_err=0;
+std::queue<std::pair<unsigned int, std::string> > InternetClient::onetime_tokens;
+bool InternetClient::do_exit=false;
+IMutex *InternetClient::onetime_token_mutex=NULL;
 
 const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
@@ -36,20 +44,24 @@ const int ic_sleep_after_auth_errs=2;
 const char SERVICE_COMMANDS=0;
 const char SERVICE_FILESRV=1;
 
-const std::string auth_text="##################URBACKUP--AUTH#########################-";
-
 void InternetClient::init_mutex(void)
 {
 	mutex=Server->createMutex();
 	wakeup_cond=Server->createCondition();
+	onetime_token_mutex=Server->createMutex();
 }
 
-std::string InternetClientThread::generateRandomAuthKey(void)
+void InternetClient::destroy_mutex(void)
 {
-	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	Server->destroy(mutex);
+	Server->destroy(wakeup_cond);
+}
+
+std::string InternetClientThread::generateRandomBinaryAuthKey(void)
+{
 	std::string key;
-	for(int j=0;j<10;++j)
-		key+=rchars[rand()%rchars.size()];
+	key.resize(32);
+	Server->randomFill((char*)key.data(), 32);
 	return key;
 }
 
@@ -107,7 +119,7 @@ void InternetClient::operator()(void)
 	Server->waitForStartupComplete();
 	Server->wait(60000);
 	doUpdateSettings();
-	while(true)
+	while(!do_exit)
 	{
 		IScopedLock lock(mutex);
 		if(update_settings)
@@ -125,8 +137,7 @@ void InternetClient::operator()(void)
 				}
 				else
 				{
-					lock.relock(NULL);
-					Server->wait(ic_lan_timeout/2);
+					wakeup_cond->wait(&lock, ic_lan_timeout/2);
 				}
 			}
 			else
@@ -149,10 +160,11 @@ void InternetClient::operator()(void)
 		}
 		else
 		{
-			lock.relock(NULL);
-			Server->wait(ic_lan_timeout);
+			wakeup_cond->wait(&lock, ic_lan_timeout);
 		}
 	}
+
+	delete this;
 }
 
 void InternetClient::doUpdateSettings(void)
@@ -231,10 +243,66 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 	return false;
 }
 
-void InternetClient::start(void)
+THREADPOOL_TICKET InternetClient::start(bool use_pool)
 {
 	init_mutex();
-	Server->createThread(new InternetClient);
+	if(!use_pool)
+	{
+		Server->createThread(new InternetClient);
+		return ILLEGAL_THREADPOOL_TICKET;
+	}
+	else
+	{
+		return Server->getThreadPool()->execute(new InternetClient);
+	}
+}
+
+void InternetClient::stop(THREADPOOL_TICKET tt)
+{
+	{
+		IScopedLock lock(mutex);
+		do_exit=true;
+		wakeup_cond->notify_all();
+	}
+
+	if(tt==ILLEGAL_THREADPOOL_TICKET)
+		Server->wait(1000);
+	else
+		Server->getThreadPool()->waitFor(tt);
+
+	destroy_mutex();
+}
+
+void InternetClient::addOnetimeToken(const std::string &token)
+{
+	if(token.size()<=sizeof(unsigned int)+1)
+		return;
+
+	unsigned int token_id;
+	std::string token_str;
+
+	memcpy(&token_id, token.data(), sizeof(unsigned int));
+	token_str.resize(token.size()-sizeof(unsigned int));
+	memcpy((char*)token_str.data(), token.data()+sizeof(unsigned int), token.size()-sizeof(unsigned int));
+
+	IScopedLock lock(onetime_token_mutex);
+	
+	onetime_tokens.push(std::pair<unsigned int, std::string>(token_id, token_str) );
+}
+
+std::pair<unsigned int, std::string> InternetClient::getOnetimeToken(void)
+{
+	IScopedLock lock(onetime_token_mutex);
+	if(!onetime_tokens.empty())
+	{
+		std::pair<unsigned int, std::string> ret=onetime_tokens.front();
+		onetime_tokens.pop();
+		return ret;
+	}
+	else
+	{
+		return std::pair<unsigned int, std::string>(0, std::string() );
+	}
 }
 
 InternetClientThread::InternetClientThread(IPipe *cs, const SServerSettings &server_settings)
@@ -278,8 +346,6 @@ void InternetClientThread::operator()(void)
 		}
 	}
 
-	InternetServicePipe ics_pipe(cs, server_settings.authkey);
-
 	IPipe *comm_pipe=NULL;
 	IPipe *comp_pipe=NULL;
 
@@ -287,6 +353,12 @@ void InternetClientThread::operator()(void)
 	unsigned int server_capa;
 	unsigned int capa=0;
 	int compression_level;
+	unsigned int server_iterations;
+	std::string authkey;
+	std::string challenge_response;
+	InternetServicePipe ics_pipe;
+	std::string hmac_key;
+
 	{
 		char *buf;
 		size_t bufsize;
@@ -304,9 +376,22 @@ void InternetClientThread::operator()(void)
 		}
 		if(id==ID_ISC_CHALLENGE)
 		{
-			rd.getStr(&challenge);
-			rd.getUInt(&server_capa);
-			rd.getInt(&compression_level);
+			if(!( rd.getStr(&challenge)
+				&& rd.getUInt(&server_capa)
+				&& rd.getInt(&compression_level)
+				&& rd.getUInt(&server_iterations) ))
+			{
+				Server->Log("Not enough challenge fields -1", LL_ERROR);
+				delete []buf;
+				goto cleanup;
+			}
+
+			if(challenge.size()<32)
+			{
+				Server->Log("Challenge not long enough -1", LL_ERROR);
+				delete []buf;
+				goto cleanup;
+			}
 		}
 		else
 		{
@@ -317,14 +402,45 @@ void InternetClientThread::operator()(void)
 
 		delete []buf;
 	}
+	
 	{
+		std::pair<unsigned int, std::string> token=InternetClient::getOnetimeToken();
+
 		CWData data;
-		data.addChar(ID_ISC_AUTH);
+		if(token.second.empty())
+		{
+			data.addChar(ID_ISC_AUTH);
+		}
+		else
+		{
+			data.addChar(ID_ISC_AUTH_TOKEN);
+		}
+
 		data.addString(server_settings.clientname);
-		data.addString(ics_pipe.encrypt(auth_text+challenge) );
-		challenge=generateRandomAuthKey();
-		data.addString(challenge);
+
+		std::string client_challenge=generateRandomBinaryAuthKey();
+
+		if(token.second.empty())
+		{
+			authkey=server_settings.authkey;			
+			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, (std::max)(pbkdf2_iterations,server_iterations) );
+			std::string hmac_l=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);
+			data.addString(hmac_l);
+		}
+		else
+		{
+			authkey=token.second;
+			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, 1 );
+			std::string hmac_l=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);
+			data.addString(hmac_l);
+			data.addUInt(token.first);
+		}
+		
+		data.addString(client_challenge);
+		data.addUInt(pbkdf2_iterations);
 		tcpstack.Send(cs, data);
+
+		challenge_response=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);
 	}
 
 	{
@@ -358,14 +474,21 @@ void InternetClientThread::operator()(void)
 		}
 		else
 		{
-			std::string enc_d;
-			rd.getStr(&enc_d);
-			enc_d=ics_pipe.decrypt(enc_d);
-			if(enc_d!=auth_text+challenge)
+			std::string hmac;
+			rd.getStr(&hmac);
+			if(hmac!=challenge_response)
 			{
 				Server->Log("Server authentification failed", LL_ERROR);
 				delete []buf;
 				goto cleanup;
+			}
+
+			ics_pipe.init(cs, hmac_key);
+
+			std::string new_token;
+			while(rd.getStr(&new_token))
+			{
+				InternetClient::addOnetimeToken(ics_pipe.decrypt(new_token));
 			}
 		}
 	}
@@ -482,6 +605,8 @@ cleanup:
 	}
 	if(rm_connection)
 		InternetClient::rmConnection();
+
+	delete this;
 }
 
 void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)

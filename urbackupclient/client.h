@@ -83,6 +83,7 @@ class IndexThread : public IThread
 {
 public:
 	IndexThread(void);
+	~IndexThread();
 
 	void operator()(void);
 
@@ -99,6 +100,8 @@ public:
 	static void unshare_dirs(const std::string &token);
 	
 	static void execute_postbackup_hook(void);
+
+	static void doStop(void);
 
 private:
 

@@ -19,6 +19,7 @@
 #ifndef CLIENT_ONLY
 
 #include "action_header.h"
+#include "../server_settings.h"
 
 ACTION_IMPL(salt)
 {
@@ -56,11 +57,7 @@ ACTION_IMPL(salt)
 		else
 		{
 			ret.set("salt", res[0][L"salt"]);
-			std::string rnd;
-			for(size_t i=0;i<20;++i)
-			{
-				rnd+=getRandomChar();
-			}
+			std::string rnd=ServerSettings::generateRandomAuthKey();
 			ret.set("rnd", JSON::Value(rnd));
 			session->mStr[L"rnd"]=widen(rnd);
 		}

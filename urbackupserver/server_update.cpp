@@ -61,7 +61,7 @@ void ServerUpdate::operator()(void)
 	if(tmp==NULL) return;
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
-	dl->download("http://update.urbackup.org/version.txt", tfn);
+	dl->download("http://update1.urbackup.org/version.txt", tfn);
 
 	if(!waitForDownload(dl))
 	{
@@ -77,13 +77,13 @@ void ServerUpdate::operator()(void)
 
 	if(atoi(version.c_str())>atoi(curr_version.c_str()))
 	{
-		dl->download("http://update.urbackup.org/UrBackupUpdate.sig", "urbackup/UrBackupUpdate.sig");
+		dl->download("http://update1.urbackup.org/UrBackupUpdate.sig", "urbackup/UrBackupUpdate.sig");
 		if(!waitForDownload(dl))
 		{
 			download_fak->destroyFileDownload(dl);
 			return;
 		}
-		dl->download("http://update.urbackup.org/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.exe");
+		dl->download("http://update1.urbackup.org/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.exe");
 		if(!waitForDownload(dl))
 		{
 			download_fak->destroyFileDownload(dl);

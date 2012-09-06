@@ -635,6 +635,7 @@ bool FileClient::Reconnect(void)
 					if(memcmp(hash_func.raw_digest_int(), hash_buf, 16)!=0)
 					{
 						Server->Log("Error while downloading file: hash wrong -1", LL_ERROR);
+						Reconnect();
 						return ERR_HASH;
 					}
 					hash_func.init();
@@ -718,6 +719,7 @@ bool FileClient::Reconnect(void)
 							if(memcmp(hash_func.raw_digest_int(), hash_buf, 16)!=0)
 							{
 								Server->Log("Error while downloading file: hash wrong -2", LL_ERROR);
+								Reconnect();
 								return ERR_HASH;
 							}
 							hash_func.init();

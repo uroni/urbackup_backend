@@ -50,6 +50,7 @@
 #include "Database.h"
 #include "SQLiteFactory.h"
 #include "PipeThrottler.h"
+#include "mt19937ar.h"
 
 
 
@@ -105,6 +106,7 @@ CServer::CServer()
 	param_mutex=createMutex();
 	startup_complete_mutex=createMutex();
 	startup_complete_cond=createCondition();
+	rnd_mutex=createMutex();
 }
 
 void CServer::setup(void)
@@ -234,6 +236,7 @@ CServer::~CServer()
 	destroy(param_mutex);
 	destroy(startup_complete_mutex);
 	destroy(startup_complete_cond);
+	destroy(rnd_mutex);
 #ifndef NO_SQLITE
 	CDatabase::destroyMutex();
 #endif
@@ -1515,4 +1518,47 @@ IPipeThrottler* CServer::createPipeThrottler(size_t bps)
 void CServer::shutdown(void)
 {
 	run=false;
+}
+
+void CServer::initRandom(unsigned int seed)
+{
+	init_genrand(seed);
+}
+
+unsigned int CServer::getRandomNumber(void)
+{
+	IScopedLock lock(rnd_mutex);
+	return genrand_int32();
+}
+
+std::vector<unsigned int> CServer::getRandomNumbers(size_t n)
+{
+	IScopedLock lock(rnd_mutex);
+	std::vector<unsigned int> ret;
+	ret.resize(n);
+	for(size_t i=0;i<n;++i)
+	{
+		ret[i]=genrand_int32();
+	}
+	return ret;
+}
+
+void CServer::randomFill(char *buf, size_t blen)
+{
+	IScopedLock lock(rnd_mutex);
+	char *dptr=buf+blen;
+	while(buf<dptr)
+	{
+		if(dptr-buf>=sizeof(unsigned long))
+		{
+			*((unsigned long*)buf)=genrand_int32();
+			buf+=sizeof(unsigned long);
+		}
+		else
+		{
+			unsigned long rnd=genrand_int32();
+			memcpy(buf, &rnd, dptr-buf);
+			buf+=dptr-buf;
+		}
+	}
 }

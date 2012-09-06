@@ -805,7 +805,7 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 
 	memcpy(mptr, mbr_code, 440);
 	mptr+=440;
-	int sig=rand();
+	int sig=Server->getRandomNumber();
 	memcpy(mptr, &sig, sizeof(int));
 	mptr+=sizeof(int);
 	*mptr=0;

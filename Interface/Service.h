@@ -1,6 +1,7 @@
 #include "CustomClient.h"
+#include "Object.h"
 
-class IService
+class IService : public IObject
 {
 public:
 	virtual ICustomClient* createClient()=0;

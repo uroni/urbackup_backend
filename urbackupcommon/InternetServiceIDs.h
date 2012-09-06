@@ -8,3 +8,4 @@ const char ID_ISC_CONNECT_OK=5;
 const char ID_ISC_AUTH_FAILED=2;
 const char ID_ISC_CHALLENGE=3;
 const char ID_ISC_CAPA=6;
+const char ID_ISC_AUTH_TOKEN=7;

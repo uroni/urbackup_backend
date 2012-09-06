@@ -39,6 +39,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"internet_encrypt");
 	ret.push_back(L"internet_compress");
 	ret.push_back(L"internet_mode_enabled");
+	ret.push_back(L"silent_update");
 	return ret;
 }
 
@@ -47,5 +48,12 @@ std::vector<std::wstring> getGlobalizedSettingsList(void)
 	std::vector<std::wstring> ret;
 	ret.push_back(L"internet_server");
 	ret.push_back(L"internet_server_port");
+	return ret;
+}
+
+std::vector<std::wstring> getLocalizedSettingsList(void)
+{
+	std::vector<std::wstring> ret;
+	ret.push_back(L"internet_authkey");
 	return ret;
 }

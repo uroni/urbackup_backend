@@ -406,7 +406,8 @@ translations.de={
 "tOnline": "Online",
 "tActions": "Aktionen",
 "tAdd": "Hinzufügen",
-"tClients are removed during the cleanup time window, if they are offline.": "Clients werden in dem Aufräumzeitfenster gelöscht, falls sie nicht mehr online sind."
+"tClients are removed during the cleanup time window, if they are offline.": "Clients werden in dem Aufräumzeitfenster gelöscht, falls sie nicht mehr online sind.",
+"tPerform autoupdates silently": "Autoupdates im Hintergrund ausführen"
 }
 translations.ru={
 "action_1": "Добавочный файловый бэкап",

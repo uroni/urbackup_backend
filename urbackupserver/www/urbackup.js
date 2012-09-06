@@ -1,6 +1,6 @@
 ﻿g.main_nav_pos=5;
 g.loading=false;
-g.lang="en";
+g.lang="-";
 g.startup=true;
 g.google_chart_loaded=false;
 g.no_tab_mouse_click=false;
@@ -12,8 +12,22 @@ g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" }, { l: "Рос
 
 function startup()
 {
+	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
+	g.session="";
+	I('main_nav').innerHTML="";
+	I('nav_pos').innerHTML="";
+	
 	if(!startLoading()) return;
-	new getJSON("login", "", try_anonymous_login);
+	
+	var available_langs="langs=";
+	for(var i=0;i<g.languages.length;++i)
+	{
+		available_langs+=g.languages[i].s;
+		if(i+1<g.languages.length)
+			available_langs+=",";
+	}
+	new getJSON("login", available_langs, try_anonymous_login);
 	
 	if(g.use_google_chart)
 	{
@@ -69,6 +83,7 @@ function change_lang(l, refresh)
 	}
 	
 	I('languages').innerHTML=c;
+	I('logo_img_link').href="javascript: startup()";
 	
 	window.curr_trans=window.translations[l];
 
@@ -1124,6 +1139,7 @@ function show_settings2(data)
 			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
 			data.settings.internet_encrypt=getCheckboxValue(data.settings.internet_encrypt);
 			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
+			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
 			
 			
 			data.settings.update_freq_incr/=60*60;
@@ -1202,6 +1218,7 @@ function show_settings2(data)
 			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
 			data.settings.internet_encrypt=getCheckboxValue(data.settings.internet_encrypt);
 			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
+			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
 						
 			if(data.settings.update_freq_image_full<0)
 				data.settings.update_freq_image_full*=-1;
@@ -1407,7 +1424,8 @@ g.settings_list=[
 "internet_full_file_backups",
 "internet_encrypt",
 "internet_compress",
-"internet_mode_enabled"
+"internet_mode_enabled",
+"silent_update"
 ];
 g.mail_settings_list=[
 "mail_servername",

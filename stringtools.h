@@ -67,8 +67,6 @@ int getNextNumber(const std::string &pStr, int *read=NULL);
 std::string strlower(const std::string &str);
 bool next(const std::string &pData, const size_t & doff, const std::string &pStr);
 bool next(const std::wstring &pData, const size_t & doff, const std::wstring &pStr);
-char getRandomChar(void);
-std::string getRandomNumber(void);
 void transformHTML(std::string &str);
 std::string EscapeSQLString(const std::string &pStr);
 std::wstring EscapeSQLString(const std::wstring &pStr);

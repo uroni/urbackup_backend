@@ -112,6 +112,7 @@ CThreadPool::~CThreadPool()
 
 void CThreadPool::Shutdown(void)
 {
+	bool do_leak_check=(Server->getServerParameter("leak_check")=="true");
 	IScopedLock lock(mutex);
 	for(size_t i=0;i<threads.size();++i)
 	{
@@ -128,7 +129,7 @@ void CThreadPool::Shutdown(void)
 		lock.relock(mutex);
 
 		//max 300 smec warten
-		if( max>=3 )
+		if( (!do_leak_check && max>=3) || (do_leak_check && max>=30) )
 		{
 			Server->Log("Maximum wait time for thread pool exceeded. Shutting down the hard way", LL_ERROR);
 			break;
