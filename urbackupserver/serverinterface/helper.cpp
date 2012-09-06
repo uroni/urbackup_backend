@@ -41,6 +41,11 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 		session=Server->getSessionMgr()->getUser( (*GET)[L"ses"], widen((*PARAMS)["REMOTE_ADDR"]+(*PARAMS)["HTTP_USER_AGENT"]) );
 	}
 
+	/*for(str_nmap::iterator it=PARAMS->begin();it!=PARAMS->end();++it)
+	{
+		Server->Log(it->first+"="+it->second);
+	}*/
+
 	//Get language from ACCEPT_LANGUAGE
 	str_map::iterator lit=GET->find(L"lang");
 	if(lit!=pGET->end() && lit->second!=L"-")
@@ -53,6 +58,9 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 		std::vector<std::wstring> clangs;
 		Tokenize(langs, clangs, L",");
 		str_nmap::iterator al=PARAMS->find("ACCEPT_LANGUAGE");
+		if(al==PARAMS->end())
+			al=PARAMS->find("HTTP_ACCEPT_LANGUAGE");
+		
 		if(al!=PARAMS->end())
 		{
 			std::vector<std::string> toks;
