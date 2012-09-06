@@ -43,12 +43,15 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 
 	//Get language from ACCEPT_LANGUAGE
 	str_map::iterator lit=GET->find(L"lang");
-	if(lit!=pGET->end())
+	if(lit!=pGET->end() && lit->second!=L"-")
 	{
 		language=wnarrow(lit->second);
 	}
 	else
 	{
+		std::wstring langs=(*GET)[L"langs"];
+		std::vector<std::wstring> clangs;
+		Tokenize(langs, clangs, L",");
 		str_nmap::iterator al=PARAMS->find("ACCEPT_LANGUAGE");
 		if(al!=PARAMS->end())
 		{
@@ -64,10 +67,28 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 				if(prefix.empty())
 					prefix=lstr;
 
-				if(i==0)
+				if(language.empty())
 				{
-					language=strlower(prefix);
+					bool found=false;
+					for(size_t j=0;j<clangs.size();++j)
+					{
+						if(strlower(clangs[j])==strlower(widen(prefix)))
+						{
+							found=true;
+							break;
+						}
+					}
+					if(found)
+					{
+						language=strlower(prefix);
+						break;
+					}
 				}
+			}
+
+			if(language.empty())
+			{
+				language="en";
 			}
 		}
 		else
