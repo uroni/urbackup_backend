@@ -90,6 +90,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	filesrv_protocol_version=0;
 	file_protocol_version=1;
 	image_protocol_version=0;
+	update_version=0;
 
 	set_settings_version=0;
 	tcpstack.setAddChecksum(internet_connection);
@@ -2262,6 +2263,11 @@ bool BackupServerGet::updateCapabilities(void)
 		{
 			image_protocol_version=watoi(it->second);
 		}
+		it=params.find(L"CLIENTUPDATE");
+		if(it!=params.end())
+		{
+			update_version=watoi(it->second);
+		}
 	}
 
 	return !cap.empty();
@@ -2742,10 +2748,18 @@ void BackupServerGet::checkClientVersion(void)
 				return;
 			}
 
-			std::string msg="CLIENTUPDATE "+nconvert(datasize);
+			std::string msg;
+			if(update_version>0)
+			{
+				msg="1CLIENTUPDATE size="+nconvert(datasize)+"&silent_update="+nconvert(server_settings->getSettings()->silent_update);
+			}
+			else
+			{
+				msg="CLIENTUPDATE "+nconvert(datasize);
+			}
 			tcpstack.Send(cc, server_identity+msg);
 
-			int timeout=10000;
+			int timeout=5*60*1000;
 
 			unsigned int c_size=(unsigned int)version.size();
 			if(!cc->Write((char*)&c_size, sizeof(unsigned int), timeout) )
@@ -2800,7 +2814,7 @@ void BackupServerGet::checkClientVersion(void)
 			std::string ret;
 			unsigned int starttime=Server->getTimeMS();
 			bool ok=false;
-			while(Server->getTimeMS()-starttime<=10000)
+			while(Server->getTimeMS()-starttime<=5*60*1000)
 			{
 				size_t rc=cc->Read(&ret, timeout);
 				if(rc==0)
@@ -2838,7 +2852,10 @@ void BackupServerGet::checkClientVersion(void)
 
 			Server->destroy(cc);
 
-			ServerLogger::Log(clientid, L"Updated client successfully", LL_INFO);
+			if(ok)
+			{
+				ServerLogger::Log(clientid, L"Updated client successfully", LL_INFO);
+			}
 		}
 	}
 }

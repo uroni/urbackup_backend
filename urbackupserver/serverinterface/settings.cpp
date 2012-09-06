@@ -80,6 +80,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	ret.set("internet_encrypt", settings.getSettings()->internet_encrypt);
 	ret.set("internet_image_backups", settings.getSettings()->internet_image_backups);
 	ret.set("internet_full_file_backups", settings.getSettings()->internet_full_file_backups);
+	ret.set("silent_update", settings.getSettings()->silent_update);
 	return ret;
 }
 

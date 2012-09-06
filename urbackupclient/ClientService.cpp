@@ -396,7 +396,16 @@ bool ClientConnector::Run(void)
 									Server->deleteFile("version.txt");
 									Server->deleteFile("UrBackupUpdate.exe");
 									moveFile(L"UrBackupUpdate_untested.exe", L"UrBackupUpdate.exe");
-									moveFile(L"version_new.txt", L"version.txt");
+									
+									if(silent_update)
+									{
+										update_silent();
+									}
+									else
+									{
+										moveFile(L"version_new.txt", L"version.txt");
+									}
+
 									tcpstack.Send(pipe, "ok");
 								}
 								else
@@ -707,7 +716,7 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_VERSION_UPDATE(cmd); continue;
 			}
-			else if( next(cmd, 0, "CLIENTUPDATE ") )
+			else if( next(cmd, 0, "CLIENTUPDATE ") || next(cmd, 0, "1CLIENTUPDATE ") )
 			{
 				CMD_CLIENT_UPDATE(cmd); continue;
 			}
@@ -1005,7 +1014,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 	bool client_set_settings=false;
 	if(curr_settings->getValue("client_set_settings", &tmp_str) && tmp_str=="true")
 	{
-		if( new_settings->getValue("allow_overwrite", &tmp_str) && tmp_str!="false")
+		if( !new_settings->getValue("allow_overwrite", &tmp_str) )
+			new_settings->getValue("allow_overwrite_def", &tmp_str);
+
+		if( tmp_str!="false" )
 		{
 			client_set_settings=true;
 		}
@@ -1733,4 +1745,24 @@ void ClientConnector::setIsInternetConnection(void)
 {
 	internet_conn=true;
 	tcpstack.setAddChecksum(true);
+}
+
+void ClientConnector::update_silent(void)
+{
+#ifdef _WIN32
+	STARTUPINFOW si;
+	PROCESS_INFORMATION pi;
+	memset(&si, 0, sizeof(STARTUPINFO) );
+	memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
+	si.cb=sizeof(STARTUPINFO);
+	if(!CreateProcessW(L"UrBackupUpdate.exe", L"UrBackupUpdate.exe /S", NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
+	{
+		Server->Log("Executing silent update failed: "+nconvert((int)GetLastError()), LL_ERROR);
+	}
+	else
+	{
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+	}
+#endif
 }

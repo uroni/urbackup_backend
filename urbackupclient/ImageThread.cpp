@@ -600,7 +600,9 @@ void ImageThread::sendIncrImageThread(void)
 	delete [] has_blocks;
 	delete [] zeroblockbuf;
 
+	std::wstring hashdatafile_fn=hashdatafile->getFilenameW();
 	Server->destroy(hashdatafile);
+	Server->deleteFile(hashdatafile_fn);
 
 	Server->Log("Sending image done", LL_INFO);
 

@@ -58,6 +58,7 @@ struct SSettings
 	int global_internet_speed;
 	int global_local_speed;
 	bool internet_mode_enabled;
+	bool silent_update;
 };
 
 struct STimeSpan
@@ -99,6 +100,7 @@ private:
 	int parseDayOfWeek(std::string dow);
 	void readSettingsDefault(void);
 	void readSettingsClient(void);
+	void readBoolClientSetting(const std::string &name, bool *output);
 
 	SSettings settings;
 

@@ -119,6 +119,7 @@ private:
 	bool checkHash(std::string shah);
 	void tochannelSendStartbackup(RunningAction backup_type);
 	void ImageErr(const std::string &msg);
+	void update_silent(void);
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
@@ -193,6 +194,7 @@ private:
 	IFile *hashdatafile;
 	unsigned int hashdataleft;
 	volatile bool hashdataok;
+	bool silent_update;
 
 	ImageInformation image_inf;
 

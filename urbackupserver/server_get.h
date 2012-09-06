@@ -218,6 +218,7 @@ private:
 	int set_settings_version;
 	bool internet_connection;
 	int image_protocol_version;
+	int update_version;
 
 	CTCPStack tcpstack;
 
