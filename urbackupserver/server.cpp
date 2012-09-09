@@ -330,7 +330,12 @@ void BackupServer::startClients(FileClient &fc)
 				}
 				else if(i_c>=maxi)
 				{
-					++it->second.offlinecount;
+					SStatusAction s_action=ServerStatus::getStatus(it->first).statusaction;
+
+					if(s_action==sa_none)
+					{
+						++it->second.offlinecount;
+					}
 				}
 			}
 			++i_c;
