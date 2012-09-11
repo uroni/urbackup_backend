@@ -22,3 +22,8 @@ LOGLEVEL="warn"
 
 #Tmp file directory - be carefull this can get very large
 DAEMON_TMPDIR="/tmp"
+
+#Tmp file directory for sqlite temporary tables.
+#You might want to put the databases on another filesystem than the other temporary files.
+#Default is the same as DAEMON_TMPDIR
+SQLITE_TMPDIR=""

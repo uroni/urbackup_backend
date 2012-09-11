@@ -57,6 +57,7 @@ print_help()
 	echo "--loglevel {debug|info|warn|error}	Specifies the log level. Possible values: debug, info, warn, error. Default: warn"
 	echo "--no_daemon	Do not start as a daemon"
 	echo "--pidfile {file}		Save pid of daemon in file"
+	echo "--sqlite_tmpdir {tmpdir}	Specifies the directory sqlite uses to store temporary tables"
 	echo ""
 	echo "Have a nice day!"
 	exit 0
@@ -65,7 +66,7 @@ print_help()
 print_version()
 {
 	echo "UrBackup Server v1.0"
-	echo "Copyright (C) 2011 Martin Raiber"
+	echo "Copyright (C) 2011,2012 Martin Raiber"
 	echo "This is free software; see the source for copying conditions. There is NO"
 	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
 	exit 0
@@ -78,6 +79,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	LOGFILE="urbackup.log"
 	LOGLEVEL="warn"
 	PIDFILE="/var/run/urbackup_srv.pid"
+	SQLITE_TMPDIR=""
 	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile: -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
@@ -90,12 +92,13 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--no_daemon) S_DAEMON=""; shift ;;
 			--help) print_help ;;
 			--version) print_version ;;
+			--sqlite_tmpdir) SQLITE_TMPDIR="--sqlite_tmpdir \"$2\""; shift 2 ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac
 	done
 	
-	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE"
+	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $SQLITE_TMPDIR"
 else
 	DAEMON_ARGS="$*"
 fi

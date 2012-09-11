@@ -376,6 +376,22 @@ int main_fkt(int argc, char *argv[])
 	    }
 	}
 #endif
+	if( sqlite3_threadsafe()==0 )
+	{
+		Server->Log("SQLite3 wasn't compiled with the SQLITE_THREADSAFE. Exiting.", LL_ERROR);
+		return 43;
+	}
+	//sqlite3_enable_shared_cache(1);
+
+	{
+		str_nmap::iterator iter=srv_params.find("sqlite_tmpdir");
+		if(iter!=srv_params.end() && !iter->second.empty())
+		{
+			sqlite3_temp_directory=sqlite3_mprintf("%s", iter->second.c_str());
+		}
+	}
+
+
 	for( size_t i=0;i<plugins.size();++i)
 	{
 		if( !Server->LoadDLL(plugins[i]) )
@@ -403,14 +419,6 @@ int main_fkt(int argc, char *argv[])
 	if (signal (SIGTERM, termination_handler) == SIG_IGN)
 		signal (SIGTERM, SIG_IGN);
 #endif
-
-	if( sqlite3_threadsafe()==0 )
-	{
-		Server->Log("SQLite3 wasn't compiled with the SQLITE_THREADSAFE. Exiting.", LL_ERROR);
-		return 43;
-	}
-
-	//sqlite3_enable_shared_cache(1);
 	
 	((CSessionMgr*)Server->getSessionMgr())->startTimeoutSessionThread();
 

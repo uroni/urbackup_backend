@@ -23,6 +23,7 @@ DAEMON_REAL=$PREFIX/sbin/urbackup_srv
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 DAEMON_TMPDIR=/tmp
+SQLITE_TMPDIR=""
 
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
@@ -47,7 +48,12 @@ DAEMON_TMPDIR="/tmp"
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
 
-DAEMON_ARGS="--fastcgi_port $FASTCGI_PORT --logfile $LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT"
+if [[ "x$SQLITE_TMPDIR" != "x" ]]
+then
+	SQLITE_TMPDIR="--sqlite_tmpdir \"$SQLITE_TMPDIR\""
+fi
+
+DAEMON_ARGS="--fastcgi_port $FASTCGI_PORT --logfile $LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT $SQLITE_TMPDIR"
 
 # Load the VERBOSE setting and other rcS variables
 [ -r /lib/init/vars.sh ] && . /lib/init/vars.sh
@@ -61,7 +67,6 @@ rm -Rf $DAEMON_TMPDIR > /dev/null 2>&1
 mkdir $DAEMON_TMPDIR > /dev/null 2>&1
 chown urbackup:urbackup $DAEMON_TMPDIR
 ulimit -n 10000 > /dev/null 2>&1
-ulimit -c unlimited
 
 #
 # Function that starts the daemon/service
