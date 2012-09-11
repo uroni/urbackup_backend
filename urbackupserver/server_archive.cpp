@@ -213,7 +213,7 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 
 
 		db_results res_next=q_next->Read();
-		if(num<res_next.size())
+		if((size_t)num<res_next.size())
 		{
 			next_archival=res_next[num][L"next_archival"];
 			_i64 na=watoi64(next_archival);
