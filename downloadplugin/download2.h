@@ -49,6 +49,8 @@ public:
         int getDownloadedBytes(void);
         int getNewDownloadedBytes(void);
 
+		std::string getErrorString(uchar err);
+
 private:
 
         std::string proxy;

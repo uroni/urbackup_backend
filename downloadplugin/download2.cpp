@@ -564,3 +564,20 @@ int CFileDownload::getNewDownloadedBytes(void)
         return ndb;
 }
 
+std::string CFileDownload::getErrorString(uchar err)
+{
+	std::string errmsg="NOT_DEFINED";
+#define ERR2STR(x) if(err==FD_ERR_ ## x) errmsg=#x
+
+	ERR2STR(CONTINUE);
+	ERR2STR(SUCCESS);
+	ERR2STR(TIMEOUT);
+	ERR2STR(FILE_DOESNT_EXIST);
+	ERR2STR(SOCKET_ERROR);
+	ERR2STR(CONNECTED);
+	ERR2STR(ERROR);
+	ERR2STR(CONTENT_LENGTH);
+	ERR2STR(QUEUE_ITEMS);
+
+	return errmsg;
+}

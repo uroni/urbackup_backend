@@ -26,6 +26,8 @@ public:
 
     virtual int getDownloadedBytes(void)=0;
     virtual int getNewDownloadedBytes(void)=0;
+
+	virtual std::string getErrorString(uchar err)=0;
 };
 
 #endif //IFILEDOWNLOAD_H
