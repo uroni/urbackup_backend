@@ -245,6 +245,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                                                 if( csize2!="" )
                                                 {
                                                         chunksize=(int)hexToULong((char*)csize2.c_str() );
+														chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
                                                         while( chunksize<=(int)(tmpbuf.size()-4-csize2.size()) && chunksize>0)
                                                         {
                                                                 out.write(&tmpbuf[4+csize2.size()], chunksize);
@@ -257,6 +258,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                                                                 if( csize2!="" )
                                                                 {
                                                                         chunksize=hexToULong((char*)csize2.c_str() );
+																		chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
                                                                 }
                                                                 else
                                                                         chunksize=-1;
