@@ -281,7 +281,10 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                         {
                                 size_t osize=tmpbuf.size();
                                 tmpbuf.resize( tmpbuf.size()+bytes);
-                                memcpy(&tmpbuf[osize], Buffer, bytes);
+								if(bytes>0)
+								{
+									memcpy(&tmpbuf[osize], Buffer, bytes);
+								}
 
                                 if( Buffer[bytes]==0 )
                                 {

@@ -9,9 +9,16 @@ size_t ZlibDecompression::decompress(const char *input, size_t input_size, std::
 		decomp.Flush(true);
 	}
 	size_t rc=(size_t)decomp.MaxRetrievable();
-	if(output->size()<rc+output_off)
+	if(rc>0)
 	{
-		output->resize(rc+output_off);
+		if(output->size()<rc+output_off)
+		{
+			output->resize(rc+output_off);
+		}
+		return decomp.Get((byte*)(&(*output)[output_off]), rc);
 	}
-	return decomp.Get((byte*)(&(*output)[output_off]), rc);
+	else
+	{
+		return 0;
+	}
 }

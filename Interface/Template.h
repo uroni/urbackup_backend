@@ -1,3 +1,6 @@
+#ifndef ITEMPLATE_H
+#define ITEMPLATE_H
+
 #include "Object.h"
 
 class IDatabase;
@@ -14,3 +17,6 @@ public:
 
 	virtual void addValueTable( IDatabase* db, const std::string &table)=0;
 };
+
+
+#endif //ITEMPLATE_H
