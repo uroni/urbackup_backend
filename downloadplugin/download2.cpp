@@ -273,6 +273,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                                                         {
                                                                 out.write(&tmpbuf[4+csize2.size()], tmpbuf.size()-4-csize2.size());
                                                                 out.flush();
+																tmpbuf.clear();
                                                                 totalbytes+=(int)(tmpbuf.size()-4-csize2.size());
                                                         }
                                                 }
