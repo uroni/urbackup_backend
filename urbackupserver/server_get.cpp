@@ -1621,7 +1621,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	std::wstring last_backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path;
-	std::wstring last_backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path+L".hashes";
+	std::wstring last_backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path+os_file_sep()+L".hashes";
 	std::wstring last_backuppath_complete=backupfolder+os_file_sep()+clientname+os_file_sep()+last.complete;
 
 	std::wstring tmpfilename=tmp->getFilenameW();
