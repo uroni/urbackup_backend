@@ -275,6 +275,13 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							{
 								IScopedLock lock(clientaddr_mutex);
 								memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
+								internet_connection=(msg[7+sizeof(sockaddr_in)]==0)?false:true;
+
+								if(internet_connection && server_settings->getSettings()->internet_image_backups )
+								{
+									ServerLogger::Log(clientid, L"Stopped image backup because client is connected via Internet now", LL_WARNING);
+									goto do_image_cleanup;
+								}
 							}
 							else
 							{

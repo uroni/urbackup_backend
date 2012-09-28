@@ -353,7 +353,7 @@ void ServerUpdateStats::update_files(void)
 				already_del[std::pair<std::wstring, _i64>(shahash, filesize)]=true;
 			}
 
-			size_t size_add_nt=0;
+			_i64 size_add_nt=0;
 			if(rsize!=0)
 			{
 				q_get_transfer->Bind((char*)&shahash[0],(_u32)(shahash.size()*sizeof(wchar_t)));
