@@ -468,7 +468,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				currfilepart=0;
 				sendfilepart=0;
-				sent_bytes=0;
+				sent_bytes=start_offset;
 
 				LARGE_INTEGER filesize;
 				GetFileSizeEx(hFile, &filesize);
