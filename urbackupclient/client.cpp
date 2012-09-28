@@ -647,7 +647,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 {
 	bool has_include=false;
 
-	//Server->Log(L"Indexing "+dir, LL_DEBUG);
+	Server->Log(L"Indexing "+dir, LL_DEBUG);
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
 		/*db->EndTransaction();
@@ -734,6 +734,11 @@ void IndexThread::readBackupDirs(void)
 
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+#ifdef _WIN32
+		backup_dirs[i].path=os_get_final_path(backup_dirs[i].path);
+		Server->Log(L"Final path: "+backup_dirs[i].path, LL_INFO);
+#endif
+
 		if(filesrv!=NULL)
 			shareDir(backup_dirs[i].tname, backup_dirs[i].path);
 	}

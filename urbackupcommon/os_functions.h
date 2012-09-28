@@ -59,4 +59,6 @@ std::string os_strftime(std::string fs);
 
 bool os_create_dir_recursive(std::wstring fn);
 
+std::wstring os_get_final_path(std::wstring path);
+
 #endif //OS_FUNCTIONS_H

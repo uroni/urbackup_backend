@@ -285,3 +285,65 @@ bool os_create_dir_recursive(std::wstring fn)
 		return true;
 	}
 }
+
+std::wstring os_get_final_path(std::wstring path)
+{
+#if (_WIN32_WINNT >= 0x0600)
+	std::wstring ret;
+
+	HANDLE hFile = CreateFileW(path.c_str(),               
+                       GENERIC_READ,          
+                       FILE_SHARE_READ,       
+                       NULL,                  
+                       OPEN_EXISTING,         
+                       FILE_ATTRIBUTE_NORMAL | FILE_FLAG_BACKUP_SEMANTICS, 
+                       NULL);
+
+	if( hFile==INVALID_HANDLE_VALUE )
+	{
+		Server->Log(L"Could not open path in os_get_final_path for \""+path+L"\"", LL_ERROR);
+		return path;
+	}
+
+	DWORD dwBufsize = GetFinalPathNameByHandleW( hFile, NULL, 0, VOLUME_NAME_DOS );
+
+	if(dwBufsize==0)
+	{
+		Server->Log(L"Error getting path size in in os_get_final_path error="+convert((int)GetLastError())+L" for \""+path+L"\"", LL_ERROR);
+		CloseHandle(hFile);
+		return path;
+	}
+
+	ret.resize(dwBufsize+1);
+
+	DWORD dwRet = GetFinalPathNameByHandleW( hFile, (LPWSTR)ret.c_str(), dwBufsize, VOLUME_NAME_DOS );
+
+	CloseHandle(hFile);
+
+	if(dwRet==0)
+	{
+		Server->Log("Error getting path in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
+	}
+	else if(dwRet<ret.size())
+	{
+		ret.resize(dwRet);
+		if(ret.find(L"\\\\?\\")==0)
+		{
+			ret.erase(0,4);
+		}
+		/*if(ret.size()>=2 && ret[ret.size()-2]=='.' && ret[ret.size()-1]=='.' )
+		{
+			ret.resize(ret.size()-2);
+		}*/
+		return ret;
+	}
+	else
+	{
+		Server->Log("Error getting path (buffer too small) in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
+	}
+
+	return path;
+#else
+	return path;
+#endif
+}
