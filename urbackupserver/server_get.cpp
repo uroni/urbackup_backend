@@ -43,6 +43,7 @@
 #include <algorithm>
 #include <memory.h>
 #include <time.h>
+#include <stdio.h>
 
 extern IUrlFactory *url_fak;
 extern std::string server_identity;
@@ -1159,8 +1160,12 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 		return false;
 	}
 	
-	IFile *tmp=Server->openTemporaryFile();
-	if(tmp==NULL) return false;
+	IFile *tmp=getTemporaryFileRetry();;
+	if(tmp==NULL) 
+	{
+		ServerLogger::Log(clientid, L"Error creating temporary file in ::doFullBackup", LL_ERROR);
+		return false;
+	}
 
 	unsigned int full_backup_starttime=Server->getTimeMS();
 
@@ -1594,8 +1599,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	}
 	
 	Server->Log(clientname+L": Loading filelist...", LL_DEBUG);
-	IFile *tmp=Server->openTemporaryFile();
-	if(tmp==NULL) return false;
+	IFile *tmp=getTemporaryFileRetry();
+	if(tmp==NULL)
+	{
+		ServerLogger::Log(clientid, L"Error creating temporary file in ::doIncrBackup", LL_ERROR);
+		return false;
+	}
 
 	unsigned int incr_backup_starttime=Server->getTimeMS();
 	unsigned int incr_backup_stoptime=0;
@@ -2329,7 +2338,7 @@ bool BackupServerGet::getClientSettings(void)
 		return false;
 	}
 	
-	IFile *tmp=Server->openTemporaryFile();
+	IFile *tmp=getTemporaryFileRetry();
 	if(tmp==NULL)
 	{
 		ServerLogger::Log(clientid, "Error creating temporary file in BackupServerGet::getClientSettings", LL_ERROR);
@@ -3151,6 +3160,7 @@ std::wstring BackupServerGet::convertToOSPathFromFileClient(std::wstring path)
 
 IFile *BackupServerGet::getTemporaryFileRetry(void)
 {
+	int tries=50;
 	IFile *pfd=NULL;
 	while(pfd==NULL)
 	{
@@ -3158,7 +3168,12 @@ IFile *BackupServerGet::getTemporaryFileRetry(void)
 		if(pfd==NULL)
 		{
 			ServerLogger::Log(clientid, "Error opening temporary file. Retrying...", LL_WARNING);
-			Server->wait(500);
+			--tries;
+			if(tries<0)
+			{
+				return NULL;
+			}
+			Server->wait(1000);
 		}
 	}
 	return pfd;
