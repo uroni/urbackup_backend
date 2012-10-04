@@ -139,7 +139,7 @@ private:
 
 	std::vector<SBackupDir> backup_dirs;
 
-	std::vector<std::wstring> changed_dirs;
+	std::vector<SMDir> changed_dirs;
 
 	static IMutex *filelist_mutex;
 	static IMutex *filesrv_mutex;

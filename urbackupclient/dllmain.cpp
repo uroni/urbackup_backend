@@ -294,6 +294,18 @@ void upgrade_client3_4(IDatabase *db)
 	db->Write("ALTER TABLE shadowcopies ADD starttoken TEXT");
 }
 
+void upgrade_client4_5(IDatabase *db)
+{
+	db->Write("DROP TABLE mdirs");
+	db->Write("CREATE TABLE mdirs ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT )");
+	db->Write("DROP TABLE mdirs_backup");
+	db->Write("CREATE TABLE mdirs_backup ( id INTEGER, name TEXT )");
+	db->Write("CREATE TABLE mfiles ( dir_id INTEGER, name TEXT );");
+	db->Write("CREATE TABLE mfiles_backup ( dir_id INTEGER, name TEXT );");
+	db->Write("CREATE INDEX IF NOT EXISTS mfiles_backup_idx ON mfiles_backup( dir_id ASC )");
+	db->Write("DELETE FROM files");	
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -325,6 +337,10 @@ bool upgrade_client(void)
 				break;
 			case 3:
 				upgrade_client3_4(db);
+				++ver;
+				break;
+			case 4:
+				upgrade_client4_5(db);
 				++ver;
 				break;
 			default:

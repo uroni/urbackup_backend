@@ -115,7 +115,7 @@ private:
 	bool indexing_in_progress;
 	std::wstring indexing_volume;
 
-	std::map<std::wstring, bool> open_write_files;
+	std::map<std::wstring, int> open_write_files;
 	std::vector<std::wstring> error_dirs;
 
 	DirectoryWatcherThread * dwt;
@@ -127,7 +127,7 @@ public:
 	virtual void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName)=0;
     virtual void On_FileRemoved(const std::wstring & strFileName)=0;
     virtual void On_FileAdded(const std::wstring & strFileName)=0;
-    virtual void On_FileModified(const std::wstring & strFileName)=0;
+    virtual void On_FileModified(const std::wstring & strFileName, bool save_fn)=0;
 	virtual void On_ResetAll(const std::wstring & vol)=0;
 	virtual void On_DirRemoved(const std::wstring & strDirName)=0;
 };

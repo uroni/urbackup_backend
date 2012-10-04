@@ -40,8 +40,10 @@ void DirectoryWatcherThread::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
-	q_add_dir=db->Prepare("INSERT INTO mdirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM mdirs WHERE name=?)");
+	q_get_dir=db->Prepare("SELECT id FROM mdirs WHERE name=?");
+	q_add_dir=db->Prepare("INSERT INTO mdirs (name) VALUES (?)");
 	q_add_del_dir=db->Prepare("INSERT INTO del_dirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM del_dirs WHERE name=?)");
+	q_add_file=db->Prepare("INSERT INTO mfiles SELECT ? AS dir_id, ? AS name WHERE NOT EXISTS (SELECT * FROM mfiles WHERE dir_id=? AND name=?)");
 
 	ChangeListener cl;
 #ifdef CHANGE_JOURNAL
@@ -139,10 +141,15 @@ void DirectoryWatcherThread::operator()(void)
 				std::wstring dir=msg.substr(1);
 				OnDirRm(dir);
 			}
+			else if( msg[0]=='F' )
+			{
+				std::wstring fn=msg.substr(1);
+				OnDirMod(ExtractFilePath(fn), ExtractFileName(fn));
+			}
 			else
 			{
 				std::wstring dir=msg.substr(1);
-				OnDirMod(dir);
+				OnDirMod(dir, L"");
 			}
 		}
 	}
@@ -170,7 +177,7 @@ void DirectoryWatcherThread::update_and_wait(void)
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
 }
-void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
+void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstring &fn)
 {
 	bool found=false;
 	bool c=true;
@@ -186,7 +193,7 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
 				c=true;
 				break;
 			}
-			else if( (*it).dir==dir )
+			else if( (*it).dir==dir && (*it).fn==fn)
 			{
 				(*it).time=currtime;
 				found=true;
@@ -197,13 +204,41 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
 	
 	if(found==false)
 	{
-		q_add_dir->Bind(dir);
-		q_add_dir->Bind(dir);
-		q_add_dir->Write();
-		q_add_dir->Reset();
+		q_get_dir->Bind(dir);
+		db_results res=q_get_dir->Read();
+		q_get_dir->Reset();
+
+		if(res.empty())
+		{
+			q_add_dir->Bind(dir);
+			q_add_dir->Write();
+			q_add_dir->Reset();
+
+			if(!fn.empty())
+			{
+				_i64 dir_id=db->getLastInsertID();
+				q_add_file->Bind(dir_id);
+				q_add_file->Bind(fn);
+				q_add_file->Bind(dir_id);
+				q_add_file->Bind(fn);
+				q_add_file->Write();
+				q_add_file->Reset();
+			}
+		}
+		else if(!fn.empty())
+		{
+			_i64 dir_id=watoi64(res[0][L"id"]);
+			q_add_file->Bind(dir_id);
+			q_add_file->Bind(fn);
+			q_add_file->Bind(dir_id);
+			q_add_file->Bind(fn);
+			q_add_file->Write();
+			q_add_file->Reset();
+		}			
 
 		SLastEntries e;
 		e.dir=dir;
+		e.fn=fn;
 		e.time=currtime;
 		lastentries.push_back(e);
 	}
@@ -232,29 +267,34 @@ IPipe *DirectoryWatcherThread::getPipe(void)
 
 void DirectoryWatcherThread::On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName)
 {
-	On_FileModified(strOldFileName);
-	On_FileModified(strNewFileName);
+	On_FileModified(strOldFileName, false);
+	On_FileModified(strNewFileName, false);
 }
 
 void DirectoryWatcherThread::On_FileRemoved(const std::wstring & strFileName)
 {
-	On_FileModified(strFileName);
+	On_FileModified(strFileName, false);
 }
 
 void DirectoryWatcherThread::On_FileAdded(const std::wstring & strFileName)
 {
-	On_FileModified(strFileName);
+	On_FileModified(strFileName, false);
 }
 
-void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName)
+void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName, bool save_fn)
 {
 	bool ok=false;
 	std::wstring dir=ExtractFilePath(strFileName);
+	std::wstring fn;
+	if(save_fn)
+	{
+		fn=ExtractFileName(strFileName);
+	}
 	for(size_t i=0;i<watching.size();++i)
 	{
 		if(dir.find(watching[i])==0)
 		{
-			OnDirMod(dir);
+			OnDirMod(dir, fn);
 			return;
 		}
 	}	
@@ -280,7 +320,7 @@ bool DirectoryWatcherThread::is_stopped(void)
 
 void DirectoryWatcherThread::On_ResetAll(const std::wstring & vol)
 {
-	OnDirMod(L"##-GAP-##"+vol);
+	OnDirMod(L"##-GAP-##"+vol, L"");
 }
 
 void ChangeListener::On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName)
@@ -303,10 +343,15 @@ void ChangeListener::On_FileAdded(const std::wstring & strFileName)
 	DirectoryWatcherThread::getPipe()->Write((char*)dir1.c_str(), dir1.size()*sizeof(wchar_t));
 }
 
-void ChangeListener::On_FileModified(const std::wstring & strFileName)
+void ChangeListener::On_FileModified(const std::wstring & strFileName, bool save_fn)
 {
 	std::wstring dir1=L"S"+ExtractFilePath(strFileName);
 	DirectoryWatcherThread::getPipe()->Write((char*)dir1.c_str(), dir1.size()*sizeof(wchar_t));
+	if(save_fn)
+	{
+		dir1=L"F"+strFileName;
+		DirectoryWatcherThread::getPipe()->Write((char*)dir1.c_str(), dir1.size()*sizeof(wchar_t));
+	}
 }
 
 void ChangeListener::On_ResetAll(const std::wstring & vol)

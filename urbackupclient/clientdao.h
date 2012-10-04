@@ -46,6 +46,20 @@ struct SShadowCopy
 	int passedtime;
 };
 
+struct SMDir
+{
+	SMDir(_i64 id, std::wstring name)
+		: id(id), name(name) {}
+
+	_i64 id;
+	std::wstring name;
+
+	bool operator<(const SMDir &other)
+	{
+		return name<other.name;
+	}
+};
+
 class ClientDAO
 {
 public:
@@ -66,13 +80,21 @@ public:
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
-	std::vector<std::wstring> getChangedDirs(bool del=true);
+	std::vector<SMDir> getChangedDirs(bool del=true);
+
+	void moveChangedFiles(bool del=true);
+
+	std::vector<std::wstring> getChangedFiles(_i64 dir_id);
+	bool hasFileChange(_i64 dir_id, std::wstring fn);
 
 	std::vector<SShadowCopy> getShadowcopies(void);
 	int addShadowcopy(const SShadowCopy &sc);
 	void deleteShadowcopy(int id);
 	int modShadowcopyRefCount(int id, int m);
 
+
+	void deleteSavedChangedFiles(void);
+	void restoreSavedChangedFiles(void);
 	void deleteSavedChangedDirs(void);
 	void restoreSavedChangedDirs(void);
 
@@ -115,4 +137,10 @@ private:
 	IQuery *q_remove_del_dir;
 	IQuery *q_get_shadowcopy_refcount;
 	IQuery *q_set_shadowcopy_refcount;
+	IQuery *q_save_changed_files;
+	IQuery *q_remove_changed_files;
+	IQuery *q_delete_saved_changed_files;
+	IQuery *q_restore_saved_changed_files;
+	IQuery *q_has_changed_file;
+	IQuery *q_get_changed_files;
 };

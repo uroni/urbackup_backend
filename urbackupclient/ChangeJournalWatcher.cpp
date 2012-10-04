@@ -817,9 +817,12 @@ void ChangeJournalWatcher::update(bool force_write)
 
 void ChangeJournalWatcher::update_longliving(void)
 {
-	for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
+	for(std::map<std::wstring, int>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
 	{
-		listener->On_FileModified(it->first);
+		if(it->second>0)
+		{
+			listener->On_FileModified(it->first, true);
+		}
 	}
 	for(size_t i=0;i<error_dirs.size();++i)
 	{
@@ -920,7 +923,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 
 				if(UsnRecord->Reason & watch_flags )
 				{
-					listener->On_FileModified(dir_fn+UsnRecord->Filename);
+					listener->On_FileModified(dir_fn+UsnRecord->Filename, false );
 				}
 			}
 		}
@@ -937,7 +940,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				{
 					listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
 				}
-				listener->On_FileModified(dir_fn+UsnRecord->Filename);
+				listener->On_FileModified(dir_fn+UsnRecord->Filename, false);
 			}
 		}
 	}
@@ -966,20 +969,24 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 
 			if(UsnRecord->Reason & USN_REASON_CLOSE)
 			{
-				std::map<std::wstring, bool>::iterator it=open_write_files.find(real_fn);
+				std::map<std::wstring, int>::iterator it=open_write_files.find(real_fn);
 				if(it!=open_write_files.end())
 				{
-					open_write_files.erase(it);
+					--it->second;
+					if(it->second<=0)
+					{
+						open_write_files.erase(it);
+					}
 				}
 			}
 			else if(UsnRecord->Reason & watch_flags)
 			{
-				open_write_files[real_fn]=true;
+				++open_write_files[real_fn];
 			}
 
 			if(UsnRecord->Reason & (watch_flags | USN_REASON_RENAME_OLD_NAME) )
 			{
-				listener->On_FileModified(real_fn);
+				listener->On_FileModified(real_fn, (UsnRecord->Reason & USN_REASON_BASIC_INFO_CHANGE)>0 );
 			}
 		}
 	}

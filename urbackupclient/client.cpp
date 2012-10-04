@@ -524,9 +524,11 @@ void IndexThread::indexDirs(void)
 	updateDirs();
 #ifdef _WIN32
 	cd->restoreSavedChangedDirs();
+	cd->restoreSavedChangedFiles();
 	//Invalidate cache
 	DirectoryWatcherThread::update_and_wait();
 	changed_dirs=cd->getChangedDirs();
+	cd->moveChangedFiles();
 
 	cd->restoreSavedDelDirs();
 	std::vector<std::wstring> deldirs=cd->getDelDirs();
@@ -577,9 +579,10 @@ void IndexThread::indexDirs(void)
 				past_refs.push_back(scd->ref);
 				DirectoryWatcherThread::update_and_wait();
 				Server->wait(1000);
-				std::vector<std::wstring> acd=cd->getChangedDirs(false);
+				std::vector<SMDir> acd=cd->getChangedDirs(false);
 				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 				std::sort(changed_dirs.begin(), changed_dirs.end());
+				cd->moveChangedFiles(false);
 
 				std::vector<std::wstring> deldirs=cd->getDelDirs(false);
 				for(size_t i=0;i<deldirs.size();++i)
@@ -631,6 +634,7 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 	cd->deleteSavedChangedDirs();
 	cd->deleteSavedDelDirs();
+	cd->deleteSavedChangedFiles();
 #endif
 
 	{
@@ -647,7 +651,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 {
 	bool has_include=false;
 
-	Server->Log(L"Indexing "+dir, LL_DEBUG);
+	//Server->Log(L"Indexing "+dir, LL_DEBUG);
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
 		/*db->EndTransaction();
@@ -749,9 +753,15 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 #ifndef _WIN32
 	return getFiles(path);
 #else
-	bool found=std::binary_search(changed_dirs.begin(), changed_dirs.end(), orig_path);
+	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
+	if(use_db)
+	{
+		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, orig_path) );
+		if(it_dir!=changed_dirs.end() && (*it_dir).name!=orig_path)
+			it_dir=changed_dirs.end();
+	}
 	std::vector<SFile> tmp;
-	if(found || use_db==false)
+	if(it_dir!=changed_dirs.end() || use_db==false)
 	{
 		++index_c_fs;
 
@@ -762,6 +772,20 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		tmp=getFiles(tpath);
 		if(use_db)
 		{
+			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
+			std::sort(changed_files.begin(), changed_files.end());
+
+			for(size_t i=0;i<tmp.size();++i)
+			{
+				if(!tmp[i].isdir)
+				{
+					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) )
+					{
+						tmp[i].last_modified*=7;
+					}
+				}
+			}
+
 			if(cd->hasFiles(orig_path) )
 			{
 				++index_c_db_update;

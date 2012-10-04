@@ -14,6 +14,7 @@
 struct SLastEntries
 {
 	std::wstring dir;
+	std::wstring fn;
 	unsigned int time;
 };
 
@@ -33,11 +34,11 @@ public:
 	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName);
     void On_FileRemoved(const std::wstring & strFileName);
     void On_FileAdded(const std::wstring & strFileName);
-    void On_FileModified(const std::wstring & strFileName);
+    void On_FileModified(const std::wstring & strFileName, bool save_fn);
 	void On_ResetAll(const std::wstring &vol);
 	void On_DirRemoved(const std::wstring & strDirName);
 
-	void OnDirMod(const std::wstring &dir);
+	void OnDirMod(const std::wstring &dir, const std::wstring &fn);
 	void OnDirRm(const std::wstring &dir);
 
 	static void update(void);
@@ -51,8 +52,10 @@ private:
 
 	volatile bool do_stop;
 	
+	IQuery* q_get_dir;
 	IQuery* q_add_dir;
 	IQuery* q_add_del_dir;
+	IQuery* q_add_file;
 
 	std::list<SLastEntries> lastentries;
 	std::vector<std::wstring> watching;
@@ -67,7 +70,7 @@ public:
 	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName);
     void On_FileRemoved(const std::wstring & strFileName);
     void On_FileAdded(const std::wstring & strFileName);
-    void On_FileModified(const std::wstring & strFileName);
+    void On_FileModified(const std::wstring & strFileName, bool save_fn);
 	void On_ResetAll(const std::wstring &vol);
 	void On_DirRemoved(const std::wstring & strDirName);
 };
