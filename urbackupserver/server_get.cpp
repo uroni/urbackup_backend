@@ -879,6 +879,9 @@ void BackupServerGet::updateLastseen(void)
 
 bool BackupServerGet::isUpdateFull(void)
 {
+	if( server_settings->getSettings()->update_freq_full<0 )
+		return false;
+
 	q_update_full->Bind(clientid);
 	db_results res=q_update_full->Read();
 	q_update_full->Reset();
@@ -887,6 +890,9 @@ bool BackupServerGet::isUpdateFull(void)
 
 bool BackupServerGet::isUpdateIncr(void)
 {
+	if( server_settings->getSettings()->update_freq_incr<0 )
+		return false;
+
 	q_update_incr->Bind(clientid);
 	db_results res=q_update_incr->Read();
 	q_update_incr->Reset();
@@ -895,7 +901,7 @@ bool BackupServerGet::isUpdateIncr(void)
 
 bool BackupServerGet::isUpdateFullImage(const std::string &letter)
 {
-	if(server_settings->getSettings()->update_freq_image_full<0)
+	if( server_settings->getSettings()->update_freq_image_full<0 )
 		return false;
 
 	q_update_image_full->Bind(clientid);
@@ -933,7 +939,7 @@ bool BackupServerGet::isUpdateIncrImage(void)
 
 bool BackupServerGet::isUpdateIncrImage(const std::string &letter)
 {
-	if(server_settings->getSettings()->update_freq_image_full<=0)
+	if( server_settings->getSettings()->update_freq_image_full<=0 || server_settings->getSettings()->update_freq_incr<=0 )
 		return false;
 
 	q_update_image_incr->Bind(clientid);
@@ -1244,11 +1250,12 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 			bool b=getNextEntry(buffer[i], cf);
 			if(b)
 			{
+				std::wstring short_name=shortenFilename(cf.name);
 				if(cf.isdir==true)
 				{
 					if(cf.name!=L"..")
 					{
-						curr_path+=L"/"+cf.name;
+						curr_path+=L"/"+short_name;
 						std::wstring os_curr_path=curr_path;
 						if(os_file_sep()!=L"/")
 						{
@@ -1293,7 +1300,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 				}
 				else
 				{
-					bool b=load_file(cf.name, curr_path, fc, with_hashes);
+					bool b=load_file(cf.name, short_name, curr_path, fc, with_hashes);
 					if(!b)
 					{
 						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
@@ -1346,17 +1353,21 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	return !r_done;
 }
 
-bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring &curr_path,
+bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
 	const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal)
 {
 	std::wstring cfn=curr_path+L"/"+fn;
 	if(cfn[0]=='/')
 		cfn.erase(0,1);
 
-	std::wstring dstpath=backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn);
-	std::wstring hashpath=backuppath_hashes+os_file_sep()+convertToOSPathFromFileClient(cfn);
-	std::wstring hashpath_old=last_backuppath+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn);
-	std::wstring filepath_old=last_backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn);
+	std::wstring cfn_short=curr_path+L"/"+short_fn;
+	if(cfn_short[0]=='/')
+		cfn_short.erase(0,1);
+
+	std::wstring dstpath=backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
+	std::wstring hashpath=backuppath_hashes+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
+	std::wstring hashpath_old=last_backuppath+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
+	std::wstring filepath_old=last_backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 
 	IFile *file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
 
@@ -1364,15 +1375,15 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	{
 		if(!last_backuppath_complete.empty())
 		{
-			filepath_old=last_backuppath_complete+os_file_sep()+convertToOSPathFromFileClient(cfn);
+			filepath_old=last_backuppath_complete+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 			file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
 		}
 		if(file_old==NULL)
 		{
 			ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
-			return load_file(fn, curr_path, fc_normal, true);
+			return load_file(fn, short_fn, curr_path, fc_normal, true);
 		}
-		hashpath_old=last_backuppath_complete+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn);
+		hashpath_old=last_backuppath_complete+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 	}
 
 	ServerLogger::Log(clientid, L"Loading file patch for \""+fn+L"\"", LL_DEBUG);
@@ -1406,7 +1417,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	}
 	else
 	{
-		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+fn);		
+		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
 
 		hashFile(dstpath, hashpath, pfd, hash_tmp, Server->ConvertToUTF8(filepath_old));
@@ -1426,7 +1437,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		return true;
 }
 
-bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes)
+bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes)
 {
 	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
 	IFile *fd=getTemporaryFileRetry();
@@ -1450,7 +1461,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &curr
 	}
 	else
 	{
-		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+fn);		
+		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
 		std::wstring hashpath;
 		if(with_hashes)
@@ -1726,7 +1737,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 					ServerStatus::setServerStatus(status, true);
 				}
-				
+
+				std::wstring short_name=shortenFilename(cf.name);				
 				if(cf.isdir==true)
 				{
 					if(indirchange==false && hasChange(line, diffs) )
@@ -1765,7 +1777,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 
 					if(cf.name!=L"..")
 					{
-						curr_path+=L"/"+cf.name;
+						curr_path+=L"/"+short_name;
 						std::wstring os_curr_path=curr_path;
 						if(os_file_sep()!=L"/")
 						{
@@ -1817,7 +1829,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 				}
 				else
 				{
-					std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+cf.name);
+					std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_name);
 
 					if(indirchange==true || hasChange(line, diffs))
 					{
@@ -1825,9 +1837,9 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 						{
 							bool b;
 							if(intra_file_diffs)
-								b=load_file_patch(cf.name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
+								b=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
 							else
-								b=load_file(cf.name, curr_path, fc, with_hashes);
+								b=load_file(cf.name, short_name, curr_path, fc, with_hashes);
 
 							if(!b)
 							{
@@ -1866,9 +1878,9 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 							{
 								bool b2;
 								if(intra_file_diffs)
-									b2=load_file_patch(cf.name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
+									b2=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
 								else
-									b2=load_file(cf.name, curr_path, fc, with_hashes);
+									b2=load_file(cf.name, short_name, curr_path, fc, with_hashes);
 
 								if(!b2)
 								{
@@ -3207,6 +3219,29 @@ void BackupServerGet::cleanup_pipes(void)
 	Server->destroy(hashpipe_prepare);
 	Server->destroy(exitpipe);
 	Server->destroy(exitpipe_prepare);
+}
+
+std::wstring BackupServerGet::shortenFilename(std::wstring fn)
+{
+#ifdef _WIN32
+	if(fn.size()>=MAX_PATH-1)
+	{
+		ServerLogger::Log(clientid, L"Filename \""+fn+L"\" too long. Shortening it.", LL_WARNING);
+		fn.resize(MAX_PATH-2);
+	}
+#else
+	bool log_msg=true;
+	while( Server->ConvertToUTF8(fn).size()>=NAME_MAX )
+	{
+		if( log_msg )
+		{
+			ServerLogger::Log(clientid, L"Filename \""+fn+L"\" too long. Shortening it.", LL_WARNING);
+			log_msg=false;
+		}
+		fn.resize(fn.size()-1);
+	}
+#endif
+	return fn;
 }
 
 #endif //CLIENT_ONLY
