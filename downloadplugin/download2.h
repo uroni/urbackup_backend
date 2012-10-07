@@ -66,6 +66,9 @@ private:
 
         int received;
         int lbytes_received;		
+	
+	uchar err1;
+	uchar err2;
 };
 
 

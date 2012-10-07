@@ -39,10 +39,12 @@ bool ServerUpdate::waitForDownload(IFileDownload *dl)
 		uchar rc=dl->download();
 		if(rc==FD_ERR_SUCCESS)
 		{
+			Server->Log("Downloaded file successfully", LL_INFO);
 			return true;
 		}
-		else if(rc==FD_ERR_TIMEOUT || rc==FD_ERR_FILE_DOESNT_EXIST || rc==FD_ERR_ERROR )
+		else if(rc==FD_ERR_TIMEOUT || rc==FD_ERR_SOCKET_ERROR || rc==FD_ERR_FILE_DOESNT_EXIST || rc==FD_ERR_ERROR )
 		{
+			Server->Log("Download err: "+dl->getErrorString(rc), LL_ERROR);
 			return false;
 		}
 	}
@@ -61,6 +63,7 @@ void ServerUpdate::operator()(void)
 	if(tmp==NULL) return;
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
+	Server->Log("Downloading version file...", LL_INFO);
 	dl->download("http://update1.urbackup.org/version.txt", tfn);
 
 	if(!waitForDownload(dl))
@@ -77,12 +80,14 @@ void ServerUpdate::operator()(void)
 
 	if(atoi(version.c_str())>atoi(curr_version.c_str()))
 	{
+		Server->Log("Downloading signature...", LL_INFO);
 		dl->download("http://update1.urbackup.org/UrBackupUpdate.sig", "urbackup/UrBackupUpdate.sig");
 		if(!waitForDownload(dl))
 		{
 			download_fak->destroyFileDownload(dl);
 			return;
 		}
+		Server->Log("Downloading update...", LL_INFO);
 		dl->download("http://update1.urbackup.org/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.exe");
 		if(!waitForDownload(dl))
 		{

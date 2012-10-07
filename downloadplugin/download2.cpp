@@ -494,12 +494,14 @@ uchar CFileDownload::download(int wait)
 		{
 			CRData rd(data.c_str(), data.size());
 			rd.getUChar(&id);
+			err1=id;
 			switch(id)
 			{
 					case DL2_ERROR:
 					{
 							uchar eid;
 							rd.getUChar(&eid);
+							err2=eid;
 
 							if( eid==DL2_ERR_TIMEOUT )
 							{
@@ -518,6 +520,7 @@ uchar CFileDownload::download(int wait)
 					{
 							uchar iid;
 							rd.getUChar(&iid);
+							err2=iid;
 
 							if( iid==DL2_INFO_DOWNLOADING )
 							{
@@ -529,6 +532,7 @@ uchar CFileDownload::download(int wait)
 					{
 							uchar b;
 							rd.getUChar(&b);
+							err2=b;
 
 							if( b==0 )
 									return FD_ERR_ERROR;
@@ -584,6 +588,13 @@ std::string CFileDownload::getErrorString(uchar err)
 	ERR2STR(ERROR);
 	ERR2STR(CONTENT_LENGTH);
 	ERR2STR(QUEUE_ITEMS);
+
+	if(err1==DL2_ERROR && err2==DL2_ERR_COULDNOTOPENFILE )
+	{
+		errmsg+=" Could not open destination file. Check rights please. Filename="+filename;
+	}
+
+	errmsg+=" ("+nconvert(err1)+", "+nconvert(err2)+") url="+url;
 
 	return errmsg;
 }
