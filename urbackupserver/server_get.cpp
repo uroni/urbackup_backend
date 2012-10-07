@@ -44,6 +44,10 @@
 #include <memory.h>
 #include <time.h>
 #include <stdio.h>
+#include <limits.h>
+#ifndef NAME_MAX
+#define NAME_MAX _POSIX_NAME_MAX
+#endif
 
 extern IUrlFactory *url_fak;
 extern std::string server_identity;

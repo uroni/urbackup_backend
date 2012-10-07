@@ -273,8 +273,9 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                                                         {
                                                                 out.write(&tmpbuf[4+csize2.size()], tmpbuf.size()-4-csize2.size());
                                                                 out.flush();
-																tmpbuf.clear();
+                                                                chunksize-=tmpbuf.size()-4-csize2.size();
                                                                 totalbytes+=(int)(tmpbuf.size()-4-csize2.size());
+                                                                tmpbuf.clear();
                                                         }
                                                 }
                                         }
@@ -311,7 +312,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                                         if( error_code=="" )
                                                 error_code=getbetween("HTTP/1.0 "," ",tmpbuf);
 
-                                        if( tmpbuf.find("Transfer-Encoding: chunked")!=std::string::npos )
+                                        if( trim(getbetween("Transfer-Encoding:", "\r\n", tmpbuf))=="chunked" )
                                         {
                                                 chunked=true;
                                         }
@@ -351,6 +352,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                                                 if( csize1!="" )
                                                 {
                                                         chunksize=hexToULong((char*)csize1.c_str() );
+                                                        chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
                                                 }
                                                 offadd+=csize1.size()+2;
                                         }
@@ -373,6 +375,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                                                         if( ncsize!="" )
                                                         {
                                                                 chunksize=hexToULong((char*)ncsize.c_str() );
+                                                                chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
                                                                 off=4+ncsize.size();
                                                                 offadd=0;
                                                         }
@@ -386,7 +389,9 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                                                 {
                                                         out.write(&tmpbuf[off+offadd], tmpbuf.size()-off-offadd );
                                                         out.flush();
+                                                        chunksize-=tmpbuf.size()-off-offadd;
                                                         totalbytes+=(int)(tmpbuf.size()-off-offadd);
+							tmpbuf.clear();                                                
                                                 }
                                                 else if( chunksize==0 )
                                                 {
