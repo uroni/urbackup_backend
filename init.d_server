@@ -48,7 +48,7 @@ DAEMON_TMPDIR="/tmp"
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
 
-if [[ "x$SQLITE_TMPDIR" != "x" ]]
+if [ "x$SQLITE_TMPDIR" != "x" ]
 then
 	SQLITE_TMPDIR="--sqlite_tmpdir \"$SQLITE_TMPDIR\""
 fi

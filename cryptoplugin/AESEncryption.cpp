@@ -34,7 +34,7 @@ AESEncryption::AESEncryption(const std::string &password, bool hash_password)
 
 	m_IV.resize(CryptoPP::AES::BLOCKSIZE);
 
-	Server->randomFill((char*)m_IV.BytePtr(), CryptoPP::AES::BLOCKSIZE);
+	Server->secureRandomFill((char*)m_IV.BytePtr(), CryptoPP::AES::BLOCKSIZE);
 
 	iv_done=false;
 

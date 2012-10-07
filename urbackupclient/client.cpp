@@ -781,7 +781,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				{
 					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) )
 					{
-						tmp[i].last_modified*=7;
+						tmp[i].last_modified*=Server->getRandomNumber();
 					}
 				}
 			}

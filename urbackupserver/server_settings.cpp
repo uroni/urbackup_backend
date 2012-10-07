@@ -450,7 +450,7 @@ std::string ServerSettings::generateRandomAuthKey(size_t len)
 {
 	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 	std::string key;
-	std::vector<unsigned int> rnd_n=Server->getRandomNumbers(len);
+	std::vector<unsigned int> rnd_n=Server->getSecureRandomNumbers(len);
 	for(int j=0;j<len;++j)
 		key+=rchars[rnd_n[j]%rchars.size()];
 	return key;
@@ -460,7 +460,7 @@ std::string ServerSettings::generateRandomBinaryKey(void)
 {
 	std::string key;
 	key.resize(32);
-	Server->randomFill((char*)key.data(), 32);
+	Server->secureRandomFill((char*)key.data(), 32);
 	return key;
 }
 

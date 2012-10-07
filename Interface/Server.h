@@ -149,6 +149,10 @@ public:
 	virtual unsigned int getRandomNumber(void)=0;
 	virtual std::vector<unsigned int> getRandomNumbers(size_t n)=0;
 	virtual void randomFill(char *buf, size_t blen)=0;
+
+	virtual unsigned int getSecureRandomNumber(void)=0;
+	virtual std::vector<unsigned int> getSecureRandomNumbers(size_t n)=0;
+	virtual void secureRandomFill(char *buf, size_t blen)=0;
 };
 
 #ifndef NO_INTERFACE

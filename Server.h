@@ -163,6 +163,10 @@ public:
 	virtual unsigned int getRandomNumber(void);
 	virtual std::vector<unsigned int> getRandomNumbers(size_t n);
 	virtual void randomFill(char *buf, size_t blen);
+
+	virtual unsigned int getSecureRandomNumber(void);
+	virtual std::vector<unsigned int> getSecureRandomNumbers(size_t n);
+	virtual void secureRandomFill(char *buf, size_t blen);
 private:
 
 	bool UnloadDLLs(void);

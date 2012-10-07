@@ -61,7 +61,7 @@ std::string InternetClientThread::generateRandomBinaryAuthKey(void)
 {
 	std::string key;
 	key.resize(32);
-	Server->randomFill((char*)key.data(), 32);
+	Server->secureRandomFill((char*)key.data(), 32);
 	return key;
 }
 

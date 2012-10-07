@@ -91,7 +91,7 @@ std::wstring CSessionMgr::GenerateSessionIDWithUser(const std::wstring &pUsernam
 {
 	std::wstring ret;
 	ret.resize(SESSIONID_LEN);
-	std::vector<unsigned int> rnd_n=Server->getRandomNumbers(SESSIONID_LEN);
+	std::vector<unsigned int> rnd_n=Server->getSecureRandomNumbers(SESSIONID_LEN);
 	for(int i=0;i<SESSIONID_LEN;++i)
 		ret[i]+=Pool[rnd_n[i]%Pool.size()];
 
