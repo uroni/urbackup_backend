@@ -83,6 +83,34 @@ const std::string pw_file="pw.txt";
 const std::string pw_file="urbackup/pw.txt";
 #endif
 
+#ifdef _WIN32
+class UpdateSilentThread : public IThread
+{
+public:
+	void operator()(void)
+	{
+		Server->wait(2*60*1000); //2min
+
+		STARTUPINFOW si;
+		PROCESS_INFORMATION pi;
+		memset(&si, 0, sizeof(STARTUPINFO) );
+		memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
+		si.cb=sizeof(STARTUPINFO);
+		if(!CreateProcessW(L"UrBackupUpdate.exe", L"UrBackupUpdate.exe /S", NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
+		{
+			Server->Log("Executing silent update failed: "+nconvert((int)GetLastError()), LL_ERROR);
+		}
+		else
+		{
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+		}
+
+		delete this;
+	}
+};
+#endif
+
 void ClientConnector::init_mutex(void)
 {
 	if(backup_mutex==NULL)
@@ -393,20 +421,20 @@ bool ClientConnector::Run(void)
 								Server->destroy(updatefile);
 								if(crypto_fak->verifyFile("urbackup_dsa.pub", "UrBackupUpdate_untested.exe", "UrBackupUpdate.sig"))
 								{
-									Server->deleteFile("version.txt");
 									Server->deleteFile("UrBackupUpdate.exe");
 									moveFile(L"UrBackupUpdate_untested.exe", L"UrBackupUpdate.exe");
 									
+									tcpstack.Send(pipe, "ok");
+
 									if(silent_update)
 									{
 										update_silent();
 									}
 									else
 									{
+										Server->deleteFile("version.txt");
 										moveFile(L"version_new.txt", L"version.txt");
 									}
-
-									tcpstack.Send(pipe, "ok");
 								}
 								else
 								{									
@@ -427,6 +455,8 @@ bool ClientConnector::Run(void)
 						Server->Log("Verifing update file failed. Cryptomodule not present", LL_ERROR);
 						tcpstack.Send(pipe, "verify_cryptmodule_err");
 					}
+
+					state=CCSTATE_NORMAL;
 				}
 				else
 				{
@@ -528,7 +558,7 @@ bool ClientConnector::writeUpdateFile(IFile *datafile, std::string outfn)
 
 void ClientConnector::ReceivePackets(void)
 {
-	if(state==CCSTATE_WAIT_FOR_CONTRACTORS)
+	if(state==CCSTATE_WAIT_FOR_CONTRACTORS || state==CCSTATE_UPDATE_FINISH)
 	{
 		return;
 	}
@@ -591,8 +621,9 @@ void ClientConnector::ReceivePackets(void)
 				state=CCSTATE_IMAGE;
 			else if(state==CCSTATE_UPDATE_DATA)
 				state=CCSTATE_UPDATE_FINISH;
-			return;
 		}
+
+		return;
 	}
 
 	tcpstack.AddData((char*)cmd.c_str(), cmd.size());
@@ -1750,19 +1781,6 @@ void ClientConnector::setIsInternetConnection(void)
 void ClientConnector::update_silent(void)
 {
 #ifdef _WIN32
-	STARTUPINFOW si;
-	PROCESS_INFORMATION pi;
-	memset(&si, 0, sizeof(STARTUPINFO) );
-	memset(&pi, 0, sizeof(PROCESS_INFORMATION) );
-	si.cb=sizeof(STARTUPINFO);
-	if(!CreateProcessW(L"UrBackupUpdate.exe", L"UrBackupUpdate.exe /S", NULL, NULL, false, NORMAL_PRIORITY_CLASS|CREATE_NO_WINDOW, NULL, NULL, &si, &pi) )
-	{
-		Server->Log("Executing silent update failed: "+nconvert((int)GetLastError()), LL_ERROR);
-	}
-	else
-	{
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-	}
+	Server->getThreadPool()->execute(new UpdateSilentThread());
 #endif
 }
