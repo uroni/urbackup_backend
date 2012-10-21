@@ -135,6 +135,9 @@ private:
 
 	void start_filesrv(void);
 
+	void modifyFilesInt(std::wstring path, const std::vector<SFile> &data);
+	void commitModifyFilesBuffer(void);
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
@@ -174,4 +177,7 @@ private:
 	unsigned int last_transaction_start;
 
 	static std::map<std::wstring, std::wstring> filesrv_share_dirs;
+
+	std::vector< std::pair<std::wstring, std::vector<SFile> > > modify_file_buffer;
+	size_t modify_file_buffer_size;
 };

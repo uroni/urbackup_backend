@@ -56,6 +56,7 @@ const unsigned int nonidlesleeptime=500;
 const unsigned short tcpport=35621;
 const unsigned short udpport=35622;
 const unsigned int shadowcopy_timeout=7*24*60*60*1000;
+const size_t max_modify_file_buffer_size=500*1024;
 
 #ifndef SERVER_ONLY
 #define ENABLE_VSS
@@ -137,6 +138,8 @@ IndexThread::IndexThread(void)
 		filesrv=NULL;
 		Server->Log("Error starting fileserver", LL_ERROR);
 	}
+
+	modify_file_buffer_size=0;
 }
 
 IndexThread::~IndexThread()
@@ -600,6 +603,8 @@ void IndexThread::indexDirs(void)
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true);
+			cd->copyFromTmpFiles();
+			commitModifyFilesBuffer();
 			if(stop_index)
 			{
 				for(size_t k=0;k<backup_dirs.size();++k)
@@ -630,6 +635,7 @@ void IndexThread::indexDirs(void)
 	}
 
 	cd->copyFromTmpFiles();
+	commitModifyFilesBuffer();
 
 #ifdef _WIN32
 	cd->deleteSavedChangedDirs();
@@ -789,7 +795,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 			if(cd->hasFiles(orig_path) )
 			{
 				++index_c_db_update;
-				cd->modifyFiles(orig_path, tmp);
+				modifyFilesInt(orig_path, tmp);
 			}
 			else
 			{
@@ -1820,4 +1826,37 @@ void IndexThread::doStop(void)
 	wd.addUChar(8);
 	wd.addVoidPtr(NULL);
 	msgpipe->Write(wd.getDataPtr(), wd.getDataSize());
+}
+
+void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFile> &data)
+{
+	size_t add_size=path.size()*sizeof(wchar_t)+sizeof(std::wstring);
+	for(size_t i=0;i<data.size();++i)
+	{
+		add_size+=data[i].name.size()*sizeof(wchar_t);
+		add_size+=sizeof(SFile);
+	}
+	add_size+=sizeof(std::vector<SFile>);
+
+	modify_file_buffer_size+=add_size;
+
+	modify_file_buffer.push_back(std::pair<std::wstring, std::vector<SFile> >(path, data) );
+
+	if( modify_file_buffer_size>max_modify_file_buffer_size)
+	{
+		commitModifyFilesBuffer();
+	}
+}
+
+void IndexThread::commitModifyFilesBuffer(void)
+{
+	db->BeginTransaction();
+	for(size_t i=0;i<modify_file_buffer.size();++i)
+	{
+		cd->modifyFiles(modify_file_buffer[i].first, modify_file_buffer[i].second);
+	}
+	db->EndTransaction();
+
+	modify_file_buffer.clear();
+	modify_file_buffer_size=0;
 }
