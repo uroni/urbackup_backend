@@ -275,7 +275,7 @@ bool ServerAutomaticArchive::isInArchiveWindow(const std::wstring &window_def)
 		for(size_t j=0;j<stoks.size();++j)
 		{
 			int n=watoi(stoks[j]);
-			if(i==3)//dom
+			if(i==3)//dow
 			{
 				if(n==7) n=0;
 			}
@@ -295,7 +295,7 @@ bool ServerAutomaticArchive::isInArchiveWindow(const std::wstring &window_def)
 		{
 			ref_num=atoi(os_strftime("%m").c_str());
 		}
-		else if(i==3) // dom
+		else if(i==3) // dow
 		{
 			ref_num=atoi(os_strftime("%w").c_str());
 			if(ref_num==7) ref_num=0;
