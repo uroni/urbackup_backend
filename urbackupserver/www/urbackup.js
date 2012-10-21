@@ -31,7 +31,7 @@ function startup()
 	
 	if(g.use_google_chart)
 	{
-		LoadScript("https://www.google.com/jsapi?callback=google_chart_ready", "google_jsapi");
+		LoadScript("https://www.google.com/jsapi?callback=google_chart_ready&rnd="+rnd(), "google_jsapi");
 	}	
 }
 
@@ -1676,7 +1676,9 @@ function clientRights(clientid)
 		{ domain: "progress", right: clientid },
 		{ domain: "settings", right: clientid },
 		{ domain: "status", right: clientid },
-		{ domain: "logs", right: clientid }
+		{ domain: "logs", right: clientid },
+		{ domain: "stop_backup", right: clientid },
+		{ domain: "start_backup", right: "all" }
 	]);
 }
 function createUser2()
