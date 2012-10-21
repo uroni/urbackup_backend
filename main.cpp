@@ -309,14 +309,14 @@ int main_fkt(int argc, char *argv[])
 			}
 			else
 			{
-				exit(1);
+				exit(0);
 			}
 		}
 		else
 		{
 			int status;
 			waitpid(pid1, &status, 0);
-			exit(1);
+			exit(0);
 		}
 
 		chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
