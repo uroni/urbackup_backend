@@ -80,7 +80,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	LOGLEVEL="warn"
 	PIDFILE="/var/run/urbackup_srv.pid"
 	SQLITE_TMPDIR=""
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile: -- "$@"`
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir: -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
