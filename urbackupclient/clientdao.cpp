@@ -40,9 +40,9 @@ void ClientDAO::prepareQueries(void)
 	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs, starttoken) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)", false);
 	q_get_shadowcopies=db->Prepare("SELECT id, vssid, ssetid, target, path, tname, orig_target, filesrv, vol, (strftime('%s','now') - strftime('%s', starttime)) AS passedtime, refs, starttoken FROM shadowcopies", false);
 	q_remove_shadowcopies=db->Prepare("DELETE FROM shadowcopies WHERE id=?", false);
-	q_save_changed_dirs=db->Prepare("INSERT INTO mdirs_backup SELECT id,name FROM mdirs", false);
+	q_save_changed_dirs=db->Prepare("INSERT OR REPLACE INTO mdirs_backup SELECT id,name FROM mdirs", false);
 	q_delete_saved_changed_dirs=db->Prepare("DELETE FROM mdirs_backup", false);
-	q_restore_saved_changed_dirs=db->Prepare("INSERT INTO mdirs SELECT id,name FROM mdirs_backup", false);
+	q_restore_saved_changed_dirs=db->Prepare("INSERT OR REPLACE INTO mdirs SELECT id, name FROM mdirs_backup", false);
 	q_copy_from_tmp_files=db->Prepare("INSERT INTO files (num, data, name) SELECT num, data, name FROM files_tmp", false);
 	q_delete_tmp_files=db->Prepare("DELETE FROM files_tmp", false);
 	q_has_changed_gap=db->Prepare("SELECT name FROM mdirs WHERE name GLOB '##-GAP-##*'", false);
@@ -54,10 +54,10 @@ void ClientDAO::prepareQueries(void)
 	q_remove_del_dir=db->Prepare("DELETE FROM files WHERE name GLOB ?", false);
 	q_get_shadowcopy_refcount=db->Prepare("SELECT refs FROM shadowcopies WHERE id=?", false);
 	q_set_shadowcopy_refcount=db->Prepare("UPDATE shadowcopies SET refs=? WHERE id=?", false);
-	q_save_changed_files=db->Prepare("INSERT INTO mfiles_backup SELECT dir_id,name FROM mfiles", false);
+	q_save_changed_files=db->Prepare("INSERT OR REPLACE INTO mfiles_backup SELECT dir_id,name FROM mfiles", false);
 	q_remove_changed_files=db->Prepare("DELETE FROM mfiles", false);
 	q_delete_saved_changed_files=db->Prepare("DELETE FROM mfiles_backup", false);
-	q_restore_saved_changed_files=db->Prepare("INSERT INTO mfiles SELECT dir_id,name FROM mfiles_backup", false);
+	q_restore_saved_changed_files=db->Prepare("INSERT OR REPLACE INTO mfiles SELECT dir_id,name FROM mfiles_backup", false);
 	q_has_changed_file=db->Prepare("SELECT dir_id FROM mfiles_backup WHERE dir_id=? AND name=?", false);
 	q_get_changed_files=db->Prepare("SELECT name FROM mfiles_backup WHERE dir_id=?", false);;
 }
