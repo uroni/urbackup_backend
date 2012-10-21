@@ -158,7 +158,7 @@ ACTION_IMPL(status)
 		std::wstring s_start_client=GET[L"start_client"];
 		std::vector<int> start_client;
 		std::wstring start_type=GET[L"start_type"];
-		if(!s_start_client.empty() && helper.getRights("start_backup_for_client")=="all")
+		if(!s_start_client.empty() && helper.getRights("start_backup")=="all")
 		{
 			std::vector<std::wstring> sv_start_client;
 			Tokenize(s_start_client, sv_start_client, L",");
