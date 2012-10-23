@@ -65,7 +65,11 @@ void BackupServer::operator()(void)
 	if(settings->getValue(L"tmpdir", &tmpdir) && !tmpdir.empty())
 	{
 		os_remove_nonempty_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
-		os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+		if(!os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp"))
+		{
+			Server->wait(5000);
+			os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+		}
 		Server->setTemporaryDirectory(tmpdir+os_file_sep()+L"urbackup_tmp");
 	}
 	else
@@ -85,7 +89,11 @@ void BackupServer::operator()(void)
 
 
 		os_remove_nonempty_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
-		os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
+		if(!os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp"))
+		{
+			Server->wait(5000);
+			os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+		}
 		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
 	}
 #endif
