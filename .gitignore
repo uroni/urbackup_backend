@@ -138,3 +138,6 @@ urbackupserver/Release Server PreVista/*
 urbackupserver/Release Server/*
 new_server_idents.txt
 webwatch/*
+urbackupserver/doc/tmp/*
+docs/tmp/*
+urbackupserver/doc/*
