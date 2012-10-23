@@ -69,7 +69,7 @@ Global
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release|x64.ActiveCfg = Release|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Debug|Win32.ActiveCfg = Debug|Win32
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Debug|Win32.Build.0 = Debug|Win32
-		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Debug|x64.ActiveCfg = Release|x64
+		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Debug|x64.ActiveCfg = Debug|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Server PreVista|Win32.ActiveCfg = Release|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Server PreVista|x64.ActiveCfg = Release|x64
 		{DB4FFADB-B1D0-4D52-8CD5-C9AE479CA565}.Release Server PreVista|x64.Build.0 = Release|x64
