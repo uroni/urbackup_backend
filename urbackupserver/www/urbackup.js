@@ -1173,11 +1173,19 @@ function show_settings2(data)
 			{
 				data.settings.internet_settings_start="";
 				data.settings.internet_settings_end="";
+				data.settings.global_settings_start_inet=data.settings.global_settings_start;
+				data.settings.global_settings_end_inet=data.settings.global_settings_end;
+				data.settings.no_compname_start_inet=data.settings.no_compname_start;
+				data.settings.no_compname_end_inet=data.settings.no_compname_end;
 			}
 			else
 			{
 				data.settings.internet_settings_start="<!--";
 				data.settings.internet_settings_end="-->";
+				data.settings.global_settings_start_inet="";
+				data.settings.global_settings_end_inet="";
+				data.settings.no_compname_start_inet="";
+				data.settings.no_compname_end_inet="";
 			}
 			
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
@@ -1243,11 +1251,19 @@ function show_settings2(data)
 			{
 				data.settings.internet_settings_start="";
 				data.settings.internet_settings_end="";
+				data.settings.global_settings_start_inet=data.settings.global_settings_start;
+				data.settings.global_settings_end_inet=data.settings.global_settings_end;
+				data.settings.no_compname_start_inet=data.settings.no_compname_start;
+				data.settings.no_compname_end_inet=data.settings.no_compname_end;
 			}
 			else
 			{
 				data.settings.internet_settings_start="<!--";
 				data.settings.internet_settings_end="-->";
+				data.settings.global_settings_start_inet="";
+				data.settings.global_settings_end_inet="";
+				data.settings.no_compname_start_inet="";
+				data.settings.no_compname_end_inet="";
 			}
 						
 			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
@@ -1557,7 +1573,10 @@ function updateUserOverwrite(clientid)
 	
 	for(var i=0;i<g.settings_list.length;++i)
 	{
-		I(g.settings_list[i]).disabled=!checked;
+		if( I(g.settings_list[i]) )
+		{
+			I(g.settings_list[i]).disabled=!checked;
+		}
 	}
 	
 	I('user_submit').disabled=!checked;

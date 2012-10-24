@@ -175,7 +175,7 @@
 #{internet_settings_start}
 <div class="tabbertab" title="#{tInternet}">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
-#{global_settings_start}
+#{global_settings_start_inet}
 <tr>
 <td>#{tEnable internet mode (requires server restart)}:</td>
 <td><input type="checkbox" id="internet_mode_enabled" value="false" #{internet_mode_enabled}/></td>
@@ -188,8 +188,8 @@
 <td>#{tInternet server port}:</td>
 <td><input type="text" size="40" id="internet_server_port" value="#{internet_server_port}"/> </td>
 </tr>
-#{global_settings_end}
-#{no_compname_start}
+#{global_settings_end_inet}
+#{no_compname_start_inet}
 <tr>
 <td>#{tEnable internet mode}:</td>
 <td><input type="checkbox" id="internet_mode_enabled" value="false" #{internet_mode_enabled}/></td>
@@ -198,7 +198,7 @@
 <td>#{tInternet auth key}</td>
 <td><input type="text" id="internet_authkey" value="#{internet_authkey}"/></td>
 </tr>
-#{no_compname_end}
+#{no_compname_end_inet}
 <tr>
 <td>#{tDo image backups over internet}:</td>
 <td><input type="checkbox" id="internet_image_backups" value="false" #{internet_image_backups}/></td>
@@ -211,12 +211,12 @@
 <td>#{tMax backup speed for internet connection}:</td>
 <td><input type="text" id="internet_speed" value="#{internet_speed}"/> KBit/s</td>
 </tr>
-#{global_settings_start}
+#{global_settings_start_inet}
 <tr>
 <td>#{tTotal max backup speed for internet connection}:</td>
 <td><input type="text" id="global_internet_speed" value="#{global_internet_speed}"/> KBit/s</td>
 </tr>
-#{global_settings_end}
+#{global_settings_end_inet}
 <tr>
 <td>#{tEncrypted transfer}:</td>
 <td><input type="checkbox" id="internet_encrypt" value="false" #{internet_encrypt}/></td>
