@@ -17,6 +17,7 @@
 #include "../urbackupcommon/CompressedPipe.h"
 
 #include <stdlib.h>
+#include <memory.h>
 
 #include "../cryptoplugin/ICryptoFactory.h"
 

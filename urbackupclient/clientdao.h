@@ -54,7 +54,7 @@ struct SMDir
 	_i64 id;
 	std::wstring name;
 
-	bool operator<(const SMDir &other)
+	bool operator<(const SMDir &other) const
 	{
 		return name<other.name;
 	}
