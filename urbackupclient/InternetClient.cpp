@@ -118,7 +118,7 @@ void InternetClient::resetAuthErr(void)
 void InternetClient::operator()(void)
 {
 	Server->waitForStartupComplete();
-	Server->wait(60000);
+	Server->wait(180000);
 	doUpdateSettings();
 	while(!do_exit)
 	{
