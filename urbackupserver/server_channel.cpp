@@ -106,17 +106,6 @@ void ServerChannelThread::operator()(void)
 				input=NULL;
 				tcpstack.reset();
 			}
-			/*if(Server->getTimeMS()-lastpingtime>60000 && input!=NULL)
-			{
-				size_t rc=tcpstack.Send(input, "PING");
-				if(rc==0)
-				{
-					Server->destroy(input);
-					input=NULL;
-					tcpstack.reset();
-				}
-				lastpingtime=Server->getTimeMS();
-			}*/
 
 			if(input!=NULL)
 			{
