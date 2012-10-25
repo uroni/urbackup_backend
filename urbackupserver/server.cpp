@@ -180,13 +180,31 @@ void BackupServer::startClients(FileClient &fc)
 		servers=fc.getServers();
 	}
 
+	for(size_t i=0;i<names.size();++i)
+	{
+		names[i]=Server->ConvertToUnicode(conv_filename(Server->ConvertToUTF8(names[i])));
+	}
+
 	std::vector<bool> inetclient;
 	inetclient.resize(names.size());
 	std::fill(inetclient.begin(), inetclient.end(), false);
 	std::vector<std::string> anames=InternetServiceConnector::getOnlineClients();
 	for(size_t i=0;i<anames.size();++i)
 	{
-		names.push_back(Server->ConvertToUnicode(anames[i]));
+		std::wstring new_name=Server->ConvertToUnicode(conv_filename(anames[i]));
+		bool skip=false;
+		for(size_t j=0;j<names.size();++j)
+		{
+			if( new_name==names[j] )
+			{
+				skip=true;
+				break;
+			}
+		}
+		if(skip)
+			continue;
+
+		names.push_back(new_name);
 		inetclient.push_back(true);
 		sockaddr_in n;
 		memset(&n, 0, sizeof(sockaddr_in));
@@ -195,25 +213,9 @@ void BackupServer::startClients(FileClient &fc)
 
 	for(size_t i=0;i<names.size();++i)
 	{
-		names[i]=Server->ConvertToUnicode(conv_filename(Server->ConvertToUTF8(names[i])));
 		std::map<std::wstring, SClient>::iterator it=clients.find(names[i]);
 		if( it==clients.end() )
 		{
-			if(inetclient[i]==true)
-			{
-				bool skip=false;
-				for(size_t j=0;j<names.size();++j)
-				{
-					if(i!=j && names[i]==names[j] && inetclient[j]==false)
-					{
-						skip=true;
-						break;
-					}
-				}
-				if(skip)
-					continue;
-			}
-
 			Server->Log(L"New Backupclient: "+names[i]);
 			ServerStatus::setOnline(names[i], true);
 			IPipe *np=Server->createMemoryPipe();
