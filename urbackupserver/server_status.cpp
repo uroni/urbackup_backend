@@ -178,6 +178,9 @@ bool ServerStatus::isActive(void)
 
 ACTION_IMPL(server_status)
 {
+#ifndef _DEBUG
+	Server->Write(tid, "Forbidden");
+#else
 	ITemplate *tmpl=Server->createTemplate("urbackup/status.htm");
 
 	std::vector<SStatus> status=ServerStatus::getStatus();
@@ -242,6 +245,7 @@ ACTION_IMPL(server_status)
 
 	Server->Write(tid, tmpl->getData());
 	Server->destroy(tmpl);
+#endif
 }
 
 #endif //CLIENT_ONLY
