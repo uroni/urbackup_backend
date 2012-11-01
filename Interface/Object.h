@@ -20,7 +20,10 @@ public:
 	ObjectScope(IObject *obj)
 		: obj(obj) {}
 	~ObjectScope(void){
-		obj->Remove();
+		if(obj!=NULL) obj->Remove();
+	}
+	void clear(){
+		obj->Remove(); obj=NULL;
 	}
 private:
 	IObject *obj;

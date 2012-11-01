@@ -48,8 +48,8 @@ void destroy_mutex1(void)
 	Server->destroy(delete_mutex);
 }
 
-BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots)
-	: use_snapshots(use_snapshots)
+BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink)
+	: use_snapshots(use_snapshots), use_reflink(use_reflink)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -186,13 +186,12 @@ void BackupServerHash::operator()(void)
 				ServerLogger::Log(clientid, "SHA512 length of file \""+tfn+"\" wrong.", LL_ERROR);
 
 			std::string hashoutput_fn;
-			bool diff_file=rd.getStr(&hashoutput_fn);
+			rd.getStr(&hashoutput_fn);
+
+			bool diff_file=!hashoutput_fn.empty();
 
 			std::string old_file_fn;
-			if(diff_file)
-			{
-				rd.getStr(&old_file_fn);
-			}
+			rd.getStr(&old_file_fn);
 
 			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
 
@@ -463,13 +462,27 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				bool r;
 				if(!diff_file)
 				{
-					if(!hash_fn.empty())
+					if(!use_reflink || orig_fn.empty())
 					{
-						r=copyFileWithHashoutput(tf, tfn, hash_fn);
+						if(!hash_fn.empty())
+						{
+							r=copyFileWithHashoutput(tf, tfn, hash_fn);
+						}
+						else
+						{
+							r=copyFile(tf, tfn);
+						}
 					}
 					else
 					{
-						r=copyFile(tf, tfn);
+						if(!hash_fn.empty())
+						{
+							r=replaceFileWithHashoutput(tf, tfn, hash_fn, Server->ConvertToUnicode(orig_fn));
+						}
+						else
+						{
+							r=replaceFile(tf, tfn, Server->ConvertToUnicode(orig_fn));
+						}
 					}
 				}
 				else
@@ -647,7 +660,7 @@ bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::wstring &des
 		}
 		ObjectScope dst_hash_s(dst_hash);
 
-		std::string r=BackupServerPrepareHash::build_chunk_hashs(tf, dst_hash, this, false, dst);
+		std::string r=BackupServerPrepareHash::build_chunk_hashs(tf, dst_hash, this, false, dst, false);
 		if(r=="")
 			return false;
 	}
@@ -691,7 +704,7 @@ bool BackupServerHash::createChunkHashes(IFile *tf, const std::wstring hash_fn)
 	IFile *hashoutput=Server->openFile(os_file_prefix(hash_fn), MODE_WRITE);
 	if(hashoutput==NULL) return false;
 
-	bool b=BackupServerPrepareHash::build_chunk_hashs(tf, hashoutput, this, false, NULL)=="";
+	bool b=BackupServerPrepareHash::build_chunk_hashs(tf, hashoutput, this, false, NULL, false)=="";
 
 	Server->destroy(hashoutput);
 	return !b;
@@ -747,20 +760,33 @@ bool BackupServerHash::handle_not_enough_space(const std::wstring &path)
 	}
 }
 
-void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize)
+void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
-	bool b=BackupServerPrepareHash::writeRepeatFreeSpace(chunk_output_fn, buf, bsize, this);
-	if(!b)
+	if(!use_reflink || changed )
 	{
-		Server->Log(L"Error writing to file \""+chunk_output_fn->getFilenameW()+L"\" -3", LL_ERROR);
-		has_error=true;
+		chunk_output_fn->Seek(chunk_patch_pos);
+		bool b=BackupServerPrepareHash::writeRepeatFreeSpace(chunk_output_fn, buf, bsize, this);
+		if(!b)
+		{
+			Server->Log(L"Error writing to file \""+chunk_output_fn->getFilenameW()+L"\" -3", LL_ERROR);
+			has_error=true;
+		}
 	}
+	chunk_patch_pos+=bsize;
 }
 
 bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest)
 {
 	_i64 dstfsize;
 	{
+		if( use_reflink )
+		{
+			if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true) )
+			{
+				Server->Log(L"Reflinking file \""+dest+L"\" failed", LL_ERROR);
+			}
+		}
+
 		chunk_output_fn=openFileRetry(dest, MODE_WRITE);
 		if(chunk_output_fn==NULL) return false;
 		ObjectScope dst_s(chunk_output_fn);
@@ -769,6 +795,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 		if(f_source==NULL) return false;
 		ObjectScope f_source_s(f_source);
 
+		chunk_patch_pos=0;
 		bool b=chunk_patcher.ApplyPatch(f_source, patch);
 
 		dstfsize=chunk_output_fn->Size();
@@ -798,6 +825,117 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 		return false;
 	}
 
+	return true;
+}
+
+const size_t RP_COPY_BLOCKSIZE=1024;
+
+bool BackupServerHash::replaceFile(IFile *tf, const std::wstring &dest, const std::wstring &orig_fn)
+{
+	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true) )
+	{
+		Server->Log(L"Reflinking file \""+dest+L"\" failed -2", LL_ERROR);
+
+		return copyFile(tf, dest);
+	}
+
+	IFile *dst=openFileRetry(dest, MODE_WRITE);
+	if(dst==NULL) return false;
+
+	tf->Seek(0);
+	_u32 read1;
+	_u32 read2;
+	char buf1[RP_COPY_BLOCKSIZE];
+	char buf2[RP_COPY_BLOCKSIZE];
+	_i64 dst_pos=0;
+	bool dst_eof=false;
+	do
+	{
+		read1=tf->Read(buf1, RP_COPY_BLOCKSIZE);
+		if(!dst_eof)
+		{
+			read2=dst->Read(buf2, RP_COPY_BLOCKSIZE);
+		}
+		else
+		{
+			read2=0;
+		}
+
+		if(read2<read1)
+			dst_eof=true;
+
+		if(read1!=read2 || memcmp(buf1, buf2, read1)!=0)
+		{
+			dst->Seek(dst_pos);
+			bool b=BackupServerPrepareHash::writeRepeatFreeSpace(dst, buf1, read1, this);
+			if(!b)
+			{
+				Server->Log(L"Error writing to file \""+dest+L"\" -2", LL_ERROR);
+				Server->destroy(dst);
+				return false;
+			}
+		}
+
+		dst_pos+=read1;
+	}
+	while(read1>0);
+
+	_i64 dst_size=dst->Size();
+
+	Server->destroy(dst);
+
+	if( dst_size!=tf->Size() )
+	{
+		if( !os_file_truncate(dest, tf->Size()) )
+		{
+			Server->Log(L"Error truncating file \""+dest+L"\" -2", LL_ERROR);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn)
+{
+	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true) )
+	{
+		Server->Log(L"Reflinking file \""+dest+L"\" failed -3", LL_ERROR);
+
+		return copyFileWithHashoutput(tf, dest, hash_dest);
+	}
+
+	IFile *dst=openFileRetry(dest, MODE_WRITE);
+	if(dst==NULL) return false;
+	ObjectScope dst_s(dst);
+
+	if(tf->Size()>0)
+	{
+		IFile *dst_hash=openFileRetry(hash_dest, MODE_WRITE);
+		if(dst_hash==NULL)
+		{
+			return false;
+		}
+		ObjectScope dst_hash_s(dst_hash);
+
+		std::string r=BackupServerPrepareHash::build_chunk_hashs(tf, dst_hash, this, false, dst, true);
+		if(r=="")
+			return false;
+
+		_i64 dst_size=dst->Size();
+
+		dst_s.clear();
+
+		if( dst_size!=tf->Size() )
+		{
+			if( !os_file_truncate(dest, tf->Size()) )
+			{
+				Server->Log(L"Error truncating file \""+dest+L"\" -1", LL_ERROR);
+				return false;
+			}
+		}
+	}
+	
 	return true;
 }
 

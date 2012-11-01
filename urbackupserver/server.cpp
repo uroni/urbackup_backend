@@ -236,7 +236,12 @@ void BackupServer::startClients(FileClient &fc)
 			ServerStatus::setOnline(names[i], true);
 			IPipe *np=Server->createMemoryPipe();
 
-			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i], inetclient[i], snapshots_enabled);
+			bool use_reflink=false;
+#ifndef _WIN32
+			if(snapshots_enabled)
+				use_reflink=true;
+#endif
+			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i], inetclient[i], snapshots_enabled, use_reflink);
 			Server->getThreadPool()->execute(client);
 
 			SClient c;

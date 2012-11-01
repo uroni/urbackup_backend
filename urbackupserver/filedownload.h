@@ -10,7 +10,7 @@ public:
 	void filedownload(std::string remotefn, std::string servername, std::string dest, unsigned int tcpport, int method);
 
 	virtual IPipe * new_fileclient_connection(void);
-	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize);
+	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 private:
 
 	bool copy_file_fd(IFile *fsrc, IFile *fdst);
