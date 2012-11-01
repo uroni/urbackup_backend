@@ -36,6 +36,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 
 void getMousePos(int &x, int &y)
 {
@@ -164,8 +166,35 @@ bool os_create_dir(const std::wstring &dir)
 	return rc==0;
 }
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname)
+bool os_create_reflink(const std::string &linkname, const std::string &fname)
 {
+	int src_desc=open(fname.c_str(), O_RDONLY);
+	if( src_desc<0)
+	    return false;
+
+	int dst_desc=open(linkname.c_str(), O_WRONLY | O_CREAT | O_EXCL);
+	if( dst_desc<0 )
+	{
+	    close(src_desc);
+	    return false;
+	}
+
+#define BTRFS_IOCTL_MAGIC 0x94
+#define BTRFS_IOC_CLONE _IOW (BTRFS_IOCTL_MAGIC, 9, int)
+	
+	int rc=ioctl(dst_desc, BTRFS_IOC_CLONE, src_desc);
+
+	close(src_desc);
+	close(dst_desc);
+	
+	return rc==0;
+}
+
+bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref)
+{
+	if( use_ioref )
+		return os_create_reflink(linkname, fname);
+		
 	int rc=link(Server->ConvertToUTF8(fname).c_str(), Server->ConvertToUTF8(linkname).c_str());
 	return rc==0;
 }
@@ -349,6 +378,9 @@ std::string os_strftime(std::string fs)
 
 bool os_create_dir_recursive(std::wstring fn)
 {
+	if(fn.empty())
+		return false;
+		
 	bool b=os_create_dir(fn);
 	if(!b)
 	{
