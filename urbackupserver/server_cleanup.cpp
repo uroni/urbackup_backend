@@ -30,6 +30,8 @@
 #include "server_update.h"
 #include "server_status.h"
 #include "server_get.h"
+#include "server.h"
+#include "snapshot_helper.h"
 #include <stdio.h>
 
 IMutex *ServerCleanupThread::mutex=NULL;
@@ -727,7 +729,21 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	}
 
 	std::wstring path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath;
-	bool b=os_remove_nonempty_dir(os_file_prefix(path));
+	bool b=false;
+	if( BackupServer::isSnapshotsEnabled())
+	{
+		b=SnapshotHelper::removeFilesystem(clientname, backuppath);
+
+		if(!b)
+		{
+			b=os_remove_nonempty_dir(os_file_prefix(path));
+		}
+	}
+	else
+	{
+		b=os_remove_nonempty_dir(os_file_prefix(path));
+	}
+
 	bool del=true;
 	bool err=false;
 	if(!b)
