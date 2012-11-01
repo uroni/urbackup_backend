@@ -60,6 +60,9 @@ BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid
 	working=false;
 	has_error=false;
 	chunk_patcher.setCallback(this);
+
+	if(use_reflink)
+		Server->Log("Reflink copying is enabled", LL_DEBUG);
 }
 
 BackupServerHash::~BackupServerHash(void)
