@@ -593,7 +593,6 @@ void BackupServerGet::operator ()(void)
 			//Flush buffer before continuing...
 			status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
 			status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
-			hashpipe->Write("flush");
 			while(status.hashqueuesize>0 || status.prepare_hashqueuesize>0)
 			{
 				ServerStatus::setServerStatus(status, true);
@@ -601,6 +600,12 @@ void BackupServerGet::operator ()(void)
 				status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
 				status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
 			}
+			{
+				hashpipe->Write("flush");
+				Server->wait(1000);
+				while(bsh->isWorking()) Server->wait(1000);
+			}
+
 			ServerStatus::setServerStatus(status);
 
 			unsigned int ptime=Server->getTimeMS()-ttime;
