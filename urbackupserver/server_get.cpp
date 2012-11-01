@@ -1685,7 +1685,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			
 			if(!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single) )
 			{
-				ServerLogger::Log(clientid, "Creating empty filesystem failed (Server error)", LL_WARNING);
+				ServerLogger::Log(clientid, "Creating empty filesystem failed (Server error)", LL_ERROR);
 				has_error=true;
 				return false;
 			}
@@ -1693,7 +1693,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			{
 				if(!os_create_dir(os_file_prefix(backuppath_hashes)) )
 				{
-					ServerLogger::Log(clientid, "Cannot create hash path (Server error)", LL_WARNING);
+					ServerLogger::Log(clientid, "Cannot create hash path (Server error)", LL_ERROR);
 					has_error=true;
 					return false;
 				}

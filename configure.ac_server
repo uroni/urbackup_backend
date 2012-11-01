@@ -65,7 +65,7 @@ AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
 AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
 AC_SUBST([DLOPEN_LIBS])
 
-P_SUBDIRS="downloadplugin fsimageplugin httpserver urbackupserver"
+P_SUBDIRS="snapshot_helper downloadplugin fsimageplugin httpserver urbackupserver"
 
 AS_IF([test "x$with_mail" != "xno"],
     [P_SUBDIRS="urlplugin $P_SUBDIRS"])
@@ -91,6 +91,6 @@ fi
 AM_CONDITIONAL(PACKAGING, test "x$enable_packaging" = xyes)
 AM_CONDITIONAL(INSTALL_INITD, test "x$enable_install_initd" = xyes)
 
-AC_CONFIG_SUBDIRS([downloadplugin fsimageplugin httpserver urbackupserver])
+AC_CONFIG_SUBDIRS([snapshot_helper downloadplugin fsimageplugin httpserver urbackupserver])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

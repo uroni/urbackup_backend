@@ -166,13 +166,13 @@ bool os_create_dir(const std::wstring &dir)
 	return rc==0;
 }
 
-bool os_create_reflink(const std::string &linkname, const std::string &fname)
+bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 {
-	int src_desc=open(fname.c_str(), O_RDONLY);
+	int src_desc=open(Server->ConvertToUTF8(fname).c_str(), O_RDONLY);
 	if( src_desc<0)
 	    return false;
 
-	int dst_desc=open(linkname.c_str(), O_WRONLY | O_CREAT | O_EXCL);
+	int dst_desc=open(Server->ConvertToUTF8(linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL);
 	if( dst_desc<0 )
 	{
 	    close(src_desc);

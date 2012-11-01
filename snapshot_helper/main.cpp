@@ -80,6 +80,7 @@ bool create_subvolume(std::string subvolume_folder)
 	return os_create_dir(subvolume_folder);
 #else
 	int rc=system((btrfs_cmd+" subvolume create \""+subvolume_folder+"\"").c_str());
+	system(("chown urbackup:urbackup \""+subvolume_folder+"\"").c_str());
 	return rc==0;
 #endif
 }
@@ -90,6 +91,7 @@ bool create_snapshot(std::string snapshot_src, std::string snapshot_dst)
 	return CopyFolder(widen(snapshot_src), widen(snapshot_dst));
 #else
 	int rc=system((btrfs_cmd+" subvolume snapshot \""+snapshot_src+"\" \""+snapshot_dst+"\"").c_str());
+	system(("chown urbackup:urbackup \""+snapshot_dst+"\"").c_str());
 	return rc==0;
 #endif
 }
