@@ -51,7 +51,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 			{
 				_u32 r=patch->Read((char*)buf, (std::min)((unsigned int)4096, next_header.patch_size));
 				patchf_pos+=r;
-				cb->next_chunk_patcher_bytes(buf, r);
+				cb->next_chunk_patcher_bytes(buf, r, true);
 				next_header.patch_size-=r;
 			}
 			file->Seek(file_pos);
@@ -63,7 +63,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 			{
 				_u32 r=file->Read((char*)buf, tr);
 				file_pos+=r;
-				cb->next_chunk_patcher_bytes(buf, r);
+				cb->next_chunk_patcher_bytes(buf, r, false);
 				tr-=r;
 			}			
 		}

@@ -23,7 +23,7 @@ struct STmpFile
 class BackupServerHash : public IThread, public INotEnoughSpaceCallback, public IChunkPatcherCallback
 {
 public:
-	BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots);
+	BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink);
 	~BackupServerHash(void);
 
 	void operator()(void);
@@ -34,7 +34,7 @@ public:
 
 	virtual bool handle_not_enough_space(const std::wstring &path);
 
-	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize);
+	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 
 private:
 	void prepareSQL(void);
@@ -55,6 +55,10 @@ private:
 	bool patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest);
 
 	bool createChunkHashes(IFile *tf, const std::wstring hash_fn);
+	
+	bool replaceFile(IFile *tf, const std::wstring &dest, const std::wstring &orig_fn);
+	bool replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn);
+
 
 	std::map<std::pair<std::string, _i64>, std::vector<STmpFile> > files_tmp;
 
@@ -87,4 +91,6 @@ private:
 	ChunkPatcher chunk_patcher;
 
 	bool use_snapshots;
+	bool use_reflink;
+	_i64 chunk_patch_pos;
 };

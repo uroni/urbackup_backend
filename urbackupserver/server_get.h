@@ -33,7 +33,7 @@ struct SBackup
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback, public FileClient::ReconnectionCallback
 {
 public:
-	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots);
+	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots, bool use_reflink);
 	~BackupServerGet(void);
 
 	void operator()(void);
@@ -76,7 +76,7 @@ private:
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool with_token=true);
-	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes);
+	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete);
 	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot);
 	SBackup getLastIncremental(void);
@@ -225,6 +225,7 @@ private:
 	int update_version;
 
 	bool use_snapshots;
+	bool use_reflink;
 
 	CTCPStack tcpstack;
 

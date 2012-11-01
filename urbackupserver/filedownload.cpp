@@ -82,7 +82,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		IFile *hashfile_output=Server->openTemporaryFile();
 
 		Server->Log("Building hashes...");
-		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL);
+		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 		Server->Log("Downloading file...");
 		rc=fc.GetFileChunked(remotefn, dstfile, hashfile, hashfile_output);
@@ -108,7 +108,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		IFile *patchfile=Server->openTemporaryFile();
 
 		Server->Log("Building hashes...");
-		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL);
+		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 		Server->Log("Downloading file...");
 		rc=fc.GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output);
@@ -175,7 +175,7 @@ IPipe * FileDownload::new_fileclient_connection(void)
 	return NULL;
 }
 
-void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize)
+void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
 	m_chunkpatchfile->Write(buf, (_u32)bsize);
 }

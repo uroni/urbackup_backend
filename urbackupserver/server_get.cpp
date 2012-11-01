@@ -70,8 +70,8 @@ int BackupServerGet::running_backups=0;
 int BackupServerGet::running_file_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
 
-BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots)
-	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL), use_snapshots(use_snapshots)
+BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots, bool use_reflink)
+	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL), use_snapshots(use_snapshots), use_reflink(use_reflink)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -292,7 +292,13 @@ void BackupServerGet::operator ()(void)
 	status.clientid=clientid;
 	ServerStatus::setServerStatus(status);
 
-	BackupServerHash *bsh=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots);
+	bool use_reflink=false;
+#ifndef _WIN32
+	if( use_snapshots )
+		use_reflink=true;
+#endif
+
+	BackupServerHash *bsh=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots, use_reflink);
 	BackupServerPrepareHash *bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
 	Server->getThreadPool()->execute(bsh);
 	Server->getThreadPool()->execute(bsh_prepare);
@@ -567,7 +573,17 @@ void BackupServerGet::operator ()(void)
 			else if(hbu && has_error)
 			{
 				file_backup_err=true;
-				os_remove_nonempty_dir(backuppath);
+				if(use_snapshots)
+				{
+					if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
+					{
+						os_remove_nonempty_dir(backuppath);
+					}
+				}
+				else
+				{
+					os_remove_nonempty_dir(backuppath);
+				}				
 				tried_backup=true;
 			}
 
@@ -1305,7 +1321,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 				}
 				else
 				{
-					bool b=load_file(cf.name, short_name, curr_path, fc, with_hashes);
+					bool b=load_file(cf.name, short_name, curr_path, fc, with_hashes, L"", L"");
 					if(!b)
 					{
 						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
@@ -1386,7 +1402,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		if(file_old==NULL)
 		{
 			ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
-			return load_file(fn, short_fn, curr_path, fc_normal, true);
+			return load_file(fn, short_fn, curr_path, fc_normal, true, L"", L"");
 		}
 		hashpath_old=last_backuppath_complete+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 	}
@@ -1409,7 +1425,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		ServerLogger::Log(clientid, L"Hashes for file \""+filepath_old+L"\" not available. Calulating hashes...", LL_DEBUG);
 		hashfile_old=getTemporaryFileRetry();
 		delete_hashfile=true;
-		BackupServerPrepareHash::build_chunk_hashs(file_old, hashfile_old, NULL, false, NULL);
+		BackupServerPrepareHash::build_chunk_hashs(file_old, hashfile_old, NULL, false, NULL, false);
 		hashfile_old->Seek(0);
 	}
 
@@ -1442,7 +1458,8 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		return true;
 }
 
-bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes)
+bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
+	FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete)
 {
 	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
 	IFile *fd=getTemporaryFileRetry();
@@ -1469,12 +1486,41 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
 		std::wstring hashpath;
+		std::wstring filepath_old;
 		if(with_hashes)
 		{
 			hashpath=backuppath_hashes+os_curr_path;
 		}
+		if( use_reflink && (!last_backuppath.empty() || !last_backuppath_complete.empty() ) )
+		{
+			std::wstring cfn_short=curr_path+L"/"+short_fn;
+			if(cfn_short[0]=='/')
+				cfn_short.erase(0,1);
 
-		hashFile(dstpath, hashpath, fd, NULL, "");
+			std::wstring filepath_old=last_backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
+
+			IFile *file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
+
+			if(file_old==NULL)
+			{
+				if(!last_backuppath_complete.empty())
+				{
+					filepath_old=last_backuppath_complete+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
+					file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
+				}
+				if(file_old==NULL)
+				{
+					ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
+				}
+			}
+
+			if(file_old!=NULL)
+			{
+				Server->destroy(file_old);
+			}
+		}
+
+		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old));
 	}
 	return true;
 }
@@ -1897,7 +1943,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							if(intra_file_diffs)
 								b=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
 							else
-								b=load_file(cf.name, short_name, curr_path, fc, with_hashes);
+								b=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete);
 
 							if(!b)
 							{
@@ -1938,7 +1984,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								if(intra_file_diffs)
 									b2=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
 								else
-									b2=load_file(cf.name, short_name, curr_path, fc, with_hashes);
+									b2=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete);
 
 								if(!b2)
 								{
@@ -2185,8 +2231,13 @@ void BackupServerGet::hashFile(std::wstring dstpath, std::wstring hashpath, IFil
 	if(hashoutput!=NULL)
 	{
 		data.addString(Server->ConvertToUTF8(hashoutput->getFilenameW()));
-		data.addString(old_file);
 	}
+	else
+	{
+		data.addString("");
+	}
+
+	data.addString(old_file);
 
 	ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
 

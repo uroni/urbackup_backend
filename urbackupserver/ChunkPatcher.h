@@ -12,7 +12,7 @@ struct SPatchHeader
 class IChunkPatcherCallback
 {
 public:
-	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize)=0;
+	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)=0;
 };
 
 class ChunkPatcher

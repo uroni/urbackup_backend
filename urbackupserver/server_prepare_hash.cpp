@@ -26,6 +26,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "../fileservplugin/chunk_settings.h"
 #include "../md5.h"
+#include <memory.h>
 
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pExitpipe, IPipe *pOutput, IPipe *pExitpipe_hash, int pClientid)
 {
@@ -92,13 +93,12 @@ void BackupServerPrepareHash::operator()(void)
 			rd.getStr(&hashpath);
 
 			std::string hashoutput_fn;
-			bool diff_file=rd.getStr(&hashoutput_fn);
+			rd.getStr(&hashoutput_fn);
+
+			bool diff_file=!hashoutput_fn.empty();
 
 			std::string old_file_fn;
-			if(diff_file)
-			{
-				rd.getStr(&old_file_fn);
-			}
+			rd.getStr(&old_file_fn);
 
 			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
 			IFile *old_file=NULL;
@@ -147,11 +147,8 @@ void BackupServerPrepareHash::operator()(void)
 				data.addString(tfn);
 				data.addString(hashpath);
 				data.addString(h);
-				if(diff_file)
-				{
-					data.addString(hashoutput_fn);
-					data.addString(old_file_fn);
-				}
+				data.addString(hashoutput_fn);
+				data.addString(old_file_fn);
 
 				output->Write(data.getDataPtr(), data.getDataSize() );
 			}
@@ -192,7 +189,7 @@ std::string BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch)
 	return ret;
 }
 
-void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize)
+void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
 	sha512_update(&ctx, (const unsigned char*)buf, (unsigned int)bsize);
 }
@@ -204,7 +201,7 @@ bool BackupServerPrepareHash::isWorking(void)
 
 unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
-std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy)
+std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace)
 {
 	f->Seek(0);
 
@@ -219,6 +216,8 @@ std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutp
 
 	_i64 n_chunks=c_checkpoint_dist/c_small_hash_dist;
 	char buf[c_small_hash_dist];
+	char copy_buf[c_small_hash_dist];
+	_i64 copy_write_pos=0;
 	char zbuf[big_hash_size]={};
 	_i64 hashoutputpos=sizeof(_i64);
 	for(_i64 pos=0;pos<fsize;)
@@ -244,8 +243,24 @@ std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutp
 			}
 			if(copy!=NULL)
 			{
-				if(!writeRepeatFreeSpace(copy, buf, r, cb) )
-					return "";
+				if(modify_inplace)
+				{
+					_u32 copy_r=copy->Read(copy_buf, c_small_hash_dist);
+
+					if(copy_r!=r || memcmp(copy_buf, buf, r)!=0)
+					{
+						copy->Seek(copy_write_pos);
+						if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+							return "";
+					}
+
+					copy_write_pos+=r;
+				}
+				else
+				{
+					if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+						return "";
+				}
 			}
 		}
 		hashoutput->Seek(hashoutputpos_start);

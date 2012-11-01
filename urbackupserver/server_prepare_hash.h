@@ -25,11 +25,11 @@ public:
 	
 	bool isWorking(void);
 
-	static std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy);
+	static std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace);
 	static bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb);
 	static bool writeFileRepeat(IFile *f, const char *buf, size_t bsize);
 
-	void next_chunk_patcher_bytes(const char *buf, size_t bsize);
+	void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 
 private:
 	std::string hash(IFile *f);
