@@ -172,7 +172,7 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 	if( src_desc<0)
 	    return false;
 
-	int dst_desc=open(Server->ConvertToUTF8(linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL);
+	int dst_desc=open(Server->ConvertToUTF8(linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
 	if( dst_desc<0 )
 	{
 	    close(src_desc);
