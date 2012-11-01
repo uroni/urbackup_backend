@@ -3,6 +3,15 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include <stdlib.h>
+#include <unistd.h>
+
+#define DEF_Server
+#include "../Server.h"
+
+
+const std::string btrfs_cmd="/sbin/btrfs";
+
+CServer *Server;
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -41,11 +50,18 @@ bool CopyFolder(std::wstring src, std::wstring dst)
 
 std::string getBackupfolderPath(void)
 {
+	std::string fn;
 #ifdef _WIN32
-	return trim(getFile("backupfolder"));
+	fn=trim(getFile("backupfolder"));
 #else
-	return trim(getFile("/etc/urbackup/backupfolder"));
+	fn=trim(getFile("/etc/urbackup/backupfolder"));
 #endif
+	if(fn.find("\n")!=std::string::npos)
+		fn=getuntil("\n", fn);
+	if(fn.find("\r")!=std::string::npos)
+		fn=getuntil("\r", fn);
+	
+	return fn;
 }
 
 std::string handleFilename(std::string fn)
@@ -63,7 +79,7 @@ bool create_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return os_create_dir(subvolume_folder);
 #else
-	int rc=system("btrfs subvolume create \""+subvolume_folder+"\"");
+	int rc=system((btrfs_cmd+" subvolume create \""+subvolume_folder+"\"").c_str());
 	return rc==0;
 #endif
 }
@@ -73,7 +89,7 @@ bool create_snapshot(std::string snapshot_src, std::string snapshot_dst)
 #ifdef _WIN32
 	return CopyFolder(widen(snapshot_src), widen(snapshot_dst));
 #else
-	int rc=system("btrfs subvolume snapshot \""+snapshot_src+"\" \""+snapshot_dst+"\"");
+	int rc=system((btrfs_cmd+" subvolume snapshot \""+snapshot_src+"\" \""+snapshot_dst+"\"").c_str());
 	return rc==0;
 #endif
 }
@@ -83,7 +99,7 @@ bool remove_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return os_remove_nonempty_dir(widen(subvolume_folder));
 #else
-	int rc=system("btrfs subvolume delete \""+subvolume_folder+"\"");
+	int rc=system((btrfs_cmd+" subvolume delete \""+subvolume_folder+"\"").c_str());
 	return rc==0;
 #endif
 }	
@@ -99,6 +115,20 @@ int main(int argc, char *argv[])
 	std::string cmd=argv[1];
 
 	std::string backupfolder=getBackupfolderPath();
+
+	if(backupfolder.empty())
+	{
+		std::cout << "Backupfolder not set" << std::endl;
+		return 1;
+	}
+	
+#ifndef _WIN32
+	if(seteuid(0)!=0)
+	{
+		std::cout << "Cannot become root user" << std::endl;
+		return 1;
+	}
+#endif
 
 	if(cmd=="create")
 	{
@@ -151,29 +181,49 @@ int main(int argc, char *argv[])
 	{
 		std::string clientdir=backupfolder+os_file_sepn()+"testA54hj5luZtlorr494";
 		if(os_create_dir(clientdir))
-		{
+		{			
 			if(!create_subvolume(clientdir+os_file_sepn()+"A") )
 			{
 				std::cout << "Creating test subvolume failed" << std::endl;
+				os_remove_dir(clientdir);
 				return 1;
 			}
+			
+			bool suc=true;
 
 			if(!create_snapshot(clientdir+os_file_sepn()+"A", clientdir+os_file_sepn()+"B") )
 			{
 				std::cout << "Creating test snapshot failed" << std::endl;
-				return 1;
+				suc=false;
+			}
+			
+			if(suc)
+			{			
+				writestring("test", clientdir+os_file_sepn()+"A"+os_file_sepn()+"test");
+				
+				if(!os_create_hardlink(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test", clientdir+os_file_sepn()+"A"+os_file_sepn()+"test", true))
+				{
+					std::cout << "Cross subvolume reflink failed" << std::endl;
+					suc=false;
+				}
+			
+				if(getFile(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test")!="test")
+				{
+					std::cout << "Cannot read reflinked file" << std::endl;
+					suc=false;
+				}
 			}
 
 			if(!remove_subvolume(clientdir+os_file_sepn()+"A") )
 			{
 				std::cout << "Removing subvolume A failed" << std::endl;
-				return 1;
+				suc=false;
 			}
 
 			if(!remove_subvolume(clientdir+os_file_sepn()+"B") )
 			{
 				std::cout << "Removing subvolume B failed" << std::endl;
-				return 1;
+				suc=false;
 			}
 
 			if(!os_remove_dir(clientdir))
@@ -181,10 +231,15 @@ int main(int argc, char *argv[])
 				std::cout << "Removing test clientdir failed" << std::endl;
 				return 1;
 			}
+			
+			if(!suc)
+			{
+				return 1;
+			}
 		}
 		else
 		{
-			std::cout << "Creating test clientdir failed" << std::endl;
+			std::cout << "Creating test clientdir \"" << clientdir << "\" failed" << std::endl;
 			return 1;
 		}
 		return 0;
@@ -195,3 +250,4 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 }
+

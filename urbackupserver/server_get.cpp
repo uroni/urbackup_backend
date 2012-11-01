@@ -1681,23 +1681,42 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		Server->Log(clientname+L": Creating snapshot...", LL_DEBUG);
 		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single))
 		{
-			ServerLogger::Log(clientid, "Creating new snapshot failed (Server error)", LL_ERROR);
-			has_error=true;
-			return false;
+			ServerLogger::Log(clientid, "Creating new snapshot failed (Server error)", LL_WARNING);
+			
+			if(!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single) )
+			{
+				ServerLogger::Log(clientid, "Creating empty filesystem failed (Server error)", LL_WARNING);
+				has_error=true;
+				return false;
+			}
+			if(with_hashes)
+			{
+				if(!os_create_dir(os_file_prefix(backuppath_hashes)) )
+				{
+					ServerLogger::Log(clientid, "Cannot create hash path (Server error)", LL_WARNING);
+					has_error=true;
+					return false;
+				}
+			}
+			
+			on_snapshot=false;
 		}
-
-		Server->Log(clientname+L": Deleting files in snapshot...", LL_DEBUG);
-		if(!deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath, false) )
+		
+		if(on_snapshot)
 		{
-			ServerLogger::Log(clientid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
-			has_error=true;
-			return false;
-		}
+			Server->Log(clientname+L": Deleting files in snapshot...", LL_DEBUG);
+			if(!deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath, false) )
+			{
+				ServerLogger::Log(clientid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
+				has_error=true;
+				return false;
+			}
 
-		if(with_hashes)
-		{
-			Server->Log(clientname+L": Deleting files in hash snapshot...", LL_DEBUG);
-			deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath_hashes, true);
+			if(with_hashes)
+			{
+				Server->Log(clientname+L": Deleting files in hash snapshot...", LL_DEBUG);
+				deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath_hashes, true);
+			}
 		}
 	}
 

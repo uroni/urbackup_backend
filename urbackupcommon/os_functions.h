@@ -37,6 +37,8 @@ bool os_create_dir(const std::string &dir);
 
 bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref);
 
+bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref);
+
 int64 os_free_space(const std::wstring &path);
 
 bool os_remove_nonempty_dir(const std::wstring &path);
