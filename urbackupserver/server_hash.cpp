@@ -779,15 +779,20 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 {
 	_i64 dstfsize;
 	{
+		bool has_reflink=false;
 		if( use_reflink )
 		{
 			if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true) )
 			{
 				Server->Log(L"Reflinking file \""+dest+L"\" failed", LL_ERROR);
 			}
+			else
+			{
+				has_reflink=true;
+			}
 		}
 
-		chunk_output_fn=openFileRetry(dest, MODE_WRITE);
+		chunk_output_fn=openFileRetry(dest, has_reflink?MODE_RW:MODE_WRITE);
 		if(chunk_output_fn==NULL) return false;
 		ObjectScope dst_s(chunk_output_fn);
 
@@ -838,6 +843,8 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::wstring &dest, const st
 
 		return copyFile(tf, dest);
 	}
+
+	Server->Log(L"HT: Copying with reflink data from \""+orig_fn+L"\"", LL_DEBUG);
 
 	IFile *dst=openFileRetry(dest, MODE_RW);
 	if(dst==NULL) return false;
@@ -904,6 +911,8 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 
 		return copyFileWithHashoutput(tf, dest, hash_dest);
 	}
+
+	Server->Log(L"HT: Copying with hashoutput with reflink data from \""+orig_fn+L"\"", LL_DEBUG);
 
 	IFile *dst=openFileRetry(dest, MODE_RW);
 	if(dst==NULL) return false;
