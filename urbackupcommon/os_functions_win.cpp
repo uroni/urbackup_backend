@@ -381,3 +381,11 @@ std::wstring os_get_final_path(std::wstring path)
 	return path;
 #endif
 }
+
+#ifndef OS_FUNC_NO_SERVER
+bool os_rename_file(std::wstring src, std::wstring dst)
+{
+	BOOL rc=MoveFileW(src.c_str(), dst.c_str());
+	return rc!=0;
+}
+#endif

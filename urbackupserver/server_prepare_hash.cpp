@@ -69,6 +69,10 @@ void BackupServerPrepareHash::operator()(void)
 			delete this;
 			return;
 		}
+		else if(data=="flush")
+		{
+			continue;
+		}
 
 		if(rc>0)
 		{

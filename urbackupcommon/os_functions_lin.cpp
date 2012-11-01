@@ -395,3 +395,9 @@ bool os_create_dir_recursive(std::wstring fn)
 		return true;
 	}
 }
+
+bool os_rename_file(std::wstring src, std::wstring dst)
+{
+	int rc=rename(Server->ConvertToUTF8(src).c_str(), Server->ConvertToUTF8(dst).c_str());
+	return rc==0;
+}

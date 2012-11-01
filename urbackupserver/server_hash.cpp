@@ -839,7 +839,7 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::wstring &dest, const st
 		return copyFile(tf, dest);
 	}
 
-	IFile *dst=openFileRetry(dest, MODE_WRITE);
+	IFile *dst=openFileRetry(dest, MODE_RW);
 	if(dst==NULL) return false;
 
 	tf->Seek(0);
@@ -905,7 +905,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 		return copyFileWithHashoutput(tf, dest, hash_dest);
 	}
 
-	IFile *dst=openFileRetry(dest, MODE_WRITE);
+	IFile *dst=openFileRetry(dest, MODE_RW);
 	if(dst==NULL) return false;
 	ObjectScope dst_s(dst);
 

@@ -298,8 +298,8 @@ void BackupServerGet::operator ()(void)
 		use_reflink=true;
 #endif
 
-	BackupServerHash *bsh=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots, use_reflink);
-	BackupServerPrepareHash *bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
+	bsh=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots, use_reflink);
+	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
 	Server->getThreadPool()->execute(bsh);
 	Server->getThreadPool()->execute(bsh_prepare);
 	ServerChannelThread channel_thread(this, clientid, internet_connection);
@@ -556,18 +556,9 @@ void BackupServerGet::operator ()(void)
 
 			if(hbu && !has_error)
 			{
-				if(r_success)
+				if(!r_success)
 				{
-					notifyClientBackupSuccessfull();
-				}
-				else
-				{
-					if(pingthread!=NULL)
-					{
-						pingthread->setStop(true);
-						Server->getThreadPool()->waitFor(pingthread_ticket);
-					}
-					pingthread=NULL;
+					sendBackupOkay(false);
 				}
 			}
 			else if(hbu && has_error)
@@ -590,21 +581,7 @@ void BackupServerGet::operator ()(void)
 			status.action_done=false;
 			status.statusaction=sa_none;
 			status.pcdone=100;
-			//Flush buffer before continuing...
-			status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
-			status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
-			while(status.hashqueuesize>0 || status.prepare_hashqueuesize>0)
-			{
-				ServerStatus::setServerStatus(status, true);
-				Server->wait(1000);
-				status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
-				status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
-			}
-			{
-				hashpipe->Write("flush");
-				Server->wait(1000);
-				while(bsh->isWorking()) Server->wait(1000);
-			}
+			
 
 			ServerStatus::setServerStatus(status);
 
@@ -1215,7 +1192,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	
 	resetEntryState();
 
-	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+".ub", MODE_WRITE);
+	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub", MODE_WRITE);
 
 	if(clientlist==NULL )
 	{
@@ -1346,6 +1323,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 	}
 	if(r_done==false && c_has_error==false)
 	{
+		sendBackupOkay(true);
+
 		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 		std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
 		os_remove_symlink_dir(os_file_prefix(currdir));
@@ -1360,18 +1339,32 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 		Server->deleteFile(os_file_prefix(currdir));
 		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 	}
+	else
+	{
+		sendBackupOkay(false);
+	}
+
+
 	running_updater->stop();
 	updateRunning(false);
 	Server->destroy(clientlist);
 	Server->destroy(tmp);
+
+	waitForFileThreads();
+
+	db->BeginTransaction();
+	if(!os_rename_file(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub") )
+	{
+		ServerLogger::Log(clientid, "Renaming new client file list to destination failed", LL_ERROR);
+	}
+	setBackupDone();
+	db->EndTransaction();
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
 	unsigned int passed_time=Server->getTimeMS()-full_backup_starttime;
 	if(passed_time==0) passed_time=1;
 
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
-
-	setBackupDone();
 	
 	if(c_has_error)
 		return false;
@@ -1755,7 +1748,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		
 		if(on_snapshot)
 		{
-			Server->Log(clientname+L": Deleting files in snapshot...", LL_DEBUG);
+			Server->Log(clientname+L": Deleting files in snapshot... ("+convert(deleted_ids.size())+L")", LL_DEBUG);
 			if(!deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath, false) )
 			{
 				ServerLogger::Log(clientid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
@@ -2028,10 +2021,15 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	status.pcdone=100;
 	ServerStatus::setServerStatus(status, true);
 	Server->destroy(clientlist);
+
+	sendBackupOkay(r_offline==false && c_has_error==false);
+	waitForFileThreads();
+	
 	if(r_offline==false && c_has_error==false)
 	{
 		Server->Log("Client ok. Copying full file...", LL_DEBUG);
-		IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+".ub", MODE_WRITE);
+		std::wstring dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new2.ub";
+		IFile *clientlist=Server->openFile(dst_file, MODE_WRITE);
 		bool clientlist_copy_err=false;
 		if(clientlist!=NULL)
 		{
@@ -2067,8 +2065,34 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				}
 			}
 			while(r>0);
-			Server->Log("Copying done.", LL_DEBUG);
-		
+			Server->destroy(clientlist);
+		}
+		else
+		{
+			ServerLogger::Log(clientid, "Error opening file for client file list.", LL_ERROR);
+			clientlist_copy_err=true;
+		}
+		Server->Log("Copying done.", LL_DEBUG);
+
+		if(clientlist_copy_err)
+		{
+			dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new.ub";
+		}
+		else
+		{
+			Server->deleteFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub");
+		}
+
+		db->BeginTransaction();
+		bool b=os_rename_file(dst_file, L"urbackup/clientlist_"+convert(clientid)+L".ub");
+		if(b)
+		{
+			setBackupDone();
+		}
+		db->EndTransaction();
+
+		if(b)
+		{
 			Server->Log("Creating symbolic links. -1", LL_DEBUG);
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
@@ -2094,18 +2118,16 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 		else
 		{
-			ServerLogger::Log(clientid, "Fatal error copying clientlist. Open error.", LL_ERROR);
-		}
-		if(!clientlist_copy_err)
-		{
-			Server->deleteFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub");
+			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
 		}
 	}
 	else if(!c_has_error)
 	{
 		Server->Log("Client disconnected while backing up. Copying partial file...", LL_DEBUG);
-		Server->deleteFile("urbackup/clientlist_"+nconvert(clientid)+".ub");
+		db->BeginTransaction();
 		moveFile(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub");
+		setBackupDone();
+		db->EndTransaction();
 	}
 	else
 	{
@@ -2126,11 +2148,47 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	unsigned int passed_time=incr_backup_stoptime-incr_backup_starttime;
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 
-	setBackupDone();
-
 	if(c_has_error) return false;
 	
 	return !r_offline;
+}
+
+void BackupServerGet::sendBackupOkay(bool b_okay)
+{
+	if(b_okay)
+	{
+		notifyClientBackupSuccessfull();
+	}
+	else
+	{
+		if(pingthread!=NULL)
+		{
+			pingthread->setStop(true);
+			Server->getThreadPool()->waitFor(pingthread_ticket);
+		}
+		pingthread=NULL;
+	}
+}
+
+void BackupServerGet::waitForFileThreads(void)
+{
+	SStatus status=ServerStatus::getStatus(clientname);
+	hashpipe->Write("flush");
+	hashpipe_prepare->Write("flush");
+	status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
+	status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
+	while(status.hashqueuesize>0 || status.prepare_hashqueuesize>0)
+	{
+		ServerStatus::setServerStatus(status, true);
+		Server->wait(1000);
+		status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
+		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
+	}
+	{
+		hashpipe->Write("flush");
+		Server->wait(1000);
+		while(bsh->isWorking()) Server->wait(1000);
+	}
 }
 
 bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error)

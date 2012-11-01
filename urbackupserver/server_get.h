@@ -106,6 +106,9 @@ private:
 	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
 
+	void sendBackupOkay(bool b_okay);
+	void waitForFileThreads(void);
+
 	bool deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error);
 
 	std::wstring shortenFilename(std::wstring fn);
@@ -230,4 +233,7 @@ private:
 	CTCPStack tcpstack;
 
 	IPipeThrottler *client_throttler;
+
+	BackupServerHash *bsh;
+	BackupServerPrepareHash *bsh_prepare;
 };
