@@ -567,7 +567,17 @@ void BackupServerGet::operator ()(void)
 			else if(hbu && has_error)
 			{
 				file_backup_err=true;
-				os_remove_nonempty_dir(backuppath);
+				if(use_snapshots)
+				{
+					if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
+					{
+						os_remove_nonempty_dir(backuppath);
+					}
+				}
+				else
+				{
+					os_remove_nonempty_dir(backuppath);
+				}				
 				tried_backup=true;
 			}
 
