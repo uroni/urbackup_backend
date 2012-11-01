@@ -28,6 +28,9 @@ public:
 	void setId(size_t pId);
 	size_t getId(void) const;
 
+	TreeNode *getMappedNode();
+	void setMappedNode(TreeNode *pMappedNode);
+
 private:
 
 	std::string name;
@@ -35,6 +38,7 @@ private:
 
 	TreeNode *nextSibling;
 	TreeNode *parent;
+	TreeNode *mapped_node;
 	size_t num_children;
 
 	size_t id;

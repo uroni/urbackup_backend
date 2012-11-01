@@ -18,11 +18,13 @@
 
 #include "TreeNode.h"
 
-TreeNode::TreeNode(const std::string &name, const std::string &data, TreeNode *parent) : name(name), data(data), parent(parent), num_children(0), nextSibling(NULL)
+TreeNode::TreeNode(const std::string &name, const std::string &data, TreeNode *parent)
+	: name(name), data(data), parent(parent), num_children(0), nextSibling(NULL), mapped_node(NULL)
 {
 }
 
-TreeNode::TreeNode(void) : num_children(0), nextSibling(NULL)
+TreeNode::TreeNode(void)
+	: num_children(0), nextSibling(NULL), mapped_node(NULL)
 {
 }
 
@@ -115,4 +117,14 @@ void TreeNode::setParent(TreeNode *pParent)
 TreeNode *TreeNode::getParent(void)
 {
 	return parent;
+}
+
+TreeNode *TreeNode::getMappedNode()
+{
+	return mapped_node;
+}
+
+void TreeNode::setMappedNode(TreeNode *pMappedNode)
+{
+	mapped_node=pMappedNode;
 }

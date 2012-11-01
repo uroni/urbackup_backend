@@ -48,7 +48,8 @@ void destroy_mutex1(void)
 	Server->destroy(delete_mutex);
 }
 
-BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid)
+BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots)
+	: use_snapshots(use_snapshots)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -181,6 +182,9 @@ void BackupServerHash::operator()(void)
 			if(!rd.getStr(&sha2))
 				ServerLogger::Log(clientid, "Reading hash from pipe failed", LL_ERROR);
 
+			if(sha2.size()!=64)
+				ServerLogger::Log(clientid, "SHA512 length of file \""+tfn+"\" wrong.", LL_ERROR);
+
 			std::string hashoutput_fn;
 			bool diff_file=rd.getStr(&hashoutput_fn);
 
@@ -298,7 +302,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 	while(!ff.empty())
 	{
 		tries_once=true;
-		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff));
+		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff), use_snapshots);
 		if(!b)
 		{
 			IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
@@ -320,7 +324,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		{
 			if(!hash_fn.empty() && !f_hashpath.empty())
 			{
-				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(f_hashpath));
+				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(f_hashpath), use_snapshots);
 				if(!b)
 				{
 					IFile *ctf=Server->openFile(os_file_prefix(f_hashpath), MODE_READ);

@@ -20,7 +20,7 @@
 #include "TreeReader.h"
 #include <algorithm>
 
-std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error)
+std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error, std::vector<size_t> *deleted_ids)
 {
 	std::vector<size_t> ret;
 
@@ -39,6 +39,11 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 	}
 
 	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], ret);
+	if(deleted_ids!=NULL)
+	{
+		gatherDeletes(&(*r1.getNodes())[0], *deleted_ids);
+		std::sort(deleted_ids->begin(), deleted_ids->end());
+	}
 
 	std::sort(ret.begin(), ret.end());
 
@@ -59,6 +64,8 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 			if(c1!=NULL && c1->getName()==c2->getName() && c1->getData()==c2->getData() )
 			{
 				gatherDiffs(c1, c2, diffs);
+				c2->setMappedNode(c1);
+				c1->setMappedNode(c2);
 				found=true;
 				break;
 			}
@@ -71,5 +78,19 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 		}
 
 		c2=c2->getNextSibling();
+	}
+}
+
+void TreeDiff::gatherDeletes(TreeNode *t1, std::vector<size_t> &deleted_ids)
+{
+	TreeNode *c1=t1->getFirstChild();
+	while(c1!=NULL)
+	{
+		if(c1->getMappedNode()==NULL)
+		{
+			deleted_ids.push_back(c1->getId());
+		}
+		gatherDeletes(c1, deleted_ids);
+		c1=c1->getNextSibling();
 	}
 }

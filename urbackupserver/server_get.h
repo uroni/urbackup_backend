@@ -33,7 +33,7 @@ struct SBackup
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback, public FileClient::ReconnectionCallback
 {
 public:
-	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection);
+	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots);
 	~BackupServerGet(void);
 
 	void operator()(void);
@@ -78,7 +78,7 @@ private:
 	bool request_filelist_construct(bool full, bool with_token=true);
 	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes);
 	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal);
-	bool doIncrBackup(bool with_hashes, bool intra_file_diffs);
+	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot);
 	SBackup getLastIncremental(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	void updateLastBackup(void);
@@ -106,6 +106,8 @@ private:
 	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
 
+	bool deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error);
+
 	std::wstring shortenFilename(std::wstring fn);
 
 	_u32 getClientFilesrvConnection(FileClient *fc, int timeoutms=10000);
@@ -114,7 +116,7 @@ private:
 	void saveImageAssociation(int image_id, int assoc_id);
 	
 	std::wstring constructImagePath(const std::wstring &letter);
-	bool constructBackupPath(bool with_hashes);
+	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
 	void resetEntryState(void);
 	bool getNextEntry(char ch, SFile &data);
 	static std::string remLeadingZeros(std::string t);
@@ -221,6 +223,8 @@ private:
 	volatile bool internet_connection;
 	int image_protocol_version;
 	int update_version;
+
+	bool use_snapshots;
 
 	CTCPStack tcpstack;
 

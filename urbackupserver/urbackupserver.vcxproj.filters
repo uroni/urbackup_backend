@@ -198,6 +198,9 @@
     <ClCompile Include="serverinterface\shutdown.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="snapshot_helper.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -343,6 +346,9 @@
     </ClInclude>
     <ClInclude Include="..\common\data.h">
       <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="snapshot_helper.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

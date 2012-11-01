@@ -221,9 +221,16 @@ function getPar(p)
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
 
-function show_progress1(stop_clientid)
+function show_progress1(stop_backup)
 {
-	if(!startLoading()) return;		
+	if(!stop_backup)
+	{
+		if(!startLoading()) return;
+	}
+	if(g.refresh_timeout!=-1)
+	{
+		clearTimeout(g.refresh_timeout);
+	}
 	g.refresh_timeout=0;
 	show_progress11();
 }
@@ -2688,5 +2695,5 @@ function stopBackup(clientid)
 	
 	alert(trans("trying_to_stop_backup"));
 	g.progress_stop_id=clientid;
-	show_progress1(clientid);
+	show_progress1(true);
 }

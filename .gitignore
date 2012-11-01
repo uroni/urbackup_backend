@@ -141,3 +141,6 @@ webwatch/*
 urbackupserver/doc/tmp/*
 docs/tmp/*
 urbackupserver/doc/*
+snapshot_helper/Debug/*
+snapshot_helper/x64/*
+urbackup_snapshot_helper.exe

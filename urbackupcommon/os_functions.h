@@ -33,11 +33,15 @@ int64 os_atoi64(const std::string &str);
 
 bool os_create_dir(const std::wstring &dir);
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname);
+bool os_create_dir(const std::string &dir);
+
+bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref);
 
 int64 os_free_space(const std::wstring &path);
 
 bool os_remove_nonempty_dir(const std::wstring &path);
+
+bool os_remove_dir(const std::string &path);
 
 bool os_remove_symlink_dir(const std::wstring &path);
 
@@ -49,7 +53,9 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname);
 
 bool os_directory_exists(const std::wstring &path);
 
+#ifndef OS_FUNC_NO_NET
 bool os_lookuphostname(std::string pServer, unsigned int *dest);
+#endif
 
 std::wstring os_file_prefix(std::wstring path);
 

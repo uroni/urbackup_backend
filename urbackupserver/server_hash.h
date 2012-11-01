@@ -23,7 +23,7 @@ struct STmpFile
 class BackupServerHash : public IThread, public INotEnoughSpaceCallback, public IChunkPatcherCallback
 {
 public:
-	BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid);
+	BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots);
 	~BackupServerHash(void);
 
 	void operator()(void);
@@ -85,4 +85,6 @@ private:
 
 	IFile *chunk_output_fn;
 	ChunkPatcher chunk_patcher;
+
+	bool use_snapshots;
 };

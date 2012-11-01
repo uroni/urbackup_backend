@@ -30,6 +30,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "InternetServiceConnector.h"
 #include "../Interface/PipeThrottler.h"
+#include "snapshot_helper.h"
 #include <memory.h>
 
 const unsigned int waittime=50*1000; //1 min
@@ -38,6 +39,7 @@ const int max_offline=5;
 IPipeThrottler *BackupServer::global_internet_throttler=NULL;
 IPipeThrottler *BackupServer::global_local_throttler=NULL;
 IMutex *BackupServer::throttle_mutex=NULL;
+bool BackupServer::snapshots_enabled=false;
 
 BackupServer::BackupServer(IPipe *pExitpipe)
 {
@@ -97,6 +99,20 @@ void BackupServer::operator()(void)
 		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
 	}
 #endif
+
+	{
+		Server->Log("Testing if backup destination can handle subvolumes and snapshots...", LL_DEBUG);
+		if(!SnapshotHelper::isAvailable())
+		{
+			Server->Log("Backup destination cannot handle subvolumes and snapshots. Snapshots disabled.", LL_INFO);
+			snapshots_enabled=false;
+		}
+		else
+		{
+			Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled.", LL_INFO);
+			snapshots_enabled=true;
+		}
+	}
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
 	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
@@ -220,7 +236,7 @@ void BackupServer::startClients(FileClient &fc)
 			ServerStatus::setOnline(names[i], true);
 			IPipe *np=Server->createMemoryPipe();
 
-			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i], inetclient[i]);
+			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i], inetclient[i], snapshots_enabled);
 			Server->getThreadPool()->execute(client);
 
 			SClient c;
@@ -259,6 +275,7 @@ void BackupServer::startClients(FileClient &fc)
 				if(none_fits || found_lan)
 				{
 					it->second.addr=servers[i];
+					it->second.internet_connection=inetclient[i];
 					std::string msg;
 					msg.resize(7+sizeof(sockaddr_in)+1);
 					msg[0]='a'; msg[1]='d'; msg[2]='d'; msg[3]='r'; msg[4]='e'; msg[5]='s'; msg[6]='s';
@@ -415,6 +432,11 @@ void BackupServer::cleanupThrottlers(void)
 	{
 		Server->destroy(global_local_throttler);
 	}
+}
+
+bool BackupServer::isSnapshotsEnabled(void)
+{
+	return snapshots_enabled;
 }
 
 #endif //CLIENT_ONLY

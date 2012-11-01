@@ -31,6 +31,8 @@ public:
 
 	static void cleanupThrottlers(void);
 
+	static bool isSnapshotsEnabled(void);
+
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);
@@ -48,6 +50,8 @@ private:
 	static IMutex *throttle_mutex;
 
 	bool internet_test_mode;
+
+	static bool snapshots_enabled;
 };
 
 #endif //URB_SERVER_H

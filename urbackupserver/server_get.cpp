@@ -39,6 +39,7 @@
 #include "../urlplugin/IUrlFactory.h"
 #include "../urbackupcommon/mbrdata.h"
 #include "../Interface/PipeThrottler.h"
+#include "snapshot_helper.h"
 #include "server.h"
 #include <algorithm>
 #include <memory.h>
@@ -69,8 +70,8 @@ int BackupServerGet::running_backups=0;
 int BackupServerGet::running_file_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
 
-BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection)
-	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL)
+BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots)
+	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL), use_snapshots(use_snapshots)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -291,7 +292,7 @@ void BackupServerGet::operator ()(void)
 	status.clientid=clientid;
 	ServerStatus::setServerStatus(status);
 
-	BackupServerHash *bsh=new BackupServerHash(hashpipe, exitpipe, clientid );
+	BackupServerHash *bsh=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots);
 	BackupServerPrepareHash *bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
 	Server->getThreadPool()->execute(bsh);
 	Server->getThreadPool()->execute(bsh_prepare);
@@ -405,7 +406,7 @@ void BackupServerGet::operator ()(void)
 				ServerLogger::Log(clientid, "Starting full file backup...", LL_INFO);
 				do_full_backup_now=false;
 
-				if(!constructBackupPath(with_hashes))
+				if(!constructBackupPath(with_hashes, use_snapshots, true))
 				{
 					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
 					r_success=false;
@@ -430,7 +431,7 @@ void BackupServerGet::operator ()(void)
 				do_incr_backup_now=false;
 				
 				r_incremental=true;
-				if(!constructBackupPath(with_hashes))
+				if(!constructBackupPath(with_hashes, use_snapshots, false))
 				{
 					ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
 					r_success=false;
@@ -440,7 +441,7 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					r_success=doIncrBackup(with_hashes, internet_connection);
+					r_success=doIncrBackup(with_hashes, internet_connection, use_snapshots);
 				}
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) && isBackupsRunningOkay(true, false) )
@@ -1560,7 +1561,7 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	return rsize;
 }
 
-bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
+bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot)
 {
 	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
@@ -1652,8 +1653,14 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	Server->destroy(tmp);
 
 	Server->Log(clientname+L": Calculating file tree differences...", LL_DEBUG);
+
 	bool error=false;
-	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error);
+	std::vector<size_t> deleted_ids;
+	std::vector<size_t> *deleted_ids_ref;
+	if(on_snapshot) deleted_ids_ref=&deleted_ids;
+
+	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error, deleted_ids_ref);
+
 	if(error)
 	{
 		if(!internet_connection)
@@ -1666,6 +1673,31 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 			ServerLogger::Log(clientid, "Error while calculating tree diff. Not doing full backup because of internet connection.", LL_ERROR);
 			has_error=true;
 			return false;
+		}
+	}
+
+	if(on_snapshot)
+	{
+		Server->Log(clientname+L": Creating snapshot...", LL_DEBUG);
+		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single))
+		{
+			ServerLogger::Log(clientid, "Creating new snapshot failed (Server error)", LL_ERROR);
+			has_error=true;
+			return false;
+		}
+
+		Server->Log(clientname+L": Deleting files in snapshot...", LL_DEBUG);
+		if(!deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath, false) )
+		{
+			ServerLogger::Log(clientid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
+			has_error=true;
+			return false;
+		}
+
+		if(with_hashes)
+		{
+			Server->Log(clientname+L": Deleting files in hash snapshot...", LL_DEBUG);
+			deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath_hashes, true);
 		}
 	}
 
@@ -1789,17 +1821,20 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
+						if(!on_snapshot || indirchange)
 						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
-							c_has_error=true;
-							break;
-						}
-						if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+os_curr_path)))
-						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
-							c_has_error=true;
-							break;
+							if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
+							{
+								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
+								c_has_error=true;
+								break;
+							}
+							if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+os_curr_path)))
+							{
+								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
+								c_has_error=true;
+								break;
+							}
 						}
 						++depth;
 						if(depth==1)
@@ -1831,11 +1866,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 						curr_path=ExtractFilePath(curr_path);
 					}
 				}
-				else
+				else //is file
 				{
 					std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_name);
 
-					if(indirchange==true || hasChange(line, diffs))
+					if(indirchange==true || hasChange(line, diffs)) //is changed
 					{
 						if(r_offline==false)
 						{
@@ -1858,11 +1893,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 							}
 						}
 					}
-					else
+					else if(!on_snapshot) //is not changed
 					{			
 						bool f_ok=true;
 						std::wstring srcpath=last_backuppath+os_curr_path;
-						bool b=os_create_hardlink(os_file_prefix(backuppath+os_curr_path), os_file_prefix(srcpath));
+						bool b=os_create_hardlink(os_file_prefix(backuppath+os_curr_path), os_file_prefix(srcpath), use_snapshots);
 						if(!b)
 						{
 							if(link_logcnt<5)
@@ -1901,7 +1936,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 						}
 						else if(with_hashes)
 						{
-							os_create_hardlink(os_file_prefix(backuppath_hashes+os_curr_path), os_file_prefix(last_backuppath_hashes+os_curr_path));
+							os_create_hardlink(os_file_prefix(backuppath_hashes+os_curr_path), os_file_prefix(last_backuppath_hashes+os_curr_path), use_snapshots);
 						}
 
 						if(f_ok)
@@ -2028,6 +2063,91 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs)
 	return !r_offline;
 }
 
+bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error)
+{
+	resetEntryState();
+
+	IFile *tmp=Server->openFile(clientlist_fn, MODE_READ);
+	if(tmp==NULL)
+	{
+		ServerLogger::Log(clientid, "Could not open clientlist in ::deleteFilesInSnapshot", LL_ERROR);
+		return false;
+	}
+
+	char buffer[4096];
+	size_t read;
+	SFile curr_file;
+	size_t line=0;
+	std::wstring curr_path=snapshot_path;
+	bool curr_dir_exists=true;
+
+	while( (read=tmp->Read(buffer, 4096))>0 )
+	{
+		for(size_t i=0;i<read;++i)
+		{
+			if(getNextEntry(buffer[i], curr_file))
+			{
+				if(curr_file.isdir)
+				{
+					if(curr_file.name==L"..")
+					{
+						curr_path=ExtractFilePath(curr_path);
+						if(!curr_dir_exists)
+						{
+							curr_dir_exists=os_directory_exists(curr_path);
+						}
+					}
+				}
+
+				if( hasChange(line, deleted_ids) )
+				{
+					std::wstring curr_fn=curr_path+os_file_sep()+curr_file.name;
+					if(curr_file.isdir)
+					{
+						if(curr_dir_exists)
+						{
+							if(!os_remove_nonempty_dir(curr_fn) )
+							{
+								if(!no_error)
+								{
+									ServerLogger::Log(clientid, L"Could not remove directory \""+curr_fn+L"\" in ::deleteFilesInSnapshot", LL_ERROR);
+									Server->destroy(tmp);
+									return false;
+								}
+							}
+						}
+						curr_path=curr_fn;
+						curr_dir_exists=false;
+					}
+					else
+					{
+						if( curr_dir_exists )
+						{
+							if( !Server->deleteFile(curr_fn) )
+							{
+								if(!no_error)
+								{
+									ServerLogger::Log(clientid, L"Could not remove file \""+curr_fn+L"\" in ::deleteFilesInSnapshot", LL_ERROR);
+									Server->destroy(tmp);
+									return false;
+								}
+							}
+						}
+					}
+				}
+				else if( curr_file.isdir && curr_file.name!=L".." )
+				{
+					curr_path+=os_file_sep()+curr_file.name;
+				}
+				++line;
+			}
+		}
+	}
+
+	Server->destroy(tmp);
+	return true;
+}
+
 bool BackupServerGet::hasChange(size_t line, const std::vector<size_t> &diffs)
 {
 	return std::binary_search(diffs.begin(), diffs.end(), line);
@@ -2059,7 +2179,7 @@ void BackupServerGet::hashFile(std::wstring dstpath, std::wstring hashpath, IFil
 	hashpipe_prepare->Write(data.getDataPtr(), data.getDataSize() );
 }
 
-bool BackupServerGet::constructBackupPath(bool with_hashes)
+bool BackupServerGet::constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs)
 {
 	time_t tt=time(NULL);
 #ifdef _WIN32
@@ -2079,7 +2199,21 @@ bool BackupServerGet::constructBackupPath(bool with_hashes)
 	else
 		backuppath_hashes.clear();
 
-	return os_create_dir(os_file_prefix(backuppath)) && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));	
+	if(on_snapshot)
+	{
+		if(create_fs)
+		{
+			return SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)  && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));
+		}
+		else
+		{
+			return true;
+		}
+	}
+	else
+	{
+		return os_create_dir(os_file_prefix(backuppath)) && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));	
+	}
 }
 
 std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)

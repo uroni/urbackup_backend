@@ -18,7 +18,9 @@
 
 #include "os_functions.h"
 #include "../stringtools.h"
+#ifndef OS_FUNC_NO_SERVER
 #include "../Interface/Server.h"
+#endif
 #ifdef _WIN_PRE_VISTA
 #define _WIN32_WINNT 0x0500
 #endif
@@ -79,6 +81,7 @@ std::vector<SFile> getFiles(const std::wstring &path)
 	return tmp;
 }
 
+#ifndef OS_FUNC_NO_SERVER
 void removeFile(const std::wstring &path)
 {
 	_unlink(Server->ConvertToUTF8(path).c_str());
@@ -88,6 +91,7 @@ void moveFile(const std::wstring &src, const std::wstring &dst)
 {
 	rename(Server->ConvertToUTF8(src).c_str(), Server->ConvertToUTF8(dst).c_str() );
 }
+#endif
 
 bool isDirectory(const std::wstring &path)
 {
@@ -113,7 +117,12 @@ bool os_create_dir(const std::wstring &dir)
 	return CreateDirectoryW(dir.c_str(), NULL)!=0;
 }
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname)
+bool os_create_dir(const std::string &dir)
+{
+	return CreateDirectoryA(dir.c_str(), NULL)!=0;
+}
+
+bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref)
 {
 	BOOL r=CreateHardLinkW(linkname.c_str(), fname.c_str(), NULL);
 	if(!r)
@@ -181,9 +190,19 @@ bool os_remove_symlink_dir(const std::wstring &path)
 	return RemoveDirectoryW(path.c_str())!=FALSE;
 }
 
+bool os_remove_dir(const std::string &path)
+{
+	return RemoveDirectoryA(path.c_str())!=FALSE;
+}
+
 std::wstring os_file_sep(void)
 {
 	return L"\\";
+}
+
+std::string os_file_sepn(void)
+{
+	return "\\";
 }
 
 bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
@@ -196,7 +215,9 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 	DWORD rc=CreateSymbolicLink(lname.c_str(), target.c_str(), flags);
 	if(rc==FALSE)
 	{
+#ifndef OS_FUNC_NO_SERVER
 		Server->Log(L"Creating symbolic link from \""+lname+L"\" to \""+target+L"\" failed with error "+convert((int)GetLastError()), LL_ERROR);
+#endif
 	}
 	return rc!=0;
 #else
@@ -204,6 +225,7 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 #endif
 }
 
+#ifndef OS_FUNC_NO_NET
 bool os_lookuphostname(std::string pServer, unsigned int *dest)
 {
 	const char* host=pServer.c_str();
@@ -228,6 +250,7 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 	}
 	return true;
 }
+#endif
 
 std::wstring os_file_prefix(std::wstring path)
 {
@@ -271,6 +294,9 @@ std::string os_strftime(std::string fs)
 
 bool os_create_dir_recursive(std::wstring fn)
 {
+	if(fn.empty())
+		return false;
+
 	bool b=os_create_dir(fn);
 	if(!b)
 	{
@@ -301,7 +327,9 @@ std::wstring os_get_final_path(std::wstring path)
 
 	if( hFile==INVALID_HANDLE_VALUE )
 	{
+#ifndef OS_FUNC_NO_SERVER
 		Server->Log(L"Could not open path in os_get_final_path for \""+path+L"\"", LL_ERROR);
+#endif
 		return path;
 	}
 
@@ -309,7 +337,9 @@ std::wstring os_get_final_path(std::wstring path)
 
 	if(dwBufsize==0)
 	{
+#ifndef OS_FUNC_NO_SERVER
 		Server->Log(L"Error getting path size in in os_get_final_path error="+convert((int)GetLastError())+L" for \""+path+L"\"", LL_ERROR);
+#endif
 		CloseHandle(hFile);
 		return path;
 	}
@@ -322,7 +352,9 @@ std::wstring os_get_final_path(std::wstring path)
 
 	if(dwRet==0)
 	{
+#ifndef OS_FUNC_NO_SERVER
 		Server->Log("Error getting path in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
+#endif
 	}
 	else if(dwRet<ret.size())
 	{
@@ -339,7 +371,9 @@ std::wstring os_get_final_path(std::wstring path)
 	}
 	else
 	{
+#ifndef OS_FUNC_NO_SERVER
 		Server->Log("Error getting path (buffer too small) in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
+#endif
 	}
 
 	return path;
