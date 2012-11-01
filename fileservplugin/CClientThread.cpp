@@ -37,6 +37,7 @@
 
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
+#define SEND_TIMEOUT 10000
 
 CriticalSection cs;
 
@@ -234,8 +235,8 @@ void CClientThread::operator()(void)
 				Server->destroy(update_file);
 				update_file=NULL;
 			}
+			cond->notify_all();
 		}
-		cond->notify_all();
 		Server->getThreadPool()->waitFor(chunk_send_thread_ticket);
 	}
 
@@ -278,7 +279,7 @@ bool CClientThread::RecvMessage(void)
 	}
 	else
 	{
-		rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE);
+		rc=(_i32)clientpipe->Read(buffer, BUFFERSIZE, lon.tv_sec*1000);
 
 
 		if(rc<1)
@@ -311,7 +312,7 @@ bool CClientThread::RecvMessage(void)
 
 int CClientThread::SendInt(const char *buf, size_t bsize)
 {
-	return (int)(clientpipe->Write(buf, bsize)?bsize:SOCKET_ERROR);
+	return (int)(clientpipe->Write(buf, bsize, SEND_TIMEOUT)?bsize:SOCKET_ERROR);
 }
 
 bool CClientThread::ProcessPacket(CRData *data)

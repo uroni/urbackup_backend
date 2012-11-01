@@ -69,4 +69,6 @@ bool os_create_dir_recursive(std::wstring fn);
 
 std::wstring os_get_final_path(std::wstring path);
 
+bool os_rename_file(std::wstring src, std::wstring dst);
+
 #endif //OS_FUNCTIONS_H
