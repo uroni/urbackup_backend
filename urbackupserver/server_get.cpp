@@ -1495,7 +1495,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 			if(cfn_short[0]=='/')
 				cfn_short.erase(0,1);
 
-			std::wstring filepath_old=last_backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
+			filepath_old=last_backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 
 			IFile *file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
 
@@ -2113,8 +2113,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 			Server->Log("Symbolic links created.", LL_DEBUG);
-
-			Server->destroy(clientlist);
 		}
 		else
 		{
