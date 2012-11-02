@@ -311,6 +311,7 @@
     <ClCompile Include="treediff\TreeNode.cpp" />
     <ClCompile Include="treediff\TreeReader.cpp" />
     <ClCompile Include="fileclient\FileClient.cpp" />
+    <ClCompile Include="verify_hashes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\data.h" />

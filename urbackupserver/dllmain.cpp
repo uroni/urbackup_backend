@@ -91,6 +91,7 @@ bool testEscape(void);
 void upgrade(void);
 bool test_amatch(void);
 bool test_amatch(void);
+bool verify_hashes(std::string arg);
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
@@ -298,6 +299,22 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				Server->Log("Couldn't open Database backup_server.db", LL_ERROR);
 				return;
 			}
+		}
+	}
+
+	std::string arg_verify_hashes=Server->getServerParameter("verify_hashes");
+	if(!arg_verify_hashes.empty())
+	{
+		if(!verify_hashes(arg_verify_hashes))
+		{
+			Server->Log("Backup verification failed! See verification_result.txt for more info.", LL_ERROR);
+			exit(1);
+		}
+		else
+		{
+			Server->Log("Backup verification successfull.", LL_INFO);
+			Server->deleteFile("verification_result.txt");
+			exit(0);
 		}
 	}
 
