@@ -1300,24 +1300,27 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 						}
 						curr_path=ExtractFilePath(curr_path);
 					}
+					writeFileRepeat(clientlist, "d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
 				}
 				else
 				{
-					bool b=load_file(cf.name, short_name, curr_path, fc, with_hashes, L"", L"");
+					bool download_ok;
+					bool b=load_file(cf.name, short_name, curr_path, fc, with_hashes, L"", L"", download_ok);
 					if(!b)
 					{
 						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 						r_done=true;
 						break;
 					}
+					if( download_ok )
+					{
+						writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+					}
 					transferred+=cf.size;
 				}
 			}
 		}
-		if(r_done==false)
-		{
-			writeFileRepeat(clientlist, buffer, read);
-		}
+
 		if(read<4096)
 			break;
 	}
@@ -1373,7 +1376,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 }
 
 bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
-	const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal)
+	const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal, bool &download_ok)
 {
 	std::wstring cfn=curr_path+L"/"+fn;
 	if(cfn[0]=='/')
@@ -1400,7 +1403,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		if(file_old==NULL)
 		{
 			ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
-			return load_file(fn, short_fn, curr_path, fc_normal, true, L"", L"");
+			return load_file(fn, short_fn, curr_path, fc_normal, true, last_backuppath, last_backuppath_complete, download_ok);
 		}
 		hashpath_old=last_backuppath_complete+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 	}
@@ -1430,12 +1433,16 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	_u32 rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
 	if(rc!=ERR_SUCCESS)
 	{
+		download_ok=false;
+
 		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		destroyTemporaryFile(pfd);
 		destroyTemporaryFile(hash_tmp);
 	}
 	else
 	{
+		download_ok=true;
+
 		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
 
@@ -1457,7 +1464,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 }
 
 bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
-	FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete)
+	FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok)
 {
 	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
 	IFile *fd=getTemporaryFileRetry();
@@ -1474,6 +1481,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd);
 	if(rc!=ERR_SUCCESS)
 	{
+		download_ok=false;
 		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		destroyTemporaryFile(fd);
 		if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
@@ -1481,6 +1489,8 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 	}
 	else
 	{
+		download_ok=true;
+
 		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
 		std::wstring hashpath;
@@ -1938,10 +1948,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						if(r_offline==false)
 						{
 							bool b;
+							bool download_ok;
 							if(intra_file_diffs)
-								b=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
+								b=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, download_ok);
 							else
-								b=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete);
+								b=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok);
 
 							if(!b)
 							{
@@ -1951,8 +1962,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							}
 							else
 							{
-								transferred+=cf.size;
-								writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+								if(download_ok)
+								{
+									transferred+=cf.size;
+									writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+								}
 							}
 						}
 					}
@@ -1978,11 +1992,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							++link_logcnt;
 							if(r_offline==false)
 							{
+								bool download_ok;
 								bool b2;
 								if(intra_file_diffs)
-									b2=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc);
+									b2=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, download_ok);
 								else
-									b2=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete);
+									b2=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok);
 
 								if(!b2)
 								{
@@ -1990,6 +2005,10 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 									r_offline=true;
 									incr_backup_stoptime=Server->getTimeMS();
 									f_ok=false;
+								}
+								else
+								{
+									f_ok=download_ok;
 								}
 							}
 							else
