@@ -76,8 +76,8 @@ private:
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool with_token=true);
-	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete);
-	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal);
+	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok);
+	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal, bool &download_ok);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot);
 	SBackup getLastIncremental(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
