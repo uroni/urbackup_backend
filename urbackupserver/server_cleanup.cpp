@@ -737,22 +737,22 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 		if(!b)
 		{
 			b=os_remove_nonempty_dir(os_file_prefix(path));
+
+			if(!b && os_directory_exists(os_file_prefix(path)) )
+			{
+				Server->Log("Deleting directory failed. Trying to truncate all files to zero...", LL_ERROR);
+				b=truncate_files_recurisve(os_file_prefix(path));
+
+				if(b)
+				{
+					b=os_remove_nonempty_dir(os_file_prefix(path));
+				}
+			}
 		}
 	}
 	else
 	{
 		b=os_remove_nonempty_dir(os_file_prefix(path));
-	}
-
-	if(!b && os_directory_exists(os_file_prefix(path)) )
-	{
-		Server->Log("Deleting directory failed. Trying to truncate all files to zero...", LL_ERROR);
-		b=truncate_files_recurisve(os_file_prefix(path));
-
-		if(b)
-		{
-			b=os_remove_nonempty_dir(os_file_prefix(path));
-		}
 	}
 
 	bool del=true;
