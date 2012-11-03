@@ -1943,6 +1943,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				else //is file
 				{
 					std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_name);
+					
+					bool f_ok=false;
 
 					if(indirchange==true || hasChange(line, diffs)) //is changed
 					{
@@ -1966,14 +1968,14 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								if(download_ok)
 								{
 									transferred+=cf.size;
-									writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+									f_ok=true;
 								}
 							}
 						}
 					}
 					else if(!on_snapshot) //is not changed
 					{			
-						bool f_ok=true;
+						f_ok=true;
 						std::wstring srcpath=last_backuppath+os_curr_path;
 						bool b=os_create_hardlink(os_file_prefix(backuppath+os_curr_path), os_file_prefix(srcpath), use_snapshots);
 						if(!b)
@@ -2021,11 +2023,15 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						{
 							os_create_hardlink(os_file_prefix(backuppath_hashes+os_curr_path), os_file_prefix(last_backuppath_hashes+os_curr_path), use_snapshots);
 						}
-
-						if(f_ok)
-						{
-							writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
-						}
+					}
+					else
+					{
+						f_ok=true;
+					}
+					
+					if(f_ok)
+					{
+						writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
 					}
 				}
 				++line;

@@ -248,18 +248,46 @@ int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *sett
 	return 0;
 }
 
+bool ServerCleanupThread::deleteAndTruncateFile(std::wstring path)
+{
+	if(!Server->deleteFile(os_file_prefix(path)))
+	{
+		return false;
+		os_file_truncate(os_file_prefix(path), 0);
+	}
+	return true;
+}
+
+bool ServerCleanupThread::deleteImage(std::wstring path)
+{
+	bool b=true;
+	if(!deleteAndTruncateFile(path))
+	{
+		b=false;
+	}
+	if(!deleteAndTruncateFile(path+L".hash"))
+	{
+		b=false;
+	}
+	if(!deleteAndTruncateFile(path+L".mbr"))
+	{
+		b=false;
+	}
+	return b;
+}
+
 void ServerCleanupThread::cleanup_images(int64 minspace)
 {
 	db_results res=q_incomplete_images->Read();
 	for(size_t i=0;i<res.size();++i)
 	{
 		Server->Log(L"Deleting incomplete image file \""+res[i][L"path"]+L"\"...", LL_INFO);
-		Server->deleteFile(res[i][L"path"]);
-		Server->deleteFile(res[i][L"path"]+L".hash");
-		Server->deleteFile(res[i][L"path"]+L".mbr");
-		q_remove_image->Bind(watoi(res[i][L"id"]));
-		q_remove_image->Write();
-		q_remove_image->Reset();
+		if(deleteImage(res[i][L"path"]))
+		{
+			q_remove_image->Bind(watoi(res[i][L"id"]));
+			q_remove_image->Write();
+			q_remove_image->Reset();
+		}
 	}
 
 	{
@@ -395,16 +423,15 @@ void ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 			stat_id=db->getLastInsertID();
 		}
 
-		Server->deleteFile(res[0][L"path"]);
-		Server->deleteFile(res[0][L"path"]+L".hash");
-		Server->deleteFile(res[0][L"path"]+L".mbr");
-
-		db->BeginTransaction();
-		q_remove_image->Bind(backupid);
-		q_remove_image->Write();
-		q_remove_image->Reset();
-		removeImageSize(backupid);
-		db->EndTransaction();
+		if( deleteImage(res[0][L"path"] ) )
+		{
+			db->BeginTransaction();
+			q_remove_image->Bind(backupid);
+			q_remove_image->Write();
+			q_remove_image->Reset();
+			removeImageSize(backupid);
+			db->EndTransaction();
+		}
 
 		if(update_stat)
 		{

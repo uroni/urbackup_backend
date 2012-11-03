@@ -46,6 +46,8 @@ public:
 	static void doQuit(void);
 private:
 
+	bool deleteAndTruncateFile(std::wstring path);
+	bool deleteImage(std::wstring path);
 	void removeImageSize(int backupid);
 	int64 getImageSize(int backupid);
 	std::vector<int> getAssocImages(int backupid);
