@@ -738,9 +738,9 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 		{
 			b=os_remove_nonempty_dir(os_file_prefix(path));
 
-			if(!b && os_directory_exists(os_file_prefix(path)) )
+			if(!b && SnapshotHelper::isSubvolume(clientname, backuppath) )
 			{
-				Server->Log("Deleting directory failed. Trying to truncate all files to zero...", LL_ERROR);
+				Server->Log("Deleting directory failed. Trying to truncate all files in subvolume to zero...", LL_ERROR);
 				b=truncate_files_recurisve(os_file_prefix(path));
 
 				if(b)

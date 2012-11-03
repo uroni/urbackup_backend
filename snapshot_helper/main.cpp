@@ -106,6 +106,16 @@ bool remove_subvolume(std::string subvolume_folder)
 #endif
 }	
 
+bool is_subvolume(std::string subvolume_folder)
+{
+#ifdef _WIN32
+	return true;
+#else
+	int rc=system((btrfs_cmd+" subvolume list \""+subvolume_folder+"\"").c_str());
+	return rc==0;
+#endif
+}	
+
 int main(int argc, char *argv[])
 {
 	if(argc<2)
@@ -245,6 +255,21 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 		return 0;
+	}
+	else if(cmd=="issubvolume")
+	{
+		if(argc<4)
+		{
+			std::cout << "Not enough parameters for issubvolume" << std::endl;
+			return 1;
+		}
+
+		std::string clientname=handleFilename(argv[2]);
+		std::string name=handleFilename(argv[3]);
+
+		std::string subvolume_folder=backupfolder+os_file_sepn()+clientname+os_file_sepn()+name;
+		
+		return is_subvolume(subvolume_folder)?0:1;
 	}
 	else
 	{

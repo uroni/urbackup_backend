@@ -27,3 +27,9 @@ bool SnapshotHelper::removeFilesystem(std::wstring clientname, std::wstring name
 	int rc=system((helper_name+" remove \""+Server->ConvertToUTF8(clientname)+"\" \""+Server->ConvertToUTF8(name)+"\"").c_str());
 	return rc==0;
 }
+
+bool SnapshotHelper::isSubvolume(std::wstring clientname, std::wstring name)
+{
+	int rc=system((helper_name+" issubvolume \""+Server->ConvertToUTF8(clientname)+"\" \""+Server->ConvertToUTF8(name)+"\"").c_str());
+	return rc==0;
+}
