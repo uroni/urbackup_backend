@@ -366,6 +366,7 @@ void BackupServerGet::operator ()(void)
 			bool hbu=false;
 			bool r_success=false;
 			bool r_image=false;
+			bool disk_error=false;
 			r_incremental=false;
 			pingthread=NULL;
 			pingthread_ticket=ILLEGAL_THREADPOOL_TICKET;
@@ -422,7 +423,7 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					r_success=doFullBackup(with_hashes);
+					r_success=doFullBackup(with_hashes, disk_error);
 				}
 			}
 			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) && isBackupsRunningOkay(true, true) )
@@ -447,7 +448,7 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					r_success=doIncrBackup(with_hashes, internet_connection, use_snapshots);
+					r_success=doIncrBackup(with_hashes, internet_connection, use_snapshots, disk_error);
 				}
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) && isBackupsRunningOkay(true, false) )
@@ -554,6 +555,17 @@ void BackupServerGet::operator ()(void)
 
 			file_backup_err=false;
 
+			if(hbu)
+			{
+				if(disk_error)
+				{
+					has_error=true;
+					r_success=false;
+
+					ServerLogger::Log(clientid, "FATAL: Backup failed because of disk problems", LL_ERROR);
+				}
+			}
+
 			if(hbu && !has_error)
 			{
 				if(!r_success)
@@ -592,10 +604,6 @@ void BackupServerGet::operator ()(void)
 				if(!r_success)
 				{
 					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
-				}
-				else if( bsh->hasError() )
-				{
-					ServerLogger::Log(clientid, "Backup not complete because of disk problems", LL_ERROR);
 				}
 				else
 				{
@@ -1138,7 +1146,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 	return false;
 }
 
-bool BackupServerGet::doFullBackup(bool with_hashes)
+bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error)
 {
 	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
@@ -1355,13 +1363,20 @@ bool BackupServerGet::doFullBackup(bool with_hashes)
 
 	waitForFileThreads();
 
-	db->BeginTransaction();
-	if(!os_rename_file(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub") )
+	if( bsh->hasError() || bsh_prepare->hasError() )
 	{
-		ServerLogger::Log(clientid, "Renaming new client file list to destination failed", LL_ERROR);
+		disk_error=true;
 	}
-	setBackupDone();
-	db->EndTransaction();
+	else
+	{
+		db->BeginTransaction();
+		if(!os_rename_file(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub") )
+		{
+			ServerLogger::Log(clientid, "Renaming new client file list to destination failed", LL_ERROR);
+		}
+		setBackupDone();
+		db->EndTransaction();
+	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
 	unsigned int passed_time=Server->getTimeMS()-full_backup_starttime;
@@ -1615,7 +1630,7 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	return rsize;
 }
 
-bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot)
+bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool &disk_error)
 {
 	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
@@ -1720,7 +1735,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		if(!internet_connection)
 		{
 			ServerLogger::Log(clientid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
-			return doFullBackup(with_hashes);
+			return doFullBackup(with_hashes, disk_error);
 		}
 		else
 		{
@@ -2042,9 +2057,15 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	Server->destroy(clientlist);
 
 	sendBackupOkay(r_offline==false && c_has_error==false);
+
 	waitForFileThreads();
+
+	if( bsh->hasError() || bsh_prepare->hasError() )
+	{
+		disk_error=true;
+	}
 	
-	if(r_offline==false && c_has_error==false)
+	if(r_offline==false && c_has_error==false && disk_error==false)
 	{
 		std::wstring dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new.ub";
 

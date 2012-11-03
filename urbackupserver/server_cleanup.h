@@ -28,7 +28,7 @@ public:
 	size_t getFilesFullNum(int clientid, int &backupid_top);
 	size_t getFilesIncrNum(int clientid, int &backupid_top);
 
-	void removeImage(int backupid, bool update_stat=true, int64 size_correction=0);
+	bool removeImage(int backupid, bool update_stat=true, int64 size_correction=0);
 	bool findUncompleteImageRef(int backupid);
 
 	void removeClient(int clientid);

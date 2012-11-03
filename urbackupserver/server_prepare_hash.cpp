@@ -37,6 +37,7 @@ BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pExitpipe,
 	clientid=pClientid;
 	working=false;
 	chunk_patcher.setCallback(this);
+	has_error=false;
 }
 
 BackupServerPrepareHash::~BackupServerPrepareHash(void)
@@ -120,6 +121,7 @@ void BackupServerPrepareHash::operator()(void)
 			if(tf==NULL)
 			{
 				ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading file. File: temp_fn", LL_ERROR);
+				has_error=true;
 				if(old_file!=NULL)
 				{
 					Server->destroy(old_file);
@@ -339,6 +341,13 @@ bool BackupServerPrepareHash::writeFileRepeat(IFile *f, const char *buf, size_t 
 	}
 
 	return true;
+}
+
+bool BackupServerPrepareHash::hasError(void)
+{
+	volatile bool r=has_error;
+	has_error=false;
+	return r;
 }
 
 #endif //CLIENT_ONLY
