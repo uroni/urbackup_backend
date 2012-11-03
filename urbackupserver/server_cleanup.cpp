@@ -336,7 +336,10 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 					if(is!=-1) corr+=is;
 					removeImage(assoc[i], false);
 				}
-				removeImage(backupid, true, corr);
+				if(!removeImage(backupid, true, corr))
+				{
+					notit.push_back(backupid);
+				}
 				
 			}
 			else
@@ -394,8 +397,10 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	}
 }
 
-void ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size_correction)
+bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size_correction)
 {
+	bool ret=true;
+
 	ServerStatus::updateActive();
 
 	q_get_image_refs->Bind(backupid);
@@ -404,7 +409,9 @@ void ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 
 	for(size_t i=0;i<res.size();++i)
 	{
-		removeImage(watoi(res[i][L"id"]), true, getImageSize(watoi(res[i][L"id"])));
+		bool b=removeImage(watoi(res[i][L"id"]), true, getImageSize(watoi(res[i][L"id"])));
+		if(!b)
+			ret=false;
 	}
 
 	q_get_image_path->Bind(backupid);
@@ -432,6 +439,10 @@ void ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 			removeImageSize(backupid);
 			db->EndTransaction();
 		}
+		else
+		{
+			ret=false;
+		}
 
 		if(update_stat)
 		{
@@ -440,8 +451,14 @@ void ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 			q_image_stats_stop->Reset();
 		}
 	}
+	else
+	{
+		ret=false;
+	}
 
 	ServerStatus::updateActive();
+
+	return ret;
 }
 
 bool ServerCleanupThread::findUncompleteImageRef(int backupid)

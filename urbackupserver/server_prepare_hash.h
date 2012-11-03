@@ -31,6 +31,8 @@ public:
 
 	void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 
+	bool hasError(void);
+
 private:
 	std::string hash(IFile *f);
 	std::string hash_with_patch(IFile *f, IFile *patch);
@@ -47,6 +49,7 @@ private:
 	ChunkPatcher chunk_patcher;
 	
 	volatile bool working;
+	volatile bool has_error;
 };
 
 #endif //SERVER_PREPARE_HASH_H
