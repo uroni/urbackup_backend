@@ -2047,61 +2047,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	
 	if(r_offline==false && c_has_error==false)
 	{
-		Server->Log("Client ok. Copying full file...", LL_DEBUG);
-		std::wstring dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new2.ub";
-		IFile *clientlist=Server->openFile(dst_file, MODE_WRITE);
-		bool clientlist_copy_err=false;
-		if(clientlist!=NULL)
-		{
-			tmp->Seek(0);
-			_u32 r=0;
-			char buf[4096];
-			do
-			{
-				r=tmp->Read(buf, 4096);
-				if(r>0)
-				{
-					_u32 written=0;
-					_u32 rc;
-					int tries=50;
-					do
-					{
-						rc=clientlist->Write(buf+written, r-written);
-						written+=rc;
-						if(rc==0)
-						{
-							Server->Log("Failed to write to file... waiting...", LL_WARNING);
-							Server->wait(10000);
-							--tries;
-						}
-					}
-					while(written<r && (rc>0 || tries>0) );
-					if(rc==0)
-					{
-						ServerLogger::Log(clientid, "Fatal error copying clientlist. Write error.", LL_ERROR);
-						clientlist_copy_err=true;
-						break;
-					}
-				}
-			}
-			while(r>0);
-			Server->destroy(clientlist);
-		}
-		else
-		{
-			ServerLogger::Log(clientid, "Error opening file for client file list.", LL_ERROR);
-			clientlist_copy_err=true;
-		}
-		Server->Log("Copying done.", LL_DEBUG);
-
-		if(clientlist_copy_err)
-		{
-			dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new.ub";
-		}
-		else
-		{
-			Server->deleteFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub");
-		}
+		std::wstring dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new.ub";
 
 		db->BeginTransaction();
 		bool b=os_rename_file(dst_file, L"urbackup/clientlist_"+convert(clientid)+L".ub");
