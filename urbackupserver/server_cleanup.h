@@ -52,6 +52,8 @@ private:
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);
 
+	bool truncate_files_recurisve(std::wstring path);
+
 	IDatabase *db;
 
 	IQuery *q_incomplete_images;

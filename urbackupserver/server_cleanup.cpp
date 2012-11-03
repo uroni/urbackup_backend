@@ -744,6 +744,17 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 		b=os_remove_nonempty_dir(os_file_prefix(path));
 	}
 
+	if(!b && os_directory_exists(os_file_prefix(path)) )
+	{
+		Server->Log("Deleting directory failed. Trying to truncate all files to zero...", LL_ERROR);
+		b=truncate_files_recurisve(os_file_prefix(path));
+
+		if(b)
+		{
+			b=os_remove_nonempty_dir(os_file_prefix(path));
+		}
+	}
+
 	bool del=true;
 	bool err=false;
 	if(!b)
@@ -1032,6 +1043,33 @@ void ServerCleanupThread::doQuit(void)
 {
 	do_quit=true;
 	cond->notify_all();
+}
+
+bool ServerCleanupThread::truncate_files_recurisve(std::wstring path)
+{
+	std::vector<SFile> files=getFiles(path);
+
+	for(size_t i=0;i<files.size();++i)
+	{
+		if(files[i].isdir)
+		{
+			bool b=truncate_files_recurisve(path+os_file_sep()+files[i].name);
+			if(!b)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			bool b=os_file_truncate(path+os_file_sep()+files[i].name, 0);
+			if(!b)
+			{
+				Server->Log(L"Truncating file \""+path+os_file_sep()+files[i].name+L"\" failed. Stopping truncating.", LL_ERROR);
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 #endif //CLIENT_ONLY
