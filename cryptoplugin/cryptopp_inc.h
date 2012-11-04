@@ -1,0 +1,32 @@
+#ifdef _WIN32
+#include <aes.h>
+#include <sha.h>
+#include <modes.h>
+#include <zlib.h>
+#include <dsa.h>
+#include <osrng.h>
+#include <files.h>
+#include <pwdbased.h>
+#include <hex.h>
+#else
+#include "config.h"
+#define CRYPTOPP_INCLUDE_AES <CRYPTOPP_INCLUDE_PREFIX/aes.h>
+#define CRYPTOPP_INCLUDE_SHA <CRYPTOPP_INCLUDE_PREFIX/sha.h>
+#define CRYPTOPP_INCLUDE_MODES <CRYPTOPP_INCLUDE_PREFIX/modes.h>
+#define CRYPTOPP_INCLUDE_ZLIB <CRYPTOPP_INCLUDE_PREFIX/zlib.h>
+#define CRYPTOPP_INCLUDE_DSA <CRYPTOPP_INCLUDE_PREFIX/dsa.h>
+#define CRYPTOPP_INCLUDE_OSRNG <CRYPTOPP_INCLUDE_PREFIX/osrng.h>
+#define CRYPTOPP_INCLUDE_FILES <CRYPTOPP_INCLUDE_PREFIX/files.h>
+#define CRYPTOPP_INCLUDE_PWDBASED <CRYPTOPP_INCLUDE_PREFIX/pwdbased.h>
+#define CRYPTOPP_INCLUDE_HEX <CRYPTOPP_INCLUDE_PREFIX/hex.h>
+
+#include CRYPTOPP_INCLUDE_AES
+#include CRYPTOPP_INCLUDE_SHA
+#include CRYPTOPP_INCLUDE_MODES
+#include CRYPTOPP_INCLUDE_ZLIB
+#include CRYPTOPP_INCLUDE_DSA
+#include CRYPTOPP_INCLUDE_OSRNG
+#include CRYPTOPP_INCLUDE_FILES
+#include CRYPTOPP_INCLUDE_PWDBASED
+#include CRYPTOPP_INCLUDE_HEX
+#endif
