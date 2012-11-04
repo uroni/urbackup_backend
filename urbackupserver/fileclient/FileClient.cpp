@@ -155,7 +155,9 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
         if(start==true)
         {
 				max_version=0;
-#ifdef _WIN32                
+#if defined(_WIN32) || defined(__FreeBSD__)                
+				  //				  Server->Log("Enumerating ip addresses...", LL_DEBUG);
+       #ifdef _WIN32
                 //get local ip address
                 char hostname[MAX_PATH];
                 struct    hostent* h;
@@ -165,13 +167,14 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
                 if(rc==SOCKET_ERROR)
                         return 0;
 
-                std::vector<_u32> addresses;
+		  Server->Log("Hostname: "+(std::string)hostname, LL_DEBUG);
+		  std::vector<_u32> addresses;
 
                 if(NULL != (h = gethostbyname(hostname)))
                 {
                 for(_u32 x = 0; (h->h_addr_list[x]); x++)
                 {
-               
+		  //		  Server->Log("Found address for hostname", LL_DEBUG);
                         ((uchar*)(&address))[0] = h->h_addr_list[x][0];
                         ((uchar*)(&address))[1] = h->h_addr_list[x][1];
                         ((uchar*)(&address))[2] = h->h_addr_list[x][2];
@@ -181,6 +184,26 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
                         local_ip=address;
                 }
                 }
+#else
+		  _u32 address;
+		  ifaddrs *ifap;
+		  std::vector<_u32> addresses;
+		  int rc=getifaddrs(&ifap);
+		  if(rc==0)
+		    {
+		      for(;ifap!=NULL;ifap=ifap->ifa_next)
+			{
+			  address=((struct sockaddr_in*)(ifap->ifa_addr))->sin_addr.s_addr;
+			  ((uchar*)(&address))[3]=255;
+			  addresses.push_back(address);
+			}
+		    }
+		  else
+		    {
+		      Server->Log("Getting interface ips failed", LL_ERROR);
+		    }
+#endif
+
 
                 sockaddr_in addr_udp;
 
@@ -193,29 +216,14 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
                 addr_udp.sin_port=htons(UDP_PORT);
                 addr_udp.sin_addr.s_addr=address;
 
-                char ch=ID_PING;
-                sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-
-                for(size_t i=0;i<addresses.size();++i)
-                {
-                        addr_udp.sin_addr.s_addr=addresses[i];
-                        sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-                }
-
-				for(size_t i=0;i<addr_hints.size();++i)
-				{
-					addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
-					sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-				}
-#else
-		int broadcast=1;
-		if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
-		{
-			Server->Log("Error setting socket to broadcast", LL_ERROR);
-		}
-		
+                
 		#if defined(__FreeBSD__)
 		{
+		    int broadcast=1;
+		    if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
+		      {
+			Server->Log("Error setting socket to broadcast", LL_ERROR);
+		      }
 		    int optval=1;
 		    if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
 		    {
@@ -223,6 +231,45 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 		    }
 		}
 		#endif
+
+		char ch=ID_PING;
+                sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+
+                for(size_t i=0;i<addresses.size();++i)
+                {
+		  char *ip=(char*)&addresses[i];
+		  //		  Server->Log("Sending broadcast to "+nconvert((unsigned char)ip[0])+"."+nconvert((unsigned char)ip[1])+"."+nconvert((unsigned char)ip[2])+"."+nconvert((unsigned char)ip[3]), LL_DEBUG);
+                        addr_udp.sin_addr.s_addr=addresses[i];
+                        sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+                }
+
+		#if defined(__FreeBSD__)
+		{
+		    int broadcast=0;
+		    if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
+		      {
+			Server->Log("Error setting socket to broadcast", LL_ERROR);
+		      }
+		    int optval=0;
+		    if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+		    {
+			Server->Log("Error setting IP_ONESBCAST", LL_ERROR);
+		    }
+		}
+		#endif
+
+				for(size_t i=0;i<addr_hints.size();++i)
+				{
+					addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
+					sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+				}
+#else
+				  //				  Server->Log("Only sending to broadcast addreess", LL_DEBUG);
+		int broadcast=1;
+		if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
+		{
+			Server->Log("Error setting socket to broadcast", LL_ERROR);
+		}
 		
 		sockaddr_in addr_udp;
 		addr_udp.sin_family=AF_INET;
@@ -242,16 +289,6 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 		{
 			Server->Log("Error setting socket to not broadcast", LL_ERROR);
 		}
-		
-		#if defined(__FreeBSD__)
-		{
-		    int optval=0;
-		    if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
-		    {
-			Server->Log("Error setting IP_ONESBCAST", LL_ERROR);
-		    }
-		}
-		#endif
 
 		for(size_t i=0;i<addr_hints.size();++i)
 		{
