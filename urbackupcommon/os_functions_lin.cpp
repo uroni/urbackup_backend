@@ -39,6 +39,12 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+#if defined(__FreeBSD__)
+#define lstat64 lstat
+#define stat64 stat
+#define statvfs64 statvfs
+#endif
+
 void getMousePos(int &x, int &y)
 {
 	x=0;

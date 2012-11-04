@@ -411,7 +411,7 @@ float ServerSettings::parseTimeDet(std::string t)
 
 int ServerSettings::parseDayOfWeek(std::string dow)
 {
-	if(dow.size()==1 && isnumber(dow[0])==true)
+	if(dow.size()==1 && str_isnumber(dow[0])==true)
 	{
 		int r=atoi(dow.c_str());
 		if(r==0) r=7;
