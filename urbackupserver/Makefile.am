@@ -3,8 +3,10 @@ liburbackupserver_la_SOURCES = dllmain.cpp ../stringtools.cpp ../urbackupcommon/
 AM_CXXFLAGS = -DLINUX
 INSTALL_OPTS=-o urbackup -g urbackup
 install-data-local: backup_server.db ../urbackup/status.htm ../urbackup/google_chart.js www/*.js www/*.htm www/*.css $(srcdir)/www/*.png www/*.gif
-	$(INSTALL_DATA) $(INSTALL_OPTS) -D "$(srcdir)/backup_server.db" "$(DESTDIR)$(localstatedir)/urbackup/backup_server.db.template"
-	$(INSTALL_DATA) $(INSTALL_OPTS) -D "$(srcdir)/../urbackup/status.htm" "$(DESTDIR)$(localstatedir)/urbackup/status.htm"
+	$(INSTALL_DATA) $(INSTALL_OPTS) -d "$(DESTDIR)$(localstatedir)/urbackup"
+	chmod +x "$(DESTDIR)$(localstatedir)/urbackup"
+	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/backup_server.db" "$(DESTDIR)$(localstatedir)/urbackup/backup_server.db.template"
+	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/../urbackup/status.htm" "$(DESTDIR)$(localstatedir)/urbackup/status.htm"
 	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/../urbackup/google_chart.js" "$(DESTDIR)$(localstatedir)/urbackup/"
 	$(INSTALL_DATA) $(INSTALL_OPTS) -d "$(DESTDIR)$(localstatedir)/urbackup/www"
 if !PACKAGING

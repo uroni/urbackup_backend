@@ -214,6 +214,16 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 			Server->Log("Error setting socket to broadcast", LL_ERROR);
 		}
 		
+		#if defined(__FreeBSD__)
+		{
+		    int optval=1;
+		    if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+		    {
+			Server->Log("Error setting IP_ONESBCAST", LL_ERROR);
+		    }
+		}
+		#endif
+		
 		sockaddr_in addr_udp;
 		addr_udp.sin_family=AF_INET;
 		addr_udp.sin_port=htons(UDP_PORT);
@@ -232,6 +242,16 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 		{
 			Server->Log("Error setting socket to not broadcast", LL_ERROR);
 		}
+		
+		#if defined(__FreeBSD__)
+		{
+		    int optval=0;
+		    if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+		    {
+			Server->Log("Error setting IP_ONESBCAST", LL_ERROR);
+		    }
+		}
+		#endif
 
 		for(size_t i=0;i<addr_hints.size();++i)
 		{

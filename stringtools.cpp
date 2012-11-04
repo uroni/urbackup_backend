@@ -886,7 +886,7 @@ void TokenizeMail(const std::wstring& str, std::vector<std::wstring> &tokens, st
 //--------------------------------------------------------------------
 /**
 */
-bool isnumber(char ch)
+bool str_isnumber(char ch)
 {
 	if( ch>=48 && ch <=57 )
 		return true;
@@ -909,7 +909,7 @@ bool isletter(char ch)
 //--------------------------------------------------------------------
 /**
 */
-bool isnumber(wchar_t ch)
+bool str_isnumber(wchar_t ch)
 {
 	if( ch>=48 && ch <=57 )
 		return true;
@@ -989,7 +989,7 @@ int getNextNumber(const std::string &pStr, int *read)
 	bool start=false;
 	for(size_t i=0;i<pStr.size();++i)
 	{
-		if( isnumber(pStr[i] ) )
+		if( str_isnumber(pStr[i] ) )
 		{
 			num+=pStr[i];
 			start=true;
@@ -1553,7 +1553,7 @@ void replaceNonAlphaNumeric(std::string &str, char rch)
 {
 	for(size_t i=0;i<str.size();++i)
 	{
-		if(isletter(str[i])==false && isnumber(str[i])==false)
+		if(isletter(str[i])==false && str_isnumber(str[i])==false)
 		{
 			str[i]=rch;
 		}

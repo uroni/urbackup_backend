@@ -55,9 +55,9 @@ void Tokenize(const std::string& str, std::vector<std::string> &tokens, std::str
 void Tokenize(const std::wstring& str, std::vector<std::wstring> &tokens, std::wstring seps);
 void TokenizeMail(const std::string& str, std::vector<std::string> &tokens, std::string seps);
 void TokenizeMail(const std::wstring& str, std::vector<std::wstring> &tokens, std::wstring seps);
-bool isnumber(char ch);
+bool str_isnumber(char ch);
 bool isletter(char ch);
-bool isnumber(wchar_t ch);
+bool str_isnumber(wchar_t ch);
 bool isletter(wchar_t ch);
 void strupper(std::string *pStr);
 void strupper(std::wstring *pStr);
