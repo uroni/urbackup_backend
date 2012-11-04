@@ -31,6 +31,11 @@
 # 	define GetTickCount() (unsigned int)(clock()/CLOCKS_PER_SEC)
 #	define INVALID_HANDLE_VALUE -1
 #	define Sleep(x) usleep(x*1000)
+#	define MAX_PATH 255
+#endif
+
+#if defined(__FreeBSD__)
+#include <ifaddrs.h>
 #endif
 
 #endif //SOCKET_HEADER_H
