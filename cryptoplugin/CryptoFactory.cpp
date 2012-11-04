@@ -26,21 +26,7 @@
 #include "ZlibCompression.h"
 #include "ZlibDecompression.h"
 
-#ifdef _WIN32
-#include <dsa.h>
-#include <osrng.h>
-#include <files.h>
-#include <pwdbased.h>
-#include <sha.h>
-#include <hex.h>
-#else
-#include <crypto++/dsa.h>
-#include <crypto++/osrng.h>
-#include <crypto++/files.h>
-#include <crypto++/pwdbased.h>
-#include <crypto++/sha.h>
-#include <crypto++/hex.h>
-#endif
+#include "cryptopp_inc.h"
 
 IAESEncryption* CryptoFactory::createAESEncryption(const std::string &password)
 {

@@ -1,13 +1,5 @@
 #include <string>
-#ifdef _WIN32
-#include <aes.h>
-#include <sha.h>
-#include <modes.h>
-#else
-#include <crypto++/aes.h>
-#include <crypto++/sha.h>
-#include <crypto++/modes.h>
-#endif
+#include "cryptopp_inc.h"
 
 #include "IAESEncryption.h"
 

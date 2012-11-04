@@ -1,10 +1,6 @@
 #include "IZlibCompression.h"
 
-#ifdef _WIN32
-#include <zlib.h>
-#else
-#include <crypto++/zlib.h>
-#endif
+#include "cryptopp_inc.h"
 
 class ZlibCompression : public IZlibCompression
 {
