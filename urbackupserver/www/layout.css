@@ -1,7 +1,7 @@
 body
 {
 	font-family: arial, sans-serif;
-	font-size: 13px;
+	font-size: 15px;
 	color: #1C1C1C;
 }
 a
@@ -16,7 +16,7 @@ a:hover
 }
 .links1
 {
-	font-size: 15px;
+	font-size: 20px;
 	color: #0000a7;
 }
 .links1_active
@@ -72,8 +72,7 @@ h3
 .tabHeader
 {
 	border-top: 1px solid black;
-	border-right: 0px solid black;
-	border-left: 0px solid black;
+	border-left: 1px solid black;
 	border-bottom: 1px solid black;
 	text-align:left;
 	padding: 3px;
@@ -87,28 +86,24 @@ h3
 .tabHeaderRight
 {
 	border-top: 1px solid black;
-	border-right: 0px solid black;
-	border-left: 0px solid black;
-	border-bottom: 0px solid black;
+	border-right: 1px solid black;
+	border-left: 1px solid black;
 	padding: 3px;
 	text-align:left;
+	border-bottom: 1px solid black;
 }
 .tabFLeft
 {
-	border-top: 1px solid black;
-	border-right: 0px solid black;
-	border-left: 0px solid black;
-	border-bottom: 0px solid black;
+	border: 1px solid black;
 	padding: 3px;
 	padding-right: 5px;
-
+	border-right: none;
+	border-top: none;
 }
 .tabFRight
 {
-	border-top: 1px solid black;
-	border-right: 0px solid black;
-	border-left: 0px solid black;
-	border-bottom: 0px solid black;
+	border: 1px solid black;
+	border-top: none;
 	padding: 3px;
 }
 .tabFNB
@@ -118,18 +113,16 @@ h3
 }
 .tabFLeftH
 {
-	border-top: 1px solid black;
-	border-right: 0px solid black;
-	border-left: 0px solid black;
-	border-bottom: 0px solid black;
+	border: 1px solid black;
+	padding: 3px;
 	padding-right: 5px;
+	border-right: none;
+	border-top: none;
 }
 .tabFRightH
 {
-	border-top: 1px solid black;
-	border-right: 0px solid black;
-	border-left: 0px solid black;
-	border-bottom: 0px solid black;
+	border: 1px solid black;
+	border-top: none;
 	padding: 3px;
 }
 .tabFLeftH:hover
@@ -146,7 +139,7 @@ h3
 }
 .languages
 {
-	font-size: 10px;
+	font-size: 12px;
 	color: #0000a7;
 }
 .languages a
