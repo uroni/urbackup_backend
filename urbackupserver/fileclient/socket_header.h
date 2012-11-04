@@ -19,7 +19,6 @@
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
-#	include <sys/sendfile.h>
 #	define SOCKET_ERROR -1
 #	define closesocket close
 #	define SOCKET int
