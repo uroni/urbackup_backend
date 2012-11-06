@@ -1001,7 +1001,7 @@ std::string ClientConnector::replaceChars(std::string in)
 				break;
 			}
 		}
-		if( !isletter(in[i]) && !isnumber(in[i]) && !found )
+		if( !isletter(in[i]) && !str_isnumber(in[i]) && !found )
 		{
 			in[i]='_';
 		}
@@ -1201,7 +1201,7 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 			bool isnum=true;
 			for(size_t j=0;j<s_ltime.size();++j)
 			{
-				if(!isnumber(s_ltime[j]))
+				if(!str_isnumber(s_ltime[j]))
 				{
 					isnum=false;
 					break;

@@ -367,7 +367,7 @@ void IndexThread::operator()(void)
 				{
 					scd->ref->dontincrement=true;
 				}
-				if(start_shadowcopy(scd, NULL, false, std::vector<SCRef*>(), image_backup==1?true:false))
+				if(start_shadowcopy(scd, NULL, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==1?true:false))
 				{
 					contractor->Write("done-"+nconvert(scd->ref->save_id)+"-"+Server->ConvertToUTF8(scd->target));
 				}
@@ -407,7 +407,7 @@ void IndexThread::operator()(void)
 				scd->orig_target=scd->target;
 
 				Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\"...", LL_INFO);
-				bool b=start_shadowcopy(scd, NULL, false, std::vector<SCRef*>(), image_backup==0?false:true);
+				bool b=start_shadowcopy(scd, NULL, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
 				Server->Log("done.", LL_INFO);
 				if(!b || scd->ref==NULL)
 				{
@@ -555,8 +555,8 @@ void IndexThread::indexDirs(void)
 				scd->starttime=Server->getTimeSeconds();
 				scd->target=getShareDir(backup_dirs[i].tname);
 				scd->orig_target=scd->target;
-				scd->fileserv=true;
 			}
+			scd->fileserv=true;
 
 			std::wstring mod_path=backup_dirs[i].path;
 
@@ -902,6 +902,18 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						break;
 					}
 				}
+
+				IFile *volf=Server->openFile(sc_refs[i]->volpath, MODE_READ);
+				if(volf==NULL)
+				{
+					do_restart=true;
+					Server->Log("Removing reference because shadowcopy could not be openend", LL_WARNING);
+				}
+				else
+				{
+					Server->destroy(volf);
+				}
+
 				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000 || (do_restart==true && restart_own==true && only_own_tokens==true ) )
 				{
 					if( only_own_tokens==true)
@@ -1062,6 +1074,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 	dir->target.erase(0,wpath.size());
 	dir->ref->volpath=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
+	dir->starttime=Server->getTimeSeconds();
 	dir->target=dir->ref->volpath+os_file_sep()+dir->target;
 	if(dir->fileserv)
 	{
