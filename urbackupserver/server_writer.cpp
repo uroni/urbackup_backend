@@ -188,7 +188,8 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			Server->Log("Not enough free space. Waiting for cleanup...");
 			if(cleanupSpace())
 			{
-				if(!vhd->Write(buf, bsize))
+				vhd->Seek(pos);
+				if(vhd->Write(buf, bsize)==0)
 				{
 					ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
 					has_error=true;
