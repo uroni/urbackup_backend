@@ -1726,7 +1726,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	bool error=false;
 	std::vector<size_t> deleted_ids;
-	std::vector<size_t> *deleted_ids_ref;
+	std::vector<size_t> *deleted_ids_ref=NULL;
 	if(on_snapshot) deleted_ids_ref=&deleted_ids;
 
 	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error, deleted_ids_ref);
