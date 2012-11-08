@@ -54,8 +54,10 @@ private:
 	
 	IQuery* q_get_dir;
 	IQuery* q_add_dir;
+	IQuery* q_add_dir_with_id;
 	IQuery* q_add_del_dir;
 	IQuery* q_add_file;
+	IQuery* q_get_dir_backup;
 
 	std::list<SLastEntries> lastentries;
 	std::vector<std::wstring> watching;

@@ -509,7 +509,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	MFT_ENUM_DATA med;
 	med.StartFileReferenceNumber = 0;
 	med.LowUsn = 0;
-	med.HighUsn = sj->last_record;
+	med.HighUsn = MAXLONGLONG; //sj->last_record;
 
 	// Process MFT in 64k chunks
 	BYTE *pData=new BYTE[sizeof(DWORDLONG) + 0x10000];
@@ -817,12 +817,9 @@ void ChangeJournalWatcher::update(bool force_write)
 
 void ChangeJournalWatcher::update_longliving(void)
 {
-	for(std::map<std::wstring, int>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
+	for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
 	{
-		if(it->second>0)
-		{
-			listener->On_FileModified(it->first, true);
-		}
+		listener->On_FileModified(it->first, true);
 	}
 	for(size_t i=0;i<error_dirs.size();++i)
 	{
@@ -883,7 +880,9 @@ const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REAS
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
 {
-	//logEntry(vol, UsnRecord);
+	if(UsnRecord->Filename==L"WriteTest.txt")
+		logEntry(vol, UsnRecord);
+
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
 	if(dir_id!=-1) //Is a directory
 	{
@@ -969,19 +968,15 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 
 			if(UsnRecord->Reason & USN_REASON_CLOSE)
 			{
-				std::map<std::wstring, int>::iterator it=open_write_files.find(real_fn);
+				std::map<std::wstring, bool>::iterator it=open_write_files.find(real_fn);
 				if(it!=open_write_files.end())
 				{
-					--it->second;
-					if(it->second<=0)
-					{
-						open_write_files.erase(it);
-					}
+					open_write_files.erase(it);
 				}
 			}
 			else if(UsnRecord->Reason & watch_flags)
 			{
-				++open_write_files[real_fn];
+				open_write_files[real_fn]=true;
 			}
 
 			if(UsnRecord->Reason & (watch_flags | USN_REASON_RENAME_OLD_NAME) )
