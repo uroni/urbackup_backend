@@ -18,6 +18,7 @@
 
 #include "Mutex_lin.h"
 #include "Server.h"
+#include "stringtools.h"
 
 CMutex::CMutex(void)
 {
@@ -42,9 +43,10 @@ CMutex::CMutex(void)
 
 CMutex::~CMutex(void)
 {
-	if(pthread_mutex_destroy(&ptmutex)!=0)
+	int rc;
+	if( (rc=pthread_mutex_destroy(&ptmutex))!=0)
 	{
-		Server->Log("Error destroying mutex", LL_ERROR);
+		Server->Log("Error destroying mutex rc="+nconvert(rc), LL_ERROR);
 	}
 }
 

@@ -22,6 +22,9 @@
 #include <sys/time.h>
 #endif
 
+#include "Server.h"
+#include "stringtools.h"
+
 CCondition::CCondition()
 {
 	pthread_cond_init(&cond, NULL);
@@ -29,7 +32,11 @@ CCondition::CCondition()
 
 CCondition::~CCondition()
 {
-	pthread_cond_destroy(&cond);
+	int rc=pthread_cond_destroy(&cond);
+	if(rc!=0)
+	{
+		Server->Log("Destroying condition failed ec="+nconvert(rc), LL_ERROR);
+	}
 }
 
 void CCondition::wait(IScopedLock *lock, int timems)

@@ -825,7 +825,10 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 		return 0;
 	}
 	if(bsize+curr_offset>dstsize)
+	{
+		Server->Log("VHD file is not large enough", LL_ERROR);
 		return 0;
+	}
 
 	bool dwrite_footer=false;
 
