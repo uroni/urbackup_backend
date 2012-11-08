@@ -46,7 +46,10 @@ InternetServiceConnector::InternetServiceConnector(void)
 
 InternetServiceConnector::~InternetServiceConnector(void)
 {
-	Server->destroy(local_mutex);
+	if(local_mutex!=NULL)
+	{
+		Server->destroy(local_mutex);
+	}
 }
 
 void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
@@ -107,8 +110,9 @@ void InternetServiceConnector::cleanup(void)
 void InternetServiceConnector::do_stop_connecting(void)
 {
 	IScopedLock lock(local_mutex);
-	connection_stop_cond->notify_all();
 	cleanup_pipes();
+	connection_stop_cond->notify_all();
+	local_mutex=NULL;
 }
 
 bool InternetServiceConnector::Run(void)
@@ -544,9 +548,13 @@ void InternetServiceConnector::stopConnecting(void)
 
 void InternetServiceConnector::stopConnectingAndWait(void)
 {
-	IScopedLock lock(local_mutex);
-	stop_connecting=true;
-	connection_stop_cond->wait(&lock);
+	IMutex *local_mutex_tmp=local_mutex;
+	{
+		IScopedLock lock(local_mutex_tmp);
+		stop_connecting=true;
+		connection_stop_cond->wait(&lock);
+	}
+	Server->destroy(local_mutex_tmp);
 }
 
 bool InternetServiceConnector::isConnected(void)

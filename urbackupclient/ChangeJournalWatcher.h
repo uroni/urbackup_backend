@@ -115,7 +115,7 @@ private:
 	bool indexing_in_progress;
 	std::wstring indexing_volume;
 
-	std::map<std::wstring, int> open_write_files;
+	std::map<std::wstring, bool> open_write_files;
 	std::vector<std::wstring> error_dirs;
 
 	DirectoryWatcherThread * dwt;

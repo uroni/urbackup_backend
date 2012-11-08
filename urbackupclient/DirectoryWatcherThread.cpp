@@ -40,8 +40,10 @@ void DirectoryWatcherThread::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
+	q_get_dir_backup=db->Prepare("SELECT id FROM mdirs_backup WHERE name=?");
 	q_get_dir=db->Prepare("SELECT id FROM mdirs WHERE name=?");
 	q_add_dir=db->Prepare("INSERT INTO mdirs (name) VALUES (?)");
+	q_add_dir_with_id=db->Prepare("INSERT INTO mdirs (id, name) VALUES (?, ?)");
 	q_add_del_dir=db->Prepare("INSERT INTO del_dirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM del_dirs WHERE name=?)");
 	q_add_file=db->Prepare("INSERT INTO mfiles SELECT ? AS dir_id, ? AS name WHERE NOT EXISTS (SELECT * FROM mfiles WHERE dir_id=? AND name=?)");
 
@@ -210,13 +212,29 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstrin
 
 		if(res.empty())
 		{
-			q_add_dir->Bind(dir);
-			q_add_dir->Write();
-			q_add_dir->Reset();
+			q_get_dir_backup->Bind(dir);
+			db_results res=q_get_dir_backup->Read();
+			q_get_dir_backup->Reset();
+		
+			_i64 dir_id;
+			if(res.empty())
+			{
+				q_add_dir->Bind(dir);
+				q_add_dir->Write();
+				q_add_dir->Reset();
+				dir_id=db->getLastInsertID();
+			}
+			else
+			{
+				dir_id=watoi64(res[0][L"id"]);
+				q_add_dir_with_id->Bind(dir_id);
+				q_add_dir_with_id->Bind(dir);
+				q_add_dir_with_id->Write();
+				q_add_dir_with_id->Reset();
+			}
 
 			if(!fn.empty())
 			{
-				_i64 dir_id=db->getLastInsertID();
 				q_add_file->Bind(dir_id);
 				q_add_file->Bind(fn);
 				q_add_file->Bind(dir_id);

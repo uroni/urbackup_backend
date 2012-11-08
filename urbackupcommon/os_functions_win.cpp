@@ -385,7 +385,14 @@ std::wstring os_get_final_path(std::wstring path)
 #ifndef OS_FUNC_NO_SERVER
 bool os_rename_file(std::wstring src, std::wstring dst)
 {
+	DeleteFileW(dst.c_str());
 	BOOL rc=MoveFileW(src.c_str(), dst.c_str());
+#ifdef _DEBUG
+	if(rc==0)
+	{
+		Server->Log("MoveFileW error: "+nconvert((int)GetLastError()), LL_ERROR);
+	}
+#endif
 	return rc!=0;
 }
 #endif
