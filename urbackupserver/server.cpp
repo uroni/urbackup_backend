@@ -99,6 +99,23 @@ void BackupServer::operator()(void)
 		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
 	}
 #endif
+	if( !settings->getValue("use_tmpfiles", false) )
+	{
+		std::wstring backupfolder;
+		if( settings->getValue(L"backupfolder", &backupfolder) )
+		{
+			std::wstring tmpfile_path=backupfolder+os_file_sep()+L"urbackup_tmp_files";
+
+			Server->Log("Removing temporary files...");
+			os_remove_nonempty_dir(tmpfile_path);
+			Server->Log("Recreating temporary folder...");
+			if(!os_create_dir(tmpfile_path))
+			{
+				Server->wait(5000);
+				os_create_dir(tmpfile_path);
+			}
+		}
+	}
 
 	{
 		Server->Log("Testing if backup destination can handle subvolumes and snapshots...", LL_DEBUG);
