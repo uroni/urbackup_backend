@@ -25,6 +25,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <errno.h>
 #endif
 
 const uint64 def_header_offset=0;
