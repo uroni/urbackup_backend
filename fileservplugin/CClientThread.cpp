@@ -1022,6 +1022,7 @@ bool CClientThread::isStopped(void)
 void CClientThread::StopThread(void)
 {
 	stopped=true;
+	clientpipe->shutdown();
 	Log("Client thread stopped", LL_DEBUG);
 }
 
