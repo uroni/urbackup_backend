@@ -69,9 +69,13 @@ const unsigned int c_filesrv_connect_timeout=10000;
 int BackupServerGet::running_backups=0;
 int BackupServerGet::running_file_backups=0;
 IMutex *BackupServerGet::running_backup_mutex=NULL;
+IMutex *BackupServerGet::tmpfile_mutex=NULL;
+size_t BackupServerGet::tmpfile_num=0;
 
-BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots, bool use_reflink)
-	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL), use_snapshots(use_snapshots), use_reflink(use_reflink)
+BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName,
+	     bool internet_connection, bool use_snapshots, bool use_reflink)
+	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
+	  use_snapshots(use_snapshots), use_reflink(use_reflink)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -124,11 +128,13 @@ BackupServerGet::~BackupServerGet(void)
 void BackupServerGet::init_mutex(void)
 {
 	running_backup_mutex=Server->createMutex();
+	tmpfile_mutex=Server->createMutex();
 }
 
 void BackupServerGet::destroy_mutex(void)
 {
 	Server->destroy(running_backup_mutex);
+	Server->destroy(tmpfile_mutex);
 }
 
 void BackupServerGet::unloadSQL(void)
@@ -297,8 +303,20 @@ void BackupServerGet::operator ()(void)
 	if( use_snapshots )
 		use_reflink=true;
 #endif
+	use_tmpfiles=server_settings->getSettings()->use_tmpfiles;
+	use_tmpfiles_images=server_settings->getSettings()->use_tmpfiles_images;
+	if(!use_tmpfiles)
+	{
+		tmpfile_path=server_settings->getSettings()->backupfolder+os_file_sep()+L"urbackup_tmp_files";
+		os_create_dir(tmpfile_path);
+		if(!os_directory_exists(tmpfile_path))
+		{
+			Server->Log("Could not create or see temporary folder in backuppath", LL_ERROR);
+			use_tmpfiles=true;
+		}
+	}
 
-	bsh=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots, use_reflink);
+	bsh=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots, use_reflink, use_tmpfiles);
 	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
 	Server->getThreadPool()->execute(bsh);
 	Server->getThreadPool()->execute(bsh_prepare);
@@ -1910,7 +1928,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								if(os_curr_path[i]=='/')
 									os_curr_path[i]=os_file_sep()[0];
 						}
-						if(!on_snapshot || indirchange)
+						if(!on_snapshot || (indirchange && !r_offline) )
 						{
 							if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
 							{
@@ -3438,7 +3456,20 @@ IFile *BackupServerGet::getTemporaryFileRetry(void)
 	IFile *pfd=NULL;
 	while(pfd==NULL)
 	{
-		pfd=Server->openTemporaryFile();
+		if(use_tmpfiles)
+		{
+			pfd=Server->openTemporaryFile();
+		}
+		else
+		{
+			size_t num;
+			{
+				IScopedLock lock(tmpfile_mutex);
+				num=tmpfile_num++;
+			}
+			pfd=Server->openFile(tmpfile_path+os_file_sep()+convert(num), MODE_WRITE);
+		}
+
 		if(pfd==NULL)
 		{
 			ServerLogger::Log(clientid, "Error opening temporary file. Retrying...", LL_WARNING);

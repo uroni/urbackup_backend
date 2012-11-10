@@ -25,7 +25,7 @@ class ServerFileBufferWriter;
 class ServerVHDWriter : public IThread
 {
 public:
-	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid);
+	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles);
 	~ServerVHDWriter(void);
 
 	void operator()(void);

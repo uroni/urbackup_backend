@@ -152,6 +152,10 @@ private:
 	std::wstring backuppath_hashes;
 	std::wstring backuppath_single;
 
+	std::wstring tmpfile_path;
+	static size_t tmpfile_num;
+	static IMutex *tmpfile_mutex;
+
 	int clientid;
 	int backupid;
 
@@ -229,6 +233,8 @@ private:
 
 	bool use_snapshots;
 	bool use_reflink;
+	bool use_tmpfiles;
+	bool use_tmpfiles_images;
 
 	CTCPStack tcpstack;
 

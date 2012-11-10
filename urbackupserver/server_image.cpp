@@ -415,7 +415,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						goto do_image_cleanup;
 					}
 
-					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid);
+					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images);
 					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile);
 
 					blockdata=vhdfile->getBuffer();

@@ -23,7 +23,7 @@ struct STmpFile
 class BackupServerHash : public IThread, public INotEnoughSpaceCallback, public IChunkPatcherCallback
 {
 public:
-	BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink);
+	BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles);
 	~BackupServerHash(void);
 
 	void operator()(void);
@@ -59,6 +59,8 @@ private:
 	bool replaceFile(IFile *tf, const std::wstring &dest, const std::wstring &orig_fn);
 	bool replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn);
 
+	bool renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
+	bool renameFile(IFile *tf, const std::wstring &dest);
 
 	std::map<std::pair<std::string, _i64>, std::vector<STmpFile> > files_tmp;
 
@@ -92,5 +94,6 @@ private:
 
 	bool use_snapshots;
 	bool use_reflink;
+	bool use_tmpfiles;
 	_i64 chunk_patch_pos;
 };

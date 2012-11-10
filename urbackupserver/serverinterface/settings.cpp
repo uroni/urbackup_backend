@@ -89,7 +89,8 @@ struct SGeneralSettings
 	SGeneralSettings(void): no_images(false), no_file_backups(false), autoshutdown(false), autoupdate_clients(true),
 		max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true),
 		internet_server_port(55415),
-		global_local_speed(-1), global_internet_speed(-1) {}
+		global_local_speed(-1), global_internet_speed(-1),
+		use_tmpfiles(false), use_tmpfiles_images(false) {}
 	std::wstring backupfolder;
 	bool no_images;
 	bool no_file_backups;
@@ -104,6 +105,8 @@ struct SGeneralSettings
 	unsigned short internet_server_port;
 	int global_local_speed;
 	int global_internet_speed;
+	bool use_tmpfiles;
+	bool use_tmpfiles_images;
 };
 
 struct SClientSettings
@@ -150,6 +153,10 @@ SGeneralSettings getGeneralSettings(IDatabase *db)
 			ret.global_internet_speed=watoi(value);
 		else if(key==L"global_local_speed")
 			ret.global_local_speed=watoi(value);
+		else if(key==L"use_tmpfiles" && value==L"true")
+			ret.use_tmpfiles=true;
+		else if(key==L"use_tmpfiles_images" && value==L"true")
+			ret.use_tmpfiles_images=true;
 	}
 	return ret;
 }
@@ -233,6 +240,8 @@ void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
 	updateSetting(L"backup_database", settings.backup_database?L"true":L"false",  q_get, q_update, q_insert);
 	updateSetting(L"global_local_speed", convert(settings.global_local_speed),  q_get, q_update, q_insert);
 	updateSetting(L"global_internet_speed", convert(settings.global_internet_speed),  q_get, q_update, q_insert);
+	updateSetting(L"use_tmpfiles", convert(settings.use_tmpfiles),  q_get, q_update, q_insert);
+	updateSetting(L"use_tmpfiles_images", convert(settings.use_tmpfiles_images),  q_get, q_update, q_insert);
 
 #ifdef _WIN32
 	if(!settings.tmpdir.empty())
@@ -582,11 +591,15 @@ ACTION_IMPL(settings)
 					s.overwrite=(GET[L"overwrite"]==L"true");
 					if(s.overwrite)
 					{
+						db->BeginTransaction();
 						updateClientSettings(t_clientid, GET, db);
 						updateArchiveSettings(t_clientid, GET, db);
+						db->EndTransaction();
 					}
 					
+					db->BeginTransaction();
 					saveClientSettings(s, db, t_clientid);
+					db->EndTransaction();
 					if(GET[L"no_ok"]!=L"true")
 					{
 						ret.set("saved_ok", true);
@@ -763,11 +776,15 @@ ACTION_IMPL(settings)
 				settings.global_local_speed=watoi(GET[L"global_local_speed"]);
 				settings.internet_server=Server->ConvertToUTF8(GET[L"internet_server"] );
 				settings.internet_server_port=watoi(GET[L"internet_server_port"]);
+				settings.use_tmpfiles=(GET[L"use_tmpfiles"]==L"true");
+				settings.use_tmpfiles_images=(GET[L"use_tmpfiles_images"]==L"true");
 
+				db->BeginTransaction();
 				updateClientSettings(0, GET, db);
 				updateArchiveSettings(0, GET, db);
 				updateInternetSettings(settings, db);
 				saveGeneralSettings(settings, db);
+				db->EndTransaction();
 
 				ServerSettings::updateAll();
 
@@ -796,6 +813,8 @@ ACTION_IMPL(settings)
 				obj.set("global_internet_speed", settings.global_internet_speed);
 				obj.set("internet_server", settings.internet_server);
 				obj.set("internet_server_port", settings.internet_server_port);
+				obj.set("use_tmpfiles", settings.use_tmpfiles);
+				obj.set("use_tmpfiles_images", settings.use_tmpfiles_images);
 				#ifdef _WIN32
 				obj.set("ONLY_WIN32_BEGIN","");
 				obj.set("ONLY_WIN32_END","");

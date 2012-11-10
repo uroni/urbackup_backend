@@ -33,9 +33,9 @@ extern IFSImageFactory *image_fak;
 const size_t free_space_lim=1000*1024*1024; //1000MB
 const uint64 filebuf_lim=1000*1024*1024; //1000MB
 
-ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid)
+ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles)
 {
-	filebuffer=true;
+	filebuffer=use_tmpfiles;
 
 	clientid=pClientid;
 	vhd=pVHD;
@@ -50,7 +50,7 @@ ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigne
 
 	if(filebuffer)
 	{
-		filebuf=new CFileBufMgr(500, false);
+		filebuf=new CFileBufMgr(false);
 		filebuf_writer=new ServerFileBufferWriter(this, blocksize);
 		filebuf_writer_ticket=Server->getThreadPool()->execute(filebuf_writer);
 		currfile=filebuf->getBuffer();
@@ -91,9 +91,11 @@ void ServerVHDWriter::operator()(void)
 			bool do_exit;
 			{
 				IScopedLock lock(mutex);
-				do_exit=exit;
 				if(tqueue.empty() && exit==false)
+				{
 					cond->wait(&lock);
+				}
+				do_exit=exit;
 				if(!tqueue.empty())
 				{
 					item=tqueue.front();
@@ -181,6 +183,22 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 	written+=bsize;
 	if(!b)
 	{
+		int retry=3;
+		for(int i=0;i<retry;++i)
+		{
+			Server->wait(100);
+			Server->Log("Retrying writing to VHD file...");
+			vhd->Seek(pos);
+			if(vhd->Write(buf, bsize)==0)
+			{
+				Server->Log("Writing to VHD file failed");
+			}
+			else
+			{
+				return;
+			}
+		}
+
 		std::wstring p=ExtractFilePath(vhd->getFilenameW());
 		int64 fs=os_free_space(os_file_prefix(p));
 		if(fs!=-1 && fs <= free_space_lim )
@@ -191,6 +209,22 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 				vhd->Seek(pos);
 				if(vhd->Write(buf, bsize)==0)
 				{
+					retry=3;
+					for(int i=0;i<retry;++i)
+					{
+						Server->wait(100);
+						Server->Log("Retrying writing to VHD file...");
+						vhd->Seek(pos);
+						if(vhd->Write(buf, bsize)==0)
+						{
+							Server->Log("Writing to VHD file failed");
+						}
+						else
+						{
+							return;
+						}
+					}
+
 					ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
 					has_error=true;
 				}
@@ -202,7 +236,7 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			}
 		}
 		else
-		{
+		{			
 			has_error=true;
 			ServerLogger::Log(clientid, "FATAL: Error writing to VHD-File.", LL_ERROR);
 		}
@@ -343,6 +377,7 @@ void ServerFileBufferWriter::operator()(void)
 	while(!exit_now)
 	{
 		IFile* tmp;
+		bool do_exit;
 		bool has_item=false;
 		{
 			IScopedLock lock(mutex);
@@ -350,6 +385,7 @@ void ServerFileBufferWriter::operator()(void)
 			{
 				cond->wait(&lock);
 			}
+			do_exit=exit;
 			if(!fb_queue.empty())
 			{
 				has_item=true;
@@ -433,7 +469,7 @@ void ServerFileBufferWriter::operator()(void)
 			}
 			parent->freeFile(tmp);
 		}
-		else if(exit)
+		else if(do_exit)
 		{
 			break;
 		}
@@ -444,12 +480,14 @@ void ServerFileBufferWriter::operator()(void)
 
 void ServerFileBufferWriter::doExit(void)
 {
+	IScopedLock lock(mutex);
 	exit=true;
 	cond->notify_all();
 }
 
 void ServerFileBufferWriter::doExitNow(void)
 {
+	IScopedLock lock(mutex);
 	exit_now=true;
 	exit=true;
 	cond->notify_all();

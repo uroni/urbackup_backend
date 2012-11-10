@@ -1133,6 +1133,8 @@ function show_settings2(data)
 			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
 			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
 			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
+			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
+			data.settings.use_tmpfiles_images=getCheckboxValue(data.settings.use_tmpfiles_images);
 			
 			
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
@@ -1516,6 +1518,8 @@ function saveGeneralSettings()
 	pars+=getPar("backup_database");
 	pars+=getPar("global_local_speed");
 	pars+=getPar("global_internet_speed");
+	pars+=getPar("use_tmpfiles");
+	pars+=getPar("use_tmpfiles_images");
 	pars+=getArchivePars();
 	for(var i=0;i<g.settings_list.length;++i)
 	{

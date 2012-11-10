@@ -59,6 +59,8 @@ struct SSettings
 	int global_local_speed;
 	bool internet_mode_enabled;
 	bool silent_update;
+	bool use_tmpfiles;
+	bool use_tmpfiles_images;
 };
 
 struct STimeSpan

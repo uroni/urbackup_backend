@@ -176,6 +176,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings.global_local_speed=atoi(settings_default->getValue("global_local_speed", "-1").c_str());
 	settings.internet_mode_enabled=(settings_default->getValue("internet_mode_enabled", "false")=="true");
 	settings.silent_update=(settings_default->getValue("silent_update", "false")=="true");
+	settings.use_tmpfiles=(settings_default->getValue("use_tmpfiles", "false")=="true");
+	settings.use_tmpfiles_images=(settings_default->getValue("use_tmpfiles_images", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)

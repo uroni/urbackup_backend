@@ -48,8 +48,8 @@ void destroy_mutex1(void)
 	Server->destroy(delete_mutex);
 }
 
-BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink)
-	: use_snapshots(use_snapshots), use_reflink(use_reflink)
+BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles)
+	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -469,11 +469,27 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 					{
 						if(!hash_fn.empty())
 						{
-							r=copyFileWithHashoutput(tf, tfn, hash_fn);
+							if(use_tmpfiles)
+							{
+								r=copyFileWithHashoutput(tf, tfn, hash_fn);
+							}
+							else
+							{
+								r=renameFileWithHashoutput(tf, tfn, hash_fn);
+								tf=NULL;
+							}
 						}
 						else
 						{
-							r=copyFile(tf, tfn);
+							if(use_tmpfiles)
+							{
+								r=copyFile(tf, tfn);
+							}
+							else
+							{
+								r=renameFile(tf, tfn);
+								tf=NULL;
+							}
 						}
 					}
 					else
@@ -496,10 +512,14 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				{
 					has_error=true;
 				}
-				std::wstring temp_fn=tf->getFilenameW();
-				Server->destroy(tf);
-				tf=NULL;
-				Server->deleteFile(temp_fn);
+
+				if(tf!=NULL)
+				{
+					std::wstring temp_fn=tf->getFilenameW();
+					Server->destroy(tf);
+					tf=NULL;
+					Server->deleteFile(temp_fn);
+				}
 
 				if(r)
 				{
@@ -949,6 +969,37 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 	}
 	
 	return true;
+}
+
+bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest)
+{
+	if(tf->Size()>0)
+	{
+		IFile *dst_hash=openFileRetry(hash_dest, MODE_WRITE);
+		if(dst_hash==NULL)
+		{
+			return false;
+		}
+		ObjectScope dst_hash_s(dst_hash);
+
+		std::string r=BackupServerPrepareHash::build_chunk_hashs(tf, dst_hash, this, false, NULL, false);
+		if(r=="")
+			return false;
+	}
+
+	std::wstring tf_fn=tf->getFilenameW();
+
+	Server->destroy(tf);
+
+	return os_rename_file(tf_fn, dest);
+}
+
+bool BackupServerHash::renameFile(IFile *tf, const std::wstring &dest)
+{
+	std::wstring tf_fn=tf->getFilenameW();
+	Server->destroy(tf);
+
+	return os_rename_file(tf_fn, dest);
 }
 
 #endif //CLIENT_ONLY
