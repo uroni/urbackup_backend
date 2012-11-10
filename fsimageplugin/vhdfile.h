@@ -111,6 +111,8 @@ private:
 	unsigned int calculate_chs(void);
 	unsigned int calculate_checksum(const unsigned char * data, size_t dsize);
 
+	void print_last_error();
+
 	bool read_only;
 
 	IFile *file;

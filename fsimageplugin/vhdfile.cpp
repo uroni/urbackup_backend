@@ -874,6 +874,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 				if(rc!=bitmap_size)
 				{
 					Server->Log("Writing bitmap failed", LL_ERROR);
+					print_last_error();
 					return 0;
 				}
 			}
@@ -908,6 +909,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 			if(rc!=wantwrite)
 			{
 				Server->Log("Writing to file failed", LL_ERROR);
+				print_last_error();
 				return 0;
 			}
 
@@ -932,6 +934,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 			if(rc!=bitmap_size)
 			{
 				Server->Log("Writing bitmap failed", LL_ERROR);
+				print_last_error();
 				return 0;
 			}
 		}
@@ -972,6 +975,7 @@ void VHDFile::switchBitmap(uint64 new_offset)
 		if(rc!=bitmap_size)
 		{
 			Server->Log("Writing bitmap failed", LL_ERROR);
+			print_last_error();
 		}
 		bitmap_dirty=false;
 	}
@@ -1097,4 +1101,13 @@ _i64 VHDFile::Size(void)
 void VHDFile::addVolumeOffset(_i64 offset)
 {
 	volume_offset=offset;
+}
+
+void VHDFile::print_last_error()
+{
+#ifdef _WIN32
+	Server->Log("Last error: "+nconvert((int)GetLastError()), LL_ERROR);
+#else
+	Server->Log("Last error: "+nconvert(errno), LL_ERROR);
+#endif
 }

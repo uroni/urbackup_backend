@@ -18,6 +18,7 @@
 
 #include "bufmgr.h"
 #include "../Interface/Server.h"
+#include "os_functions.h"
 
 CBufMgr::CBufMgr(unsigned int nbuf, unsigned int bsize)
 {
@@ -169,25 +170,44 @@ unsigned int CBufMgr2::nfreeBufffer(void)
 	return (_u32)free_bufs.size();
 }
 
-CFileBufMgr::CFileBufMgr(unsigned int nbuf, bool pMemory)
+CFileBufMgr::CFileBufMgr(bool pMemory)
 {
-	nbufs=nbuf;
 	memory=pMemory;
-	mutex=Server->createMutex();
-	cond=Server->createCondition();
 }
 
 CFileBufMgr::~CFileBufMgr(void)
 {
-	Server->destroy(mutex);
-	Server->destroy(cond);
 }
 
 IFile* CFileBufMgr::getBuffer(void)
 {
-	IScopedLock lock(mutex);
-	while(nbufs==0)
-		cond->wait(&lock);
+	return openFileRetry();
+}
+
+std::vector<IFile*> CFileBufMgr::getBuffers(unsigned int n)
+{
+	std::vector<IFile*> ret;
+	while(ret.size()<n)
+	{
+		ret.push_back(openFileRetry());
+	}
+	return ret;
+}
+
+void CFileBufMgr::releaseBuffer(IFile *buf)
+{
+	std::wstring fn=buf->getFilenameW();
+	Server->destroy(buf);
+	if(!Server->deleteFile(fn))
+	{
+		Server->Log("Deleting buffer file failed. Truncating it...", LL_ERROR);
+		os_file_truncate(fn, 0);
+		Server->deleteFile(fn);
+	}
+}
+
+IFile* CFileBufMgr::openFileRetry(void)
+{
 	if(!memory)
 	{
 		IFile *r=NULL;
@@ -201,27 +221,4 @@ IFile* CFileBufMgr::getBuffer(void)
 	}
 	else
 		return Server->openMemoryFile();
-}
-
-std::vector<IFile*> CFileBufMgr::getBuffers(unsigned int n)
-{
-	std::vector<IFile*> ret;
-	IScopedLock lock(mutex);
-	while(ret.size()<n)
-	{
-		while(nbufs==0)
-			cond->wait(&lock);
-		if(!memory)
-			ret.push_back(Server->openTemporaryFile());
-		else
-			ret.push_back(Server->openMemoryFile());
-	}
-	return ret;
-}
-
-void CFileBufMgr::releaseBuffer(IFile *buf)
-{
-	std::string fn=buf->getFilename();
-	Server->destroy(buf);
-	Server->deleteFile(fn);
 }

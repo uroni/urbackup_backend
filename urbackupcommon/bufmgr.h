@@ -56,19 +56,17 @@ private:
 class CFileBufMgr
 {
 public:
-	CFileBufMgr(unsigned int nbuf, bool pMemory);
+	CFileBufMgr(bool pMemory);
 	~CFileBufMgr(void);
 
 	IFile* getBuffer(void);
 	std::vector<IFile*> getBuffers(unsigned int n);
 	void releaseBuffer(IFile *buf);
-	unsigned int nfreeBuffer;
 
 private:
-	unsigned int nbufs;
+	IFile* openFileRetry(void);
+
 	bool memory;
-	IMutex *mutex;
-	ICondition *cond;
 };
 
 
