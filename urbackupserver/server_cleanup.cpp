@@ -313,7 +313,9 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 		std::vector<int> notit;
 
 		int backupid;
-		while((int)getImagesFullNum(clientid, backupid, notit)>max_image_full)
+		int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
+		Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_image_num)+" full image backups max="+nconvert(max_image_full), LL_DEBUG);
+		while(full_image_num>max_image_full)
 		{
 			q_get_image_info->Bind(backupid);
 			db_results res_info=q_get_image_info->Read();
@@ -359,7 +361,9 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 		if(minspace!=-1)
 			max_image_incr=settings.getSettings()->min_image_incr;
 
-		while((int)getImagesIncrNum(clientid, backupid, notit)>max_image_incr)
+		int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
+		Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_image_num)+" incremental image backups max="+nconvert(max_image_incr), LL_DEBUG);
+		while(incr_image_num>max_image_incr)
 		{
 			q_get_image_info->Bind(backupid);
 			db_results res_info=q_get_image_info->Read();
@@ -580,7 +584,9 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 			}
 
 			int backupid;
-			while((int)getFilesFullNum(clientid, backupid)>max_file_full )
+			int full_file_num=(int)getFilesFullNum(clientid, backupid);
+			Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_file_num)+" full file backups max="+nconvert(max_file_full), LL_DEBUG);
+			while(full_file_num>max_file_full )
 			{
 				q_get_filebackup_info->Bind(backupid);
 				db_results res_info=q_get_filebackup_info->Read();
@@ -611,7 +617,9 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 			if(deleted_something_client==true)
 				continue;
 
-			while((int)getFilesIncrNum(clientid, backupid)>max_file_incr )
+			int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
+			Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_file_num)+" full file backups max="+nconvert(max_file_incr), LL_DEBUG);
+			while(incr_file_num>max_file_incr )
 			{
 				q_get_filebackup_info->Bind(backupid);
 				db_results res_info=q_get_filebackup_info->Read();
