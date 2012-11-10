@@ -264,7 +264,6 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstrin
 
 void DirectoryWatcherThread::OnDirRm(const std::wstring &dir)
 {
-
 	q_add_del_dir->Bind(dir);
 	q_add_del_dir->Bind(dir);
 	q_add_del_dir->Write();

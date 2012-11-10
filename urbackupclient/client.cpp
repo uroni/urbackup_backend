@@ -533,6 +533,8 @@ void IndexThread::indexDirs(void)
 	changed_dirs=cd->getChangedDirs();
 	cd->moveChangedFiles();
 
+	bool has_stale_shadowcopy=false;
+
 	cd->restoreSavedDelDirs();
 	std::vector<std::wstring> deldirs=cd->getDelDirs();
 	for(size_t i=0;i<deldirs.size();++i)
@@ -562,8 +564,14 @@ void IndexThread::indexDirs(void)
 
 			Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_INFO);
 			bool onlyref=true;
-			bool b=start_shadowcopy(scd, &onlyref, true, past_refs);
+			bool stale_shadowcopy=false;
+			bool b=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy);
 			Server->Log("done.", LL_INFO);
+
+			if(stale_shadowcopy)
+			{
+				has_stale_shadowcopy=true;
+			}
 
 			if(!b)
 			{
@@ -638,9 +646,17 @@ void IndexThread::indexDirs(void)
 	commitModifyFilesBuffer();
 
 #ifdef _WIN32
-	cd->deleteSavedChangedDirs();
-	cd->deleteSavedDelDirs();
-	cd->deleteSavedChangedFiles();
+	if(!has_stale_shadowcopy)
+	{
+		Server->Log("Deleting backup of changed dirs...");
+		cd->deleteSavedChangedDirs();
+		cd->deleteSavedDelDirs();
+		cd->deleteSavedChangedFiles();
+	}
+	else
+	{
+		Server->Log("Do not delete backup of changed dirs because a stale shadowcopy was used.");
+	}
 #endif
 
 	{
@@ -863,7 +879,7 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 }
 #endif
 
-bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own, std::vector<SCRef*> no_restart_refs, bool for_imagebackup)
+bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own, std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy)
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
@@ -885,14 +901,21 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 			if(sc_refs[i]->target==wpath && sc_refs[i]->ok)
 			{
 				bool do_restart=true;
+				bool found_in_no_restart_refs=false;
 				for(size_t k=0;k<no_restart_refs.size();++k)
 				{
 					if(no_restart_refs[k]==sc_refs[i])
 					{
-						do_restart=false;
+						found_in_no_restart_refs=true;
 						break;
 					}
 				}
+
+				if(found_in_no_restart_refs)
+				{
+					do_restart=false;
+				}
+
 				bool only_own_tokens=true;
 				for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
 				{
@@ -974,6 +997,18 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 					if(onlyref!=NULL)
 					{
 						*onlyref=true;
+					}
+
+					if( stale_shadowcopy!=NULL )
+					{
+						if(found_in_no_restart_refs)
+						{
+							*stale_shadowcopy=false;
+						}
+						else if(only_own_tokens==false || restart_own==false)
+						{
+							*stale_shadowcopy=true;
+						}
 					}
 
 					Server->Log("Shadowcopy already present.", LL_INFO);

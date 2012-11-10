@@ -876,7 +876,7 @@ void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRe
 	Server->Log(lstr, LL_DEBUG);
 }
 
-const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REASON_HARD_LINK_CHANGE | USN_REASON_NAMED_DATA_EXTEND | USN_REASON_NAMED_DATA_OVERWRITE| USN_REASON_NAMED_DATA_TRUNCATION| USN_REASON_REPARSE_POINT_CHANGE| USN_REASON_SECURITY_CHANGE| USN_REASON_STREAM_CHANGE| USN_REASON_DATA_TRUNCATION | USN_REASON_BASIC_INFO_CHANGE | USN_REASON_DATA_OVERWRITE | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME;
+const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REASON_HARD_LINK_CHANGE | USN_REASON_NAMED_DATA_EXTEND | USN_REASON_NAMED_DATA_OVERWRITE| USN_REASON_NAMED_DATA_TRUNCATION| USN_REASON_REPARSE_POINT_CHANGE| USN_REASON_SECURITY_CHANGE| USN_REASON_STREAM_CHANGE| USN_REASON_DATA_TRUNCATION | USN_REASON_BASIC_INFO_CHANGE | USN_REASON_DATA_OVERWRITE | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME | USN_REASON_TRANSACTED_CHANGE;
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
 {
@@ -890,9 +890,6 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		if(parent_id==-1)
 		{
 			Server->Log(L"Error: Parent of "+UsnRecord->Filename+L" not found -1", LL_ERROR);
-			/*listener->On_ResetAll();
-			resetRoot(it->second.rid);
-			indexRootDirs(it->second.rid, it->first, it->second.rid);*/
 		}
 		else if(UsnRecord->Reason & (USN_REASON_CLOSE | watch_flags ) )
 		{
@@ -915,10 +912,6 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 					}
 					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid);
 				}
-				/*else
-				{
-					Server->Log(L"Error: "+Server->ConvertFromUTF16(fn)+L" was already created.", LL_ERROR);
-				}*/
 
 				if(UsnRecord->Reason & watch_flags )
 				{
@@ -949,39 +942,43 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		if(parent_id==-1)
 		{
 			Server->Log(L"Error: Parent of file "+UsnRecord->Filename+L" not found -4", LL_ERROR);
-			/*listener->On_ResetAll();
-			resetRoot(it->second.rid);
-			indexRootDirs(it->second.rid, it->first, it->second.rid);*/
 		}
 		else
 		{
 			std::wstring dir_fn=getFilename(UsnRecord->ParentFileReferenceNumber, cj.rid);
 			std::wstring real_fn=dir_fn+UsnRecord->Filename;
-			/*if(os_directory_exists(real_fn))
+			
+			if( UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
 			{
-				indexRootDirs(it->second.rid, real_fn, parent_id); 
-			}*/
-			if((UsnRecord->Reason & USN_REASON_FILE_CREATE) && (UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY) )
-			{
-				addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
-			}
-
-			if(UsnRecord->Reason & USN_REASON_CLOSE)
-			{
-				std::map<std::wstring, bool>::iterator it=open_write_files.find(real_fn);
-				if(it!=open_write_files.end())
+				if((UsnRecord->Reason & USN_REASON_FILE_CREATE) && (UsnRecord->Reason & USN_REASON_CLOSE) )
 				{
-					open_write_files.erase(it);
+					addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
 				}
 			}
-			else if(UsnRecord->Reason & watch_flags)
+			else
 			{
-				open_write_files[real_fn]=true;
+				if(UsnRecord->Reason & USN_REASON_CLOSE)
+				{
+					std::map<std::wstring, bool>::iterator it=open_write_files.find(real_fn);
+					if(it!=open_write_files.end())
+					{
+						open_write_files.erase(it);
+					}
+				}
+				else if(UsnRecord->Reason & watch_flags)
+				{
+					open_write_files[real_fn]=true;
+				}
 			}
 
-			if(UsnRecord->Reason & (watch_flags | USN_REASON_RENAME_OLD_NAME) )
+			if( (UsnRecord->Reason & (watch_flags | USN_REASON_RENAME_OLD_NAME)) && (UsnRecord->Reason & USN_REASON_CLOSE) )
 			{
-				listener->On_FileModified(real_fn, (UsnRecord->Reason & USN_REASON_BASIC_INFO_CHANGE)>0 );
+				bool save_fn=false;
+				if( (UsnRecord->Reason & USN_REASON_BASIC_INFO_CHANGE) && (UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY)==0 )
+				{
+					save_fn=true;
+				}
+				listener->On_FileModified(real_fn, save_fn);
 			}
 		}
 	}

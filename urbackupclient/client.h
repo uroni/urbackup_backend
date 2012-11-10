@@ -119,7 +119,7 @@ private:
 
 	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db=true);
 
-	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool restart_own=false, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false );
+	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool restart_own=false, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL);
 	bool release_shadowcopy(SCDirs *dir, bool for_imagebackup=false, int save_id=-1, SCDirs *dontdel=NULL);
 	bool cleanup_saved_shadowcopies(bool start=false);
 	std::string lookup_shadowcopy(int sid);
