@@ -217,9 +217,8 @@ std::string os_file_sepn(void)
 	return "\\";
 }
 
-bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
+bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &lname)
 {
-#ifdef USE_SYMLINK
 #if (_WIN32_WINNT >= 0x0600)
 	DWORD flags=0;
 	if(isDirectory(target))
@@ -236,12 +235,17 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 #else
 	return true;
 #endif
-#else
+}
+
+bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &lname)
+{
 	bool ret=false;
 	std::wstring wtarget=target;
 	HANDLE hJunc=INVALID_HANDLE_VALUE;
 	char *buf=NULL;
 
+	if(wtarget.find(os_file_prefix(L""))==0)
+		wtarget.erase(0, os_file_prefix(L"").size());
 	if(!wtarget.empty() && wtarget[0]!='\\')
 		wtarget=L"\\??\\"+wtarget;
 	if(!wtarget.empty() && wtarget[target.size()-1]!='\\')
@@ -262,9 +266,9 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 
 	REPARSE_MOUNTPOINT_DATA_BUFFER *rb=(REPARSE_MOUNTPOINT_DATA_BUFFER*)buf;
 	rb->ReparseTag=IO_REPARSE_TAG_MOUNT_POINT;
-	rb->ReparseTargetMaximumLength=(DWORD)(wtarget.size()*sizeof(wchar_t));
-	rb->ReparseDataLength=rb->ReparseTargetMaximumLength+12;
-	rb->ReparseTargetLength=rb->ReparseTargetMaximumLength;
+	rb->ReparseTargetMaximumLength=(WORD)((wtarget.size()+1)*sizeof(wchar_t));
+	rb->ReparseTargetLength=rb->ReparseTargetMaximumLength-1*sizeof(wchar_t);
+	rb->ReparseDataLength=rb->ReparseTargetLength+12;
 	memcpy(rb->ReparseTarget, wtarget.c_str(), rb->ReparseTargetMaximumLength);
 
 	DWORD bytes_ret;
@@ -287,7 +291,6 @@ cleanup:
 		RemoveDirectoryW(lname.c_str());
 	}
 	return ret;
-#endif
 }
 
 #ifndef OS_FUNC_NO_NET
@@ -316,6 +319,14 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 	return true;
 }
 #endif
+
+bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
+{
+	if(!os_link_symbolic_junctions(target, lname) )
+		return os_link_symbolic_symlink(target, lname);
+
+	return true;
+}
 
 std::wstring os_file_prefix(std::wstring path)
 {
