@@ -1166,17 +1166,8 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 
 bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error)
 {
-	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
-	if(free_space!=-1 && free_space<minfreespace_min)
-	{
-		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
-		ServerCleanupThread cleanup;
-		if(!cleanup.do_cleanup(minfreespace_min) )
-		{
-			ServerLogger::Log(clientid, "Could not free space for directory entries. NOT ENOUGH FREE SPACE.", LL_ERROR);
-			return false;
-		}
-	}
+	if(!handle_not_enough_space(L""))
+		return false;
 	
 	
 	bool b=request_filelist_construct(true);
@@ -1186,7 +1177,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error)
 		return false;
 	}
 
-	FileClient fc(filesrv_protocol_version, internet_connection, this);
+	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc, 10000);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -1681,7 +1672,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	}
 
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
-	FileClient fc(filesrv_protocol_version, internet_connection, this);
+	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	FileClientChunked fc_chunked;
 	if(intra_file_diffs)
 	{
@@ -2622,7 +2613,7 @@ void BackupServerGet::sendSettings(void)
 
 bool BackupServerGet::getClientSettings(void)
 {
-	FileClient fc(filesrv_protocol_version, internet_connection, this);
+	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -3408,7 +3399,7 @@ FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeout
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
 		if(cp!=NULL)
-			ret=FileClientChunked(cp, &tcpstack, this);
+			ret=FileClientChunked(cp, &tcpstack, this, use_tmpfiles?NULL:this);
 		else
 			ret=FileClientChunked();
 	}
@@ -3417,7 +3408,7 @@ FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeout
 		sockaddr_in addr=getClientaddr();
 		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, timeoutms);
 		if(pipe!=NULL)
-			ret=FileClientChunked(pipe, &tcpstack, this);
+			ret=FileClientChunked(pipe, &tcpstack, this, use_tmpfiles?NULL:this);
 		else
 			ret=FileClientChunked();
 	}
@@ -3535,6 +3526,23 @@ std::wstring BackupServerGet::shortenFilename(std::wstring fn)
 	}
 #endif
 	return fn;
+}
+
+bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
+{
+	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
+	if(free_space!=-1 && free_space<minfreespace_min)
+	{
+		Server->Log("No free space in backup folder. Free space="+PrettyPrintBytes(free_space)+" MinFreeSpace="+PrettyPrintBytes(minfreespace_min), LL_WARNING);
+		ServerCleanupThread cleanup;
+		if(!cleanup.do_cleanup(minfreespace_min) )
+		{
+			ServerLogger::Log(clientid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			return false;
+		}
+	}
+
+	return true;
 }
 
 #endif //CLIENT_ONLY

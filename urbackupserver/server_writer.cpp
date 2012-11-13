@@ -335,7 +335,7 @@ void ServerVHDWriter::freeFile(IFile *buf)
 void ServerVHDWriter::writeRetry(IFile *f, char *buf, unsigned int bsize)
 {
 	unsigned int off=0;
-	while( off<bsize )
+	while( off<bsize && !has_error)
 	{
 		unsigned int r=f->Write(buf+off, bsize-off);
 		off+=r;

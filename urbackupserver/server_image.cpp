@@ -39,8 +39,8 @@ const unsigned int sector_size=512;
 const unsigned int sha_size=32;
 const size_t minfreespace_image=1000*1024*1024; //1000 MB
 const unsigned int image_timeout=10*24*60*60*1000;
-const unsigned int image_recv_timeout=1*60*60*1000;
-const unsigned int image_recv_timeout_after_first=10*60*1000;
+const unsigned int image_recv_timeout=30*60*1000;
+const unsigned int image_recv_timeout_after_first=2*60*1000;
 const unsigned int mbr_size=(1024*1024)/2;
 
 extern std::string server_identity;
@@ -235,7 +235,11 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_WARNING);
 			goto do_image_cleanup;
 		}
-		size_t r=cc->Read(&buffer[off], 4096-off, curr_image_recv_timeout);
+		size_t r=0;
+		if(cc!=NULL)
+		{
+			r=cc->Read(&buffer[off], 4096-off, curr_image_recv_timeout);
+		}
 		if(r!=0)
 			r+=off;
 		starttime=Server->getTimeMS();
@@ -334,7 +338,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						if(!cc->Write(buffer, tsend))
 						{
 							ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
-							goto do_image_cleanup;
+							Server->destroy(cc);
+							cc=NULL;
+							break;
 						}
 					}
 

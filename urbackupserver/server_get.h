@@ -30,7 +30,9 @@ struct SBackup
 	std::wstring complete;
 };
 
-class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback, public FileClient::ReconnectionCallback
+class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback,
+	public FileClient::ReconnectionCallback, public INotEnoughSpaceCallback,
+	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback
 {
 public:
 	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots, bool use_reflink);
@@ -58,6 +60,8 @@ public:
 	IPipe *getClientCommandConnection(int timeoutms=10000);
 
 	virtual IPipe * new_fileclient_connection(void);
+
+	virtual bool handle_not_enough_space(const std::wstring &path);
 
 private:
 	void unloadSQL(void);
