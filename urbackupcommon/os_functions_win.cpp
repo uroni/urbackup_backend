@@ -34,6 +34,18 @@
 #include <sys\stat.h>
 #include <time.h>
 
+#define REPARSE_MOUNTPOINT_HEADER_SIZE   8
+
+typedef struct {
+  DWORD ReparseTag;
+  DWORD ReparseDataLength;
+  WORD Reserved;
+  WORD ReparseTargetLength;
+  WORD ReparseTargetMaximumLength;
+  WORD Reserved1;
+  WCHAR ReparseTarget[1];
+} REPARSE_MOUNTPOINT_DATA_BUFFER, *PREPARSE_MOUNTPOINT_DATA_BUFFER;
+
 void getMousePos(int &x, int &y)
 {
 	POINT mousepos;
@@ -207,6 +219,7 @@ std::string os_file_sepn(void)
 
 bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 {
+#ifdef USE_SYMLINK
 #if (_WIN32_WINNT >= 0x0600)
 	DWORD flags=0;
 	if(isDirectory(target))
@@ -222,6 +235,58 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 	return rc!=0;
 #else
 	return true;
+#endif
+#else
+	bool ret=false;
+	std::wstring wtarget=target;
+	HANDLE hJunc=INVALID_HANDLE_VALUE;
+	char *buf=NULL;
+
+	if(!wtarget.empty() && wtarget[0]!='\\')
+		wtarget=L"\\??\\"+wtarget;
+	if(!wtarget.empty() && wtarget[target.size()-1]!='\\')
+		wtarget+=L"\\";
+
+	if(!CreateDirectoryW(lname.c_str(), NULL) )
+	{
+		goto cleanup;
+	}
+
+	hJunc=CreateFileW(lname.c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	if(hJunc==INVALID_HANDLE_VALUE)
+		goto cleanup;
+
+	size_t bsize=sizeof(REPARSE_MOUNTPOINT_DATA_BUFFER) + (wtarget.size()+1) * sizeof(wchar_t)+30;
+	buf=new char[bsize];
+	memset(buf, 0, bsize);
+
+	REPARSE_MOUNTPOINT_DATA_BUFFER *rb=(REPARSE_MOUNTPOINT_DATA_BUFFER*)buf;
+	rb->ReparseTag=IO_REPARSE_TAG_MOUNT_POINT;
+	rb->ReparseTargetMaximumLength=(DWORD)(wtarget.size()*sizeof(wchar_t));
+	rb->ReparseDataLength=rb->ReparseTargetMaximumLength+12;
+	rb->ReparseTargetLength=rb->ReparseTargetMaximumLength;
+	memcpy(rb->ReparseTarget, wtarget.c_str(), rb->ReparseTargetMaximumLength);
+
+	DWORD bytes_ret;
+	if(!DeviceIoControl(hJunc, FSCTL_SET_REPARSE_POINT, rb, rb->ReparseDataLength+REPARSE_MOUNTPOINT_HEADER_SIZE, NULL, 0, &bytes_ret, NULL) )
+	{
+		goto cleanup;
+	}
+	ret=true;
+
+cleanup:
+	if(!ret)
+	{
+		Server->Log("Creating junction failed. Last error="+nconvert((int)GetLastError()), LL_ERROR);
+	}
+	delete []buf;
+	if(hJunc!=INVALID_HANDLE_VALUE)
+		CloseHandle(hJunc);
+	if(!ret)
+	{
+		RemoveDirectoryW(lname.c_str());
+	}
+	return ret;
 #endif
 }
 
