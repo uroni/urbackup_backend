@@ -142,7 +142,7 @@ void ServerVHDWriter::operator()(void)
 			}
 		}
 	}
-	if(filebuf)
+	if(filebuffer)
 	{
 		filebuf_writer->writeBuffer(currfile);
 

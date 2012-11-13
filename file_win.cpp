@@ -53,9 +53,16 @@ bool File::Open(std::wstring pfn, int mode)
 		dwCreationDisposition=OPEN_EXISTING;
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
-	else if( mode==MODE_RW )
+	else if( mode==MODE_RW || mode==MODE_RW_CREATE)
 	{
-		dwCreationDisposition=OPEN_EXISTING;
+		if(mode==MODE_RW)
+		{
+			dwCreationDisposition=OPEN_EXISTING;
+		}
+		else
+		{
+			dwCreationDisposition=CREATE_NEW;
+		}
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
 	

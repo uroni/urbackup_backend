@@ -581,7 +581,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 							if(nextblock%vhd_blocksize==0 && nextblock!=0)
 							{
-								Server->Log("Hash written "+nconvert(currblock), LL_DEBUG);
+								//Server->Log("Hash written "+nconvert(currblock), LL_DEBUG);
 								sha256_final(&shactx, verify_checksum);
 								hashfile->Write((char*)verify_checksum, sha_size);
 								sha256_init(&shactx);

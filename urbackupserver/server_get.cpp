@@ -3458,7 +3458,7 @@ IFile *BackupServerGet::getTemporaryFileRetry(void)
 				IScopedLock lock(tmpfile_mutex);
 				num=tmpfile_num++;
 			}
-			pfd=Server->openFile(tmpfile_path+os_file_sep()+convert(num), MODE_WRITE);
+			pfd=Server->openFile(tmpfile_path+os_file_sep()+convert(num), MODE_RW_CREATE);
 		}
 
 		if(pfd==NULL)

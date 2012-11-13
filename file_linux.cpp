@@ -64,9 +64,13 @@ bool File::Open(std::wstring pfn, int mode)
 	{
 		flags=O_RDWR | O_APPEND;
 	}
-	else if( mode==MODE_RW )
+	else if( mode==MODE_RW || mode==MODE_RW_CREATE)
 	{
 		flags=O_RDWR;
+		if( mode==MODE_RW_CREATE )
+		{
+			flags|=O_CREAT;
+		}
 	}
 	
 	struct stat buf;
