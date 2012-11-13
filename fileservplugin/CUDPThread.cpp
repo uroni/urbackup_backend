@@ -130,7 +130,10 @@ std::string CUDPThread::getServername()
 
 CUDPThread::~CUDPThread()
 {
-	closesocket(udpsock);
+	if(udpsock!=SOCKET_ERROR)
+	{
+		closesocket(udpsock);
+	}
 }
 
 void CUDPThread::operator()(void)
@@ -220,5 +223,8 @@ bool CUDPThread::UdpStep(void)
 
 void CUDPThread::stop(void)
 {
+	Log("Stopping CUPDThread...", LL_DEBUG);
+	closesocket(udpsock);
+	udpsock=SOCKET_ERROR;
 	do_stop=true;
 }

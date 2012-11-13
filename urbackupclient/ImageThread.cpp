@@ -184,6 +184,13 @@ void ImageThread::sendFullImageThread(void)
 
 				unsigned int n=(unsigned int)(std::min)(blocks-i, (int64)64);
 				std::vector<int64> secs=fs->readBlocks(i, n, bufs, sizeof(int64));
+				if(fs->hasError())
+				{
+					ImageErrRunning("Error while reading from shadow copy device -1");
+					run=false;
+					has_error=true;
+					break;
+				}
 				needed_bufs+=(_u32)secs.size();
 				if(with_checksum)
 				{
@@ -482,6 +489,12 @@ void ImageThread::sendIncrImageThread(void)
 							has_blocks[j-i]=false;
 							mixed=true;
 						}
+					}
+					if(fs->hasError())
+					{
+						ImageErrRunning("Error while reading from shadow copy device -2");
+						run=false;
+						break;
 					}
 					unsigned char digest[c_hashsize];
 					sha256_final(&shactx, digest);

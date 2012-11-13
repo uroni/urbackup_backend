@@ -30,6 +30,8 @@ public:
 	size_t getQueueSize(void);
 
 private:
+	void print_last_error(void);
+
 	IPipe *pipe;
 
 	CBufMgr2 *bufmgr;

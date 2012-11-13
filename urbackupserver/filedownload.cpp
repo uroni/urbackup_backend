@@ -75,7 +75,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	else if(method==1)
 	{
 		CTCPStack tcpstack;
-		FileClientChunked fc(cp, &tcpstack, this);
+		FileClientChunked fc(cp, &tcpstack, this, NULL);
 		fc.setDestroyPipe(true);
 
 		IFile *hashfile=Server->openTemporaryFile();
@@ -100,7 +100,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	else if(method==2)
 	{
 		CTCPStack tcpstack;
-		FileClientChunked fc(cp, &tcpstack, this);
+		FileClientChunked fc(cp, &tcpstack, this, NULL);
 		fc.setDestroyPipe(true);
 
 		IFile *hashfile=Server->openTemporaryFile();

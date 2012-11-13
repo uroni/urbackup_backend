@@ -69,8 +69,19 @@ bool Filesystem::readBlock(int64 pBlock, char * buffer)
 		return false;
 	else if(buffer!=NULL)
 	{
-		dev->Seek(pBlock*blocksize);
-		dev->Read(buffer, (_u32)blocksize);
+		bool b=dev->Seek(pBlock*blocksize);
+		if(!b)
+		{
+			Server->Log("Seeking in device failed -1", LL_ERROR);
+			has_error=true;
+			return false;
+		}
+		if(!readFromDev(buffer, (_u32)blocksize) )
+		{
+			Server->Log("Reading from device failed -1", LL_ERROR);
+			has_error=true;
+			return false;
+		}
 		return true;
 	}
 	else
@@ -111,8 +122,18 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n, con
 			tmp_buf=new char[tmpbufsize];
 		}
 
-		dev->Seek(pStartBlock*blocksize);
-		dev->Read(tmp_buf, n*(_u32)blocksize);
+		if(!dev->Seek(pStartBlock*blocksize))
+		{
+			Server->Log("Seeking in device failed -2", LL_ERROR);
+			has_error=true;
+			return std::vector<int64>();
+		}
+		if(!readFromDev(tmp_buf, n*(_u32)blocksize))
+		{
+			Server->Log("Reading from device failed -2", LL_ERROR);
+			has_error=true;
+			return std::vector<int64>();
+		}
 		for(int64 i=pStartBlock;i<pStartBlock+n;++i)
 		{
 			memcpy(buffers[currbuf]+buffer_offset, tmp_buf+currbuf*blocksize, blocksize);
@@ -133,6 +154,25 @@ std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n, con
 	}
 
 	return ret;
+}
+
+bool Filesystem::readFromDev(char *buf, _u32 bsize)
+{
+	int tries=20;
+	_u32 rc=dev->Read(buf, bsize);
+	while(rc<bsize)
+	{
+		Server->wait(200);
+		Server->Log("Reading from device failed. Retrying.", LL_WARNING);
+		rc+=dev->Read(buf+rc, bsize-rc);
+		--tries;
+		if(tries<0)
+		{
+			Server->Log("Reading from device failed.", LL_ERROR);
+			return false;
+		}
+	}
+	return true;
 }
 
 int64 Filesystem::calculateUsedSpace(void)

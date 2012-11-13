@@ -40,8 +40,16 @@ public:
 			virtual IPipe * new_fileclient_connection(void)=0;
 		};
 
+		class NoFreeSpaceCallback
+		{
+		public:
+			virtual bool handle_not_enough_space(const std::wstring &path)=0;
+		};
 
-		FileClient(int protocol_version=0, bool internet_connection=false, FileClient::ReconnectionCallback *reconnection_callback=NULL);
+
+		FileClient(int protocol_version=0, bool internet_connection=false,
+			FileClient::ReconnectionCallback *reconnection_callback=NULL,
+			FileClient::NoFreeSpaceCallback *nofreespace_callback=NULL);
         ~FileClient(void);
 
 		_u32 GetServers(bool start, const std::vector<in_addr> &addr_hints);
@@ -115,6 +123,7 @@ private:
 		std::vector<IPipeThrottler*> throttlers;
 
 		FileClient::ReconnectionCallback *reconnection_callback;
+		FileClient::NoFreeSpaceCallback *nofreespace_callback;
 };
 
 const _u32 ERR_CONTINUE=0;

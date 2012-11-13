@@ -21,6 +21,13 @@
 #include "../Interface/Condition.h"
 #include "../Interface/Server.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <errno.h>
+#endif
+#include "../stringtools.h"
+
 ClientSend::ClientSend(IPipe *pPipe, unsigned int bsize, unsigned int nbufs)
 {
 	pipe=pPipe;
@@ -61,7 +68,11 @@ void ClientSend::operator()(void)
 		{
 			bool b=pipe->Write(item.buf, item.bsize);
 			if(!b)
+			{
+				print_last_error();
 				has_error=true;
+				break;
+			}
 
 			bufmgr->releaseBuffer(item.buf);
 		}
@@ -113,4 +124,13 @@ size_t ClientSend::getQueueSize(void)
 bool ClientSend::hasError(void)
 {
 	return has_error;
+}
+
+void ClientSend::print_last_error(void)
+{
+#ifdef _WIN32
+	Server->Log("Sending failed. Last error: "+nconvert((int)GetLastError()), LL_DEBUG);
+#else
+	Server->Log("Sending failed. Last error: "+nconvert(errno), LL_DEBUG);
+#endif
 }

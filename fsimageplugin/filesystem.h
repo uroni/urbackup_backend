@@ -26,6 +26,7 @@ public:
 	int64 calculateUsedSpace(void);
 
 protected:
+	bool readFromDev(char *buf, _u32 bsize);
 	IFile *dev;
 
 	char *tmp_buf;

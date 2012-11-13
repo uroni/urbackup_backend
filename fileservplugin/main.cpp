@@ -47,45 +47,9 @@ CTCPFileServ *TCPServer=NULL;
 #include <string.h>
 #endif
 
-
 #ifdef DLL_EXPORT
 #	define EXPORT_METHOD_INT 5
 #endif
-
-
-void WriteReg(void)
-{
-#ifndef LINUX
-	HKEY hkey; 
-	LONG ret=RegCreateKeyExA(HKEY_LOCAL_MACHINE,"SOFTWARE\\UrInstaller\\settings",0,0,REG_OPTION_NON_VOLATILE,KEY_QUERY_VALUE,NULL,&hkey,0);
-
-	bool write=false;
-	if( ret!=ERROR_SUCCESS)
-		write=true;
-	else
-	{
-		DWORD dwRet=-1;
-		DWORD dwSize=sizeof(DWORD);
-		LONG ret=RegQueryValueExA(hkey,"start_urinstallsrv",NULL, NULL, (LPBYTE)&dwRet, &dwSize ); 
-
-		if( ret!=ERROR_SUCCESS || dwRet==1 )
-			write=true;
-		else
-			write=false;
-	}
-
-	if( write==true)
-	{
-		HKEY hkey; 
-		RegCreateKeyExA(HKEY_LOCAL_MACHINE,"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",0,0,REG_OPTION_NON_VOLATILE,KEY_ALL_ACCESS,NULL,&hkey,0);
-
-		char cString[MAX_PATH]; 
-		DWORD size=GetModuleFileNameA(0,cString,MAX_PATH);
-		RegSetValueExA(hkey,"UrInstallSrv",0,REG_SZ,(BYTE*)cString,size);
-		RegCloseKey(hkey);
-	}
-#endif
-}
 
 #ifdef _WIN32
 void RestartServer()
@@ -96,7 +60,7 @@ void RestartServer()
 
 	TCPServer->KickClients();
 	delete TCPServer;
-	Sleep(120000);
+	Sleep(1000);
 
 	TCPServer=new CTCPFileServ;
 	int tries=20;

@@ -36,7 +36,14 @@ public:
 		virtual IPipe * new_fileclient_connection(void)=0;
 	};
 
-	FileClientChunked(IPipe *pipe, CTCPStack *stack, FileClientChunked::ReconnectionCallback *reconnection_callback);
+	class NoFreeSpaceCallback
+	{
+	public:
+		virtual bool handle_not_enough_space(const std::wstring &path)=0;
+	};
+
+	FileClientChunked(IPipe *pipe, CTCPStack *stack, FileClientChunked::ReconnectionCallback *reconnection_callback,
+			FileClientChunked::NoFreeSpaceCallback *nofreespace_callback);
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
@@ -136,6 +143,7 @@ private:
 	_i64 transferred_bytes;
 
 	FileClientChunked::ReconnectionCallback *reconnection_callback;
+	FileClientChunked::NoFreeSpaceCallback *nofreespace_callback;
 
 	std::vector<IPipeThrottler*> throttlers;
 };

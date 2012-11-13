@@ -14,8 +14,10 @@ const unsigned int c_reconnection_tries=30;
 
 unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
-FileClientChunked::FileClientChunked(IPipe *pipe, CTCPStack *stack, FileClientChunked::ReconnectionCallback *reconnection_callback)
-	: pipe(pipe), stack(stack), destroy_pipe(false), transferred_bytes(0), reconnection_callback(reconnection_callback)
+FileClientChunked::FileClientChunked(IPipe *pipe, CTCPStack *stack,
+	FileClientChunked::ReconnectionCallback *reconnection_callback, FileClientChunked::NoFreeSpaceCallback *nofreespace_callback)
+	: pipe(pipe), stack(stack), destroy_pipe(false), transferred_bytes(0), reconnection_callback(reconnection_callback),
+	  nofreespace_callback(nofreespace_callback)
 {
 	has_error=false;
 }
@@ -301,7 +303,7 @@ void FileClientChunked::State_Acc(void)
 				}
 
 				m_hashoutput->Seek(0);
-				m_hashoutput->Write((char*)&remote_filesize, sizeof(_i64));
+				writeFileRepeat(m_hashoutput, (char*)&remote_filesize, sizeof(_i64));
 			}break;
 		case ID_BASE_DIR_LOST:
 			{
@@ -543,7 +545,7 @@ void FileClientChunked::Hash_nochange(_i64 curr_pos)
 	if(it!=pending_chunks.end())
 	{
 		m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
-		m_hashoutput->Write(it->second.big_hash, chunkhash_single_size);
+		writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
 		pending_chunks.erase(it);
 		--queued_chunks;
 	}
@@ -618,6 +620,10 @@ void FileClientChunked::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 		written+=rc;
 		if(rc==0)
 		{
+			if(nofreespace_callback!=NULL && !nofreespace_callback->handle_not_enough_space(f->getFilenameW()) )
+			{
+				break;
+			}
 			Server->Log("Failed to write to file... waiting... in Chunked File transfer", LL_WARNING);
 			Server->wait(10000);
 			--tries;
@@ -740,7 +746,7 @@ void FileClientChunked::invalidateLastPatches(void)
 		for(size_t i=0;i<last_chunk_patches.size();++i)
 		{
 			m_patchfile->Seek(last_chunk_patches[i]);
-			m_patchfile->Write((char*)&invalid_pos, sizeof(_i64));
+			writeFileRepeat(m_patchfile, (char*)&invalid_pos, sizeof(_i64));
 		}
 		m_patchfile->Seek(patchfile_pos);
 		patch_buf_pos=0;

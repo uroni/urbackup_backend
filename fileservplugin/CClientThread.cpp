@@ -149,6 +149,11 @@ CClientThread::~CClientThread()
 		Server->destroy(mutex);
 		Server->destroy(cond);
 	}
+
+	if(close_the_socket)
+	{
+		Server->destroy(clientpipe);
+	}
 }
 
 void CClientThread::EnableNagle(void)
@@ -216,11 +221,6 @@ void CClientThread::operator()(void)
 	{
 		CloseHandle( hFile );
 		hFile=0;
-	}
-
-	if(close_the_socket)
-	{
-		Server->destroy(clientpipe);
 	}
 
 	if(chunk_send_thread_ticket!=ILLEGAL_THREADPOOL_TICKET)

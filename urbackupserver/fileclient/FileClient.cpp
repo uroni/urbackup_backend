@@ -106,8 +106,11 @@ _i32 selectc(SOCKET socket, int usec)
 }
        
 
-FileClient::FileClient(int protocol_version, bool internet_connection, FileClient::ReconnectionCallback *reconnection_callback)
-	: protocol_version(protocol_version), internet_connection(internet_connection), transferred_bytes(0), reconnection_callback(reconnection_callback)
+FileClient::FileClient(int protocol_version, bool internet_connection,
+	FileClient::ReconnectionCallback *reconnection_callback, FileClient::NoFreeSpaceCallback *nofreespace_callback)
+	: protocol_version(protocol_version), internet_connection(internet_connection),
+	transferred_bytes(0), reconnection_callback(reconnection_callback),
+	nofreespace_callback(nofreespace_callback)
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -729,6 +732,14 @@ bool FileClient::Reconnect(void)
 							break;
 						if(written<rc)
 						{
+							if(nofreespace_callback!=NULL
+								&& !nofreespace_callback->handle_not_enough_space(file->getFilenameW()) )
+							{
+								Server->Log("Error while writing to file. No free space -2", LL_ERROR);
+								Reconnect();
+								return ERR_ERROR;
+							}
+
 							Server->Log("Failed to write to file... waiting...", LL_WARNING);
 							Server->wait(10000);
 							starttime=Server->getTimeMS();
