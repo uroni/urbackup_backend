@@ -192,6 +192,7 @@ void ImageThread::sendFullImageThread(void)
 					break;
 				}
 				needed_bufs+=(_u32)secs.size();
+				bool notify_cs=false;
 				if(with_checksum)
 				{
 					size_t idx=0;
@@ -202,8 +203,9 @@ void ImageThread::sendFullImageThread(void)
 						{
 							memcpy(bufs[idx], &secs[idx], sizeof(int64) );
 							sha256_update(&shactx, (unsigned char*)bufs[idx]+sizeof(int64), blocksize);
-							cs->sendBuffer(bufs[idx], sizeof(int64)+blocksize);
+							cs->sendBuffer(bufs[idx], sizeof(int64)+blocksize, false);
 							++idx;
+							notify_cs=true;
 						}
 						else
 						{
@@ -221,7 +223,8 @@ void ImageThread::sendFullImageThread(void)
 							memcpy(cb, &bs, sizeof(int64) );
 							memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
 							memcpy(cb+2*sizeof(int64), dig, c_hashsize);
-							cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize);
+							cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, false);
+							notify_cs=true;
 						}
 					}
 				}
@@ -230,9 +233,15 @@ void ImageThread::sendFullImageThread(void)
 					for(size_t j=0;j<secs.size();++j)
 					{
 						memcpy(bufs[j], &secs[j], sizeof(int64) );
-						cs->sendBuffer(bufs[j], sizeof(int64)+blocksize);
+						cs->sendBuffer(bufs[j], sizeof(int64)+blocksize, false);
+						notify_cs=true;
 					}
 				}
+				if(notify_cs)
+				{
+					cs->notifySendBuffer();
+				}
+
 				if(!secs.empty())
 					bufs.erase(bufs.begin(), bufs.begin()+secs.size() );
 				if(cs->hasError() )
@@ -509,6 +518,7 @@ void ImageThread::sendIncrImageThread(void)
 						if(memcmp(hashdata_buf, digest, c_hashsize)!=0)
 						{
 							Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
+							bool notify_cs=false;
 							for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 							{
 								if(has_blocks[j-i])
@@ -516,16 +526,19 @@ void ImageThread::sendIncrImageThread(void)
 									char* cb=cs->getBuffer();
 									memcpy(cb, &j, sizeof(int64) );
 									memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
-									cs->sendBuffer(cb, sizeof(int64)+blocksize);
-
+									cs->sendBuffer(cb, sizeof(int64)+blocksize, false);
+									notify_cs=true;
 									lastsendtime=Server->getTimeMS();
+								}
+							}
 
-									if(cs->hasError())
-									{
-										Server->Log("Pipe broken -2", LL_ERROR);
-										run=false;
-										break;
-									}
+							if(notify_cs)
+							{
+								cs->notifySendBuffer();
+								if(cs->hasError())
+								{
+									Server->Log("Pipe broken -2", LL_ERROR);
+									run=false;
 								}
 							}
 
@@ -537,8 +550,8 @@ void ImageThread::sendIncrImageThread(void)
 								memcpy(cb, &bs, sizeof(int64) );
 								memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
 								memcpy(cb+2*sizeof(int64), digest, c_hashsize);
-								cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize);
-								Server->Log("Block hash="+base64_encode(digest, c_hashsize), LL_DEBUG);
+								cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, true);
+								//Server->Log("Block hash="+base64_encode(digest, c_hashsize), LL_DEBUG);
 							}
 						}
 						else
@@ -550,7 +563,7 @@ void ImageThread::sendIncrImageThread(void)
 								int64 bs=-125;
 								char* buffer=cs->getBuffer();
 								memcpy(buffer, &bs, sizeof(int64) );
-								cs->sendBuffer(buffer, sizeof(int64));
+								cs->sendBuffer(buffer, sizeof(int64), true);
 
 								lastsendtime=tt;
 							}
@@ -572,7 +585,7 @@ void ImageThread::sendIncrImageThread(void)
 						int64 bs=-125;
 						char* buffer=cs->getBuffer();
 						memcpy(buffer, &bs, sizeof(int64) );
-						cs->sendBuffer(buffer, sizeof(int64));
+						cs->sendBuffer(buffer, sizeof(int64), true);
 
 						lastsendtime=tt;
 					}

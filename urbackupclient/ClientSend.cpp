@@ -66,12 +66,14 @@ void ClientSend::operator()(void)
 		
 		if(has_item)
 		{
-			bool b=pipe->Write(item.buf, item.bsize);
-			if(!b)
+			if(!has_error)
 			{
-				print_last_error();
-				has_error=true;
-				break;
+				bool b=pipe->Write(item.buf, item.bsize);
+				if(!b)
+				{
+					print_last_error();
+					has_error=true;
+				}
 			}
 
 			bufmgr->releaseBuffer(item.buf);
@@ -93,13 +95,22 @@ std::vector<char*> ClientSend::getBuffers(unsigned int nbufs)
 	return bufmgr->getBuffers(nbufs);
 }
 
-void ClientSend::sendBuffer(char* buf, size_t bsize)
+void ClientSend::sendBuffer(char* buf, size_t bsize, bool do_notify)
 {
-	IScopedLock lock(mutex);
 	BufferItem item;
 	item.buf=buf;
 	item.bsize=bsize;
+	IScopedLock lock(mutex);
 	tqueue.push(item);
+	if(do_notify)
+	{
+		cond->notify_all();
+	}
+}
+
+void ClientSend::notifySendBuffer(void)
+{
+	IScopedLock lock(mutex);
 	cond->notify_all();
 }
 
