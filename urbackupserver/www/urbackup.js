@@ -8,7 +8,7 @@ g.tabberidx=-1;
 g.status_detail=false;
 g.progress_stop_id=-1;
 
-g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" }, { l: "Россия", s: "ru"} ];
+g.languages=[ { l: "Deutsch", s: "de" }, { l: "English", s: "en" }, { l: "Español", s: "es" }, { l: "Россия", s: "ru"} ];
 
 function startup()
 {
@@ -52,6 +52,12 @@ function refresh_page()
 	}
 }
 
+function change_lang_select()
+{
+	var selidx=I('change_lang_select').selectedIndex;
+	change_lang(g.languages[selidx].s, true);
+}
+
 function change_lang(l, refresh)
 {
 	g.lang=l;
@@ -64,23 +70,19 @@ function change_lang(l, refresh)
 		I('load1').innerHTML="Loading...";
 	}
 	
-	var c="";
+	var c="<select id=\"change_lang_select\" onchange=\"change_lang_select()\">";
 	for(var i=0;i<g.languages.length;++i)
 	{
 		if(g.languages[i].s==l)
 		{
-			c+="<strong>"+g.languages[i].l+"</strong>";
+			c+="<option selected=\"selected\">"+g.languages[i].l+"</option>";
 		}
 		else
 		{
-			c+="<a href=\"javascript: change_lang('"+g.languages[i].s+"', true);\">"+g.languages[i].l+"</a>";
-		}
-		
-		if(i+1<g.languages.length)
-		{
-			c+=" | ";
+			c+="<option>"+g.languages[i].l+"</option>";
 		}
 	}
+	c+="</select>";
 	
 	I('languages').innerHTML=c;
 	I('logo_img_link').href="javascript: startup()";
