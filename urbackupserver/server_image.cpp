@@ -444,6 +444,11 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					}
 
 					mbr_offset=writeMBR(vhdfile, drivesize);
+					if( mbr_offset==0 )
+					{
+						ServerLogger::Log(clientid, L"Error writing image MBR", LL_ERROR);
+						goto do_image_cleanup;
+					}
 				}
 				else
 				{
@@ -814,6 +819,9 @@ do_image_cleanup:
 unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 {
 	unsigned char *mbr=(unsigned char *)vhdfile->getBuffer();
+	if(mbr==NULL)
+		return 0;
+
 	unsigned char *mptr=mbr;
 
 	memcpy(mptr, mbr_code, 440);
@@ -859,6 +867,9 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 	for(int i=0;i<1023;++i)
 	{
 		char *buf=vhdfile->getBuffer();
+		if(buf==NULL)
+			return 0;
+
 		memset(buf, 0, 512);
 		vhdfile->writeBuffer((i+1)*512, buf, 512);
 	}

@@ -45,7 +45,7 @@ void draw_progress(std::wstring curr_fn, _i64 curr_verified, _i64 verify_size)
 				toc+=" ";
 			}
 		}
-		std::string speed_str=PrettyPrintSpeed((new_bytes*1000)/passed_time);
+		std::string speed_str=PrettyPrintSpeed((size_t)((new_bytes*1000)/passed_time));
 		while(speed_str.size()<c_speed_size)
 			speed_str+=" ";
 		std::string pcdone=nconvert((int)(pc_done*100.f));

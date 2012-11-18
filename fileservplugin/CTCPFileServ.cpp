@@ -29,7 +29,7 @@
 
 #include <iostream>
 
-#define REFRESH_SECONDS 120
+#define REFRESH_SECONDS 10
 
 CTCPFileServ::CTCPFileServ(void)
 {
