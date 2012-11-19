@@ -60,10 +60,10 @@ translations.en={
 "validate_name_min_file_incr": "minimal number of incremental file backups",
 "validate_name_max_file_full": "maximal number of full file backups",
 "validate_name_min_file_full": "minimal number of full file backups",
-"validate_name_min_image_incr": "maximal number of incremental image backups",
-"validate_name_max_image_incr": "minimal number of incremental image backups",
-"validate_name_min_image_full": "maximal number of full image backups",
-"validate_name_max_image_full": "minimal number of full image backups",
+"validate_name_min_image_incr": "minimal number of incremental image backups",
+"validate_name_max_image_incr": "maximal number of incremental image backups",
+"validate_name_min_image_full": "minimal number of full image backups",
+"validate_name_max_image_full": "maximal number of full image backups",
 "validate_name_startup_backup_delay": "delay after system startup", 
 "validate_err_notregexp_backup_window": "Format for backup window wrong",
 "validate_name_max_active_clients": "max number of recently active clients",
@@ -116,7 +116,9 @@ translations.en={
 "enter_clientname": "Please enter a client name",
 "internet_client_added": "Added new client. You can see the client's auth key (or password) in the settings.",
 "change_pw": "Change password",
-"old_pw_wrong": "Old password is wrong"
+"old_pw_wrong": "Old password is wrong",
+"tnospc_stalled_text": "There is currently not enough free space in the backup folder. UrBackup is deleting old image and file backups to free space, within the limits defined by the settings. During this process the backup performance is descreased and backups are stalled.",
+"tnospc_fatal_text": "There is currently not enough free space in the backup folder. UrBackup tried to delete old image and file backups but is now not allowed to delete more. Please change the settings to store less backups or increase the storage amount to allow UrBackup to continue to perform backups"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -270,10 +272,10 @@ translations.de={
 "validate_name_min_file_incr": "Minimale Anzahl an inkrementellen Backups",
 "validate_name_max_file_full": "Maximale Anzahl an vollen Datei Backups",
 "validate_name_min_file_full": "Minimale Anzahl an vollen Datei Backups",
-"validate_name_min_image_incr": "Maximale Anzahl an inkrementellen Image-Backups",
-"validate_name_max_image_incr": "Minimale Anzahl an inkrementellen Image-Backups",
-"validate_name_min_image_full": "Maximale Anzahl an vollen Image-Backups",
-"validate_name_max_image_full": "Minimale Anzahl an vollen Image-Backups",
+"validate_name_min_image_incr": "Minimale Anzahl an inkrementellen Image-Backups",
+"validate_name_max_image_incr": "Maximale Anzahl an inkrementellen Image-Backups",
+"validate_name_min_image_full": "Minimale Anzahl an vollen Image-Backups",
+"validate_name_max_image_full": "Maximale Anzahl an vollen Image-Backups",
 "validate_name_startup_backup_delay": "Verzögerung bei Systemstart", 
 "validate_err_notregexp_backup_window": "Falsches Format für Backup Zeitfenster",
 "validate_name_max_active_clients": "Maximale Anzahl aktiver Clients",
@@ -408,7 +410,9 @@ translations.de={
 "tAdd": "Hinzufügen",
 "tClients are removed during the cleanup time window, if they are offline.": "Clients werden in dem Aufräumzeitfenster gelöscht, falls sie nicht mehr online sind.",
 "tPerform autoupdates silently": "Autoupdates im Hintergrund ausführen",
-"tArchived": "Archiviert"
+"tArchived": "Archiviert",
+"tnospc_stalled_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup löscht gerade alte Datei- und Image-Backups, innerhalb der Grenzen die in den Einstellungen festgelegt sind. Wärend dieses Vorgangs ist die Performanz des Backupservers eventuell eingeschränkt; Lauftende Backups sind eventuell pausiert.",
+"tnospc_fatal_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup hat versucht alte Datei- und Image-Backups zu löschen, kann aber jetzt nicht weiteren Speicherplatz freimachen. Bitte ändern Sie die Einstellungen insofern, dass weniger Backups gespeichert werden, oder fügen Sie weiteren Backupspeicher hinzu, so dass UrBackup weiterhin Backups durchführen kann."
 }
 translations.ru={
 "action_1": "Добавочный файловый бэкап",
