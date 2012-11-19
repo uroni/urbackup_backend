@@ -670,6 +670,18 @@ function show_status2(data)
 		tmpdir_error=tmpls.tmpdir_error.evaluate();
 	}
 	
+	var nospc_stalled="";
+	if(data.nospc_stalled)
+	{
+		nospc_stalled=tmpls.nospc_stalled.evaluate();
+	}
+	
+	var nospc_fatal="";
+	if(data.nospc_fatal)
+	{
+		nospc_fatal=tmpls.nospc_fatal.evaluate();
+	}
+	
 	var dlt_mod_start="<!--";
 	var dlt_mod_end="-->";
 	if(data.allow_modify_clients)
@@ -745,6 +757,7 @@ function show_status2(data)
 	}
 	
 	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
+		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal,
 		extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
 		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
 		server_identity: data.server_identity, modify_clients: modify_clients,

@@ -95,6 +95,8 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("change_pw");
 	templates.push_back("change_pw_ok");
 	templates.push_back("change_pw_fail");
+	templates.push_back("nospc_stalled");
+	templates.push_back("nospc_fatal");
 
 	IFile *out=Server->openFile("urbackupserver/www/templates.js", MODE_WRITE);
 	if(out==NULL)

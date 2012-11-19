@@ -92,6 +92,15 @@ ACTION_IMPL(status)
 			{
 				Server->destroy(tmp);
 			}
+
+			if(ServerStatus::getServerNospcStalled()>0)
+			{
+				ret.set("nospc_stalled" ,true);
+			}
+			if(ServerStatus::getServerNospcFatal())
+			{
+				ret.set("nospc_fatal" ,true);
+			}
 		}
 
 		bool details=false;

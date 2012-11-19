@@ -27,6 +27,9 @@ IMutex *ServerStatus::mutex=NULL;
 std::map<std::wstring, SStatus> ServerStatus::status;
 unsigned int ServerStatus::last_status_update;
 
+int ServerStatus::server_nospc_stalled=0;
+bool ServerStatus::server_nospc_fatal=false;
+
 const unsigned int inactive_time_const=30*60*1000;
 
 void ServerStatus::init_mutex(void)
@@ -174,6 +177,30 @@ bool ServerStatus::isActive(void)
 	{
 		return true;
 	}
+}
+
+void ServerStatus::incrementServerNospcStalled(int add)
+{
+	IScopedLock lock(mutex);
+	server_nospc_stalled+=add;
+}
+
+void ServerStatus::setServerNospcFatal(bool b)
+{
+	IScopedLock lock(mutex);
+	server_nospc_fatal=b;
+}
+
+int ServerStatus::getServerNospcStalled(void)
+{
+	IScopedLock lock(mutex);
+	return server_nospc_stalled;
+}
+
+bool ServerStatus::getServerNospcFatal(void)
+{
+	IScopedLock lock(mutex);
+	return server_nospc_fatal;
 }
 
 ACTION_IMPL(server_status)

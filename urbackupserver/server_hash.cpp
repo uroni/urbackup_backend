@@ -751,9 +751,7 @@ bool BackupServerHash::handle_not_enough_space(const std::wstring &path)
 	}
 	else
 	{
-		bool free_ok=true;
-
-		if( available_space>=freespace_mod )
+		if(available_space<=freespace_mod)
 		{
 			if(space_logcnt==0)
 			{
@@ -763,22 +761,9 @@ bool BackupServerHash::handle_not_enough_space(const std::wstring &path)
 			{
 				Server->Log("HT: No free space available deleting backups...", LL_WARNING);
 			}
-			free_ok=freeSpace(0, path);
+			return freeSpace(0, path);
 		}
 
-		if(!free_ok)
-		{
-			if(space_logcnt==0)
-			{
-				ServerLogger::Log(clientid, L"Error writing to file \""+path+L"\"", LL_ERROR);
-				++space_logcnt;
-			}
-			else
-			{
-				Server->Log(L"Error writing to file \""+path+L"\"", LL_ERROR);
-			}
-			return false;
-		}
 		return true;
 	}
 }
