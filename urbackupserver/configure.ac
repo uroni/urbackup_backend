@@ -28,6 +28,11 @@ AC_TYPE_SIZE_T
 
 # Checks for library functions.
 
+if test "x$enable_packaging" != xyes; then
+	INSTALL_OPTS="-o urbackup -g urbackup"
+	AC_SUBST([INSTALL_OPTS])
+fi
+
 AM_CONDITIONAL(PACKAGING, test "x$enable_packaging" = xyes)
 
 AC_CONFIG_FILES([Makefile])
