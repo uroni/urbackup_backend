@@ -618,7 +618,7 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 				continue;
 
 			int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
-			Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_file_num)+" full file backups max="+nconvert(max_file_incr), LL_DEBUG);
+			Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_file_num)+" icremental file backups max="+nconvert(max_file_incr), LL_DEBUG);
 			while(incr_file_num>max_file_incr )
 			{
 				q_get_filebackup_info->Bind(backupid);

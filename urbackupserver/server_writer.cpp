@@ -246,9 +246,21 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 char *ServerVHDWriter::getBuffer(void)
 {
 	if(filebuffer)
-		return bufmgr->getBuffer()+sizeof(FileBufferVHDItem);
+	{
+		char *buf=bufmgr->getBuffer();
+		if(buf!=NULL)
+		{
+			return buf+sizeof(FileBufferVHDItem);
+		}
+		else
+		{
+			return buf;
+		}
+	}
 	else
+	{
 		return bufmgr->getBuffer();
+	}
 }
 
 void ServerVHDWriter::writeBuffer(uint64 pos, char *buf, unsigned int bsize)

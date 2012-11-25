@@ -66,12 +66,14 @@ void ClientSend::operator()(void)
 		
 		if(has_item)
 		{
-			bool b=pipe->Write(item.buf, item.bsize);
-			if(!b)
+			if(!has_error)
 			{
-				print_last_error();
-				has_error=true;
-				break;
+				bool b=pipe->Write(item.buf, item.bsize);
+				if(!b)
+				{
+					print_last_error();
+					has_error=true;
+				}
 			}
 
 			bufmgr->releaseBuffer(item.buf);

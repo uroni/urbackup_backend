@@ -24,7 +24,7 @@
 
 using namespace boost::python;
 
-std::string EscapeString(const std::string &str)
+std::string EscapeStringForPython(const std::string &str)
 {
 	std::string ret;
 	for(size_t i=0;i<str.size();++i)
@@ -187,7 +187,7 @@ IFile* Pychart::drawGraphInt(const SChartInfo &ci)
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
 
-	std::string cmd="drawGraph(\""+EscapeString(tfn)+"\","+nconvert(ci.dimensions)+","+Vec2Array(ci.data)
+	std::string cmd="drawGraph(\""+EscapeStringForPython(tfn)+"\","+nconvert(ci.dimensions)+","+Vec2Array(ci.data)
 					+",\""+ci.xlabel+"\",\""+ci.ylabel+"\",\""+ci.title+"\",\""+ci.style
 					+"\",\""+format2String(ci.format)+"\","+nconvert(ci.sizex)+","
 					+nconvert(ci.sizey)+")";
@@ -214,7 +214,7 @@ IFile* Pychart::drawPieInt(const SPieInfo &pi)
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
 
-	std::string cmd="drawPie(\""+EscapeString(tfn)+"\","+Vec2Array(pi.data)+",\""+pi.title+"\","+String2Array(pi.labels)+",\""
+	std::string cmd="drawPie(\""+EscapeStringForPython(tfn)+"\","+Vec2Array(pi.data)+",\""+pi.title+"\","+String2Array(pi.labels)+",\""
 		+pi.colors+"\","+cBool(pi.shadow)+",\""+format2String(pi.format)+"\","+nconvert(pi.sizex)+","
 					+nconvert(pi.sizey)+")";
 
@@ -240,7 +240,7 @@ IFile* Pychart::drawBarInt(const SBarInfo &pi)
 	std::string tfn=tmp->getFilename();
 	Server->destroy(tmp);
 
-	std::string cmd="drawBar(\""+EscapeString(tfn)+"\","+Vec2Array(pi.data)+","+String2Array(pi.xlabels)+",\""+pi.ylabel+"\",\""+pi.title+"\",\""+pi.color+"\",\""
+	std::string cmd="drawBar(\""+EscapeStringForPython(tfn)+"\","+Vec2Array(pi.data)+","+String2Array(pi.xlabels)+",\""+pi.ylabel+"\",\""+pi.title+"\",\""+pi.color+"\",\""
 					+format2String(pi.format)+"\","+nconvert(pi.sizex)+","
 					+nconvert(pi.sizey)+","+nconvert(pi.barwidth)+")";
 
