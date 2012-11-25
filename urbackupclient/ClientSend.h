@@ -21,7 +21,8 @@ public:
 
 	char *getBuffer(void);
 	std::vector<char*> getBuffers(unsigned int nbufs);
-	void sendBuffer(char* buf, size_t bsize);
+	void sendBuffer(char* buf, size_t bsize, bool do_notify);
+	void notifySendBuffer(void);
 	void freeBuffer(char *buf);
 
 	void doExit(void);

@@ -146,6 +146,10 @@ h3
 {
 	text-decoration: none;
 }
+.languages select
+{
+	width: 100px;
+}
 /* TABBER*/
 .tabberlive .tabbertabhide {
  display:none;

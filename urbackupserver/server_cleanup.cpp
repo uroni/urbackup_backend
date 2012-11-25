@@ -203,6 +203,7 @@ void ServerCleanupThread::do_cleanup(void)
 
 bool ServerCleanupThread::do_cleanup(int64 minspace)
 {
+	ServerStatus::incrementServerNospcStalled(1);
 	IScopedLock lock(a_mutex);
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -221,7 +222,17 @@ bool ServerCleanupThread::do_cleanup(int64 minspace)
 
 	ServerSettings settings(db);
 	int r=hasEnoughFreeSpace(minspace, &settings);
-	return r==1;
+
+	ServerStatus::incrementServerNospcStalled(-1);
+
+	bool success=(r==1);
+
+	if(!success)
+	{
+		ServerStatus::setServerNospcFatal(true);
+	}
+
+	return success;
 }
 
 int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)

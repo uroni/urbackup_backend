@@ -8,7 +8,7 @@ g.tabberidx=-1;
 g.status_detail=false;
 g.progress_stop_id=-1;
 
-g.languages=[ { l: "English", s: "en" }, { l: "Deutsch", s: "de" }, { l: "Россия", s: "ru"} ];
+g.languages=[ { l: "Deutsch", s: "de" }, { l: "English", s: "en" }, { l: "Español", s: "es" }, { l: "Россия", s: "ru"} ];
 
 function startup()
 {
@@ -52,6 +52,12 @@ function refresh_page()
 	}
 }
 
+function change_lang_select()
+{
+	var selidx=I('change_lang_select').selectedIndex;
+	change_lang(g.languages[selidx].s, true);
+}
+
 function change_lang(l, refresh)
 {
 	g.lang=l;
@@ -64,23 +70,19 @@ function change_lang(l, refresh)
 		I('load1').innerHTML="Loading...";
 	}
 	
-	var c="";
+	var c="<select id=\"change_lang_select\" onchange=\"change_lang_select()\">";
 	for(var i=0;i<g.languages.length;++i)
 	{
 		if(g.languages[i].s==l)
 		{
-			c+="<strong>"+g.languages[i].l+"</strong>";
+			c+="<option selected=\"selected\">"+g.languages[i].l+"</option>";
 		}
 		else
 		{
-			c+="<a href=\"javascript: change_lang('"+g.languages[i].s+"', true);\">"+g.languages[i].l+"</a>";
-		}
-		
-		if(i+1<g.languages.length)
-		{
-			c+=" | ";
+			c+="<option>"+g.languages[i].l+"</option>";
 		}
 	}
+	c+="</select>";
 	
 	I('languages').innerHTML=c;
 	I('logo_img_link').href="javascript: startup()";
@@ -668,6 +670,18 @@ function show_status2(data)
 		tmpdir_error=tmpls.tmpdir_error.evaluate();
 	}
 	
+	var nospc_stalled="";
+	if(data.nospc_stalled)
+	{
+		nospc_stalled=tmpls.nospc_stalled.evaluate();
+	}
+	
+	var nospc_fatal="";
+	if(data.nospc_fatal)
+	{
+		nospc_fatal=tmpls.nospc_fatal.evaluate();
+	}
+	
 	var dlt_mod_start="<!--";
 	var dlt_mod_end="-->";
 	if(data.allow_modify_clients)
@@ -743,6 +757,7 @@ function show_status2(data)
 	}
 	
 	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
+		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal,
 		extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
 		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
 		server_identity: data.server_identity, modify_clients: modify_clients,

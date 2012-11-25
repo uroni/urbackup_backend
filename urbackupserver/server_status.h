@@ -67,10 +67,19 @@ public:
 	static bool isActive(void);
 	static void updateActive(void);
 
+	static void incrementServerNospcStalled(int add);
+	static void setServerNospcFatal(bool b);
+
+	static int getServerNospcStalled(void);
+	static bool getServerNospcFatal(void);
+
 private:
 	static std::map<std::wstring, SStatus> status;
 	static IMutex *mutex;
 	static unsigned int last_status_update;
+
+	static int server_nospc_stalled;
+	static bool server_nospc_fatal;
 };
 
 class ActiveThread : public IThread
