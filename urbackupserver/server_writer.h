@@ -41,6 +41,7 @@ public:
 	void doExit(void);
 	void doExitNow(void);
 	bool hasError(void);
+	void setHasError(bool b);
 
 	void doFinish(void);
 

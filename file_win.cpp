@@ -66,7 +66,7 @@ bool File::Open(std::wstring pfn, int mode)
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
 	
-	hfile=CreateFileW( fn.c_str(), dwDesiredAccess, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, NULL );
+	hfile=CreateFileW( fn.c_str(), dwDesiredAccess, FILE_SHARE_READ, NULL, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, NULL );
 
 	if( hfile!=INVALID_HANDLE_VALUE )
 	{
