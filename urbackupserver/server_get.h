@@ -73,16 +73,16 @@ private:
 	bool isUpdateIncrImage(void);
 	bool isUpdateFullImage(const std::string &letter);
 	bool isUpdateIncrImage(const std::string &letter);
-	bool doFullBackup(bool with_hashes, bool &disk_error);
+	bool doFullBackup(bool with_hashes, bool &disk_error, bool &log_backup);
 	int createBackupSQL(int incremental, int clientid, std::wstring path);
 	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file);
 	void start_shadowcopy(const std::string &path);
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
-	bool request_filelist_construct(bool full, bool with_token=true);
+	bool request_filelist_construct(bool full, bool with_token=true, bool *no_backup_dirs=NULL);
 	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok);
 	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal, bool &download_ok);
-	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool &disk_error);
+	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool &disk_error, bool &log_backup);
 	SBackup getLastIncremental(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	void updateLastBackup(void);
@@ -144,6 +144,10 @@ private:
 	IPipeThrottler *getThrottler(size_t speed_bps);
 
 	void cleanup_pipes(void);
+
+	void update_sql_intervals(bool update_sql);
+
+	SSettings curr_intervals;
 
 	IPipe *pipe;
 	IDatabase *db;
