@@ -202,11 +202,13 @@ void CClientThread::operator()(void)
 {
 #ifdef _WIN32
 #ifdef BACKGROUND_PRIORITY
+	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
-#endif
-#endif
+
+#endif // BACKGROUND_PRIORITY
+#endif // _WIN32
 
 #ifdef HIGH_PRIORITY
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);

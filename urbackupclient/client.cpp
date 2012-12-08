@@ -205,9 +205,17 @@ void IndexThread::operator()(void)
 #endif
 #endif
 #ifdef _WIN32
+
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
+#if defined(VSS_XP) || defined(VSS_S03)
+	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#else
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
+#else
+	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#endif //THREAD_MODE_BACKGROUND_BEGIN
+
 #endif
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
