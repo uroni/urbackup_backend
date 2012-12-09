@@ -799,7 +799,14 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
 			tpath=L"\\\\?\\"+path;
 
-		tmp=getFiles(tpath);
+		bool has_error;
+		tmp=getFiles(tpath, &has_error);
+
+		if(has_error)
+		{
+			Server->Log(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+		}
+
 		if(use_db)
 		{
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
