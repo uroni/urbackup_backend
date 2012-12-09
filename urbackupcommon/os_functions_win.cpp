@@ -54,8 +54,13 @@ void getMousePos(int &x, int &y)
 	y=mousepos.y;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 {
+	if(has_error!=NULL)
+	{
+		*has_error=false;
+	}
+
 	std::vector<SFile> tmp;
 	HANDLE fHandle;
 	WIN32_FIND_DATAW wfd;
@@ -63,7 +68,21 @@ std::vector<SFile> getFiles(const std::wstring &path)
 	if(!tpath.empty() && tpath[tpath.size()-1]=='\\' ) tpath.erase(path.size()-1, 1);
 	fHandle=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
 	if(fHandle==INVALID_HANDLE_VALUE)
-		return tmp;
+	{
+		if(tpath.find(L"\\\\?\\")==0)
+		{
+			tpath.erase(0, 4);
+			fHandle=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
+		}
+		if(fHandle==INVALID_HANDLE_VALUE)
+		{
+			if(has_error!=NULL)
+			{
+				*has_error=true;
+			}
+			return tmp;
+		}
+	}
 
 	do
 	{
@@ -435,6 +454,11 @@ std::wstring os_get_final_path(std::wstring path)
 	else if(dwRet<ret.size())
 	{
 		ret.resize(dwRet);
+		if(ret.find(L"\\\\?\\UNC")==0)
+		{
+			ret.erase(0, 7);
+			ret=L"\\"+ret;
+		}
 		if(ret.find(L"\\\\?\\")==0)
 		{
 			ret.erase(0,4);
