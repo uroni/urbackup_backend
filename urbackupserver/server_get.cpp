@@ -435,7 +435,6 @@ void BackupServerGet::operator ()(void)
 				ServerStatus::setServerStatus(status, true);
 
 				ServerLogger::Log(clientid, "Starting full file backup...", LL_INFO);
-				do_full_backup_now=false;
 
 				if(!constructBackupPath(with_hashes, use_snapshots, true))
 				{
@@ -454,6 +453,8 @@ void BackupServerGet::operator ()(void)
 						log_backup=true;
 					}
 				}
+
+				do_full_backup_now=false;
 			}
 			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) && isBackupsRunningOkay(true, true) )
 			{
@@ -464,7 +465,6 @@ void BackupServerGet::operator ()(void)
 				ServerStatus::setServerStatus(status, true);
 
 				ServerLogger::Log(clientid, "Starting incremental file backup...", LL_INFO);
-				do_incr_backup_now=false;
 				
 				r_incremental=true;
 				if(!constructBackupPath(with_hashes, use_snapshots, false))
@@ -484,6 +484,8 @@ void BackupServerGet::operator ()(void)
 						log_backup=true;
 					}
 				}
+
+				do_incr_backup_now=false;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) && isBackupsRunningOkay(true, false) )
 			{
@@ -1173,7 +1175,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 				}
 				else
 				{
-					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_DEBUG);
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret)+L". Please add paths to backup on the client (via tray icon) or configure default paths to backup.", LL_ERROR);
 					if(no_backup_dirs!=NULL)
 					{
 						*no_backup_dirs=true;
