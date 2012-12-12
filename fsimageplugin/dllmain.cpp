@@ -375,6 +375,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		bool has_dig_z=false;
 		for(;currpos<size;currpos+=blocksize)
 		{
+			in.Seek(currpos);
 			bool has_sector=in.this_has_sector();
 
 			if(!has_sector && !has_dig_z)
@@ -401,7 +402,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 					sha256_update(&ctx, (unsigned char*)buf, 512);
 				}
 				
-				hashfile->Read((char*)dig_f, 32);
+				_u32 dr=hashfile->Read((char*)dig_f, 32);
+				if( dr!=32 )
+				{
+					Server->Log("Could not read hash from file", LL_ERROR);
+				}
 				sha256_final(&ctx, dig_r);
 				sha256_init(&ctx);
 			}
