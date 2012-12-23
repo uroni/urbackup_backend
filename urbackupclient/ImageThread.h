@@ -17,7 +17,7 @@ public:
 private:
 
 	void ImageErr(const std::string &msg, int loglevel=LL_ERROR);
-	void ImageErrRunning(const std::string &msg);
+	void ImageErrRunning(std::string msg);
 
 	void sendFullImageThread(void);
 	void sendIncrImageThread(void);

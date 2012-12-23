@@ -38,9 +38,10 @@ void ImageThread::ImageErr(const std::string &msg, int loglevel)
 	delete [] buffer;
 }
 
-void ImageThread::ImageErrRunning(const std::string &msg)
+void ImageThread::ImageErrRunning(std::string msg)
 {
 	Server->Log(msg, LL_ERROR);
+	msg+="|#|";
 	int64 bs=-124;
 	char *buffer=new char[sizeof(int64)+msg.size()];
 	memcpy(buffer, &bs, sizeof(int64) );
@@ -658,8 +659,14 @@ void ImageThread::operator()(void)
 {
 #ifdef _WIN32
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
+#if defined(VSS_XP) || defined(VSS_S03)
+	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#else
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
+#else
+	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#endif //THREAD_MODE_BACKGROUND_BEGIN
 #endif
 	if(image_inf->thread_action==TA_FULL_IMAGE)
 	{

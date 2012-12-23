@@ -51,14 +51,22 @@ void getMousePos(int &x, int &y)
 	y=0;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 {
+	if(has_error!=NULL)
+	{
+		*has_error=false;
+	}
 	std::string upath=Server->ConvertToUTF8(path);
 	std::vector<SFile> tmp;
 	DIR *dp;
     struct dirent *dirp;
     if((dp  = opendir(upath.c_str())) == NULL)
 	{
+		if(has_error!=NULL)
+		{
+			*has_error=true;
+		}
 		Server->Log("No permission to access \""+upath+"\"", LL_ERROR);
         return tmp;
     }

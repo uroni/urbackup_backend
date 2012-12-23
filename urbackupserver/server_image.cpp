@@ -686,6 +686,12 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								std::string err;
 								err.resize(r-off-sizeof(int64) );
 								memcpy(&err[0], &buffer[off+sizeof(int64)], r-off-sizeof(int64));
+
+								if(err.find("|#|")!=std::string::npos)
+								{
+									err=getuntil("|#|", err);
+								}
+
 								ServerLogger::Log(clientid, "Error on client occured: "+err, LL_ERROR);
 							}
 							Server->destroy(cc);

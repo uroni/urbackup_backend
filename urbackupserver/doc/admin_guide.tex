@@ -1,16 +1,18 @@
-\documentclass[a4paper,10pt]{article} \usepackage[breaklinks=true]{hyperref}
+\documentclass[a4paper,10pt]{article}
+\usepackage[breaklinks=true]{hyperref}
 \usepackage[latin1]{inputenc}
 \usepackage{graphicx}
 \usepackage{longtable}
 \usepackage[T1]{fontenc}
 \usepackage{a4wide}
 \usepackage{textcomp}
+
 \begin{document}
 
 \hypersetup{ pdfborder={0 0 0} }
 
 \author{Martin Raiber}
-\title{Administration Manual for\\UrBackup Server 1.0}
+\title{Administration Manual for\\UrBackup Server 1.1}
 
 \maketitle
 
@@ -347,6 +349,7 @@ fi
 Default: Not checked.
 
 \subsubsection{Autoupdate clients}
+\label{subsubsec:autoupdate}
 
 If this is checked the server will automatically look for new UrBackup client
 versions. If there is a new version it will download it from the Internet and
@@ -561,7 +564,22 @@ Compressed transfer & If checked all data between server and clients is compress
 \hline
 \end{tabular}
 
-\section{Logging}
+\section{Miscellaneous}
+
+\subsection{Manually update UrBackup clients}
+
+You should test UrBackup clients before using them on the clients. This means
+UrBackup should not automatically download the newest client version from
+the Internet and install it. This means disabling the autoupdate described in
+Section \ref{subsubsec:autoupdate}. You can still centrally update the client
+from the server if you disabled autoupdate. Go to \url{http://update1.urbackup.org}
+and download all files to \textsl{/var/urbackup} on Linux and
+\textsl{C:\\Program Files\\UrBackupServer\\urbackup} per default on Windows. UrBackup
+will then push the new version to the clients once they reconnect. If you checked
+silent autoupdates, the new version will be installed silently on the clients, otherwise
+there will be a popup asking the user to install the new version.
+
+\subsection{Logging}
 \label{sec:logging}
 
 UrBackup generally logs all backup related things into several log facilities.
@@ -690,7 +708,10 @@ ZFS is a file system originating from Solaris. It is available as a fuse module 
 \subsection{Storage setup proposals}
 \label{sec_storage_proposals}
 
-In this section a sample storage setup with ZFS is shown which allows off-site backups via Internet or via tape like manual off-site storage.
+In this section a sample storage setup with ZFS is shown which allows off-site
+backups via Internet or via tape like manual off-site storage and a storage setup
+using the Linux file system btrfs using the btrfs snapshot mechanism to speed
+up file backup creation and destruction and to save the file backups more efficiently.
 
 \subsubsection{Mirrored storage with ZFS}
 \label{subsec_ZFS_setup}
@@ -734,5 +755,57 @@ ssh -l root otherserver zfs destory backup@last
 ssh -l root otherserver zfs rename backup@last backup@now
 \end{verbatim}
 You can also save these full and incremental zfs streams into files on the other server and not directly into a ZFS file system.
+
+\subsubsection{Btrfs}
+\label{subsec_btrfs_setup}
+
+Btrfs is an advanced file system for Linux capable of creating copy on write
+snapshots of sub-volumes. Currently, as of Linux kernel 3.6, btrfs is still
+declared unstable. This is not just a lablel, during testing users of UrBackup
+ran into performance problems or were unable to delete files. It is advised that
+you think twice before using btrfs as storage backend, even though it does have
+considerable advantages compared to other file systems. For UrBackup to be
+able to use the snapshotting mechanism the Linux kernel must be at least 3.6.
+
+If UrBackup detects a btrfs filesystem it uses a special snaphotting file backup
+mode. It saves every file backup of every client in a separate btrfs sub-volume.
+When creating a incremental file backup UrBackup then creates a snapshot of the
+last file backup and removes, adds and changes only the files required to update
+the snapshot. This is much faster than the normal method, where UrBackup links
+(hard link) every file in the new incremental file backups to the file in the
+last one. It also uses less metadata (information about files, i.e., directory
+entries). If a new/changed file is detected as the same as a file of another
+client or the same as in another backup, UrBackup uses cross device reflinks to
+save the data in this file only once on the file system. Using btrfs also allows
+UrBackup to backup files changed between incremental backups in a way that only
+changed data in the file is stored. This greatly decreases the storage amount
+needed for backups, especially for large database files (such as e.g. the
+Outlook archive file). The ZFS deduplication in the previous section
+(\ref{subsec_ZFS_setup}) saves even more storage, but comes at a much greater
+cost in form of a massive decrease of read and write performance.\\
+
+\noindent In order to create and remove btrfs snapshots UrBackup installs a setuid
+executable \textsl{urbackup\_ snapshot\_helper}. UrBackup also uses this tool to
+test if cross-device reflinks are possible. Only if UrBackup can create
+cross-device reflinks and is able to create and destroy btrfs snapshots, is the
+btrfs mode enabled. \textsl{urbackup\_snapshot\_helper} needs to be told separately
+where the UrBackup backup folder is. This path is read from \textsl{/etc/urbackup/backupfolder}.
+Thus, if \textsl{/media/backup/urbackup} is the folder where UrBackup is saving
+the paths, following commands would properly create this file:
+\begin{verbatim}
+mkdir /etc/urbackup
+echo "/etc/urbackup/backupfolder" > /etc/urbackup/backupfolder
+\end{verbatim}
+You can then test if UrBackup will use the btrfs features via
+\begin{verbatim}
+urbackup_snapshot_helper test
+echo $?
+\end{verbatim}
+If \textsl{urbackup\_snapshot\_helper} returns $0$ UrBackup will use the btrfs features
+after a server restart. If not, you need to check if the kernel is new enough and
+that the backup folder is on a btrfs volume.\\
+
+\noindent You should then be able to enjoy much faster incremental file backups which use less storage space.
+
 
 \end{document}

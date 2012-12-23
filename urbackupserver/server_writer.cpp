@@ -317,6 +317,11 @@ bool ServerVHDWriter::hasError(void)
 	return has_error;
 }
 
+void ServerVHDWriter::setHasError(bool b)
+{
+	has_error=b;
+}
+
 IMutex * ServerVHDWriter::getVHDMutex(void)
 {
 	return vhd_mutex;
@@ -446,12 +451,18 @@ void ServerFileBufferWriter::operator()(void)
 						if(tmp->Read((char*)&item, sizeof(FileBufferVHDItem))!=sizeof(FileBufferVHDItem))
 						{
 							Server->Log("Error reading FileBufferVHDItem", LL_ERROR);
+							exit_now=true;
+							parent->setHasError(true);
+							break;
 						}
 						tpos+=sizeof(FileBufferVHDItem);
 						unsigned int tw=item.bsize;
 						if(tpos+tw>tsize)
 						{
 							Server->Log("Size field is wrong", LL_ERROR);
+							exit_now=true;
+							parent->setHasError(true);
+							break;
 						}
 						if(tw>blockbuf_size)
 						{
@@ -462,6 +473,9 @@ void ServerFileBufferWriter::operator()(void)
 						if(tmp->Read(blockbuf, tw)!=tw)
 						{
 							Server->Log("Error reading from tmp.f", LL_ERROR);
+							exit_now=true;
+							parent->setHasError(true);
+							break;
 						}
 						parent->writeVHD(item.pos, blockbuf, tw);
 						written+=tw;

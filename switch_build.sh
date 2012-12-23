@@ -19,6 +19,15 @@ switch_build()
 		pwd
 		cp Makefile.am_$cbuild Makefile.am
 		cp configure.ac_$cbuild configure.ac
+		if test -e BUILDID
+		then
+		    BUILDID=`cat BUILDID`
+		    BUILDID=$((BUILDID +1))
+		    sed -i "s/BUILDID/$BUILDID/g" configure.ac
+		    echo $BUILDID > BUILDID
+		else
+		    sed -i "s/BUILDID/0/g" configure.ac
+		fi
 	fi
 }
 

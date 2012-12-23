@@ -346,6 +346,8 @@ void BackupServerGet::operator ()(void)
 
 	sendClientLogdata();
 
+	update_sql_intervals(false);
+
 	ServerStatus::setCommPipe(clientname, pipe);
 
 	bool skip_checking=false;
@@ -377,6 +379,9 @@ void BackupServerGet::operator ()(void)
 					ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
 				}
 			}
+
+			update_sql_intervals(true);
+
 			tried_backup=false;
 			unsigned int ttime=Server->getTimeMS();
 			status.starttime=ttime;
@@ -385,6 +390,7 @@ void BackupServerGet::operator ()(void)
 			bool r_success=false;
 			bool r_image=false;
 			bool disk_error=false;
+			bool log_backup=true;
 			r_incremental=false;
 			pingthread=NULL;
 			pingthread_ticket=ILLEGAL_THREADPOOL_TICKET;
@@ -429,7 +435,6 @@ void BackupServerGet::operator ()(void)
 				ServerStatus::setServerStatus(status, true);
 
 				ServerLogger::Log(clientid, "Starting full file backup...", LL_INFO);
-				do_full_backup_now=false;
 
 				if(!constructBackupPath(with_hashes, use_snapshots, true))
 				{
@@ -441,8 +446,15 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					r_success=doFullBackup(with_hashes, disk_error);
+					r_success=doFullBackup(with_hashes, disk_error, log_backup);
+
+					if(do_full_backup_now)
+					{
+						log_backup=true;
+					}
 				}
+
+				do_full_backup_now=false;
 			}
 			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) && isBackupsRunningOkay(true, true) )
 			{
@@ -453,7 +465,6 @@ void BackupServerGet::operator ()(void)
 				ServerStatus::setServerStatus(status, true);
 
 				ServerLogger::Log(clientid, "Starting incremental file backup...", LL_INFO);
-				do_incr_backup_now=false;
 				
 				r_incremental=true;
 				if(!constructBackupPath(with_hashes, use_snapshots, false))
@@ -466,8 +477,15 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					r_success=doIncrBackup(with_hashes, internet_connection, use_snapshots, disk_error);
+					r_success=doIncrBackup(with_hashes, internet_connection, use_snapshots, disk_error, log_backup);
+
+					if(do_incr_backup_now)
+					{
+						log_backup=true;
+					}
 				}
+
+				do_incr_backup_now=false;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) && isBackupsRunningOkay(true, false) )
 			{
@@ -650,8 +668,16 @@ void BackupServerGet::operator ()(void)
 			if(hbu || r_image)
 			{
 				stopBackupRunning(!r_image);
-				saveClientLogdata(r_image?1:0, r_incremental?1:0, r_success && !has_error);
-				sendClientLogdata();
+
+				if(log_backup)
+				{
+					saveClientLogdata(r_image?1:0, r_incremental?1:0, r_success && !has_error);
+					sendClientLogdata();
+				}
+				else
+				{
+					ServerLogger::reset(clientid);
+				}
 			}
 			if(hbu)
 			{
@@ -1075,7 +1101,7 @@ void BackupServerGet::resetEntryState(void)
 	state=0;
 }
 
-bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
+bool BackupServerGet::request_filelist_construct(bool full, bool with_token, bool *no_backup_dirs)
 {
 	unsigned int timeout_time=full_backup_construct_timeout;
 	if(file_protocol_version>=2)
@@ -1113,7 +1139,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 			{
 				Server->destroy(cc);
 				Server->Log(clientname+L": Trying old filelist request", LL_WARNING);
-				return request_filelist_construct(full, false);
+				return request_filelist_construct(full, false, no_backup_dirs);
 			}
 			else
 			{
@@ -1149,7 +1175,11 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 				}
 				else
 				{
-					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_DEBUG);
+					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret)+L". Please add paths to backup on the client (via tray icon) or configure default paths to backup.", LL_ERROR);
+					if(no_backup_dirs!=NULL)
+					{
+						*no_backup_dirs=true;
+					}
 					break;
 				}				
 			}
@@ -1164,16 +1194,26 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token)
 	return false;
 }
 
-bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error)
+bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log_backup)
 {
 	if(!handle_not_enough_space(L""))
 		return false;
 	
-	
-	bool b=request_filelist_construct(true);
+	bool no_backup_dirs=false;
+	bool b=request_filelist_construct(true, true, &no_backup_dirs);
 	if(!b)
 	{
 		has_error=true;
+
+		if(no_backup_dirs)
+		{
+			log_backup=false;
+		}
+		else
+		{
+			log_backup=true;
+		}
+
 		return false;
 	}
 
@@ -1183,6 +1223,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error)
 	{
 		ServerLogger::Log(clientid, L"Full Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
 		has_error=true;
+		log_backup=false;
 		return false;
 	}
 	
@@ -1217,6 +1258,14 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error)
 		has_error=true;
 		return false;
 	}
+
+	if(ServerStatus::isBackupStopped(clientname))
+	{
+		ServerLogger::Log(clientid, L"Server admin stopped backup. -1", LL_WARNING);
+		has_error=true;
+		return false;
+	}
+
 	_i64 filelist_size=tmp->Size();
 
 	char buffer[4096];
@@ -1640,7 +1689,7 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	return rsize;
 }
 
-bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool &disk_error)
+bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool &disk_error, bool &log_backup)
 {
 	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
@@ -1664,10 +1713,21 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		Server->Log(clientname+L": Doing backup with intra file diffs...", LL_DEBUG);
 	}
 	
-	bool b=request_filelist_construct(false);
+	bool no_backup_dirs=false;
+	bool b=request_filelist_construct(false, true, &no_backup_dirs);
 	if(!b)
 	{
 		has_error=true;
+
+		if(no_backup_dirs)
+		{
+			log_backup=false;
+		}
+		else
+		{
+			log_backup=true;
+		}
+
 		return false;
 	}
 
@@ -1682,6 +1742,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		{
 			ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -1", LL_ERROR);
 			has_error=true;
+			log_backup=false;
 			return false;
 		}
 	}
@@ -1690,6 +1751,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	{
 		ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -2", LL_ERROR);
 		has_error=true;
+		log_backup=false;
 		return false;
 	}
 	
@@ -1745,7 +1807,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		if(!internet_connection)
 		{
 			ServerLogger::Log(clientid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
-			return doFullBackup(with_hashes, disk_error);
+			return doFullBackup(with_hashes, disk_error, log_backup);
 		}
 		else
 		{
@@ -3543,6 +3605,23 @@ bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
 	}
 
 	return true;
+}
+
+void BackupServerGet::update_sql_intervals(bool update_sql)
+{
+	SSettings *settings=server_settings->getSettings();
+	if(settings->update_freq_full != curr_intervals.update_freq_full ||
+		settings->update_freq_image_full != curr_intervals.update_freq_image_full ||
+		settings->update_freq_image_incr != curr_intervals.update_freq_image_incr ||
+		settings->update_freq_incr != curr_intervals.update_freq_incr )
+	{
+		if(update_sql)
+		{
+			unloadSQL();
+			prepareSQL();
+		}
+	}
+	curr_intervals=*settings;
 }
 
 #endif //CLIENT_ONLY

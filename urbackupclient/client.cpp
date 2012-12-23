@@ -205,9 +205,17 @@ void IndexThread::operator()(void)
 #endif
 #endif
 #ifdef _WIN32
+
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
+#if defined(VSS_XP) || defined(VSS_S03)
+	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#else
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
+#else
+	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#endif //THREAD_MODE_BACKGROUND_BEGIN
+
 #endif
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -791,7 +799,14 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
 			tpath=L"\\\\?\\"+path;
 
-		tmp=getFiles(tpath);
+		bool has_error;
+		tmp=getFiles(tpath, &has_error);
+
+		if(has_error)
+		{
+			Server->Log(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+		}
+
 		if(use_db)
 		{
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
