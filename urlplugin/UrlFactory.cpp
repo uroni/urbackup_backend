@@ -86,10 +86,10 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
 	RDUserS rd;
 	std::string header;
-	header+="From: "+mailfrom+"\n"
-		"Subject: "+subject+"\n"
-		"Date: "+format_time("%a, %d %b %Y %H:%M:%S %z")+"\n"
-		"\n";
+	header+="From: "+mailfrom+"\r\n"
+		"Subject: "+subject+"\r\n"
+		"Date: "+format_time("%a, %d %b %Y %H:%M:%S %z")+"\r\n"
+		"\r\n";
 
 	rd.text=header+message;
 	curl_easy_setopt(curl, CURLOPT_READDATA, &rd);
