@@ -245,6 +245,11 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 		Server->Log("Error reading size", LL_ERROR);
 		Server->destroy(c);Server->destroy(out);return 3;
 	}
+	if(imgsize==-2)
+	{
+		Server->Log("Connection timeout", LL_ERROR);
+		Server->destroy(c);Server->destroy(out);return 5;
+	}
 
 	char buf[4096];
 	if(mbr==true)
@@ -994,6 +999,7 @@ void restore_wizard(void)
 				case 2: errmsg="`cat urbackup/restore/cannot_write_on_partition`"; break;
 				case 3: errmsg="`cat urbackup/restore/wrong_size`"; break;
 				case 4: errmsg="`cat urbackup/restore/server_doesnot_respond`"; break;
+				case 5: errmsg="`cat urbackup/restore/server_connection_timeout`"; break;
 				case 6: errmsg="`cat urbackup/restore/writing_failed`"; break;
 				};
 

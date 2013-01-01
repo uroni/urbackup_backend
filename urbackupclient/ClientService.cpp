@@ -1544,7 +1544,14 @@ void ClientConnector::downloadImage(str_map params)
 		if(imgsize==-1)
 		{
 			Server->Log("Error reading size", LL_ERROR);
-			continue;
+			if(i+1<channel_pipes.size())
+			{
+				continue;
+			}
+			else
+			{
+				pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime);
+			}
 		}
 		if(!pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime))
 		{
@@ -1657,7 +1664,7 @@ void ClientConnector::downloadImage(str_map params)
 		Server->Log("Downloading image done", LL_DEBUG);
 		return;
 	}
-	imgsize=-1;
+	imgsize=-2;
 	pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime);
 }
 
