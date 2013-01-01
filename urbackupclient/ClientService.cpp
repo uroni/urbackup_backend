@@ -1515,6 +1515,7 @@ void ClientConnector::downloadImage(str_map params)
 	_i64 imgsize=-1;
 	if(channel_pipes.size()==0)
 	{
+		imgsize=-2;
 		pipe->Write((char*)&imgsize, sizeof(_i64), (int)receive_timeouttime);
 		Server->Log("No channel found!", LL_DEBUG);
 		return;

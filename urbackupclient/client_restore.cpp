@@ -1008,7 +1008,7 @@ void restore_wizard(void)
 
 				if(rc!=0)
 				{
-					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend`: "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_restore`\" \"e\" \"`cat urbackup/restore/error_happend`\" \"o\" \"`cat urbackup/restore/start_shell`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
+					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend`: "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_restore`\" \"s\" \"`cat urbackup/restore/start_shell`\" \"o\" \"`cat urbackup/restore/restore_other`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
 						state=start_state;
@@ -1019,8 +1019,8 @@ void restore_wizard(void)
 					if(out=="r")
 						state=5;
 					else if(out=="o")
-						state=3;
-					else if(out=="e")
+						state=2;
+					else if(out=="s")
 					{
 						system("bash");
 						state=0;
