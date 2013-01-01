@@ -16,18 +16,26 @@ make
 cd fileservplugin
 make
 cd ..
+cd urbackupclient
+make
+cd ..
 
-LANG=de
+LANG=en
 
-cp urbackup_srv restore_cd/cserver
-cp urbackup/.libs/liburbackupserver.so restore_cd/urbackup/.libs/liburbackup.so
+mkdir restore_cd/urbackup
+mkdir restore_cd/urbackup/restore
+cp urbackupclient/backup_client.db restore_cd/urbackup/
+touch restore_cd/urbackup/new.txt
+
+cp urbackup_srv restore_cd/urbackup_client
+cp urbackupclient/.libs/liburbackupclient.so restore_cd/liburbackupclient.so
 cp fsimageplugin/.libs/liburbackupserver_fsimageplugin.so restore_cd/libfsimageplugin.so
-cp fileservplugin/.libs/libfileservplugin.so restore_cd/libfileservplugin.so
-cp urbackup/restore/$LANG/* restore_cd/urbackup/restore/
-cp urbackup/restore/* restore_cd/urbackup/restore/
+cp fileservplugin/.libs/liburbackupclient_fileservplugin.so restore_cd/libfileservplugin.so
+cp urbackupserver/restore/$LANG/* restore_cd/urbackup/restore/
+cp urbackupserver/restore/* restore_cd/urbackup/restore/
 chmod +x restore_cd/urbackup/restore/*.sh
-strip cserver
-strip restore_cd/urbackup/.libs/liburbackup.so
+strip restore_cd/urbackup_client
+strip restore_cd/liburbackupclient.so
 strip restore_cd/libfsimageplugin.so
 strip restore_cd/libfileservplugin.so
 

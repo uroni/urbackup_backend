@@ -576,10 +576,12 @@ void IndexThread::indexDirs(void)
 			bool b=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy);
 			Server->Log("done.", LL_INFO);
 
+#ifdef _WIN32
 			if(stale_shadowcopy)
 			{
 				has_stale_shadowcopy=true;
 			}
+#endif
 
 			if(!b)
 			{
