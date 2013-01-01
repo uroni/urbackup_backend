@@ -427,6 +427,69 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 
 void do_restore(void)
 {
+	std::string cmd=Server->getServerParameter("restore_cmd");
+
+	if(cmd=="write_mbr")
+	{
+		std::string mbr_filename=Server->getServerParameter("mbr_filename");
+		std::string out_device=Server->getServerParameter("out_device");
+		if(mbr_filename.empty())
+		{
+			Server->Log("MBR filename not specified (mbr_filename parameter)", LL_ERROR);
+			exit(1);
+		}
+
+		if(out_device.empty())
+		{
+			Server->Log("Output device not specified (out_device paramter)", LL_ERROR);
+			exit(1);
+		}
+			
+		IFile *f=Server->openFile(mbr_filename, MODE_READ);
+		if(f==NULL)
+		{
+			Server->Log("Could not open MBR file", LL_ERROR);
+			exit(1);
+		}
+		size_t fsize=(size_t)f->Size();
+		char *buf=new char[fsize];
+		f->Read(buf, (_u32)fsize);
+		Server->destroy(f);
+
+		CRData mbr(buf, fsize);
+		SMBRData mbrdata(mbr);
+		if(mbrdata.hasError())
+		{
+			Server->Log("Error while parsing MBR data", LL_ERROR);
+			delete []buf; exit(1);
+		}
+
+		IFile *dev=Server->openFile(out_device, MODE_RW);
+		if(dev==NULL)
+		{
+			Server->Log("Could not open device file for writing", LL_ERROR);
+			delete []buf; exit(1);
+		}
+		dev->Seek(0);
+		Server->Log("Writing MBR data...", LL_INFO);
+		dev->Write(mbrdata.mbr_data);
+		Server->Log("done.", LL_INFO);
+		Server->destroy(dev);
+
+		delete []buf;
+		exit(0);
+	}
+	else if(cmd=="help")
+	{
+		Server->Log("restore_cmd commands are...", LL_INFO);
+		Server->Log("write_mbr(mbr_filename,out_device)", LL_INFO);
+		Server->Log("get_clientnames", LL_INFO);
+		Server->Log("get_backupimages(restore_name)", LL_INFO);
+		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
+		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
+		exit(0);
+	}
+
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
 	if(c==NULL)
 	{
@@ -436,9 +499,7 @@ void do_restore(void)
 
 	std::string pw=getFile(pw_file);
 
-	CTCPStack tcpstack;
-
-	std::string cmd=Server->getServerParameter("restore_cmd");
+	CTCPStack tcpstack;	
 	if(cmd=="get_clientnames")
 	{
 		tcpstack.Send(c, "GET BACKUPCLIENTS#pw="+pw);
