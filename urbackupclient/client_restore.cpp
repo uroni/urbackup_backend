@@ -24,6 +24,9 @@ const std::string pw_file="pw.txt";
 const std::string pw_file="urbackup/pw.txt";
 #endif
 
+const std::string configure_wlan="wicd-curses";
+const std::string configure_networkcard=configure_wlan;
+
 
 std::string trim2(const std::string &str)
 {
@@ -245,6 +248,11 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 		Server->Log("Error reading size", LL_ERROR);
 		Server->destroy(c);Server->destroy(out);return 3;
 	}
+	if(imgsize==-2)
+	{
+		Server->Log("Connection timeout", LL_ERROR);
+		Server->destroy(c);Server->destroy(out);return 5;
+	}
 
 	char buf[4096];
 	if(mbr==true)
@@ -419,6 +427,69 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 
 void do_restore(void)
 {
+	std::string cmd=Server->getServerParameter("restore_cmd");
+
+	if(cmd=="write_mbr")
+	{
+		std::string mbr_filename=Server->getServerParameter("mbr_filename");
+		std::string out_device=Server->getServerParameter("out_device");
+		if(mbr_filename.empty())
+		{
+			Server->Log("MBR filename not specified (mbr_filename parameter)", LL_ERROR);
+			exit(1);
+		}
+
+		if(out_device.empty())
+		{
+			Server->Log("Output device not specified (out_device paramter)", LL_ERROR);
+			exit(1);
+		}
+			
+		IFile *f=Server->openFile(mbr_filename, MODE_READ);
+		if(f==NULL)
+		{
+			Server->Log("Could not open MBR file", LL_ERROR);
+			exit(1);
+		}
+		size_t fsize=(size_t)f->Size();
+		char *buf=new char[fsize];
+		f->Read(buf, (_u32)fsize);
+		Server->destroy(f);
+
+		CRData mbr(buf, fsize);
+		SMBRData mbrdata(mbr);
+		if(mbrdata.hasError())
+		{
+			Server->Log("Error while parsing MBR data", LL_ERROR);
+			delete []buf; exit(1);
+		}
+
+		IFile *dev=Server->openFile(out_device, MODE_RW);
+		if(dev==NULL)
+		{
+			Server->Log("Could not open device file for writing", LL_ERROR);
+			delete []buf; exit(1);
+		}
+		dev->Seek(0);
+		Server->Log("Writing MBR data...", LL_INFO);
+		dev->Write(mbrdata.mbr_data);
+		Server->Log("done.", LL_INFO);
+		Server->destroy(dev);
+
+		delete []buf;
+		exit(0);
+	}
+	else if(cmd=="help")
+	{
+		Server->Log("restore_cmd commands are...", LL_INFO);
+		Server->Log("write_mbr(mbr_filename,out_device)", LL_INFO);
+		Server->Log("get_clientnames", LL_INFO);
+		Server->Log("get_backupimages(restore_name)", LL_INFO);
+		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
+		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
+		exit(0);
+	}
+
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
 	if(c==NULL)
 	{
@@ -428,9 +499,7 @@ void do_restore(void)
 
 	std::string pw=getFile(pw_file);
 
-	CTCPStack tcpstack;
-
-	std::string cmd=Server->getServerParameter("restore_cmd");
+	CTCPStack tcpstack;	
 	if(cmd=="get_clientnames")
 	{
 		tcpstack.Send(c, "GET BACKUPCLIENTS#pw="+pw);
@@ -656,12 +725,12 @@ void restore_wizard(void)
 						std::string out=getFile("out");
 						if(out=="n")
 						{
-							system("LC_ALL=C netcardconfig");
+							system(configure_networkcard.c_str());
 							state=0;
 						}
 						else if(out=="w")
 						{
-							system("LC_ALL=C wlcardconfig");
+							system(configure_wlan.c_str());
 							state=0;
 						}
 						else if(out=="e")
@@ -725,12 +794,12 @@ void restore_wizard(void)
 						state=0;
 					else if(out=="n")
 					{
-						system("LC_ALL=C netcardconfig");
+						system(configure_networkcard.c_str());
 						state=0;
 					}
 					else if(out=="w")
 					{
-						system("LC_ALL=C wlcardconfig");
+						system(configure_wlan.c_str());
 						state=0;
 					}
 					else if(out=="e")
@@ -975,7 +1044,7 @@ void restore_wizard(void)
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
 				while(true)
 				{
-					system(("./cserver --plugin urbackup/.libs/liburbackup.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration"+(std::string)(res_sysvol?"_sysvol":"")+"`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0").c_str());
+					system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd download_progress | dialog --backtitle \"`cat urbackup/restore/restoration"+(std::string)(res_sysvol?"_sysvol":"")+"`\" --gauge \"`cat urbackup/restore/t_progress`\" 6 60 0").c_str());
 					while(!rt.isDone() && !restore_retry_ok)
 					{
 						Server->wait(1000);
@@ -994,12 +1063,13 @@ void restore_wizard(void)
 				case 2: errmsg="`cat urbackup/restore/cannot_write_on_partition`"; break;
 				case 3: errmsg="`cat urbackup/restore/wrong_size`"; break;
 				case 4: errmsg="`cat urbackup/restore/server_doesnot_respond`"; break;
+				case 5: errmsg="`cat urbackup/restore/server_connection_timeout`"; break;
 				case 6: errmsg="`cat urbackup/restore/writing_failed`"; break;
 				};
 
 				if(rc!=0)
 				{
-					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend`: "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_restore`\" \"e\" \"`cat urbackup/restore/error_happend`\" \"o\" \"`cat urbackup/restore/start_shell`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
+					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend`: "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_restore`\" \"s\" \"`cat urbackup/restore/start_shell`\" \"o\" \"`cat urbackup/restore/restore_other`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
 						state=start_state;
@@ -1010,8 +1080,8 @@ void restore_wizard(void)
 					if(out=="r")
 						state=5;
 					else if(out=="o")
-						state=3;
-					else if(out=="e")
+						state=2;
+					else if(out=="s")
 					{
 						system("bash");
 						state=0;
