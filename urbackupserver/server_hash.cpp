@@ -945,11 +945,17 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 
 		if( dst_size!=tf->Size() )
 		{
-			if( !os_file_truncate(dest, tf->Size()) )
-			{
-				Server->Log(L"Error truncating file \""+dest+L"\" -1", LL_ERROR);
-				return false;
-			}
+			
+		}
+	}
+	else
+	{
+		dst_s.clear();
+		
+		if( !os_file_truncate(dest, 0) )
+		{
+			Server->Log(L"Error truncating file \""+dest+L"\" -2", LL_ERROR);
+			return false;
 		}
 	}
 	
