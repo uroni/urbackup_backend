@@ -508,9 +508,11 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				{
 					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn);
 				}
+				
 				if(!r)
 				{
 					has_error=true;
+					Server->Log("Storing file failed -1", LL_ERROR);
 				}
 
 				if(tf!=NULL)
@@ -518,7 +520,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 					std::wstring temp_fn=tf->getFilenameW();
 					Server->destroy(tf);
 					tf=NULL;
-					Server->deleteFile(temp_fn);
+					Server->deleteFile(os_file_prefix(temp_fn));
 				}
 
 				if(r)
@@ -982,7 +984,23 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &d
 
 	Server->destroy(tf);
 
-	return os_rename_file(tf_fn, dest);
+	if(!use_reflink)
+	{
+		return os_rename_file(tf_fn, dest);
+	}
+	else
+	{
+		if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true) )
+		{
+			Server->Log(L"Reflinking file \""+dest+L"\" failed -3", LL_ERROR);
+
+			return os_rename_file(tf_fn, dest);
+		}
+		
+		Server->deleteFile(os_file_prefix(tf_fn));
+		
+		return true;
+	}
 }
 
 bool BackupServerHash::renameFile(IFile *tf, const std::wstring &dest)
@@ -990,7 +1008,23 @@ bool BackupServerHash::renameFile(IFile *tf, const std::wstring &dest)
 	std::wstring tf_fn=tf->getFilenameW();
 	Server->destroy(tf);
 
-	return os_rename_file(tf_fn, dest);
+	if(!use_reflink)
+	{
+		return os_rename_file(tf_fn, dest);
+	}
+	else
+	{
+		if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true) )
+		{
+			Server->Log(L"Reflinking file \""+dest+L"\" failed -4", LL_ERROR);
+
+			return os_rename_file(tf_fn, dest);
+		}
+		
+		Server->deleteFile(os_file_prefix(tf_fn));
+		
+		return true;
+	}
 }
 
 #endif //CLIENT_ONLY
