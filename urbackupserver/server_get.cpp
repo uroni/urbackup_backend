@@ -1417,7 +1417,11 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	running_updater->stop();
 	updateRunning(false);
 	Server->destroy(clientlist);
-	Server->destroy(tmp);
+	{
+		std::wstring tmp_fn=tmp->getFilenameW();
+		Server->destroy(tmp);
+		Server->deleteFile(os_file_prefix(tmp_fn));
+	}
 
 	waitForFileThreads();
 
