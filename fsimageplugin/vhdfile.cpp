@@ -1059,6 +1059,25 @@ uint64 VHDFile::getRealSize(void)
 	return dstsize;
 }
 
+uint64 VHDFile::usedSize(void)
+{
+	uint64 offset_backup=curr_offset;
+
+	uint64 used_size=0;
+
+	for(uint64 i=0;i<dstsize;i+=blocksize)
+	{
+		if(has_sector())
+		{
+			used_size+=blocksize;
+		}
+	}
+
+	curr_offset=offset_backup;
+
+	return used_size;
+}
+
 bool VHDFile::has_sector(void)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);

@@ -63,89 +63,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			Server->Log(nconvert(((float)ntfs.calculateUsedSpace()/(float)ntfs.getSize())*100.0f)+" %");
 		}
 	}
-	/*
-	int c=0;
-	{
-		IFile *file=Server->openFile("G:\\Root\\Setup\\rsrc\\Prototype.exe",MODE_READ);  //"\\\\.\\Volume{975a91a4-aa07-11dc-98b4-806e6f6e6963}", MODE_READ);
-		VHDFile vhd(L"G:\\test.vhd", false, (uint64)20*(uint64)1024*(uint64)1024*(uint64)1024);
-		vhd.Seek(0);
-		if(file!=NULL)
-		{
-			char buffer[4096];
-			_u32 rc;
-			while( (rc=file->Read(buffer, 4096))!=0 ) 
-			{
-				vhd.Write(buffer, rc);
-				++c;
-				if(c>=5120) break;
-			}
-		}
-	}
-	{
-		IFile *file=Server->openFile("G:\\Root\\Setup\\rsrc\\Prototype.exe",MODE_READ); //"\\\\.\\Volume{975a91a4-aa07-11dc-98b4-806e6f6e6963}", MODE_READ);
-		VHDFile vhd(L"G:\\test.vhd", true, (uint64)20*(uint64)1024*(uint64)1024*(uint64)1024);
-		vhd.Seek(0);
-		c=0;
-		if(file!=NULL)
-		{
-			char buffer[4096];
-			char buffer2[4096];
-			_u32 rc;
-			while( (rc=file->Read(buffer, 4096))!=0 ) 
-			{
-				size_t read;
-				vhd.Read(buffer2, rc, read);
-				if(rc!=read)
-				{
-					Server->Log("Not enough data");
-					break;
-				}
-				for(size_t i=0;i<rc;++i)
-				{
-					if(buffer[i]!=buffer2[i])
-					{
-						Server->Log("Error. Data differs");
-						break;
-					}
-				}
-				++c;
-				if(c>=5120) break;
-			}
-		}
-	}*/
-	/*{
-		VHDFile vhd(L"C:\\Program Files\\IE6AppCompatVHD\\IE6 on XP SP3.vhd", true, 0);
-		VHDFile vhdout(L"G:\\urbackup\\test2.vhd", false, (uint64)15*(uint64)1024*(uint64)1024*(uint64)1024);
-
-		uint64 dsize=vhd.getSize();
-		char b2[4096];
-		unsigned int bpos=0;
-		uint64 si=0;
-		for(uint64 i=0;i<dsize;i+=512)
-		{
-			vhd.Seek(i);
-			char buffer[512];
-			if(!vhd.has_sector() )
-				continue;
-
-			size_t read;
-			vhd.Read(buffer, 512, read);
-			if(read!=512)
-			{
-				Server->Log("Read too few bytes!", LL_ERROR);
-			}
-
-			memcpy(&b2[bpos], buffer, 512);
-			bpos+=512;
-			if(bpos==4096)
-			{
-				vhdout.Seek(si);
-				vhdout.Write(b2, 4096);
-				si=i+512;
-				bpos=0;
-			}
-		}
-	}*/
 
 	std::string vhdcopy_in=Server->getServerParameter("vhdcopy_in");
 	if(!vhdcopy_in.empty())
@@ -162,6 +79,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		float vhdsize_gb=(vhdsize/1024)/1024.f/1024.f;
 		uint64 vhdsize_mb=vhdsize/1024/1024;
 		Server->Log("VHD Info: Size: "+nconvert(vhdsize_gb)+" GB "+nconvert(vhdsize_mb)+" MB",LL_INFO);
+		unsigned int vhd_blocksize=in.getBlocksize();
 		
 		std::string vhdcopy_out=Server->getServerParameter("vhdcopy_out");
 		if(vhdcopy_out.empty())
@@ -179,7 +97,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 			else
 			{
-				out->Seek(0);
 				std::string skip_s=Server->getServerParameter("skip");
 				int skip=1024*512;
 				if(!skip_s.empty())
@@ -196,17 +113,26 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				uint64 currpos=skip;
 				bool is_ok=true;
 
-				is_ok=in.Read(buffer, 512, read);
-				if(read>0)
+				out->Seek(0);
+				while(currpos%vhd_blocksize!=0)
 				{
-					_u32 rc=out->Write(buffer, (_u32)read);
-					if(rc!=read)
+					is_ok=in.Read(buffer, 512, read);
+					if(read>0)
 					{
-						Server->Log("Writing to output file failed", LL_ERROR);
-						exit(7);
+						_u32 rc=out->Write(buffer, (_u32)read);
+						if(rc!=read)
+						{
+							Server->Log("Writing to output file failed", LL_ERROR);
+							exit(7);
+						}
 					}
+					currpos+=read;
 				}
-				currpos+=read;
+
+				if(currpos!=skip)
+				{
+					Server->Log("First VHD sector at "+nconvert(currpos), LL_INFO);
+				}
 
 				do
 				{
