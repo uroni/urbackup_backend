@@ -54,7 +54,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev)
 
 	if(isNTFS(buffer) )
 	{
-		Server->Log("Filesystem type is ntfs", LL_DEBUG);
+		Server->Log(L"Filesystem type is ntfs ("+pDev+L")", LL_DEBUG);
 		FSNTFS *fs=new FSNTFS(pDev);
 		
 		/*

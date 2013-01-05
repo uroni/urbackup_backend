@@ -84,6 +84,8 @@ public:
 	bool has_sector(void);
 	bool this_has_sector(void);
 
+	bool has_block(void);
+
 	unsigned int getBlocksize();
 
 	bool isOpen(void);

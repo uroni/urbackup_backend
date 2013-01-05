@@ -968,6 +968,69 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 	return bsize;
 }
 
+bool VHDFile::has_block(void)
+{
+	unsigned int block=(unsigned int)(curr_offset/blocksize);
+	size_t blockoffset=curr_offset%blocksize;
+
+	if(curr_offset>=dstsize)
+	{
+		return false;
+	}
+
+	unsigned int bat_off=endian_swap(bat[block]);
+	if(bat_off==0xFFFFFFFF)
+	{
+		if(parent==NULL)
+		{
+			return false;
+		}
+		else
+		{
+			parent->Seek(curr_offset);
+			return parent->has_block();
+		}
+	}
+
+	uint64 dataoffset=(uint64)bat_off*(uint64)sector_size;
+	if(block!=currblock)
+	{
+		switchBitmap(dataoffset);
+
+		file->Seek(dataoffset);
+
+		if(dataoffset+bitmap_size+blockoffset>(uint64)file->Size() )
+		{
+			Server->Log("Wrong dataoffset: "+nconvert(dataoffset), LL_ERROR);
+			return false;
+		}
+
+		if(file->Read((char*)bitmap, bitmap_size)!=bitmap_size)
+		{
+			Server->Log("Error reading bitmap", LL_ERROR);
+			return false;
+		}
+		currblock=block;
+	}
+
+	if( isBitmapSet((unsigned int)blockoffset) )
+	{
+		return true;
+	}
+	else
+	{
+		if(parent!=NULL)
+		{
+			parent->Seek(curr_offset);
+			return parent->has_block();
+		}
+		else
+		{
+			return false;
+		}
+	}
+}
+
 void VHDFile::switchBitmap(uint64 new_offset)
 {
 	if(fast_mode && !read_only && bitmap_dirty && bitmap_offset!=0)
