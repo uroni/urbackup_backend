@@ -45,6 +45,8 @@ IServer *Server;
 
 CImagePluginMgr *imagepluginmgr;
 
+void PrintInfo(IFilesystem *fs);
+
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
@@ -447,28 +449,22 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string device_verify=Server->getServerParameter("device_verify");
 	if(!device_verify.empty())
 	{
-		VHDFile in(Server->ConvertToUnicode(device_verify), true, 0);
-		if(in.isOpen()==false)
+		FSNTFS fs(Server->ConvertToUnicode(device_verify));
+		if(fs.hasError())
 		{
-			Server->Log("Error opening VHD-File \""+device_verify+"\"", LL_ERROR);
+			Server->Log("Error opening device file", LL_ERROR);
 			exit(3);
 		}
 
-		std::string device_file=Server->getServerParameter("device_file");
-		if(device_file.empty())
+		PrintInfo(&fs);
+
+		std::string s_hashfile=Server->getServerParameter("hash_file");
+		if(s_hashfile.empty())
 		{
-			Server->Log("Device file parameter not set (--device_file)", LL_ERROR);
+			Server->Log("Hash file parameter not set (--hash_file)", LL_ERROR);
 			exit(4);
 		}
 
-		IFile *dev=Server->openFile(device_file, MODE_RW);
-		if(dev==NULL)
-		{
-			Server->Log("Could not open device file", LL_ERROR);
-			exit(5);
-		}
-
-		std::string s_hashfile=device_verify+".hash";
 		IFile *hashfile=Server->openFile(s_hashfile, MODE_READ);
 		if(hashfile==NULL)
 		{
@@ -476,83 +472,68 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			exit(7);
 		}
 
-		unsigned int blocksize=in.getBlocksize();
-		int skip=1024*512;
-		in.Seek(skip);
-		uint64 currpos=skip;
-		uint64 size=in.getSize();
+		unsigned int ntfs_blocksize=(unsigned int)fs.getBlocksize();
+		unsigned int vhd_sectorsize=(1024*1024)/2;
+
+		uint64 currpos=0;
+		uint64 size=fs.getSize();
 		sha256_ctx ctx;
 		sha256_init(&ctx);
-		char buf[512];
+		char *buf=new char[ntfs_blocksize];
 		int diff=0;
 		int last_pc=0;
-		unsigned char dig_z[32];
 
+		for(;currpos<size;currpos+=ntfs_blocksize)
 		{
-			memset(buf, 0, 512);
-			for(unsigned int i=0;i<blocksize;i+=512)
+			bool has_block=fs.readBlock(currpos/ntfs_blocksize, NULL);
+
+			if(has_block)
 			{
-				sha256_update(&ctx, (unsigned char*)buf, 512);
-			}
-			sha256_final(&ctx, dig_z);
-			sha256_init(&ctx);
-		}
+				bool read_block=fs.readBlock(currpos/ntfs_blocksize, buf);
 
-		for(;currpos<size;currpos+=blocksize)
-		{
-			in.Seek(currpos);
-			bool has_sector=in.has_sector();
-
-			unsigned char dig_r[32];
-			unsigned char dig_f[32];
-
-			if(has_sector)
-			{
-				for(unsigned int i=0;i<blocksize;i+=512)
+				if(!read_block)
 				{
-					uint64 i_pos=currpos+i*512;
-					in.Seek(i_pos);
-					if(in.has_block())
-					{
-						dev->Seek(i_pos-skip);
-						dev->Read(buf, 512);
-					}
-					else
-					{
-						memset(buf, 0, 512);
-					}
-					sha256_update(&ctx, (unsigned char*)buf, 512);
+					Server->Log("Could not read block "+nconvert(currpos/ntfs_blocksize), LL_ERROR);
 				}
-				
+
+				sha256_update(&ctx, (unsigned char*)buf, ntfs_blocksize);
+			}
+			else
+			{
+				memset(buf, 0, ntfs_blocksize);
+				sha256_update(&ctx, (unsigned char*)buf, ntfs_blocksize);
+			}
+
+			if( (currpos+ntfs_blocksize)%vhd_sectorsize==0 )
+			{
+				unsigned char dig_r[32];
+				unsigned char dig_f[32];
+
 				_u32 dr=hashfile->Read((char*)dig_f, 32);
 				if( dr!=32 )
 				{
 					Server->Log("Could not read hash from file", LL_ERROR);
 				}
+
 				sha256_final(&ctx, dig_r);
 				sha256_init(&ctx);
-			}
-			else
-			{
-				hashfile->Read((char*)dig_f, 32);
-				memcpy(dig_r, dig_z, 32);
-			}
 
-			if(memcmp(dig_r, dig_f, 32)!=0)
-			{
-				++diff;
-				Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos));
-			}
+				if(memcmp(dig_r, dig_f, 32)!=0)
+				{
+					++diff;
+					Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos));
+				}
+			}		
 		
 			int pc=(int)((float)((float)currpos/(float)size)*100.f+0.5f);
 			if(pc!=last_pc)
 			{
 				last_pc=pc;
-				Server->Log("Checking if hashes on device are good: "+nconvert(pc)+"%");
+				Server->Log("Checking device hashsums: "+nconvert(pc)+"%");
 			}
 			
 		}
-		if(diff==0)
+		if(diff>0)
 		{
 			Server->Log("Device does not match hash file");
 		}
