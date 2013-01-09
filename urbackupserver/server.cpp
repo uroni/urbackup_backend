@@ -119,15 +119,58 @@ void BackupServer::operator()(void)
 
 	{
 		Server->Log("Testing if backup destination can handle subvolumes and snapshots...", LL_DEBUG);
+
+		std::string snapshot_helper_cmd=Server->getServerParameter("snapshot_helper");
+		if(!snapshot_helper_cmd.empty())
+		{
+			SnapshotHelper::setSnapshotHelperCommand(snapshot_helper_cmd);
+		}
+
+		std::string cow_mode=settings->getValue("cow_mode", "false");
 		if(!SnapshotHelper::isAvailable())
 		{
-			Server->Log("Backup destination cannot handle subvolumes and snapshots. Snapshots disabled.", LL_INFO);
-			snapshots_enabled=false;
+			if(cow_mode!="true")
+			{
+				snapshots_enabled=false;
+			}
+			else
+			{
+				size_t n=10;
+				bool available;
+				do
+				{
+					Server->wait(10000);
+					Server->Log("Waiting for backup destination to support snapshots...", LL_INFO);
+					--n;
+					available=SnapshotHelper::isAvailable();
+				}
+				while(!available && n>0);
+
+				if(available)
+				{					
+					snapshots_enabled=true;
+				}
+				else
+				{
+					Server->Log("Copy on write mode is disabled, because the filesystem does not support it anymore.", LL_ERROR);
+					db->Write("INSERT OR REPLACE INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'false', 0)");
+					snapshots_enabled=false;
+				}
+			}
 		}
 		else
 		{
-			Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled.", LL_INFO);
 			snapshots_enabled=true;
+			db->Write("INSERT OR REPLACE INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'true', 0)");
+		}
+
+		if(snapshots_enabled)
+		{
+			Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled.", LL_INFO);
+		}
+		else
+		{
+			Server->Log("Backup destination cannot handle subvolumes and snapshots. Snapshots disabled.", LL_INFO);
 		}
 	}
 
