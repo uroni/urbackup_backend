@@ -623,6 +623,8 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
         				deleted_something=true;
         				break;
         			}
+        			
+        			full_file_num=(int)getFilesFullNum(clientid, backupid);
 			}
 
 			if(deleted_something_client==true)
@@ -656,7 +658,7 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 					deleted_something=true;
 					break;
 				}
-				break;
+				incr_file_num=(int)getFilesIncrNum(clientid, backupid);
 			}
 
 			if(deleted_something_client==true)
