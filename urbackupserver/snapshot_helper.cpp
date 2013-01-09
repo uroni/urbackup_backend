@@ -2,7 +2,7 @@
 #include "../Interface/Server.h"
 #include <stdlib.h>
 
-const std::string helper_name="urbackup_snapshot_helper";
+std::string SnapshotHelper::helper_name="urbackup_snapshot_helper";
 
 bool SnapshotHelper::isAvailable(void)
 {
@@ -32,4 +32,9 @@ bool SnapshotHelper::isSubvolume(std::wstring clientname, std::wstring name)
 {
 	int rc=system((helper_name+" issubvolume \""+Server->ConvertToUTF8(clientname)+"\" \""+Server->ConvertToUTF8(name)+"\"").c_str());
 	return rc==0;
+}
+
+void SnapshotHelper::setSnapshotHelperCommand(std::string helper_command)
+{
+	helper_name=helper_command;
 }

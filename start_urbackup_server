@@ -44,7 +44,13 @@ then
 	PLUGIN_CRYPTO=""
 fi
 
-DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --user urbackup"
+SNAPSHOT_HELPER="$PREFIX/bin/urbackup_snapshot_helper"
+if ! test -x $SNAPSHOT_HELPER
+then
+	echo "Snapshot helper not found. Btrfs mode will not work."
+fi
+
+DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --user urbackup --snapshot_helper $SNAPSHOT_HELPER"
 S_DAEMON="--daemon"
 
 print_help()
@@ -66,8 +72,8 @@ print_help()
 
 print_version()
 {
-	echo "UrBackup Server v1.0"
-	echo "Copyright (C) 2011,2012 Martin Raiber"
+	echo "UrBackup Server v1.1"
+	echo "Copyright (C) 2011-2013 Martin Raiber"
 	echo "This is free software; see the source for copying conditions. There is NO"
 	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
 	exit 0
