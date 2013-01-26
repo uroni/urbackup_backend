@@ -1116,7 +1116,7 @@ std::wstring UnescapeSQLString(const std::wstring &pStr)
 
 wstring htmldecode(string str, bool html, char xc='%');
 
-void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap)
+void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap, bool escape_params)
 {
 	std::wstring key;
 	std::string value;
@@ -1133,7 +1133,10 @@ void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> 
 		{
 			pos=0;
 			std::wstring wv=htmldecode(value, false);
-			wv=EscapeSQLString(wv);
+			if(escape_params)
+			{
+				wv=EscapeSQLString(wv);
+			}
 			pMap->insert( std::pair<std::wstring, std::wstring>(key,wv) );
 			key.clear(); value.clear();
 		}
@@ -1150,7 +1153,10 @@ void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> 
 	if( value.size()>0 || key.size()>0 )
 	{
 		std::wstring wv=htmldecode(value, false);
-		wv=EscapeSQLString(wv);
+		if(escape_params)
+		{
+			wv=EscapeSQLString(wv);
+		}
 		pMap->insert( std::pair<std::wstring, std::wstring>(key,wv) );
 	}
 }

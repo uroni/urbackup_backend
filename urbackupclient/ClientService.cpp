@@ -660,7 +660,7 @@ void ClientConnector::ReceivePackets(void)
 		}
 		else if((hashpos=cmd.find("#"))!=std::string::npos) //From front-end
 		{
-			ParseParamStr(getafter("#", cmd), &params);
+			ParseParamStr(getafter("#", cmd), &params, false);
 
 			cmd.erase(hashpos, cmd.size()-hashpos);
 			if(!checkPassword(params[L"pw"]))
