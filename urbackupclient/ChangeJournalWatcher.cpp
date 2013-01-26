@@ -23,6 +23,7 @@
 #include "DirectoryWatcherThread.h"
 
 const unsigned int usn_update_freq=10*60*1000;
+const DWORDLONG usn_reindex_num=1000000; // one million
 
 ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener) : dwt(dwt), listener(pListener), db(pDB)
 {
@@ -370,9 +371,23 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 			q_update_journal_id->Reset();
 		}
 
-		if(do_index==false && (info.last_record<data.FirstUsn || info.last_record>data.NextUsn) )
+		bool needs_reindex=false;
+
+		if( do_index==false && (info.last_record<data.FirstUsn || info.last_record>data.NextUsn) )
 		{
 			Server->Log(L"Last record not readable at '"+vol+L"' - reindexing", LL_WARNING);
+			needs_reindex=true;
+		}
+
+		if( do_index==false && data.NextUsn-info.last_record>usn_reindex_num )
+		{
+			Server->Log(L"There are "+convert(data.NextUsn-info.last_record)+L" new USN entries at '"+vol+L"' - reindexing", LL_WARNING);
+			needs_reindex=true;
+		}
+
+		if(needs_reindex)
+		{
+			
 			listener->On_ResetAll(vol);
 			do_index=true;
 			setIndexDone(vol, 0);
@@ -405,6 +420,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	cj.hVolume=hVolume;
 	cj.rid=rid;
 	cj.last_record_update=false;
+	cj.vol_str=vol;
 
 	if(!info.has_info)
 	{
@@ -521,7 +537,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 		{
 			if(Server->getTimeMS()-last_index_update>10000)
 			{
-				update();
+				update(false, sj->vol_str);
 				last_index_update=Server->getTimeMS();
 			}
 		}
@@ -553,7 +569,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	db->Write("INSERT INTO map_frn (name, pid, frn, rid) SELECT name, pid, frn, rid FROM map_frn_tmp");
 	db->Write("DROP TABLE map_frn_tmp");
 
-	update(true);
+	update(true, sj->vol_str);
 }
 
 SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
@@ -610,7 +626,7 @@ std::wstring ChangeJournalWatcher::getFilename(_i64 frn, _i64 rid)
 const int BUF_LEN=4096;
 
 
-void ChangeJournalWatcher::update(bool force_write)
+void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 {
 	char buffer[BUF_LEN];
 
@@ -618,6 +634,9 @@ void ChangeJournalWatcher::update(bool force_write)
 
 	for(std::map<std::wstring, SChangeJournal>::iterator it=wdirs.begin();it!=wdirs.end();++it)
 	{
+		if(!vol_str.empty() && it->first!=vol_str)
+			continue;
+
 		if(!indexing_in_progress)
 		{
 			std::vector<UsnInt> jd=getJournalData(it->first);

@@ -19,6 +19,7 @@ struct SChangeJournal
 	HANDLE hVolume;
 	_i64 rid;
 	bool last_record_update;
+	std::wstring vol_str;
 };
 
 struct SDeviceInfo
@@ -50,7 +51,7 @@ public:
 
 	void watchDir(const std::wstring &dir);
 
-	void update(bool force_write=false);
+	void update(bool force_write=false, std::wstring vol_str=L"");
 	void update_longliving(void);
 private:
 	IChangeJournalListener *listener;
