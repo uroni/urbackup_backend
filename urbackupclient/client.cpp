@@ -1582,7 +1582,14 @@ std::wstring IndexThread::sanitizePattern(const std::wstring &p)
 		wchar_t ch=ep[j];
 		if(ch=='/')
 		{
-			nep+=os_file_sep();
+			if(os_file_sep()==L"\\")
+			{
+				nep+=L"\\\\";
+			}
+			else
+			{
+				nep+=os_file_sep();
+			}
 		}
 		else if(ch=='\\' && j+1<ep.size() && ep[j+1]=='\\')
 		{
