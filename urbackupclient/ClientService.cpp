@@ -967,7 +967,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 
 	for(size_t i=0;i<backupdirs.size();++i)
 	{
-		if(backupdirs[i][L"need"]!=L"1")
+		if(backupdirs[i][L"need"]!=L"1" && backupdirs[i][L"path"]!=L"*")
 		{
 			//Delete the watch
 			IPipe *contractor=Server->createMemoryPipe();

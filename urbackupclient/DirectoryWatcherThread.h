@@ -47,6 +47,9 @@ public:
 	bool is_stopped(void);
 
 private:
+
+	std::wstring addSlashIfMissing(const std::wstring &strDirName);
+
 	static IPipe *pipe;
 	IDatabase *db;
 

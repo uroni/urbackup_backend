@@ -493,7 +493,7 @@ void IndexThread::operator()(void)
 			std::string dir;
 			if(data.getStr(&dir))
 			{
-				std::wstring msg=L"A"+Server->ConvertToUnicode( dir );
+				std::wstring msg=L"A"+os_get_final_path(Server->ConvertToUnicode( dir ));
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			contractor->Write("done");
@@ -504,7 +504,7 @@ void IndexThread::operator()(void)
 			std::string dir;
 			if(data.getStr(&dir))
 			{
-				std::wstring msg=L"D"+Server->ConvertToUnicode( dir );
+				std::wstring msg=L"D"+os_get_final_path(Server->ConvertToUnicode( dir ));
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			contractor->Write("done");
@@ -531,7 +531,17 @@ const char * filelist_fn="urbackup/data/filelist_new.ub";
 
 void IndexThread::indexDirs(void)
 {
-	readPatterns();
+	bool patterns_changed=false;
+	readPatterns(patterns_changed, false);
+
+	if(patterns_changed)
+	{
+		Server->Log("Deleting file-cache because include/exclude pattern changed...", LL_INFO);
+		IQuery *q=db->Prepare("DELETE FROM files", false);
+		q->Write();
+		db->destroyQuery(q);
+	}
+
 	updateDirs();
 #ifdef _WIN32
 	cd->restoreSavedChangedDirs();
@@ -676,6 +686,10 @@ void IndexThread::indexDirs(void)
 		Server->wait(1000);
 	}
 
+	if(patterns_changed)
+	{
+		readPatterns(patterns_changed, true);
+	}
 	share_dirs(starttoken);
 }
 
@@ -788,8 +802,8 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
 	if(use_db)
 	{
-		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, orig_path) );
-		if(it_dir!=changed_dirs.end() && (*it_dir).name!=orig_path)
+		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, orig_path+os_file_sep()) );
+		if(it_dir!=changed_dirs.end() && (*it_dir).name!=orig_path+os_file_sep())
 			it_dir=changed_dirs.end();
 	}
 	std::vector<SFile> tmp;
@@ -814,13 +828,16 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
 			std::sort(changed_files.begin(), changed_files.end());
 
-			for(size_t i=0;i<tmp.size();++i)
+			if(!changed_files.empty())
 			{
-				if(!tmp[i].isdir)
+				for(size_t i=0;i<tmp.size();++i)
 				{
-					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) )
+					if(!tmp[i].isdir)
 					{
-						tmp[i].last_modified*=Server->getRandomNumber();
+						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) )
+						{
+							tmp[i].last_modified*=Server->getRandomNumber();
+						}
 					}
 				}
 			}
@@ -839,7 +856,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 	}
 	else
 	{	
-		if( cd->getFiles(orig_path, tmp) )
+		if( cd->getFiles(orig_path+os_file_sep(), tmp) )
 		{
 			++index_c_db;
 			return tmp;
@@ -853,7 +870,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				tpath=L"\\\\?\\"+path;
 
 			tmp=getFiles(tpath);
-			cd->addFiles(orig_path, tmp);
+			cd->addFiles(orig_path+os_file_sep(), tmp);
 			return tmp;
 		}
 	}
@@ -1618,7 +1635,7 @@ std::wstring IndexThread::sanitizePattern(const std::wstring &p)
 	return nep;
 }
 
-void IndexThread::readPatterns(void)
+void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns)
 {
 	ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
 	exlude_dirs.clear();
@@ -1627,6 +1644,15 @@ void IndexThread::readPatterns(void)
 		std::wstring val;
 		if(curr_settings->getValue(L"exclude_files", &val) || curr_settings->getValue(L"exclude_files_def", &val) )
 		{
+			if(val!=cd->getOldExcludePattern())
+			{
+				pattern_changed=true;
+				if(update_saved_patterns)
+				{
+					cd->updateOldExcludePattern(val);
+				}
+			}
+
 			std::vector<std::wstring> toks;
 			Tokenize(val, toks, L";");
 			exlude_dirs=toks;
@@ -1653,6 +1679,15 @@ void IndexThread::readPatterns(void)
 		}
 		if(curr_settings->getValue(L"include_files", &val) || curr_settings->getValue(L"include_files_def", &val) )
 		{
+			if(val!=cd->getOldIncludePattern())
+			{
+				pattern_changed=true;
+				if(update_saved_patterns)
+				{
+					cd->updateOldIncludePattern(val);
+				}
+			}
+
 			std::vector<std::wstring> toks;
 			Tokenize(val, toks, L";");
 			include_dirs=toks;

@@ -59,7 +59,10 @@ void ClientDAO::prepareQueries(void)
 	q_delete_saved_changed_files=db->Prepare("DELETE FROM mfiles_backup", false);
 	q_restore_saved_changed_files=db->Prepare("INSERT OR REPLACE INTO mfiles SELECT dir_id,name FROM mfiles_backup", false);
 	q_has_changed_file=db->Prepare("SELECT dir_id FROM mfiles_backup WHERE dir_id=? AND name=?", false);
-	q_get_changed_files=db->Prepare("SELECT name FROM mfiles_backup WHERE dir_id=?", false);;
+	q_get_changed_files=db->Prepare("SELECT name FROM mfiles_backup WHERE dir_id=?", false);
+	q_get_pattern=db->Prepare("SELECT tvalue FROM misc WHERE tkey=?", false);
+	q_insert_pattern=db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)", false);
+	q_update_pattern=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey=?", false);
 }
 
 void ClientDAO::destroyQueries(void)
@@ -95,6 +98,9 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_restore_saved_changed_files);
 	db->destroyQuery(q_has_changed_file);
 	db->destroyQuery(q_get_changed_files);
+	db->destroyQuery(q_get_pattern);
+	db->destroyQuery(q_insert_pattern);
+	db->destroyQuery(q_update_pattern);
 }
 
 void ClientDAO::restartQueries(void)
@@ -466,4 +472,65 @@ std::vector<std::wstring> ClientDAO::getChangedFiles(_i64 dir_id)
 	}
 
 	return ret;
+}
+
+const std::string exclude_pattern_key="exclude_pattern";
+
+std::wstring ClientDAO::getOldExcludePattern(void)
+{
+	return getMiscValue(exclude_pattern_key);
+}
+
+void ClientDAO::updateOldExcludePattern(const std::wstring &pattern)
+{
+	updateMiscValue(exclude_pattern_key, pattern);
+}
+
+const std::string include_pattern_key="include_pattern";
+
+std::wstring ClientDAO::getOldIncludePattern(void)
+{
+	return getMiscValue(include_pattern_key);
+}
+
+void ClientDAO::updateOldIncludePattern(const std::wstring &pattern)
+{
+	updateMiscValue(include_pattern_key, pattern);
+}
+
+std::wstring ClientDAO::getMiscValue(const std::string& key)
+{
+	q_get_pattern->Bind(key);
+	db_results res=q_get_pattern->Read();
+	q_get_pattern->Reset();
+	if(!res.empty())
+	{
+		return res[0][L"tvalue"];
+	}
+	else
+	{
+		return L"";
+	}
+}
+
+
+void ClientDAO::updateMiscValue(const std::string& key, const std::wstring& value)
+{
+	q_get_pattern->Bind(exclude_pattern_key);
+	db_results res=q_get_pattern->Read();
+	q_get_pattern->Reset();
+	if(!res.empty())
+	{
+		q_update_pattern->Bind(value);
+		q_update_pattern->Bind(key);
+		q_update_pattern->Write();
+		q_update_pattern->Reset();
+	}
+	else
+	{
+		q_insert_pattern->Bind(key);
+		q_insert_pattern->Bind(value);
+		q_insert_pattern->Write();
+		q_insert_pattern->Reset();
+	}
 }

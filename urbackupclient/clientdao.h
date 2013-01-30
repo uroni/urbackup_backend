@@ -109,7 +109,16 @@ public:
 
 	void removeDeletedDir(const std::wstring &dir);
 
+	std::wstring getOldExcludePattern(void);
+	void updateOldExcludePattern(const std::wstring &pattern);
+
+	std::wstring getOldIncludePattern(void);
+	void updateOldIncludePattern(const std::wstring &pattern);
+
 private:
+	std::wstring getMiscValue(const std::string& key);
+	void updateMiscValue(const std::string& key, const std::wstring& value);
+
 	IDatabase *db;
 
 	IQuery *q_get_files;
@@ -143,4 +152,7 @@ private:
 	IQuery *q_restore_saved_changed_files;
 	IQuery *q_has_changed_file;
 	IQuery *q_get_changed_files;
+	IQuery *q_get_pattern;
+	IQuery *q_insert_pattern;
+	IQuery *q_update_pattern;
 };

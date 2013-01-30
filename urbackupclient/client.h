@@ -113,7 +113,7 @@ private:
 	void updateDirs(void);
 
 	std::wstring sanitizePattern(const std::wstring &p);
-	void readPatterns(void);
+	void readPatterns(bool &pattern_changed, bool update_saved_patterns);
 	bool isExcluded(const std::wstring &path);
 	bool isIncluded(const std::wstring &path, bool *adding_worthless);
 

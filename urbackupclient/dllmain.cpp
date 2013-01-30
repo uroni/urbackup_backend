@@ -306,6 +306,11 @@ void upgrade_client4_5(IDatabase *db)
 	db->Write("DELETE FROM files");	
 }
 
+void upgrade_client5_6(IDatabase *db)
+{
+	db->Write("DELETE FROM files");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -341,6 +346,10 @@ bool upgrade_client(void)
 				break;
 			case 4:
 				upgrade_client4_5(db);
+				++ver;
+				break;
+			case 5:
+				upgrade_client5_6(db);
 				++ver;
 				break;
 			default:
