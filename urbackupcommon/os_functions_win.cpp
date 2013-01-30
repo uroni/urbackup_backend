@@ -412,6 +412,16 @@ std::wstring os_get_final_path(std::wstring path)
 #if (_WIN32_WINNT >= 0x0600)
 	std::wstring ret;
 
+	if(path.find(L":")==std::string::npos)
+	{
+		path+=L":";
+	}
+
+	if(path.find(L"\\")==std::string::npos)
+	{
+		path+=L"\\";
+	}
+
 	HANDLE hFile = CreateFileW(path.c_str(),               
                        GENERIC_READ,          
                        FILE_SHARE_READ,       
