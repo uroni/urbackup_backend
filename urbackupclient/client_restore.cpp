@@ -1025,6 +1025,13 @@ void restore_wizard(void)
 					system("cat urbackup/restore/testing_partition");
 					system("echo");
 					dev=Server->openFile("/dev/"+seldrive+nconvert(mbrdata.partition_number), MODE_RW);
+
+					if(dev==NULL)
+					{
+						//Fix LBA partition signature
+						system(("echo w | fdisk.distrib /dev/"+seldrive+" > /dev/null 2>&1").c_str());
+					}
+
 					++try_c;
 				}
 				if(dev==NULL)
