@@ -22,7 +22,6 @@ DAEMON=$PREFIX/sbin/start_urbackup_server # Introduce the server's location here
 DAEMON_REAL=$PREFIX/sbin/urbackup_srv
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
-DAEMON_TMPDIR=/tmp
 SQLITE_TMPDIR=""
 
 # Exit if the package is not installed
