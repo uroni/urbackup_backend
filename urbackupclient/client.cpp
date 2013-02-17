@@ -269,7 +269,7 @@ void IndexThread::operator()(void)
 #ifdef _WIN32
 			if(cd->hasChangedGap())
 			{
-				Server->Log("Deleting files... GAP found...", LL_INFO);
+				Server->Log("Deleting file-index... GAP found...", LL_INFO);
 
 				std::vector<std::wstring> gaps=cd->getGapDirs();
 
@@ -288,6 +288,7 @@ void IndexThread::operator()(void)
 				IQuery *q=db->Prepare(q_str, false);
 				for(size_t i=0;i<gaps.size();++i)
 				{
+					Server->Log(L"Deleting file-index from drive \""+gaps[i]+L"\"", LL_INFO);
 					q->Bind(gaps[i]+L"*");
 				}
 
@@ -622,6 +623,8 @@ void IndexThread::indexDirs(void)
 				}
 			}
 #endif
+			mod_path=removeDirectorySeparatorAtEnd(mod_path);
+			backup_dirs[i].path=removeDirectorySeparatorAtEnd(backup_dirs[i].path);
 
 			Server->Log(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_INFO);
 			index_c_db=0;
@@ -797,7 +800,14 @@ void IndexThread::readBackupDirs(void)
 std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db)
 {
 #ifndef _WIN32
-	return getFiles(path);
+	if(path.empty())
+	{
+		return getFiles(os_file_sep());
+	}
+	else
+	{
+		return getFiles(path);
+	}
 #else
 	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
 	if(use_db)
@@ -842,14 +852,14 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				}
 			}
 
-			if(cd->hasFiles(orig_path) )
+			if(cd->hasFiles(orig_path+os_file_sep()) )
 			{
 				++index_c_db_update;
-				modifyFilesInt(orig_path, tmp);
+				modifyFilesInt(orig_path+os_file_sep(), tmp);
 			}
 			else
 			{
-				cd->addFiles(orig_path, tmp);
+				cd->addFiles(orig_path+os_file_sep(), tmp);
 			}
 		}
 		return tmp;
@@ -1966,4 +1976,14 @@ void IndexThread::commitModifyFilesBuffer(void)
 
 	modify_file_buffer.clear();
 	modify_file_buffer_size=0;
+}
+
+std::wstring IndexThread::removeDirectorySeparatorAtEnd(const std::wstring& path)
+{
+	wchar_t path_sep=os_file_sep()[0];
+	if(!path.empty() && path[path.size()-1]==path_sep )
+	{
+		return path.substr(0, path.size()-1);
+	}
+	return path;
 }

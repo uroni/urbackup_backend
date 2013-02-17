@@ -138,6 +138,8 @@ private:
 	void modifyFilesInt(std::wstring path, const std::vector<SFile> &data);
 	void commitModifyFilesBuffer(void);
 
+	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
