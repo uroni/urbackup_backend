@@ -33,7 +33,6 @@
 #include <memory.h>
 
 const size_t freespace_mod=50*1024*1024; //50 MB
-const size_t c_backup_count=1000;
 const int c_copy_limit=1000;
 
 IMutex * delete_mutex=NULL;
@@ -345,7 +344,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 							{
 								if(!copyFile(src, hash_fn))
 								{
-									Server->Log("Error copying hashoutput to destination -1", LL_ERROR);
+									ServerLogger::Log(clientid, "Error copying hashoutput to destination -1", LL_ERROR);
 									has_error=true;
 									hash_fn.clear();
 								}
@@ -363,7 +362,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 					{
 						if(!copyFile(ctf, hash_fn))
 						{
-							Server->Log("Error copying hashfile to destination -2", LL_ERROR);
+							ServerLogger::Log(clientid, "Error copying hashfile to destination -2", LL_ERROR);
 							has_error=true;
 							hash_fn.clear();
 						}
@@ -512,7 +511,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				if(!r)
 				{
 					has_error=true;
-					Server->Log("Storing file failed -1", LL_ERROR);
+					ServerLogger::Log(clientid, "Storing file failed -1", LL_ERROR);
 				}
 
 				if(tf!=NULL)
@@ -903,7 +902,7 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::wstring &dest, const st
 
 	if( dst_size!=tf->Size() )
 	{
-		if( !os_file_truncate(dest, tf->Size()) )
+		if( !os_file_truncate(os_file_prefix(dest), tf->Size()) )
 		{
 			Server->Log(L"Error truncating file \""+dest+L"\" -2", LL_ERROR);
 			return false;
@@ -924,13 +923,13 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 
 	Server->Log(L"HT: Copying with hashoutput with reflink data from \""+orig_fn+L"\"", LL_DEBUG);
 
-	IFile *dst=openFileRetry(dest, MODE_RW);
+	IFile *dst=openFileRetry(os_file_prefix(dest), MODE_RW);
 	if(dst==NULL) return false;
 	ObjectScope dst_s(dst);
 
 	if(tf->Size()>0)
 	{
-		IFile *dst_hash=openFileRetry(hash_dest, MODE_WRITE);
+		IFile *dst_hash=openFileRetry(os_file_prefix(hash_dest), MODE_WRITE);
 		if(dst_hash==NULL)
 		{
 			return false;
@@ -947,7 +946,11 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 
 		if( dst_size!=tf->Size() )
 		{
-			
+			if( !os_file_truncate(os_file_prefix(dest), tf->Size()) )
+			{
+				Server->Log(L"Error truncating file \""+dest+L"\" -2", LL_ERROR);
+				return false;
+			}
 		}
 	}
 	else
@@ -986,7 +989,7 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &d
 
 	if(!use_reflink)
 	{
-		return os_rename_file(tf_fn, dest);
+		return os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest) );
 	}
 	else
 	{
@@ -994,7 +997,7 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &d
 		{
 			Server->Log(L"Reflinking file \""+dest+L"\" failed -3", LL_ERROR);
 
-			return os_rename_file(tf_fn, dest);
+			return os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest));
 		}
 		
 		Server->deleteFile(os_file_prefix(tf_fn));
@@ -1010,7 +1013,7 @@ bool BackupServerHash::renameFile(IFile *tf, const std::wstring &dest)
 
 	if(!use_reflink)
 	{
-		return os_rename_file(tf_fn, dest);
+		return os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest) );
 	}
 	else
 	{
@@ -1018,7 +1021,7 @@ bool BackupServerHash::renameFile(IFile *tf, const std::wstring &dest)
 		{
 			Server->Log(L"Reflinking file \""+dest+L"\" failed -4", LL_ERROR);
 
-			return os_rename_file(tf_fn, dest);
+			return os_rename_file(os_file_prefix(tf_fn), os_file_prefix(dest) );
 		}
 		
 		Server->deleteFile(os_file_prefix(tf_fn));
