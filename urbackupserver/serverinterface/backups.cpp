@@ -55,7 +55,7 @@ ACTION_IMPL(backups)
 		IDatabase *db=helper.getDatabase();
 		if(sa.empty())
 		{
-			std::string qstr="SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup FROM clients";
+			std::string qstr="SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup FROM clients";
 			if(!clientid.empty()) qstr+=" WHERE "+constructFilter(clientid, "id");
 			IQuery *q=db->Prepare(qstr);
 			db_results res=q->Read();
@@ -95,7 +95,7 @@ ACTION_IMPL(backups)
 					}
 				}
 
-				IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
+				IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS t_backuptime, incremental, size_bytes, archived, archive_timeout FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
 				q->Bind(t_clientid);
 				db_results res=q->Read();
 				JSON::Array backups;
@@ -179,7 +179,7 @@ ACTION_IMPL(backups)
 					ret.set("backupid", backupid);
 					ret.set("path", u_path);
 
-					q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime) AS backuptime FROM backups WHERE id=?");
+					q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=?");
 					q->Bind(backupid);
 					res=q->Read();
 					q->Reset();
