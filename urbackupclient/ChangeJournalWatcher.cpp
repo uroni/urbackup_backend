@@ -438,6 +438,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	if(do_index)
 	{
 		reindex(rid, vol, &cj);
+		Server->Log(L"Reindexing of '"+vol+L"' done.", LL_INFO);
 	}
 }
 
@@ -899,8 +900,7 @@ const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REAS
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
 {
-	if(UsnRecord->Filename==L"WriteTest.txt")
-		logEntry(vol, UsnRecord);
+	//logEntry(vol, UsnRecord);
 
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
 	if(dir_id!=-1) //Is a directory
@@ -990,7 +990,8 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				}
 			}
 
-			if( (UsnRecord->Reason & (watch_flags | USN_REASON_RENAME_OLD_NAME)) && (UsnRecord->Reason & USN_REASON_CLOSE) )
+			if( (UsnRecord->Reason & USN_REASON_RENAME_OLD_NAME)
+				|| (UsnRecord->Reason & watch_flags) && (UsnRecord->Reason & USN_REASON_CLOSE) )
 			{
 				bool save_fn=false;
 				if( (UsnRecord->Reason & USN_REASON_BASIC_INFO_CHANGE) && (UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY)==0 )
