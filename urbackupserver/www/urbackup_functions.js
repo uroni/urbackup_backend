@@ -645,3 +645,17 @@ function getCheckboxValue(v)
 	if(v) return "checked=\"checked\"";
 	else return "";
 }
+
+function addSelectSelected(options, name, params)
+{
+	var selected_option=params[name];
+	for(var i=0;i<options.length;++i)
+	{
+		if(options[i]==selected_option)
+		{
+			params[name+"_"+i]="selected=\"selected\"";
+			return params;
+		}
+	}
+	return params;
+}

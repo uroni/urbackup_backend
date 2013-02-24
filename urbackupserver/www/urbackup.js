@@ -8,7 +8,14 @@ g.tabberidx=-1;
 g.status_detail=false;
 g.progress_stop_id=-1;
 
-g.languages=[ { l: "Deutsch", s: "de" }, { l: "English", s: "en" }, { l: "Español", s: "es" }, { l: "Россия", s: "ru"} ];
+g.languages=[ 
+				{ l: "Deutsch", s: "de" },
+				{ l: "English", s: "en" }, 
+				{ l: "Español", s: "es" },
+				{ l: "Россия", s: "ru"},
+				{ l: "简体中文", s: "zh_CN" },
+				{ l: "繁体中文", s: "zh_TW" }
+			];
 
 function startup()
 {
@@ -102,9 +109,13 @@ function try_anonymous_login(data)
 	if(g.startup)
 	{
 		var lang="en";
-		if(data.lang=="de")
+		for(var i=0;i<g.languages.length;++i)
 		{
-			lang="de";
+			if(g.languages[i].s.toLowerCase()==data.lang.toLowerCase())
+			{
+				lang=g.languages[i].s;
+				break;
+			}
 		}
 		g.startup=false;
 		change_lang(lang, false);
@@ -219,6 +230,7 @@ function getPar(p)
 	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
 	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
 	if(p=="global_internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
+	if(p=="file_hash_collect_cachesize") val=Math.round(val*((1024*1024)/4096));
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
@@ -1165,6 +1177,16 @@ function show_settings2(data)
 			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
 			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
 			
+			var transfer_mode_params1=["raw", "hashed"];
+			var transfer_mode_params2=["raw", "hashed", "blockhash"];
+			
+			data.settings=addSelectSelected(transfer_mode_params1, "local_full_file_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params1, "internet_full_file_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params2, "local_incr_file_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params2, "internet_incr_file_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
+			
 			
 			data.settings.update_freq_incr/=60*60;
 			data.settings.update_freq_full/=60*60*24;
@@ -1181,6 +1203,8 @@ function show_settings2(data)
 			else data.settings.global_local_speed/=(1024*1024)/8;
 			if(data.settings.global_internet_speed==-1) data.settings.global_internet_speed="-";
 			else data.settings.global_internet_speed/=1024/8;
+			
+			data.settings.file_hash_collect_cachesize/=(1024*1024)/4096;
 			
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
@@ -1467,6 +1491,31 @@ g.settings_list=[
 "internet_mode_enabled",
 "silent_update"
 ];
+g.general_settings_list=[
+"backupfolder",
+"no_images",
+"no_file_backups",
+"autoshutdown",
+"autoupdate_clients",
+"max_sim_backups",
+"max_active_clients",
+"tmpdir",
+"cleanup_window",
+"backup_database",
+"global_local_speed",
+"global_internet_speed",
+"use_tmpfiles",
+"use_tmpfiles_images",
+"local_full_file_transfer_mode",
+"internet_full_file_transfer_mode",
+"local_incr_file_transfer_mode",
+"internet_incr_file_transfer_mode",
+"local_image_transfer_mode",
+"internet_image_transfer_mode",
+"file_hash_collect_amount",
+"file_hash_collect_timeout",
+"file_hash_collect_cachesize"
+];
 g.mail_settings_list=[
 "mail_servername",
 "mail_serverport",
@@ -1521,20 +1570,10 @@ function saveGeneralSettings()
 	if(!startLoading()) return;
 			
 	var pars="";
-	pars+=getPar("backupfolder");
-	pars+=getPar("no_images");
-	pars+=getPar("no_file_backups");
-	pars+=getPar("autoshutdown");
-	pars+=getPar("autoupdate_clients");
-	pars+=getPar("max_sim_backups");
-	pars+=getPar("max_active_clients");
-	pars+=getPar("tmpdir");
-	pars+=getPar("cleanup_window");
-	pars+=getPar("backup_database");
-	pars+=getPar("global_local_speed");
-	pars+=getPar("global_internet_speed");
-	pars+=getPar("use_tmpfiles");
-	pars+=getPar("use_tmpfiles_images");
+	for(var i=0;i<g.general_settings_list.length;++i)
+	{
+		pars+=getPar(g.general_settings_list[i]);
+	}
 	pars+=getArchivePars();
 	for(var i=0;i<g.settings_list.length;++i)
 	{

@@ -24,6 +24,7 @@
 #include "../../urlplugin/IUrlFactory.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
+#include "../../urbackupcommon/settingslist.h"
 #include "../server_get.h"
 #include "../server_archive.h"
 
@@ -46,68 +47,45 @@ std::vector<std::wstring> getMailSettingsList(void)
 JSON::Object getJSONClientSettings(ServerSettings &settings)
 {
 	JSON::Object ret;
-	ret.set("update_freq_incr", settings.getSettings()->update_freq_incr);
-	ret.set("update_freq_full", settings.getSettings()->update_freq_full);
-	ret.set("update_freq_image_full", settings.getSettings()->update_freq_image_full);
-	ret.set("update_freq_image_incr", settings.getSettings()->update_freq_image_incr);
-	ret.set("max_file_incr", settings.getSettings()->max_file_incr);
-	ret.set("min_file_incr", settings.getSettings()->min_file_incr);
-	ret.set("max_file_full", settings.getSettings()->max_file_full);
-	ret.set("min_file_full", settings.getSettings()->min_file_full);
-	ret.set("min_image_incr", settings.getSettings()->min_image_incr);
-	ret.set("max_image_incr", settings.getSettings()->max_image_incr);
-	ret.set("min_image_full", settings.getSettings()->min_image_full);
-	ret.set("max_image_full", settings.getSettings()->max_image_full);
-	ret.set("allow_overwrite", settings.getSettings()->allow_overwrite);
-	ret.set("startup_backup_delay", settings.getSettings()->startup_backup_delay);
-	ret.set("backup_window", settings.getSettings()->backup_window);
-	ret.set("computername", settings.getSettings()->computername);
-	ret.set("exclude_files", settings.getSettings()->exclude_files);
-	ret.set("include_files", settings.getSettings()->include_files);
-	ret.set("default_dirs", settings.getSettings()->default_dirs);
-	ret.set("allow_config_paths", settings.getSettings()->allow_config_paths);
-	ret.set("allow_starting_file_backups", settings.getSettings()->allow_starting_file_backups);
-	ret.set("allow_starting_image_backups", settings.getSettings()->allow_starting_image_backups);
-	ret.set("allow_pause", settings.getSettings()->allow_pause);
-	ret.set("allow_log_view", settings.getSettings()->allow_log_view);
-	ret.set("image_letters", settings.getSettings()->image_letters);
-	ret.set("internet_authkey", settings.getSettings()->internet_authkey);
-	ret.set("client_set_settings", settings.getSettings()->client_set_settings);
-	ret.set("internet_speed", settings.getSettings()->internet_speed);
-	ret.set("local_speed", settings.getSettings()->local_speed);
-	ret.set("internet_mode_enabled", settings.getSettings()->internet_mode_enabled);
-	ret.set("internet_compress", settings.getSettings()->internet_compress);
-	ret.set("internet_encrypt", settings.getSettings()->internet_encrypt);
-	ret.set("internet_image_backups", settings.getSettings()->internet_image_backups);
-	ret.set("internet_full_file_backups", settings.getSettings()->internet_full_file_backups);
-	ret.set("silent_update", settings.getSettings()->silent_update);
+#define SET_SETTING(x) ret.set(#x, settings.getSettings()->x);
+	SET_SETTING(update_freq_incr);
+	SET_SETTING(update_freq_full);
+	SET_SETTING(update_freq_image_full);
+	SET_SETTING(update_freq_image_incr);
+	SET_SETTING(max_file_incr);
+	SET_SETTING(min_file_incr);
+	SET_SETTING(max_file_full);
+	SET_SETTING(min_file_full);
+	SET_SETTING(min_image_incr);
+	SET_SETTING(max_image_incr);
+	SET_SETTING(min_image_full);
+	SET_SETTING(max_image_full);
+	SET_SETTING(allow_overwrite);
+	SET_SETTING(startup_backup_delay);
+	SET_SETTING(backup_window);
+	SET_SETTING(computername);
+	SET_SETTING(exclude_files);
+	SET_SETTING(include_files);
+	SET_SETTING(default_dirs);
+	SET_SETTING(allow_config_paths);
+	SET_SETTING(allow_starting_file_backups);
+	SET_SETTING(allow_starting_image_backups);
+	SET_SETTING(allow_pause);
+	SET_SETTING(allow_log_view);
+	SET_SETTING(image_letters);
+	SET_SETTING(internet_authkey);
+	SET_SETTING(client_set_settings);
+	SET_SETTING(internet_speed);
+	SET_SETTING(local_speed);
+	SET_SETTING(internet_mode_enabled);
+	SET_SETTING(internet_compress);
+	SET_SETTING(internet_encrypt);
+	SET_SETTING(internet_image_backups);
+	SET_SETTING(internet_full_file_backups);
+	SET_SETTING(silent_update);
+#undef SET_SETTING
 	return ret;
 }
-
-struct SGeneralSettings
-{
-	SGeneralSettings(void): no_images(false), no_file_backups(false), autoshutdown(false), autoupdate_clients(true),
-		max_sim_backups(10), max_active_clients(100), cleanup_window(L"1-7/3-4"), backup_database(true),
-		internet_server_port(55415),
-		global_local_speed(-1), global_internet_speed(-1),
-		use_tmpfiles(false), use_tmpfiles_images(false) {}
-	std::wstring backupfolder;
-	bool no_images;
-	bool no_file_backups;
-	bool autoshutdown;
-	bool autoupdate_clients;
-	int max_sim_backups;
-	int max_active_clients;
-	std::wstring tmpdir;
-	std::wstring cleanup_window;
-	bool backup_database;
-	std::string internet_server;
-	unsigned short internet_server_port;
-	int global_local_speed;
-	int global_internet_speed;
-	bool use_tmpfiles;
-	bool use_tmpfiles_images;
-};
 
 struct SClientSettings
 {
@@ -115,50 +93,36 @@ struct SClientSettings
 	bool overwrite;
 };
 
-SGeneralSettings getGeneralSettings(IDatabase *db)
+void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settings)
 {
-	IQuery *q=db->Prepare("SELECT key, value FROM settings_db.settings WHERE clientid=0");
-	db_results res=q->Read();
-	q->Reset();
-	SGeneralSettings ret;
-	for(size_t i=0;i<res.size();++i)
-	{
-		std::wstring key=res[i][L"key"];
-		std::wstring value=res[i][L"value"];
-		if(key==L"backupfolder")
-			ret.backupfolder=value;
-		else if(key==L"no_images" && value==L"true")
-			ret.no_images=true;
-		else if(key==L"no_file_backups" && value==L"true")
-			ret.no_file_backups=true;
-		else if(key==L"autoshutdown" && value==L"true")
-			ret.autoshutdown=true;
-		else if(key==L"autoupdate_clients" && value==L"false")
-			ret.autoupdate_clients=false;
-		else if(key==L"max_active_clients")
-			ret.max_active_clients=watoi(value);
-		else if(key==L"max_sim_backups")
-			ret.max_sim_backups=watoi(value);
-		else if(key==L"tmpdir")
-			ret.tmpdir=value;
-		else if(key==L"cleanup_window")
-			ret.cleanup_window=value;
-		else if(key==L"backup_database" && value==L"false")
-			ret.backup_database=false;
-		else if(key==L"internet_server" )
-			ret.internet_server=Server->ConvertToUTF8(value);
-		else if(key==L"internet_server_port" )
-			ret.internet_server_port=(unsigned short)watoi(value);
-		else if(key==L"global_internet_speed")
-			ret.global_internet_speed=watoi(value);
-		else if(key==L"global_local_speed")
-			ret.global_local_speed=watoi(value);
-		else if(key==L"use_tmpfiles" && value==L"true")
-			ret.use_tmpfiles=true;
-		else if(key==L"use_tmpfiles_images" && value==L"true")
-			ret.use_tmpfiles_images=true;
-	}
-	return ret;
+#define SET_SETTING(x) obj.set(#x, settings.getSettings()->x);
+
+	SET_SETTING(backupfolder);
+	SET_SETTING(no_images);
+	SET_SETTING(no_file_backups);
+	SET_SETTING(autoshutdown);
+	SET_SETTING(autoupdate_clients);
+	SET_SETTING(max_sim_backups);
+	SET_SETTING(max_active_clients);
+	SET_SETTING(cleanup_window);
+	SET_SETTING(backup_database);
+	SET_SETTING(internet_server_port);
+	SET_SETTING(global_local_speed);
+	SET_SETTING(global_internet_speed);
+	SET_SETTING(use_tmpfiles);
+	SET_SETTING(use_tmpfiles_images);
+	SET_SETTING(tmpdir);
+	SET_SETTING(local_full_file_transfer_mode);
+	SET_SETTING(internet_full_file_transfer_mode);
+	SET_SETTING(local_incr_file_transfer_mode);
+	SET_SETTING(internet_incr_file_transfer_mode);
+	SET_SETTING(local_image_transfer_mode);
+	SET_SETTING(internet_image_transfer_mode);
+	SET_SETTING(file_hash_collect_amount);
+	SET_SETTING(file_hash_collect_timeout);
+	SET_SETTING(file_hash_collect_cachesize);
+
+#undef SET_SETTING
 }
 
 void getMailSettings(JSON::Object &obj, IDatabase *db)
@@ -222,32 +186,28 @@ void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q
 	}
 }
 
-void saveGeneralSettings(SGeneralSettings settings, IDatabase *db)
+void saveGeneralSettings(str_map &GET, IDatabase *db)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
 	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,0)");
 
-	updateSetting(L"backupfolder", settings.backupfolder, q_get, q_update, q_insert);
-	updateSetting(L"no_images", settings.no_images?L"true":L"false", q_get, q_update, q_insert);
-	updateSetting(L"no_file_backups", settings.no_file_backups?L"true":L"false", q_get, q_update, q_insert);
-	updateSetting(L"autoshutdown", settings.autoshutdown?L"true":L"false",  q_get, q_update, q_insert);
-	updateSetting(L"autoupdate_clients", settings.autoupdate_clients?L"true":L"false",  q_get, q_update, q_insert);
-	updateSetting(L"max_sim_backups", convert(settings.max_sim_backups),  q_get, q_update, q_insert);
-	updateSetting(L"max_active_clients", convert(settings.max_active_clients),  q_get, q_update, q_insert);
-	updateSetting(L"tmpdir", settings.tmpdir,  q_get, q_update, q_insert);
-	updateSetting(L"cleanup_window", settings.cleanup_window,  q_get, q_update, q_insert);
-	updateSetting(L"backup_database", settings.backup_database?L"true":L"false",  q_get, q_update, q_insert);
-	updateSetting(L"global_local_speed", convert(settings.global_local_speed),  q_get, q_update, q_insert);
-	updateSetting(L"global_internet_speed", convert(settings.global_internet_speed),  q_get, q_update, q_insert);
-	updateSetting(L"use_tmpfiles", convert(settings.use_tmpfiles),  q_get, q_update, q_insert);
-	updateSetting(L"use_tmpfiles_images", convert(settings.use_tmpfiles_images),  q_get, q_update, q_insert);
+	std::vector<std::wstring> settings=getGlobalSettingsList();
+	for(size_t i=0;i<settings.size();++i)
+	{
+		str_map::iterator it=GET.find(settings[i]);
+		if(it!=GET.end())
+		{
+			updateSetting(settings[i], it->second, q_get, q_update, q_insert);
+		}
+	}
 
 #ifdef _WIN32
-	if(!settings.tmpdir.empty())
+	std::wstring tmpdir=GET[L"tmpdir"];
+	if(!tmpdir.empty())
 	{
-		os_create_dir(settings.tmpdir+os_file_sep()+L"urbackup_tmp");
-		Server->setTemporaryDirectory(settings.tmpdir+os_file_sep()+L"urbackup_tmp");
+		os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+		Server->setTemporaryDirectory(tmpdir+os_file_sep()+L"urbackup_tmp");
 	}
 #endif
 }
@@ -269,16 +229,6 @@ void updateMailSettings(str_map &GET, IDatabase *db)
 	}
 }
 
-void updateInternetSettings(SGeneralSettings settings, IDatabase *db)
-{
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
-	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
-	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,0)");
-
-	updateSetting(L"internet_server", Server->ConvertToUnicode(settings.internet_server), q_get, q_update, q_insert);
-	updateSetting(L"internet_server_port", convert(settings.internet_server_port), q_get, q_update, q_insert);
-}
-
 void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
@@ -290,9 +240,9 @@ void saveClientSettings(SClientSettings settings, IDatabase *db, int clientid)
 
 void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 {
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid=?");
-	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?");
-	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)");
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(t_clientid));
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+nconvert(t_clientid));
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+nconvert(t_clientid)+")");
 
 	std::vector<std::wstring> sset=getSettingsList();
 	sset.push_back(L"allow_overwrite");
@@ -301,26 +251,7 @@ void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 		str_map::iterator it=GET.find(sset[i]);
 		if(it!=GET.end())
 		{
-			q_get->Bind(sset[i]);
-			q_get->Bind(t_clientid);
-			db_results res=q_get->Read();
-			q_get->Reset();
-			if(!res.empty())
-			{
-				q_update->Bind(it->second);
-				q_update->Bind(sset[i]);
-				q_update->Bind(t_clientid);
-				q_update->Write();
-				q_update->Reset();
-			}
-			else
-			{
-				q_insert->Bind(sset[i]);
-				q_insert->Bind(it->second);
-				q_insert->Bind(t_clientid);
-				q_insert->Write();
-				q_insert->Reset();
-			}
+			updateSetting(sset[i], it->second, q_get, q_update, q_insert);
 		}
 	}
 }
@@ -761,29 +692,10 @@ ACTION_IMPL(settings)
 		{
 			if(sa==L"general_save")
 			{
-				SGeneralSettings settings;
-				settings.backupfolder=GET[L"backupfolder"];
-				settings.no_images=(GET[L"no_images"]==L"true");
-				settings.no_file_backups=(GET[L"no_file_backups"]==L"true");
-				settings.autoshutdown=(GET[L"autoshutdown"]==L"true");
-				settings.autoupdate_clients=(GET[L"autoupdate_clients"]==L"true");
-				settings.backup_database=(GET[L"backup_database"]==L"true");
-				settings.max_active_clients=watoi(GET[L"max_active_clients"]);
-				settings.max_sim_backups=watoi(GET[L"max_sim_backups"]);
-				settings.tmpdir=GET[L"tmpdir"];
-				settings.cleanup_window=GET[L"cleanup_window"];
-				settings.global_internet_speed=watoi(GET[L"global_internet_speed"]);
-				settings.global_local_speed=watoi(GET[L"global_local_speed"]);
-				settings.internet_server=Server->ConvertToUTF8(GET[L"internet_server"] );
-				settings.internet_server_port=watoi(GET[L"internet_server_port"]);
-				settings.use_tmpfiles=(GET[L"use_tmpfiles"]==L"true");
-				settings.use_tmpfiles_images=(GET[L"use_tmpfiles_images"]==L"true");
-
 				db->BeginTransaction();
 				updateClientSettings(0, GET, db);
 				updateArchiveSettings(0, GET, db);
-				updateInternetSettings(settings, db);
-				saveGeneralSettings(settings, db);
+				saveGeneralSettings(GET, db);
 				db->EndTransaction();
 
 				ServerSettings::updateAll();
@@ -796,25 +708,9 @@ ACTION_IMPL(settings)
 				sa=L"general";
 				ret.set("sa", sa);
 
-				SGeneralSettings settings=getGeneralSettings(db);
 				ServerSettings serv_settings(db);
 				JSON::Object obj=getJSONClientSettings(serv_settings);
-				obj.set("backupfolder", settings.backupfolder);
-				obj.set("no_images", settings.no_images);
-				obj.set("no_file_backups", settings.no_file_backups);
-				obj.set("autoshutdown", settings.autoshutdown);
-				obj.set("autoupdate_clients", settings.autoupdate_clients);
-				obj.set("max_sim_backups", settings.max_sim_backups);
-				obj.set("max_active_clients", settings.max_active_clients);
-				obj.set("tmpdir", settings.tmpdir);
-				obj.set("cleanup_window", settings.cleanup_window);
-				obj.set("backup_database", settings.backup_database);
-				obj.set("global_local_speed", settings.global_local_speed);
-				obj.set("global_internet_speed", settings.global_internet_speed);
-				obj.set("internet_server", settings.internet_server);
-				obj.set("internet_server_port", settings.internet_server_port);
-				obj.set("use_tmpfiles", settings.use_tmpfiles);
-				obj.set("use_tmpfiles_images", settings.use_tmpfiles_images);
+				getGeneralSettings(obj, db, serv_settings);
 				#ifdef _WIN32
 				obj.set("ONLY_WIN32_BEGIN","");
 				obj.set("ONLY_WIN32_END","");

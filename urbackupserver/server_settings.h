@@ -61,6 +61,16 @@ struct SSettings
 	bool silent_update;
 	bool use_tmpfiles;
 	bool use_tmpfiles_images;
+	std::wstring tmpdir;
+	std::string local_full_file_transfer_mode;
+	std::string internet_full_file_transfer_mode;
+	std::string local_incr_file_transfer_mode;
+	std::string internet_incr_file_transfer_mode;
+	std::string local_image_transfer_mode;
+	std::string internet_image_transfer_mode;
+	size_t file_hash_collect_amount;
+	size_t file_hash_collect_timeout;
+	size_t file_hash_collect_cachesize;
 };
 
 struct STimeSpan
@@ -117,6 +127,5 @@ private:
 	static IMutex *g_mutex;
 };
 
-std::vector<std::wstring> getSettingsList(void);
 
 #endif //SERVER_SETTINS_H

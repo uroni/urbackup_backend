@@ -178,6 +178,16 @@ void ServerSettings::readSettingsDefault(void)
 	settings.silent_update=(settings_default->getValue("silent_update", "false")=="true");
 	settings.use_tmpfiles=(settings_default->getValue("use_tmpfiles", "false")=="true");
 	settings.use_tmpfiles_images=(settings_default->getValue("use_tmpfiles_images", "false")=="true");
+	settings.tmpdir=settings_default->getValue(L"tmpdir",L"");
+	settings.local_full_file_transfer_mode=settings_default->getValue("local_full_file_transfer_mode", "hashed");
+	settings.internet_full_file_transfer_mode=settings_default->getValue("internet_full_file_transfer_mode", "hashed");
+	settings.local_incr_file_transfer_mode=settings_default->getValue("local_incr_file_transfer_mode", "hashed");
+	settings.internet_incr_file_transfer_mode=settings_default->getValue("internet_incr_file_transfer_mode", "blockhash");
+	settings.local_image_transfer_mode=settings_default->getValue("local_image_transfer_mode", "hashed");
+	settings.internet_image_transfer_mode=settings_default->getValue("internet_image_transfer_mode", "hashed");
+	settings.file_hash_collect_amount=static_cast<size_t>(settings_default->getValue("file_hash_collect_amount", 1000));
+	settings.file_hash_collect_timeout=static_cast<size_t>(settings_default->getValue("file_hash_collect_timeout", 10000));
+	settings.file_hash_collect_cachesize=static_cast<size_t>(settings_default->getValue("file_hash_collect_cachesize", 10000));
 }
 
 void ServerSettings::readSettingsClient(void)

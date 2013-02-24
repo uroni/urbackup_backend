@@ -57,3 +57,34 @@ std::vector<std::wstring> getLocalizedSettingsList(void)
 	ret.push_back(L"internet_authkey");
 	return ret;
 }
+
+std::vector<std::wstring> getGlobalSettingsList(void)
+{
+	std::vector<std::wstring> ret;
+	ret.push_back(L"backupfolder");
+	ret.push_back(L"no_images");
+	ret.push_back(L"no_file_backups");
+	ret.push_back(L"autoshutdown");
+	ret.push_back(L"autoupdate_clients");
+	ret.push_back(L"max_sim_backups");
+	ret.push_back(L"max_active_clients");
+	ret.push_back(L"cleanup_window");
+	ret.push_back(L"backup_database");
+	ret.push_back(L"internet_server");
+	ret.push_back(L"internet_server_port");
+	ret.push_back(L"global_local_speed");
+	ret.push_back(L"global_internet_speed");
+	ret.push_back(L"use_tmpfiles");
+	ret.push_back(L"use_tmpfiles_images");
+	ret.push_back(L"tmpdir");
+	ret.push_back(L"local_full_file_transfer_mode");
+	ret.push_back(L"internet_full_file_transfer_mode");
+	ret.push_back(L"local_incr_file_transfer_mode");
+	ret.push_back(L"internet_incr_file_transfer_mode");
+	ret.push_back(L"local_image_transfer_mode");
+	ret.push_back(L"internet_image_transfer_mode");
+	ret.push_back(L"file_hash_collect_amount");
+	ret.push_back(L"file_hash_collect_timeout");
+	ret.push_back(L"file_hash_collect_cachesize");
+	return ret;
+}
