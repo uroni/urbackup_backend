@@ -1324,8 +1324,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				{
 					if(cf.name!=L"..")
 					{
-						curr_path+=L"/"+short_name;
-						std::wstring os_curr_path=curr_path;
+						std::wstring os_curr_path=curr_path+L"/"+short_name;
+						curr_path+=L"/"+cf.name;
 						if(os_file_sep()!=L"/")
 						{
 							for(size_t i=0;i<os_curr_path.size();++i)
