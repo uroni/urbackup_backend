@@ -312,12 +312,17 @@ std::string strlower(const std::string &str)
 
 std::wstring strlower(const std::wstring &str)
 {
-	std::wstring ret=str;
-   for(size_t i=0; i<str.size();++i)
-      if(str[i] >= 'A' && str[i] <='Z')
-         ret[i] += 32;
-
-   return ret;
+	std::wstring ret;
+	ret.resize(str.size());
+	for(size_t i=0;i<str.size();++i)
+	{
+#ifdef _WIN32
+		ret[i]=towlower(str[i]);
+#else
+		ret[i]=tolower(str[i]);
+#endif
+	}
+	return ret;
 }
 
 
