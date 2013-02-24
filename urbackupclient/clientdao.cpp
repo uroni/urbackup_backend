@@ -260,7 +260,7 @@ std::vector<SMDir> ClientDAO::getChangedDirs(bool del)
 	db->EndTransaction();
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret.push_back(SMDir(watoi64(res[i][L"id"]), res[i][L"name"]) );
+		ret.push_back(SMDir(watoi64(res[i][L"id"]), res[i][L"name"] ) );
 	}
 	return ret;
 }

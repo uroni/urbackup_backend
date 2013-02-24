@@ -809,11 +809,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		return getFiles(path);
 	}
 #else
+	std::wstring path_lower=strlower(orig_path+os_file_sep());
 	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
 	if(use_db)
 	{
-		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, orig_path+os_file_sep()) );
-		if(it_dir!=changed_dirs.end() && (*it_dir).name!=orig_path+os_file_sep())
+		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, path_lower) );
+		if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
 			it_dir=changed_dirs.end();
 	}
 	std::vector<SFile> tmp;
@@ -852,21 +853,21 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				}
 			}
 
-			if(cd->hasFiles(orig_path+os_file_sep()) )
+			if(cd->hasFiles(path_lower) )
 			{
 				++index_c_db_update;
-				modifyFilesInt(orig_path+os_file_sep(), tmp);
+				modifyFilesInt(path_lower, tmp);
 			}
 			else
 			{
-				cd->addFiles(orig_path+os_file_sep(), tmp);
+				cd->addFiles(path_lower, tmp);
 			}
 		}
 		return tmp;
 	}
 	else
 	{	
-		if( cd->getFiles(orig_path+os_file_sep(), tmp) )
+		if( cd->getFiles(path_lower, tmp) )
 		{
 			++index_c_db;
 			return tmp;
@@ -880,7 +881,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				tpath=L"\\\\?\\"+path;
 
 			tmp=getFiles(tpath);
-			cd->addFiles(orig_path+os_file_sep(), tmp);
+			cd->addFiles(path_lower, tmp);
 			return tmp;
 		}
 	}

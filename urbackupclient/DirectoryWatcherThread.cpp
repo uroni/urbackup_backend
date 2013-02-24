@@ -37,7 +37,7 @@ DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::wstring> &
 
 	for(size_t i=0;i<watching.size();++i)
 	{
-		watching[i]=addSlashIfMissing(watching[i]);
+		watching[i]=strlower(addSlashIfMissing(watching[i]));
 	}
 }
 
@@ -92,7 +92,7 @@ void DirectoryWatcherThread::operator()(void)
 		{
 			if( msg[0]=='A' )
 			{
-				std::wstring dir=addSlashIfMissing(msg.substr(1));
+				std::wstring dir=strlower(addSlashIfMissing(msg.substr(1)));
 				bool w=false;
 				for(size_t i=0;i<watching.size();++i)
 				{
@@ -115,7 +115,7 @@ void DirectoryWatcherThread::operator()(void)
 			}
 			else if( msg[0]=='D' )
 			{
-				std::wstring dir=addSlashIfMissing(msg.substr(1));
+				std::wstring dir=strlower(addSlashIfMissing(msg.substr(1)));
 #ifndef CHANGE_JOURNAL
 				dcw.UnwatchDirectory(dir);
 #endif
@@ -145,17 +145,17 @@ void DirectoryWatcherThread::operator()(void)
 			}
 			else if( msg[0]=='R' )
 			{
-				std::wstring dir=msg.substr(1);
+				std::wstring dir=strlower(msg.substr(1));
 				OnDirRm(dir);
 			}
 			else if( msg[0]=='F' )
 			{
 				std::wstring fn=msg.substr(1);
-				OnDirMod(ExtractFilePath(fn), ExtractFileName(fn));
+				OnDirMod(strlower(ExtractFilePath(fn)), ExtractFileName(fn));
 			}
 			else
 			{
-				std::wstring dir=msg.substr(1);
+				std::wstring dir=strlower(msg.substr(1));
 				OnDirMod(dir, L"");
 			}
 		}
@@ -306,7 +306,7 @@ void DirectoryWatcherThread::On_FileAdded(const std::wstring & strFileName)
 void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName, bool save_fn)
 {
 	bool ok=false;
-	std::wstring dir=ExtractFilePath(strFileName)+os_file_sep();
+	std::wstring dir=strlower(ExtractFilePath(strFileName))+os_file_sep();
 	std::wstring fn;
 	if(save_fn)
 	{
@@ -324,7 +324,7 @@ void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName, b
 
 void DirectoryWatcherThread::On_DirRemoved(const std::wstring & strDirName)
 {
-	std::wstring rmDir=addSlashIfMissing(strDirName);
+	std::wstring rmDir=strlower(addSlashIfMissing(strDirName));
 	bool ok=false;
 	for(size_t i=0;i<watching.size();++i)
 	{
@@ -343,7 +343,7 @@ bool DirectoryWatcherThread::is_stopped(void)
 
 void DirectoryWatcherThread::On_ResetAll(const std::wstring & vol)
 {
-	OnDirMod(L"##-GAP-##"+vol, L"");
+	OnDirMod(L"##-GAP-##"+strlower(vol), L"");
 }
 
 void ChangeListener::On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName)
