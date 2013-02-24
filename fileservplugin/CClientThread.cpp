@@ -83,12 +83,12 @@ bool isDirectory(const std::wstring &path)
 
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 {
+	int_socket=pSocket;
 	DisableNagle();
 
 	stopped=false;
 	killable=false;
 	has_socket=true;
-	int_socket=pSocket;
 
 	parent=pParent;
 
