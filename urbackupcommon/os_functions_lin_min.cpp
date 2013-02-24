@@ -47,6 +47,7 @@ void getMousePos(int &x, int &y)
 
 bool os_create_reflink(const std::string &linkname, const std::string &fname)
 {
+#ifndef sun
 	int src_desc=open(fname.c_str(), O_RDONLY);
 	if( src_desc<0)
 	    return false;
@@ -67,6 +68,9 @@ bool os_create_reflink(const std::string &linkname, const std::string &fname)
 	close(dst_desc);
 	
 	return rc==0;
+#else
+	return false;
+#endif
 }
 
 bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool ioref)

@@ -182,6 +182,7 @@ bool os_create_dir(const std::wstring &dir)
 
 bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 {
+#ifndef sun
 	int src_desc=open(Server->ConvertToUTF8(fname).c_str(), O_RDONLY);
 	if( src_desc<0)
 	    return false;
@@ -202,6 +203,9 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 	close(dst_desc);
 	
 	return rc==0;
+#else
+	return false;
+#endif
 }
 
 bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref)
