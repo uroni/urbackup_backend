@@ -23,6 +23,7 @@
 #include "../database.h"
 
 #include <stdlib.h>
+#include <algorithm>
 
 Helper::Helper(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 {
@@ -41,11 +42,6 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 		session=Server->getSessionMgr()->getUser( (*GET)[L"ses"], widen((*PARAMS)["REMOTE_ADDR"]+(*PARAMS)["HTTP_USER_AGENT"]) );
 	}
 
-	/*for(str_nmap::iterator it=PARAMS->begin();it!=PARAMS->end();++it)
-	{
-		Server->Log(it->first+"="+it->second);
-	}*/
-
 	//Get language from ACCEPT_LANGUAGE
 	str_map::iterator lit=GET->find(L"lang");
 	if(lit!=pGET->end() && lit->second!=L"-")
@@ -57,6 +53,10 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 		std::wstring langs=(*GET)[L"langs"];
 		std::vector<std::wstring> clangs;
 		Tokenize(langs, clangs, L",");
+		for(size_t j=0;j<clangs.size();++j)
+		{
+			clangs[j]=strlower(clangs[j]);
+		}
 		str_nmap::iterator al=PARAMS->find("ACCEPT_LANGUAGE");
 		if(al==PARAMS->end())
 			al=PARAMS->find("HTTP_ACCEPT_LANGUAGE");
@@ -75,18 +75,17 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 				if(prefix.empty())
 					prefix=lstr;
 
+				std::string sub=getafter("-", lstr);
+
 				if(language.empty())
 				{
-					bool found=false;
-					for(size_t j=0;j<clangs.size();++j)
+					if(std::find(clangs.begin(), clangs.end(), strlower(widen(prefix+"_"+sub)))!=clangs.end())
 					{
-						if(strlower(clangs[j])==strlower(widen(prefix)))
-						{
-							found=true;
-							break;
-						}
+						language=strlower(prefix+"_"+sub);
+						break;
 					}
-					if(found)
+
+					if(std::find(clangs.begin(), clangs.end(), strlower(widen(prefix)))!=clangs.end())
 					{
 						language=strlower(prefix);
 						break;
