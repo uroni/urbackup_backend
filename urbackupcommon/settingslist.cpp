@@ -86,5 +86,6 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"file_hash_collect_amount");
 	ret.push_back(L"file_hash_collect_timeout");
 	ret.push_back(L"file_hash_collect_cachesize");
+	ret.push_back(L"update_stats_cachesize");
 	return ret;
 }

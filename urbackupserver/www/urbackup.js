@@ -230,7 +230,8 @@ function getPar(p)
 	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
 	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
 	if(p=="global_internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
-	if(p=="file_hash_collect_cachesize") val=Math.round(val*((1024*1024)/4096));
+	if(p=="file_hash_collect_cachesize") val=Math.round(val*1024);
+	if(p=="update_stats_cachesize") val=Math.round(val*1024);
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
@@ -1204,7 +1205,8 @@ function show_settings2(data)
 			if(data.settings.global_internet_speed==-1) data.settings.global_internet_speed="-";
 			else data.settings.global_internet_speed/=1024/8;
 			
-			data.settings.file_hash_collect_cachesize/=(1024*1024)/4096;
+			data.settings.file_hash_collect_cachesize/=1024;
+			data.settings.update_stats_cachesize/=1024;
 			
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
@@ -1514,7 +1516,8 @@ g.general_settings_list=[
 "internet_image_transfer_mode",
 "file_hash_collect_amount",
 "file_hash_collect_timeout",
-"file_hash_collect_cachesize"
+"file_hash_collect_cachesize",
+"update_stats_cachesize"
 ];
 g.mail_settings_list=[
 "mail_servername",
@@ -2754,4 +2757,15 @@ function stopBackup(clientid)
 	alert(trans("trying_to_stop_backup"));
 	g.progress_stop_id=clientid;
 	show_progress1(true);
+}
+function recalculateStatistics()
+{
+	if(!startLoading()) return;
+	clearTimeout(g.refresh_timeout);
+	g.refresh_timeout=-1;
+	
+	if(confirm(trans("really_recalculate")))
+	{
+		new getJSON("usage", "recalculate=true", show_statistics3);
+	}	
 }
