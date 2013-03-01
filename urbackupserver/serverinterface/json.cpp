@@ -188,7 +188,7 @@ namespace JSON
 		init(val);
 	}
 	
-	Value::Value(size_t val)
+	Value::Value(long unsigned int val)
 	{
 		init(val);
 	}
@@ -270,11 +270,11 @@ namespace JSON
 		*((uint64*)data)=val;
 	}
 	
-	void Value::init(size_t val)
+	void Value::init(long unsigned int val)
 	{
-		data_type=size_type;
-		data=new size_t;
-		*((size_t*)data)=val;
+		data_type=luint_type;
+		data=new long unsigned int;
+		*((long unsigned int*)data)=val;
 	}
 
 	void Value::init(double val)
@@ -298,7 +298,7 @@ namespace JSON
 			case int64_type: delete ((_i64*)data); break;
 			case uint64_type: delete ((uint64*)data); break;
 			case double_type: delete ((double*)data); break;
-			case size_type: delete ((size_t*)data); break;
+			case luint_type: delete ((long unsigned int*)data); break;
 		}
 	}
 
@@ -318,7 +318,7 @@ namespace JSON
 			case int64_type: init(other.getInt64()); break;
 			case uint64_type: init(other.getUInt64()); break;
 			case double_type: init(other.getDouble()); break;
-			case size_type: init(other.getSize()); break;
+			case luint_type: init(other.getLUInt()); break;
 			default: data=NULL; break;
 		}
 	}
@@ -376,7 +376,7 @@ namespace JSON
 			case int64_type: return nconvert(*((_i64*)data));
 			case uint64_type: return nconvert(*((uint64*)data));
 			case double_type: return nconvert(*((double*)data));
-			case size_type: return nconvert(*((size_t*)data));
+			case luint_type: return nconvert((size_t)*((long unsigned int*)data));
 			default: return "null";
 		}
 	}
@@ -465,11 +465,11 @@ namespace JSON
 		}
 	}
 	
-	size_t Value::getSize(void) const
+	long unsigned int Value::getLUInt(void) const
 	{
-		if(data_type==size_type)
+		if(data_type==luint_type)
 		{
-			return *((size_t*)data);
+			return *((long unsigned int*)data);
 		}
 		else
 		{

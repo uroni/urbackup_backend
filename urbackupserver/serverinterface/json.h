@@ -53,7 +53,7 @@ namespace JSON
 		int64_type,
 		uint64_type,
 		double_type,
-		size_type,
+		luint_type,
 		null_type
 	};
 
@@ -82,7 +82,7 @@ namespace JSON
 		Value(double val);
 		Value(const char* val);
 		Value(const wchar_t* val);
-		Value(size_t val);
+		Value(long unsigned int val);
 		~Value();
 
 		Value & operator=(const Value &other);
@@ -99,7 +99,7 @@ namespace JSON
 		_i64 getInt64(void) const;
 		uint64 getUInt64(void) const;
 		double getDouble(void) const;
-		size_t getSize(void) const;
+		long unsigned int getLUInt(void) const;
 
 		Value_type getType(void) const;
 
@@ -118,7 +118,7 @@ namespace JSON
 		void init(double val);
 		void init(const char* val);
 		void init(const wchar_t* val);
-		void init(size_t val);
+		void init(long unsigned int val);
 
 		std::string escape(const std::string &t);
 
