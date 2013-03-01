@@ -118,7 +118,8 @@ translations.en={
 "change_pw": "Change password",
 "old_pw_wrong": "Old password is wrong",
 "tnospc_stalled_text": "There is currently not enough free space in the backup folder. UrBackup is deleting old image and file backups to free space, within the limits defined by the settings. During this process the backup performance is descreased and backups are stalled.",
-"tnospc_fatal_text": "There is currently not enough free space in the backup folder. UrBackup tried to delete old image and file backups but is now not allowed to delete more. Please change the settings to store less backups or increase the storage amount to allow UrBackup to continue to perform backups"
+"tnospc_fatal_text": "There is currently not enough free space in the backup folder. UrBackup tried to delete old image and file backups but is now not allowed to delete more. Please change the settings to store less backups or increase the storage amount to allow UrBackup to continue to perform backups",
+"really_recalculate": "Do you really want to recalculate all statistics? This might take a long time!"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
