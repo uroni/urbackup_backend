@@ -368,6 +368,7 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 
 void CServer::setLogFile(const std::string &plf, std::string chown_user)
 {
+	IScopedLock lock(log_mutex);
 	if(logfile_a)
 	{
 		logfile.close();

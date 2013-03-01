@@ -51,6 +51,11 @@ using namespace std;
 
 bool run=true;
 bool no_server=false;
+namespace
+{
+    std::string g_logfile;
+    std::string g_logfile_user;
+}
 
 void init_mutex_selthread(void);
 void destroy_mutex_selthread(void);
@@ -60,6 +65,14 @@ void termination_handler(int signum)
 {
 	run=false;
 	Server->Log("Shutting down (Signal "+nconvert(signum)+")", LL_WARNING);
+}
+
+void hub_handler(int signum)
+{
+	if(!g_logfile.empty())
+	{
+		Server->setLogFile(g_logfile, g_logfile_user);
+	}
 }
 #endif
 
@@ -341,6 +354,8 @@ int main_fkt(int argc, char *argv[])
 	
 	if(!logfile.empty())
 	{
+		g_logfile=logfile;
+		g_logfile_user=daemon_user;
 		Server->setLogFile(logfile, daemon_user);
 	}	
 	
@@ -412,9 +427,14 @@ int main_fkt(int argc, char *argv[])
 #ifndef _WIN32
 	if (signal (SIGINT, termination_handler) == SIG_IGN)
 		signal (SIGINT, SIG_IGN);
-	if(!daemon)
+	/*if(!daemon)
 	{
 	    if (signal (SIGHUP, termination_handler) == SIG_IGN)
+			signal (SIGHUP, SIG_IGN);
+	}
+	else*/
+	{
+	    if (signal (SIGHUP, hub_handler) == SIG_IGN)
 			signal (SIGHUP, SIG_IGN);
 	}
 	if (signal (SIGTERM, termination_handler) == SIG_IGN)

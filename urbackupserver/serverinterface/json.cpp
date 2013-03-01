@@ -187,6 +187,11 @@ namespace JSON
 	{
 		init(val);
 	}
+	
+	Value::Value(size_t val)
+	{
+		init(val);
+	}
 
 	void Value::init(void)
 	{
@@ -264,6 +269,13 @@ namespace JSON
 		data=new uint64;
 		*((uint64*)data)=val;
 	}
+	
+	void Value::init(size_t val)
+	{
+		data_type=size_type;
+		data=new size_t;
+		*((size_t*)data)=val;
+	}
 
 	void Value::init(double val)
 	{
@@ -286,6 +298,7 @@ namespace JSON
 			case int64_type: delete ((_i64*)data); break;
 			case uint64_type: delete ((uint64*)data); break;
 			case double_type: delete ((double*)data); break;
+			case size_type: delete ((size_t*)data); break;
 		}
 	}
 
@@ -305,6 +318,7 @@ namespace JSON
 			case int64_type: init(other.getInt64()); break;
 			case uint64_type: init(other.getUInt64()); break;
 			case double_type: init(other.getDouble()); break;
+			case size_type: init(other.getSize()); break;
 			default: data=NULL; break;
 		}
 	}
@@ -362,6 +376,7 @@ namespace JSON
 			case int64_type: return nconvert(*((_i64*)data));
 			case uint64_type: return nconvert(*((uint64*)data));
 			case double_type: return nconvert(*((double*)data));
+			case size_type: return nconvert(*((size_t*)data));
 			default: return "null";
 		}
 	}
@@ -443,6 +458,18 @@ namespace JSON
 		if(data_type==uint_type)
 		{
 			return *((unsigned int*)data);
+		}
+		else
+		{
+			throw BadTypeException();
+		}
+	}
+	
+	size_t Value::getSize(void) const
+	{
+		if(data_type==size_type)
+		{
+			return *((size_t*)data);
 		}
 		else
 		{
