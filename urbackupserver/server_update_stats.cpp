@@ -91,11 +91,12 @@ void ServerUpdateStats::destroyQueries(void)
 void ServerUpdateStats::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerSettings server_settings(db);
 	db_results cache_res;
 	if(db->getEngineName()=="sqlite")
 	{
 		cache_res=db->Read("PRAGMA cache_size");
-		db->Write("PRAGMA cache_size = 100000");
+		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
 	}
 
 	createQueries();

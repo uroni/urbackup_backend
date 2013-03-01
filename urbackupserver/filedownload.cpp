@@ -68,7 +68,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		fc.Connect(cp);
 		
 		Server->Log("Downloading file...");
-		rc=fc.GetFile(remotefn, dstfile);
+		rc=fc.GetFile(remotefn, dstfile, true);
 
 		Server->destroy(dstfile);
 	}

@@ -187,7 +187,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings.internet_image_transfer_mode=settings_default->getValue("internet_image_transfer_mode", "hashed");
 	settings.file_hash_collect_amount=static_cast<size_t>(settings_default->getValue("file_hash_collect_amount", 1000));
 	settings.file_hash_collect_timeout=static_cast<size_t>(settings_default->getValue("file_hash_collect_timeout", 10000));
-	settings.file_hash_collect_cachesize=static_cast<size_t>(settings_default->getValue("file_hash_collect_cachesize", 10000));
+	settings.file_hash_collect_cachesize=static_cast<size_t>(settings_default->getValue("file_hash_collect_cachesize", 40960));
+	settings.update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 409600));
 }
 
 void ServerSettings::readSettingsClient(void)

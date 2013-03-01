@@ -96,4 +96,6 @@ private:
 	bool use_reflink;
 	bool use_tmpfiles;
 	_i64 chunk_patch_pos;
+
+	int copy_limit;
 };

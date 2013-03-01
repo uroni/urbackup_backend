@@ -361,10 +361,6 @@ void BackupServerGet::operator ()(void)
 	bool do_exit_now=false;
 	bool tried_backup=false;
 	bool file_backup_err=false;
-	bool with_hashes=server_settings->getSettings()->internet_mode_enabled;
-
-	if(internet_connection)
-		with_hashes=true;
 	
 	while(true)
 	{
@@ -424,7 +420,30 @@ void BackupServerGet::operator ()(void)
 					Server->Log("Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
 			}
 
+			bool image_hashed_transfer;
+			if(internet_connection)
+			{
+				image_hashed_transfer= (server_settings->getSettings()->internet_image_transfer_mode=="hashed");
+				Server->Log("Image transfer hashed="+nconvert(image_hashed_transfer), LL_DEBUG);
+			}
+			else
+			{
+				image_hashed_transfer= (server_settings->getSettings()->local_image_transfer_mode=="hashed");
+				Server->Log("Image transfer hashed="+nconvert(image_hashed_transfer), LL_DEBUG);
+			}
+
 			ServerStatus::stopBackup(clientname, false);
+
+			bool with_hashes=false;
+
+			if( server_settings->getSettings()->internet_mode_enabled )
+			{
+				if( server_settings->getSettings()->internet_incr_file_transfer_mode=="blockhash")
+					with_hashes=true;
+			}
+
+			if( server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash")
+				with_hashes=true;
 
 			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && !internet_no_full_file && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) && isBackupsRunningOkay(true, true) )
 			{
@@ -477,7 +496,17 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					r_success=doIncrBackup(with_hashes, internet_connection, use_snapshots, disk_error, log_backup);
+					bool intra_file_diffs;
+					if(internet_connection)
+					{
+						intra_file_diffs=(server_settings->getSettings()->internet_incr_file_transfer_mode=="blockhash");
+					}
+					else
+					{
+						intra_file_diffs=(server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash");
+					}
+
+					r_success=doIncrBackup(with_hashes, intra_file_diffs, use_snapshots, disk_error, log_backup);
 
 					if(do_incr_backup_now)
 					{
@@ -541,7 +570,7 @@ void BackupServerGet::operator ()(void)
 				ServerStatus::setServerStatus(status, true);
 
 				ServerLogger::Log(clientid, "Starting incremental image backup...", LL_INFO);
-				
+
 				r_image=true;
 				r_incremental=true;
 			
@@ -573,7 +602,7 @@ void BackupServerGet::operator ()(void)
 						}
 						else
 						{
-							r_success=doImage(letter, last.path, last.incremental+1, last.incremental_ref, image_protocol_version>0);
+							r_success=doImage(letter, last.path, last.incremental+1, last.incremental_ref, image_hashed_transfer);
 						}
 
 						if(r_success && sysvol_id!=-1)
@@ -1217,6 +1246,28 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		return false;
 	}
 
+	bool hashed_transfer=true;
+
+	if(internet_connection)
+	{
+		if(server_settings->getSettings()->internet_full_file_transfer_mode=="raw")
+			hashed_transfer=false;
+	}
+	else
+	{
+		if(server_settings->getSettings()->local_full_file_transfer_mode=="raw")
+			hashed_transfer=false;
+	}
+
+	if(hashed_transfer)
+	{
+		Server->Log(clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
+	}
+	else
+	{
+		Server->Log(clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
+	}
+
 	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc, 10000);
 	if(rc!=ERR_CONNECTED)
@@ -1236,7 +1287,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 	unsigned int full_backup_starttime=Server->getTimeMS();
 
-	rc=fc.GetFile("urbackup/filelist.ub", tmp);
+	rc=fc.GetFile("urbackup/filelist.ub", tmp, hashed_transfer);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
@@ -1371,7 +1422,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				else
 				{
 					bool download_ok;
-					bool b=load_file(cf.name, short_name, curr_path, fc, with_hashes, L"", L"", download_ok);
+					bool b=load_file(cf.name, short_name, curr_path, fc, with_hashes, L"", L"", download_ok, hashed_transfer);
 					if(!b)
 					{
 						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
@@ -1480,7 +1531,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		if(file_old==NULL)
 		{
 			ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
-			return load_file(fn, short_fn, curr_path, fc_normal, true, last_backuppath, last_backuppath_complete, download_ok);
+			return load_file(fn, short_fn, curr_path, fc_normal, true, last_backuppath, last_backuppath_complete, download_ok, true);
 		}
 		hashpath_old=last_backuppath_complete+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 	}
@@ -1541,7 +1592,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 }
 
 bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
-	FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok)
+	FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok, bool hashed_transfer)
 {
 	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
 	IFile *fd=getTemporaryFileRetry();
@@ -1555,7 +1606,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 		cfn=widen(server_token)+L"|"+cfn;
 	}
 	
-	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd);
+	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer);
 	if(rc!=ERR_SUCCESS)
 	{
 		download_ok=false;
@@ -1735,6 +1786,28 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		return false;
 	}
 
+	bool hashed_transfer=true;
+
+	if(internet_connection)
+	{
+		if(server_settings->getSettings()->internet_incr_file_transfer_mode=="raw")
+			hashed_transfer=false;
+	}
+	else
+	{
+		if(server_settings->getSettings()->local_incr_file_transfer_mode=="raw")
+			hashed_transfer=false;
+	}
+
+	if(hashed_transfer)
+	{
+		Server->Log(clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
+	}
+	else
+	{
+		Server->Log(clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
+	}
+
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
 	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	FileClientChunked fc_chunked;
@@ -1770,7 +1843,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	unsigned int incr_backup_starttime=Server->getTimeMS();
 	unsigned int incr_backup_stoptime=0;
 
-	rc=fc.GetFile("urbackup/filelist.ub", tmp);
+	rc=fc.GetFile("urbackup/filelist.ub", tmp, hashed_transfer);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
@@ -2045,7 +2118,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							if(intra_file_diffs)
 								b=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, download_ok);
 							else
-								b=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok);
+								b=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer);
 
 							if(!b)
 							{
@@ -2090,7 +2163,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								if(intra_file_diffs)
 									b2=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, download_ok);
 								else
-									b2=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok);
+									b2=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer);
 
 								if(!b2)
 								{
@@ -2693,7 +2766,7 @@ bool BackupServerGet::getClientSettings(void)
 		ServerLogger::Log(clientid, "Error creating temporary file in BackupServerGet::getClientSettings", LL_ERROR);
 		return false;
 	}
-	rc=fc.GetFile("urbackup/settings.cfg", tmp);
+	rc=fc.GetFile("urbackup/settings.cfg", tmp, true);
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(clientid, L"Error getting Client settings of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);

@@ -564,13 +564,18 @@ bool FileClient::Reconnect(void)
 	return false;
 }
 
- _u32 FileClient::GetFile(std::string remotefn, IFile *file)
+ _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed)
 {
 	if(tcpsock==NULL)
 		return ERR_ERROR;
 
 	int tries=50;
 
+	if(!hashed && protocol_version>1)
+	{
+		//Disable hashed transfer (protocol_version>1)
+		protocol_version=1;
+	}
 
     CWData data;
     data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );

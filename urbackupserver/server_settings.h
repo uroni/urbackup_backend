@@ -71,6 +71,7 @@ struct SSettings
 	size_t file_hash_collect_amount;
 	size_t file_hash_collect_timeout;
 	size_t file_hash_collect_cachesize;
+	size_t update_stats_cachesize;
 };
 
 struct STimeSpan

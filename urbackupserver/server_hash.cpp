@@ -20,6 +20,7 @@
 
 #include "server_hash.h"
 #include "server_prepare_hash.h"
+#include "server_settings.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../Interface/Mutex.h"
@@ -33,7 +34,6 @@
 #include <memory.h>
 
 const size_t freespace_mod=50*1024*1024; //50 MB
-const int c_copy_limit=1000;
 
 IMutex * delete_mutex=NULL;
 
@@ -48,7 +48,7 @@ void destroy_mutex1(void)
 }
 
 BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles)
-	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles)
+	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), copy_limit(1000)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -96,11 +96,16 @@ void BackupServerHash::operator()(void)
 	prepareSQL();
 	copyFilesFromTmp();
 
+	ServerSettings server_settings(db, clientid);
+
+	copy_limit=static_cast<int>(server_settings.getSettings()->file_hash_collect_amount);
+	size_t timeoutms=server_settings.getSettings()->file_hash_collect_timeout;
+
 	while(true)
 	{
 		working=false;
 		std::string data;
-		size_t rc=pipe->Read(&data, 10000);
+		size_t rc=pipe->Read(&data, static_cast<int>(timeoutms) );
 		if(rc==0)
 		{
 			tmp_count=0;
@@ -129,7 +134,8 @@ void BackupServerHash::operator()(void)
 		{
 			if(big_cache_size>10)
 			{
-				db->Write("PRAGMA cache_size = 10000");
+				Server->Log("Setting cachesize to "+nconvert(server_settings.getSettings()->file_hash_collect_cachesize), LL_DEBUG);
+				db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->file_hash_collect_cachesize));
 			}
 			big_cache_size=0;			
 		}
@@ -213,7 +219,7 @@ void BackupServerHash::operator()(void)
 			}
 		}
 
-		if(tmp_count>c_copy_limit)
+		if(tmp_count>copy_limit)
 		{
 			tmp_count=0;
 			Server->Log("Copying files from tmp table...",LL_DEBUG);

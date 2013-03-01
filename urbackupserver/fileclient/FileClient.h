@@ -70,7 +70,7 @@ public:
         _u32 GetGameList(void);
         std::vector<std::string> getGameList(void);
 
-        _u32 GetFile(std::string remotefn, IFile *file);
+        _u32 GetFile(std::string remotefn, IFile *file, bool hashed);
 
 		void addThrottler(IPipeThrottler *throttler);
 
