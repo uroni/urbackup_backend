@@ -3678,7 +3678,7 @@ std::wstring BackupServerGet::shortenFilename(std::wstring fn)
 		fn.resize(fn.size()-1);
 	}
 #endif
-	return fn+hex_md5.substr(0, 10);
+	return fn+widen(hex_md5.substr(0, 10));
 }
 
 bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
