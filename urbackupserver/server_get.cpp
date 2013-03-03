@@ -393,6 +393,7 @@ void BackupServerGet::operator ()(void)
 			status.pcdone=0;
 			status.hashqueuesize=0;
 			status.prepare_hashqueuesize=0;
+			backupid=-1;
 			ServerStatus::setServerStatus(status);
 
 			bool internet_no_full_file=(internet_connection && !server_settings->getSettings()->internet_full_file_backups );
@@ -640,18 +641,29 @@ void BackupServerGet::operator ()(void)
 			}
 			else if(hbu && has_error)
 			{
+				ServerLogger::Log(clientid, "Backup had errors. Deleting partial backup.", LL_ERROR);
 				file_backup_err=true;
-				if(use_snapshots)
+				if(backupid==-1)
 				{
-					if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
+					if(use_snapshots)
+					{
+						if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
+						{
+							os_remove_nonempty_dir(backuppath);
+						}
+					}
+					else
 					{
 						os_remove_nonempty_dir(backuppath);
-					}
+					}	
 				}
 				else
-				{
-					os_remove_nonempty_dir(backuppath);
-				}				
+				{				
+					ServerCleanupThread sc;
+					sc.createQueries();
+					sc.deleteFileBackup(backupfolder, clientid, backupid);
+					sc.destroyQueries();
+				}
 				tried_backup=true;
 			}
 
@@ -1323,6 +1335,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	_u32 read;
 	_i64 filelist_currpos=0;
 	std::wstring curr_path;
+	std::wstring curr_os_path;
 	SFile cf;
 	int depth=0;
 	bool r_done=false;
@@ -1375,23 +1388,19 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				{
 					if(cf.name!=L"..")
 					{
-						std::wstring os_curr_path=curr_path+L"/"+short_name;
 						curr_path+=L"/"+cf.name;
-						if(os_file_sep()!=L"/")
+						curr_os_path+=L"/"+short_name;
+						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
+
+						if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 						{
-							for(size_t i=0;i<os_curr_path.size();++i)
-								if(os_curr_path[i]=='/')
-									os_curr_path[i]=os_file_sep()[0];
-						}
-						if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
-						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
 						}
-						if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+os_curr_path)))
+						if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
 						}
@@ -1416,13 +1425,14 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 							stop_shadowcopy(Server->ConvertToUTF8(t));
 						}
 						curr_path=ExtractFilePath(curr_path);
+						curr_os_path=ExtractFilePath(curr_os_path);
 					}
 					writeFileRepeat(clientlist, "d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
 				}
 				else
 				{
 					bool download_ok;
-					bool b=load_file(cf.name, short_name, curr_path, fc, with_hashes, L"", L"", download_ok, hashed_transfer);
+					bool b=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, L"", L"", download_ok, hashed_transfer);
 					if(!b)
 					{
 						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
@@ -1503,14 +1513,14 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	return !r_done;
 }
 
-bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
+bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
 	const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal, bool &download_ok)
 {
 	std::wstring cfn=curr_path+L"/"+fn;
 	if(cfn[0]=='/')
 		cfn.erase(0,1);
 
-	std::wstring cfn_short=curr_path+L"/"+short_fn;
+	std::wstring cfn_short=os_path+L"/"+short_fn;
 	if(cfn_short[0]=='/')
 		cfn_short.erase(0,1);
 
@@ -1531,7 +1541,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		if(file_old==NULL)
 		{
 			ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
-			return load_file(fn, short_fn, curr_path, fc_normal, true, last_backuppath, last_backuppath_complete, download_ok, true);
+			return load_file(fn, short_fn, curr_path, os_path, fc_normal, true, last_backuppath, last_backuppath_complete, download_ok, true);
 		}
 		hashpath_old=last_backuppath_complete+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 	}
@@ -1571,7 +1581,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	{
 		download_ok=true;
 
-		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_fn);		
+		std::wstring os_curr_path=convertToOSPathFromFileClient(os_path+L"/"+short_fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
 
 		hashFile(dstpath, hashpath, pfd, hash_tmp, Server->ConvertToUTF8(filepath_old));
@@ -1591,7 +1601,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		return true;
 }
 
-bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
+bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
 	FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok, bool hashed_transfer)
 {
 	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
@@ -1619,7 +1629,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 	{
 		download_ok=true;
 
-		std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_fn);		
+		std::wstring os_curr_path=convertToOSPathFromFileClient(os_path+L"/"+short_fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
 		std::wstring hashpath;
 		std::wstring filepath_old;
@@ -1629,7 +1639,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 		}
 		if( use_reflink && (!last_backuppath.empty() || !last_backuppath_complete.empty() ) )
 		{
-			std::wstring cfn_short=curr_path+L"/"+short_fn;
+			std::wstring cfn_short=os_path+L"/"+short_fn;
 			if(cfn_short[0]=='/')
 				cfn_short.erase(0,1);
 
@@ -1950,6 +1960,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	char buffer[4096];
 	_u32 read;
 	std::wstring curr_path;
+	std::wstring curr_os_path;
 	std::wstring curr_hash_path;
 	SFile cf;
 	int depth=0;
@@ -2050,25 +2061,21 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 					if(cf.name!=L"..")
 					{
-						curr_path+=L"/"+short_name;
-						std::wstring os_curr_path=curr_path;
-						if(os_file_sep()!=L"/")
-						{
-							for(size_t i=0;i<os_curr_path.size();++i)
-								if(os_curr_path[i]=='/')
-									os_curr_path[i]=os_file_sep()[0];
-						}
+						curr_path+=L"/"+cf.name;
+						curr_os_path+=L"/"+short_name;
+						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
+
 						if(!on_snapshot || (indirchange && !r_offline) )
 						{
-							if(!os_create_dir(os_file_prefix(backuppath+os_curr_path)))
+							if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
-								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+os_curr_path+L"\" failed.", LL_ERROR);
+								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
 								c_has_error=true;
 								break;
 							}
-							if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+os_curr_path)))
+							if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 							{
-								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+os_curr_path+L"\" failed.", LL_ERROR);
+								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
 								c_has_error=true;
 								break;
 							}
@@ -2101,11 +2108,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							}
 						}
 						curr_path=ExtractFilePath(curr_path);
+						curr_os_path=ExtractFilePath(curr_os_path);
 					}
 				}
 				else //is file
 				{
-					std::wstring os_curr_path=convertToOSPathFromFileClient(curr_path+L"/"+short_name);
+					std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+L"/"+short_name);
 					
 					bool f_ok=false;
 
@@ -2116,9 +2124,9 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							bool b;
 							bool download_ok;
 							if(intra_file_diffs)
-								b=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, download_ok);
+								b=load_file_patch(cf.name, short_name, curr_path, curr_os_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, download_ok);
 							else
-								b=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer);
+								b=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer);
 
 							if(!b)
 							{
@@ -2139,21 +2147,21 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					else if(!on_snapshot) //is not changed
 					{			
 						f_ok=true;
-						std::wstring srcpath=last_backuppath+os_curr_path;
-						bool b=os_create_hardlink(os_file_prefix(backuppath+os_curr_path), os_file_prefix(srcpath), use_snapshots);
+						std::wstring srcpath=last_backuppath+local_curr_os_path;
+						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots);
 						if(!b)
 						{
 							if(link_logcnt<5)
 							{
-								ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+os_curr_path+L"\" failed. Loading file...", LL_WARNING);
+								ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
 							}
 							else if(link_logcnt==5)
 							{
-								ServerLogger::Log(clientid, L"More warnings of kind: Creating hardlink from \""+srcpath+L"\" to \""+backuppath+os_curr_path+L"\" failed. Loading file... Skipping.", LL_WARNING);
+								ServerLogger::Log(clientid, L"More warnings of kind: Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file... Skipping.", LL_WARNING);
 							}
 							else
 							{
-								Server->Log(L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+os_curr_path+L"\" failed. Loading file...", LL_WARNING);
+								Server->Log(L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
 							}
 							++link_logcnt;
 							if(r_offline==false)
@@ -2161,9 +2169,9 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								bool download_ok;
 								bool b2;
 								if(intra_file_diffs)
-									b2=load_file_patch(cf.name, short_name, curr_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, download_ok);
+									b2=load_file_patch(cf.name, short_name, curr_path, curr_os_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, download_ok);
 								else
-									b2=load_file(cf.name, short_name, curr_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer);
+									b2=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer);
 
 								if(!b2)
 								{
@@ -2184,7 +2192,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						}
 						else if(with_hashes)
 						{
-							os_create_hardlink(os_file_prefix(backuppath_hashes+os_curr_path), os_file_prefix(last_backuppath_hashes+os_curr_path), use_snapshots);
+							os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots);
 						}
 					}
 					else
