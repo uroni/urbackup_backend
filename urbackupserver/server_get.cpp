@@ -3657,28 +3657,45 @@ void BackupServerGet::cleanup_pipes(void)
 	Server->destroy(exitpipe_prepare);
 }
 
-std::wstring BackupServerGet::shortenFilename(std::wstring fn)
+std::wstring BackupServerGet::shortenFilename(const std::wstring& fn)
 {
-	std::string hex_md5=Server->GenerateHexMD5(fn);
+	std::wstring ret;
+	bool shortened_file=false;
 #ifdef _WIN32
 	if(fn.size()>=MAX_PATH-15)
 	{
+		ret=fn;
 		ServerLogger::Log(clientid, L"Filename \""+fn+L"\" too long. Shortening it.", LL_WARNING);
-		fn.resize(MAX_PATH-15);
+		ret.resize(MAX_PATH-15);
+		shortened_file=true;
 	}
 #else
-	bool log_msg=true;
-	while( Server->ConvertToUTF8(fn).size()>=NAME_MAX-11 )
+	if(Server->ConvertToUTF8(fn).size()>=NAME_MAX-11)
 	{
-		if( log_msg )
+		ret=fn;
+		bool log_msg=true;
+		do
 		{
-			ServerLogger::Log(clientid, L"Filename \""+fn+L"\" too long. Shortening it.", LL_WARNING);
-			log_msg=false;
+			if( log_msg )
+			{
+				ServerLogger::Log(clientid, L"Filename \""+fn+L"\" too long. Shortening it.", LL_WARNING);
+				log_msg=false;
+			}
+			ret.resize(ret.size()-1);
+			shortened_file=true;
 		}
-		fn.resize(fn.size()-1);
+		while( Server->ConvertToUTF8(ret).size()>=NAME_MAX-11 );
 	}
 #endif
-	return fn+widen(hex_md5.substr(0, 10));
+	if(shortened_file)
+	{
+		std::string hex_md5=Server->GenerateHexMD5(fn);
+		return ret+widen(hex_md5.substr(0, 10));
+	}
+	else
+	{
+		return fn;
+	}
 }
 
 bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
