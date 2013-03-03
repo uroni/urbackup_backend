@@ -19,7 +19,7 @@ public:
 	void cleanup_images(int64 minspace=-1);
 	void cleanup_files(int64 minspace=-1);
 
-	void createQueries(void);
+	void createQueries(IDatabase *pDb=NULL);
 	void destroyQueries(void);
 
 	size_t getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit);

@@ -660,7 +660,7 @@ void BackupServerGet::operator ()(void)
 				else
 				{				
 					ServerCleanupThread sc;
-					sc.createQueries();
+					sc.createQueries(db);
 					sc.deleteFileBackup(backupfolder, clientid, backupid);
 					sc.destroyQueries();
 				}
@@ -2354,6 +2354,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 	SFile curr_file;
 	size_t line=0;
 	std::wstring curr_path=snapshot_path;
+	std::wstring curr_os_path=snapshot_path;
 	bool curr_dir_exists=true;
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
@@ -2367,6 +2368,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 					if(curr_file.name==L"..")
 					{
 						curr_path=ExtractFilePath(curr_path);
+						curr_os_path=ExtractFilePath(curr_os_path);
 						if(!curr_dir_exists)
 						{
 							curr_dir_exists=os_directory_exists(curr_path);
@@ -2376,7 +2378,8 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 
 				if( hasChange(line, deleted_ids) )
 				{
-					std::wstring curr_fn=curr_path+os_file_sep()+curr_file.name;
+					std::wstring short_fn=shortenFilename(curr_file.name);
+					std::wstring curr_fn=convertToOSPathFromFileClient(curr_os_path+os_file_sep()+short_fn);
 					if(curr_file.isdir)
 					{
 						if(curr_dir_exists)
@@ -2391,7 +2394,8 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 								}
 							}
 						}
-						curr_path=curr_fn;
+						curr_path+=os_file_sep()+curr_file.name;
+						curr_os_path+=os_file_sep()+short_fn;
 						curr_dir_exists=false;
 					}
 					else
@@ -2413,6 +2417,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 				else if( curr_file.isdir && curr_file.name!=L".." )
 				{
 					curr_path+=os_file_sep()+curr_file.name;
+					curr_os_path+=os_file_sep()+shortenFilename(curr_file.name);
 				}
 				++line;
 			}
@@ -3654,15 +3659,16 @@ void BackupServerGet::cleanup_pipes(void)
 
 std::wstring BackupServerGet::shortenFilename(std::wstring fn)
 {
+	std::string hex_md5=Server->GenerateHexMD5(fn);
 #ifdef _WIN32
-	if(fn.size()>=MAX_PATH-1)
+	if(fn.size()>=MAX_PATH-15)
 	{
 		ServerLogger::Log(clientid, L"Filename \""+fn+L"\" too long. Shortening it.", LL_WARNING);
-		fn.resize(MAX_PATH-2);
+		fn.resize(MAX_PATH-15);
 	}
 #else
 	bool log_msg=true;
-	while( Server->ConvertToUTF8(fn).size()>=NAME_MAX )
+	while( Server->ConvertToUTF8(fn).size()>=NAME_MAX-11 )
 	{
 		if( log_msg )
 		{
@@ -3672,7 +3678,7 @@ std::wstring BackupServerGet::shortenFilename(std::wstring fn)
 		fn.resize(fn.size()-1);
 	}
 #endif
-	return fn;
+	return fn+hex_md5.substr(0, 10);
 }
 
 bool BackupServerGet::handle_not_enough_space(const std::wstring &path)

@@ -1016,8 +1016,12 @@ int64 ServerCleanupThread::getImageSize(int backupid)
 	return -1;
 }
 
-void ServerCleanupThread::createQueries(void)
+void ServerCleanupThread::createQueries(IDatabase *pDb)
 {
+	if(pDb!=NULL)
+	{
+		db=pDb;
+	}
 	q_incomplete_images=db->Prepare("SELECT id, path FROM backup_images WHERE complete=0 AND running<datetime('now','-300 seconds')", false);
 	q_remove_image=db->Prepare("DELETE FROM backup_images WHERE id=?", false);
 	q_get_clients_sortfiles=db->Prepare("SELECT DISTINCT c.id FROM clients c INNER JOIN backups b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
