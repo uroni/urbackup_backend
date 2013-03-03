@@ -2767,5 +2767,9 @@ function recalculateStatistics()
 	if(confirm(trans("really_recalculate")))
 	{
 		new getJSON("usage", "recalculate=true", show_statistics3);
-	}	
+	}
+	else
+	{
+		stopLoading();
+	}
 }
