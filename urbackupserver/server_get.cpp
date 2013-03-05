@@ -1454,20 +1454,6 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	if(r_done==false && c_has_error==false)
 	{
 		sendBackupOkay(true);
-
-		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-		std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
-		os_remove_symlink_dir(os_file_prefix(currdir));
-		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
-
-		currdir=backupfolder+os_file_sep()+L"clients";
-		if(!os_create_dir(os_file_prefix(currdir)) && !os_directory_exists(os_file_prefix(currdir)))
-		{
-			Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
-		}
-		currdir+=os_file_sep()+clientname;
-		Server->deleteFile(os_file_prefix(currdir));
-		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 	}
 	else
 	{
@@ -1499,6 +1485,23 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		}
 		setBackupDone();
 		db->EndTransaction();
+	}
+
+	if( r_done==false && c_has_error==false && disk_error==false) 
+	{
+		std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+		std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
+		os_remove_symlink_dir(os_file_prefix(currdir));
+		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
+
+		currdir=backupfolder+os_file_sep()+L"clients";
+		if(!os_create_dir(os_file_prefix(currdir)) && !os_directory_exists(os_file_prefix(currdir)))
+		{
+			Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
+		}
+		currdir+=os_file_sep()+clientname;
+		Server->deleteFile(os_file_prefix(currdir));
+		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
@@ -2268,7 +2271,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
 		}
 	}
-	else if(!c_has_error)
+	else if(!c_has_error && !disk_error)
 	{
 		Server->Log("Client disconnected while backing up. Copying partial file...", LL_DEBUG);
 		db->BeginTransaction();

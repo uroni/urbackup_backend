@@ -95,11 +95,18 @@ void BackupServerHash::operator()(void)
 	int big_cache_size=20;
 	prepareSQL();
 	copyFilesFromTmp();
+	size_t timeoutms;
+	size_t file_hash_collect_cachesize;
 
-	ServerSettings server_settings(db, clientid);
+	{
+		ServerSettings server_settings(db, clientid);
 
-	copy_limit=static_cast<int>(server_settings.getSettings()->file_hash_collect_amount);
-	size_t timeoutms=server_settings.getSettings()->file_hash_collect_timeout;
+		copy_limit=static_cast<int>(server_settings.getSettings()->file_hash_collect_amount);
+		timeoutms=server_settings.getSettings()->file_hash_collect_timeout;
+		file_hash_collect_cachesize=server_settings.getSettings()->file_hash_collect_cachesize;
+	}
+
+	db->DetachDBs();
 
 	while(true)
 	{
@@ -134,8 +141,8 @@ void BackupServerHash::operator()(void)
 		{
 			if(big_cache_size>10)
 			{
-				Server->Log("Setting cachesize to "+nconvert(server_settings.getSettings()->file_hash_collect_cachesize), LL_DEBUG);
-				db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->file_hash_collect_cachesize));
+				Server->Log("Setting cachesize to "+nconvert(file_hash_collect_cachesize), LL_DEBUG);
+				db->Write("PRAGMA cache_size = -"+nconvert(file_hash_collect_cachesize));
 			}
 			big_cache_size=0;			
 		}
