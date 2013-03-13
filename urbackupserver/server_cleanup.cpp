@@ -412,7 +412,7 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	}
 }
 
-bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size_correction)
+bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size_correction, bool force_remove)
 {
 	bool ret=true;
 
@@ -445,7 +445,7 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 			stat_id=db->getLastInsertID();
 		}
 
-		if( deleteImage(res[0][L"path"] ) )
+		if( deleteImage(res[0][L"path"] ) || force_remove )
 		{
 			db->BeginTransaction();
 			q_remove_image->Bind(backupid);
@@ -746,7 +746,7 @@ size_t ServerCleanupThread::getFilesIncrNum(int clientid, int &backupid_top)
 	return res.size();
 }
 
-bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid)
+bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid, bool force_remove)
 {
 	ServerStatus::updateActive();
 
@@ -847,7 +847,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 		err=true;
 		removeerr.push_back(backupid);
 	}
-	if(del)
+	if(del || force_remove)
 	{
 		db->DetachDBs();
 		db->BeginTransaction();
@@ -899,7 +899,7 @@ void ServerCleanupThread::removeClient(int clientid)
 		{
 			int backupid=watoi(res[0][L"id"]);
 			Server->Log("Removing image with id \""+nconvert(backupid)+"\"", LL_INFO);
-			removeImage(backupid);
+			removeImage(backupid, true, 0, true);
 		}
 	}while(!res.empty());
 
@@ -915,7 +915,7 @@ void ServerCleanupThread::removeClient(int clientid)
 		{
 			int backupid=watoi(res[0][L"id"]);
 			Server->Log("Removing file backup with id \""+nconvert(backupid)+"\"", LL_INFO);
-			bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+			bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid, true);
 			if(b)
 				Server->Log("Removing file backup with id \""+nconvert(backupid)+"\" successfull.", LL_INFO);
 			else

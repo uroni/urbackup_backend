@@ -28,12 +28,12 @@ public:
 	size_t getFilesFullNum(int clientid, int &backupid_top);
 	size_t getFilesIncrNum(int clientid, int &backupid_top);
 
-	bool removeImage(int backupid, bool update_stat=true, int64 size_correction=0);
+	bool removeImage(int backupid, bool update_stat=true, int64 size_correction=0, bool force_remove=false);
 	bool findUncompleteImageRef(int backupid);
 
 	void removeClient(int clientid);
 
-	bool deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid);
+	bool deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid, bool force_remove=false);
 
 	void deletePendingClients(void);
 
