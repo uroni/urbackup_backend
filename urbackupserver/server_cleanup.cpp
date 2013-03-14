@@ -330,6 +330,7 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 		{
 			q_get_image_info->Bind(backupid);
 			db_results res_info=q_get_image_info->Read();
+			
 			q_get_image_info->Reset();
 			q_get_clientname->Bind(clientid);
 			db_results res_name=q_get_clientname->Read();
@@ -364,6 +365,8 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 			int r=hasEnoughFreeSpace(minspace, &settings);
 			if( r==-1 || r==1 )
 				return;
+				
+			full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
 		}
 
 		notit.clear();
@@ -397,7 +400,10 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 					if(is!=-1) corr+=is;
 					removeImage(assoc[i], false);
 				}
-				removeImage(backupid, true, corr);
+				if(!removeImage(backupid, true, corr))
+				{
+					notit.push_back(backupid);
+				}
 			}
 			else
 			{
@@ -408,6 +414,8 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 			int r=hasEnoughFreeSpace(minspace, &settings);
 			if( r==-1 || r==1 )
 				return;
+				
+			incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
 		}
 	}
 }
