@@ -571,11 +571,11 @@ function show_status2(data)
 		{
 			if(obj.status>=1 && obj.status<=2)
 			{
-				obj.start_file_backup=trans("backup_in_progress");
+				obj.start_file_backup="<img src=\"indicator.gif\" alt=\""+trans("backup_in_progress")+"\" />";
 			}
 			else
 			{
-				obj.start_image_backup=trans("backup_in_progress");
+				obj.start_image_backup="<img src=\"indicator.gif\" alt=\""+trans("backup_in_progress")+"\" />";
 			}
 		}	
 				
@@ -587,7 +587,7 @@ function show_status2(data)
 			case 3: obj.status="incr_image"; break;
 			case 4: obj.status="full_image"; break;
 			case 10: obj.status=trans("starting"); break;
-			case 11: obj.status=trans("ident_err"); break;
+			case 11: obj.status=trans("ident_err")+" <a href=\"http://www.urbackup.org/FAQ.php#ident_err\" target=\"_blank\">?</a>"; break;
 			case 12: obj.status=trans("too_many_clients_err"); break;
 		}
 		
