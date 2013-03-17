@@ -195,7 +195,7 @@ void BackupServer::operator()(void)
 		}
 
 		std::string r;
-		exitpipe->Read(&r, waittime);
+		exitpipe->Read(&r, 0);
 		if(r=="exit")
 		{
 			removeAllClients();
@@ -235,8 +235,12 @@ void BackupServer::findClients(FileClient &fc)
 	_u32 rc=fc.GetServers(true, addr_hints);
 	while(rc==ERR_CONTINUE)
 	{
-		Server->wait(50);
 		rc=fc.GetServers(false, addr_hints);
+
+		if(exitpipe->isReadable())
+		{
+			break;
+		}
 	}
 
 	if(rc==ERR_ERROR)

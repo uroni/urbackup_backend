@@ -30,9 +30,14 @@
 #include <iostream>
 #include <memory.h>
 
-const std::string str_tmpdir="C:\\Windows\\Temp";
 extern std::string server_identity;
-const _u64 c_checkpoint_dist=512*1024;
+
+namespace
+{
+	const std::string str_tmpdir="C:\\Windows\\Temp";
+	const _u64 c_checkpoint_dist=512*1024;
+	const unsigned int DISCOVERY_TIMEOUT=50000; //50sec
+}
 
 void Log(std::string str)
 {
@@ -311,7 +316,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
         }
         else
         {
-            _i32 rc = selectmin( udpsock );
+            _i32 rc = selectc( udpsock, 1000*1000 ); //1sec
 
         	if(rc>0)
 	        {
@@ -347,7 +352,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
                         }
                 }
 
-                if(Server->getTimeMS()-starttime>1000)
+                if(Server->getTimeMS()-starttime>DISCOVERY_TIMEOUT)
                 {
                         return ERR_TIMEOUT;
                 }
