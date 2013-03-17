@@ -130,6 +130,7 @@ void BackupServerHash::operator()(void)
 				if(big_cache_size>10)
 				{
 					db->Write("PRAGMA cache_size = 1000");
+					db->Write("PRAGMA shrink_memory");
 				}
 			}
 			link_logcnt=0;
@@ -171,6 +172,7 @@ void BackupServerHash::operator()(void)
 			copyFilesFromTmp();
 			big_cache_size=20;
 			db->Write("PRAGMA cache_size = 1000");
+			db->Write("PRAGMA shrink_memory");
 			continue;
 		}
 

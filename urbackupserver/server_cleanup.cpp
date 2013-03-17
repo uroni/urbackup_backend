@@ -198,6 +198,7 @@ void ServerCleanupThread::do_cleanup(void)
 	if(!cache_res.empty())
 	{
 		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->Write("PRAGMA shrink_memory");
 	}
 }
 
