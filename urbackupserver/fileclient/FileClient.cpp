@@ -36,7 +36,7 @@ namespace
 {
 	const std::string str_tmpdir="C:\\Windows\\Temp";
 	const _u64 c_checkpoint_dist=512*1024;
-	const unsigned int DISCOVERY_TIMEOUT=50000; //50sec
+	const unsigned int DISCOVERY_TIMEOUT=30000; //30sec
 }
 
 void Log(std::string str)

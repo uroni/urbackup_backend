@@ -195,7 +195,7 @@ void BackupServer::operator()(void)
 		}
 
 		std::string r;
-		exitpipe->Read(&r, 0);
+		exitpipe->Read(&r, 20000);
 		if(r=="exit")
 		{
 			removeAllClients();
