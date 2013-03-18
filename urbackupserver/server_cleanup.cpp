@@ -33,6 +33,7 @@
 #include "server.h"
 #include "snapshot_helper.h"
 #include <stdio.h>
+#include <algorithm>
 
 IMutex *ServerCleanupThread::mutex=NULL;
 ICondition *ServerCleanupThread::cond=NULL;
@@ -57,9 +58,40 @@ void ServerCleanupThread::destroyMutex(void)
 	Server->destroy(a_mutex);
 }
 
+ServerCleanupThread::ServerCleanupThread(CleanupAction cleanup_action)
+	: cleanup_action(cleanup_action)
+{
+}
+
 void ServerCleanupThread::operator()(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	if(cleanup_action.action!=ECleanupAction_None)
+	{
+		createQueries();
+
+		switch(cleanup_action.action)
+		{
+		case ECleanupAction_DeleteFilebackup:
+			deleteFileBackup(cleanup_action.backupfolder, cleanup_action.clientid, cleanup_action.backupid, cleanup_action.force_remove);
+			break;
+		case ECleanupAction_FreeMinspace:
+			bool b = do_cleanup(cleanup_action.minspace);
+			if(cleanup_action.result!=NULL)
+			{
+				*(cleanup_action.result)=b;
+			}
+			break;
+		}
+		
+		destroyQueries();
+		delete this;
+		return;
+	}
+
+
+
 	unsigned int last_cleanup=0;
 
 	{
@@ -206,9 +238,6 @@ bool ServerCleanupThread::do_cleanup(int64 minspace)
 {
 	ServerStatus::incrementServerNospcStalled(1);
 	IScopedLock lock(a_mutex);
-
-	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	createQueries();
 
 	removeerr.clear();
 	cleanup_images(minspace);
@@ -509,16 +538,8 @@ size_t ServerCleanupThread::getImagesFullNum(int clientid, int &backupid_top, co
 	{
 		std::wstring letter=res[i][L"letter"];
 		int cid=watoi(res[i][L"id"]);
-		bool found=false;
-		for(size_t j=0;j<notit.size();++j)
-		{
-			if(notit[j]==cid)
-			{
-				found=true;
-				break;
-			}
-		}
-		if(!found)
+
+		if(std::find(notit.begin(), notit.end(), cid)==notit.end())
 		{
 			images_ids[letter].push_back(cid);			
 		}
@@ -546,16 +567,8 @@ size_t ServerCleanupThread::getImagesIncrNum(int clientid, int &backupid_top, co
 	{
 		std::wstring letter=res[i][L"letter"];
 		int cid=watoi(res[i][L"id"]);
-		bool found=false;
-		for(size_t j=0;j<notit.size();++j)
-		{
-			if(notit[j]==cid)
-			{
-				found=true;
-				break;
-			}
-		}
-		if(!found)
+
+		if(std::find(notit.begin(), notit.end(), cid)==notit.end())
 		{
 			images_ids[letter].push_back(cid);			
 		}
@@ -629,11 +642,11 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 				if(b)
 				{
 					deleted_something_client=true;
-        				deleted_something=true;
-        				break;
-        			}
+        			deleted_something=true;
+        			break;
+        		}
         			
-        			full_file_num=(int)getFilesFullNum(clientid, backupid);
+        		full_file_num=(int)getFilesFullNum(clientid, backupid);
 			}
 
 			if(deleted_something_client==true)
@@ -682,38 +695,27 @@ size_t ServerCleanupThread::getFilesFullNum(int clientid, int &backupid_top)
 	q_get_full_num_files->Bind(clientid);
 	db_results res=q_get_full_num_files->Read();
 	q_get_full_num_files->Reset();
+	db_results no_err_res;
 	if(!removeerr.empty())
 	{
-		bool c=true;
-		while(c)
+		for(size_t i=0;i<res.size();++i)
 		{
-			c=false;
-			for(size_t i=0;i<res.size();++i)
-    		{
-    			bool found=false;
-    			int bid=watoi(res[i][L"id"]);
-				for(size_t j=0;j<removeerr.size();++j)
-				{
-					if(bid==removeerr[j])
-					{
-						found=true;
-						break;
-					}
-				}
-				if(found)
-				{
-					c=true;
-					res.erase(res.begin()+i);
-					break;
-				}
+			int bid=watoi(res[i][L"id"]);
+			if(std::find(removeerr.begin(), removeerr.end(), bid)==removeerr.end())
+			{
+				no_err_res.push_back(res[i]);
 			}
 		}
 	}
-	if(!res.empty())
+	else
 	{
-		backupid_top=watoi(res[0][L"id"]);
+		no_err_res=res;
 	}
-	return res.size();
+	if(!no_err_res.empty())
+	{
+		backupid_top=watoi(no_err_res[0][L"id"]);
+	}
+	return no_err_res.size();
 }
 
 size_t ServerCleanupThread::getFilesIncrNum(int clientid, int &backupid_top)
@@ -721,38 +723,27 @@ size_t ServerCleanupThread::getFilesIncrNum(int clientid, int &backupid_top)
 	q_get_incr_num_files->Bind(clientid);
 	db_results res=q_get_incr_num_files->Read();
 	q_get_incr_num_files->Reset();
+	db_results no_err_res;
 	if(!removeerr.empty())
 	{
-		bool c=true;
-		while(c)
+		for(size_t i=0;i<res.size();++i)
 		{
-			c=false;
-			for(size_t i=0;i<res.size();++i)
-    			{
-    				bool found=false;
-    				int bid=watoi(res[i][L"id"]);
-				for(size_t j=0;j<removeerr.size();++j)
-				{
-					if(bid==removeerr[j])
-					{
-						found=true;
-						break;
-					}
-				}
-				if(found)
-				{
-					c=true;
-					res.erase(res.begin()+i);
-					break;
-				}
+			int bid=watoi(res[i][L"id"]);
+			if(std::find(removeerr.begin(), removeerr.end(), bid)==removeerr.end())
+			{
+				no_err_res.push_back(res[i]);
 			}
 		}
 	}
-	if(!res.empty())
+	else
 	{
-		backupid_top=watoi(res[0][L"id"]);
+		no_err_res=res;
 	}
-	return res.size();
+	if(!no_err_res.empty())
+	{
+		backupid_top=watoi(no_err_res[0][L"id"]);
+	}
+	return no_err_res.size();
 }
 
 bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid, bool force_remove)
@@ -1148,6 +1139,13 @@ bool ServerCleanupThread::truncate_files_recurisve(std::wstring path)
 		}
 	}
 	return true;
+}
+
+bool ServerCleanupThread::cleanupSpace(int64 minspace)
+{
+	bool result;
+	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(minspace, &result)));
+	return result;
 }
 
 #endif //CLIENT_ONLY

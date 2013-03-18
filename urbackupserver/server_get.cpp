@@ -659,10 +659,7 @@ void BackupServerGet::operator ()(void)
 				}
 				else
 				{				
-					ServerCleanupThread sc;
-					sc.createQueries(db);
-					sc.deleteFileBackup(backupfolder, clientid, backupid);
-					sc.destroyQueries();
+					Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(backupfolder, clientid, backupid, true) ) );
 				}
 				tried_backup=true;
 			}
@@ -1763,8 +1760,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	if(free_space!=-1 && free_space<minfreespace_min)
 	{
 		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
-		ServerCleanupThread cleanup;
-		if(!cleanup.do_cleanup(minfreespace_min) )
+
+		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
 			ServerLogger::Log(clientid, "Could not free space for directory entries. NOT ENOUGH FREE SPACE.", LL_ERROR);
 			return false;
@@ -3707,8 +3704,8 @@ bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
 	if(free_space!=-1 && free_space<minfreespace_min)
 	{
 		Server->Log("No free space in backup folder. Free space="+PrettyPrintBytes(free_space)+" MinFreeSpace="+PrettyPrintBytes(minfreespace_min), LL_WARNING);
-		ServerCleanupThread cleanup;
-		if(!cleanup.do_cleanup(minfreespace_min) )
+
+		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
 			ServerLogger::Log(clientid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
 			return false;

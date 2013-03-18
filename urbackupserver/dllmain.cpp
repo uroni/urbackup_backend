@@ -477,7 +477,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	ServerCleanupThread::initMutex();
 	ServerAutomaticArchive::initMutex();
-	ServerCleanupThread *server_cleanup=new ServerCleanupThread();
+	ServerCleanupThread *server_cleanup=new ServerCleanupThread(CleanupAction());
 
 	is_leak_check=(Server->getServerParameter("leak_check")=="true");
 

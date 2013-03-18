@@ -43,14 +43,14 @@ public:
 
 	void operator()(void);
 
+	static void repairImages(void);
+private:
+
 	void update_files(void);
 	void update_images(void);
 
 	void createQueries(void);
 	void destroyQueries(void);
-
-	static void repairImages(void);
-private:
 
 	std::map<int, _i64> calculateSizeDeltas(const std::wstring &pShaHash, _i64 filesize, _i64 *rsize, bool with_del);
 	std::map<int, _i64> getSizes(void);
