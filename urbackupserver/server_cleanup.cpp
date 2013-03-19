@@ -215,7 +215,8 @@ void ServerCleanupThread::do_cleanup(void)
 	if(db->getEngineName()=="sqlite")
 	{
 		cache_res=db->Read("PRAGMA cache_size");
-		db->Write("PRAGMA cache_size = 100000");
+		ServerSettings server_settings(db);
+		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
 	}
 
 	removeerr.clear();
@@ -239,6 +240,14 @@ bool ServerCleanupThread::do_cleanup(int64 minspace)
 	ServerStatus::incrementServerNospcStalled(1);
 	IScopedLock lock(a_mutex);
 
+	db_results cache_res;
+	if(db->getEngineName()=="sqlite")
+	{
+		cache_res=db->Read("PRAGMA cache_size");
+		ServerSettings server_settings(db);
+		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+	}
+
 	removeerr.clear();
 	cleanup_images(minspace);
 	cleanup_files(minspace);
@@ -260,6 +269,12 @@ bool ServerCleanupThread::do_cleanup(int64 minspace)
 	if(!success)
 	{
 		ServerStatus::setServerNospcFatal(true);
+	}
+
+	if(!cache_res.empty())
+	{
+		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->Write("PRAGMA shrink_memory");
 	}
 
 	return success;
