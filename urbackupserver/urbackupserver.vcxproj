@@ -265,6 +265,7 @@
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
+    <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="ChunkPatcher.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="fileclient\FileClientChunked.cpp" />
@@ -330,6 +331,7 @@
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
+    <ClInclude Include="apps\cleanup_cmd.h" />
     <ClInclude Include="ChunkPatcher.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="fileclient\FileClientChunked.h" />

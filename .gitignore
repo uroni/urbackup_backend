@@ -72,7 +72,6 @@ version.txt
 vld.dll
 vld.lib
 urbackup/Release Server/*
-urbackupserver_installer_win/*
 UrBackupUpdate_untested.exe
 Release Server/*
 urbackup/clientlist_*.ub
@@ -144,3 +143,33 @@ urbackupserver/doc/*
 snapshot_helper/Debug/*
 snapshot_helper/x64/*
 urbackup_snapshot_helper.exe
+urbackupserver_installer_win/data/cryptoplugin.dll
+urbackupserver_installer_win/data/curllib.dll
+urbackupserver_installer_win/data/downloadplugin.dll
+urbackupserver_installer_win/data/fsimageplugin.dll
+urbackupserver_installer_win/data/httpserver.dll
+urbackupserver_installer_win/data/libssl32.dll
+urbackupserver_installer_win/data/pychart.dll
+urbackupserver_installer_win/data/urbackupserver.dll
+urbackupserver_installer_win/data/urbackupserver_prevista.dll
+urbackupserver_installer_win/data/urlplugin.dll
+urbackupserver_installer_win/data_common/pychart/pychart.py
+urbackupserver_installer_win/data_common/urbackup/status.htm
+urbackupserver_installer_win/data_common/urbackup/www/*
+urbackupserver_installer_win/data_python/*
+urbackupserver_installer_win/data_python_x64/*
+urbackupserver_installer_win/data_x64/*
+urbackupserver_installer_win/data_service_x64/urbackup_srv.exe
+urbackupserver_installer_win/data_service/urbackup_srv.exe
+urbackupserver_installer_win/tmp/python27.dll
+urbackupserver_installer_win/UrBackup Server *.msi
+urbackupserver_installer_win/UrBackup Server *.wixpdb
+urbackupserver_installer_win/UrBackup Server *.exe
+urbackupserver_installer_win/*.wixobj
+urbackupserver_installer_win/*.wxs
+urbackupserver_installer_win/vcredist/*
+verification_result.txt
+backupfolder
+Server121117(1).vsp
+Server121117.vsp
+urbackup_snapshot_helper_test.exe

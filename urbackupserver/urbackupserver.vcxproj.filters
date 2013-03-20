@@ -28,6 +28,9 @@
     <Filter Include="sha2">
       <UniqueIdentifier>{70354eae-bf63-425c-ae8a-b5ac6085389f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="apps">
+      <UniqueIdentifier>{d00660ff-cb0c-4ce2-bd39-00a7f46d3b65}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -204,6 +207,9 @@
     <ClCompile Include="verify_hashes.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="apps\cleanup_cmd.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -352,6 +358,9 @@
     </ClInclude>
     <ClInclude Include="snapshot_helper.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="apps\cleanup_cmd.h">
+      <Filter>apps</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

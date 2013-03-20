@@ -41,6 +41,8 @@ bool os_create_hardlink(const std::string &linkname, const std::string &fname, b
 
 int64 os_free_space(const std::wstring &path);
 
+int64 os_total_space(const std::wstring &path);
+
 bool os_remove_nonempty_dir(const std::wstring &path);
 
 bool os_remove_dir(const std::string &path);

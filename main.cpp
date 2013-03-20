@@ -581,7 +581,7 @@ int main(int argc, char *argv[])
 		srv_argc=lc+1;
 	}
 
-	if( argc>1 && ( (std::string)argv[1]=="pgo" || (std::string)argv[1]=="cmdline" ) )
+	if( argc>1 && ( (std::string)argv[1]=="pgo" || (std::string)argv[1]=="cmdline" || (std::string)argv[1]=="--cmdline"  ) )
 	{
 		my_init_fcn();
 

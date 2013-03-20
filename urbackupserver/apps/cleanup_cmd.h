@@ -1,0 +1,1 @@
+int cleanup_cmd(void);

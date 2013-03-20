@@ -299,7 +299,7 @@ int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *sett
 				return 1;
 			}
 		}
-		Server->Log("Free space: "+nconvert(available_space), LL_DEBUG);
+		Server->Log("Free space: "+PrettyPrintBytes(available_space), LL_DEBUG);
 	}
 	return 0;
 }
