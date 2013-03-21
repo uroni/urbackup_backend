@@ -92,7 +92,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	VERIFY_HASHES=""
 	RESET_PW=""
 	CLEANUP=""
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes: -- "$@"`
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup: -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -116,19 +116,19 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	if [ "x$VERIFY_HASHES" != "x" ]
 	then
 		LOGLEVEL="info"
-		S_DAEMON=""
+		S_DAEMON="--no-server"
 	fi
 	
 	if [ "x$RESET_PW" != "x" ]
 	then
 		LOGLEVEL="debug"
-		S_DAEMON=""
+		S_DAEMON="--no-server"
 	fi
 	
 	if [ "x$CLEANUP" != "x" ]
 	then
 		LOGLEVEL="debug"
-		S_DAEMON=""
+		S_DAEMON="--no-server"
 	fi
 	
 	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP"
