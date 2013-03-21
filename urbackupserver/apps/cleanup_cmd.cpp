@@ -34,7 +34,7 @@ int64 cleanup_amount(std::string cleanup_pc, IDatabase *db)
 		double pc=atof(getuntil("%", cleanup_pc).c_str());
 		Server->Log("Cleaning up "+nconvert(pc)+" percent", LL_INFO);
 
-		cleanup_bytes=(int64)(pc*total_space+0.5);
+		cleanup_bytes=(int64)((pc/100)*total_space+0.5);
 	}
 	else if(cleanup_pc.find("K")!=std::string::npos)
 	{
@@ -54,7 +54,7 @@ int64 cleanup_amount(std::string cleanup_pc, IDatabase *db)
 	}
 	else
 	{
-		cleanup_bytes=watoi64(getuntil(L"T", wcleanup_pc));
+		cleanup_bytes=watoi64(wcleanup_pc);
 	}
 
 	if(cleanup_bytes>total_space)
