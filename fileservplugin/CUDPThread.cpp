@@ -189,7 +189,9 @@ bool CUDPThread::UdpStep(void)
 		{
 			if(buffer[0]==ID_PING)
 			{
-				Log("UDP: PING received... sending PONG", LL_DEBUG);
+				unsigned int rsleep=Server->getRandomNumber()%500;
+				Log("UDP: PING received... sending PONG. Delay="+nconvert(rsleep)+"ms", LL_DEBUG);
+				Server->wait(rsleep);
 				char *buffer=new char[mServername.size()+2];
 				buffer[0]=ID_PONG;
 				buffer[1]=VERSION;

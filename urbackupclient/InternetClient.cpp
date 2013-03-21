@@ -16,6 +16,8 @@
 #include "../urbackupcommon/internet_pipe_capabilities.h"
 #include "../urbackupcommon/CompressedPipe.h"
 
+#include "../stringtools.h"
+
 #include <stdlib.h>
 #include <memory.h>
 
@@ -174,7 +176,10 @@ void InternetClient::doUpdateSettings(void)
 
 	ISettingsReader *settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
 	if(settings==NULL)
+	{
+		Server->Log("Cannot open settings in InternetClient", LL_WARNING);
 		return;
+	}
 
 	std::string internet_mode_enabled;
 	if( !settings->getValue("internet_mode_enabled", &internet_mode_enabled) || internet_mode_enabled=="false" )
@@ -182,6 +187,7 @@ void InternetClient::doUpdateSettings(void)
 		if( !settings->getValue("internet_mode_enabled_def", &internet_mode_enabled) || internet_mode_enabled=="false" )
 		{
 			Server->destroy(settings);
+			Server->Log("Internet mode is not enabled.", LL_DEBUG);
 			return;
 		}
 	}
@@ -193,6 +199,7 @@ void InternetClient::doUpdateSettings(void)
 	if(!settings->getValue("internet_authkey", &authkey) && !settings->getValue("internet_authkey_def", &authkey))
 	{
 		Server->destroy(settings);
+		Server->Log("Cannot read internet_authkey", LL_INFO);
 		return;
 	}
 	if(!settings->getValue("computername", &computername) || computername.empty())
@@ -233,13 +240,19 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 
 	unsigned short port=server_settings.port;
 	lock->relock(NULL);
+	Server->Log("Trying to connect to internet server \""+name+"\" at port "+nconvert(port), LL_DEBUG);
 	IPipe *cs=Server->ConnectStream(name, port, 10000);
 	lock->relock(mutex);
 	if(cs!=NULL)
 	{
+		Server->Log("Successfully connected.", LL_DEBUG);
 		Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
 		newConnection();
 		return true;
+	}
+	else
+	{
+		Server->Log("Connecting failed.", LL_DEBUG);
 	}
 	return false;
 }

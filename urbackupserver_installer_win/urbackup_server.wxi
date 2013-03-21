@@ -1,0 +1,19 @@
+<?xml version='1.0'?>
+<Include>
+	<?define Platform  = "x64"?>
+	<?define shared_data_dir  = "data"?>
+	<?define ProductID="659c54da-0926-49ff-90c4-cd781dad36ca"?>
+	<?if $(var.Platform)=x64 ?>
+		<?define ProgramFilesFolder="ProgramFiles64Folder"?>
+		<?define ComponentID="5d0aca93-8f4c-4192-8645-75c3d489721c"?>
+		<?define isx64="yes"?>
+		<?define datadir="data_x64"?>
+		<?define servicedatadir="data_service_x64"?>
+	<?else?>
+		<?define ProgramFilesFolder="ProgramFilesFolder"?>
+		<?define ComponentID="b0707231-d2ed-45be-9e1e-bcff6acf236a"?>
+		<?define isx64="no"?>
+		<?define datadir="data"?>
+		<?define servicedatadir="data_service"?>
+	<?endif?>
+</Include>

@@ -130,6 +130,7 @@ void BackupServerHash::operator()(void)
 				if(big_cache_size>10)
 				{
 					db->Write("PRAGMA cache_size = 1000");
+					db->Write("PRAGMA shrink_memory");
 				}
 			}
 			link_logcnt=0;
@@ -154,6 +155,7 @@ void BackupServerHash::operator()(void)
 			exitpipe->Write("ok");
 			db->Write("DROP TABLE files_tmp");
 			Server->Log("server_hash Thread finished - exitnow ");
+			db->AttachDBs();
 			delete this;
 			return;
 		}
@@ -163,6 +165,7 @@ void BackupServerHash::operator()(void)
 			db->Write("DROP TABLE files_tmp");
 			Server->destroy(exitpipe);
 			Server->Log("server_hash Thread finished - normal");
+			db->AttachDBs();
 			delete this;
 			return;
 		}
@@ -171,6 +174,7 @@ void BackupServerHash::operator()(void)
 			copyFilesFromTmp();
 			big_cache_size=20;
 			db->Write("PRAGMA cache_size = 1000");
+			db->Write("PRAGMA shrink_memory");
 			continue;
 		}
 
@@ -467,6 +471,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				{
 					Server->Log("HT: FATAL: Error freeing space", LL_ERROR);
 				}
+				has_error=true;
 				std::wstring temp_fn=tf->getFilenameW();
 				Server->destroy(tf);
 				tf=NULL;
@@ -571,8 +576,9 @@ bool BackupServerHash::freeSpace(int64 fs, const std::wstring &fp)
 	if(available_space>fs)
 		return true;
 
-	ServerCleanupThread cleanup;
-	return cleanup.do_cleanup(freespace_mod+fs);
+	bool b =  ServerCleanupThread::cleanupSpace(freespace_mod+fs);
+
+	return b;
 }
 
 std::wstring BackupServerHash::findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath)
@@ -775,6 +781,7 @@ bool BackupServerHash::handle_not_enough_space(const std::wstring &path)
 			{
 				Server->Log("HT: No free space available deleting backups...", LL_WARNING);
 			}
+			
 			return freeSpace(0, path);
 		}
 

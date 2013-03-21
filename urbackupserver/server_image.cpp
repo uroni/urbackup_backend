@@ -137,8 +137,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	if(free_space!=-1 && free_space<minfreespace_image)
 	{
 		ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
-		ServerCleanupThread cleanup;
-		if(!cleanup.do_cleanup(minfreespace_image) )
+		if(!ServerCleanupThread::cleanupSpace(minfreespace_image) )
 		{
 			ServerLogger::Log(clientid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
 			Server->destroy(cc);

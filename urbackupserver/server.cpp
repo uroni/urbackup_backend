@@ -117,62 +117,7 @@ void BackupServer::operator()(void)
 		}
 	}
 
-	{
-		Server->Log("Testing if backup destination can handle subvolumes and snapshots...", LL_DEBUG);
-
-		std::string snapshot_helper_cmd=Server->getServerParameter("snapshot_helper");
-		if(!snapshot_helper_cmd.empty())
-		{
-			SnapshotHelper::setSnapshotHelperCommand(snapshot_helper_cmd);
-		}
-
-		std::string cow_mode=settings->getValue("cow_mode", "false");
-		if(!SnapshotHelper::isAvailable())
-		{
-			if(cow_mode!="true")
-			{
-				snapshots_enabled=false;
-			}
-			else
-			{
-				size_t n=10;
-				bool available;
-				do
-				{
-					Server->wait(10000);
-					Server->Log("Waiting for backup destination to support snapshots...", LL_INFO);
-					--n;
-					available=SnapshotHelper::isAvailable();
-				}
-				while(!available && n>0);
-
-				if(available)
-				{					
-					snapshots_enabled=true;
-				}
-				else
-				{
-					Server->Log("Copy on write mode is disabled, because the filesystem does not support it anymore.", LL_ERROR);
-					db->Write("INSERT OR REPLACE INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'false', 0)");
-					snapshots_enabled=false;
-				}
-			}
-		}
-		else
-		{
-			snapshots_enabled=true;
-			db->Write("INSERT OR REPLACE INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'true', 0)");
-		}
-
-		if(snapshots_enabled)
-		{
-			Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled.", LL_INFO);
-		}
-		else
-		{
-			Server->Log("Backup destination cannot handle subvolumes and snapshots. Snapshots disabled.", LL_INFO);
-		}
-	}
+	testSnapshotAvailability(db);
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
 	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
@@ -195,7 +140,7 @@ void BackupServer::operator()(void)
 		}
 
 		std::string r;
-		exitpipe->Read(&r, waittime);
+		exitpipe->Read(&r, 20000);
 		if(r=="exit")
 		{
 			removeAllClients();
@@ -235,8 +180,12 @@ void BackupServer::findClients(FileClient &fc)
 	_u32 rc=fc.GetServers(true, addr_hints);
 	while(rc==ERR_CONTINUE)
 	{
-		Server->wait(50);
 		rc=fc.GetServers(false, addr_hints);
+
+		if(exitpipe->isReadable())
+		{
+			break;
+		}
 	}
 
 	if(rc==ERR_ERROR)
@@ -502,6 +451,67 @@ void BackupServer::cleanupThrottlers(void)
 bool BackupServer::isSnapshotsEnabled(void)
 {
 	return snapshots_enabled;
+}
+
+void BackupServer::testSnapshotAvailability(IDatabase *db)
+{
+	ISettingsReader *settings=Server->createDBSettingsReader(db, "settings_db.settings");
+	Server->Log("Testing if backup destination can handle subvolumes and snapshots...", LL_DEBUG);
+
+	std::string snapshot_helper_cmd=Server->getServerParameter("snapshot_helper");
+	if(!snapshot_helper_cmd.empty())
+	{
+		SnapshotHelper::setSnapshotHelperCommand(snapshot_helper_cmd);
+	}
+
+	std::string cow_mode=settings->getValue("cow_mode", "false");
+	if(!SnapshotHelper::isAvailable())
+	{
+		if(cow_mode!="true")
+		{
+			snapshots_enabled=false;
+		}
+		else
+		{
+			size_t n=10;
+			bool available;
+			do
+			{
+				Server->wait(10000);
+				Server->Log("Waiting for backup destination to support snapshots...", LL_INFO);
+				--n;
+				available=SnapshotHelper::isAvailable();
+			}
+			while(!available && n>0);
+
+			if(available)
+			{					
+				snapshots_enabled=true;
+			}
+			else
+			{
+				Server->Log("Copy on write mode is disabled, because the filesystem does not support it anymore.", LL_ERROR);
+				db->Write("INSERT OR REPLACE INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'false', 0)");
+				snapshots_enabled=false;
+			}
+		}
+	}
+	else
+	{
+		snapshots_enabled=true;
+		db->Write("INSERT OR REPLACE INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'true', 0)");
+	}
+
+	if(snapshots_enabled)
+	{
+		Server->Log("Backup destination does handle subvolumes and snapshots. Snapshots enabled.", LL_INFO);
+	}
+	else
+	{
+		Server->Log("Backup destination cannot handle subvolumes and snapshots. Snapshots disabled.", LL_INFO);
+	}
+
+	Server->destroy(settings);
 }
 
 #endif //CLIENT_ONLY

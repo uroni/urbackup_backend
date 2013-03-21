@@ -206,6 +206,12 @@ THREADPOOL_TICKET CThreadPool::execute(IThread *runnable)
 	return currticket;
 }
 
+void CThreadPool::executeWait(IThread *runnable)
+{
+	THREADPOOL_TICKET ticket=execute(runnable);
+	waitFor(ticket);
+}
+
 void CThreadPool::waitFor(THREADPOOL_TICKET ticket)
 {
 	std::vector<THREADPOOL_TICKET> t;

@@ -62,6 +62,7 @@ SStartupStatus startup_status;
 #include "../urbackupcommon/os_functions.h"
 #include "InternetServiceConnector.h"
 #include "filedownload.h"
+#include "apps/cleanup_cmd.h"
 
 #include <stdlib.h>
 
@@ -92,6 +93,7 @@ void upgrade(void);
 bool test_amatch(void);
 bool test_amatch(void);
 bool verify_hashes(std::string arg);
+void updateRights(int t_userid, std::string s_rights, IDatabase *db);
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
@@ -129,95 +131,10 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 	return true;
 }
 
-DLLEXPORT void LoadActions(IServer* pServer)
+void open_server_database(bool &use_berkeleydb)
 {
-	Server=pServer;
-
-	/*if(!testEscape())
-	{
-		Server->Log("Escape test failed! Stopping.", LL_ERROR);
-		return;
-	}*/
-	/*if(!test_amatch())
-	{
-		Server->Log("Amatch test failed! Stopping.", LL_ERROR);
-		return;
-	}*/
-	/*if(!test_amatch())
-	{
-		Server->Log("Amatch test failed! Stopping.", LL_ERROR);
-		return;
-	}*/
-	
-	std::string rmtest=Server->getServerParameter("rmtest");
-	if(!rmtest.empty())
-	{
-		os_remove_nonempty_dir(widen(rmtest));
-		return;
-	}
-
-	std::string download_file=Server->getServerParameter("download_file");
-	if(!download_file.empty())
-	{
-		FileDownload dl;
-		unsigned int tcpport=43001;
-		std::string s_tcpport=Server->getServerParameter("tcpport");
-		if(!s_tcpport.empty()) tcpport=atoi(s_tcpport.c_str());
-		int method=0;
-		std::string s_method=Server->getServerParameter("method");
-		if(!s_method.empty()) method=atoi(s_method.c_str());
-		Server->Log("Starting file download...");
-		dl.filedownload(download_file, Server->getServerParameter("servername"), Server->getServerParameter("dstfn"), tcpport, method);
-		exit(1);
-	}
-
-	init_mutex1();
-	ServerLogger::init_mutex();
-
-#ifdef _WIN32
-	char t_lang[20];
-	GetLocaleInfoA(LOCALE_SYSTEM_DEFAULT,LOCALE_SISO639LANGNAME ,t_lang,sizeof(t_lang));
-	lang=t_lang;
-#endif
-
-	if(lang=="de")
-	{
-		time_format_str=time_format_str_de;
-	}
-
-	//writeZeroblockdata();
-
-	
-	if((server_identity=getFile("urbackup/server_ident.key")).size()<5)
-	{
-		Server->Log("Generating Server identity...", LL_INFO);
-		std::string ident="#I"+ServerSettings::generateRandomAuthKey(20)+"#";
-		writestring(ident, "urbackup/server_ident.key");
-		server_identity=ident;
-	}
-	if((server_token=getFile("urbackup/server_token.key")).size()<5)
-	{
-		Server->Log("Generating Server token...", LL_INFO);
-		std::string token=ServerSettings::generateRandomAuthKey(20);
-		writestring(token, "urbackup/server_token.key");
-		server_token=token;
-	}
-
-	Server->deleteFile("urbackup/shutdown_now");
-
-
-	{
-		str_map params;
-		image_fak=(IFSImageFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fsimageplugin", params));
-		if( image_fak==NULL )
-		{
-			Server->Log("Error loading fsimageplugin", LL_ERROR);
-		}
-	}
-
-	
 	std::string bdb_config="mutex_set_max 1000000\r\nset_tx_max 500000\r\nset_lg_regionmax 10485760\r\nset_lg_bsize 4194304\r\nset_lg_max 20971520\r\nset_lk_max_locks 100000\r\nset_lk_max_lockers 10000\r\nset_lk_max_objects 100000\r\nset_cachesize 0 104857600 1";
-	bool use_berkeleydb=false;
+	use_berkeleydb=false;
 
 	if( !FileExists("urbackup/backup_server.bdb") && !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
 	{
@@ -301,6 +218,124 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			}
 		}
 	}
+}
+
+void open_settings_database(bool use_berkeleydb)
+{
+	std::string aname="urbackup/backup_server_settings.db";
+	if(use_berkeleydb)
+		aname="urbackup/backup_server_settings.bdb";
+
+	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
+}
+
+DLLEXPORT void LoadActions(IServer* pServer)
+{
+	Server=pServer;
+
+	/*if(!testEscape())
+	{
+		Server->Log("Escape test failed! Stopping.", LL_ERROR);
+		return;
+	}*/
+	/*if(!test_amatch())
+	{
+		Server->Log("Amatch test failed! Stopping.", LL_ERROR);
+		return;
+	}*/
+	/*if(!test_amatch())
+	{
+		Server->Log("Amatch test failed! Stopping.", LL_ERROR);
+		return;
+	}*/
+	
+	std::string rmtest=Server->getServerParameter("rmtest");
+	if(!rmtest.empty())
+	{
+		os_remove_nonempty_dir(widen(rmtest));
+		return;
+	}
+
+	std::string download_file=Server->getServerParameter("download_file");
+	if(!download_file.empty())
+	{
+		FileDownload dl;
+		unsigned int tcpport=43001;
+		std::string s_tcpport=Server->getServerParameter("tcpport");
+		if(!s_tcpport.empty()) tcpport=atoi(s_tcpport.c_str());
+		int method=0;
+		std::string s_method=Server->getServerParameter("method");
+		if(!s_method.empty()) method=atoi(s_method.c_str());
+		Server->Log("Starting file download...");
+		dl.filedownload(download_file, Server->getServerParameter("servername"), Server->getServerParameter("dstfn"), tcpport, method);
+		exit(1);
+	}
+
+	init_mutex1();
+	ServerLogger::init_mutex();
+
+	std::string app=Server->getServerParameter("app", "");
+
+	if(!app.empty())
+	{
+		int rc=0;
+
+		if(app=="cleanup")
+		{
+			rc=cleanup_cmd();
+		}
+		else
+		{
+			rc=100;
+			Server->Log("App not found. Available apps: cleanup");
+		}
+		exit(rc);
+	}
+
+#ifdef _WIN32
+	char t_lang[20];
+	GetLocaleInfoA(LOCALE_SYSTEM_DEFAULT,LOCALE_SISO639LANGNAME ,t_lang,sizeof(t_lang));
+	lang=t_lang;
+#endif
+
+	if(lang=="de")
+	{
+		time_format_str=time_format_str_de;
+	}
+
+	//writeZeroblockdata();
+
+	
+	if((server_identity=getFile("urbackup/server_ident.key")).size()<5)
+	{
+		Server->Log("Generating Server identity...", LL_INFO);
+		std::string ident="#I"+ServerSettings::generateRandomAuthKey(20)+"#";
+		writestring(ident, "urbackup/server_ident.key");
+		server_identity=ident;
+	}
+	if((server_token=getFile("urbackup/server_token.key")).size()<5)
+	{
+		Server->Log("Generating Server token...", LL_INFO);
+		std::string token=ServerSettings::generateRandomAuthKey(20);
+		writestring(token, "urbackup/server_token.key");
+		server_token=token;
+	}
+
+	Server->deleteFile("urbackup/shutdown_now");
+
+
+	{
+		str_map params;
+		image_fak=(IFSImageFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fsimageplugin", params));
+		if( image_fak==NULL )
+		{
+			Server->Log("Error loading fsimageplugin", LL_ERROR);
+		}
+	}
+
+	
+	bool use_berkeleydb;
+	open_server_database(use_berkeleydb);
 
 	std::string arg_verify_hashes=Server->getServerParameter("verify_hashes");
 	if(!arg_verify_hashes.empty())
@@ -322,17 +357,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ServerSettings::init_mutex();
 	BackupServerGet::init_mutex();
 
-	{
-		std::string aname="urbackup/backup_server_settings.db";
-		if(use_berkeleydb)
-			aname="urbackup/backup_server_settings.bdb";
+	open_settings_database(use_berkeleydb);
 
-		Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
-		Server->destroyAllDatabases();
-
-		//IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		//db->Write("PRAGMA settings_db.journal_mode=WAL");
-	}
+	Server->destroyAllDatabases();
 
 	startup_status.mutex=Server->createMutex();
 	{
@@ -378,7 +405,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		std::string rnd=ServerSettings::generateRandomAuthKey(20);
 
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		db_results res=db->Read("SELECT value FROM settings_db.si_users WHERE name='admin'");
+		db_results res=db->Read("SELECT password_md5 FROM settings_db.si_users WHERE name='admin'");
 		if(res.empty())
 		{
 			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt) VALUES (?,?,?)");
@@ -397,7 +424,18 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			q->Reset();
 		}
 
-		Server->Log("Changed admin password", LL_INFO);
+		Server->Log("Changed admin password.", LL_INFO);
+
+		{
+			db_results res=db->Read("SELECT id FROM si_users WHERE name='admin'");
+			if(!res.empty())
+			{
+				updateRights(watoi(res[0][L"id"]), "idx=0&0_domain=all&0_right=all", db);
+
+				Server->Log("Updated admin rights.", LL_INFO);
+			}
+		}
+
 		db->destroyAllQueries();
 
 		exit(1);
@@ -477,7 +515,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	ServerCleanupThread::initMutex();
 	ServerAutomaticArchive::initMutex();
-	ServerCleanupThread *server_cleanup=new ServerCleanupThread();
+	ServerCleanupThread *server_cleanup=new ServerCleanupThread(CleanupAction());
 
 	is_leak_check=(Server->getServerParameter("leak_check")=="true");
 

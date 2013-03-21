@@ -335,8 +335,7 @@ IVHDFile* ServerVHDWriter::getVHD(void)
 bool ServerVHDWriter::cleanupSpace(void)
 {
 	ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
-	ServerCleanupThread cleanup;
-	if(!cleanup.do_cleanup(free_space_lim) )
+	if(ServerCleanupThread::cleanupSpace(free_space_lim) )
 	{
 		ServerLogger::Log(clientid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
 		return false;

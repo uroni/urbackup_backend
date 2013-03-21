@@ -235,6 +235,27 @@ int64 os_free_space(const std::wstring &path)
 		return -1;
 }
 
+int64 os_total_space(const std::wstring &path)
+{
+	std::wstring cp=path;
+	if(path.size()==0)
+		return -1;
+	if(cp[cp.size()-1]=='/')
+		cp.erase(cp.size()-1, 1);
+	if(cp[cp.size()-1]!='/')
+		cp+='/';
+
+	struct statvfs64 buf;
+	int rc=statvfs64(Server->ConvertToUTF8(path).c_str(), &buf);
+	if(rc==0)
+	{
+		fsblkcnt_t used=buf.f_blocks-buf.f_bfree;
+		return buf.f_bsize*(used+buf.f_bavail);
+	}
+	else
+		return -1;
+}
+
 bool os_directory_exists(const std::wstring &path)
 {
 	//std::string upath=Server->ConvertToUTF8(path);

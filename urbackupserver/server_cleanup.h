@@ -7,12 +7,62 @@
 
 class ServerSettings;
 
+enum ECleanupAction
+{
+	ECleanupAction_None,
+	ECleanupAction_FreeMinspace,
+	ECleanupAction_DeleteFilebackup
+};
+
+struct CleanupAction
+{
+	//None
+	CleanupAction(void)
+		: action(ECleanupAction_None)
+	{
+	}
+
+	//Delete file backup
+	CleanupAction(std::wstring backupfolder, int clientid, int backupid, bool force_remove)
+		: action(ECleanupAction_DeleteFilebackup), backupfolder(backupfolder), clientid(clientid), backupid(backupid), force_remove(force_remove)
+	{
+
+	}
+
+	//Free minspace
+	CleanupAction(int64 minspace, bool *result)
+		: action(ECleanupAction_FreeMinspace), minspace(minspace), result(result)
+	{
+
+	}
+
+	ECleanupAction action;
+	
+	std::wstring backupfolder;
+	int clientid;
+	int backupid;
+	bool force_remove;
+
+	int64 minspace;
+	bool *result;
+};
+
 
 class ServerCleanupThread : public IThread
 {
 public:
+	ServerCleanupThread(CleanupAction action);
 
 	void operator()(void);
+
+	static bool cleanupSpace(int64 minspace);
+
+	static void updateStats(bool interruptible);
+	static void initMutex(void);
+	static void destroyMutex(void);
+
+	static void doQuit(void);
+private:
 
 	void do_cleanup(void);
 	bool do_cleanup(int64 minspace);
@@ -37,14 +87,7 @@ public:
 
 	void deletePendingClients(void);
 
-	static void updateStats(bool interruptible);
-	static void initMutex(void);
-	static void destroyMutex(void);
-
 	void backup_database(void);
-
-	static void doQuit(void);
-private:
 
 	bool deleteAndTruncateFile(std::wstring path);
 	bool deleteImage(std::wstring path);
@@ -94,4 +137,6 @@ private:
 	std::vector<int> removeerr;
 
 	static volatile bool do_quit;
+
+	CleanupAction cleanup_action;
 };

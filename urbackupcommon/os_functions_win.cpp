@@ -185,6 +185,24 @@ int64 os_free_space(const std::wstring &path)
 		return -1;
 }
 
+int64 os_total_space(const std::wstring &path)
+{
+	std::wstring cp=path;
+	if(path.size()==0)
+		return -1;
+	if(cp[cp.size()-1]=='/')
+		cp.erase(cp.size()-1, 1);
+	if(cp[cp.size()-1]!='\\')
+		cp+='\\';
+
+	ULARGE_INTEGER li;
+	BOOL r=GetDiskFreeSpaceExW(path.c_str(), NULL, &li, NULL);
+	if(r!=0)
+		return li.QuadPart;
+	else
+		return -1;
+}
+
 bool os_directory_exists(const std::wstring &path)
 {
 	return isDirectory(path);
