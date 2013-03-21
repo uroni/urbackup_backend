@@ -9,6 +9,7 @@
 
 class IPipeThrottler;
 class IMutex;
+class IDatabase;
 
 struct SClient
 {
@@ -30,6 +31,8 @@ public:
 	static IPipeThrottler *getGlobalLocalThrottler(size_t speed_bps);
 
 	static void cleanupThrottlers(void);
+
+	static void testSnapshotAvailability(IDatabase *db);
 
 	static bool isSnapshotsEnabled(void);
 

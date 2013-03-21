@@ -5,6 +5,7 @@
 #include "../../urbackupcommon/os_functions.h"
 #include "../../stringtools.h"
 #include "../server_cleanup.h"
+#include "../server.h"
 
 #include "../database.h"
 #include <stdlib.h>
@@ -81,6 +82,8 @@ int cleanup_cmd(void)
 		Server->Log("Could not open database", LL_ERROR);
 		return 1;
 	}
+
+	BackupServer::testSnapshotAvailability(db);
 
 	Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
 	db->Write("PRAGMA journal_mode = DELETE");
