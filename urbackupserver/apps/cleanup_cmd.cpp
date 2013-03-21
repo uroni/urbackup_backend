@@ -8,6 +8,7 @@
 #include "../server.h"
 
 #include "../database.h"
+#include <stdlib.h>
 
 void open_server_database(bool &use_berkeleydb);
 void open_settings_database(bool use_berkeleydb);
