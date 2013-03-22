@@ -5,6 +5,7 @@ then
 	./switch_build.sh server
 	autoreconf
 	automake --add-missing
+	libtoolize
 	autoreconf
 	./configure
 fi
