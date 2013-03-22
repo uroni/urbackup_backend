@@ -7,7 +7,7 @@ then
 	automake --add-missing
 	libtoolize
 	autoreconf
-	./configure
+	./configure --with-pychart
 fi
 
 make
