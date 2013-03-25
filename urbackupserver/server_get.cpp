@@ -358,6 +358,8 @@ void BackupServerGet::operator ()(void)
 		skip_checking=true;
 	}
 
+	ServerSettings server_settings_updated(db);
+
 	bool do_exit_now=false;
 	bool tried_backup=false;
 	bool file_backup_err=false;
@@ -366,13 +368,22 @@ void BackupServerGet::operator ()(void)
 	{
 		if(!skip_checking)
 		{
-			if(do_update_settings)
 			{
-				ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
-				do_update_settings=false;
-				if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
+				bool settings_updated=false;
+				server_settings_updated.getSettings(&settings_updated);
+				if(do_update_settings || settings_updated)
 				{
-					ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
+					ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
+					do_update_settings=false;
+					if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
+					{
+						ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
+					}
+				}
+
+				if(settings_updated)
+				{
+					sendSettings();
 				}
 			}
 
