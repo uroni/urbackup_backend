@@ -99,7 +99,7 @@ void BackupServer::operator()(void)
 		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
 	}
 #endif
-	if( !settings->getValue("use_tmpfiles", false) )
+	if( settings->getValue("use_tmpfiles", "")!="true" )
 	{
 		std::wstring backupfolder;
 		if( settings->getValue(L"backupfolder", &backupfolder) )
