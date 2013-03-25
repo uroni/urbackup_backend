@@ -309,6 +309,7 @@ std::wstring getSysVolume(std::wstring &mpath)
 		}
 	}
 
+	Server->Log("Found no SYSVOL on the same physical device as 'C'.", LL_INFO);
 
     return L"";
 }
