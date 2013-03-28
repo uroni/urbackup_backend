@@ -458,12 +458,13 @@ void IndexThread::operator()(void)
 			}
 			else
 			{
+				std::wstring release_dir=scd->dir;
 				bool b=release_shadowcopy(scd, image_backup==1?true:false, save_id);
 				if(!b)
 				{
 					contractor->Write("failed");
 #ifdef _WIN32
-					Server->Log(L"Deleting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
+					Server->Log(L"Deleting shadowcopy of \""+release_dir+L"\" failed.", LL_ERROR);
 #endif
 				}
 				else

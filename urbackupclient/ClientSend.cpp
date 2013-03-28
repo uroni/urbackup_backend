@@ -53,9 +53,11 @@ void ClientSend::operator()(void)
 		bool do_exit;
 		{
 			IScopedLock lock(mutex);
-			do_exit=exit;
 			if(tqueue.empty() && exit==false)
 				cond->wait(&lock);
+
+			do_exit=exit;
+
 			if(!tqueue.empty())
 			{
 				item=tqueue.front();
