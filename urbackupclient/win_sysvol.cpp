@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <vector>
 #include <string>
+#include <iostream>
 #include "../stringtools.h"
-#include "../Interface/Server.h"
+#include "../log_redir.h"
 
 std::wstring getVolumeLabel(PWCHAR VolumeName)
 {
@@ -211,7 +212,7 @@ std::wstring getSysVolume(std::wstring &mpath)
     if (FindHandle == INVALID_HANDLE_VALUE)
     {
         Error = GetLastError();
-		Server->Log(L"FindFirstVolumeW failed with error code "+convert((int)Error), LL_ERROR);
+		LOG(L"FindFirstVolumeW failed with error code "+convert((int)Error), LL_ERROR);
         return L"";
     }
 
@@ -230,7 +231,7 @@ std::wstring getSysVolume(std::wstring &mpath)
             VolumeName[Index] != L'\\') 
         {
             Error = ERROR_BAD_PATHNAME;
-            Server->Log(L"FindFirstVolumeW/FindNextVolumeW returned a bad path: "+(std::wstring)VolumeName, LL_ERROR);
+            LOG(L"FindFirstVolumeW/FindNextVolumeW returned a bad path: "+(std::wstring)VolumeName, LL_ERROR);
             break;
         }
 
@@ -246,7 +247,7 @@ std::wstring getSysVolume(std::wstring &mpath)
         if ( CharCount == 0 ) 
         {
             Error = GetLastError();
-            Server->Log(L"QueryDosDeviceW failed with error code "+convert((int)Error), LL_ERROR );
+            LOG(L"QueryDosDeviceW failed with error code "+convert((int)Error), LL_ERROR );
             break;
         }
 
@@ -268,6 +269,7 @@ std::wstring getSysVolume(std::wstring &mpath)
 		{
 			VolumeName[Index] = L'\0';
 			system_vols.push_back(VolumeName);
+			LOG(L"Found potential candidate: "+std::wstring(VolumeName), LL_DEBUG);
 			VolumeName[Index] = L'\\';
 			if(!vpaths.empty())
 			{
@@ -288,7 +290,7 @@ std::wstring getSysVolume(std::wstring &mpath)
 
             if (Error != ERROR_NO_MORE_FILES) 
             {
-                Server->Log(L"FindNextVolumeW failed with error code "+convert((int)Error));
+                LOG(L"FindNextVolumeW failed with error code "+convert((int)Error));
                 break;
             }
 
@@ -304,12 +306,13 @@ std::wstring getSysVolume(std::wstring &mpath)
 	{
 		if(getDevNum((PWCHAR)system_vols[i].c_str())==c_drive_num)
 		{
+			LOG(L"Selected: "+system_vols[i], LL_DEBUG);
 			mpath=system_vols_paths[i];
 			return system_vols[i];
 		}
 	}
 
-	Server->Log("Found no SYSVOL on the same physical device as 'C'.", LL_INFO);
+	LOG("Found no SYSVOL on the same physical device as 'C'.", LL_INFO);
 
     return L"";
 }
