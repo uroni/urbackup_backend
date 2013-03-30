@@ -51,7 +51,7 @@ bool File::Open(std::wstring pfn, int mode)
 	fn=pfn;
 	int flags;
 	mode_t imode=S_IRWXU|S_IRWXG;
-	if( mode==MODE_READ )
+	if( mode==MODE_READ || mode==MODE_READ_DEVICE )
 	{
 		flags=O_RDONLY;
 	}

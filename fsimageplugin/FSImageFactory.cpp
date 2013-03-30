@@ -28,6 +28,12 @@
 #include "fs/unknown.h"
 #include "vhdfile.h"
 #include "../stringtools.h"
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <errno.h>
+#endif
+
 
 void PrintInfo(IFilesystem *fs)
 {
@@ -36,10 +42,16 @@ void PrintInfo(IFilesystem *fs)
 
 IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev)
 {
-	IFile *dev=Server->openFile(pDev, MODE_READ);
+	IFile *dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
 	{
-		Server->Log(L"Error opening device file ("+pDev+L")", LL_ERROR);
+		int last_error;
+#ifdef _WIN32
+		last_error=GetLastError();
+#else
+		last_error=errno;
+#endif
+		Server->Log(L"Error opening device file ("+pDev+L") Errorcode: "+convert(last_error), LL_ERROR);
 		return NULL;
 	}
 	char buffer[1024];

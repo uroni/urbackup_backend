@@ -37,7 +37,8 @@ bool File::Open(std::wstring pfn, int mode)
 	fn=pfn;
 	DWORD dwCreationDisposition;
 	DWORD dwDesiredAccess;
-	if( mode==MODE_READ )
+	DWORD dwShareMode=FILE_SHARE_READ;
+	if( mode==MODE_READ || mode==MODE_READ_DEVICE )
 	{
 		dwCreationDisposition=OPEN_EXISTING;
 		dwDesiredAccess=GENERIC_READ;
@@ -65,8 +66,13 @@ bool File::Open(std::wstring pfn, int mode)
 		}
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
+
+	if(mode==MODE_READ_DEVICE)
+	{
+		dwShareMode|=FILE_SHARE_WRITE;
+	}
 	
-	hfile=CreateFileW( fn.c_str(), dwDesiredAccess, FILE_SHARE_READ, NULL, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, NULL );
+	hfile=CreateFileW( fn.c_str(), dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, NULL );
 
 	if( hfile!=INVALID_HANDLE_VALUE )
 	{
