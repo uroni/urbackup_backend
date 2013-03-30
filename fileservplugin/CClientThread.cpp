@@ -891,6 +891,11 @@ int CClientThread::SendData(void)
 	{
 		Log("Client Timeout occured.", LL_DEBUG);
 		
+		if( ldata->delbuf==true )
+		{
+			bufmgr->releaseBuffer(ldata->delbufptr);
+			ldata->delbuf=false;
+		}
 		t_send.erase( t_send.begin() );
 		delete ldata;
 		return -1;
