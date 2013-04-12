@@ -799,11 +799,16 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	}
 	ServerLogger::Log(clientid, "Timeout while transfering image data", LL_ERROR);
 do_image_cleanup:
-	transferred_bytes+=cc->getTransferedBytes();
+	if(cc!=NULL)
+	{
+		transferred_bytes+=cc->getTransferedBytes();
+	}
 	unsigned int passed_time=Server->getTimeMS()-image_backup_starttime;
 	if(passed_time==0) passed_time=1;
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time) )), LL_INFO );
-	Server->destroy(cc);
+	if(cc!=NULL)
+		Server->destroy(cc);
+	
 	if(vhdfile!=NULL)
 	{
 		if(blockdata!=NULL)
