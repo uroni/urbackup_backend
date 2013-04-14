@@ -1,8 +1,10 @@
 cd "%~dp0"
 
+mkdir data_service
 copy /Y "..\Release Service\Server.exe" "data_service\urbackup_srv.exe"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
+mkdir data
 copy /Y "..\Release Server\urbackupserver.dll" "data\urbackupserver.dll"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
@@ -36,10 +38,11 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 copy /Y "..\Release\cryptoplugin.dll" "data\cryptoplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
-
+mkdir data_service_x64
 copy /Y "..\x64\Release Service\Server.exe" "data_service_x64\urbackup_srv.exe"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
+mkdir data_x64
 copy /Y "..\x64\Release Server\urbackupserver.dll" "data_x64\urbackupserver.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
