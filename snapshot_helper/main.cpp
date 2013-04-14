@@ -3,7 +3,9 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include <stdlib.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 #define DEF_Server
 #include "../Server.h"

@@ -176,3 +176,4 @@ urbackup_snapshot_helper_test.exe
 urbackupclient/sysvol_test/Debug/*
 urbackupclient/sysvol_test/Release/*
 urbackupclient/sysvol_test/x64/Release/*
+snapshot_helper/Release/*
