@@ -176,6 +176,7 @@ void ImageThread::sendFullImageThread(void)
 			THREADPOOL_TICKET send_ticket=Server->getThreadPool()->execute(cs);
 
 			unsigned int needed_bufs=64;
+			int64 last_hash_block=-1;
 			std::vector<char*> bufs;
 			for(int64 i=image_inf->startpos,blocks=drivesize/blocksize;i<blocks;i+=64)
 			{
@@ -202,30 +203,45 @@ void ImageThread::sendFullImageThread(void)
 					{
 						if(idx<n_secs && secs[idx]==j)
 						{
+							if( last_hash_block/vhdblocks<j/vhdblocks)
+							{
+								last_hash_block=(j/vhdblocks)*vhdblocks-1;								
+							}
+
+							for(int64 k=last_hash_block+1;k<j;++k)
+							{
+								sha256_update(&shactx, zeroblockbuf, blocksize);
+							}
+
 							memcpy(bufs[idx], &secs[idx], sizeof(int64) );
 							sha256_update(&shactx, (unsigned char*)bufs[idx]+sizeof(int64), blocksize);
 							cs->sendBuffer(bufs[idx], sizeof(int64)+blocksize, false);
 							++idx;
 							notify_cs=true;
-						}
-						else
-						{
-							sha256_update(&shactx, zeroblockbuf, blocksize);
+							last_hash_block=j;
 						}
 
 						if( (j+1)%vhdblocks==0 || j+1==blocks )
 						{
-							unsigned char dig[c_hashsize];
-							sha256_final(&shactx, dig);
+							if(last_hash_block>=j+1-vhdblocks )
+							{
+								for(int64 k=last_hash_block;k<j;++k)
+								{
+									sha256_update(&shactx, zeroblockbuf, blocksize);
+								}
+
+								unsigned char dig[c_hashsize];
+								sha256_final(&shactx, dig);							
+								char* cb=cs->getBuffer();
+								int64 bs=-126;
+								int64 nextblock=j+1;
+								memcpy(cb, &bs, sizeof(int64) );
+								memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
+								memcpy(cb+2*sizeof(int64), dig, c_hashsize);
+								cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, false);
+								notify_cs=true;
+							}
 							sha256_init(&shactx);
-							char* cb=cs->getBuffer();
-							int64 bs=-126;
-							int64 nextblock=j+1;
-							memcpy(cb, &bs, sizeof(int64) );
-							memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
-							memcpy(cb+2*sizeof(int64), dig, c_hashsize);
-							cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, false);
-							notify_cs=true;
 						}
 					}
 				}

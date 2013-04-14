@@ -318,7 +318,9 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 cleanup:
 	if(!ret)
 	{
+		#ifndef OS_FUNC_NO_SERVER
 		Server->Log("Creating junction failed. Last error="+nconvert((int)GetLastError()), LL_ERROR);
+		#endif
 	}
 	delete []buf;
 	if(hJunc!=INVALID_HANDLE_VALUE)

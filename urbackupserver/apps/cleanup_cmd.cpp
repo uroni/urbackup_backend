@@ -112,7 +112,11 @@ int cleanup_cmd(void)
 
 	Server->Log("Starting cleanup...", LL_INFO);
 
-	bool b = ServerCleanupThread::cleanupSpace(cleanup_bytes);
+	Server->Log("Freeing database connections...", LL_INFO);
+
+	Server->destroyAllDatabases();
+
+	bool b = ServerCleanupThread::cleanupSpace(cleanup_bytes, true);
 
 	if(!b)
 	{
@@ -122,9 +126,7 @@ int cleanup_cmd(void)
 
 	Server->Log("Cleanup successfull.", LL_INFO);
 
-	Server->Log("Freeing database connections...", LL_INFO);
-
-	Server->destroyAllDatabases();
+	
 
 	return 0;
 }

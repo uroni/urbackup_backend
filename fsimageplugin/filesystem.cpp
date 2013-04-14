@@ -19,16 +19,28 @@
 #include "filesystem.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
+#include "../stringtools.h"
 #include <memory.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <errno.h>
+#endif
 
 Filesystem::Filesystem(const std::wstring &pDev)
 {
 	has_error=false;
 
-	dev=Server->openFile(pDev, MODE_READ);
+	dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
 	{
-		Server->Log("Error opening device file", LL_ERROR);
+		int last_error;
+#ifdef _WIN32
+		last_error=GetLastError();
+#else
+		last_error=errno;
+#endif
+		Server->Log("Error opening device file. Errorcode: "+nconvert(last_error), LL_ERROR);
 		has_error=true;
 	}
 	tmp_buf=NULL;

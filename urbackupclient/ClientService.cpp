@@ -1307,7 +1307,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	HANDLE hVolume=CreateFileW(vpath.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		errmsg=L"CreateFile of volume '"+dl+L"' failed. - sendMBR";
+		errmsg=L"CreateFile of volume '"+dl+L"' failed. - sendMBR. Errorcode: "+convert((int)GetLastError());
 		Server->Log(errmsg, LL_ERROR);
 		return false;
 	}

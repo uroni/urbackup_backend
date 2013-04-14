@@ -24,14 +24,15 @@ struct CleanupAction
 
 	//Delete file backup
 	CleanupAction(std::wstring backupfolder, int clientid, int backupid, bool force_remove)
-		: action(ECleanupAction_DeleteFilebackup), backupfolder(backupfolder), clientid(clientid), backupid(backupid), force_remove(force_remove)
+		: action(ECleanupAction_DeleteFilebackup), backupfolder(backupfolder), clientid(clientid), backupid(backupid),
+		  force_remove(force_remove)
 	{
 
 	}
 
 	//Free minspace
-	CleanupAction(int64 minspace, bool *result)
-		: action(ECleanupAction_FreeMinspace), minspace(minspace), result(result)
+	CleanupAction(int64 minspace, bool *result, bool switch_to_wal)
+		: action(ECleanupAction_FreeMinspace), minspace(minspace), result(result), switch_to_wal(switch_to_wal)
 	{
 
 	}
@@ -42,6 +43,7 @@ struct CleanupAction
 	int clientid;
 	int backupid;
 	bool force_remove;
+	bool switch_to_wal;
 
 	int64 minspace;
 	bool *result;
@@ -55,7 +57,7 @@ public:
 
 	void operator()(void);
 
-	static bool cleanupSpace(int64 minspace);
+	static bool cleanupSpace(int64 minspace, bool switch_to_wal=false);
 
 	static void updateStats(bool interruptible);
 	static void initMutex(void);
@@ -65,7 +67,8 @@ public:
 private:
 
 	void do_cleanup(void);
-	bool do_cleanup(int64 minspace);
+	bool do_cleanup(int64 minspace, bool switch_to_wal=false);
+
 	void cleanup_images(int64 minspace=-1);
 	void cleanup_files(int64 minspace=-1);
 

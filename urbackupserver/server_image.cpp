@@ -606,7 +606,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						memcpy(&currblock, &buffer[off], sizeof(int64) );
 						if(currblock==-123)
 						{
-							if(!with_checksum)
+							if(nextblock<totalblocks)
 							{
 								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
 
