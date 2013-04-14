@@ -108,6 +108,7 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(backup_database);
 	SET_SETTING(internet_server_port);
 	SET_SETTING(global_local_speed);
+	SET_SETTING(global_soft_fs_quota);
 	SET_SETTING(global_internet_speed);
 	SET_SETTING(use_tmpfiles);
 	SET_SETTING(use_tmpfiles_images);

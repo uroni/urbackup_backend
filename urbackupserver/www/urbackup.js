@@ -1518,7 +1518,8 @@ g.general_settings_list=[
 "file_hash_collect_amount",
 "file_hash_collect_timeout",
 "file_hash_collect_cachesize",
-"update_stats_cachesize"
+"update_stats_cachesize",
+"global_soft_fs_quota"
 ];
 g.mail_settings_list=[
 "mail_servername",

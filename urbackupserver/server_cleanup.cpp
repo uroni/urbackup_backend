@@ -32,6 +32,7 @@
 #include "server_get.h"
 #include "server.h"
 #include "snapshot_helper.h"
+#include "apps/cleanup_cmd.h"
 #include <stdio.h>
 #include <algorithm>
 
@@ -77,7 +78,7 @@ void ServerCleanupThread::operator()(void)
 			deleteFileBackup(cleanup_action.backupfolder, cleanup_action.clientid, cleanup_action.backupid, cleanup_action.force_remove);
 			break;
 		case ECleanupAction_FreeMinspace:
-			bool b = do_cleanup(cleanup_action.minspace);
+			bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
 			if(cleanup_action.result!=NULL)
 			{
 				*(cleanup_action.result)=b;
@@ -223,6 +224,24 @@ void ServerCleanupThread::do_cleanup(void)
 	cleanup_images();
 	cleanup_files();
 
+	{
+		ServerSettings server_settings(db);
+		int64 total_space=os_total_space(server_settings.getSettings()->backupfolder);
+		if(total_space!=-1)
+		{
+			int64 amount=cleanup_amount(server_settings.getSettings()->global_soft_fs_quota, db);
+			if(amount<total_space)
+			{
+				cleanup_images(total_space-amount);
+				cleanup_files(total_space-amount);
+			}
+		}
+		else
+		{
+			Server->Log("Error getting total used space of backup folder", LL_ERROR);
+		}
+	}
+
 	Server->Log("Updating statistics...", LL_INFO);
 	ServerUpdateStats sus;
 	sus();
@@ -235,7 +254,7 @@ void ServerCleanupThread::do_cleanup(void)
 	}
 }
 
-bool ServerCleanupThread::do_cleanup(int64 minspace)
+bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 {
 	ServerStatus::incrementServerNospcStalled(1);
 	IScopedLock lock(a_mutex);
@@ -251,6 +270,11 @@ bool ServerCleanupThread::do_cleanup(int64 minspace)
 	removeerr.clear();
 	cleanup_images(minspace);
 	cleanup_files(minspace);
+
+	if(switch_to_wal==true)
+	{
+		db->Write("PRAGMA journal_mode=WAL");
+	}
 
 	Server->Log("Updating statistics...", LL_INFO);
 	ServerUpdateStats sus;
@@ -1156,10 +1180,10 @@ bool ServerCleanupThread::truncate_files_recurisve(std::wstring path)
 	return true;
 }
 
-bool ServerCleanupThread::cleanupSpace(int64 minspace)
+bool ServerCleanupThread::cleanupSpace(int64 minspace, bool switch_to_wal)
 {
 	bool result;
-	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(minspace, &result)));
+	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(minspace, &result, switch_to_wal)));
 	return result;
 }
 

@@ -189,6 +189,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.file_hash_collect_timeout=static_cast<size_t>(settings_default->getValue("file_hash_collect_timeout", 10000));
 	settings.file_hash_collect_cachesize=static_cast<size_t>(settings_default->getValue("file_hash_collect_cachesize", 40960));
 	settings.update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 409600));
+	settings.global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
 }
 
 void ServerSettings::readSettingsClient(void)
