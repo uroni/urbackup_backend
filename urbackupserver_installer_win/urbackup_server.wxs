@@ -1,0 +1,135 @@
+<?xml version='1.0'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:firewall='http://schemas.microsoft.com/wix/FirewallExtension'>
+	<?include $(sys.CURRENTDIR)\urbackup_server.wxi?>
+	<Product Id='$(var.ProductID)' Name='UrBackup Server' Language='1033'
+            Version='1.2.0.0' Manufacturer='Martin Raiber' UpgradeCode='b79b4110-e31a-453a-b9b4-2ce0663a55ce'>
+	
+    <Package Description='UrBackup Server'
+             Comments='UrBackup Server for file and image backups'
+             Manufacturer='Martin Raiber' InstallerVersion='300' Compressed='yes' Platform='$(var.Platform)'/>
+	
+	<MajorUpgrade DowngradeErrorMessage="A later version of [ProductName] is already installed. Setup will now exit." />
+	
+	<Media Id='1' Cabinet='urbackup.cab' EmbedCab='yes' />
+	
+	<?if $(var.Platform)=x64 ?>
+	<Condition Message="You are attempting to run the 32-bit installer on a 64-bit version of Windows.">
+		<![CDATA[Msix64]]>
+	</Condition>
+	<?endif?>	
+
+						   
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+	  <Merge Id="VCRedist" SourceFile="C:\Program Files (x86)\Common Files\Merge Modules\Microsoft_VC100_CRT_x64.msm" DiskId="1" Language="0"/>
+      <Directory Id='$(var.ProgramFilesFolder)' Name='PFiles'>
+        <Directory Id='URBACKUPDIR' Name='UrBackupServer'>			
+            <Component Id='InstallService' Guid="deca7cff-6721-4270-905a-b4b02d6740ce" Win64="$(var.isx64)">
+				<File Id="WindowsService" Name="UrBackupServer.exe"
+                  Source="$(var.servicedatadir)\urbackup_srv.exe" KeyPath="yes">
+					<firewall:FirewallException
+					Id="ServiceFirewallException"
+					Name="UrBackup Server"
+					Scope="any"
+					Profile="all"
+					/>
+				</File>
+				  
+				  
+				  
+				<ServiceInstall
+					  Id="ServiceInstaller"
+					  Type="ownProcess"
+					  Vital="yes"
+					  Name="UrBackupServer"
+					  DisplayName="UrBackup Server"
+					  Description="Server for image and file backups of clients"
+					  Start="auto"
+					  Account="LocalSystem"
+					  ErrorControl="ignore"
+					  Interactive="no"
+					  >
+					</ServiceInstall>
+					<ServiceControl Id="StartService" Start="install" Stop="both" Remove="uninstall" Name="UrBackupServer" Wait="yes" />
+			</Component>
+			
+        </Directory>
+      </Directory>
+    </Directory>
+		
+	 
+	<WixVariable Id="WixUIDialogBmp" Value="Bitmaps\WixUIDialogBmp.bmp" />
+	<WixVariable Id="WixUIBannerBmp" Value="Bitmaps\WixUIBannerBmp.bmp" />
+	
+	<Property Id="WIXUI_INSTALLDIR" Value="URBACKUPDIR" />
+	<UIRef Id="WixUI_InstallDirCustom" />
+	
+	<Icon Id="backup_ok_ico" SourceFile="backup-ok.ico" />
+	<Property Id="ARPPRODUCTICON" Value="backup_ok_ico" />
+	<Property Id="ARPHELPLINK" Value="http://www.urbackup.org/" />
+		
+    <Feature Id='urbackup_server' Title='UrBackup Server' Level='1'>
+	  <ComponentGroupRef Id='UrBackupData' />
+	  <ComponentGroupRef Id='UrBackupDataCommon' />
+	  <ComponentGroupRef Id='UrBackupDataPython' />
+	  <ComponentRef Id='InstallService' />
+    </Feature>
+	<Feature Id="VCRedist" Title="Visual C++ 2010 Runtime" AllowAdvertise="no" Display="hidden" Level="1">
+		<MergeRef Id="VCRedist"/>
+	</Feature>
+  </Product>
+	
+  
+	<Fragment>
+        <UI Id="WixUI_InstallDirCustom">
+            <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+            <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+            <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+
+            <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+            <Property Id="WixUI_Mode" Value="InstallDir" />
+
+            <DialogRef Id="BrowseDlg" />
+            <DialogRef Id="DiskCostDlg" />
+            <DialogRef Id="ErrorDlg" />
+            <DialogRef Id="FatalError" />
+            <DialogRef Id="FilesInUse" />
+            <DialogRef Id="MsiRMFilesInUse" />
+            <DialogRef Id="PrepareDlg" />
+            <DialogRef Id="ProgressDlg" />
+            <DialogRef Id="ResumeDlg" />
+            <DialogRef Id="UserExit" />
+            
+            <Publish Dialog="BrowseDlg" Control="OK" Event="DoAction" Value="WixUIValidatePath" Order="3">1</Publish>
+            <Publish Dialog="BrowseDlg" Control="OK" Event="SpawnDialog" Value="InvalidDirDlg" Order="4"><![CDATA[WIXUI_INSTALLDIR_VALID<>"1"]]></Publish>
+
+            <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999">1</Publish>
+
+            <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg">NOT Installed</Publish>
+            <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg">Installed AND PATCH</Publish>
+
+            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="SetTargetPath" Value="[WIXUI_INSTALLDIR]" Order="1">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="DoAction" Value="WixUIValidatePath" Order="2">NOT WIXUI_DONTVALIDATEPATH</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="SpawnDialog" Value="InvalidDirDlg" Order="3"><![CDATA[NOT WIXUI_DONTVALIDATEPATH AND WIXUI_INSTALLDIR_VALID<>"1"]]></Publish>
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4">WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"</Publish>
+            <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Property="_BrowseProperty" Value="[WIXUI_INSTALLDIR]" Order="1">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="ChangeFolder" Event="SpawnDialog" Value="BrowseDlg" Order="2">1</Publish>
+            
+            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" Order="1">NOT Installed</Publish>
+            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" Order="2">Installed AND NOT PATCH</Publish>
+            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2">Installed AND PATCH</Publish>
+
+            <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg">1</Publish>
+
+            <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+            <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+            <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg">1</Publish>
+
+            <Property Id="ARPNOMODIFY" Value="1" />
+        </UI>
+
+        <UIRef Id="WixUI_Common" />
+    </Fragment>
+	
+  
+</Wix>

@@ -166,7 +166,6 @@ urbackupserver_installer_win/UrBackup Server *.msi
 urbackupserver_installer_win/UrBackup Server *.wixpdb
 urbackupserver_installer_win/UrBackup Server *.exe
 urbackupserver_installer_win/*.wixobj
-urbackupserver_installer_win/*.wxs
 urbackupserver_installer_win/vcredist/*
 verification_result.txt
 backupfolder
@@ -177,3 +176,6 @@ urbackupclient/sysvol_test/Debug/*
 urbackupclient/sysvol_test/Release/*
 urbackupclient/sysvol_test/x64/Release/*
 snapshot_helper/Release/*
+urbackupserver_installer_win/urbackup_files_data.wxs
+urbackupserver_installer_win/urbackup_files_data_common.wxs
+urbackupserver_installer_win/urbackup_files_data_python.wxs
