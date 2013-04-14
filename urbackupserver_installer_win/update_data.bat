@@ -14,9 +14,13 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 copy /Y "..\release\fsimageplugin.dll" "data\fsimageplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
+mkdir data_common
+mkdir data_common\pychart
 copy /Y "..\pychart\pychart.py" "data_common\pychart\pychart.py"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
+mkdir data_common\urbackup
+mkdir data_common\urbackup\www
 copy /Y "..\urbackupserver\www\*" "data_common\urbackup\www\"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
