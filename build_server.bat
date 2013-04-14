@@ -45,7 +45,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 mkdir "x64\Release Server PreVista"
 copy /Y "urbackupserver\x64\Release Server PreVista\*" "x64\Release Server PreVista\"
 
-"%~dp0urbackupserver_installer_win/generate_msi.bat"
+call "%~dp0urbackupserver_installer_win/generate_msi.bat"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" "%~dp0urbackupserver_installer_win/urbackup_server.nsi"
