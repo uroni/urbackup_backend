@@ -266,6 +266,11 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 		ServerSettings server_settings(db);
 		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
 	}
+	
+	if(minspace>0)
+	{
+		Server->Log("Space to free: "+PrettyPrintBytes(minspace), LL_INFO);
+	}
 
 	removeerr.clear();
 	cleanup_images(minspace);
