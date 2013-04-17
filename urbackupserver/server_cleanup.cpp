@@ -334,12 +334,24 @@ void ServerCleanupThread::do_remove(void)
 		for(size_t j=0;j<res_file_backups.size();++j)
 		{
 			std::wstring backup_path=backupfolder+os_file_sep()+clientname+os_file_sep()+res_file_backups[j][L"path"];
+			int backupid=watoi(res_file_backups[j][L"id"]);
 			if(!os_directory_exists(backup_path))
 			{
 				Server->Log(L"Path for file backup [id="+res_file_backups[j][L"id"]+L" path="+res_file_backups[j][L"path"]+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
-				q_remove_file_backup->Bind(res_file_backups[j][L"id"]);
+
+				db->DetachDBs();
+				db->BeginTransaction();
+				q_move_files->Bind(backupid);
+				q_move_files->Write();
+				q_move_files->Reset();
+				q_delete_files->Bind(backupid);
+				q_delete_files->Write();
+				q_delete_files->Reset();
+				q_remove_file_backup->Bind(backupid);
 				q_remove_file_backup->Write();
 				q_remove_file_backup->Reset();
+				db->EndTransaction();
+				db->AttachDBs();
 			}
 		}
 
