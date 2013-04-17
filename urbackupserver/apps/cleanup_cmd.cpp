@@ -130,3 +130,17 @@ int cleanup_cmd(void)
 
 	return 0;
 }
+
+int remove_unknown(void)
+{
+	Server->setServerParameter("cleanup_amount", "0%");
+	if(cleanup_cmd()!=0)
+	{
+		Server->Log("Error cleaning up.", LL_ERROR);
+		return 1;
+	}
+
+	ServerCleanupThread::removeUnknown();
+
+	return 0;
+}

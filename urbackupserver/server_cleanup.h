@@ -11,7 +11,8 @@ enum ECleanupAction
 {
 	ECleanupAction_None,
 	ECleanupAction_FreeMinspace,
-	ECleanupAction_DeleteFilebackup
+	ECleanupAction_DeleteFilebackup,
+	ECleanupAction_RemoveUnknown
 };
 
 struct CleanupAction
@@ -34,7 +35,12 @@ struct CleanupAction
 	CleanupAction(int64 minspace, bool *result, bool switch_to_wal)
 		: action(ECleanupAction_FreeMinspace), minspace(minspace), result(result), switch_to_wal(switch_to_wal)
 	{
+	}
 
+	//Remove unknown data
+	CleanupAction(ECleanupAction action)
+		: action(action)
+	{
 	}
 
 	ECleanupAction action;
@@ -59,6 +65,8 @@ public:
 
 	static bool cleanupSpace(int64 minspace, bool switch_to_wal=false);
 
+	static void removeUnknown(void);
+
 	static void updateStats(bool interruptible);
 	static void initMutex(void);
 	static void destroyMutex(void);
@@ -68,6 +76,8 @@ private:
 
 	void do_cleanup(void);
 	bool do_cleanup(int64 minspace, bool switch_to_wal=false);
+
+	void do_remove(void);
 
 	void cleanup_images(int64 minspace=-1);
 	void cleanup_files(int64 minspace=-1);
@@ -128,6 +138,10 @@ private:
 	IQuery *q_get_client_filebackups;
 	IQuery *q_get_assoc_img;
 	IQuery *q_get_image_size;
+	IQuery *q_get_clients;
+	IQuery *q_get_backups_clientid;
+	IQuery *q_get_imagebackups_clientid;
+	IQuery *q_find_filebackup;
 
 	static IMutex *mutex;
 	static ICondition *cond;

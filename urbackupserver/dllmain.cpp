@@ -284,6 +284,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=cleanup_cmd();
 		}
+		else if(app=="remove_unknown")
+		{
+			rc=remove_unknown();
+		}
 		else
 		{
 			rc=100;

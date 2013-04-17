@@ -47,6 +47,7 @@ std::string nconvert(unsigned int i);
 std::string nconvert(float f);
 std::string nconvert(double f);
 std::string findextension(const std::string& pString);
+std::wstring findextension(const std::wstring& pString);
 std::string wnarrow(const std::wstring& pStr);
 std::wstring widen(std::string tw);
 std::string replaceonce(std::string tor, std::string tin, std::string data);

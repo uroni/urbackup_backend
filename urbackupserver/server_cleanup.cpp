@@ -78,11 +78,15 @@ void ServerCleanupThread::operator()(void)
 			deleteFileBackup(cleanup_action.backupfolder, cleanup_action.clientid, cleanup_action.backupid, cleanup_action.force_remove);
 			break;
 		case ECleanupAction_FreeMinspace:
-			bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
-			if(cleanup_action.result!=NULL)
 			{
-				*(cleanup_action.result)=b;
-			}
+				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
+				if(cleanup_action.result!=NULL)
+				{
+					*(cleanup_action.result)=b;
+				}
+			} break;
+		case ECleanupAction_RemoveUnknown:
+			do_remove();
 			break;
 		}
 		
@@ -307,6 +311,125 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 	}
 
 	return success;
+}
+
+void ServerCleanupThread::do_remove(void)
+{
+	ServerSettings settings(db);
+
+	std::wstring backupfolder=settings.getSettings()->backupfolder;
+
+	db_results res_clients=q_get_clients->Read();
+	q_get_clients->Reset();
+
+	for(size_t i=0;i<res_clients.size();++i)
+	{
+		int clientid=watoi(res_clients[i][L"id"]);
+		std::wstring clientname=res_clients[i][L"name"];
+
+		q_get_backups_clientid->Bind(clientid);
+		db_results res_file_backups=q_get_backups_clientid->Read();
+		q_get_backups_clientid->Reset();
+
+		for(size_t j=0;j<res_file_backups.size();++j)
+		{
+			std::wstring backup_path=backupfolder+os_file_sep()+clientname+os_file_sep()+res_file_backups[j][L"path"];
+			if(!os_directory_exists(backup_path))
+			{
+				Server->Log(L"Path for file backup [id="+res_file_backups[j][L"id"]+L" path="+res_file_backups[j][L"path"]+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
+				/*q_remove_file_backup->Bind(res_file_backups[j][L"id"]);
+				q_remove_file_backup->Write();
+				q_remove_file_backup->Reset();*/
+			}
+		}
+
+		q_get_imagebackups_clientid->Bind(clientid);
+		db_results res_image_backups=q_get_imagebackups_clientid->Read();
+		q_get_imagebackups_clientid->Reset();
+
+		for(size_t j=0;j<res_image_backups.size();++j)
+		{
+			std::wstring backup_path=res_image_backups[j][L"path"];
+
+			IFile *tf=Server->openFile(os_file_prefix(backup_path), MODE_READ);
+			if(tf==NULL)
+			{
+				Server->Log(L"Image backup [id="+res_image_backups[j][L"id"]+L" path="+res_image_backups[j][L"path"]+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
+				/*q_remove_image->Bind(res_image_backups[j][L"id"]);
+				q_remove_image->Write();
+				q_remove_image->Reset();*/
+			}
+			else
+			{
+				Server->destroy(tf);
+			}
+		}
+
+		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname);
+
+		q_get_client_images->Bind(clientid);
+		db_results res_images=q_get_client_images->Read();
+		q_get_client_images->Reset();
+
+		for(size_t j=0;j<files.size();++j)
+		{
+			SFile cf=files[j];
+
+			if(cf.isdir)
+			{
+				q_find_filebackup->Bind(clientid);
+				q_find_filebackup->Bind(cf.name);
+				db_results res=q_find_filebackup->Read();
+				q_find_filebackup->Reset();
+
+				if(res.empty())
+				{
+					Server->Log(L"File backup \""+cf.name+L"\" of client \""+clientname+L"\" not found in database. Deleting it.", LL_WARNING);
+					std::wstring rm_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
+					/*if(!os_remove_nonempty_dir(rm_dir))
+					{
+						Server->Log(L"Could not delete directory \""+rm_dir+L"\"", LL_ERROR);
+					}*/
+				}
+			}
+			else
+			{
+				std::wstring extension=findextension(cf.name);
+
+				if(extension!=L"vhd")
+					continue;
+
+				bool found=false;
+
+				for(size_t k=0;k<res_images.size();++k)
+				{
+					if(ExtractFileName(res_images[k][L"path"])==cf.name)
+					{
+						found=true;
+						break;
+					}
+				}
+
+				if(!found)
+				{
+					Server->Log(L"Image backup \""+cf.name+L"\" of client \""+clientname+L"\" not found in database. Deleting it.", LL_WARNING);
+					std::wstring rm_file=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
+					/*if(!Server->deleteFile(rm_file))
+					{
+						Server->Log(L"Could not delete file \""+rm_file+L"\"", LL_ERROR);
+					}
+					if(!Server->deleteFile(rm_file+L".mbr"))
+					{
+						Server->Log(L"Could not delete file \""+rm_file+L".mbr\"", LL_ERROR);
+					}
+					if(!Server->deleteFile(rm_file+L".hash"))
+					{
+						Server->Log(L"Could not delete file \""+rm_file+L".hash\"", LL_ERROR);
+					}*/
+				}
+			}
+		}
+	}
 }
 
 int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)
@@ -1086,10 +1209,14 @@ void ServerCleanupThread::createQueries(IDatabase *pDb)
 	q_remove_image_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=(SELECT clientid FROM backup_images WHERE id=?))-(SELECT size_bytes FROM backup_images WHERE id=?) WHERE id=(SELECT clientid FROM backup_images WHERE id=?)",false);
 	q_del_image_stats=db->Prepare("INSERT INTO del_stats (backupid, image, delsize, clientid, incremental) SELECT id, 1 AS image, (size_bytes+?) AS delsize, clientid, incremental FROM backup_images WHERE id=?", false);
 	q_image_stats_stop=db->Prepare("UPDATE del_stats SET stoptime=CURRENT_TIMESTAMP WHERE rowid=?", false);
-	q_get_client_images=db->Prepare("SELECT id FROM backup_images WHERE clientid=?", false);
+	q_get_client_images=db->Prepare("SELECT id, path FROM backup_images WHERE clientid=?", false);
 	q_get_client_filebackups=db->Prepare("SELECT id FROM backups WHERE clientid=?", false);
 	q_get_assoc_img=db->Prepare("SELECT assoc_id FROM assoc_images WHERE img_id=?", false);
-	q_get_image_size=db->Prepare("SELECT size_bytes FROM backup_images WHERE id=?", false); 
+	q_get_image_size=db->Prepare("SELECT size_bytes FROM backup_images WHERE id=?", false);
+	q_get_clients=db->Prepare("SELECT id, name FROM clients", false);
+	q_get_backups_clientid=db->Prepare("SELECT id, backuptime, path FROM backups WHERE clientid=?", false);
+	q_get_imagebackups_clientid=db->Prepare("SELECT id, letter, path FROM backup_images WHERE clientid=?", false);
+	q_find_filebackup=db->Prepare("SELECT id FROM backups WHERE clientid=? AND path=?", false);
 }
 
 void ServerCleanupThread::destroyQueries(void)
@@ -1118,6 +1245,10 @@ void ServerCleanupThread::destroyQueries(void)
 	db->destroyQuery(q_get_client_filebackups);
 	db->destroyQuery(q_get_assoc_img);
 	db->destroyQuery(q_get_image_size);
+	db->destroyQuery(q_get_clients);
+	db->destroyQuery(q_get_backups_clientid);
+	db->destroyQuery(q_get_imagebackups_clientid);
+	db->destroyQuery(q_find_filebackup);
 }
 
 void ServerCleanupThread::backup_database(void)
@@ -1190,6 +1321,11 @@ bool ServerCleanupThread::cleanupSpace(int64 minspace, bool switch_to_wal)
 	bool result;
 	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(minspace, &result, switch_to_wal)));
 	return result;
+}
+
+void ServerCleanupThread::removeUnknown(void)
+{
+	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(ECleanupAction_RemoveUnknown)));
 }
 
 #endif //CLIENT_ONLY

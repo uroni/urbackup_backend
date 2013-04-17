@@ -623,6 +623,23 @@ std::string findextension(const std::string& pString)
 	return retv;
 }
 
+std::wstring findextension(const std::wstring& pString)
+{
+	std::wstring retv;
+	std::wstring temp;
+
+	for(s32 i=(s32)pString.size()-1; i>=0; i--)
+		if( pString[i] != '.' )
+			temp.push_back(pString[i]);
+		else
+			break;
+
+	for(s32 i=(s32)temp.size()-1; i>=0; i--)
+		retv.push_back(temp[i]);
+
+	return retv;
+}
+
 //--------------------------------------------------------------------
 /**
 *	string in wide string
