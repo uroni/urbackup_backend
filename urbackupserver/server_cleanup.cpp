@@ -337,9 +337,9 @@ void ServerCleanupThread::do_remove(void)
 			if(!os_directory_exists(backup_path))
 			{
 				Server->Log(L"Path for file backup [id="+res_file_backups[j][L"id"]+L" path="+res_file_backups[j][L"path"]+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
-				/*q_remove_file_backup->Bind(res_file_backups[j][L"id"]);
+				q_remove_file_backup->Bind(res_file_backups[j][L"id"]);
 				q_remove_file_backup->Write();
-				q_remove_file_backup->Reset();*/
+				q_remove_file_backup->Reset();
 			}
 		}
 
@@ -355,9 +355,9 @@ void ServerCleanupThread::do_remove(void)
 			if(tf==NULL)
 			{
 				Server->Log(L"Image backup [id="+res_image_backups[j][L"id"]+L" path="+res_image_backups[j][L"path"]+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
-				/*q_remove_image->Bind(res_image_backups[j][L"id"]);
+				q_remove_image->Bind(res_image_backups[j][L"id"]);
 				q_remove_image->Write();
-				q_remove_image->Reset();*/
+				q_remove_image->Reset();
 			}
 			else
 			{
@@ -375,6 +375,9 @@ void ServerCleanupThread::do_remove(void)
 		{
 			SFile cf=files[j];
 
+			if(cf.name==L"current")
+				continue;
+
 			if(cf.isdir)
 			{
 				q_find_filebackup->Bind(clientid);
@@ -386,10 +389,10 @@ void ServerCleanupThread::do_remove(void)
 				{
 					Server->Log(L"File backup \""+cf.name+L"\" of client \""+clientname+L"\" not found in database. Deleting it.", LL_WARNING);
 					std::wstring rm_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
-					/*if(!os_remove_nonempty_dir(rm_dir))
+					if(!os_remove_nonempty_dir(rm_dir))
 					{
 						Server->Log(L"Could not delete directory \""+rm_dir+L"\"", LL_ERROR);
-					}*/
+					}
 				}
 			}
 			else
@@ -414,7 +417,7 @@ void ServerCleanupThread::do_remove(void)
 				{
 					Server->Log(L"Image backup \""+cf.name+L"\" of client \""+clientname+L"\" not found in database. Deleting it.", LL_WARNING);
 					std::wstring rm_file=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
-					/*if(!Server->deleteFile(rm_file))
+					if(!Server->deleteFile(rm_file))
 					{
 						Server->Log(L"Could not delete file \""+rm_file+L"\"", LL_ERROR);
 					}
@@ -425,7 +428,7 @@ void ServerCleanupThread::do_remove(void)
 					if(!Server->deleteFile(rm_file+L".hash"))
 					{
 						Server->Log(L"Could not delete file \""+rm_file+L".hash\"", LL_ERROR);
-					}*/
+					}
 				}
 			}
 		}
@@ -460,8 +463,8 @@ bool ServerCleanupThread::deleteAndTruncateFile(std::wstring path)
 {
 	if(!Server->deleteFile(os_file_prefix(path)))
 	{
-		return false;
 		os_file_truncate(os_file_prefix(path), 0);
+		return false;
 	}
 	return true;
 }
@@ -490,12 +493,13 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	for(size_t i=0;i<res.size();++i)
 	{
 		Server->Log(L"Deleting incomplete image file \""+res[i][L"path"]+L"\"...", LL_INFO);
-		if(deleteImage(res[i][L"path"]))
+		if(!deleteImage(res[i][L"path"]))
 		{
-			q_remove_image->Bind(watoi(res[i][L"id"]));
-			q_remove_image->Write();
-			q_remove_image->Reset();
+			Server->Log(L"Deleting incomplete image \""+res[i][L"path"]+L"\" failed.", LL_WARNING); 
 		}
+		q_remove_image->Bind(watoi(res[i][L"id"]));
+		q_remove_image->Write();
+		q_remove_image->Reset();
 	}
 
 	{

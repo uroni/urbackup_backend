@@ -133,6 +133,10 @@ int cleanup_cmd(void)
 
 int remove_unknown(void)
 {
+	Server->Log("Going to remove all unknown files and directories in the urbackup storage directory. Waiting 20 seconds...", LL_INFO);
+
+	Server->wait(20000);
+
 	Server->setServerParameter("cleanup_amount", "0%");
 	if(cleanup_cmd()!=0)
 	{
@@ -141,6 +145,8 @@ int remove_unknown(void)
 	}
 
 	ServerCleanupThread::removeUnknown();
+
+	Server->Log("Successfully removed all unknown files in backup directory.", LL_INFO);
 
 	return 0;
 }
