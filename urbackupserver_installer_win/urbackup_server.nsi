@@ -135,6 +135,7 @@ Section "install"
 	File "data_common\args_prevista.txt"
 	File "data_common\license.txt"
 	File "data_common\cleanup.bat"
+	File "data_common\remove_unknown.bat"
 	File "data_common\reset_pw.bat"
 	
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
