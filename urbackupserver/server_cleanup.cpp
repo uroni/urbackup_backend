@@ -400,10 +400,26 @@ void ServerCleanupThread::do_remove(void)
 				if(res.empty())
 				{
 					Server->Log(L"File backup \""+cf.name+L"\" of client \""+clientname+L"\" not found in database. Deleting it.", LL_WARNING);
-					std::wstring rm_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
-					if(!os_remove_nonempty_dir(rm_dir))
+					bool remove_folder=false;
+					if(BackupServer::isSnapshotsEnabled())
 					{
-						Server->Log(L"Could not delete directory \""+rm_dir+L"\"", LL_ERROR);
+						if(!SnapshotHelper::removeFilesystem(clientname, cf.name) )
+						{
+							remove_folder=true;
+						}
+					}
+					else
+					{
+						remove_folder=true;
+					}
+
+					if(remove_folder)
+					{
+						std::wstring rm_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
+						if(!os_remove_nonempty_dir(rm_dir))
+						{
+							Server->Log(L"Could not delete directory \""+rm_dir+L"\"", LL_ERROR);
+						}
 					}
 				}
 			}
