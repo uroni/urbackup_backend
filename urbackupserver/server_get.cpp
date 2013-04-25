@@ -1788,6 +1788,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	{
 		Server->Log(clientname+L": Doing backup with intra file diffs...", LL_DEBUG);
 	}
+
+	SBackup last=getLastIncremental();
+	if(last.incremental==-2)
+	{
+		ServerLogger::Log(clientid, "Cannot retrieve last file backup when doing incremental backup. Doing full backup now...", LL_WARNING);
+		return doFullBackup(with_hashes, disk_error, log_backup);
+	}
 	
 	bool no_backup_dirs=false;
 	bool b=request_filelist_construct(false, true, &no_backup_dirs);
@@ -1874,13 +1881,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	
 	Server->Log(clientname+L" Starting incremental backup...", LL_DEBUG);
 
-	SBackup last=getLastIncremental();
-	if(last.incremental==-2)
-	{
-		ServerLogger::Log(clientid, "Error retrieving last backup.", LL_ERROR);
-		has_error=true;
-		return false;
-	}
+	
 	backupid=createBackupSQL(last.incremental+1, clientid, backuppath_single);
 
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
