@@ -28,7 +28,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"allow_log_view");
 	ret.push_back(L"allow_overwrite");
 	ret.push_back(L"image_letters");
-	ret.push_back(L"internet_server");
+	ret.push_back(L"internet_server_name");
 	ret.push_back(L"internet_server_port");
 	ret.push_back(L"internet_authkey");
 	ret.push_back(L"internet_speed");
@@ -46,7 +46,7 @@ std::vector<std::wstring> getSettingsList(void)
 std::vector<std::wstring> getGlobalizedSettingsList(void)
 {
 	std::vector<std::wstring> ret;
-	ret.push_back(L"internet_server");
+	ret.push_back(L"internet_server_name");
 	ret.push_back(L"internet_server_port");
 	return ret;
 }
@@ -70,7 +70,7 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"max_active_clients");
 	ret.push_back(L"cleanup_window");
 	ret.push_back(L"backup_database");
-	ret.push_back(L"internet_server");
+	ret.push_back(L"internet_server_name");
 	ret.push_back(L"internet_server_port");
 	ret.push_back(L"global_local_speed");
 	ret.push_back(L"global_internet_speed");

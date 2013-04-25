@@ -206,7 +206,7 @@ void InternetClient::doUpdateSettings(void)
 	{
 		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
 	}
-	if(settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name) )
+	if(settings->getValue("internet_server_name", &server_name) || settings->getValue("internet_server_name_def", &server_name) )
 	{
 		if(!settings->getValue("internet_server_port", &server_port) )
 			settings->getValue("internet_server_port_def", &server_port);

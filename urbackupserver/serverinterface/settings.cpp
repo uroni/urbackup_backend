@@ -106,6 +106,7 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(max_active_clients);
 	SET_SETTING(cleanup_window);
 	SET_SETTING(backup_database);
+	SET_SETTING(internet_server_name);
 	SET_SETTING(internet_server_port);
 	SET_SETTING(global_local_speed);
 	SET_SETTING(global_soft_fs_quota);
