@@ -236,6 +236,7 @@ void ServerCleanupThread::do_cleanup(void)
 			int64 amount=cleanup_amount(server_settings.getSettings()->global_soft_fs_quota, db);
 			if(amount<total_space)
 			{
+				Server->Log("Space to free: "+PrettyPrintBytes(total_space-amount), LL_INFO);
 				cleanup_images(total_space-amount);
 				cleanup_files(total_space-amount);
 			}
