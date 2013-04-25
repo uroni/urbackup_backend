@@ -12,7 +12,7 @@ net stop UrBackupWinServer
 
 echo "Cleanup amount '%1'"
 
-"%~dp0\urbackup_srv.exe" --cmdline --no-server --plugin urbackupserver.dll --app cleanup --loglevel debug --cleanup_amount "%1"
+"%~dp0\urbackup_srv.exe" --cmdline --no-server --plugin urbackupserver.dll --app cleanup --loglevel debug --logfile app.log --cleanup_amount "%1"
 
 echo Starting UrBackup Server...
 net start UrBackupWinServer

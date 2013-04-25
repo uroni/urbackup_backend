@@ -137,6 +137,7 @@ Section "install"
 	File "data_common\cleanup.bat"
 	File "data_common\remove_unknown.bat"
 	File "data_common\reset_pw.bat"
+	File "data_common\cleanup_database.bat"
 	
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	

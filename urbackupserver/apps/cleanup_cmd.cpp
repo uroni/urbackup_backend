@@ -150,3 +150,47 @@ int remove_unknown(void)
 
 	return 0;
 }
+
+int cleanup_database(void)
+{
+	Server->Log("Going to clean up unnessecary information in database. Waiting 20 seconds...", LL_INFO);
+
+	Server->wait(20000);
+
+	Server->Log("Shutting down all database instances...", LL_INFO);
+	Server->destroyAllDatabases();
+
+	Server->Log("Opening urbackup server database...", LL_INFO);
+	bool use_bdb;
+	open_server_database(use_bdb);
+	open_settings_database(use_bdb);
+
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	if(db==NULL)
+	{
+		Server->Log("Could not open database", LL_ERROR);
+		return 1;
+	}
+
+	Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
+	db->Write("PRAGMA journal_mode = DELETE");
+
+	db_results res=db->Read("SELECT * FROM sqlite_master WHERE type='table'");
+
+	for(size_t i=0;i<res.size();++i)
+	{
+		db_results rc=db->Read("SELECT count(*) AS c FROM "+wnarrow(res[i][L"name"]));
+		if(!rc.empty())
+		{
+			Server->Log(L"Table "+res[i][L"name"]+L" has "+rc[0][L"c"]+L" rows", LL_INFO);
+		}
+	}
+
+	Server->Log("Cleaning up information...", LL_INFO);
+	db->Write("DELETE FROM del_stats");
+
+	Server->Log("Cleaning up database...", LL_INFO);
+	db->Write("VACUUM");
+
+	return 0;
+}
