@@ -1531,7 +1531,7 @@ g.mail_settings_list=[
 "mail_check_certificate"
 ];
 g.internet_settings_list=[
-"internet_server_name",
+"internet_server",
 "internet_server_port"
 ];
 
