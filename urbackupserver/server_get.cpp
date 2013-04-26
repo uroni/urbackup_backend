@@ -1793,6 +1793,18 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	if(last.incremental==-2)
 	{
 		ServerLogger::Log(clientid, "Cannot retrieve last file backup when doing incremental backup. Doing full backup now...", LL_WARNING);
+
+		if(on_snapshot)
+		{
+			bool b=SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)  && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));
+
+			if(!b)
+			{
+				ServerLogger::Log(clientid, "Cannot filesystem for backup", LL_ERROR);
+				return false;
+			}
+		}
+
 		return doFullBackup(with_hashes, disk_error, log_backup);
 	}
 	
