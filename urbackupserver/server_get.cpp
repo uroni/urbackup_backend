@@ -2093,15 +2093,29 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						{
 							if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
-								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
-								c_has_error=true;
-								break;
+								if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
+								{
+									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
+									c_has_error=true;
+									break;
+								}
+								else
+								{
+									ServerLogger::Log(clientid, L"Directory \""+backuppath+local_curr_os_path+L"\" does already exist.", LL_WARNING);
+								}
 							}
 							if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 							{
-								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
-								c_has_error=true;
-								break;
+								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+								{
+									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
+									c_has_error=true;
+									break;
+								}
+								else
+								{
+									ServerLogger::Log(clientid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist.", LL_ERROR);
+								}
 							}
 						}
 						++depth;
