@@ -34,6 +34,7 @@
 #include <memory.h>
 
 const size_t freespace_mod=50*1024*1024; //50 MB
+const size_t BUFFER_SIZE=64*1024; //64KB
 
 IMutex * delete_mutex=NULL;
 
@@ -669,10 +670,10 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 
 	tf->Seek(0);
 	_u32 read;
-	char buf[4096];
+	char buf[BUFFER_SIZE];
 	do
 	{
-		read=tf->Read(buf, 4096);
+		read=tf->Read(buf, BUFFER_SIZE);
 		bool b=BackupServerPrepareHash::writeRepeatFreeSpace(dst, buf, read, this);
 		if(!b)
 		{
