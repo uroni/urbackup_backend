@@ -75,6 +75,7 @@
 #ifdef _WIN32
 #	include <windows.h>
 #	include "Helper_win32.h"
+#	include <time.h>
 #else
 #	include <ctime>
 #	include <sys/time.h>

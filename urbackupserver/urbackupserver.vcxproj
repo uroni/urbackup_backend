@@ -267,6 +267,7 @@
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="ChunkPatcher.cpp" />
+    <ClCompile Include="dao\ServerCleanupDAO.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="fileclient\FileClientChunked.cpp" />
     <ClCompile Include="filedownload.cpp" />
@@ -333,6 +334,7 @@
     <ClInclude Include="actions.h" />
     <ClInclude Include="apps\cleanup_cmd.h" />
     <ClInclude Include="ChunkPatcher.h" />
+    <ClInclude Include="dao\ServerCleanupDAO.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="fileclient\FileClientChunked.h" />
     <ClInclude Include="fileclient\packet_ids.h" />

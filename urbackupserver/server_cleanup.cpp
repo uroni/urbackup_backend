@@ -1344,4 +1344,9 @@ void ServerCleanupThread::removeUnknown(void)
 	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(ECleanupAction_RemoveUnknown)));
 }
 
+void ServerCleanupThread::enforce_quotas(void)
+{
+
+}
+
 #endif //CLIENT_ONLY

@@ -31,6 +31,9 @@
     <Filter Include="apps">
       <UniqueIdentifier>{d00660ff-cb0c-4ce2-bd39-00a7f46d3b65}</UniqueIdentifier>
     </Filter>
+    <Filter Include="dao">
+      <UniqueIdentifier>{d80d7c4b-6a29-4bb9-9ba5-4c0edc38058b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -210,6 +213,9 @@
     <ClCompile Include="apps\cleanup_cmd.cpp">
       <Filter>apps</Filter>
     </ClCompile>
+    <ClCompile Include="dao\ServerCleanupDAO.cpp">
+      <Filter>dao</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -361,6 +367,9 @@
     </ClInclude>
     <ClInclude Include="apps\cleanup_cmd.h">
       <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="dao\ServerCleanupDAO.h">
+      <Filter>dao</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

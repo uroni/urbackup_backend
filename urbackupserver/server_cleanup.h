@@ -112,6 +112,8 @@ private:
 
 	bool truncate_files_recurisve(std::wstring path);
 
+	void enforce_quotas(void);
+
 	IDatabase *db;
 
 	IQuery *q_incomplete_images;
