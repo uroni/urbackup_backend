@@ -31,9 +31,17 @@ int main(int argc, char* argv[])
 	}
 
 	std::string cppfile_data=getFile(cppfile);
-	std::string headerfile_data=getFile(cppfile);
+	std::string headerfile_data=getFile(headerfile);
+
+	writestring(cppfile_data, cppfile+".sqlgenbackup");
+	writestring(headerfile_data, headerfile+".sqlgenbackup");
 
 	sqlgen(Server->getDatabase(Server->getThreadID(), maindb), cppfile_data, headerfile_data);
+
+	writestring(cppfile_data, cppfile);
+	writestring(headerfile_data, headerfile);
+
+	std::cout << "SQLGen: Ok." << std::endl;
 
 	return 0;
 }

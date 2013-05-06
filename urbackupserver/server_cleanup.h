@@ -4,6 +4,7 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include <vector>
+#include "dao/ServerCleanupDAO.h"
 
 class ServerSettings;
 
@@ -60,6 +61,7 @@ class ServerCleanupThread : public IThread
 {
 public:
 	ServerCleanupThread(CleanupAction action);
+	~ServerCleanupThread(void);
 
 	void operator()(void);
 
@@ -116,13 +118,6 @@ private:
 
 	IDatabase *db;
 
-	IQuery *q_incomplete_images;
-	IQuery *q_remove_image;
-	IQuery *q_get_clients_sortfiles;
-	IQuery *q_get_clients_sortimages;
-	IQuery *q_get_full_num_images;
-	IQuery *q_get_image_refs;
-	IQuery *q_get_image_path;
 	IQuery *q_get_incr_num_images;
 	IQuery *q_get_full_num_files;
 	IQuery *q_get_incr_num_files;
@@ -158,4 +153,6 @@ private:
 	static volatile bool do_quit;
 
 	CleanupAction cleanup_action;
+
+	ServerCleanupDAO *cleanupdao;
 };

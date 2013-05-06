@@ -186,3 +186,4 @@ SQLGen/SQLGen.sdf
 SQLGen/SQLGen.suo
 urbackupserver_installer_win/data/urbackup.dll
 urbackupserver_installer_win/data/urbackup_prevista.dll
+*.sqlgenbackup
