@@ -179,3 +179,9 @@ snapshot_helper/Release/*
 urbackupserver_installer_win/urbackup_files_data.wxs
 urbackupserver_installer_win/urbackup_files_data_common.wxs
 urbackupserver_installer_win/urbackup_files_data_python.wxs
+SQLGen/Debug/*
+SQLGen/ipch/*
+SQLGen/SQLGen.opensdf
+SQLGen/SQLGen.sdf
+SQLGen/SQLGen.suo
+*.sqlgenbackup

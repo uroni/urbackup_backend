@@ -187,7 +187,14 @@ int cleanup_database(void)
 	}
 
 	Server->Log("Cleaning up information...", LL_INFO);
-	db->Write("DELETE FROM del_stats");
+	db_results rc=db->Read("SELECT count(*) AS c FROM del_stats");
+	if(!rc.empty())
+	{
+		if(watoi64(rc[0][L"c"])>10000000)
+		{
+			db->Write("DELETE FROM del_stats");
+		}
+	}
 
 	Server->Log("Cleaning up database...", LL_INFO);
 	db->Write("VACUUM");
