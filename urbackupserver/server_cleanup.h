@@ -84,9 +84,6 @@ private:
 	void cleanup_images(int64 minspace=-1);
 	void cleanup_files(int64 minspace=-1);
 
-	void createQueries(IDatabase *pDb=NULL);
-	void destroyQueries(void);
-
 	size_t getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit);
 	size_t getImagesIncrNum(int clientid, int &backupid_top, const std::vector<int> &notit);
 
@@ -106,9 +103,7 @@ private:
 
 	bool deleteAndTruncateFile(std::wstring path);
 	bool deleteImage(std::wstring path);
-	void removeImageSize(int backupid);
 	int64 getImageSize(int backupid);
-	std::vector<int> getAssocImages(int backupid);
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);
 
@@ -117,28 +112,6 @@ private:
 	void enforce_quotas(void);
 
 	IDatabase *db;
-
-	IQuery *q_get_incr_num_images;
-	IQuery *q_get_full_num_files;
-	IQuery *q_get_incr_num_files;
-	IQuery *q_get_clientname;
-	IQuery *q_get_backuppath;
-	IQuery *q_delete_files;
-	IQuery *q_remove_file_backup;
-	IQuery *q_get_filebackup_info;
-	IQuery *q_get_image_info;
-	IQuery *q_move_files;
-	IQuery *q_remove_image_size;
-	IQuery *q_del_image_stats;
-	IQuery *q_image_stats_stop;
-	IQuery *q_get_client_images;
-	IQuery *q_get_client_filebackups;
-	IQuery *q_get_assoc_img;
-	IQuery *q_get_image_size;
-	IQuery *q_get_clients;
-	IQuery *q_get_backups_clientid;
-	IQuery *q_get_imagebackups_clientid;
-	IQuery *q_find_filebackup;
 
 	static IMutex *mutex;
 	static ICondition *cond;
