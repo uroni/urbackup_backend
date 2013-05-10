@@ -229,6 +229,19 @@ void open_settings_database(bool use_berkeleydb)
 	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
 }
 
+void open_files_cache_database(bool use_berkeleydb)
+{
+	std::string aname="urbackup/backup_server_files_cache.db";
+	if(use_berkeleydb)
+		aname="urbackup/backup_server_files_cache.bdb";
+
+	if(!Server->openDatabase(aname, URBACKUPDB_FILES_CACHE, use_berkeleydb?"bdb":"sqlite"))
+	{
+		Server->Log("Couldn't open Database backup_server_files_cache.db", LL_ERROR);
+		return;
+	}
+}
+
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
@@ -362,6 +375,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	BackupServerGet::init_mutex();
 
 	open_settings_database(use_berkeleydb);
+	open_files_cache_database(use_berkeleydb);
 
 	Server->destroyAllDatabases();
 
@@ -379,6 +393,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(!use_berkeleydb)
 	{
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+		db->Write("PRAGMA journal_mode=WAL");
+		db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_FILES_CACHE);
 		db->Write("PRAGMA journal_mode=WAL");
 	}
 		
@@ -895,6 +911,46 @@ void update21_22(void)
 	db->Write("CREATE INDEX files_del_idx ON files_del (shahash, filesize, clientid)");
 }
 
+void update22_23(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_FILES_CACHE);
+	db->Write("PRAGMA journal_mode=DELETE");
+	db->Write("CREATE TABLE files_cache (id INTEGER PRIMARY KEY, shahash BLOB, filesize INT, fullpath TEXT, hashpath TEXT");
+
+	IDatabase *orig_db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	IQuery* q_read=orig_db->Prepare("SELECT shahash, filesize, fullpath, hashpath FROM files f WHERE rowid>? AND f.created=(SELECT MAX(created) FROM files WHERE shahash=f.shahash AND filesize=f.filesize) LIMIT 10000");
+	IQuery* q_write=db->Prepare("INSERT INTO files_cache (shahash, filesize, fullpath, hashpath) VALUES (?, ?, ?, ?)");
+
+
+	db->BeginTransaction();
+
+	db_results res;
+	int64 pos=0;
+	do
+	{
+		q_read->Bind(pos);
+		res=q_read->Read();
+
+		for(size_t i=0;i<res.size();++i)
+		{
+			const std::wstring& shahash=res[i][L"shahash"];
+			q_write->Bind((const char*)shahash.c_str(), shahash.size()*sizeof(wchar_t));
+			q_write->Bind(res[i][L"filesize"]);
+			q_write->Bind(res[i][L"fullpath"]);
+			q_write->Bind(res[i][L"hashpath"]);
+			q_write->Write();
+			q_write->Reset();
+		}
+
+	}
+	while(!res.empty());
+
+	db->EndTransaction();
+
+	db->Write("CREATE INDEX files_cache_idx ON files_cache (shahash, filesize)");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -912,7 +968,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=22;
+	int max_v=23;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1020,6 +1076,10 @@ void upgrade(void)
 				break;
 			case 21:
 				update21_22();
+				++ver;
+				break;
+			case 22:
+				update22_23();
 				++ver;
 				break;
 			default:
