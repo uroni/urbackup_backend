@@ -124,7 +124,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions);</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -269,9 +269,13 @@
     <ClCompile Include="ChunkPatcher.cpp" />
     <ClCompile Include="dao\ServerCleanupDAO.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="DatabaseFileCache.cpp" />
     <ClCompile Include="fileclient\FileClientChunked.cpp" />
     <ClCompile Include="filedownload.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />
+    <ClCompile Include="lmdb\mdb.c" />
+    <ClCompile Include="lmdb\midl.c" />
+    <ClCompile Include="MDBFileCache.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
     <ClCompile Include="serverinterface\getimage.cpp" />
@@ -336,11 +340,15 @@
     <ClInclude Include="ChunkPatcher.h" />
     <ClInclude Include="dao\ServerCleanupDAO.h" />
     <ClInclude Include="database.h" />
+    <ClInclude Include="DatabaseFileCache.h" />
     <ClInclude Include="fileclient\FileClientChunked.h" />
     <ClInclude Include="fileclient\packet_ids.h" />
     <ClInclude Include="fileclient\socket_header.h" />
     <ClInclude Include="filedownload.h" />
     <ClInclude Include="InternetServiceConnector.h" />
+    <ClInclude Include="lmdb\lmdb.h" />
+    <ClInclude Include="lmdb\midl.h" />
+    <ClInclude Include="MDBFileCache.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="serverinterface\actions.h" />
     <ClInclude Include="serverinterface\action_header.h" />

@@ -34,6 +34,9 @@
     <Filter Include="dao">
       <UniqueIdentifier>{d80d7c4b-6a29-4bb9-9ba5-4c0edc38058b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="lmdb">
+      <UniqueIdentifier>{85f47f3b-2e45-4b5c-96c7-cb2511e6ba0b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -216,6 +219,18 @@
     <ClCompile Include="dao\ServerCleanupDAO.cpp">
       <Filter>dao</Filter>
     </ClCompile>
+    <ClCompile Include="lmdb\mdb.c">
+      <Filter>lmdb</Filter>
+    </ClCompile>
+    <ClCompile Include="DatabaseFileCache.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="MDBFileCache.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="lmdb\midl.c">
+      <Filter>lmdb</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -370,6 +385,18 @@
     </ClInclude>
     <ClInclude Include="dao\ServerCleanupDAO.h">
       <Filter>dao</Filter>
+    </ClInclude>
+    <ClInclude Include="lmdb\lmdb.h">
+      <Filter>lmdb</Filter>
+    </ClInclude>
+    <ClInclude Include="DatabaseFileCache.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="MDBFileCache.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="lmdb\midl.h">
+      <Filter>lmdb</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
