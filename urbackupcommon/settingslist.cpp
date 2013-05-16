@@ -88,5 +88,7 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"file_hash_collect_cachesize");
 	ret.push_back(L"update_stats_cachesize");
 	ret.push_back(L"global_soft_fs_quota");
+	ret.push_back(L"filescache_type");
+	ret.push_back(L"filescache_size");
 	return ret;
 }

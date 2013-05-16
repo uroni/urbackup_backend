@@ -4,22 +4,15 @@
 #include "../common/data.h"
 
 MDB_env *MDBFileCache::env=NULL;
-MDBFileCache *MDBFileCache::filecache=NULL;
 
-MDBFileCache* MDBFileCache::getInstance(void)
+
+void MDBFileCache::initFileCache(size_t map_size)
 {
-	return filecache;
+	MDBFileCache* filecache=new MDBFileCache(map_size);
+	delete filecache;
 }
 
-void MDBFileCache::initFileCache(void)
-{
-	if(filecache==NULL)
-	{
-		filecache=new MDBFileCache();
-	}
-}
-
-MDBFileCache::MDBFileCache(void)
+MDBFileCache::MDBFileCache(size_t map_size)
 	: _has_error(false)
 {
 	int rc;
@@ -29,6 +22,15 @@ MDBFileCache::MDBFileCache(void)
 		if(rc)
 		{
 			Server->Log("LMDB: Failed to create LMDB env ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
+			_has_error=true;
+			return;
+		}
+
+		rc = mdb_env_set_mapsize(env, map_size);
+
+		if(rc)
+		{
+			Server->Log("LMDB: Failed to set map size ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 			_has_error=true;
 			return;
 		}
@@ -46,8 +48,6 @@ MDBFileCache::MDBFileCache(void)
 
 MDBFileCache::~MDBFileCache(void)
 {
-	mdb_close(env, dbi);
-	mdb_env_close(env);
 }
 
 
@@ -184,6 +184,21 @@ void MDBFileCache::put(const MDBFileCache::SCacheKey& key, const MDBFileCache::S
 	if(rc)
 	{
 		Server->Log("LMDB: Failed to put data ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
+		_has_error=true;
+	}
+}
+
+void MDBFileCache::del(const SCacheKey& key)
+{		
+	MDB_val mdb_tkey;
+	mdb_tkey.mv_data=const_cast<void*>(static_cast<const void*>(&key));
+	mdb_tkey.mv_size=sizeof(SCacheKey);
+
+	int rc = mdb_del(txn, dbi, &mdb_tkey, NULL);
+
+	if(rc)
+	{
+		Server->Log("LMDB: Failed to delete data ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 		_has_error=true;
 	}
 }

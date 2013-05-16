@@ -6,6 +6,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "ChunkPatcher.h"
 #include "server_prepare_hash.h"
+#include "FileCache.h"
 
 struct STmpFile
 {
@@ -40,7 +41,7 @@ private:
 	void prepareSQL(void);
 	void addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
 			std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn);
-	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath);
+	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath, bool& cache_hit);
 	std::wstring findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath);
 	bool copyFile(IFile *tf, const std::wstring &dest);
 	bool copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
@@ -71,6 +72,7 @@ private:
 	IQuery *q_move_del_file;
 	IQuery *q_del_file_tmp;
 	IQuery *q_copy_files;
+	IQuery *q_copy_files_to_new;
 	IQuery *q_delete_all_files_tmp;
 	IQuery *q_count_files_tmp;
 
@@ -98,4 +100,6 @@ private:
 	_i64 chunk_patch_pos;
 
 	int copy_limit;
+
+	FileCache *filecache;
 };

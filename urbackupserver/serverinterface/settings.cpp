@@ -123,6 +123,8 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(file_hash_collect_timeout);
 	SET_SETTING(file_hash_collect_cachesize);
 	SET_SETTING(update_stats_cachesize);
+	SET_SETTING(filescache_type);
+	SET_SETTING(filescache_size);
 
 #undef SET_SETTING
 }

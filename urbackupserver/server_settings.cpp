@@ -190,6 +190,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings.file_hash_collect_cachesize=static_cast<size_t>(settings_default->getValue("file_hash_collect_cachesize", 40960));
 	settings.update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 409600));
 	settings.global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
+	settings.filescache_type=settings_default->getValue("filescache_type", "none");
+	settings.filescache_size=watoi64(settings_default->getValue(L"filescache_size", L"68719476736")); //64GB
 }
 
 void ServerSettings::readSettingsClient(void)

@@ -383,7 +383,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						}
 						else
 						{
-							ServerLogger::Log(clientid, "Request of SYSVOL failed. Reason: "+err, LL_INFO);
+							ServerLogger::Log(clientid, "Request of SYSVOL failed. Reason: "+err+". This probably just means the Computer does not have a \"System restore\" volume which UrBackup can backup.", LL_INFO);
 						}
 					}
 					else

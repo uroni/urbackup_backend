@@ -231,6 +231,9 @@
     <ClCompile Include="lmdb\midl.c">
       <Filter>lmdb</Filter>
     </ClCompile>
+    <ClCompile Include="create_files_cache.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -397,6 +400,12 @@
     </ClInclude>
     <ClInclude Include="lmdb\midl.h">
       <Filter>lmdb</Filter>
+    </ClInclude>
+    <ClInclude Include="create_files_cache.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileCache.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -73,6 +73,8 @@ struct SSettings
 	size_t file_hash_collect_cachesize;
 	size_t update_stats_cachesize;
 	std::string global_soft_fs_quota;
+	std::string filescache_type;
+	int64 filescache_size;
 };
 
 struct STimeSpan

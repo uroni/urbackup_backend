@@ -233,6 +233,7 @@ function getPar(p)
 	if(p=="global_internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
 	if(p=="file_hash_collect_cachesize") val=Math.round(val*1024);
 	if(p=="update_stats_cachesize") val=Math.round(val*1024);
+	if(p=="filescache_size") val*=1024*1024;
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
@@ -1189,6 +1190,9 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
+			var filescache_type_params=["none", "lmdb", "sqlite"];
+			data.settings=addSelectSelected(filescache_type_params, "filescache_type", data.settings);
+			data.settings.filescache_size/=1024.0*1024.0;
 			
 			data.settings.update_freq_incr/=60*60;
 			data.settings.update_freq_full/=60*60*24;
@@ -1519,7 +1523,9 @@ g.general_settings_list=[
 "file_hash_collect_timeout",
 "file_hash_collect_cachesize",
 "update_stats_cachesize",
-"global_soft_fs_quota"
+"global_soft_fs_quota",
+"filescache_type",
+"filescache_size"
 ];
 g.mail_settings_list=[
 "mail_servername",

@@ -36,6 +36,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef _WIN32
+#undef UNICODE
 #include <windows.h>
 #else
 #include <sys/param.h>
@@ -3052,7 +3053,7 @@ PIMAGE_TLS_CALLBACK mdb_tls_cbp __attribute__((section (".CRT$XLB"))) = mdb_tls_
 #pragma comment(linker, "/INCLUDE:_tls_used")
 #pragma comment(linker, "/INCLUDE:mdb_tls_cbp")
 #pragma const_seg(".CRT$XLB")
-extern const PIMAGE_TLS_CALLBACK mdb_tls_callback;
+//extern const PIMAGE_TLS_CALLBACK mdb_tls_callback;
 const PIMAGE_TLS_CALLBACK mdb_tls_cbp = mdb_tls_callback;
 #pragma const_seg()
 #else	/* WIN32 */

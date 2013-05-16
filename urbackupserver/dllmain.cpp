@@ -63,6 +63,7 @@ SStartupStatus startup_status;
 #include "InternetServiceConnector.h"
 #include "filedownload.h"
 #include "apps/cleanup_cmd.h"
+#include "create_files_cache.h"
 
 #include <stdlib.h>
 
@@ -229,19 +230,6 @@ void open_settings_database(bool use_berkeleydb)
 	Server->attachToDatabase(aname, "settings_db", URBACKUPDB_SERVER);
 }
 
-void open_files_cache_database(bool use_berkeleydb)
-{
-	std::string aname="urbackup/backup_server_files_cache.db";
-	if(use_berkeleydb)
-		aname="urbackup/backup_server_files_cache.bdb";
-
-	if(!Server->openDatabase(aname, URBACKUPDB_FILES_CACHE, use_berkeleydb?"bdb":"sqlite"))
-	{
-		Server->Log("Couldn't open Database backup_server_files_cache.db", LL_ERROR);
-		return;
-	}
-}
-
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
@@ -375,7 +363,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	BackupServerGet::init_mutex();
 
 	open_settings_database(use_berkeleydb);
-	open_files_cache_database(use_berkeleydb);
 
 	Server->destroyAllDatabases();
 
@@ -394,8 +381,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		db->Write("PRAGMA journal_mode=WAL");
-		db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_FILES_CACHE);
-		db->Write("PRAGMA journal_mode=WAL");
 	}
 		
 	if( FileExists("urbackup/backupfolder") )
@@ -413,6 +398,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			db->destroyQuery(q);
 		}
 	}
+
+	create_files_cache();
 
 	{
 		IScopedLock lock(startup_status.mutex);
@@ -911,7 +898,7 @@ void update21_22(void)
 	db->Write("CREATE INDEX files_del_idx ON files_del (shahash, filesize, clientid)");
 }
 
-void update22_23(void)
+/*void update22_23(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_FILES_CACHE);
 	db->Write("PRAGMA journal_mode=DELETE");
@@ -949,6 +936,13 @@ void update22_23(void)
 	db->EndTransaction();
 
 	db->Write("CREATE INDEX files_cache_idx ON files_cache (shahash, filesize)");
+}*/
+
+void update22_23(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('files_cache', 'none')");
+	db->Write("CREATE TEMPORARY TABLE files_new ( backupid INTEGER, fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER, incremental INTEGER)");
 }
 
 void upgrade(void)

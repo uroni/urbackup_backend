@@ -101,6 +101,14 @@ void ServerUpdateStats::operator()(void)
 
 	createQueries();
 
+	Server->Log("Copying files from files_new table...", LL_DEBUG);
+	db->Write("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) "
+			  "SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, 0 AS did_count, clientid, incremental FROM files_new");
+
+	Server->Log("Deleting contents of files_new table...", LL_DEBUG);
+	db->Write("DELETE FROM files_new");
+
+
 	if(!image_repair_mode)
 	{
 		q_create_hist->Write();

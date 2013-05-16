@@ -104,6 +104,14 @@
 <td>#{tUpdate stats database cachesize}:</td>
 <td><input type="text" size="10" id="update_stats_cachesize" value="#{update_stats_cachesize}"/> #{tMB}</td>
 </tr>
+<tr>
+<td>#{tCache database type for file entries}:</td>
+<td><select size="1" style="width: 150px;" id="filescache_type"><option value="none" #{filescache_type_0}>#{tNone}</option><option value="lmdb" #{filescache_type_1}>LMDB</option><option value="sqlite" #{filescache_type_2}>SQLite</option></select></td>
+</tr>
+<tr>
+<td>#{tCache database size for file entries}:</td>
+<td><input type="text" size="10" id="filescache_size" value="#{filescache_size}"/> #{tMB}</td>
+</tr>
 </table>
 </div>
 </div>
