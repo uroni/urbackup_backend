@@ -432,6 +432,9 @@ void ServerCleanupThread::do_remove(void)
 			}
 		}
 	}
+
+	Server->Log("Removing dangling file entries...", LL_INFO);
+	cleanupdao->removeDanglingFiles();
 }
 
 int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)

@@ -636,6 +636,17 @@ ServerCleanupDAO::CondInt ServerCleanupDAO::findFileBackup(int clientid, const s
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDAO::removeDanglingFiles
+* @sql
+*	DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)
+*/
+void ServerCleanupDAO::removeDanglingFiles(void)
+{
+	q_removeDanglingFiles->Write();
+}
+
 
 
 //@-SQLGenSetup
@@ -669,6 +680,7 @@ void ServerCleanupDAO::createQueries(void)
 	q_getFileBackupsOfClient=db->Prepare("SELECT id, backuptime, path FROM backups WHERE clientid=?", false);
 	q_getImageBackupsOfClient=db->Prepare("SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=?", false);
 	q_findFileBackup=db->Prepare("SELECT id FROM backups WHERE clientid=? AND path=?", false);
+	q_removeDanglingFiles=db->Prepare("DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)", false);
 }
 
 //@-SQLGenDestruction
@@ -702,4 +714,5 @@ void ServerCleanupDAO::destroyQueries(void)
 	db->destroyQuery(q_getFileBackupsOfClient);
 	db->destroyQuery(q_getImageBackupsOfClient);
 	db->destroyQuery(q_findFileBackup);
+	db->destroyQuery(q_removeDanglingFiles);
 }
