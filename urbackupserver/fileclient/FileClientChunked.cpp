@@ -85,7 +85,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 	{
 		if(hashfilesize!=m_file->Size())
 		{
-			Server->Log("Hashfile size wrong in FileClientChunked::GetFile", LL_WARNING);
+			Server->Log("Hashfile size wrong in FileClientChunked::GetFile "+nconvert(hashfilesize)+"!="+nconvert(m_file->Size()), LL_WARNING);
 		}
 		else
 		{
@@ -693,15 +693,15 @@ void FileClientChunked::writePatch(_i64 pos, unsigned int length, char *buf, boo
 		if(last || patch_buf_pos==c_chunk_size || length==0)
 		{
 			writePatchInt(patch_buf_start, patch_buf_pos,  patch_buf);
-			patch_buf_start=0;
+			patch_buf_pos=0;
 		}
 	}
 	else
 	{
-		if(patch_buf_start!=0)
+		if(patch_buf_pos>0)
 		{
 			writePatchInt(patch_buf_start, patch_buf_pos, patch_buf);
-			patch_buf_start=0;
+			patch_buf_pos=0;
 		}
 		writePatchInt(pos, length, buf);
 	}
