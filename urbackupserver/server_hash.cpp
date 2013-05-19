@@ -336,17 +336,18 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff), use_snapshots);
 		if(!b)
 		{
+			if(cache_hit && !cache_requires_update)
+			{
+				ServerLogger::Log(clientid, L"HT: Cache miss for: \""+ff+L"\"", LL_DEBUG);
+				cache_requires_update=true;
+			}
+
 			IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
 			if(ctf==NULL)
 			{
-				ServerLogger::Log(clientid, L"HT: Hardlinking failed (File doesn't exist): \""+ff+L"\"", LL_DEBUG);
-				if(cache_hit)
+				if(!cache_hit)
 				{
-					ServerLogger::Log(clientid, L"HT: Files cache miss", LL_DEBUG);
-					cache_requires_update=true;
-				}
-				else
-				{
+					ServerLogger::Log(clientid, L"HT: Hardlinking failed (File doesn't exist): \""+ff+L"\"", LL_DEBUG);
 					deleteFileSQL(sha2, ff, t_filesize, f_backupid);
 				}				
 				ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath, cache_hit);
@@ -630,6 +631,10 @@ std::wstring BackupServerHash::findFileHash(const std::string &pHash, _i64 files
 			cache_hit=true;
 			hashpath=Server->ConvertToUnicode(tval.hashpath);
 			return Server->ConvertToUnicode(tval.fullpath);
+		}
+		else
+		{
+			return std::wstring();
 		}
 	}
 

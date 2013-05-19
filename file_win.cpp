@@ -83,9 +83,6 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 	else
 	{
-#ifdef _DEBUG
-		Server->Log("EC: "+nconvert((int)GetLastError()));
-#endif
 		hfile=NULL;
 		return false;
 	}

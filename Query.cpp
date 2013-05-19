@@ -33,9 +33,11 @@
 #endif
 #include "sqlite/sqlite3.h"
 #include "Database.h"
+#include "DatabaseCursor.h"
 #include <memory.h>
 
-CQuery::CQuery(const std::string &pStmt_str, sqlite3_stmt *prepared_statement, CDatabase *pDB) : stmt_str(pStmt_str)
+CQuery::CQuery(const std::string &pStmt_str, sqlite3_stmt *prepared_statement, CDatabase *pDB)
+	: stmt_str(pStmt_str), cursor(NULL)
 {
 	ps=prepared_statement;
 	curr_idx=1;
@@ -47,6 +49,8 @@ CQuery::~CQuery()
 	int err=sqlite3_finalize(ps);
 	if( err!=SQLITE_OK && err!=SQLITE_BUSY && err!=SQLITE_IOERR_BLOCKED )
 		Server->Log("SQL: "+(std::string)sqlite3_errmsg(db->getDatabase())+ " Stmt: ["+stmt_str+"]", LL_ERROR);
+
+	delete cursor;
 }
 
 void CQuery::Bind(const std::string &str)
@@ -218,69 +222,16 @@ bool CQuery::Execute(int timeoutms)
 	return true;
 }
 
-db_nresults CQuery::ReadN(int *timeoutms)
+void CQuery::setupStepping(int *timeoutms)
 {
-	int err;
-	db_nresults rows;
-
-	bool transaction_lock=false;
-	int tries=60; //10min
-
 	if(timeoutms!=NULL && *timeoutms>=0)
 	{
 		sqlite3_busy_timeout(db->getDatabase(), *timeoutms);
 	}
+}
 
-	while( (err=sqlite3_step(ps))==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_IOERR_BLOCKED)
-	{
-		if( err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED )
-		{
-			if(timeoutms!=NULL && *timeoutms>=0)
-			{
-				sqlite3_busy_timeout(db->getDatabase(), 50);
-				break;
-			}
-			else if(!db->isInTransaction() && transaction_lock==false)
-			{
-				if(db->LockForTransaction())
-				{
-					Server->Log("LockForTransaction in CQuery::ReadN Stmt: ["+stmt_str+"]", LL_DEBUG);
-					transaction_lock=true;
-				}
-				sqlite3_busy_timeout(db->getDatabase(), 10000);
-			}
-			else
-			{
-				--tries;
-				if(tries==-1)
-				{
-				  Server->Log("SQLITE: Long running query  Stmt: ["+stmt_str+"]", LL_ERROR);
-				}
-				Server->Log("SQLITE_BUSY in CQuery::ReadN  Stmt: ["+stmt_str+"]", LL_INFO);
-			}
-		}
-		else if( err==SQLITE_ROW )
-		{
-			db_nsingle_result res;
-			int column=0;
-			const char *column_name;
-			while( (column_name=sqlite3_column_name(ps, column) )!=NULL )
-			{
-				std::string data;
-				const void *blob=sqlite3_column_blob(ps, column);
-				int blob_size=sqlite3_column_bytes(ps, column);
-				if(blob_size>0 && blob!=NULL)
-				{
-					data.resize(blob_size);
-					memcpy(&data[0], blob, blob_size);
-				}
-				res.insert( std::pair<std::string, std::string>(column_name, data) );
-				++column;
-			}
-			rows.push_back( res );
-		}
-	}
-
+void CQuery::shutdownStepping(int err, int *timeoutms, bool& transaction_lock)
+{
 	if(timeoutms!=NULL)
 	{
 		if(err!=SQLITE_DONE)
@@ -298,6 +249,31 @@ db_nresults CQuery::ReadN(int *timeoutms)
 		sqlite3_busy_timeout(db->getDatabase(), 50);
 		db->UnlockForTransaction();
 	}
+}
+
+db_nresults CQuery::ReadN(int *timeoutms)
+{
+	int err;
+	db_nresults rows;
+
+	bool transaction_lock=false;
+	int tries=60; //10min
+
+	setupStepping(timeoutms);
+	
+	db_nsingle_result res;
+	do
+	{
+		err=stepN(res, timeoutms, tries, transaction_lock);
+		if(err==SQLITE_ROW)
+		{
+			rows.push_back(res);
+			res.clear();
+		}
+	}
+	while(resultOkay(err));
+
+	shutdownStepping(err, timeoutms, transaction_lock);
 
 	return rows;
 }
@@ -310,19 +286,43 @@ db_results CQuery::Read(int *timeoutms)
 	bool transaction_lock=false;
 	int tries=60; //10min
 
-	if(timeoutms!=NULL && *timeoutms>=0)
-	{
-		sqlite3_busy_timeout(db->getDatabase(), *timeoutms);
-	}
+	setupStepping(timeoutms);
 
-	while( (err=sqlite3_step(ps))==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_IOERR_BLOCKED )
+	db_single_result res;
+	do
+	{
+		err=step(res, timeoutms, tries, transaction_lock);
+		if(err==SQLITE_ROW)
+		{
+			rows.push_back(res);
+			res.clear();
+		}
+	}
+	while(resultOkay(err));
+
+	shutdownStepping(err, timeoutms, transaction_lock);
+
+	return rows;
+}
+
+bool CQuery::resultOkay(int rc)
+{
+	return  rc==SQLITE_BUSY ||
+			rc==SQLITE_ROW ||
+			rc==SQLITE_IOERR_BLOCKED;
+}
+
+int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transaction_lock)
+{
+	int err=sqlite3_step(ps);
+	if( resultOkay(err) )
 	{
 		if( err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED )
 		{
 			if(timeoutms!=NULL && *timeoutms>=0)
 			{
 				sqlite3_busy_timeout(db->getDatabase(), 50);
-				break;
+				return SQLITE_ABORT;
 			}
 			else if(!db->isInTransaction() && transaction_lock==false)
 			{
@@ -345,7 +345,6 @@ db_results CQuery::Read(int *timeoutms)
 		}
 		else if( err==SQLITE_ROW )
 		{
-			db_single_result res;
 			int column=0;
 			const unsigned short *c_name;
 			while( (c_name=(const unsigned short*)sqlite3_column_name16(ps, column) )!=NULL )
@@ -409,7 +408,6 @@ db_results CQuery::Read(int *timeoutms)
 				res.insert( std::pair<std::wstring, std::wstring>(column_name, data) );
 				++column;
 			}
-			rows.push_back( res );
 		}
 		else
 		{
@@ -419,30 +417,89 @@ db_results CQuery::Read(int *timeoutms)
 				*timeoutms-=1000;
 
 				if(*timeoutms<=0)
-					break;
+				{
+					return SQLITE_ABORT;
+				}
 			}
 		}
 	}
+	return err;
+}
 
-	if(timeoutms!=NULL)
+int CQuery::stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& transaction_lock)
+{
+	int err=sqlite3_step(ps);
+	if(resultOkay(err))
 	{
-		if(err!=SQLITE_DONE)
+		if( err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED )
 		{
-			*timeoutms=1;
+			if(timeoutms!=NULL && *timeoutms>=0)
+			{
+				sqlite3_busy_timeout(db->getDatabase(), 50);
+				return SQLITE_ABORT;
+			}
+			else if(!db->isInTransaction() && transaction_lock==false)
+			{
+				if(db->LockForTransaction())
+				{
+					Server->Log("LockForTransaction in CQuery::ReadN Stmt: ["+stmt_str+"]", LL_DEBUG);
+					transaction_lock=true;
+				}
+				sqlite3_busy_timeout(db->getDatabase(), 10000);
+			}
+			else
+			{
+				--tries;
+				if(tries==-1)
+				{
+				  Server->Log("SQLITE: Long running query  Stmt: ["+stmt_str+"]", LL_ERROR);
+				}
+				Server->Log("SQLITE_BUSY in CQuery::ReadN  Stmt: ["+stmt_str+"]", LL_INFO);
+			}
+		}
+		else if( err==SQLITE_ROW )
+		{
+			int column=0;
+			const char *column_name;
+			while( (column_name=sqlite3_column_name(ps, column) )!=NULL )
+			{
+				std::string data;
+				const void *blob=sqlite3_column_blob(ps, column);
+				int blob_size=sqlite3_column_bytes(ps, column);
+				if(blob_size>0 && blob!=NULL)
+				{
+					data.resize(blob_size);
+					memcpy(&data[0], blob, blob_size);
+				}
+				res.insert( std::pair<std::string, std::string>(column_name, data) );
+				++column;
+			}
 		}
 		else
 		{
-			*timeoutms=0;
+			Server->wait(1000);
+			if(timeoutms!=NULL && *timeoutms>=0)
+			{
+				*timeoutms-=1000;
+
+				if(*timeoutms<=0)
+				{
+					return SQLITE_ABORT;
+				}
+			}
 		}
 	}
+	return err;
+}
 
-	if(transaction_lock)
+IDatabaseCursor* CQuery::Cursor(int *timeoutms)
+{
+	if(cursor==NULL)
 	{
-		sqlite3_busy_timeout(db->getDatabase(), 50);
-		db->UnlockForTransaction();
+		cursor=new DatabaseCursor(this, timeoutms);
 	}
 
-	return rows;
+	return cursor;
 }
 
 #endif

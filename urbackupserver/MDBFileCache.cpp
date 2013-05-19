@@ -35,7 +35,7 @@ MDBFileCache::MDBFileCache(size_t map_size)
 			return;
 		}
 
-		rc = mdb_env_open(env, "urbackup/backup_server_files_cache.lmdb", MDB_NOSUBDIR|MDB_NOMETASYNC|MDB_NOSYNC, 0664);
+		rc = mdb_env_open(env, "urbackup/backup_server_files_cache.lmdb", MDB_NOSUBDIR|MDB_NOMETASYNC, 0664);
 
 		if(rc)
 		{
@@ -91,6 +91,7 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 			const std::wstring& shahash=res[i][L"shahash"];
 			SCacheKey key(reinterpret_cast<const char*>(shahash.c_str()), watoi64(res[i][L"filesize"]));
 
+			
 			CWData value;
 			value.addString(Server->ConvertToUTF8(res[i][L"fullpath"]));
 			value.addString(Server->ConvertToUTF8(res[i][L"hashpath"]));
@@ -103,9 +104,18 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 			mdb_tvalue.mv_data=value.getDataPtr();
 			mdb_tvalue.mv_size=value.getDataSize();
 
-			int rc = mdb_put(txn, dbi, &mdb_tkey, &mdb_tvalue, 0);
+			/*MDB_val mdb_other_value;
+			int rc=mdb_get(txn, dbi, &mdb_tkey, &mdb_other_value);
 
-			if(rc)
+			if(!rc)
+			{
+				Server->Log("Entry already exists!", LL_ERROR);
+			} */
+
+
+			int rc = mdb_put(txn, dbi, &mdb_tkey, &mdb_tvalue, MDB_APPEND);
+
+			if(rc && rc!=MDB_KEYEXIST)
 			{
 				Server->Log("LMDB: Failed to put data ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 				_has_error=true;

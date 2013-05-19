@@ -1,5 +1,6 @@
 #include "../Interface/Database.h"
 #include "../Interface/Server.h"
+#include "../Interface/DatabaseCursor.h"
 #include "database.h"
 #include "server_settings.h"
 #include "MDBFileCache.h"
@@ -31,7 +32,7 @@ void update_files_cache_type(std::string new_type)
 
 struct SCallbackData
 {
-	IQuery* q_read;
+	IDatabaseCursor* cur;
 	int64 pos;
 };
 
@@ -39,28 +40,26 @@ db_results create_callback(void *userdata)
 {
 	SCallbackData *data=(SCallbackData*)userdata;
 
-	data->q_read->Bind(data->pos);
-	db_results res=data->q_read->Read();
-	data->q_read->Reset();
-
-	for(size_t i=0;i<res.size();++i)
+	
+	db_results ret;
+	db_single_result res;
+	
+	if(data->cur->next(res))
 	{
-		int64 rowid=watoi64(res[i][L"rowid"]);
-		if(rowid>data->pos)
-		{
-			data->pos=rowid;
-		}
+		ret.push_back(res);
 	}
-
-	return res;
+	
+	return ret;
 }
 
 bool setup_lmdb_files_cache(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
+	IQuery *q_read=db->Prepare("SELECT shahash, filesize, fullpath, hashpath, created FROM files f WHERE f.created=(SELECT MAX(created) FROM files WHERE shahash=f.shahash AND filesize=f.filesize) ORDER BY shahash ASC, filesize ASC");
+
 	SCallbackData data;
-	data.q_read=db->Prepare("SELECT rowid, shahash, filesize, fullpath, hashpath FROM files f WHERE rowid>? AND f.created=(SELECT MAX(created) FROM files WHERE shahash=f.shahash AND filesize=f.filesize) LIMIT 10000");
+	data.cur=q_read->Cursor();
 	data.pos=0;
 
 	MDBFileCache filecache;

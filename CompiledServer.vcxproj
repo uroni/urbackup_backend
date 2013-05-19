@@ -278,6 +278,7 @@
     <ClCompile Include="Client.cpp" />
     <ClCompile Include="Condition_boost.cpp" />
     <ClCompile Include="Database.cpp" />
+    <ClCompile Include="DatabaseCursor.cpp" />
     <ClCompile Include="DBSettingsReader.cpp" />
     <ClCompile Include="file_common.cpp" />
     <ClCompile Include="file_fstream.cpp" />
@@ -321,11 +322,13 @@
     <ClInclude Include="Client.h" />
     <ClInclude Include="Condition_boost.h" />
     <ClInclude Include="Database.h" />
+    <ClInclude Include="DatabaseCursor.h" />
     <ClInclude Include="DBSettingsReader.h" />
     <ClInclude Include="defaults.h" />
     <ClInclude Include="file.h" />
     <ClInclude Include="file_memory.h" />
     <ClInclude Include="FileSettingsReader.h" />
+    <ClInclude Include="Interface\DatabaseCursor.h" />
     <ClInclude Include="Interface\DatabaseFactory.h" />
     <ClInclude Include="Interface\DatabaseInt.h" />
     <ClInclude Include="Interface\PipeThrottler.h" />

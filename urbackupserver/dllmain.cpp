@@ -942,7 +942,7 @@ void update22_23(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('files_cache', 'none')");
-	db->Write("CREATE TEMPORARY TABLE files_new ( backupid INTEGER, fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER, incremental INTEGER)");
+	db->Write("CREATE TABLE files_new ( backupid INTEGER, fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER, incremental INTEGER)");
 }
 
 void upgrade(void)
