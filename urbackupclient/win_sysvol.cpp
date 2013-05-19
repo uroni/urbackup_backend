@@ -262,6 +262,9 @@ std::wstring getSysVolume(std::wstring &mpath)
 		}
 		VolumeName[Index] = L'\\';
 
+		LOG(L"Filesystem. Vol=\""+std::wstring(VolumeName)+L"\" Name=\""+strlower(getVolumeLabel(VolumeName))+
+			L"\" Type=\""+strlower(getFilesystem(VolumeName))+L"\" VPaths="+convert(vpaths.size())+L" Size="+convert(getPartSize(VolumeName)), LL_DEBUG);
+
 		
 		if( ( strlower(getVolumeLabel(VolumeName))==L"system reserved" 
 			|| (vpaths.empty() &&  getPartSize(VolumeName)<200*1024*1024) ) 
@@ -309,6 +312,10 @@ std::wstring getSysVolume(std::wstring &mpath)
 			LOG(L"Selected: "+system_vols[i], LL_DEBUG);
 			mpath=system_vols_paths[i];
 			return system_vols[i];
+		}
+		else
+		{
+			LOG(L"Not on Physical Device 'C': "+system_vols[i], LL_DEBUG);
 		}
 	}
 
