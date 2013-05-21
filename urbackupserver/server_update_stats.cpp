@@ -102,11 +102,19 @@ void ServerUpdateStats::operator()(void)
 	createQueries();
 
 	Server->Log("Copying files from files_new table...", LL_DEBUG);
+
+	bool indices_suspended=suspendFilesIndices(server_settings);
+
 	db->Write("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) "
 			  "SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, 0 AS did_count, clientid, incremental FROM files_new");
 
 	Server->Log("Deleting contents of files_new table...", LL_DEBUG);
 	db->Write("DELETE FROM files_new");
+
+	if(indices_suspended)
+	{
+		createFilesIndices();
+	}
 
 
 	if(!image_repair_mode)
@@ -989,6 +997,30 @@ size_t ServerUpdateStats::getFilesNumClientDel(const SNumFilesClientCacheItem &i
 			return 0;
 		}
 	}
+}
+
+bool ServerUpdateStats::suspendFilesIndices(ServerSettings& server_settings)
+{
+	db_results res_n=db->Read("SELECT COUNT(*) AS c FROM files_new");
+	if(!res_n.empty() && watoi(res_n[0][L"c"])>=server_settings.getSettings()->suspend_index_limit)
+	{
+		Server->Log("Suspending files Indices...", LL_INFO);
+		db->Write("DROP INDEX IF EXISTS files_idx");
+		db->Write("DROP INDEX IF EXISTS files_did_count");
+		db->Write("DROP INDEX IF EXISTS files_backupid");
+		return true;
+	}
+
+	return false;
+}
+
+void ServerUpdateStats::createFilesIndices(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	Server->Log("Creating files Indices...", LL_INFO);
+	db->Write("CREATE INDEX IF NOT EXISTS files_idx ON files (shahash, filesize, clientid)");
+	db->Write("CREATE INDEX IF NOT EXISTS files_did_count ON files (did_count)");
+	db->Write("CREATE INDEX IF NOT EXISTS files_backupid ON files (backupid)");
 }
 
 #endif //CLIENT_ONLY

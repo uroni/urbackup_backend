@@ -75,6 +75,7 @@ struct SSettings
 	std::string global_soft_fs_quota;
 	std::string filescache_type;
 	int64 filescache_size;
+	int suspend_index_limit;
 };
 
 struct STimeSpan

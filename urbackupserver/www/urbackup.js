@@ -1525,7 +1525,8 @@ g.general_settings_list=[
 "update_stats_cachesize",
 "global_soft_fs_quota",
 "filescache_type",
-"filescache_size"
+"filescache_size",
+"suspend_index_limit"
 ];
 g.mail_settings_list=[
 "mail_servername",

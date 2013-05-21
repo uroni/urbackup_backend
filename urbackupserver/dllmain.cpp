@@ -59,6 +59,7 @@ SStartupStatus startup_status;
 #include "server_get.h"
 #include "server_archive.h"
 #include "server_settings.h"
+#include "server_update_stats.h"
 #include "../urbackupcommon/os_functions.h"
 #include "InternetServiceConnector.h"
 #include "filedownload.h"
@@ -400,6 +401,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	create_files_cache();
+	ServerUpdateStats::createFilesIndices();
 
 	{
 		IScopedLock lock(startup_status.mutex);

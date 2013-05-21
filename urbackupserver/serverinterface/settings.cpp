@@ -125,6 +125,7 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(update_stats_cachesize);
 	SET_SETTING(filescache_type);
 	SET_SETTING(filescache_size);
+	SET_SETTING(suspend_index_limit);
 
 #undef SET_SETTING
 }

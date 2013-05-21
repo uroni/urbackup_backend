@@ -3,6 +3,7 @@
 
 class IQuery;
 class IDatabase;
+class ServerSettings;
 
 struct SDelInfo
 {
@@ -44,6 +45,8 @@ public:
 	void operator()(void);
 
 	static void repairImages(void);
+
+	static void createFilesIndices(void);
 private:
 
 	void update_files(void);
@@ -62,6 +65,8 @@ private:
 	void updateDels(std::map<int, SDelInfo> &data);
 
 	bool repairImagePath(str_map img);
+
+	bool suspendFilesIndices(ServerSettings& server_settings);
 
 	void measureSpeed(void);
 

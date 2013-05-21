@@ -192,6 +192,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
 	settings.filescache_type=settings_default->getValue("filescache_type", "none");
 	settings.filescache_size=watoi64(settings_default->getValue(L"filescache_size", L"68719476736")); //64GB
+	settings.suspend_index_limit=settings_default->getValue("suspend_index_limit", 100000);
 }
 
 void ServerSettings::readSettingsClient(void)
