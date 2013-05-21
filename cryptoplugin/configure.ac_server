@@ -19,7 +19,7 @@ AC_PROG_LIBTOOL
 # Checks for header files.
 AC_HEADER_STDC
 
-CHECK_CRYPTO([5.1], [], [echo "Crypto++ not found. Please install."; exit 44;])
+MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install."; exit 44;])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
