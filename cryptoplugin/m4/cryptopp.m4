@@ -1,165 +1,157 @@
-#							-*- Autoconf -*-
-# This file is part of the aMule Project.
-#
-# Copyright (c) 2003-2009 aMule Team ( admin@amule.org / http://www.amule.org )
-#
-# Any parts of this program derived from the xMule, lMule or eMule project,
-# or contributed by third-party developers are copyrighted by their
-# respective authors.
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
-#
+dnl --------------------------------------------------------------------------
+dnl Add cryptopp configure option - This file is taken from the aMule project: https://www.scimmia.net/code/browser/packages/amule/trunk/m4/cryptopp.m4
+dnl --------------------------------------------------------------------------
+dnl
+dnl This macro sets and substitutes these variables:
+AC_DEFUN([AM_OPTIONS_CRYPTO], [
+	AC_ARG_WITH(
+		[crypto-prefix],
+		[AS_HELP_STRING(
+			[--with-crypto-prefix=PREFIX],
+			[prefix where crypto++ is installed])],
+		[CRYPTO_PP_PREFIX="$withval"],
+		[CRYPTO_PP_PREFIX=""])
+])
+
 
 dnl --------------------------------------------------------------------------
-dnl MULE_CHECK_CRYPTOPP([VERSION = 5.1], [ACTION-IF-FOUND], [ACTION-IF-NOT-FOUND])
-dnl
 dnl Check for cryptopp library
 dnl --------------------------------------------------------------------------
 dnl
-dnl This macro sets these variables:
-dnl - CRYPTOPP_PREFIX
-dnl 	This is the user or system directory where crypto++ is installed or sources
-dnl - CRYPTOPP_VERSION_STRING
+dnl This macro sets and substitutes these variables:
+dnl - CRYPTO_PP_PREFIX
+dnl 	This is the user or system directory where cryptopp is installed or sources
+dnl - CRYPTO_PP_VERSION_STRING
 dnl 	Something like "5.5.2"
-dnl - CRYPTOPP_VERSION_NUMBER
+dnl - CRYPTO_PP_VERSION_NUMBER
 dnl 	Something like 5005002
-dnl - CRYPTOPP_STYLE
+dnl - CRYPTO_PP_STYLE
 dnl 	"sources", "installed" or "gentoo_debian"
-dnl - CRYPTOPP_LIB_NAME
+dnl - CRYPTO_PP_LIB_NAME
 dnl 	"cryptopp" or "crypto++"
-dnl - CRYPTOPP_INCLUDE_PREFIX
-dnl 	The string that goes here: #include <@CRYPTOPP_INCLUDE_PREFIX@/rsa.h>
-dnl - CRYPTOPP_CPPFLAGS
-dnl 	Flags to be added to CPPFLAGS
-dnl - CRYPTOPP_LDFLAGS
+dnl - CRYPTO_PP_INCLUDE_PREFIX
+dnl 	The string that goes here: #include <@CRYPTO_PP_INCLUDE_PREFIX@/rsa.h>
+dnl - CRYPTO_PP_CXXFLAGS
+dnl 	Flags to be added to CXXFLAGS
+dnl - CRYPTO_PP_LDFLAGS
 dnl 	Flags to be added to LDFLAGS
-dnl - CRYPTOPP_LIBS
-dnl	Library to be added to LIBS
-dnl
-dnl The CRYPTOPP_CPPFLAGS, CRYPTOPP_LDFLAGS and CRYPTOPP_LIBS variables are also substituted.
 dnl
 dnl Worth notice:
-dnl - cryptopp_includedir
-dnl 	The string that goes in -I on CPPFLAGS
-dnl - cryptopp_libdir
-dnl 	The string that goes in -L on LDFLAGS
-dnl - cryptopp_header_path
+dnl - crypto_pp_include_i
+dnl 	The string that goes in -I on CXXFLAGS
+dnl - crypto_pp_header_path
 dnl 	The file we use to discover the version of cryptopp
 dnl
-AC_DEFUN([MULE_CHECK_CRYPTOPP],
-[dnl
-AC_REQUIRE([AC_PROG_EGREP])dnl
-m4_define([MIN_CRYPTO_VERSION], [m4_ifval([$1], [$1], [5.1])])dnl
+AC_DEFUN([CHECK_CRYPTO], [
 
-	AC_ARG_WITH([crypto-prefix],
-		[AS_HELP_STRING([--with-crypto-prefix=PREFIX], [prefix where crypto++ is installed])])
+min_crypto_version=ifelse([$1], ,5.1,$1)
+AC_MSG_CHECKING([for crypto++ version >= $min_crypto_version])
 
-	AC_MSG_CHECKING([for crypto++ version >= MIN_CRYPTO_VERSION])
+crypto_pp_file_with_version="cryptlib.h"
 
-	cryptopp_file_with_version="cryptlib.h"
+CRYPTO_PP_STYLE="unknown"
+CRYPTO_PP_LIB_NAME="unknown"
+crypto_pp_include_i="unknown"
+CRYPTO_PP_INCLUDE_PREFIX="unknown"
+CRYPTO_PP_DEFINE="unknown"
+CRYPTO_PP_LIB="unknown"
 
-	CRYPTOPP_STYLE="unknown"
-	CRYPTOPP_LIB_NAME="unknown"
-	cryptopp_includedir="unknown"
-	CRYPTOPP_INCLUDE_PREFIX="unknown"
-	cryptopp_libdir="unknown"
+#
+# Set CRYPTO_PP_PREFIX if the user has not set it in the configure command line
+# We don't use AC_CHECK_FILE to avoid caching.
+#
+if test x$CRYPTO_PP_PREFIX = x ; then
+	CRYPTO_PP_PREFIX="/usr"
+fi
 
-	AS_IF([test -n "$with_crypto_prefix"], [
-		# Find the Cryptopp header in the user-provided location
-		AS_IF([test -f $with_crypto_prefix/$cryptopp_file_with_version], [
-			CRYPTOPP_STYLE="sources"
-			CRYPTOPP_LIB_NAME="cryptopp"
-			cryptopp_includedir=
-			CRYPTOPP_INCLUDE_PREFIX="$with_crypto_prefix"
-			cryptopp_libdir=
-		], AS_IF([test -f $with_crypto_prefix/include/cryptopp/$cryptopp_file_with_version], [
-			CRYPTOPP_STYLE="installed"
-			CRYPTOPP_LIB_NAME="cryptopp"
-			cryptopp_includedir="$with_crypto_prefix/include"
-			CRYPTOPP_INCLUDE_PREFIX="$CRYPTOPP_LIB_NAME"
-			cryptopp_libdir="$with_crypto_prefix/lib"
-		], AS_IF([test -f $with_crypto_prefix/include/crypto++/$cryptopp_file_with_version], [
-			# Debian uses libcrypto++5.1 - it's not my fault, please soda patch the package
-			CRYPTOPP_STYLE="gentoo_debian"
-			CRYPTOPP_LIB_NAME="crypto++"
-			cryptopp_includedir="$with_crypto_prefix/include"
-			CRYPTOPP_INCLUDE_PREFIX="$CRYPTOPP_LIB_NAME"
-			cryptopp_libdir="$with_crypto_prefix/lib"
-		])))
-	], [
-		for CRYPTOPP_PREFIX in /usr /usr/local /opt /opt/local /usr/pkg /mingw ; do
-			# Find the Cryptopp header in system locations
-			AS_IF([test -f $CRYPTOPP_PREFIX/$cryptopp_file_with_version], [
-				CRYPTOPP_STYLE="sources"
-				CRYPTOPP_LIB_NAME="cryptopp"
-				cryptopp_includedir=
-				CRYPTOPP_INCLUDE_PREFIX="$CRYPTOPP_PREFIX"
-				cryptopp_libdir=
-				break
-			], AS_IF([test -f $CRYPTOPP_PREFIX/include/cryptopp/$cryptopp_file_with_version], [
-				CRYPTOPP_STYLE="installed"
-				CRYPTOPP_LIB_NAME="cryptopp"
-				cryptopp_includedir="$CRYPTOPP_PREFIX/include"
-				CRYPTOPP_INCLUDE_PREFIX="$CRYPTOPP_LIB_NAME"
-				cryptopp_libdir="$CRYPTOPP_PREFIX/lib"
-				break
-			], AS_IF([test -f $CRYPTOPP_PREFIX/include/crypto++/$cryptopp_file_with_version], [
-				# Debian uses libcrypto++5.1 - it's not my fault, please soda patch the package
-				CRYPTOPP_STYLE="gentoo_debian"
-				CRYPTOPP_LIB_NAME="crypto++"
-				cryptopp_includedir="$CRYPTOPP_PREFIX/include"
-				CRYPTOPP_INCLUDE_PREFIX="$CRYPTOPP_LIB_NAME"
-				cryptopp_libdir="$CRYPTOPP_PREFIX/lib"
-				break
-			])))
-		done
-	])
+#
+# Find the Cryptopp header
+#
+if test -f $CRYPTO_PP_PREFIX/$crypto_pp_file_with_version; then
+	CRYPTO_PP_STYLE="sources"
+	CRYPTO_PP_LIB_NAME="cryptopp"
+	crypto_pp_include_i="$CRYPTO_PP_PREFIX"
+	CRYPTO_PP_INCLUDE_PREFIX="."
+	CRYPTO_PP_DEFINE="__CRYPTO_SOURCE__"
+	CRYPTO_PP_LIB="$CRYPTO_PP_PREFIX"
+	AC_MSG_ERROR([
+	Specifying the cryptopp source files directory for "--with-crypto-prefix="
+	will not work because cryptopp uses headers with the same name of system
+	headers (e.g. zlib.h) and you must be able to distinguish the system
+	headers from cryptopp headers in an #include directive.
+	Please run "PREFIX=/home/YourUserName/usr/cryptopp make install" on
+	the cryptopp directory to properly install cryptopp in your system.])
+elif test -f $CRYPTO_PP_PREFIX/include/cryptopp/$crypto_pp_file_with_version; then
+	CRYPTO_PP_STYLE="installed"
+	CRYPTO_PP_LIB_NAME="cryptopp"
+	crypto_pp_include_i="$CRYPTO_PP_PREFIX/include"
+	CRYPTO_PP_INCLUDE_PREFIX="$CRYPTO_PP_LIB_NAME"
+	CRYPTO_PP_DEFINE="__CRYPTO_INSTALLED__"
+	CRYPTO_PP_LIB="$CRYPTO_PP_PREFIX/lib"
+elif test -f $CRYPTO_PP_PREFIX/include/crypto++/$crypto_pp_file_with_version; then
+       	# Debian uses libcrypto++5.1 - it's not my fault, please soda patch the package
+	CRYPTO_PP_STYLE="gentoo_debian"
+	CRYPTO_PP_LIB_NAME="crypto++"
+	crypto_pp_include_i="$CRYPTO_PP_PREFIX/include"
+	CRYPTO_PP_INCLUDE_PREFIX="$CRYPTO_PP_LIB_NAME"
+	CRYPTO_PP_DEFINE="__CRYPTO_SOURCE__"
+	CRYPTO_PP_LIB="$CRYPTO_PP_PREFIX/lib"
+fi
 
-	AS_IF([test $CRYPTOPP_STYLE = "unknown"], [result=no; resultstr=""], [
-		# Find out the crypto++ version and check against the minimum required
-		cryptopp_header_path="${cryptopp_includedir+$cryptopp_includedir/}$CRYPTOPP_INCLUDE_PREFIX/$cryptopp_file_with_version"
-		CRYPTOPP_VERSION_STRING=`$EGREP "Reference Manual|API Reference" $cryptopp_header_path | sed -e ['s/[^0-9]*\([0-9.]*\).*/\1/']`
-		CRYPTOPP_VERSION_NUMBER=`echo $CRYPTOPP_VERSION_STRING | $AWK 'BEGIN { FS = "."; } { printf "%d", ([$]1 * 1000 + [$]2) * 1000 + [$]3;}'`
-		minvers=`echo MIN_CRYPTO_VERSION | $AWK 'BEGIN { FS = "."; } { printf "%d", ([$]1 * 1000 + [$]2) * 1000 + [$]3;}'`
+#
+# Check for success in finding cryptopp
+#
+if test $CRYPTO_PP_STYLE = "unknown"; then
+	#
+	# If the execution reaches here, we have failed.
+	#
+	AC_MSG_ERROR([
+	Could not find cryptopp header file "$crypto_pp_file_with_version".
+	Please check if the path "$CRYPTO_PP_PREFIX" is valid.])
+fi
 
-		AS_IF([test -n "$CRYPTOPP_VERSION_NUMBER" && test "$CRYPTOPP_VERSION_NUMBER" -ge $minvers], [
-			result=yes
-			resultstr=" (version $CRYPTOPP_VERSION_STRING, $CRYPTOPP_STYLE)"
-			AS_IF([test -n "$cryptopp_includedir"], [CRYPTOPP_CPPFLAGS="-I$cryptopp_includedir"], [CRYPTOPP_CPPFLAGS=])
-			AS_IF([test -n "$cryptopp_libdir"], [
-				CRYPTOPP_LDFLAGS="-L$cryptopp_libdir"
-				CRYPTOPP_LIBS="-l$CRYPTOPP_LIB_NAME"
-			], [
-				CRYPTOPP_LDFLAGS=
-				CRYPTOPP_LIBS="${CRYPTOPP_INCLUDE_PREFIX}/lib${CRYPTOPP_LIB_NAME}.a"
-			])
-			AH_TEMPLATE([CRYPTOPP_INCLUDE_PREFIX], [Define this to the include prefix of crypto++])
-			AC_DEFINE_UNQUOTED([CRYPTOPP_INCLUDE_PREFIX], $CRYPTOPP_INCLUDE_PREFIX)
-		], [
-			result=no
-			resultstr=" (version $CRYPTOPP_VERSION_STRING is not new enough)"
-		])
-	])
+#
+# Find out the cryptopp version and check against the minimum required
+#
+crypto_pp_include_dir="$crypto_pp_include_i/$CRYPTO_PP_INCLUDE_PREFIX"
+crypto_pp_header_path="$crypto_pp_include_dir/$crypto_pp_file_with_version"
 
-	AC_MSG_RESULT([$result$resultstr])
+CRYPTO_PP_VERSION_STRING=$(grep "API Reference" $crypto_pp_header_path | \
+	sed -e ['s/[^0-9]*\([0-9.]*\).*/\1/'])
 
-	AS_IF([test ${result:-no} = yes], [$2], [$3])
+CRYPTO_PP_VERSION_NUMBER=$(echo $CRYPTO_PP_VERSION_STRING | \
+	$AWK 'BEGIN { FS = "."; } { printf "%d", ([$]1 * 1000 + [$]2) * 1000 + [$]3;}')
 
-dnl Exported symbols
-AC_SUBST([CRYPTOPP_CPPFLAGS])dnl
-AC_SUBST([CRYPTOPP_LDFLAGS])dnl
-AC_SUBST([CRYPTOPP_LIBS])dnl
-m4_undefine([MIN_CRYPTO_VERSION])dnl
+minvers=$(echo $min_crypto_version | \
+	$AWK 'BEGIN { FS = "."; } { printf "%d", ([$]1 * 1000 + [$]2) * 1000 + [$]3;}')
+
+if test -n "$CRYPTO_PP_VERSION_NUMBER" && test "$CRYPTO_PP_VERSION_NUMBER" -ge $minvers; then
+	result="yes (version $CRYPTO_PP_VERSION_STRING, $CRYPTO_PP_STYLE)"
+else
+	result="no"
+fi
+AC_MSG_RESULT([$result])
+
+#
+# FLAGS
+#
+CRYPTO_PP_CXXFLAGS="-I$crypto_pp_include_dir -D$CRYPTO_PP_DEFINE" # @td
+CRYPTO_PP_LDFLAGS="-lcryptopp -L$CRYPTO_PP_LIB" # @td
+AH_TEMPLATE([CRYPTOPP_INCLUDE_PREFIX], [Define this to the include prefix of crypto++])
+AC_DEFINE_UNQUOTED([CRYPTOPP_INCLUDE_PREFIX], $CRYPTO_PP_INCLUDE_PREFIX)
+
+#
+# Exported symbols
+#
+AC_SUBST([CRYPTO_PP_PREFIX])
+AC_SUBST([CRYPTO_PP_VERSION_STRING])
+AC_SUBST([CRYPTO_PP_VERSION_NUMBER])
+
+AC_SUBST([CRYPTO_PP_STYLE])
+AC_SUBST([CRYPTO_PP_LIB_NAME])
+AC_SUBST([CRYPTO_PP_INCLUDE_PREFIX])
+AC_SUBST([CRYPTO_PP_CXXFLAGS])
+AC_SUBST([CRYPTO_PP_LDFLAGS])
+
+AC_MSG_NOTICE([Crypto++ version number is $CRYPTO_PP_VERSION_NUMBER])
 ])
