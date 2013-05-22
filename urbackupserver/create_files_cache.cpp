@@ -65,7 +65,8 @@ bool setup_lmdb_files_cache(void)
 
 	Server->Log("Creating LMDB file entry cache. This might take a while...", LL_WARNING);
 
-	IQuery *q_read=db->Prepare("SELECT shahash, filesize, fullpath, hashpath, created FROM files f WHERE f.created=(SELECT MAX(created) FROM files WHERE shahash=f.shahash AND filesize=f.filesize) ORDER BY shahash ASC, filesize ASC");
+	//IQuery *q_read=db->Prepare("SELECT shahash, filesize, fullpath, hashpath, created FROM files f WHERE f.created=(SELECT MAX(created) FROM files WHERE shahash=f.shahash AND filesize=f.filesize) ORDER BY shahash ASC, filesize ASC");
+	IQuery *q_read=db->Prepare("SELECT shahash, filesize, fullpath, hashpath FROM files ORDER BY shahash ASC, filesize ASC");
 
 	SCallbackData data;
 	data.cur=q_read->Cursor();
