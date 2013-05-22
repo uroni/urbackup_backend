@@ -15,6 +15,14 @@ AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_LIBTOOL
 
+AX_PTHREAD
+if !($HAVE_PTHREAD)
+then
+	echo "Sorry, your system needs the pthread library."
+	echo "Either install it or give up."
+	exit 1
+fi
+
 # Checks for libraries.
 
 # Checks for header files.
