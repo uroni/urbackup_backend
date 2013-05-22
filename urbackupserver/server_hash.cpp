@@ -329,6 +329,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 
 	bool tries_once=false;
 	bool cache_requires_update=false;
+	bool first_logmsg=true;
 
 	while(!ff.empty())
 	{
@@ -345,11 +346,12 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 			IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
 			if(ctf==NULL)
 			{
-				if(!cache_hit)
+				if(!cache_hit || first_logmsg==false)
 				{
 					ServerLogger::Log(clientid, L"HT: Hardlinking failed (File doesn't exist): \""+ff+L"\"", LL_DEBUG);
-					deleteFileSQL(sha2, ff, t_filesize, f_backupid);
-				}				
+				}
+				first_logmsg=true;
+				deleteFileSQL(sha2, ff, t_filesize, f_backupid);
 				ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath, cache_hit);
 				if(!ff.empty()) ff_last=ff;
 			}
