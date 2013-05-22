@@ -1081,10 +1081,22 @@ void ClientConnector::updateSettings(const std::string &pData)
 			{
 				std::wstring nv;
 				if(new_settings->getValue(key, &nv) )
-				{				
-					new_settings_str+=key+L"="+nv+L"\n";
-					mod=true;
+				{
+					if(key==L"internet_server" && nv.empty() && !v.empty())
+					{
+						new_settings_str+=key+L"="+v+L"\n";
+					}
+					else
+					{
+						new_settings_str+=key+L"="+nv+L"\n";
+						mod=true;
+					}
 				}
+				else if(key==L"internet_server" && !v.empty())
+				{
+					new_settings_str+=key+L"="+v+L"\n";
+				}
+
 				if(new_settings->getValue(key+L"_def", &nv) )
 				{
 					new_settings_str+=key+L"_def="+nv+L"\n";

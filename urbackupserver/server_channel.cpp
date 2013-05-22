@@ -428,8 +428,10 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_ALLOW_CONFIG_PATHS;
 	if(!cs->allow_log_view)
 		capa|=DONT_SHOW_LOGS;
-	if(cs->no_images)
+	if(cs->no_images || (internet_mode && !cs->internet_image_backups))
 		capa|=DONT_DO_IMAGE_BACKUPS;
+	if(internet_mode && !cs->internet_full_file_backups)
+		capa|=DONT_DO_FULL_FILE_BACKUPS;
 
 	return capa;
 }

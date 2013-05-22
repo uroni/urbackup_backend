@@ -1,4 +1,4 @@
-!define MUI_BRANDINGTEXT "UrBackup Server v1.2"
+!define MUI_BRANDINGTEXT "UrBackup Server v1.2.1"
 !include "${NSISDIR}\Contrib\Modern UI\System.nsh"
 !include WinVer.nsh
 !include "x64.nsh"
@@ -7,8 +7,8 @@
 SetCompressor /FINAL /SOLID lzma
 
 CRCCheck On
-Name "UrBackup Server 1.2"
-OutFile "UrBackup Server 1.2-1.exe"
+Name "UrBackup Server 1.2.1"
+OutFile "UrBackup Server 1.2.1-1.exe"
 InstallDir "$PROGRAMFILES\UrBackupServer"
 RequestExecutionLevel highest
 
@@ -137,6 +137,7 @@ Section "install"
 	File "data_common\cleanup.bat"
 	File "data_common\remove_unknown.bat"
 	File "data_common\reset_pw.bat"
+	File "data_common\cleanup_database.bat"
 	
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	

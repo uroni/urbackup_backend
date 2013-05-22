@@ -7,6 +7,9 @@ AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
 
+AC_ARG_ENABLE([headless],
+     AS_HELP_STRING([--enable-headless], [Do not compile and install the GUI components]))
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -50,6 +53,17 @@ AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
 AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
 
-AC_CONFIG_SUBDIRS([client cryptoplugin fileservplugin fsimageplugin urbackupclient])
+P_SUBDIRS="cryptoplugin fileservplugin fsimageplugin urbackupclient"
+
+AS_IF([test "x$enable_headless" != "xyes"],
+    [P_SUBDIRS="client $P_SUBDIRS"])
+	
+AC_SUBST([P_SUBDIRS])
+
+if test "x$enable_headless" != "xyes"; then
+    AC_CONFIG_SUBDIRS([client])
+fi
+
+AC_CONFIG_SUBDIRS([cryptoplugin fileservplugin fsimageplugin urbackupclient])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

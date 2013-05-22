@@ -241,6 +241,7 @@ void ServerCleanupThread::do_cleanup(void)
 			int64 amount=cleanup_amount(server_settings.getSettings()->global_soft_fs_quota, db);
 			if(amount<total_space)
 			{
+				Server->Log("Space to free: "+PrettyPrintBytes(total_space-amount), LL_INFO);
 				cleanup_images(total_space-amount);
 				cleanup_files(total_space-amount);
 			}
@@ -387,10 +388,26 @@ void ServerCleanupThread::do_remove(void)
 				if(!res_id.exists)
 				{
 					Server->Log(L"File backup \""+cf.name+L"\" of client \""+clientname+L"\" not found in database. Deleting it.", LL_WARNING);
-					std::wstring rm_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
-					if(!os_remove_nonempty_dir(rm_dir))
+					bool remove_folder=false;
+					if(BackupServer::isSnapshotsEnabled())
 					{
-						Server->Log(L"Could not delete directory \""+rm_dir+L"\"", LL_ERROR);
+						if(!SnapshotHelper::removeFilesystem(clientname, cf.name) )
+						{
+							remove_folder=true;
+						}
+					}
+					else
+					{
+						remove_folder=true;
+					}
+
+					if(remove_folder)
+					{
+						std::wstring rm_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
+						if(!os_remove_nonempty_dir(rm_dir))
+						{
+							Server->Log(L"Could not delete directory \""+rm_dir+L"\"", LL_ERROR);
+						}
 					}
 				}
 			}

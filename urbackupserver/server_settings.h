@@ -44,7 +44,7 @@ struct SSettings
 	bool allow_log_view;
 	std::string image_letters;
 	bool backup_database;
-	std::string internet_server_name;
+	std::string internet_server;
 	bool client_set_settings;
 	unsigned short internet_server_port;
 	std::string internet_authkey;

@@ -92,7 +92,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	VERIFY_HASHES=""
 	RESET_PW=""
 	CLEANUP=""
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown -- "$@"`
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -109,6 +109,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--reset_pw) RESET_PW="--reset_pw \"$2\""; shift 2 ;;
 			--cleanup) CLEANUP="--app cleanup --cleanup_amount $2"; shift 2;;
 			--remove_unknown) CLEANUP="--app remove_unknown"; shift ;;
+			--cleanup_database) CLEANUP="--app cleanup_database"; shift ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac

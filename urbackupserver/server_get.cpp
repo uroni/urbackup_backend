@@ -1788,6 +1788,25 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	{
 		Server->Log(clientname+L": Doing backup with intra file diffs...", LL_DEBUG);
 	}
+
+	SBackup last=getLastIncremental();
+	if(last.incremental==-2)
+	{
+		ServerLogger::Log(clientid, "Cannot retrieve last file backup when doing incremental backup. Doing full backup now...", LL_WARNING);
+
+		if(on_snapshot)
+		{
+			bool b=SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)  && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));
+
+			if(!b)
+			{
+				ServerLogger::Log(clientid, "Cannot filesystem for backup", LL_ERROR);
+				return false;
+			}
+		}
+
+		return doFullBackup(with_hashes, disk_error, log_backup);
+	}
 	
 	bool no_backup_dirs=false;
 	bool b=request_filelist_construct(false, true, &no_backup_dirs);
@@ -1874,13 +1893,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	
 	Server->Log(clientname+L" Starting incremental backup...", LL_DEBUG);
 
-	SBackup last=getLastIncremental();
-	if(last.incremental==-2)
-	{
-		ServerLogger::Log(clientid, "Error retrieving last backup.", LL_ERROR);
-		has_error=true;
-		return false;
-	}
+	
 	backupid=createBackupSQL(last.incremental+1, clientid, backuppath_single);
 
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
@@ -2080,15 +2093,29 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						{
 							if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
-								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
-								c_has_error=true;
-								break;
+								if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
+								{
+									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
+									c_has_error=true;
+									break;
+								}
+								else
+								{
+									ServerLogger::Log(clientid, L"Directory \""+backuppath+local_curr_os_path+L"\" does already exist.", LL_WARNING);
+								}
 							}
 							if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 							{
-								ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
-								c_has_error=true;
-								break;
+								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+								{
+									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
+									c_has_error=true;
+									break;
+								}
+								else
+								{
+									ServerLogger::Log(clientid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist.", LL_WARNING);
+								}
 							}
 						}
 						++depth;

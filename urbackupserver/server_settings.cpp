@@ -164,7 +164,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.backup_database=(settings_default->getValue("backup_database", "true")=="true");
 	settings.internet_server_port=(unsigned short)(atoi(settings_default->getValue("internet_server_port", "55415").c_str()));
 	settings.client_set_settings=false;
-	settings.internet_server_name=settings_default->getValue("internet_server_name", "");
+	settings.internet_server=settings_default->getValue("internet_server", "");
 	settings.internet_image_backups=(settings_default->getValue("internet_image_backups", "false")=="true");
 	settings.internet_full_file_backups=(settings_default->getValue("internet_full_file_backups", "false")=="true");
 	settings.internet_encrypt=(settings_default->getValue("internet_encrypt", "true")=="true");

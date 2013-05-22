@@ -6,7 +6,7 @@ sbin_SCRIPTS = start_urbackup_client
 AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
 AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY
 AM_LDFLAGS = $(PTHREAD_LIBS)
-SUBDIRS=. client cryptoplugin fileservplugin fsimageplugin urbackupclient
+SUBDIRS=. $(P_SUBDIRS)
 install-exec-local: defaults_client init.d_client
 	$(INSTALL) -D "$(srcdir)/init.d_client" "$(sysconfdir)/init.d/urbackup_client"
 	if ! test -e "$(sysconfdir)/default/urbackup_client"; then $(INSTALL) -D "$(srcdir)/defaults_client" "$(sysconfdir)/default/urbackup_client"; fi

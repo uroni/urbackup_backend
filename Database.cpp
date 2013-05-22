@@ -160,9 +160,13 @@ db_results CDatabase::Read(std::string pQuery)
 {
 	//Server->Log("SQL Query(Read): "+pQuery, LL_DEBUG);
 	IQuery *q=Prepare(pQuery, false);
-	db_results ret=q->Read();
-	delete ((CQuery*)q);
-	return ret;
+	if(q!=NULL)
+	{
+		db_results ret=q->Read();
+		delete ((CQuery*)q);
+		return ret;
+	}
+	return db_results();
 }
 
 bool CDatabase::Write(std::string pQuery)
