@@ -26,5 +26,5 @@ sed -i "0,/urbackup-server \(.*\)(.*)/s//urbackup-server \($VERSION\)\1/" debian
 
 dh clean
 fakeroot dh binary
-mkdir output
+mkdir output || true
 mv ../*.deb output/
