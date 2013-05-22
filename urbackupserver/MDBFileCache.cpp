@@ -81,6 +81,8 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 {
 	begin_txn(0);
 
+	size_t n_done=0;
+
 	db_results res;
 	do
 	{
@@ -111,6 +113,7 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 			{
 				Server->Log("Entry already exists!", LL_ERROR);
 			} */
+			++n_done;
 
 
 			int rc = mdb_put(txn, dbi, &mdb_tkey, &mdb_tvalue, MDB_APPEND);
@@ -120,7 +123,12 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 				Server->Log("LMDB: Failed to put data ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 				_has_error=true;
 			}
-		}
+
+			if(n_done % 10000 == 0 )
+			{
+				Server->Log("File entry cache contains "+nconvert(n_done)+" entries now.", LL_INFO);
+			}
+		}		
 	}
 	while(!res.empty());
 
