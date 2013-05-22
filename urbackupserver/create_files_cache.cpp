@@ -56,6 +56,15 @@ bool setup_lmdb_files_cache(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
+	db_results cache_res;
+	if(db->getEngineName()=="sqlite")
+	{
+		cache_res=db->Read("PRAGMA cache_size");
+		db->Write("PRAGMA cache_size = -"+nconvert(500*1024));
+	}
+
+	Server->Log("Creating LMDB file entry cache. This might take a while...", LL_WARNING);
+
 	IQuery *q_read=db->Prepare("SELECT shahash, filesize, fullpath, hashpath, created FROM files f WHERE f.created=(SELECT MAX(created) FROM files WHERE shahash=f.shahash AND filesize=f.filesize) ORDER BY shahash ASC, filesize ASC");
 
 	SCallbackData data;
@@ -70,6 +79,12 @@ bool setup_lmdb_files_cache(void)
 	}
 
 	filecache.create(create_callback, &data);
+
+	if(!cache_res.empty())
+	{
+		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->Write("PRAGMA shrink_memory");
+	}
 
 	return true;
 }
