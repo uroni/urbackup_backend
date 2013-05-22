@@ -1,5 +1,6 @@
 #include "../Interface/Database.h"
 #include "../Interface/Types.h"
+#include <memory.h>
 
 class FileCache
 {
