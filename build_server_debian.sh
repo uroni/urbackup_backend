@@ -25,4 +25,4 @@ DEBVERSION="${VERSION}-1"
 sed -i "0,/urbackup-server \(.*\)(.*)/s//urbackup-server \($VERSION\)\1/" debian/changelog
 
 dh clean
-dh binary
+fakeroot dh binary
