@@ -74,7 +74,7 @@ print_help()
 
 print_version()
 {
-	echo "UrBackup Server v1.1"
+	echo "UrBackup Server v1.2.2"
 	echo "Copyright (C) 2011-2013 Martin Raiber"
 	echo "This is free software; see the source for copying conditions. There is NO"
 	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -110,6 +110,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--cleanup) CLEANUP="--app cleanup --cleanup_amount $2"; shift 2;;
 			--remove_unknown) CLEANUP="--app remove_unknown"; shift ;;
 			--cleanup_database) CLEANUP="--app cleanup_database"; shift ;;
+			--repair_database) CLEANUP="--app repair_database"; shift ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac

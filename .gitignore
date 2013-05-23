@@ -186,3 +186,4 @@ SQLGen/SQLGen.sdf
 SQLGen/SQLGen.suo
 *.sqlgenbackup
 urbackup/backup_server_files_cache.lmdb*
+urbackup/backup/*
