@@ -10,7 +10,7 @@
 #include "../database.h"
 #include <stdlib.h>
 
-void open_server_database(bool &use_berkeleydb);
+void open_server_database(bool &use_berkeleydb, bool init_db);
 void open_settings_database(bool use_berkeleydb);
 
 int64 cleanup_amount(std::string cleanup_pc, IDatabase *db)
@@ -73,7 +73,7 @@ int cleanup_cmd(void)
 
 	Server->Log("Opening urbackup server database...", LL_INFO);
 	bool use_bdb;
-	open_server_database(use_bdb);
+	open_server_database(use_bdb, true);
 	open_settings_database(use_bdb);
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -162,7 +162,7 @@ int cleanup_database(void)
 
 	Server->Log("Opening urbackup server database...", LL_INFO);
 	bool use_bdb;
-	open_server_database(use_bdb);
+	open_server_database(use_bdb, true);
 	open_settings_database(use_bdb);
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
