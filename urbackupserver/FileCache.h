@@ -32,6 +32,28 @@ public:
 			memcpy(hash, thash, 64);
 		}
 
+		SCacheKey(void)
+			: filesize(-1)
+		{
+			memset(hash, 0, 64);
+		}
+
+		void operator=(const SCacheKey& other)
+		{
+			memcpy(hash, other.hash, 64);
+			filesize=other.filesize;
+		}
+
+		bool operator==(const SCacheKey& other) const
+		{
+			return memcmp(hash, other.hash, 64)==0 && filesize==other.filesize;
+		}
+
+		bool operator!=(const SCacheKey& other) const
+		{
+			return !(*this==other);
+		}
+
 		char hash[64];
 		int64 filesize;
 	};

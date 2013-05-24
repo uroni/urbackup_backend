@@ -190,3 +190,4 @@ urbackupserver_installer_win/data/urbackup_prevista.dll
 urbackup/backup_server_files_cache.lmdb*
 *.sqlgenbackup
 urbackup/backup_server_files_cache.lmdb*
+urbackup/backup/*

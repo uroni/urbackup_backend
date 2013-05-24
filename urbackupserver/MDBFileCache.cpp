@@ -83,6 +83,7 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 
 	size_t n_done=0;
 
+	SCacheKey last;
 	db_results res;
 	do
 	{
@@ -93,6 +94,12 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 			const std::wstring& shahash=res[i][L"shahash"];
 			SCacheKey key(reinterpret_cast<const char*>(shahash.c_str()), watoi64(res[i][L"filesize"]));
 
+			if(key==last)
+			{
+				continue;
+			}
+
+			last=key;
 			
 			CWData value;
 			value.addString(Server->ConvertToUTF8(res[i][L"fullpath"]));
@@ -118,7 +125,7 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 
 			int rc = mdb_put(txn, dbi, &mdb_tkey, &mdb_tvalue, MDB_APPEND);
 
-			if(rc && rc!=MDB_KEYEXIST)
+			if(rc)
 			{
 				Server->Log("LMDB: Failed to put data ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 				_has_error=true;

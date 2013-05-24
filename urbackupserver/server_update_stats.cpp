@@ -30,8 +30,8 @@ void ServerUpdateStats::createQueries(void)
 {
 	q_get_images=db->Prepare("SELECT id,clientid,path FROM backup_images WHERE complete=1 AND running<datetime('now','-300 seconds')", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=? WHERE id=?", false);
-	q_get_ncount_files=db->Prepare("SELECT rowid AS id, shahash, filesize, rsize, clientid, backupid FROM files WHERE did_count=0 LIMIT 10000", false);
-	q_get_ncount_files_num=db->Prepare("SELECT count(*) AS c FROM files WHERE did_count=0", false);
+	q_get_ncount_files=db->Prepare("SELECT rowid AS id, shahash, filesize, rsize, clientid, backupid FROM files INDEXED BY files_did_count WHERE did_count=0 LIMIT 10000", false);
+	q_get_ncount_files_num=db->Prepare("SELECT count(*) AS c FROM files INDEXED BY files_did_count WHERE did_count=0", false);
 	q_has_client=db->Prepare("SELECT count(*) AS c FROM files WHERE shahash=? AND filesize=? AND clientid=?", false);
 	q_has_client_del=db->Prepare("SELECT count(*) AS c FROM files_del WHERE shahash=? AND filesize=? AND clientid=?", false);
 	q_mark_done=db->Prepare("UPDATE files SET did_count=1 WHERE rowid=?", false);
