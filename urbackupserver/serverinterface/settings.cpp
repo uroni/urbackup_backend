@@ -41,6 +41,7 @@ std::vector<std::wstring> getMailSettingsList(void)
 	tmp.push_back(L"mail_from");
 	tmp.push_back(L"mail_ssl_only");
 	tmp.push_back(L"mail_check_certificate");
+	tmp.push_back(L"mail_admin_addrs");
 	return tmp;
 }
 
@@ -83,6 +84,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(internet_image_backups);
 	SET_SETTING(internet_full_file_backups);
 	SET_SETTING(silent_update);
+	SET_SETTING(client_quota);
 #undef SET_SETTING
 	return ret;
 }

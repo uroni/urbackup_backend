@@ -40,6 +40,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"internet_compress");
 	ret.push_back(L"internet_mode_enabled");
 	ret.push_back(L"silent_update");
+	ret.push_back(L"client_quota");
 	return ret;
 }
 

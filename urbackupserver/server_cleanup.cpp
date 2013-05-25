@@ -195,7 +195,9 @@ void ServerCleanupThread::operator()(void)
 				cleanupdao=new ServerCleanupDAO(db);
 
 				deletePendingClients();
-				do_cleanup();				
+				do_cleanup();
+
+				enforce_quotas();
 
 				delete cleanupdao; cleanupdao=NULL;
 
@@ -506,6 +508,115 @@ bool ServerCleanupThread::deleteImage(std::wstring path)
 	return b;
 }
 
+bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids)
+{
+	ServerSettings settings(db, clientid);
+
+	int max_image_full=settings.getSettings()->max_image_full;
+	if(minspace!=-1)
+	{
+		max_image_full=settings.getSettings()->min_image_full;
+	}
+
+	std::vector<int> notit;
+
+	int backupid;
+	int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
+	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_image_num)+" full image backups max="+nconvert(max_image_full), LL_DEBUG);
+	while(full_image_num>max_image_full)
+	{
+		ServerCleanupDAO::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
+		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		if(clientname.exists && res_info.exists)
+		{
+			Server->Log(L"Deleting full image backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L", letter="+res_info.letter+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+		}
+
+		if(!findUncompleteImageRef(backupid) )
+		{
+			std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
+			int64 corr=0;
+			for(size_t i=0;i<assoc.size();++i)
+			{
+				int64 is=getImageSize(assoc[i]);
+				if(is!=-1) corr+=is;
+				removeImage(assoc[i], false);
+			}
+			if(!removeImage(backupid, true, corr))
+			{
+				notit.push_back(backupid);
+			}
+			else
+			{
+				imageids.push_back(backupid);
+			}
+				
+		}
+		else
+		{
+			Server->Log("Backup image has dependant image which is not complete");
+			notit.push_back(backupid);
+		}
+
+		int r=hasEnoughFreeSpace(minspace, &settings);
+		if( r==-1 || r==1 )
+			return true;
+				
+		full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
+	}
+
+	notit.clear();
+
+	int max_image_incr=settings.getSettings()->max_image_incr;
+	if(minspace!=-1)
+		max_image_incr=settings.getSettings()->min_image_incr;
+
+	int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
+	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_image_num)+" incremental image backups max="+nconvert(max_image_incr), LL_DEBUG);
+	while(incr_image_num>max_image_incr)
+	{
+		ServerCleanupDAO::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
+		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		if(clientname.exists && res_info.exists)
+		{
+			Server->Log(L"Deleting incremental image backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L", letter="+res_info.letter+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+		}
+
+		if(!findUncompleteImageRef(backupid) )
+		{
+			std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
+			int64 corr=0;
+			for(size_t i=0;i<assoc.size();++i)
+			{
+				int64 is=getImageSize(assoc[i]);
+				if(is!=-1) corr+=is;
+				removeImage(assoc[i], false);
+			}
+			if(!removeImage(backupid, true, corr))
+			{
+				notit.push_back(backupid);
+			}
+			else
+			{
+				imageids.push_back(backupid);
+			}
+		}
+		else
+		{
+			Server->Log("Backup image has dependant image which is not complete");
+			notit.push_back(backupid);
+		}
+
+		int r=hasEnoughFreeSpace(minspace, &settings);
+		if( r==-1 || r==1 )
+			return true;
+				
+		incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
+	}
+
+	return false;
+}
+
 void ServerCleanupThread::cleanup_images(int64 minspace)
 {
 	std::vector<ServerCleanupDAO::SIncompleteImages> incomplete_images=cleanupdao->getIncompleteImages();
@@ -530,100 +641,14 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	for(size_t i=0;i<res.size();++i)
 	{
 		int clientid=res[i];
-		ServerSettings settings(db, clientid);
-
-		int max_image_full=settings.getSettings()->max_image_full;
-		if(minspace!=-1)
+		
+		std::vector<int> imageids;
+		if(cleanup_images_client(clientid, minspace, imageids))
 		{
-			max_image_full=settings.getSettings()->min_image_full;
-		}
-
-		std::vector<int> notit;
-
-		int backupid;
-		int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
-		Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_image_num)+" full image backups max="+nconvert(max_image_full), LL_DEBUG);
-		while(full_image_num>max_image_full)
-		{
-			ServerCleanupDAO::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
-			ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
-			if(clientname.exists && res_info.exists)
+			if(minspace!=-1)
 			{
-				Server->Log(L"Deleting full image backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L", letter="+res_info.letter+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
-			}
-
-			if(!findUncompleteImageRef(backupid) )
-			{
-				std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
-				int64 corr=0;
-				for(size_t i=0;i<assoc.size();++i)
-				{
-					int64 is=getImageSize(assoc[i]);
-					if(is!=-1) corr+=is;
-					removeImage(assoc[i], false);
-				}
-				if(!removeImage(backupid, true, corr))
-				{
-					notit.push_back(backupid);
-				}
-				
-			}
-			else
-			{
-				Server->Log("Backup image has dependant image which is not complete");
-				notit.push_back(backupid);
-			}
-
-			int r=hasEnoughFreeSpace(minspace, &settings);
-			if( r==-1 || r==1 )
 				return;
-				
-			full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
-		}
-
-		notit.clear();
-
-		int max_image_incr=settings.getSettings()->max_image_incr;
-		if(minspace!=-1)
-			max_image_incr=settings.getSettings()->min_image_incr;
-
-		int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
-		Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_image_num)+" incremental image backups max="+nconvert(max_image_incr), LL_DEBUG);
-		while(incr_image_num>max_image_incr)
-		{
-			ServerCleanupDAO::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
-			ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
-			if(clientname.exists && res_info.exists)
-			{
-				Server->Log(L"Deleting incremental image backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L", letter="+res_info.letter+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
 			}
-
-			if(!findUncompleteImageRef(backupid) )
-			{
-				std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
-				int64 corr=0;
-				for(size_t i=0;i<assoc.size();++i)
-				{
-					int64 is=getImageSize(assoc[i]);
-					if(is!=-1) corr+=is;
-					removeImage(assoc[i], false);
-				}
-				if(!removeImage(backupid, true, corr))
-				{
-					notit.push_back(backupid);
-				}
-			}
-			else
-			{
-				Server->Log("Backup image has dependant image which is not complete");
-				notit.push_back(backupid);
-			}
-
-			int r=hasEnoughFreeSpace(minspace, &settings);
-			if( r==-1 || r==1 )
-				return;
-				
-			incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
 		}
 	}
 }
@@ -746,14 +771,77 @@ size_t ServerCleanupThread::getImagesIncrNum(int clientid, int &backupid_top, co
 	return max_nimages;
 }
 
+bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 minspace, int& filebid)
+{
+	ServerSettings settings(db, clientid);
+
+	int max_file_full=settings.getSettings()->max_file_full;
+	int max_file_incr=settings.getSettings()->max_file_incr;
+	if(minspace!=-1)
+	{
+		max_file_full=settings.getSettings()->min_file_full;
+		max_file_incr=settings.getSettings()->min_file_incr;
+	}
+
+	int backupid;
+	int full_file_num=(int)getFilesFullNum(clientid, backupid);
+	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_file_num)+" full file backups max="+nconvert(max_file_full), LL_DEBUG);
+	while(full_file_num>max_file_full )
+	{
+		ServerCleanupDAO::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
+		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		if(clientname.exists && res_info.exists)
+		{
+			Server->Log(L"Deleting full file backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+		}
+		bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+		filebid=backupid;
+				
+		Server->Log("Done.", LL_INFO);
+
+		if(b)
+		{
+			return true;
+        }
+        			
+        full_file_num=(int)getFilesFullNum(clientid, backupid);
+	}
+
+	int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
+	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_file_num)+" incremental file backups max="+nconvert(max_file_incr), LL_DEBUG);
+	while(incr_file_num>max_file_incr )
+	{
+		ServerCleanupDAO::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
+		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		if(clientname.exists && res_info.exists)
+		{
+			Server->Log(L"Deleting incremental file backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+		}
+		bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+		filebid=backupid;
+
+		Server->Log("Done.", LL_INFO);
+
+		if(b)
+		{
+			return true;
+		}
+		incr_file_num=(int)getFilesIncrNum(clientid, backupid);
+	}
+
+	return false;
+}
+
 void ServerCleanupThread::cleanup_files(int64 minspace)
 {
+	ServerSettings settings(db);
+
 	bool deleted_something=true;
 	while(deleted_something)
 	{
 		deleted_something=false;
-		{
-			ServerSettings settings(db);
+
+		{			
 			int r=hasEnoughFreeSpace(minspace, &settings);
 			if( r==-1 || r==1 )
 					return;
@@ -762,80 +850,18 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 		std::vector<int> res=cleanupdao->getClientsSortFilebackups();
 		for(size_t i=0;i<res.size();++i)
 		{
-			bool deleted_something_client=false;
-
 			int clientid=res[i];
-			ServerSettings settings(db, clientid);
-
-			int max_file_full=settings.getSettings()->max_file_full;
-			int max_file_incr=settings.getSettings()->max_file_incr;
-			if(minspace!=-1)
+			
+			int filebid;
+			if(cleanup_one_filebackup_client(clientid, minspace, filebid))
 			{
-				max_file_full=settings.getSettings()->min_file_full;
-				max_file_incr=settings.getSettings()->min_file_incr;
-			}
-
-			int backupid;
-			int full_file_num=(int)getFilesFullNum(clientid, backupid);
-			Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_file_num)+" full file backups max="+nconvert(max_file_full), LL_DEBUG);
-			while(full_file_num>max_file_full )
-			{
-				ServerCleanupDAO::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
-				ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
-				if(clientname.exists && res_info.exists)
-				{
-					Server->Log(L"Deleting full file backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
-				}
-				bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
-				
-				Server->Log("Done.", LL_INFO);
-
+				ServerSettings settings(db);
 				int r=hasEnoughFreeSpace(minspace, &settings);
 				if( r==-1 || r==1 )
-					return;
+						return;
 
-				if(b)
-				{
-					deleted_something_client=true;
-        			deleted_something=true;
-        			break;
-        		}
-        			
-        		full_file_num=(int)getFilesFullNum(clientid, backupid);
+				deleted_something=true;
 			}
-
-			if(deleted_something_client==true)
-				continue;
-
-			int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
-			Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_file_num)+" icremental file backups max="+nconvert(max_file_incr), LL_DEBUG);
-			while(incr_file_num>max_file_incr )
-			{
-				ServerCleanupDAO::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
-				ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
-				if(clientname.exists && res_info.exists)
-				{
-					Server->Log(L"Deleting incremental file backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
-				}
-				bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
-				
-				Server->Log("Done.", LL_INFO);
-
-				int r=hasEnoughFreeSpace(minspace, &settings);
-				if( r==-1 || r==1 )
-					return;
-
-				if(b)
-				{
-					deleted_something_client=true;
-					deleted_something=true;
-					break;
-				}
-				incr_file_num=(int)getFilesIncrNum(clientid, backupid);
-			}
-
-			if(deleted_something_client==true)
-				continue;
 		}
 	}
 
@@ -1198,7 +1224,146 @@ void ServerCleanupThread::removeUnknown(void)
 
 void ServerCleanupThread::enforce_quotas(void)
 {
+	db_results cache_res;
+	if(db->getEngineName()=="sqlite")
+	{
+		cache_res=db->Read("PRAGMA cache_size");
+		ServerSettings server_settings(db);
+		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+	}
 
+	std::vector<ServerCleanupDAO::SClientInfo> clients=cleanupdao->getClients();
+
+	for(size_t i=0;i<clients.size();++i)
+	{
+		Server->Log("Enforcing quota for client \"" + Server->ConvertToUTF8(clients[i].name)+ "\" (id="+nconvert(clients[i].id)+")", LL_INFO);
+		std::ostringstream log;
+		log << "Quota enforcement report for client \"" << Server->ConvertToUTF8(clients[i].name) << "\" (id=" << clients[i].id  << ")" << std::endl;
+
+		if(!enforce_quota(clients[i].id, log))
+		{
+			BackupServerGet::sendMailToAdmins("Quota enforcement failed", log.str());
+			Server->Log(log.str(), LL_ERROR);
+		}
+		else
+		{
+			Server->Log(log.str(), LL_DEBUG);
+		}
+	}
+
+	if(!cache_res.empty())
+	{
+		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->Write("PRAGMA shrink_memory");
+	}
 }
+
+bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
+{
+	ServerSettings client_settings(db, clientid);
+
+	if(client_settings.getSettings()->client_quota.empty())
+	{
+		log << "Client does not have a quota" << std::endl;
+		return true;
+	}
+
+	bool did_remove_something=false;
+	do
+	{
+		ServerCleanupDAO::CondInt64 used_storage=cleanupdao->getUsedStorage(clientid);
+		if(!used_storage.exists || used_storage.value<0)
+		{
+			log << "Error getting used storage of client" << std::endl;
+			return false;
+		}
+
+		int64 client_quota=cleanup_amount(client_settings.getSettings()->client_quota, db);
+
+		log << "Client uses " << PrettyPrintBytes(used_storage.value) << " and has a quota of " << PrettyPrintBytes(client_quota) << std::endl;
+
+		if(used_storage.value<=client_quota)
+		{		
+			log << "Client within assigned quota." << std::endl;
+			return true;
+		}
+		else
+		{
+			log << "This requires enforcement of the quota." << std::endl;
+		}
+
+		int state=0;
+		int nopc=0;
+		while(used_storage.value>client_quota && nopc<2)
+		{
+			std::wstring path=client_settings.getSettings()->backupfolder;
+			int64 available_space=os_free_space(os_file_prefix(path));
+
+			if(available_space==-1)
+			{
+				log << "Error getting free space -5" << std::endl;
+				return false;
+			}
+
+			int64 space_to_free=used_storage.value-client_quota;
+
+			int64 target_space=available_space-space_to_free;
+
+			if(target_space<0)
+			{
+				log << "Error. Target space is negative" << std::endl;
+				return false;
+			}
+
+			if(state==0)
+			{
+				std::vector<int> imageids;
+				if(cleanup_images_client(clientid, target_space, imageids))
+				{
+					log << "Removed " << imageids.size() << " images with ids ";
+					for(size_t i=0;i<imageids.size();++i) log << imageids[i];
+					log << std::endl;
+
+					did_remove_something=true;
+					break;
+				}
+				else
+				{
+					++nopc;
+				}
+			}
+			else
+			{
+				int filebid;
+				if(cleanup_one_filebackup_client(clientid, target_space, filebid))
+				{
+					log << "Removed file backup with id " << filebid << std::endl;
+
+					did_remove_something=true;
+					nopc=0;
+					if(hasEnoughFreeSpace(target_space, &client_settings))
+					{
+						break;
+					}
+				}
+				else
+				{
+					++nopc;
+				}
+			}
+			state=(state+1)%2;
+		}
+
+		if(did_remove_something)
+		{
+			ServerUpdateStats sus(false, false);
+			sus();
+		}
+	}
+	while(did_remove_something);
+
+	return false;
+}
+
 
 #endif //CLIENT_ONLY

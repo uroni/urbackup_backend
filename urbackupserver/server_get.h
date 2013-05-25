@@ -52,6 +52,7 @@ public:
 
 	static bool isInBackupWindow(std::vector<STimeSpan> bw);
 	static MailServer getMailServerSettings(void);
+	static bool sendMailToAdmins(const std::string& subj, const std::string& message);
 
 	static int getNumberOfRunningBackups(void);
 	static int getNumberOfRunningFileBackups(void);

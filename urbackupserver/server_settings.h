@@ -76,6 +76,7 @@ struct SSettings
 	std::string filescache_type;
 	int64 filescache_size;
 	int suspend_index_limit;
+	std::string client_quota;
 };
 
 struct STimeSpan

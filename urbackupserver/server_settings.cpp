@@ -193,6 +193,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.filescache_type=settings_default->getValue("filescache_type", "none");
 	settings.filescache_size=watoi64(settings_default->getValue(L"filescache_size", L"68719476736")); //64GB
 	settings.suspend_index_limit=settings_default->getValue("suspend_index_limit", 100000);
+	settings.client_quota=settings_default->getValue("client_quota", "100%");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -269,6 +270,9 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("local_speed", "");
 	if(!stmp.empty())
 		settings.local_speed=atoi(stmp.c_str());
+	stmp=settings_client->getValue("client_quota", "");
+	if(!stmp.empty())
+		settings.client_quota=stmp;
 
 	readBoolClientSetting("client_set_settings", &settings.client_set_settings);
 	readBoolClientSetting("internet_mode_enabled", &settings.internet_mode_enabled);

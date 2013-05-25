@@ -90,6 +90,7 @@ public:
 	std::vector<SImageBackupInfo> getImageBackupsOfClient(int clientid);
 	CondInt findFileBackup(int clientid, const std::wstring& path);
 	void removeDanglingFiles(void);
+	CondInt64 getUsedStorage(int clientid);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -128,5 +129,6 @@ private:
 	IQuery* q_getImageBackupsOfClient;
 	IQuery* q_findFileBackup;
 	IQuery* q_removeDanglingFiles;
+	IQuery* q_getUsedStorage;
 	//@-SQLGenVariablesEnd
 };

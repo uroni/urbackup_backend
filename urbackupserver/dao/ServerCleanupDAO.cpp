@@ -647,6 +647,31 @@ void ServerCleanupDAO::removeDanglingFiles(void)
 	q_removeDanglingFiles->Write();
 }
 
+/**
+* @-SQLGenAccess
+* @func int64 ServerCleanupDAO::getUsedStorage
+* @return int64 used_storage
+* @sql
+*	SELECT (bytes_used_files+bytes_used_images) AS used_storage FROM clients WHERE id=:clientid(int)
+*/
+ServerCleanupDAO::CondInt64 ServerCleanupDAO::getUsedStorage(int clientid)
+{
+	q_getUsedStorage->Bind(clientid);
+	db_results res=q_getUsedStorage->Read();
+	q_getUsedStorage->Reset();
+	CondInt64 ret;
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"used_storage"]);
+	}
+	else
+	{
+		ret.exists=false;
+	}
+	return ret;
+}
+
 
 
 //@-SQLGenSetup
@@ -681,6 +706,7 @@ void ServerCleanupDAO::createQueries(void)
 	q_getImageBackupsOfClient=db->Prepare("SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=?", false);
 	q_findFileBackup=db->Prepare("SELECT id FROM backups WHERE clientid=? AND path=?", false);
 	q_removeDanglingFiles=db->Prepare("DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)", false);
+	q_getUsedStorage=db->Prepare("SELECT (bytes_used_files+bytes_used_images) AS used_storage FROM clients WHERE id=?", false);
 }
 
 //@-SQLGenDestruction
@@ -715,4 +741,5 @@ void ServerCleanupDAO::destroyQueries(void)
 	db->destroyQuery(q_getImageBackupsOfClient);
 	db->destroyQuery(q_findFileBackup);
 	db->destroyQuery(q_removeDanglingFiles);
+	db->destroyQuery(q_getUsedStorage);
 }

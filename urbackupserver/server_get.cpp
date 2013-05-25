@@ -640,6 +640,7 @@ void BackupServerGet::operator ()(void)
 					r_success=false;
 
 					ServerLogger::Log(clientid, "FATAL: Backup failed because of disk problems", LL_ERROR);
+					sendMailToAdmins("Fatal error occured during backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 				}
 			}
 
@@ -2304,6 +2305,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		else
 		{
 			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
+			sendMailToAdmins("Fatal error occured during incremental file backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 		}
 	}
 	else if(!c_has_error && !disk_error)
@@ -2317,6 +2319,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	else
 	{
 		ServerLogger::Log(clientid, "Fatal error during backup. Backup not completed", LL_ERROR);
+		sendMailToAdmins("Fatal error occured during incremental file backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 	}
 
 	running_updater->stop();
@@ -3155,7 +3158,30 @@ MailServer BackupServerGet::getMailServerSettings(void)
 	return ms;
 }
 
+bool BackupServerGet::sendMailToAdmins(const std::string& subj, const std::string& message)
+{
+	MailServer mail_server=getMailServerSettings();
+	if(mail_server.servername.empty())
+		return false;
 
+	if(url_fak==NULL)
+		return false;
+
+	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), "settings_db.settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
+	std::string admin_addrs_str=settings->getValue("mail_admin_addrs", "");
+
+	std::vector<std::string> admin_addrs;
+	Tokenize(admin_addrs_str, admin_addrs, ";,");
+
+	std::string errmsg;
+	bool b=url_fak->sendMail(mail_server, admin_addrs, "[UrBackup] "+subj, message, &errmsg);
+	if(!b)
+	{
+		Server->Log("Sending mail failed. "+errmsg, LL_WARNING);	
+		return false;
+	}
+	return true;
+}
 
 std::string BackupServerGet::getMBR(const std::wstring &dl)
 {
@@ -3746,6 +3772,7 @@ bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
 		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
 			ServerLogger::Log(clientid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			sendMailToAdmins("Fatal error occured during backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 			return false;
 		}
 	}

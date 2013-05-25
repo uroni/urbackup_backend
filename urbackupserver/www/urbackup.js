@@ -1496,7 +1496,8 @@ g.settings_list=[
 "internet_encrypt",
 "internet_compress",
 "internet_mode_enabled",
-"silent_update"
+"silent_update",
+"client_quota"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -1535,7 +1536,8 @@ g.mail_settings_list=[
 "mail_password",
 "mail_from",
 "mail_ssl_only",
-"mail_check_certificate"
+"mail_check_certificate",
+"mail_admin_addrs"
 ];
 g.internet_settings_list=[
 "internet_server",

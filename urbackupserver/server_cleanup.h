@@ -5,6 +5,7 @@
 #include "../Interface/Condition.h"
 #include <vector>
 #include "dao/ServerCleanupDAO.h"
+#include <sstream>
 
 class ServerSettings;
 
@@ -81,8 +82,13 @@ private:
 
 	void do_remove(void);
 
+	bool cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids);
+
 	void cleanup_images(int64 minspace=-1);
+
 	void cleanup_files(int64 minspace=-1);
+
+	bool cleanup_one_filebackup_client(int clientid, int64 minspace, int& filebid);
 
 	size_t getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit);
 	size_t getImagesIncrNum(int clientid, int &backupid_top, const std::vector<int> &notit);
@@ -110,6 +116,8 @@ private:
 	bool truncate_files_recurisve(std::wstring path);
 
 	void enforce_quotas(void);
+
+	bool enforce_quota(int clientid, std::ostringstream& log);
 
 	IDatabase *db;
 
