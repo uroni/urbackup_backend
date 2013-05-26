@@ -157,6 +157,7 @@ private:
 	void CMD_CLIENT_UPDATE(const std::string &cmd);
 	void CMD_CAPA(const std::string &cmd);
 	void CMD_NEW_SERVER(str_map &params);
+	void CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd);
 
 	IPipe *pipe;
 	IPipe *mempipe;
@@ -190,6 +191,7 @@ private:
 	static int last_capa;
 	static IMutex *ident_mutex;
 	static std::vector<std::string> new_server_idents;
+	static bool end_to_end_file_backup_verification_enabled;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;
@@ -205,4 +207,6 @@ private:
 	std::vector<IPipe*> contractors;
 
 	bool internet_conn;
+
+	
 };

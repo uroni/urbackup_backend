@@ -76,6 +76,7 @@ std::map<std::string, unsigned int> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
+bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -754,6 +755,10 @@ void ClientConnector::ReceivePackets(void)
 			else if(next(cmd, 0, "CAPA") )
 			{
 				CMD_CAPA(cmd); continue;
+			}
+			else if( cmd=="ENABLE END TO END FILE BACKUP VERIFICATION")
+			{
+				CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(cmd); continue;
 			}
 		}
 		if(pw_ok) //Commands from client frontend

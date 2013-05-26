@@ -1179,6 +1179,7 @@ function show_settings2(data)
 			data.settings.internet_encrypt=getCheckboxValue(data.settings.internet_encrypt);
 			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
 			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
+			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1282,6 +1283,17 @@ function show_settings2(data)
 			data.settings.internet_encrypt=getCheckboxValue(data.settings.internet_encrypt);
 			data.settings.internet_compress=getCheckboxValue(data.settings.internet_compress);
 			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
+			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
+			
+			var transfer_mode_params1=["raw", "hashed"];
+			var transfer_mode_params2=["raw", "hashed", "blockhash"];
+			
+			data.settings=addSelectSelected(transfer_mode_params1, "local_full_file_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params1, "internet_full_file_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params2, "local_incr_file_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params2, "internet_incr_file_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
+			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 						
 			if(data.settings.update_freq_image_full<0)
 				data.settings.update_freq_image_full*=-1;
@@ -1296,6 +1308,8 @@ function show_settings2(data)
 			else data.settings.local_speed/=(1024*1024)/8;
 			if(data.settings.internet_speed==-1) data.settings.internet_speed="-";
 			else data.settings.internet_speed/=1024/8;
+			
+			data.settings.file_hash_collect_cachesize/=1024;
 			
 			data.settings.no_compname_start="";
 			data.settings.no_compname_end="";
@@ -1497,7 +1511,17 @@ g.settings_list=[
 "internet_compress",
 "internet_mode_enabled",
 "silent_update",
-"client_quota"
+"client_quota",
+"end_to_end_file_backup_verification",
+"local_full_file_transfer_mode",
+"internet_full_file_transfer_mode",
+"local_incr_file_transfer_mode",
+"internet_incr_file_transfer_mode",
+"local_image_transfer_mode",
+"internet_image_transfer_mode",
+"file_hash_collect_amount",
+"file_hash_collect_timeout",
+"file_hash_collect_cachesize"
 ];
 g.general_settings_list=[
 "backupfolder",
@@ -1514,15 +1538,6 @@ g.general_settings_list=[
 "global_internet_speed",
 "use_tmpfiles",
 "use_tmpfiles_images",
-"local_full_file_transfer_mode",
-"internet_full_file_transfer_mode",
-"local_incr_file_transfer_mode",
-"internet_incr_file_transfer_mode",
-"local_image_transfer_mode",
-"internet_image_transfer_mode",
-"file_hash_collect_amount",
-"file_hash_collect_timeout",
-"file_hash_collect_cachesize",
 "update_stats_cachesize",
 "global_soft_fs_quota",
 "filescache_type",

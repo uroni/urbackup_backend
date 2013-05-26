@@ -140,6 +140,8 @@ private:
 
 	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
 
+	std::string getSHA256(const std::wstring& fn);
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
@@ -182,4 +184,6 @@ private:
 
 	std::vector< std::pair<std::wstring, std::vector<SFile> > > modify_file_buffer;
 	size_t modify_file_buffer_size;
+
+	int end_to_end_file_backup_verification_enabled;
 };

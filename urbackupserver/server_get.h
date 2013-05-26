@@ -126,7 +126,7 @@ private:
 	std::wstring constructImagePath(const std::wstring &letter);
 	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
 	void resetEntryState(void);
-	bool getNextEntry(char ch, SFile &data);
+	bool getNextEntry(char ch, SFile &data, std::map<std::wstring, std::wstring>* extra);
 	static std::string remLeadingZeros(std::string t);
 	bool updateCapabilities(void);
 
@@ -147,6 +147,10 @@ private:
 	void cleanup_pipes(void);
 
 	void update_sql_intervals(bool update_sql);
+
+	bool verify_file_backup(IFile *fileentries);
+
+	std::string getSHA256(const std::wstring& fn);
 
 	SSettings curr_intervals;
 

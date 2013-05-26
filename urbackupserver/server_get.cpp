@@ -15,9 +15,6 @@
 *    You should have received a copy of the GNU General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
-#ifndef CLIENT_ONLY
-
 #include "server_get.h"
 #include "server_ping.h"
 #include "database.h"
@@ -220,30 +217,6 @@ void BackupServerGet::operator ()(void)
 		delete this;
 		return;
 	}
-
-	//TEst----------------------------------
-	/*CopyFileA("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll", "D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll", false);
-	IFile *tfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44.dll");
-	IFile *old_tfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll");
-	IFile *hashfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll.hash", MODE_RW);
-	std::string hash=BackupServerPrepareHash::build_chunk_hashs(old_tfile, hashfile, NULL, false, NULL);
-
-	IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, 10000);
-	CTCPStack stack(internet_connection);
-	FileClientChunked fctest(cp, &stack);
-	IFile *outputfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll", MODE_RW);
-	IFile *hashoutput=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll.hashoutput", MODE_WRITE);
-	_u32 rc=fctest.GetFileChunked("urbackup/boost_python-vc100-gd-1_44.dll", outputfile, hashfile, hashoutput);
-	std::wstring fname=outputfile->getFilenameW();
-	Server->destroy(outputfile);
-	if(rc==ERR_SUCCESS)
-	{
-		os_file_truncate(fname, fctest.getSize());
-	}
-	Server->Log("Return code: "+nconvert(rc));
-	return;*/
-	//End Test------------------------------
-
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
@@ -1078,7 +1051,7 @@ void BackupServerGet::saveImageAssociation(int image_id, int assoc_id)
 	q_save_image_assoc->Reset();
 }
 
-bool BackupServerGet::getNextEntry(char ch, SFile &data)
+bool BackupServerGet::getNextEntry(char ch, SFile &data, std::map<std::wstring, std::wstring>* extra)
 {
 	switch(state)
 	{
@@ -1130,13 +1103,36 @@ bool BackupServerGet::getNextEntry(char ch, SFile &data)
 		}
 		break;
 	case 5:
-		if(ch!='\n')
+		if(ch!='\n' && ch!='#')
 		{
 			t_name+=ch;
 		}
 		else
 		{
 			data.last_modified=os_atoi64(t_name);
+			if(ch=='\n')
+			{
+				resetEntryState();
+				return true;
+			}
+			else
+			{
+				t_name="";
+				state=6;
+			}
+		}
+		break;
+	case 6:
+		if(ch!='\n')
+		{
+			t_name+=ch;
+		}
+		else
+		{
+			if(extra!=NULL)
+			{
+				ParseParamStr(t_name, extra, false);
+			}
 			resetEntryState();
 			return true;
 		}
@@ -1153,6 +1149,11 @@ void BackupServerGet::resetEntryState(void)
 
 bool BackupServerGet::request_filelist_construct(bool full, bool with_token, bool *no_backup_dirs)
 {
+	if(server_settings->getSettings()->end_to_end_file_backup_verification)
+	{
+		sendClientMessage("ENABLE END TO END FILE BACKUP VERIFICATION", "OK", L"Enabling end to end file backup verficiation on client failed.", 10000);
+	}
+
 	unsigned int timeout_time=full_backup_construct_timeout;
 	if(file_protocol_version>=2)
 	{
@@ -1172,10 +1173,23 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 	std::string pver="";
 	if(file_protocol_version==2) pver="2";
 
+	std::string start_backup_cmd=server_identity+pver;
+
 	if(full)
-		tcpstack.Send(cc, server_identity+pver+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
+	{
+		start_backup_cmd+="START FULL BACKUP";
+	}
 	else
-		tcpstack.Send(cc, server_identity+pver+"START BACKUP"+(with_token?("#token="+server_token):""));
+	{
+		start_backup_cmd+="START BACKUP";
+	}
+
+	if(with_token)
+	{
+		start_backup_cmd+="#token="+server_token;
+	}
+
+	tcpstack.Send(cc, start_backup_cmd);
 
 	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
@@ -1389,7 +1403,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				ServerStatus::setServerStatus(status, true);
 			}
 
-			bool b=getNextEntry(buffer[i], cf);
+			bool b=getNextEntry(buffer[i], cf, NULL);
 			if(b)
 			{
 				std::wstring short_name=shortenFilename(cf.name);
@@ -1473,11 +1487,6 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	running_updater->stop();
 	updateRunning(false);
 	Server->destroy(clientlist);
-	{
-		std::wstring tmp_fn=tmp->getFilenameW();
-		Server->destroy(tmp);
-		Server->deleteFile(os_file_prefix(tmp_fn));
-	}
 
 	waitForFileThreads();
 
@@ -1511,6 +1520,18 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		currdir+=os_file_sep()+clientname;
 		Server->deleteFile(os_file_prefix(currdir));
 		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
+
+		if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
+		{
+			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+			c_has_error=true;
+		}
+	}
+
+	{
+		std::wstring tmp_fn=tmp->getFilenameW();
+		Server->destroy(tmp);
+		Server->deleteFile(os_file_prefix(tmp_fn));
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
@@ -1708,7 +1729,7 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	{
 		for(size_t i=0;i<read;++i)
 		{
-			bool b=getNextEntry(buffer[i], cf);
+			bool b=getNextEntry(buffer[i], cf, NULL);
 			if(b)
 			{
 				if(cf.isdir==true)
@@ -2027,7 +2048,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 		for(size_t i=0;i<read;++i)
 		{
-			bool b=getNextEntry(buffer[i], cf);
+			bool b=getNextEntry(buffer[i], cf, NULL);
 			if(b)
 			{
 				unsigned int ctime=Server->getTimeMS();
@@ -2279,6 +2300,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 		db->EndTransaction();
 
+		if(b && server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
+		{
+			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+			c_has_error=true;
+		}
+
 		if(b)
 		{
 			Server->Log("Creating symbolic links. -1", LL_DEBUG);
@@ -2402,7 +2429,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 	{
 		for(size_t i=0;i<read;++i)
 		{
-			if(getNextEntry(buffer[i], curr_file))
+			if(getNextEntry(buffer[i], curr_file, NULL))
 			{
 				if(curr_file.isdir)
 				{
@@ -3797,4 +3824,93 @@ void BackupServerGet::update_sql_intervals(bool update_sql)
 	curr_intervals=*settings;
 }
 
-#endif //CLIENT_ONLY
+bool BackupServerGet::verify_file_backup(IFile *fileentries)
+{
+	bool verify_ok=true;
+
+	ostringstream log;
+
+	log << "Verification of file backup with id " << backupid << ". Path=" << Server->ConvertToUTF8(backuppath) << std::endl;
+
+	unsigned int read;
+	char buffer[4096];
+	std::wstring curr_path=backuppath;
+	SFile cf;
+	fileentries->Seek(0);
+	resetEntryState();
+	while( (read=fileentries->Read(buffer, 4096))>0 )
+	{
+		for(size_t i=0;i<read;++i)
+		{
+			std::map<std::wstring, std::wstring> extras;
+			bool b=getNextEntry(buffer[i], cf, &extras);
+			if(b)
+			{
+				if( !cf.isdir )
+				{
+					std::string sha256hex=Server->ConvertToUTF8(extras[L"sha256"]);
+
+					if(sha256hex.empty())
+					{
+						std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
+						verify_ok=false;
+						ServerLogger::Log(clientid, msg, LL_ERROR);
+						log << msg << std::endl;
+					}
+					else if(getSHA256(curr_path+os_file_sep()+cf.name)!=sha256hex)
+					{
+						std::string msg="Hashes for \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" differ. Verification failed.";
+						verify_ok=false;
+						ServerLogger::Log(clientid, msg, LL_ERROR);
+						log << msg << std::endl;
+					}
+				}
+				else
+				{
+					if(cf.name==L"..")
+					{
+						curr_path=ExtractFilePath(curr_path);
+					}
+					else
+					{
+						curr_path+=os_file_sep()+cf.name;
+					}
+				}
+			}
+		}
+	}
+
+	if(!verify_ok)
+	{
+		sendMailToAdmins("File backup verification failed", log.str());
+	}
+
+	return verify_ok;
+}
+
+std::string BackupServerGet::getSHA256(const std::wstring& fn)
+{
+	sha256_ctx ctx;
+	sha256_init(&ctx);
+
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+
+	if(f==NULL)
+	{
+		return std::string();
+	}
+
+	char buffer[4096];
+	unsigned int r;
+	while( (r=f->Read(buffer, 4096))>0)
+	{
+		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+	}
+
+	Server->destroy(f);
+
+	unsigned char dig[32];
+	sha256_final(&ctx, dig);
+
+	return bytesToHex(dig, 32);
+}

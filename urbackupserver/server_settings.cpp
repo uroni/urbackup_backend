@@ -18,6 +18,7 @@
 
 #include "../stringtools.h"
 #include "../urbackupcommon/settingslist.h"
+#include "../urbackupcommon/os_functions.h"
 #include <stdlib.h>
 #ifndef CLIENT_ONLY
 
@@ -194,6 +195,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.filescache_size=watoi64(settings_default->getValue(L"filescache_size", L"68719476736")); //64GB
 	settings.suspend_index_limit=settings_default->getValue("suspend_index_limit", 100000);
 	settings.client_quota=settings_default->getValue("client_quota", "100%");
+	settings.end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -274,6 +276,16 @@ void ServerSettings::readSettingsClient(void)
 	if(!stmp.empty())
 		settings.client_quota=stmp;
 
+	readStringClientSetting("local_full_file_transfer_mode", &settings.local_full_file_transfer_mode);
+	readStringClientSetting("internet_full_file_transfer_mode", &settings.internet_full_file_transfer_mode);
+	readStringClientSetting("internet_incr_file_transfer_mode", &settings.internet_incr_file_transfer_mode);
+	readStringClientSetting("local_image_transfer_mode", &settings.local_image_transfer_mode);
+	readStringClientSetting("internet_image_transfer_mode", &settings.internet_image_transfer_mode);
+	readSizeClientSetting("file_hash_collect_amount", &settings.file_hash_collect_amount);
+	readSizeClientSetting("file_hash_collect_timeout", &settings.file_hash_collect_timeout);
+	readSizeClientSetting("file_hash_collect_cachesize", &settings.file_hash_collect_cachesize);
+
+	readBoolClientSetting("end_to_end_file_backup_verification", &settings.end_to_end_file_backup_verification);
 	readBoolClientSetting("client_set_settings", &settings.client_set_settings);
 	readBoolClientSetting("internet_mode_enabled", &settings.internet_mode_enabled);
 	readBoolClientSetting("internet_full_file_backups", &settings.internet_full_file_backups);
@@ -304,6 +316,33 @@ void ServerSettings::readBoolClientSetting(const std::string &name, bool *output
 			*output=true;
 		else if(value=="false")
 			*output=false;
+	}
+}
+
+void ServerSettings::readStringClientSetting(const std::string &name, std::string *output)
+{
+	std::string value;
+	if(settings_client->getValue(name, &value) && !value.empty())
+	{
+		*output=value;
+	}
+}
+
+void ServerSettings::readIntClientSetting(const std::string &name, int *output)
+{
+	std::string value;
+	if(settings_client->getValue(name, &value) && !value.empty())
+	{
+		*output=atoi(value.c_str());
+	}
+}
+
+void ServerSettings::readSizeClientSetting(const std::string &name, size_t *output)
+{
+	std::string value;
+	if(settings_client->getValue(name, &value) && !value.empty())
+	{
+		*output=static_cast<size_t>(os_atoi64(value));
 	}
 }
 

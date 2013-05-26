@@ -72,15 +72,17 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	state=CCSTATE_START_FILEBACKUP;
 
+	IScopedLock lock(backup_mutex);
+
 	CWData data;
 	data.addChar(0);
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
+	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	lasttime=Server->getTimeMS();
 
-	IScopedLock lock(backup_mutex);
 	backup_running=RUNNING_INCR_FILE;
 	last_pingtime=Server->getTimeMS();
 	pcdone=0;
@@ -93,15 +95,17 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	state=CCSTATE_START_FILEBACKUP;
 
+	IScopedLock lock(backup_mutex);
+
 	CWData data;
 	data.addChar(1);
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
+	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	lasttime=Server->getTimeMS();
 
-	IScopedLock lock(backup_mutex);
 	backup_running=RUNNING_FULL_FILE;
 	last_pingtime=Server->getTimeMS();
 	pcdone=0;
@@ -966,4 +970,11 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	{
 		tcpstack.Send(pipe, "FAILED");
 	}
+}
+
+void ClientConnector::CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd)
+{
+	IScopedLock lock(backup_mutex);
+	end_to_end_file_backup_verification_enabled=true;
+	tcpstack.Send(pipe, "OK");
 }

@@ -30,6 +30,7 @@
 #include "database.h"
 #include "ServerIdentityMgr.h"
 #include "ClientService.h"
+#include "../urbackupcommon/sha2/sha2.h"
 #include <algorithm>
 #include <fstream>
 #include <stdlib.h>
@@ -140,6 +141,7 @@ IndexThread::IndexThread(void)
 	}
 
 	modify_file_buffer_size=0;
+	end_to_end_file_backup_verification_enabled=0;
 }
 
 IndexThread::~IndexThread()
@@ -258,6 +260,7 @@ void IndexThread::operator()(void)
 		if(action==0)
 		{
 			data.getStr(&starttoken);
+			data.getInt(&end_to_end_file_backup_verification_enabled);
 
 			//incr backup
 			readBackupDirs();
@@ -328,6 +331,7 @@ void IndexThread::operator()(void)
 		else if(action==1)
 		{
 			data.getStr(&starttoken);
+			data.getInt(&end_to_end_file_backup_verification_enabled);
 
 			readBackupDirs();
 			if(backup_dirs.empty())
@@ -737,7 +741,14 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				continue;
 			}
 			has_include=true;
-			outfile << "f\"" << Server->ConvertToUTF8(files[i].name) << "\" " << files[i].size << " " << files[i].last_modified << "\n";
+			outfile << "f\"" << Server->ConvertToUTF8(files[i].name) << "\" " << files[i].size << " " << files[i].last_modified;
+
+			if(end_to_end_file_backup_verification_enabled)
+			{
+				outfile << "#sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
+			}
+			
+			outfile << "\n";
 		}
 	}
 
@@ -1988,4 +1999,31 @@ std::wstring IndexThread::removeDirectorySeparatorAtEnd(const std::wstring& path
 		return path.substr(0, path.size()-1);
 	}
 	return path;
+}
+
+std::string IndexThread::getSHA256(const std::wstring& fn)
+{
+	sha256_ctx ctx;
+	sha256_init(&ctx);
+
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+
+	if(f==NULL)
+	{
+		return std::string();
+	}
+
+	char buffer[4096];
+	unsigned int r;
+	while( (r=f->Read(buffer, 4096))>0)
+	{
+		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+	}
+
+	Server->destroy(f);
+
+	unsigned char dig[32];
+	sha256_final(&ctx, dig);
+
+	return bytesToHex(dig, 32);
 }

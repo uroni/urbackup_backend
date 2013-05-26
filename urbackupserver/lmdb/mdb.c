@@ -2860,7 +2860,7 @@ mdb_env_open2(MDB_env *env)
 				return ErrCode();
 			SetFilePointer(env->me_fd, 0, NULL, 0);
 		}
-		mh = CreateFileMapping(env->me_fd, NULL, flags & MDB_WRITEMAP ?
+		mh = CreateFileMappingA(env->me_fd, NULL, flags & MDB_WRITEMAP ?
 			PAGE_READWRITE : PAGE_READONLY,
 			sizehi, sizelo, NULL);
 		if (!mh)
@@ -3186,7 +3186,7 @@ mdb_env_setup_locks(MDB_env *env, char *lpath, int mode, int *excl)
 	*excl = -1;
 
 #ifdef _WIN32
-	if ((env->me_lfd = CreateFile(lpath, GENERIC_READ|GENERIC_WRITE,
+	if ((env->me_lfd = CreateFileA(lpath, GENERIC_READ|GENERIC_WRITE,
 		FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_ALWAYS,
 		FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE) {
 		rc = ErrCode();
@@ -3252,7 +3252,7 @@ mdb_env_setup_locks(MDB_env *env, char *lpath, int mode, int *excl)
 	{
 #ifdef _WIN32
 		HANDLE mh;
-		mh = CreateFileMapping(env->me_lfd, NULL, PAGE_READWRITE,
+		mh = CreateFileMappingA(env->me_lfd, NULL, PAGE_READWRITE,
 			0, 0, NULL);
 		if (!mh) goto fail_errno;
 		env->me_txns = MapViewOfFileEx(mh, FILE_MAP_WRITE, 0, 0, rsize, NULL);
@@ -3294,9 +3294,9 @@ mdb_env_setup_locks(MDB_env *env, char *lpath, int mode, int *excl)
 		mdb_hash_hex(&val, hexbuf);
 		sprintf(env->me_txns->mti_rmname, "Global\\MDBr%s", hexbuf);
 		sprintf(env->me_txns->mti_wmname, "Global\\MDBw%s", hexbuf);
-		env->me_rmutex = CreateMutex(&mdb_all_sa, FALSE, env->me_txns->mti_rmname);
+		env->me_rmutex = CreateMutexA(&mdb_all_sa, FALSE, env->me_txns->mti_rmname);
 		if (!env->me_rmutex) goto fail_errno;
-		env->me_wmutex = CreateMutex(&mdb_all_sa, FALSE, env->me_txns->mti_wmname);
+		env->me_wmutex = CreateMutexA(&mdb_all_sa, FALSE, env->me_txns->mti_wmname);
 		if (!env->me_wmutex) goto fail_errno;
 #elif defined(MDB_USE_POSIX_SEM)
 		struct stat stbuf;
@@ -3359,9 +3359,9 @@ mdb_env_setup_locks(MDB_env *env, char *lpath, int mode, int *excl)
 			goto fail;
 		}
 #ifdef _WIN32
-		env->me_rmutex = OpenMutex(SYNCHRONIZE, FALSE, env->me_txns->mti_rmname);
+		env->me_rmutex = OpenMutexA(SYNCHRONIZE, FALSE, env->me_txns->mti_rmname);
 		if (!env->me_rmutex) goto fail_errno;
-		env->me_wmutex = OpenMutex(SYNCHRONIZE, FALSE, env->me_txns->mti_wmname);
+		env->me_wmutex = OpenMutexA(SYNCHRONIZE, FALSE, env->me_txns->mti_wmname);
 		if (!env->me_wmutex) goto fail_errno;
 #elif defined(MDB_USE_POSIX_SEM)
 		env->me_rmutex = sem_open(env->me_txns->mti_rmname, 0);
@@ -3438,7 +3438,7 @@ mdb_env_open(MDB_env *env, const char *path, unsigned int flags, mode_t mode)
 		len = OPEN_ALWAYS;
 	}
 	mode = FILE_ATTRIBUTE_NORMAL;
-	env->me_fd = CreateFile(dpath, oflags, FILE_SHARE_READ|FILE_SHARE_WRITE,
+	env->me_fd = CreateFileA(dpath, oflags, FILE_SHARE_READ|FILE_SHARE_WRITE,
 		NULL, len, mode, NULL);
 #else
 	if (F_ISSET(flags, MDB_RDONLY))
@@ -3461,7 +3461,7 @@ mdb_env_open(MDB_env *env, const char *path, unsigned int flags, mode_t mode)
 			 * MDB_NOSYNC/MDB_NOMETASYNC, in case these get reset.
 			 */
 #ifdef _WIN32
-			env->me_mfd = CreateFile(dpath, oflags,
+			env->me_mfd = CreateFileA(dpath, oflags,
 				FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, len,
 				mode | FILE_FLAG_WRITE_THROUGH, NULL);
 #else
@@ -3613,7 +3613,7 @@ mdb_env_copy(MDB_env *env, const char *path)
 	 * already in the OS cache.
 	 */
 #ifdef _WIN32
-	newfd = CreateFile(lpath, GENERIC_WRITE, 0, NULL, CREATE_NEW,
+	newfd = CreateFileA(lpath, GENERIC_WRITE, 0, NULL, CREATE_NEW,
 				FILE_FLAG_NO_BUFFERING|FILE_FLAG_WRITE_THROUGH, NULL);
 #else
 	newfd = open(lpath, O_WRONLY|O_CREAT|O_EXCL
