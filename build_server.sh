@@ -14,3 +14,4 @@ then
 fi
 
 make
+make dist
