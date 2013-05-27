@@ -71,9 +71,6 @@ int repair_cmd(void)
 	Server->deleteFile("urbackup/backup_server_settings.db-wal");
 	Server->deleteFile("urbackup/backup_server_settings.db-shm");
 
-	
-	open_server_database(use_berkeleydb, false);
-	open_settings_database_full(use_berkeleydb);
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	if(db==NULL)
