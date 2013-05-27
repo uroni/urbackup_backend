@@ -89,7 +89,7 @@ int repair_cmd(void)
 		return 1;
 	}
 
-	db_settings=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db_settings=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_SETTINGS);
 	if(db_settings==NULL)
 	{
 		Server->Log("Could not open settings database", LL_ERROR);
