@@ -978,3 +978,17 @@ void ClientConnector::CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::
 	end_to_end_file_backup_verification_enabled=true;
 	tcpstack.Send(pipe, "OK");
 }
+
+void ClientConnector::CMD_GET_VSSLOG(const std::string &cmd)
+{
+	CWData data;
+	data.addChar(IndexThread::IndexThreadAction_GetLog);
+	data.addVoidPtr(mempipe);
+	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
+	std::string ret;
+	mempipe->Read(&ret, 8000);
+	tcpstack.Send(pipe, ret);
+	mempipe->Write("exit");
+	mempipe=Server->createMemoryPipe();
+}

@@ -30,6 +30,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <strstream>
 
 class DirectoryWatcherThread;
 
@@ -82,6 +83,8 @@ class ClientDAO;
 class IndexThread : public IThread
 {
 public:
+	static const char IndexThreadAction_GetLog;
+
 	IndexThread(void);
 	~IndexThread();
 
@@ -126,7 +129,12 @@ private:
 #ifdef _WIN32
 	bool wait_for(IVssAsync *vsasync);
 	std::string GetErrorHResErrStr(HRESULT res);
+	bool check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg);
+	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg);
 #endif
+	
+	void VSSLog(const std::string& msg, int loglevel);
+	void VSSLog(const std::wstring& msg, int loglevel);
 
 	SCDirs* getSCDir(const std::wstring path);
 
@@ -141,6 +149,8 @@ private:
 	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
 
 	std::string getSHA256(const std::wstring& fn);
+
+	
 
 	std::string starttoken;
 
@@ -186,4 +196,6 @@ private:
 	size_t modify_file_buffer_size;
 
 	int end_to_end_file_backup_verification_enabled;
+
+	std::vector<std::pair<std::string, int> > vsslog;
 };

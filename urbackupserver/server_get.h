@@ -152,6 +152,8 @@ private:
 
 	std::string getSHA256(const std::wstring& fn);
 
+	void logVssLogdata(void);
+
 	SSettings curr_intervals;
 
 	IPipe *pipe;

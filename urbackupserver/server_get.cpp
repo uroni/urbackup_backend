@@ -1234,6 +1234,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 				}
 				else if(ret!="no backup dirs")
 				{
+					logVssLogdata();
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
 					break;
 				}
@@ -1249,6 +1250,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 			}
 			else
 			{
+				logVssLogdata();
 				Server->destroy(cc);
 				return true;
 			}
@@ -3913,4 +3915,21 @@ std::string BackupServerGet::getSHA256(const std::wstring& fn)
 	sha256_final(&ctx, dig);
 
 	return bytesToHex(dig, 32);
+}
+
+void BackupServerGet::logVssLogdata(void)
+{
+	std::string vsslogdata=sendClientMessage("GET VSSLOG", L"Getting volume shadow copy logdata from client failed", 10000, false, LL_INFO);
+
+	if(!vsslogdata.empty() && vsslogdata!="ERR")
+	{
+		std::vector<std::string> lines;
+		TokenizeMail(vsslogdata, lines, "\n");
+		for(size_t i=0;i<lines.size();++i)
+		{
+			int loglevel=atoi(getuntil("-", lines[i]).c_str());
+			std::string data=getafter("-", lines[i]);
+			ServerLogger::Log(clientid, data, loglevel);
+		}
+	}
 }

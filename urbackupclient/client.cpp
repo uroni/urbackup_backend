@@ -50,6 +50,8 @@ volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
 std::map<std::wstring, std::wstring> IndexThread::filesrv_share_dirs;
 
+const char IndexThread::IndexThreadAction_GetLog=9;
+
 extern PLUGIN_ID filesrv_pluginid;
 
 const unsigned int idletime=60000;
@@ -63,11 +65,12 @@ const size_t max_modify_file_buffer_size=500*1024;
 #define ENABLE_VSS
 #endif
 
-#define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
-#define CHECK_COM_RESULT_RELEASE_S(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return ""; }}
-#define CHECK_COM_RESULT(x) { HRESULT r; if( (r=(x))!=S_OK ){ Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
-#define CHECK_COM_RESULT_OK(x, ok) { HRESULT r; if( (r=(x))!=S_OK ){ ok=false; Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
-#define CHECK_COM_RESULT_OK_HR(x, ok, r) { if( (r=(x))!=S_OK ){ ok=false; Server->Log( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
+#define CHECK_COM_RESULT_RELEASE(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog(#x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return false; }}
+#define CHECK_COM_RESULT_RETURN(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); return false; }}
+#define CHECK_COM_RESULT_RELEASE_S(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();} return ""; }}
+#define CHECK_COM_RESULT(x) { HRESULT r; if( (r=(x))!=S_OK ){ VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
+#define CHECK_COM_RESULT_OK(x, ok) { HRESULT r; if( (r=(x))!=S_OK ){ ok=false; VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
+#define CHECK_COM_RESULT_OK_HR(x, ok, r) { if( (r=(x))!=S_OK ){ ok=false; VSSLog( #x+(std::string)" failed: EC="+GetErrorHResErrStr(r), LL_ERROR); }}
 
 void IdleCheckerThread::operator()(void)
 {
@@ -253,12 +256,15 @@ void IndexThread::operator()(void)
 			Server->destroy(contractor);
 		}
 		msgpipe->Read(&msg);
+
 		CRData data(&msg);
 		char action;
 		data.getChar(&action);
 		data.getVoidPtr((void**)&contractor);
 		if(action==0)
 		{
+			vsslog.clear();
+
 			data.getStr(&starttoken);
 			data.getInt(&end_to_end_file_backup_verification_enabled);
 
@@ -330,6 +336,8 @@ void IndexThread::operator()(void)
 		}
 		else if(action==1)
 		{
+			vsslog.clear();
+
 			data.getStr(&starttoken);
 			data.getInt(&end_to_end_file_backup_verification_enabled);
 
@@ -386,7 +394,7 @@ void IndexThread::operator()(void)
 				}
 				else
 				{
-					Server->Log(L"Getting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
+					VSSLog(L"Getting shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
 					contractor->Write("failed");
 				}
 			}
@@ -419,9 +427,9 @@ void IndexThread::operator()(void)
 
 				scd->orig_target=scd->target;
 
-				Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\"...", LL_INFO);
+				Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\"...", LL_DEBUG);
 				bool b=start_shadowcopy(scd, NULL, image_backup==1?true:false, std::vector<SCRef*>(), image_backup==0?false:true);
-				Server->Log("done.", LL_INFO);
+				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
 					contractor->Write("failed");
@@ -528,6 +536,15 @@ void IndexThread::operator()(void)
 		{
 			break;
 		}
+		else if(action==IndexThreadAction_GetLog)
+		{
+			std::string ret;
+			for(size_t i=0;i<vsslog.size();++i)
+			{
+				ret+=nconvert(vsslog[i].second)+"-"+vsslog[i].first+"\n";
+			}
+			contractor->Write(ret);
+		}
 	}
 
 	delete this;
@@ -542,7 +559,7 @@ void IndexThread::indexDirs(void)
 
 	if(patterns_changed)
 	{
-		Server->Log("Deleting file-cache because include/exclude pattern changed...", LL_INFO);
+		VSSLog("Deleting file-cache because include/exclude pattern changed...", LL_INFO);
 		IQuery *q=db->Prepare("DELETE FROM files", false);
 		q->Write();
 		db->destroyQuery(q);
@@ -586,11 +603,11 @@ void IndexThread::indexDirs(void)
 
 			std::wstring mod_path=backup_dirs[i].path;
 
-			Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_INFO);
+			VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_DEBUG);
 			bool onlyref=true;
 			bool stale_shadowcopy=false;
 			bool b=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy);
-			Server->Log("done.", LL_INFO);
+			VSSLog("done.", LL_DEBUG);
 
 #ifdef _WIN32
 			if(stale_shadowcopy)
@@ -602,7 +619,7 @@ void IndexThread::indexDirs(void)
 			if(!b)
 			{
 #ifdef _WIN32
-				Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
+				VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
 #endif
 			}
 			else
@@ -631,7 +648,7 @@ void IndexThread::indexDirs(void)
 			mod_path=removeDirectorySeparatorAtEnd(mod_path);
 			backup_dirs[i].path=removeDirectorySeparatorAtEnd(backup_dirs[i].path);
 
-			Server->Log(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_INFO);
+			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 			index_c_db=0;
 			index_c_fs=0;
 			index_c_db_update=0;
@@ -655,7 +672,7 @@ void IndexThread::indexDirs(void)
 			}
 			//db->EndTransaction();
 			outfile << "d\"..\"\n";
-			Server->Log(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);		
+			VSSLog(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);		
 		}
 		std::streampos pos=outfile.tellp();
 		outfile.seekg(0, std::ios::end);
@@ -665,7 +682,7 @@ void IndexThread::indexDirs(void)
 			bool b=os_file_truncate(Server->ConvertToUnicode(filelist_fn), pos);
 			if(!b)
 			{
-				Server->Log("Error changing filelist size", LL_ERROR);
+				VSSLog("Error changing filelist size", LL_ERROR);
 			}
 		}
 	}
@@ -676,14 +693,14 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 	if(!has_stale_shadowcopy)
 	{
-		Server->Log("Deleting backup of changed dirs...");
+		VSSLog("Deleting backup of changed dirs...", LL_DEBUG);
 		cd->deleteSavedChangedDirs();
 		cd->deleteSavedDelDirs();
 		cd->deleteSavedChangedFiles();
 	}
 	else
 	{
-		Server->Log("Do not delete backup of changed dirs because a stale shadowcopy was used.");
+		VSSLog("Do not delete backup of changed dirs because a stale shadowcopy was used.", LL_INFO);
 	}
 #endif
 
@@ -843,7 +860,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 
 		if(has_error)
 		{
-			Server->Log(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+			VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
 		}
 
 		if(use_db)
@@ -927,7 +944,7 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 
 	if( res!=VSS_S_ASYNC_FINISHED )
 	{
-		Server->Log("res!=VSS_S_ASYNC_FINISHED CCOM fail", LL_ERROR);
+		VSSLog("res!=VSS_S_ASYNC_FINISHED CCOM fail", LL_ERROR);
 		vsasync->Release();
 		return false;
 	}
@@ -946,7 +963,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 	BOOL ok = GetVolumePathNameW(dir->orig_target.c_str(), volume_path, MAX_PATH);
 	if(!ok)
 	{
-		Server->Log("GetVolumePathName(dir.target, volume_path, MAX_PATH) failed", LL_ERROR);
+		VSSLog("GetVolumePathName(dir.target, volume_path, MAX_PATH) failed", LL_ERROR);
 		return false;
 	}
 
@@ -987,7 +1004,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 				if(volf==NULL)
 				{
 					do_restart=true;
-					Server->Log("Removing reference because shadowcopy could not be openend", LL_WARNING);
+					VSSLog("Removing reference because shadowcopy could not be openend", LL_WARNING);
 				}
 				else
 				{
@@ -998,11 +1015,11 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 				{
 					if( only_own_tokens==true)
 					{
-						Server->Log("Removing reference because restart own was specified and only own tokens are present", LL_WARNING);
+						VSSLog("Removing reference because restart own was specified and only own tokens are present", LL_WARNING);
 					}
 					else
 					{
-						Server->Log("Removing reference because of reference timeout", LL_WARNING);
+						VSSLog("Removing reference because of reference timeout", LL_WARNING);
 					}
 
 					std::vector<std::wstring> m_keys;
@@ -1016,7 +1033,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						std::map<std::wstring, SCDirs*>::iterator it=scdirs.find(m_keys[k]);
 						if(it!=scdirs.end() && it->second->ref==curr)
 						{
-							Server->Log(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
+							VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
 							release_shadowcopy(it->second, false, -1, dir);
 						}
 					}
@@ -1035,7 +1052,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						dir->ref->dontincrement=false;
 					}
 
-					Server->Log(L"orig_target="+dir->orig_target+L" volpath="+dir->ref->volpath, LL_DEBUG);
+					VSSLog(L"orig_target="+dir->orig_target+L" volpath="+dir->ref->volpath, LL_DEBUG);
 
 					dir->target=dir->orig_target;
 					dir->target.erase(0,wpath.size());
@@ -1068,7 +1085,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						}
 					}
 
-					Server->Log("Shadowcopy already present.", LL_INFO);
+					VSSLog("Shadowcopy already present.", LL_INFO);
 					return true;
 				}
 			}
@@ -1084,13 +1101,21 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 	if(dir->ref->rcount!=1)
 	{
-		Server->Log("Error rcount!=1", LL_ERROR);
+		VSSLog("Error rcount!=1", LL_ERROR);
 	}
 
 	IVssBackupComponents *backupcom=NULL; 
 	CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
 
 	CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
+
+	CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(TRUE, TRUE, VSS_BT_FULL, FALSE)); 
+
+	std::wstring errmsg;
+	if(!check_writer_status(backupcom, errmsg))
+	{
+		return false;
+	}
 
 #ifndef VSS_XP
 #ifndef VSS_S03
@@ -1100,32 +1125,6 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 	IVssAsync *pb_result;
 	
-    CHECK_COM_RESULT_RELEASE(backupcom->GatherWriterMetadata(&pb_result)); 
-	wait_for(pb_result);
-
-	/*UINT num_writers; 
-    CHECK_COM_RESULT(backupcom->GetWriterMetadataCount(&num_writers));
-	for(UINT i=0;i<num_writers;++i)
-	{
-		IVssExamineWriterMetadata *writer_metadata;
-		GUID id;
-		CHECK_COM_RESULT(backupcom->GetWriterMetadata(i, &id, &writer_metadata)); 
-
-		UINT ifiles;
-        UINT efiles; 
-        UINT comps;
-		CHECK_COM_RESULT(writer_metadata->GetFileCounts(&ifiles, &efiles, &comps));
-
-		for(UINT j=0;j<comps;++j)
-		{
-			IVssWMComponent *comp;
-			CHECK_COM_RESULT(writer_metadata->GetComponent(j, &comp));
-
-			PVSSCOMPONENTINFO comp_info; 
-			CHECK_COM_RESULT(comp->GetComponentInfo(&comp_info));
-		}
-	}*/
-
 	bool b_ok=true;
 	int tries=5;
 	while(b_ok==true)
@@ -1139,7 +1138,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 		if(b_ok==false && tries>=0 && r==VSS_E_SNAPSHOT_SET_IN_PROGRESS )
 		{
-			Server->Log("Retrying starting shadow copy in 30s", LL_WARNING);
+			VSSLog("Retrying starting shadow copy in 30s", LL_WARNING);
 			b_ok=true;
 			--tries;
 		}
@@ -1153,10 +1152,15 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 	CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(volume_path, GUID_NULL, &dir->ref->ssetid) );
 
-	CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, FALSE, VSS_BT_FULL, FALSE)); 
+	
 	
 	CHECK_COM_RESULT_RELEASE(backupcom->PrepareForBackup(&pb_result));
 	wait_for(pb_result);
+
+	if(!check_writer_status(backupcom, errmsg))
+	{
+		return false;
+	}
 
 	CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
 	wait_for(pb_result);
@@ -1190,7 +1194,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 	dir->ref->save_id=cd->addShadowcopy(tsc);
 	dir->ref->ok=true;
 
-	Server->Log(L"Shadowcopy path: "+tsc.path);
+	VSSLog(L"Shadowcopy path: "+tsc.path, LL_DEBUG);
 
 	dir->ref->ssetid=snap_props.m_SnapshotId;
 
@@ -1243,7 +1247,10 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 				wait_for(pb_result);
 			}
 
-			Server->Log(L"Deleting shadowcopy for path \""+dir->target+L"\" -2", LL_INFO);
+			std::wstring errmsg;
+			check_writer_status(backupcom, errmsg);
+
+			VSSLog(L"Deleting shadowcopy for path \""+dir->target+L"\" -2", LL_DEBUG);
 			
 			if(dir->ref->save_id!=-1)
 			{
@@ -1263,7 +1270,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 
 				if(dels==0 || !bcom_ok)
 				{
-					Server->Log("Deleting shadowcopy failed.", LL_ERROR);
+					VSSLog("Deleting shadowcopy failed.", LL_ERROR);
 				}
 				else
 				{
@@ -1319,7 +1326,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 			{
 				if(scs[i].target==dir->target || ( dir->ref!=NULL && dir->ref->backupcom==NULL ) )
 				{
-					Server->Log(L"Removing shadowcopy entry for path \""+scs[i].path+L"\"", LL_INFO);
+					VSSLog(L"Removing shadowcopy entry for path \""+scs[i].path+L"\"", LL_DEBUG);
 					cd->deleteShadowcopy(scs[i].id);
 				}
 			}
@@ -1335,7 +1342,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 		{
 			if(sc_refs[i]->rcount<=0)
 			{
-				Server->Log(L"Deleting Shadowcopy for dir \""+sc_refs[i]->target+L"\"", LL_INFO);
+				VSSLog(L"Deleting Shadowcopy for dir \""+sc_refs[i]->target+L"\"", LL_DEBUG);
 				bool c=true;
 				while(c)
 				{
@@ -1437,7 +1444,7 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 				}
 				if( f2==true && (scs[i].refs<=0 || scs[i].passedtime>shadowcopy_timeout/1000 || (start && scs[i].filesrv==false && scs[i].refs==1 && !starttoken.empty() &&scs[i].starttoken==widen(starttoken) ) ) )
 				{
-					Server->Log(L"Deleting shadowcopy for path \""+scs[i].path+L"\"", LL_INFO);
+					VSSLog(L"Deleting shadowcopy for path \""+scs[i].path+L"\"", LL_DEBUG);
 					LONG dels; 
 					GUID ndels; 
 					CHECK_COM_RESULT(backupcom->DeleteSnapshots(scs[i].vssid, VSS_OBJECT_SNAPSHOT, TRUE, 
@@ -1458,6 +1465,114 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 #endif //_WIN32
 		return true;
 }
+
+#ifdef _WIN32
+#ifdef ENABLE_VSS
+
+bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg)
+{
+#define FAIL_STATE(x) case x: { state=L#x; failure=true; } break
+#define OK_STATE(x) case x: { state=L#x; } break
+
+	std::wstring state;
+	bool failure=false;
+	switch(pState)
+	{
+		FAIL_STATE(VSS_WS_UNKNOWN);
+		FAIL_STATE(VSS_WS_FAILED_AT_IDENTIFY);
+		FAIL_STATE(VSS_WS_FAILED_AT_PREPARE_BACKUP);
+		FAIL_STATE(VSS_WS_FAILED_AT_PREPARE_SNAPSHOT);
+		FAIL_STATE(VSS_WS_FAILED_AT_FREEZE);
+		FAIL_STATE(VSS_WS_FAILED_AT_THAW);
+		FAIL_STATE(VSS_WS_FAILED_AT_POST_SNAPSHOT);
+		FAIL_STATE(VSS_WS_FAILED_AT_BACKUP_COMPLETE);
+		FAIL_STATE(VSS_WS_FAILED_AT_PRE_RESTORE);
+		FAIL_STATE(VSS_WS_FAILED_AT_POST_RESTORE);
+		FAIL_STATE(VSS_WS_FAILED_AT_BACKUPSHUTDOWN);
+		OK_STATE(VSS_WS_STABLE);
+		OK_STATE(VSS_WS_WAITING_FOR_FREEZE);
+		OK_STATE(VSS_WS_WAITING_FOR_THAW);
+		OK_STATE(VSS_WS_WAITING_FOR_POST_SNAPSHOT);
+		OK_STATE(VSS_WS_WAITING_FOR_BACKUP_COMPLETE);
+	}
+
+#undef FAIL_STATE
+#undef OK_STATE
+
+	std::wstring err;
+#define HR_ERR(x) case x: { err=L#x; } break
+	switch(pHrResultFailure)
+	{
+	case S_OK: { err=L"S_OK"; } break;
+		HR_ERR(VSS_E_WRITERERROR_INCONSISTENTSNAPSHOT);
+		HR_ERR(VSS_E_WRITERERROR_OUTOFRESOURCES);
+		HR_ERR(VSS_E_WRITERERROR_TIMEOUT);
+		HR_ERR(VSS_E_WRITERERROR_RETRYABLE);
+		HR_ERR(VSS_E_WRITERERROR_NONRETRYABLE);
+		HR_ERR(VSS_E_WRITER_NOT_RESPONDING);
+		HR_ERR(VSS_E_WRITER_STATUS_NOT_AVAILABLE);
+	}
+#undef HR_ERR
+
+	if(failure)
+	{
+		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L". ";
+		VSSLog(nerrmsg, LL_ERROR);
+		errmsg+=nerrmsg;
+		return false;
+	}
+
+	return true;
+}
+
+
+bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg)
+{
+	IVssAsync *pb_result;
+	CHECK_COM_RESULT_RETURN(backupcom->GatherWriterStatus(&pb_result));
+
+	if(!wait_for(pb_result))
+	{
+		VSSLog("Error while waiting for result from GatherWriterStatus", LL_ERROR);
+	}
+
+	UINT nWriters;
+	CHECK_COM_RESULT_RETURN(backupcom->GetWriterStatusCount(&nWriters));
+
+	bool has_error=false;
+	for(UINT i=0;i<nWriters;++i)
+	{
+		VSS_ID pidInstance;
+		VSS_ID pidWriter;
+		BSTR pbstrWriter;
+		VSS_WRITER_STATE pState;
+		HRESULT pHrResultFailure;
+
+		bool ok;
+		CHECK_COM_RESULT_OK(backupcom->GetWriterStatus(i,
+														    &pidInstance,
+															&pidWriter,
+															&pbstrWriter,
+															&pState,
+															&pHrResultFailure), ok);
+
+		if(ok)
+		{
+			if(!checkErrorAndLog(pbstrWriter, pState, pHrResultFailure, errmsg))
+			{
+				has_error=true;
+			}
+
+			SysFreeString(pbstrWriter);
+		}
+	}
+
+	CHECK_COM_RESULT_RETURN(backupcom->FreeWriterStatus());
+
+	return !has_error;
+}
+#endif //ENABLE_VSS
+#endif //_WIN32
 
 #ifdef _WIN32
 std::string IndexThread::GetErrorHResErrStr(HRESULT res)
@@ -2026,4 +2141,22 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	sha256_final(&ctx, dig);
 
 	return bytesToHex(dig, 32);
+}
+
+void IndexThread::VSSLog(const std::string& msg, int loglevel)
+{
+	Server->Log(msg, loglevel);
+	if(loglevel>LL_DEBUG)
+	{
+		vsslog.push_back(std::make_pair(msg, loglevel));
+	}
+}
+
+void IndexThread::VSSLog(const std::wstring& msg, int loglevel)
+{
+	Server->Log(msg, loglevel);
+	if(loglevel>LL_DEBUG)
+	{
+		vsslog.push_back(std::make_pair(Server->ConvertToUTF8(msg), loglevel));
+	}
 }

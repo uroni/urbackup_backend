@@ -760,6 +760,10 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(cmd); continue;
 			}
+			else if( cmd=="GET VSSLOG")
+			{
+				CMD_GET_VSSLOG(cmd); continue;
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{
