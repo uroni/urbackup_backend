@@ -15,5 +15,4 @@ net stop UrBackupWinServer
 echo Starting UrBackup Server...
 net start UrBackupWinServer
 
-pause
 exit 0

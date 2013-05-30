@@ -10,4 +10,4 @@ if NOT %errorLevel% == 0 (
 set /p newpw=Please enter the new password for user 'admin': 
 
 "%~dp0\urbackup_srv.exe" --cmdline --no-server --plugin urbackupserver.dll --set_admin_pw "%newpw%"
-pause
+exit 0
