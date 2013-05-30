@@ -1813,3 +1813,26 @@ void ClientConnector::update_silent(void)
 	Server->getThreadPool()->execute(new UpdateSilentThread());
 #endif
 }
+
+bool ClientConnector::calculateFilehashesOnClient(void)
+{
+	if(internet_conn)
+	{
+		ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+
+		std::string val;
+		if(curr_settings->getValue("internet_calculate_filehashes_on_client", &val)
+			|| curr_settings->getValue("internet_calculate_filehashes_on_client_def", &val))
+		{
+			if(val=="true")
+			{
+				Server->destroy(curr_settings);
+				return true;
+			}
+		}
+
+		Server->destroy(curr_settings);
+	}
+
+	return false;
+}

@@ -85,7 +85,7 @@ BackupServerHash::~BackupServerHash(void)
 	delete filecache;
 }
 
-void BackupServerHash::operator()(void)
+void BackupServerHash::setupDatabase(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	{
@@ -98,26 +98,38 @@ void BackupServerHash::operator()(void)
 		    
 	    }while(!r);
 	}
-	int big_cache_size=20;
+
 	prepareSQL();
 	copyFilesFromTmp();
-	size_t timeoutms;
-	size_t file_hash_collect_cachesize;
 
 	{
 		ServerSettings server_settings(db, clientid);
 
-		copy_limit=static_cast<int>(server_settings.getSettings()->file_hash_collect_amount);
-		timeoutms=server_settings.getSettings()->file_hash_collect_timeout;
-		file_hash_collect_cachesize=server_settings.getSettings()->file_hash_collect_cachesize;
+		copy_limit=static_cast<int>(server_settings.getSettings()->file_hash_collect_amount);		
 
 		if(server_settings.getSettings()->filescache_type=="lmdb")
 		{
 			filecache=create_lmdb_files_cache(); 
 		}
 	}
+}
+
+void BackupServerHash::operator()(void)
+{
+	setupDatabase();
+
+	int big_cache_size=20;	
+	size_t timeoutms;
+	size_t file_hash_collect_cachesize;
+
+	{
+		ServerSettings server_settings(db, clientid);
+		timeoutms=server_settings.getSettings()->file_hash_collect_timeout;
+		file_hash_collect_cachesize=server_settings.getSettings()->file_hash_collect_cachesize;
+	}
 
 	db->DetachDBs();
+	
 
 	while(true)
 	{
@@ -241,13 +253,18 @@ void BackupServerHash::operator()(void)
 			}
 		}
 
-		if(tmp_count>copy_limit)
-		{
-			tmp_count=0;
-			Server->Log("Copying files from tmp table...",LL_DEBUG);
-			copyFilesFromTmp();
-			Server->Log("done.", LL_DEBUG);
-		}
+		copyFromTmpTable(false);
+	}
+}
+
+void BackupServerHash::copyFromTmpTable(bool force)
+{
+	if(tmp_count>copy_limit || force)
+	{
+		tmp_count=0;
+		Server->Log("Copying files from tmp table...",LL_DEBUG);
+		copyFilesFromTmp();
+		Server->Log("done.", LL_DEBUG);
 	}
 }
 
@@ -313,10 +330,8 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	deleteFileTmp(pHash, fp, filesize, backupid);
 }
 
-void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
-	std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn)
+bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last)
 {
-	_i64 t_filesize=tf->Size();
 	int f_backupid;
 	std::wstring ff;
 	std::wstring f_hashpath;
@@ -325,12 +340,11 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 	{
 		ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath, cache_hit);
 	}
-	std::wstring ff_last=ff;
-	bool copy=true;
+	ff_last=ff;
 
-	bool tries_once=false;
 	bool cache_requires_update=false;
 	bool first_logmsg=true;
+	bool copy=true;
 
 	while(!ff.empty())
 	{
@@ -376,27 +390,30 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 						ServerLogger::Log(clientid, "HT: Hardlinking hash file failed (File doesn't exist)", LL_DEBUG);
 						if(!diff_file)
 						{
-							if(!createChunkHashes(tf, hash_fn))
+							if(tf!=NULL && !createChunkHashes(tf, hash_fn))
 								ServerLogger::Log(clientid, "HT: Creating chunk hash file failed", LL_ERROR);
 						}
 						else
 						{
-							IFile *src=openFileRetry(Server->ConvertToUnicode(hashoutput_fn), MODE_READ);
-							if(src!=NULL)
+							if(!hashoutput_fn.empty())
 							{
-								if(!copyFile(src, hash_fn))
+								IFile *src=openFileRetry(Server->ConvertToUnicode(hashoutput_fn), MODE_READ);
+								if(src!=NULL)
 								{
-									ServerLogger::Log(clientid, "Error copying hashoutput to destination -1", LL_ERROR);
+									if(!copyFile(src, hash_fn))
+									{
+										ServerLogger::Log(clientid, "Error copying hashoutput to destination -1", LL_ERROR);
+										has_error=true;
+										hash_fn.clear();
+									}
+									Server->destroy(src);
+								}
+								else
+								{
+									ServerLogger::Log(clientid, "HT: Error opening hashoutput", LL_ERROR);
 									has_error=true;
 									hash_fn.clear();
 								}
-								Server->destroy(src);
-							}
-							else
-							{
-								ServerLogger::Log(clientid, "HT: Error opening hashoutput", LL_ERROR);
-								has_error=true;
-								hash_fn.clear();
 							}
 						}
 					}
@@ -412,14 +429,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 					}
 				}
 			}
-			ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 			copy=false;
-			std::wstring temp_fn=tf->getFilenameW();
-			Server->destroy(tf);
-			tf=NULL;
-			Server->deleteFile(temp_fn);
-			addFileSQL(backupid, incremental, tfn, hash_fn, sha2, t_filesize, 0);
-			++tmp_count;
 			break;
 		}
 	}
@@ -436,6 +446,29 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 			filecache->del(FileCache::SCacheKey(sha2.c_str(), t_filesize));
 		}
 		filecache->commit_transaction();
+	}
+
+	return !copy;
+}
+
+void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
+	std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn)
+{
+	_i64 t_filesize=tf->Size();
+	
+	bool copy=true;
+	bool tries_once;
+	std::wstring ff_last;
+	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn, tries_once, ff_last))
+	{
+		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
+		copy=false;
+		std::wstring temp_fn=tf->getFilenameW();
+		Server->destroy(tf);
+		tf=NULL;
+		Server->deleteFile(temp_fn);
+		addFileSQL(backupid, incremental, tfn, hash_fn, sha2, t_filesize, 0);
+		++tmp_count;
 	}
 
 	if(tries_once && copy)

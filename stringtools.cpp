@@ -1281,6 +1281,16 @@ std::string bytesToHex(const unsigned char *b, size_t bsize)
 	return r;
 }
 
+std::string hexToBytes(const std::string& data)
+{
+	std::string ret;
+	ret.resize(data.size()/2);
+	for(size_t i=0;i<data.size();i+=2)
+	{
+		ret[i/2]=static_cast<char>(hexToULong(data.substr(i, 2)));
+	}
+	return ret;
+}
 
 wstring htmldecode(string str, bool html, char xc)
 {

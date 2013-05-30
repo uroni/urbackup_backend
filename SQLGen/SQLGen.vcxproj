@@ -80,6 +80,7 @@
     <ClCompile Include="..\Client.cpp" />
     <ClCompile Include="..\Condition_boost.cpp" />
     <ClCompile Include="..\Database.cpp" />
+    <ClCompile Include="..\DatabaseCursor.cpp" />
     <ClCompile Include="..\DBSettingsReader.cpp" />
     <ClCompile Include="..\FileSettingsReader.cpp" />
     <ClCompile Include="..\file_common.cpp" />
@@ -118,6 +119,7 @@
     <ClInclude Include="..\Client.h" />
     <ClInclude Include="..\Condition_boost.h" />
     <ClInclude Include="..\Database.h" />
+    <ClInclude Include="..\DatabaseCursor.h" />
     <ClInclude Include="..\DBSettingsReader.h" />
     <ClInclude Include="..\FileSettingsReader.h" />
     <ClInclude Include="..\LookupService.h" />

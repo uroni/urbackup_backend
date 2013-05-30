@@ -339,6 +339,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	{
 		stmt_type=StatementType_Delete;
 	}
+	if(strlower(sql).find("insert")!=std::string::npos)
+	{
+		stmt_type=StatementType_Insert;
+	}
 
 	std::string return_vals=input.annotations["return"];
 
@@ -451,6 +455,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		{
 			type="const std::wstring&";
 		}
+		else if(type=="blob")
+		{
+			type="const std::string&";
+		}
 		code+=type+" "+params[i].name;
 		funcdecl+=type+" "+params[i].name;
 	}
@@ -469,14 +477,21 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 
 	for(size_t i=0;i<params.size();++i)
 	{
-		code+="\t"+query_name+"->Bind("+params[i].name+");\r\n";
+		if(params[i].type=="blob")
+		{
+			code+="\t"+query_name+"->Bind("+params[i].name+".c_str(), (_u32)"+params[i].name+".size());\r\n";
+		}
+		else
+		{
+			code+="\t"+query_name+"->Bind("+params[i].name+");\r\n";
+		}
 	}
 
 	if(stmt_type==StatementType_Select)
 	{
 		code+="\tdb_results res="+query_name+"->Read();\r\n";
 	}
-	else if(stmt_type==StatementType_Delete)
+	else if(stmt_type==StatementType_Delete || stmt_type==StatementType_Insert)
 	{
 		code+="\t"+query_name+"->Write();\r\n";
 	}
@@ -593,6 +608,25 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	}
 	code+="}";
 	return AnnotatedCode(input.annotations, code);
+}
+
+void setup1(IDatabase* db, std::vector<AnnotatedCode>& annotated_code)
+{
+	for(size_t i=0;i<annotated_code.size();++i)
+	{
+		AnnotatedCode& curr=annotated_code[i];
+		if(!curr.annotations.empty())
+		{
+			if(curr.annotations.find("-SQLGenTempSetup")!=curr.annotations.end())
+			{
+				std::map<std::string, std::string>::iterator sql_it=curr.annotations.find("sql");
+				if(sql_it!=curr.annotations.end())
+				{
+					db->Write(sql_it->second);
+				}
+			}
+		}
+	}
 }
 
 void generateCode1(IDatabase* db, std::vector<AnnotatedCode>& annotated_code, GeneratedData& generated_data)
@@ -715,6 +749,7 @@ void sqlgen(IDatabase* db, std::string &cppfile, std::string &headerfile)
 	std::vector<CPPToken> tokens=tokenizeFile(cppfile);
 	std::vector<AnnotatedCode> annotated_code=getAnnotatedCode(tokens);
 	GeneratedData generated_data;
+	setup1(db, annotated_code);
 	generateCode1(db, annotated_code, generated_data);
 	generateCode2(annotated_code, generated_data);
 	cppfile=getCode(annotated_code);

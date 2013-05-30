@@ -60,6 +60,7 @@ const unsigned short tcpport=35621;
 const unsigned short udpport=35622;
 const unsigned int shadowcopy_timeout=7*24*60*60*1000;
 const size_t max_modify_file_buffer_size=500*1024;
+const size_t max_modify_hash_buffer_size=500*1024;
 
 #ifndef SERVER_ONLY
 #define ENABLE_VSS
@@ -145,6 +146,7 @@ IndexThread::IndexThread(void)
 
 	modify_file_buffer_size=0;
 	end_to_end_file_backup_verification_enabled=0;
+	calculate_filehashes_on_client=0;
 }
 
 IndexThread::~IndexThread()
@@ -226,6 +228,7 @@ void IndexThread::operator()(void)
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
 	db->Write("CREATE TEMPORARY TABLE files_tmp (num NUMERIC, data BLOB, name TEXT);");
+	db->Write("CREATE TEMPORARY TABLE filehashes_tmp (name TEXT, filesize INTEGER, modifytime INTEGER, hashdata BLOB);");
 
 	cd=new ClientDAO(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 
@@ -267,6 +270,7 @@ void IndexThread::operator()(void)
 
 			data.getStr(&starttoken);
 			data.getInt(&end_to_end_file_backup_verification_enabled);
+			data.getInt(&calculate_filehashes_on_client);
 
 			//incr backup
 			readBackupDirs();
@@ -340,6 +344,7 @@ void IndexThread::operator()(void)
 
 			data.getStr(&starttoken);
 			data.getInt(&end_to_end_file_backup_verification_enabled);
+			data.getInt(&calculate_filehashes_on_client);
 
 			readBackupDirs();
 			if(backup_dirs.empty())
@@ -353,9 +358,8 @@ void IndexThread::operator()(void)
 				cd->deleteSavedChangedDirs();
 
 				Server->Log("Deleting files... doing full index...", LL_INFO);
-				IQuery *q=db->Prepare("DELETE FROM files", false);
-				q->Write();
-				db->destroyQuery(q);
+				db->Write("DELETE FROM files");
+				db->Write("DELETE FROM filehashes");
 			}
 			execute_prebackup_hook();
 			indexDirs();
@@ -560,9 +564,7 @@ void IndexThread::indexDirs(void)
 	if(patterns_changed)
 	{
 		VSSLog("Deleting file-cache because include/exclude pattern changed...", LL_INFO);
-		IQuery *q=db->Prepare("DELETE FROM files", false);
-		q->Write();
-		db->destroyQuery(q);
+		db->Write("DELETE FROM files");
 	}
 
 	updateDirs();
@@ -656,8 +658,13 @@ void IndexThread::indexDirs(void)
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true);
+
 			cd->copyFromTmpFiles();
+			cd->copyFromTmpFileHashes();
+			cd->deleteTmpFileHashes();
 			commitModifyFilesBuffer();
+			commitModifyHashBuffer();
+
 			if(stop_index)
 			{
 				for(size_t k=0;k<backup_dirs.size();++k)
@@ -688,7 +695,10 @@ void IndexThread::indexDirs(void)
 	}
 
 	cd->copyFromTmpFiles();
+	cd->copyFromTmpFileHashes();
+	cd->deleteTmpFileHashes();
 	commitModifyFilesBuffer();
+	commitModifyHashBuffer();
 
 #ifdef _WIN32
 	if(!has_stale_shadowcopy)
@@ -700,7 +710,7 @@ void IndexThread::indexDirs(void)
 	}
 	else
 	{
-		VSSLog("Do not delete backup of changed dirs because a stale shadowcopy was used.", LL_INFO);
+		VSSLog("Did not delete backup of changed dirs because a stale shadowcopy was used.", LL_INFO);
 	}
 #endif
 
@@ -760,9 +770,41 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			has_include=true;
 			outfile << "f\"" << Server->ConvertToUTF8(files[i].name) << "\" " << files[i].size << " " << files[i].last_modified;
 
-			if(end_to_end_file_backup_verification_enabled)
+			if(end_to_end_file_backup_verification_enabled || calculate_filehashes_on_client)
 			{
-				outfile << "#sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
+				outfile << "#";
+
+				if(calculate_filehashes_on_client)
+				{
+					std::wstring key_path=orig_dir+os_file_sep()+files[i].name;
+					std::string hash;
+					_i64 filesize;
+					_i64 modifytime;
+					if(cd->getFileHash(key_path, filesize, modifytime, hash))
+					{
+						if( filesize!=files[i].size &&
+							files[i].last_modified!=modifytime )
+						{
+							hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
+
+							modifyHashInt(hash, key_path, files[i].size, files[i].last_modified);
+						}
+					}
+					else
+					{
+						hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
+						cd->addFileHash(key_path, files[i].size, files[i].last_modified, hash);
+					}
+
+					outfile << "sha512=" << base64_encode(reinterpret_cast<const unsigned char*>(hash.c_str()), static_cast<unsigned int>(hash.size()));
+				}
+				
+				if(end_to_end_file_backup_verification_enabled)
+				{
+					if(calculate_filehashes_on_client) outfile << "&";
+
+					outfile << "sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
+				}
 			}
 			
 			outfile << "\n";
@@ -1085,7 +1127,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						}
 					}
 
-					VSSLog("Shadowcopy already present.", LL_INFO);
+					VSSLog("Shadowcopy already present.", LL_DEBUG);
 					return true;
 				}
 			}
@@ -1109,13 +1151,12 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 	CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
 
-	CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(TRUE, TRUE, VSS_BT_FULL, FALSE)); 
+	CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, TRUE, VSS_BT_FULL, FALSE));
 
-	std::wstring errmsg;
-	if(!check_writer_status(backupcom, errmsg))
-	{
-		return false;
-	}
+	IVssAsync *pb_result;
+
+	CHECK_COM_RESULT_RELEASE(backupcom->GatherWriterMetadata(&pb_result));
+	wait_for(pb_result);
 
 #ifndef VSS_XP
 #ifndef VSS_S03
@@ -1123,7 +1164,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 #endif
 #endif
 
-	IVssAsync *pb_result;
+	std::wstring errmsg;
+	check_writer_status(backupcom, errmsg);
 	
 	bool b_ok=true;
 	int tries=5;
@@ -1151,8 +1193,6 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 	}
 
 	CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(volume_path, GUID_NULL, &dir->ref->ssetid) );
-
-	
 	
 	CHECK_COM_RESULT_RELEASE(backupcom->PrepareForBackup(&pb_result));
 	wait_for(pb_result);
@@ -1164,6 +1204,11 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 	CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
 	wait_for(pb_result);
+
+	if(!check_writer_status(backupcom, errmsg))
+	{
+		return false;
+	}
 
 	VSS_SNAPSHOT_PROP snap_props; 
     CHECK_COM_RESULT_RELEASE(backupcom->GetSnapshotProperties(dir->ref->ssetid, &snap_props));
@@ -1488,7 +1533,11 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 		FAIL_STATE(VSS_WS_FAILED_AT_BACKUP_COMPLETE);
 		FAIL_STATE(VSS_WS_FAILED_AT_PRE_RESTORE);
 		FAIL_STATE(VSS_WS_FAILED_AT_POST_RESTORE);
+#ifndef VSS_XP
+#ifndef VSS_S03
 		FAIL_STATE(VSS_WS_FAILED_AT_BACKUPSHUTDOWN);
+#endif
+#endif
 		OK_STATE(VSS_WS_STABLE);
 		OK_STATE(VSS_WS_WAITING_FOR_FREEZE);
 		OK_STATE(VSS_WS_WAITING_FOR_THAW);
@@ -1500,7 +1549,8 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 #undef OK_STATE
 
 	std::wstring err;
-#define HR_ERR(x) case x: { err=L#x; } break
+	bool has_error=false;
+#define HR_ERR(x) case x: { err=L#x; has_error=true; } break
 	switch(pHrResultFailure)
 	{
 	case S_OK: { err=L"S_OK"; } break;
@@ -1510,16 +1560,24 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 		HR_ERR(VSS_E_WRITERERROR_RETRYABLE);
 		HR_ERR(VSS_E_WRITERERROR_NONRETRYABLE);
 		HR_ERR(VSS_E_WRITER_NOT_RESPONDING);
+#ifndef VSS_XP
+#ifndef VSS_S03
 		HR_ERR(VSS_E_WRITER_STATUS_NOT_AVAILABLE);
+#endif
+#endif
 	}
 #undef HR_ERR
 
-	if(failure)
+	if(failure || has_error)
 	{
 		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L". ";
 		VSSLog(nerrmsg, LL_ERROR);
 		errmsg+=nerrmsg;
 		return false;
+	}
+	else
+	{
+		VSSLog(L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L".", LL_INFO);
 	}
 
 	return true;
@@ -1539,6 +1597,8 @@ bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstr
 	UINT nWriters;
 	CHECK_COM_RESULT_RETURN(backupcom->GetWriterStatusCount(&nWriters));
 
+	VSSLog("Number of Writers: "+nconvert(nWriters), LL_DEBUG);
+
 	bool has_error=false;
 	for(UINT i=0;i<nWriters;++i)
 	{
@@ -1548,13 +1608,13 @@ bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstr
 		VSS_WRITER_STATE pState;
 		HRESULT pHrResultFailure;
 
-		bool ok;
+		bool ok=true;
 		CHECK_COM_RESULT_OK(backupcom->GetWriterStatus(i,
-														    &pidInstance,
-															&pidWriter,
-															&pbstrWriter,
-															&pState,
-															&pHrResultFailure), ok);
+													&pidInstance,
+													&pidWriter,
+													&pbstrWriter,
+													&pState,
+													&pHrResultFailure), ok);
 
 		if(ok)
 		{
@@ -2143,6 +2203,33 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	return bytesToHex(dig, 32);
 }
 
+std::string IndexThread::getSHA512Binary(const std::wstring& fn)
+{
+	sha512_ctx ctx;
+	sha512_init(&ctx);
+
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+
+	if(f==NULL)
+	{
+		return std::string();
+	}
+
+	char buffer[4096];
+	unsigned int r;
+	while( (r=f->Read(buffer, 4096))>0)
+	{
+		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+	}
+
+	Server->destroy(f);
+
+	std::string ret;
+	ret.resize(64);
+	sha512_final(&ctx, reinterpret_cast<unsigned char*>(const_cast<char*>(ret.c_str())));
+	return ret;
+}
+
 void IndexThread::VSSLog(const std::string& msg, int loglevel)
 {
 	Server->Log(msg, loglevel);
@@ -2159,4 +2246,32 @@ void IndexThread::VSSLog(const std::wstring& msg, int loglevel)
 	{
 		vsslog.push_back(std::make_pair(Server->ConvertToUTF8(msg), loglevel));
 	}
+}
+
+void IndexThread::modifyHashInt(const std::string& hash, const std::wstring& path, int64 filesize, int64 modifytime)
+{
+	size_t add_size=sizeof(SHashedFile);
+
+	modify_hash_buffer.push_back(SHashedFile(path, filesize, modifytime, hash));
+	add_size+=hash.size()+path.size();
+
+	modify_hash_buffer_size+=add_size;
+
+	if(modify_hash_buffer_size>max_modify_hash_buffer_size)
+	{
+		commitModifyHashBuffer();
+	}
+}
+
+void IndexThread::commitModifyHashBuffer(void)
+{
+	db->BeginTransaction();
+	for(size_t i=0;i<modify_hash_buffer.size();++i)
+	{
+		cd->modifyFileHash(modify_hash_buffer[i].hash, modify_hash_buffer[i].filesize, modify_hash_buffer[i].modifytime, modify_hash_buffer[i].path);
+	}
+	db->EndTransaction();
+
+	modify_hash_buffer.clear();
+	modify_hash_buffer_size=0;
 }

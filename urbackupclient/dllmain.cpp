@@ -108,12 +108,6 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
-
-	/*if(!testEscape())
-	{
-		Server->Log("Escape test failed! Stopping.", LL_ERROR);
-		return;
-	}*/
 	
 	std::string rmtest=Server->getServerParameter("rmtest");
 	if(!rmtest.empty())
@@ -194,7 +188,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 #endif
 
+#ifndef _DEBUG
 	if(FileExists(new_file) )
+#endif
 	{
 		Server->Log("Upgrading...", LL_WARNING);
 		Server->deleteFile(new_file);
@@ -326,6 +322,12 @@ void upgrade_client8_9(IDatabase *db)
 	db->Write("DELETE FROM files");
 }
 
+void upgrade_client9_10(IDatabase *db)
+{
+	db->Write("CREATE TABLE filehashes (name TEXT, filesize INTEGER, modifytime INTEGER, hashdata BLOB)");
+	db->Write("CREATE UNIQUE INDEX filehashes_idx ON filehashes (name ASC)");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -377,6 +379,10 @@ bool upgrade_client(void)
 				break;
 			case 8:
 				upgrade_client8_9(db);
+				++ver;
+				break;
+			case 9:
+				upgrade_client9_10(db);
 				++ver;
 				break;
 			default:

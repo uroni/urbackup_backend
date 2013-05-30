@@ -72,7 +72,7 @@ size_t BackupServerGet::tmpfile_num=0;
 BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName,
 	     bool internet_connection, bool use_snapshots, bool use_reflink)
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
-	  use_snapshots(use_snapshots), use_reflink(use_reflink)
+	  use_snapshots(use_snapshots), use_reflink(use_reflink), local_hash(NULL)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -120,6 +120,8 @@ BackupServerGet::~BackupServerGet(void)
 
 	if(settings!=NULL) Server->destroy(settings);
 	if(settings_client!=NULL) Server->destroy(settings_client);
+
+	delete local_hash;
 }
 
 void BackupServerGet::init_mutex(void)
@@ -295,6 +297,12 @@ void BackupServerGet::operator ()(void)
 	Server->getThreadPool()->execute(bsh_prepare);
 	ServerChannelThread channel_thread(this, clientid, internet_connection);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
+
+	if(internet_connection && server_settings->getSettings()->internet_calculate_filehashes_on_client)
+	{
+		local_hash=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots, use_reflink, use_tmpfiles);
+		local_hash->setupDatabase();
+	}
 
 	sendSettings();
 
@@ -604,6 +612,11 @@ void BackupServerGet::operator ()(void)
 			}
 
 			file_backup_err=false;
+
+			if(local_hash!=NULL)
+			{
+				local_hash->copyFromTmpTable(true);
+			}
 
 			if(hbu)
 			{
@@ -1404,8 +1417,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 				ServerStatus::setServerStatus(status, true);
 			}
-
-			bool b=getNextEntry(buffer[i], cf, NULL);
+			std::map<std::wstring, std::wstring> extra_params;
+			bool b=getNextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
 				std::wstring short_name=shortenFilename(cf.name);
@@ -1456,19 +1469,31 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				}
 				else
 				{
-					bool download_ok;
-					bool b=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, L"", L"", download_ok, hashed_transfer);
-					if(!b)
+					bool file_ok=false;
+					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
+					if( hash_it!=extra_params.end())
 					{
-						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
-						r_done=true;
-						break;
+						if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, true))
+						{							
+							file_ok=true;
+						}
 					}
-					if( download_ok )
+					if(!file_ok)
+					{
+						bool b=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, L"", L"", file_ok, hashed_transfer);
+						if(!b)
+						{
+							ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+							r_done=true;
+							break;
+						}
+						
+						transferred+=cf.size;
+					}
+					if( file_ok )
 					{
 						writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
 					}
-					transferred+=cf.size;
 				}
 			}
 		}
@@ -1634,6 +1659,30 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		return false;
 	else
 		return true;
+}
+
+bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql)
+{
+	std::wstring os_curr_path=convertToOSPathFromFileClient(os_path+L"/"+short_fn);
+	std::wstring dstpath=backuppath+os_curr_path;
+	std::wstring hashpath;
+	std::wstring filepath_old;
+	if(with_hashes)
+	{
+		hashpath=backuppath_hashes+os_curr_path;
+	}
+
+	bool tries_once;
+	std::wstring ff_last;
+	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), tries_once, ff_last);
+
+	if(ok && add_sql)
+	{
+		local_hash->addFileSQL(backupid, 0, dstpath, hashpath, sha2, filesize, 0);
+		local_hash->copyFromTmpTable(false);
+	}
+	
+	return ok;
 }
 
 bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
@@ -2050,7 +2099,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 		for(size_t i=0;i<read;++i)
 		{
-			bool b=getNextEntry(buffer[i], cf, NULL);
+			std::map<std::wstring, std::wstring> extra_params;
+			bool b=getNextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
 				unsigned int ctime=Server->getTimeMS();
@@ -2181,7 +2231,17 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 					if(indirchange==true || hasChange(line, diffs)) //is changed
 					{
-						if(r_offline==false)
+						std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
+
+						if(hash_it!=extra_params.end())
+						{
+							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, false))
+							{
+								f_ok=true;
+							}
+						}
+
+						if(r_offline==false && !f_ok)
 						{
 							bool b;
 							bool download_ok;
@@ -2226,7 +2286,18 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								Server->Log(L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
 							}
 							++link_logcnt;
-							if(r_offline==false)
+
+							std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
+
+							if(hash_it!=extra_params.end())
+							{
+								if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, false))
+								{
+									f_ok=true;
+								}
+							}
+
+							if(r_offline==false && !f_ok)
 							{
 								bool download_ok;
 								bool b2;

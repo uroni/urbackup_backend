@@ -79,6 +79,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
 	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
+	data.addInt(calculateFilehashesOnClient()?1:0);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	lasttime=Server->getTimeMS();
@@ -102,6 +103,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
 	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
+	data.addInt(calculateFilehashesOnClient()?1:0);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	lasttime=Server->getTimeMS();

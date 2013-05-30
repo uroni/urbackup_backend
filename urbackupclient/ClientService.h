@@ -120,6 +120,7 @@ private:
 	void tochannelSendStartbackup(RunningAction backup_type);
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
+	bool calculateFilehashesOnClient(void);
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);

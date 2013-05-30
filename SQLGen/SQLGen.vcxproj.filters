@@ -126,6 +126,9 @@
     <ClCompile Include="..\DBSettingsReader.cpp">
       <Filter>Server</Filter>
     </ClCompile>
+    <ClCompile Include="..\DatabaseCursor.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Database.h">
@@ -216,6 +219,9 @@
       <Filter>Server</Filter>
     </ClInclude>
     <ClInclude Include="..\DBSettingsReader.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DatabaseCursor.h">
       <Filter>Server</Filter>
     </ClInclude>
   </ItemGroup>

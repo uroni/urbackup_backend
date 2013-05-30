@@ -51,6 +51,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"file_hash_collect_timeout");
 	ret.push_back(L"file_hash_collect_cachesize");
 	ret.push_back(L"end_to_end_file_backup_verification");
+	ret.push_back(L"internet_calculate_filehashes_on_client");
 	return ret;
 }
 

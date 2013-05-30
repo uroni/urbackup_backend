@@ -196,6 +196,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.suspend_index_limit=settings_default->getValue("suspend_index_limit", 100000);
 	settings.client_quota=settings_default->getValue("client_quota", "100%");
 	settings.end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
+	settings.internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -292,7 +293,8 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("internet_image_backups", &settings.internet_image_backups);
 	readBoolClientSetting("internet_compress", &settings.internet_compress);
 	readBoolClientSetting("internet_encrypt", &settings.internet_encrypt);
-	readBoolClientSetting("silent_update", &settings.silent_update);	
+	readBoolClientSetting("silent_update", &settings.silent_update);
+	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings.internet_calculate_filehashes_on_client);
 
 	readBoolClientSetting("overwrite", &settings.overwrite);
 

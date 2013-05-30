@@ -68,6 +68,9 @@ public:
 	void destroyQueries(void);
 	void restartQueries(void);
 
+	void prepareQueriesGen(void);
+	void destroyQueriesGen(void);
+
 	bool getFiles(std::wstring path, std::vector<SFile> &data);
 
 	void addFiles(std::wstring path, const std::vector<SFile> &data);
@@ -115,6 +118,17 @@ public:
 	std::wstring getOldIncludePattern(void);
 	void updateOldIncludePattern(const std::wstring &pattern);
 
+	bool getFileHash(const std::wstring& path, _i64& filesize, _i64& modifytime, std::string& hash);
+
+	//@-SQLGenFunctionsBegin
+
+
+	void modifyFileHash(const std::string& hash, int64 filesize, int64 modifytime, const std::wstring& path);
+	void addFileHash(const std::wstring& name, int64 filesize, int64 modifytime, const std::string& hashdata);
+	void copyFromTmpFileHashes(void);
+	void deleteTmpFileHashes(void);
+	//@-SQLGenFunctionsEnd
+
 private:
 	std::wstring getMiscValue(const std::string& key);
 	void updateMiscValue(const std::string& key, const std::wstring& value);
@@ -155,4 +169,12 @@ private:
 	IQuery *q_get_pattern;
 	IQuery *q_insert_pattern;
 	IQuery *q_update_pattern;
+	IQuery *q_get_file_hash;
+
+	//@-SQLGenVariablesBegin
+	IQuery* q_modifyFileHash;
+	IQuery* q_addFileHash;
+	IQuery* q_copyFromTmpFileHashes;
+	IQuery* q_deleteTmpFileHashes;
+	//@-SQLGenVariablesEnd
 };
