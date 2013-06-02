@@ -40,6 +40,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <sys/fcntl.h>
+
 File::File()
 	: fd(-1)
 {
@@ -51,7 +53,7 @@ bool File::Open(std::wstring pfn, int mode)
 	fn=pfn;
 	int flags;
 	mode_t imode=S_IRWXU|S_IRWXG;
-	if( mode==MODE_READ || mode==MODE_READ_DEVICE )
+	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL )
 	{
 		flags=O_RDONLY;
 	}
@@ -82,6 +84,11 @@ bool File::Open(std::wstring pfn, int mode)
 	
 	
 	fd=open64(Server->ConvertToUTF8(fn).c_str(), flags|O_LARGEFILE, imode);
+
+	if(mode==MODE_READ_SEQUENTIAL)
+	{
+		posix_fadvise64(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+	}
 	
 	if( fd!=-1 )
 	{
