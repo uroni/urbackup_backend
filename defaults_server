@@ -27,3 +27,10 @@ DAEMON_TMPDIR="/tmp"
 #You might want to put the databases on another filesystem than the other temporary files.
 #Default is the same as DAEMON_TMPDIR
 SQLITE_TMPDIR=""
+
+#Priority adjustment of the server process. Increase to lower priority.
+NICE_LEVEL="0"
+
+#I/O-Scheduling class (with IO-priotity) of the server process.
+#Values e.g. idle, best-effort or real-time
+IOSCHED_CLASS="none"
