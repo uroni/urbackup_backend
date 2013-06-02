@@ -300,7 +300,7 @@ void BackupServerGet::operator ()(void)
 
 	if(internet_connection && server_settings->getSettings()->internet_calculate_filehashes_on_client)
 	{
-		local_hash=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots, use_reflink, use_tmpfiles);
+		local_hash=new BackupServerHash(NULL, NULL, clientid, use_snapshots, use_reflink, use_tmpfiles);
 		local_hash->setupDatabase();
 	}
 

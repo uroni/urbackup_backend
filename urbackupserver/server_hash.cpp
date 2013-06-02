@@ -80,7 +80,10 @@ BackupServerHash::~BackupServerHash(void)
 	db->destroyQuery(q_count_files_tmp);
 	db->destroyQuery(q_move_del_file);
 
-	Server->destroy(pipe);
+	if(pipe!=NULL)
+	{
+		Server->destroy(pipe);
+	}
 
 	delete filecache;
 }

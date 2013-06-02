@@ -356,6 +356,7 @@ void InternetClientThread::operator()(void)
 		if(cs==NULL)
 		{
 			InternetClient::rmConnection();
+			InternetClient::setHasConnection(false);
 			return;
 		}
 	}
