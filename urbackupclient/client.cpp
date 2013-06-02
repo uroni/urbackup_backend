@@ -2191,14 +2191,14 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	sha256_ctx ctx;
 	sha256_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL);
 
 	if(f==NULL)
 	{
 		return std::string();
 	}
 
-	char buffer[4096];
+	char buffer[32768];
 	unsigned int r;
 	while( (r=f->Read(buffer, 4096))>0)
 	{
@@ -2215,17 +2215,18 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 
 std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 {
+	Server->Log(L"Calculating SHA512 Hash for file \""+fn+L"\"", LL_DEBUG);
 	sha512_ctx ctx;
 	sha512_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL);
 
 	if(f==NULL)
 	{
 		return std::string();
 	}
 
-	char buffer[4096];
+	char buffer[32768];
 	unsigned int r;
 	while( (r=f->Read(buffer, 4096))>0)
 	{
