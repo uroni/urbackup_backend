@@ -339,6 +339,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 	std::wstring ff;
 	std::wstring f_hashpath;
 	bool cache_hit=false;
+	tries_once=false;
 	if(t_filesize>0)
 	{
 		ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath, cache_hit);

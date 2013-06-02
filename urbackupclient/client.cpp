@@ -61,6 +61,7 @@ const unsigned short udpport=35622;
 const unsigned int shadowcopy_timeout=7*24*60*60*1000;
 const size_t max_modify_file_buffer_size=500*1024;
 const size_t max_modify_hash_buffer_size=500*1024;
+const int64 save_filehash_limit=20*4096;
 
 #ifndef SERVER_ONLY
 #define ENABLE_VSS
@@ -776,24 +777,33 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 
 				if(calculate_filehashes_on_client)
 				{
-					std::wstring key_path=orig_dir+os_file_sep()+files[i].name;
 					std::string hash;
-					_i64 filesize;
-					_i64 modifytime;
-					if(cd->getFileHash(key_path, filesize, modifytime, hash))
+					if(files[i].size<=save_filehash_limit)
 					{
-						if( filesize!=files[i].size &&
-							files[i].last_modified!=modifytime )
-						{
-							hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
-
-							modifyHashInt(hash, key_path, files[i].size, files[i].last_modified);
-						}
+						hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
 					}
 					else
 					{
-						hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
-						cd->addFileHash(key_path, files[i].size, files[i].last_modified, hash);
+						std::wstring key_path=orig_dir+os_file_sep()+files[i].name;
+					
+						_i64 filesize;
+						_i64 modifytime;
+						if(cd->getFileHash(key_path, filesize, modifytime, hash))
+						{
+							if( filesize!=files[i].size &&
+								files[i].last_modified!=modifytime )
+							{
+								hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
+
+								modifyHashInt(hash, key_path, files[i].size, files[i].last_modified);
+							}
+						}
+						else
+						{
+							hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
+							cd->addFileHash(key_path, files[i].size, files[i].last_modified, hash);
+						
+						}
 					}
 
 					outfile << "sha512=" << base64_encode(reinterpret_cast<const unsigned char*>(hash.c_str()), static_cast<unsigned int>(hash.size()));
