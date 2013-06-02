@@ -148,6 +148,7 @@ IndexThread::IndexThread(void)
 	modify_file_buffer_size=0;
 	end_to_end_file_backup_verification_enabled=0;
 	calculate_filehashes_on_client=0;
+	last_tmp_update_time=0;
 }
 
 IndexThread::~IndexThread()
@@ -590,6 +591,8 @@ void IndexThread::indexDirs(void)
 
 	std::vector<SCRef*> past_refs;
 
+	last_tmp_update_time=Server->getTimeMS();
+
 	{
 		std::fstream outfile(filelist_fn, std::ios::out|std::ios::binary);
 		for(size_t i=0;i<backup_dirs.size();++i)
@@ -802,7 +805,11 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 						{
 							hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
 							cd->addFileHash(key_path, files[i].size, files[i].last_modified, hash);
-						
+							if(Server->getTimeMS()-last_tmp_update_time>10*60*1000) //10min
+							{
+								cd->copyFromTmpFileHashes();
+								last_tmp_update_time=Server->getTimeMS();
+							}
 						}
 					}
 
