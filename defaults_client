@@ -16,3 +16,10 @@ LOGLEVEL="warn"
 
 #Tmp file directory - be carefull this can get very large
 DAEMON_TMPDIR="/tmp"
+
+#Priority adjustment of the client process. Increase to lower priority.
+NICE_LEVEL=0
+
+#I/O-Scheduling class (with IO-priotity) of the client process.
+#Values e.g. idle, best-effort or real-time
+IOSCHED_CLASS="none"
