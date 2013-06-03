@@ -808,6 +808,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 							if(Server->getTimeMS()-last_tmp_update_time>10*60*1000) //10min
 							{
 								cd->copyFromTmpFileHashes();
+								cd->deleteTmpFileHashes();
 								last_tmp_update_time=Server->getTimeMS();
 							}
 						}
