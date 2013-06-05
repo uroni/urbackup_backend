@@ -38,6 +38,7 @@ public:
 	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 
 	void setupDatabase(void);
+	void deinitDatabase(void);
 
 	bool findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last);
 

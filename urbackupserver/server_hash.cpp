@@ -117,6 +117,12 @@ void BackupServerHash::setupDatabase(void)
 	}
 }
 
+void BackupServerHash::deinitDatabase(void)
+{
+	copyFilesFromTmp();
+	db->Write("DROP TABLE files_tmp");
+}
+
 void BackupServerHash::operator()(void)
 {
 	setupDatabase();
@@ -177,9 +183,8 @@ void BackupServerHash::operator()(void)
 		working=true;
 		if(data=="exitnow")
 		{
-			copyFilesFromTmp();
 			exitpipe->Write("ok");
-			db->Write("DROP TABLE files_tmp");
+			deinitDatabase();
 			Server->Log("server_hash Thread finished - exitnow ");
 			db->AttachDBs();
 			delete this;
@@ -187,8 +192,7 @@ void BackupServerHash::operator()(void)
 		}
 		else if(data=="exit")
 		{
-			copyFilesFromTmp();
-			db->Write("DROP TABLE files_tmp");
+			deinitDatabase();
 			Server->destroy(exitpipe);
 			Server->Log("server_hash Thread finished - normal");
 			db->AttachDBs();

@@ -121,7 +121,11 @@ BackupServerGet::~BackupServerGet(void)
 	if(settings!=NULL) Server->destroy(settings);
 	if(settings_client!=NULL) Server->destroy(settings_client);
 
-	delete local_hash;
+	if(local_hash!=NULL)
+	{
+		local_hash->deinitDatabase();
+		delete local_hash;
+	}
 }
 
 void BackupServerGet::init_mutex(void)
