@@ -8,7 +8,7 @@ class MDBFileCache : public FileCache
 public:
 	static void initFileCache(size_t map_size);
 
-	MDBFileCache(size_t map_size=0);
+	MDBFileCache(size_t map_size);
 	~MDBFileCache(void);
 
 	virtual bool has_error(void);

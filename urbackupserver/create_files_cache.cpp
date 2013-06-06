@@ -52,7 +52,7 @@ db_results create_callback(void *userdata)
 	return ret;
 }
 
-bool setup_lmdb_files_cache(void)
+bool setup_lmdb_files_cache(size_t map_size)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
@@ -72,7 +72,7 @@ bool setup_lmdb_files_cache(void)
 	data.cur=q_read->Cursor();
 	data.pos=0;
 
-	MDBFileCache filecache;
+	MDBFileCache filecache(map_size);
 	if(filecache.has_error())
 	{
 		Server->Log("Error creating file cache", LL_ERROR);
@@ -101,7 +101,7 @@ void create_files_cache(void)
 	{
 		if(!FileExists("urbackup/backup_server_files_cache.lmdb"))
 		{
-			if(!setup_lmdb_files_cache())
+			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size)))
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
 			}
@@ -111,7 +111,7 @@ void create_files_cache(void)
 
 	if(get_files_cache_type()==L"none" && settings.getSettings()->filescache_type=="lmdb")
 	{
-		if(setup_lmdb_files_cache())
+		if(setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size)))
 		{
 			update_files_cache_type(settings.getSettings()->filescache_type);
 		}
@@ -131,5 +131,5 @@ void create_files_cache(void)
 
 FileCache* create_lmdb_files_cache(void)
 {
-	return new MDBFileCache();
+	return new MDBFileCache(0);
 }
