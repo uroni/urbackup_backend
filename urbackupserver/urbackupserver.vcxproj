@@ -271,6 +271,7 @@
     <ClCompile Include="dao\ServerCleanupDAO.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="DatabaseFileCache.cpp" />
+    <ClCompile Include="FileCache.cpp" />
     <ClCompile Include="fileclient\FileClientChunked.cpp" />
     <ClCompile Include="filedownload.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />

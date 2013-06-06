@@ -9,7 +9,7 @@ MDB_env *MDBFileCache::env=NULL;
 void MDBFileCache::initFileCache(size_t map_size)
 {
 	MDBFileCache* filecache=new MDBFileCache(map_size);
-	delete filecache;
+	Server->createThread(filecache);
 }
 
 MDBFileCache::MDBFileCache(size_t map_size)

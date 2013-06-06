@@ -1,8 +1,11 @@
 #include "../Interface/Database.h"
 #include "../Interface/Types.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/Condition.h"
+#include "../Interface/Thread.h"
 #include <memory.h>
 
-class FileCache
+class FileCache : public IThread
 {
 public:
 	typedef db_results(*get_data_callback_t)(void *userdata);
@@ -54,6 +57,13 @@ public:
 			return !(*this==other);
 		}
 
+		bool operator<(const SCacheKey& other) const
+		{
+			int mres=memcmp(hash, other.hash, 64);
+			return mres<0 ||
+				(mres==0 && filesize<other.filesize);
+		}
+
 		char hash[64];
 		int64 filesize;
 	};
@@ -70,7 +80,22 @@ public:
 
 	virtual void put(const SCacheKey& key, const SCacheValue& value)=0;
 
+	static void put_delayed(const SCacheKey& key, const SCacheValue& value);
+
+	virtual SCacheValue get_with_cache(const SCacheKey& key);
+
 	virtual void del(const SCacheKey& key)=0;
 
+	static void del_delayed(const SCacheKey& key);
+
 	virtual void commit_transaction(void)=0;
+
+	void operator()(void);
+
+private:
+
+	static std::map<SCacheKey, SCacheValue> cache_buffer;
+	static std::map<SCacheKey, bool> del_buffer;
+	static IMutex *mutex;
+	static ICondition *cond;
 };

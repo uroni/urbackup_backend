@@ -291,7 +291,14 @@ void BackupServerHash::prepareSQL(void)
 
 void BackupServerHash::addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize)
 {
-	addFileTmp(backupid, fp, hash_path, shahash, filesize);
+	if(filecache==NULL)
+	{
+		addFileTmp(backupid, fp, hash_path, shahash, filesize);
+	}
+	else
+	{
+		filecache->put_delayed(FileCache::SCacheKey(shahash.c_str(), filesize), FileCache::SCacheValue(Server->ConvertToUTF8(fp), Server->ConvertToUTF8(hash_path)));
+	}
 
 	q_add_file->Bind(backupid);
 	q_add_file->Bind(fp);
@@ -334,7 +341,10 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	q_del_file_tmp->Write();
 	q_del_file_tmp->Reset();	
 
-	deleteFileTmp(pHash, fp, filesize, backupid);
+	if(filecache==NULL)
+	{
+		deleteFileTmp(pHash, fp, filesize, backupid);
+	}
 }
 
 bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last)
@@ -444,16 +454,14 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 
 	if(cache_requires_update)
 	{
-		filecache->start_transaction();
 		if(!ff.empty())
 		{
-			filecache->put(FileCache::SCacheKey(sha2.c_str(), t_filesize), FileCache::SCacheValue(Server->ConvertToUTF8(ff), Server->ConvertToUTF8(f_hashpath)));
+			filecache->put_delayed(FileCache::SCacheKey(sha2.c_str(), t_filesize), FileCache::SCacheValue(Server->ConvertToUTF8(ff), Server->ConvertToUTF8(f_hashpath)));
 		}
 		else
 		{
-			filecache->del(FileCache::SCacheKey(sha2.c_str(), t_filesize));
+			filecache->del_delayed(FileCache::SCacheKey(sha2.c_str(), t_filesize));
 		}
-		filecache->commit_transaction();
 	}
 
 	return !copy;
@@ -663,13 +671,16 @@ bool BackupServerHash::freeSpace(int64 fs, const std::wstring &fp)
 
 std::wstring BackupServerHash::findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath, bool& cache_hit)
 {
-	std::wstring ret=findFileHashTmp(pHash, filesize, backupid, hashpath);
-	if(!ret.empty())
-		return ret;
+	if(filecache==NULL)
+	{
+		std::wstring ret=findFileHashTmp(pHash, filesize, backupid, hashpath);
+		if(!ret.empty())
+			return ret;
+	}
 
 	if(filecache!=NULL && !cache_hit)
 	{
-		FileCache::SCacheValue tval=filecache->get(FileCache::SCacheKey(pHash.c_str(), filesize));
+		FileCache::SCacheValue tval=filecache->get_with_cache(FileCache::SCacheKey(pHash.c_str(), filesize));
 		if(tval.exists)
 		{
 			cache_hit=true;
@@ -820,20 +831,6 @@ void BackupServerHash::copyFilesFromTmp(void)
 	}
 	q_delete_all_files_tmp->Write();
 	q_delete_all_files_tmp->Reset();
-
-	if(filecache!=NULL)
-	{
-		filecache->start_transaction();
-
-		for(std::map<std::pair<std::string, _i64>, std::vector<STmpFile> >::iterator it=files_tmp.begin();
-			it!=files_tmp.end();++it)
-		{
-			filecache->put(FileCache::SCacheKey(it->first.first.c_str(), it->first.second),
-				FileCache::SCacheValue(Server->ConvertToUTF8(it->second[it->second.size()-1].fp), Server->ConvertToUTF8(it->second[it->second.size()-1].hashpath)) );
-		}
-
-		filecache->commit_transaction();
-	}
 
 	files_tmp.clear();
 }
