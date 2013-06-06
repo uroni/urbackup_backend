@@ -99,6 +99,13 @@ void create_files_cache(void)
 
 	if(settings.getSettings()->filescache_type=="lmdb")
 	{
+		if(!FileExists("urbackup/backup_server_files_cache.lmdb"))
+		{
+			if(!setup_lmdb_files_cache())
+			{
+				Server->Log("Setting up files cache failed", LL_ERROR);
+			}
+		}
 		MDBFileCache::initFileCache(static_cast<size_t>(settings.getSettings()->filescache_size));
 	}
 
