@@ -180,6 +180,11 @@ bool os_create_dir(const std::wstring &dir)
 	return rc==0;
 }
 
+bool os_create_dir(const std::string &path)
+{
+	return mkdir(path.c_str(), S_IRWXU | S_IRWXG)==0;
+}
+
 bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 {
 #ifndef sun
