@@ -122,7 +122,8 @@ void delete_file_caches(void)
 	Server->deleteFile("urbackup/cache/backup_server_files_cache.lmdb");
 	Server->deleteFile("urbackup/cache/backup_server_files_cache.lmdb-lock");
 	Server->deleteFile("urbackup/cache/backup_server_files_cache.db");
-	Server->deleteFile("urbackup/cache/backup_server_files_cache.db-journal");
+	Server->deleteFile("urbackup/cache/backup_server_files_cache.db-shm");
+	Server->deleteFile("urbackup/cache/backup_server_files_cache.db-wal");
 }
 
 }
