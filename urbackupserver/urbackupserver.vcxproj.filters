@@ -37,6 +37,9 @@
     <Filter Include="lmdb">
       <UniqueIdentifier>{85f47f3b-2e45-4b5c-96c7-cb2511e6ba0b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="filescache">
+      <UniqueIdentifier>{3ec8a037-dfb3-443f-aa14-dd5a1f016e35}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -222,20 +225,23 @@
     <ClCompile Include="lmdb\mdb.c">
       <Filter>lmdb</Filter>
     </ClCompile>
-    <ClCompile Include="DatabaseFileCache.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="MDBFileCache.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="lmdb\midl.c">
       <Filter>lmdb</Filter>
     </ClCompile>
-    <ClCompile Include="create_files_cache.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="FileCache.cpp">
-      <Filter>Quelldateien</Filter>
+      <Filter>filescache</Filter>
+    </ClCompile>
+    <ClCompile Include="DatabaseFileCache.cpp">
+      <Filter>filescache</Filter>
+    </ClCompile>
+    <ClCompile Include="MDBFileCache.cpp">
+      <Filter>filescache</Filter>
+    </ClCompile>
+    <ClCompile Include="SQLiteFileCache.cpp">
+      <Filter>filescache</Filter>
+    </ClCompile>
+    <ClCompile Include="create_files_cache.cpp">
+      <Filter>filescache</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -395,20 +401,23 @@
     <ClInclude Include="lmdb\lmdb.h">
       <Filter>lmdb</Filter>
     </ClInclude>
-    <ClInclude Include="DatabaseFileCache.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
-    <ClInclude Include="MDBFileCache.h">
-      <Filter>Quelldateien</Filter>
-    </ClInclude>
     <ClInclude Include="lmdb\midl.h">
       <Filter>lmdb</Filter>
     </ClInclude>
     <ClInclude Include="create_files_cache.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="DatabaseFileCache.h">
+      <Filter>filescache</Filter>
+    </ClInclude>
+    <ClInclude Include="MDBFileCache.h">
+      <Filter>filescache</Filter>
+    </ClInclude>
     <ClInclude Include="FileCache.h">
-      <Filter>Headerdateien</Filter>
+      <Filter>filescache</Filter>
+    </ClInclude>
+    <ClInclude Include="SQLiteFileCache.h">
+      <Filter>filescache</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

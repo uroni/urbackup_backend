@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Interface/Database.h"
 #include "../Interface/Types.h"
 #include "../Interface/Mutex.h"

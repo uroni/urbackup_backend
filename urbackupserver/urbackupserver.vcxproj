@@ -315,6 +315,7 @@
     <ClCompile Include="server_writer.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="snapshot_helper.cpp" />
+    <ClCompile Include="SQLiteFileCache.cpp" />
     <ClCompile Include="treediff\TreeDiff.cpp" />
     <ClCompile Include="treediff\TreeNode.cpp" />
     <ClCompile Include="treediff\TreeReader.cpp" />
@@ -374,6 +375,7 @@
     <ClInclude Include="server_writer.h" />
     <ClInclude Include="..\stringtools.h" />
     <ClInclude Include="snapshot_helper.h" />
+    <ClInclude Include="SQLiteFileCache.h" />
     <ClInclude Include="treediff\TreeDiff.h" />
     <ClInclude Include="treediff\TreeNode.h" />
     <ClInclude Include="treediff\TreeReader.h" />

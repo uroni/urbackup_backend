@@ -1,9 +1,9 @@
 #include "FileCache.h"
 #include "../Interface/Server.h"
 
-const size_t max_buffer_size=100000;
-const unsigned int max_wait_time=10000;
-const size_t min_size_no_wait=1000;
+const size_t max_buffer_size=500000;
+const unsigned int max_wait_time=120000;
+const size_t min_size_no_wait=10000;
 
 std::map<FileCache::SCacheKey, FileCache::SCacheValue> FileCache::cache_buffer;
 IMutex *FileCache::mutex=NULL;

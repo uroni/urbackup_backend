@@ -2,6 +2,7 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include "../common/data.h"
+#include "../urbackupcommon/os_functions.h"
 
 MDB_env *MDBFileCache::env=NULL;
 
@@ -35,7 +36,9 @@ MDBFileCache::MDBFileCache(size_t map_size)
 			return;
 		}
 
-		rc = mdb_env_open(env, "urbackup/backup_server_files_cache.lmdb", MDB_NOSUBDIR|MDB_NOMETASYNC, 0664);
+		os_create_dir("urbackup/cache");
+
+		rc = mdb_env_open(env, "urbackup/cache/backup_server_files_cache.lmdb", MDB_NOSUBDIR|MDB_NOMETASYNC, 0664);
 
 		if(rc)
 		{
@@ -113,15 +116,7 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 			mdb_tvalue.mv_data=value.getDataPtr();
 			mdb_tvalue.mv_size=value.getDataSize();
 
-			/*MDB_val mdb_other_value;
-			int rc=mdb_get(txn, dbi, &mdb_tkey, &mdb_other_value);
-
-			if(!rc)
-			{
-				Server->Log("Entry already exists!", LL_ERROR);
-			} */
 			++n_done;
-
 
 			int rc = mdb_put(txn, dbi, &mdb_tkey, &mdb_tvalue, MDB_APPEND);
 

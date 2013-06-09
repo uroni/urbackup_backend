@@ -4,7 +4,9 @@
 #include "database.h"
 #include "server_settings.h"
 #include "MDBFileCache.h"
+#include "SQLiteFileCache.h"
 #include "../stringtools.h"
+#include "../urbackupcommon/os_functions.h"
 
 namespace
 {
@@ -52,7 +54,7 @@ db_results create_callback(void *userdata)
 	return ret;
 }
 
-bool setup_lmdb_files_cache(size_t map_size)
+bool create_files_cache_common(FileCache& filecache)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
@@ -63,21 +65,13 @@ bool setup_lmdb_files_cache(size_t map_size)
 		db->Write("PRAGMA cache_size = -"+nconvert(500*1024));
 	}
 
-	Server->Log("Creating LMDB file entry cache. This might take a while...", LL_WARNING);
+	Server->Log("Creating file entry cache. This might take a while...", LL_WARNING);
 
-	//IQuery *q_read=db->Prepare("SELECT shahash, filesize, fullpath, hashpath, created FROM files f WHERE f.created=(SELECT MAX(created) FROM files WHERE shahash=f.shahash AND filesize=f.filesize) ORDER BY shahash ASC, filesize ASC");
 	IQuery *q_read=db->Prepare("SELECT shahash, filesize, fullpath, hashpath FROM files ORDER BY shahash ASC, filesize ASC, created DESC");
 
 	SCallbackData data;
 	data.cur=q_read->Cursor();
 	data.pos=0;
-
-	MDBFileCache filecache(map_size);
-	if(filecache.has_error())
-	{
-		Server->Log("Error creating file cache", LL_ERROR);
-		return false;
-	}
 
 	filecache.create(create_callback, &data);
 
@@ -90,6 +84,47 @@ bool setup_lmdb_files_cache(size_t map_size)
 	return true;
 }
 
+bool setup_lmdb_files_cache(size_t map_size)
+{
+	MDBFileCache filecache(map_size);
+	if(filecache.has_error())
+	{
+		Server->Log("Error creating file cache", LL_ERROR);
+		return false;
+	}
+
+	return create_files_cache_common(filecache);
+}
+
+bool setup_sqlite_files_cache(void)
+{
+	os_create_dir("urbackup/cache");
+
+	if(!Server->openDatabase("urbackup/cache/backup_server_files_cache.db", URBACKUPDB_FILES_CACHE))
+	{
+		Server->Log("Failed to open SQLite file entry cache database", LL_ERROR);
+		return false;
+	}
+	else
+	{
+		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_FILES_CACHE);
+		db->Write("PRAGMA journal_mode=WAL");
+		db->Write("CREATE TABLE files_cache ( key BLOB, value BLOB)");
+
+		SQLiteFileCache filecache;
+
+		return create_files_cache_common(filecache);
+	}
+}
+
+void delete_file_caches(void)
+{
+	Server->deleteFile("urbackup/cache/backup_server_files_cache.lmdb");
+	Server->deleteFile("urbackup/cache/backup_server_files_cache.lmdb-lock");
+	Server->deleteFile("urbackup/cache/backup_server_files_cache.db");
+	Server->deleteFile("urbackup/cache/backup_server_files_cache.db-journal");
+}
+
 }
 
 void create_files_cache(void)
@@ -99,30 +134,69 @@ void create_files_cache(void)
 
 	if(settings.getSettings()->filescache_type=="lmdb")
 	{
-		if(!FileExists("urbackup/backup_server_files_cache.lmdb"))
+		if(get_files_cache_type()!=L"lmdb" && settings.getSettings()->filescache_type=="lmdb")
 		{
+			delete_file_caches();
+
 			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size)))
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
 			}
 		}
+		else if(!FileExists("urbackup/cache/backup_server_files_cache.lmdb"))
+		{
+			delete_file_caches();
+
+			update_files_cache_type("none");
+			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size)))
+			{
+				Server->Log("Setting up files cache failed", LL_ERROR);
+			}
+		}
+		update_files_cache_type(settings.getSettings()->filescache_type);
 		MDBFileCache::initFileCache(static_cast<size_t>(settings.getSettings()->filescache_size));
 	}
-
-	if(get_files_cache_type()==L"none" && settings.getSettings()->filescache_type=="lmdb")
+	else if(settings.getSettings()->filescache_type=="sqlite")
 	{
-		if(setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size)))
+		if(get_files_cache_type()!=L"sqlite" && settings.getSettings()->filescache_type=="sqlite")
 		{
-			update_files_cache_type(settings.getSettings()->filescache_type);
+			delete_file_caches();
+
+			if(!setup_sqlite_files_cache())
+			{
+				Server->Log("Setting up files cache failed", LL_ERROR);
+			}
 		}
+		else if(!FileExists("urbackup/cache/backup_server_files_cache.db"))
+		{
+			delete_file_caches();
+
+			update_files_cache_type("none");
+			if(!setup_sqlite_files_cache())
+			{
+				Server->Log("Setting up files cache failed", LL_ERROR);
+			}
+		}
+		else
+		{
+			if(!Server->openDatabase("urbackup/cache/backup_server_files_cache.db", URBACKUPDB_FILES_CACHE))
+			{
+				Server->Log("Failed to open SQLite file entry cache database", LL_ERROR);
+			}
+		}
+		update_files_cache_type(settings.getSettings()->filescache_type);
+		SQLiteFileCache::initFileCache();
 	}
 
 	if(settings.getSettings()->filescache_type=="none")
 	{
-		if(FileExists("urbackup/backup_server_files_cache.lmdb"))
+		if(FileExists("urbackup/cache/backup_server_files_cache.lmdb"))
 		{
-			Server->deleteFile("urbackup/backup_server_files_cache.lmdb");
-			Server->deleteFile("urbackup/backup_server_files_cache.lmdb-lock");
+			delete_file_caches();
+		}
+		if(FileExists("urbackup/cache/backup_server_files_cache.db"))
+		{
+			delete_file_caches();
 		}
 
 		update_files_cache_type(settings.getSettings()->filescache_type);
@@ -132,4 +206,9 @@ void create_files_cache(void)
 FileCache* create_lmdb_files_cache(void)
 {
 	return new MDBFileCache(0);
+}
+
+FileCache* create_sqlite_files_cache(void)
+{
+	return new SQLiteFileCache();
 }

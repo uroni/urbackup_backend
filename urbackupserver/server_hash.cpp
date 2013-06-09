@@ -114,6 +114,10 @@ void BackupServerHash::setupDatabase(void)
 		{
 			filecache=create_lmdb_files_cache(); 
 		}
+		else if(server_settings.getSettings()->filescache_type=="sqlite")
+		{
+			filecache=create_sqlite_files_cache();
+		}
 	}
 }
 
