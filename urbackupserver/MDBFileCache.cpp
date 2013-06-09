@@ -36,7 +36,7 @@ MDBFileCache::MDBFileCache(size_t map_size)
 			return;
 		}
 
-		os_create_dir("urbackup/cache");
+		os_create_dir(L"urbackup/cache");
 
 		rc = mdb_env_open(env, "urbackup/cache/backup_server_files_cache.lmdb", MDB_NOSUBDIR|MDB_NOMETASYNC, 0664);
 

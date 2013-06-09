@@ -148,11 +148,6 @@ bool os_create_dir(const std::wstring &dir)
 	return CreateDirectoryW(dir.c_str(), NULL)!=0;
 }
 
-bool os_create_dir(const std::string &dir)
-{
-	return CreateDirectoryA(dir.c_str(), NULL)!=0;
-}
-
 bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref)
 {
 	BOOL r=CreateHardLinkW(linkname.c_str(), fname.c_str(), NULL);

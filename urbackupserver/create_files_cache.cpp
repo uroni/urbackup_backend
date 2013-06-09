@@ -98,7 +98,7 @@ bool setup_lmdb_files_cache(size_t map_size)
 
 bool setup_sqlite_files_cache(void)
 {
-	os_create_dir("urbackup/cache");
+	os_create_dir(L"urbackup/cache");
 
 	if(!Server->openDatabase("urbackup/cache/backup_server_files_cache.db", URBACKUPDB_FILES_CACHE))
 	{

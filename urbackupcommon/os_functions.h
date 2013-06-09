@@ -33,8 +33,6 @@ int64 os_atoi64(const std::string &str);
 
 bool os_create_dir(const std::wstring &dir);
 
-bool os_create_dir(const std::string &dir);
-
 bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref);
 
 bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref);
