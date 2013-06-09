@@ -285,8 +285,8 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 		wtarget.erase(0, os_file_prefix(L"").size());
 	if(!wtarget.empty() && wtarget[0]!='\\')
 		wtarget=L"\\??\\"+wtarget;
-	if(!wtarget.empty() && wtarget[target.size()-1]!='\\')
-		wtarget+=L"\\";
+	if(!wtarget.empty() && wtarget[target.size()-1]=='\\')
+		wtarget.erase(target.size()-1, 1);
 
 	if(!CreateDirectoryW(lname.c_str(), NULL) )
 	{
