@@ -38,8 +38,6 @@ void SQLiteFileCache::setup_queries(void)
 
 void SQLiteFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 {
-	setup_queries();
-
 	db->BeginTransaction();
 
 	size_t n_done=0;
@@ -89,6 +87,8 @@ void SQLiteFileCache::create(get_data_callback_t get_data_callback, void *userda
 		Server->Log("SQLiteCache: Failed to commit transaction", LL_ERROR);
 		_has_error=true;
 	}
+
+	Server->Log("Creating file entry cache index...", LL_WARNING);
 
 	db->Write("CREATE INDEX files_cache_idx ON files_cache (key)");
 }

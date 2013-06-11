@@ -502,4 +502,9 @@ IDatabaseCursor* CQuery::Cursor(int *timeoutms)
 	return cursor;
 }
 
+std::string CQuery::getStatement(void)
+{
+	return stmt_str;
+}
+
 #endif

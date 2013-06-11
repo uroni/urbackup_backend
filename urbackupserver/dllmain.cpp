@@ -404,8 +404,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
-	create_files_cache();
 	ServerUpdateStats::createFilesIndices();
+	create_files_cache();
 
 	{
 		IScopedLock lock(startup_status.mutex);

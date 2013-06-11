@@ -40,6 +40,8 @@ public:
 
 	bool resultOkay(int rc);
 
+	std::string getStatement(void);
+
 private:
 	bool Execute(int timeoutms);
 

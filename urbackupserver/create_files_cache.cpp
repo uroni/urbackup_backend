@@ -81,6 +81,11 @@ bool create_files_cache_common(FileCache& filecache)
 		db->Write("PRAGMA shrink_memory");
 	}
 
+	if(data.cur->has_error())
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -159,6 +164,7 @@ void create_files_cache(void)
 	}
 	else if(settings.getSettings()->filescache_type=="sqlite")
 	{
+		bool has_error=false;
 		if(get_files_cache_type()!=L"sqlite" && settings.getSettings()->filescache_type=="sqlite")
 		{
 			delete_file_caches();
@@ -166,6 +172,7 @@ void create_files_cache(void)
 			if(!setup_sqlite_files_cache())
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
+				has_error=true;
 			}
 		}
 		else if(!FileExists("urbackup/cache/backup_server_files_cache.db"))
@@ -176,6 +183,7 @@ void create_files_cache(void)
 			if(!setup_sqlite_files_cache())
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
+				has_error=true;
 			}
 		}
 		else
@@ -183,9 +191,13 @@ void create_files_cache(void)
 			if(!Server->openDatabase("urbackup/cache/backup_server_files_cache.db", URBACKUPDB_FILES_CACHE))
 			{
 				Server->Log("Failed to open SQLite file entry cache database", LL_ERROR);
+				has_error=true;
 			}
 		}
-		update_files_cache_type(settings.getSettings()->filescache_type);
+		if(!has_error)
+		{
+			update_files_cache_type(settings.getSettings()->filescache_type);
+		}
 		SQLiteFileCache::initFileCache();
 	}
 

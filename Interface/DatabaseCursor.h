@@ -7,6 +7,8 @@ class IDatabaseCursor
 {
 public:
 	virtual bool next(db_single_result &res)=0;
+
+	virtual bool has_error(void)=0;
 };
 
 #endif //IDATABASECURSOR_H_
