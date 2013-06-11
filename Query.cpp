@@ -507,4 +507,9 @@ std::string CQuery::getStatement(void)
 	return stmt_str;
 }
 
+std::string CQuery::getErrMsg(void)
+{
+	return std::string(sqlite3_errmsg(db->getDatabase()));
+}
+
 #endif

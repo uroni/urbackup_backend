@@ -30,7 +30,7 @@ bool DatabaseCursor::next(db_single_result &res)
 
 	if(rc!=SQLITE_OK && rc!=SQLITE_DONE)
 	{
-		Server->Log("SQL Error: "+(std::string)sqlite3_errmsg(db->getDatabase())+ " Stmt: ["+query->getStatement()+"]", LL_ERROR);
+		Server->Log("SQL Error: "+query->getErrMsg()+ " Stmt: ["+query->getStatement()+"]", LL_ERROR);
 		_has_error=true;
 	}
 

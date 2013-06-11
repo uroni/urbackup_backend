@@ -42,6 +42,8 @@ public:
 
 	std::string getStatement(void);
 
+	std::string getErrMsg(void);
+
 private:
 	bool Execute(int timeoutms);
 
