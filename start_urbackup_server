@@ -65,6 +65,7 @@ print_help()
 	echo "--pidfile {file}		Save pid of daemon in file"
 	echo "--sqlite_tmpdir {tmpdir}	Specifies the directory sqlite uses to store temporary tables"
 	echo "--verify_hashes		Verifies a backup"
+	echo "--remove_unknown		Remove unknown backups from storage and internal database"
 	echo "--reset_pw {pw}		Resets the pw"
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
 	echo ""
@@ -74,7 +75,7 @@ print_help()
 
 print_version()
 {
-	echo "UrBackup Server v1.2.2"
+	echo "UrBackup Server v1.2.3"
 	echo "Copyright (C) 2011-2013 Martin Raiber"
 	echo "This is free software; see the source for copying conditions. There is NO"
 	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
