@@ -61,6 +61,7 @@ const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
 const unsigned int ident_err_retry_time=10*60*1000;
 const unsigned int c_filesrv_connect_timeout=10000;
+const unsigned int c_internet_fileclient_timeout=30*60*1000;
 
 
 int BackupServerGet::running_backups=0;
@@ -1478,7 +1479,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					if( hash_it!=extra_params.end())
 					{
 						if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, true))
-						{							
+						{
+							transferred+=cf.size;
 							file_ok=true;
 						}
 					}
@@ -2241,6 +2243,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						{
 							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, false))
 							{
+								transferred+=cf.size;
 								f_ok=true;
 							}
 						}
@@ -3687,6 +3690,8 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 			}
 		}
 
+		fc->setReconnectionTimeout(c_internet_fileclient_timeout);
+
 		return ret;
 	}
 	else
@@ -3719,7 +3724,10 @@ FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeout
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
 		if(cp!=NULL)
+		{
 			ret=FileClientChunked(cp, &tcpstack, this, use_tmpfiles?NULL:this);
+			ret.setReconnectionTimeout(c_internet_fileclient_timeout);
+		}
 		else
 			ret=FileClientChunked();
 	}

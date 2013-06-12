@@ -77,6 +77,8 @@ public:
 		_i64 getTransferredBytes(void);
 
 		static std::string getErrorString(_u32 ec);
+
+		void setReconnectionTimeout(unsigned int t);
               
 private:
 		bool Reconnect(void);
@@ -124,6 +126,8 @@ private:
 
 		FileClient::ReconnectionCallback *reconnection_callback;
 		FileClient::NoFreeSpaceCallback *nofreespace_callback;
+
+		unsigned int reconnection_timeout;
 };
 
 const _u32 ERR_CONTINUE=0;

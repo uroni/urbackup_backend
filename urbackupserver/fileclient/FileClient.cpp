@@ -16,8 +16,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#ifndef CLIENT_ONLY
-
 #include "../../Interface/Server.h"
 
 #include "FileClient.h"
@@ -119,7 +117,7 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 	FileClient::ReconnectionCallback *reconnection_callback, FileClient::NoFreeSpaceCallback *nofreespace_callback)
 	: protocol_version(protocol_version), internet_connection(internet_connection),
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
-	nofreespace_callback(nofreespace_callback)
+	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000)
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -543,7 +541,7 @@ bool FileClient::Reconnect(void)
 	Server->destroy(tcpsock);
 	connect_starttime=Server->getTimeMS();
 
-	while(Server->getTimeMS()-connect_starttime<300000)
+	while(Server->getTimeMS()-connect_starttime<reconnection_timeout)
 	{
 		if(reconnection_callback==NULL)
 		{
@@ -886,6 +884,10 @@ std::string FileClient::getErrorString(_u32 ec)
 #undef DEFEC
 	return "";
 }
-        
-#endif //CLIENT_ONLY
+
+void FileClient::setReconnectionTimeout(unsigned int t)
+{
+	reconnection_timeout=t;
+}
+
 
