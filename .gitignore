@@ -192,3 +192,5 @@ urbackup/backup_server_files_cache.lmdb*
 urbackup/backup_server_files_cache.lmdb*
 urbackup/backup/*
 urbackup/cache/*
+SQLGenOld/*
+client/

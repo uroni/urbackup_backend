@@ -213,7 +213,8 @@ Global
 		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release x64|x64.ActiveCfg = Release|Win32
 		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release|Win32.ActiveCfg = Release|Win32
 		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release|Win32.Build.0 = Release|Win32
-		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release|x64.ActiveCfg = Release|Win32
+		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release|x64.ActiveCfg = Release|x64
+		{09263E7C-F43C-4925-B672-22C1818D8CCD}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
