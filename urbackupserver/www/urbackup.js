@@ -737,6 +737,7 @@ function show_status2(data)
 		dtl_c2="";
 	}
 	var modify_clients="";
+	var modify_clients_top="";
 	if(data.allow_modify_clients)
 	{
 		var rem_start="<!--";
@@ -747,6 +748,11 @@ function show_status2(data)
 			rem_stop="";
 		}
 		modify_clients=tmpls.status_modify_clients.evaluate({rem_start: rem_start, rem_stop: rem_stop});
+		
+		if(data.status.length>10)
+		{
+			modify_clients_top=modify_clients+"<br />";
+		}
 	}
 	
 	var class_prev;
@@ -776,6 +782,7 @@ function show_status2(data)
 		extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
 		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
 		server_identity: data.server_identity, modify_clients: modify_clients,
+		modify_clients_top: modify_clients_top,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added});
 	
 	if(g.data_f!=ndata)
