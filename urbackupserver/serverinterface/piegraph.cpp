@@ -36,10 +36,59 @@ ACTION_IMPL(piegraph)
 		db_results res=q->Read();
 
 		SPieInfo pi;
-		for(size_t i=0;i<res.size();++i)
+		if(pychart_fak!=NULL)
 		{
-			pi.data.push_back((float)atof(wnarrow(res[i][L"used"]).c_str()));
-			pi.labels.push_back(Server->ConvertToUTF8(res[i][L"name"]));
+			std::vector<float> used;
+			used.resize(res.size());
+			float total=0;
+			for(size_t i=0;i<res.size();++i)
+			{
+				used[i]=(float)atof(wnarrow(res[i][L"used"]).c_str());
+				total+=used[i];
+			}
+
+			float other_pc=0;
+			std::string other_name;
+			size_t other_num=0;
+
+			
+			for(size_t i=0;i<res.size();++i)
+			{
+				float pc=used[i]/total;
+				if(pc>.05f)
+				{
+					pi.data.push_back(pc);
+					pi.labels.push_back(Server->ConvertToUTF8(res[i][L"name"]));
+				}
+				else
+				{
+					other_pc+=pc;
+					++other_num;
+					other_name=Server->ConvertToUTF8(res[i][L"name"]);
+				}
+			}
+
+			if(other_pc>0)
+			{
+				pi.data.push_back(other_pc);
+				if(other_num==1)
+				{
+					pi.labels.push_back(other_name);
+				}
+				else
+				{
+					pi.labels.push_back("other");
+				}
+			}
+		}
+		else
+		{
+			for(size_t i=0;i<res.size();++i)
+			{
+				pi.data.push_back((float)atof(wnarrow(res[i][L"used"]).c_str()));
+				pi.labels.push_back(Server->ConvertToUTF8(res[i][L"name"]));
+			}
+
 		}
 
 		pi.title="";
