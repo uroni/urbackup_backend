@@ -12,6 +12,6 @@ then
 	./configure --with-pychart
 	touch build_server_ok
 fi
-
+./switch_build.sh server
 make
 make dist
