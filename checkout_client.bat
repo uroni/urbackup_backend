@@ -4,5 +4,6 @@ cd client
 
 git fetch
 git checkout -b feature-quota origin/feature-quota
+git checkout feature-quota
 git reset --hard
 git pull
