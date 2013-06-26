@@ -1215,18 +1215,12 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 	CHECK_COM_RESULT_RELEASE(backupcom->PrepareForBackup(&pb_result));
 	wait_for(pb_result);
 
-	if(!check_writer_status(backupcom, errmsg))
-	{
-		return false;
-	}
+	check_writer_status(backupcom, errmsg);
 
 	CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
 	wait_for(pb_result);
 
-	if(!check_writer_status(backupcom, errmsg))
-	{
-		return false;
-	}
+	check_writer_status(backupcom, errmsg);
 
 	VSS_SNAPSHOT_PROP snap_props; 
     CHECK_COM_RESULT_RELEASE(backupcom->GetSnapshotProperties(dir->ref->ssetid, &snap_props));
@@ -1588,14 +1582,14 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 
 	if(failure || has_error)
 	{
-		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L". ";
+		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L". UrBackup will continue with the backup but the associated data may not be consistent.";
 		VSSLog(nerrmsg, LL_ERROR);
 		errmsg+=nerrmsg;
 		return false;
 	}
 	else
 	{
-		VSSLog(L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L".", LL_INFO);
+		VSSLog(L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L".", LL_DEBUG);
 	}
 
 	return true;
