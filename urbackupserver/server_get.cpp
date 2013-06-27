@@ -2860,6 +2860,16 @@ bool BackupServerGet::updateCapabilities(void)
 		{
 			update_version=watoi(it->second);
 		}
+		it=params.find(L"CLIENT_VERSION_STR");
+		if(it!=params.end())
+		{
+			ServerStatus::setClientVersionString(clientname, Server->ConvertToUTF8(it->second));
+		}
+		it=params.find(L"OS_VERSION_STR");
+		if(it!=params.end())
+		{
+			ServerStatus::setOSVersionString(clientname, Server->ConvertToUTF8(it->second));
+		}
 	}
 
 	return !cap.empty();

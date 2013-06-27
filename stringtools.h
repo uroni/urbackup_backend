@@ -106,4 +106,7 @@ std::wstring UnescapeHTML(const std::wstring &html);
 std::string PrettyPrintBytes(_i64 bytes);
 std::string PrettyPrintSpeed(size_t bps);
 std::string PrettyPrintTime(unsigned int ms);
+std::string EscapeParamString(const std::string &pStr);
+
+
 #endif

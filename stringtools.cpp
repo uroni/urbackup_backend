@@ -1072,6 +1072,27 @@ std::string EscapeSQLString(const std::string &pStr)
 	return ret;
 }
 
+std::string EscapeParamString(const std::string &pStr)
+{
+	std::string ret;
+	for(size_t i=0;i<pStr.size();++i)
+	{
+		if(pStr[i]=='&')
+		{
+			ret+="%26";
+		}
+		else if(pStr[i]=='$')
+		{
+			ret+="%24";
+		}
+		else
+		{
+			ret+=pStr[i];
+		}
+	}
+	return ret;
+}
+
 void EscapeCh(std::string &pStr, char ch)
 {
 	std::string ins;

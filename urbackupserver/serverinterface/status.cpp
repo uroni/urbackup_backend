@@ -215,6 +215,8 @@ ACTION_IMPL(status)
 			stat.set("delete_pending", res[i][L"delete_pending"] );
 
 			std::string ip="-";
+			std::string client_version_string;
+			std::string os_version_string;
 			int i_status=0;
 			bool online=false;
 			SStatus *curr_status=NULL;
@@ -229,6 +231,9 @@ ACTION_IMPL(status)
 					}
 					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
 					ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+
+					client_version_string=client_status[j].client_version_string;
+					os_version_string=client_status[j].os_version_string;
 
 					if(client_status[j].wrong_ident)
 						i_status=11;
@@ -261,6 +266,8 @@ ACTION_IMPL(status)
 
 			stat.set("online", online);
 			stat.set("ip", ip);
+			stat.set("client_version_string", client_version_string);
+			stat.set("os_version_string", os_version_string);
 			stat.set("status", i_status);
 			
 

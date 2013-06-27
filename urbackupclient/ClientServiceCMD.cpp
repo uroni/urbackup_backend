@@ -9,9 +9,11 @@
 #include "../stringtools.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
+#include "win_ver.h"
 #else
 std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 #endif
+#include "../client_version.h"
 
 #include <stdlib.h>
 #include <limits.h>
@@ -953,10 +955,20 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 
 void ClientConnector::CMD_CAPA(const std::string &cmd)
 {
+	std::string client_version_str=std::string(c_client_version);
 #ifdef _WIN32
-	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1");
+	std::wstring buf;
+	buf.resize(1024);
+	std::string os_version_str;
+	if( GetOSDisplayString(const_cast<wchar_t*>(buf.c_str())) )
+	{
+		os_version_str=Server->ConvertToUTF8(std::wstring(buf.c_str()));
+	}
+
+	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1&CLIENT_VERSION_STR="+EscapeParamString(client_version_str)+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
 #else
-	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1");
+	std::string os_version_str="not Windows";
+	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1&CLIENT_VERSION_STR="+EscapeParamString(version_str)+"&OS_VERSION_STR="+EscapeParamStr(client_version_str));
 #endif
 }
 
