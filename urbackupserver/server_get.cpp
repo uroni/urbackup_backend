@@ -2239,7 +2239,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					{
 						std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
 
-						if(hash_it!=extra_params.end())
+						if(r_offline==false && hash_it!=extra_params.end())
 						{
 							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, false))
 							{
@@ -2296,7 +2296,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 							std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
 
-							if(hash_it!=extra_params.end())
+							if(r_offline==false && hash_it!=extra_params.end())
 							{
 								if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, false))
 								{

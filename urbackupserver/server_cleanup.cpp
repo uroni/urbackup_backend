@@ -1293,6 +1293,7 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 			log << "This requires enforcement of the quota." << std::endl;
 		}
 
+		did_remove_something=false;
 		int state=0;
 		int nopc=0;
 		while(used_storage.value>client_quota && nopc<2)
