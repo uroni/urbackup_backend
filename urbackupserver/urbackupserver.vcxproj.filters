@@ -419,5 +419,8 @@
     <ClInclude Include="SQLiteFileCache.h">
       <Filter>filescache</Filter>
     </ClInclude>
+    <ClInclude Include="serverinterface\rights.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

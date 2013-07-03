@@ -58,3 +58,4 @@ tmpls.change_pw_ok=new Template("<br />\r\n#{tChanged password successfully}");
 tmpls.change_pw_fail=new Template("<br />\r\n#{tChanging password failed:}<br />\r\n#{fail_reason}");
 tmpls.nospc_stalled=new Template("<table cellspacing=\"0\" cellpadding=\"0\">\r\n<tr>\t\t\t\r\n\t<th style=\"border: 3px solid red; padding: 3px;width: 500px\">#{tnospc_stalled_text}</th>\r\n</tr>\r\n</table>\r\n<br>\r\n<br>");
 tmpls.nospc_fatal=new Template("<table cellspacing=\"0\" cellpadding=\"0\">\r\n<tr>\t\t\t\r\n\t<th style=\"border: 3px solid red; padding: 3px;width: 500px\">#{tnospc_fatal_text}</th>\r\n</tr>\r\n</table>\r\n<br>\r\n<br>");
+tmpls.status_percent_done=new Template("<div style=\"width: 100%; border: 1px solid black;\">\r\n\t<div style=\"width: #{pcdone}%;background-image: url(progress.png); background-repeat:repeat-x;height:15px\">\r\n\t</div>\r\n</div>");

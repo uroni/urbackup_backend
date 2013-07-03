@@ -359,6 +359,7 @@
     <ClInclude Include="serverinterface\action_header.h" />
     <ClInclude Include="serverinterface\helper.h" />
     <ClInclude Include="serverinterface\json.h" />
+    <ClInclude Include="serverinterface\rights.h" />
     <ClInclude Include="server_archive.h" />
     <ClInclude Include="server_channel.h" />
     <ClInclude Include="server_cleanup.h" />

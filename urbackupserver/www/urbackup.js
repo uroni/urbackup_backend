@@ -572,11 +572,11 @@ function show_status2(data)
 		{
 			if(obj.status>=1 && obj.status<=2)
 			{
-				obj.start_file_backup="<img src=\"indicator.gif\" alt=\""+trans("backup_in_progress")+"\" />";
+				obj.start_file_backup=tmpls.status_percent_done.evaluate({pcdone: obj.done_pc});
 			}
 			else
 			{
-				obj.start_image_backup="<img src=\"indicator.gif\" alt=\""+trans("backup_in_progress")+"\" />";
+				obj.start_image_backup=tmpls.status_percent_done.evaluate({pcdone: obj.done_pc});
 			}
 		}	
 				
@@ -604,27 +604,25 @@ function show_status2(data)
 			obj.dtl_c2="-->";
 			obj.style_pre_last="tabFRight";
 		}		
-		
+		 
 		if(typeof obj.start_ok!="undefined")
 		{
 			if(obj.start_ok)
 			{
 				if( obj.start_type=="incr_file" || obj.start_type=="full_file" )
-					obj.start_file_backup=trans("queued_backup");
+					obj.start_file_backup="<br />"+trans("queued_backup");
 				else if( obj.start_type=="incr_image" || obj.start_type=="full_image" )
-					obj.start_image_backup=trans("queued_backup");
+					obj.start_image_backup="<br />"+trans("queued_backup");
 			}
 			else
 			{
 				if( obj.start_type=="incr_file" || obj.start_type=="full_file" )
-					obj.start_file_backup=trans("starting_backup_failed");
+					obj.start_file_backup="<br />"+trans("starting_backup_failed");
 				else if( obj.start_type=="incr_image" || obj.start_type=="full_image" )
-					obj.start_image_backup=trans("starting_backup_failed");
+					obj.start_image_backup="<br />"+trans("starting_backup_failed");
 			}
 		}
 		
-		if(obj.start_file_backup.length>0) obj.start_file_backup="<br />"+obj.start_file_backup;
-		if(obj.start_image_backup.length>0) obj.start_image_backup="<br />"+obj.start_image_backup;
 		
 		if( obj.delete_pending && obj.delete_pending==1)
 		{

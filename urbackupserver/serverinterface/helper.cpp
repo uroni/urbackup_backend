@@ -295,4 +295,30 @@ bool Helper::checkPassword(const std::wstring &username, const std::wstring &pas
 	return false;
 }
 
+std::vector<int> Helper::clientRights(const std::string& right_name, bool& all_client_rights)
+{
+	std::string rights=getRights(right_name);
+	std::vector<int> clientid;
+	if(rights!="all" && rights!="none" )
+	{
+		std::vector<std::string> s_clientid;
+		Tokenize(rights, s_clientid, ",");
+		for(size_t i=0;i<s_clientid.size();++i)
+		{
+			clientid.push_back(atoi(s_clientid[i].c_str()));
+		}
+	}
+
+	if(rights=="all")
+	{
+		all_client_rights=true;
+	}
+	else
+	{
+		all_client_rights=false;
+	}
+
+	return clientid;
+}
+
 #endif //CLIENT_ONLY

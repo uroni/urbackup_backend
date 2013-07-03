@@ -29,6 +29,8 @@
 
 extern std::string server_identity;
 
+namespace
+{
 
 bool start_backup(IPipe *comm_pipe, std::wstring backup_type)
 {
@@ -44,6 +46,44 @@ bool start_backup(IPipe *comm_pipe, std::wstring backup_type)
 		return false;
 
 	return true;
+}
+
+bool client_download(Helper& helper, JSON::Array &client_downloads)
+{
+	IDatabase *db=helper.getDatabase();
+	ServerSettings settings(db);
+
+	if(!settings.getSettings()->internet_mode_enabled)
+		return false;
+
+	bool clientid_rights_all;
+	std::vector<int> clientid_rights=helper.clientRights(RIGHT_SETTINGS, clientid_rights_all);
+
+	db_results res=db->Read("SELECT id, name FROM clients");
+
+	bool has_client=false;
+
+	for(size_t i=0;i<res.size();++i)
+	{
+		int clientid=watoi(res[i][L"id"]);
+		std::wstring clientname=res[i][L"name"];
+
+		bool found=false;
+		if( (clientid_rights_all
+			|| std::find(clientid_rights.begin(), clientid_rights.end(), clientid)!=clientid_rights.end()
+			) && ServerStatus::getStatus(clientname).online==false )
+		{
+			JSON::Object obj;
+			obj.set("id", clientid);
+			obj.set("name", clientname);
+			client_downloads.add(obj);
+			has_client=true;
+		}
+	}
+
+	return has_client;
+}
+
 }
 
 ACTION_IMPL(status)
@@ -217,6 +257,7 @@ ACTION_IMPL(status)
 			std::string ip="-";
 			std::string client_version_string;
 			std::string os_version_string;
+			int done_pc=-1;
 			int i_status=0;
 			bool online=false;
 			SStatus *curr_status=NULL;
@@ -234,6 +275,7 @@ ACTION_IMPL(status)
 
 					client_version_string=client_status[j].client_version_string;
 					os_version_string=client_status[j].os_version_string;
+					done_pc=client_status[j].pcdone;
 
 					if(client_status[j].wrong_ident)
 						i_status=11;
@@ -269,6 +311,7 @@ ACTION_IMPL(status)
 			stat.set("client_version_string", client_version_string);
 			stat.set("os_version_string", os_version_string);
 			stat.set("status", i_status);
+			stat.set("done_pc", done_pc);
 			
 
 			ServerSettings settings(db, clientid);
@@ -369,7 +412,12 @@ ACTION_IMPL(status)
 		{
 			ret.set("remove_client", true);
 		}
-		
+
+		JSON::Array client_downloads;
+		if(client_download(helper, client_downloads))
+		{
+			ret.set("client_downloads", client_downloads);
+		}
 	}
 	else
 	{
