@@ -76,7 +76,7 @@ std::vector<int> ServerCleanupDAO::getClientsSortFilebackups(void)
 * @func std::vector<int> ServerCleanupDAO::getClientsSortImagebackups
 * @return int id
 * @sql
-*   SELECT DISTINCT c.id FROM clients c 
+*   SELECT DISTINCT c.id AS id FROM clients c 
 *		INNER JOIN (SELECT * FROM backup_images WHERE length(letter)<=2) b
 *				ON c.id=b.clientid
 *	ORDER BY b.backuptime ASC
@@ -384,7 +384,7 @@ ServerCleanupDAO::SImageBackupInfo ServerCleanupDAO::getImageBackupInfo(int back
 void ServerCleanupDAO::moveFiles(int backupid)
 {
 	q_moveFiles->Bind(backupid);
-	db_results res=q_moveFiles->Read();
+	q_moveFiles->Write();
 	q_moveFiles->Reset();
 }
 
@@ -429,7 +429,7 @@ void ServerCleanupDAO::addToImageStats(int64 size_correction, int backupid)
 {
 	q_addToImageStats->Bind(size_correction);
 	q_addToImageStats->Bind(backupid);
-	db_results res=q_addToImageStats->Read();
+	q_addToImageStats->Write();
 	q_addToImageStats->Reset();
 }
 
@@ -680,7 +680,7 @@ void ServerCleanupDAO::createQueries(void)
 	q_getIncompleteImages=db->Prepare("SELECT id, path FROM backup_images WHERE  complete=0 AND running<datetime('now','-300 seconds')", false);
 	q_removeImage=db->Prepare("DELETE FROM backup_images WHERE id=?", false);
 	q_getClientsSortFilebackups=db->Prepare("SELECT DISTINCT c.id AS id FROM clients c INNER JOIN backups b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
-	q_getClientsSortImagebackups=db->Prepare("SELECT DISTINCT c.id FROM clients c  INNER JOIN (SELECT * FROM backup_images WHERE length(letter)<=2) b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
+	q_getClientsSortImagebackups=db->Prepare("SELECT DISTINCT c.id AS id FROM clients c  INNER JOIN (SELECT * FROM backup_images WHERE length(letter)<=2) b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
 	q_getFullNumImages=db->Prepare("SELECT id, letter FROM backup_images  WHERE clientid=? AND incremental=0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
 	q_getImageRefs=db->Prepare("SELECT id, complete FROM backup_images WHERE incremental<>0 AND incremental_ref=?", false);
 	q_getImagePath=db->Prepare("SELECT path FROM backup_images WHERE id=?", false);

@@ -194,3 +194,4 @@ urbackup/backup/*
 urbackup/cache/*
 SQLGenOld/*
 client/
+SQLGen/Release/*
