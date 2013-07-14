@@ -73,6 +73,8 @@ void CServiceWorker::operator()(void)
 			IScopedLock lock(mutex);
 			addNewClients();
 		}
+
+		bool has_select_client=false;
 		{
 			{
 				if( clients.empty() )
@@ -123,28 +125,37 @@ void CServiceWorker::operator()(void)
 					if((_i32)s>max)
 						max=(_i32)s;
 					FD_SET(s, &fdset);
+					has_select_client=true;
 				}
 			}
 		}
 
-		timeval lon;
-		lon.tv_sec=0;
-		lon.tv_usec=10000;
 
-		_i32 rc = select(max+1, &fdset, 0, 0, &lon);
-
-		if( rc>0 )
+		if(has_select_client)
 		{
-			for(size_t i=0;i<clients.size();++i)
+			timeval lon;
+			lon.tv_sec=0;
+			lon.tv_usec=10000;
+
+			_i32 rc = select(max+1, &fdset, 0, 0, &lon);
+
+			if( rc>0 )
 			{
-				SOCKET s=clients[i].second->getSocket();
-				if( FD_ISSET(s,&fdset) )
+				for(size_t i=0;i<clients.size();++i)
 				{
-					//Server->Log("Incoming data for client..", LL_DEBUG);
-					clients[i].first->ReceivePackets();					
+					SOCKET s=clients[i].second->getSocket();
+					if( FD_ISSET(s,&fdset) )
+					{
+						//Server->Log("Incoming data for client..", LL_DEBUG);
+						clients[i].first->ReceivePackets();					
+					}
 				}
-			}
-		}				 
+			}		
+		}
+		else
+		{
+			Server->wait(10);
+		}
 	}
 	Server->Log("ServiceWorker finished", LL_DEBUG);
 	exit->Write("ok");
