@@ -505,6 +505,15 @@ function show_status1(details, hostname, action, remove_client, stop_client_remo
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
+function build_client_download_select(client_downloads)
+{
+	var ret="";
+	for(var i=0;i<client_downloads.length;++i)
+	{
+		ret+="<option value=\""+client_downloads[i].id+"\">"+client_downloads[i].name+"</option>";
+	}
+	return ret;
+}
 function show_status2(data)
 {
 	stopLoading();
@@ -728,6 +737,8 @@ function show_status2(data)
 	
 	var dtl_c1="<!--";
 	var dtl_c2="-->";
+	var dtl_c1_top=dtl_c1;
+	var dtl_c2_top=dtl_c2;
 	
 	if(data.allow_extra_clients)
 	{
@@ -750,6 +761,8 @@ function show_status2(data)
 		if(data.status.length>10)
 		{
 			modify_clients_top=modify_clients+"<br />";
+			dtl_c1_top=dtl_c1;
+			dtl_c2_top=dtl_c2;
 		}
 	}
 	
@@ -775,18 +788,34 @@ function show_status2(data)
 		internet_client_added="<strong>"+trans("internet_client_added")+"</strong><br />";
 	}
 	
+	var status_client_download="";
+	if(data.client_downloads)
+	{
+		var client_download_data=build_client_download_select(data.client_downloads);
+		status_client_download=tmpls.status_client_download.evaluate({download_clients: client_download_data});
+	}
+	
 	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
 		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal,
 		extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
 		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
 		server_identity: data.server_identity, modify_clients: modify_clients,
 		modify_clients_top: modify_clients_top,
-		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added});
+		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
+		status_client_download: status_client_download, dtl_c1_top: dtl_c1_top, dtl_c2_top: dtl_c2_top});
 	
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
+	}
+}
+function downloadClient(clientid)
+{
+	var selidx=I('download_client').selectedIndex;
+	if(selidx!=-1)
+	{
+		location.href=getURL("download_client", "clientid="+I('download_client').value);
 	}
 }
 function addExtraClient()

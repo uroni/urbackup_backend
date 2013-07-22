@@ -188,6 +188,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 #endif
 
+	if( !FileExists("urbackup/data/settings.cfg") && FileExists("initial_settings.cfg") )
+	{
+		copy_file(L"initial_settings.cfg", L"urbackup/data/settings.cfg");
+		Server->deleteFile("initial_settings.cfg");
+	}
+
 #ifndef _DEBUG
 	if(FileExists(new_file) )
 #endif

@@ -243,6 +243,9 @@
     <ClCompile Include="create_files_cache.cpp">
       <Filter>filescache</Filter>
     </ClCompile>
+    <ClCompile Include="serverinterface\download_client.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">

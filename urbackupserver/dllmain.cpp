@@ -470,6 +470,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(logs);
 	ADD_ACTION(isimageready);
 	ADD_ACTION(getimage);
+	ADD_ACTION(download_client);
 
 	if(Server->getServerParameter("allow_shutdown")=="true")
 	{

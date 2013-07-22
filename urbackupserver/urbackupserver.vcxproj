@@ -280,6 +280,7 @@
     <ClCompile Include="MDBFileCache.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
+    <ClCompile Include="serverinterface\download_client.cpp" />
     <ClCompile Include="serverinterface\getimage.cpp" />
     <ClCompile Include="serverinterface\google_chart.cpp" />
     <ClCompile Include="serverinterface\helper.cpp" />

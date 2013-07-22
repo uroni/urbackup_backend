@@ -24,10 +24,12 @@
 #include "../server_status.h"
 #include "../../Interface/Pipe.h"
 #include "../server_get.h"
+#include "../../cryptoplugin/ICryptoFactory.h"
 
 #include <algorithm>
 
 extern std::string server_identity;
+extern ICryptoFactory *crypto_fak;
 
 namespace
 {
@@ -56,6 +58,15 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 	if(!settings.getSettings()->internet_mode_enabled)
 		return false;
 
+	if(!FileExists("urbackup/UrBackupUpdate.exe"))
+		return false;
+
+	if(!FileExists("urbackup/UrBackupUpdate.sig"))
+		return false;
+
+	if(crypto_fak==NULL)
+		return false;
+
 	bool clientid_rights_all;
 	std::vector<int> clientid_rights=helper.clientRights(RIGHT_SETTINGS, clientid_rights_all);
 
@@ -71,7 +82,7 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 		bool found=false;
 		if( (clientid_rights_all
 			|| std::find(clientid_rights.begin(), clientid_rights.end(), clientid)!=clientid_rights.end()
-			) && ServerStatus::getStatus(clientname).online==false )
+			) /*&& ServerStatus::getStatus(clientname).online==false*/ )
 		{
 			JSON::Object obj;
 			obj.set("id", clientid);

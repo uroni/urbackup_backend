@@ -236,13 +236,10 @@ std::string getFile(std::string filename)
         FileBin.seekg(0, std::ios::end);
 		unsigned long FileSize = (unsigned int)std::streamoff(FileBin.tellg());
         FileBin.seekg(0, std::ios::beg);
-		char* buffer=new char[FileSize+1];
-
-        FileBin.read(buffer, FileSize);
-		buffer[FileSize]='\0';
-		std::string ret=buffer;
+		std::string ret;
+		ret.resize(FileSize);
+        FileBin.read(const_cast<char*>(ret.c_str()), FileSize);
 		FileBin.close();
-        delete [] buffer;
         return ret;
 }
 
