@@ -30,7 +30,8 @@
 #include "Interface/Condition.h"
 #include "Interface/Service.h"
 
-CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsigned short port)
+CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsigned short port, int pMaxClientsPerThread)
+	: maxClientsPerThread(pMaxClientsPerThread)
 {
 	name=pName;
 	service=pService;
@@ -194,7 +195,7 @@ void CServiceAcceptor::AddToWorker(SOCKET pSocket)
 
 	Server->Log(name+": No available slots... starting new Worker", LL_DEBUG);
 
-	CServiceWorker *nw=new CServiceWorker(service, name, exitpipe);
+	CServiceWorker *nw=new CServiceWorker(service, name, exitpipe, maxClientsPerThread);
 	workers.push_back(nw);
 
 	Server->createThread(nw);

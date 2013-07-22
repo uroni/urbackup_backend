@@ -10,7 +10,7 @@ class IService;
 class CServiceAcceptor : public IThread
 {
 public:
-	CServiceAcceptor(IService * pService, std::string pName, unsigned short port);
+	CServiceAcceptor(IService * pService, std::string pName, unsigned short port, int pMaxClientsPerThread);
 	~CServiceAcceptor();
 
 	void operator()(void);
@@ -32,4 +32,6 @@ private:
 	bool do_exit;
 
 	bool has_error;
+
+	int maxClientsPerThread;
 };

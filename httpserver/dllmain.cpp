@@ -87,7 +87,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	Server->Log("Starting HTTP-Server on port "+nconvert(port), LL_INFO);
 
-	Server->StartCustomStreamService( http_service, "HTTP", (unsigned short)port);
+	Server->StartCustomStreamService( http_service, "HTTP", (unsigned short)port, 1);
 }
 
 DLLEXPORT void UnloadActions(void)

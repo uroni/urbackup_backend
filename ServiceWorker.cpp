@@ -6,7 +6,7 @@
 #include "stringtools.h"
 #include <stdlib.h>
 
-CServiceWorker::CServiceWorker(IService *pService, std::string pName, IPipe * pExit) : exit(pExit)
+CServiceWorker::CServiceWorker(IService *pService, std::string pName, IPipe * pExit, int pMaxClientsPerThread) : exit(pExit)
 {
 	mutex=Server->createMutex();
 	nc_mutex=Server->createMutex();
@@ -17,14 +17,21 @@ CServiceWorker::CServiceWorker(IService *pService, std::string pName, IPipe * pE
 	nClients=0;
 	do_stop=false;
 
-	std::string s_max_clients;
-	if((s_max_clients=Server->getServerParameter("max_worker_clients"))!="")
+	if(pMaxClientsPerThread>0)
 	{
-		max_clients=atoi(s_max_clients.c_str());
+		max_clients=pMaxClientsPerThread;
 	}
 	else
 	{
-		max_clients=MAX_CLIENTS;
+		std::string s_max_clients;
+		if((s_max_clients=Server->getServerParameter("max_worker_clients"))!="")
+		{
+			max_clients=atoi(s_max_clients.c_str());
+		}
+		else
+		{
+			max_clients=MAX_CLIENTS;
+		}
 	}
 }
 
