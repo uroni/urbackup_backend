@@ -479,6 +479,37 @@ void do_restore(void)
 		delete []buf;
 		exit(0);
 	}
+	else if(cmd=="mbrinfo")
+	{
+		std::string mbr_filename=Server->getServerParameter("mbr_filename");
+		if(mbr_filename.empty())
+		{
+			Server->Log("MBR filename not specified (mbr_filename parameter)", LL_ERROR);
+			exit(1);
+		}
+		IFile *f=Server->openFile(mbr_filename, MODE_READ);
+		if(f==NULL)
+		{
+			Server->Log("Could not open MBR file", LL_ERROR);
+			exit(1);
+		}
+		size_t fsize=(size_t)f->Size();
+		char *buf=new char[fsize];
+		f->Read(buf, (_u32)fsize);
+		Server->destroy(f);
+
+		CRData mbr(buf, fsize);
+		SMBRData mbrdata(mbr);
+		if(mbrdata.hasError())
+		{
+			Server->Log("Error while parsing MBR data", LL_ERROR);
+			delete []buf; exit(1);
+		}
+
+		std::cout << mbrdata.infoString();
+		delete []buf;
+		exit(0);
+	}
 	else if(cmd=="help")
 	{
 		Server->Log("restore_cmd commands are...", LL_INFO);
@@ -972,6 +1003,10 @@ void restore_wizard(void)
 				system("clear");
 				system("cat urbackup/restore/loading_mbr");
 				system("echo");
+				if(FileExists("mbr.dat"))
+				{
+					Server->deleteFile("mbr.dat");
+				}
 				system("touch mbr.dat");
 				downloadImage(selimage.id, nconvert(selimage.time_s), "mbr.dat", true);
 				system("cat urbackup/restore/reading_mbr");
