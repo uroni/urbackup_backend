@@ -33,4 +33,5 @@ NICE_LEVEL="0"
 
 #I/O-Scheduling class (with IO-priotity) of the server process.
 #Values e.g. idle, best-effort or real-time
-IOSCHED_CLASS="none"
+IOSCHED_CLASS="best-effort"
+
