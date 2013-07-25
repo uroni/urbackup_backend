@@ -121,6 +121,13 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 {
         udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
+		sockaddr_in source_addr;
+		memset(&source_addr, 0, sizeof(source_addr));
+		source_addr.sin_family = AF_INET;
+		source_addr.sin_port = htons(UDP_SOURCE_PORT);
+
+		bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+
         setSockP(udpsock);
 
         BOOL val=TRUE;

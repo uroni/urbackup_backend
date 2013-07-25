@@ -17,6 +17,8 @@
 #include <sys/ioctl.h>
 #endif
 #include "../urbackupcommon/mbrdata.h"
+#include "../fileservplugin/settings.h"
+#include "../fileservplugin/packet_ids.h"
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -26,6 +28,8 @@ const std::string pw_file="urbackup/pw.txt";
 
 const std::string configure_wlan="wicd-curses";
 const std::string configure_networkcard=configure_wlan;
+
+#define UDP_SOURCE_PORT 35623
 
 
 std::string trim2(const std::string &str)
@@ -212,7 +216,33 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 
 volatile bool restore_retry_ok=false;
 
-int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1)
+int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth);
+
+int retryDownload(int errrc, int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth)
+{
+	if(recur_depth==0)
+	{
+		Server->Log("Read Timeout: Retrying", LL_WARNING);
+
+		int tries=5;
+		int rc;
+		do
+		{
+			Server->wait(30000);
+			rc=downloadImage(img_id, img_time, outfile, mbr, offset, recur_depth+1);
+			if(rc==0)
+			{
+				return rc;
+			}
+			--tries;
+		}
+		while(tries>0);
+	}
+	Server->Log("Read Timeout.", LL_ERROR);
+	return errrc;
+}
+
+int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1, int recur_depth=0)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -251,7 +281,8 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	if(imgsize==-2)
 	{
 		Server->Log("Connection timeout", LL_ERROR);
-		Server->destroy(c);Server->destroy(out);return 5;
+		int rc=retryDownload(5, img_id, img_time, outfile, mbr, offset, recur_depth);
+		Server->destroy(c);Server->destroy(out);return rc;
 	}
 
 	char buf[4096];
@@ -263,8 +294,8 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 			size_t c_read=c->Read(buf, 4096, 180000);
 			if(c_read==0)
 			{
-				Server->Log("Read Timeout", LL_ERROR);
-				Server->destroy(c);Server->destroy(out);return 4;
+				int rc=retryDownload(4, img_id, img_time, outfile, mbr, offset, recur_depth);
+				Server->destroy(c);Server->destroy(out);return rc;
 			}
 			out->Write(buf, (_u32)c_read);
 			read+=c_read;
@@ -309,20 +340,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 				Server->destroy(c);Server->destroy(out);
 				if(has_data)
 				{
-					int tries=5;
-					int rc;
-					do
-					{
-						Server->wait(30000);
-						rc=downloadImage(img_id, img_time, outfile, mbr, pos);
-						if(rc==0)
-						{
-							return rc;
-						}
-						--tries;
-					}
-					while(tries>0);
-					return rc;
+					return retryDownload(4, img_id, img_time, outfile, mbr, pos, recur_depth);
 				}
 				else
 				{
@@ -425,6 +443,74 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	return 0;
 }
 
+namespace
+{
+
+	bool LookupBlocking(std::string pServer, in_addr *dest)
+	{
+		const char* host=pServer.c_str();
+		unsigned int addr = inet_addr(host);
+		if (addr != INADDR_NONE)
+		{
+			dest->s_addr = addr;
+		}
+		else
+		{
+			hostent* hp = gethostbyname(host);
+			if (hp != 0)
+			{
+				memcpy(dest, hp->h_addr, hp->h_length);
+			}
+			else
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool ping_server(void)
+	{
+		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+
+		std::string server=Server->getServerParameter("ping_server");
+
+		if(server.empty())
+			return false;
+		sockaddr_in server_addr;
+		if(!LookupBlocking(server, &server_addr.sin_addr))
+			return false;
+
+		server_addr.sin_family=AF_INET;
+        server_addr.sin_port=htons(UDP_SOURCE_PORT);
+
+		static std::string ping_servername;
+		if(ping_servername.empty())
+		{
+			ping_servername="##restore##"+nconvert(Server->getTimeSeconds())+nconvert(Server->getRandomNumber()%10000);
+		}
+
+		std::vector<char> buffer;
+		buffer.resize(ping_servername.size()+2);
+		buffer[0]=ID_PONG;
+		buffer[1]=VERSION;
+		memcpy(&buffer[2], ping_servername.c_str(), ping_servername.size());
+		
+		while(true)
+		{
+			int rc = sendto(udpsock, &buffer[0], static_cast<int>(buffer.size()), 0, (sockaddr*)&server_addr, sizeof(server_addr));
+			if(rc == -1)
+			{
+				Server->Log("Error sending to UrBackup server on UDP socket", LL_ERROR);
+				return false;
+			}
+			Server->wait(10000);
+		}
+
+		return true;
+	}
+}
+
 void do_restore(void)
 {
 	std::string cmd=Server->getServerParameter("restore_cmd");
@@ -519,6 +605,11 @@ void do_restore(void)
 		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		exit(0);
+	}
+	else if(cmd=="ping_server")
+	{
+		bool b=ping_server();
+		exit(b?0:1);
 	}
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
@@ -700,6 +791,26 @@ bool has_network_device(void)
 #endif //_WIN32
 }
 
+void ping_named_server(void)
+{
+	std::string out;
+	while(out.empty())
+	{
+		int rc=system("dialog --inputbox \"`cat urbackup/restore/enter_server_ip_input`\" 7 10 2> out");
+		out=getFile("out");
+
+		if(rc!=0)
+		{
+			return;
+		}
+	}
+
+	if(!out.empty())
+	{
+		system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd ping_server --ping_server \""+out+"\"").c_str());
+	}
+}
+
 const int start_state=-2;
 
 void restore_wizard(void)
@@ -813,7 +924,13 @@ void restore_wizard(void)
 
 				if(ec!=0)
 				{
-					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/search_again`\" \"n\" \"`cat urbackup/restore/configure_networkcard`\" \"w\" \"`cat urbackup/restore/configure_wlan`\" \"e\" \"`cat urbackup/restore/start_shell`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
+					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 "
+						"\"r\" \"`cat urbackup/restore/search_again`\" "
+						"\"n\" \"`cat urbackup/restore/configure_networkcard`\" "
+						"\"w\" \"`cat urbackup/restore/configure_wlan`\" "
+						"\"e\" \"`cat urbackup/restore/enter_server_ip`\" "
+						"\"s\" \"`cat urbackup/restore/start_shell`\" \"s\" "
+						"\"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
 						state=start_state;
@@ -834,6 +951,11 @@ void restore_wizard(void)
 						state=0;
 					}
 					else if(out=="e")
+					{
+						ping_named_server();
+						state=0;
+					}
+					else if(out=="s")
 					{
 						system("bash");
 						state=0;
@@ -1008,7 +1130,14 @@ void restore_wizard(void)
 					Server->deleteFile("mbr.dat");
 				}
 				system("touch mbr.dat");
-				downloadImage(selimage.id, nconvert(selimage.time_s), "mbr.dat", true);
+				int rc = downloadImage(selimage.id, nconvert(selimage.time_s), "mbr.dat", true);
+				if (rc !=0 )
+				{
+					Server->Log("Error downloading MBR", LL_ERROR);
+					err="cannot_read_mbr";
+					state=101;
+					break;
+				}
 				system("cat urbackup/restore/reading_mbr");
 				system("echo");
 				IFile *f=Server->openFile("mbr.dat", MODE_READ);

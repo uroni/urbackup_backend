@@ -842,7 +842,7 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map
 	img_download_running=true;
 	downloadImage(params);
 	img_download_running=false;
-	Server->Log("Donwload done -2", LL_DEBUG);
+	Server->Log("Download done -2", LL_DEBUG);
 	do_quit=true;
 }
 
