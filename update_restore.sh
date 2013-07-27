@@ -1,16 +1,6 @@
 #!/bin/sh
 
-./switch_build.sh server
-
-if test -e Makefile.am~b
-then
-    cp Makefile.am~b Makefile.am
-fi
-
-if test -e configure.ac~b
-then
-    cp configure.ac~b configure.ac
-fi
+./switch_build.sh client
 
 make
 cd fileservplugin
