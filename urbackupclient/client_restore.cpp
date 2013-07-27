@@ -484,17 +484,13 @@ namespace
 		server_addr.sin_family=AF_INET;
         server_addr.sin_port=htons(UDP_SOURCE_PORT);
 
-		static std::string ping_servername;
-		if(ping_servername.empty())
-		{
-			ping_servername="##restore##"+nconvert(Server->getTimeSeconds())+nconvert(Server->getRandomNumber()%10000);
-		}
+		std::string ping_clientname=getFile("clientname.txt");
 
 		std::vector<char> buffer;
-		buffer.resize(ping_servername.size()+2);
+		buffer.resize(ping_clientname.size()+2);
 		buffer[0]=ID_PONG;
 		buffer[1]=VERSION;
-		memcpy(&buffer[2], ping_servername.c_str(), ping_servername.size());
+		memcpy(&buffer[2], ping_clientname.c_str(), ping_clientname.size());
 		
 		while(true)
 		{

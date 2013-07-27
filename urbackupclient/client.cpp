@@ -2065,6 +2065,7 @@ void IndexThread::start_filesrv(void)
 	if(Server->getServerParameter("restore_mode")=="true")
 	{
 		name=L"##restore##"+convert(Server->getTimeSeconds())+convert(Server->getRandomNumber()%10000);
+		writestring(Server->ConvertToUTF8(name), "clientname.txt");
 	}
 	else
 	{
