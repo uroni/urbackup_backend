@@ -30,7 +30,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include <strstream>
+#include <sstream>
 
 class DirectoryWatcherThread;
 
