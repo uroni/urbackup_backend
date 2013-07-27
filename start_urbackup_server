@@ -68,6 +68,7 @@ print_help()
 	echo "--remove_unknown		Remove unknown backups from storage and internal database"
 	echo "--reset_pw {pw}		Resets the pw"
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
+	echo "--repair_database		Tries to repair the database"
 	echo ""
 	echo "Have a nice day!"
 	exit 0
@@ -93,7 +94,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	VERIFY_HASHES=""
 	RESET_PW=""
 	CLEANUP=""
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database -- "$@"`
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
