@@ -134,14 +134,18 @@ bool InternetServiceConnector::Run(void)
 	
 	if( has_timeout )
 	{
-		if(free_connection)
+		IScopedLock lock(local_mutex);
+		if(has_timeout)
 		{
-			cleanup_pipes();
-			return false;
-		}
-		else
-		{
-			return true;
+			if(free_connection)
+			{
+				cleanup_pipes();
+				return false;
+			}
+			else
+			{
+				return true;
+			}
 		}
 	}
 
@@ -179,6 +183,7 @@ bool InternetServiceConnector::Run(void)
 			if(!do_connect)
 			{
 				has_timeout=true;
+				free_connection=true;
 			}
 		}
 	}
@@ -199,6 +204,7 @@ void InternetServiceConnector::ReceivePackets(void)
 			if(!do_connect)
 			{
 				has_timeout=true;
+				free_connection=true;
 			}
 		}
 		return;

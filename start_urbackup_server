@@ -65,6 +65,7 @@ print_help()
 	echo "--pidfile {file}		Save pid of daemon in file"
 	echo "--sqlite_tmpdir {tmpdir}	Specifies the directory sqlite uses to store temporary tables"
 	echo "--verify_hashes		Verifies a backup"
+	echo "--remove_unknown		Remove unknown backups from storage and internal database"
 	echo "--reset_pw {pw}		Resets the pw"
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
 	echo ""
@@ -110,6 +111,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--cleanup) CLEANUP="--app cleanup --cleanup_amount $2"; shift 2;;
 			--remove_unknown) CLEANUP="--app remove_unknown"; shift ;;
 			--cleanup_database) CLEANUP="--app cleanup_database"; shift ;;
+			--repair_database) CLEANUP="--app repair_database"; shift ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac

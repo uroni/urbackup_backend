@@ -10,7 +10,7 @@ if NOT %errorLevel% == 0 (
 echo Stopping UrBackup Server...
 net stop UrBackupWinServer
 
-"%~dp0\urbackup_srv.exe" --cmdline --no-server --plugin urbackupserver.dll --app remove_unknown --loglevel debug --logfile app.log
+"%~dp0\urbackup_srv.exe" --cmdline --no-server --plugin urbackupserver.dll --app repair_database --loglevel debug --logfile app.log
 
 echo Starting UrBackup Server...
 net start UrBackupWinServer

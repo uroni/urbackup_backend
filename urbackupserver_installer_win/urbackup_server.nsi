@@ -139,6 +139,7 @@ Section "install"
 	File "data_common\reset_pw.bat"
 	File "data_common\cleanup_database.bat"
 	File "data_common\urbackup_dsa.pub"
+	File "data_common\repair_database.bat"
 	
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	

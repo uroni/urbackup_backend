@@ -2010,7 +2010,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	if(on_snapshot)
 	{
 		Server->Log(clientname+L": Creating snapshot...", LL_DEBUG);
-		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single))
+		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single)
+			|| !SnapshotHelper::isSubvolume(clientname, backuppath_single) )
 		{
 			ServerLogger::Log(clientid, "Creating new snapshot failed (Server error)", LL_WARNING);
 			

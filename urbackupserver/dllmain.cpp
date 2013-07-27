@@ -64,6 +64,7 @@ SStartupStatus startup_status;
 #include "InternetServiceConnector.h"
 #include "filedownload.h"
 #include "apps/cleanup_cmd.h"
+#include "apps/repair_cmd.h"
 #include "create_files_cache.h"
 
 #include <stdlib.h>
@@ -133,14 +134,17 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 	return true;
 }
 
-void open_server_database(bool &use_berkeleydb)
+void open_server_database(bool &use_berkeleydb, bool init_db)
 {
 	std::string bdb_config="mutex_set_max 1000000\r\nset_tx_max 500000\r\nset_lg_regionmax 10485760\r\nset_lg_bsize 4194304\r\nset_lg_max 20971520\r\nset_lk_max_locks 100000\r\nset_lk_max_lockers 10000\r\nset_lk_max_objects 100000\r\nset_cachesize 0 104857600 1";
 	use_berkeleydb=false;
 
 	if( !FileExists("urbackup/backup_server.bdb") && !FileExists("urbackup/backup_server.db") && FileExists("urbackup/backup_server.db.template") )
 	{
-		copy_file(L"urbackup/backup_server.db.template", L"urbackup/backup_server.db");
+		if(init_db)
+		{
+			copy_file(L"urbackup/backup_server.db.template", L"urbackup/backup_server.db");
+		}
 	}
 		
 	if( !FileExists("urbackup/backup_server.db") && !FileExists("urbackup/backup_server.bdb") && FileExists("urbackup/backup_server_init.sql") )
@@ -163,8 +167,11 @@ void open_server_database(bool &use_berkeleydb)
 			return;
 		}
 
-		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		db->Import("urbackup/backup_server_init.sql");
+		if(init_db)
+		{
+			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			db->Import("urbackup/backup_server_init.sql");
+		}
 	}
 	else
 	{			
@@ -294,6 +301,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=cleanup_database();
 		}
+		else if(app=="repair_database")
+		{
+			rc=repair_cmd();
+		}
 		else
 		{
 			rc=100;
@@ -345,7 +356,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	
 	bool use_berkeleydb;
-	open_server_database(use_berkeleydb);
+	open_server_database(use_berkeleydb, true);
 
 	std::string arg_verify_hashes=Server->getServerParameter("verify_hashes");
 	if(!arg_verify_hashes.empty())
