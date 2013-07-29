@@ -65,8 +65,10 @@ print_help()
 	echo "--pidfile {file}		Save pid of daemon in file"
 	echo "--sqlite_tmpdir {tmpdir}	Specifies the directory sqlite uses to store temporary tables"
 	echo "--verify_hashes		Verifies a backup"
+	echo "--remove_unknown		Remove unknown backups from storage and internal database"
 	echo "--reset_pw {pw}		Resets the pw"
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
+	echo "--repair_database		Tries to repair the database"
 	echo ""
 	echo "Have a nice day!"
 	exit 0
@@ -92,7 +94,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	VERIFY_HASHES=""
 	RESET_PW=""
 	CLEANUP=""
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database -- "$@"`
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -110,6 +112,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--cleanup) CLEANUP="--app cleanup --cleanup_amount $2"; shift 2;;
 			--remove_unknown) CLEANUP="--app remove_unknown"; shift ;;
 			--cleanup_database) CLEANUP="--app cleanup_database"; shift ;;
+			--repair_database) CLEANUP="--app repair_database"; shift ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac

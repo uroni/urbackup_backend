@@ -30,7 +30,11 @@
 #include <vector>
 #include <string>
 #include <fstream>
+<<<<<<< HEAD
 #include <sstream>
+=======
+#include <sstream>
+>>>>>>> e4ad069e2de0e14ab3318fc3e19f491ec00d3eb6
 
 class DirectoryWatcherThread;
 

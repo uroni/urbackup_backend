@@ -17,5 +17,4 @@ echo "Cleanup amount '%1'"
 echo Starting UrBackup Server...
 net start UrBackupWinServer
 
-pause
 exit 0

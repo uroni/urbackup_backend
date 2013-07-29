@@ -245,6 +245,9 @@
     </ClCompile>
     <ClCompile Include="serverinterface\download_client.cpp">
       <Filter>serverinterface</Filter>
+	</ClCompile>
+    <ClCompile Include="apps\repair_cmd.cpp">
+      <Filter>apps</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -424,6 +427,9 @@
     </ClInclude>
     <ClInclude Include="serverinterface\rights.h">
       <Filter>serverinterface</Filter>
+	</ClInclude>
+    <ClInclude Include="apps\repair_cmd.h">
+      <Filter>apps</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
