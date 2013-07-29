@@ -792,7 +792,7 @@ void ping_named_server(void)
 	std::string out;
 	while(out.empty())
 	{
-		int rc=system("dialog --inputbox \"`cat urbackup/restore/enter_server_ip_input`\" 7 10 2> out");
+		int rc=system("dialog --inputbox \"`cat urbackup/restore/enter_server_ip_input`\" 8 30 2> out");
 		out=getFile("out");
 
 		if(rc!=0)
@@ -803,7 +803,7 @@ void ping_named_server(void)
 
 	if(!out.empty())
 	{
-		system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd ping_server --ping_server \""+out+"\"").c_str());
+		system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd ping_server --ping_server \""+out+"\" &").c_str());
 	}
 }
 
