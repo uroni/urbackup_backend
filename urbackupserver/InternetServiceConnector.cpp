@@ -13,6 +13,7 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 
 #include <memory.h>
+#include <algorithm>
 
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
