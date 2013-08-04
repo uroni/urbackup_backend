@@ -3606,15 +3606,32 @@ FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeout
 
 	if(ret.getPipe()!=NULL && server_settings!=NULL)
 	{
-		int local_speed=server_settings->getSettings()->local_speed;
-		if(local_speed>0)
+		int speed;
+		if(internet_connection)
 		{
-			ret.addThrottler(getThrottler(local_speed));
+			speed=server_settings->getSettings()->internet_speed;
 		}
-		int global_local_speed=server_settings->getSettings()->global_local_speed;
-		if(global_local_speed>0)
+		else
 		{
-			ret.addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
+			speed=server_settings->getSettings()->local_speed;
+		}
+		if(speed>0)
+		{
+			ret.addThrottler(getThrottler(speed));
+		}
+
+		int global_speed;
+		if(internet_connection)
+		{
+			global_speed=server_settings->getSettings()->global_internet_speed;
+		}
+		else
+		{
+			global_speed=server_settings->getSettings()->global_local_speed;
+		}
+		if(global_speed>0)
+		{
+			ret.addThrottler(BackupServer::getGlobalLocalThrottler(global_speed));
 		}
 	}
 
