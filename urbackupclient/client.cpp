@@ -268,6 +268,7 @@ void IndexThread::operator()(void)
 		data.getVoidPtr((void**)&contractor);
 		if(action==0)
 		{
+			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
 
 			data.getStr(&starttoken);
@@ -342,6 +343,7 @@ void IndexThread::operator()(void)
 		}
 		else if(action==1)
 		{
+			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
 
 			data.getStr(&starttoken);
@@ -360,7 +362,7 @@ void IndexThread::operator()(void)
 				cd->deleteSavedChangedDirs();
 
 				Server->Log("Deleting files... doing full index...", LL_INFO);
-				db->Write("DELETE FROM files");
+				resetFileEntries();
 				db->Write("DELETE FROM filehashes");
 			}
 			execute_prebackup_hook();
@@ -549,6 +551,7 @@ void IndexThread::operator()(void)
 			{
 				ret+=nconvert(vsslog[i].second)+"-"+vsslog[i].first+"\n";
 			}
+			Server->Log("VSS logdata - "+nconvert(ret.size())+" bytes", LL_DEBUG);
 			contractor->Write(ret);
 		}
 	}
@@ -566,13 +569,11 @@ void IndexThread::indexDirs(void)
 	if(patterns_changed)
 	{
 		VSSLog("Deleting file-cache because include/exclude pattern changed...", LL_INFO);
-		db->Write("DELETE FROM files");
+		resetFileEntries();
 	}
 
 	updateDirs();
 #ifdef _WIN32
-	cd->restoreSavedChangedDirs();
-	cd->restoreSavedChangedFiles();
 	//Invalidate cache
 	DirectoryWatcherThread::update_and_wait();
 	changed_dirs=cd->getChangedDirs();
@@ -580,7 +581,6 @@ void IndexThread::indexDirs(void)
 
 	bool has_stale_shadowcopy=false;
 
-	cd->restoreSavedDelDirs();
 	std::vector<std::wstring> deldirs=cd->getDelDirs();
 	for(size_t i=0;i<deldirs.size();++i)
 	{
@@ -642,7 +642,6 @@ void IndexThread::indexDirs(void)
 				std::vector<SMDir> acd=cd->getChangedDirs(false);
 				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 				std::sort(changed_dirs.begin(), changed_dirs.end());
-				cd->moveChangedFiles(false);
 
 				std::vector<std::wstring> deldirs=cd->getDelDirs(false);
 				for(size_t i=0;i<deldirs.size();++i)
@@ -730,6 +729,15 @@ void IndexThread::indexDirs(void)
 		readPatterns(patterns_changed, true);
 	}
 	share_dirs(starttoken);
+}
+
+void IndexThread::resetFileEntries(void)
+{
+	db->Write("DELETE FROM files");
+	db->Write("DELETE FROM mdirs");
+	db->Write("DELETE FROM mdirs_backup");
+	db->Write("DELETE FROM mfiles");
+	db->Write("DELETE FROM mfiles_backup");
 }
 
 bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first)

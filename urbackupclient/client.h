@@ -171,6 +171,8 @@ private:
 	std::string getSHA256(const std::wstring& fn);
 	std::string getSHA512Binary(const std::wstring& fn);
 
+	void resetFileEntries(void);
+
 	
 
 	std::string starttoken;
