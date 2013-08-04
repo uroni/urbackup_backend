@@ -760,7 +760,7 @@ function show_status2(data)
 		
 		if(data.status.length>10)
 		{
-			modify_clients_top=modify_clients+"<br />";
+			modify_clients_top=modify_clients;
 			dtl_c1_top=dtl_c1;
 			dtl_c2_top=dtl_c2;
 		}
