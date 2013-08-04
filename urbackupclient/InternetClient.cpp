@@ -120,7 +120,15 @@ void InternetClient::resetAuthErr(void)
 void InternetClient::operator()(void)
 {
 	Server->waitForStartupComplete();
-	Server->wait(180000);
+	if(Server->getServerParameter("internet_test_mode")!="true")
+	{
+		Server->Log("Internet test mode not enabled. Waiting for local server...", LL_DEBUG);
+		Server->wait(180000);
+	}
+	else
+	{
+		Server->wait(5000);
+	}
 	doUpdateSettings();
 	while(!do_exit)
 	{
