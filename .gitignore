@@ -188,3 +188,4 @@ SQLGen/SQLGen.suo
 urbackup/backup_server_files_cache.lmdb*
 urbackup/backup/*
 urbackup/cache/*
+urbackupclient/sysvol_test/x64/*
