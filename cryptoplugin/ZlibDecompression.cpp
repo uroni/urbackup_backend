@@ -1,24 +1,37 @@
 #include "ZlibDecompression.h"
+#include "../Interface/Server.h"
 
 
-size_t ZlibDecompression::decompress(const char *input, size_t input_size, std::vector<char> *output, bool flush, size_t output_off)
+size_t ZlibDecompression::decompress(const char *input, size_t input_size, std::vector<char> *output, bool flush, size_t output_off, bool *error)
 {
-	decomp.Put((const byte*)input, input_size);
-	if(flush)
+	try
 	{
-		decomp.Flush(true);
-	}
-	size_t rc=(size_t)decomp.MaxRetrievable();
-	if(rc>0)
-	{
-		if(output->size()<rc+output_off)
+		decomp.Put((const byte*)input, input_size);
+		if(flush)
 		{
-			output->resize(rc+output_off);
+			decomp.Flush(true);
 		}
-		return decomp.Get((byte*)(&(*output)[output_off]), rc);
+		size_t rc=(size_t)decomp.MaxRetrievable();
+		if(rc>0)
+		{
+			if(output->size()<rc+output_off)
+			{
+				output->resize(rc+output_off);
+			}
+			return decomp.Get((byte*)(&(*output)[output_off]), rc);
+		}
+		else
+		{
+			return 0;
+		}
 	}
-	else
+	catch(const CryptoPP::ZlibDecompressor::Err& err)
 	{
+		Server->Log("Error during ZLib decompression: "+err.GetWhat(), LL_WARNING);
+		if(error!=NULL)
+		{
+			*error=true;
+		}
 		return 0;
 	}
 }
