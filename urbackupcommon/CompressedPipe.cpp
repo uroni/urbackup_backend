@@ -9,7 +9,7 @@ extern ICryptoFactory *crypto_fak;
 const size_t max_send_size=20000;
 
 CompressedPipe::CompressedPipe(IPipe *cs, int compression_level)
-	: cs(cs)
+	: cs(cs), has_error(false)
 {
 	comp=crypto_fak->createZlibCompression(compression_level);
 	decomp=crypto_fak->createZlibDecompression();
@@ -73,6 +73,10 @@ size_t CompressedPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	{
 		rc=cs->Read(buffer, bsize, timeoutms);
 		Process(buffer, rc);
+		if(has_error)
+		{
+			return 0;
+		}
 		return ReadToBuffer(buffer, bsize);
 	}
 	else if(timeoutms==-1)
@@ -84,6 +88,10 @@ size_t CompressedPipe::Read(char *buffer, size_t bsize, int timeoutms)
 				return 0;
 
 			Process(buffer, rc);
+			if(has_error)
+			{
+				return 0;
+			}
 			rc=ReadToBuffer(buffer, bsize);
 		}
 		while(rc==0);
@@ -99,6 +107,10 @@ size_t CompressedPipe::Read(char *buffer, size_t bsize, int timeoutms)
 		if(rc==0)
 			return 0;
 		Process(buffer, rc);
+		if(has_error)
+		{
+			return 0;
+		}
 		rc=ReadToBuffer(buffer, bsize);
 	}
 	while(rc==0 && Server->getTimeMS()-starttime<(unsigned int)timeoutms);
@@ -139,7 +151,7 @@ void CompressedPipe::Process(const char *buffer, size_t bsize)
 		{
 			if(b_left>=message_left && input_buffer_pos==0)
 			{
-				decomp_buffer_pos+=decomp->decompress(cptr, message_left, &decomp_buffer, true, decomp_buffer_pos);
+				decomp_buffer_pos+=decomp->decompress(cptr, message_left, &decomp_buffer, true, decomp_buffer_pos, &has_error);
 				recv_state=RS_LENGTH;
 				message_len_byte=0;
 				b_left-=message_left;
@@ -156,7 +168,7 @@ void CompressedPipe::Process(const char *buffer, size_t bsize)
 
 				if(message_left==0)
 				{
-					decomp_buffer_pos+=decomp->decompress(&input_buffer[0], message_len, &decomp_buffer, true, decomp_buffer_pos);
+					decomp_buffer_pos+=decomp->decompress(&input_buffer[0], message_len, &decomp_buffer, true, decomp_buffer_pos, &has_error);
 					recv_state=RS_LENGTH;
 					message_len_byte=0;
 				}
@@ -195,6 +207,10 @@ size_t CompressedPipe::Read(std::string *ret, int timeoutms)
 	{
 		rc=cs->Read(ret, timeoutms);
 		Process(ret->c_str(), ret->size());
+		if(has_error)
+		{
+			return 0;
+		}
 		return ReadToString(ret);
 	}
 	else if(timeoutms==-1)
@@ -206,6 +222,10 @@ size_t CompressedPipe::Read(std::string *ret, int timeoutms)
 				return 0;
 
 			Process(ret->c_str(), ret->size());
+			if(has_error)
+			{
+				return 0;
+			}
 			rc=ReadToString(ret);
 		}
 		while(rc==0);
@@ -222,6 +242,10 @@ size_t CompressedPipe::Read(std::string *ret, int timeoutms)
 			return 0;
 
 		Process(ret->c_str(), ret->size());
+		if(has_error)
+		{
+			return 0;
+		}
 		rc=ReadToString(ret);
 	}
 	while(rc==0 && Server->getTimeMS()-starttime<(unsigned int)timeoutms);
@@ -252,7 +276,7 @@ bool CompressedPipe::isReadable(int timeoutms)
 
 bool CompressedPipe::hasError(void)
 {
-	return cs->hasError();
+	return cs->hasError() || has_error;
 }
 
 void CompressedPipe::shutdown(void)

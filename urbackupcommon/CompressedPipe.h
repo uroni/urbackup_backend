@@ -69,4 +69,5 @@ private:
 	size_t message_len_byte;
 
 	bool destroy_cs;
+	bool has_error;
 };
