@@ -28,7 +28,6 @@
 
 #include <algorithm>
 
-extern std::string server_identity;
 extern ICryptoFactory *crypto_fak;
 
 namespace
@@ -417,7 +416,7 @@ ACTION_IMPL(status)
 
 		ret.set("status", status);
 		ret.set("extra_clients", extra_clients);
-		ret.set("server_identity", server_identity);
+		ret.set("server_identity", helper.getStrippedServerIdentity());
 
 		if(helper.getRights("remove_client")=="all")
 		{

@@ -4,7 +4,6 @@
 #include "../server_settings.h"
 
 extern ICryptoFactory *crypto_fak;
-extern std::string server_identity;
 
 namespace
 {
@@ -51,7 +50,7 @@ namespace
 		return false;
 	}
 
-	bool replaceStrings(const std::string& settings, std::string& data)
+	bool replaceStrings(Helper& helper, const std::string& settings, std::string& data)
 	{
 		const std::string settings_start_token="#48692563-17e4-4ccb-a078-f14372fdbe20";
 		const std::string settings_end_token="#6e7f6ba0-8478-4946-b70a-f1c7e83d28cc";
@@ -79,7 +78,7 @@ namespace
 			{
 				i+=ident_start_token.size();
 				
-				if(!replaceToken(ident_end_token, "\r\n"+server_identity+"\r\n", data, i))
+				if(!replaceToken(ident_end_token, "\r\n"+helper.getStrippedServerIdentity()+"\r\n", data, i))
 				{
 					return false;
 				}
@@ -116,7 +115,7 @@ ACTION_IMPL(download_client)
 			if(verify_signature())
 			{
 				std::string data=getFile("urbackup/UrBackupUpdate.exe");
-				if( replaceStrings(constructClientSettings(helper, clientid), data) )
+				if( replaceStrings(helper, constructClientSettings(helper, clientid), data) )
 				{
 					Server->setContentType(tid, "application/octet-stream");
 					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client.exe\"");

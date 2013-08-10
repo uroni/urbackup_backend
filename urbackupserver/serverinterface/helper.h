@@ -32,6 +32,8 @@ public:
 	bool checkPassword(const std::wstring &username, const std::wstring &password, int *user_id);
 
 	std::vector<int> clientRights(const std::string& right_name, bool& all_client_rights);
+
+	std::string getStrippedServerIdentity(void);
 private:
 	std::string getRightsInt(const std::string &domain);
 
