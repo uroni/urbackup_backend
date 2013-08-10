@@ -89,7 +89,7 @@ ACTION_IMPL(usagegraph)
 		std::string t_where=" 0=0";
 		if(clientid!=-1)
 		{
-			t_where=" AND id="+nconvert(clientid)+" ";
+			t_where+=" AND id="+nconvert(clientid)+" ";
 		}
 		
 		int c_lim=1;
