@@ -2059,8 +2059,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
 	Server->getThreadPool()->execute(running_updater);
 	
-	resetEntryState();
-	
 	char buffer[4096];
 	_u32 read;
 	std::wstring curr_path;
@@ -2086,6 +2084,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	ServerStatus::setServerStatus(status, true);
 	
 	Server->Log(clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
+
+	resetEntryState();
 	
 	bool c_has_error=false;
 	bool backup_stopped=false;
