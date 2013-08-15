@@ -40,7 +40,7 @@ void ClientDAO::prepareQueries(void)
 	q_add_files=db->Prepare("INSERT INTO files_tmp (name, num, data) VALUES (?,?,?)", false);
 	q_get_dirs=db->Prepare("SELECT name, path, id FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
-	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs UNION SELECT id, name FROM mdirs", false);
+	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs UNION SELECT id, name FROM mdirs_backup", false);
 	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs", false);
 	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=?", false);
 	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=?", false);
