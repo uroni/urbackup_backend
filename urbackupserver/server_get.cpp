@@ -1635,6 +1635,20 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	}
 
 	_u32 rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
+
+	int hash_retries=5;
+	while(rc==ERR_HASH && hash_retries>0)
+	{
+		file_old->Seek(0);
+		destroyTemporaryFile(pfd);
+		destroyTemporaryFile(hash_tmp);
+		pfd=getTemporaryFileRetry();
+		hash_tmp=getTemporaryFileRetry();
+		hashfile_old->Seek(0);
+		rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
+		--hash_retries;
+	} 
+
 	if(rc!=ERR_SUCCESS)
 	{
 		download_ok=false;
@@ -1707,6 +1721,14 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 	}
 	
 	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer);
+
+	int hash_retries=5;
+	while(rc==ERR_HASH && hash_retries>0)
+	{
+		rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer);
+		--hash_retries;
+	}
+
 	if(rc!=ERR_SUCCESS)
 	{
 		download_ok=false;
