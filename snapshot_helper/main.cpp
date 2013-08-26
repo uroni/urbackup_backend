@@ -34,7 +34,7 @@ bool CopyFolder(std::wstring src, std::wstring dst)
 		}
 		else
 		{
-			if(!os_create_hardlink(dst+os_file_sep()+curr_files[i].name, src+os_file_sep()+curr_files[i].name, false) )
+			if(!os_create_hardlink(dst+os_file_sep()+curr_files[i].name, src+os_file_sep()+curr_files[i].name, false, NULL) )
 			{
 				BOOL b=CopyFileW( (src+os_file_sep()+curr_files[i].name).c_str(), (dst+os_file_sep()+curr_files[i].name).c_str(), FALSE);
 				if(!b)
@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 			{			
 				writestring("test", clientdir+os_file_sepn()+"A"+os_file_sepn()+"test");
 				
-				if(!os_create_hardlink(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test", clientdir+os_file_sepn()+"A"+os_file_sepn()+"test", true))
+				if(!os_create_hardlink(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test", clientdir+os_file_sepn()+"A"+os_file_sepn()+"test", true, NULL))
 				{
 					std::cout << "Cross subvolume reflink failed" << std::endl;
 					suc=false;
