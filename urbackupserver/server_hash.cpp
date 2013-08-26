@@ -317,33 +317,44 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 	bool copy=true;
 
 	bool tries_once=false;
+	bool had_too_many_hardlinks=false;
 
 	while(!ff.empty())
 	{
 		tries_once=true;
-		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff), use_snapshots);
+		bool too_many_hardlinks;
+		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff), use_snapshots, &too_many_hardlinks);
 		if(!b)
 		{
-			IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
-			if(ctf==NULL)
+			if(too_many_hardlinks)
 			{
-				ServerLogger::Log(clientid, L"HT: Hardlinking failed (File doesn't exist): \""+ff+L"\"", LL_DEBUG);
-				deleteFileSQL(sha2, ff, t_filesize, f_backupid);
-				ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath);
-				if(!ff.empty()) ff_last=ff;
+				ServerLogger::Log(clientid, L"HT: Hardlinking failed (Maximum hardlink count reached): \""+ff+L"\"", LL_DEBUG);
+				had_too_many_hardlinks=true;
+				break;
 			}
 			else
 			{
-				Server->destroy(ctf);
-				ServerLogger::Log(clientid, L"HT: Hardlinking failed (Maximum hardlink count reached?): \""+ff+L"\"", LL_DEBUG);
-				break;
-			}			
+				IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
+				if(ctf==NULL)
+				{
+					ServerLogger::Log(clientid, L"HT: Hardlinking failed (File doesn't exist): \""+ff+L"\"", LL_DEBUG);
+					deleteFileSQL(sha2, ff, t_filesize, f_backupid);
+					ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath);
+					if(!ff.empty()) ff_last=ff;
+				}
+				else
+				{
+					Server->destroy(ctf);
+					ServerLogger::Log(clientid, L"HT: Hardlinking failed (Maximum hardlink count reached?): \""+ff+L"\"", LL_DEBUG);
+					break;
+				}
+			}
 		}
 		else
 		{
 			if(!hash_fn.empty() && !f_hashpath.empty())
 			{
-				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(f_hashpath), use_snapshots);
+				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(f_hashpath), use_snapshots, NULL);
 				if(!b)
 				{
 					IFile *ctf=Server->openFile(os_file_prefix(f_hashpath), MODE_READ);
@@ -400,7 +411,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		}
 	}
 
-	if(tries_once && copy)
+	if(tries_once && copy && !had_too_many_hardlinks)
 	{
 		if(link_logcnt<5)
 		{
@@ -812,7 +823,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 		bool has_reflink=false;
 		if( use_reflink )
 		{
-			if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true) )
+			if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL) )
 			{
 				Server->Log(L"Reflinking file \""+dest+L"\" failed", LL_ERROR);
 			}
@@ -867,7 +878,7 @@ const size_t RP_COPY_BLOCKSIZE=1024;
 
 bool BackupServerHash::replaceFile(IFile *tf, const std::wstring &dest, const std::wstring &orig_fn)
 {
-	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true) )
+	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		Server->Log(L"Reflinking file \""+dest+L"\" failed -2", LL_ERROR);
 
@@ -935,7 +946,7 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::wstring &dest, const st
 
 bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn)
 {
-	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true) )
+	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		Server->Log(L"Reflinking file \""+dest+L"\" failed -3", LL_ERROR);
 
@@ -1014,7 +1025,7 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &d
 	}
 	else
 	{
-		if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true) )
+		if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL) )
 		{
 			Server->Log(L"Reflinking file \""+dest+L"\" failed -3", LL_ERROR);
 
@@ -1038,7 +1049,7 @@ bool BackupServerHash::renameFile(IFile *tf, const std::wstring &dest)
 	}
 	else
 	{
-		if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true) )
+		if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(tf_fn), true, NULL) )
 		{
 			Server->Log(L"Reflinking file \""+dest+L"\" failed -4", LL_ERROR);
 
