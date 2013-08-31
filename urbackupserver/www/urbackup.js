@@ -760,14 +760,14 @@ function show_status2(data)
 		var no_images_stop="";
 		if(data.no_images)
 		{
-			no_images_start="<--";
+			no_images_start="<!--";
 			no_images_stop="-->";
 		}
 		var no_file_backups_start="";
 		var no_file_backups_stop="";
 		if(data.no_file_backups)
 		{
-			no_file_backups_start="<--";
+			no_file_backups_start="<!--";
 			no_file_backups_stop="-->";
 		}
 		var status_modify_params={rem_start: rem_start, rem_stop: rem_stop, backup_type_num: 0, no_images_start: no_images_start,
