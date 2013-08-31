@@ -54,9 +54,6 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 	IDatabase *db=helper.getDatabase();
 	ServerSettings settings(db);
 
-	if(!settings.getSettings()->internet_mode_enabled)
-		return false;
-
 	if(!FileExists("urbackup/UrBackupUpdate.exe"))
 		return false;
 
