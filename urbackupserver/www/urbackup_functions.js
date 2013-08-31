@@ -659,3 +659,15 @@ function addSelectSelected(options, name, params)
 	}
 	return params;
 }
+
+function show_hide_column(table_id, col_no, do_show)
+{
+    var rows = document.getElementById(table_id).rows;
+
+    for (var row = 0; row < rows.length; row++) {
+        var cols = rows[row].cells;
+        if (col_no >= 0 && col_no < cols.length) {
+            cols[col_no].style.display = do_show ? '' : 'none';
+        }
+    }
+}

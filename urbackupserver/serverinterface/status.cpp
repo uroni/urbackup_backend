@@ -428,6 +428,10 @@ ACTION_IMPL(status)
 		{
 			ret.set("client_downloads", client_downloads);
 		}
+
+		ServerSettings settings(db);
+		ret.set("no_images", settings.getSettings()->no_images);
+		ret.set("no_file_backups", settings.getSettings()->no_file_backups);
 	}
 	else
 	{

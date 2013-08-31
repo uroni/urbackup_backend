@@ -756,11 +756,29 @@ function show_status2(data)
 			rem_start="";
 			rem_stop="";
 		}
-		modify_clients=tmpls.status_modify_clients.evaluate({rem_start: rem_start, rem_stop: rem_stop});
+		var no_images_start="";
+		var no_images_stop="";
+		if(data.no_images)
+		{
+			no_images_start="<--";
+			no_images_stop="-->";
+		}
+		var no_file_backups_start="";
+		var no_file_backups_stop="";
+		if(data.no_file_backups)
+		{
+			no_file_backups_start="<--";
+			no_file_backups_stop="-->";
+		}
+		var status_modify_params={rem_start: rem_start, rem_stop: rem_stop, backup_type_num: 0, no_images_start: no_images_start,
+							      no_images_stop: no_images_stop, no_file_backups_start: no_file_backups_start, no_file_backups_stop: no_file_backups_stop };
+								  
+		modify_clients=tmpls.status_modify_clients.evaluate(status_modify_params);
 		
 		if(data.status.length>10)
 		{
-			modify_clients_top=modify_clients;
+			status_modify_params.backup_type_num=1;
+			modify_clients_top=tmpls.status_modify_clients.evaluate(status_modify_params);
 			dtl_c1_top=dtl_c1;
 			dtl_c2_top=dtl_c2;
 		}
@@ -808,6 +826,34 @@ function show_status2(data)
 	{
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
+		
+		if(data.no_images)
+		{
+			if(data.details)
+			{
+				show_hide_column('status_table', 5, false);
+				show_hide_column('status_table', 7, false);
+			}
+			else
+			{
+				show_hide_column('status_table', 3, false);
+				show_hide_column('status_table', 5, false);
+			}
+		}
+		
+		if(data.no_file_backups)
+		{
+			if(data.details)
+			{
+				show_hide_column('status_table', 4, false);
+				show_hide_column('status_table', 6, false);
+			}
+			else
+			{
+				show_hide_column('status_table', 2, false);
+				show_hide_column('status_table', 4, false);
+			}
+		}
 	}
 }
 function downloadClient(clientid)
@@ -2793,7 +2839,7 @@ function changeArchiveForUnit()
 		I('archive_for').type="text";
 	}
 }
-function startBackups()
+function startBackups(backup_type_num)
 {
 	var cbs=document.getElementsByName("status_selected");
 	var ids=[];
@@ -2806,7 +2852,7 @@ function startBackups()
 	}
 	if(ids.length>0)
 	{	
-		show_status1(g.status_detail, "", false, ids, false, I('backup_type').value);
+		show_status1(g.status_detail, "", false, ids, false, I('backup_type'+backup_type_num).value);
 	}
 	else
 	{
