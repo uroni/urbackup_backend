@@ -9,6 +9,7 @@
 
 #define TCP_PORT 35621
 #define UDP_PORT 35622
+#define UDP_SOURCE_PORT 35623
 
 
 #define BUFFERSIZE 4096
@@ -77,6 +78,8 @@ public:
 		_i64 getTransferredBytes(void);
 
 		static std::string getErrorString(_u32 ec);
+
+		void setReconnectionTimeout(unsigned int t);
               
 private:
 		bool Reconnect(void);
@@ -124,6 +127,8 @@ private:
 
 		FileClient::ReconnectionCallback *reconnection_callback;
 		FileClient::NoFreeSpaceCallback *nofreespace_callback;
+
+		unsigned int reconnection_timeout;
 };
 
 const _u32 ERR_CONTINUE=0;

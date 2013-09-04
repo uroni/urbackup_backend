@@ -120,6 +120,7 @@ private:
 	void tochannelSendStartbackup(RunningAction backup_type);
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
+	bool calculateFilehashesOnClient(void);
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
@@ -153,10 +154,13 @@ private:
 	void CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd);
 	void CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd);
+	void CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str_map &params);
 	void CMD_VERSION_UPDATE(const std::string &cmd);
 	void CMD_CLIENT_UPDATE(const std::string &cmd);
 	void CMD_CAPA(const std::string &cmd);
 	void CMD_NEW_SERVER(str_map &params);
+	void CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd);
+	void CMD_GET_VSSLOG(const std::string &cmd);
 
 	IPipe *pipe;
 	IPipe *mempipe;
@@ -190,6 +194,7 @@ private:
 	static int last_capa;
 	static IMutex *ident_mutex;
 	static std::vector<std::string> new_server_idents;
+	static bool end_to_end_file_backup_verification_enabled;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;
@@ -205,4 +210,6 @@ private:
 	std::vector<IPipe*> contractors;
 
 	bool internet_conn;
+
+	
 };

@@ -19,6 +19,8 @@ public:
 	static void destroy_mutex(void);
 
 	static std::wstring getLogdata(int clientid, int &errors, int &warnings, int &infos);
+	static std::wstring getWarningLevelTextLogdata(int clientid);
+
 	static void reset(int clientid);
 
 private:

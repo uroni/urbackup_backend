@@ -132,8 +132,8 @@ void DirectoryWatcherThread::operator()(void)
 			else if( msg[0]=='U' )
 			{
 				lastentries.clear();
-				dcw.update();
 				dcw.update_longliving();
+				dcw.update();
 
 				IScopedLock lock(update_mutex);
 				update_cond->notify_all();

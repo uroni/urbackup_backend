@@ -1,0 +1,228 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Server">
+      <UniqueIdentifier>{49d04fe4-3bea-434a-b7ba-f38592103114}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Database.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Mutex_boost.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\PipeThrottler.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Query.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Server.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ServerWin32.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sqlite\sqlite3.c">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\stringtools.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThreadPool.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\OutputStream.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="sqlgen.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SessionMgr.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SettingsReader.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SQLiteFactory.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sqlite\shell.c">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\FileSettingsReader.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LookupService.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\md5.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MemoryPipe.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MemorySettingsReader.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\mt19937ar.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SelectThread.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ServiceAcceptor.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ServiceWorker.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\StreamPipe.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Table.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Template.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WorkerThread.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Client.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\file_fstream.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\file_win.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Condition_boost.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libfastcgi\fastcgi.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\file_common.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DBSettingsReader.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DatabaseCursor.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Database.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\OutputStream.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThreadPool.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PipeThrottler.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Query.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Server.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\stringtools.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Mutex_boost.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="sqlgen.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SessionMgr.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SettingsReader.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SQLiteFactory.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FileSettingsReader.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LookupService.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\md5.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MemoryPipe.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MemorySettingsReader.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\mt19937ar.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SelectThread.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ServiceAcceptor.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ServiceWorker.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\socket_header.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\StreamPipe.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Table.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Template.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\types.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WorkerThread.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Client.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Condition_boost.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DBSettingsReader.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DatabaseCursor.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

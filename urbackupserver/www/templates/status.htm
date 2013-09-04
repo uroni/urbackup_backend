@@ -5,14 +5,18 @@
 #{dir_error}
 #{tmpdir_error}
 
-<table cellspacing="0" cellpadding="0">
+#{modify_clients_top}
+#{dtl_c1_top}
+| <a href="javascript: show_status1(true);">#{tShow details}</a><br /><br />
+#{dtl_c2_top}
+<table cellspacing="0" cellpadding="0" id="status_table">
 <tr>			
 	<th style="width: 150px" class="tabHeader">#{tComputer name}</th>
 	<th style="width: 150px" class="tabHeader">#{tLast seen}</th>
-	<th style="width: 200px" class="tabHeader">#{tLast file backup}</th>
-	<th style="width: 200px" class="tabHeader">#{tLast image backup}</th>
-	<th style="width: 150px" class="tabHeader">#{tFile backup status}</th>
-	<th style="width: 150px" class="tabHeader">#{tImage backup status}</th>
+	<th style="width: 130px" class="tabHeader">#{tLast file backup}</th>
+	<th style="width: 130px" class="tabHeader">#{tLast image backup}</th>
+	<th style="width: 130px" class="tabHeader">#{tFile backup status}</th>
+	<th style="width: 130px" class="tabHeader">#{tImage backup status}</th>
 	#{dlt_mod_start}
 	<th style="width: 50px"  class="tabHeaderRight">&nbsp;</th>
 	#{dlt_mod_end}
@@ -24,3 +28,4 @@
 #{dtl_c1}
 | <a href="javascript: show_status1(true);">#{tShow details}</a>
 #{dtl_c2}
+#{status_client_download}

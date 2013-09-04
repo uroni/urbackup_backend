@@ -108,6 +108,9 @@
     <ClCompile Include="..\common\data.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="win_ver.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="watchdir\CriticalSection.h">
@@ -189,6 +192,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\common\data.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="win_ver.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

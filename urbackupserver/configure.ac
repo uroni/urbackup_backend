@@ -5,6 +5,7 @@ AC_PREREQ(2.61)
 AC_INIT([urbackupserver], [0.1], [urpc@gmx.de])
 AC_CONFIG_SRCDIR([dllmain.cpp])
 AC_CONFIG_HEADER([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
 
 AC_ARG_ENABLE([packaging],
@@ -14,6 +15,14 @@ AC_ARG_ENABLE([packaging],
 AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_LIBTOOL
+
+AX_PTHREAD
+if !($HAVE_PTHREAD)
+then
+	echo "Sorry, your system needs the pthread library."
+	echo "Either install it or give up."
+	exit 1
+fi
 
 # Checks for libraries.
 

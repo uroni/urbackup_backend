@@ -41,6 +41,7 @@ std::vector<std::wstring> getMailSettingsList(void)
 	tmp.push_back(L"mail_from");
 	tmp.push_back(L"mail_ssl_only");
 	tmp.push_back(L"mail_check_certificate");
+	tmp.push_back(L"mail_admin_addrs");
 	return tmp;
 }
 
@@ -83,6 +84,18 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(internet_image_backups);
 	SET_SETTING(internet_full_file_backups);
 	SET_SETTING(silent_update);
+	SET_SETTING(client_quota);
+	SET_SETTING(local_full_file_transfer_mode);
+	SET_SETTING(internet_full_file_transfer_mode);
+	SET_SETTING(local_incr_file_transfer_mode);
+	SET_SETTING(internet_incr_file_transfer_mode);
+	SET_SETTING(local_image_transfer_mode);
+	SET_SETTING(internet_image_transfer_mode);
+	SET_SETTING(file_hash_collect_amount);
+	SET_SETTING(file_hash_collect_timeout);
+	SET_SETTING(file_hash_collect_cachesize);
+	SET_SETTING(end_to_end_file_backup_verification);
+	SET_SETTING(internet_calculate_filehashes_on_client);
 #undef SET_SETTING
 	return ret;
 }
@@ -114,16 +127,10 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(use_tmpfiles);
 	SET_SETTING(use_tmpfiles_images);
 	SET_SETTING(tmpdir);
-	SET_SETTING(local_full_file_transfer_mode);
-	SET_SETTING(internet_full_file_transfer_mode);
-	SET_SETTING(local_incr_file_transfer_mode);
-	SET_SETTING(internet_incr_file_transfer_mode);
-	SET_SETTING(local_image_transfer_mode);
-	SET_SETTING(internet_image_transfer_mode);
-	SET_SETTING(file_hash_collect_amount);
-	SET_SETTING(file_hash_collect_timeout);
-	SET_SETTING(file_hash_collect_cachesize);
 	SET_SETTING(update_stats_cachesize);
+	SET_SETTING(filescache_type);
+	SET_SETTING(filescache_size);
+	SET_SETTING(suspend_index_limit);
 
 #undef SET_SETTING
 }

@@ -33,6 +33,7 @@
 #include "server.h"
 #include "snapshot_helper.h"
 #include "apps/cleanup_cmd.h"
+#include "dao/ServerCleanupDAO.h"
 #include <stdio.h>
 #include <algorithm>
 
@@ -60,7 +61,11 @@ void ServerCleanupThread::destroyMutex(void)
 }
 
 ServerCleanupThread::ServerCleanupThread(CleanupAction cleanup_action)
-	: cleanup_action(cleanup_action)
+	: cleanup_action(cleanup_action), cleanupdao(NULL)
+{
+}
+
+ServerCleanupThread::~ServerCleanupThread(void)
 {
 }
 
@@ -70,7 +75,7 @@ void ServerCleanupThread::operator()(void)
 
 	if(cleanup_action.action!=ECleanupAction_None)
 	{
-		createQueries();
+		cleanupdao=new ServerCleanupDAO(db);
 
 		switch(cleanup_action.action)
 		{
@@ -90,12 +95,9 @@ void ServerCleanupThread::operator()(void)
 			break;
 		}
 		
-		destroyQueries();
 		delete this;
 		return;
 	}
-
-
 
 	unsigned int last_cleanup=0;
 
@@ -117,10 +119,13 @@ void ServerCleanupThread::operator()(void)
 		{
 			IScopedLock lock(a_mutex);
 
-			createQueries();
+			cleanupdao=new ServerCleanupDAO(db);
+
 			deletePendingClients();
 			do_cleanup();
-			destroyQueries();
+			
+			delete cleanupdao;
+			cleanupdao=NULL;
 
 			backup_database();
 		}
@@ -165,9 +170,7 @@ void ServerCleanupThread::operator()(void)
 			}
 		}
 		db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-		IQuery *q=db->Prepare("SELECT strftime('%H','now', 'localtime') AS time", false);
-		db_results res=q->Read();
-		db->destroyQuery(q);
+		db_results res=db->Read("SELECT strftime('%H','now', 'localtime') AS time");
 		if(res.empty())
 			Server->Log("Reading time failed!", LL_ERROR);
 		else
@@ -190,10 +193,14 @@ void ServerCleanupThread::operator()(void)
 					upd();
 				}
 
-				createQueries();
+				cleanupdao=new ServerCleanupDAO(db);
+
 				deletePendingClients();
 				do_cleanup();
-				destroyQueries();
+
+				enforce_quotas();
+
+				delete cleanupdao; cleanupdao=NULL;
 
 				backup_database();
 
@@ -321,57 +328,44 @@ void ServerCleanupThread::do_remove(void)
 
 	std::wstring backupfolder=settings.getSettings()->backupfolder;
 
-	db_results res_clients=q_get_clients->Read();
-	q_get_clients->Reset();
+	std::vector<ServerCleanupDAO::SClientInfo> res_clients=cleanupdao->getClients();
 
 	for(size_t i=0;i<res_clients.size();++i)
 	{
-		int clientid=watoi(res_clients[i][L"id"]);
-		std::wstring clientname=res_clients[i][L"name"];
+		int clientid=res_clients[i].id;
+		const std::wstring& clientname=res_clients[i].name;
 
-		q_get_backups_clientid->Bind(clientid);
-		db_results res_file_backups=q_get_backups_clientid->Read();
-		q_get_backups_clientid->Reset();
+		std::vector<ServerCleanupDAO::SFileBackupInfo> res_file_backups=cleanupdao->getFileBackupsOfClient(clientid);
 
 		for(size_t j=0;j<res_file_backups.size();++j)
 		{
-			std::wstring backup_path=backupfolder+os_file_sep()+clientname+os_file_sep()+res_file_backups[j][L"path"];
-			int backupid=watoi(res_file_backups[j][L"id"]);
+			std::wstring backup_path=backupfolder+os_file_sep()+clientname+os_file_sep()+res_file_backups[j].path;
+			int backupid=res_file_backups[j].id;
 			if(!os_directory_exists(backup_path))
 			{
-				Server->Log(L"Path for file backup [id="+res_file_backups[j][L"id"]+L" path="+res_file_backups[j][L"path"]+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
+				Server->Log(L"Path for file backup [id="+convert(res_file_backups[j].id)+L" path="+res_file_backups[j].path+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
 
 				db->DetachDBs();
 				db->BeginTransaction();
-				q_move_files->Bind(backupid);
-				q_move_files->Write();
-				q_move_files->Reset();
-				q_delete_files->Bind(backupid);
-				q_delete_files->Write();
-				q_delete_files->Reset();
-				q_remove_file_backup->Bind(backupid);
-				q_remove_file_backup->Write();
-				q_remove_file_backup->Reset();
+				cleanupdao->moveFiles(backupid);
+				cleanupdao->deleteFiles(backupid);
+				cleanupdao->removeFileBackup(backupid);
 				db->EndTransaction();
 				db->AttachDBs();
 			}
 		}
 
-		q_get_imagebackups_clientid->Bind(clientid);
-		db_results res_image_backups=q_get_imagebackups_clientid->Read();
-		q_get_imagebackups_clientid->Reset();
+		std::vector<ServerCleanupDAO::SImageBackupInfo> res_image_backups=cleanupdao->getImageBackupsOfClient(clientid);
 
 		for(size_t j=0;j<res_image_backups.size();++j)
 		{
-			std::wstring backup_path=res_image_backups[j][L"path"];
+			std::wstring backup_path=res_image_backups[j].path;
 
 			IFile *tf=Server->openFile(os_file_prefix(backup_path), MODE_READ);
 			if(tf==NULL)
 			{
-				Server->Log(L"Image backup [id="+res_image_backups[j][L"id"]+L" path="+res_image_backups[j][L"path"]+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
-				q_remove_image->Bind(res_image_backups[j][L"id"]);
-				q_remove_image->Write();
-				q_remove_image->Reset();
+				Server->Log(L"Image backup [id="+convert(res_image_backups[j].id)+L" path="+res_image_backups[j].path+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
+				cleanupdao->removeImage(res_image_backups[j].id);
 			}
 			else
 			{
@@ -381,9 +375,7 @@ void ServerCleanupThread::do_remove(void)
 
 		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname);
 
-		q_get_client_images->Bind(clientid);
-		db_results res_images=q_get_client_images->Read();
-		q_get_client_images->Reset();
+		std::vector<ServerCleanupDAO::SImageBackupInfo> res_images=cleanupdao->getClientImages(clientid);
 
 		for(size_t j=0;j<files.size();++j)
 		{
@@ -394,12 +386,9 @@ void ServerCleanupThread::do_remove(void)
 
 			if(cf.isdir)
 			{
-				q_find_filebackup->Bind(clientid);
-				q_find_filebackup->Bind(cf.name);
-				db_results res=q_find_filebackup->Read();
-				q_find_filebackup->Reset();
+				ServerCleanupDAO::CondInt res_id=cleanupdao->findFileBackup(clientid, cf.name);
 
-				if(res.empty())
+				if(!res_id.exists)
 				{
 					Server->Log(L"File backup \""+cf.name+L"\" of client \""+clientname+L"\" not found in database. Deleting it.", LL_WARNING);
 					bool remove_folder=false;
@@ -436,7 +425,7 @@ void ServerCleanupThread::do_remove(void)
 
 				for(size_t k=0;k<res_images.size();++k)
 				{
-					if(ExtractFileName(res_images[k][L"path"])==cf.name)
+					if(ExtractFileName(res_images[k].path)==cf.name)
 					{
 						found=true;
 						break;
@@ -463,6 +452,9 @@ void ServerCleanupThread::do_remove(void)
 			}
 		}
 	}
+
+	Server->Log("Removing dangling file entries...", LL_INFO);
+	cleanupdao->removeDanglingFiles();
 }
 
 int ServerCleanupThread::hasEnoughFreeSpace(int64 minspace, ServerSettings *settings)
@@ -517,19 +509,126 @@ bool ServerCleanupThread::deleteImage(std::wstring path)
 	return b;
 }
 
+bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids)
+{
+	ServerSettings settings(db, clientid);
+
+	int max_image_full=settings.getSettings()->max_image_full;
+	if(minspace!=-1)
+	{
+		max_image_full=settings.getSettings()->min_image_full;
+	}
+
+	std::vector<int> notit;
+
+	int backupid;
+	int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
+	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_image_num)+" full image backups max="+nconvert(max_image_full), LL_DEBUG);
+	while(full_image_num>max_image_full)
+	{
+		ServerCleanupDAO::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
+		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		if(clientname.exists && res_info.exists)
+		{
+			Server->Log(L"Deleting full image backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L", letter="+res_info.letter+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+		}
+
+		if(!findUncompleteImageRef(backupid) )
+		{
+			std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
+			int64 corr=0;
+			for(size_t i=0;i<assoc.size();++i)
+			{
+				int64 is=getImageSize(assoc[i]);
+				if(is!=-1) corr+=is;
+				removeImage(assoc[i], false);
+			}
+			if(!removeImage(backupid, true, corr))
+			{
+				notit.push_back(backupid);
+			}
+			else
+			{
+				imageids.push_back(backupid);
+			}
+				
+		}
+		else
+		{
+			Server->Log("Backup image has dependant image which is not complete");
+			notit.push_back(backupid);
+		}
+
+		int r=hasEnoughFreeSpace(minspace, &settings);
+		if( r==-1 || r==1 )
+			return true;
+				
+		full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
+	}
+
+	notit.clear();
+
+	int max_image_incr=settings.getSettings()->max_image_incr;
+	if(minspace!=-1)
+		max_image_incr=settings.getSettings()->min_image_incr;
+
+	int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
+	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_image_num)+" incremental image backups max="+nconvert(max_image_incr), LL_DEBUG);
+	while(incr_image_num>max_image_incr)
+	{
+		ServerCleanupDAO::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
+		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		if(clientname.exists && res_info.exists)
+		{
+			Server->Log(L"Deleting incremental image backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L", letter="+res_info.letter+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+		}
+
+		if(!findUncompleteImageRef(backupid) )
+		{
+			std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
+			int64 corr=0;
+			for(size_t i=0;i<assoc.size();++i)
+			{
+				int64 is=getImageSize(assoc[i]);
+				if(is!=-1) corr+=is;
+				removeImage(assoc[i], false);
+			}
+			if(!removeImage(backupid, true, corr))
+			{
+				notit.push_back(backupid);
+			}
+			else
+			{
+				imageids.push_back(backupid);
+			}
+		}
+		else
+		{
+			Server->Log("Backup image has dependant image which is not complete");
+			notit.push_back(backupid);
+		}
+
+		int r=hasEnoughFreeSpace(minspace, &settings);
+		if( r==-1 || r==1 )
+			return true;
+				
+		incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
+	}
+
+	return false;
+}
+
 void ServerCleanupThread::cleanup_images(int64 minspace)
 {
-	db_results res=q_incomplete_images->Read();
-	for(size_t i=0;i<res.size();++i)
+	std::vector<ServerCleanupDAO::SIncompleteImages> incomplete_images=cleanupdao->getIncompleteImages();
+	for(size_t i=0;i<incomplete_images.size();++i)
 	{
-		Server->Log(L"Deleting incomplete image file \""+res[i][L"path"]+L"\"...", LL_INFO);
-		if(!deleteImage(res[i][L"path"]))
+		Server->Log(L"Deleting incomplete image file \""+incomplete_images[i].path+L"\"...", LL_INFO);
+		if(!deleteImage(incomplete_images[i].path))
 		{
-			Server->Log(L"Deleting incomplete image \""+res[i][L"path"]+L"\" failed.", LL_WARNING); 
+			Server->Log(L"Deleting incomplete image \""+incomplete_images[i].path+L"\" failed.", LL_WARNING); 
 		}
-		q_remove_image->Bind(watoi(res[i][L"id"]));
-		q_remove_image->Write();
-		q_remove_image->Reset();
+		cleanupdao->removeImage(incomplete_images[i].id);
 	}
 
 	{
@@ -539,114 +638,18 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 			return;
 	}
 
-	res=q_get_clients_sortimages->Read();
-	q_get_clients_sortimages->Reset();
+	std::vector<int> res=cleanupdao->getClientsSortImagebackups();
 	for(size_t i=0;i<res.size();++i)
 	{
-		int clientid=watoi(res[i][L"c.id"]);
-		ServerSettings settings(db, clientid);
-
-		int max_image_full=settings.getSettings()->max_image_full;
-		if(minspace!=-1)
+		int clientid=res[i];
+		
+		std::vector<int> imageids;
+		if(cleanup_images_client(clientid, minspace, imageids))
 		{
-			max_image_full=settings.getSettings()->min_image_full;
-		}
-
-		std::vector<int> notit;
-
-		int backupid;
-		int full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
-		Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_image_num)+" full image backups max="+nconvert(max_image_full), LL_DEBUG);
-		while(full_image_num>max_image_full)
-		{
-			q_get_image_info->Bind(backupid);
-			db_results res_info=q_get_image_info->Read();
-			
-			q_get_image_info->Reset();
-			q_get_clientname->Bind(clientid);
-			db_results res_name=q_get_clientname->Read();
-			q_get_clientname->Reset();
-			if(!res_name.empty() && !res_info.empty())
+			if(minspace!=-1)
 			{
-				Server->Log(L"Deleting full image backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L", letter="+res_info[0][L"letter"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
-			}
-
-			if(!findUncompleteImageRef(backupid) )
-			{
-				std::vector<int> assoc=getAssocImages(backupid);
-				int64 corr=0;
-				for(size_t i=0;i<assoc.size();++i)
-				{
-					int64 is=getImageSize(assoc[i]);
-					if(is!=-1) corr+=is;
-					removeImage(assoc[i], false);
-				}
-				if(!removeImage(backupid, true, corr))
-				{
-					notit.push_back(backupid);
-				}
-				
-			}
-			else
-			{
-				Server->Log("Backup image has dependant image which is not complete");
-				notit.push_back(backupid);
-			}
-
-			int r=hasEnoughFreeSpace(minspace, &settings);
-			if( r==-1 || r==1 )
 				return;
-				
-			full_image_num=(int)getImagesFullNum(clientid, backupid, notit);
-		}
-
-		notit.clear();
-
-		int max_image_incr=settings.getSettings()->max_image_incr;
-		if(minspace!=-1)
-			max_image_incr=settings.getSettings()->min_image_incr;
-
-		int incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
-		Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_image_num)+" incremental image backups max="+nconvert(max_image_incr), LL_DEBUG);
-		while(incr_image_num>max_image_incr)
-		{
-			q_get_image_info->Bind(backupid);
-			db_results res_info=q_get_image_info->Read();
-			q_get_image_info->Reset();
-			q_get_clientname->Bind(clientid);
-			db_results res_name=q_get_clientname->Read();
-			q_get_clientname->Reset();
-			if(!res_name.empty() && !res_info.empty())
-			{
-				Server->Log(L"Deleting incremental image backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L", letter="+res_info[0][L"letter"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
 			}
-
-			if(!findUncompleteImageRef(backupid) )
-			{
-				std::vector<int> assoc=getAssocImages(backupid);
-				int64 corr=0;
-				for(size_t i=0;i<assoc.size();++i)
-				{
-					int64 is=getImageSize(assoc[i]);
-					if(is!=-1) corr+=is;
-					removeImage(assoc[i], false);
-				}
-				if(!removeImage(backupid, true, corr))
-				{
-					notit.push_back(backupid);
-				}
-			}
-			else
-			{
-				Server->Log("Backup image has dependant image which is not complete");
-				notit.push_back(backupid);
-			}
-
-			int r=hasEnoughFreeSpace(minspace, &settings);
-			if( r==-1 || r==1 )
-				return;
-				
-			incr_image_num=(int)getImagesIncrNum(clientid, backupid, notit);
 		}
 	}
 }
@@ -657,40 +660,30 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 
 	ServerStatus::updateActive();
 
-	q_get_image_refs->Bind(backupid);
-	db_results res=q_get_image_refs->Read();
-	q_get_image_refs->Reset();
+	std::vector<ServerCleanupDAO::SImageRef> refs=cleanupdao->getImageRefs(backupid);
 
-	for(size_t i=0;i<res.size();++i)
+	for(size_t i=0;i<refs.size();++i)
 	{
-		bool b=removeImage(watoi(res[i][L"id"]), true, getImageSize(watoi(res[i][L"id"])));
+		bool b=removeImage(refs[i].id, true, getImageSize(refs[i].id));
 		if(!b)
 			ret=false;
 	}
 
-	q_get_image_path->Bind(backupid);
-	res=q_get_image_path->Read();
-	q_get_image_path->Reset();
-
-	if(!res.empty())
+	ServerCleanupDAO::CondString res=cleanupdao->getImagePath(backupid);
+	if(res.exists)
 	{
 		_i64 stat_id;
 		if(update_stat)
 		{
-			q_del_image_stats->Bind(size_correction);
-			q_del_image_stats->Bind(backupid);
-			q_del_image_stats->Write();
-			q_del_image_stats->Reset();
+			cleanupdao->addToImageStats(size_correction, backupid);
 			stat_id=db->getLastInsertID();
 		}
 
-		if( deleteImage(res[0][L"path"] ) || force_remove )
+		if( deleteImage(res.value) || force_remove )
 		{
 			db->BeginTransaction();
-			q_remove_image->Bind(backupid);
-			q_remove_image->Write();
-			q_remove_image->Reset();
-			removeImageSize(backupid);
+			cleanupdao->removeImage(backupid);
+			cleanupdao->removeImageSize(backupid);
 			db->EndTransaction();
 		}
 		else
@@ -700,9 +693,7 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 
 		if(update_stat)
 		{
-			q_image_stats_stop->Bind(stat_id);
-			q_image_stats_stop->Write();
-			q_image_stats_stop->Reset();
+			cleanupdao->updateDelImageStats(stat_id);
 		}
 	}
 	else
@@ -717,13 +708,11 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 
 bool ServerCleanupThread::findUncompleteImageRef(int backupid)
 {
-	q_get_image_refs->Bind(backupid);
-	db_results res=q_get_image_refs->Read();
-	q_get_image_refs->Reset();
+	std::vector<ServerCleanupDAO::SImageRef> refs=cleanupdao->getImageRefs(backupid);
 
-	for(size_t i=0;i<res.size();++i)
+	for(size_t i=0;i<refs.size();++i)
 	{
-		if( watoi(res[i][L"complete"])!=1 || findUncompleteImageRef(watoi(res[i][L"id"])) )
+		if( refs[i].complete!=1 || findUncompleteImageRef(refs[i].id) )
 			return true;
 	}
 	return false;
@@ -731,14 +720,12 @@ bool ServerCleanupThread::findUncompleteImageRef(int backupid)
 
 size_t ServerCleanupThread::getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit)
 {
-	q_get_full_num_images->Bind(clientid);
-	db_results res=q_get_full_num_images->Read();
-	q_get_full_num_images->Reset();
+	std::vector<ServerCleanupDAO::SImageLetter> res=cleanupdao->getFullNumImages(clientid);
 	std::map<std::wstring, std::vector<int> > images_ids;
 	for(size_t i=0;i<res.size();++i)
 	{
-		std::wstring letter=res[i][L"letter"];
-		int cid=watoi(res[i][L"id"]);
+		std::wstring letter=res[i].letter;
+		int cid=res[i].id;
 
 		if(std::find(notit.begin(), notit.end(), cid)==notit.end())
 		{
@@ -760,14 +747,12 @@ size_t ServerCleanupThread::getImagesFullNum(int clientid, int &backupid_top, co
 
 size_t ServerCleanupThread::getImagesIncrNum(int clientid, int &backupid_top, const std::vector<int> &notit)
 {
-	q_get_incr_num_images->Bind(clientid);
-	db_results res=q_get_incr_num_images->Read();
-	q_get_incr_num_images->Reset();
+	std::vector<ServerCleanupDAO::SImageLetter> res=cleanupdao->getIncrNumImages(clientid);
 	std::map<std::wstring, std::vector<int> > images_ids;
 	for(size_t i=0;i<res.size();++i)
 	{
-		std::wstring letter=res[i][L"letter"];
-		int cid=watoi(res[i][L"id"]);
+		std::wstring letter=res[i].letter;
+		int cid=res[i].id;
 
 		if(std::find(notit.begin(), notit.end(), cid)==notit.end())
 		{
@@ -787,105 +772,97 @@ size_t ServerCleanupThread::getImagesIncrNum(int clientid, int &backupid_top, co
 	return max_nimages;
 }
 
+bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 minspace, int& filebid)
+{
+	ServerSettings settings(db, clientid);
+
+	int max_file_full=settings.getSettings()->max_file_full;
+	int max_file_incr=settings.getSettings()->max_file_incr;
+	if(minspace!=-1)
+	{
+		max_file_full=settings.getSettings()->min_file_full;
+		max_file_incr=settings.getSettings()->min_file_incr;
+	}
+
+	int backupid;
+	int full_file_num=(int)getFilesFullNum(clientid, backupid);
+	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_file_num)+" full file backups max="+nconvert(max_file_full), LL_DEBUG);
+	while(full_file_num>max_file_full )
+	{
+		ServerCleanupDAO::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
+		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		if(clientname.exists && res_info.exists)
+		{
+			Server->Log(L"Deleting full file backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+		}
+		bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+		filebid=backupid;
+				
+		Server->Log("Done.", LL_INFO);
+
+		if(b)
+		{
+			return true;
+        }
+        			
+        full_file_num=(int)getFilesFullNum(clientid, backupid);
+	}
+
+	int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
+	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_file_num)+" incremental file backups max="+nconvert(max_file_incr), LL_DEBUG);
+	while(incr_file_num>max_file_incr )
+	{
+		ServerCleanupDAO::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
+		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		if(clientname.exists && res_info.exists)
+		{
+			Server->Log(L"Deleting incremental file backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
+		}
+		bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
+		filebid=backupid;
+
+		Server->Log("Done.", LL_INFO);
+
+		if(b)
+		{
+			return true;
+		}
+		incr_file_num=(int)getFilesIncrNum(clientid, backupid);
+	}
+
+	return false;
+}
+
 void ServerCleanupThread::cleanup_files(int64 minspace)
 {
+	ServerSettings settings(db);
+
 	bool deleted_something=true;
 	while(deleted_something)
 	{
 		deleted_something=false;
-		{
-			ServerSettings settings(db);
+
+		{			
 			int r=hasEnoughFreeSpace(minspace, &settings);
 			if( r==-1 || r==1 )
 					return;
 		}
 
-		db_results res=q_get_clients_sortfiles->Read();
-		q_get_clients_sortfiles->Reset();
+		std::vector<int> res=cleanupdao->getClientsSortFilebackups();
 		for(size_t i=0;i<res.size();++i)
 		{
-			bool deleted_something_client=false;
-
-			int clientid=watoi(res[i][L"id"]);
-			ServerSettings settings(db, clientid);
-
-			int max_file_full=settings.getSettings()->max_file_full;
-			int max_file_incr=settings.getSettings()->max_file_incr;
-			if(minspace!=-1)
+			int clientid=res[i];
+			
+			int filebid;
+			if(cleanup_one_filebackup_client(clientid, minspace, filebid))
 			{
-				max_file_full=settings.getSettings()->min_file_full;
-				max_file_incr=settings.getSettings()->min_file_incr;
-			}
-
-			int backupid;
-			int full_file_num=(int)getFilesFullNum(clientid, backupid);
-			Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_file_num)+" full file backups max="+nconvert(max_file_full), LL_DEBUG);
-			while(full_file_num>max_file_full )
-			{
-				q_get_filebackup_info->Bind(backupid);
-				db_results res_info=q_get_filebackup_info->Read();
-				q_get_filebackup_info->Reset();
-				q_get_clientname->Bind(clientid);
-				db_results res_name=q_get_clientname->Read();
-				q_get_clientname->Reset();
-				if(!res_name.empty() && !res_info.empty())
-				{
-					Server->Log(L"Deleting full file backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
-				}
-				bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
-				
-				Server->Log("Done.", LL_INFO);
-
+				ServerSettings settings(db);
 				int r=hasEnoughFreeSpace(minspace, &settings);
 				if( r==-1 || r==1 )
-					return;
+						return;
 
-				if(b)
-				{
-					deleted_something_client=true;
-        			deleted_something=true;
-        			break;
-        		}
-        			
-        		full_file_num=(int)getFilesFullNum(clientid, backupid);
+				deleted_something=true;
 			}
-
-			if(deleted_something_client==true)
-				continue;
-
-			int incr_file_num=(int)getFilesIncrNum(clientid, backupid);
-			Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_file_num)+" icremental file backups max="+nconvert(max_file_incr), LL_DEBUG);
-			while(incr_file_num>max_file_incr )
-			{
-				q_get_filebackup_info->Bind(backupid);
-				db_results res_info=q_get_filebackup_info->Read();
-				q_get_filebackup_info->Reset();
-				q_get_clientname->Bind(clientid);
-				db_results res_name=q_get_clientname->Read();
-				q_get_clientname->Reset();
-				if(!res_name.empty() && !res_info.empty())
-				{
-					Server->Log(L"Deleting incremental file backup ( id="+res_info[0][L"id"]+L", backuptime="+res_info[0][L"backuptime"]+L", path="+res_info[0][L"path"]+L" ) from client \""+res_name[0][L"name"]+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
-				}
-				bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid);
-				
-				Server->Log("Done.", LL_INFO);
-
-				int r=hasEnoughFreeSpace(minspace, &settings);
-				if( r==-1 || r==1 )
-					return;
-
-				if(b)
-				{
-					deleted_something_client=true;
-					deleted_something=true;
-					break;
-				}
-				incr_file_num=(int)getFilesIncrNum(clientid, backupid);
-			}
-
-			if(deleted_something_client==true)
-				continue;
 		}
 	}
 
@@ -893,15 +870,13 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 
 size_t ServerCleanupThread::getFilesFullNum(int clientid, int &backupid_top)
 {
-	q_get_full_num_files->Bind(clientid);
-	db_results res=q_get_full_num_files->Read();
-	q_get_full_num_files->Reset();
-	db_results no_err_res;
+	std::vector<int> res=cleanupdao->getFullNumFiles(clientid);
+	std::vector<int> no_err_res;
 	if(!removeerr.empty())
 	{
 		for(size_t i=0;i<res.size();++i)
 		{
-			int bid=watoi(res[i][L"id"]);
+			int bid=res[i];
 			if(std::find(removeerr.begin(), removeerr.end(), bid)==removeerr.end())
 			{
 				no_err_res.push_back(res[i]);
@@ -914,22 +889,20 @@ size_t ServerCleanupThread::getFilesFullNum(int clientid, int &backupid_top)
 	}
 	if(!no_err_res.empty())
 	{
-		backupid_top=watoi(no_err_res[0][L"id"]);
+		backupid_top=no_err_res[0];
 	}
 	return no_err_res.size();
 }
 
 size_t ServerCleanupThread::getFilesIncrNum(int clientid, int &backupid_top)
 {
-	q_get_incr_num_files->Bind(clientid);
-	db_results res=q_get_incr_num_files->Read();
-	q_get_incr_num_files->Reset();
-	db_results no_err_res;
+	std::vector<int> res=cleanupdao->getIncrNumFiles(clientid);
+	std::vector<int> no_err_res;
 	if(!removeerr.empty())
 	{
 		for(size_t i=0;i<res.size();++i)
 		{
-			int bid=watoi(res[i][L"id"]);
+			int bid=res[i];
 			if(std::find(removeerr.begin(), removeerr.end(), bid)==removeerr.end())
 			{
 				no_err_res.push_back(res[i]);
@@ -942,7 +915,7 @@ size_t ServerCleanupThread::getFilesIncrNum(int clientid, int &backupid_top)
 	}
 	if(!no_err_res.empty())
 	{
-		backupid_top=watoi(no_err_res[0][L"id"]);
+		backupid_top=no_err_res[0];
 	}
 	return no_err_res.size();
 }
@@ -951,30 +924,23 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 {
 	ServerStatus::updateActive();
 
-	std::wstring clientname;
-	q_get_clientname->Bind(clientid);
-	db_results res=q_get_clientname->Read();
-	q_get_clientname->Reset();
-	if(res.empty())
+	ServerCleanupDAO::CondString cond_clientname=cleanupdao->getClientName(clientid);
+	if(!cond_clientname.exists)
 	{
 		Server->Log("Error getting clientname in ServerCleanupThread::deleteFileBackup", LL_ERROR);
 		return false;
 	}
+	std::wstring &clientname=cond_clientname.value;
 
-	clientname=res[0][L"name"];
+	ServerCleanupDAO::CondString cond_backuppath=cleanupdao->getFileBackupPath(backupid);
 
-	std::wstring backuppath;
-	q_get_backuppath->Bind(backupid);
-	res=q_get_backuppath->Read();
-	q_get_backuppath->Reset();
-
-	if(res.empty())
+	if(!cond_backuppath.exists)
 	{
 		Server->Log("Error getting backuppath in ServerCleanupThread::deleteFileBackup", LL_ERROR);
 		return false;
 	}
 
-	backuppath=res[0][L"path"];
+	std::wstring backuppath=cond_backuppath.value;
 
 	if(backuppath.empty())
 	{
@@ -1052,15 +1018,9 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	{
 		db->DetachDBs();
 		db->BeginTransaction();
-		q_move_files->Bind(backupid);
-		q_move_files->Write();
-		q_move_files->Reset();
-		q_delete_files->Bind(backupid);
-		q_delete_files->Write();
-		q_delete_files->Reset();
-		q_remove_file_backup->Bind(backupid);
-		q_remove_file_backup->Write();
-		q_remove_file_backup->Reset();
+		cleanupdao->moveFiles(backupid);
+		cleanupdao->deleteFiles(backupid);
+		cleanupdao->removeFileBackup(backupid);
 		db->EndTransaction();
 		db->AttachDBs();
 	}
@@ -1070,51 +1030,34 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	return !err;
 }
 
-void ServerCleanupThread::removeImageSize(int backupid)
-{
-	q_remove_image_size->Bind(backupid);
-	q_remove_image_size->Bind(backupid);
-	q_remove_image_size->Bind(backupid);
-	q_remove_image_size->Write();
-	q_remove_image_size->Reset();
-}
-
 void ServerCleanupThread::removeClient(int clientid)
 {
-	std::wstring clientname;
-	q_get_clientname->Bind(clientid);
-	db_results res=q_get_clientname->Read();
-	q_get_clientname->Reset();
-	if(!res.empty())
-		clientname=res[0][L"name"];
-
+	std::wstring clientname=cleanupdao->getClientName(clientid).value;
 	Server->Log(L"Deleting client with id \""+convert(clientid)+L"\" name \""+clientname+L"\"", LL_INFO);
+	std::vector<ServerCleanupDAO::SImageBackupInfo> res_images;
 	//remove image backups
 	do
 	{
-		q_get_client_images->Bind(clientid);
-		res=q_get_client_images->Read();
-		q_get_client_images->Reset();
+		res_images=cleanupdao->getClientImages(clientid);
 
-		if(!res.empty())
+		if(!res_images.empty())
 		{
-			int backupid=watoi(res[0][L"id"]);
+			int backupid=res_images[0].id;
 			Server->Log("Removing image with id \""+nconvert(backupid)+"\"", LL_INFO);
 			removeImage(backupid, true, 0, true);
 		}
-	}while(!res.empty());
+	}while(!res_images.empty());
 
 	//remove file backups
 	ServerSettings settings(db);
+	std::vector<int> res_filebackups;
 	do
 	{
-		q_get_client_filebackups->Bind(clientid);
-		res=q_get_client_filebackups->Read();
-		q_get_client_filebackups->Reset();
+		res_filebackups=cleanupdao->getClientFileBackups(clientid);
 
-		if(!res.empty())
+		if(!res_filebackups.empty())
 		{
-			int backupid=watoi(res[0][L"id"]);
+			int backupid=res_filebackups[0];
 			Server->Log("Removing file backup with id \""+nconvert(backupid)+"\"", LL_INFO);
 			bool b=deleteFileBackup(settings.getSettings()->backupfolder, clientid, backupid, true);
 			if(b)
@@ -1122,7 +1065,7 @@ void ServerCleanupThread::removeClient(int clientid)
 			else
 				Server->Log("Removing file backup with id \""+nconvert(backupid)+"\" failed.", LL_ERROR);
 		}
-	}while(!res.empty());
+	}while(!res_filebackups.empty());
 
 	//Update stats
 	{
@@ -1192,98 +1135,16 @@ void ServerCleanupThread::deletePendingClients(void)
 	}
 }
 
-std::vector<int> ServerCleanupThread::getAssocImages(int backupid)
-{
-	q_get_assoc_img->Bind(backupid);
-	db_results res=q_get_assoc_img->Read();
-	q_get_assoc_img->Reset();
-	std::vector<int> ret;
-	for(size_t i=0;i<res.size();++i)
-	{
-		ret.push_back(watoi(res[i][L"assoc_id"]));
-	}
-	return ret;
-}
-
 int64 ServerCleanupThread::getImageSize(int backupid)
 {
-	q_get_image_size->Bind(backupid);
-	db_results res=q_get_image_size->Read();
-	q_get_image_size->Reset();
-	if(!res.empty())
+	ServerCleanupDAO::CondInt64 cond_res=cleanupdao->getImageSize(backupid);
+	if(cond_res.exists)
 	{
-		return os_atoi64(wnarrow(res[0][L"size_bytes"]));
+		return cond_res.value;
 	}
 	return -1;
 }
 
-void ServerCleanupThread::createQueries(IDatabase *pDb)
-{
-	if(pDb!=NULL)
-	{
-		db=pDb;
-	}
-	q_incomplete_images=db->Prepare("SELECT id, path FROM backup_images WHERE complete=0 AND running<datetime('now','-300 seconds')", false);
-	q_remove_image=db->Prepare("DELETE FROM backup_images WHERE id=?", false);
-	q_get_clients_sortfiles=db->Prepare("SELECT DISTINCT c.id FROM clients c INNER JOIN backups b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
-	q_get_clients_sortimages=db->Prepare("SELECT DISTINCT c.id FROM clients c INNER JOIN (SELECT * FROM backup_images WHERE length(letter)<=2) b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
-	q_get_full_num_images=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
-	q_get_image_refs=db->Prepare("SELECT id,complete FROM backup_images WHERE incremental<>0 AND incremental_ref=?", false);
-	q_get_image_path=db->Prepare("SELECT path FROM backup_images WHERE id=?", false);
-	q_get_incr_num_images=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental<>0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
-	q_get_full_num_files=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental=0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
-	q_get_incr_num_files=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental<>0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
-	q_get_clientname=db->Prepare("SELECT name FROM clients WHERE id=?", false);
-	q_get_backuppath=db->Prepare("SELECT path FROM backups WHERE id=?", false);
-	q_delete_files=db->Prepare("DELETE FROM files WHERE backupid=?", false);
-	q_remove_file_backup=db->Prepare("DELETE FROM backups WHERE id=?", false);
-	q_get_filebackup_info=db->Prepare("SELECT id, backuptime, path FROM backups WHERE id=?", false);
-	q_get_image_info=db->Prepare("SELECT id, backuptime, path, letter FROM backup_images WHERE id=?", false);
-	q_move_files=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 1 AS is_del FROM files WHERE backupid=?", false);
-	q_remove_image_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=(SELECT clientid FROM backup_images WHERE id=?))-(SELECT size_bytes FROM backup_images WHERE id=?) WHERE id=(SELECT clientid FROM backup_images WHERE id=?)",false);
-	q_del_image_stats=db->Prepare("INSERT INTO del_stats (backupid, image, delsize, clientid, incremental) SELECT id, 1 AS image, (size_bytes+?) AS delsize, clientid, incremental FROM backup_images WHERE id=?", false);
-	q_image_stats_stop=db->Prepare("UPDATE del_stats SET stoptime=CURRENT_TIMESTAMP WHERE rowid=?", false);
-	q_get_client_images=db->Prepare("SELECT id, path FROM backup_images WHERE clientid=?", false);
-	q_get_client_filebackups=db->Prepare("SELECT id FROM backups WHERE clientid=?", false);
-	q_get_assoc_img=db->Prepare("SELECT assoc_id FROM assoc_images WHERE img_id=?", false);
-	q_get_image_size=db->Prepare("SELECT size_bytes FROM backup_images WHERE id=?", false);
-	q_get_clients=db->Prepare("SELECT id, name FROM clients", false);
-	q_get_backups_clientid=db->Prepare("SELECT id, backuptime, path FROM backups WHERE clientid=?", false);
-	q_get_imagebackups_clientid=db->Prepare("SELECT id, letter, path FROM backup_images WHERE clientid=?", false);
-	q_find_filebackup=db->Prepare("SELECT id FROM backups WHERE clientid=? AND path=?", false);
-}
-
-void ServerCleanupThread::destroyQueries(void)
-{
-	db->destroyQuery(q_incomplete_images);
-	db->destroyQuery(q_remove_image);
-	db->destroyQuery(q_get_clients_sortfiles);
-	db->destroyQuery(q_get_clients_sortimages);
-	db->destroyQuery(q_get_full_num_images);
-	db->destroyQuery(q_get_image_refs);
-	db->destroyQuery(q_get_image_path);
-	db->destroyQuery(q_get_incr_num_images);
-	db->destroyQuery(q_get_full_num_files);
-	db->destroyQuery(q_get_incr_num_files);
-	db->destroyQuery(q_get_clientname);
-	db->destroyQuery(q_get_backuppath);
-	db->destroyQuery(q_delete_files);
-	db->destroyQuery(q_remove_file_backup);
-	db->destroyQuery(q_get_filebackup_info);
-	db->destroyQuery(q_get_image_info);
-	db->destroyQuery(q_move_files);
-	db->destroyQuery(q_remove_image_size);
-	db->destroyQuery(q_del_image_stats);
-	db->destroyQuery(q_image_stats_stop);
-	db->destroyQuery(q_get_client_images);
-	db->destroyQuery(q_get_client_filebackups);
-	db->destroyQuery(q_get_assoc_img);
-	db->destroyQuery(q_get_image_size);
-	db->destroyQuery(q_get_clients);
-	db->destroyQuery(q_get_backups_clientid);
-	db->destroyQuery(q_get_imagebackups_clientid);
-	db->destroyQuery(q_find_filebackup);
-}
 
 void ServerCleanupThread::backup_database(void)
 {
@@ -1361,5 +1222,150 @@ void ServerCleanupThread::removeUnknown(void)
 {
 	Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(ECleanupAction_RemoveUnknown)));
 }
+
+void ServerCleanupThread::enforce_quotas(void)
+{
+	db_results cache_res;
+	if(db->getEngineName()=="sqlite")
+	{
+		cache_res=db->Read("PRAGMA cache_size");
+		ServerSettings server_settings(db);
+		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+	}
+
+	std::vector<ServerCleanupDAO::SClientInfo> clients=cleanupdao->getClients();
+
+	for(size_t i=0;i<clients.size();++i)
+	{
+		Server->Log("Enforcing quota for client \"" + Server->ConvertToUTF8(clients[i].name)+ "\" (id="+nconvert(clients[i].id)+")", LL_INFO);
+		std::ostringstream log;
+		log << "Quota enforcement report for client \"" << Server->ConvertToUTF8(clients[i].name) << "\" (id=" << clients[i].id  << ")" << std::endl;
+
+		if(!enforce_quota(clients[i].id, log))
+		{
+			BackupServerGet::sendMailToAdmins("Quota enforcement failed", log.str());
+			Server->Log(log.str(), LL_ERROR);
+		}
+		else
+		{
+			Server->Log(log.str(), LL_DEBUG);
+		}
+	}
+
+	if(!cache_res.empty())
+	{
+		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->Write("PRAGMA shrink_memory");
+	}
+}
+
+bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
+{
+	ServerSettings client_settings(db, clientid);
+
+	if(client_settings.getSettings()->client_quota.empty())
+	{
+		log << "Client does not have a quota" << std::endl;
+		return true;
+	}
+
+	bool did_remove_something=false;
+	do
+	{
+		ServerCleanupDAO::CondInt64 used_storage=cleanupdao->getUsedStorage(clientid);
+		if(!used_storage.exists || used_storage.value<0)
+		{
+			log << "Error getting used storage of client" << std::endl;
+			return false;
+		}
+
+		int64 client_quota=cleanup_amount(client_settings.getSettings()->client_quota, db);
+
+		log << "Client uses " << PrettyPrintBytes(used_storage.value) << " and has a quota of " << PrettyPrintBytes(client_quota) << std::endl;
+
+		if(used_storage.value<=client_quota)
+		{		
+			log << "Client within assigned quota." << std::endl;
+			return true;
+		}
+		else
+		{
+			log << "This requires enforcement of the quota." << std::endl;
+		}
+
+		did_remove_something=false;
+		int state=0;
+		int nopc=0;
+		while(used_storage.value>client_quota && nopc<2)
+		{
+			std::wstring path=client_settings.getSettings()->backupfolder;
+			int64 available_space=os_free_space(os_file_prefix(path));
+
+			if(available_space==-1)
+			{
+				log << "Error getting free space -5" << std::endl;
+				return false;
+			}
+
+			int64 space_to_free=used_storage.value-client_quota;
+
+			int64 target_space=available_space-space_to_free;
+
+			if(target_space<0)
+			{
+				log << "Error. Target space is negative" << std::endl;
+				return false;
+			}
+
+			if(state==0)
+			{
+				std::vector<int> imageids;
+				if(cleanup_images_client(clientid, target_space, imageids))
+				{
+					log << "Removed " << imageids.size() << " images with ids ";
+					for(size_t i=0;i<imageids.size();++i) log << imageids[i];
+					log << std::endl;
+
+					did_remove_something=true;
+					break;
+				}
+				else
+				{
+					++nopc;
+				}
+			}
+			else
+			{
+				int filebid;
+				if(cleanup_one_filebackup_client(clientid, target_space, filebid))
+				{
+					log << "Removed file backup with id " << filebid << std::endl;
+
+					did_remove_something=true;
+					nopc=0;
+					if(hasEnoughFreeSpace(target_space, &client_settings))
+					{
+						break;
+					}
+				}
+				else
+				{
+					++nopc;
+				}
+			}
+			state=(state+1)%2;
+		}
+
+		if(did_remove_something)
+		{
+			ServerUpdateStats sus(false, false);
+			sus();
+		}
+	}
+	while(did_remove_something);
+
+	return false;
+}
+
 
 #endif //CLIENT_ONLY

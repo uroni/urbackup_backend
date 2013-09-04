@@ -150,6 +150,9 @@
     <ClCompile Include="mt19937ar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DatabaseCursor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcceptThread.h">
@@ -349,6 +352,12 @@
     </ClInclude>
     <ClInclude Include="mt19937ar.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DatabaseCursor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\DatabaseCursor.h">
+      <Filter>Interface</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

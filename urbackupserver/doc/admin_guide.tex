@@ -12,7 +12,7 @@
 \hypersetup{ pdfborder={0 0 0} }
 
 \author{Martin Raiber}
-\title{Administration Manual for\\UrBackup Server 1.1}
+\title{Administration Manual for\\UrBackup Server 1.2}
 
 \maketitle
 
@@ -159,7 +159,7 @@ Either add a symlink to the 'www' UrBackup directory or define it as an alias. F
 \begin{verbatim}
 ln -s /var/lib/urbackup/www urbackup
 \end{verbatim}
-Be sure you have set 'Option +FollowSymLinks' in the webserver configuration on the directory you link into. From now on it is assumed that urbackup should be accessible via https://hostname/urbackup.
+Be sure you have set 'Option +FollowSymLinks' in the webserver configuration on the directory you link into. From now on it is assumed that urbackup should be accessible via\\ https://hostname/urbackup.
 Download and install 'libapache2-mod-fastcgi' (this may have another name on other distributions). Add following line to the 'fastcgi.conf':
 \begin{verbatim}
 FastCgiExternalServer /var/www/urbackup/x -host 127.0.0.1:55413
@@ -394,13 +394,19 @@ with this setting. All connections between server and client are then throttled
 to remain under the configured speed limit. This is useful if you do not want
 the backup server to saturate your local network. 
 
+\subsubsection{Global soft filesystem quota}
+
+During cleanups UrBackup will look at the used space of the filesystem the backup folder is on. If the used space is higher than the global soft filesystem quota UrBackup will delete old backups, if possible, till the used space is below the quota. Be aware that not only UrBackup's files count against the quota, but other files as well. A quota that only takes into account UrBackup's files is plannned.
+You can sepecify the quota via a percentage of total space, or by a size. For example let the size of the Backup device be 1 Tera-byte:
+If you set the global filesystem quota to "90\%", UrBackup will delete old backups as soon as more than about 900 Giga-bytes of the available space is used. You could also directly set the quota to 900 Giga-bytes by setting it to "900G". Other units are possible, e.g. "900000M" or "1T".
+
 \subsection{Mail settings}
 
 \subsubsection{Mail server settings}
 
 If you want the UrBackup server to send mail reports a mail server should be configured in the 'Mail' settings page. The specific settings and their description are:
 
-\begin{longtable}{|p{0.2\textwidth}|p{0.4\textwidth}|p{0.4\textwidth}|}
+\begin{longtable}{|p{0.2\textwidth}|p{0.4\textwidth}|p{0.3\textwidth}|}
 \hline
 Settings  & Description & Example\\
 \hline\hline
@@ -434,7 +440,7 @@ Every web interface user can configure these values differently. UrBackup only s
 
 \subsection{Client specific settings}
 
-\begin{longtable}{|p{0.2\textwidth}|p{0.6\textwidth}|p{0.2\textwidth}|}
+\begin{longtable}{|p{0.2\textwidth}|p{0.6\textwidth}|p{0.1\textwidth}|}
 \hline
 Settings  & Description & Default value\\
 \hline\hline
@@ -542,7 +548,7 @@ Those locations are only the default locations. Even if you check "Separate sett
 
 \subsection{Internet settings}
 
-\begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|p{0.2\textwidth}|}
+\begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|p{0.1\textwidth}|}
 \hline
 Settings  & Description & Default value\\
 \hline\hline
@@ -564,6 +570,86 @@ Compressed transfer & If checked all data between server and clients is compress
 \hline
 \end{tabular}
 
+\subsection{Advanced settings}
+
+In this section you will find global server settings which you only have to
+change for heavy or custom workloads. Most settings will need a server restart
+to come into effect.
+
+\subsubsection{Enabling temporary file buffers}
+
+Earlier versions of UrBackup always saved incoming data from clients first to temporary
+files and then copied it to the final destination (if the data is new) -- the rationale
+being, that the final destination may be slow and you want to get the data from the client
+as fast as possible.\\
+With UrBackup $1.1$ this default behaviour was changed to directly copy the data to the
+final backup storage. The two settings allow you to reenable the old behaviour, e.g.,
+because your backup storage is slow because it is deduplicated. If you reenable it
+make sure you have at least 1GB of space for each client, and at least as much space as
+the biggest file you are going to backup times the number of clients, on your temporary
+storage. You can change the temporary storage directory via the environment variable \textsl{TMPDIR} on GNU/Linux and in the server settings on Windows.
+
+\subsubsection{Transfer modes}
+
+UrBackup has different transfer modes for files and images. Those are:
+
+\begin{itemize}
+  \item \textsl{raw}. Transfer the data as 'raw' as possible. This is the fastest transfer
+  		mode and uses the least amount of CPU cycles on server and client.
+  \item \textsl{hashed}. Protects the transferred data from bit errors by hashing the data
+  		during the transfer. This uses CPU cycles on the client and the server.\\
+  		UrBackup uses TCP/IP to transfer the images and files. TCP/IP implements its own
+  		bit error detection mechanism (CRC32). If the network induces a lot of bit errors
+  		and if a lot of data is transferred (>2TB), however, the bit error detection mechanism
+  		of TCP/IP is not enough to detect all occuring errors. The 'hashed' transfer mode
+  		adds an additional layer of protection to make bit errors less probable.
+  \item \textsl{Block differences - hashed}. Only available for file backups (as it is
+  		automatically done for images). Blocks of the transferred files are compared using
+  		CRC32 and MD5 hash functions. Only blocks which have changed are send over the
+  		network. In cases where only some blocks of a file change, this reduces the amount
+  		of transferred data. It also causes more messages to be sent between server and
+  		client and uses CPU cycles, which is why it is only enabled for Internet clients
+  		per default. 
+\end{itemize}
+
+\subsubsection{File hash collection}
+
+During full file backups or for new files in incremental backup a database entry, which
+maps the files hash to its storage path is created. This entry alllows succeeding same
+files to be linked to the file encountered first, without storing it twice.
+To speed up this process, updates to the database are batched, i.e., file entries are first
+stored in a temporary table, and later moved over to the real database. As the temporary
+table is only visible to the thread currently running for one client, the longer this copy
+process is delayed the more it becomes possible that another client does not link to an already
+existing file, because it cannot find it in the database.
+With the file hash collection parameters you can influence when the copying from the temporary
+table to the shared database happens:
+
+\begin{itemize}
+  \item \textsl{File hash collection amount}. After $x$ amount of file entries are in the
+  temporary table the contents of the temporary table are copied to the shared (final) table.
+  \item \textsl{File hash collection timeout}. After not having created any file entries in the
+  temporary table for $x$ milliseconds the contents of the temporary table are copied to
+  the shared (final) table.
+\end{itemize}
+
+\subsubsection{Database cache size}
+
+UrBackup is using a per thread database cache. With the database cache size parameters you can
+influence the size of the database caches of some of the threads.
+
+\begin{itemize}
+  \item \textsl{File hash collection database cachesize.} The size of the database cache for the
+  		thread doing the file lookups and linking. Increase this cache size if you have slow
+  		file backups (stalled at 100\% and slowly decreasing queue). Make sure you have enough
+  		RAM, as UrBackup will use this amount of Megabytes times the number of simultaneous file
+  		backups.
+  \item \textsl{Update stats database cachesize.} Size of the database cache for the thread which
+  		updates the statistics (i.e., which client uses how much space). There will only ever be
+  		one such thread and it will not be running while other backups are running, so you can
+  		set this to a relatively high value.
+\end{itemize}
+
 \section{Miscellaneous}
 
 \subsection{Manually update UrBackup clients}
@@ -574,7 +660,7 @@ the Internet and install it. This means disabling the autoupdate described in
 Section \ref{subsubsec:autoupdate}. You can still centrally update the client
 from the server if you disabled autoupdate. Go to \url{http://update1.urbackup.org}
 and download all files to \textsl{/var/urbackup} on Linux and
-\textsl{C:\\Program Files\\UrBackupServer\\urbackup} per default on Windows. UrBackup
+\textsl{C:\textbackslash\textbackslash Program Files\textbackslash UrBackupServer\textbackslash urbackup} per default on Windows. UrBackup
 will then push the new version to the clients once they reconnect. If you checked
 silent autoupdates, the new version will be installed silently on the clients, otherwise
 there will be a popup asking the user to install the new version.
@@ -625,6 +711,34 @@ If the administrator has turned automatic shut-down on, this clean up process is
 \subsection{Emergency cleanup}
 
 If the server runs out of storage space during a backup it deletes backups until enough space is available again. Images are favoured over file backups and the oldest backups are deleted first. Backups are only deleted if there are at least the configured minimal number of incremental/full file/image backups other file/image backups in storage for the client owning the backup. If no such backup is found UrBackup cancels the current backup with a fatal error. Administrators should monitor storage space and add storage or configure the minimal number of incremental/full file/image backups to be lower if such an error occurs.
+
+\subsection{Cleanup for servers with file backups with lots of files}
+
+UrBackup's database is in a mode which enables high concurrency. Since the cleanup procedure
+can sometimes be bottlenecked by the database it may be advisable to switch the database into
+a mode which allows less concurrency but is fast for some operations for the cleanup procedure. This is not possible while UrBackup is running, so you should tweak the backup window such that you can be sure there are no backups running at some point. Then you can stop the server run the cleanup separately by calling
+\begin{verbatim}
+start_urbackup_server --cleanup x
+\end{verbatim}
+on GNU/Linux or on Windows:
+\begin{verbatim}
+cleanup.bat x
+\end{verbatim}
+Where $x$ is the percent of space to free on the backup storage or the number of Bytes/ Megabytes/ Gigabytes e.g. ``20G'' or ``10\%''. If it should only delete old backups
+use ``0\%''.
+
+\subsection{Cleaning the storage folder of files not known by UrBackup}
+
+Sometimes, e.g., by using a database backup, there are backups in the storage directory which UrBackup does not know about, i.e., there are no entries for those backups in the database.
+In does cases the command
+ \begin{verbatim}
+ start_urbackup_server --remove_unknown
+ \end{verbatim}
+ on GNU/Linux or on Windows:
+ \begin{verbatim}
+ remove_unknown.bat
+ \end{verbatim}
+removes files and folders in the urbackup storage directory which are not present in the UrBackup database.
 
 \subsection{Archiving}
 \label{subsec:archiving}

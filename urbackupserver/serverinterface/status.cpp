@@ -24,11 +24,14 @@
 #include "../server_status.h"
 #include "../../Interface/Pipe.h"
 #include "../server_get.h"
+#include "../../cryptoplugin/ICryptoFactory.h"
 
 #include <algorithm>
 
-extern std::string server_identity;
+extern ICryptoFactory *crypto_fak;
 
+namespace
+{
 
 bool start_backup(IPipe *comm_pipe, std::wstring backup_type)
 {
@@ -44,6 +47,50 @@ bool start_backup(IPipe *comm_pipe, std::wstring backup_type)
 		return false;
 
 	return true;
+}
+
+bool client_download(Helper& helper, JSON::Array &client_downloads)
+{
+	IDatabase *db=helper.getDatabase();
+	ServerSettings settings(db);
+
+	if(!FileExists("urbackup/UrBackupUpdate.exe"))
+		return false;
+
+	if(!FileExists("urbackup/UrBackupUpdate.sig"))
+		return false;
+
+	if(crypto_fak==NULL)
+		return false;
+
+	bool clientid_rights_all;
+	std::vector<int> clientid_rights=helper.clientRights(RIGHT_SETTINGS, clientid_rights_all);
+
+	db_results res=db->Read("SELECT id, name FROM clients");
+
+	bool has_client=false;
+
+	for(size_t i=0;i<res.size();++i)
+	{
+		int clientid=watoi(res[i][L"id"]);
+		std::wstring clientname=res[i][L"name"];
+
+		bool found=false;
+		if( (clientid_rights_all
+			|| std::find(clientid_rights.begin(), clientid_rights.end(), clientid)!=clientid_rights.end()
+			) /*&& ServerStatus::getStatus(clientname).online==false*/ )
+		{
+			JSON::Object obj;
+			obj.set("id", clientid);
+			obj.set("name", clientname);
+			client_downloads.add(obj);
+			has_client=true;
+		}
+	}
+
+	return has_client;
+}
+
 }
 
 ACTION_IMPL(status)
@@ -215,6 +262,9 @@ ACTION_IMPL(status)
 			stat.set("delete_pending", res[i][L"delete_pending"] );
 
 			std::string ip="-";
+			std::string client_version_string;
+			std::string os_version_string;
+			int done_pc=-1;
 			int i_status=0;
 			bool online=false;
 			SStatus *curr_status=NULL;
@@ -229,6 +279,10 @@ ACTION_IMPL(status)
 					}
 					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
 					ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+
+					client_version_string=client_status[j].client_version_string;
+					os_version_string=client_status[j].os_version_string;
+					done_pc=client_status[j].pcdone;
 
 					if(client_status[j].wrong_ident)
 						i_status=11;
@@ -261,7 +315,10 @@ ACTION_IMPL(status)
 
 			stat.set("online", online);
 			stat.set("ip", ip);
+			stat.set("client_version_string", client_version_string);
+			stat.set("os_version_string", os_version_string);
 			stat.set("status", i_status);
+			stat.set("done_pc", done_pc);
 			
 
 			ServerSettings settings(db, clientid);
@@ -356,13 +413,22 @@ ACTION_IMPL(status)
 
 		ret.set("status", status);
 		ret.set("extra_clients", extra_clients);
-		ret.set("server_identity", server_identity);
+		ret.set("server_identity", helper.getStrippedServerIdentity());
 
 		if(helper.getRights("remove_client")=="all")
 		{
 			ret.set("remove_client", true);
 		}
-		
+
+		JSON::Array client_downloads;
+		if(client_download(helper, client_downloads))
+		{
+			ret.set("client_downloads", client_downloads);
+		}
+
+		ServerSettings settings(db);
+		ret.set("no_images", settings.getSettings()->no_images);
+		ret.set("no_file_backups", settings.getSettings()->no_file_backups);
 	}
 	else
 	{

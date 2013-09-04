@@ -4,6 +4,8 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include <vector>
+#include "dao/ServerCleanupDAO.h"
+#include <sstream>
 
 class ServerSettings;
 
@@ -60,6 +62,7 @@ class ServerCleanupThread : public IThread
 {
 public:
 	ServerCleanupThread(CleanupAction action);
+	~ServerCleanupThread(void);
 
 	void operator()(void);
 
@@ -79,11 +82,13 @@ private:
 
 	void do_remove(void);
 
+	bool cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids);
+
 	void cleanup_images(int64 minspace=-1);
+
 	void cleanup_files(int64 minspace=-1);
 
-	void createQueries(IDatabase *pDb=NULL);
-	void destroyQueries(void);
+	bool cleanup_one_filebackup_client(int clientid, int64 minspace, int& filebid);
 
 	size_t getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit);
 	size_t getImagesIncrNum(int clientid, int &backupid_top, const std::vector<int> &notit);
@@ -104,44 +109,17 @@ private:
 
 	bool deleteAndTruncateFile(std::wstring path);
 	bool deleteImage(std::wstring path);
-	void removeImageSize(int backupid);
 	int64 getImageSize(int backupid);
-	std::vector<int> getAssocImages(int backupid);
 
 	int hasEnoughFreeSpace(int64 minspace, ServerSettings *settings);
 
 	bool truncate_files_recurisve(std::wstring path);
 
-	IDatabase *db;
+	void enforce_quotas(void);
 
-	IQuery *q_incomplete_images;
-	IQuery *q_remove_image;
-	IQuery *q_get_clients_sortfiles;
-	IQuery *q_get_clients_sortimages;
-	IQuery *q_get_full_num_images;
-	IQuery *q_get_image_refs;
-	IQuery *q_get_image_path;
-	IQuery *q_get_incr_num_images;
-	IQuery *q_get_full_num_files;
-	IQuery *q_get_incr_num_files;
-	IQuery *q_get_clientname;
-	IQuery *q_get_backuppath;
-	IQuery *q_delete_files;
-	IQuery *q_remove_file_backup;
-	IQuery *q_get_filebackup_info;
-	IQuery *q_get_image_info;
-	IQuery *q_move_files;
-	IQuery *q_remove_image_size;
-	IQuery *q_del_image_stats;
-	IQuery *q_image_stats_stop;
-	IQuery *q_get_client_images;
-	IQuery *q_get_client_filebackups;
-	IQuery *q_get_assoc_img;
-	IQuery *q_get_image_size;
-	IQuery *q_get_clients;
-	IQuery *q_get_backups_clientid;
-	IQuery *q_get_imagebackups_clientid;
-	IQuery *q_find_filebackup;
+	bool enforce_quota(int clientid, std::ostringstream& log);
+
+	IDatabase *db;
 
 	static IMutex *mutex;
 	static ICondition *cond;
@@ -156,4 +134,6 @@ private:
 	static volatile bool do_quit;
 
 	CleanupAction cleanup_action;
+
+	ServerCleanupDAO *cleanupdao;
 };

@@ -15,7 +15,7 @@ class CStreamPipe;
 class CServiceWorker : public IThread
 {
 public:
-	CServiceWorker(IService *pService, std::string pName, IPipe * pExit);
+	CServiceWorker(IService *pService, std::string pName, IPipe * pExit, int pMaxClientsPerThread);
 	~CServiceWorker();
 
 	void operator ()(void);

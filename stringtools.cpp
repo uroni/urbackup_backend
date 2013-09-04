@@ -236,13 +236,10 @@ std::string getFile(std::string filename)
         FileBin.seekg(0, std::ios::end);
 		unsigned long FileSize = (unsigned int)std::streamoff(FileBin.tellg());
         FileBin.seekg(0, std::ios::beg);
-		char* buffer=new char[FileSize+1];
-
-        FileBin.read(buffer, FileSize);
-		buffer[FileSize]='\0';
-		std::string ret=buffer;
+		std::string ret;
+		ret.resize(FileSize);
+        FileBin.read(const_cast<char*>(ret.c_str()), FileSize);
 		FileBin.close();
-        delete [] buffer;
         return ret;
 }
 
@@ -1072,6 +1069,27 @@ std::string EscapeSQLString(const std::string &pStr)
 	return ret;
 }
 
+std::string EscapeParamString(const std::string &pStr)
+{
+	std::string ret;
+	for(size_t i=0;i<pStr.size();++i)
+	{
+		if(pStr[i]=='&')
+		{
+			ret+="%26";
+		}
+		else if(pStr[i]=='$')
+		{
+			ret+="%24";
+		}
+		else
+		{
+			ret+=pStr[i];
+		}
+	}
+	return ret;
+}
+
 void EscapeCh(std::string &pStr, char ch)
 {
 	std::string ins;
@@ -1281,6 +1299,16 @@ std::string bytesToHex(const unsigned char *b, size_t bsize)
 	return r;
 }
 
+std::string hexToBytes(const std::string& data)
+{
+	std::string ret;
+	ret.resize(data.size()/2);
+	for(size_t i=0;i<data.size();i+=2)
+	{
+		ret[i/2]=static_cast<char>(hexToULong(data.substr(i, 2)));
+	}
+	return ret;
+}
 
 wstring htmldecode(string str, bool html, char xc)
 {

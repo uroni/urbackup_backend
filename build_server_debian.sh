@@ -16,6 +16,7 @@ then
 	touch build_server_debian_ok
 fi
 
+./switch_build.sh server
 make dist > tmp
 BASENAME=`awk -F'"' '{ for(i=1; i<NF; i++) if($i ~/urbackup-server-(.*)/) {print $i; exit;} }' tmp`
 ANAME="${BASENAME}.tar.gz"

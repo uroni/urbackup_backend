@@ -30,6 +30,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <sstream>
 
 class DirectoryWatcherThread;
 
@@ -77,11 +78,31 @@ struct SCDirs
 	bool fileserv;
 };
 
+struct SHashedFile
+{
+	SHashedFile(const std::wstring& path,
+				_i64 filesize,
+				_i64 modifytime,
+				const std::string& hash)
+				: path(path),
+				  filesize(filesize), modifytime(modifytime),
+				  hash(hash)
+	{
+	}
+
+	std::wstring path;
+	_i64 filesize;
+	_i64 modifytime;
+	std::string hash;
+};
+
 class ClientDAO;
 
 class IndexThread : public IThread
 {
 public:
+	static const char IndexThreadAction_GetLog;
+
 	IndexThread(void);
 	~IndexThread();
 
@@ -126,7 +147,12 @@ private:
 #ifdef _WIN32
 	bool wait_for(IVssAsync *vsasync);
 	std::string GetErrorHResErrStr(HRESULT res);
+	bool check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg);
+	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg);
 #endif
+	
+	void VSSLog(const std::string& msg, int loglevel);
+	void VSSLog(const std::wstring& msg, int loglevel);
 
 	SCDirs* getSCDir(const std::wstring path);
 
@@ -137,8 +163,17 @@ private:
 
 	void modifyFilesInt(std::wstring path, const std::vector<SFile> &data);
 	void commitModifyFilesBuffer(void);
+	void modifyHashInt(const std::string& hash, const std::wstring& path, int64 filesize, int64 modifytime);
+	void commitModifyHashBuffer(void);
 
 	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
+
+	std::string getSHA256(const std::wstring& fn);
+	std::string getSHA512Binary(const std::wstring& fn);
+
+	void resetFileEntries(void);
+
+	
 
 	std::string starttoken;
 
@@ -181,5 +216,14 @@ private:
 	static std::map<std::wstring, std::wstring> filesrv_share_dirs;
 
 	std::vector< std::pair<std::wstring, std::vector<SFile> > > modify_file_buffer;
+	std::vector< SHashedFile > modify_hash_buffer;
 	size_t modify_file_buffer_size;
+	size_t modify_hash_buffer_size;
+
+	int end_to_end_file_backup_verification_enabled;
+	int calculate_filehashes_on_client;
+
+	unsigned int last_tmp_update_time;
+
+	std::vector<std::pair<std::string, int> > vsslog;
 };

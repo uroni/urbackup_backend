@@ -168,7 +168,15 @@ bool CUDPThread::UdpStep(void)
 	timeval lon;
 	memset(&lon,0,sizeof(timeval) );
 	lon.tv_sec=60;
-	_i32 rc = select((int)udpsock+1, &fdset, 0, 0, &lon);
+	_i32 rc;
+	if(!do_stop)
+	{
+		rc=select((int)udpsock+1, &fdset, 0, 0, &lon);
+	}
+	else
+	{
+		rc=SOCKET_ERROR;
+	}
 
 	if(rc>0)
 	{
@@ -227,6 +235,5 @@ void CUDPThread::stop(void)
 {
 	Log("Stopping CUPDThread...", LL_DEBUG);
 	closesocket(udpsock);
-	udpsock=SOCKET_ERROR;
 	do_stop=true;
 }

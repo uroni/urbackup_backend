@@ -86,10 +86,10 @@ ACTION_IMPL(usagegraph)
 		
 		std::wstring scale=GET[L"scale"];
 
-		std::string t_where="";
+		std::string t_where=" 0=0";
 		if(clientid!=-1)
 		{
-			t_where=" AND id="+nconvert(clientid)+" ";
+			t_where+=" AND id="+nconvert(clientid)+" ";
 		}
 		
 		int c_lim=1;
@@ -106,12 +106,15 @@ ACTION_IMPL(usagegraph)
 		IQuery *q=db->Prepare("SELECT id, (MAX(b.bytes_used_files)+MAX(b.bytes_used_images)) AS used, strftime('"+date_format_str+"', MAX(b.created), 'localtime') AS tdate, strftime('"+date_format_str_short+"', MAX(b.created), 'localtime') AS tdate_short "
 				    "FROM "
 				    "("
-				    "SELECT MAX(created) AS created FROM clients_hist WHERE created>date('now','-1 month')"+t_where+" "
+				    "SELECT MAX(created) AS mcreated "
+					"FROM "
+					"(SELECT * FROM clients_hist WHERE "+t_where+" AND created>date('now','-1 month') ) "
 				    "GROUP BY strftime('"+date_format_str+"', created, 'localtime'), id "
-				    "ORDER BY created DESC "
+					"HAVING mcreated>date('now','-1 month') "
+				    "ORDER BY mcreated DESC "
 				    "LIMIT "+nconvert(c_lim*(n_items*2))+" "
 				    ") a "
-				    "INNER JOIN clients_hist b ON a.created=b.created WHERE b.created>date('now','-1 month')"+t_where+" "
+				    "INNER JOIN clients_hist b ON a.mcreated=b.created WHERE "+t_where+" AND b.created>date('now','-1 month') "
 				    "GROUP BY strftime('"+date_format_str+"', b.created, 'localtime'), id "
 				    "ORDER BY b.created DESC");
 				    

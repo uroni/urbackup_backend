@@ -203,6 +203,20 @@ bool ServerStatus::getServerNospcFatal(void)
 	return server_nospc_fatal;
 }
 
+void ServerStatus::setClientVersionString(const std::wstring &clientname, const std::string& client_version_string)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->client_version_string=client_version_string;
+}
+
+void ServerStatus::setOSVersionString(const std::wstring &clientname, const std::string& os_version_string)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->os_version_string=os_version_string;
+}
+
 ACTION_IMPL(server_status)
 {
 #ifndef _DEBUG

@@ -16,8 +16,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#ifndef CLIENT_ONLY
-
 #include "json.h"
 #include "../../stringtools.h"
 #include "../../Interface/Server.h"
@@ -518,5 +516,3 @@ namespace JSON
 		return data_type;
 	}
 }
-
-#endif //CLIENT_ONLY

@@ -3,6 +3,8 @@
 
 #include "Types.h"
 
+class IDatabaseCursor;
+
 class IQuery
 {
 public:
@@ -22,6 +24,8 @@ public:
 	virtual bool Write(int timeoutms=-1)=0;
 	virtual db_nresults ReadN(int *timeoutms=NULL)=0;
 	virtual db_results Read(int *timeoutms=NULL)=0;
+
+	virtual IDatabaseCursor* Cursor(int *timeoutms=NULL)=0;
 };
 
 

@@ -15,9 +15,6 @@
 *    You should have received a copy of the GNU General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
-#ifndef CLIENT_ONLY
-
 #include "server_get.h"
 #include "server_ping.h"
 #include "database.h"
@@ -64,6 +61,7 @@ const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
 const unsigned int ident_err_retry_time=10*60*1000;
 const unsigned int c_filesrv_connect_timeout=10000;
+const unsigned int c_internet_fileclient_timeout=30*60*1000;
 
 
 int BackupServerGet::running_backups=0;
@@ -75,7 +73,7 @@ size_t BackupServerGet::tmpfile_num=0;
 BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName,
 	     bool internet_connection, bool use_snapshots, bool use_reflink)
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
-	  use_snapshots(use_snapshots), use_reflink(use_reflink)
+	  use_snapshots(use_snapshots), use_reflink(use_reflink), local_hash(NULL)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -123,6 +121,12 @@ BackupServerGet::~BackupServerGet(void)
 
 	if(settings!=NULL) Server->destroy(settings);
 	if(settings_client!=NULL) Server->destroy(settings_client);
+
+	if(local_hash!=NULL)
+	{
+		local_hash->deinitDatabase();
+		delete local_hash;
+	}
 }
 
 void BackupServerGet::init_mutex(void)
@@ -221,30 +225,6 @@ void BackupServerGet::operator ()(void)
 		return;
 	}
 
-	//TEst----------------------------------
-	/*CopyFileA("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll", "D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll", false);
-	IFile *tfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44.dll");
-	IFile *old_tfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\data\\boost_python-vc100-gd-1_44_old.dll");
-	IFile *hashfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll.hash", MODE_RW);
-	std::string hash=BackupServerPrepareHash::build_chunk_hashs(old_tfile, hashfile, NULL, false, NULL);
-
-	IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, 10000);
-	CTCPStack stack(internet_connection);
-	FileClientChunked fctest(cp, &stack);
-	IFile *outputfile=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll", MODE_RW);
-	IFile *hashoutput=Server->openFile("D:\\Developement\\MSVCProjects\\UrBackupBackend\\urbackup\\boost_python-vc100-gd-1_44.dll.hashoutput", MODE_WRITE);
-	_u32 rc=fctest.GetFileChunked("urbackup/boost_python-vc100-gd-1_44.dll", outputfile, hashfile, hashoutput);
-	std::wstring fname=outputfile->getFilenameW();
-	Server->destroy(outputfile);
-	if(rc==ERR_SUCCESS)
-	{
-		os_file_truncate(fname, fctest.getSize());
-	}
-	Server->Log("Return code: "+nconvert(rc));
-	return;*/
-	//End Test------------------------------
-
-
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
 	server_settings=new ServerSettings(db);
@@ -322,6 +302,12 @@ void BackupServerGet::operator ()(void)
 	Server->getThreadPool()->execute(bsh_prepare);
 	ServerChannelThread channel_thread(this, clientid, internet_connection);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
+
+	if(internet_connection && server_settings->getSettings()->internet_calculate_filehashes_on_client)
+	{
+		local_hash=new BackupServerHash(NULL, NULL, clientid, use_snapshots, use_reflink, use_tmpfiles);
+		local_hash->setupDatabase();
+	}
 
 	sendSettings();
 
@@ -632,6 +618,11 @@ void BackupServerGet::operator ()(void)
 
 			file_backup_err=false;
 
+			if(local_hash!=NULL)
+			{
+				local_hash->copyFromTmpTable(true);
+			}
+
 			if(hbu)
 			{
 				if(disk_error)
@@ -640,6 +631,7 @@ void BackupServerGet::operator ()(void)
 					r_success=false;
 
 					ServerLogger::Log(clientid, "FATAL: Backup failed because of disk problems", LL_ERROR);
+					sendMailToAdmins("Fatal error occured during backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 				}
 			}
 
@@ -1077,7 +1069,7 @@ void BackupServerGet::saveImageAssociation(int image_id, int assoc_id)
 	q_save_image_assoc->Reset();
 }
 
-bool BackupServerGet::getNextEntry(char ch, SFile &data)
+bool BackupServerGet::getNextEntry(char ch, SFile &data, std::map<std::wstring, std::wstring>* extra)
 {
 	switch(state)
 	{
@@ -1129,13 +1121,36 @@ bool BackupServerGet::getNextEntry(char ch, SFile &data)
 		}
 		break;
 	case 5:
-		if(ch!='\n')
+		if(ch!='\n' && ch!='#')
 		{
 			t_name+=ch;
 		}
 		else
 		{
 			data.last_modified=os_atoi64(t_name);
+			if(ch=='\n')
+			{
+				resetEntryState();
+				return true;
+			}
+			else
+			{
+				t_name="";
+				state=6;
+			}
+		}
+		break;
+	case 6:
+		if(ch!='\n')
+		{
+			t_name+=ch;
+		}
+		else
+		{
+			if(extra!=NULL)
+			{
+				ParseParamStr(t_name, extra, false);
+			}
 			resetEntryState();
 			return true;
 		}
@@ -1152,6 +1167,11 @@ void BackupServerGet::resetEntryState(void)
 
 bool BackupServerGet::request_filelist_construct(bool full, bool with_token, bool *no_backup_dirs)
 {
+	if(server_settings->getSettings()->end_to_end_file_backup_verification)
+	{
+		sendClientMessage("ENABLE END TO END FILE BACKUP VERIFICATION", "OK", L"Enabling end to end file backup verficiation on client failed.", 10000);
+	}
+
 	unsigned int timeout_time=full_backup_construct_timeout;
 	if(file_protocol_version>=2)
 	{
@@ -1171,10 +1191,23 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 	std::string pver="";
 	if(file_protocol_version==2) pver="2";
 
+	std::string start_backup_cmd=server_identity+pver;
+
 	if(full)
-		tcpstack.Send(cc, server_identity+pver+"START FULL BACKUP"+(with_token?("#token="+server_token):""));
+	{
+		start_backup_cmd+="START FULL BACKUP";
+	}
 	else
-		tcpstack.Send(cc, server_identity+pver+"START BACKUP"+(with_token?("#token="+server_token):""));
+	{
+		start_backup_cmd+="START BACKUP";
+	}
+
+	if(with_token)
+	{
+		start_backup_cmd+="#token="+server_token;
+	}
+
+	tcpstack.Send(cc, start_backup_cmd);
 
 	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
@@ -1219,6 +1252,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 				}
 				else if(ret!="no backup dirs")
 				{
+					logVssLogdata();
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
 					break;
 				}
@@ -1234,6 +1268,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 			}
 			else
 			{
+				logVssLogdata();
 				Server->destroy(cc);
 				return true;
 			}
@@ -1387,8 +1422,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 				ServerStatus::setServerStatus(status, true);
 			}
-
-			bool b=getNextEntry(buffer[i], cf);
+			std::map<std::wstring, std::wstring> extra_params;
+			bool b=getNextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
 				std::wstring short_name=shortenFilename(cf.name);
@@ -1439,19 +1474,32 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				}
 				else
 				{
-					bool download_ok;
-					bool b=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, L"", L"", download_ok, hashed_transfer);
-					if(!b)
+					bool file_ok=false;
+					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
+					if( hash_it!=extra_params.end())
 					{
-						ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
-						r_done=true;
-						break;
+						if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, true))
+						{
+							transferred+=cf.size;
+							file_ok=true;
+						}
 					}
-					if( download_ok )
+					if(!file_ok)
+					{
+						bool b=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, L"", L"", file_ok, hashed_transfer);
+						if(!b)
+						{
+							ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+							r_done=true;
+							break;
+						}
+						
+						transferred+=cf.size;
+					}
+					if( file_ok )
 					{
 						writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
 					}
-					transferred+=cf.size;
 				}
 			}
 		}
@@ -1472,11 +1520,6 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	running_updater->stop();
 	updateRunning(false);
 	Server->destroy(clientlist);
-	{
-		std::wstring tmp_fn=tmp->getFilenameW();
-		Server->destroy(tmp);
-		Server->deleteFile(os_file_prefix(tmp_fn));
-	}
 
 	waitForFileThreads();
 
@@ -1510,6 +1553,18 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		currdir+=os_file_sep()+clientname;
 		Server->deleteFile(os_file_prefix(currdir));
 		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
+
+		if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
+		{
+			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+			c_has_error=true;
+		}
+	}
+
+	{
+		std::wstring tmp_fn=tmp->getFilenameW();
+		Server->destroy(tmp);
+		Server->deleteFile(os_file_prefix(tmp_fn));
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
@@ -1580,6 +1635,20 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	}
 
 	_u32 rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
+
+	int hash_retries=5;
+	while(rc==ERR_HASH && hash_retries>0)
+	{
+		file_old->Seek(0);
+		destroyTemporaryFile(pfd);
+		destroyTemporaryFile(hash_tmp);
+		pfd=getTemporaryFileRetry();
+		hash_tmp=getTemporaryFileRetry();
+		hashfile_old->Seek(0);
+		rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
+		--hash_retries;
+	} 
+
 	if(rc!=ERR_SUCCESS)
 	{
 		download_ok=false;
@@ -1612,6 +1681,30 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		return true;
 }
 
+bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql)
+{
+	std::wstring os_curr_path=convertToOSPathFromFileClient(os_path+L"/"+short_fn);
+	std::wstring dstpath=backuppath+os_curr_path;
+	std::wstring hashpath;
+	std::wstring filepath_old;
+	if(with_hashes)
+	{
+		hashpath=backuppath_hashes+os_curr_path;
+	}
+
+	bool tries_once;
+	std::wstring ff_last;
+	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), tries_once, ff_last);
+
+	if(ok && add_sql)
+	{
+		local_hash->addFileSQL(backupid, 0, dstpath, hashpath, sha2, filesize, 0);
+		local_hash->copyFromTmpTable(false);
+	}
+	
+	return ok;
+}
+
 bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
 	FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok, bool hashed_transfer)
 {
@@ -1628,6 +1721,14 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 	}
 	
 	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer);
+
+	int hash_retries=5;
+	while(rc==ERR_HASH && hash_retries>0)
+	{
+		rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer);
+		--hash_retries;
+	}
+
 	if(rc!=ERR_SUCCESS)
 	{
 		download_ok=false;
@@ -1707,7 +1808,7 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	{
 		for(size_t i=0;i<read;++i)
 		{
-			bool b=getNextEntry(buffer[i], cf);
+			bool b=getNextEntry(buffer[i], cf, NULL);
 			if(b)
 			{
 				if(cf.isdir==true)
@@ -2027,7 +2128,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 		for(size_t i=0;i<read;++i)
 		{
-			bool b=getNextEntry(buffer[i], cf);
+			std::map<std::wstring, std::wstring> extra_params;
+			bool b=getNextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
 				unsigned int ctime=Server->getTimeMS();
@@ -2158,7 +2260,18 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 					if(indirchange==true || hasChange(line, diffs)) //is changed
 					{
-						if(r_offline==false)
+						std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
+
+						if(r_offline==false && hash_it!=extra_params.end())
+						{
+							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, false))
+							{
+								transferred+=cf.size;
+								f_ok=true;
+							}
+						}
+
+						if(r_offline==false && !f_ok)
 						{
 							bool b;
 							bool download_ok;
@@ -2211,7 +2324,17 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								}
 								++link_logcnt;
 							}
-							if(r_offline==false)
+							std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
+
+							if(r_offline==false && hash_it!=extra_params.end())
+							{
+								if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(wnarrow(hash_it->second)), cf.size, false))
+								{
+									f_ok=true;
+								}
+							}
+
+							if(r_offline==false && !f_ok)
 							{
 								bool download_ok;
 								bool b2;
@@ -2287,6 +2410,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 		db->EndTransaction();
 
+		if(b && server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
+		{
+			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+			c_has_error=true;
+		}
+
 		if(b)
 		{
 			Server->Log("Creating symbolic links. -1", LL_DEBUG);
@@ -2313,6 +2442,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		else
 		{
 			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
+			sendMailToAdmins("Fatal error occured during incremental file backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 		}
 	}
 	else if(!c_has_error && !disk_error)
@@ -2326,6 +2456,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	else
 	{
 		ServerLogger::Log(clientid, "Fatal error during backup. Backup not completed", LL_ERROR);
+		sendMailToAdmins("Fatal error occured during incremental file backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 	}
 
 	running_updater->stop();
@@ -2408,7 +2539,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 	{
 		for(size_t i=0;i<read;++i)
 		{
-			if(getNextEntry(buffer[i], curr_file))
+			if(getNextEntry(buffer[i], curr_file, NULL))
 			{
 				if(curr_file.isdir)
 				{
@@ -2758,6 +2889,16 @@ bool BackupServerGet::updateCapabilities(void)
 		if(it!=params.end())
 		{
 			update_version=watoi(it->second);
+		}
+		it=params.find(L"CLIENT_VERSION_STR");
+		if(it!=params.end())
+		{
+			ServerStatus::setClientVersionString(clientname, Server->ConvertToUTF8(it->second));
+		}
+		it=params.find(L"OS_VERSION_STR");
+		if(it!=params.end())
+		{
+			ServerStatus::setOSVersionString(clientname, Server->ConvertToUTF8(it->second));
 		}
 	}
 
@@ -3164,7 +3305,30 @@ MailServer BackupServerGet::getMailServerSettings(void)
 	return ms;
 }
 
+bool BackupServerGet::sendMailToAdmins(const std::string& subj, const std::string& message)
+{
+	MailServer mail_server=getMailServerSettings();
+	if(mail_server.servername.empty())
+		return false;
 
+	if(url_fak==NULL)
+		return false;
+
+	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), "settings_db.settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
+	std::string admin_addrs_str=settings->getValue("mail_admin_addrs", "");
+
+	std::vector<std::string> admin_addrs;
+	Tokenize(admin_addrs_str, admin_addrs, ";,");
+
+	std::string errmsg;
+	bool b=url_fak->sendMail(mail_server, admin_addrs, "[UrBackup] "+subj, message, &errmsg);
+	if(!b)
+	{
+		Server->Log("Sending mail failed. "+errmsg, LL_WARNING);	
+		return false;
+	}
+	return true;
+}
 
 std::string BackupServerGet::getMBR(const std::wstring &dl)
 {
@@ -3566,6 +3730,8 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 			}
 		}
 
+		fc->setReconnectionTimeout(c_internet_fileclient_timeout);
+
 		return ret;
 	}
 	else
@@ -3598,7 +3764,10 @@ FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeout
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
 		if(cp!=NULL)
+		{
 			ret=FileClientChunked(cp, &tcpstack, this, use_tmpfiles?NULL:this);
+			ret.setReconnectionTimeout(c_internet_fileclient_timeout);
+		}
 		else
 			ret=FileClientChunked();
 	}
@@ -3772,6 +3941,7 @@ bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
 		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
 			ServerLogger::Log(clientid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			sendMailToAdmins("Fatal error occured during backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 			return false;
 		}
 	}
@@ -3796,4 +3966,110 @@ void BackupServerGet::update_sql_intervals(bool update_sql)
 	curr_intervals=*settings;
 }
 
-#endif //CLIENT_ONLY
+bool BackupServerGet::verify_file_backup(IFile *fileentries)
+{
+	bool verify_ok=true;
+
+	ostringstream log;
+
+	log << "Verification of file backup with id " << backupid << ". Path=" << Server->ConvertToUTF8(backuppath) << std::endl;
+
+	unsigned int read;
+	char buffer[4096];
+	std::wstring curr_path=backuppath;
+	SFile cf;
+	fileentries->Seek(0);
+	resetEntryState();
+	while( (read=fileentries->Read(buffer, 4096))>0 )
+	{
+		for(size_t i=0;i<read;++i)
+		{
+			std::map<std::wstring, std::wstring> extras;
+			bool b=getNextEntry(buffer[i], cf, &extras);
+			if(b)
+			{
+				if( !cf.isdir )
+				{
+					std::string sha256hex=Server->ConvertToUTF8(extras[L"sha256"]);
+
+					if(sha256hex.empty())
+					{
+						std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
+						verify_ok=false;
+						ServerLogger::Log(clientid, msg, LL_ERROR);
+						log << msg << std::endl;
+					}
+					else if(getSHA256(curr_path+os_file_sep()+cf.name)!=sha256hex)
+					{
+						std::string msg="Hashes for \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" differ. Verification failed.";
+						verify_ok=false;
+						ServerLogger::Log(clientid, msg, LL_ERROR);
+						log << msg << std::endl;
+					}
+				}
+				else
+				{
+					if(cf.name==L"..")
+					{
+						curr_path=ExtractFilePath(curr_path);
+					}
+					else
+					{
+						curr_path+=os_file_sep()+cf.name;
+					}
+				}
+			}
+		}
+	}
+
+	if(!verify_ok)
+	{
+		sendMailToAdmins("File backup verification failed", log.str());
+	}
+
+	return verify_ok;
+}
+
+std::string BackupServerGet::getSHA256(const std::wstring& fn)
+{
+	sha256_ctx ctx;
+	sha256_init(&ctx);
+
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+
+	if(f==NULL)
+	{
+		return std::string();
+	}
+
+	char buffer[4096];
+	unsigned int r;
+	while( (r=f->Read(buffer, 4096))>0)
+	{
+		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+	}
+
+	Server->destroy(f);
+
+	unsigned char dig[32];
+	sha256_final(&ctx, dig);
+
+	return bytesToHex(dig, 32);
+}
+
+void BackupServerGet::logVssLogdata(void)
+{
+	std::string vsslogdata=sendClientMessage("GET VSSLOG", L"Getting volume shadow copy logdata from client failed", 10000, false, LL_INFO);
+
+	if(!vsslogdata.empty() && vsslogdata!="ERR")
+	{
+		std::vector<std::string> lines;
+		TokenizeMail(vsslogdata, lines, "\n");
+		for(size_t i=0;i<lines.size();++i)
+		{
+			int loglevel=atoi(getuntil("-", lines[i]).c_str());
+			std::string data=getafter("-", lines[i]);
+			ServerLogger::Log(clientid, data, loglevel);
+		}
+	}
+}

@@ -64,6 +64,26 @@ public:
 		return has_error;
 	}
 
+	std::string infoString(void)
+	{
+		std::string ret;
+	#define ADD_INFO(x) ret+=std::string(#x "=")+nconvert(x)+"\n"
+	#define ADD_INFO_STR(x) ret+=std::string(#x "=")+x+"\n"
+	#define ADD_INFO_WSTR(x) ret+=std::string(#x "=")+Server->ConvertToUTF8(x)+"\n"
+		ADD_INFO(version);
+		ADD_INFO(device_number);
+		ADD_INFO(partition_number);
+		ADD_INFO_STR(serial_number);
+		ADD_INFO_WSTR(volume_name);
+		ADD_INFO_WSTR(fsn);
+		ret+=std::string("mbr_data (")+nconvert(mbr_data.size())+" bytes)\n";
+		ADD_INFO_STR(errmsg);
+	#undef ADD_INFO
+	#undef ADD_INFO_STR
+	#undef ADD_INFO_WSTR
+		return ret;
+	}
+
 	char version;
 	int device_number;
 	int partition_number;

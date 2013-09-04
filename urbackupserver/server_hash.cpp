@@ -30,6 +30,7 @@
 #include "../stringtools.h"
 #include "server_log.h"
 #include "server_cleanup.h"
+#include "create_files_cache.h"
 #include <algorithm>
 #include <memory.h>
 
@@ -60,6 +61,7 @@ BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid
 	working=false;
 	has_error=false;
 	chunk_patcher.setCallback(this);
+	filecache=NULL;
 
 	if(use_reflink)
 		Server->Log("Reflink copying is enabled", LL_DEBUG);
@@ -73,14 +75,20 @@ BackupServerHash::~BackupServerHash(void)
 	db->destroyQuery(q_delete_files_tmp);
 	db->destroyQuery(q_del_file_tmp);
 	db->destroyQuery(q_copy_files);
+	db->destroyQuery(q_copy_files_to_new);
 	db->destroyQuery(q_delete_all_files_tmp);
 	db->destroyQuery(q_count_files_tmp);
 	db->destroyQuery(q_move_del_file);
 
-	Server->destroy(pipe);
+	if(pipe!=NULL)
+	{
+		Server->destroy(pipe);
+	}
+
+	delete filecache;
 }
 
-void BackupServerHash::operator()(void)
+void BackupServerHash::setupDatabase(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	{
@@ -93,21 +101,48 @@ void BackupServerHash::operator()(void)
 		    
 	    }while(!r);
 	}
-	int big_cache_size=20;
+
 	prepareSQL();
 	copyFilesFromTmp();
+
+	{
+		ServerSettings server_settings(db, clientid);
+
+		copy_limit=static_cast<int>(server_settings.getSettings()->file_hash_collect_amount);		
+
+		if(server_settings.getSettings()->filescache_type=="lmdb")
+		{
+			filecache=create_lmdb_files_cache(); 
+		}
+		else if(server_settings.getSettings()->filescache_type=="sqlite")
+		{
+			filecache=create_sqlite_files_cache();
+		}
+	}
+}
+
+void BackupServerHash::deinitDatabase(void)
+{
+	copyFilesFromTmp();
+	db->Write("DROP TABLE files_tmp");
+}
+
+void BackupServerHash::operator()(void)
+{
+	setupDatabase();
+
+	int big_cache_size=20;	
 	size_t timeoutms;
 	size_t file_hash_collect_cachesize;
 
 	{
 		ServerSettings server_settings(db, clientid);
-
-		copy_limit=static_cast<int>(server_settings.getSettings()->file_hash_collect_amount);
 		timeoutms=server_settings.getSettings()->file_hash_collect_timeout;
 		file_hash_collect_cachesize=server_settings.getSettings()->file_hash_collect_cachesize;
 	}
 
 	db->DetachDBs();
+	
 
 	while(true)
 	{
@@ -152,9 +187,8 @@ void BackupServerHash::operator()(void)
 		working=true;
 		if(data=="exitnow")
 		{
-			copyFilesFromTmp();
 			exitpipe->Write("ok");
-			db->Write("DROP TABLE files_tmp");
+			deinitDatabase();
 			Server->Log("server_hash Thread finished - exitnow ");
 			db->AttachDBs();
 			delete this;
@@ -162,8 +196,7 @@ void BackupServerHash::operator()(void)
 		}
 		else if(data=="exit")
 		{
-			copyFilesFromTmp();
-			db->Write("DROP TABLE files_tmp");
+			deinitDatabase();
 			Server->destroy(exitpipe);
 			Server->Log("server_hash Thread finished - normal");
 			db->AttachDBs();
@@ -231,13 +264,18 @@ void BackupServerHash::operator()(void)
 			}
 		}
 
-		if(tmp_count>copy_limit)
-		{
-			tmp_count=0;
-			Server->Log("Copying files from tmp table...",LL_DEBUG);
-			copyFilesFromTmp();
-			Server->Log("done.", LL_DEBUG);
-		}
+		copyFromTmpTable(false);
+	}
+}
+
+void BackupServerHash::copyFromTmpTable(bool force)
+{
+	if(tmp_count>copy_limit || force)
+	{
+		tmp_count=0;
+		Server->Log("Copying files from tmp table...",LL_DEBUG);
+		copyFilesFromTmp();
+		Server->Log("done.", LL_DEBUG);
 	}
 }
 
@@ -249,6 +287,7 @@ void BackupServerHash::prepareSQL(void)
 	q_del_file=db->Prepare("DELETE FROM files WHERE shahash=? AND filesize=? AND fullpath=? AND backupid=?", false);
 	q_del_file_tmp=db->Prepare("DELETE FROM files_tmp WHERE shahash=? AND filesize=? AND fullpath=? AND backupid=?", false);
 	q_copy_files=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, 0 AS did_count, clientid, incremental FROM files_tmp", false);
+	q_copy_files_to_new=db->Prepare("INSERT INTO files_new (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental) SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental FROM files_tmp", false);
 	q_delete_all_files_tmp=db->Prepare("DELETE FROM files_tmp", false);
 	q_count_files_tmp=db->Prepare("SELECT count(*) AS c FROM files_tmp", false);
 	q_move_del_file=db->Prepare("INSERT INTO files_del (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental, 0 AS is_del FROM files WHERE shahash=? AND filesize=? AND fullpath=? AND backupid=?", false);
@@ -256,7 +295,14 @@ void BackupServerHash::prepareSQL(void)
 
 void BackupServerHash::addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize)
 {
-	addFileTmp(backupid, fp, hash_path, shahash, filesize);
+	if(filecache==NULL)
+	{
+		addFileTmp(backupid, fp, hash_path, shahash, filesize);
+	}
+	else
+	{
+		filecache->put_delayed(FileCache::SCacheKey(shahash.c_str(), filesize), FileCache::SCacheValue(Server->ConvertToUTF8(fp), Server->ConvertToUTF8(hash_path)));
+	}
 
 	q_add_file->Bind(backupid);
 	q_add_file->Bind(fp);
@@ -299,25 +345,28 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	q_del_file_tmp->Write();
 	q_del_file_tmp->Reset();	
 
-	deleteFileTmp(pHash, fp, filesize, backupid);
+	if(filecache==NULL)
+	{
+		deleteFileTmp(pHash, fp, filesize, backupid);
+	}
 }
 
-void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
-	std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn)
+bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last)
 {
-	_i64 t_filesize=tf->Size();
 	int f_backupid;
 	std::wstring ff;
 	std::wstring f_hashpath;
+	bool cache_hit=false;
+	tries_once=false;
 	if(t_filesize>0)
 	{
-		ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath);
+		ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath, cache_hit);
 	}
-	std::wstring ff_last=ff;
-	bool copy=true;
+	ff_last=ff;
 
-	bool tries_once=false;
-	bool had_too_many_hardlinks=false;
+	bool cache_requires_update=false;
+	bool first_logmsg=true;
+	bool copy=true;
 
 	while(!ff.empty())
 	{
@@ -326,10 +375,15 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff), use_snapshots, &too_many_hardlinks);
 		if(!b)
 		{
+			if(cache_hit && !cache_requires_update)
+			{
+				ServerLogger::Log(clientid, L"HT: Cache miss for: \""+ff+L"\"", LL_DEBUG);
+				cache_requires_update=true;
+			}
+
 			if(too_many_hardlinks)
 			{
 				ServerLogger::Log(clientid, L"HT: Hardlinking failed (Maximum hardlink count reached): \""+ff+L"\"", LL_DEBUG);
-				had_too_many_hardlinks=true;
 				break;
 			}
 			else
@@ -337,9 +391,13 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
 				if(ctf==NULL)
 				{
-					ServerLogger::Log(clientid, L"HT: Hardlinking failed (File doesn't exist): \""+ff+L"\"", LL_DEBUG);
+					if(!cache_hit || first_logmsg==false)
+					{
+						ServerLogger::Log(clientid, L"HT: Hardlinking failed (File doesn't exist): \""+ff+L"\"", LL_DEBUG);
+					}
+					first_logmsg=true;
 					deleteFileSQL(sha2, ff, t_filesize, f_backupid);
-					ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath);
+					ff=findFileHash(sha2, t_filesize, f_backupid, f_hashpath, cache_hit);
 					if(!ff.empty()) ff_last=ff;
 				}
 				else
@@ -347,7 +405,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 					Server->destroy(ctf);
 					ServerLogger::Log(clientid, L"HT: Hardlinking failed (Maximum hardlink count reached?): \""+ff+L"\"", LL_DEBUG);
 					break;
-				}
+				}		
 			}
 		}
 		else
@@ -363,27 +421,30 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 						ServerLogger::Log(clientid, "HT: Hardlinking hash file failed (File doesn't exist)", LL_DEBUG);
 						if(!diff_file)
 						{
-							if(!createChunkHashes(tf, hash_fn))
+							if(tf!=NULL && !createChunkHashes(tf, hash_fn))
 								ServerLogger::Log(clientid, "HT: Creating chunk hash file failed", LL_ERROR);
 						}
 						else
 						{
-							IFile *src=openFileRetry(Server->ConvertToUnicode(hashoutput_fn), MODE_READ);
-							if(src!=NULL)
+							if(!hashoutput_fn.empty())
 							{
-								if(!copyFile(src, hash_fn))
+								IFile *src=openFileRetry(Server->ConvertToUnicode(hashoutput_fn), MODE_READ);
+								if(src!=NULL)
 								{
-									ServerLogger::Log(clientid, "Error copying hashoutput to destination -1", LL_ERROR);
+									if(!copyFile(src, hash_fn))
+									{
+										ServerLogger::Log(clientid, "Error copying hashoutput to destination -1", LL_ERROR);
+										has_error=true;
+										hash_fn.clear();
+									}
+									Server->destroy(src);
+								}
+								else
+								{
+									ServerLogger::Log(clientid, "HT: Error opening hashoutput", LL_ERROR);
 									has_error=true;
 									hash_fn.clear();
 								}
-								Server->destroy(src);
-							}
-							else
-							{
-								ServerLogger::Log(clientid, "HT: Error opening hashoutput", LL_ERROR);
-								has_error=true;
-								hash_fn.clear();
 							}
 						}
 					}
@@ -399,19 +460,47 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 					}
 				}
 			}
-			ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 			copy=false;
-			std::wstring temp_fn=tf->getFilenameW();
-			Server->destroy(tf);
-			tf=NULL;
-			Server->deleteFile(temp_fn);
-			addFileSQL(backupid, incremental, tfn, hash_fn, sha2, t_filesize, 0);
-			++tmp_count;
 			break;
 		}
 	}
 
-	if(tries_once && copy && !had_too_many_hardlinks)
+	if(cache_requires_update)
+	{
+		if(!ff.empty())
+		{
+			filecache->put_delayed(FileCache::SCacheKey(sha2.c_str(), t_filesize), FileCache::SCacheValue(Server->ConvertToUTF8(ff), Server->ConvertToUTF8(f_hashpath)));
+		}
+		else
+		{
+			filecache->del_delayed(FileCache::SCacheKey(sha2.c_str(), t_filesize));
+		}
+	}
+
+	return !copy;
+}
+
+void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
+	std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn)
+{
+	_i64 t_filesize=tf->Size();
+	
+	bool copy=true;
+	bool tries_once;
+	std::wstring ff_last;
+	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn, tries_once, ff_last))
+	{
+		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
+		copy=false;
+		std::wstring temp_fn=tf->getFilenameW();
+		Server->destroy(tf);
+		tf=NULL;
+		Server->deleteFile(temp_fn);
+		addFileSQL(backupid, incremental, tfn, hash_fn, sha2, t_filesize, 0);
+		++tmp_count;
+	}
+
+	if(tries_once && copy)
 	{
 		if(link_logcnt<5)
 		{
@@ -593,11 +682,29 @@ bool BackupServerHash::freeSpace(int64 fs, const std::wstring &fp)
 	return b;
 }
 
-std::wstring BackupServerHash::findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath)
+std::wstring BackupServerHash::findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath, bool& cache_hit)
 {
-	std::wstring ret=findFileHashTmp(pHash, filesize, backupid, hashpath);
-	if(!ret.empty())
-		return ret;
+	if(filecache==NULL)
+	{
+		std::wstring ret=findFileHashTmp(pHash, filesize, backupid, hashpath);
+		if(!ret.empty())
+			return ret;
+	}
+
+	if(filecache!=NULL && !cache_hit)
+	{
+		FileCache::SCacheValue tval=filecache->get_with_cache(FileCache::SCacheKey(pHash.c_str(), filesize));
+		if(tval.exists)
+		{
+			cache_hit=true;
+			hashpath=Server->ConvertToUnicode(tval.hashpath);
+			return Server->ConvertToUnicode(tval.fullpath);
+		}
+		else
+		{
+			return std::wstring();
+		}
+	}
 
 	q_find_file_hash->Bind(pHash.c_str(), (_u32)pHash.size());
 	q_find_file_hash->Bind(filesize);
@@ -725,8 +832,16 @@ bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::wstring &des
 
 void BackupServerHash::copyFilesFromTmp(void)
 {
-	q_copy_files->Write();
-	q_copy_files->Reset();
+	if(filecache==NULL)
+	{
+		q_copy_files->Write();
+		q_copy_files->Reset();
+	}
+	else
+	{
+		q_copy_files_to_new->Write();
+		q_copy_files_to_new->Reset();
+	}
 	q_delete_all_files_tmp->Write();
 	q_delete_all_files_tmp->Reset();
 

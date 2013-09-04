@@ -8,6 +8,7 @@
 #include "../../urbackupcommon/settings.h"
 #include "../../pychart/IPychartFactory.h"
 #include <stdlib.h>
+#include "rights.h"
 
 extern IPychartFactory *pychart_fak;
 extern SStartupStatus startup_status;

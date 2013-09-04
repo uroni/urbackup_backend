@@ -68,6 +68,9 @@ public:
 	void destroyQueries(void);
 	void restartQueries(void);
 
+	void prepareQueriesGen(void);
+	void destroyQueriesGen(void);
+
 	bool getFiles(std::wstring path, std::vector<SFile> &data);
 
 	void addFiles(std::wstring path, const std::vector<SFile> &data);
@@ -94,9 +97,7 @@ public:
 
 
 	void deleteSavedChangedFiles(void);
-	void restoreSavedChangedFiles(void);
 	void deleteSavedChangedDirs(void);
-	void restoreSavedChangedDirs(void);
 
 	bool hasChangedGap(void);
 	void deleteChangedDirs(void);
@@ -105,7 +106,6 @@ public:
 
 	std::vector<std::wstring> getDelDirs(bool del=true);
 	void deleteSavedDelDirs(void);
-	void restoreSavedDelDirs(void);
 
 	void removeDeletedDir(const std::wstring &dir);
 
@@ -114,6 +114,17 @@ public:
 
 	std::wstring getOldIncludePattern(void);
 	void updateOldIncludePattern(const std::wstring &pattern);
+
+	bool getFileHash(const std::wstring& path, _i64& filesize, _i64& modifytime, std::string& hash);
+
+	//@-SQLGenFunctionsBegin
+
+
+	void modifyFileHash(const std::string& hash, int64 filesize, int64 modifytime, const std::wstring& path);
+	void addFileHash(const std::wstring& name, int64 filesize, int64 modifytime, const std::string& hashdata);
+	void copyFromTmpFileHashes(void);
+	void deleteTmpFileHashes(void);
+	//@-SQLGenFunctionsEnd
 
 private:
 	std::wstring getMiscValue(const std::string& key);
@@ -134,13 +145,11 @@ private:
 	IQuery *q_remove_shadowcopies;
 	IQuery *q_save_changed_dirs;
 	IQuery *q_delete_saved_changed_dirs;
-	IQuery *q_restore_saved_changed_dirs;
 	IQuery *q_copy_from_tmp_files;
 	IQuery *q_delete_tmp_files;
 	IQuery *q_has_changed_gap;
 	IQuery *q_get_del_dirs;
 	IQuery *q_del_del_dirs;
-	IQuery *q_restore_del_dirs;
 	IQuery *q_copy_del_dirs;
 	IQuery *q_del_del_dirs_copy;
 	IQuery *q_remove_del_dir;
@@ -149,10 +158,17 @@ private:
 	IQuery *q_save_changed_files;
 	IQuery *q_remove_changed_files;
 	IQuery *q_delete_saved_changed_files;
-	IQuery *q_restore_saved_changed_files;
 	IQuery *q_has_changed_file;
 	IQuery *q_get_changed_files;
 	IQuery *q_get_pattern;
 	IQuery *q_insert_pattern;
 	IQuery *q_update_pattern;
+	IQuery *q_get_file_hash;
+
+	//@-SQLGenVariablesBegin
+	IQuery* q_modifyFileHash;
+	IQuery* q_addFileHash;
+	IQuery* q_copyFromTmpFileHashes;
+	IQuery* q_deleteTmpFileHashes;
+	//@-SQLGenVariablesEnd
 };

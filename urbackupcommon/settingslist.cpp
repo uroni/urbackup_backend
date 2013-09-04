@@ -40,6 +40,18 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"internet_compress");
 	ret.push_back(L"internet_mode_enabled");
 	ret.push_back(L"silent_update");
+	ret.push_back(L"client_quota");
+	ret.push_back(L"local_full_file_transfer_mode");
+	ret.push_back(L"internet_full_file_transfer_mode");
+	ret.push_back(L"local_incr_file_transfer_mode");
+	ret.push_back(L"internet_incr_file_transfer_mode");
+	ret.push_back(L"local_image_transfer_mode");
+	ret.push_back(L"internet_image_transfer_mode");
+	ret.push_back(L"file_hash_collect_amount");
+	ret.push_back(L"file_hash_collect_timeout");
+	ret.push_back(L"file_hash_collect_cachesize");
+	ret.push_back(L"end_to_end_file_backup_verification");
+	ret.push_back(L"internet_calculate_filehashes_on_client");
 	return ret;
 }
 
@@ -77,16 +89,9 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"use_tmpfiles");
 	ret.push_back(L"use_tmpfiles_images");
 	ret.push_back(L"tmpdir");
-	ret.push_back(L"local_full_file_transfer_mode");
-	ret.push_back(L"internet_full_file_transfer_mode");
-	ret.push_back(L"local_incr_file_transfer_mode");
-	ret.push_back(L"internet_incr_file_transfer_mode");
-	ret.push_back(L"local_image_transfer_mode");
-	ret.push_back(L"internet_image_transfer_mode");
-	ret.push_back(L"file_hash_collect_amount");
-	ret.push_back(L"file_hash_collect_timeout");
-	ret.push_back(L"file_hash_collect_cachesize");
 	ret.push_back(L"update_stats_cachesize");
 	ret.push_back(L"global_soft_fs_quota");
+	ret.push_back(L"filescache_type");
+	ret.push_back(L"filescache_size");
 	return ret;
 }

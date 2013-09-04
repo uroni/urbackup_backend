@@ -38,12 +38,12 @@ std::wstring getFilesystem(PWCHAR VolumeName)
 	return fsn;
 }
 
-DWORD getDevNum(const PWCHAR VolumeName)
+DWORD getDevNum(const PWCHAR VolumeName, DWORD& device_type)
 {
 	HANDLE hVolume=CreateFileW(VolumeName, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		return 0;
+		return -1;
 	}
 
 	STORAGE_DEVICE_NUMBER dev_num;
@@ -52,9 +52,10 @@ DWORD getDevNum(const PWCHAR VolumeName)
 	CloseHandle(hVolume);
 	if(b==0)
 	{
-		return 0;
+		return -1;
 	}
 
+	device_type=dev_num.DeviceType;
 	return dev_num.DeviceNumber;
 }
 
@@ -85,7 +86,7 @@ __int64 getPartSize(const PWCHAR VolumeName)
 	BOOL b=GetDiskFreeSpaceExW(VolumeName, NULL, &li, NULL);
 	if(b==0)
 	{
-		return 0;
+		return -1;
 	}	
 
 	return li.QuadPart;
@@ -140,59 +141,59 @@ std::vector<std::wstring> GetVolumePaths(PWCHAR VolumeName)
     return ret;
 }
 
-bool getSystemReservedVolume(void)
+bool isBootable(const PWCHAR VolumeName)
 {
-	HANDLE FindHandle=INVALID_HANDLE_VALUE;
-	WCHAR  VolumeName[MAX_PATH] = L"";
+	HANDLE hVolume=CreateFileW(VolumeName, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(hVolume==INVALID_HANDLE_VALUE)
+	{
+		LOG("Error opening device for reading bootable flag", LL_ERROR);
+		return false;
+	}
 
-	FindHandle = FindFirstVolumeW(VolumeName, ARRAYSIZE(VolumeName));
-	if (FindHandle == INVALID_HANDLE_VALUE)
-    {
-        return false;
-    }
+	DWORD ret_bytes;
+	PARTITION_INFORMATION_EX partition_information;
+	BOOL b=DeviceIoControl(hVolume, IOCTL_DISK_GET_PARTITION_INFO_EX, NULL, 0, &partition_information, sizeof(PARTITION_INFORMATION_EX), &ret_bytes, NULL);
+	CloseHandle(hVolume);
 
-	for (;;)
-    {
-		size_t Index = wcslen(VolumeName) - 1;
-		if (VolumeName[0]     != L'\\' ||
-            VolumeName[1]     != L'\\' ||
-            VolumeName[2]     != L'?'  ||
-            VolumeName[3]     != L'\\' ||
-            VolumeName[Index] != L'\\') 
-        {
-            return false;
-        }
+	if(b==FALSE)
+	{
+		LOG("Error reading partition information for bootable flag", LL_ERROR);
+		return false;
+	}
 
-		VolumeName[Index] = L'\0';
+	if(partition_information.PartitionStyle!=PARTITION_STYLE_MBR)
+	{
+		if(partition_information.PartitionStyle==PARTITION_STYLE_GPT)
+		{
+			LOG("GPT formated hard disk encountered. UrBackup does not support GPT formated hard disks!", LL_ERROR);
 
-		DWORD  CharCount=0;
-		WCHAR  DeviceName[MAX_PATH]=L"";
-        CharCount = QueryDosDeviceW(&VolumeName[4], DeviceName, ARRAYSIZE(DeviceName)); 
-
-        VolumeName[Index] = L'\\';
-
-		if ( CharCount == 0 ) 
-        {
 			return false;
 		}
+		else
+		{
+			LOG("Unknown partition style encountered", LL_ERROR);
 
-		BOOL Success = FindNextVolumeW(FindHandle, VolumeName, ARRAYSIZE(VolumeName));
-
-        if ( !Success ) 
-        {
-            DWORD Error = GetLastError();
-
-            if (Error != ERROR_NO_MORE_FILES) 
-            {
-				return false;
-            }
-
-            break;
-        }
+			return false;
+		}
 	}
-	FindVolumeClose(FindHandle);
+	else
+	{
+		return partition_information.Mbr.BootIndicator==TRUE;
+	}
+}
 
-    return true;
+namespace
+{
+	struct SSysvolCandidate
+	{
+		SSysvolCandidate()
+			: score(0) 
+		{}
+
+		size_t score;
+		std::wstring volname;
+		std::wstring volpath;
+	};
 }
 
 std::wstring getSysVolume(std::wstring &mpath)
@@ -217,8 +218,8 @@ std::wstring getSysVolume(std::wstring &mpath)
     }
 
 	DWORD c_drive_num=-1;
-	std::vector<std::wstring> system_vols;
-	std::vector<std::wstring> system_vols_paths;
+	DWORD c_drive_type=-1;
+	std::vector<SSysvolCandidate> system_vols;
 
     for (;;)
     {
@@ -251,35 +252,75 @@ std::wstring getSysVolume(std::wstring &mpath)
             break;
         }
 
+		bool is_c_drive=false;
+
 		std::vector<std::wstring> vpaths=GetVolumePaths(VolumeName);
 		VolumeName[Index] = L'\0';
 		for(size_t i=0;i<vpaths.size();++i)
 		{
 			if(vpaths[i]==L"C:\\")
 			{
-				c_drive_num=getDevNum(VolumeName);
+				c_drive_num=getDevNum(VolumeName, c_drive_type);
+				is_c_drive=true;
 			}
 		}
 		VolumeName[Index] = L'\\';
 
-		
-		if( ( strlower(getVolumeLabel(VolumeName))==L"system reserved" 
-			|| (vpaths.empty() &&  getPartSize(VolumeName)<200*1024*1024) ) 
-			&& strlower(getFilesystem(VolumeName))==L"ntfs")
+		LOG(L"Filesystem. Vol=\""+std::wstring(VolumeName)+L"\" Name=\""+strlower(getVolumeLabel(VolumeName))+
+			L"\" Type=\""+strlower(getFilesystem(VolumeName))+L"\" VPaths="+convert(vpaths.size())+L" Size="+convert(getPartSize(VolumeName)), LL_DEBUG);
+
+		if(is_c_drive)
 		{
+			LOG("Filesystem is System partition. Skipping...", LL_DEBUG);
+		}
+		else
+		{		
+			SSysvolCandidate candidate;
 			VolumeName[Index] = L'\0';
-			system_vols.push_back(VolumeName);
-			LOG(L"Found potential candidate: "+std::wstring(VolumeName), LL_DEBUG);
+			candidate.volname=VolumeName;
 			VolumeName[Index] = L'\\';
+
 			if(!vpaths.empty())
 			{
-				system_vols_paths.push_back(vpaths[0]);
+				candidate.volpath=vpaths[0];
+			}
+
+			if( strlower(getVolumeLabel(VolumeName))==L"system reserved"
+				|| strlower(getVolumeLabel(VolumeName))==L"system-reserviert" )
+			{
+				candidate.score+=100;
+			}
+
+			if( vpaths.empty() )
+			{
+				++candidate.score;
+			}
+
+			__int64 partsize = getPartSize(VolumeName);
+			if(partsize>0 && partsize<200*1024*1024 )
+			{
+				candidate.score+=2;
+			}
+
+			VolumeName[Index] = L'\0';
+			if( isBootable(VolumeName) )
+			{
+				LOG("Bootable flag set for volume", LL_DEBUG);
+				candidate.score+=2;
 			}
 			else
 			{
-				system_vols_paths.push_back(L"");
+				LOG("Bootable flag not set for volume", LL_DEBUG);
+			}
+			VolumeName[Index] = L'\\';
+
+			if(candidate.score>0)
+			{
+				LOG(L"Found potential candidate: "+std::wstring(VolumeName)+L" Score: "+convert(candidate.score), LL_DEBUG);			
+				system_vols.push_back(candidate);
 			}
 		}
+		
 		VolumeName[Index] = L'\\';
 
         Success = FindNextVolumeW(FindHandle, VolumeName, ARRAYSIZE(VolumeName));
@@ -302,15 +343,41 @@ std::wstring getSysVolume(std::wstring &mpath)
     FindVolumeClose(FindHandle);
     FindHandle = INVALID_HANDLE_VALUE;
 
+	size_t max_score=0;
+	size_t selidx=std::string::npos;
+
 	for(size_t i=0;i<system_vols.size();++i)
 	{
-		if(getDevNum((PWCHAR)system_vols[i].c_str())==c_drive_num)
+		DWORD curr_dev_type;
+		DWORD curr_dev_num=getDevNum((PWCHAR)system_vols[i].volname.c_str(), curr_dev_type);
+		if(curr_dev_num==c_drive_num)
 		{
-			LOG(L"Selected: "+system_vols[i], LL_DEBUG);
-			mpath=system_vols_paths[i];
-			return system_vols[i];
+			if(curr_dev_type==c_drive_type)
+			{
+				if(system_vols[i].score>max_score)
+				{
+					selidx=i;
+					max_score=system_vols[i].score;
+				}
+			}
+			else
+			{
+				LOG(L"Different device type from 'C': "+system_vols[i].volname+(system_vols[i].volpath.empty()?L"":(L" ("+system_vols[i].volpath+L")")), LL_DEBUG);
+			}
+		}
+		else
+		{
+			LOG(L"Not on Physical Device 'C': "+system_vols[i].volname+(system_vols[i].volpath.empty()?L"":(L" ("+system_vols[i].volpath+L")")), LL_DEBUG);
 		}
 	}
+
+	if(selidx!=std::string::npos)
+	{
+		LOG(L"Selected volume "+system_vols[selidx].volname+(system_vols[selidx].volpath.empty()?L"":(L" ("+system_vols[selidx].volpath+L")")), LL_DEBUG);
+		mpath=system_vols[selidx].volpath;
+		return system_vols[selidx].volname;
+	}
+
 
 	LOG("Found no SYSVOL on the same physical device as 'C'.", LL_INFO);
 
