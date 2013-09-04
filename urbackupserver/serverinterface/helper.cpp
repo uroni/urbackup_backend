@@ -37,6 +37,11 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 	GET=pGET;
 	PARAMS=pPARAMS;
 
+	if(GET==NULL)
+	{
+		return;
+	}
+
 	if( session==NULL )
 	{	
 		session=Server->getSessionMgr()->getUser( (*GET)[L"ses"], widen((*PARAMS)["REMOTE_ADDR"]+(*PARAMS)["HTTP_USER_AGENT"]) );

@@ -26,6 +26,14 @@ private:
 
 	int constructCapabilities(void);
 
+	bool hasDownloadImageRights(void);
+
+	void login(str_map& params);
+
+	void GET_BACKUPCLIENTS(void);
+	void GET_BACKUPIMAGES(const std::wstring& clientname);
+	void DOWNLOAD_IMAGE(str_map& params);
+
 	BackupServerGet *server_get;
 	IPipe *exitpipe;
 	IPipe *input;
@@ -38,4 +46,9 @@ private:
 	volatile bool do_exit;
 	bool combat_mode;
 	bool internet_mode;
+
+	std::string salt;
+	std::wstring session;
+	std::vector<int> client_right_ids;
+	bool all_client_rights;
 };

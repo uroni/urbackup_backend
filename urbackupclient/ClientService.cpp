@@ -823,6 +823,10 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_RESTORE_GET_BACKUPIMAGES(cmd); continue;
 			}
+			else if( cmd=="LOGIN FOR DOWNLOAD" )
+			{
+				CMD_RESTORE_LOGIN_FOR_DOWNLOAD(cmd, params); continue;
+			}
 			else if( cmd=="DOWNLOAD IMAGE" )
 			{
 				CMD_RESTORE_DOWNLOAD_IMAGE(cmd, params); continue;
