@@ -28,7 +28,8 @@ private:
 
 	bool hasDownloadImageRights(void);
 
-	void login(str_map& params);
+	void LOGIN(str_map& params);
+	void SALT(str_map& params);
 
 	void GET_BACKUPCLIENTS(void);
 	void GET_BACKUPIMAGES(const std::wstring& clientname);

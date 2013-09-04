@@ -66,7 +66,14 @@ server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(inter
 	do_exit=false;
 	mutex=Server->createMutex();
 	input=NULL;
-	combat_mode=false;
+	if(clientid!=-1)
+	{
+		combat_mode=false;
+	}
+	else
+	{
+		combat_mode=true;
+	}
 	tcpstack.setAddChecksum(internet_mode);
 }
 
@@ -105,8 +112,7 @@ void ServerChannelThread::operator()(void)
 				}
 				else
 				{
-					salt=ServerSettings::generateRandomAuthKey();
-					tcpstack.Send(input, server_identity+"1CHANNEL capa="+nconvert(constructCapabilities())+"&salt="+salt);
+					tcpstack.Send(input, server_identity+"1CHANNEL capa="+nconvert(constructCapabilities()));
 				}
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
@@ -192,9 +198,8 @@ void ServerChannelThread::doExit(void)
 
 std::string ServerChannelThread::processMsg(const std::string &msg)
 {
-	if(msg=="ERR" && combat_mode==false)
+	if(msg=="ERR")
 	{
-		tcpstack.Send(input, server_identity+"CHANNEL");
 		combat_mode=true;
 	}
 	else if(msg=="START BACKUP INCR")
@@ -226,7 +231,14 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		std::string s_params=msg.substr(6);
 		str_map params;
 		ParseParamStr(s_params, &params);
-		login(params);
+		LOGIN(params);
+	}
+	else if(msg.find("SALT ")==0 && !internet_mode)
+	{
+		std::string s_params=msg.substr(5);
+		str_map params;
+		ParseParamStr(s_params, &params);
+		SALT(params);
 	}
 	else if(msg=="GET BACKUPCLIENTS" && !internet_mode && hasDownloadImageRights() )
 	{
@@ -277,7 +289,7 @@ int ServerChannelThread::constructCapabilities(void)
 	return capa;
 }
 
-void ServerChannelThread::login(str_map& params)
+void ServerChannelThread::LOGIN(str_map& params)
 {
 	if(needs_login())
 	{
@@ -310,6 +322,47 @@ void ServerChannelThread::login(str_map& params)
 		{
 			helper.getSession()->id=0;
 			tcpstack.Send(input, "err");
+		}
+	}
+	else
+	{
+		tcpstack.Send(input, "ok");
+	}
+}
+
+void ServerChannelThread::SALT(str_map& params)
+{
+	if(needs_login())
+	{
+		std::wstring username=params[L"username"];
+
+		if(username.empty())
+		{
+			tcpstack.Send(input, "err: username empty");
+			return;
+		}
+
+		str_nmap PARAMS;
+		str_map GET;
+
+		if(!session.empty())
+		{
+			GET[L"ses"]=session;
+		}
+
+		Helper helper(Server->getThreadID(), &GET, &PARAMS);
+
+		IQuery * q = helper.getDatabase()->Prepare("SELECT salt FROM settings_db.si_users WHERE name=?");
+		q->Bind(username);
+		db_results res=q->Read();
+		if(res.empty())
+		{
+			tcpstack.Send(input, "err: user not found");
+		}
+		else
+		{
+			salt=ServerSettings::generateRandomAuthKey();
+			tcpstack.Send(input, "ok;"+Server->ConvertToUTF8(res[0][L"salt"])+";"+salt);
 		}
 	}
 	else

@@ -827,6 +827,10 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_RESTORE_LOGIN_FOR_DOWNLOAD(cmd, params); continue;
 			}
+			else if( cmd=="GET SALT" )
+			{
+				CMD_RESTORE_GET_SALT(cmd, params); continue;
+			}
 			else if( cmd=="DOWNLOAD IMAGE" )
 			{
 				CMD_RESTORE_DOWNLOAD_IMAGE(cmd, params); continue;

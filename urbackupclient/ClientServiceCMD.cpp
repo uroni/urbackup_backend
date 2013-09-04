@@ -893,8 +893,15 @@ void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str
 		std::string errors;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i].pipe, "LOGIN username="+Server->ConvertToUTF8(params[L"username"])
-													+"&password="+Server->ConvertToUTF8(params[L"password"]));
+			if(params[L"username"].empty())
+			{
+				tcpstack.Send(channel_pipes[i].pipe, "LOGIN username=&password=");
+			}
+			else
+			{
+				tcpstack.Send(channel_pipes[i].pipe, "LOGIN username="+Server->ConvertToUTF8(params[L"username"])
+														+"&password="+Server->ConvertToUTF8(params[L"password"+convert(i)]));
+			}
 
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
@@ -928,6 +935,50 @@ void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str
 		{
 			tcpstack.Send(pipe, errors);
 		}
+	}
+}
+
+void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &params)
+{
+	lasttime=Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+	if(channel_pipes.size()==0)
+	{
+		tcpstack.Send(pipe, "no channels available");
+	}
+	else
+	{
+		std::string salts;
+		for(size_t i=0;i<channel_pipes.size();++i)
+		{
+			tcpstack.Send(channel_pipes[i].pipe, "SALT username="+Server->ConvertToUTF8(params[L"username"]));
+
+			if(channel_pipes[i].pipe->hasError())
+				Server->Log("Channel has error after request -1", LL_DEBUG);
+
+			std::string nc=receivePacket(channel_pipes[i].pipe);
+
+			if(channel_pipes[i].pipe->hasError())
+				Server->Log("Channel has error after read -1", LL_DEBUG);
+
+			Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
+
+			if(nc.find("ok;")==0)
+			{
+				if(!salts.empty())
+				{
+					salts+="/";
+				}
+				salts+=nc;
+			}
+			else
+			{
+				Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+" ERROR: --"+nc+"--", LL_ERROR);
+				salts+="err;"+nc;
+			}
+		}
+		tcpstack.Send(pipe, salts);
 	}
 }
 
