@@ -380,8 +380,9 @@ bool ServerChannelThread::hasDownloadImageRights()
 	}
 
 	str_map GET;
+	str_nmap PARAMS;
 	GET[L"ses"]=session;
-	Helper helper(Server->getThreadID(), &GET, NULL);
+	Helper helper(Server->getThreadID(), &GET, &PARAMS);
 
 	if(helper.getSession()->id==0)
 	{
@@ -396,7 +397,7 @@ bool ServerChannelThread::hasDownloadImageRights()
 		return true;
 	}
 
-	return std::find(client_right_ids.begin(), client_right_ids.end(), helper.getSession()->id)!=client_right_ids.end();
+	return !client_right_ids.empty();
 }
 
 void ServerChannelThread::GET_BACKUPCLIENTS(void)
