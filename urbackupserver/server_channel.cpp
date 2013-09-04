@@ -66,14 +66,7 @@ server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(inter
 	do_exit=false;
 	mutex=Server->createMutex();
 	input=NULL;
-	if(clientid!=-1)
-	{
-		combat_mode=false;
-	}
-	else
-	{
-		combat_mode=true;
-	}
+	combat_mode=false;
 	tcpstack.setAddChecksum(internet_mode);
 }
 
@@ -113,7 +106,7 @@ void ServerChannelThread::operator()(void)
 				else
 				{
 					salt=ServerSettings::generateRandomAuthKey();
-					tcpstack.Send(input, server_identity+"1CHANNEL capa="+nconvert(constructCapabilities())+"&salt="+ServerSettings::generateRandomAuthKey());
+					tcpstack.Send(input, server_identity+"1CHANNEL capa="+nconvert(constructCapabilities())+"&salt="+salt);
 				}
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
@@ -199,8 +192,9 @@ void ServerChannelThread::doExit(void)
 
 std::string ServerChannelThread::processMsg(const std::string &msg)
 {
-	if(msg=="ERR")
+	if(msg=="ERR" && combat_mode==false)
 	{
+		tcpstack.Send(input, server_identity+"CHANNEL");
 		combat_mode=true;
 	}
 	else if(msg=="START BACKUP INCR")
@@ -287,11 +281,23 @@ void ServerChannelThread::login(str_map& params)
 {
 	if(needs_login())
 	{
-		Helper helper(Server->getThreadID(), NULL, NULL);
-		session=helper.generateSession(L"anonymous");
+		str_nmap PARAMS;
 		str_map GET;
-		GET[L"ses"]=session;
-		helper.update(Server->getThreadID(), &GET, NULL);
+
+		if(!session.empty())
+		{
+			GET[L"ses"]=session;
+		}
+
+		Helper helper(Server->getThreadID(), &GET, &PARAMS);
+
+		if(session.empty())
+		{
+			session=helper.generateSession(L"anonymous");
+			GET[L"ses"]=session;
+			helper.update(Server->getThreadID(), &GET, &PARAMS);
+		}
+
 		helper.getSession()->mStr[L"rnd"]=widen(salt);
 
 		int user_id;

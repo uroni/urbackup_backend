@@ -156,7 +156,7 @@ bool tryLogin(const std::string& username, const std::string& password, int *ec)
 	std::string auth_str;
 	if(!username.empty())
 	{
-		auth_str="&username"+username+"&password="+password;
+		auth_str="&username="+username+"&password="+password;
 	}
 	
 	bool ret=false;
