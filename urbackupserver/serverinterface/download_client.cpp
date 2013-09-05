@@ -117,8 +117,18 @@ ACTION_IMPL(download_client)
 				std::string data=getFile("urbackup/UrBackupUpdate.exe");
 				if( replaceStrings(helper, constructClientSettings(helper, clientid), data) )
 				{
+					IQuery *q=helper.getDatabase()->Prepare("SELECT name FROM clients WHERE id=?");
+					q->Bind(clientid);
+					db_results res=q->Read();
+
+					std::string clientname;
+					if(!res.empty())
+					{
+						clientname=Server->ConvertToUTF8(res[0][L"name"]);
+					}
+
 					Server->setContentType(tid, "application/octet-stream");
-					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client.exe\"");
+					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+").exe\"");
 					Server->WriteRaw(tid, data.c_str(), data.size(), false);
 				}
 				else
