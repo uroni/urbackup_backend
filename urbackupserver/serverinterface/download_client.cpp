@@ -12,7 +12,7 @@ namespace
 		if(crypto_fak==NULL)
 			return false;
 
-		return crypto_fak->verifyFile("urbackup/urbackup_dsa.pub", "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig");
+		return crypto_fak->verifyFile("urbackup_dsa.pub", "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig");
 	}
 
 	std::string constructClientSettings(Helper& helper, int clientid)
