@@ -44,6 +44,9 @@ public:
 	static void update(void);
 	static void update_and_wait(void);
 
+	static void freeze(void);
+	static void unfreeze(void);
+
 	bool is_stopped(void);
 
 private:

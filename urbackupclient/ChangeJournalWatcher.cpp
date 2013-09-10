@@ -837,13 +837,37 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 
 void ChangeJournalWatcher::update_longliving(void)
 {
-	for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
+	if(!freeze_open_write_files)
 	{
-		listener->On_FileModified(it->first, true);
+		for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
+		{
+			listener->On_FileModified(it->first, true);
+		}
+	}
+	else
+	{
+		for(std::map<std::wstring, bool>::iterator it=open_write_files_frozen.begin();it!=open_write_files_frozen.end();++it)
+		{
+			listener->On_FileModified(it->first, true);
+		}
 	}
 	for(size_t i=0;i<error_dirs.size();++i)
 	{
 		listener->On_ResetAll(error_dirs[i]);
+	}
+}
+
+void ChangeJournalWatcher::set_freeze_open_write_files(bool b)
+{
+	freeze_open_write_files=b;
+
+	if(b)
+	{
+		open_write_files_frozen=open_write_files;
+	}
+	else
+	{
+		open_write_files_frozen.clear();
 	}
 }
 
@@ -987,6 +1011,11 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				else if(UsnRecord->Reason & watch_flags)
 				{
 					open_write_files[real_fn]=true;
+					
+					if(freeze_open_write_files)
+					{
+						open_write_files_frozen[real_fn]=true;
+					}
 				}
 			}
 

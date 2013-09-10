@@ -586,6 +586,7 @@ void IndexThread::indexDirs(void)
 	{
 		cd->removeDeletedDir(deldirs[i]);
 	}
+	DirectoryWatcherThread::freeze();
 #endif
 	std::sort(changed_dirs.begin(), changed_dirs.end());
 
@@ -715,6 +716,8 @@ void IndexThread::indexDirs(void)
 	{
 		VSSLog("Did not delete backup of changed dirs because a stale shadowcopy was used.", LL_INFO);
 	}
+
+	DirectoryWatcherThread::unfreeze();
 #endif
 
 	{
