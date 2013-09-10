@@ -91,7 +91,7 @@ private:
 	std::string getOnetimeToken(unsigned int id, std::string *cname);
 	static void removeOldTokens(void);
 
-	std::string getAuthkeyFromDB(const std::string &clientname);
+	std::string getAuthkeyFromDB(const std::string &clientname, bool &db_timeout);
 
 	static std::map<std::string, SClientData> client_data;
 	static IMutex *mutex;

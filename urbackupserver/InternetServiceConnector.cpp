@@ -245,6 +245,7 @@ void InternetServiceConnector::ReceivePackets(void)
 						if(rd.getStr(&clientname) && rd.getStr(&hmac) )
 						{							
 							std::string token;
+							bool db_timeout=false;
 							if(id==ID_ISC_AUTH_TOKEN)
 							{
 								unsigned int token_id;
@@ -268,7 +269,7 @@ void InternetServiceConnector::ReceivePackets(void)
 							}
 							else
 							{
-								authkey=getAuthkeyFromDB(clientname);
+								authkey=getAuthkeyFromDB(clientname, db_timeout);
 							}
 
 							
@@ -295,7 +296,14 @@ void InternetServiceConnector::ReceivePackets(void)
 							}
 							else if(errmsg.empty())
 							{
-								errmsg="Unknown client";
+								if(db_timeout)
+								{
+									errmsg="Database timeout while looking for client";
+								}
+								else
+								{
+									errmsg="Unknown client";
+								}
 							}
 						}
 						else
@@ -662,7 +670,7 @@ std::string InternetServiceConnector::getOnetimeToken(unsigned int id, std::stri
 	return std::string();
 }
 
-std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &clientname)
+std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &clientname, bool &db_timeout)
 {
 	IDatabase *db=Server->getDatabase(tid, URBACKUPDB_SERVER);
 	IQuery *q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='internet_authkey' AND clientid=(SELECT id FROM clients WHERE name=?)", false);
@@ -671,8 +679,13 @@ std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &client
 	db_results res=q->Read(&timeoutms);
 	db->destroyQuery(q);
 	if(!res.empty())
-	{								
+	{					
+		db_timeout=false;
 		return Server->ConvertToUTF8(res[0][L"value"]);
+	}
+	else if(timeoutms==1)
+	{
+		db_timeout=true;
 	}
 	
 	return std::string();
