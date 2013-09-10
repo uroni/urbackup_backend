@@ -17,6 +17,8 @@
 #include <sys/ioctl.h>
 #endif
 #include "../urbackupcommon/mbrdata.h"
+#include "../fileservplugin/settings.h"
+#include "../fileservplugin/packet_ids.h"
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -27,6 +29,11 @@ const std::string pw_file="urbackup/pw.txt";
 const std::string configure_wlan="wicd-curses";
 const std::string configure_networkcard=configure_wlan;
 
+#define UDP_SOURCE_PORT 35623
+
+
+namespace
+{
 
 std::string trim2(const std::string &str)
 {
@@ -132,6 +139,124 @@ std::vector<std::string> getBackupclients(int *ec)
 	return ret;
 }
 
+IPipe* connectToService(int *ec)
+{
+	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
+	if(c==NULL)
+	{
+		Server->Log("Error connecting to client service -1", LL_ERROR);
+		*ec=10;
+		return NULL;
+	}
+
+	return c;
+}
+
+
+std::vector<std::pair<std::string, std::string> > getSalt(const std::string& username, int *ec)
+{
+	std::string pw=getFile(pw_file);
+	CTCPStack tcpstack;
+	*ec=0;
+	std::vector<std::pair<std::string, std::string> > ret;
+
+	IPipe *c=connectToService(ec);
+	if(c==NULL)
+	{
+		return ret;
+	}
+
+	
+	tcpstack.Send(c, "GET SALT#pw="+pw+"&username="+username);
+	std::string r=getResponse(c);
+	if(r.empty() )
+	{
+		Server->Log("No response from ClientConnector", LL_ERROR);
+		*ec=1;
+	}
+	else
+	{
+		Server->Log("Salt Response: "+r, LL_INFO);
+
+		std::vector<std::string> toks;
+		Tokenize(r, toks, "/");
+
+		for(size_t i=0;i<toks.size();++i)
+		{
+			if(toks[i].find("ok;")==0)
+			{
+				std::vector<std::string> salt_toks;
+				Tokenize(toks[i], salt_toks, ";");
+
+				if(salt_toks.size()==3)
+				{
+					ret.push_back(std::make_pair(salt_toks[1], salt_toks[2]));
+				}
+			}
+			else
+			{
+				Server->Log("SALT error: "+toks[i], LL_ERROR);
+				ret.push_back(std::make_pair(std::string(), std::string()));
+			}
+		}
+	}
+	Server->destroy(c);
+	return ret;
+}
+
+bool tryLogin(const std::string& username, const std::string& password, std::vector<std::pair<std::string, std::string> > salts, int *ec)
+{
+	std::string pw=getFile(pw_file);
+	CTCPStack tcpstack;
+	*ec=0;
+
+	IPipe *c=connectToService(ec);
+	if(c==NULL)
+	{
+		return false;
+	}
+
+	std::string auth_str;
+	if(!username.empty())
+	{
+		auth_str="&username="+username;
+
+		for(size_t i=0;i<salts.size();++i)
+		{
+			if(!salts[i].first.empty()
+				&& !salts[i].second.empty())
+			{
+				auth_str+="&password"+nconvert(i)+"="+
+					Server->GenerateHexMD5(salts[i].second+Server->GenerateHexMD5(salts[i].first+password));
+			}
+		}
+	}
+	
+	bool ret=false;
+	tcpstack.Send(c, "LOGIN FOR DOWNLOAD#pw="+pw+auth_str);
+	std::string r=getResponse(c);
+	if(r.empty() )
+	{
+		Server->Log("No response from ClientConnector", LL_ERROR);
+		*ec=1;
+	}
+	else
+	{
+		Server->Log("Login Response: "+r, LL_INFO);
+
+		if(r=="ok")
+		{
+			ret=true;
+		}
+		else
+		{
+			Server->Log("Error during login: "+r, LL_ERROR);
+		}
+	}
+	Server->destroy(c);
+	return ret;
+}
+
 struct SImage
 {
 	bool operator<(const SImage &other) const
@@ -212,7 +337,33 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 
 volatile bool restore_retry_ok=false;
 
-int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1)
+int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth);
+
+int retryDownload(int errrc, int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth)
+{
+	if(recur_depth==0)
+	{
+		Server->Log("Read Timeout: Retrying", LL_WARNING);
+
+		int tries=5;
+		int rc;
+		do
+		{
+			Server->wait(30000);
+			rc=downloadImage(img_id, img_time, outfile, mbr, offset, recur_depth+1);
+			if(rc==0)
+			{
+				return rc;
+			}
+			--tries;
+		}
+		while(tries>0);
+	}
+	Server->Log("Read Timeout.", LL_ERROR);
+	return errrc;
+}
+
+int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset=-1, int recur_depth=0)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -251,7 +402,8 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	if(imgsize==-2)
 	{
 		Server->Log("Connection timeout", LL_ERROR);
-		Server->destroy(c);Server->destroy(out);return 5;
+		int rc=retryDownload(5, img_id, img_time, outfile, mbr, offset, recur_depth);
+		Server->destroy(c);Server->destroy(out);return rc;
 	}
 
 	char buf[4096];
@@ -263,8 +415,8 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 			size_t c_read=c->Read(buf, 4096, 180000);
 			if(c_read==0)
 			{
-				Server->Log("Read Timeout", LL_ERROR);
-				Server->destroy(c);Server->destroy(out);return 4;
+				int rc=retryDownload(4, img_id, img_time, outfile, mbr, offset, recur_depth);
+				Server->destroy(c);Server->destroy(out);return rc;
 			}
 			out->Write(buf, (_u32)c_read);
 			read+=c_read;
@@ -309,20 +461,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 				Server->destroy(c);Server->destroy(out);
 				if(has_data)
 				{
-					int tries=5;
-					int rc;
-					do
-					{
-						Server->wait(30000);
-						rc=downloadImage(img_id, img_time, outfile, mbr, pos);
-						if(rc==0)
-						{
-							return rc;
-						}
-						--tries;
-					}
-					while(tries>0);
-					return rc;
+					return retryDownload(4, img_id, img_time, outfile, mbr, pos, recur_depth);
 				}
 				else
 				{
@@ -425,6 +564,72 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	return 0;
 }
 
+}
+
+namespace
+{
+
+	bool LookupBlocking(std::string pServer, in_addr *dest)
+	{
+		const char* host=pServer.c_str();
+		unsigned int addr = inet_addr(host);
+		if (addr != INADDR_NONE)
+		{
+			dest->s_addr = addr;
+		}
+		else
+		{
+			hostent* hp = gethostbyname(host);
+			if (hp != 0)
+			{
+				memcpy(dest, hp->h_addr, hp->h_length);
+			}
+			else
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool ping_server(void)
+	{
+		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+
+		std::string server=Server->getServerParameter("ping_server");
+
+		if(server.empty())
+			return false;
+		sockaddr_in server_addr;
+		if(!LookupBlocking(server, &server_addr.sin_addr))
+			return false;
+
+		server_addr.sin_family=AF_INET;
+        server_addr.sin_port=htons(UDP_SOURCE_PORT);
+
+		std::string ping_clientname=getFile("clientname.txt");
+
+		std::vector<char> buffer;
+		buffer.resize(ping_clientname.size()+2);
+		buffer[0]=ID_PONG;
+		buffer[1]=VERSION;
+		memcpy(&buffer[2], ping_clientname.c_str(), ping_clientname.size());
+		
+		while(true)
+		{
+			int rc = sendto(udpsock, &buffer[0], static_cast<int>(buffer.size()), 0, (sockaddr*)&server_addr, sizeof(server_addr));
+			if(rc == -1)
+			{
+				Server->Log("Error sending to UrBackup server on UDP socket", LL_ERROR);
+				return false;
+			}
+			Server->wait(10000);
+		}
+
+		return true;
+	}
+}
+
 void do_restore(void)
 {
 	std::string cmd=Server->getServerParameter("restore_cmd");
@@ -479,6 +684,37 @@ void do_restore(void)
 		delete []buf;
 		exit(0);
 	}
+	else if(cmd=="mbrinfo")
+	{
+		std::string mbr_filename=Server->getServerParameter("mbr_filename");
+		if(mbr_filename.empty())
+		{
+			Server->Log("MBR filename not specified (mbr_filename parameter)", LL_ERROR);
+			exit(1);
+		}
+		IFile *f=Server->openFile(mbr_filename, MODE_READ);
+		if(f==NULL)
+		{
+			Server->Log("Could not open MBR file", LL_ERROR);
+			exit(1);
+		}
+		size_t fsize=(size_t)f->Size();
+		char *buf=new char[fsize];
+		f->Read(buf, (_u32)fsize);
+		Server->destroy(f);
+
+		CRData mbr(buf, fsize);
+		SMBRData mbrdata(mbr);
+		if(mbrdata.hasError())
+		{
+			Server->Log("Error while parsing MBR data", LL_ERROR);
+			delete []buf; exit(1);
+		}
+
+		std::cout << mbrdata.infoString();
+		delete []buf;
+		exit(0);
+	}
 	else if(cmd=="help")
 	{
 		Server->Log("restore_cmd commands are...", LL_INFO);
@@ -488,6 +724,11 @@ void do_restore(void)
 		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		exit(0);
+	}
+	else if(cmd=="ping_server")
+	{
+		bool b=ping_server();
+		exit(b?0:1);
 	}
 
 	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
@@ -669,6 +910,106 @@ bool has_network_device(void)
 #endif //_WIN32
 }
 
+void ping_named_server(void)
+{
+	std::string out;
+	while(out.empty())
+	{
+		int rc=system("dialog --inputbox \"`cat urbackup/restore/enter_server_ip_input`\" 8 30 2> out");
+		out=getFile("out");
+
+		if(rc!=0)
+		{
+			return;
+		}
+	}
+
+	if(!out.empty())
+	{
+		system(("./urbackup_client --plugin ./liburbackupclient.so --no-server --restore true --restore_cmd ping_server --ping_server \""+out+"\" &").c_str());
+	}
+}
+
+bool do_login(void)
+{
+	system("clear");
+	system("cat urbackup/restore/trying_to_login");
+
+	int ec;
+	if(!tryLogin("", "", std::vector<std::pair<std::string, std::string> >(), &ec) )
+	{
+		if(ec==1)
+		{
+			//Server probably does not support logging in
+			std::vector<std::string> clients=getBackupclients(&ec);
+			if(ec==0 && !clients.empty())
+			{
+				return true;
+			}
+		}
+
+		while(true)
+		{
+			int rc=system("dialog --inputbox \"`cat urbackup/restore/enter_username`\" 8 30 2> out");
+			std::string username=getFile("out");
+
+			if(rc!=0)
+			{
+				return false;
+			}
+
+			std::vector<std::pair<std::string, std::string> > salts=getSalt(username, &ec);
+
+			bool found_salt=false;
+			for(size_t i=0;i<salts.size();++i)
+			{
+				if(!salts[i].first.empty() &&
+					!salts[i].second.empty() )
+				{
+					found_salt=true;
+					break;
+				}
+			}
+
+			if(!found_salt)
+			{
+				rc=system("dialog --yesno \"`cat urbackup/restore/user_not_found`\" 7 50");
+				if(rc!=0)
+				{
+					return false;
+				}
+			}
+			else
+			{
+				rc=system("dialog --insecure --passwordbox \"`cat urbackup/restore/enter_password`\" 8 30 2> out");
+				std::string password=getFile("out");
+
+				if(rc!=0)
+				{
+					return false;
+				}
+
+				if(!tryLogin(username, password, salts, &ec))
+				{
+					rc=system("dialog --yesno \"`cat urbackup/restore/login_failed`\" 7 50");
+					if(rc!=0)
+					{
+						return false;
+					}
+				}
+				else
+				{
+					return true;
+				}
+			}
+		}
+	}
+	else
+	{
+		return true;
+	}
+}
+
 const int start_state=-2;
 
 void restore_wizard(void)
@@ -760,29 +1101,44 @@ void restore_wizard(void)
 			}break;
 		case 1:
 			{
-				int ec;
-				clients=getBackupclients(&ec);
 				std::string errmsg;
-				switch(ec)
-				{
-				case 10:
-				case 1:
-					errmsg="`cat urbackup/restore/internal_error`";
-					break;
-				case 2:
-					errmsg="`cat urbackup/restore/no_server_found`";
-					break; 
-				}
+				int ec;
+				if(do_login())
+				{					
+					clients=getBackupclients(&ec);
+					
+					switch(ec)
+					{
+					case 10:
+					case 1:
+						errmsg="`cat urbackup/restore/internal_error`";
+						break;
+					case 2:
+						errmsg="`cat urbackup/restore/no_server_found`";
+						break; 
+					}
 
-				if(clients.empty())
+					if(clients.empty())
+					{
+						ec=3;
+						errmsg="`cat urbackup/restore/no_clients_found`";
+					}
+				}
+				else
 				{
-					ec=3;
-					errmsg="`cat urbackup/restore/no_clients_found`";
+					errmsg="login failed";
+					ec=1;
 				}
 
 				if(ec!=0)
 				{
-					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/search_again`\" \"n\" \"`cat urbackup/restore/configure_networkcard`\" \"w\" \"`cat urbackup/restore/configure_wlan`\" \"e\" \"`cat urbackup/restore/start_shell`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
+					int r=system(("dialog --menu \"`cat urbackup/restore/error_happend` "+errmsg+". `cat urbackup/restore/how_to_continue`\" 15 50 10 "
+						"\"r\" \"`cat urbackup/restore/search_again`\" "
+						"\"n\" \"`cat urbackup/restore/configure_networkcard`\" "
+						"\"w\" \"`cat urbackup/restore/configure_wlan`\" "
+						"\"e\" \"`cat urbackup/restore/enter_server_ip`\" "
+						"\"s\" \"`cat urbackup/restore/start_shell`\" \"s\" "
+						"\"`cat urbackup/restore/stop_restore`\" 2> out").c_str());
 					if(r!=0)
 					{
 						state=start_state;
@@ -803,6 +1159,11 @@ void restore_wizard(void)
 						state=0;
 					}
 					else if(out=="e")
+					{
+						ping_named_server();
+						state=0;
+					}
+					else if(out=="s")
 					{
 						system("bash");
 						state=0;
@@ -972,8 +1333,19 @@ void restore_wizard(void)
 				system("clear");
 				system("cat urbackup/restore/loading_mbr");
 				system("echo");
+				if(FileExists("mbr.dat"))
+				{
+					Server->deleteFile("mbr.dat");
+				}
 				system("touch mbr.dat");
-				downloadImage(selimage.id, nconvert(selimage.time_s), "mbr.dat", true);
+				int rc = downloadImage(selimage.id, nconvert(selimage.time_s), "mbr.dat", true);
+				if (rc !=0 )
+				{
+					Server->Log("Error downloading MBR", LL_ERROR);
+					err="cannot_read_mbr";
+					state=101;
+					break;
+				}
 				system("cat urbackup/restore/reading_mbr");
 				system("echo");
 				IFile *f=Server->openFile("mbr.dat", MODE_READ);

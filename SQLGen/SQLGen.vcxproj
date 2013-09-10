@@ -1,0 +1,157 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{F8E6B10F-B0A5-4DEB-BEB1-B6BC221153C0}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>SQLGen</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;THREAD_BOOST;SQLITE_ENABLE_UNLOCK_NOTIFY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\boost</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>../libx86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;THREAD_BOOST;SQLITE_ENABLE_UNLOCK_NOTIFY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\boost</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>../libx86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Client.cpp" />
+    <ClCompile Include="..\Condition_boost.cpp" />
+    <ClCompile Include="..\Database.cpp" />
+    <ClCompile Include="..\DatabaseCursor.cpp" />
+    <ClCompile Include="..\DBSettingsReader.cpp" />
+    <ClCompile Include="..\FileSettingsReader.cpp" />
+    <ClCompile Include="..\file_common.cpp" />
+    <ClCompile Include="..\file_fstream.cpp" />
+    <ClCompile Include="..\file_win.cpp" />
+    <ClCompile Include="..\libfastcgi\fastcgi.cpp" />
+    <ClCompile Include="..\LookupService.cpp" />
+    <ClCompile Include="..\md5.cpp" />
+    <ClCompile Include="..\MemoryPipe.cpp" />
+    <ClCompile Include="..\MemorySettingsReader.cpp" />
+    <ClCompile Include="..\mt19937ar.cpp" />
+    <ClCompile Include="..\Mutex_boost.cpp" />
+    <ClCompile Include="..\OutputStream.cpp" />
+    <ClCompile Include="..\PipeThrottler.cpp" />
+    <ClCompile Include="..\Query.cpp" />
+    <ClCompile Include="..\SelectThread.cpp" />
+    <ClCompile Include="..\Server.cpp" />
+    <ClCompile Include="..\ServerWin32.cpp" />
+    <ClCompile Include="..\ServiceAcceptor.cpp" />
+    <ClCompile Include="..\ServiceWorker.cpp" />
+    <ClCompile Include="..\SessionMgr.cpp" />
+    <ClCompile Include="..\SettingsReader.cpp" />
+    <ClCompile Include="..\SQLiteFactory.cpp" />
+    <ClCompile Include="..\sqlite\shell.c" />
+    <ClCompile Include="..\sqlite\sqlite3.c" />
+    <ClCompile Include="..\StreamPipe.cpp" />
+    <ClCompile Include="..\stringtools.cpp" />
+    <ClCompile Include="..\Table.cpp" />
+    <ClCompile Include="..\Template.cpp" />
+    <ClCompile Include="..\ThreadPool.cpp" />
+    <ClCompile Include="..\WorkerThread.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="sqlgen.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Client.h" />
+    <ClInclude Include="..\Condition_boost.h" />
+    <ClInclude Include="..\Database.h" />
+    <ClInclude Include="..\DatabaseCursor.h" />
+    <ClInclude Include="..\DBSettingsReader.h" />
+    <ClInclude Include="..\FileSettingsReader.h" />
+    <ClInclude Include="..\LookupService.h" />
+    <ClInclude Include="..\md5.h" />
+    <ClInclude Include="..\MemoryPipe.h" />
+    <ClInclude Include="..\MemorySettingsReader.h" />
+    <ClInclude Include="..\mt19937ar.h" />
+    <ClInclude Include="..\Mutex_boost.h" />
+    <ClInclude Include="..\OutputStream.h" />
+    <ClInclude Include="..\PipeThrottler.h" />
+    <ClInclude Include="..\Query.h" />
+    <ClInclude Include="..\SelectThread.h" />
+    <ClInclude Include="..\Server.h" />
+    <ClInclude Include="..\ServiceAcceptor.h" />
+    <ClInclude Include="..\ServiceWorker.h" />
+    <ClInclude Include="..\SessionMgr.h" />
+    <ClInclude Include="..\SettingsReader.h" />
+    <ClInclude Include="..\socket_header.h" />
+    <ClInclude Include="..\SQLiteFactory.h" />
+    <ClInclude Include="..\StreamPipe.h" />
+    <ClInclude Include="..\stringtools.h" />
+    <ClInclude Include="..\Table.h" />
+    <ClInclude Include="..\Template.h" />
+    <ClInclude Include="..\ThreadPool.h" />
+    <ClInclude Include="..\types.h" />
+    <ClInclude Include="..\WorkerThread.h" />
+    <ClInclude Include="sqlgen.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

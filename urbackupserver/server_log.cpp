@@ -109,6 +109,38 @@ std::wstring ServerLogger::getLogdata(int clientid, int &errors, int &warnings, 
 	}
 }
 
+std::wstring ServerLogger::getWarningLevelTextLogdata(int clientid)
+{
+	IScopedLock lock(mutex);
+
+	std::wstring ret;
+	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	if( iter!=logdata.end() )
+	{
+		for(size_t i=0;i<iter->second.size();++i)
+		{
+			SLogEntry &le=iter->second[i];
+			
+			if(le.loglevel>=LL_WARNING)
+			{
+				if(le.loglevel==LL_WARNING)
+					ret+=L"WARNING: ";
+				else if(le.loglevel==LL_ERROR)
+					ret+=L"ERROR: ";
+
+				ret+=le.data;
+				ret+=L"\r\n";
+			}
+		}
+		
+		return ret;
+	}
+	else
+	{
+		return L"";
+	}
+}
+
 void ServerLogger::reset(int clientid)
 {
 	IScopedLock lock(mutex);

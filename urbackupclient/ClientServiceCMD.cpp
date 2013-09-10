@@ -9,9 +9,11 @@
 #include "../stringtools.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
+#include "win_ver.h"
 #else
 std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 #endif
+#include "../client_version.h"
 
 #include <stdlib.h>
 #include <limits.h>
@@ -72,15 +74,18 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	state=CCSTATE_START_FILEBACKUP;
 
+	IScopedLock lock(backup_mutex);
+
 	CWData data;
 	data.addChar(0);
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
+	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
+	data.addInt(calculateFilehashesOnClient()?1:0);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	lasttime=Server->getTimeMS();
 
-	IScopedLock lock(backup_mutex);
 	backup_running=RUNNING_INCR_FILE;
 	last_pingtime=Server->getTimeMS();
 	pcdone=0;
@@ -93,15 +98,18 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	state=CCSTATE_START_FILEBACKUP;
 
+	IScopedLock lock(backup_mutex);
+
 	CWData data;
 	data.addChar(1);
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
+	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
+	data.addInt(calculateFilehashesOnClient()?1:0);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	lasttime=Server->getTimeMS();
 
-	IScopedLock lock(backup_mutex);
 	backup_running=RUNNING_FULL_FILE;
 	last_pingtime=Server->getTimeMS();
 	pcdone=0;
@@ -834,7 +842,7 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map
 	img_download_running=true;
 	downloadImage(params);
 	img_download_running=false;
-	Server->Log("Donwload done -2", LL_DEBUG);
+	Server->Log("Download done -2", LL_DEBUG);
 	do_quit=true;
 }
 
@@ -867,6 +875,110 @@ void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)
 			}
 		}
 		do_quit=true;
+	}
+}
+
+void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str_map &params)
+{
+	lasttime=Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+	if(channel_pipes.size()==0)
+	{
+		tcpstack.Send(pipe, "no channels available");
+	}
+	else
+	{
+		bool one_ok=false;
+		std::string errors;
+		for(size_t i=0;i<channel_pipes.size();++i)
+		{
+			if(params[L"username"].empty())
+			{
+				tcpstack.Send(channel_pipes[i].pipe, "LOGIN username=&password=");
+			}
+			else
+			{
+				tcpstack.Send(channel_pipes[i].pipe, "LOGIN username="+Server->ConvertToUTF8(params[L"username"])
+														+"&password="+Server->ConvertToUTF8(params[L"password"+convert(i)]));
+			}
+
+			if(channel_pipes[i].pipe->hasError())
+				Server->Log("Channel has error after request -1", LL_DEBUG);
+
+			std::string nc=receivePacket(channel_pipes[i].pipe);
+
+			if(channel_pipes[i].pipe->hasError())
+				Server->Log("Channel has error after read -1", LL_DEBUG);
+
+			Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
+
+			if(nc=="ok")
+			{
+				one_ok=true;
+			}
+			else
+			{
+				Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+" ERROR: --"+nc+"--", LL_ERROR);
+				if(!errors.empty())
+				{
+					errors+=" -- ";
+				}
+				errors+=nc;
+			}
+		}
+		if(one_ok)
+		{
+			tcpstack.Send(pipe, "ok");
+		}
+		else
+		{
+			tcpstack.Send(pipe, errors);
+		}
+	}
+}
+
+void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &params)
+{
+	lasttime=Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+	if(channel_pipes.size()==0)
+	{
+		tcpstack.Send(pipe, "no channels available");
+	}
+	else
+	{
+		std::string salts;
+		for(size_t i=0;i<channel_pipes.size();++i)
+		{
+			tcpstack.Send(channel_pipes[i].pipe, "SALT username="+Server->ConvertToUTF8(params[L"username"]));
+
+			if(channel_pipes[i].pipe->hasError())
+				Server->Log("Channel has error after request -1", LL_DEBUG);
+
+			std::string nc=receivePacket(channel_pipes[i].pipe);
+
+			if(channel_pipes[i].pipe->hasError())
+				Server->Log("Channel has error after read -1", LL_DEBUG);
+
+			Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+": --"+nc+"--", LL_DEBUG);
+
+			if(nc.find("ok;")==0)
+			{
+				if(!salts.empty())
+				{
+					salts+="/";
+				}
+				salts+=nc;
+			}
+			else
+			{
+				Server->Log("Client "+nconvert(i)+"/"+nconvert(channel_pipes.size())+" ERROR: --"+nc+"--", LL_ERROR);
+				salts+="err;"+nc;
+			}
+		}
+		tcpstack.Send(pipe, salts);
 	}
 }
 
@@ -947,10 +1059,22 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 
 void ClientConnector::CMD_CAPA(const std::string &cmd)
 {
+	std::string client_version_str=std::string(c_client_version);
 #ifdef _WIN32
-	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1");
+	std::wstring buf;
+	buf.resize(1024);
+	std::string os_version_str;
+	if( GetOSDisplayString(const_cast<wchar_t*>(buf.c_str())) )
+	{
+		os_version_str=Server->ConvertToUTF8(std::wstring(buf.c_str()));
+	}
+
+	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
+		"&CLIENT_VERSION_STR="+EscapeParamString(client_version_str)+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
 #else
-	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1");
+	std::string os_version_str="not Windows";
+	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1"
+		"&CLIENT_VERSION_STR="+EscapeParamString(client_version_str)+"&OS_VERSION_STR="+EscapeParamString(client_version_str));
 #endif
 }
 
@@ -966,4 +1090,25 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	{
 		tcpstack.Send(pipe, "FAILED");
 	}
+}
+
+void ClientConnector::CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd)
+{
+	IScopedLock lock(backup_mutex);
+	end_to_end_file_backup_verification_enabled=true;
+	tcpstack.Send(pipe, "OK");
+}
+
+void ClientConnector::CMD_GET_VSSLOG(const std::string &cmd)
+{
+	CWData data;
+	data.addChar(IndexThread::IndexThreadAction_GetLog);
+	data.addVoidPtr(mempipe);
+	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
+	std::string ret;
+	mempipe->Read(&ret, 8000);
+	tcpstack.Send(pipe, ret);
+	mempipe->Write("exit");
+	mempipe=Server->createMemoryPipe();
 }

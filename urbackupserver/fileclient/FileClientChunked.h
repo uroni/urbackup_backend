@@ -62,6 +62,8 @@ public:
 
 	IPipe *getPipe();
 
+	void setReconnectionTimeout(unsigned int t);
+
 private:
 
 	_u32 GetFile(std::string remotefn);
@@ -146,6 +148,8 @@ private:
 	FileClientChunked::NoFreeSpaceCallback *nofreespace_callback;
 
 	std::vector<IPipeThrottler*> throttlers;
+
+	unsigned int reconnection_timeout;
 };
 
 #endif //FILECLIENTCHUNKED_H

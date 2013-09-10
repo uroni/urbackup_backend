@@ -28,6 +28,8 @@ ACTION_IMPL(login)
 		IScopedLock lock(startup_status.mutex);
 		if(startup_status.upgrading_database)
 		{
+			Helper helper(tid, &GET, &PARAMS);
+			ret.set("lang", helper.getLanguage());
 			ret.set("upgrading_database", startup_status.upgrading_database);
 			ret.set("curr_db_version", startup_status.curr_db_version);
 			ret.set("target_db_version", startup_status.target_db_version);

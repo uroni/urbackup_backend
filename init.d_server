@@ -24,7 +24,7 @@ PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 SQLITE_TMPDIR=""
 NICE_LEVEL="0"
-IOSCHED_CLASS="none"
+IOSCHED_CLASS="best-effort"
 
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
@@ -146,7 +146,7 @@ case "$1" in
 	esac
 	;;
   status)
-       status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
+       status_of_proc "${DAEMON_REAL}" "$NAME" && exit 0 || exit $?
        ;;
   #reload|force-reload)
 	#

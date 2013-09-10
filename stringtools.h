@@ -82,6 +82,7 @@ bool IsHex(const std::string &str);
 unsigned long hexToULong(const std::string &data);
 std::string byteToHex(unsigned char ch);
 std::string bytesToHex(const unsigned char *b, size_t bsize);
+std::string hexToBytes(const std::string& data);
 std::wstring htmldecode(std::string str, bool html=true, char xc='%');
 bool checkhtml(const std::string &str);
 std::string nl2br(std::string str);
@@ -105,4 +106,7 @@ std::wstring UnescapeHTML(const std::wstring &html);
 std::string PrettyPrintBytes(_i64 bytes);
 std::string PrettyPrintSpeed(size_t bps);
 std::string PrettyPrintTime(unsigned int ms);
+std::string EscapeParamString(const std::string &pStr);
+
+
 #endif

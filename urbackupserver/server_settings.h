@@ -73,6 +73,12 @@ struct SSettings
 	size_t file_hash_collect_cachesize;
 	size_t update_stats_cachesize;
 	std::string global_soft_fs_quota;
+	std::string filescache_type;
+	int64 filescache_size;
+	int suspend_index_limit;
+	std::string client_quota;
+	bool end_to_end_file_backup_verification;
+	bool internet_calculate_filehashes_on_client;
 };
 
 struct STimeSpan
@@ -115,6 +121,9 @@ private:
 	void readSettingsDefault(void);
 	void readSettingsClient(void);
 	void readBoolClientSetting(const std::string &name, bool *output);
+	void readStringClientSetting(const std::string &name, std::string *output);
+	void readIntClientSetting(const std::string &name, int *output);
+	void readSizeClientSetting(const std::string &name, size_t *output);
 
 	SSettings settings;
 

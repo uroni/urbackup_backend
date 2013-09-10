@@ -122,6 +122,7 @@ void InternetClient::operator()(void)
 	Server->waitForStartupComplete();
 	if(Server->getServerParameter("internet_test_mode")!="true")
 	{
+		Server->Log("Internet test mode not enabled. Waiting for local server...", LL_DEBUG);
 		Server->wait(180000);
 	}
 	else
@@ -359,10 +360,22 @@ void InternetClientThread::operator()(void)
 
 	if(cs==NULL)
 	{
-		cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
+		int tries=5;
+		while(tries>0 && cs==NULL)
+		{
+			cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
+			--tries;
+			if(cs==NULL && tries>0)
+			{
+				Server->Log("Connecting to server "+server_settings.name+" failed. Retrying...", LL_INFO);
+				Server->wait(500);
+			}
+		}
 		if(cs==NULL)
 		{
+			Server->Log("Connecting to server "+server_settings.name+" failed", LL_INFO);
 			InternetClient::rmConnection();
+			InternetClient::setHasConnection(false);
 			return;
 		}
 	}

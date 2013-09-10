@@ -76,6 +76,7 @@ std::map<std::string, unsigned int> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
+bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -755,6 +756,14 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_CAPA(cmd); continue;
 			}
+			else if( cmd=="ENABLE END TO END FILE BACKUP VERIFICATION")
+			{
+				CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(cmd); continue;
+			}
+			else if( cmd=="GET VSSLOG")
+			{
+				CMD_GET_VSSLOG(cmd); continue;
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{
@@ -813,6 +822,14 @@ void ClientConnector::ReceivePackets(void)
 			else if( cmd.find("GET BACKUPIMAGES ")==0 )
 			{
 				CMD_RESTORE_GET_BACKUPIMAGES(cmd); continue;
+			}
+			else if( cmd=="LOGIN FOR DOWNLOAD" )
+			{
+				CMD_RESTORE_LOGIN_FOR_DOWNLOAD(cmd, params); continue;
+			}
+			else if( cmd=="GET SALT" )
+			{
+				CMD_RESTORE_GET_SALT(cmd, params); continue;
 			}
 			else if( cmd=="DOWNLOAD IMAGE" )
 			{
@@ -1803,4 +1820,27 @@ void ClientConnector::update_silent(void)
 #ifdef _WIN32
 	Server->getThreadPool()->execute(new UpdateSilentThread());
 #endif
+}
+
+bool ClientConnector::calculateFilehashesOnClient(void)
+{
+	if(internet_conn)
+	{
+		ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+
+		std::string val;
+		if(curr_settings->getValue("internet_calculate_filehashes_on_client", &val)
+			|| curr_settings->getValue("internet_calculate_filehashes_on_client_def", &val))
+		{
+			if(val=="true")
+			{
+				Server->destroy(curr_settings);
+				return true;
+			}
+		}
+
+		Server->destroy(curr_settings);
+	}
+
+	return false;
 }

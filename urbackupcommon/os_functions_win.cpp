@@ -153,15 +153,19 @@ bool os_create_dir(const std::string &dir)
 	return CreateDirectoryA(dir.c_str(), NULL)!=0;
 }
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref)
+bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links)
 {
 	BOOL r=CreateHardLinkW(linkname.c_str(), fname.c_str(), NULL);
-	if(!r)
+	if(too_many_links!=NULL)
 	{
-		int err=GetLastError();
-		if(err==1142) //TOO MANY LINKS
+		*too_many_links=false;
+		if(!r)
 		{
-			int blub=55; //Debugging
+			int err=GetLastError();
+			if(err==ERROR_TOO_MANY_LINKS)
+			{
+				*too_many_links=true;
+			}
 		}
 	}
 	return r!=0;
@@ -285,8 +289,8 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 		wtarget.erase(0, os_file_prefix(L"").size());
 	if(!wtarget.empty() && wtarget[0]!='\\')
 		wtarget=L"\\??\\"+wtarget;
-	if(!wtarget.empty() && wtarget[target.size()-1]!='\\')
-		wtarget+=L"\\";
+	if(!wtarget.empty() && wtarget[target.size()-1]=='\\')
+		wtarget.erase(target.size()-1, 1);
 
 	if(!CreateDirectoryW(lname.c_str(), NULL) )
 	{

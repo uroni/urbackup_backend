@@ -99,7 +99,7 @@ int CServer::WriteDump(void* pExceptionPointers)
 		CloseHandle(hDumpFile);
 	}
 
-	Server->Log(L"Fatal exception. Crash dump written to \""+(std::wstring)szFileName+L"\"", LL_ERROR);
+	Server->Log(L"Fatal exception (APPLICATION CRASHED). Crash dump written to \""+(std::wstring)szFileName+L"\"", LL_ERROR);
 
     return EXCEPTION_EXECUTE_HANDLER;
 }

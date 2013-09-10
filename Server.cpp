@@ -75,6 +75,7 @@
 #ifdef _WIN32
 #	include <windows.h>
 #	include "Helper_win32.h"
+#	include <time.h>
 #else
 #	include <ctime>
 #	include <sys/time.h>
@@ -339,26 +340,25 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
 #endif		
 
+		std::string out_str=ConvertToUTF8(pStr);
+
 		if( LogLevel==LL_ERROR )
 		{
-			std::cout << buffer;
-			std::wcout << L"ERROR: " << pStr << std::endl;
+			std::cout << buffer << L"ERROR: " << out_str << std::endl;
 			if(logfile_a)
-				logfile << buffer << "ERROR: " << ConvertToUTF8(pStr) << std::endl;
+				logfile << buffer << "ERROR: " << out_str << std::endl;
 		}
 		else if( LogLevel==LL_WARNING )
 		{
-			std::cout << buffer;
-			std::wcout << L"WARNING: " << pStr << std::endl;
+			std::cout << buffer << "WARNING: " << out_str << std::endl;
 			if(logfile_a)
-				logfile << buffer << "WARNING: " << ConvertToUTF8(pStr) << std::endl;
+				logfile << buffer << "WARNING: " << out_str << std::endl;
 		}
 		else
 		{
-			std::cout << buffer;
-			std::wcout << pStr << std::endl;		
+			std::cout << buffer << out_str << std::endl;
 			if(logfile_a)
-				logfile << buffer << ConvertToUTF8(pStr) << std::endl;
+				logfile << buffer << out_str<< std::endl;
 		}
 
 		if(logfile_a)
@@ -881,9 +881,9 @@ std::string CServer::GenerateBinaryMD5(const std::wstring &input)
 }
 
 
-void CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort)
+void CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread)
 {
-	CServiceAcceptor *acc=new CServiceAcceptor(pService, pServiceName, pPort);
+	CServiceAcceptor *acc=new CServiceAcceptor(pService, pServiceName, pPort, pMaxClientsPerThread);
 	Server->createThread(acc);
 
 	stream_services.push_back( acc );

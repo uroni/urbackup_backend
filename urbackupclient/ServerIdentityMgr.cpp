@@ -83,6 +83,10 @@ void ServerIdentityMgr::loadServerIdentities(void)
 	for(int i=0;i<numl;++i)
 	{
 		std::string l=getline(i, data);
+		if(!l.empty() && l[0]=='#')
+		{
+			continue;
+		}
 		if(l.size()>5)
 		{
 			filesrv->addIdentity("#I"+l+"#");

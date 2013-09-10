@@ -17,13 +17,13 @@ unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 FileClientChunked::FileClientChunked(IPipe *pipe, CTCPStack *stack,
 	FileClientChunked::ReconnectionCallback *reconnection_callback, FileClientChunked::NoFreeSpaceCallback *nofreespace_callback)
 	: pipe(pipe), stack(stack), destroy_pipe(false), transferred_bytes(0), reconnection_callback(reconnection_callback),
-	  nofreespace_callback(nofreespace_callback)
+	  nofreespace_callback(nofreespace_callback), reconnection_timeout(300000)
 {
 	has_error=false;
 }
 
 FileClientChunked::FileClientChunked(void)
-	: pipe(NULL), stack(NULL), destroy_pipe(false), transferred_bytes(0), reconnection_callback(NULL)
+	: pipe(NULL), stack(NULL), destroy_pipe(false), transferred_bytes(0), reconnection_callback(NULL), reconnection_timeout(300000)
 {
 	has_error=true;
 }
@@ -787,7 +787,8 @@ bool FileClientChunked::Reconnect(void)
 	if(reconnection_callback==NULL)
 		return false;
 
-	for(int i=0;i<c_reconnection_tries;++i)
+	unsigned int reconnect_starttime=Server->getTimeMS();
+	while(Server->getTimeMS()-reconnect_starttime<reconnection_timeout)
 	{
 		IPipe *nc=reconnection_callback->new_fileclient_connection();
 		if(nc!=NULL)
@@ -871,4 +872,9 @@ void FileClientChunked::addThrottler(IPipeThrottler *throttler)
 IPipe *FileClientChunked::getPipe()
 {
 	return pipe;
+}
+
+void FileClientChunked::setReconnectionTimeout(unsigned int t)
+{
+	reconnection_timeout=t;
 }

@@ -39,12 +39,18 @@ size_t CMemoryPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	IScopedLock lock(mutex);
 	if( timeoutms>0 )
 	{
-		if( queue.size()==0 )
+		unsigned int starttime=Server->getTimeMS();
+		unsigned int currtime=starttime;
+		while( queue.empty() && starttime+timeoutms>currtime)
 		{
-			cond->wait( &lock, timeoutms );
+			cond->wait( &lock, timeoutms- (currtime-starttime) );
+			if(queue.empty())
+			{
+				currtime=Server->getTimeMS();
+			}
 		}
 
-		if( queue.size()==0 )
+		if(queue.empty())
 			return 0;
 	}	
 	else if( timeoutms==0 )
@@ -101,12 +107,18 @@ size_t CMemoryPipe::Read(std::string *str, int timeoutms )
 	
 	if( timeoutms>0 )
 	{
-		if( queue.size()==0 )
+		unsigned int starttime=Server->getTimeMS();
+		unsigned int currtime=starttime;
+		while( queue.empty() && starttime+timeoutms>currtime)
 		{
-			cond->wait( &lock, timeoutms );
+			cond->wait( &lock, timeoutms- (currtime-starttime) );
+			if(queue.empty())
+			{
+				currtime=Server->getTimeMS();
+			}
 		}
 
-		if( queue.size()==0 )
+		if(queue.empty())
 			return 0;
 	}	
 	else if( timeoutms==0 )

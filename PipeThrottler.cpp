@@ -50,6 +50,12 @@ void PipeThrottler::addBytes(size_t new_bytes)
 			}
 		}
 	}
+	else if(curr_bytes>=throttle_bps)
+	{
+		Server->wait(1000);
+		curr_bytes=0;
+		lastresettime=Server->getTimeMS();
+	}
 }
 
 void PipeThrottler::changeThrottleLimit(size_t bps)

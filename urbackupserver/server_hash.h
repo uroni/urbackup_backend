@@ -6,6 +6,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "ChunkPatcher.h"
 #include "server_prepare_hash.h"
+#include "FileCache.h"
 
 struct STmpFile
 {
@@ -36,16 +37,25 @@ public:
 
 	virtual void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 
+	void setupDatabase(void);
+	void deinitDatabase(void);
+
+	bool findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last);
+
+	void addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize);
+
+	void copyFromTmpTable(bool force);
+
 private:
 	void prepareSQL(void);
 	void addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
 			std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn);
-	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath);
+	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath, bool& cache_hit);
 	std::wstring findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath);
 	bool copyFile(IFile *tf, const std::wstring &dest);
 	bool copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
 	bool freeSpace(int64 fs, const std::wstring &fp);
-	void addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize);
+	
 	void addFileTmp(int backupid, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize);
 	void deleteFileSQL(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid);
 	void deleteFileTmp(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid);
@@ -71,6 +81,7 @@ private:
 	IQuery *q_move_del_file;
 	IQuery *q_del_file_tmp;
 	IQuery *q_copy_files;
+	IQuery *q_copy_files_to_new;
 	IQuery *q_delete_all_files_tmp;
 	IQuery *q_count_files_tmp;
 
@@ -98,4 +109,6 @@ private:
 	_i64 chunk_patch_pos;
 
 	int copy_limit;
+
+	FileCache *filecache;
 };

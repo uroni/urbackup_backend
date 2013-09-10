@@ -73,8 +73,11 @@ bool os_create_reflink(const std::string &linkname, const std::string &fname)
 #endif
 }
 
-bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool ioref)
+bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool ioref, bool* too_many_links)
 {
+	if(too_many_links!=NULL)
+		*too_many_links=false;
+
 	if(ioref)
 	    return os_create_reflink(linkname, fname);
 

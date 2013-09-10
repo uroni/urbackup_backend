@@ -16,14 +16,14 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#ifndef CLIENT_ONLY
-
 #include "helper.h"
 #include "../../stringtools.h"
 #include "../database.h"
 
 #include <stdlib.h>
 #include <algorithm>
+
+extern std::string server_identity;
 
 Helper::Helper(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 {
@@ -36,6 +36,11 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 	tid=pTID;
 	GET=pGET;
 	PARAMS=pPARAMS;
+
+	if(GET==NULL)
+	{
+		return;
+	}
 
 	if( session==NULL )
 	{	
@@ -295,4 +300,46 @@ bool Helper::checkPassword(const std::wstring &username, const std::wstring &pas
 	return false;
 }
 
-#endif //CLIENT_ONLY
+std::vector<int> Helper::clientRights(const std::string& right_name, bool& all_client_rights)
+{
+	std::string rights=getRights(right_name);
+	std::vector<int> clientid;
+	if(rights!="all" && rights!="none" )
+	{
+		std::vector<std::string> s_clientid;
+		Tokenize(rights, s_clientid, ",");
+		for(size_t i=0;i<s_clientid.size();++i)
+		{
+			clientid.push_back(atoi(s_clientid[i].c_str()));
+		}
+	}
+
+	if(rights=="all")
+	{
+		all_client_rights=true;
+	}
+	else
+	{
+		all_client_rights=false;
+	}
+
+	return clientid;
+}
+
+std::string Helper::getStrippedServerIdentity(void)
+{
+	std::string ret=server_identity;
+	if(ret.size()>3)
+	{
+		if(next(ret, 0, "#I"))
+		{
+			ret=ret.substr(2);
+		}
+		
+		if(ret[ret.size()-1]=='#')
+		{
+			ret=ret.substr(0, ret.size()-1);
+		}
+	}
+	return ret;
+}

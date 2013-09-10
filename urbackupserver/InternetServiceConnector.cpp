@@ -13,6 +13,7 @@
 #include "../cryptoplugin/ICryptoFactory.h"
 
 #include <memory.h>
+#include <algorithm>
 
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
@@ -93,12 +94,23 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	lastpingtime=Server->getTimeMS();
 }
 
-void InternetServiceConnector::cleanup_pipes(void)
+void InternetServiceConnector::cleanup_pipes(bool remove_connection)
 {
 	delete is_pipe;
 	is_pipe=NULL;
 	delete comp_pipe;
 	comp_pipe=NULL;
+
+	if(remove_connection)
+	{
+		IScopedLock lock(mutex);
+		std::vector<InternetServiceConnector*>& spare_connections = client_data[clientname].spare_connections;
+		std::vector<InternetServiceConnector*>::iterator it=std::find(spare_connections.begin(), spare_connections.end(), this);
+		if(it!=spare_connections.end())
+		{
+			spare_connections.erase(it);
+		}
+	}
 }
 
 void InternetServiceConnector::cleanup(void)
@@ -110,7 +122,7 @@ void InternetServiceConnector::cleanup(void)
 void InternetServiceConnector::do_stop_connecting(void)
 {
 	IScopedLock lock(local_mutex);
-	cleanup_pipes();
+	cleanup_pipes(false);
 	connection_stop_cond->notify_all();
 	local_mutex=NULL;
 }
@@ -139,7 +151,7 @@ bool InternetServiceConnector::Run(void)
 		{
 			if(free_connection)
 			{
-				cleanup_pipes();
+				cleanup_pipes(true);
 				return false;
 			}
 			else
@@ -192,6 +204,11 @@ bool InternetServiceConnector::Run(void)
 
 void InternetServiceConnector::ReceivePackets(void)
 {
+	if(state==ISS_USED)
+	{
+		return;
+	}
+
 	std::string ret;
 	size_t rc;
 	rc=comm_pipe->Read(&ret);
@@ -357,7 +374,7 @@ void InternetServiceConnector::ReceivePackets(void)
 
 							{
 								IScopedLock lock(mutex);
-								client_data[clientname].spare_connections.push(this);
+								client_data[clientname].spare_connections.push_back(this);
 								client_data[clientname].last_seen=Server->getTimeMS();
 							}
 
@@ -434,7 +451,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 			InternetServiceConnector *isc=NULL;
 			do{
 				isc=iter->second.spare_connections.front();
-				iter->second.spare_connections.pop();
+				iter->second.spare_connections.pop_back();
 				if(isc->hasTimeout())
 				{
 					isc->freeConnection();
@@ -620,7 +637,7 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 		while(!it->second.spare_connections.empty())
 		{
 			InternetServiceConnector *isc=it->second.spare_connections.front();
-			it->second.spare_connections.pop();
+			it->second.spare_connections.pop_back();
 			isc->stopConnecting();
 		}
 		client_data.erase(it);

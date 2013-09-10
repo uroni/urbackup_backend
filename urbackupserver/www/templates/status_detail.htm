@@ -3,19 +3,21 @@
 #{dir_error}
 #{tmpdir_error}
 
-<table cellspacing="0" cellpadding="0">
+<table cellspacing="0" cellpadding="0" id="status_table">
 <tr>			
 	<th style="width: 150px" class="tabHeader">#{tComputer name}</th>
-	<th style="width: 200px" class="tabHeader">#{tOnline}</th>
-	<th style="width: 200px" class="tabHeader">#{tStatus}</th>
+	<th style="width: 50px" class="tabHeader">#{tOnline}</th>
+	<th style="width: 100px" class="tabHeader">#{tStatus}</th>
 	<th style="width: 150px" class="tabHeader">#{tLast seen}</th>
-	<th style="width: 200px" class="tabHeader">#{tLast file backup}</th>
-	<th style="width: 200px" class="tabHeader">#{tLast image backup}</th>
-	<th style="width: 150px" class="tabHeader">#{tFile backup status}</th>
-	<th style="width: 200px" class="tabHeader">#{tImage backup status}</th>
-	<th style="width: 200px" class="#{class_prev}">#{tIP}</th>
+	<th style="width: 150px" class="tabHeader">#{tLast file backup}</th>
+	<th style="width: 150px" class="tabHeader">#{tLast image backup}</th>
+	<th style="width: 130px" class="tabHeader">#{tFile backup status}</th>
+	<th style="width: 130px" class="tabHeader">#{tImage backup status}</th>
+	<th style="width: 50px" class="tabHeader">#{tIP}</th>
+	<th style="width: auto" class="tabHeader">#{tClient version}</th>
+	<th style="width: auto" class="#{class_prev}">#{tOperating System}</th>
 #{Actions_start}
-	<th style="width: 100px" class="tabHeaderRight">&nbsp;</td>
+	<th style="width: 50px" class="tabHeaderRight">&nbsp;</td>
 #{Actions_end}
 </tr>
 #{rows}
@@ -23,6 +25,7 @@
 <br />
 #{modify_clients}
 <br />
+#{status_client_download}
 <h3>#{tExtra clients}</h3>
 
 <table cellspacing="0" cellpadding="0">
@@ -60,3 +63,4 @@
 <h3>#{tServer identity}</h3>
 #{server_identity}
 <br>
+#{status_client_download}

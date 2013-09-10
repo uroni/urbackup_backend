@@ -32,7 +32,7 @@ bool File::Open(std::wstring pfn, int mode)
 {
 	fn=pfn;
 	std::ios::openmode _mode;
-	if( mode==MODE_READ || mode==MODE_READ_DEVICE )
+	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL)
 		_mode=std::ios::in|std::ios::binary;
 	else if( mode==MODE_WRITE || mode==MODE_TEMP )
 	{

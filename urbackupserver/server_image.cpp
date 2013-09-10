@@ -208,6 +208,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	bool persistent=false;
 	unsigned char *zeroblockdata=NULL;
 	int64 nextblock=0;
+	int64 last_verified_block=0;
 	int64 vhd_blocksize=(1024*1024)/2;
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, true);
 	Server->getThreadPool()->execute(running_updater);
@@ -226,6 +227,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	unsigned int curr_image_recv_timeout=image_recv_timeout;
 
 	unsigned int stat_update_cnt=0;
+	int num_hash_errors=0;
 
 	while(Server->getTimeMS()-starttime<=image_timeout)
 	{
@@ -383,7 +385,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						}
 						else
 						{
-							ServerLogger::Log(clientid, "Request of SYSVOL failed. Reason: "+err, LL_INFO);
+							ServerLogger::Log(clientid, "Request of SYSVOL failed. Reason: "+err+". This probably just means the Computer does not have a \"System restore\" volume which UrBackup can backup.", LL_INFO);
 						}
 					}
 					else
@@ -594,6 +596,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							if(vhdfile->hasError())
 							{
 								ServerLogger::Log(clientid, "FATAL ERROR: Could not write to VHD-File", LL_ERROR);
+								BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
 								goto do_image_cleanup;
 							}
 						}
@@ -742,8 +745,30 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								if( memcmp(verify_checksum, dig, sha_size)!=0)
 								{
 									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size), LL_DEBUG);
-									ServerLogger::Log(clientid, "ERROR: Checksum for image block wrong. Stopping image backup.", LL_ERROR);
-									goto do_image_cleanup;
+									if(num_hash_errors<10)
+									{
+										ServerLogger::Log(clientid, "Checksum for image block wrong. Retrying...", LL_WARNING);
+										Server->destroy(cc);
+										cc=NULL;
+										nextblock=last_verified_block;
+										++num_hash_errors;
+									}
+									else
+									{
+										ServerLogger::Log(clientid, "Checksum for image block wrong. Stopping image backup.", LL_ERROR);
+										goto do_image_cleanup;
+									}
+								}
+								else
+								{
+									if(hblock>=vhd_blocksize)
+									{
+										last_verified_block=hblock-vhd_blocksize;
+									}
+									else
+									{
+										last_verified_block=hblock;
+									}
 								}
 
 								off+=2*sizeof(int64)+sha_size;								

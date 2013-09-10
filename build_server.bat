@@ -51,4 +51,4 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" "%~dp0urbackupserver_installer_win/urbackup_server.nsi"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
-exit 0
+exit /b 0

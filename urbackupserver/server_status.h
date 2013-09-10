@@ -42,6 +42,8 @@ struct SStatus
 	bool too_many_clients;
 	IPipe *comm_pipe;
 	bool stop_backup;
+	std::string client_version_string;
+	std::string os_version_string;
 };
 
 class ServerStatus
@@ -57,6 +59,8 @@ public:
 	static void setCommPipe(const std::wstring &clientname, IPipe *p);
 	static void stopBackup(const std::wstring &clientname, bool b);
 	static bool isBackupStopped(const std::wstring &clientname);
+	static void setClientVersionString(const std::wstring &clientname, const std::string& client_version_string);
+	static void setOSVersionString(const std::wstring &clientname, const std::string& os_version_string);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
