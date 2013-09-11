@@ -575,6 +575,8 @@ void IndexThread::indexDirs(void)
 	updateDirs();
 #ifdef _WIN32
 	//Invalidate cache
+	DirectoryWatcherThread::freeze();
+	Server->wait(10000);
 	DirectoryWatcherThread::update_and_wait();
 	changed_dirs=cd->getChangedDirs();
 	cd->moveChangedFiles();
@@ -586,7 +588,6 @@ void IndexThread::indexDirs(void)
 	{
 		cd->removeDeletedDir(deldirs[i]);
 	}
-	DirectoryWatcherThread::freeze();
 #endif
 	std::sort(changed_dirs.begin(), changed_dirs.end());
 
