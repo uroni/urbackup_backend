@@ -77,6 +77,7 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"no_images");
 	ret.push_back(L"no_file_backups");
 	ret.push_back(L"autoshutdown");
+	ret.push_back(L"download_client");
 	ret.push_back(L"autoupdate_clients");
 	ret.push_back(L"max_sim_backups");
 	ret.push_back(L"max_active_clients");

@@ -1241,6 +1241,7 @@ function show_settings2(data)
 			data.settings.no_file_backups=getCheckboxValue(data.settings.no_file_backups);
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
+			data.settings.download_client=getCheckboxValue(data.settings.download_client);
 			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
 			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
 			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
@@ -1611,6 +1612,7 @@ g.general_settings_list=[
 "no_images",
 "no_file_backups",
 "autoshutdown",
+"download_client",
 "autoupdate_clients",
 "max_sim_backups",
 "max_active_clients",
