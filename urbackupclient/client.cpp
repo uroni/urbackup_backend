@@ -575,6 +575,8 @@ void IndexThread::indexDirs(void)
 	updateDirs();
 #ifdef _WIN32
 	//Invalidate cache
+	DirectoryWatcherThread::freeze();
+	Server->wait(10000);
 	DirectoryWatcherThread::update_and_wait();
 	changed_dirs=cd->getChangedDirs();
 	cd->moveChangedFiles();
@@ -715,6 +717,8 @@ void IndexThread::indexDirs(void)
 	{
 		VSSLog("Did not delete backup of changed dirs because a stale shadowcopy was used.", LL_INFO);
 	}
+
+	DirectoryWatcherThread::unfreeze();
 #endif
 
 	{

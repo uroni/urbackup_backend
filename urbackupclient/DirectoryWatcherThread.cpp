@@ -153,6 +153,22 @@ void DirectoryWatcherThread::operator()(void)
 				std::wstring fn=msg.substr(1);
 				OnDirMod(strlower(ExtractFilePath(fn)), ExtractFileName(fn));
 			}
+#ifdef CHANGE_JOURNAL
+			else if(msg[0]=='K' )
+			{
+				dcw.set_freeze_open_write_files(true);
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
+			}
+			else if(msg[0]=='H' )
+			{
+				dcw.set_freeze_open_write_files(false);
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
+			}
+#endif
 			else
 			{
 				std::wstring dir=strlower(msg.substr(1));
@@ -184,6 +200,23 @@ void DirectoryWatcherThread::update_and_wait(void)
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
 }
+
+void DirectoryWatcherThread::freeze(void)
+{
+	IScopedLock lock(update_mutex);
+	std::wstring msg=L"K";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	update_cond->wait(&lock);
+}
+
+void DirectoryWatcherThread::unfreeze(void)
+{
+	IScopedLock lock(update_mutex);
+	std::wstring msg=L"H";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	update_cond->wait(&lock);
+}
+
 void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstring &fn)
 {
 	bool found=false;
