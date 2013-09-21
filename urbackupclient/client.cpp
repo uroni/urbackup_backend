@@ -2207,7 +2207,7 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	sha256_ctx ctx;
 	sha256_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL);
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
 
 	if(f==NULL)
 	{
@@ -2235,7 +2235,7 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 	sha512_ctx ctx;
 	sha512_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL);
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
 
 	if(f==NULL)
 	{
