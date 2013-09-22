@@ -920,6 +920,10 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
 			it_dir=changed_dirs.end();
 	}
+	if(path_lower==strlower(Server->getServerWorkingDir())+os_file_sep()+L"urbackup"+os_file_sep())
+	{
+		use_db=false;
+	}
 	std::vector<SFile> tmp;
 	if(it_dir!=changed_dirs.end() || use_db==false)
 	{
@@ -2361,6 +2365,8 @@ void IndexThread::addFileExceptions(void)
 		{
 			toks[i].erase(0, 4);
 		}
+
+		strupper(&toks[i]);
 
 		exlude_dirs.push_back(sanitizePattern(toks[i]));
 	}
