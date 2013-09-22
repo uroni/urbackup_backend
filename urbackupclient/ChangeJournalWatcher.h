@@ -55,6 +55,8 @@ public:
 	void update_longliving(void);
 
 	void set_freeze_open_write_files(bool b);
+
+	void set_last_backup_time(int64 t);
 private:
 	IChangeJournalListener *listener;
 	std::map<std::wstring, SChangeJournal> wdirs;
@@ -126,6 +128,8 @@ private:
 	std::vector<std::wstring> error_dirs;
 
 	DirectoryWatcherThread * dwt;
+
+	int64 last_backup_time;
 };
 
 class IChangeJournalListener
