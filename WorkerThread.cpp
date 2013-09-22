@@ -246,7 +246,7 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 		}
 
 		starttime=Server->getTimeMS()-starttime;
-		Server->Log("Execution Time: "+nconvert(starttime)+" ms - time="+nconvert(Server->getTimeMS() ), LL_INFO);
+		//Server->Log("Execution Time: "+nconvert(starttime)+" ms - time="+nconvert(Server->getTimeMS() ), LL_INFO);
 	}
 	else
 	{

@@ -11,7 +11,7 @@ then
 	autoreconf || true
 	automake --add-missing || true
 	libtoolize || true
-	autoreconf
+	autoreconf --install
 	./configure --with-pychart --enable-packaging --enable-install_initd
 	touch build_server_debian_ok
 fi
