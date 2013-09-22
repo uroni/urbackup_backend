@@ -2339,6 +2339,8 @@ namespace
 void IndexThread::addFileExceptions(void)
 {
 #ifdef _WIN32
+	exlude_dirs.push_back(sanitizePattern(L"C:\\hiberfil.sys"));
+
 	HKEY hKey;
 	LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", 0, KEY_READ, &hKey);
 	if(lRes != ERROR_SUCCESS)
@@ -2362,7 +2364,5 @@ void IndexThread::addFileExceptions(void)
 
 		exlude_dirs.push_back(sanitizePattern(toks[i]));
 	}
-
-	exlude_dirs.push_back(sanitizePattern(L"C:\\hiberfil.sys"));
 #endif
 }
