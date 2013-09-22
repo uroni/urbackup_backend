@@ -74,7 +74,7 @@ namespace
 	{
 		std::vector<SCircularLogEntry> sort_copy=*input;
 		LogEntryTimeSort timesort;
-		std::sort(sort_copy.begin(), sort_copy.end(), timesort);
+		std::stable_sort(sort_copy.begin(), sort_copy.end(), timesort);
 
 		return sort_copy;
 	}
@@ -126,7 +126,7 @@ ACTION_IMPL(livelog)
 	for(size_t i=0;i<sorted_logdata.size();++i)
 	{
 		const SCircularLogEntry& entry=sorted_logdata[i];
-		if(entry.id!=std::string::npos)
+		if(entry.id!=std::string::npos && (lastid==std::string::npos || entry.id>lastid) )
 		{
 			JSON::Object obj;
 			obj.set("msg", entry.utf8_msg);
