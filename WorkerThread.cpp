@@ -93,7 +93,7 @@ void CWorkerThread::operator()()
 				if( rc<1 )
 				{
 					keep_alive=true;
-					Server->Log("Client disconnected", LL_INFO);
+					//Server->Log("Client disconnected", LL_INFO);
 					Master->RemoveClient( client );
 					lock.relock(clients_mutex);
 				}
