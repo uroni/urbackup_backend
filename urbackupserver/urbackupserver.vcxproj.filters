@@ -245,9 +245,12 @@
     </ClCompile>
     <ClCompile Include="serverinterface\download_client.cpp">
       <Filter>serverinterface</Filter>
-	</ClCompile>
+    </ClCompile>
     <ClCompile Include="apps\repair_cmd.cpp">
       <Filter>apps</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\livelog.cpp">
+      <Filter>serverinterface</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -427,7 +430,7 @@
     </ClInclude>
     <ClInclude Include="serverinterface\rights.h">
       <Filter>serverinterface</Filter>
-	</ClInclude>
+    </ClInclude>
     <ClInclude Include="apps\repair_cmd.h">
       <Filter>apps</Filter>
     </ClInclude>

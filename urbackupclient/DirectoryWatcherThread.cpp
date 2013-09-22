@@ -51,10 +51,19 @@ void DirectoryWatcherThread::operator()(void)
 	q_add_dir_with_id=db->Prepare("INSERT INTO mdirs (id, name) VALUES (?, ?)");
 	q_add_del_dir=db->Prepare("INSERT INTO del_dirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM del_dirs WHERE name=?)");
 	q_add_file=db->Prepare("INSERT INTO mfiles SELECT ? AS dir_id, ? AS name WHERE NOT EXISTS (SELECT * FROM mfiles WHERE dir_id=? AND name=?)");
+	q_update_last_backup_time=db->Prepare("INSERT OR REPLACE INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', ?)");
 
 	ChangeListener cl;
 #ifdef CHANGE_JOURNAL
 	ChangeJournalWatcher dcw(this, db, this);
+
+	{
+		db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='last_backup_filetime'");
+		if(!res.empty())
+		{
+			dcw.set_last_backup_time(watoi64(res[0][L"tvalue"]));
+		}
+	}
 #else
 	CDirectoryChangeWatcher dcw(false);
 #endif
@@ -153,6 +162,43 @@ void DirectoryWatcherThread::operator()(void)
 				std::wstring fn=msg.substr(1);
 				OnDirMod(strlower(ExtractFilePath(fn)), ExtractFileName(fn));
 			}
+#ifdef CHANGE_JOURNAL
+			else if( msg[0]=='t' )
+			{
+				FILETIME ft;
+				SYSTEMTIME st;
+				GetSystemTime(&st);
+				SystemTimeToFileTime(&st, &ft);
+				last_backup_filetime=static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
+				dcw.set_last_backup_time(last_backup_filetime);				
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
+			}
+			else if( msg[0]=='T' )
+			{
+				q_update_last_backup_time->Bind(last_backup_filetime);
+				q_update_last_backup_time->Write();
+				q_update_last_backup_time->Reset();
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
+			}
+			else if(msg[0]=='K' )
+			{
+				dcw.set_freeze_open_write_files(true);
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
+			}
+			else if(msg[0]=='H' )
+			{
+				dcw.set_freeze_open_write_files(false);
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
+			}
+#endif
 			else
 			{
 				std::wstring dir=strlower(msg.substr(1));
@@ -184,6 +230,39 @@ void DirectoryWatcherThread::update_and_wait(void)
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
 }
+
+void DirectoryWatcherThread::freeze(void)
+{
+	IScopedLock lock(update_mutex);
+	std::wstring msg=L"K";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	update_cond->wait(&lock);
+}
+
+void DirectoryWatcherThread::unfreeze(void)
+{
+	IScopedLock lock(update_mutex);
+	std::wstring msg=L"H";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	update_cond->wait(&lock);
+}
+
+void DirectoryWatcherThread::update_last_backup_time(void)
+{
+	IScopedLock lock(update_mutex);
+	std::wstring msg=L"t";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	update_cond->wait(&lock);
+}
+
+void DirectoryWatcherThread::commit_last_backup_time(void)
+{
+	IScopedLock lock(update_mutex);
+	std::wstring msg=L"T";
+	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	update_cond->wait(&lock);
+}
+
 void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstring &fn)
 {
 	bool found=false;
@@ -397,3 +476,4 @@ std::wstring DirectoryWatcherThread::addSlashIfMissing(const std::wstring &strDi
 	}
 	return strDirName;
 }
+

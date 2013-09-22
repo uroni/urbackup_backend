@@ -837,9 +837,19 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 
 void ChangeJournalWatcher::update_longliving(void)
 {
-	for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
+	if(!freeze_open_write_files)
 	{
-		listener->On_FileModified(it->first, true);
+		for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
+		{
+			listener->On_FileModified(it->first, true);
+		}
+	}
+	else
+	{
+		for(std::map<std::wstring, bool>::iterator it=open_write_files_frozen.begin();it!=open_write_files_frozen.end();++it)
+		{
+			listener->On_FileModified(it->first, true);
+		}
 	}
 	for(size_t i=0;i<error_dirs.size();++i)
 	{
@@ -847,6 +857,24 @@ void ChangeJournalWatcher::update_longliving(void)
 	}
 }
 
+void ChangeJournalWatcher::set_freeze_open_write_files(bool b)
+{
+	freeze_open_write_files=b;
+
+	if(b)
+	{
+		open_write_files_frozen=open_write_files;
+	}
+	else
+	{
+		open_write_files_frozen.clear();
+	}
+}
+
+void ChangeJournalWatcher::set_last_backup_time(int64 t)
+{
+	last_backup_time=t;
+}
 
 void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRecord)
 {
@@ -987,6 +1015,11 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				else if(UsnRecord->Reason & watch_flags)
 				{
 					open_write_files[real_fn]=true;
+					
+					if(freeze_open_write_files)
+					{
+						open_write_files_frozen[real_fn]=true;
+					}
 				}
 			}
 
@@ -997,6 +1030,19 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				if( (UsnRecord->Reason & USN_REASON_BASIC_INFO_CHANGE) && (UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY)==0 )
 				{
 					save_fn=true;
+				}
+				else if( (UsnRecord->Reason & USN_REASON_DATA_OVERWRITE) &&
+					     !( (UsnRecord->Reason & USN_REASON_DATA_EXTEND) || (UsnRecord->Reason & USN_REASON_DATA_TRUNCATION) ) )
+				{
+					WIN32_FILE_ATTRIBUTE_DATA fad;
+					if(GetFileAttributesExW(os_file_prefix(real_fn).c_str(), GetFileExInfoStandard, &fad) )
+					{
+						int64 last_mod_time = static_cast<__int64>(fad.ftLastWriteTime.dwHighDateTime) << 32 | fad.ftLastWriteTime.dwLowDateTime;
+						if(last_mod_time<=last_backup_time)
+						{
+							save_fn=true;
+						}
+					}
 				}
 				listener->On_FileModified(real_fn, save_fn);
 			}

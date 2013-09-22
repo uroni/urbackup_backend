@@ -54,6 +54,8 @@ public:
 	virtual void setServerParameter(const std::string &key, const std::string &value);
 	virtual void setLogLevel(int LogLevel);
 	virtual void setLogFile(const std::string &plf, std::string chown_user="");
+	virtual void setLogCircularBufferSize(size_t size);
+	virtual const std::vector<SCircularLogEntry>& getCicularLogBuffer(void);
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO);
 	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO);
 	virtual void Write(THREAD_ID tid, const std::string &str, bool cached=true);
@@ -169,6 +171,8 @@ public:
 	virtual void secureRandomFill(char *buf, size_t blen);
 private:
 
+	void logToCircularBuffer(const std::string& msg, int loglevel);
+
 	bool UnloadDLLs(void);
 	void UnloadDLLs2(void);
 	
@@ -244,6 +248,13 @@ private:
 	std::wstring tmpdir;
 
 	std::map<std::string, IDatabaseFactory*> database_factories;
+
+	size_t circular_log_buffer_id;
+
+	std::vector<SCircularLogEntry> circular_log_buffer;
+	size_t circular_log_buffer_idx;
+
+	bool has_circular_log_buffer;
 };
 
 #ifndef DEF_SERVER

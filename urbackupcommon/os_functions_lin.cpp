@@ -213,8 +213,11 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 #endif
 }
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref)
+bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links)
 {
+	if(too_many_links!=NULL)
+		*too_many_links=false;
+		
 	if( use_ioref )
 		return os_create_reflink(linkname, fname);
 		

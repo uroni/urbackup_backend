@@ -150,7 +150,7 @@ void CAcceptThread::operator()(bool single)
 			SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
 			if(ns>0)
 			{
-				Server->Log("New Connection incomming", LL_INFO);
+				//Server->Log("New Connection incomming", LL_INFO);
 
 				OutputCallback *output=new OutputCallback(ns);
 				FCGIProtocolDriver *driver=new FCGIProtocolDriver(*output );

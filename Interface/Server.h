@@ -38,11 +38,26 @@ struct SPostfile
 	std::wstring contenttype;
 };
 
+struct SCircularLogEntry
+{
+	SCircularLogEntry(void)
+		: loglevel(LL_DEBUG), id(std::string::npos)
+	{
+	}
+
+	std::string utf8_msg;
+	int loglevel;
+	size_t id;
+	unsigned int time;
+};
+
 class IServer
 {
 public:
 	virtual void setLogLevel(int LogLevel)=0;
 	virtual void setLogFile(const std::string &plf, std::string chown_user="")=0;
+	virtual void setLogCircularBufferSize(size_t size)=0;
+	virtual const std::vector<SCircularLogEntry>& getCicularLogBuffer(void)=0;
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO)=0;
 	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO)=0;
 	virtual void Write(THREAD_ID tid, const std::string &str, bool cached=true)=0;

@@ -97,9 +97,7 @@ public:
 
 
 	void deleteSavedChangedFiles(void);
-	void restoreSavedChangedFiles(void);
 	void deleteSavedChangedDirs(void);
-	void restoreSavedChangedDirs(void);
 
 	bool hasChangedGap(void);
 	void deleteChangedDirs(void);
@@ -108,7 +106,6 @@ public:
 
 	std::vector<std::wstring> getDelDirs(bool del=true);
 	void deleteSavedDelDirs(void);
-	void restoreSavedDelDirs(void);
 
 	void removeDeletedDir(const std::wstring &dir);
 
@@ -148,13 +145,11 @@ private:
 	IQuery *q_remove_shadowcopies;
 	IQuery *q_save_changed_dirs;
 	IQuery *q_delete_saved_changed_dirs;
-	IQuery *q_restore_saved_changed_dirs;
 	IQuery *q_copy_from_tmp_files;
 	IQuery *q_delete_tmp_files;
 	IQuery *q_has_changed_gap;
 	IQuery *q_get_del_dirs;
 	IQuery *q_del_del_dirs;
-	IQuery *q_restore_del_dirs;
 	IQuery *q_copy_del_dirs;
 	IQuery *q_del_del_dirs_copy;
 	IQuery *q_remove_del_dir;
@@ -163,7 +158,6 @@ private:
 	IQuery *q_save_changed_files;
 	IQuery *q_remove_changed_files;
 	IQuery *q_delete_saved_changed_files;
-	IQuery *q_restore_saved_changed_files;
 	IQuery *q_has_changed_file;
 	IQuery *q_get_changed_files;
 	IQuery *q_get_pattern;

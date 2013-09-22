@@ -4,9 +4,16 @@
 
 struct SLogEntry
 {
-	std::wstring data;
+	std::string data;
 	int loglevel;
 	unsigned int time;
+};
+
+struct SCircularData
+{
+	std::vector<SCircularLogEntry> data;
+	size_t idx;
+	size_t id;
 };
 
 class ServerLogger
@@ -19,11 +26,18 @@ public:
 	static void destroy_mutex(void);
 
 	static std::wstring getLogdata(int clientid, int &errors, int &warnings, int &infos);
-	static std::wstring getWarningLevelTextLogdata(int clientid);
+	static std::string getWarningLevelTextLogdata(int clientid);
 
 	static void reset(int clientid);
 
+	static const std::vector<SCircularLogEntry>& getCircularLogdata(int clientid);
+
 private:
+
+	static void logCircular(int clientid, const std::string &pStr, int LogLevel);
+	static void logMemory(int clientid, const std::string &pStr, int LogLevel);
+
 	static std::map<int, std::vector<SLogEntry> > logdata;
+	static std::map<int, SCircularData> circular_logdata;
 	static IMutex *mutex;
 };

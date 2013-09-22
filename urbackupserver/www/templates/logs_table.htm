@@ -12,6 +12,13 @@
 #{rows}
 </table>
 
+<h2>#{tLive Log}</h2>
+
+<select size="1" style="width: 100px" id="live_log_clientid">
+#{live_log_clients}
+</select>
+<input type="button" value="#{tShow}" onClick="show_live_log()" />
+
 <h1>#{tReports}</h1>
 #{tSend reports to}
 <span id="s_report_mails">

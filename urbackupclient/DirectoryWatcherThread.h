@@ -44,7 +44,13 @@ public:
 	static void update(void);
 	static void update_and_wait(void);
 
+	static void freeze(void);
+	static void unfreeze(void);
+
 	bool is_stopped(void);
+
+	static void update_last_backup_time(void);
+	static void commit_last_backup_time(void);
 
 private:
 
@@ -61,12 +67,15 @@ private:
 	IQuery* q_add_del_dir;
 	IQuery* q_add_file;
 	IQuery* q_get_dir_backup;
+	IQuery* q_update_last_backup_time;
 
 	std::list<SLastEntries> lastentries;
 	std::vector<std::wstring> watching;
 
 	static IMutex *update_mutex;
 	static ICondition *update_cond;
+
+	int64 last_backup_filetime;
 };
 
 class ChangeListener : public CDirectoryChangeHandler, public IChangeJournalListener

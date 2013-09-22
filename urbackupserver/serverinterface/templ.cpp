@@ -99,6 +99,9 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("nospc_fatal");
 	templates.push_back("status_percent_done");
 	templates.push_back("status_client_download");
+	templates.push_back("new_version_available");
+	templates.push_back("live_log");
+	templates.push_back("live_log_row");
 
 	IFile *out=Server->openFile("urbackupserver/www/templates.js", MODE_WRITE);
 	if(out==NULL)

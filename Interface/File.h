@@ -13,6 +13,7 @@ const int MODE_RW=3;
 const int MODE_RW_CREATE=5;
 const int MODE_READ_DEVICE=6;
 const int MODE_READ_SEQUENTIAL=7;
+const int MODE_READ_SEQUENTIAL_BACKUP=8;
 
 class IFile : public IObject
 {

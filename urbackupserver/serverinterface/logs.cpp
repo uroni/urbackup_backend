@@ -83,6 +83,10 @@ ACTION_IMPL(logs)
 			obj.set("name", res[i][L"name"]);
 			clients.add(obj);
 		}
+		if(clientid.empty())
+		{
+			ret.set("all_clients", JSON::Value(true));
+		}
 		ret.set("clients", clients);
 		ret.set("filter", filter);
 		if(s_logid.empty())

@@ -288,6 +288,7 @@
     <ClCompile Include="serverinterface\isimageready.cpp" />
     <ClCompile Include="serverinterface\json.cpp" />
     <ClCompile Include="serverinterface\lastacts.cpp" />
+    <ClCompile Include="serverinterface\livelog.cpp" />
     <ClCompile Include="serverinterface\login.cpp" />
     <ClCompile Include="serverinterface\logs.cpp" />
     <ClCompile Include="serverinterface\piegraph.cpp" />

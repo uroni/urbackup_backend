@@ -28,6 +28,7 @@ struct SSettings
 	bool client_overwrite;
 	bool autoshutdown;
 	int startup_backup_delay;
+	bool download_client;
 	bool autoupdate_clients;
 	int max_sim_backups;
 	int max_active_clients;

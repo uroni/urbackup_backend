@@ -184,7 +184,6 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
                 if(rc==SOCKET_ERROR)
                         return 0;
 
-		  Server->Log("Hostname: "+(std::string)hostname, LL_DEBUG);
 		  std::vector<_u32> addresses;
 
                 if(NULL != (h = gethostbyname(hostname)))

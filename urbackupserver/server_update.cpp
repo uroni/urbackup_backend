@@ -16,7 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#ifndef CLIENT_ONLY
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "server_update.h"
 #include "../downloadplugin/IDownloadFactory.h"
@@ -27,6 +27,52 @@
 #include <stdlib.h>
 
 extern IDownloadFactory *download_fak;
+
+namespace
+{
+	void set_proxy_from_env(IFileDownload *dl)
+	{
+		char *http_proxy_s=getenv("http_proxy");
+		if(http_proxy_s)
+		{
+			std::string http_proxy=http_proxy_s;
+			if(!http_proxy.empty())
+			{
+				unsigned short proxy_port=8080;
+				std::string proxy_name;
+				if(http_proxy.find(":")!=std::string::npos)
+				{
+					proxy_port=atoi(getafter(":", http_proxy).c_str());
+					proxy_name=getbetween("//", ":", http_proxy);
+
+					if(proxy_name.empty())
+					{
+						proxy_name=getuntil(":", http_proxy);
+					}
+				}
+				else
+				{
+					proxy_name=getbetween("//", "/", http_proxy);
+
+					if(proxy_name.empty())
+					{
+						proxy_name=getafter("//", http_proxy);
+
+						if(proxy_name.empty())
+						{
+							proxy_name=http_proxy;
+						}
+					}
+				}
+
+				if(!proxy_name.empty())
+				{
+					dl->setProxy(proxy_name, proxy_port);
+				}
+			}
+		}
+	}
+}
 
 ServerUpdate::ServerUpdate(void)
 {
@@ -58,6 +104,11 @@ void ServerUpdate::operator()(void)
 	{
 		dl->setProxy(Server->getServerParameter("http_proxy"), (unsigned short)atoi(Server->getServerParameter("http_proxy_port").c_str()));
 	}
+	else
+	{
+		set_proxy_from_env(dl);
+	}
+
 
 	IFile *tmp=Server->openTemporaryFile();
 	if(tmp==NULL) return;
@@ -100,5 +151,3 @@ void ServerUpdate::operator()(void)
 
 	download_fak->destroyFileDownload(dl);
 }
-
-#endif //CLIENT_ONLY

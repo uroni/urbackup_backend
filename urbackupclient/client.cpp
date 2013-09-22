@@ -268,6 +268,7 @@ void IndexThread::operator()(void)
 		data.getVoidPtr((void**)&contractor);
 		if(action==0)
 		{
+			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
 
 			data.getStr(&starttoken);
@@ -342,6 +343,7 @@ void IndexThread::operator()(void)
 		}
 		else if(action==1)
 		{
+			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
 
 			data.getStr(&starttoken);
@@ -360,7 +362,7 @@ void IndexThread::operator()(void)
 				cd->deleteSavedChangedDirs();
 
 				Server->Log("Deleting files... doing full index...", LL_INFO);
-				db->Write("DELETE FROM files");
+				resetFileEntries();
 				db->Write("DELETE FROM filehashes");
 			}
 			execute_prebackup_hook();
@@ -549,6 +551,7 @@ void IndexThread::operator()(void)
 			{
 				ret+=nconvert(vsslog[i].second)+"-"+vsslog[i].first+"\n";
 			}
+			Server->Log("VSS logdata - "+nconvert(ret.size())+" bytes", LL_DEBUG);
 			contractor->Write(ret);
 		}
 	}
@@ -566,21 +569,21 @@ void IndexThread::indexDirs(void)
 	if(patterns_changed)
 	{
 		VSSLog("Deleting file-cache because include/exclude pattern changed...", LL_INFO);
-		db->Write("DELETE FROM files");
+		resetFileEntries();
 	}
 
 	updateDirs();
 #ifdef _WIN32
-	cd->restoreSavedChangedDirs();
-	cd->restoreSavedChangedFiles();
 	//Invalidate cache
+	DirectoryWatcherThread::freeze();
+	DirectoryWatcherThread::update_last_backup_time();
+	Server->wait(10000);
 	DirectoryWatcherThread::update_and_wait();
 	changed_dirs=cd->getChangedDirs();
 	cd->moveChangedFiles();
 
 	bool has_stale_shadowcopy=false;
 
-	cd->restoreSavedDelDirs();
 	std::vector<std::wstring> deldirs=cd->getDelDirs();
 	for(size_t i=0;i<deldirs.size();++i)
 	{
@@ -642,7 +645,6 @@ void IndexThread::indexDirs(void)
 				std::vector<SMDir> acd=cd->getChangedDirs(false);
 				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 				std::sort(changed_dirs.begin(), changed_dirs.end());
-				cd->moveChangedFiles(false);
 
 				std::vector<std::wstring> deldirs=cd->getDelDirs(false);
 				for(size_t i=0;i<deldirs.size();++i)
@@ -716,6 +718,9 @@ void IndexThread::indexDirs(void)
 	{
 		VSSLog("Did not delete backup of changed dirs because a stale shadowcopy was used.", LL_INFO);
 	}
+
+	DirectoryWatcherThread::unfreeze();
+	DirectoryWatcherThread::commit_last_backup_time();
 #endif
 
 	{
@@ -730,6 +735,15 @@ void IndexThread::indexDirs(void)
 		readPatterns(patterns_changed, true);
 	}
 	share_dirs(starttoken);
+}
+
+void IndexThread::resetFileEntries(void)
+{
+	db->Write("DELETE FROM files");
+	db->Write("DELETE FROM mdirs");
+	db->Write("DELETE FROM mdirs_backup");
+	db->Write("DELETE FROM mfiles");
+	db->Write("DELETE FROM mfiles_backup");
 }
 
 bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first)
@@ -906,6 +920,10 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
 			it_dir=changed_dirs.end();
 	}
+	if(path_lower==strlower(Server->getServerWorkingDir())+os_file_sep()+L"urbackup"+os_file_sep())
+	{
+		use_db=false;
+	}
 	std::vector<SFile> tmp;
 	if(it_dir!=changed_dirs.end() || use_db==false)
 	{
@@ -969,7 +987,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 			if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
 				tpath=L"\\\\?\\"+path;
 
-			tmp=getFiles(tpath);
+			bool has_error;
+			tmp=getFiles(tpath, &has_error);
+			if(has_error)
+			{
+				VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+			}
 			cd->addFiles(path_lower, tmp);
 			return tmp;
 		}
@@ -1886,7 +1909,13 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 				exlude_dirs[i]=sanitizePattern(exlude_dirs[i]);
 			}
 			
+			addFileExceptions();
 		}
+		else
+		{
+			addFileExceptions();
+		}
+
 		if(curr_settings->getValue(L"include_files", &val) || curr_settings->getValue(L"include_files_def", &val) )
 		{
 			if(val!=cd->getOldIncludePattern())
@@ -1980,6 +2009,10 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 
 		}
 		Server->destroy(curr_settings);
+	}
+	else
+	{
+		addFileExceptions();
 	}
 }
 
@@ -2194,7 +2227,7 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	sha256_ctx ctx;
 	sha256_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL);
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
 
 	if(f==NULL)
 	{
@@ -2222,7 +2255,7 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 	sha512_ctx ctx;
 	sha512_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL);
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
 
 	if(f==NULL)
 	{
@@ -2288,4 +2321,54 @@ void IndexThread::commitModifyHashBuffer(void)
 
 	modify_hash_buffer.clear();
 	modify_hash_buffer_size=0;
+}
+
+namespace
+{
+	LONG GetStringRegKey(HKEY hKey, const std::wstring &strValueName, std::wstring &strValue, const std::wstring &strDefaultValue)
+	{
+		strValue = strDefaultValue;
+		WCHAR szBuffer[8192];
+		DWORD dwBufferSize = sizeof(szBuffer);
+		ULONG nError;
+		nError = RegQueryValueExW(hKey, strValueName.c_str(), 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
+		if (ERROR_SUCCESS == nError)
+		{
+			strValue = szBuffer;
+		}
+		return nError;
+	}
+}
+
+void IndexThread::addFileExceptions(void)
+{
+#ifdef _WIN32
+	exlude_dirs.push_back(sanitizePattern(L"C:\\hiberfil.sys"));
+
+	HKEY hKey;
+	LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", 0, KEY_READ, &hKey);
+	if(lRes != ERROR_SUCCESS)
+		return;
+
+	std::wstring tfiles;
+	lRes = GetStringRegKey(hKey, L"ExistingPageFiles", tfiles, L"");
+	if(lRes != ERROR_SUCCESS)
+		return;
+
+	std::vector<std::wstring> toks;
+	Tokenize(tfiles, toks, L"\n");
+	for(size_t i=0;i<toks.size();++i)
+	{
+		toks[i]=trim(toks[i]);
+
+		if(toks[i].find(L"\\??\\")==0)
+		{
+			toks[i].erase(0, 4);
+		}
+
+		strupper(&toks[i]);
+
+		exlude_dirs.push_back(sanitizePattern(toks[i]));
+	}
+#endif
 }

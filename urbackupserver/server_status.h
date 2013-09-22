@@ -25,6 +25,7 @@ struct SStatus
 	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1;
 		prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false; wrong_ident=false;too_many_clients=false;
 		comm_pipe=NULL; stop_backup=false;}
+
 	std::wstring client;
 	int clientid;
 	unsigned int starttime;

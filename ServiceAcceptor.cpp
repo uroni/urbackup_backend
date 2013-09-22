@@ -161,7 +161,7 @@ void CServiceAcceptor::operator()(void)
 				SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
 				if(ns>0)
 				{
-					Server->Log(name+": New Connection incomming "+nconvert(Server->getTimeMS())+" s: "+nconvert((int)ns), LL_DEBUG);
+					//Server->Log(name+": New Connection incomming "+nconvert(Server->getTimeMS())+" s: "+nconvert((int)ns), LL_DEBUG);
 
 	#ifdef _WIN32
 					int window_size=512*1024;

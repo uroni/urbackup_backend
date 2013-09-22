@@ -32,6 +32,9 @@ const std::string configure_networkcard=configure_wlan;
 #define UDP_SOURCE_PORT 35623
 
 
+namespace
+{
+
 std::string trim2(const std::string &str)
 {
     size_t startpos=str.find_first_not_of(" \t\n");
@@ -130,6 +133,124 @@ std::vector<std::string> getBackupclients(int *ec)
 					}
 				}
 			}
+		}
+	}
+	Server->destroy(c);
+	return ret;
+}
+
+IPipe* connectToService(int *ec)
+{
+	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
+	if(c==NULL)
+	{
+		Server->Log("Error connecting to client service -1", LL_ERROR);
+		*ec=10;
+		return NULL;
+	}
+
+	return c;
+}
+
+
+std::vector<std::pair<std::string, std::string> > getSalt(const std::string& username, int *ec)
+{
+	std::string pw=getFile(pw_file);
+	CTCPStack tcpstack;
+	*ec=0;
+	std::vector<std::pair<std::string, std::string> > ret;
+
+	IPipe *c=connectToService(ec);
+	if(c==NULL)
+	{
+		return ret;
+	}
+
+	
+	tcpstack.Send(c, "GET SALT#pw="+pw+"&username="+username);
+	std::string r=getResponse(c);
+	if(r.empty() )
+	{
+		Server->Log("No response from ClientConnector", LL_ERROR);
+		*ec=1;
+	}
+	else
+	{
+		Server->Log("Salt Response: "+r, LL_INFO);
+
+		std::vector<std::string> toks;
+		Tokenize(r, toks, "/");
+
+		for(size_t i=0;i<toks.size();++i)
+		{
+			if(toks[i].find("ok;")==0)
+			{
+				std::vector<std::string> salt_toks;
+				Tokenize(toks[i], salt_toks, ";");
+
+				if(salt_toks.size()==3)
+				{
+					ret.push_back(std::make_pair(salt_toks[1], salt_toks[2]));
+				}
+			}
+			else
+			{
+				Server->Log("SALT error: "+toks[i], LL_ERROR);
+				ret.push_back(std::make_pair(std::string(), std::string()));
+			}
+		}
+	}
+	Server->destroy(c);
+	return ret;
+}
+
+bool tryLogin(const std::string& username, const std::string& password, std::vector<std::pair<std::string, std::string> > salts, int *ec)
+{
+	std::string pw=getFile(pw_file);
+	CTCPStack tcpstack;
+	*ec=0;
+
+	IPipe *c=connectToService(ec);
+	if(c==NULL)
+	{
+		return false;
+	}
+
+	std::string auth_str;
+	if(!username.empty())
+	{
+		auth_str="&username="+username;
+
+		for(size_t i=0;i<salts.size();++i)
+		{
+			if(!salts[i].first.empty()
+				&& !salts[i].second.empty())
+			{
+				auth_str+="&password"+nconvert(i)+"="+
+					Server->GenerateHexMD5(salts[i].second+Server->GenerateHexMD5(salts[i].first+password));
+			}
+		}
+	}
+	
+	bool ret=false;
+	tcpstack.Send(c, "LOGIN FOR DOWNLOAD#pw="+pw+auth_str);
+	std::string r=getResponse(c);
+	if(r.empty() )
+	{
+		Server->Log("No response from ClientConnector", LL_ERROR);
+		*ec=1;
+	}
+	else
+	{
+		Server->Log("Login Response: "+r, LL_INFO);
+
+		if(r=="ok")
+		{
+			ret=true;
+		}
+		else
+		{
+			Server->Log("Error during login: "+r, LL_ERROR);
 		}
 	}
 	Server->destroy(c);
@@ -441,6 +562,8 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 		Server->destroy(c);Server->destroy(out);return 0;
 	}
 	return 0;
+}
+
 }
 
 namespace
@@ -807,6 +930,86 @@ void ping_named_server(void)
 	}
 }
 
+bool do_login(void)
+{
+	system("clear");
+	system("cat urbackup/restore/trying_to_login");
+
+	int ec;
+	if(!tryLogin("", "", std::vector<std::pair<std::string, std::string> >(), &ec) )
+	{
+		if(ec==1)
+		{
+			//Server probably does not support logging in
+			std::vector<std::string> clients=getBackupclients(&ec);
+			if(ec==0 && !clients.empty())
+			{
+				return true;
+			}
+		}
+
+		while(true)
+		{
+			int rc=system("dialog --inputbox \"`cat urbackup/restore/enter_username`\" 8 30 2> out");
+			std::string username=getFile("out");
+
+			if(rc!=0)
+			{
+				return false;
+			}
+
+			std::vector<std::pair<std::string, std::string> > salts=getSalt(username, &ec);
+
+			bool found_salt=false;
+			for(size_t i=0;i<salts.size();++i)
+			{
+				if(!salts[i].first.empty() &&
+					!salts[i].second.empty() )
+				{
+					found_salt=true;
+					break;
+				}
+			}
+
+			if(!found_salt)
+			{
+				rc=system("dialog --yesno \"`cat urbackup/restore/user_not_found`\" 7 50");
+				if(rc!=0)
+				{
+					return false;
+				}
+			}
+			else
+			{
+				rc=system("dialog --insecure --passwordbox \"`cat urbackup/restore/enter_password`\" 8 30 2> out");
+				std::string password=getFile("out");
+
+				if(rc!=0)
+				{
+					return false;
+				}
+
+				if(!tryLogin(username, password, salts, &ec))
+				{
+					rc=system("dialog --yesno \"`cat urbackup/restore/login_failed`\" 7 50");
+					if(rc!=0)
+					{
+						return false;
+					}
+				}
+				else
+				{
+					return true;
+				}
+			}
+		}
+	}
+	else
+	{
+		return true;
+	}
+}
+
 const int start_state=-2;
 
 void restore_wizard(void)
@@ -898,24 +1101,33 @@ void restore_wizard(void)
 			}break;
 		case 1:
 			{
-				int ec;
-				clients=getBackupclients(&ec);
 				std::string errmsg;
-				switch(ec)
-				{
-				case 10:
-				case 1:
-					errmsg="`cat urbackup/restore/internal_error`";
-					break;
-				case 2:
-					errmsg="`cat urbackup/restore/no_server_found`";
-					break; 
-				}
+				int ec;
+				if(do_login())
+				{					
+					clients=getBackupclients(&ec);
+					
+					switch(ec)
+					{
+					case 10:
+					case 1:
+						errmsg="`cat urbackup/restore/internal_error`";
+						break;
+					case 2:
+						errmsg="`cat urbackup/restore/no_server_found`";
+						break; 
+					}
 
-				if(clients.empty())
+					if(clients.empty())
+					{
+						ec=3;
+						errmsg="`cat urbackup/restore/no_clients_found`";
+					}
+				}
+				else
 				{
-					ec=3;
-					errmsg="`cat urbackup/restore/no_clients_found`";
+					errmsg="login failed";
+					ec=1;
 				}
 
 				if(ec!=0)

@@ -7,6 +7,7 @@ g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.status_detail=false;
 g.progress_stop_id=-1;
+g.current_version=1003000000;
 
 g.languages=[ 
 				{ l: "Deutsch", s: "de" },
@@ -756,11 +757,29 @@ function show_status2(data)
 			rem_start="";
 			rem_stop="";
 		}
-		modify_clients=tmpls.status_modify_clients.evaluate({rem_start: rem_start, rem_stop: rem_stop});
+		var no_images_start="";
+		var no_images_stop="";
+		if(data.no_images)
+		{
+			no_images_start="<!--";
+			no_images_stop="-->";
+		}
+		var no_file_backups_start="";
+		var no_file_backups_stop="";
+		if(data.no_file_backups)
+		{
+			no_file_backups_start="<!--";
+			no_file_backups_stop="-->";
+		}
+		var status_modify_params={rem_start: rem_start, rem_stop: rem_stop, backup_type_num: 0, no_images_start: no_images_start,
+							      no_images_stop: no_images_stop, no_file_backups_start: no_file_backups_start, no_file_backups_stop: no_file_backups_stop };
+								  
+		modify_clients=tmpls.status_modify_clients.evaluate(status_modify_params);
 		
 		if(data.status.length>10)
 		{
-			modify_clients_top=modify_clients+"<br />";
+			status_modify_params.backup_type_num=1;
+			modify_clients_top=tmpls.status_modify_clients.evaluate(status_modify_params);
 			dtl_c1_top=dtl_c1;
 			dtl_c2_top=dtl_c2;
 		}
@@ -808,6 +827,53 @@ function show_status2(data)
 	{
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
+		
+		if(data.no_images)
+		{
+			if(data.details)
+			{
+				show_hide_column('status_table', 5, false);
+				show_hide_column('status_table', 7, false);
+			}
+			else
+			{
+				show_hide_column('status_table', 3, false);
+				show_hide_column('status_table', 5, false);
+			}
+		}
+		
+		if(data.no_file_backups)
+		{
+			if(data.details)
+			{
+				show_hide_column('status_table', 4, false);
+				show_hide_column('status_table', 6, false);
+			}
+			else
+			{
+				show_hide_column('status_table', 2, false);
+				show_hide_column('status_table', 4, false);
+			}
+		}
+	}
+	
+	if(data.admin)
+	{
+		if(!g.online_version_loaded)
+		{
+			LoadScript("http://urbackup.org/server_version_info.js", "server_version_info_struct");
+		}
+		else
+		{
+			g.checkForNewVersion();
+		}
+	}
+}
+g.checkForNewVersion = function()
+{
+	if(g.online_version.num>g.current_version && I('new_version_available'))
+	{
+		I('new_version_available').innerHTML=tmpls.new_version_available.evaluate({new_version_number: g.online_version.str} );
 	}
 }
 function downloadClient(clientid)
@@ -1195,6 +1261,7 @@ function show_settings2(data)
 			data.settings.no_file_backups=getCheckboxValue(data.settings.no_file_backups);
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
+			data.settings.download_client=getCheckboxValue(data.settings.download_client);
 			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
 			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
 			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
@@ -1565,6 +1632,7 @@ g.general_settings_list=[
 "no_images",
 "no_file_backups",
 "autoshutdown",
+"download_client",
 "autoupdate_clients",
 "max_sim_backups",
 "max_active_clients",
@@ -1828,7 +1896,8 @@ function clientRights(clientid)
 		{ domain: "status", right: clientid },
 		{ domain: "logs", right: clientid },
 		{ domain: "stop_backup", right: clientid },
-		{ domain: "start_backup", right: "all" }
+		{ domain: "start_backup", right: "all" },
+		{ domain: "download_image", right: clientid }
 	]);
 }
 function createUser2()
@@ -2243,6 +2312,7 @@ function show_logs2(data)
 {
 	stopLoading();
 	
+	var live_log_clients="";
 	if(data.clients && !data.log)
 	{
 		var np=trans("filter")+": ";
@@ -2266,6 +2336,16 @@ function show_logs2(data)
 		
 		I('nav_pos').innerHTML=np;
 		I('logsfilter').selectedIndex=2-data.ll;
+		
+		if(data.all_clients)
+		{
+			live_log_clients+="<option value=\"0\">"+trans("all")+"</option>";
+		}		
+		for(var i=0;i<data.clients.length;++i)
+		{
+			var obj=data.clients[i];
+			live_log_clients+="<option value=\""+obj.id+"\">"+obj.name+"</option>";
+		}
 	}
 	else
 	{
@@ -2324,6 +2404,7 @@ function show_logs2(data)
 		td.sel_info=(data.report_loglevel==0)?sel:"";
 		td.sel_warn=(data.report_loglevel==1)?sel:"";
 		td.sel_error=(data.report_loglevel==2)?sel:"";
+		td.live_log_clients=live_log_clients;
 			
 		ndata+=tmpls.logs_table.evaluate(td);
 	}
@@ -2532,6 +2613,14 @@ function updateLogsParam()
 		g.nav_params={};
 	g.nav_params[3]=p;
 	build_main_nav();
+}
+function show_live_log()
+{
+	var clientid=I('live_log_clientid').value;
+	var win = window.open('', '_blank', '');
+	win.document.write(tmpls.live_log.evaluate({session: g.session, clientid: clientid, clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text}));
+	win.document.close();
+	win.focus();
 }
 function removeClient(clientid)
 {
@@ -2793,7 +2882,7 @@ function changeArchiveForUnit()
 		I('archive_for').type="text";
 	}
 }
-function startBackups()
+function startBackups(backup_type_num)
 {
 	var cbs=document.getElementsByName("status_selected");
 	var ids=[];
@@ -2806,7 +2895,7 @@ function startBackups()
 	}
 	if(ids.length>0)
 	{	
-		show_status1(g.status_detail, "", false, ids, false, I('backup_type').value);
+		show_status1(g.status_detail, "", false, ids, false, I('backup_type'+backup_type_num).value);
 	}
 	else
 	{

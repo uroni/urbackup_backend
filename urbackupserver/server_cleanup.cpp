@@ -130,7 +130,7 @@ void ServerCleanupThread::operator()(void)
 			backup_database();
 		}
 
-		if( settings->getValue("autoupdate_clients", "true")=="true" )
+		if( settings->getValue("download_client", "true")=="true" )
 		{
 			IScopedLock lock(a_mutex);
 			ServerUpdate upd;

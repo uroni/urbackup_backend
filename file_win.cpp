@@ -37,7 +37,7 @@ bool File::Open(std::wstring pfn, int mode)
 	DWORD dwCreationDisposition;
 	DWORD dwDesiredAccess;
 	DWORD dwShareMode=FILE_SHARE_READ;
-	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL )
+	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)
 	{
 		dwCreationDisposition=OPEN_EXISTING;
 		dwDesiredAccess=GENERIC_READ;
@@ -72,9 +72,13 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 
 	DWORD flags=FILE_ATTRIBUTE_NORMAL;
-	if(mode==MODE_READ_SEQUENTIAL)
+	if(mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)
 	{
 		flags|=FILE_FLAG_SEQUENTIAL_SCAN;
+	}
+	if(mode==MODE_READ_SEQUENTIAL_BACKUP)
+	{
+		flags|=FILE_FLAG_BACKUP_SEMANTICS;
 	}
 	
 	hfile=CreateFileW( fn.c_str(), dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, flags, NULL );
