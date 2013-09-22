@@ -631,7 +631,7 @@ void BackupServerGet::operator ()(void)
 					r_success=false;
 
 					ServerLogger::Log(clientid, "FATAL: Backup failed because of disk problems", LL_ERROR);
-					sendMailToAdmins("Fatal error occured during backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+					sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 				}
 			}
 
@@ -2442,7 +2442,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		else
 		{
 			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
-			sendMailToAdmins("Fatal error occured during incremental file backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+			sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 		}
 	}
 	else if(!c_has_error && !disk_error)
@@ -2456,7 +2456,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	else
 	{
 		ServerLogger::Log(clientid, "Fatal error during backup. Backup not completed", LL_ERROR);
-		sendMailToAdmins("Fatal error occured during incremental file backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+		sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 	}
 
 	running_updater->stop();
@@ -3941,7 +3941,7 @@ bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
 		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
 			ServerLogger::Log(clientid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
-			sendMailToAdmins("Fatal error occured during backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+			sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 			return false;
 		}
 	}

@@ -7,6 +7,7 @@ g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.status_detail=false;
 g.progress_stop_id=-1;
+g.current_version=1003000000;
 
 g.languages=[ 
 				{ l: "Deutsch", s: "de" },
@@ -854,6 +855,25 @@ function show_status2(data)
 				show_hide_column('status_table', 4, false);
 			}
 		}
+	}
+	
+	if(data.admin)
+	{
+		if(!g.online_version_loaded)
+		{
+			LoadScript("http://urbackup.org/server_version_info.js", "server_version_info_struct");
+		}
+		else
+		{
+			g.checkForNewVersion();
+		}
+	}
+}
+g.checkForNewVersion = function()
+{
+	if(g.online_version.num>g.current_version && I('new_version_available'))
+	{
+		I('new_version_available').innerHTML=tmpls.new_version_available.evaluate({new_version_number: g.online_version.str} );
 	}
 }
 function downloadClient(clientid)
@@ -2292,6 +2312,7 @@ function show_logs2(data)
 {
 	stopLoading();
 	
+	var live_log_clients="";
 	if(data.clients && !data.log)
 	{
 		var np=trans("filter")+": ";
@@ -2315,6 +2336,16 @@ function show_logs2(data)
 		
 		I('nav_pos').innerHTML=np;
 		I('logsfilter').selectedIndex=2-data.ll;
+		
+		if(data.all_clients)
+		{
+			live_log_clients+="<option value=\"0\">"+trans("all")+"</option>";
+		}		
+		for(var i=0;i<data.clients.length;++i)
+		{
+			var obj=data.clients[i];
+			live_log_clients+="<option value=\""+obj.id+"\">"+obj.name+"</option>";
+		}
 	}
 	else
 	{
@@ -2373,6 +2404,7 @@ function show_logs2(data)
 		td.sel_info=(data.report_loglevel==0)?sel:"";
 		td.sel_warn=(data.report_loglevel==1)?sel:"";
 		td.sel_error=(data.report_loglevel==2)?sel:"";
+		td.live_log_clients=live_log_clients;
 			
 		ndata+=tmpls.logs_table.evaluate(td);
 	}
@@ -2581,6 +2613,14 @@ function updateLogsParam()
 		g.nav_params={};
 	g.nav_params[3]=p;
 	build_main_nav();
+}
+function show_live_log()
+{
+	var clientid=I('live_log_clientid').value;
+	var win = window.open('', '_blank', '');
+	win.document.write(tmpls.live_log.evaluate({session: g.session, clientid: clientid, clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text}));
+	win.document.close();
+	win.focus();
 }
 function removeClient(clientid)
 {

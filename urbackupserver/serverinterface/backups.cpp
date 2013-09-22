@@ -16,8 +16,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#ifndef CLIENT_ONLY
-
 #include "action_header.h"
 #include "../../urbackupcommon/os_functions.h"
 
@@ -255,5 +253,3 @@ ACTION_IMPL(backups)
 
 	helper.Write(ret.get(false));
 }
-
-#endif //CLIENT_ONLY

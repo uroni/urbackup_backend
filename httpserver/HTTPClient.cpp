@@ -435,7 +435,7 @@ void CHTTPClient::parseAction(std::string pQuery, std::string &pAction, std::str
 
 bool CHTTPClient::processRequest(void)
 {
-	Server->Log("Parsing done... starting handling request_num: "+nconvert(request_num)+" "+nconvert(Server->getTimeMS()), LL_INFO);
+	//Server->Log("Parsing done... starting handling request_num: "+nconvert(request_num)+" "+nconvert(Server->getTimeMS()), LL_INFO);
 	++request_num;
 	if(!allowed_urls.empty())
 	{

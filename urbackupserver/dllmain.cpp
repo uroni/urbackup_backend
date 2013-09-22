@@ -482,6 +482,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(isimageready);
 	ADD_ACTION(getimage);
 	ADD_ACTION(download_client);
+	ADD_ACTION(livelog);
 
 	if(Server->getServerParameter("allow_shutdown")=="true")
 	{
@@ -554,6 +555,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->createThread(server_cleanup);
 		Server->createThread(new ServerAutomaticArchive);
 	}
+
+	Server->setLogCircularBufferSize(20);
 
 	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }

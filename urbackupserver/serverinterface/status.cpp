@@ -429,6 +429,11 @@ ACTION_IMPL(status)
 		ServerSettings settings(db);
 		ret.set("no_images", settings.getSettings()->no_images);
 		ret.set("no_file_backups", settings.getSettings()->no_file_backups);
+
+		if(helper.getRights("all")=="all")
+		{
+			ret.set("admin", JSON::Value(true));
+		}
 	}
 	else
 	{

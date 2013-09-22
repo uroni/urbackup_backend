@@ -221,7 +221,7 @@ bool CTCPFileServ::TcpStep(void)
 		if(ns>0)
 		{
 			cs.Enter();
-			Log("New Connection incomming", LL_DEBUG);
+			//Log("New Connection incomming", LL_DEBUG);
 			CClientThread *clientthread=new CClientThread(ns, this);
 			Server->createThread(clientthread);
 			clientthreads.push_back(clientthread);
