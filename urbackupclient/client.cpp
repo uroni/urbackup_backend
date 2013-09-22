@@ -1905,7 +1905,13 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 				exlude_dirs[i]=sanitizePattern(exlude_dirs[i]);
 			}
 			
+			addFileExceptions();
 		}
+		else
+		{
+			addFileExceptions();
+		}
+
 		if(curr_settings->getValue(L"include_files", &val) || curr_settings->getValue(L"include_files_def", &val) )
 		{
 			if(val!=cd->getOldIncludePattern())
@@ -1999,6 +2005,10 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 
 		}
 		Server->destroy(curr_settings);
+	}
+	else
+	{
+		addFileExceptions();
 	}
 }
 
@@ -2307,4 +2317,52 @@ void IndexThread::commitModifyHashBuffer(void)
 
 	modify_hash_buffer.clear();
 	modify_hash_buffer_size=0;
+}
+
+namespace
+{
+	LONG GetStringRegKey(HKEY hKey, const std::wstring &strValueName, std::wstring &strValue, const std::wstring &strDefaultValue)
+	{
+		strValue = strDefaultValue;
+		WCHAR szBuffer[8192];
+		DWORD dwBufferSize = sizeof(szBuffer);
+		ULONG nError;
+		nError = RegQueryValueExW(hKey, strValueName.c_str(), 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
+		if (ERROR_SUCCESS == nError)
+		{
+			strValue = szBuffer;
+		}
+		return nError;
+	}
+}
+
+void IndexThread::addFileExceptions(void)
+{
+#ifdef _WIN32
+	HKEY hKey;
+	LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", 0, KEY_READ, &hKey);
+	if(lRes != ERROR_SUCCESS)
+		return;
+
+	std::wstring tfiles;
+	lRes = GetStringRegKey(hKey, L"ExistingPageFiles", tfiles, L"");
+	if(lRes != ERROR_SUCCESS)
+		return;
+
+	std::vector<std::wstring> toks;
+	Tokenize(tfiles, toks, L"\n");
+	for(size_t i=0;i<toks.size();++i)
+	{
+		toks[i]=trim(toks[i]);
+
+		if(toks[i].find(L"\\??\\")==0)
+		{
+			toks[i].erase(0, 4);
+		}
+
+		exlude_dirs.push_back(sanitizePattern(toks[i]));
+	}
+
+	exlude_dirs.push_back(sanitizePattern(L"C:\\hiberfil.sys"));
+#endif
 }

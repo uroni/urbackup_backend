@@ -173,6 +173,8 @@ private:
 
 	void resetFileEntries(void);
 
+	void addFileExceptions(void);
+
 	
 
 	std::string starttoken;
