@@ -150,7 +150,7 @@ void CWorkerThread::operator()()
 					if( keep_alive==false )
 					{
 						keep_alive=true;
-						Server->Log("Client disconnected", LL_INFO);
+						//Server->Log("Client disconnected", LL_INFO);
 						Master->RemoveClient( client );
 					}
 					else
