@@ -171,12 +171,18 @@ void DirectoryWatcherThread::operator()(void)
 				SystemTimeToFileTime(&st, &ft);
 				last_backup_filetime=static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
 				dcw.set_last_backup_time(last_backup_filetime);				
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
 			}
 			else if( msg[0]=='T' )
 			{
 				q_update_last_backup_time->Bind(last_backup_filetime);
 				q_update_last_backup_time->Write();
 				q_update_last_backup_time->Reset();
+
+				IScopedLock lock(update_mutex);
+				update_cond->notify_all();
 			}
 			else if(msg[0]=='K' )
 			{
