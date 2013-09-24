@@ -2323,6 +2323,7 @@ void IndexThread::commitModifyHashBuffer(void)
 	modify_hash_buffer_size=0;
 }
 
+#ifdef _WIN32
 namespace
 {
 	LONG GetStringRegKey(HKEY hKey, const std::wstring &strValueName, std::wstring &strValue, const std::wstring &strDefaultValue)
@@ -2339,6 +2340,7 @@ namespace
 		return nError;
 	}
 }
+#endif
 
 void IndexThread::addFileExceptions(void)
 {
