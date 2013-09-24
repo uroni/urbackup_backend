@@ -679,10 +679,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if( clientpipe==NULL && ( id==ID_GET_FILE || id==ID_GET_FILE_RESUME ) )
 					{
 						ssize_t rc=sendfile64(int_socket, hFile, &foffset, count);
-						if(rc>0)
-						{
-							foffset+=rc;
-						}
 						if(rc<=0)
 						{
 							Log("Error: Reading and sending from file failed", LL_DEBUG);
