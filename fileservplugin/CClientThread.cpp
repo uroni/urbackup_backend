@@ -664,7 +664,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						Log("Error: Seeking in file failed (5043)", LL_ERROR);
 						CloseHandle(hFile);
-						delete []buf;
 						return false;
 					}
 				}
