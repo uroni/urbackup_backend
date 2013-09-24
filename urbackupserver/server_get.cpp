@@ -3633,25 +3633,17 @@ void BackupServerGet::writeFileRepeat(IFile *f, const std::string &str)
 void BackupServerGet::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 {
 	_u32 written=0;
-	_u32 rc;
-	int tries=50;
 	do
 	{
-		rc=f->Write(buf+written, (_u32)(bsize-written));
+		_u32 rc=f->Write(buf+written, (_u32)(bsize-written));
 		written+=rc;
 		if(rc==0)
 		{
-			Server->Log("Failed to write to file... waiting...", LL_WARNING);
+			Server->Log("Failed to write to file "+f->getFilename()+" retrying...", LL_WARNING);
 			Server->wait(10000);
-			--tries;
 		}
 	}
-	while(written<bsize && (rc>0 || tries>0) );
-
-	if(rc==0)
-	{
-		Server->Log("Fatal error writing to file in writeFileRepeat. Write error.", LL_ERROR);
-	}
+	while(written<bsize );
 }
 
 IPipeThrottler *BackupServerGet::getThrottler(size_t speed_bps)
