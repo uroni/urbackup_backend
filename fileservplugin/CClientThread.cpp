@@ -658,6 +658,17 @@ bool CClientThread::ProcessPacket(CRData *data)
 					    next_checkpoint=curr_filesize;
 				}
 
+				if( clientpipe!=NULL || (id!=ID_GET_FILE && id!=ID_GET_FILE_RESUME) )
+				{
+					if(lseek64(hFile, foffset, SEEK_SET)!=foffset)
+					{
+						Log("Error: Seeking in file failed (5043)", LL_ERROR);
+						CloseHandle(hFile);
+						delete []buf;
+						return false;
+					}
+				}
+
 				char *buf=new char[s_bsize];
 
 				bool has_error=false;
@@ -672,7 +683,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 						{
 							foffset+=rc;
 						}
-						else
+						if(rc<=0)
 						{
 							Log("Error: Reading and sending from file failed", LL_DEBUG);
 							CloseHandle(hFile);
