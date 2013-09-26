@@ -249,10 +249,9 @@ void BackupServerGet::operator ()(void)
 
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
-	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	if(!os_create_dir(os_file_prefix(backupfolder+os_file_sep()+clientname)) && !os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+clientname)) )
+
+	if(!createDirectoryForClient())
 	{
-		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
 		pipe->Write("ok");
 		delete server_settings;
 		cleanup_pipes();
@@ -451,6 +450,8 @@ void BackupServerGet::operator ()(void)
 				status.statusaction=sa_full_file;
 				ServerStatus::setServerStatus(status, true);
 
+				createDirectoryForClient();
+
 				ServerLogger::Log(clientid, "Starting full file backup...", LL_INFO);
 
 				if(!constructBackupPath(with_hashes, use_snapshots, true))
@@ -480,6 +481,8 @@ void BackupServerGet::operator ()(void)
 
 				status.statusaction=sa_incr_file;
 				ServerStatus::setServerStatus(status, true);
+
+				createDirectoryForClient();
 
 				ServerLogger::Log(clientid, "Starting incremental file backup...", LL_INFO);
 				
@@ -520,6 +523,8 @@ void BackupServerGet::operator ()(void)
 
 				status.statusaction=sa_full_image;
 				ServerStatus::setServerStatus(status, true);
+
+				createDirectoryForClient();
 
 				ServerLogger::Log(clientid, "Starting full image backup...", LL_INFO);
 				
@@ -566,6 +571,8 @@ void BackupServerGet::operator ()(void)
 
 				status.statusaction=sa_incr_image;
 				ServerStatus::setServerStatus(status, true);
+
+				createDirectoryForClient();
 
 				ServerLogger::Log(clientid, "Starting incremental image backup...", LL_INFO);
 
@@ -4064,4 +4071,15 @@ void BackupServerGet::logVssLogdata(void)
 			ServerLogger::Log(clientid, data, loglevel);
 		}
 	}
+}
+
+bool BackupServerGet::createDirectoryForClient(void)
+{
+	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	if(!os_create_dir(os_file_prefix(backupfolder+os_file_sep()+clientname)) && !os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+clientname)) )
+	{
+		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
+		return false;
+	}
+	return true;
 }

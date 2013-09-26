@@ -155,6 +155,8 @@ private:
 
 	void logVssLogdata(void);
 
+	bool createDirectoryForClient(void);
+
 	SSettings curr_intervals;
 
 	IPipe *pipe;
