@@ -27,6 +27,7 @@
 
 #include <iostream>
 #include <memory.h>
+#include <algorithm>
 
 extern std::string server_identity;
 
@@ -324,16 +325,17 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 			{
 				for(size_t i=0;i<udpsocks.size();++i)
 				{
-					broadcast=0;
+					int broadcast=0;
 					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
 					{
 						Server->Log("Error setting socket to not broadcast", LL_ERROR);
 					}
 
-					for(size_t i=0;i<addr_hints.size();++i)
+					for(size_t j=0;j<addr_hints.size();++j)
 					{
-						addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
-						sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+						char ch=ID_PING;
+						addr_udp.sin_addr.s_addr=addr_hints[j].s_addr;
+						sendto(udpsocks[i], &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
 					}
 
 					broadcast=1;
