@@ -8,7 +8,7 @@ then
 	autoreconf || true
 	automake --add-missing || true
 	libtoolize || true
-	autoreconf
+	autoreconf --install
 	./configure --with-pychart
 	touch build_server_ok
 fi
