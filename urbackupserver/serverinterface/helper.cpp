@@ -343,3 +343,18 @@ std::string Helper::getStrippedServerIdentity(void)
 	}
 	return ret;
 }
+
+void Helper::sleep(unsigned int ms)
+{
+	if(session!=NULL)
+	{
+		Server->getSessionMgr()->releaseUser(session);
+	}
+
+	Server->wait(ms);
+
+	if(session!=NULL)
+	{
+		Server->getSessionMgr()->lockUser(session);
+	}
+}

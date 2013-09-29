@@ -198,6 +198,8 @@ ACTION_IMPL(backups)
 							IFile *in=Server->openFile(os_file_prefix(currdir), MODE_READ);
 							if(in!=NULL)
 							{
+								helper.releaseAll();
+
 								Server->addHeader(tid, "Content-Length: "+nconvert(in->Size()) );
 								char buf[4096];
 								_u32 r;

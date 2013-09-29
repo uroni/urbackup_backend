@@ -6,7 +6,7 @@ namespace
 {
 	const unsigned int max_wait_time=10000;
 
-	const std::vector<SCircularLogEntry>* wait_for_new_data(int clientid, size_t lastid)
+	const std::vector<SCircularLogEntry>* wait_for_new_data(Helper &helper, int clientid, size_t lastid)
 	{
 		unsigned int starttime=Server->getTimeMS();
 
@@ -27,14 +27,14 @@ namespace
 				}
 			}
 
-			Server->wait(500);
+			helper.sleep(500);
 		}
 		while(Server->getTimeMS()-starttime<max_wait_time);
 
 		return logdata;
 	}
 
-	const std::vector<SCircularLogEntry>* wait_for_new_data(size_t lastid)
+	const std::vector<SCircularLogEntry>* wait_for_new_data(Helper &helper, size_t lastid)
 	{
 		unsigned int starttime=Server->getTimeMS();
 
@@ -55,7 +55,7 @@ namespace
 				}
 			}
 
-			Server->wait(500);
+			helper.sleep(500);
 		}
 		while(Server->getTimeMS()-starttime<max_wait_time);
 
@@ -106,11 +106,11 @@ ACTION_IMPL(livelog)
 	std::vector<int> right_ids;
 	if(clientid==0 && helper.getRights("logs")=="all")
 	{
-		logdata=wait_for_new_data(lastid);
+		logdata=wait_for_new_data(helper, lastid);
 	}
 	else if(clientid!=0 && helper.hasRights(clientid, helper.getRights("logs"), right_ids) )
 	{
-		logdata=wait_for_new_data(clientid, lastid);
+		logdata=wait_for_new_data(helper, clientid, lastid);
 	}
 
 	if(logdata==NULL)

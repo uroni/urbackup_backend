@@ -136,7 +136,7 @@ void CSelectThread::operator()()
 				}
 			}
 
-			Server->Log("SelectThread woke up...");
+			//Server->Log("SelectThread woke up...");
 			
 			FD_ZERO(&fdset);
 			max=0;
@@ -234,7 +234,7 @@ bool CSelectThread::RemoveClient(CClient *client)
 
 void CSelectThread::FindWorker(CClient *client)
 {
-	Server->Log("Notifying worker...");
+	//Server->Log("Notifying worker...");
 	if( client->setProcessing(true) == false )
 	{
 		IScopedLock lock(clients_mutex);
