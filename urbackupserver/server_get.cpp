@@ -669,7 +669,7 @@ void BackupServerGet::operator ()(void)
 				}
 				else
 				{				
-					Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(backupfolder, clientid, backupid, true) ) );
+					Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true) ) );
 				}
 				tried_backup=true;
 			}

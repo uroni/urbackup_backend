@@ -119,23 +119,90 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000)
 {
-        udpsock=socket(AF_INET,SOCK_DGRAM,0);
+#ifndef _WIN32
+	std::string bcast_interfaces=Server->getServerParameter("broadcast_interfaces", "");
 
-		sockaddr_in source_addr;
-		memset(&source_addr, 0, sizeof(source_addr));
-		source_addr.sin_family = AF_INET;
-		source_addr.sin_port = htons(UDP_SOURCE_PORT);
+	std::vector<std::string> bcast_filter;
+	if(!bcast_interfaces.empty())
+	{
+		Tokenize(bcast_interfaces, bcast_filter, ";,");
+	}
 
-		bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+	ifaddrs *ifap;
+	int rc=getifaddrs(&ifap);
+	if(rc==0)
+	{
+		for(;ifap!=NULL;ifap=ifap->ifa_next)
+		{
+			bool found_name = bcast_filter.empty() || std::find(bcast_filter.begin(), bcast_filter.end(), ifap->ifa_name)!=bcast_filter.end();
 
-        setSockP(udpsock);
+			if(found_name &&
+				!(ifap->ifa_flags & IFF_LOOPBACK) 
+				&& !(ifap->ifa_flags & IFF_POINTOPOINT) 
+				&&  (ifap->ifa_flags & IFF_BROADCAST) )
+			{			
+				SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+				if(udpsock==-1)
+				{
+					Server->Log("Error creating socket", LL_ERROR);
+					continue;
+				}
 
-        BOOL val=TRUE;
-        setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
+				sockaddr_in source_addr;
+				memset(&source_addr, 0, sizeof(source_addr));
+				source_addr.sin_addr=((struct sockaddr_in *)ifap->ifa_addr)->sin_addr;
+				source_addr.sin_family = AF_INET;
+				source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
-        socket_open=false;
+				int rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+				if(rc<0)
+				{
+					Server->Log("Binding UDP socket failed", LL_ERROR);
+				}
 
-		stack.setAddChecksum(internet_connection);
+				BOOL val=TRUE;
+				rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
+				if(rc<0)
+				{
+					Server->Log("Enabling SO_BROADCAST for UDP socket failed", LL_ERROR);
+				}
+
+				#if defined(__FreeBSD__)
+				int optval=1;
+				if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+				{
+					Server->Log("Error setting IP_ONESBCAST", LL_ERROR);
+				}
+				#endif
+			}
+		}
+		freeifaddrs(ifap);
+	}
+	else
+	{
+		Server->Log("Getting interface ips failed", LL_ERROR);
+	}
+#else
+	SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);	
+
+	sockaddr_in source_addr;
+	memset(&source_addr, 0, sizeof(source_addr));
+	source_addr.sin_family = AF_INET;
+	source_addr.sin_port = htons(UDP_SOURCE_PORT);
+
+	bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+
+	setSockP(udpsock);
+
+	BOOL val=TRUE;
+	setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
+
+	udpsocks.push_back(udpsock);
+
+#endif
+
+	socket_open=false;
+	stack.setAddChecksum(internet_connection);
 }
 
 FileClient::~FileClient(void)
@@ -144,7 +211,10 @@ FileClient::~FileClient(void)
 	{
 		Server->destroy(tcpsock);
 	}
-	closesocket(udpsock);
+	for(size_t i=0;i<udpsocks.size();++i)
+	{
+		closesocket(udpsocks[i]);
+	}
 }
 
 std::vector<sockaddr_in> FileClient::getServers(void)
@@ -171,201 +241,184 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 {
         if(start==true)
         {
-				max_version=0;
-#if defined(_WIN32) || defined(__FreeBSD__)                
-				  //				  Server->Log("Enumerating ip addresses...", LL_DEBUG);
-       #ifdef _WIN32
-                //get local ip address
-                char hostname[MAX_PATH];
-                struct    hostent* h;
-                _u32     address;
+			max_version=0;
+#if defined(_WIN32)
 
-                _i32 rc=gethostname(hostname, MAX_PATH);
-                if(rc==SOCKET_ERROR)
-                        return 0;
-
-		  std::vector<_u32> addresses;
-
-                if(NULL != (h = gethostbyname(hostname)))
-                {
-                for(_u32 x = 0; (h->h_addr_list[x]); x++)
-                {
-		  //		  Server->Log("Found address for hostname", LL_DEBUG);
-                        ((uchar*)(&address))[0] = h->h_addr_list[x][0];
-                        ((uchar*)(&address))[1] = h->h_addr_list[x][1];
-                        ((uchar*)(&address))[2] = h->h_addr_list[x][2];
-                        ((uchar*)(&address))[3] = h->h_addr_list[x][3];
-                        ((uchar*)(&address))[3]=255;
-                        addresses.push_back(address);
-                        local_ip=address;
-                }
-                }
-#else
-		  _u32 address;
-		  ifaddrs *ifap;
-		  std::vector<_u32> addresses;
-		  int rc=getifaddrs(&ifap);
-		  if(rc==0)
-		    {
-		      for(;ifap!=NULL;ifap=ifap->ifa_next)
+			_u32 udpsock;
+			if(udpsocks.empty())
 			{
-			  address=((struct sockaddr_in*)(ifap->ifa_addr))->sin_addr.s_addr;
-			  ((uchar*)(&address))[3]=255;
-			  addresses.push_back(address);
+				Server->Log("No udp socket present", LL_ERROR);
+				return ERR_ERROR;
 			}
-		    }
-		  else
-		    {
-		      Server->Log("Getting interface ips failed", LL_ERROR);
-		    }
-#endif
 
+            //get local ip address
+            char hostname[MAX_PATH];
+            struct    hostent* h;
+            _u32     address;
 
-                sockaddr_in addr_udp;
+            _i32 rc=gethostname(hostname, MAX_PATH);
+            if(rc==SOCKET_ERROR)
+                    return 0;
 
-                ((uchar*)(&address))[0]=255;
-                ((uchar*)(&address))[1]=255;
-                ((uchar*)(&address))[2]=255;
-                ((uchar*)(&address))[3]=255;
+				std::vector<_u32> addresses;
 
-                addr_udp.sin_family=AF_INET;
-                addr_udp.sin_port=htons(UDP_PORT);
-                addr_udp.sin_addr.s_addr=address;
-
-                
-		#if defined(__FreeBSD__)
-		{
-		    int broadcast=1;
-		    if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
-		      {
-			Server->Log("Error setting socket to broadcast", LL_ERROR);
-		      }
-		    int optval=1;
-		    if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
-		    {
-			Server->Log("Error setting IP_ONESBCAST", LL_ERROR);
-		    }
-		}
-		#endif
-
-		char ch=ID_PING;
-                sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-
-                for(size_t i=0;i<addresses.size();++i)
-                {
-		  char *ip=(char*)&addresses[i];
-		  //		  Server->Log("Sending broadcast to "+nconvert((unsigned char)ip[0])+"."+nconvert((unsigned char)ip[1])+"."+nconvert((unsigned char)ip[2])+"."+nconvert((unsigned char)ip[3]), LL_DEBUG);
-                        addr_udp.sin_addr.s_addr=addresses[i];
-                        sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-                }
-
-		#if defined(__FreeBSD__)
-		{
-		    int broadcast=0;
-		    if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
-		      {
-			Server->Log("Error setting socket to broadcast", LL_ERROR);
-		      }
-		    int optval=0;
-		    if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
-		    {
-			Server->Log("Error setting IP_ONESBCAST", LL_ERROR);
-		    }
-		}
-		#endif
-
-				for(size_t i=0;i<addr_hints.size();++i)
+            if(NULL != (h = gethostbyname(hostname)))
+            {
+				for(_u32 x = 0; (h->h_addr_list[x]); x++)
 				{
-					addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
-					sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+			//		  Server->Log("Found address for hostname", LL_DEBUG);
+						((uchar*)(&address))[0] = h->h_addr_list[x][0];
+						((uchar*)(&address))[1] = h->h_addr_list[x][1];
+						((uchar*)(&address))[2] = h->h_addr_list[x][2];
+						((uchar*)(&address))[3] = h->h_addr_list[x][3];
+						((uchar*)(&address))[3]=255;
+						addresses.push_back(address);
+						local_ip=address;
 				}
-#else
-				  //				  Server->Log("Only sending to broadcast addreess", LL_DEBUG);
-		int broadcast=1;
-		if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
-		{
-			Server->Log("Error setting socket to broadcast", LL_ERROR);
-		}
-		
-		sockaddr_in addr_udp;
-		addr_udp.sin_family=AF_INET;
-		addr_udp.sin_port=htons(UDP_PORT);
-		addr_udp.sin_addr.s_addr=inet_addr("255.255.255.255");
-		memset(addr_udp.sin_zero,0, sizeof(addr_udp.sin_zero));
-		
-		char ch=ID_PING;
-		int rc=sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
-		if(rc==-1)
-		{
-			Server->Log("Sending broadcast failed!", LL_ERROR);
-		}
+            }
 
-		broadcast=0;
-		if(setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
-		{
-			Server->Log("Error setting socket to not broadcast", LL_ERROR);
-		}
 
-		for(size_t i=0;i<addr_hints.size();++i)
-		{
-			addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
+			sockaddr_in addr_udp;
+			addr_udp.sin_family=AF_INET;
+			addr_udp.sin_port=htons(UDP_PORT);
+			addr_udp.sin_addr.s_addr=INADDR_BROADCAST;
+                
+			char ch=ID_PING;
 			sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-		}
+
+			for(size_t i=0;i<addresses.size();++i)
+			{
+					char *ip=(char*)&addresses[i];
+					//Server->Log("Sending broadcast to "+nconvert((unsigned char)ip[0])+"."+nconvert((unsigned char)ip[1])+"."+nconvert((unsigned char)ip[2])+"."+nconvert((unsigned char)ip[3]), LL_DEBUG);
+					addr_udp.sin_addr.s_addr=addresses[i];
+					sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+			}
+
+
+			for(size_t i=0;i<addr_hints.size();++i)
+			{
+				addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
+				sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+			}
+				
+#else //Linux
+		
+			sockaddr_in addr_udp;
+			addr_udp.sin_family=AF_INET;
+			addr_udp.sin_port=htons(UDP_PORT);
+			addr_udp.sin_addr.s_addr=INADDR_BROADCAST;
+			memset(addr_udp.sin_zero,0, sizeof(addr_udp.sin_zero));
+		
+
+			for(size_t i=0;i<udpsocks.size();++i)
+			{
+				char ch=ID_PING;
+				int rc=sendto(udpsocks[0], &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
+				if(rc==-1)
+				{
+					Server->Log("Sending broadcast failed!", LL_ERROR);
+				}
+			}
+
+			if(!addr_hints.empty())
+			{
+				for(size_t i=0;i<udpsocks.size();++i)
+				{
+					broadcast=0;
+					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
+					{
+						Server->Log("Error setting socket to not broadcast", LL_ERROR);
+					}
+
+					for(size_t i=0;i<addr_hints.size();++i)
+					{
+						addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
+						sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
+					}
+
+					broadcast=1;
+					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
+					{
+						Server->Log("Error setting socket to broadcast", LL_ERROR);
+					}
+				}
+			}
 #endif
 
-                starttime=Server->getTimeMS();
+			starttime=Server->getTimeMS();
 
-                servers.clear();
-				servernames.clear();
-                wvservers.clear(); 
+			servers.clear();
+			servernames.clear();
+			wvservers.clear(); 
 
 
-                return ERR_CONTINUE;
+			return ERR_CONTINUE;
         }
         else
         {
-            _i32 rc = selectc( udpsock, 1000*1000 ); //1sec
+
+			fd_set fdset;
+
+			FD_ZERO(&fdset);
+
+			for(size_t i=0;i<udpsocks.size();++i)
+			{
+				FD_SET(udpsocks[i], &fdset);
+			}
+
+			timeval lon;
+			lon.tv_sec=0;
+			lon.tv_usec=1000*1000;
+			_i32 rc = select((int)socket+1, &fdset, 0, 0, &lon);
 
         	if(rc>0)
 	        {
-		        socklen_t addrsize=sizeof(sockaddr_in);
-		        sockaddr_in sender;
-		        _i32 err = recvfrom(udpsock, buffer, BUFFERSIZE_UDP, 0, (sockaddr*)&sender, &addrsize);
-		        if(err==SOCKET_ERROR)
-		        {
-			        return ERR_ERROR;
-        		}
-                        if(err>2&&buffer[0]==ID_PONG)
-                        {
-                                int version=(unsigned char)buffer[1];
-                                if(version==VERSION)
-                                {
-                                        servers.push_back(sender);
 
-                                        std::string sn;
-                                        sn.resize(err-2);
-                                        memcpy((char*)sn.c_str(), &buffer[2], err-2);
+				for(size_t i=0;i<udpsocks.size();++i)
+				{
+					if(FD_ISSET(udpsocks[i], &fdset))
+					{
+						socklen_t addrsize=sizeof(sockaddr_in);
+						sockaddr_in sender;
+						_i32 err = recvfrom(udpsocks[i], buffer, BUFFERSIZE_UDP, 0, (sockaddr*)&sender, &addrsize);
+						if(err==SOCKET_ERROR)
+						{
+							continue;
+        				}
+						if(err>2&&buffer[0]==ID_PONG)
+						{
+							int version=(unsigned char)buffer[1];
+							if(version==VERSION)
+							{
+								servers.push_back(sender);
 
-										servernames.push_back(Server->ConvertToUnicode(sn));
-                                }
-                                else
-                                {
-                                        wvservers.push_back(sender);
-                                }
+								std::string sn;
+								sn.resize(err-2);
+								memcpy((char*)sn.c_str(), &buffer[2], err-2);
+
+								servernames.push_back(Server->ConvertToUnicode(sn));
+							}
+							else
+							{
+								wvservers.push_back(sender);
+							}
                                 
-                                if( version>max_version )
-                                {
-                                        max_version=version;
-                                }
-                        }
-                }
+							if( version>max_version )
+							{
+								max_version=version;
+							}
+						}
+					}
+				}
+			}
 
-                if(Server->getTimeMS()-starttime>DISCOVERY_TIMEOUT)
-                {
-                        return ERR_TIMEOUT;
-                }
-                else
-                        return ERR_CONTINUE;
+
+            if(Server->getTimeMS()-starttime>DISCOVERY_TIMEOUT)
+            {
+                    return ERR_TIMEOUT;
+            }
+            else
+                    return ERR_CONTINUE;
 
         }
 
