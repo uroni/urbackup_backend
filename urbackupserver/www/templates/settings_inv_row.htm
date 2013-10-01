@@ -2,11 +2,13 @@
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
 <td>#{tInterval for incremental file backups}:</td>
-<td><input type="text" id="update_freq_incr" value="#{update_freq_incr}"/> #{thours}</td>
+<td><input type="text" id="update_freq_incr" value="#{update_freq_incr}"/> #{thours}&nbsp;&nbsp;</td>
+<td><input type="checkbox" id="update_freq_incr_disable" onchange="settingsCheckboxChange()"/> #{tDisable}</td>
 </tr>
 <tr>
 <td>#{tInterval for full file backups}:</td>
-<td><input type="text" id="update_freq_full" value="#{update_freq_full}"/> #{tdays}</td>
+<td><input type="text" id="update_freq_full" value="#{update_freq_full}"/> #{tdays}&nbsp;&nbsp;</td>
+<td><input type="checkbox" id="update_freq_full_disable" onchange="settingsCheckboxChange()"/> #{tDisable}</td>
 </tr>
 <tr>
 <td>#{tMaximal number of incremental file backups}:</td>
@@ -44,16 +46,18 @@
 #{no_compname_start}
 <tr>
 <td>#{tDisable image backups}:</td>
-<td><input type="checkbox" id="client_disable_image_backups" #{client_disable_image_backups}</td>
+<td><input type="checkbox" id="client_disable_image_backups" #{client_disable_image_backups}/></td>
 </tr>
 #{no_compname_end}
 <tr>
 <td>#{tInterval for incremental image backups}:</td>
-<td><input type="text" id="update_freq_image_incr" value="#{update_freq_image_incr}"/> #{tdays}</td>
+<td><input type="text" id="update_freq_image_incr" value="#{update_freq_image_incr}"/> #{tdays}&nbsp;&nbsp;</td>
+<td><input type="checkbox" id="update_freq_image_incr_disable" onchange="settingsCheckboxChange()"/> #{tDisable}</td>
 </tr>
 <tr>
 <td>#{tInterval for full image backups}:</td>
-<td><input type="text" id="update_freq_image_full" value="#{update_freq_image_full}"/> #{tdays}</td>
+<td><input type="text" id="update_freq_image_full" value="#{update_freq_image_full}"/> #{tdays}&nbsp;&nbsp;</td>
+<td><input type="checkbox" id="update_freq_image_full_disable" onchange="settingsCheckboxChange()"/> #{tDisable}</td>
 </tr>
 <td>#{tMaximal number of incremental image backups}:</td>
 <td><input type="text" id="max_image_incr" value="#{max_image_incr}"/></td>

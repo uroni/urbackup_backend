@@ -223,8 +223,9 @@ function getPar(p)
 		return "&"+p+"="+(obj.checked?"true":"false");
 	}
 	var val=obj.value;
-	if(p=="update_freq_incr") val*=60*60;
-	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr") val*=60*60*24;
+	if(p=="update_freq_incr"){ val*=60*60; if(obj.disabled) val*=-1; }
+	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
+		{ val*=60*60*24; if(obj.disabled) val*=-1; }
 	if(p=="startup_backup_delay") val*=60;
 	if(p=="update_freq_image_full" && I('client_disable_image_backups') && I('client_disable_image_backups').checked )
 		val*=-1;
@@ -1316,6 +1317,7 @@ function show_settings2(data)
 			data.settings.file_hash_collect_cachesize/=1024;
 			data.settings.update_stats_cachesize/=1024;
 			
+			
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
 			
@@ -1545,6 +1547,7 @@ function show_settings2(data)
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 		update_tabber=true;
+		settingsCheckboxChange();
 	}
 	
 	if(data.sa && data.sa=="clientsettings")
@@ -1577,6 +1580,32 @@ function show_settings2(data)
 					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_timeleft);
 		}
 	}
+}
+function settingsCheckboxHandle(cbid)
+{
+	if(!I(cbid)) return;
+	
+	if(I(cbid+'_disable').checked && I(cbid).disabled==false)
+	{
+		I(cbid).disabled=true;
+	}
+	else if(!I(cbid+'_disable').checked && I(cbid).disabled==true)
+	{
+		I(cbid).disabled=false;
+	}
+	else if(!I(cbid+'_disable').checked && I(cbid).value<0)
+	{
+		I(cbid).value*=-1;
+		I(cbid).disabled=true;
+		I(cbid+'_disable').checked=true;
+	}
+}
+function settingsCheckboxChange()
+{
+	settingsCheckboxHandle('update_freq_incr');
+	settingsCheckboxHandle('update_freq_full');
+	settingsCheckboxHandle('update_freq_image_incr');
+	settingsCheckboxHandle('update_freq_image_full');
 }
 
 g.settings_list=[
@@ -1788,6 +1817,13 @@ function updateUserOverwrite(clientid)
 	I('archive_every_unit').disabled=!checked;
 	I('archive_for_unit').disabled=!checked;
 	I('archive_backup_type').disabled=!checked;
+	
+	//Disable checkboxes
+	I('update_freq_incr_disable').disabled=!checked;
+	I('update_freq_full_disable').disabled=!checked;
+	I('update_freq_image_incr_disable').disabled=!checked;
+	I('update_freq_image_full_disable').disabled=!checked;
+	
 	
 	if(clientid)
 	{
