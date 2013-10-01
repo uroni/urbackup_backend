@@ -245,12 +245,14 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 			max_version=0;
 #if defined(_WIN32)
 
-			_u32 udpsock;
+			SOCKET udpsock;
 			if(udpsocks.empty())
 			{
 				Server->Log("No udp socket present", LL_ERROR);
 				return ERR_ERROR;
 			}
+
+			udpsock=udpsocks[0];
 
             //get local ip address
             char hostname[MAX_PATH];
