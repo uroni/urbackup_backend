@@ -41,19 +41,19 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 	IDatabase *db=helper.getDatabase();
 	IQuery *q=db->Prepare("SELECT * FROM ("
 	"SELECT a.id AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', a.backuptime, 'localtime') AS backuptime, backuptime AS bt,"
-	 "incremental, (strftime('%s',running)-strftime('%s',a.backuptime)) AS duration, size_bytes, 0 AS image, 0 AS del "
+	 "incremental, (strftime('%s',running)-strftime('%s',a.backuptime)) AS duration, size_bytes, 0 AS image, 0 AS del, size_calculated "
 	"FROM backups a INNER JOIN clients b ON a.clientid=b.id "
 	 "WHERE complete=1 "+filter+
 	"UNION ALL "
 	"SELECT c.id AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', c.backuptime, 'localtime') AS backuptime, backuptime AS bt,"
 	"incremental, (strftime('%s',running)-strftime('%s',c.backuptime)) AS duration, (size_bytes+IFNULL(0,("
 	"SELECT SUM(size_bytes) FROM backup_images INNER JOIN (SELECT * FROM assoc_images WHERE img_id=c.id) ON assoc_id=id"
-	")) ) AS size_bytes, 1 AS image, 0 AS del "
+	")) ) AS size_bytes, 1 AS image, 0 AS del, 1 as size_calculated "
 	"FROM backup_images c INNER JOIN clients d ON c.clientid=d.id "
 	"WHERE complete=1 AND length(letter)<=2 "+filter+
 	"UNION ALL "
 	"SELECT e.backupid AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', e.created, 'localtime') AS backuptime, created AS bt,"
-	"incremental, (strftime('%s',stoptime)-strftime('%s',e.created)) AS duration, delsize AS size_bytes, image, 1 AS del "
+	"incremental, (strftime('%s',stoptime)-strftime('%s',e.created)) AS duration, delsize AS size_bytes, image, 1 AS del, 1 AS size_calculated "
 	"FROM del_stats e INNER JOIN clients f ON e.clientid=f.id "
 	"WHERE 1=1 "+filter+
 	") ORDER BY bt DESC LIMIT "+nconvert(max_display));
@@ -80,7 +80,14 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 		obj.set("backuptime", res[i][L"backuptime"]);
 		obj.set("incremental", watoi(res[i][L"incremental"]));
 		obj.set("duration", res[i][L"duration"]);
-		obj.set("size_bytes", res[i][L"size_bytes"]);
+		if(watoi(res[i][L"size_calculated"])==1)
+		{
+			obj.set("size_bytes", res[i][L"size_bytes"]);
+		}
+		else
+		{
+			obj.set("size_bytes", "-1");
+		}
 		obj.set("image", watoi(res[i][L"image"]));
 		obj.set("del", (res[i][L"del"]==L"1") );
 		lastacts.add(obj);

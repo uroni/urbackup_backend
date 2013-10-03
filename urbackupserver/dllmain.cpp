@@ -964,6 +964,13 @@ void update23_24(void)
 	}
 }
 
+void update24_25(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE backups ADD size_calculated INTEGER");
+	db->Write("UPDATE backups SET size_calculated=0 WHERE size_calculated IS NULL");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -981,7 +988,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=24;
+	int max_v=25;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1097,6 +1104,10 @@ void upgrade(void)
 				break;
 			case 23:
 				update23_24();
+				++ver;
+				break;
+			case 24:
+				update24_25();
 				++ver;
 				break;
 			default:

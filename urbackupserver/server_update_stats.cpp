@@ -663,6 +663,8 @@ void ServerUpdateStats::update_files(void)
 	client_sum_cache.clear();
 	files_num_clients_cache.clear();
 	files_num_clients_del_cache.clear();
+
+	db->Write("UPDATE backups SET size_calculated=1 WHERE size_calculated=0");
 }
 
 std::map<int, _i64> ServerUpdateStats::calculateSizeDeltas(const std::wstring &pShaHash, _i64 filesize,  _i64 *rsize, bool with_del)
