@@ -919,51 +919,49 @@ void update21_22(void)
 	db->Write("CREATE INDEX files_del_idx ON files_del (shahash, filesize, clientid)");
 }
 
-/*void update22_23(void)
-{
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_FILES_CACHE);
-	db->Write("PRAGMA journal_mode=DELETE");
-	db->Write("CREATE TABLE files_cache (id INTEGER PRIMARY KEY, shahash BLOB, filesize INT, fullpath TEXT, hashpath TEXT");
-
-	IDatabase *orig_db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-
-	IQuery* q_read=orig_db->Prepare("SELECT shahash, filesize, fullpath, hashpath FROM files f WHERE rowid>? AND f.created=(SELECT MAX(created) FROM files WHERE shahash=f.shahash AND filesize=f.filesize) LIMIT 10000");
-	IQuery* q_write=db->Prepare("INSERT INTO files_cache (shahash, filesize, fullpath, hashpath) VALUES (?, ?, ?, ?)");
-
-
-	db->BeginTransaction();
-
-	db_results res;
-	int64 pos=0;
-	do
-	{
-		q_read->Bind(pos);
-		res=q_read->Read();
-
-		for(size_t i=0;i<res.size();++i)
-		{
-			const std::wstring& shahash=res[i][L"shahash"];
-			q_write->Bind((const char*)shahash.c_str(), shahash.size()*sizeof(wchar_t));
-			q_write->Bind(res[i][L"filesize"]);
-			q_write->Bind(res[i][L"fullpath"]);
-			q_write->Bind(res[i][L"hashpath"]);
-			q_write->Write();
-			q_write->Reset();
-		}
-
-	}
-	while(!res.empty());
-
-	db->EndTransaction();
-
-	db->Write("CREATE INDEX files_cache_idx ON files_cache (shahash, filesize)");
-}*/
-
 void update22_23(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('files_cache', 'none')");
 	db->Write("CREATE TABLE files_new ( backupid INTEGER, fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER, incremental INTEGER)");
+}
+
+void update23_24(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db_results res=db->Read("SELECT value, clientid FROM settings_db.settings WHERE key='allow_starting_file_backups'");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?, ?, ?)");
+	for(size_t i=0;i<res.size();++i)
+	{
+		q_insert->Bind("allow_starting_incr_file_backups");
+		q_insert->Bind(res[i][L"value"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+
+		q_insert->Bind("allow_starting_full_file_backups");
+		q_insert->Bind(res[i][L"value"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+	}
+
+	res=db->Read("SELECT value, clientid FROM settings_db.settings WHERE key='allow_starting_image_backups'");
+	q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?, ?, ?)");
+	for(size_t i=0;i<res.size();++i)
+	{
+		q_insert->Bind("allow_starting_incr_image_backups");
+		q_insert->Bind(res[i][L"value"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+
+		q_insert->Bind("allow_starting_full_image_backups");
+		q_insert->Bind(res[i][L"value"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+	}
 }
 
 void upgrade(void)
@@ -983,7 +981,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=23;
+	int max_v=24;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1095,6 +1093,10 @@ void upgrade(void)
 				break;
 			case 22:
 				update22_23();
+				++ver;
+				break;
+			case 23:
+				update23_24();
 				++ver;
 				break;
 			default:

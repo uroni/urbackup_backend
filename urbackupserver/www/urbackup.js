@@ -1270,8 +1270,10 @@ function show_settings2(data)
 			
 			
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
-			data.settings.allow_starting_file_backups=getCheckboxValue(data.settings.allow_starting_file_backups);
-			data.settings.allow_starting_image_backups=getCheckboxValue(data.settings.allow_starting_image_backups);
+			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
+			data.settings.allow_starting_incr_file_backups=getCheckboxValue(data.settings.allow_starting_incr_file_backups);
+			data.settings.allow_starting_full_image_backups=getCheckboxValue(data.settings.allow_starting_full_image_backups);
+			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			
@@ -1376,8 +1378,10 @@ function show_settings2(data)
 			data.settings.overwrite=getCheckboxValue(data.settings.overwrite);
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
-			data.settings.allow_starting_file_backups=getCheckboxValue(data.settings.allow_starting_file_backups);
-			data.settings.allow_starting_image_backups=getCheckboxValue(data.settings.allow_starting_image_backups);
+			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
+			data.settings.allow_starting_incr_file_backups=getCheckboxValue(data.settings.allow_starting_incr_file_backups);
+			data.settings.allow_starting_full_image_backups=getCheckboxValue(data.settings.allow_starting_full_image_backups);
+			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			data.settings.client_disable_image_backups=getCheckboxValue(data.settings.update_freq_image_full<0);
@@ -1629,8 +1633,10 @@ g.settings_list=[
 "include_files",
 "default_dirs",
 "allow_config_paths",
-"allow_starting_file_backups",
-"allow_starting_image_backups",
+"allow_starting_full_file_backups",
+"allow_starting_incr_file_backups",
+"allow_starting_full_image_backups",
+"allow_starting_incr_image_backups",
 "allow_pause",
 "allow_log_view",
 "image_letters",

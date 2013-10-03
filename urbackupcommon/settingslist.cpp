@@ -22,8 +22,10 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"computername");
 	ret.push_back(L"default_dirs");
 	ret.push_back(L"allow_config_paths");
-	ret.push_back(L"allow_starting_file_backups");
-	ret.push_back(L"allow_starting_image_backups");
+	ret.push_back(L"allow_starting_full_file_backups");
+	ret.push_back(L"allow_starting_incr_file_backups");
+	ret.push_back(L"allow_starting_full_image_backups");
+	ret.push_back(L"allow_starting_incr_image_backups");
 	ret.push_back(L"allow_pause");
 	ret.push_back(L"allow_log_view");
 	ret.push_back(L"allow_overwrite");
