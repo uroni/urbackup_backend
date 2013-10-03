@@ -639,7 +639,7 @@ bool FileClient::Reconnect(void)
 	if(tcpsock==NULL)
 		return ERR_ERROR;
 
-	int tries=50;
+	int tries=5000;
 
 	if(!hashed && protocol_version>1)
 	{
