@@ -365,15 +365,23 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 
 			FD_ZERO(&fdset);
 
+			SOCKET max_socket;
+
+			if(!udpsocks.empty())
+			{
+				max_socket=udpsocks[0];
+			}
+
 			for(size_t i=0;i<udpsocks.size();++i)
 			{
 				FD_SET(udpsocks[i], &fdset);
+				max_socket=(std::max)(max_socket, udpsocks[i]);
 			}
 
 			timeval lon;
 			lon.tv_sec=0;
 			lon.tv_usec=1000*1000;
-			_i32 rc = select((int)socket+1, &fdset, 0, 0, &lon);
+			_i32 rc = select((int)max_socket+1, &fdset, 0, 0, &lon);
 
         	if(rc>0)
 	        {
