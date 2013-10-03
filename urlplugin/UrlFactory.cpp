@@ -102,7 +102,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		errbuf.resize(strlen(errbuf.c_str()));
 		if(errmsg==NULL)
 		{
-			Server->Log("Error during cURL operation occured. ec="+nconvert(res)+" -- "+errbuf, LL_DEBUG);
+			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" ("+nconvert(res)+") -- "+errbuf, LL_DEBUG);
 		}
 		else
 		{
