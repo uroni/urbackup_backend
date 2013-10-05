@@ -2335,7 +2335,8 @@ namespace
 		nError = RegQueryValueExW(hKey, strValueName.c_str(), 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
 		if (ERROR_SUCCESS == nError)
 		{
-			strValue = szBuffer;
+			strValue.resize(dwBufferSize/sizeof(wchar_t));
+			memcpy(const_cast<wchar_t*>(strValue.c_str()), szBuffer, dwBufferSize);
 		}
 		return nError;
 	}
@@ -2358,9 +2359,17 @@ void IndexThread::addFileExceptions(void)
 		return;
 
 	std::vector<std::wstring> toks;
-	Tokenize(tfiles, toks, L"\n");
+	std::wstring sep;
+	sep.resize(1);
+	sep[0]=0;
+	Tokenize(tfiles, toks, sep);
 	for(size_t i=0;i<toks.size();++i)
 	{
+		toks[i]=trim(toks[i].c_str());
+
+		if(toks[i].empty())
+			continue;
+
 		toks[i]=trim(toks[i]);
 
 		if(toks[i].find(L"\\??\\")==0)

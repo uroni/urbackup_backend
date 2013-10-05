@@ -713,7 +713,7 @@ void	Tokenize(const std::string& str, std::vector<std::string> &tokens, std::str
 	while(true)
 	{ 
 		// find the next seperator
-		pos1 = (s32)str.find_first_of(seps.c_str(), pos0);
+		pos1 = (s32)str.find_first_of(seps, pos0);
 		// find the next \" 
 		i    = (s32)str.find_first_of("\"", pos0);
 	    
@@ -769,7 +769,7 @@ void	Tokenize(const std::wstring& str, std::vector<std::wstring> &tokens, std::w
 	while(true)
 	{ 
 		// find the next seperator
-		pos1 = (s32)str.find_first_of(seps.c_str(), pos0);
+		pos1 = (s32)str.find_first_of(seps, pos0);
 		// find the next \" 
 		i    = (s32)str.find_first_of(L"\"", pos0);
 	    

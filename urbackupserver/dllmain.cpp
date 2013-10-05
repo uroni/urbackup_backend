@@ -308,7 +308,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, purge_database");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database");
 		}
 		exit(rc);
 	}
