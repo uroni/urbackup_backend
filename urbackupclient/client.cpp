@@ -636,6 +636,10 @@ void IndexThread::indexDirs(void)
 				mod_path=scd->target;
 				scd->running=true;
 			}
+
+			mod_path=removeDirectorySeparatorAtEnd(mod_path);
+			backup_dirs[i].path=removeDirectorySeparatorAtEnd(backup_dirs[i].path);
+
 #ifdef _WIN32
 			if(!b || !onlyref)
 			{
@@ -646,6 +650,13 @@ void IndexThread::indexDirs(void)
 				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 				std::sort(changed_dirs.begin(), changed_dirs.end());
 
+				#ifndef VSS_XP
+				#ifndef VSS_S03
+				VSSLog(L"Scanning for changed hard links in \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
+				handleHardLinks(backup_dirs[i].path, mod_path);
+				#endif
+				#endif
+
 				std::vector<std::wstring> deldirs=cd->getDelDirs(false);
 				for(size_t i=0;i<deldirs.size();++i)
 				{
@@ -653,8 +664,6 @@ void IndexThread::indexDirs(void)
 				}
 			}
 #endif
-			mod_path=removeDirectorySeparatorAtEnd(mod_path);
-			backup_dirs[i].path=removeDirectorySeparatorAtEnd(backup_dirs[i].path);
 
 			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 			index_c_db=0;
@@ -2381,5 +2390,159 @@ void IndexThread::addFileExceptions(void)
 
 		exlude_dirs.push_back(sanitizePattern(toks[i]));
 	}
+#endif
+}
+
+void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring& vsspath)
+{
+#ifdef _WIN32
+	std::wstring prefixedbpath=os_file_prefix(bpath);
+	std::wstring tvolume;
+	tvolume.resize(prefixedbpath.size()+100);
+	DWORD cchBufferLength=static_cast<DWORD>(tvolume.size());
+	BOOL b=GetVolumePathNameW(prefixedbpath.c_str(), &tvolume[0], cchBufferLength);
+	if(!b)
+	{
+		VSSLog(L"Error getting volume path for "+bpath, LL_WARNING);
+		return;
+	}
+
+	std::wstring tvssvolume;
+	tvssvolume.resize(vsspath.size()+100);
+	cchBufferLength=static_cast<DWORD>(tvssvolume.size());
+	b=GetVolumePathNameW(vsspath.c_str(), &tvssvolume[0], cchBufferLength);
+	if(!b)
+	{
+		VSSLog(L"Error getting volume path for "+vsspath, LL_WARNING);
+		return;
+	}
+
+	std::wstring vssvolume=tvssvolume.c_str();
+
+	std::wstring volume=strlower(tvolume.c_str());
+
+	if(volume.find(L"\\\\?\\")==0)
+		volume.erase(0, 4);
+
+	std::vector<SMDir> additional_changed_dirs;
+
+	for(size_t i=0;i<changed_dirs.size();++i)
+	{
+		std::wstring tpath=changed_dirs[i].name;
+
+		if(tpath.find(volume)!=0)
+		{
+			continue;
+		}
+
+		std::wstring vsstpath=vssvolume+tpath.substr(volume.size());
+
+		if(vsstpath.size()<2 || (vsstpath[0]!='\\' && vsstpath[1]!='\\' ) )
+			tpath=L"\\\\?\\"+tpath;
+
+		bool has_error;
+		std::vector<SFile> files = getFiles(vsstpath, &has_error);
+
+		if(has_error)
+		{
+			VSSLog(L"Cannot open directory "+vsstpath+L" to handle hard links", LL_INFO);
+		}
+
+		for(size_t i=0;i<files.size();++i)
+		{
+			std::wstring fn=vsstpath+files[i].name;
+			HANDLE hFile = CreateFileW(fn.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+			if(hFile==INVALID_HANDLE_VALUE)
+			{
+				VSSLog(L"Cannot open file "+fn+L" to read the file attributes", LL_INFO);
+			}
+			else
+			{
+				BY_HANDLE_FILE_INFORMATION fileInformation;
+				BOOL b=GetFileInformationByHandle(hFile, &fileInformation);
+
+				if(!b)
+				{
+					VSSLog(L"Error getting file information of "+fn, LL_INFO);
+					CloseHandle(hFile);
+				}
+				else if(fileInformation.nNumberOfLinks>1)
+				{
+					CloseHandle(hFile);
+
+					std::wstring outBuf;
+					DWORD stringLength=4096;
+					outBuf.resize(stringLength);
+					HANDLE hFn=FindFirstFileNameW(fn.c_str(), 0, &stringLength, &outBuf[0]);
+
+					if(hFn==INVALID_HANDLE_VALUE && GetLastError()==ERROR_MORE_DATA)
+					{
+						outBuf.resize(stringLength);
+						hFn=FindFirstFileNameW(fn.c_str(), 0, &stringLength, &outBuf[0]);
+					}
+
+					if(hFn==INVALID_HANDLE_VALUE)
+					{
+						VSSLog(L"Error reading hard link names of "+fn, LL_INFO);
+					}
+					else
+					{
+						std::wstring ndir=strlower(ExtractFilePath(std::wstring(outBuf.begin(), outBuf.begin()+stringLength)))+os_file_sep();
+						if(ndir[0]=='\\')
+							ndir=volume+ndir.substr(1);
+						else
+							ndir=volume+ndir;
+
+						std::vector<SMDir>::iterator it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, ndir));
+						if(it_dir==changed_dirs.end() || (*it_dir).name!=ndir)
+						{
+							additional_changed_dirs.push_back(SMDir(0, ndir));
+						}
+
+						do
+						{
+							b = FindNextFileNameW(hFn, &stringLength, &outBuf[0]);
+
+							if(!b && GetLastError()==ERROR_MORE_DATA)
+							{
+								outBuf.resize(stringLength);
+								b = FindNextFileNameW(hFn, &stringLength, &outBuf[0]);
+							}
+
+							if(!b && GetLastError()!=ERROR_HANDLE_EOF)
+							{
+								VSSLog(L"Error reading (2) hard link names of "+fn, LL_INFO);
+							}
+							else
+							{
+								std::wstring ndir=strlower(ExtractFilePath(std::wstring(outBuf.begin(), outBuf.begin()+stringLength)))+os_file_sep();
+								if(ndir[0]=='\\')
+									ndir=volume+ndir.substr(1);
+								else
+									ndir=volume+ndir;
+						
+								std::vector<SMDir>::iterator it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, ndir));
+								if(it_dir==changed_dirs.end() || (*it_dir).name!=ndir)
+								{
+									additional_changed_dirs.push_back(SMDir(0, ndir));
+								}
+							}
+						}
+						while(b);
+
+						FindClose(hFn);
+					}
+				}
+				else
+				{
+					CloseHandle(hFile);
+				}
+			}
+		}
+	}
+
+	changed_dirs.insert(changed_dirs.end(), additional_changed_dirs.begin(), additional_changed_dirs.end());
+	std::sort(changed_dirs.begin(), changed_dirs.end());
 #endif
 }
