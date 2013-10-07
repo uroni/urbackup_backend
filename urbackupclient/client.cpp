@@ -2445,7 +2445,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 		if(has_error)
 		{
-			VSSLog(L"Cannot open directory "+vsstpath+L" to handle hard links", LL_INFO);
+			VSSLog(L"Cannot open directory "+vsstpath+L" to handle hard links", LL_DEBUG);
 		}
 
 		for(size_t i=0;i<files.size();++i)

@@ -687,7 +687,7 @@ void BackupServerGet::operator ()(void)
 				ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(ptime)), LL_INFO);
 				if(!r_success)
 				{
-					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
+					ServerLogger::Log(clientid, "Backup failed because of problems", LL_ERROR);
 				}
 				else
 				{
@@ -703,7 +703,7 @@ void BackupServerGet::operator ()(void)
 				ServerLogger::Log(clientid, L"Time taken for creating image of client "+clientname+L": "+widen(PrettyPrintTime(ptime)), LL_INFO);
 				if(!r_success)
 				{
-					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
+					ServerLogger::Log(clientid, "Backup failed because of problems", LL_ERROR);
 				}
 				else
 				{

@@ -588,7 +588,7 @@ void ImageThread::sendIncrImageThread(void)
 					}
 					else
 					{
-						ImageErrRunning("Hashdata from server too small");
+						ImageErrRunning("Hashdata from server too small. The volume may have grown. If this is the case, please run a full backup.");
 						run=false;
 						break;
 					}
