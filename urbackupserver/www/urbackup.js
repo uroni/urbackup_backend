@@ -227,8 +227,6 @@ function getPar(p)
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
 		{ val*=60*60*24; if(obj.disabled) val*=-1; }
 	if(p=="startup_backup_delay") val*=60;
-	if(p=="update_freq_image_full" && I('client_disable_image_backups') && I('client_disable_image_backups').checked )
-		val*=-1;
 	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
 	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
 	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
@@ -1384,7 +1382,6 @@ function show_settings2(data)
 			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
-			data.settings.client_disable_image_backups=getCheckboxValue(data.settings.update_freq_image_full<0);
 			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
 			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
 			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);

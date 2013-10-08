@@ -1042,7 +1042,7 @@ bool BackupServerGet::isUpdateIncrImage(void)
 
 bool BackupServerGet::isUpdateIncrImage(const std::string &letter)
 {
-	if( server_settings->getSettings()->update_freq_image_full<=0 || server_settings->getSettings()->update_freq_incr<=0 )
+	if( server_settings->getSettings()->update_freq_image_full<0 || server_settings->getSettings()->update_freq_image_incr<0 )
 		return false;
 
 	q_update_image_incr->Bind(clientid);
