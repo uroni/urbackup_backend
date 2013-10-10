@@ -151,6 +151,9 @@ ACTION_IMPL(download_client)
 		errstr="No right to download any client";
 	}
 
-	Server->Log(errstr, LL_ERROR);
-	helper.Write("ERROR: "+errstr);
+	if(!errstr.empty())
+	{
+		Server->Log(errstr, LL_ERROR);
+		helper.Write("ERROR: "+errstr);
+	}
 }

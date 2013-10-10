@@ -420,7 +420,7 @@ ACTION_IMPL(settings)
 	if(session!=NULL && session->id==-1) return;
 	std::wstring sa=GET[L"sa"];
 	int t_clientid=watoi(GET[L"t_clientid"]);
-	std::string rights=helper.getRights("settings");
+	std::string rights=helper.getRights("client_settings");
 	std::vector<int> clientid;
 	IDatabase *db=helper.getDatabase();
 	if(rights!="all" && rights!="none" )
@@ -449,7 +449,7 @@ ACTION_IMPL(settings)
 		}
 	}
 
-	if(session!=NULL && rights!="none")
+	if(session!=NULL && helper.getRights("settings")!="none")
 	{
 		//navitems
 		{
@@ -467,6 +467,10 @@ ACTION_IMPL(settings)
 			if(crypto_fak!=NULL)
 			{
 				navitems.set("internet", true);
+			}
+			if(helper.getRights("disable_change_pw")=="all")
+			{
+				navitems.set("disable_change_pw", true);
 			}
 
 			JSON::Array clients;
@@ -606,7 +610,7 @@ ACTION_IMPL(settings)
 			sa=L"listusers";
 			
 		}
-		if(sa==L"changepw" && ( helper.getRights("usermod")=="all" || GET[L"userid"]==L"own" ) )
+		if(sa==L"changepw" && ( helper.getRights("usermod")=="all" || (GET[L"userid"]==L"own" && helper.getRights("disable_change_pw")!="all") ) )
 		{
 			bool ok=true;
 			if(GET[L"userid"]==L"own")

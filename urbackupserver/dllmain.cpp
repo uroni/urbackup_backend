@@ -971,6 +971,20 @@ void update24_25(void)
 	db->Write("UPDATE backups SET size_calculated=0 WHERE size_calculated IS NULL");
 }
 
+void update25_26(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db_results res=db->Read("SELECT clientid, t_right FROM settings_db.si_permissions WHERE t_domain='settings'");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.si_permissions (t_domain, t_right, clientid) VALUES ('client_settings', ?, ?)");
+	for(size_t i=0;i<res.size();++i)
+	{
+		q_insert->Bind(res[i][L"t_right"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+	}
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -988,7 +1002,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=25;
+	int max_v=26;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1108,6 +1122,10 @@ void upgrade(void)
 				break;
 			case 24:
 				update24_25();
+				++ver;
+				break;
+			case 25:
+				update25_26();
 				++ver;
 				break;
 			default:

@@ -1215,6 +1215,7 @@ function show_settings2(data)
 			if(g.settings_nav_pos==idx)
 			{
 				n+="<strong>"+trans("change_pw")+"</strong>";
+				data.sa="change_pw_int";
 			}
 			else
 			{
@@ -1554,6 +1555,10 @@ function show_settings2(data)
 	if(data.sa && data.sa=="clientsettings")
 	{
 		updateUserOverwrite();
+	}
+	else if(data.sa && data.sa=="change_pw_int")
+	{
+		changePW();
 	}
 	
 	if(update_tabber)
@@ -1923,22 +1928,6 @@ function adminRights()
 {
 	return ([ { domain: "all", right: "all" } ]);
 }
-
-function clientRights(clientid)
-{
-	return (
-	[
-		{ domain: "browse_backups", right: clientid },
-		{ domain: "lastacts", right: clientid },
-		{ domain: "progress", right: clientid },
-		{ domain: "settings", right: clientid },
-		{ domain: "status", right: clientid },
-		{ domain: "logs", right: clientid },
-		{ domain: "stop_backup", right: clientid },
-		{ domain: "start_backup", right: "all" },
-		{ domain: "download_image", right: clientid }
-	]);
-}
 function createUser2()
 {
 	var username=I('username').value;
@@ -1977,7 +1966,7 @@ function createUser2()
 	}
 	else
 	{
-		t_rights=clientRights(cid);
+		t_rights=g.defaultUserRights(cid);
 	}
 	
 	var pars="&name="+username+"&pwmd5="+password_md5+"&salt="+salt+"&rights="+generateRightsParam(t_rights);
@@ -2100,9 +2089,15 @@ function changeUserPassword(uid, name)
 }
 function changePW(el)
 {
-	I('settingsclient').innerHTML="<option value=\"n\">"+trans("clients")+"</option>"+I('settingsclient').innerHTML;
-	I('settingsclient').selectedIndex=0;
-	I('change_pw_el').innerHTML="<strong>"+trans("change_pw")+"</strong>";
+	if(I('settingsclient'))
+	{
+		I('settingsclient').innerHTML="<option value=\"n\">"+trans("clients")+"</option>"+I('settingsclient').innerHTML;
+		I('settingsclient').selectedIndex=0;
+	}
+	if(I('change_pw_el'))
+	{
+		I('change_pw_el').innerHTML="<strong>"+trans("change_pw")+"</strong>";
+	}
 	var ndata=tmpls.change_pw.evaluate();
 	g.settings_nav_pos=g.user_nav_pos_offset-1;
 	if(g.data_f!=ndata)
