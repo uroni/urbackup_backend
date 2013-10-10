@@ -4,7 +4,7 @@ net session >nul 2>&1
 if NOT %errorLevel% == 0 (
 	echo Failure: Current permissions inadequate. Please run as administrator.
 	pause
-	exit 1
+	exit /b 1
 )
 
 echo Stopping UrBackup Server...
@@ -17,4 +17,4 @@ echo "Cleanup amount '%1'"
 echo Starting UrBackup Server...
 net start UrBackupWinServer
 
-exit 0
+exit /b 0
