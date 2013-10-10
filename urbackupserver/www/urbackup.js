@@ -1707,7 +1707,8 @@ function validateCommonSettings()
 							"update_freq_image_full", "max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
-	if(!validate_text_int_or_empty(["local_speed", "internet_speed"])) return false;
+	if(!validate_text_int_or_empty(["local_speed"])) return false;
+	if(I('internet_speed') && !validate_text_int_or_empty(["internet_speed"])) return false;
 	if(!validate_text_regex([{ id: "backup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return false;
 	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
@@ -1731,12 +1732,13 @@ function saveGeneralSettings()
 {
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
-	if(!validate_text_int_or_empty(["global_local_speed", "global_internet_speed"])) return;
+	if(!validate_text_int_or_empty(["global_local_speed"])) return;
+	if(I('global_internet_speed') && !validate_text_int_or_empty(["global_internet_speed"])) return;
 	if(!validateCommonSettings() ) return;
 	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;	
 	
 	var internet_pars=getInternetSettings();
-	if(internet_pars=="") return;
+	if(internet_pars==null) return;
 	
 	if(!startLoading()) return;
 			
@@ -1765,7 +1767,8 @@ function saveMailSettings()
 }
 function getInternetSettings()
 {	
-	if(!validate_text_int(["internet_server_port"]) ) return "";
+	if(!I('internet_server_port')) return "";
+	if(!validate_text_int(["internet_server_port"]) ) return null;
 	var pars="";
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
