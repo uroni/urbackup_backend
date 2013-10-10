@@ -35,3 +35,6 @@ NICE_LEVEL="0"
 #Values e.g. idle, best-effort or real-time
 IOSCHED_CLASS="best-effort"
 
+#Interfaces from which to send broadcasts. (Default: all)
+BROADCAST_INTERFACES=""
+
