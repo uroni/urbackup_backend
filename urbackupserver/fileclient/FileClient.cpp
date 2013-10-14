@@ -140,7 +140,8 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 			if(found_name &&
 				!(ifap->ifa_flags & IFF_LOOPBACK) 
 				&& !(ifap->ifa_flags & IFF_POINTOPOINT) 
-				&&  (ifap->ifa_flags & IFF_BROADCAST) )
+				&&  (ifap->ifa_flags & IFF_BROADCAST)
+				&&  ifap->ifa_addr->sa_family == AF_INET )
 			{			
 				SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
 				if(udpsock==-1)
@@ -175,6 +176,7 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 				if(rc<0)
 				{
 					Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+					continue;
 				}
 
 				#if defined(__FreeBSD__)
@@ -208,6 +210,7 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 	sockaddr_in source_addr;
 	memset(&source_addr, 0, sizeof(source_addr));
 	source_addr.sin_family = AF_INET;
+	source_addr.sin_addr.s_addr = INADDR_ANY;
 	source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
 	rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));

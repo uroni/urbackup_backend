@@ -24,11 +24,11 @@
 #	define SOCKET_ERROR -1
 #	define closesocket close
 #	define SOCKET int
-#	define BOOL bool
+#	define BOOL int
 #	define CloseHandle close
 #	define HANDLE int
-#	define FALSE false
-#	define TRUE true
+#	define FALSE 0
+#	define TRUE 1
 # 	define GetTickCount() (unsigned int)(clock()/CLOCKS_PER_SEC)
 #	define INVALID_HANDLE_VALUE -1
 #	define Sleep(x) usleep(x*1000)
