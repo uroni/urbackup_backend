@@ -162,6 +162,8 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 				source_addr.sin_family = AF_INET;
 				source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
+				Server->Log(std::string("Binding to interface ")+std::string(ifap->ifa_name)+" for broadcasting...", LL_DEBUG);
+
 				rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
 				if(rc<0)
 				{
