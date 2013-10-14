@@ -145,8 +145,15 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 				SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
 				if(udpsock==-1)
 				{
-					Server->Log("Error creating socket", LL_ERROR);
+					Server->Log(std::string("Error creating socket for interface ")+std::string(ifap->ifa_name), LL_ERROR);
 					continue;
+				}
+
+				BOOL val=TRUE;
+				int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
+				if(rc<0)
+				{
+					Server->Log(std::string("Setting SO_REUSEADDR failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
 				}
 
 				sockaddr_in source_addr;
@@ -155,26 +162,28 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 				source_addr.sin_family = AF_INET;
 				source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
-				int rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+				rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
 				if(rc<0)
 				{
-					Server->Log("Binding UDP socket failed", LL_ERROR);
+					Server->Log(std::string("Binding UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
 				}
 
-				BOOL val=TRUE;
+				
 				rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
 				if(rc<0)
 				{
-					Server->Log("Enabling SO_BROADCAST for UDP socket failed", LL_ERROR);
+					Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
 				}
 
 				#if defined(__FreeBSD__)
 				int optval=1;
 				if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
 				{
-					Server->Log("Error setting IP_ONESBCAST", LL_ERROR);
+					Server->Log(std::string("Error setting IP_ONESBCAST for interface " )+std::string(ifap->ifa_name), LL_ERROR);
 				}
 				#endif
+
+				udpsocks.push_back(udpsock);
 			}
 		}
 		freeifaddrs(ifap);
@@ -184,19 +193,35 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 		Server->Log("Getting interface ips failed", LL_ERROR);
 	}
 #else
-	SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);	
+	SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+	
+
+	int optval=1;
+	int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+	if(rc==SOCKET_ERROR)
+	{
+		Server->Log("Failed setting SO_REUSEADDR in FileClient", LL_ERROR);
+	}
 
 	sockaddr_in source_addr;
 	memset(&source_addr, 0, sizeof(source_addr));
 	source_addr.sin_family = AF_INET;
 	source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
-	bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+	rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+	if(rc<0)
+	{
+		Server->Log("Binding UDP socket failed", LL_ERROR);
+	}
 
 	setSockP(udpsock);
 
 	BOOL val=TRUE;
-	setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
+	int rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
+	if(rc<0)
+	{
+		Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
+	}
 
 	udpsocks.push_back(udpsock);
 
