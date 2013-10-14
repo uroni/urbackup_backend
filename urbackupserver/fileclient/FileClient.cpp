@@ -217,7 +217,7 @@ FileClient::FileClient(int protocol_version, bool internet_connection,
 	setSockP(udpsock);
 
 	BOOL val=TRUE;
-	int rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
+	rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
 	if(rc<0)
 	{
 		Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
