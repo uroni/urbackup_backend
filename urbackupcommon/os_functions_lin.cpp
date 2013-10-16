@@ -43,6 +43,7 @@
 #define lstat64 lstat
 #define stat64 stat
 #define statvfs64 statvfs
+#define open64 open
 #endif
 
 void getMousePos(int &x, int &y)
@@ -188,11 +189,11 @@ bool os_create_dir(const std::string &path)
 bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 {
 #ifndef sun
-	int src_desc=open(Server->ConvertToUTF8(fname).c_str(), O_RDONLY);
+	int src_desc=open64(Server->ConvertToUTF8(fname).c_str(), O_RDONLY);
 	if( src_desc<0)
 	    return false;
 
-	int dst_desc=open(Server->ConvertToUTF8(linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
+	int dst_desc=open64(Server->ConvertToUTF8(linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
 	if( dst_desc<0 )
 	{
 	    close(src_desc);

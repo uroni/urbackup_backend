@@ -38,6 +38,10 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+#if defined(__FreeBSD__)
+#define open64 open
+#endif
+
 
 void getMousePos(int &x, int &y)
 {
@@ -48,11 +52,11 @@ void getMousePos(int &x, int &y)
 bool os_create_reflink(const std::string &linkname, const std::string &fname)
 {
 #ifndef sun
-	int src_desc=open(fname.c_str(), O_RDONLY);
+	int src_desc=open64(fname.c_str(), O_RDONLY);
 	if( src_desc<0)
 	    return false;
 
-	int dst_desc=open(linkname.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
+	int dst_desc=open64(linkname.c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
 	if( dst_desc<0 )
 	{
 	    close(src_desc);
