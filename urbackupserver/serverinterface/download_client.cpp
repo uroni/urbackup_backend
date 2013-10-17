@@ -12,7 +12,13 @@ namespace
 		if(crypto_fak==NULL)
 			return false;
 
-		return crypto_fak->verifyFile("urbackup_dsa.pub", "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig");
+#ifdef _WIN32
+		const std::string pubkey_fn="urbackup_dsa.pub";
+#else
+		const std::string pubkey_fn="urbackup/urbackup_dsa.pub";
+#endif
+
+		return crypto_fak->verifyFile(pubkey_fn, "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig");
 	}
 
 	std::string constructClientSettings(Helper& helper, int clientid)
