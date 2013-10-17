@@ -175,7 +175,7 @@ ACTION_IMPL(status)
 				q->Reset();
 			}
 		}
-		if(GET.find(L"clientname")!=GET.end())
+		if(GET.find(L"clientname")!=GET.end() && helper.getRights("add_client")=="all" )
 		{
 			bool new_client=false;
 			int id=BackupServerGet::getClientID(db, GET[L"clientname"], NULL, &new_client);
