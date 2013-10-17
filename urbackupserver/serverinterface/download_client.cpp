@@ -135,6 +135,7 @@ ACTION_IMPL(download_client)
 
 					Server->setContentType(tid, "application/octet-stream");
 					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+").exe\"");
+					Server->addHeader(tid, "Content-Length: "+nconvert(data.size()) );
 					Server->WriteRaw(tid, data.c_str(), data.size(), false);
 				}
 				else
