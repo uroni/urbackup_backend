@@ -54,11 +54,15 @@ private:
 struct SStartupStatus
 {
 	SStartupStatus(void)
-		: upgrading_database(false) {}
+		: upgrading_database(false),
+		  creating_filescache(false) {}
 
 	bool upgrading_database;
 	int curr_db_version;
 	int target_db_version;
+
+	bool creating_filescache;
+	size_t processed_file_entries;
 
 	IMutex *mutex;
 };

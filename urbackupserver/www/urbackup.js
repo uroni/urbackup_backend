@@ -125,7 +125,20 @@ function try_anonymous_login(data)
 	
 	if(data.upgrading_database)
 	{
+		data.upgrade_error_text=trans("upgrade_error_text");
 		var ndata=tmpls.upgrade_error.evaluate(data);
+		if(g.data_f!=ndata)
+		{
+			I('data_f').innerHTML=ndata;
+			g.data_f=ndata;
+		}
+		return;
+	}
+	
+	if(data.creating_filescache)
+	{
+		data.creating_filescache_text=trans("creating_filescache_text");
+		var ndata=tmpls.file_cache_error.evaluate(data);
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;

@@ -90,7 +90,7 @@ void MDBFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 	db_results res;
 	do
 	{
-		res=get_data_callback(userdata);
+		res=get_data_callback(n_done, userdata);
 
 		for(size_t i=0;i<res.size();++i)
 		{

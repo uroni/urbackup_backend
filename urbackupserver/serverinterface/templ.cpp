@@ -103,6 +103,7 @@ ACTION_IMPL(generate_templ)
 	templates.push_back("live_log");
 	templates.push_back("live_log_row");
 	templates.push_back("database_error");
+	templates.push_back("file_cache_error");
 
 	IFile *out=Server->openFile("urbackupserver/www/templates.js", MODE_WRITE);
 	if(out==NULL)

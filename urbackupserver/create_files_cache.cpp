@@ -7,6 +7,7 @@
 #include "SQLiteFileCache.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
+#include "serverinterface/helper.h"
 
 namespace
 {
@@ -38,12 +39,14 @@ struct SCallbackData
 {
 	IDatabaseCursor* cur;
 	int64 pos;
+	SStartupStatus* status;
 };
 
-db_results create_callback(void *userdata)
+db_results create_callback(int n_done, void *userdata)
 {
 	SCallbackData *data=(SCallbackData*)userdata;
 
+	data->status->processed_file_entries=n_done;
 	
 	db_results ret;
 	db_single_result res;
@@ -56,7 +59,7 @@ db_results create_callback(void *userdata)
 	return ret;
 }
 
-bool create_files_cache_common(FileCache& filecache)
+bool create_files_cache_common(FileCache& filecache, SStartupStatus& status)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
@@ -67,6 +70,7 @@ bool create_files_cache_common(FileCache& filecache)
 		db->Write("PRAGMA cache_size = -"+nconvert(500*1024));
 	}
 
+	status.creating_filescache=true;
 	Server->Log("Creating file entry cache. This might take a while...", LL_WARNING);
 
 	IQuery *q_read=db->Prepare("SELECT shahash, filesize, fullpath, hashpath FROM files ORDER BY shahash ASC, filesize ASC, created DESC");
@@ -74,6 +78,7 @@ bool create_files_cache_common(FileCache& filecache)
 	SCallbackData data;
 	data.cur=q_read->Cursor();
 	data.pos=0;
+	data.status=&status;
 
 	filecache.create(create_callback, &data);
 
@@ -83,6 +88,8 @@ bool create_files_cache_common(FileCache& filecache)
 		db->Write("PRAGMA shrink_memory");
 	}
 
+	status.creating_filescache=false;
+
 	if(data.cur->has_error())
 	{
 		return false;
@@ -91,7 +98,7 @@ bool create_files_cache_common(FileCache& filecache)
 	return true;
 }
 
-bool setup_lmdb_files_cache(size_t map_size)
+bool setup_lmdb_files_cache(size_t map_size, SStartupStatus& status)
 {
 	MDBFileCache filecache(map_size);
 	if(filecache.has_error())
@@ -100,10 +107,10 @@ bool setup_lmdb_files_cache(size_t map_size)
 		return false;
 	}
 
-	return create_files_cache_common(filecache);
+	return create_files_cache_common(filecache, status);
 }
 
-bool setup_sqlite_files_cache(void)
+bool setup_sqlite_files_cache(SStartupStatus& status)
 {
 	os_create_dir(L"urbackup/cache");
 
@@ -120,7 +127,7 @@ bool setup_sqlite_files_cache(void)
 
 		SQLiteFileCache filecache;
 
-		return create_files_cache_common(filecache);
+		return create_files_cache_common(filecache, status);
 	}
 }
 
@@ -135,7 +142,7 @@ void delete_file_caches(void)
 
 }
 
-void create_files_cache(void)
+void create_files_cache(SStartupStatus& status)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerSettings settings(db);
@@ -146,7 +153,7 @@ void create_files_cache(void)
 		{
 			delete_file_caches();
 
-			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size)))
+			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size), status))
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
 			}
@@ -156,7 +163,7 @@ void create_files_cache(void)
 			delete_file_caches();
 
 			update_files_cache_type("none");
-			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size)))
+			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size), status))
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
 			}
@@ -171,7 +178,7 @@ void create_files_cache(void)
 		{
 			delete_file_caches();
 
-			if(!setup_sqlite_files_cache())
+			if(!setup_sqlite_files_cache(status))
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
 				has_error=true;
@@ -182,7 +189,7 @@ void create_files_cache(void)
 			delete_file_caches();
 
 			update_files_cache_type("none");
-			if(!setup_sqlite_files_cache())
+			if(!setup_sqlite_files_cache(status))
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
 				has_error=true;
