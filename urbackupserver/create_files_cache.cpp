@@ -27,9 +27,11 @@ void update_files_cache_type(std::string new_type)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	IQuery *q=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='files_cache'");
-
-	q->Bind(new_type);
-	q->Write();
+	if(q!=NULL)
+	{
+		q->Bind(new_type);
+		q->Write();
+	}
 }
 
 struct SCallbackData

@@ -1152,28 +1152,39 @@ void ServerCleanupThread::backup_database(void)
 
 	if(settings.getSettings()->backup_database)
 	{
-		std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
-		if(!os_directory_exists(bfolder) )
-		{
-			os_create_dir(bfolder);
-		}
-		else
-		{
-			rename(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db").c_str(), Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db~").c_str() );
-			rename(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server_settings.db").c_str(), Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server_settings.db~").c_str() );
-		}
+		db_results res = db->Read("PRAGMA integrity_check");
 
-		Server->Log("Starting database backup...", LL_INFO);
-		bool b=db->Backup(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db"));
-		Server->Log("Database backup done.", LL_INFO);
-		if(!b)
+		Server->Log("Checking database integrity...", LL_INFO);
+		if(!res.empty() && res[0][L"integrity_check"]==L"ok")
 		{
-			Server->Log("Backing up database failed", LL_ERROR);
+			std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
+			if(!os_directory_exists(bfolder) )
+			{
+				os_create_dir(bfolder);
+			}
+			else
+			{
+				rename(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db").c_str(), Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db~").c_str() );
+				rename(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server_settings.db").c_str(), Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server_settings.db~").c_str() );
+			}
+
+			Server->Log("Starting database backup...", LL_INFO);
+			bool b=db->Backup(Server->ConvertToUTF8(bfolder+os_file_sep()+L"backup_server.db"));
+			Server->Log("Database backup done.", LL_INFO);
+			if(!b)
+			{
+				Server->Log("Backing up database failed", LL_ERROR);
+			}
+			else
+			{
+				Server->deleteFile(bfolder+os_file_sep()+L"backup_server.db~");
+				Server->deleteFile(bfolder+os_file_sep()+L"backup_server_settings.db~");
+			}
 		}
 		else
 		{
-			Server->deleteFile(bfolder+os_file_sep()+L"backup_server.db~");
-			Server->deleteFile(bfolder+os_file_sep()+L"backup_server_settings.db~");
+			Server->Log("Database integrity check failed. Skipping Database backup.", LL_ERROR);
+			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);
 		}
 	}
 }

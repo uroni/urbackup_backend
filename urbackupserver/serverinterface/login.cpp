@@ -97,7 +97,7 @@ ACTION_IMPL(login)
 	{
 		ret.set("lang", helper.getLanguage());
 		db_results res=db->Read("SELECT count(*) AS c FROM settings_db.si_users");
-		if(watoi(res[0][L"c"])>0)
+		if(!res.empty() && watoi(res[0][L"c"])>0)
 		{
 			ret.set("success", JSON::Value(false) );
 		}

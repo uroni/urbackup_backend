@@ -31,10 +31,13 @@ void ServerAutomaticArchive::operator()(void)
 void ServerAutomaticArchive::archiveTimeout(void)
 {
 	IQuery *q_timeout=db->Prepare("SELECT id FROM backups WHERE archived=1 AND archive_timeout<>0 AND archive_timeout<?");
+	if(q_timeout==NULL) return;
+
 	q_timeout->Bind(Server->getTimeSeconds());
 	db_results res_timeout=q_timeout->Read();
 	
 	IQuery *q_unarchive=db->Prepare("UPDATE backups SET archived=0 WHERE id=?");
+	if(q_unarchive==NULL) return;
 	for(size_t i=0;i<res_timeout.size();++i)
 	{
 		q_unarchive->Bind(res_timeout[i][L"id"]);

@@ -44,8 +44,8 @@ translations.en={
 "loglevel_0": "Info",
 "loglevel_1": "Warnings",
 "loglevel_2": "Errors",
-"tdir_error_text": "The directory where UrBackup will save backups is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory.",
-"ttmpdir_error_text": "The directory where UrBackup will save temporary files is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory.",
+"dir_error_text": "The directory where UrBackup will save backups is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory.",
+"tmpdir_error_text": "The directory where UrBackup will save temporary files is inaccessible. Please fix that by modifying this folder in 'Settings' or by giving UrBackup rights to access this directory.",
 "starting": "Starting",
 "ident_err": "Server rejected",
 "enter_hostname": "Please enter a hostname or IP address",
@@ -117,9 +117,10 @@ translations.en={
 "internet_client_added": "Added new client. You can see the client's auth key (or password) in the settings.",
 "change_pw": "Change password",
 "old_pw_wrong": "Old password is wrong",
-"tnospc_stalled_text": "There is currently not enough free space in the backup folder. UrBackup is deleting old image and file backups to free space, within the limits defined by the settings. During this process the backup performance is descreased and backups are stalled.",
-"tnospc_fatal_text": "There is currently not enough free space in the backup folder. UrBackup tried to delete old image and file backups but is now not allowed to delete more. Please change the settings to store less backups or increase the storage amount to allow UrBackup to continue to perform backups",
-"really_recalculate": "Do you really want to recalculate all statistics? This might take a long time!"
+"nospc_stalled_text": "There is currently not enough free space in the backup folder. UrBackup is deleting old image and file backups to free space, within the limits defined by the settings. During this process the backup performance is descreased and backups are stalled.",
+"nospc_fatal_text": "There is currently not enough free space in the backup folder. UrBackup tried to delete old image and file backups but is now not allowed to delete more. Please change the settings to store less backups or increase the storage amount to allow UrBackup to continue to perform backups",
+"really_recalculate": "Do you really want to recalculate all statistics? This might take a long time!",
+"database_error_text": "An error occured while accessing or checking UrBackup's internal database. This means this database is probably damaged. If this error persists, please restore the database (the files urbackup_server.db and urbackup_server_settings.db) from a backup. See log file for details."
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -251,8 +252,8 @@ translations.de={
 "tBackup storage path": "Speicherort für Backups",
 "tDo not do image backups": "Keine Imagebackups ausführen",
 "tAutomatically shut down server": "Server automatisch herunterfahren",
-"tdir_error_text": "Auf das Verzeichnis in dem UrBackup die Backups speichern soll kann nicht zugegriffen werden. Bitte verändern Sie in den Einstellungen das Verzeichnis oder geben Sie UrBackup Zugriffsrechte.",
-"ttmpdir_error_text": "Auf das Verzeichnis in dem UrBackup die temporären Dateien speichern soll kann nicht zugegriffen werden. Bitte verändern Sie in den Einstellungen das Verzeichnis oder geben Sie UrBackup Zugriffsrechte.",
+"dir_error_text": "Auf das Verzeichnis in dem UrBackup die Backups speichern soll kann nicht zugegriffen werden. Bitte verändern Sie in den Einstellungen das Verzeichnis oder geben Sie UrBackup Zugriffsrechte.",
+"tmpdir_error_text": "Auf das Verzeichnis in dem UrBackup die temporären Dateien speichern soll kann nicht zugegriffen werden. Bitte verändern Sie in den Einstellungen das Verzeichnis oder geben Sie UrBackup Zugriffsrechte.",
 "starting": "Starte",
 "ident_err": "Server abgelehnt",
 "tNo extra clients": "Keine zusätzlichen Clients",
@@ -412,8 +413,8 @@ translations.de={
 "tClients are removed during the cleanup time window, if they are offline.": "Clients werden in dem Aufräumzeitfenster gelöscht, falls sie nicht mehr online sind.",
 "tPerform autoupdates silently": "Autoupdates im Hintergrund ausführen",
 "tArchived": "Archiviert",
-"tnospc_stalled_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup löscht gerade alte Datei- und Image-Backups, innerhalb der Grenzen die in den Einstellungen festgelegt sind. Wärend dieses Vorgangs ist die Performanz des Backupservers eventuell eingeschränkt; Lauftende Backups sind eventuell pausiert.",
-"tnospc_fatal_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup hat versucht alte Datei- und Image-Backups zu löschen, kann aber jetzt nicht weiteren Speicherplatz freimachen. Bitte ändern Sie die Einstellungen insofern, dass weniger Backups gespeichert werden, oder fügen Sie weiteren Backupspeicher hinzu, so dass UrBackup weiterhin Backups durchführen kann."
+"nospc_stalled_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup löscht gerade alte Datei- und Image-Backups, innerhalb der Grenzen die in den Einstellungen festgelegt sind. Wärend dieses Vorgangs ist die Performanz des Backupservers eventuell eingeschränkt; Lauftende Backups sind eventuell pausiert.",
+"nospc_fatal_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup hat versucht alte Datei- und Image-Backups zu löschen, kann aber jetzt nicht weiteren Speicherplatz freimachen. Bitte ändern Sie die Einstellungen insofern, dass weniger Backups gespeichert werden, oder fügen Sie weiteren Backupspeicher hinzu, so dass UrBackup weiterhin Backups durchführen kann."
 }
 translations.ru={
 "action_1": "Добавочный файловый бэкап",
@@ -474,8 +475,8 @@ translations.ru={
 "loglevel_0": "Инфо",
 "loglevel_1": "Предупреждения",
 "loglevel_2": "Ошибки",
-"tdir_error_text": "Каталог, где UrBackup будет сохранять резервные копии недоступен. Пожалуйста исправьте это изменив путь в 'Настройках', либо путем придания UrBackup прав на доступ к этой папке.",
-"ttmpdir_error_text": "Каталог, где UrBackup будет сохранять временные файлы недоступен. Пожалуйста исправьте это изменив путь в 'Настройках', либо путем придания UrBackup прав на доступ к этой папке.",
+"dir_error_text": "Каталог, где UrBackup будет сохранять резервные копии недоступен. Пожалуйста исправьте это изменив путь в 'Настройках', либо путем придания UrBackup прав на доступ к этой папке.",
+"tmpdir_error_text": "Каталог, где UrBackup будет сохранять временные файлы недоступен. Пожалуйста исправьте это изменив путь в 'Настройках', либо путем придания UrBackup прав на доступ к этой папке.",
 "starting": "Запуск",
 "ident_err": "Отклонено сервером",
 "enter_hostname": "Пожалуйста введите Имя компьютера или IP адрес",
@@ -684,8 +685,8 @@ translations.es={
 "loglevel_0": "Informativos",
 "loglevel_1": "Avisos",
 "loglevel_2": "Errores",
-"tdir_error_text": "La carpeta designada para guardar las copias no está accesible. Por favor, solucione este problema modificando la carpeta en 'Ajustes' o garantizando a UrBackup privilegios de escritura en esa carpeta.",
-"ttmpdir_error_text": "La carpeta en la que se guardan los archivos temporales no está accesible. Por favor, solucione este problema modificando la carpeta en 'Ajustes' o garantizando a UrBackup privilegios de escritura en esa carpeta.",
+"dir_error_text": "La carpeta designada para guardar las copias no está accesible. Por favor, solucione este problema modificando la carpeta en 'Ajustes' o garantizando a UrBackup privilegios de escritura en esa carpeta.",
+"tmpdir_error_text": "La carpeta en la que se guardan los archivos temporales no está accesible. Por favor, solucione este problema modificando la carpeta en 'Ajustes' o garantizando a UrBackup privilegios de escritura en esa carpeta.",
 "starting": "Comenzando",
 "ident_err": "Servidor rechazado",
 "enter_hostname": "Introduzca un nombre de nodo o una dirección IP",
@@ -842,8 +843,8 @@ translations.es={
 "tBackup storage path": "Ruta de almacenamiento de las copias",
 "tDo not do image backups": "No haga copiaas imagen",
 "tAutomatically shut down server": "Apague automáticamente el servidor",
-"tdir_error_text": "No se encuentra la carpeta de copias o no tiene permiso de escritura sobre ella.",
-"ttmpdir_error_text": "No se encuentra la carpeta tempopral o no tiene permiso de escritura sobre ella.", 
+"dir_error_text": "No se encuentra la carpeta de copias o no tiene permiso de escritura sobre ella.",
+"tmpdir_error_text": "No se encuentra la carpeta tempopral o no tiene permiso de escritura sobre ella.", 
 "tNo extra clients": "No hay clientes extra",
 "tShow details": "Ver detalles",
 "tAutoupdate clients": "Actualizar los clientes automáticamente", 
@@ -977,8 +978,8 @@ translations.es={
 "loglevel_0": "信息",
 "loglevel_1": "警告",
 "loglevel_2": "错误",
-"tdir_error_text": "无法访问UrBackup保存备份的文件夹。在“设置”中修改此文件夹的位置，或赋予UrBackup对此文件夹的访问权限可解决此问题。",
-"ttmpdir_error_text": "无法访问UrBackup保存临时文件的文件夹。在“设置”中修改此文件夹的位置，或赋予UrBackup对此文件夹的访问权限可解决此问题。",
+"dir_error_text": "无法访问UrBackup保存备份的文件夹。在“设置”中修改此文件夹的位置，或赋予UrBackup对此文件夹的访问权限可解决此问题。",
+"tmpdir_error_text": "无法访问UrBackup保存临时文件的文件夹。在“设置”中修改此文件夹的位置，或赋予UrBackup对此文件夹的访问权限可解决此问题。",
 "starting": "启动中",
 "ident_err": "服务器拒绝",
 "enter_hostname": "请输入主机名或IP地址",
@@ -1050,8 +1051,8 @@ translations.es={
 "internet_client_added": "新客户端已添加，身份验证密钥或密码请参见“设置”。",
 "change_pw": "更改密码",
 "old_pw_wrong": "旧密码错误",
-"tnospc_stalled_text": "备份文件夹空间不足，UrBackup正根据设置值删除旧的磁盘映像和文件备份数据。此期间的备份性能降低，备份数据被隔离。",
-"tnospc_fatal_text": "备份文件夹空间不足，UrBackup已根据设置值删除了旧的磁盘映像和文件备份数据，但当前设置值已不允许继续删除。通过更改“设置”保存更少的备份数或增加备份存储空间后UrBackup方可继续执行备份任务。"
+"nospc_stalled_text": "备份文件夹空间不足，UrBackup正根据设置值删除旧的磁盘映像和文件备份数据。此期间的备份性能降低，备份数据被隔离。",
+"nospc_fatal_text": "备份文件夹空间不足，UrBackup已根据设置值删除了旧的磁盘映像和文件备份数据，但当前设置值已不允许继续删除。通过更改“设置”保存更少的备份数或增加备份存储空间后UrBackup方可继续执行备份任务。"
 
 }
 translations.zh_TW={
@@ -1099,8 +1100,8 @@ translations.zh_TW={
 "loglevel_0": "情報",
 "loglevel_1": "警告",
 "loglevel_2": "錯誤",
-"tdir_error_text": "無法訪問UrBackup保存備份的資料夾。在“設定”中修改此資料夾的位置，或賦予UrBackup對此資料夾的訪問權限可解決此問題。",
-"ttmpdir_error_text": "無法訪問UrBackup保存臨時檔案的資料夾。在“設定”中修改此資料夾的位置，或賦予UrBackup對此資料夾的訪問權限可解決此問題。",
+"dir_error_text": "無法訪問UrBackup保存備份的資料夾。在“設定”中修改此資料夾的位置，或賦予UrBackup對此資料夾的訪問權限可解決此問題。",
+"tmpdir_error_text": "無法訪問UrBackup保存臨時檔案的資料夾。在“設定”中修改此資料夾的位置，或賦予UrBackup對此資料夾的訪問權限可解決此問題。",
 "starting": "啓動中",
 "ident_err": "伺服器拒絕",
 "enter_hostname": "請鍵入主機名或IP地址",
@@ -1172,8 +1173,8 @@ translations.zh_TW={
 "internet_client_added": "新用戶端已添加，身份驗證密鑰或口令請參見“設定”。",
 "change_pw": "更改口令",
 "old_pw_wrong": "舊口令錯誤",
-"tnospc_stalled_text": "備份資料夾空間不足，UrBackup正根據設定值移除舊的磁碟鏡像和檔案備份數據。此期間的備份性能降低，備份數據被隔離。",
-"tnospc_fatal_text": "備份資料夾空間不足，UrBackup已根據設定值移除了舊的磁碟鏡像和檔案備份數據，但當前設定值已不允許繼續移除。通過更改“設定”保存更少的備份數或增加備份儲存空間後UrBackup方可繼續執行備份任務。"
+"nospc_stalled_text": "備份資料夾空間不足，UrBackup正根據設定值移除舊的磁碟鏡像和檔案備份數據。此期間的備份性能降低，備份數據被隔離。",
+"nospc_fatal_text": "備份資料夾空間不足，UrBackup已根據設定值移除了舊的磁碟鏡像和檔案備份數據，但當前設定值已不允許繼續移除。通過更改“設定”保存更少的備份數或增加備份儲存空間後UrBackup方可繼續執行備份任務。"
 }
 translations.fr={
 "action_1": "Sauvegarde incrémentielle",
@@ -1305,8 +1306,8 @@ translations.fr={
 "tBackup storage path": "Chemin du répertoire de sauvegarde",
 "tDo not do image backups": "Désactiver la sauvegarde Image ",
 "tAutomatically shut down server": "Eteindre automatiquement le serveur",
-"tdir_error_text": "Le dossier de sauvegarde UrBackup est inaccessible. Merci de changer le chemin dans 'Réglages' ou en donnant à UrBackup les droits d'accès à ce répertoire.",
-"ttmpdir_error_text": "Le dossier de sauvegarde temporaire UrBackup est inaccessible. Merci de changer le chemin dans 'Réglages' ou en donnant à UrBackup les droits d'accès à ce répertoire.",
+"dir_error_text": "Le dossier de sauvegarde UrBackup est inaccessible. Merci de changer le chemin dans 'Réglages' ou en donnant à UrBackup les droits d'accès à ce répertoire.",
+"tmpdir_error_text": "Le dossier de sauvegarde temporaire UrBackup est inaccessible. Merci de changer le chemin dans 'Réglages' ou en donnant à UrBackup les droits d'accès à ce répertoire.",
 "starting": "Démarrage",
 "ident_err": "Serveur rejeté",
 "enter_hostname": "Merci d'entrer un nom d'hôte ou une adresse IP.",
@@ -1466,6 +1467,6 @@ translations.fr={
 "tClients are removed during the cleanup time window, if they are offline.": "Les clients seront supprimés durant l'intervalle de purge, si ils ne sont pas en ligne.",
 "tPerform autoupdates silently": "Appliquer les mises à jour automatiques en silence",
 "tArchived": "Archivés",
-"tnospc_stalled_text": "Il n' y a plus d'espace disponible dans le répertoire de sauvegarde. UrBackup efface les anciennes sauvegardes de fichiers et image pour faire de l'espace, selon les paramètres définis dans Réglages. Pendant cette phase, les performances de la sauvegarde diminuent, et les sauvegardes sont stoppées .",
-"tnospc_fatal_text": "Il n' y a plus d'espace disponible dans le répertoire de sauvegarde. UrBackup a tenté de purger les anciennes sauvegardes mais ne peut en effacer plus à cause des paramètres définis. Merci de changer ces paramètres à la baisse ou d'augmenter l'espace de stockage alloué afin de permettre à UrBackup de poursuivre."
+"nospc_stalled_text": "Il n' y a plus d'espace disponible dans le répertoire de sauvegarde. UrBackup efface les anciennes sauvegardes de fichiers et image pour faire de l'espace, selon les paramètres définis dans Réglages. Pendant cette phase, les performances de la sauvegarde diminuent, et les sauvegardes sont stoppées .",
+"nospc_fatal_text": "Il n' y a plus d'espace disponible dans le répertoire de sauvegarde. UrBackup a tenté de purger les anciennes sauvegardes mais ne peut en effacer plus à cause des paramètres définis. Merci de changer ces paramètres à la baisse ou d'augmenter l'espace de stockage alloué afin de permettre à UrBackup de poursuivre."
 }

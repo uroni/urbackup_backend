@@ -48,6 +48,11 @@ CDBSettingsReader::CDBSettingsReader(IDatabase *pDB, const std::string &pTable, 
 
 bool CDBSettingsReader::getValue(std::string key, std::string *value)
 {
+	if(query==NULL)
+	{
+		return false;
+	}
+
 	query->Bind(key);
 	db_nresults res=query->ReadN();
 	query->Reset();
@@ -63,6 +68,11 @@ bool CDBSettingsReader::getValue(std::string key, std::string *value)
 
 bool CDBSettingsReader::getValue(std::wstring key, std::wstring *value)
 {
+	if(query==NULL)
+	{
+		return false;
+	}
+
 	query->Bind(key);
 	db_results res=query->Read();
 	query->Reset();

@@ -50,6 +50,11 @@ CQuery::~CQuery()
 	if( err!=SQLITE_OK && err!=SQLITE_BUSY && err!=SQLITE_IOERR_BLOCKED )
 		Server->Log("SQL: "+(std::string)sqlite3_errmsg(db->getDatabase())+ " Stmt: ["+stmt_str+"]", LL_ERROR);
 
+	if( err==SQLITE_IOERR )
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_IOERR);
+	}
+
 	delete cursor;
 }
 
@@ -219,6 +224,15 @@ bool CQuery::Execute(int timeoutms)
 		return false;
 	}
 
+	if( err==SQLITE_IOERR )
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_IOERR);
+	}
+	if(err==SQLITE_CORRUPT)
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
+	}
+
 	return true;
 }
 
@@ -248,6 +262,15 @@ void CQuery::shutdownStepping(int err, int *timeoutms, bool& transaction_lock)
 	{
 		sqlite3_busy_timeout(db->getDatabase(), 50);
 		db->UnlockForTransaction();
+	}
+
+	if(err==SQLITE_IOERR)
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_IOERR);
+	}
+	if(err==SQLITE_CORRUPT)
+	{
+		Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
 	}
 }
 

@@ -146,7 +146,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings.backupfolder=trim(settings_default->getValue(L"backupfolder", L"C:\\urbackup"));
 	settings.backupfolder_uncompr=trim(settings_default->getValue(L"backupfolder_uncompr", settings.backupfolder));
 	settings.client_overwrite=true;
-	settings.autoshutdown=false;
+	settings.autoshutdown=(settings_default->getValue("autoshutdown", "false")=="true");;
 	settings.startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
 	settings.download_client=(settings_default->getValue("download_client", "true")=="true");
 	settings.autoupdate_clients=(settings_default->getValue("autoupdate_clients", "true")=="true");

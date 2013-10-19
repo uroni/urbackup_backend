@@ -169,6 +169,11 @@ public:
 	virtual unsigned int getSecureRandomNumber(void);
 	virtual std::vector<unsigned int> getSecureRandomNumbers(size_t n);
 	virtual void secureRandomFill(char *buf, size_t blen);
+
+	virtual void setFailBit(size_t failbit);
+	virtual void clearFailBit(size_t failbit);
+	virtual size_t getFailBits(void);
+
 private:
 
 	void logToCircularBuffer(const std::string& msg, int loglevel);
@@ -255,6 +260,8 @@ private:
 	size_t circular_log_buffer_idx;
 
 	bool has_circular_log_buffer;
+
+	size_t failbits;
 };
 
 #ifndef DEF_SERVER

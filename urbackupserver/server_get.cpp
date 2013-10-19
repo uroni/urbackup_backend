@@ -854,6 +854,8 @@ int BackupServerGet::getClientID(IDatabase *db, const std::wstring &clientname, 
 		*new_client=false;
 
 	IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?",false);
+	if(q==NULL) return -1;
+
 	q->Bind(clientname);
 	db_results res=q->Read();
 	db->destroyQuery(q);

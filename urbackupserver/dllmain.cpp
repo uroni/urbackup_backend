@@ -996,6 +996,10 @@ void upgrade(void)
 		db->Import("urbackup/backup_server.dat");
 		qp=db->Prepare("SELECT tvalue FROM misc WHERE tkey='db_version'");
 	}
+	if(qp==NULL)
+	{
+		return;
+	}
 	db_results res_v=qp->Read();
 	if(res_v.empty())
 		return;

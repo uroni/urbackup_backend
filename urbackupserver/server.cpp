@@ -155,25 +155,27 @@ void BackupServer::operator()(void)
 
 void BackupServer::findClients(FileClient &fc)
 {
-	db_results res=q_get_extra_hostnames->Read();
-	q_get_extra_hostnames->Reset();
-
 	std::vector<in_addr> addr_hints;
-
-	for(size_t i=0;i<res.size();++i)
+	if(q_get_extra_hostnames!=NULL)
 	{
-		unsigned int dest;
-		bool b=os_lookuphostname(Server->ConvertToUTF8(res[i][L"hostname"]), &dest);
-		if(b)
-		{
-			q_update_extra_ip->Bind((_i64)dest);
-			q_update_extra_ip->Bind(res[i][L"id"]);
-			q_update_extra_ip->Write();
-			q_update_extra_ip->Reset();
+		db_results res=q_get_extra_hostnames->Read();
+		q_get_extra_hostnames->Reset();
 
-			in_addr tmp;
-			tmp.s_addr=dest;
-			addr_hints.push_back(tmp);
+		for(size_t i=0;i<res.size();++i)
+		{
+			unsigned int dest;
+			bool b=os_lookuphostname(Server->ConvertToUTF8(res[i][L"hostname"]), &dest);
+			if(b)
+			{
+				q_update_extra_ip->Bind((_i64)dest);
+				q_update_extra_ip->Bind(res[i][L"id"]);
+				q_update_extra_ip->Write();
+				q_update_extra_ip->Reset();
+
+				in_addr tmp;
+				tmp.s_addr=dest;
+				addr_hints.push_back(tmp);
+			}
 		}
 	}
 

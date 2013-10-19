@@ -148,6 +148,12 @@ ACTION_IMPL(status)
 			{
 				ret.set("nospc_fatal" ,true);
 			}
+
+			if( (Server->getFailBits() & IServer::FAIL_DATABASE_CORRUPTED) ||
+				(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) )
+			{
+				ret.set("database_error", true);
+			}
 		}
 
 		bool details=false;
