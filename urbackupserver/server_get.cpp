@@ -3036,6 +3036,12 @@ bool BackupServerGet::getClientSettings(void)
 	{
 		std::wstring &key=setting_names[i];
 		std::wstring value;
+
+		if(internet_connection && key==L"computername")
+		{
+			continue;
+		}
+
 		if(sr->getValue(key, &value) )
 		{
 			bool b=updateClientSetting(key, value);
