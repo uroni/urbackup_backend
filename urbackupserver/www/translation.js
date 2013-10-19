@@ -120,7 +120,7 @@ translations.en={
 "nospc_stalled_text": "There is currently not enough free space in the backup folder. UrBackup is deleting old image and file backups to free space, within the limits defined by the settings. During this process the backup performance is descreased and backups are stalled.",
 "nospc_fatal_text": "There is currently not enough free space in the backup folder. UrBackup tried to delete old image and file backups but is now not allowed to delete more. Please change the settings to store less backups or increase the storage amount to allow UrBackup to continue to perform backups",
 "really_recalculate": "Do you really want to recalculate all statistics? This might take a long time!",
-"database_error_text": "An error occured while accessing or checking UrBackup's internal database. This means this database is probably damaged. If this error persists, please restore the database (the files urbackup_server.db and urbackup_server_settings.db) from a backup. See log file for details."
+"database_error_text": "An error occured while accessing or checking UrBackup's internal database. This means this database is probably damaged or there is not enough free space. If this error persists, please restore the database (the files urbackup_server.db and urbackup_server_settings.db) from a backup. See log file for details."
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
