@@ -121,7 +121,8 @@ translations.en={
 "nospc_fatal_text": "There is currently not enough free space in the backup folder. UrBackup tried to delete old image and file backups but is now not allowed to delete more. Please change the settings to store less backups or increase the storage amount to allow UrBackup to continue to perform backups",
 "really_recalculate": "Do you really want to recalculate all statistics? This might take a long time!",
 "database_error_text": "An error occured while accessing or checking UrBackup's internal database. This means this database is probably damaged or there is not enough free space. If this error persists, please restore the database (the files urbackup_server.db and urbackup_server_settings.db) from a backup. See log file for details.",
-"creating_filescache_text": "UrBackup is creating the file entry chache. This might take a while."
+"creating_filescache_text": "UrBackup is creating the file entry chache. This might take a while.",
+"about_urbackup": "About UrBackup"
 }
 translations.de={
 "action_1": "Inkrementelles Datei Backup",
@@ -415,7 +416,8 @@ translations.de={
 "tPerform autoupdates silently": "Autoupdates im Hintergrund ausführen",
 "tArchived": "Archiviert",
 "nospc_stalled_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup löscht gerade alte Datei- und Image-Backups, innerhalb der Grenzen die in den Einstellungen festgelegt sind. Wärend dieses Vorgangs ist die Performanz des Backupservers eventuell eingeschränkt; Lauftende Backups sind eventuell pausiert.",
-"nospc_fatal_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup hat versucht alte Datei- und Image-Backups zu löschen, kann aber jetzt nicht weiteren Speicherplatz freimachen. Bitte ändern Sie die Einstellungen insofern, dass weniger Backups gespeichert werden, oder fügen Sie weiteren Backupspeicher hinzu, so dass UrBackup weiterhin Backups durchführen kann."
+"nospc_fatal_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup hat versucht alte Datei- und Image-Backups zu löschen, kann aber jetzt nicht weiteren Speicherplatz freimachen. Bitte ändern Sie die Einstellungen insofern, dass weniger Backups gespeichert werden, oder fügen Sie weiteren Backupspeicher hinzu, so dass UrBackup weiterhin Backups durchführen kann.",
+"about_urbackup": "Über UrBackup"
 }
 translations.ru={
 "action_1": "Добавочный файловый бэкап",

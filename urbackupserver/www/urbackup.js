@@ -102,8 +102,19 @@ function change_lang(l, refresh)
 	{
 		refresh_page();
 	}
+	
+	I('about_urbackup').innerHTML=trans("about_urbackup");
 }
-
+function aboutUrBackup()
+{
+	var ndata=tmpls.about_urbackup.evaluate({version: I('server_version').innerHTML.trim()});
+	if(g.data_f!=ndata)
+	{
+		I('data_f').innerHTML=ndata;
+		g.data_f=ndata;
+	}
+	I('nav_pos').innerHTML="";
+}
 function try_anonymous_login(data)
 {
 	stopLoading();

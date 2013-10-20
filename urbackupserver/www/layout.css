@@ -3,6 +3,12 @@ body
 	font-family: arial, sans-serif;
 	font-size: 15px;
 	color: #1C1C1C;
+	height: 100%;
+	margin: 0px;
+}
+html
+{
+	height: 100%;
 }
 a
 {
@@ -158,6 +164,7 @@ h3
 }
 .tabberlive {
  margin-top:1em;
+ width: 850px;
 }
 ul.tabbernav
 {
@@ -210,4 +217,13 @@ ul.tabbernav li.tabberactive a:hover
 }
 .tabberlive .tabbertab h3 {
  display:none;
+}
+.wrapper {
+	min-height: 100%;
+	height: auto !important;
+	height: 100%;
+	margin: 0 auto -30px;
+}
+.footer, .push {
+	height: 30px;
 }
