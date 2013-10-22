@@ -576,6 +576,7 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 	//Invalidate cache
 	DirectoryWatcherThread::freeze();
+	DirectoryWatcherThread::update_last_backup_time();
 	Server->wait(10000);
 	DirectoryWatcherThread::update_and_wait();
 	changed_dirs=cd->getChangedDirs();
@@ -635,6 +636,10 @@ void IndexThread::indexDirs(void)
 				mod_path=scd->target;
 				scd->running=true;
 			}
+
+			mod_path=removeDirectorySeparatorAtEnd(mod_path);
+			backup_dirs[i].path=removeDirectorySeparatorAtEnd(backup_dirs[i].path);
+
 #ifdef _WIN32
 			if(!b || !onlyref)
 			{
@@ -645,6 +650,13 @@ void IndexThread::indexDirs(void)
 				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 				std::sort(changed_dirs.begin(), changed_dirs.end());
 
+				#ifndef VSS_XP
+				#ifndef VSS_S03
+				VSSLog(L"Scanning for changed hard links in \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
+				handleHardLinks(backup_dirs[i].path, mod_path);
+				#endif
+				#endif
+
 				std::vector<std::wstring> deldirs=cd->getDelDirs(false);
 				for(size_t i=0;i<deldirs.size();++i)
 				{
@@ -652,8 +664,6 @@ void IndexThread::indexDirs(void)
 				}
 			}
 #endif
-			mod_path=removeDirectorySeparatorAtEnd(mod_path);
-			backup_dirs[i].path=removeDirectorySeparatorAtEnd(backup_dirs[i].path);
 
 			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 			index_c_db=0;
@@ -719,6 +729,7 @@ void IndexThread::indexDirs(void)
 	}
 
 	DirectoryWatcherThread::unfreeze();
+	DirectoryWatcherThread::commit_last_backup_time();
 #endif
 
 	{
@@ -917,6 +928,10 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, path_lower) );
 		if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
 			it_dir=changed_dirs.end();
+	}
+	if(path_lower==strlower(Server->getServerWorkingDir())+os_file_sep()+L"urbackup"+os_file_sep())
+	{
+		use_db=false;
 	}
 	std::vector<SFile> tmp;
 	if(it_dir!=changed_dirs.end() || use_db==false)
@@ -1903,7 +1918,13 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 				exlude_dirs[i]=sanitizePattern(exlude_dirs[i]);
 			}
 			
+			addFileExceptions();
 		}
+		else
+		{
+			addFileExceptions();
+		}
+
 		if(curr_settings->getValue(L"include_files", &val) || curr_settings->getValue(L"include_files_def", &val) )
 		{
 			if(val!=cd->getOldIncludePattern())
@@ -1997,6 +2018,10 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 
 		}
 		Server->destroy(curr_settings);
+	}
+	else
+	{
+		addFileExceptions();
 	}
 }
 
@@ -2211,7 +2236,7 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	sha256_ctx ctx;
 	sha256_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL);
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
 
 	if(f==NULL)
 	{
@@ -2239,7 +2264,7 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 	sha512_ctx ctx;
 	sha512_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL);
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
 
 	if(f==NULL)
 	{
@@ -2305,4 +2330,219 @@ void IndexThread::commitModifyHashBuffer(void)
 
 	modify_hash_buffer.clear();
 	modify_hash_buffer_size=0;
+}
+
+#ifdef _WIN32
+namespace
+{
+	LONG GetStringRegKey(HKEY hKey, const std::wstring &strValueName, std::wstring &strValue, const std::wstring &strDefaultValue)
+	{
+		strValue = strDefaultValue;
+		WCHAR szBuffer[8192];
+		DWORD dwBufferSize = sizeof(szBuffer);
+		ULONG nError;
+		nError = RegQueryValueExW(hKey, strValueName.c_str(), 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
+		if (ERROR_SUCCESS == nError)
+		{
+			strValue.resize(dwBufferSize/sizeof(wchar_t));
+			memcpy(const_cast<wchar_t*>(strValue.c_str()), szBuffer, dwBufferSize);
+		}
+		return nError;
+	}
+}
+#endif
+
+void IndexThread::addFileExceptions(void)
+{
+#ifdef _WIN32
+	exlude_dirs.push_back(sanitizePattern(L"C:\\HIBERFIL.SYS"));
+
+	HKEY hKey;
+	LONG lRes = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", 0, KEY_READ, &hKey);
+	if(lRes != ERROR_SUCCESS)
+		return;
+
+	std::wstring tfiles;
+	lRes = GetStringRegKey(hKey, L"ExistingPageFiles", tfiles, L"");
+	if(lRes != ERROR_SUCCESS)
+		return;
+
+	std::vector<std::wstring> toks;
+	std::wstring sep;
+	sep.resize(1);
+	sep[0]=0;
+	Tokenize(tfiles, toks, sep);
+	for(size_t i=0;i<toks.size();++i)
+	{
+		toks[i]=trim(toks[i].c_str());
+
+		if(toks[i].empty())
+			continue;
+
+		toks[i]=trim(toks[i]);
+
+		if(toks[i].find(L"\\??\\")==0)
+		{
+			toks[i].erase(0, 4);
+		}
+
+		strupper(&toks[i]);
+
+		exlude_dirs.push_back(sanitizePattern(toks[i]));
+	}
+#endif
+}
+
+void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring& vsspath)
+{
+#ifdef _WIN32
+	std::wstring prefixedbpath=os_file_prefix(bpath);
+	std::wstring tvolume;
+	tvolume.resize(prefixedbpath.size()+100);
+	DWORD cchBufferLength=static_cast<DWORD>(tvolume.size());
+	BOOL b=GetVolumePathNameW(prefixedbpath.c_str(), &tvolume[0], cchBufferLength);
+	if(!b)
+	{
+		VSSLog(L"Error getting volume path for "+bpath, LL_WARNING);
+		return;
+	}
+
+	std::wstring tvssvolume;
+	tvssvolume.resize(vsspath.size()+100);
+	cchBufferLength=static_cast<DWORD>(tvssvolume.size());
+	b=GetVolumePathNameW(vsspath.c_str(), &tvssvolume[0], cchBufferLength);
+	if(!b)
+	{
+		VSSLog(L"Error getting volume path for "+vsspath, LL_WARNING);
+		return;
+	}
+
+	std::wstring vssvolume=tvssvolume.c_str();
+
+	std::wstring volume=strlower(tvolume.c_str());
+
+	if(volume.find(L"\\\\?\\")==0)
+		volume.erase(0, 4);
+
+	std::vector<SMDir> additional_changed_dirs;
+
+	for(size_t i=0;i<changed_dirs.size();++i)
+	{
+		std::wstring tpath=changed_dirs[i].name;
+
+		if(tpath.find(volume)!=0)
+		{
+			continue;
+		}
+
+		std::wstring vsstpath=vssvolume+tpath.substr(volume.size());
+
+		if(vsstpath.size()<2 || (vsstpath[0]!='\\' && vsstpath[1]!='\\' ) )
+			tpath=L"\\\\?\\"+tpath;
+
+		bool has_error;
+		std::vector<SFile> files = getFiles(vsstpath, &has_error);
+
+		if(has_error)
+		{
+			VSSLog(L"Cannot open directory "+vsstpath+L" to handle hard links", LL_DEBUG);
+		}
+
+		for(size_t i=0;i<files.size();++i)
+		{
+			std::wstring fn=vsstpath+files[i].name;
+			HANDLE hFile = CreateFileW(fn.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+			if(hFile==INVALID_HANDLE_VALUE)
+			{
+				VSSLog(L"Cannot open file "+fn+L" to read the file attributes", LL_INFO);
+			}
+			else
+			{
+				BY_HANDLE_FILE_INFORMATION fileInformation;
+				BOOL b=GetFileInformationByHandle(hFile, &fileInformation);
+
+				if(!b)
+				{
+					VSSLog(L"Error getting file information of "+fn, LL_INFO);
+					CloseHandle(hFile);
+				}
+				else if(fileInformation.nNumberOfLinks>1)
+				{
+					CloseHandle(hFile);
+
+					std::wstring outBuf;
+					DWORD stringLength=4096;
+					outBuf.resize(stringLength);
+					HANDLE hFn=FindFirstFileNameW(fn.c_str(), 0, &stringLength, &outBuf[0]);
+
+					if(hFn==INVALID_HANDLE_VALUE && GetLastError()==ERROR_MORE_DATA)
+					{
+						outBuf.resize(stringLength);
+						hFn=FindFirstFileNameW(fn.c_str(), 0, &stringLength, &outBuf[0]);
+					}
+
+					if(hFn==INVALID_HANDLE_VALUE)
+					{
+						VSSLog(L"Error reading hard link names of "+fn, LL_INFO);
+					}
+					else
+					{
+						std::wstring ndir=strlower(ExtractFilePath(std::wstring(outBuf.begin(), outBuf.begin()+stringLength)))+os_file_sep();
+						if(ndir[0]=='\\')
+							ndir=volume+ndir.substr(1);
+						else
+							ndir=volume+ndir;
+
+						std::vector<SMDir>::iterator it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, ndir));
+						if(it_dir==changed_dirs.end() || (*it_dir).name!=ndir)
+						{
+							additional_changed_dirs.push_back(SMDir(0, ndir));
+						}
+
+						do
+						{
+							b = FindNextFileNameW(hFn, &stringLength, &outBuf[0]);
+
+							if(!b && GetLastError()==ERROR_MORE_DATA)
+							{
+								outBuf.resize(stringLength);
+								b = FindNextFileNameW(hFn, &stringLength, &outBuf[0]);
+							}
+
+							if(!b && GetLastError()!=ERROR_HANDLE_EOF)
+							{
+								VSSLog(L"Error reading (2) hard link names of "+fn, LL_INFO);
+							}
+							else
+							{
+								std::wstring ndir=strlower(ExtractFilePath(std::wstring(outBuf.begin(), outBuf.begin()+stringLength)))+os_file_sep();
+								if(ndir[0]=='\\')
+									ndir=volume+ndir.substr(1);
+								else
+									ndir=volume+ndir;
+						
+								std::vector<SMDir>::iterator it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, ndir));
+								if(it_dir==changed_dirs.end() || (*it_dir).name!=ndir)
+								{
+									additional_changed_dirs.push_back(SMDir(0, ndir));
+								}
+							}
+						}
+						while(b);
+
+						FindClose(hFn);
+					}
+				}
+				else
+				{
+					CloseHandle(hFile);
+				}
+			}
+		}
+	}
+
+	changed_dirs.insert(changed_dirs.end(), additional_changed_dirs.begin(), additional_changed_dirs.end());
+	std::sort(changed_dirs.begin(), changed_dirs.end());
+#endif
 }

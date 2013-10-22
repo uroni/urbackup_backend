@@ -155,6 +155,15 @@ void CSessionMgr::releaseUser(SUser *user)
 	}
 }
 
+void CSessionMgr::lockUser(SUser *user)
+{
+	if( user!=NULL )
+	{
+		ILock *lock=((IMutex*)user->mutex)->Lock2();
+		user->lock=lock;
+	}
+}
+
 bool CSessionMgr::RemoveSession(const std::wstring &pSID)
 {
 	IScopedLock lock( sess_mutex );

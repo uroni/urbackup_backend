@@ -38,11 +38,26 @@ struct SPostfile
 	std::wstring contenttype;
 };
 
+struct SCircularLogEntry
+{
+	SCircularLogEntry(void)
+		: loglevel(LL_DEBUG), id(std::string::npos)
+	{
+	}
+
+	std::string utf8_msg;
+	int loglevel;
+	size_t id;
+	unsigned int time;
+};
+
 class IServer
 {
 public:
 	virtual void setLogLevel(int LogLevel)=0;
 	virtual void setLogFile(const std::string &plf, std::string chown_user="")=0;
+	virtual void setLogCircularBufferSize(size_t size)=0;
+	virtual const std::vector<SCircularLogEntry>& getCicularLogBuffer(void)=0;
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO)=0;
 	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO)=0;
 	virtual void Write(THREAD_ID tid, const std::string &str, bool cached=true)=0;
@@ -153,6 +168,13 @@ public:
 	virtual unsigned int getSecureRandomNumber(void)=0;
 	virtual std::vector<unsigned int> getSecureRandomNumbers(size_t n)=0;
 	virtual void secureRandomFill(char *buf, size_t blen)=0;
+
+	static const size_t FAIL_DATABASE_CORRUPTED=1;
+	static const size_t FAIL_DATABASE_IOERR=2;
+
+	virtual void setFailBit(size_t failbit)=0;
+	virtual void clearFailBit(size_t failbit)=0;
+	virtual size_t getFailBits(void)=0;
 };
 
 #ifndef NO_INTERFACE

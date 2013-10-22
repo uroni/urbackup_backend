@@ -16,8 +16,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#ifndef CLIENT_ONLY
-
 #include "action_header.h"
 #include "../../urbackupcommon/os_functions.h"
 
@@ -200,6 +198,8 @@ ACTION_IMPL(backups)
 							IFile *in=Server->openFile(os_file_prefix(currdir), MODE_READ);
 							if(in!=NULL)
 							{
+								helper.releaseAll();
+
 								Server->addHeader(tid, "Content-Length: "+nconvert(in->Size()) );
 								char buf[4096];
 								_u32 r;
@@ -255,5 +255,3 @@ ACTION_IMPL(backups)
 
 	helper.Write(ret.get(false));
 }
-
-#endif //CLIENT_ONLY

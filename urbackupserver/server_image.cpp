@@ -596,7 +596,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							if(vhdfile->hasError())
 							{
 								ServerLogger::Log(clientid, "FATAL ERROR: Could not write to VHD-File", LL_ERROR);
-								BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+								BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 								goto do_image_cleanup;
 							}
 						}

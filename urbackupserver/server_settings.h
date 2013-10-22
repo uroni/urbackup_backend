@@ -28,6 +28,7 @@ struct SSettings
 	bool client_overwrite;
 	bool autoshutdown;
 	int startup_backup_delay;
+	bool download_client;
 	bool autoupdate_clients;
 	int max_sim_backups;
 	int max_active_clients;
@@ -38,8 +39,10 @@ struct SSettings
 	std::wstring default_dirs;
 	std::string cleanup_window;
 	bool allow_pause;
-	bool allow_starting_file_backups;
-	bool allow_starting_image_backups;
+	bool allow_starting_full_file_backups;
+	bool allow_starting_incr_file_backups;
+	bool allow_starting_full_image_backups;
+	bool allow_starting_incr_image_backups;
 	bool allow_config_paths;
 	bool allow_log_view;
 	std::string image_letters;

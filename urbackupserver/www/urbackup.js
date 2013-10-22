@@ -7,6 +7,7 @@ g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.status_detail=false;
 g.progress_stop_id=-1;
+g.current_version=1003000000;
 
 g.languages=[ 
 				{ l: "Deutsch", s: "de" },
@@ -101,8 +102,19 @@ function change_lang(l, refresh)
 	{
 		refresh_page();
 	}
+	
+	I('about_urbackup').innerHTML=trans("about_urbackup");
 }
-
+function aboutUrBackup()
+{
+	var ndata=tmpls.about_urbackup.evaluate({version: I('server_version').innerHTML.trim()});
+	if(g.data_f!=ndata)
+	{
+		I('data_f').innerHTML=ndata;
+		g.data_f=ndata;
+	}
+	I('nav_pos').innerHTML="";
+}
 function try_anonymous_login(data)
 {
 	stopLoading();
@@ -124,7 +136,20 @@ function try_anonymous_login(data)
 	
 	if(data.upgrading_database)
 	{
+		data.upgrade_error_text=trans("upgrade_error_text");
 		var ndata=tmpls.upgrade_error.evaluate(data);
+		if(g.data_f!=ndata)
+		{
+			I('data_f').innerHTML=ndata;
+			g.data_f=ndata;
+		}
+		return;
+	}
+	
+	if(data.creating_filescache)
+	{
+		data.creating_filescache_text=trans("creating_filescache_text");
+		var ndata=tmpls.file_cache_error.evaluate(data);
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;
@@ -222,11 +247,10 @@ function getPar(p)
 		return "&"+p+"="+(obj.checked?"true":"false");
 	}
 	var val=obj.value;
-	if(p=="update_freq_incr") val*=60*60;
-	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr") val*=60*60*24;
+	if(p=="update_freq_incr"){ val*=60*60; if(obj.disabled) val*=-1; }
+	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
+		{ val*=60*60*24; if(obj.disabled) val*=-1; }
 	if(p=="startup_backup_delay") val*=60;
-	if(p=="update_freq_image_full" && I('client_disable_image_backups') && I('client_disable_image_backups').checked )
-		val*=-1;
 	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
 	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
 	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
@@ -683,25 +707,31 @@ function show_status2(data)
 	{
 		var ext_text="";
 		if(data.dir_error_ext) ext_text="("+data.dir_error_ext+")";
-		dir_error=tmpls.dir_error.evaluate({ext_text: ext_text});
+		dir_error=tmpls.dir_error.evaluate({ext_text: ext_text, dir_error_text: trans("dir_error_text")});
 	}
 	
 	var tmpdir_error="";
 	if(data.tmpdir_error)
 	{
-		tmpdir_error=tmpls.tmpdir_error.evaluate();
+		tmpdir_error=tmpls.tmpdir_error.evaluate({tmpdir_error_text: trans("tmpdir_error_text")});
 	}
 	
 	var nospc_stalled="";
 	if(data.nospc_stalled)
 	{
-		nospc_stalled=tmpls.nospc_stalled.evaluate();
+		nospc_stalled=tmpls.nospc_stalled.evaluate({nospc_stalled_text: trans("nospc_stalled_text")});
+	}
+	
+	var database_error="";
+	if(data.database_error)
+	{
+		database_error=tmpls.database_error.evaluate({database_error_text: trans("database_error_text")});
 	}
 	
 	var nospc_fatal="";
 	if(data.nospc_fatal)
 	{
-		nospc_fatal=tmpls.nospc_fatal.evaluate();
+		nospc_fatal=tmpls.nospc_fatal.evaluate({nospc_fatal_text: trans("nospc_fatal_text")});
 	}
 	
 	var dlt_mod_start="<!--";
@@ -820,7 +850,8 @@ function show_status2(data)
 		server_identity: data.server_identity, modify_clients: modify_clients,
 		modify_clients_top: modify_clients_top,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
-		status_client_download: status_client_download, dtl_c1_top: dtl_c1_top, dtl_c2_top: dtl_c2_top});
+		status_client_download: status_client_download, dtl_c1_top: dtl_c1_top, dtl_c2_top: dtl_c2_top,
+		database_error: database_error});
 	
 	if(g.data_f!=ndata)
 	{
@@ -854,6 +885,25 @@ function show_status2(data)
 				show_hide_column('status_table', 4, false);
 			}
 		}
+	}
+	
+	if(data.admin)
+	{
+		if(!g.online_version_loaded)
+		{
+			LoadScript("http://urbackup.org/server_version_info.js", "server_version_info_struct");
+		}
+		else
+		{
+			g.checkForNewVersion();
+		}
+	}
+}
+g.checkForNewVersion = function()
+{
+	if(g.online_version.num>g.current_version && I('new_version_available'))
+	{
+		I('new_version_available').innerHTML=tmpls.new_version_available.evaluate({new_version_number: g.online_version.str} );
 	}
 }
 function downloadClient(clientid)
@@ -1196,6 +1246,7 @@ function show_settings2(data)
 			if(g.settings_nav_pos==idx)
 			{
 				n+="<strong>"+trans("change_pw")+"</strong>";
+				data.sa="change_pw_int";
 			}
 			else
 			{
@@ -1241,6 +1292,7 @@ function show_settings2(data)
 			data.settings.no_file_backups=getCheckboxValue(data.settings.no_file_backups);
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
+			data.settings.download_client=getCheckboxValue(data.settings.download_client);
 			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
 			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
 			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
@@ -1248,8 +1300,10 @@ function show_settings2(data)
 			
 			
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
-			data.settings.allow_starting_file_backups=getCheckboxValue(data.settings.allow_starting_file_backups);
-			data.settings.allow_starting_image_backups=getCheckboxValue(data.settings.allow_starting_image_backups);
+			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
+			data.settings.allow_starting_incr_file_backups=getCheckboxValue(data.settings.allow_starting_incr_file_backups);
+			data.settings.allow_starting_full_image_backups=getCheckboxValue(data.settings.allow_starting_full_image_backups);
+			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
 			
@@ -1294,6 +1348,7 @@ function show_settings2(data)
 			
 			data.settings.file_hash_collect_cachesize/=1024;
 			data.settings.update_stats_cachesize/=1024;
+			
 			
 			data.settings.no_compname_start="<!--";
 			data.settings.no_compname_end="-->";
@@ -1353,11 +1408,12 @@ function show_settings2(data)
 			data.settings.overwrite=getCheckboxValue(data.settings.overwrite);
 			data.settings.allow_overwrite=getCheckboxValue(data.settings.allow_overwrite);
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
-			data.settings.allow_starting_file_backups=getCheckboxValue(data.settings.allow_starting_file_backups);
-			data.settings.allow_starting_image_backups=getCheckboxValue(data.settings.allow_starting_image_backups);
+			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
+			data.settings.allow_starting_incr_file_backups=getCheckboxValue(data.settings.allow_starting_incr_file_backups);
+			data.settings.allow_starting_full_image_backups=getCheckboxValue(data.settings.allow_starting_full_image_backups);
+			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
-			data.settings.client_disable_image_backups=getCheckboxValue(data.settings.update_freq_image_full<0);
 			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
 			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
 			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
@@ -1524,11 +1580,16 @@ function show_settings2(data)
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 		update_tabber=true;
+		settingsCheckboxChange();
 	}
 	
 	if(data.sa && data.sa=="clientsettings")
 	{
 		updateUserOverwrite();
+	}
+	else if(data.sa && data.sa=="change_pw_int")
+	{
+		changePW();
 	}
 	
 	if(update_tabber)
@@ -1557,6 +1618,32 @@ function show_settings2(data)
 		}
 	}
 }
+function settingsCheckboxHandle(cbid)
+{
+	if(!I(cbid)) return;
+	
+	if(I(cbid+'_disable').checked && I(cbid).disabled==false)
+	{
+		I(cbid).disabled=true;
+	}
+	else if(!I(cbid+'_disable').checked && I(cbid).disabled==true)
+	{
+		I(cbid).disabled=false;
+	}
+	else if(!I(cbid+'_disable').checked && I(cbid).value<0)
+	{
+		I(cbid).value*=-1;
+		I(cbid).disabled=true;
+		I(cbid+'_disable').checked=true;
+	}
+}
+function settingsCheckboxChange()
+{
+	settingsCheckboxHandle('update_freq_incr');
+	settingsCheckboxHandle('update_freq_full');
+	settingsCheckboxHandle('update_freq_image_incr');
+	settingsCheckboxHandle('update_freq_image_full');
+}
 
 g.settings_list=[
 "update_freq_incr",
@@ -1579,8 +1666,10 @@ g.settings_list=[
 "include_files",
 "default_dirs",
 "allow_config_paths",
-"allow_starting_file_backups",
-"allow_starting_image_backups",
+"allow_starting_full_file_backups",
+"allow_starting_incr_file_backups",
+"allow_starting_full_image_backups",
+"allow_starting_incr_image_backups",
 "allow_pause",
 "allow_log_view",
 "image_letters",
@@ -1611,6 +1700,7 @@ g.general_settings_list=[
 "no_images",
 "no_file_backups",
 "autoshutdown",
+"download_client",
 "autoupdate_clients",
 "max_sim_backups",
 "max_active_clients",
@@ -1648,7 +1738,8 @@ function validateCommonSettings()
 							"update_freq_image_full", "max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
-	if(!validate_text_int_or_empty(["local_speed", "internet_speed"])) return false;
+	if(!validate_text_int_or_empty(["local_speed"])) return false;
+	if(I('internet_speed') && !validate_text_int_or_empty(["internet_speed"])) return false;
 	if(!validate_text_regex([{ id: "backup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return false;
 	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
@@ -1672,12 +1763,13 @@ function saveGeneralSettings()
 {
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
-	if(!validate_text_int_or_empty(["global_local_speed", "global_internet_speed"])) return;
+	if(!validate_text_int_or_empty(["global_local_speed"])) return;
+	if(I('global_internet_speed') && !validate_text_int_or_empty(["global_internet_speed"])) return;
 	if(!validateCommonSettings() ) return;
 	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;	
 	
 	var internet_pars=getInternetSettings();
-	if(internet_pars=="") return;
+	if(internet_pars==null) return;
 	
 	if(!startLoading()) return;
 			
@@ -1706,7 +1798,8 @@ function saveMailSettings()
 }
 function getInternetSettings()
 {	
-	if(!validate_text_int(["internet_server_port"]) ) return "";
+	if(!I('internet_server_port')) return "";
+	if(!validate_text_int(["internet_server_port"]) ) return null;
 	var pars="";
 	for(var i=0;i<g.internet_settings_list.length;++i)
 	{
@@ -1766,6 +1859,13 @@ function updateUserOverwrite(clientid)
 	I('archive_every_unit').disabled=!checked;
 	I('archive_for_unit').disabled=!checked;
 	I('archive_backup_type').disabled=!checked;
+	
+	//Disable checkboxes
+	I('update_freq_incr_disable').disabled=!checked;
+	I('update_freq_full_disable').disabled=!checked;
+	I('update_freq_image_incr_disable').disabled=!checked;
+	I('update_freq_image_full_disable').disabled=!checked;
+	
 	
 	if(clientid)
 	{
@@ -1862,22 +1962,6 @@ function adminRights()
 {
 	return ([ { domain: "all", right: "all" } ]);
 }
-
-function clientRights(clientid)
-{
-	return (
-	[
-		{ domain: "browse_backups", right: clientid },
-		{ domain: "lastacts", right: clientid },
-		{ domain: "progress", right: clientid },
-		{ domain: "settings", right: clientid },
-		{ domain: "status", right: clientid },
-		{ domain: "logs", right: clientid },
-		{ domain: "stop_backup", right: clientid },
-		{ domain: "start_backup", right: "all" },
-		{ domain: "download_image", right: clientid }
-	]);
-}
 function createUser2()
 {
 	var username=I('username').value;
@@ -1916,7 +2000,7 @@ function createUser2()
 	}
 	else
 	{
-		t_rights=clientRights(cid);
+		t_rights=g.defaultUserRights(cid);
 	}
 	
 	var pars="&name="+username+"&pwmd5="+password_md5+"&salt="+salt+"&rights="+generateRightsParam(t_rights);
@@ -2039,9 +2123,15 @@ function changeUserPassword(uid, name)
 }
 function changePW(el)
 {
-	I('settingsclient').innerHTML="<option value=\"n\">"+trans("clients")+"</option>"+I('settingsclient').innerHTML;
-	I('settingsclient').selectedIndex=0;
-	I('change_pw_el').innerHTML="<strong>"+trans("change_pw")+"</strong>";
+	if(I('settingsclient'))
+	{
+		I('settingsclient').innerHTML="<option value=\"n\">"+trans("clients")+"</option>"+I('settingsclient').innerHTML;
+		I('settingsclient').selectedIndex=0;
+	}
+	if(I('change_pw_el'))
+	{
+		I('change_pw_el').innerHTML="<strong>"+trans("change_pw")+"</strong>";
+	}
 	var ndata=tmpls.change_pw.evaluate();
 	g.settings_nav_pos=g.user_nav_pos_offset-1;
 	if(g.data_f!=ndata)
@@ -2290,6 +2380,7 @@ function show_logs2(data)
 {
 	stopLoading();
 	
+	var live_log_clients="";
 	if(data.clients && !data.log)
 	{
 		var np=trans("filter")+": ";
@@ -2313,6 +2404,16 @@ function show_logs2(data)
 		
 		I('nav_pos').innerHTML=np;
 		I('logsfilter').selectedIndex=2-data.ll;
+		
+		if(data.all_clients)
+		{
+			live_log_clients+="<option value=\"0\">"+trans("all")+"</option>";
+		}		
+		for(var i=0;i<data.clients.length;++i)
+		{
+			var obj=data.clients[i];
+			live_log_clients+="<option value=\""+obj.id+"\">"+obj.name+"</option>";
+		}
 	}
 	else
 	{
@@ -2371,6 +2472,7 @@ function show_logs2(data)
 		td.sel_info=(data.report_loglevel==0)?sel:"";
 		td.sel_warn=(data.report_loglevel==1)?sel:"";
 		td.sel_error=(data.report_loglevel==2)?sel:"";
+		td.live_log_clients=live_log_clients;
 			
 		ndata+=tmpls.logs_table.evaluate(td);
 	}
@@ -2579,6 +2681,14 @@ function updateLogsParam()
 		g.nav_params={};
 	g.nav_params[3]=p;
 	build_main_nav();
+}
+function show_live_log()
+{
+	var clientid=I('live_log_clientid').value;
+	var win = window.open('', '_blank', '');
+	win.document.write(tmpls.live_log.evaluate({session: g.session, clientid: clientid, clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text}));
+	win.document.close();
+	win.focus();
 }
 function removeClient(clientid)
 {

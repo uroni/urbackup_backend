@@ -12,7 +12,13 @@ namespace
 		if(crypto_fak==NULL)
 			return false;
 
-		return crypto_fak->verifyFile("urbackup_dsa.pub", "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig");
+#ifdef _WIN32
+		const std::string pubkey_fn="urbackup_dsa.pub";
+#else
+		const std::string pubkey_fn="urbackup/urbackup_dsa.pub";
+#endif
+
+		return crypto_fak->verifyFile(pubkey_fn, "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig");
 	}
 
 	std::string constructClientSettings(Helper& helper, int clientid)
@@ -129,6 +135,7 @@ ACTION_IMPL(download_client)
 
 					Server->setContentType(tid, "application/octet-stream");
 					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+").exe\"");
+					Server->addHeader(tid, "Content-Length: "+nconvert(data.size()) );
 					Server->WriteRaw(tid, data.c_str(), data.size(), false);
 				}
 				else
@@ -151,6 +158,9 @@ ACTION_IMPL(download_client)
 		errstr="No right to download any client";
 	}
 
-	Server->Log(errstr, LL_ERROR);
-	helper.Write("ERROR: "+errstr);
+	if(!errstr.empty())
+	{
+		Server->Log(errstr, LL_ERROR);
+		helper.Write("ERROR: "+errstr);
+	}
 }

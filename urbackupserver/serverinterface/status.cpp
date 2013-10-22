@@ -148,6 +148,12 @@ ACTION_IMPL(status)
 			{
 				ret.set("nospc_fatal" ,true);
 			}
+
+			if( (Server->getFailBits() & IServer::FAIL_DATABASE_CORRUPTED) ||
+				(Server->getFailBits() & IServer::FAIL_DATABASE_IOERR) )
+			{
+				ret.set("database_error", true);
+			}
 		}
 
 		bool details=false;
@@ -175,7 +181,7 @@ ACTION_IMPL(status)
 				q->Reset();
 			}
 		}
-		if(GET.find(L"clientname")!=GET.end())
+		if(GET.find(L"clientname")!=GET.end() && helper.getRights("add_client")=="all" )
 		{
 			bool new_client=false;
 			int id=BackupServerGet::getClientID(db, GET[L"clientname"], NULL, &new_client);
@@ -240,11 +246,18 @@ ACTION_IMPL(status)
 		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen, 'localtime') AS lastseen,"
 			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image, 'localtime') AS lastbackup_image FROM clients"+filter);
 
-		int backup_ok_mod=3;
-		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod' AND clientid=0");
+		double backup_ok_mod_file=3.;
+		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_file' AND clientid=0");
 		if(res_t.size()>0)
 		{
-			backup_ok_mod=watoi(res_t[0][L"value"]);
+			backup_ok_mod_file=atof(Server->ConvertToUTF8(res_t[0][L"value"]).c_str());
+		}
+
+		double backup_ok_mod_image=3.;
+		res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_image' AND clientid=0");
+		if(res_t.size()>0)
+		{
+			backup_ok_mod_image=atof(Server->ConvertToUTF8(res_t[0][L"value"]).c_str());
 		}
 
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
@@ -322,13 +335,26 @@ ACTION_IMPL(status)
 			
 
 			ServerSettings settings(db, clientid);
-			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+nconvert(settings.getSettings()->update_freq_incr*backup_ok_mod)+" seconds')<lastbackup AND id=?");
+
+			int time_filebackup=settings.getSettings()->update_freq_incr;
+			if( time_filebackup<0 && settings.getSettings()->update_freq_full<time_filebackup && settings.getSettings()->update_freq_full>=0 )
+			{
+				time_filebackup=settings.getSettings()->update_freq_full;
+			}
+			
+			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+nconvert((int)(time_filebackup*backup_ok_mod_file+0.5))+" seconds')<lastbackup AND id=?");
 			q->Bind(clientid);
 			db_results res_file_ok=q->Read();
 			q->Reset();
 			stat.set("file_ok", !res_file_ok.empty());
 
-			q=db->Prepare("SELECT id FROM clients WHERE lastbackup_image IS NOT NULL AND datetime('now','-"+nconvert(settings.getSettings()->update_freq_image_incr*backup_ok_mod)+" seconds')<lastbackup_image AND id=?");
+			int time_imagebackup=settings.getSettings()->update_freq_image_incr;
+			if( time_imagebackup<0 && settings.getSettings()->update_freq_image_full<time_imagebackup && settings.getSettings()->update_freq_image_full>=0 )
+			{
+				time_imagebackup=settings.getSettings()->update_freq_image_full;
+			}
+
+			q=db->Prepare("SELECT id FROM clients WHERE lastbackup_image IS NOT NULL AND datetime('now','-"+nconvert((int)(time_imagebackup*backup_ok_mod_image+0.5))+" seconds')<lastbackup_image AND id=?");
 			q->Bind(clientid);
 			res_file_ok=q->Read();
 			q->Reset();
@@ -429,6 +455,11 @@ ACTION_IMPL(status)
 		ServerSettings settings(db);
 		ret.set("no_images", settings.getSettings()->no_images);
 		ret.set("no_file_backups", settings.getSettings()->no_file_backups);
+
+		if(helper.getRights("all")=="all")
+		{
+			ret.set("admin", JSON::Value(true));
+		}
 	}
 	else
 	{

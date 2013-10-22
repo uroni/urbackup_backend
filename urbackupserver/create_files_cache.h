@@ -1,6 +1,7 @@
 class FileCache;
+struct SStartupStatus;
 
-void create_files_cache(void);
+void create_files_cache(SStartupStatus& status);
 
 FileCache* create_lmdb_files_cache(void);
 

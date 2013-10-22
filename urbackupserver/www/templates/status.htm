@@ -1,9 +1,11 @@
+<span id="new_version_available"></span>
 <h1>#{tBackup status}</h1>
 
 #{nospc_fatal}
 #{nospc_stalled}
 #{dir_error}
 #{tmpdir_error}
+#{database_error}
 
 #{modify_clients_top}
 #{dtl_c1_top}
@@ -16,7 +18,7 @@
 	<th style="width: 130px" class="tabHeader">#{tLast file backup}</th>
 	<th style="width: 130px" class="tabHeader">#{tLast image backup}</th>
 	<th style="width: 130px" class="tabHeader">#{tFile backup status}</th>
-	<th style="width: 130px" class="tabHeader">#{tImage backup status}</th>
+	<th style="width: 130px" class="#{class_prev}">#{tImage backup status}</th>
 	#{dlt_mod_start}
 	<th style="width: 50px"  class="tabHeaderRight">&nbsp;</th>
 	#{dlt_mod_end}

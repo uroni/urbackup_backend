@@ -671,3 +671,6 @@ function show_hide_column(table_id, col_no, do_show)
         }
     }
 }
+String.prototype.trim = function() {
+    return this.replace(/^\s+|\s+$/g, "");
+};

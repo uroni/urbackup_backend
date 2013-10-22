@@ -173,7 +173,9 @@ private:
 
 	void resetFileEntries(void);
 
-	
+	void addFileExceptions(void);
+
+	void handleHardLinks(const std::wstring& bpath, const std::wstring& vsspath);	
 
 	std::string starttoken;
 

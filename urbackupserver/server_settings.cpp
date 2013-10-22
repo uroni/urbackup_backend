@@ -146,8 +146,9 @@ void ServerSettings::readSettingsDefault(void)
 	settings.backupfolder=trim(settings_default->getValue(L"backupfolder", L"C:\\urbackup"));
 	settings.backupfolder_uncompr=trim(settings_default->getValue(L"backupfolder_uncompr", settings.backupfolder));
 	settings.client_overwrite=true;
-	settings.autoshutdown=false;
+	settings.autoshutdown=(settings_default->getValue("autoshutdown", "false")=="true");;
 	settings.startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
+	settings.download_client=(settings_default->getValue("download_client", "true")=="true");
 	settings.autoupdate_clients=(settings_default->getValue("autoupdate_clients", "true")=="true");
 	settings.backup_window=settings_default->getValue("backup_window", "1-7/0-24");
 	settings.max_active_clients=settings_default->getValue("max_active_clients", 100);
@@ -157,8 +158,10 @@ void ServerSettings::readSettingsDefault(void)
 	settings.default_dirs=settings_default->getValue(L"default_dirs", L"");
 	settings.cleanup_window=settings_default->getValue("cleanup_window", "1-7/3-4");
 	settings.allow_config_paths=(settings_default->getValue("allow_config_paths", "true")=="true");
-	settings.allow_starting_file_backups=(settings_default->getValue("allow_starting_file_backups", "true")=="true");
-	settings.allow_starting_image_backups=(settings_default->getValue("allow_starting_image_backups", "true")=="true");
+	settings.allow_starting_full_file_backups=(settings_default->getValue("allow_starting_full_file_backups", "true")=="true");
+	settings.allow_starting_incr_file_backups=(settings_default->getValue("allow_starting_incr_file_backups", "true")=="true");
+	settings.allow_starting_full_image_backups=(settings_default->getValue("allow_starting_full_image_backups", "true")=="true");
+	settings.allow_starting_incr_image_backups=(settings_default->getValue("allow_starting_incr_image_backups", "true")=="true");
 	settings.allow_pause=(settings_default->getValue("allow_pause", "true")=="true");
 	settings.allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
 	settings.image_letters=settings_default->getValue("image_letters", "C");
@@ -302,8 +305,10 @@ void ServerSettings::readSettingsClient(void)
 		return;
 
 	readBoolClientSetting("allow_config_paths", &settings.allow_config_paths);
-	readBoolClientSetting("allow_starting_file_backups", &settings.allow_starting_file_backups);
-	readBoolClientSetting("allow_starting_image_backups", &settings.allow_starting_image_backups);
+	readBoolClientSetting("allow_starting_full_file_backups", &settings.allow_starting_full_file_backups);
+	readBoolClientSetting("allow_starting_incr_file_backups", &settings.allow_starting_incr_file_backups);
+	readBoolClientSetting("allow_starting_full_image_backups", &settings.allow_starting_full_image_backups);
+	readBoolClientSetting("allow_starting_incr_image_backups", &settings.allow_starting_incr_image_backups);
 	readBoolClientSetting("allow_pause", &settings.allow_pause);
 	readBoolClientSetting("allow_log_view", &settings.allow_log_view);
 	readBoolClientSetting("allow_overwrite", &settings.allow_overwrite);

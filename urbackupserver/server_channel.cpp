@@ -273,9 +273,9 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_SHOW_SETTINGS;
 	if(!cs->allow_pause)
 		capa|=DONT_ALLOW_PAUSE;
-	if(!cs->allow_starting_file_backups)
+	if(!cs->allow_starting_full_file_backups && !cs->allow_starting_incr_file_backups)
 		capa|=DONT_ALLOW_STARTING_FILE_BACKUPS;
-	if(!cs->allow_starting_image_backups)
+	if(!cs->allow_starting_full_image_backups && !cs->allow_starting_incr_image_backups)
 		capa|=DONT_ALLOW_STARTING_IMAGE_BACKUPS;
 	if(!cs->allow_config_paths)
 		capa|=DONT_ALLOW_CONFIG_PATHS;
@@ -285,6 +285,14 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_DO_IMAGE_BACKUPS;
 	if(internet_mode && !cs->internet_full_file_backups)
 		capa|=DONT_DO_FULL_FILE_BACKUPS;
+	if(!cs->allow_starting_full_file_backups)
+		capa|=DONT_ALLOW_STARTING_FULL_FILE_BACKUPS;
+	if(!cs->allow_starting_incr_file_backups)
+		capa|=DONT_ALLOW_STARTING_INCR_FILE_BACKUPS;
+	if(!cs->allow_starting_full_image_backups)
+		capa|=DONT_ALLOW_STARTING_FULL_IMAGE_BACKUPS;
+	if(!cs->allow_starting_incr_image_backups)
+		capa|=DONT_ALLOW_STARTING_INCR_IMAGE_BACKUPS;
 
 	return capa;
 }

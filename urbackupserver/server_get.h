@@ -40,7 +40,7 @@ public:
 
 	void operator()(void);
 
-	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
+	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL);
 	std::string sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
 	void sendToPipe(const std::string &msg);
 	int getPCDone(void);
@@ -154,6 +154,8 @@ private:
 	std::string getSHA256(const std::wstring& fn);
 
 	void logVssLogdata(void);
+
+	bool createDirectoryForClient(void);
 
 	SSettings curr_intervals;
 

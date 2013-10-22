@@ -59,7 +59,8 @@ const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
-const unsigned int ident_err_retry_time=10*60*1000;
+const unsigned int ident_err_retry_time=1*60*1000;
+const unsigned int ident_err_retry_time_retok=10*60*1000;
 const unsigned int c_filesrv_connect_timeout=10000;
 const unsigned int c_internet_fileclient_timeout=30*60*1000;
 
@@ -181,14 +182,25 @@ void BackupServerGet::operator ()(void)
 		while(c)
 		{
 			c=false;
-			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying in 10min...", 10000, false, LL_INFO);
+			bool retok_err=false;
+			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err);
 			if(!b)
 			{
-				ServerStatus::setWrongIdent(clientname, true);
+				if(retok_err)
+				{
+					ServerStatus::setWrongIdent(clientname, true);
+				}
+				
+				unsigned int retry_time=ident_err_retry_time;
+
+				if(retok_err)
+				{
+					retry_time=ident_err_retry_time_retok;
+				}
 
 				c=true;
 				std::string msg;
-				pipe->Read(&msg, ident_err_retry_time);
+				pipe->Read(&msg, retry_time);
 				if(msg=="exit" || msg=="exitnow")
 				{
 					pipe->Write("ok");
@@ -198,6 +210,10 @@ void BackupServerGet::operator ()(void)
 					delete this;
 					return;
 				}
+			}
+			else
+			{
+				ServerStatus::setWrongIdent(clientname, false);
 			}
 		}
 	}
@@ -249,10 +265,9 @@ void BackupServerGet::operator ()(void)
 
 	delete server_settings;
 	server_settings=new ServerSettings(db, clientid);
-	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
-	if(!os_create_dir(os_file_prefix(backupfolder+os_file_sep()+clientname)) && !os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+clientname)) )
+
+	if(!createDirectoryForClient())
 	{
-		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
 		pipe->Write("ok");
 		delete server_settings;
 		cleanup_pipes();
@@ -399,35 +414,35 @@ void BackupServerGet::operator ()(void)
 			if(do_incr_image_now)
 			{
 				if(!can_backup_images)
-					Server->Log("Cannot do image backup because can_backup_images=false", LL_DEBUG);
+					ServerLogger::Log(clientid, "Cannot do image backup because can_backup_images=false", LL_DEBUG);
 				if(server_settings->getSettings()->no_images)
-					Server->Log("Cannot do image backup because no_images=true", LL_DEBUG);
+					ServerLogger::Log(clientid, "Cannot do image backup because no_images=true", LL_DEBUG);
 				if(!isBackupsRunningOkay(false, false))
-					Server->Log("Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
+					ServerLogger::Log(clientid, "Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
 				if(!internet_no_images )
-					Server->Log("Cannot do image backup because internet_no_images=true", LL_DEBUG);
+					ServerLogger::Log(clientid, "Cannot do image backup because internet_no_images=true", LL_DEBUG);
 			}
 
 			if(do_incr_backup_now)
 			{
 				if(file_backup_err)
-					Server->Log("Cannot do incremental file backup because file_backup_err=true", LL_DEBUG);
+					ServerLogger::Log(clientid, "Cannot do incremental file backup because file_backup_err=true", LL_DEBUG);
 				if(server_settings->getSettings()->no_file_backups)
-					Server->Log("Cannot do incremental file backup because no_file_backups=true", LL_DEBUG);
+					ServerLogger::Log(clientid, "Cannot do incremental file backup because no_file_backups=true", LL_DEBUG);
 				if(!isBackupsRunningOkay(false, true))
-					Server->Log("Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
+					ServerLogger::Log(clientid, "Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
 			}
 
 			bool image_hashed_transfer;
 			if(internet_connection)
 			{
 				image_hashed_transfer= (server_settings->getSettings()->internet_image_transfer_mode=="hashed");
-				Server->Log("Image transfer hashed="+nconvert(image_hashed_transfer), LL_DEBUG);
+				ServerLogger::Log(clientid, "Image transfer hashed="+nconvert(image_hashed_transfer), LL_DEBUG);
 			}
 			else
 			{
 				image_hashed_transfer= (server_settings->getSettings()->local_image_transfer_mode=="hashed");
-				Server->Log("Image transfer hashed="+nconvert(image_hashed_transfer), LL_DEBUG);
+				ServerLogger::Log(clientid, "Image transfer hashed="+nconvert(image_hashed_transfer), LL_DEBUG);
 			}
 
 			ServerStatus::stopBackup(clientname, false);
@@ -450,6 +465,8 @@ void BackupServerGet::operator ()(void)
 
 				status.statusaction=sa_full_file;
 				ServerStatus::setServerStatus(status, true);
+
+				createDirectoryForClient();
 
 				ServerLogger::Log(clientid, "Starting full file backup...", LL_INFO);
 
@@ -480,6 +497,8 @@ void BackupServerGet::operator ()(void)
 
 				status.statusaction=sa_incr_file;
 				ServerStatus::setServerStatus(status, true);
+
+				createDirectoryForClient();
 
 				ServerLogger::Log(clientid, "Starting incremental file backup...", LL_INFO);
 				
@@ -520,6 +539,8 @@ void BackupServerGet::operator ()(void)
 
 				status.statusaction=sa_full_image;
 				ServerStatus::setServerStatus(status, true);
+
+				createDirectoryForClient();
 
 				ServerLogger::Log(clientid, "Starting full image backup...", LL_INFO);
 				
@@ -566,6 +587,8 @@ void BackupServerGet::operator ()(void)
 
 				status.statusaction=sa_incr_image;
 				ServerStatus::setServerStatus(status, true);
+
+				createDirectoryForClient();
 
 				ServerLogger::Log(clientid, "Starting incremental image backup...", LL_INFO);
 
@@ -631,7 +654,7 @@ void BackupServerGet::operator ()(void)
 					r_success=false;
 
 					ServerLogger::Log(clientid, "FATAL: Backup failed because of disk problems", LL_ERROR);
-					sendMailToAdmins("Fatal error occured during backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+					sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 				}
 			}
 
@@ -662,7 +685,7 @@ void BackupServerGet::operator ()(void)
 				}
 				else
 				{				
-					Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(backupfolder, clientid, backupid, true) ) );
+					Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true) ) );
 				}
 				tried_backup=true;
 			}
@@ -680,7 +703,7 @@ void BackupServerGet::operator ()(void)
 				ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(ptime)), LL_INFO);
 				if(!r_success)
 				{
-					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
+					ServerLogger::Log(clientid, "Backup failed because of problems", LL_ERROR);
 				}
 				else
 				{
@@ -696,7 +719,7 @@ void BackupServerGet::operator ()(void)
 				ServerLogger::Log(clientid, L"Time taken for creating image of client "+clientname+L": "+widen(PrettyPrintTime(ptime)), LL_INFO);
 				if(!r_success)
 				{
-					ServerLogger::Log(clientid, "Backup not complete because of connection problems", LL_ERROR);
+					ServerLogger::Log(clientid, "Backup failed because of problems", LL_ERROR);
 				}
 				else
 				{
@@ -813,7 +836,7 @@ void BackupServerGet::prepareSQL(void)
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1", false);
 	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1", false);
-	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0)", false);
+	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0)", false);
 	q_get_last_incremental=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_get_last_incremental_complete=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=CURRENT_TIMESTAMP WHERE id=?", false);
@@ -847,6 +870,8 @@ int BackupServerGet::getClientID(IDatabase *db, const std::wstring &clientname, 
 		*new_client=false;
 
 	IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?",false);
+	if(q==NULL) return -1;
+
 	q->Bind(clientname);
 	db_results res=q->Read();
 	db->destroyQuery(q);
@@ -1035,7 +1060,7 @@ bool BackupServerGet::isUpdateIncrImage(void)
 
 bool BackupServerGet::isUpdateIncrImage(const std::string &letter)
 {
-	if( server_settings->getSettings()->update_freq_image_full<=0 || server_settings->getSettings()->update_freq_incr<=0 )
+	if( server_settings->getSettings()->update_freq_image_full<0 || server_settings->getSettings()->update_freq_image_incr<0 )
 		return false;
 
 	q_update_image_incr->Bind(clientid);
@@ -1180,7 +1205,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 
 	CTCPStack tcpstack(internet_connection);
 
-	Server->Log(clientname+L": Connecting for filelist...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Connecting for filelist...", LL_DEBUG);
 	IPipe *cc=getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
@@ -1209,7 +1234,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 
 	tcpstack.Send(cc, start_backup_cmd);
 
-	Server->Log(clientname+L": Waiting for filelist", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=timeout_time)
@@ -1220,7 +1245,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 			if(file_protocol_version<2 && Server->getTimeMS()-starttime<=20000 && with_token==true) //Compatibility with older clients
 			{
 				Server->destroy(cc);
-				Server->Log(clientname+L": Trying old filelist request", LL_WARNING);
+				ServerLogger::Log(clientid, clientname+L": Trying old filelist request", LL_WARNING);
 				return request_filelist_construct(full, false, no_backup_dirs);
 			}
 			else
@@ -1316,11 +1341,11 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 	if(hashed_transfer)
 	{
-		Server->Log(clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(clientid, clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
 	}
 	else
 	{
-		Server->Log(clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(clientid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
 	}
 
 	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
@@ -1871,7 +1896,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
 	{
-		Server->Log("No space for directory entries. Freeing space", LL_WARNING);
+		ServerLogger::Log(clientid, "No space for directory entries. Freeing space", LL_WARNING);
 
 		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
@@ -1882,12 +1907,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(with_hashes)
 	{
-		Server->Log(clientname+L": Doing backup with hashes...", LL_DEBUG);
+		ServerLogger::Log(clientid, clientname+L": Doing backup with hashes...", LL_DEBUG);
 	}
 
 	if(intra_file_diffs)
 	{
-		Server->Log(clientname+L": Doing backup with intra file diffs...", LL_DEBUG);
+		ServerLogger::Log(clientid, clientname+L": Doing backup with intra file diffs...", LL_DEBUG);
 	}
 
 	SBackup last=getLastIncremental();
@@ -1942,11 +1967,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(hashed_transfer)
 	{
-		Server->Log(clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(clientid, clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
 	}
 	else
 	{
-		Server->Log(clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(clientid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
 	}
 
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
@@ -1973,7 +1998,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		return false;
 	}
 	
-	Server->Log(clientname+L": Loading filelist...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Loading filelist...", LL_DEBUG);
 	IFile *tmp=getTemporaryFileRetry();
 	if(tmp==NULL)
 	{
@@ -1992,7 +2017,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		return false;
 	}
 	
-	Server->Log(clientname+L" Starting incremental backup...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L" Starting incremental backup...", LL_DEBUG);
 
 	
 	backupid=createBackupSQL(last.incremental+1, clientid, backuppath_single);
@@ -2005,7 +2030,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	std::wstring tmpfilename=tmp->getFilenameW();
 	Server->destroy(tmp);
 
-	Server->Log(clientname+L": Calculating file tree differences...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Calculating file tree differences...", LL_DEBUG);
 
 	bool error=false;
 	std::vector<size_t> deleted_ids;
@@ -2031,7 +2056,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(on_snapshot)
 	{
-		Server->Log(clientname+L": Creating snapshot...", LL_DEBUG);
+		ServerLogger::Log(clientid, clientname+L": Creating snapshot...", LL_DEBUG);
 		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single)
 			|| !SnapshotHelper::isSubvolume(clientname, backuppath_single) )
 		{
@@ -2058,7 +2083,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		
 		if(on_snapshot)
 		{
-			Server->Log(clientname+L": Deleting files in snapshot... ("+convert(deleted_ids.size())+L")", LL_DEBUG);
+			ServerLogger::Log(clientid, clientname+L": Deleting files in snapshot... ("+convert(deleted_ids.size())+L")", LL_DEBUG);
 			if(!deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath, false) )
 			{
 				ServerLogger::Log(clientid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
@@ -2068,7 +2093,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 			if(with_hashes)
 			{
-				Server->Log(clientname+L": Deleting files in hash snapshot...", LL_DEBUG);
+				ServerLogger::Log(clientid, clientname+L": Deleting files in hash snapshot...", LL_DEBUG);
 				deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath_hashes, true);
 			}
 		}
@@ -2097,7 +2122,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	_i64 filelist_currpos=0;
 	int indir_currdepth=0;
 	
-	Server->Log(clientname+L": Calculating tree difference size...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Calculating tree difference size...", LL_DEBUG);
 	_i64 files_size=getIncrementalSize(tmp, diffs);
 	tmp->Seek(0);
 	_i64 transferred=0;
@@ -2105,7 +2130,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	unsigned int laststatsupdate=0;
 	ServerStatus::setServerStatus(status, true);
 	
-	Server->Log(clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
 
 	resetEntryState();
 	
@@ -2418,7 +2443,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 		if(b)
 		{
-			Server->Log("Creating symbolic links. -1", LL_DEBUG);
+			ServerLogger::Log(clientid, "Creating symbolic links. -1", LL_DEBUG);
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+L"current";
@@ -2426,28 +2451,28 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			os_remove_symlink_dir(os_file_prefix(currdir));		
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
-			Server->Log("Creating symbolic links. -2", LL_DEBUG);
+			ServerLogger::Log(clientid, "Creating symbolic links. -2", LL_DEBUG);
 
 			currdir=backupfolder+os_file_sep()+L"clients";
 			if(!os_create_dir(os_file_prefix(currdir)) && !os_directory_exists(os_file_prefix(currdir)))
 			{
-				Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
+				ServerLogger::Log(clientid, "Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
 			currdir+=os_file_sep()+clientname;
 			os_remove_symlink_dir(os_file_prefix(currdir));
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
-			Server->Log("Symbolic links created.", LL_DEBUG);
+			ServerLogger::Log(clientid, "Symbolic links created.", LL_DEBUG);
 		}
 		else
 		{
 			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
-			sendMailToAdmins("Fatal error occured during incremental file backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+			sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 		}
 	}
 	else if(!c_has_error && !disk_error)
 	{
-		Server->Log("Client disconnected while backing up. Copying partial file...", LL_DEBUG);
+		ServerLogger::Log(clientid, "Client disconnected while backing up. Copying partial file...", LL_DEBUG);
 		db->BeginTransaction();
 		moveFile(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub");
 		setBackupDone();
@@ -2456,7 +2481,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	else
 	{
 		ServerLogger::Log(clientid, "Fatal error during backup. Backup not completed", LL_ERROR);
-		sendMailToAdmins("Fatal error occured during incremental file backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+		sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 	}
 
 	running_updater->stop();
@@ -2764,7 +2789,7 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 	return "";
 }
 
-bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
+bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
@@ -2809,6 +2834,10 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 					ServerLogger::Log(clientid, errmsg, max_loglevel);
 				else
 					Server->Log(errmsg, max_loglevel);
+
+				if(retok_err!=NULL)
+					*retok_err=true;
+
 				break;
 			}
 			else
@@ -3007,6 +3036,12 @@ bool BackupServerGet::getClientSettings(void)
 	{
 		std::wstring &key=setting_names[i];
 		std::wstring value;
+
+		if(internet_connection && key==L"computername")
+		{
+			continue;
+		}
+
 		if(sr->getValue(key, &value) )
 		{
 			bool b=updateClientSetting(key, value);
@@ -3633,25 +3668,17 @@ void BackupServerGet::writeFileRepeat(IFile *f, const std::string &str)
 void BackupServerGet::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
 {
 	_u32 written=0;
-	_u32 rc;
-	int tries=50;
 	do
 	{
-		rc=f->Write(buf+written, (_u32)(bsize-written));
+		_u32 rc=f->Write(buf+written, (_u32)(bsize-written));
 		written+=rc;
 		if(rc==0)
 		{
-			Server->Log("Failed to write to file... waiting...", LL_WARNING);
+			Server->Log("Failed to write to file "+f->getFilename()+" retrying...", LL_WARNING);
 			Server->wait(10000);
-			--tries;
 		}
 	}
-	while(written<bsize && (rc>0 || tries>0) );
-
-	if(rc==0)
-	{
-		Server->Log("Fatal error writing to file in writeFileRepeat. Write error.", LL_ERROR);
-	}
+	while(written<bsize );
 }
 
 IPipeThrottler *BackupServerGet::getThrottler(size_t speed_bps)
@@ -3941,7 +3968,7 @@ bool BackupServerGet::handle_not_enough_space(const std::wstring &path)
 		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
 			ServerLogger::Log(clientid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
-			sendMailToAdmins("Fatal error occured during backup", Server->ConvertToUTF8(ServerLogger::getWarningLevelTextLogdata(clientid)));
+			sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 			return false;
 		}
 	}
@@ -4072,4 +4099,15 @@ void BackupServerGet::logVssLogdata(void)
 			ServerLogger::Log(clientid, data, loglevel);
 		}
 	}
+}
+
+bool BackupServerGet::createDirectoryForClient(void)
+{
+	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
+	if(!os_create_dir(os_file_prefix(backupfolder+os_file_sep()+clientname)) && !os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+clientname)) )
+	{
+		Server->Log(L"Could not create or read directory for client \""+clientname+L"\"", LL_ERROR);
+		return false;
+	}
+	return true;
 }

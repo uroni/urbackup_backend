@@ -1,0 +1,91 @@
+<html style="height: 100%">
+<head>
+<title>#{tUrBackup live log:} #{clientname}</title>
+<script language="JavaScript" src="prototype.js"></script>
+<script language="JavaScript" src="templates.js"></script>
+<script language="JavaScript" src="urbackup_functions.js"></script>
+<script type="text/javascript">
+//<!--
+if(!window.g)
+	window.g=new Object();
+	
+g.session="#{session}";
+g.max_log_id=-1;
+g.clientid=#{clientid};
+
+g.refresh_log = function()
+{
+	var lastid="";
+	if(g.max_log_id>0)
+	{
+		lastid="&lastid="+g.max_log_id;
+	}
+	new getJSON("livelog", "clientid="+g.clientid+lastid, refresh_log2);
+}
+
+function refresh_log2(data)
+{
+	var new_data="";
+	for(var i=0;i<data.logdata.length;++i)
+	{
+		var obj=data.logdata[i];
+		if(obj.id>g.max_log_id)
+		{
+			var d=new Date(obj.time*1000);
+			var s_loglevel="";
+			var background_color="";
+			
+			if(obj.loglevel==1)
+				background_color="background-color: yellow";
+			else if(obj.loglevel==2)
+				background_color="background-color: red";
+				
+			switch(obj.loglevel)
+			{
+			case -1: s_loglevel="DEBUG"; break;
+			case  0: s_loglevel="INFO"; break;
+			case  1: s_loglevel="WARNING"; break;
+			case  2: s_loglevel="ERROR"; break;
+			}
+			new_data+=tmpls.live_log_row.evaluate({time: format_date(d), loglevel: s_loglevel, message: obj.msg, background_color: background_color});
+			
+			g.max_log_id=obj.id;
+		}
+	}
+	
+	if(new_data.length>0)
+	{
+		var is_at_bottom=false;
+		
+		var body = document.body,
+			html = document.documentElement;
+
+		var height = Math.max( body.scrollHeight, body.offsetHeight, 
+							   html.clientHeight, html.scrollHeight, html.offsetHeight );
+		
+		if(window.pageYOffset + window.innerHeight > height-20)
+		{
+			is_at_bottom=true;
+		}
+	
+		I('logdata').innerHTML+=new_data;
+		
+		if(is_at_bottom)
+		{
+			window.scrollTo(window.pageXOffset, height);
+		}
+	}
+	
+	g.refresh_log();
+}
+//-->
+</script>
+</head>
+<body onload="g.refresh_log()" style="height: 100%">
+<div style="height: 100%; position: absolute; left: 0px; top: 0px">&nbsp;</div>
+<table style="border: 0px" id="logdata" style="height: 100%">
+
+</table>
+<img src="indicator.gif" />
+</body>
+</html> 

@@ -95,6 +95,10 @@ CServer::CServer()
 	curr_postfilekey=0;
 	loglevel=LL_INFO;
 	logfile_a=false;
+	circular_log_buffer_id=0;
+	circular_log_buffer_idx=0;
+	has_circular_log_buffer=false;
+	failbits=0;
 
 	startup_complete=false;
 	
@@ -318,6 +322,17 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 		
 		if(logfile_a)
 			logfile.flush();
+
+		if(has_circular_log_buffer)
+		{
+			logToCircularBuffer(pStr, LogLevel);
+		}
+	}
+	else if(has_circular_log_buffer)
+	{
+		IScopedLock lock(log_mutex);
+
+		logToCircularBuffer(pStr, LogLevel);
 	}
 }
 
@@ -363,6 +378,17 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 
 		if(logfile_a)
 			logfile.flush();
+
+		if(has_circular_log_buffer)
+		{
+			logToCircularBuffer(out_str, LogLevel);
+		}
+	}
+	else if(has_circular_log_buffer)
+	{
+		IScopedLock lock(log_mutex);
+
+		logToCircularBuffer(ConvertToUTF8(pStr), LogLevel);
 	}
 }
 
@@ -1665,4 +1691,48 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 		return;
 	}
 #endif
+}
+
+void CServer::setLogCircularBufferSize(size_t size)
+{
+	IScopedLock lock(log_mutex);
+
+	circular_log_buffer.resize(size);
+
+	has_circular_log_buffer=size>0?true:false;
+}
+
+const std::vector<SCircularLogEntry>& CServer::getCicularLogBuffer(void)
+{
+	return circular_log_buffer;
+}
+
+void CServer::logToCircularBuffer(const std::string& msg, int loglevel)
+{
+	if(circular_log_buffer.empty())
+		return;
+
+	SCircularLogEntry &entry=circular_log_buffer[circular_log_buffer_idx];
+
+	entry.utf8_msg=msg;
+	entry.loglevel=loglevel;
+	entry.id=circular_log_buffer_id++;
+	entry.time=Server->getTimeSeconds();
+
+	circular_log_buffer_idx=(circular_log_buffer_idx+1)%circular_log_buffer.size();
+}
+
+void CServer::setFailBit(size_t failbit)
+{
+	failbits=failbits|failbit;
+}
+
+void CServer::clearFailBit(size_t failbit)
+{
+	failbits=failbit & (~failbit);
+}
+
+size_t CServer::getFailBits(void)
+{
+	return failbits;
 }

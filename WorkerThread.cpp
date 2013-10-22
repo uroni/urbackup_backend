@@ -93,7 +93,7 @@ void CWorkerThread::operator()()
 				if( rc<1 )
 				{
 					keep_alive=true;
-					Server->Log("Client disconnected", LL_INFO);
+					//Server->Log("Client disconnected", LL_INFO);
 					Master->RemoveClient( client );
 					lock.relock(clients_mutex);
 				}
@@ -150,7 +150,7 @@ void CWorkerThread::operator()()
 					if( keep_alive==false )
 					{
 						keep_alive=true;
-						Server->Log("Client disconnected", LL_INFO);
+						//Server->Log("Client disconnected", LL_INFO);
 						Master->RemoveClient( client );
 					}
 					else
@@ -246,7 +246,7 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 		}
 
 		starttime=Server->getTimeMS()-starttime;
-		Server->Log("Execution Time: "+nconvert(starttime)+" ms - time="+nconvert(Server->getTimeMS() ), LL_INFO);
+		//Server->Log("Execution Time: "+nconvert(starttime)+" ms - time="+nconvert(Server->getTimeMS() ), LL_INFO);
 	}
 	else
 	{

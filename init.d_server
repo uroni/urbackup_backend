@@ -25,6 +25,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 SQLITE_TMPDIR=""
 NICE_LEVEL="0"
 IOSCHED_CLASS="best-effort"
+BROADCAST_INTERFACES=""
 
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
@@ -54,7 +55,12 @@ then
 	SQLITE_TMPDIR="--sqlite_tmpdir \"$SQLITE_TMPDIR\""
 fi
 
-DAEMON_ARGS="--fastcgi_port $FASTCGI_PORT --logfile $LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT $SQLITE_TMPDIR"
+if [ "x$BROADCAST_INTERFACES" != "x" ]
+then
+	BROADCAST_INTERFACES="--broadcast_interfaces \"$BROADCAST_INTERFACES\""
+fi
+
+DAEMON_ARGS="--fastcgi_port $FASTCGI_PORT --logfile $LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT $SQLITE_TMPDIR $BROADCAST_INTERFACES"
 
 # Load the VERBOSE setting and other rcS variables
 [ -r /lib/init/vars.sh ] && . /lib/init/vars.sh

@@ -1087,7 +1087,7 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 #else
 	std::string os_version_str="not Windows";
 	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1"
-		"&CLIENT_VERSION_STR="+EscapeParamString(client_version_str)+"&OS_VERSION_STR="+EscapeParamString(client_version_str));
+		"&CLIENT_VERSION_STR="+EscapeParamString(client_version_str)+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
 #endif
 }
 

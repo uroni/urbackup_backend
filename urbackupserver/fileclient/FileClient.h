@@ -84,7 +84,7 @@ public:
 private:
 		bool Reconnect(void);
 
-        SOCKET udpsock;
+        std::vector<SOCKET> udpsocks;
         IPipe *tcpsock;
 
         _u32 starttime;

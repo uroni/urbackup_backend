@@ -69,6 +69,7 @@ print_help()
 	echo "--reset_pw {pw}		Resets the pw"
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
 	echo "--repair_database		Tries to repair the database"
+	echo "--broadcast_interfaces   List of network interfaces from which to send broadcasts (separated by ,)"
 	echo ""
 	echo "Have a nice day!"
 	exit 0
@@ -94,7 +95,8 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	VERIFY_HASHES=""
 	RESET_PW=""
 	CLEANUP=""
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database -- "$@"`
+	BROADCAST_INTERFACES=""
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces: -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -113,6 +115,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--remove_unknown) CLEANUP="--app remove_unknown"; shift ;;
 			--cleanup_database) CLEANUP="--app cleanup_database"; shift ;;
 			--repair_database) CLEANUP="--app repair_database"; shift ;;
+			--broadcast_interfaces) BROADCAST_INTERFACES="--broadcast_interfaces \"$2\""; shift 2 ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac
@@ -136,7 +139,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		S_DAEMON="--no-server"
 	fi
 	
-	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP"
+	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
 else
 	DAEMON_ARGS="$*"
 fi

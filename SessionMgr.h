@@ -15,6 +15,7 @@ public:
 
 	virtual SUser *getUser(const std::wstring &pSID, const std::wstring &pIdentData, bool update=true);
 	virtual void releaseUser(SUser *user);
+	virtual void lockUser(SUser *user);
 
 	virtual bool RemoveSession(const std::wstring &pSID);
 	
