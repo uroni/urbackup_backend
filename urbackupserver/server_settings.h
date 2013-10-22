@@ -32,7 +32,10 @@ struct SSettings
 	bool autoupdate_clients;
 	int max_sim_backups;
 	int max_active_clients;
-	std::string backup_window;
+	std::string backup_window_incr_file;
+	std::string backup_window_full_file;
+	std::string backup_window_incr_image;
+	std::string backup_window_full_image;
 	std::wstring computername;
 	std::wstring exclude_files;
 	std::wstring include_files;
@@ -112,7 +115,11 @@ public:
 	static std::string generateRandomAuthKey(size_t len=10);
 	static std::string generateRandomBinaryKey(void);
 
-	std::vector<STimeSpan> getBackupWindow(void);
+	std::vector<STimeSpan> getBackupWindowIncrFile(void);
+	std::vector<STimeSpan> getBackupWindowFullFile(void);
+	std::vector<STimeSpan> getBackupWindowIncrImage(void);
+	std::vector<STimeSpan> getBackupWindowFullImage(void);
+
 	std::vector<STimeSpan> getCleanupWindow(void);
 	std::vector<std::string> getBackupVolumes(void);
 

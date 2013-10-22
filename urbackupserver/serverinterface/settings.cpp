@@ -63,7 +63,10 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(max_image_full);
 	SET_SETTING(allow_overwrite);
 	SET_SETTING(startup_backup_delay);
-	SET_SETTING(backup_window);
+	SET_SETTING(backup_window_incr_file);
+	SET_SETTING(backup_window_full_file);
+	SET_SETTING(backup_window_incr_image);
+	SET_SETTING(backup_window_full_image);
 	SET_SETTING(computername);
 	SET_SETTING(exclude_files);
 	SET_SETTING(include_files);
