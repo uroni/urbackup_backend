@@ -107,6 +107,9 @@ function change_lang(l, refresh)
 }
 function aboutUrBackup()
 {
+	stopLoading();
+	clearTimeout(g.refresh_timeout);
+	
 	var ndata=tmpls.about_urbackup.evaluate({version: I('server_version').innerHTML.trim()});
 	if(g.data_f!=ndata)
 	{
