@@ -218,6 +218,12 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 
 void ClientConnector::CMD_SAVE_BACKUPDIRS(const std::string &cmd, str_map &params)
 {
+	if(last_capa & DONT_ALLOW_CONFIG_PATHS)
+	{
+		tcpstack.Send(pipe, "FAILED");
+		return;
+	}
+
 	if(saveBackupDirs(params))
 	{
 		tcpstack.Send(pipe, "OK");
@@ -350,13 +356,14 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 		
 		if(capa!=last_capa)
 		{
-			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'");
+			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'", false);
 			if(cq!=NULL)
 			{
 				cq->Bind(capa);
 				cq->Write();
 				cq->Reset();
 				last_capa=capa;
+				db->destroyQuery(cq);
 			}
 		}
 	}
@@ -381,6 +388,12 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 
 void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
 {
+	if(last_capa & DONT_SHOW_SETTINGS)
+	{
+		tcpstack.Send(pipe, "FAILED");
+		return;
+	}
+
 	std::string s_settings=cmd.substr(9);
 	unescapeMessage(s_settings);
 	updateSettings( s_settings );
