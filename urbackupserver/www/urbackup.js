@@ -1584,6 +1584,10 @@ function show_settings2(data)
 		g.data_f=ndata;
 		update_tabber=true;
 		settingsCheckboxChange();
+		if(I('backup_window_incr_file_row'))
+		{
+			hideBackupWindowDetails();
+		}
 	}
 	
 	if(data.sa && data.sa=="clientsettings")
@@ -1593,11 +1597,6 @@ function show_settings2(data)
 	else if(data.sa && data.sa=="change_pw_int")
 	{
 		changePW();
-	}
-	
-	if(I('backup_window_incr_file_row'))
-	{
-		hideBackupWindowDetails();
 	}
 	
 	if(update_tabber)
