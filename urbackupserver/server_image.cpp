@@ -950,13 +950,23 @@ int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_
 				bool b=parenthashfile->Seek((nextblock/vhd_blocksize)*sha_size);
 				if(!b)
 				{
-					Server->Log("Seeking in parenthashfile failed", LL_ERROR);
+					Server->Log("Seeking in parent hash file failed (May be caused by a volume with increased size)", LL_WARNING);
+					hashfile->Write((char*)zero_hash, sha_size);
 				}
-				char dig[sha_size];
-				_u32 rc=parenthashfile->Read(dig, sha_size);
-				if(rc!=sha_size)
-					Server->Log("Reading from parenthashfile failed", LL_ERROR);
-				hashfile->Write(dig, sha_size);
+				else
+				{
+					char dig[sha_size];
+					_u32 rc=parenthashfile->Read(dig, sha_size);
+					if(rc!=sha_size)
+					{
+						Server->Log("Reading from parent hash file failed (May be caused by a volume with increased size)", LL_WARNING);
+						hashfile->Write((char*)zero_hash, sha_size);
+					}
+					else
+					{
+						hashfile->Write(dig, sha_size);
+					}
+				}
 			}
 			nextblock+=vhd_blocksize;
 		}
