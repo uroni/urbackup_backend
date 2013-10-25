@@ -168,6 +168,13 @@ public:
 	virtual unsigned int getSecureRandomNumber(void)=0;
 	virtual std::vector<unsigned int> getSecureRandomNumbers(size_t n)=0;
 	virtual void secureRandomFill(char *buf, size_t blen)=0;
+
+	static const size_t FAIL_DATABASE_CORRUPTED=1;
+	static const size_t FAIL_DATABASE_IOERR=2;
+
+	virtual void setFailBit(size_t failbit)=0;
+	virtual void clearFailBit(size_t failbit)=0;
+	virtual size_t getFailBits(void)=0;
 };
 
 #ifndef NO_INTERFACE

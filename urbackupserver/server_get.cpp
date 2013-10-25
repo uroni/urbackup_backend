@@ -59,7 +59,8 @@ const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
-const unsigned int ident_err_retry_time=10*60*1000;
+const unsigned int ident_err_retry_time=1*60*1000;
+const unsigned int ident_err_retry_time_retok=10*60*1000;
 const unsigned int c_filesrv_connect_timeout=10000;
 const unsigned int c_internet_fileclient_timeout=30*60*1000;
 
@@ -181,14 +182,25 @@ void BackupServerGet::operator ()(void)
 		while(c)
 		{
 			c=false;
-			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying in 10min...", 10000, false, LL_INFO);
+			bool retok_err=false;
+			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err);
 			if(!b)
 			{
-				ServerStatus::setWrongIdent(clientname, true);
+				if(retok_err)
+				{
+					ServerStatus::setWrongIdent(clientname, true);
+				}
+				
+				unsigned int retry_time=ident_err_retry_time;
+
+				if(retok_err)
+				{
+					retry_time=ident_err_retry_time_retok;
+				}
 
 				c=true;
 				std::string msg;
-				pipe->Read(&msg, ident_err_retry_time);
+				pipe->Read(&msg, retry_time);
 				if(msg=="exit" || msg=="exitnow")
 				{
 					pipe->Write("ok");
@@ -198,6 +210,10 @@ void BackupServerGet::operator ()(void)
 					delete this;
 					return;
 				}
+			}
+			else
+			{
+				ServerStatus::setWrongIdent(clientname, false);
 			}
 		}
 	}
@@ -854,6 +870,8 @@ int BackupServerGet::getClientID(IDatabase *db, const std::wstring &clientname, 
 		*new_client=false;
 
 	IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?",false);
+	if(q==NULL) return -1;
+
 	q->Bind(clientname);
 	db_results res=q->Read();
 	db->destroyQuery(q);
@@ -2771,7 +2789,7 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 	return "";
 }
 
-bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
+bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
@@ -2816,6 +2834,10 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 					ServerLogger::Log(clientid, errmsg, max_loglevel);
 				else
 					Server->Log(errmsg, max_loglevel);
+
+				if(retok_err!=NULL)
+					*retok_err=true;
+
 				break;
 			}
 			else
@@ -3014,6 +3036,12 @@ bool BackupServerGet::getClientSettings(void)
 	{
 		std::wstring &key=setting_names[i];
 		std::wstring value;
+
+		if(internet_connection && key==L"computername")
+		{
+			continue;
+		}
+
 		if(sr->getValue(key, &value) )
 		{
 			bool b=updateClientSetting(key, value);

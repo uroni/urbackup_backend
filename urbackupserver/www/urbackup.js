@@ -125,7 +125,20 @@ function try_anonymous_login(data)
 	
 	if(data.upgrading_database)
 	{
+		data.upgrade_error_text=trans("upgrade_error_text");
 		var ndata=tmpls.upgrade_error.evaluate(data);
+		if(g.data_f!=ndata)
+		{
+			I('data_f').innerHTML=ndata;
+			g.data_f=ndata;
+		}
+		return;
+	}
+	
+	if(data.creating_filescache)
+	{
+		data.creating_filescache_text=trans("creating_filescache_text");
+		var ndata=tmpls.file_cache_error.evaluate(data);
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;
@@ -683,25 +696,31 @@ function show_status2(data)
 	{
 		var ext_text="";
 		if(data.dir_error_ext) ext_text="("+data.dir_error_ext+")";
-		dir_error=tmpls.dir_error.evaluate({ext_text: ext_text});
+		dir_error=tmpls.dir_error.evaluate({ext_text: ext_text, dir_error_text: trans("dir_error_text")});
 	}
 	
 	var tmpdir_error="";
 	if(data.tmpdir_error)
 	{
-		tmpdir_error=tmpls.tmpdir_error.evaluate();
+		tmpdir_error=tmpls.tmpdir_error.evaluate({tmpdir_error_text: trans("tmpdir_error_text")});
 	}
 	
 	var nospc_stalled="";
 	if(data.nospc_stalled)
 	{
-		nospc_stalled=tmpls.nospc_stalled.evaluate();
+		nospc_stalled=tmpls.nospc_stalled.evaluate({nospc_stalled_text: trans("nospc_stalled_text")});
+	}
+	
+	var database_error="";
+	if(data.database_error)
+	{
+		database_error=tmpls.database_error.evaluate({database_error_text: trans("database_error_text")});
 	}
 	
 	var nospc_fatal="";
 	if(data.nospc_fatal)
 	{
-		nospc_fatal=tmpls.nospc_fatal.evaluate();
+		nospc_fatal=tmpls.nospc_fatal.evaluate({nospc_fatal_text: trans("nospc_fatal_text")});
 	}
 	
 	var dlt_mod_start="<!--";
@@ -820,7 +839,8 @@ function show_status2(data)
 		server_identity: data.server_identity, modify_clients: modify_clients,
 		modify_clients_top: modify_clients_top,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
-		status_client_download: status_client_download, dtl_c1_top: dtl_c1_top, dtl_c2_top: dtl_c2_top});
+		status_client_download: status_client_download, dtl_c1_top: dtl_c1_top, dtl_c2_top: dtl_c2_top,
+		database_error: database_error});
 	
 	if(g.data_f!=ndata)
 	{

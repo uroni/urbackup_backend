@@ -98,6 +98,7 @@ CServer::CServer()
 	circular_log_buffer_id=0;
 	circular_log_buffer_idx=0;
 	has_circular_log_buffer=false;
+	failbits=0;
 
 	startup_complete=false;
 	
@@ -1719,4 +1720,19 @@ void CServer::logToCircularBuffer(const std::string& msg, int loglevel)
 	entry.time=Server->getTimeSeconds();
 
 	circular_log_buffer_idx=(circular_log_buffer_idx+1)%circular_log_buffer.size();
+}
+
+void CServer::setFailBit(size_t failbit)
+{
+	failbits=failbits|failbit;
+}
+
+void CServer::clearFailBit(size_t failbit)
+{
+	failbits=failbit & (~failbit);
+}
+
+size_t CServer::getFailBits(void)
+{
+	return failbits;
 }

@@ -4,7 +4,7 @@
 #include "Server.h"
 
 DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)
-	: query(query), transaction_lock(false), tries(60), timeoutms(timeoutms), lastErr(0), _has_error(false)
+	: query(query), transaction_lock(false), tries(60), timeoutms(timeoutms), lastErr(SQLITE_OK), _has_error(false)
 {
 	query->setupStepping(timeoutms);
 }
@@ -17,18 +17,17 @@ DatabaseCursor::~DatabaseCursor(void)
 bool DatabaseCursor::next(db_single_result &res)
 {
 	res.clear();
-	int rc;
 	do
 	{
-		rc=query->step(res, timeoutms, tries, transaction_lock);
-		if(rc==SQLITE_ROW)
+		lastErr=query->step(res, timeoutms, tries, transaction_lock);
+		if(lastErr==SQLITE_ROW)
 		{
 			return true;
 		}
 	}
-	while(query->resultOkay(rc));
+	while(query->resultOkay(lastErr));
 
-	if(rc!=SQLITE_OK && rc!=SQLITE_DONE)
+	if(lastErr!=SQLITE_DONE)
 	{
 		Server->Log("SQL Error: "+query->getErrMsg()+ " Stmt: ["+query->getStatement()+"]", LL_ERROR);
 		_has_error=true;

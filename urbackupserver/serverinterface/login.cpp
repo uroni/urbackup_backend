@@ -26,7 +26,16 @@ ACTION_IMPL(login)
 
 	{
 		IScopedLock lock(startup_status.mutex);
-		if(startup_status.upgrading_database)
+		if(startup_status.creating_filescache)
+		{
+			Helper helper(tid, &GET, &PARAMS);
+			ret.set("lang", helper.getLanguage());
+			ret.set("creating_filescache", startup_status.creating_filescache);
+			ret.set("processed_file_entries", startup_status.processed_file_entries);
+			Server->Write( tid, ret.get(false) );
+			return;
+		}
+		else if(startup_status.upgrading_database)
 		{
 			Helper helper(tid, &GET, &PARAMS);
 			ret.set("lang", helper.getLanguage());
@@ -97,7 +106,7 @@ ACTION_IMPL(login)
 	{
 		ret.set("lang", helper.getLanguage());
 		db_results res=db->Read("SELECT count(*) AS c FROM settings_db.si_users");
-		if(watoi(res[0][L"c"])>0)
+		if(!res.empty() && watoi(res[0][L"c"])>0)
 		{
 			ret.set("success", JSON::Value(false) );
 		}

@@ -233,7 +233,7 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 				if(!WaitForUnlock())
 					Server->Log("DATABASE DEADLOCKED in CDatabase::Prepare", LL_ERROR);
 			}
-		}		
+		}
 		else
 		{
 			if(transaction_lock==false)
@@ -260,6 +260,16 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 	if( err!=SQLITE_OK )
 	{
 		Server->Log("Error preparing Query ["+pQuery+"]: "+sqlite3_errmsg(db),LL_ERROR);
+
+		if(err==SQLITE_IOERR)
+		{
+			Server->setFailBit(IServer::FAIL_DATABASE_IOERR);
+		}
+		if(err==SQLITE_CORRUPT)
+		{
+			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
+		}
+
 		return NULL;
 	}
 	CQuery *q=new CQuery(pQuery, prepared_statement, this);
