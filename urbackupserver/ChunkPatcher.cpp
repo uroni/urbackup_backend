@@ -28,7 +28,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 	SPatchHeader next_header;
 	next_header.patch_off=-1;
 	bool has_header=true;
-	for(_i64 file_pos=0,size=file->Size();file_pos<size || has_header;)
+	for(_i64 file_pos=0,size=file->Size(); (file_pos<size && file_pos<filesize) || has_header;)
 	{
 		if(has_header && next_header.patch_off==-1)
 		{
@@ -43,7 +43,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 				tr=(unsigned int)hoff;
 		}
 
-		if(file_pos>=size || tr==0)
+		if(file_pos>=size || file_pos>=filesize || tr==0)
 		{
 			file_pos+=next_header.patch_size;
 
@@ -57,10 +57,14 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 			file->Seek(file_pos);
 			next_header.patch_off=-1;
 		}
-		else if(file_pos<size)
+		else if(file_pos<size && file_pos<filesize)
 		{
-			while(tr>0 && file_pos<size)
+			while(tr>0 && file_pos<size && file_pos<filesize)
 			{
+				if(file_pos+tr>filesize)
+				{
+					tr=static_cast<unsigned int>(filesize-file_pos);
+				}
 				_u32 r=file->Read((char*)buf, tr);
 				file_pos+=r;
 				cb->next_chunk_patcher_bytes(buf, r, false);
