@@ -816,7 +816,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 						_i64 modifytime;
 						if(cd->getFileHash(key_path, filesize, modifytime, hash))
 						{
-							if( filesize!=files[i].size &&
+							if( filesize!=files[i].size ||
 								files[i].last_modified!=modifytime )
 							{
 								hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
