@@ -34,10 +34,8 @@ namespace
 
 		void operator()(void)
 		{
-			db->Write("UPDATE files SET did_count=0");
-			db->Write("UPDATE files SET did_count=0 WHERE did_count=1");
 			db->BeginTransaction();
-			db->Write("UPDATE files SET did_count=0 WHERE did_count=1");
+			db->Write("UPDATE files SET did_count=0");
 			db->Write("UPDATE clients SET bytes_used_files=0");
 			db->Write("UPDATE backups SET size_bytes=0");
 			db->EndTransaction();
