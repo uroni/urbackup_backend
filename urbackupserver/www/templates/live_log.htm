@@ -56,10 +56,17 @@ function refresh_log2(data)
 		}
 	}
 	
-	while(g.live_log_rows>g.max_live_log_rows && I('logdata').rows.length>0)
+	var deleted_height=0;
+	if(g.live_log_rows>g.max_live_log_rows)
 	{
-		I('logdata').deleteRow(0);
-		--g.live_log_rows;
+		var deleted_height_start=I('logdata').rows[g.live_log_rows-g.max_live_log_rows].getBoundingClientRect().bottom;
+		while(g.live_log_rows>g.max_live_log_rows && I('logdata').rows.length>0)
+		{
+			I('logdata').deleteRow(0);
+			--g.live_log_rows;
+		}
+	
+		deleted_height=deleted_height_start-I('logdata').rows[0].getBoundingClientRect().bottom;
 	}
 	
 	if(new_data.length>0)
@@ -77,8 +84,6 @@ function refresh_log2(data)
 		{
 			is_at_bottom=true;
 		}
-		
-		console.log("height: "+height+" pageYOffset="+window.pageYOffset+" innerHeight="+window.innerHeight+" is_at_bottom="+is_at_bottom);
 	
 		if(I('logdata').tBodies.length>0)
 		{
@@ -92,6 +97,11 @@ function refresh_log2(data)
 		if(is_at_bottom)
 		{
 			window.scrollTo(window.pageXOffset, window.pageYOffset + window.innerHeight);
+		}
+		else if(window.pageYOffset-deleted_height>0 && deleted_height>0)
+		{
+			console.log("window.pageYOffset="+window.pageYOffset+" deleted_height="+deleted_height);
+			window.scrollTo(window.pageXOffset, window.pageYOffset-deleted_height);
 		}
 	}
 	
