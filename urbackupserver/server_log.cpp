@@ -203,5 +203,16 @@ const std::vector<SCircularLogEntry>& ServerLogger::getCircularLogdata(int clien
 {
 	IScopedLock lock(mutex);
 
-	return circular_logdata[clientid].data;
+	std::map<int, SCircularData>::const_iterator iter=circular_logdata.find(clientid);
+	if(iter!=circular_logdata.end())
+	{
+		return iter->second.data;
+	}
+	else
+	{
+		SCircularData& data=circular_logdata[clientid];
+		data.id=0;
+		data.idx=0;
+		return data.data;
+	}
 }
