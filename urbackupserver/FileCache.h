@@ -10,7 +10,7 @@
 class FileCache : public IThread
 {
 public:
-	typedef db_results(*get_data_callback_t)(int, void *userdata);
+	typedef db_results(*get_data_callback_t)(size_t, void *userdata);
 
 	struct SCacheValue
 	{

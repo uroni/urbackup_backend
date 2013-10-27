@@ -107,6 +107,9 @@ function change_lang(l, refresh)
 }
 function aboutUrBackup()
 {
+	stopLoading();
+	clearTimeout(g.refresh_timeout);
+	
 	var ndata=tmpls.about_urbackup.evaluate({version: I('server_version').innerHTML.trim()});
 	if(g.data_f!=ndata)
 	{
@@ -1581,6 +1584,10 @@ function show_settings2(data)
 		g.data_f=ndata;
 		update_tabber=true;
 		settingsCheckboxChange();
+		if(I('backup_window_incr_file_row'))
+		{
+			hideBackupWindowDetails();
+		}
 	}
 	
 	if(data.sa && data.sa=="clientsettings")
@@ -1660,7 +1667,10 @@ g.settings_list=[
 "max_image_full",
 "allow_overwrite",
 "startup_backup_delay",
-"backup_window",
+"backup_window_incr_file",
+"backup_window_full_file",
+"backup_window_incr_image",
+"backup_window_full_image",
 "computername",
 "exclude_files",
 "include_files",
@@ -1740,7 +1750,11 @@ function validateCommonSettings()
 							"startup_backup_delay"] ) ) return false;
 	if(!validate_text_int_or_empty(["local_speed"])) return false;
 	if(I('internet_speed') && !validate_text_int_or_empty(["internet_speed"])) return false;
-	if(!validate_text_regex([{ id: "backup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return false;
+	var backup_window_regex = /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
+	if(!validate_text_regex([{ id: "backup_window_incr_file", regexp: backup_window_regex },
+							 { id: "backup_window_full_file", regexp: backup_window_regex },
+							 { id: "backup_window_incr_image", regexp: backup_window_regex },
+							 { id: "backup_window_full_image", regexp: backup_window_regex } ]) ) return false;
 	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
 }
@@ -2991,5 +3005,31 @@ function recalculateStatistics()
 	else
 	{
 		stopLoading();
+	}
+}
+function setBackupWindowDisplay(display)
+{
+	I('backup_window_incr_file_row').style.display=display;
+	I('backup_window_full_file_row').style.display=display;
+	I('backup_window_incr_image_row').style.display=display;
+	I('backup_window_full_image_row').style.display=display;
+}
+function showBackupWindowDetails()
+{
+	setBackupWindowDisplay("table-row");
+	I('backup_window_row').style.display="none";
+}
+function hideBackupWindowDetails()
+{
+	if(I('backup_window_incr_file').value==I('backup_window_full_file').value
+	    && I('backup_window_full_file').value==I('backup_window_incr_image').value
+	    && I('backup_window_incr_image').value==I('backup_window_full_image').value )
+	{
+		setBackupWindowDisplay("none");
+		I('backup_window').value=I('backup_window_incr_file').value;
+	}
+	else
+	{
+		showBackupWindowDetails();
 	}
 }

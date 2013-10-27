@@ -458,7 +458,9 @@ void BackupServerGet::operator ()(void)
 			if( server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash")
 				with_hashes=true;
 
-			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && !internet_no_full_file && ( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_backup_now ) && isBackupsRunningOkay(true, true) )
+			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
+				( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindowFullFile())) || do_full_backup_now )
+				&& isBackupsRunningOkay(true, true) )
 			{
 				hbu=true;
 				ScopedActiveThread sat;
@@ -490,7 +492,9 @@ void BackupServerGet::operator ()(void)
 
 				do_full_backup_now=false;
 			}
-			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups && ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_backup_now ) && isBackupsRunningOkay(true, true) )
+			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups
+				&& ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindowIncrFile())) || do_incr_backup_now )
+				&& isBackupsRunningOkay(true, true) )
 			{
 				hbu=true;
 				ScopedActiveThread sat;
@@ -533,7 +537,9 @@ void BackupServerGet::operator ()(void)
 
 				do_incr_backup_now=false;
 			}
-			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_full_image_now) && isBackupsRunningOkay(true, false) )
+			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
+				&& ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindowFullImage())) || do_full_image_now)
+				&& isBackupsRunningOkay(true, false) )
 			{
 				ScopedActiveThread sat;
 
@@ -581,7 +587,9 @@ void BackupServerGet::operator ()(void)
 
 				do_full_image_now=false;
 			}
-			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images && ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindow())) || do_incr_image_now) && isBackupsRunningOkay(true, false) )
+			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
+				&& ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindowIncrImage())) || do_incr_image_now)
+				&& isBackupsRunningOkay(true, false) )
 			{
 				ScopedActiveThread sat;
 

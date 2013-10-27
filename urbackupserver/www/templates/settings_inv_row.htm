@@ -117,9 +117,25 @@
 <td>#{tDelay after system startup}:</td>
 <td><input type="text" id="startup_backup_delay" value="#{startup_backup_delay}"/> #{tmin}</td>
 </tr>
-<tr>
+<tr id="backup_window_row">
 <td>#{tBackup window}</td>
-<td><input type="text" id="backup_window" value="#{backup_window}"/> <a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
+<td><input type="text" id="backup_window" value="#{backup_window}"/>&nbsp;<a href="javascript: showBackupWindowDetails()">#{tShow details}</a>&nbsp;&nbsp;<a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
+</tr>
+<tr id="backup_window_incr_file_row">
+<td>#{tBackup window for incremental file backups}</td>
+<td><input type="text" id="backup_window_incr_file" value="#{backup_window_incr_file}"/><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
+</tr>
+<tr id="backup_window_full_file_row">
+<td>#{tBackup window for full file backups}</td>
+<td><input type="text" id="backup_window_full_file" value="#{backup_window_full_file}"/><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
+</tr>
+<tr id="backup_window_incr_image_row">
+<td>#{tBackup window for incremental image backups}</td>
+<td><input type="text" id="backup_window_incr_image" value="#{backup_window_incr_image}"/><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
+</tr>
+<tr id="backup_window_full_image_row">
+<td>#{tBackup window for full image backups}</td>
+<td><input type="text" id="backup_window_full_image" value="#{backup_window_full_image}"/><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
 </tr>
 #{no_compname_start}
 <tr>

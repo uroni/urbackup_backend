@@ -42,7 +42,7 @@ struct SCallbackData
 	SStartupStatus* status;
 };
 
-db_results create_callback(int n_done, void *userdata)
+db_results create_callback(size_t n_done, void *userdata)
 {
 	SCallbackData *data=(SCallbackData*)userdata;
 

@@ -985,6 +985,39 @@ void update25_26(void)
 	}
 }
 
+void update26_27(void)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db_results res=db->Read("SELECT value, clientid FROM settings_db.settings WHERE key='backup_window'");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?, ?, ?)");
+	for(size_t i=0;i<res.size();++i)
+	{
+		q_insert->Bind("backup_window_incr_file");
+		q_insert->Bind(res[i][L"value"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+
+		q_insert->Bind("backup_window_full_file");
+		q_insert->Bind(res[i][L"value"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+
+		q_insert->Bind("backup_window_incr_image");
+		q_insert->Bind(res[i][L"value"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+
+		q_insert->Bind("backup_window_full_image");
+		q_insert->Bind(res[i][L"value"]);
+		q_insert->Bind(res[i][L"clientid"]);
+		q_insert->Write();
+		q_insert->Reset();
+	}
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1006,7 +1039,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=26;
+	int max_v=27;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1130,6 +1163,10 @@ void upgrade(void)
 				break;
 			case 25:
 				update25_26();
+				++ver;
+				break;
+			case 26:
+				update26_27();
 				++ver;
 				break;
 			default:

@@ -150,7 +150,10 @@ void ServerSettings::readSettingsDefault(void)
 	settings.startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
 	settings.download_client=(settings_default->getValue("download_client", "true")=="true");
 	settings.autoupdate_clients=(settings_default->getValue("autoupdate_clients", "true")=="true");
-	settings.backup_window=settings_default->getValue("backup_window", "1-7/0-24");
+	settings.backup_window_incr_file=settings_default->getValue("backup_window_incr_file", "1-7/0-24");
+	settings.backup_window_full_file=settings_default->getValue("backup_window_full_file", "1-7/0-24");
+	settings.backup_window_incr_image=settings_default->getValue("backup_window_incr_image", "1-7/0-24");
+	settings.backup_window_full_image=settings_default->getValue("backup_window_full_image", "1-7/0-24");
 	settings.max_active_clients=settings_default->getValue("max_active_clients", 100);
 	settings.max_sim_backups=settings_default->getValue("max_sim_backups", 10);
 	settings.exclude_files=settings_default->getValue(L"exclude_files", L"");
@@ -254,9 +257,18 @@ void ServerSettings::readSettingsClient(void)
 	tmp=settings_client->getValue("startup_backup_delay", -1);
 	if(tmp!=-1)
 		settings.startup_backup_delay=tmp;
-	stmp=settings_client->getValue("backup_window", "");
+	stmp=settings_client->getValue("backup_window_incr_file", "");
 	if(!stmp.empty())
-		settings.backup_window=stmp;
+		settings.backup_window_incr_file=stmp;
+	stmp=settings_client->getValue("backup_window_full_file", "");
+	if(!stmp.empty())
+		settings.backup_window_full_file=stmp;
+	stmp=settings_client->getValue("backup_window_incr_image", "");
+	if(!stmp.empty())
+		settings.backup_window_full_image=stmp;
+	stmp=settings_client->getValue("backup_window_full_image", "");
+	if(!stmp.empty())
+		settings.backup_window_incr_file=stmp;
 	std::wstring swtmp=settings_client->getValue(L"computername", L"");
 	if(!swtmp.empty())
 		settings.computername=swtmp;
@@ -359,9 +371,27 @@ std::vector<STimeSpan> ServerSettings::getCleanupWindow(void)
 	return getWindow(window);
 }
 
-std::vector<STimeSpan> ServerSettings::getBackupWindow(void)
+std::vector<STimeSpan> ServerSettings::getBackupWindowIncrFile(void)
 {
-	std::string window=getSettings()->backup_window;
+	std::string window=getSettings()->backup_window_incr_file;
+	return getWindow(window);
+}
+
+std::vector<STimeSpan> ServerSettings::getBackupWindowFullFile(void)
+{
+	std::string window=getSettings()->backup_window_full_file;
+	return getWindow(window);
+}
+
+std::vector<STimeSpan> ServerSettings::getBackupWindowIncrImage(void)
+{
+	std::string window=getSettings()->backup_window_incr_image;
+	return getWindow(window);
+}
+
+std::vector<STimeSpan> ServerSettings::getBackupWindowFullImage(void)
+{
+	std::string window=getSettings()->backup_window_full_image;
 	return getWindow(window);
 }
 
