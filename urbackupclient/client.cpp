@@ -2248,6 +2248,11 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	while( (r=f->Read(buffer, 4096))>0)
 	{
 		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+
+		if(IdleCheckerThread::getPause())
+		{
+			Server->wait(5000);
+		}
 	}
 
 	Server->destroy(f);
@@ -2276,6 +2281,11 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 	while( (r=f->Read(buffer, 4096))>0)
 	{
 		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+
+		if(IdleCheckerThread::getPause())
+		{
+			Server->wait(5000);
+		}
 	}
 
 	Server->destroy(f);
