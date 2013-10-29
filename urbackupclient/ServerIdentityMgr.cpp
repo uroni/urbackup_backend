@@ -82,7 +82,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 	int numl=linecount(data);
 	for(int i=0;i<numl;++i)
 	{
-		std::string l=getline(i, data);
+		std::string l=trim(getline(i, data));
 		if(!l.empty() && l[0]=='#')
 		{
 			continue;
@@ -107,7 +107,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 	numl=linecount(data);
 	for(int i=0;i<numl;++i)
 	{
-		std::string l=getline(i, data);
+		std::string l=trim(getline(i, data));
 		if(l.size()>5)
 		{
 			new_identities.push_back(l);
