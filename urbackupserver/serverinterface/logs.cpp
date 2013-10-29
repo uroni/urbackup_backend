@@ -88,6 +88,22 @@ ACTION_IMPL(logs)
 			ret.set("all_clients", JSON::Value(true));
 		}
 		ret.set("clients", clients);
+
+		IQuery *q_log_right_clients=db->Prepare("SELECT id, name FROM clients"+(clientid.empty()?""
+											:" WHERE "+constructFilter(clientid, "id")));
+
+		res=q_log_right_clients->Read();
+		q_log_right_clients->Reset();
+		JSON::Array log_right_clients;
+		for(size_t i=0;i<res.size();++i)
+		{
+			JSON::Object obj;
+			obj.set("id", watoi(res[i][L"id"]));
+			obj.set("name", res[i][L"name"]);
+			log_right_clients.add(obj);
+		}
+		ret.set("log_right_clients", log_right_clients);
+
 		ret.set("filter", filter);
 		if(s_logid.empty())
 		{
