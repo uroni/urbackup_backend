@@ -128,34 +128,45 @@ void CServiceAcceptor::operator()(void)
 	if(has_error)
 		return;
 
-	while(do_exit==false)
-	{
-		fd_set fdset;
-		socklen_t addrsize=sizeof(sockaddr_in);
-
-		FD_ZERO(&fdset);
-		
-		SOCKET maxs=s;
-
-		FD_SET(s, &fdset);
-#ifndef _WIN32
+	#ifndef _WIN32
 		FD_SET(xpipe[0], &fdset);
 		if(xpipe[0]>maxs)
 			maxs=xpipe[0];
 #endif
+
+	while(do_exit==false)
+	{
+		socklen_t addrsize=sizeof(sockaddr_in);
+
+#ifdef _WIN32
+		fd_set fdset;
+		FD_ZERO(&fdset);		
+		SOCKET maxs=s;
+		FD_SET(s, &fdset);
 		++maxs;
 
-
 		timeval lon;
-	
 		lon.tv_sec=100;
 		lon.tv_usec=0;
 
 		_i32 rc=select((int)maxs, &fdset, 0, 0, &lon);
-
+#else
+		pollfd conn[2];
+		conn[0].fd=s;
+		conn[0].events=POLLIN;
+		conn[0].revents=0;
+		conn[1].fd=xpipe[0];
+		conn[1].events=POLLIN;
+		conn[1].revents=0;
+		int rc = poll(&conn, 1, 100*1000);
+#endif
 		if(rc>=0)
 		{
+#ifdef _WIN32
 			if( FD_ISSET(s,&fdset) && do_exit==false)
+#else
+			if( conn[0].revents!=0 && do_exit==false)
+#endif
 			{
 				sockaddr_in naddr;
 				SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);

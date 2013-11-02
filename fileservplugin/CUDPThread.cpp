@@ -159,19 +159,25 @@ bool CUDPThread::UdpStep(void)
 	if(has_error)
 		return false;
 
-	fd_set fdset;
-
-	FD_ZERO(&fdset);
-
-	FD_SET(udpsock, &fdset);
-
-	timeval lon;
-	memset(&lon,0,sizeof(timeval) );
-	lon.tv_sec=60;
-	_i32 rc;
+	int rc;
 	if(!do_stop)
 	{
-		rc=select((int)udpsock+1, &fdset, 0, 0, &lon);
+#ifdef _WIN32
+		fd_set fdset;
+		FD_ZERO(&fdset);
+		FD_SET(udpsock, &fdset);
+
+		timeval lon;
+		memset(&lon,0,sizeof(timeval) );
+		lon.tv_sec=60;
+		rc=select((int)udpsock+1, &fdset, 0, 0, &lon);		
+#else
+		pollfd conn[1];
+		conn[0].fd=udpsock;
+		conn[0].events=POLLIN;
+		conn[0].revents=0;
+		rc = poll(&conn, 1, 60*1000);
+#endif
 	}
 	else
 	{

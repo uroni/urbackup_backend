@@ -72,8 +72,11 @@ void CServiceWorker::operator()(void)
 {
 	tid=Server->getThreadID();
 
+#ifdef _WIN32
 	fd_set fdset;
 	int max;
+#endif
+	
 	while(!do_stop)
 	{
 		{
@@ -121,17 +124,31 @@ void CServiceWorker::operator()(void)
 				}
 			}
 
+#ifdef _WIN32
 			FD_ZERO(&fdset);
 			max=0;
+#else
+			std::vector<pollfd> conn;
+			std::vector<ICustomClinet*> conn_clients;
+#endif
 
 			for(size_t i=0;i<clients.size();++i)
 			{
 				if(clients[i].first->wantReceive())
 				{
 					SOCKET s=clients[i].second->getSocket();
+#ifdef _WIN32
 					if((_i32)s>max)
 						max=(_i32)s;
 					FD_SET(s, &fdset);
+#else
+					pollfd nconn;
+					nconn.fd=s;
+					nconn.events=POLLIN;
+					nconn.revents=0;
+					conn.push_back(nconn);
+					conn_clients.push_back(clients[i].first);
+#endif
 					has_select_client=true;
 				}
 			}
@@ -140,14 +157,18 @@ void CServiceWorker::operator()(void)
 
 		if(has_select_client)
 		{
+#ifdef _WIN32
 			timeval lon;
 			lon.tv_sec=0;
 			lon.tv_usec=10000;
 
 			_i32 rc = select(max+1, &fdset, 0, 0, &lon);
-
+#else
+			int rc = poll(&conn[0], conn.size(), 10);
+#endif
 			if( rc>0 )
 			{
+#ifdef _WIN32
 				for(size_t i=0;i<clients.size();++i)
 				{
 					SOCKET s=clients[i].second->getSocket();
@@ -157,6 +178,15 @@ void CServiceWorker::operator()(void)
 						clients[i].first->ReceivePackets();					
 					}
 				}
+#else
+				for(size_t i=0;i<conn.size();++i)
+				{
+					if(conn[i].revents!=0)
+					{
+						conn_clients[i]->ReceivePackets();
+					}
+				}
+#endif
 			}		
 		}
 		else

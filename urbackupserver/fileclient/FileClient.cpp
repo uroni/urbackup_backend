@@ -69,50 +69,7 @@ bool setSockP(SOCKET sock)
 		}
 #endif
         return true;
-}
-
-_i32 selectnull(SOCKET socket)
-{
-        fd_set fdset;
-
-        FD_ZERO(&fdset);
-
-        FD_SET(socket, &fdset);
-
-        timeval lon;
-        lon.tv_usec=0;
-        lon.tv_sec=0;
-        return select((int)socket+1, &fdset, 0, 0, &lon);
-}
-
-_i32 selectmin(SOCKET socket)
-{
-        fd_set fdset;
-
-        FD_ZERO(&fdset);
-
-        FD_SET(socket, &fdset);
-
-        timeval lon;
-        lon.tv_sec=0;
-        lon.tv_usec=10000;
-        return select((int)socket+1, &fdset, 0, 0, &lon);
-}
-
-_i32 selectc(SOCKET socket, int usec)
-{
-        fd_set fdset;
-
-        FD_ZERO(&fdset);
-
-        FD_SET(socket, &fdset);
-
-        timeval lon;
-        lon.tv_sec=0;
-        lon.tv_usec=usec;
-        return select((int)socket+1, &fdset, 0, 0, &lon);
-}
-       
+}    
 
 FileClient::FileClient(int protocol_version, bool internet_connection,
 	FileClient::ReconnectionCallback *reconnection_callback, FileClient::NoFreeSpaceCallback *nofreespace_callback)
@@ -390,9 +347,8 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
         }
         else
         {
-
+#ifdef _WIN32
 			fd_set fdset;
-
 			FD_ZERO(&fdset);
 
 			SOCKET max_socket;
@@ -412,13 +368,27 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 			lon.tv_sec=0;
 			lon.tv_usec=1000*1000;
 			_i32 rc = select((int)max_socket+1, &fdset, 0, 0, &lon);
-
+#else
+			std::vector<pollfd> conn;
+			conn.resize(udpsocks.size());
+			for(size_t i=0;i<udpsocks.size();++i)
+			{
+				conn[i].fd=udpsock[i];
+				conn[i].events=POLLIN;
+				conn[i].revents=0;
+			}
+			rc = poll(&conn[0], conn.size(), 1000);
+#endif
         	if(rc>0)
 	        {
 
 				for(size_t i=0;i<udpsocks.size();++i)
 				{
+#ifdef _WIN32
 					if(FD_ISSET(udpsocks[i], &fdset))
+#else
+					if(conn[i].revents!=0)
+#endif
 					{
 						socklen_t addrsize=sizeof(sockaddr_in);
 						sockaddr_in sender;

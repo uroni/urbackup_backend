@@ -138,16 +138,24 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
         connect(Cs,(sockaddr*)&addr,sizeof(sockaddr));
 		       
 
-        fd_set conn;
+#ifdef _WIN32
+	fd_set conn;
 	FD_ZERO(&conn);
 	FD_SET(Cs, &conn);
 
-        timeval timeout;
+	timeval timeout;
 
-		timeout.tv_sec=60;
-		timeout.tv_usec=0;
+	timeout.tv_sec=60;
+	timeout.tv_usec=0;
 
 	error=select(Cs+1,NULL,&conn,NULL,&timeout);
+#else
+	pollfd conn[1];
+	conn[0].fd=Cs;
+	conn[0].events=POLLOUT;
+	conn[0].revents=0;
+	error = poll(&conn, 1, 60*1000);
+#endif
 
 	if(error<1)
 	{
@@ -199,10 +207,14 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
 
         while(bytes>0 && exit==false)
         {
+#ifdef _WIN32
                 timeval timeout3;
-		timeout3.tv_sec=timeout.tv_sec*5;
-		timeout3.tv_usec=0;
-		error=select(Cs+1,&conn,NULL,NULL,&timeout3);
+				timeout3.tv_sec=timeout.tv_sec*5;
+				timeout3.tv_usec=0;
+				error=select(Cs+1,&conn,NULL,NULL,&timeout3);
+#else
+				error = poll(&conn, 1, 60*5*1000);
+#endif
                 if(error>0)
                 {
                         bytes = recv(Cs, Buffer, BUFFERSIZE,  MSG_NOSIGNAL);
