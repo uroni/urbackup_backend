@@ -109,7 +109,10 @@ bool File::OpenTemporaryFile(const std::wstring &dir)
 
 	stmpdir=stmpdir+"/cps.XXXXXX";
 
+	mode_t cur_umask = umask(S_IRWXO | S_IRWXG); 
 	fd=mkstemp((char*)stmpdir.c_str());
+	umask(cur_umask);
+	
 	fn=Server->ConvertToUnicode(stmpdir);
 	if( fd==-1 )
 		return false;

@@ -403,7 +403,7 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		unicodename[unicodename.size()-2]=0;
 		unicodename[unicodename.size()-1]=0;
 		memcpy(dynamicheader.parent_unicodename, &unicodename[0], unicodename.size());
-		unsigned int locator_blocks_abs=(abs_unicodename.size())/sector_size+((abs_unicodename.size())%sector_size!=0)?1:0;
+		unsigned int locator_blocks_abs=static_cast<unsigned int>((abs_unicodename.size())/sector_size)+(((abs_unicodename.size())%sector_size!=0)?1:0);
 		dynamicheader.parentlocator[0].platform_code=endian_swap((unsigned int)0x57326B75);
 		dynamicheader.parentlocator[0].platform_space=endian_swap(locator_blocks_abs*sector_size);
 		dynamicheader.parentlocator[0].platform_length=endian_swap((unsigned int)abs_unicodename.size());

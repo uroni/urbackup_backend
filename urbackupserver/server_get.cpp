@@ -777,9 +777,7 @@ void BackupServerGet::operator ()(void)
 		}
 
 		std::string msg;
-		if(file_backup_err)
-			pipe->Read(&msg, 0);
-		else if(tried_backup)
+		if(tried_backup)
 			pipe->Read(&msg, skip_checking?0:check_time_intervall_tried_backup);
 		else
 			pipe->Read(&msg, skip_checking?0:check_time_intervall);

@@ -155,13 +155,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 		return false;
 	}
 
-	if( rc!=SOCKET_ERROR)
-		return true;
-	else
-	{
-		has_error=true;
-		return false;
-	}
+	return true;
 }
 
 bool CStreamPipe::Write(const std::string &str, int timeoutms)

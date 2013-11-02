@@ -80,6 +80,8 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000)
 {
+	memset(buffer, 0, BUFFERSIZE_UDP);
+
 	if(enable_find_servers)
 	{
 #ifndef _WIN32

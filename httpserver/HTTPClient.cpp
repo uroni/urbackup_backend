@@ -81,6 +81,7 @@ void CHTTPClient::ReceivePackets(void)
 			case HTTP_STATE_KEEPALIVE:
 				reset();
 				http_g_state=HTTP_STATE_COMMAND;
+				//fallthrough
 			case HTTP_STATE_COMMAND:
 				processCommand(ch);
 				break;
@@ -510,10 +511,7 @@ bool CHTTPClient::processRequest(void)
 		}
 		else if(pl->find(".")==std::string::npos && path.size()<=2 && (pstart=pl->find("?"))!=std::string::npos)
 		{
-			if( pstart!=std::string::npos )
-				name=pl->substr(0, pstart);
-			else 
-				name=*pl;
+			name=pl->substr(0, pstart);
 			
 			if( path.size()>1 )
 				context=path[0];
