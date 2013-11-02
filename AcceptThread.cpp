@@ -159,7 +159,7 @@ void CAcceptThread::operator()(bool single)
 #endif		
 			sockaddr_in naddr;
 			SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
-			if(ns>0)
+			if(ns!=SOCKET_ERROR)
 			{
 				//Server->Log("New Connection incomming", LL_INFO);
 

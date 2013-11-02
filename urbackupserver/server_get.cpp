@@ -2854,6 +2854,10 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 				break;
 			}
 		}
+		else if(pck!=NULL)
+		{
+			delete []pck;
+		}
 	}
 	if(!ok && !herr)
 	{

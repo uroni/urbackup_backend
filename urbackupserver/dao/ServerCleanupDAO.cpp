@@ -156,15 +156,11 @@ ServerCleanupDAO::CondString ServerCleanupDAO::getImagePath(int id)
 	q_getImagePath->Bind(id);
 	db_results res=q_getImagePath->Read();
 	q_getImagePath->Reset();
-	CondString ret;
+	CondString ret = { false, L"" };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.value=res[0][L"path"];
-	}
-	else
-	{
-		ret.exists=false;
 	}
 	return ret;
 }
@@ -253,15 +249,11 @@ ServerCleanupDAO::CondString ServerCleanupDAO::getClientName(int clientid)
 	q_getClientName->Bind(clientid);
 	db_results res=q_getClientName->Read();
 	q_getClientName->Reset();
-	CondString ret;
+	CondString ret = { false, L"" };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.value=res[0][L"name"];
-	}
-	else
-	{
-		ret.exists=false;
 	}
 	return ret;
 }
@@ -278,15 +270,11 @@ ServerCleanupDAO::CondString ServerCleanupDAO::getFileBackupPath(int backupid)
 	q_getFileBackupPath->Bind(backupid);
 	db_results res=q_getFileBackupPath->Read();
 	q_getFileBackupPath->Reset();
-	CondString ret;
+	CondString ret = { false, L"" };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.value=res[0][L"path"];
-	}
-	else
-	{
-		ret.exists=false;
 	}
 	return ret;
 }
@@ -329,17 +317,13 @@ ServerCleanupDAO::SFileBackupInfo ServerCleanupDAO::getFileBackupInfo(int backup
 	q_getFileBackupInfo->Bind(backupid);
 	db_results res=q_getFileBackupInfo->Read();
 	q_getFileBackupInfo->Reset();
-	SFileBackupInfo ret;
+	SFileBackupInfo ret = { false, 0, L"", L"" };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.id=watoi(res[0][L"id"]);
 		ret.backuptime=res[0][L"backuptime"];
 		ret.path=res[0][L"path"];
-	}
-	else
-	{
-		ret.exists=false;
 	}
 	return ret;
 }
@@ -356,7 +340,7 @@ ServerCleanupDAO::SImageBackupInfo ServerCleanupDAO::getImageBackupInfo(int back
 	q_getImageBackupInfo->Bind(backupid);
 	db_results res=q_getImageBackupInfo->Read();
 	q_getImageBackupInfo->Reset();
-	SImageBackupInfo ret;
+	SImageBackupInfo ret = { false, 0, L"", L"", L"" };
 	if(!res.empty())
 	{
 		ret.exists=true;
@@ -364,10 +348,6 @@ ServerCleanupDAO::SImageBackupInfo ServerCleanupDAO::getImageBackupInfo(int back
 		ret.backuptime=res[0][L"backuptime"];
 		ret.path=res[0][L"path"];
 		ret.letter=res[0][L"letter"];
-	}
-	else
-	{
-		ret.exists=false;
 	}
 	return ret;
 }
@@ -523,15 +503,11 @@ ServerCleanupDAO::CondInt64 ServerCleanupDAO::getImageSize(int backupid)
 	q_getImageSize->Bind(backupid);
 	db_results res=q_getImageSize->Read();
 	q_getImageSize->Reset();
-	CondInt64 ret;
+	CondInt64 ret = { false, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.value=watoi64(res[0][L"size_bytes"]);
-	}
-	else
-	{
-		ret.exists=false;
 	}
 	return ret;
 }
@@ -623,15 +599,11 @@ ServerCleanupDAO::CondInt ServerCleanupDAO::findFileBackup(int clientid, const s
 	q_findFileBackup->Bind(path);
 	db_results res=q_findFileBackup->Read();
 	q_findFileBackup->Reset();
-	CondInt ret;
+	CondInt ret = { false, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.value=watoi(res[0][L"id"]);
-	}
-	else
-	{
-		ret.exists=false;
 	}
 	return ret;
 }
@@ -659,15 +631,11 @@ ServerCleanupDAO::CondInt64 ServerCleanupDAO::getUsedStorage(int clientid)
 	q_getUsedStorage->Bind(clientid);
 	db_results res=q_getUsedStorage->Read();
 	q_getUsedStorage->Reset();
-	CondInt64 ret;
+	CondInt64 ret = { false, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.value=watoi64(res[0][L"used_storage"]);
-	}
-	else
-	{
-		ret.exists=false;
 	}
 	return ret;
 }

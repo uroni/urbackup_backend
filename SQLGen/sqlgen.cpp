@@ -556,7 +556,39 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	}
 	else if(!return_types.empty())
 	{
-		code+="\t"+struct_name+" ret;\r\n";
+		code+="\t"+struct_name+" ret = { ";
+		if(!use_cond)
+		{
+			code+="false, ";
+			for(size_t i=0;i<return_types.size();++i)
+			{
+				if(return_types[i].type=="int" || return_types[i].type=="int64")
+				{
+					code+="0";
+				}
+				else
+				{
+					code+="L\"\"";
+				}
+				if(i+1<return_types.size())
+				{
+					code+=", ";
+				}
+			}
+		}
+		else
+		{
+			code+="false, ";
+			if(return_types[0].type=="int" || return_types[0].type=="int64")
+			{
+				code+="0";
+			}
+			else
+			{
+				code+="L\"\"";
+			}
+		}
+		code+=" };\r\n";
 		code+="\tif(!res.empty())\r\n";
 		code+="\t{\r\n";
 		if(use_exists)
@@ -595,13 +627,6 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			{
 				code+="\t\tret.value=res[0][L\""+return_types[0].name+"\"];\r\n";
 			}
-		}
-		code+="\t}\r\n";
-		code+="\telse\r\n";
-		code+="\t{\r\n";
-		if(use_exists)
-		{
-			code+="\t\tret.exists=false;\r\n";
 		}
 		code+="\t}\r\n";
 		code+="\treturn ret;\r\n";			

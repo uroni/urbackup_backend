@@ -184,7 +184,18 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                         "Connection: close\r\n";
         tosend+="\r\n";
 
-        send(Cs,tosend.c_str(),(int)tosend.length(),MSG_NOSIGNAL);
+        rc = send(Cs,tosend.c_str(),(int)tosend.length(),MSG_NOSIGNAL);
+
+		if(rc==SOCKET_ERROR)
+		{
+			CWData wd;
+			wd.addUChar(DL2_ERROR);
+			wd.addUChar(DL2_ERR_NORESPONSE);
+			pipe->Write(wd.getDataPtr(), wd.getDataSize());
+
+			closesocket(Cs);
+			return false;
+		}
 
         int bytes=BUFFERSIZE;
         int totalbytes=0;

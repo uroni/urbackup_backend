@@ -41,7 +41,7 @@ struct SPostfile
 struct SCircularLogEntry
 {
 	SCircularLogEntry(void)
-		: loglevel(LL_DEBUG), id(std::string::npos)
+		: loglevel(LL_DEBUG), id(std::string::npos), time(0)
 	{
 	}
 

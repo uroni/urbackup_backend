@@ -6,7 +6,8 @@
 #include "stringtools.h"
 #include <stdlib.h>
 
-CServiceWorker::CServiceWorker(IService *pService, std::string pName, IPipe * pExit, int pMaxClientsPerThread) : exit(pExit)
+CServiceWorker::CServiceWorker(IService *pService, std::string pName, IPipe * pExit, int pMaxClientsPerThread)
+	: exit(pExit), tid(0)
 {
 	mutex=Server->createMutex();
 	nc_mutex=Server->createMutex();

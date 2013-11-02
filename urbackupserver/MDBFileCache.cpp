@@ -14,7 +14,7 @@ void MDBFileCache::initFileCache(size_t map_size)
 }
 
 MDBFileCache::MDBFileCache(size_t map_size)
-	: _has_error(false)
+	: _has_error(false), txn(NULL)
 {
 	int rc;
 	if(env==NULL)

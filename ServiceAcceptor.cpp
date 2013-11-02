@@ -38,6 +38,9 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	exitpipe=Server->createMemoryPipe();
 	do_exit=false;
 	has_error=false;
+#ifndef _WIN32
+	pipe(xpipe);
+#endif
 
 	int rc;
 #ifdef _WIN32
@@ -81,10 +84,6 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	listen(s, 10000);
 
 	Server->Log(name+": Server started up sucessfully!",LL_INFO);
-	
-#ifndef _WIN32
-	pipe(xpipe);
-#endif
 }
 
 CServiceAcceptor::~CServiceAcceptor()
@@ -164,7 +163,7 @@ void CServiceAcceptor::operator()(void)
 			{
 				sockaddr_in naddr;
 				SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
-				if(ns>0)
+				if(ns!=SOCKET_ERROR)
 				{
 					//Server->Log(name+": New Connection incomming "+nconvert(Server->getTimeMS())+" s: "+nconvert((int)ns), LL_DEBUG);
 

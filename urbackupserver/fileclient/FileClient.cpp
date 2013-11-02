@@ -73,7 +73,10 @@ bool setSockP(SOCKET sock)
 
 FileClient::FileClient(bool enable_find_servers, int protocol_version, bool internet_connection,
 	FileClient::ReconnectionCallback *reconnection_callback, FileClient::NoFreeSpaceCallback *nofreespace_callback)
-	: protocol_version(protocol_version), internet_connection(internet_connection),
+	: tcpsock(NULL), starttime(0), connect_starttime(0), socket_open(false), connected(false),
+	num_games(0), num_games_get(0), num_games_res(false), res_name(false), serveraddr(), local_ip(),
+	max_version(), server_addr(), connection_id(), 
+	protocol_version(protocol_version), internet_connection(internet_connection),
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000)
 {
@@ -135,6 +138,7 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 					if(rc<0)
 					{
 						Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+						closesocket(udpsock);
 						continue;
 					}
 
