@@ -66,7 +66,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
 
         int Cs;
         string ret;
-        sockaddr_in addr;
+        
         fstream out;
         out.open(filename.c_str(),ios::out|ios::binary);
         if(out.is_open()==false)
@@ -115,6 +115,9 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                 wd.addUChar(DL2_INFO_RESOLVING);
 				pipe->Write(wd.getDataPtr(), wd.getDataSize());
         }
+		
+		sockaddr_in addr;
+		memset(&addr, 0, sizeof(addr));
 
         addr.sin_family=AF_INET;
         if(proxy=="")

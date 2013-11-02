@@ -918,6 +918,7 @@ void CServer::StartCustomStreamService(IService *pService, std::string pServiceN
 IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
 	sockaddr_in server;
+	memset(&server, 0, sizeof(server));
 	LookupBlocking(pServer, &server.sin_addr);
 	server.sin_port=htons(pPort);
 	server.sin_family=AF_INET;
@@ -1176,7 +1177,7 @@ void thread_helper_f(IThread *t)
 }
 #else
 #ifndef _WIN32
-void *thread_helper_f(void * t)
+void thread_helper_f(void * t)
 {
 	IThread *tmp=(IThread*)t;
 	(*tmp)();

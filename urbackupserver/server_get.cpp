@@ -945,12 +945,14 @@ SBackup BackupServerGet::getLastIncremental(void)
 			b.complete=res[0][L"path"];
 		}
 
+		b.incremental_ref=0;
 		return b;
 	}
 	else
 	{
 		SBackup b;
 		b.incremental=-2;
+		b.incremental_ref=0;
 		return b;
 	}
 }
@@ -973,6 +975,7 @@ SBackup BackupServerGet::getLastIncrementalImage(const std::string &letter)
 	{
 		SBackup b;
 		b.incremental=-2;
+		b.incremental_ref=0;
 		return b;
 	}
 }
