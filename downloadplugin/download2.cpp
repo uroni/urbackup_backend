@@ -103,6 +103,8 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
 				pipe->Write(wd.getDataPtr(), wd.getDataSize());
 				return false;
 	}
+#else
+		int rc;
 #endif
 
         Cs=(int)socket(AF_INET,SOCK_STREAM,0);
