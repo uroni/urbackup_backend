@@ -64,7 +64,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	_u32 rc;
 	if(method==0)
 	{
-		FileClient fc(2);
+		FileClient fc(false, 2);
 		fc.Connect(cp);
 		
 		Server->Log("Downloading file...");

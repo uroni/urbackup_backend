@@ -71,123 +71,126 @@ bool setSockP(SOCKET sock)
         return true;
 }    
 
-FileClient::FileClient(int protocol_version, bool internet_connection,
+FileClient::FileClient(bool enable_find_servers, int protocol_version, bool internet_connection,
 	FileClient::ReconnectionCallback *reconnection_callback, FileClient::NoFreeSpaceCallback *nofreespace_callback)
 	: protocol_version(protocol_version), internet_connection(internet_connection),
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000)
 {
+	if(enable_find_servers)
+	{
 #ifndef _WIN32
-	std::string bcast_interfaces=Server->getServerParameter("broadcast_interfaces", "");
+		std::string bcast_interfaces=Server->getServerParameter("broadcast_interfaces", "");
 
-	std::vector<std::string> bcast_filter;
-	if(!bcast_interfaces.empty())
-	{
-		Tokenize(bcast_interfaces, bcast_filter, ";,");
-	}
-
-	ifaddrs *ifap;
-	int rc=getifaddrs(&ifap);
-	if(rc==0)
-	{
-		for(;ifap!=NULL;ifap=ifap->ifa_next)
+		std::vector<std::string> bcast_filter;
+		if(!bcast_interfaces.empty())
 		{
-			bool found_name = bcast_filter.empty() || std::find(bcast_filter.begin(), bcast_filter.end(), ifap->ifa_name)!=bcast_filter.end();
+			Tokenize(bcast_interfaces, bcast_filter, ";,");
+		}
 
-			if(found_name &&
-				!(ifap->ifa_flags & IFF_LOOPBACK) 
-				&& !(ifap->ifa_flags & IFF_POINTOPOINT) 
-				&&  (ifap->ifa_flags & IFF_BROADCAST)
-				&&  ifap->ifa_addr->sa_family == AF_INET )
-			{			
-				SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
-				if(udpsock==-1)
-				{
-					Server->Log(std::string("Error creating socket for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-					continue;
-				}
+		ifaddrs *ifap;
+		int rc=getifaddrs(&ifap);
+		if(rc==0)
+		{
+			for(;ifap!=NULL;ifap=ifap->ifa_next)
+			{
+				bool found_name = bcast_filter.empty() || std::find(bcast_filter.begin(), bcast_filter.end(), ifap->ifa_name)!=bcast_filter.end();
 
-				BOOL val=TRUE;
-				int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
-				if(rc<0)
-				{
-					Server->Log(std::string("Setting SO_REUSEADDR failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-				}
+				if(found_name &&
+					!(ifap->ifa_flags & IFF_LOOPBACK) 
+					&& !(ifap->ifa_flags & IFF_POINTOPOINT) 
+					&&  (ifap->ifa_flags & IFF_BROADCAST)
+					&&  ifap->ifa_addr->sa_family == AF_INET )
+				{			
+					SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+					if(udpsock==-1)
+					{
+						Server->Log(std::string("Error creating socket for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+						continue;
+					}
 
-				sockaddr_in source_addr;
-				memset(&source_addr, 0, sizeof(source_addr));
-				source_addr.sin_addr=((struct sockaddr_in *)ifap->ifa_addr)->sin_addr;
-				source_addr.sin_family = AF_INET;
-				source_addr.sin_port = htons(UDP_SOURCE_PORT);
+					BOOL val=TRUE;
+					int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
+					if(rc<0)
+					{
+						Server->Log(std::string("Setting SO_REUSEADDR failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+					}
 
-				Server->Log(std::string("Binding to interface ")+std::string(ifap->ifa_name)+" for broadcasting...", LL_DEBUG);
+					sockaddr_in source_addr;
+					memset(&source_addr, 0, sizeof(source_addr));
+					source_addr.sin_addr=((struct sockaddr_in *)ifap->ifa_addr)->sin_addr;
+					source_addr.sin_family = AF_INET;
+					source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
-				rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
-				if(rc<0)
-				{
-					Server->Log(std::string("Binding UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-				}
+					Server->Log(std::string("Binding to interface ")+std::string(ifap->ifa_name)+" for broadcasting...", LL_DEBUG);
+
+					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+					if(rc<0)
+					{
+						Server->Log(std::string("Binding UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+					}
 
 				
-				rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
-				if(rc<0)
-				{
-					Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-					continue;
-				}
+					rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
+					if(rc<0)
+					{
+						Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+						continue;
+					}
 
-				#if defined(__FreeBSD__)
-				int optval=1;
-				if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
-				{
-					Server->Log(std::string("Error setting IP_ONESBCAST for interface " )+std::string(ifap->ifa_name), LL_ERROR);
-				}
-				#endif
+					#if defined(__FreeBSD__)
+					int optval=1;
+					if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+					{
+						Server->Log(std::string("Error setting IP_ONESBCAST for interface " )+std::string(ifap->ifa_name), LL_ERROR);
+					}
+					#endif
 
-				udpsocks.push_back(udpsock);
+					udpsocks.push_back(udpsock);
+				}
 			}
+			freeifaddrs(ifap);
 		}
-		freeifaddrs(ifap);
-	}
-	else
-	{
-		Server->Log("Getting interface ips failed", LL_ERROR);
-	}
+		else
+		{
+			Server->Log("Getting interface ips failed", LL_ERROR);
+		}
 #else
-	SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
 	
 
-	int optval=1;
-	int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
-	if(rc==SOCKET_ERROR)
-	{
-		Server->Log("Failed setting SO_REUSEADDR in FileClient", LL_ERROR);
-	}
+		int optval=1;
+		int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+		if(rc==SOCKET_ERROR)
+		{
+			Server->Log("Failed setting SO_REUSEADDR in FileClient", LL_ERROR);
+		}
 
-	sockaddr_in source_addr;
-	memset(&source_addr, 0, sizeof(source_addr));
-	source_addr.sin_family = AF_INET;
-	source_addr.sin_addr.s_addr = INADDR_ANY;
-	source_addr.sin_port = htons(UDP_SOURCE_PORT);
+		sockaddr_in source_addr;
+		memset(&source_addr, 0, sizeof(source_addr));
+		source_addr.sin_family = AF_INET;
+		source_addr.sin_addr.s_addr = INADDR_ANY;
+		source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
-	rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
-	if(rc<0)
-	{
-		Server->Log("Binding UDP socket failed", LL_ERROR);
-	}
+		rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+		if(rc<0)
+		{
+			Server->Log("Binding UDP socket failed", LL_ERROR);
+		}
 
-	setSockP(udpsock);
+		setSockP(udpsock);
 
-	BOOL val=TRUE;
-	rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
-	if(rc<0)
-	{
-		Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
-	}
+		BOOL val=TRUE;
+		rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
+		if(rc<0)
+		{
+			Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
+		}
 
-	udpsocks.push_back(udpsock);
+		udpsocks.push_back(udpsock);
 
 #endif
+	}
 
 	socket_open=false;
 	stack.setAddChecksum(internet_connection);

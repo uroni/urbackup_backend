@@ -1356,7 +1356,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		ServerLogger::Log(clientid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
 	}
 
-	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
+	FileClient fc(false, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc, 10000);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -1983,7 +1983,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	}
 
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
-	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
+	FileClient fc(false, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	FileClientChunked fc_chunked;
 	if(intra_file_diffs)
 	{
@@ -2990,7 +2990,7 @@ void BackupServerGet::sendSettings(void)
 
 bool BackupServerGet::getClientSettings(void)
 {
-	FileClient fc(filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
+	FileClient fc(false, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc);
 	if(rc!=ERR_CONNECTED)
 	{
