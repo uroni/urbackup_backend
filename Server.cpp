@@ -1177,10 +1177,11 @@ void thread_helper_f(IThread *t)
 }
 #else
 #ifndef _WIN32
-void thread_helper_f(void * t)
+void* thread_helper_f(void * t)
 {
 	IThread *tmp=(IThread*)t;
 	(*tmp)();
+	return NULL;
 }
 #endif
 #endif //THREAD_BOOST
