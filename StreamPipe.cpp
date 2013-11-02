@@ -62,7 +62,7 @@ namespace
 		conn[0].fd=s;
 		conn[0].events=POLLIN;
 		conn[0].revents=0;
-		int rc = poll(&conn, 1, timeoutms);
+		int rc = poll(conn, 1, timeoutms);
 #endif
 		return rc;
 	}
@@ -89,7 +89,7 @@ namespace
 		conn[0].fd=s;
 		conn[0].events=POLLOUT;
 		conn[0].revents=0;
-		int rc = poll(&conn, 1, timeoutms);
+		int rc = poll(conn, 1, timeoutms);
 #endif
 		return rc;
 	}

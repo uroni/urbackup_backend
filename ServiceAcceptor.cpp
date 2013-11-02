@@ -128,12 +128,6 @@ void CServiceAcceptor::operator()(void)
 	if(has_error)
 		return;
 
-	#ifndef _WIN32
-		FD_SET(xpipe[0], &fdset);
-		if(xpipe[0]>maxs)
-			maxs=xpipe[0];
-#endif
-
 	while(do_exit==false)
 	{
 		socklen_t addrsize=sizeof(sockaddr_in);
@@ -158,7 +152,7 @@ void CServiceAcceptor::operator()(void)
 		conn[1].fd=xpipe[0];
 		conn[1].events=POLLIN;
 		conn[1].revents=0;
-		int rc = poll(&conn, 1, 100*1000);
+		int rc = poll(conn, 2, 100*1000);
 #endif
 		if(rc>=0)
 		{

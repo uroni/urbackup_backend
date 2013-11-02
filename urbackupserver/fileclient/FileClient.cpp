@@ -373,11 +373,11 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 			conn.resize(udpsocks.size());
 			for(size_t i=0;i<udpsocks.size();++i)
 			{
-				conn[i].fd=udpsock[i];
+				conn[i].fd=udpsocks[i];
 				conn[i].events=POLLIN;
 				conn[i].revents=0;
 			}
-			rc = poll(&conn[0], conn.size(), 1000);
+			int rc = poll(&conn[0], conn.size(), 1000);
 #endif
         	if(rc>0)
 	        {

@@ -972,10 +972,10 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	{
 #else
 	pollfd conn[1];
-	conn.fd=s;
-	conn.events=POLLOUT;
-	conn.revents=0;
-	rc = poll(&conn, 1, pTimeoutms);
+	conn[0].fd=s;
+	conn[0].events=POLLOUT;
+	conn[0].revents=0;
+	rc = poll(conn, 1, pTimeoutms);
 	if( rc>0 )
 	{
 #endif	

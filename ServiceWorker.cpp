@@ -75,6 +75,9 @@ void CServiceWorker::operator()(void)
 #ifdef _WIN32
 	fd_set fdset;
 	int max;
+#else
+	std::vector<pollfd> conn;
+	std::vector<ICustomClient*> conn_clients;
 #endif
 	
 	while(!do_stop)
@@ -128,8 +131,8 @@ void CServiceWorker::operator()(void)
 			FD_ZERO(&fdset);
 			max=0;
 #else
-			std::vector<pollfd> conn;
-			std::vector<ICustomClinet*> conn_clients;
+			conn.clear();
+			conn_clients.clear();
 #endif
 
 			for(size_t i=0;i<clients.size();++i)

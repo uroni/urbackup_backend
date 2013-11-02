@@ -150,7 +150,7 @@ void CAcceptThread::operator()(bool single)
 		conn[0].fd=s;
 		conn[0].events=POLLIN;
 		conn[0].revents=0;
-		int rc = poll(&conn, 1, 1000);
+		int rc = poll(conn, 1, 1000);
 		if(rc<0)
 			return;
 

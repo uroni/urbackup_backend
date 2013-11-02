@@ -154,7 +154,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
 	conn[0].fd=Cs;
 	conn[0].events=POLLOUT;
 	conn[0].revents=0;
-	error = poll(&conn, 1, 60*1000);
+	error = poll(conn, 1, 60*1000);
 #endif
 
 	if(error<1)
@@ -204,6 +204,10 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
         bool chunked=false;
         int chunksize=-1;
         bool exit=false;
+        
+#ifndef _WIN32
+	conn[0].events=POLLIN;
+#endif
 
         while(bytes>0 && exit==false)
         {
@@ -213,7 +217,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
 				timeout3.tv_usec=0;
 				error=select(Cs+1,&conn,NULL,NULL,&timeout3);
 #else
-				error = poll(&conn, 1, 60*5*1000);
+				error = poll(conn, 1, 60*5*1000);
 #endif
                 if(error>0)
                 {
