@@ -29,10 +29,8 @@ std::vector<ServerCleanupDAO::SIncompleteImages> ServerCleanupDAO::getIncomplete
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		SIncompleteImages tmp;
-		tmp.id=watoi(res[i][L"id"]);
-		tmp.path=res[i][L"path"];
-		ret[i]=tmp;
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].path=res[i][L"path"];
 	}
 	return ret;
 }
@@ -111,10 +109,8 @@ std::vector<ServerCleanupDAO::SImageLetter> ServerCleanupDAO::getFullNumImages(i
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		SImageLetter tmp;
-		tmp.id=watoi(res[i][L"id"]);
-		tmp.letter=res[i][L"letter"];
-		ret[i]=tmp;
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].letter=res[i][L"letter"];
 	}
 	return ret;
 }
@@ -136,10 +132,8 @@ std::vector<ServerCleanupDAO::SImageRef> ServerCleanupDAO::getImageRefs(int incr
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		SImageRef tmp;
-		tmp.id=watoi(res[i][L"id"]);
-		tmp.complete=watoi(res[i][L"complete"]);
-		ret[i]=tmp;
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].complete=watoi(res[i][L"complete"]);
 	}
 	return ret;
 }
@@ -183,10 +177,8 @@ std::vector<ServerCleanupDAO::SImageLetter> ServerCleanupDAO::getIncrNumImages(i
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		SImageLetter tmp;
-		tmp.id=watoi(res[i][L"id"]);
-		tmp.letter=res[i][L"letter"];
-		ret[i]=tmp;
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].letter=res[i][L"letter"];
 	}
 	return ret;
 }
@@ -441,10 +433,9 @@ std::vector<ServerCleanupDAO::SImageBackupInfo> ServerCleanupDAO::getClientImage
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		SImageBackupInfo tmp;
-		tmp.id=watoi(res[i][L"id"]);
-		tmp.path=res[i][L"path"];
-		ret[i]=tmp;
+		ret[i].exists=true;
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].path=res[i][L"path"];
 	}
 	return ret;
 }
@@ -526,10 +517,8 @@ std::vector<ServerCleanupDAO::SClientInfo> ServerCleanupDAO::getClients(void)
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		SClientInfo tmp;
-		tmp.id=watoi(res[i][L"id"]);
-		tmp.name=res[i][L"name"];
-		ret[i]=tmp;
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].name=res[i][L"name"];
 	}
 	return ret;
 }
@@ -551,11 +540,10 @@ std::vector<ServerCleanupDAO::SFileBackupInfo> ServerCleanupDAO::getFileBackupsO
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		SFileBackupInfo tmp;
-		tmp.id=watoi(res[i][L"id"]);
-		tmp.backuptime=res[i][L"backuptime"];
-		tmp.path=res[i][L"path"];
-		ret[i]=tmp;
+		ret[i].exists=true;
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].backuptime=res[i][L"backuptime"];
+		ret[i].path=res[i][L"path"];
 	}
 	return ret;
 }
@@ -576,12 +564,11 @@ std::vector<ServerCleanupDAO::SImageBackupInfo> ServerCleanupDAO::getImageBackup
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		SImageBackupInfo tmp;
-		tmp.id=watoi(res[i][L"id"]);
-		tmp.backuptime=res[i][L"backuptime"];
-		tmp.letter=res[i][L"letter"];
-		tmp.path=res[i][L"path"];
-		ret[i]=tmp;
+		ret[i].exists=true;
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].backuptime=res[i][L"backuptime"];
+		ret[i].letter=res[i][L"letter"];
+		ret[i].path=res[i][L"path"];
 	}
 	return ret;
 }
