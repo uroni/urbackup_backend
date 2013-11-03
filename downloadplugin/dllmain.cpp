@@ -25,6 +25,8 @@
 
 #define DEF_SERVER
 #include "../Interface/Server.h"
+IServer *Server;
+
 #include "../Interface/Action.h"
 #include "../Interface/File.h"
 #include "../stringtools.h"
@@ -32,8 +34,6 @@
 #include <stdlib.h>
 
 #include "pluginmgr.h"
-
-IServer *Server;
 
 CDownloadPluginMgr *downloadpluginmgr;
 

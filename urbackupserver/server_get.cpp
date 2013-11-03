@@ -43,6 +43,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <limits.h>
+#include <memory>
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
 #endif
@@ -778,7 +779,7 @@ void BackupServerGet::operator ()(void)
 
 		std::string msg;
 		if(tried_backup)
-			pipe->Read(&msg, skip_checking?0:check_time_intervall_tried_backup);
+			pipe->Read(&msg, check_time_intervall_tried_backup);
 		else
 			pipe->Read(&msg, skip_checking?0:check_time_intervall);
 		
@@ -1629,16 +1630,16 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 	std::wstring hashpath_old=last_backuppath+os_file_sep()+L".hashes"+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 	std::wstring filepath_old=last_backuppath+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
 
-	IFile *file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
+	std::auto_ptr<IFile> file_old(Server->openFile(os_file_prefix(filepath_old), MODE_READ));
 
-	if(file_old==NULL)
+	if(file_old.get()==NULL)
 	{
 		if(!last_backuppath_complete.empty())
 		{
 			filepath_old=last_backuppath_complete+os_file_sep()+convertToOSPathFromFileClient(cfn_short);
-			file_old=Server->openFile(os_file_prefix(filepath_old), MODE_READ);
+			file_old.reset(Server->openFile(os_file_prefix(filepath_old), MODE_READ));
 		}
-		if(file_old==NULL)
+		if(file_old.get()==NULL)
 		{
 			ServerLogger::Log(clientid, L"No old file for \""+fn+L"\"", LL_DEBUG);
 			return load_file(fn, short_fn, curr_path, os_path, fc_normal, true, last_backuppath, last_backuppath_complete, download_ok, true);
@@ -1648,38 +1649,68 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 
 	ServerLogger::Log(clientid, L"Loading file patch for \""+fn+L"\"", LL_DEBUG);
 	IFile *pfd=getTemporaryFileRetry();
+	if(pfd==NULL)
+	{
+		ServerLogger::Log(clientid, L"Error creating temporary file 'pfd' in load_file_patch", LL_ERROR);
+		return false;
+	}
+	ScopedDeleteFile pfd_destroy(pfd);
 	IFile *hash_tmp=getTemporaryFileRetry();
+	if(hash_tmp==NULL)
+	{
+		ServerLogger::Log(clientid, L"Error creating temporary file 'hash_tmp' in load_file_patch", LL_ERROR);
+		return false;
+	}
+	ScopedDeleteFile hash_tmp_destroy(hash_tmp);
 
 	if(!server_token.empty())
 	{
 		cfn=widen(server_token)+L"|"+cfn;
 	}
 
-	IFile *hashfile_old=Server->openFile(os_file_prefix(hashpath_old), MODE_READ);
+	std::auto_ptr<IFile> hashfile_old(Server->openFile(os_file_prefix(hashpath_old), MODE_READ));
 	
 	bool delete_hashfile=false;
 
-	if( (hashfile_old==NULL || hashfile_old->Size()==0 ) && file_old!=NULL )
+	ScopedDeleteFile hashfile_old_destroy(NULL);
+
+	if( (hashfile_old.get()==NULL || hashfile_old->Size()==0 ) && file_old.get()!=NULL )
 	{
 		ServerLogger::Log(clientid, L"Hashes for file \""+filepath_old+L"\" not available. Calulating hashes...", LL_DEBUG);
-		hashfile_old=getTemporaryFileRetry();
+		hashfile_old.reset(getTemporaryFileRetry());
+		if(hashfile_old.get()==NULL)
+		{
+			ServerLogger::Log(clientid, L"Error creating temporary file 'hashfile_old' in load_file_patch", LL_ERROR);
+			return false;
+		}
+		hashfile_old_destroy.reset(hashfile_old.get());
 		delete_hashfile=true;
-		BackupServerPrepareHash::build_chunk_hashs(file_old, hashfile_old, NULL, false, NULL, false);
+		BackupServerPrepareHash::build_chunk_hashs(file_old.get(), hashfile_old.get(), NULL, false, NULL, false);
 		hashfile_old->Seek(0);
 	}
 
-	_u32 rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
+	_u32 rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old.get(), pfd, hashfile_old.get(), hash_tmp);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		file_old->Seek(0);
-		destroyTemporaryFile(pfd);
-		destroyTemporaryFile(hash_tmp);
 		pfd=getTemporaryFileRetry();
+		if(pfd==NULL)
+		{
+			ServerLogger::Log(clientid, L"Error creating temporary file 'pfd' in load_file_patch", LL_ERROR);
+			return false;
+		}
+		pfd_destroy.reset(pfd);
 		hash_tmp=getTemporaryFileRetry();
+		if(hash_tmp==NULL)
+		{
+			ServerLogger::Log(clientid, L"Error creating temporary file 'hash_tmp' in load_file_patch -2", LL_ERROR);
+			return false;
+		}
+		hash_tmp_destroy.reset(hash_tmp);
 		hashfile_old->Seek(0);
-		rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old, pfd, hashfile_old, hash_tmp);
+		rc=fc.GetFilePatch(Server->ConvertToUTF8(cfn), file_old.get(), pfd, hashfile_old.get(), hash_tmp);
 		--hash_retries;
 	} 
 
@@ -1688,8 +1719,6 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		download_ok=false;
 
 		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
-		destroyTemporaryFile(pfd);
-		destroyTemporaryFile(hash_tmp);
 	}
 	else
 	{
@@ -1698,15 +1727,19 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		std::wstring os_curr_path=convertToOSPathFromFileClient(os_path+L"/"+short_fn);		
 		std::wstring dstpath=backuppath+os_curr_path;
 
+		pfd_destroy.release();
+		hash_tmp_destroy.release();
 		hashFile(dstpath, hashpath, pfd, hash_tmp, Server->ConvertToUTF8(filepath_old));
 	}
 
 	if(delete_hashfile)
-		destroyTemporaryFile(hashfile_old);
+	{
+		hashfile_old.release();
+	}
 	else
-		Server->destroy(hashfile_old);
-
-	Server->destroy(file_old);
+	{
+		hashfile_old_destroy.release();
+	}
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
 		|| rc==ERR_INT_ERROR || rc==ERR_BASE_DIR_LOST || rc==ERR_CONN_LOST )
@@ -1744,6 +1777,11 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 {
 	ServerLogger::Log(clientid, L"Loading file \""+fn+L"\"", LL_DEBUG);
 	IFile *fd=getTemporaryFileRetry();
+	if(fd==NULL)
+	{
+		ServerLogger::Log(clientid, L"Error creating temporary file 'fd' in load_file", LL_ERROR);
+		return false;
+	}
 
 	std::wstring cfn=curr_path+L"/"+fn;
 	if(cfn[0]=='/')
@@ -1759,6 +1797,7 @@ bool BackupServerGet::load_file(const std::wstring &fn, const std::wstring &shor
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
+		fd->Seek(0);
 		rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer);
 		--hash_retries;
 	}

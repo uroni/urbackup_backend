@@ -16,12 +16,12 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#include "file.h"
-#include "types.h"
-#include "stringtools.h"
 #ifdef _DEBUG
 #include "Server.h"
 #endif
+#include "file.h"
+#include "types.h"
+#include "stringtools.h"
 
 #ifdef MODE_WIN
 

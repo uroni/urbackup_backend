@@ -29,11 +29,10 @@
 #define fstat64 fstat
 #endif
 
-
+#include "Server.h"
 #include "file.h"
 #include "types.h"
 #include "stringtools.h"
-#include "Server.h"
 
 #ifdef MODE_LIN
 

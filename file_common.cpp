@@ -16,9 +16,9 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
+#include "Server.h"
 #include "file.h"
 #include "stringtools.h"
-#include "Server.h"
 
 File::~File()
 {

@@ -22,7 +22,6 @@
 #endif
 
 #include "vld.h"
-#include "Interface/File.h"
 #ifndef BDBPLUGIN
 #include "Server.h"
 #else
@@ -36,6 +35,7 @@
 #endif
 #include "Query.h"
 #include "sqlite/sqlite3.h"
+#include "Interface/File.h"
 extern "C"
 {
 	#include "sqlite/shell.h"
