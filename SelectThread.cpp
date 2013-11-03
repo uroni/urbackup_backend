@@ -145,6 +145,8 @@ void CSelectThread::operator()()
 #ifdef _WIN32
 			FD_ZERO(&fdset);
 			max=0;
+#else
+			conn.clear();
 #endif
 
 			for(size_t i=0;i<clients.size();++i)
