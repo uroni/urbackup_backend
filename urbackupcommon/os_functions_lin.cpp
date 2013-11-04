@@ -102,6 +102,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 							continue;
 						}
 						f.last_modified=f_info.st_mtime;
+						if(f.last_modified<0) f.last_modified*=-1;
 						f.size=f_info.st_size;
 					}
 #ifndef sun
@@ -109,6 +110,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 				else
 				{
 					f.last_modified=f_info.st_mtime;
+					if(f.last_modified<0) f.last_modified*=-1;
 					f.size=f_info.st_size;
 				}
 #endif

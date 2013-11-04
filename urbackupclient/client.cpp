@@ -952,6 +952,9 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 
 		if(use_db)
 		{
+			std::vector<SFile> db_files;
+			bool has_files=cd->getFiles(path_lower, db_files);
+
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
 			std::sort(changed_files.begin(), changed_files.end());
 
@@ -961,15 +964,21 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				{
 					if(!tmp[i].isdir)
 					{
-						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) )
+						std::vector<SFile>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) ||
+							( it_db_file!=db_files.end() && (*it_db_file).name==tmp[i].name && (*it_db_file).last_modified<0 ) )
 						{
 							tmp[i].last_modified*=Server->getRandomNumber();
+							if(tmp[i].last_modified>0)
+								tmp[i].last_modified*=-1;
+							else if(tmp[i].last_modified==0)
+								tmp[i].last_modified=-1;
 						}
 					}
 				}
 			}
 
-			if(cd->hasFiles(path_lower) )
+			if( has_files)
 			{
 				++index_c_db_update;
 				modifyFilesInt(path_lower, tmp);

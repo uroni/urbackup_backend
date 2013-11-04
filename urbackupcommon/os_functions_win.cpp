@@ -101,6 +101,8 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			size.HighPart=wfd.nFileSizeHigh;
 			size.LowPart=wfd.nFileSizeLow;
 			f.size=size.QuadPart;
+
+			if(f.last_modified<0) f.last_modified*=-1;
 			tmp.push_back(f);		
 		}
 	}
