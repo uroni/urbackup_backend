@@ -1270,17 +1270,17 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 
 		retryable_error=false;
 
-		bool snapshot_error=false;
+		bool snapshot_ok=false;
 		if(tries>0)
 		{
-			snapshot_error = check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
+			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
 			--tries;
 		}
 		else
 		{
-			snapshot_error = check_writer_status(backupcom, errmsg, LL_ERROR, NULL);
+			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, NULL);
 		}
-		if(snapshot_error)
+		if(!snapshot_ok)
 		{
 			if(tries==0)
 			{
