@@ -1314,13 +1314,18 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 #endif
 #endif
 			backupcom->Release();
+			backupcom=NULL;
 
 			if(tries==0)
 			{
-				return false;
+				break;
 			}
 
 			Server->wait(30000);			
+		}
+		else
+		{
+			break;
 		}
 	}
 
@@ -1684,11 +1689,16 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 
 	if(failure || has_error)
 	{
-		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L". UrBackup will continue with the backup but the associated data may not be consistent.";
+		const std::wstring erradd=L" UrBackup will continue with the backup but the associated data may not be consistent.";
+		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err;
 		if(retryable_error && pHrResultFailure==VSS_E_WRITERERROR_RETRYABLE)
 		{
 			loglevel=LL_INFO;
 			*retryable_error=true;
+		}
+		else
+		{
+			nerrmsg+=erradd;
 		}
 		VSSLog(nerrmsg, loglevel);
 		errmsg+=nerrmsg;
