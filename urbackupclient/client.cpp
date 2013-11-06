@@ -1233,7 +1233,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 		check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
 	
 		bool b_ok=true;
-		int tries=5;
+		int tries_snapshot_set=5;
 		while(b_ok==true)
 		{
 			HRESULT r;
@@ -1243,11 +1243,11 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 				break;
 			}
 
-			if(b_ok==false && tries>=0 && r==VSS_E_SNAPSHOT_SET_IN_PROGRESS )
+			if(b_ok==false && tries_snapshot_set>=0 && r==VSS_E_SNAPSHOT_SET_IN_PROGRESS )
 			{
 				VSSLog("Retrying starting shadow copy in 30s", LL_WARNING);
 				b_ok=true;
-				--tries;
+				--tries_snapshot_set;
 			}
 			Server->wait(30000);
 		}
