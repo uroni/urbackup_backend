@@ -1271,7 +1271,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 		retryable_error=false;
 
 		bool snapshot_ok=false;
-		if(tries>0)
+		if(tries>1)
 		{
 			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
 			--tries;
@@ -1285,6 +1285,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 			if(tries==0)
 			{
 				VSSLog("Creating snapshot failed after three tries. Giving up. Writer data may not be consistent.", LL_ERROR);
+				break;
 			}
 			else
 			{
