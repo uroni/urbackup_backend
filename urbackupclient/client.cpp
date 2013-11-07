@@ -1274,12 +1274,12 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 		if(tries>1)
 		{
 			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
-			--tries;
 		}
 		else
 		{
 			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, NULL);
 		}
+		--tries;
 		if(!snapshot_ok)
 		{
 			if(tries==0)
@@ -1316,11 +1316,6 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 #endif
 			backupcom->Release();
 			backupcom=NULL;
-
-			if(tries==0)
-			{
-				break;
-			}
 
 			Server->wait(30000);			
 		}
