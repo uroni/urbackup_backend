@@ -12,7 +12,7 @@
 \hypersetup{ pdfborder={0 0 0} }
 
 \author{Martin Raiber}
-\title{Administration Manual for\\UrBackup Server 1.2}
+\title{Administration Manual for\\UrBackup Server 1.3}
 
 \maketitle
 
@@ -129,7 +129,8 @@ Domain  & Description \\
 browse\_backups & Browse and download files from file backups\\
 lastacts & View the last actions (file or image backups) the server did (including backup size and duration)\\
 progress & View the progress of currently running file or image backups\\
-settings & Allows settings to be changed\\
+settings & Allows settings to be changed \\
+client\_settings & Allows client specific settings to be changed \\
 status & Allows the current status to be viewed (last seen, last file backup and last image backup)\\
 logs & View the logs which were creating during backups\\
 manual\_archive & Manually archive file backups\\
@@ -223,7 +224,11 @@ This section will show in detail how a backup is performed.
 \item The server requests a file list construction from the client. The client constructs the file list and reports back that it is done. 
 \item The server downloads 'urbackup/data/filelist.ub' from the client. If it is an incremental backup the server compares the new 'filelist.ub' with the last one from the client and calculates the differences.
 \item The server starts downloading files. If the backup is incremental only new and changed files are downloaded. If the backup is a full one all files are downloaded from the client.
-\item The server downloads the file into a temporary file, thus enough space on the temporary file location should be available. On successfully downloading a file the server calculates its hash and looks if there is another file with the same hash value. If such a file exists they are assumed to be the same and a hard link to the other file is saved and the temporary file deleted. If no such file exists the file is moved to the new backup location. File path and hash value are saved into the server database.
+\item The server downloads the file into a temporary file. This temporary file is either in the
+urbackup\_tmp\_files folder in the backup storage dir, or, if you enabled it in the advanced
+settings, in the temporary folder.
+On successfully downloading a file the server calculates its hash and looks if there is another file with the same hash value.
+If such a file exists they are assumed to be the same and a hard link to the other file is saved and the temporary file deleted. If no such file exists the file is moved to the new backup location. File path and hash value are saved into the server database.
 \item If the backup is incremental and a file has not changed a hard link to the file in the previous backup is created.
 \item If the client goes offline during the backup and the backup is incremental the server continues creating hard links to files in the previous backup but does not try to download files again. The files that could not be downloaded are then not saved into the server side file list. If the backup is a full one and the client goes offline the backup process is interrupted and the partial file list is saved, which includes all files downloaded up to this point.
 \item If all files were transferred the server updates the 'current' symbolic link in the client backup storage location to point to the new backup. This only happens if the client did not go offline during the backup.
@@ -241,10 +246,12 @@ sector preceded by its position on the hard disk. The client only sends sectors
 used by the file system. If the backup is incremental the client calculates a
 hash of 256 kbyte chunks and compares it to the previous image backup. If the
 hash of the chunk has not changed it does not transfer this chunk to the server,
-otherwise it does. The server writes the received data into a temporary file.
+otherwise it does. Per default the server writes the image date directly into
+a VHD file. If enabled in the advanced configuration the server writes the image
+data to a temprary file first. 
 The temporary files have a maximum size of 1GB. After this size is exceeded the
 server continues with a new temporary file. The image data is written to a VHD
-file in parallel in a separated Thread and is located in the client directory in
+file in parallel and is located in the client directory in
 the backup storage location. The VHD file's name is 'Image\_\textless
 Volume\textgreater\_\textless YYMMDD\_HHMM\textgreater.vhd'.\textless
 Volume\textgreater  being the drive letter of the backuped partition and YY the
@@ -348,14 +355,20 @@ fi
 
 Default: Not checked.
 
+\subsubsection{Download client from update server}
+
+If this is checked the server will automatically look for new UrBackup client
+versions. If there is a new version it will download it from the Internet. The
+download is protected by a digital signature. Default: Checked.
+
 \subsubsection{Autoupdate clients}
 \label{subsubsec:autoupdate}
 
-If this is checked the server will automatically look for new UrBackup client
-versions. If there is a new version it will download it from the Internet and
-send it to its clients. The UrBackup client interface will ask the user to
-install the new client version. The installer is protected by a digital
-signature so malfeasance is not possible. Default: Checked.
+If this is checked the server will send new versions automatically to its clients.
+The UrBackup client interface will ask the user to
+install the new client version. If you check silent autoupdate (see Section \ref{subsubsec:autoupdate})
+it will update in the background.
+The installer is protected by a digital signature so malfeasance is not possible. Default: Checked.
 
 \subsubsection{Max number of simultaneous backups}
 
@@ -424,6 +437,8 @@ Send mails only with SSL/TLS & Only send mails if a secure connection to the mai
 \hline
 Check SSL/TLS certificate & Check if the server certificate is valid and only send mail if it is & \\
 \hline
+Server admin mail address & Address for fatal errors (such as if an emergency cleanup fails or other fatal errors occur) & \\
+\hline
 \end{longtable}
 
 To test whether the entered settings work one can specify an email address to which UrBackup will then send a test mail.
@@ -479,6 +494,10 @@ Max backup speed for local network & The server will throttle the connections to
 \hline
 Perform auto-updates silently & If this is selected automatic updates will be performed on the client without asking the user & Unchecked\\
 \hline
+Soft client quota & During the nightly cleanup UrBackup will remove backups of this client
+if there are more backups than the minimal number of file/image backups until this quota is met. The quota can be in percent (e.g. 20\%) or
+absolute (e.g. 1500G, 2000M). & "" \\
+\hline
 Excluded files & Allows you to define which files should be excluded from backups. See section \ref{subsub_excluded_files} for details & "" \\
 \hline
 Default directories to backup & Default directories which are backed up. See section \ref{subsub_default_dirs} for details & ""\\
@@ -487,9 +506,9 @@ Volumes to backup & Specifies of which volumes an image backup is done. Separate
 \hline
 Allow client-side changing of the directories to backup & Allow client(s) to change the directories of which a file backup is done & Checked \\
 \hline
-Allow client-side starting of file backups & Allow the client(s) to start a file backup & Checked \\
+Allow client-side starting of incremental/full file backups & Allow the client(s) to start a file backup & Checked \\
 \hline
-Allow client-side starting of image backups & Allow the client(s) to start an image backup & Checked \\
+Allow client-side starting of incemental/full image backups & Allow the client(s) to start an image backup & Checked \\
 \hline
 Allow client-side viewing of backup logs & Allow the client(s) to view the logs & Checked \\
 \hline
@@ -568,6 +587,9 @@ Encrypted transfer & If checked all data between server and clients is encrypted
 \hline
 Compressed transfer & If checked all data between server and clients is compressed & Checked \\
 \hline
+Calculate file-hashes on the client & If checked the client calculates hashes for each file before the backups (only hashes of changed files are calculated).
+The file then does not have to be transfered if another client already transfered the same file & Not checked \\
+\hline
 \end{tabular}
 
 \subsection{Advanced settings}
@@ -577,6 +599,7 @@ change for heavy or custom workloads. Most settings will need a server restart
 to come into effect.
 
 \subsubsection{Enabling temporary file buffers}
+\label{temp_file_buffers}
 
 Earlier versions of UrBackup always saved incoming data from clients first to temporary
 files and then copied it to the final destination (if the data is new) -- the rationale
@@ -649,6 +672,36 @@ influence the size of the database caches of some of the threads.
   		one such thread and it will not be running while other backups are running, so you can
   		set this to a relatively high value.
 \end{itemize}
+
+\subsubsection{File entry cache database}
+
+Optionally UrBackup can use a cache database for file entries storing the file hash to files mapping used to
+hard link to files, if they already exist on the backup storage. Enabling the file entry cache may be
+advantageous if there are a lot of files on some clients or if you do full backups often. The file entry
+cache is enabled by selecting the file entry cache type. The cache is created when the server is restarted.
+Cache creation may take some time.
+
+\begin{itemize}
+  \item \textsl{Cache database type for file entries.} By selecting something other then ``None'' the file
+  entry cache is enabled. SQLite probably gives better performance when the underlying storage is slow and
+  if the file entries do not fit into memory. LMDB should only be used on 64bit systems. When in doubt select
+  ``SQLite''.
+  \item \textsl{Cache database size for file entries.} Only relevant if LMDB was selected. This is the maximum
+  database size of the LMDB database. LMDB creates a memory mapped file of this size, so UrBackup uses this
+  much virtual memory. On Windows LMDB also creates a sparse file of this size (which can confuse backup programs).
+  \item \textsl{Suspend index limit.} When the file entry cache is enabled, file entries are put into a temporary
+  table and copied to the main table during a statistics update. If there are more file entries in the temporary
+  table then the suspend index limit, indexes on the main table are destroyed, the file entries moved over from
+  the temporary table and then rebuild. This may be faster for a large number of file entries then moving the file
+  entries with indexes enabled.
+\end{itemize}
+
+\subsection{End-to-end verification of all file backups}
+
+This is a setting for debugging purposes or for the paranoid. If end-to-end verification is enabled UrBackup clients >=1.3
+will create file hashes for every file for every file backup reading every file that is to be backed up. At the end
+of the backup process the hashes of the files stored on the server are compared to the hashes calculated on the client.
+If hashes differ the backup fails and an email is sent to the server admin.
 
 \section{Miscellaneous}
 
@@ -800,7 +853,14 @@ advanced features found in \textsl{crontab} are not present.
 \subsection{Suitable Filesystems}
 \label{subsec_filesystems}
 
-Because UrBackup saves downloaded files first into temporary files and then copies them to the final location in parallel backup performance will still be good even if the backup storage space is slow. This means you can use a fully featured file system with compression and de-duplication without that much performance penalty. At the worst the server writes away an image backup over the night (having already saved the image's contents into temporary files during the day). This section will show which filesystems are suited for UrBackup.
+Because UrBackup has the option to save all incoming data to temporary files first
+(see Section \ref{temp_file_buffers})
+and then copies them to the final location in parallel backup performance will
+still be good even if the backup storage space is slow. This means you can use a
+fully featured file system with compression and de-duplication without that
+much performance penalty. At the worst the server writes away an image backup over
+the night (having already saved the image's contents into temporary files during the day).
+This section will show which filesystems are suited for UrBackup.
 
 \subsubsection{Ext4/XFS}
 
@@ -812,11 +872,23 @@ NTFS is pretty much the only option you have if you run the UrBackup server unde
 
 \subsubsection{btrfs}
 
-Btrfs is a pretty new Linux file system and as such it is probably not suited for production use yet. It supports compression and in the near future will support block-level de-duplication (that is already available via patches). If you do not use de-duplication it should be the faster copy-on-write file system compared to ZFS, because it uses btrees.
+Btrfs is a pretty new Linux file system and as such it is probably not suited for production use yet.
+It supports compression and supports block-level deduplication. UrBackup has a special snapshotting backup
+mode which is much faster with btrfs. See \ref{subsec_btrfs_setup} for details.
 
 \subsubsection{ZFS}
 
-ZFS is a file system originating from Solaris. It is available as a fuse module for Linux (zfs-fuse) and as a kernel module (ZFSOnLinux). The kernel module is relatively new and thus should not be used for production purposes yet. There were licensing issues which prevented prior porting of ZFS to Linux. If you want the most performance and stability an option would be using a BSD or Debian/kFreeBSD. The ZFS in the BSD kernels is stable. In Linux you should go with zfs-fuse for the time being. The upstream Solaris ZFS has been available for some time and as such should be very stable as well. ZFS has some pretty neat features like compression, block-level de-duplication, snapshots and build in raid support that make it well suited for backup storage. How to build a UrBackup server with ZFS is described in detail in section \ref{subsec_ZFS_setup}.
+ZFS is a file system originating from Solaris.
+It is available as a fuse module for Linux (zfs-fuse) and as a kernel module (ZFSOnLinux). ZFSOnLinux
+as of $0.6.2$ still has memory issues with UrBackup/rsync style workloads, so you should carefully evaluate
+if it is stable enough.
+There were licensing issues which prevented prior porting of ZFS to Linux.
+If you want the most performance and stability an option would be using a BSD or Debian/kFreeBSD.
+The ZFS in the BSD kernels is stable. 
+The upstream Solaris ZFS has been available for some time and as such should be very stable as well.
+ZFS has some pretty neat features like compression, block-level de-duplication, snapshots and build
+in raid support that make it well suited for backup storage.
+How to build a UrBackup server with ZFS is described in detail in section \ref{subsec_ZFS_setup}.
 
 
 \subsection{Storage setup proposals}
@@ -874,7 +946,7 @@ You can also save these full and incremental zfs streams into files on the other
 \label{subsec_btrfs_setup}
 
 Btrfs is an advanced file system for Linux capable of creating copy on write
-snapshots of sub-volumes. Currently, as of Linux kernel 3.6, btrfs is still
+snapshots of sub-volumes. Currently, as of Linux kernel 3.12, btrfs is still
 declared unstable. This is not just a lablel, during testing users of UrBackup
 ran into performance problems or were unable to delete files. It is advised that
 you think twice before using btrfs as storage backend, even though it does have
