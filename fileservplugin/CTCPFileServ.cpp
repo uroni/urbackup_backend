@@ -200,19 +200,23 @@ bool CTCPFileServ::Run(void)
 
 bool CTCPFileServ::TcpStep(void)
 {
-	fd_set fdset;
 	socklen_t addrsize=sizeof(sockaddr_in);
 
+#ifdef _WIN32
+	fd_set fdset;
 	FD_ZERO(&fdset);
-
 	FD_SET(mSocket, &fdset);
-
-	timeval lon;
-	
+	timeval lon;	
 	lon.tv_sec=REFRESH_SECONDS;
 	lon.tv_usec=0;
-
 	_i32 rc = select((int)mSocket+1, &fdset, 0, 0, &lon);
+#else
+	pollfd conn[1];
+	conn[0].fd=mSocket;
+	conn[0].events=POLLIN;
+	conn[0].revents=0;
+	rc = poll(&conn, 1, REFRESH_SECONDS*1000);
+#endif
 
 	if(rc>0)
 	{

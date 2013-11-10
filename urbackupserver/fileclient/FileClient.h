@@ -48,7 +48,7 @@ public:
 		};
 
 
-		FileClient(int protocol_version=0, bool internet_connection=false,
+		FileClient(bool enable_find_servers, int protocol_version=0, bool internet_connection=false,
 			FileClient::ReconnectionCallback *reconnection_callback=NULL,
 			FileClient::NoFreeSpaceCallback *nofreespace_callback=NULL);
         ~FileClient(void);

@@ -38,24 +38,69 @@ CStreamPipe::~CStreamPipe()
 	closesocket(s);
 }
 
+namespace
+{
+	int selectSocketRead(SOCKET s, int timeoutms)
+	{
+#ifdef _WIN32
+		fd_set conn;
+		FD_ZERO(&conn);
+		FD_SET(s, &conn);
+
+		timeval *tv=NULL;
+		timeval to;
+		if( timeoutms>=0 )
+		{
+			to.tv_sec=(long)(timeoutms/1000);
+			to.tv_usec=(long)(timeoutms%1000)*1000;
+			tv=&to;
+		}
+
+		int rc=select((int)s+1,&conn,NULL,NULL,tv);
+#else
+		pollfd conn[1];
+		conn[0].fd=s;
+		conn[0].events=POLLIN;
+		conn[0].revents=0;
+		int rc = poll(conn, 1, timeoutms);
+#endif
+		return rc;
+	}
+
+	int selectSocketWrite(SOCKET s, int timeoutms)
+	{
+#ifdef _WIN32
+		fd_set conn;
+		FD_ZERO(&conn);
+		FD_SET(s, &conn);
+
+		timeval *tv=NULL;
+		timeval to;
+		if( timeoutms>=0 )
+		{
+			to.tv_sec=(long)(timeoutms/1000);
+			to.tv_usec=(long)(timeoutms%1000)*1000;
+			tv=&to;
+		}
+
+		int rc=select((int)s+1,NULL,&conn,NULL,tv);
+#else
+		pollfd conn[1];
+		conn[0].fd=s;
+		conn[0].events=POLLOUT;
+		conn[0].revents=0;
+		int rc = poll(conn, 1, timeoutms);
+#endif
+		return rc;
+	}
+}
+
 size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 {
 	doThrottle(bsize, false);
 
-	fd_set conn;
-	FD_ZERO(&conn);
-	FD_SET(s, &conn);
+	int rc = selectSocketRead(s, timeoutms);
 
-	timeval *tv=NULL;
-	timeval to;
-	if( timeoutms>=0 )
-	{
-		to.tv_sec=(long)(timeoutms/1000);
-		to.tv_usec=(long)(timeoutms%1000)*1000;
-		tv=&to;
-	}
-
-	int rc=select((int)s+1,&conn,NULL,NULL,tv);
 	if( rc>0 )
 	{
 		rc=recv(s, buffer, (int)bsize, MSG_NOSIGNAL);
@@ -81,20 +126,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 {
 	doThrottle(bsize, true);
 
-	fd_set conn;
-	FD_ZERO(&conn);
-	FD_SET(s, &conn);
-
-	timeval *tv=NULL;
-	timeval to;
-	if( timeoutms>=0 )
-	{
-		to.tv_sec=(long)(timeoutms/1000);
-		to.tv_usec=(long)(timeoutms%1000)*1000;
-		tv=&to;
-	}
-
-	int rc=select((int)s+1,NULL,&conn,NULL,tv);
+	int rc = selectSocketWrite(s, timeoutms);
 	size_t written=0;
 
 	if(rc>0 )
@@ -123,13 +155,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 		return false;
 	}
 
-	if( rc!=SOCKET_ERROR)
-		return true;
-	else
-	{
-		has_error=true;
-		return false;
-	}
+	return true;
 }
 
 bool CStreamPipe::Write(const std::string &str, int timeoutms)
@@ -155,20 +181,7 @@ size_t CStreamPipe::Read(std::string *ret, int timeoutms)
 
 bool CStreamPipe::isWritable(int timeoutms)
 {
-	fd_set fdset;
-	FD_ZERO(&fdset);
-	FD_SET(s, &fdset);
-
-	timeval *tv=NULL;
-	timeval to;
-	if( timeoutms>=0 )
-	{
-		to.tv_sec=(long)(timeoutms/1000);
-		to.tv_usec=(long)(timeoutms%1000)*1000;
-		tv=&to;
-	}
-
-	int rc=select((int)s+1, 0, &fdset, 0, tv);
+	int rc = selectSocketWrite(s, timeoutms);
 	if( rc>0 )
 		return true;
 	else
@@ -183,20 +196,7 @@ bool CStreamPipe::isWritable(int timeoutms)
 
 bool CStreamPipe::isReadable(int timeoutms)
 {
-	fd_set fdset;
-	FD_ZERO(&fdset);
-	FD_SET(s, &fdset);
-
-	timeval *tv=NULL;
-	timeval to;
-	if( timeoutms>=0 )
-	{
-		to.tv_sec=(long)(timeoutms/1000);
-		to.tv_usec=(long)(timeoutms%1000)*1000;
-		tv=&to;
-	}
-
-	int rc=select((int)s+1, &fdset, 0, 0, tv);
+	int rc = selectSocketRead(s, timeoutms);
 	if( rc>0 )
 		return true;
 	else

@@ -918,6 +918,7 @@ void CServer::StartCustomStreamService(IService *pService, std::string pServiceN
 IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms)
 {
 	sockaddr_in server;
+	memset(&server, 0, sizeof(server));
 	LookupBlocking(pServer, &server.sin_addr);
 	server.sin_port=htons(pPort);
 	server.sin_family=AF_INET;
@@ -957,6 +958,7 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 	}
 #endif
 
+#ifdef _WIN32
 	fd_set conn;
 	FD_ZERO(&conn);
 	FD_SET(s, &conn);
@@ -969,6 +971,15 @@ IPipe* CServer::ConnectStream(std::string pServer, unsigned short pPort, unsigne
 
 	if( rc>0 && FD_ISSET(s, &conn) )
 	{
+#else
+	pollfd conn[1];
+	conn[0].fd=s;
+	conn[0].events=POLLOUT;
+	conn[0].revents=0;
+	rc = poll(conn, 1, pTimeoutms);
+	if( rc>0 )
+	{
+#endif	
 		int err;
 		socklen_t len=sizeof(int);
 		rc=getsockopt(s, SOL_SOCKET, SO_ERROR, (char*)&err, &len);
@@ -1166,10 +1177,11 @@ void thread_helper_f(IThread *t)
 }
 #else
 #ifndef _WIN32
-void *thread_helper_f(void * t)
+void* thread_helper_f(void * t)
 {
 	IThread *tmp=(IThread*)t;
 	(*tmp)();
+	return NULL;
 }
 #endif
 #endif //THREAD_BOOST

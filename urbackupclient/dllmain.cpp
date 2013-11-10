@@ -27,6 +27,8 @@
 
 #define DEF_SERVER
 #include "../Interface/Server.h"
+IServer *Server;
+
 #include "../Interface/Action.h"
 #include "../Interface/Database.h"
 #include "../Interface/SessionMgr.h"
@@ -37,8 +39,6 @@
 
 #include "../fsimageplugin/IFSImageFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
-
-IServer *Server;
 
 #include "database.h"
 

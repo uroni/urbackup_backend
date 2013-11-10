@@ -125,7 +125,7 @@ void CHTTPProxy::operator()(void)
 							{
 								const char *vv="HTTP/1.0 200 OK\r\nContent-Type: video/mpeg\r\n\r\n";
 								size_t vv_len=strlen(vv);
-								char *msg=new char[vv_len];
+								char *msg=new char[vv_len+1];
 								memcpy(msg, vv, vv_len);
 								CBuffer b(msg, vv_len);
 								b.rcount=new int;

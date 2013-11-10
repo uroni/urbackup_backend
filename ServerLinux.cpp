@@ -61,4 +61,5 @@ void CServer::UnloadDLLs2(void)
 
 int CServer::WriteDump(void* pExceptionPointers)
 {
+	return 0;
 }

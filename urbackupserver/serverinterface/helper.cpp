@@ -49,7 +49,7 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 
 	//Get language from ACCEPT_LANGUAGE
 	str_map::iterator lit=GET->find(L"lang");
-	if(lit!=pGET->end() && lit->second!=L"-")
+	if(lit!=GET->end() && lit->second!=L"-")
 	{
 		language=wnarrow(lit->second);
 	}
@@ -131,10 +131,10 @@ ITemplate *Helper::createTemplate(std::string name)
 
 	ITemplate *tmpl=Server->createTemplate("urbackup/templates/"+name);
 
-	if( db!=NULL )
+	/*if( db!=NULL )
 	{
 		tmpl->addValueTable(db, "translation_"+language );
-	}
+	}*/
 
 	if( invalid_session==true )
 		tmpl->setValue(L"INVALID_SESSION",L"true");

@@ -1,6 +1,8 @@
 #ifndef IOBJECT_H
 #define IOBJECT_H
 
+#include "Types.h"
+
 class IObject 
 {
 public:
@@ -20,12 +22,23 @@ public:
 	ObjectScope(IObject *obj)
 		: obj(obj) {}
 	~ObjectScope(void){
-		if(obj!=0) obj->Remove();
+		del();
 	}
 	void clear(){
-		obj->Remove(); obj=0;
+		del();
+	}
+	void reset(IObject *pobj) {
+		del();
+		obj=pobj;
+	}
+	void release() {
+		obj=NULL;
 	}
 private:
+	void del() {
+		if(obj!=NULL) obj->Remove();
+		obj=NULL;
+	}
 	IObject *obj;
 };
 

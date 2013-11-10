@@ -82,6 +82,7 @@ void CLoadbalancerClient::operator ()(void)
 	if( err==-1 )
 	{
 		Server->Log("Could not connect to LoadBalancer", LL_ERROR );
+		closesocket(s);
 		return;
 	}
 

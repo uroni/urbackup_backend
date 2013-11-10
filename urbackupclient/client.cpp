@@ -816,7 +816,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 						_i64 modifytime;
 						if(cd->getFileHash(key_path, filesize, modifytime, hash))
 						{
-							if( filesize!=files[i].size &&
+							if( filesize!=files[i].size ||
 								files[i].last_modified!=modifytime )
 							{
 								hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
@@ -952,6 +952,9 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 
 		if(use_db)
 		{
+			std::vector<SFile> db_files;
+			bool has_files=cd->getFiles(path_lower, db_files);
+
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
 			std::sort(changed_files.begin(), changed_files.end());
 
@@ -961,15 +964,21 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				{
 					if(!tmp[i].isdir)
 					{
-						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) )
+						std::vector<SFile>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) ||
+							( it_db_file!=db_files.end() && (*it_db_file).name==tmp[i].name && (*it_db_file).last_modified<0 ) )
 						{
 							tmp[i].last_modified*=Server->getRandomNumber();
+							if(tmp[i].last_modified>0)
+								tmp[i].last_modified*=-1;
+							else if(tmp[i].last_modified==0)
+								tmp[i].last_modified=-1;
 						}
 					}
 				}
 			}
 
-			if(cd->hasFiles(path_lower) )
+			if( has_files)
 			{
 				++index_c_db_update;
 				modifyFilesInt(path_lower, tmp);
@@ -1196,63 +1205,129 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 		VSSLog("Error rcount!=1", LL_ERROR);
 	}
 
+	int tries=3;
+	bool retryable_error=true;
 	IVssBackupComponents *backupcom=NULL; 
-	CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
+	while(tries>0 && retryable_error)
+	{		
+		CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
 
-	CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
+		CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
 
-	CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, TRUE, VSS_BT_FULL, FALSE));
+		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, TRUE, VSS_BT_FULL, FALSE));
 
-	IVssAsync *pb_result;
+		IVssAsync *pb_result;
 
-	CHECK_COM_RESULT_RELEASE(backupcom->GatherWriterMetadata(&pb_result));
-	wait_for(pb_result);
+		CHECK_COM_RESULT_RELEASE(backupcom->GatherWriterMetadata(&pb_result));
+		wait_for(pb_result);
+
+	#ifndef VSS_XP
+	#ifndef VSS_S03
+		CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
+	#endif
+	#endif
+
+		std::wstring errmsg;
+
+		retryable_error=false;
+		check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
+	
+		bool b_ok=true;
+		int tries_snapshot_set=5;
+		while(b_ok==true)
+		{
+			HRESULT r;
+			CHECK_COM_RESULT_OK_HR(backupcom->StartSnapshotSet(&dir->ref->ssetid), b_ok, r);
+			if(b_ok)
+			{
+				break;
+			}
+
+			if(b_ok==false && tries_snapshot_set>=0 && r==VSS_E_SNAPSHOT_SET_IN_PROGRESS )
+			{
+				VSSLog("Retrying starting shadow copy in 30s", LL_WARNING);
+				b_ok=true;
+				--tries_snapshot_set;
+			}
+			Server->wait(30000);
+		}
+
+		if(!b_ok)
+		{
+			CHECK_COM_RESULT_RELEASE(backupcom->StartSnapshotSet(&dir->ref->ssetid));
+		}
+
+		CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(volume_path, GUID_NULL, &dir->ref->ssetid) );
+	
+		CHECK_COM_RESULT_RELEASE(backupcom->PrepareForBackup(&pb_result));
+		wait_for(pb_result);
+
+		retryable_error=false;
+		check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
+
+		CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
+		wait_for(pb_result);
+
+		retryable_error=false;
+
+		bool snapshot_ok=false;
+		if(tries>0)
+		{
+			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
+			--tries;
+		}
+		else
+		{
+			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, NULL);
+		}
+		if(!snapshot_ok)
+		{
+			if(tries==0)
+			{
+				VSSLog("Creating snapshot failed after three tries. Giving up. Writer data may not be consistent.", LL_ERROR);
+			}
+			else
+			{
+				VSSLog("Snapshotting failed because of Writer. Retrying in 30s...", LL_WARNING);
+			}
+			bool bcom_ok;
+			CHECK_COM_RESULT_OK(backupcom->BackupComplete(&pb_result), bcom_ok);
+			if(bcom_ok)
+			{
+				wait_for(pb_result);
+			}
 
 #ifndef VSS_XP
 #ifndef VSS_S03
-	CHECK_COM_RESULT_RELEASE(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
-#endif
-#endif
+			if(bcom_ok)
+			{
+				LONG dels; 
+				GUID ndels;
+				CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE, 
+					&dels, &ndels), bcom_ok);
 
-	std::wstring errmsg;
-	check_writer_status(backupcom, errmsg);
-	
-	bool b_ok=true;
-	int tries=5;
-	while(b_ok==true)
-	{
-		HRESULT r;
-		CHECK_COM_RESULT_OK_HR(backupcom->StartSnapshotSet(&dir->ref->ssetid), b_ok, r);
-		if(b_ok)
+				if(dels==0)
+				{
+					VSSLog("Deleting shadowcopy failed.", LL_ERROR);
+				}
+			}
+#endif
+#endif
+			backupcom->Release();
+			backupcom=NULL;
+
+			if(tries==0)
+			{
+				break;
+			}
+
+			Server->wait(30000);			
+		}
+		else
 		{
 			break;
 		}
-
-		if(b_ok==false && tries>=0 && r==VSS_E_SNAPSHOT_SET_IN_PROGRESS )
-		{
-			VSSLog("Retrying starting shadow copy in 30s", LL_WARNING);
-			b_ok=true;
-			--tries;
-		}
-		Server->wait(30000);
 	}
-
-	if(!b_ok)
-	{
-		CHECK_COM_RESULT_RELEASE(backupcom->StartSnapshotSet(&dir->ref->ssetid));
-	}
-
-	CHECK_COM_RESULT_RELEASE(backupcom->AddToSnapshotSet(volume_path, GUID_NULL, &dir->ref->ssetid) );
-	
-	CHECK_COM_RESULT_RELEASE(backupcom->PrepareForBackup(&pb_result));
-	wait_for(pb_result);
-
-	check_writer_status(backupcom, errmsg);
-
-	CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
-	wait_for(pb_result);
-
-	check_writer_status(backupcom, errmsg);
 
 	VSS_SNAPSHOT_PROP snap_props; 
     CHECK_COM_RESULT_RELEASE(backupcom->GetSnapshotProperties(dir->ref->ssetid, &snap_props));
@@ -1337,7 +1412,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 			}
 
 			std::wstring errmsg;
-			check_writer_status(backupcom, errmsg);
+			check_writer_status(backupcom, errmsg, LL_ERROR, NULL);
 
 			VSSLog(L"Deleting shadowcopy for path \""+dir->target+L"\" -2", LL_DEBUG);
 			
@@ -1357,7 +1432,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 				CHECK_COM_RESULT_OK(backupcom->DeleteSnapshots(dir->ref->ssetid, VSS_OBJECT_SNAPSHOT, TRUE, 
 					&dels, &ndels), bcom_ok);
 
-				if(dels==0 || !bcom_ok)
+				if(dels==0)
 				{
 					VSSLog("Deleting shadowcopy failed.", LL_ERROR);
 				}
@@ -1558,7 +1633,7 @@ bool IndexThread::cleanup_saved_shadowcopies(bool start)
 #ifdef _WIN32
 #ifdef ENABLE_VSS
 
-bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg)
+bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg, int loglevel, bool* retryable_error)
 {
 #define FAIL_STATE(x) case x: { state=L#x; failure=true; } break
 #define OK_STATE(x) case x: { state=L#x; } break
@@ -1614,8 +1689,18 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 
 	if(failure || has_error)
 	{
-		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L". UrBackup will continue with the backup but the associated data may not be consistent.";
-		VSSLog(nerrmsg, LL_ERROR);
+		const std::wstring erradd=L" UrBackup will continue with the backup but the associated data may not be consistent.";
+		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err;
+		if(retryable_error && pHrResultFailure==VSS_E_WRITERERROR_RETRYABLE)
+		{
+			loglevel=LL_INFO;
+			*retryable_error=true;
+		}
+		else
+		{
+			nerrmsg+=erradd;
+		}
+		VSSLog(nerrmsg, loglevel);
 		errmsg+=nerrmsg;
 		return false;
 	}
@@ -1628,7 +1713,7 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 }
 
 
-bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg)
+bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg, int loglevel, bool* retryable_error)
 {
 	IVssAsync *pb_result;
 	CHECK_COM_RESULT_RETURN(backupcom->GatherWriterStatus(&pb_result));
@@ -1662,7 +1747,7 @@ bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstr
 
 		if(ok)
 		{
-			if(!checkErrorAndLog(pbstrWriter, pState, pHrResultFailure, errmsg))
+			if(!checkErrorAndLog(pbstrWriter, pState, pHrResultFailure, errmsg, loglevel, retryable_error))
 			{
 				has_error=true;
 			}
@@ -2248,6 +2333,11 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 	while( (r=f->Read(buffer, 4096))>0)
 	{
 		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+
+		if(IdleCheckerThread::getPause())
+		{
+			Server->wait(5000);
+		}
 	}
 
 	Server->destroy(f);
@@ -2276,6 +2366,11 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 	while( (r=f->Read(buffer, 4096))>0)
 	{
 		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+
+		if(IdleCheckerThread::getPause())
+		{
+			Server->wait(5000);
+		}
 	}
 
 	Server->destroy(f);

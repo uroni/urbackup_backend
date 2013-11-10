@@ -137,7 +137,7 @@ private:
 	void writeFileRepeat(IFile *f, const std::string &str);
 	void writeFileRepeat(IFile *f, const char *buf, size_t bsize);
 
-	int64 updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize);
+	int64 updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize, bool &warned_about_parenthashfile_error);
 
 	std::wstring convertToOSPathFromFileClient(std::wstring path);
 	IFile *getTemporaryFileRetry(void);

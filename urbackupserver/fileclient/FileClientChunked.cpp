@@ -204,7 +204,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 				case CS_ID_FIRST:
 					{
 						State_First();
-					}
+					} //fallthrough
 				case CS_ID_ACC:
 					{
 						State_Acc();

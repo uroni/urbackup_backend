@@ -2423,9 +2423,9 @@ function show_logs2(data)
 		{
 			live_log_clients+="<option value=\"0\">"+trans("all")+"</option>";
 		}		
-		for(var i=0;i<data.clients.length;++i)
+		for(var i=0;i<data.log_right_clients.length;++i)
 		{
-			var obj=data.clients[i];
+			var obj=data.log_right_clients[i];
 			live_log_clients+="<option value=\""+obj.id+"\">"+obj.name+"</option>";
 		}
 	}

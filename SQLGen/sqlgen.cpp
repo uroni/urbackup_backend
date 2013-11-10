@@ -227,27 +227,34 @@ std::string parseSqlString(std::string sql, std::vector<ReturnType>& types)
 	return retSql;
 }
 
+struct SStructure
+{
+	bool use_exist;
+	std::string code;
+};
+
 struct GeneratedData
 {
 	std::string createQueriesCode;
 	std::string destroyQueriesCode;
 	std::string funcdecls;
-	std::string structures;
+	std::map<std::string, SStructure> structures;
 	std::string variables;
 };
 
 void generateStructure(std::string name, std::vector<ReturnType> return_types, GeneratedData& gen_data, bool use_exists)
 {
-	if(gen_data.structures.find("struct "+name+"\r\n")!=std::string::npos)
+	if(gen_data.structures.find(name)!=gen_data.structures.end() && (!use_exists || gen_data.structures[name].use_exist ) )
 	{
 		return;
 	}
 
-	gen_data.structures+="\tstruct "+name+"\r\n";
-	gen_data.structures+="\t{\r\n";
+	std::string code;
+	code+="\tstruct "+name+"\r\n";
+	code+="\t{\r\n";
 	if(use_exists)
 	{
-		gen_data.structures+="\t\tbool exists;\r\n";
+		code+="\t\tbool exists;\r\n";
 	}
 	for(size_t i=0;i<return_types.size();++i)
 	{
@@ -255,9 +262,11 @@ void generateStructure(std::string name, std::vector<ReturnType> return_types, G
 		if(type=="string")
 			type="std::wstring";
 
-		gen_data.structures+="\t\t"+type+" "+return_types[i].name+";\r\n";
+		code+="\t\t"+type+" "+return_types[i].name+";\r\n";
 	}
-	gen_data.structures+="\t};\r\n";
+	code+="\t};\r\n";
+	SStructure s = {use_exists, code};
+	gen_data.structures[name] = s;
 }
 
 std::string generateConditional(ReturnType rtype, GeneratedData& gen_data)
@@ -270,19 +279,23 @@ std::string generateConditional(ReturnType rtype, GeneratedData& gen_data)
 	}
 	cond_name="Cond"+cond_name;
 
-	if(gen_data.structures.find("struct "+cond_name+"\r\n")!=std::string::npos)
+	if(gen_data.structures.find(cond_name)!=gen_data.structures.end())
 	{
 		return cond_name;
 	}
 
-	gen_data.structures+="\tstruct "+cond_name+"\r\n";
-	gen_data.structures+="\t{\r\n";
-	gen_data.structures+="\t\tbool exists;\r\n";
+	std::string code;
+	code+="\tstruct "+cond_name+"\r\n";
+	code+="\t{\r\n";
+	code+="\t\tbool exists;\r\n";
 	std::string type=rtype.type;
 	if(type=="string")
 		type="std::wstring";
-	gen_data.structures+="\t\t"+type+" value;\r\n";
-	gen_data.structures+="\t};\r\n";
+	code+="\t\t"+type+" value;\r\n";
+	code+="\t};\r\n";
+
+	SStructure s = {true, code};
+	gen_data.structures[cond_name] = s;
 
 	return cond_name;
 }
@@ -518,23 +531,25 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		code+="\t{\r\n";
 		if(use_struct)
 		{
-			code+="\t\t"+struct_name+" tmp;\r\n";
+			if(gen_data.structures[struct_name].use_exist)
+			{
+				code+="\t\tret[i].exists=true;\r\n";
+			}
 			for(size_t i=0;i<return_types.size();++i)
 			{
 				if(return_types[i].type=="int")
 				{
-					code+="\t\ttmp."+return_types[i].name+"=watoi(res[i][L\""+return_types[i].name+"\"]);\r\n";
+					code+="\t\tret[i]."+return_types[i].name+"=watoi(res[i][L\""+return_types[i].name+"\"]);\r\n";
 				}
 				else if(return_types[i].type=="int64")
 				{
-					code+="\t\ttmp."+return_types[i].name+"=watoi64(res[i][L\""+return_types[i].name+"\"]);\r\n";
+					code+="\t\tret[i]."+return_types[i].name+"=watoi64(res[i][L\""+return_types[i].name+"\"]);\r\n";
 				}
 				else
 				{
-					code+="\t\ttmp."+return_types[i].name+"=res[i][L\""+return_types[i].name+"\"];\r\n";
+					code+="\t\tret[i]."+return_types[i].name+"=res[i][L\""+return_types[i].name+"\"];\r\n";
 				}			
 			}
-			code+="\t\tret[i]=tmp;\r\n";
 		}
 		else
 		{
@@ -556,7 +571,39 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	}
 	else if(!return_types.empty())
 	{
-		code+="\t"+struct_name+" ret;\r\n";
+		code+="\t"+struct_name+" ret = { ";
+		if(!use_cond)
+		{
+			code+="false, ";
+			for(size_t i=0;i<return_types.size();++i)
+			{
+				if(return_types[i].type=="int" || return_types[i].type=="int64")
+				{
+					code+="0";
+				}
+				else
+				{
+					code+="L\"\"";
+				}
+				if(i+1<return_types.size())
+				{
+					code+=", ";
+				}
+			}
+		}
+		else
+		{
+			code+="false, ";
+			if(return_types[0].type=="int" || return_types[0].type=="int64")
+			{
+				code+="0";
+			}
+			else
+			{
+				code+="L\"\"";
+			}
+		}
+		code+=" };\r\n";
 		code+="\tif(!res.empty())\r\n";
 		code+="\t{\r\n";
 		if(use_exists)
@@ -595,13 +642,6 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			{
 				code+="\t\tret.value=res[0][L\""+return_types[0].name+"\"];\r\n";
 			}
-		}
-		code+="\t}\r\n";
-		code+="\telse\r\n";
-		code+="\t{\r\n";
-		if(use_exists)
-		{
-			code+="\t\tret.exists=false;\r\n";
 		}
 		code+="\t}\r\n";
 		code+="\treturn ret;\r\n";			
@@ -723,9 +763,21 @@ std::string setbetween(std::string s1, std::string s2, std::string toset, std::s
 	return data.substr(0, start_pos+s1.size())+"\r\n"+toset+data.substr(end_pos, data.size()-end_pos);
 }
 
+std::string getStructureCode(const GeneratedData& generated_data)
+{
+	std::string code;
+	for(auto iter=generated_data.structures.begin();
+		iter!=generated_data.structures.end();
+		++iter)
+	{
+		code+=iter->second.code;
+	}
+	return code;
+}
+
 std::string placeData(std::string headerfile, GeneratedData generated_data)
 {
-	std::string t_headerfile=setbetween("//@-SQLGenFunctionsBegin", "//@-SQLGenFunctionsEnd", generated_data.structures+"\r\n\r\n"+generated_data.funcdecls+"\t", headerfile);
+	std::string t_headerfile=setbetween("//@-SQLGenFunctionsBegin", "//@-SQLGenFunctionsEnd", getStructureCode(generated_data)+"\r\n\r\n"+generated_data.funcdecls+"\t", headerfile);
 
 	if(t_headerfile.empty())
 	{

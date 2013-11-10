@@ -524,73 +524,72 @@ void ImageThread::sendIncrImageThread(void)
 					}
 					unsigned char digest[c_hashsize];
 					sha256_final(&shactx, digest);
+					bool has_hashdata=false;
+					char hashdata_buf[c_hashsize];
 					if(hashdatafile->Size()>=(currvhdblock+1)*c_hashsize)
 					{
-						hashdatafile->Seek(currvhdblock*c_hashsize);
-						char hashdata_buf[c_hashsize];
+						hashdatafile->Seek(currvhdblock*c_hashsize);						
 						if( hashdatafile->Read(hashdata_buf, c_hashsize)!=c_hashsize )
 						{
 							Server->Log("Reading hashdata failed!", LL_ERROR);
 						}
-						if(memcmp(hashdata_buf, digest, c_hashsize)!=0)
-						{
-							Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
-							bool notify_cs=false;
-							for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
-							{
-								if(has_blocks[j-i])
-								{
-									char* cb=cs->getBuffer();
-									memcpy(cb, &j, sizeof(int64) );
-									memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
-									cs->sendBuffer(cb, sizeof(int64)+blocksize, false);
-									notify_cs=true;
-									lastsendtime=Server->getTimeMS();
-								}
-							}
-
-							if(notify_cs)
-							{
-								cs->notifySendBuffer();
-								if(cs->hasError())
-								{
-									Server->Log("Pipe broken -2", LL_ERROR);
-									run=false;
-								}
-							}
-
-							if(with_checksum)
-							{
-								char* cb=cs->getBuffer();
-								int64 bs=-126;
-								int64 nextblock=(std::min)(blocks, i+vhdblocks);
-								memcpy(cb, &bs, sizeof(int64) );
-								memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
-								memcpy(cb+2*sizeof(int64), digest, c_hashsize);
-								cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, true);
-								//Server->Log("Block hash="+base64_encode(digest, c_hashsize), LL_DEBUG);
-							}
-						}
 						else
 						{
-							//Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
-							unsigned int tt=Server->getTimeMS();
-							if(tt-lastsendtime>10000)
+							has_hashdata=true;
+						}
+					}						
+					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize)!=0)
+					{
+						Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
+						bool notify_cs=false;
+						for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
+						{
+							if(has_blocks[j-i])
 							{
-								int64 bs=-125;
-								char* buffer=cs->getBuffer();
-								memcpy(buffer, &bs, sizeof(int64) );
-								cs->sendBuffer(buffer, sizeof(int64), true);
-
-								lastsendtime=tt;
+								char* cb=cs->getBuffer();
+								memcpy(cb, &j, sizeof(int64) );
+								memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
+								cs->sendBuffer(cb, sizeof(int64)+blocksize, false);
+								notify_cs=true;
+								lastsendtime=Server->getTimeMS();
 							}
+						}
+
+						if(notify_cs)
+						{
+							cs->notifySendBuffer();
+							if(cs->hasError())
+							{
+								Server->Log("Pipe broken -2", LL_ERROR);
+								run=false;
+							}
+						}
+
+						if(with_checksum)
+						{
+							char* cb=cs->getBuffer();
+							int64 bs=-126;
+							int64 nextblock=(std::min)(blocks, i+vhdblocks);
+							memcpy(cb, &bs, sizeof(int64) );
+							memcpy(cb+sizeof(int64), &nextblock, sizeof(int64));
+							memcpy(cb+2*sizeof(int64), digest, c_hashsize);
+							cs->sendBuffer(cb, 2*sizeof(int64)+c_hashsize, true);
+							//Server->Log("Block hash="+base64_encode(digest, c_hashsize), LL_DEBUG);
 						}
 					}
 					else
 					{
-						ImageErrRunning("Hashdata from server too small. The volume may have grown. If this is the case, please run a full backup.");
-						run=false;
-						break;
+						//Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
+						unsigned int tt=Server->getTimeMS();
+						if(tt-lastsendtime>10000)
+						{
+							int64 bs=-125;
+							char* buffer=cs->getBuffer();
+							memcpy(buffer, &bs, sizeof(int64) );
+							cs->sendBuffer(buffer, sizeof(int64), true);
+
+							lastsendtime=tt;
+						}
 					}
 					if(!run)break;
 				}

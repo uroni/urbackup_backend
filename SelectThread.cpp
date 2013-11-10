@@ -96,8 +96,12 @@ CSelectThread::~CSelectThread()
 
 void CSelectThread::operator()()
 {
+#ifdef _WIN32
 	_i32 max;
 	fd_set fdset;
+#else
+	std::vector<pollfd> conn;
+#endif
 	while(run)
 	{
 		{
@@ -138,30 +142,47 @@ void CSelectThread::operator()()
 
 			//Server->Log("SelectThread woke up...");
 			
+#ifdef _WIN32
 			FD_ZERO(&fdset);
 			max=0;
+#else
+			conn.clear();
+#endif
 
 			for(size_t i=0;i<clients.size();++i)
 			{
 				if( clients[i]->isProcessing()==false )
 				{
+#ifdef _WIN32
 					SOCKET s=clients[i]->getSocket();
 					if((_i32)s>max)
 						max=(_i32)s;
 					FD_SET(s, &fdset);
+#else
+					pollfd nconn;
+					nconn.fd=clients[i]->getSocket();
+					nconn.events=POLLIN;
+					nconn.revents=0;
+					conn.push_back(nconn);
+#endif
 				}
 			}
 		}
 
+#ifdef _WIN32
 		timeval lon;
 		lon.tv_sec=0;
 		lon.tv_usec=10000;
 
 		_i32 rc = select(max+1, &fdset, 0, 0, &lon);
+#else
+		int rc = poll(&conn[0], conn.size(), 10);
+#endif
 
 		if( rc>0)
 		{
 			IScopedLock lock(mutex);
+#ifdef _WIN32
 			for(size_t i=0;i<clients.size();++i)
 			{
 				if( clients[i]->isProcessing()==false )
@@ -173,6 +194,21 @@ void CSelectThread::operator()()
 					}
 				}
 			}
+#else
+			for(size_t i=0;i<conn.size();++i)
+			{
+				if(conn[i].revents!=0)
+				{
+					for(size_t j=0;j<clients.size();++j)
+					{
+						if(clients[j]->getSocket()==conn[i].fd)
+						{
+							FindWorker(clients[j]);
+						}
+					}
+				}
+			}
+#endif
 		}
 		else if(rc==-1)
 		{

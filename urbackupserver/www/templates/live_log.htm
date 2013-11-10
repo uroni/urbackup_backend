@@ -12,6 +12,8 @@ if(!window.g)
 g.session="#{session}";
 g.max_log_id=-1;
 g.clientid=#{clientid};
+g.live_log_rows=0;
+g.max_live_log_rows=500;
 
 g.refresh_log = function()
 {
@@ -50,7 +52,21 @@ function refresh_log2(data)
 			new_data+=tmpls.live_log_row.evaluate({time: format_date(d), loglevel: s_loglevel, message: obj.msg, background_color: background_color});
 			
 			g.max_log_id=obj.id;
+			++g.live_log_rows;
 		}
+	}
+	
+	var deleted_height=0;
+	if(g.live_log_rows>g.max_live_log_rows)
+	{
+		var deleted_height_start=I('logdata').rows[g.live_log_rows-g.max_live_log_rows].getBoundingClientRect().bottom;
+		while(g.live_log_rows>g.max_live_log_rows && I('logdata').rows.length>0)
+		{
+			I('logdata').deleteRow(0);
+			--g.live_log_rows;
+		}
+	
+		deleted_height=deleted_height_start-I('logdata').rows[0].getBoundingClientRect().bottom;
 	}
 	
 	if(new_data.length>0)
@@ -62,17 +78,29 @@ function refresh_log2(data)
 
 		var height = Math.max( body.scrollHeight, body.offsetHeight, 
 							   html.clientHeight, html.scrollHeight, html.offsetHeight );
+							   
 		
 		if(window.pageYOffset + window.innerHeight > height-20)
 		{
 			is_at_bottom=true;
 		}
 	
-		I('logdata').innerHTML+=new_data;
+		if(I('logdata').tBodies.length>0)
+		{
+			I('logdata').tBodies[0].innerHTML+=new_data;
+		}
+		else
+		{
+			I('logdata').innerHTML+=new_data;
+		}
 		
 		if(is_at_bottom)
 		{
-			window.scrollTo(window.pageXOffset, height);
+			window.scrollTo(window.pageXOffset, window.pageYOffset + window.innerHeight);
+		}
+		else if(window.pageYOffset-deleted_height>0 && deleted_height>0)
+		{
+			window.scrollTo(window.pageXOffset, window.pageYOffset-deleted_height);
 		}
 	}
 	

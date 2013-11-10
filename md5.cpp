@@ -269,6 +269,7 @@ unsigned char *MD5::raw_digest(){
   if (!finalized){
     cerr << "MD5::raw_digest:  Can't get digest if you haven't "<<
       "finalized the digest!" <<endl;
+	delete []s;
     return ( (unsigned char*) "");
   }
 
@@ -297,6 +298,7 @@ char *MD5::hex_digest(){
   if (!finalized){
     cerr << "MD5::hex_digest:  Can't get digest if you haven't "<<
       "finalized the digest!" <<endl;
+	delete []s;
     char *bla=new char[1];
     bla[0]=0;
     return bla;

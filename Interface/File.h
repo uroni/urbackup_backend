@@ -5,6 +5,7 @@
 
 #include "Types.h"
 #include "Object.h"
+#include "Server.h"
 
 const int MODE_READ=0;
 const int MODE_WRITE=1;
@@ -27,6 +28,36 @@ public:
 	
 	virtual std::string getFilename(void)=0;
 	virtual std::wstring getFilenameW(void)=0;
+};
+
+class ScopedDeleteFile
+{
+public:
+	ScopedDeleteFile(IFile *file)
+		: file(file) {}
+	~ScopedDeleteFile(void){
+		del();
+	}
+	void clear() {
+		del();
+	}
+	void reset(IFile *pfile) {
+		del();
+		file=pfile;
+	}
+	void release() {
+		file=NULL;
+	}
+private:
+	void del() {
+		if(file!=NULL) {
+			std::wstring tmpfn=file->getFilenameW();
+			file->Remove();
+			Server->deleteFile(tmpfn);
+		}
+		file=NULL;
+	}
+	IFile *file;
 };
 
 #endif //IFILE_H

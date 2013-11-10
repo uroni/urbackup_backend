@@ -29,11 +29,10 @@
 #define fstat64 fstat
 #endif
 
-
+#include "Server.h"
 #include "file.h"
 #include "types.h"
 #include "stringtools.h"
-#include "Server.h"
 
 #ifdef MODE_LIN
 
@@ -51,7 +50,7 @@ File::File()
 bool File::Open(std::wstring pfn, int mode)
 {
 	fn=pfn;
-	int flags;
+	int flags=0;
 	mode_t imode=S_IRWXU|S_IRWXG;
 	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)
 	{
@@ -109,7 +108,10 @@ bool File::OpenTemporaryFile(const std::wstring &dir)
 
 	stmpdir=stmpdir+"/cps.XXXXXX";
 
+	mode_t cur_umask = umask(S_IRWXO | S_IRWXG); 
 	fd=mkstemp((char*)stmpdir.c_str());
+	umask(cur_umask);
+	
 	fn=Server->ConvertToUnicode(stmpdir);
 	if( fd==-1 )
 		return false;

@@ -9,25 +9,25 @@ public:
 	~ServerCleanupDAO(void);
 
 	//@-SQLGenFunctionsBegin
-	struct SIncompleteImages
+	struct CondInt
 	{
-		int id;
-		std::wstring path;
+		bool exists;
+		int value;
 	};
-	struct SImageLetter
+	struct CondInt64
 	{
-		int id;
-		std::wstring letter;
-	};
-	struct SImageRef
-	{
-		int id;
-		int complete;
+		bool exists;
+		int64 value;
 	};
 	struct CondString
 	{
 		bool exists;
 		std::wstring value;
+	};
+	struct SClientInfo
+	{
+		int id;
+		std::wstring name;
 	};
 	struct SFileBackupInfo
 	{
@@ -44,20 +44,20 @@ public:
 		std::wstring path;
 		std::wstring letter;
 	};
-	struct CondInt64
-	{
-		bool exists;
-		int64 value;
-	};
-	struct SClientInfo
+	struct SImageLetter
 	{
 		int id;
-		std::wstring name;
+		std::wstring letter;
 	};
-	struct CondInt
+	struct SImageRef
 	{
-		bool exists;
-		int value;
+		int id;
+		int complete;
+	};
+	struct SIncompleteImages
+	{
+		int id;
+		std::wstring path;
 	};
 
 

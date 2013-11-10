@@ -127,15 +127,14 @@ void CAcceptThread::operator()(bool single)
 {
 	do
 	{
-		fd_set fdset;
 		socklen_t addrsize=sizeof(sockaddr_in);
 
+#ifdef _WIN32
+		fd_set fdset;
 		FD_ZERO(&fdset);
-
 		FD_SET(s, &fdset);
 
-		timeval lon;
-	
+		timeval lon;	
 		lon.tv_sec=1;
 		lon.tv_usec=0;
 
@@ -146,9 +145,21 @@ void CAcceptThread::operator()(bool single)
 
 		if( FD_ISSET(s,&fdset) )
 		{
+#else
+		pollfd conn[1];
+		conn[0].fd=s;
+		conn[0].events=POLLIN;
+		conn[0].revents=0;
+		int rc = poll(conn, 1, 1000);
+		if(rc<0)
+			return;
+
+		if(rc>0)
+		{
+#endif		
 			sockaddr_in naddr;
 			SOCKET ns=accept(s, (sockaddr*)&naddr, &addrsize);
-			if(ns>0)
+			if(ns!=SOCKET_ERROR)
 			{
 				//Server->Log("New Connection incomming", LL_INFO);
 

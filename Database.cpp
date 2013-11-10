@@ -22,7 +22,6 @@
 #endif
 
 #include "vld.h"
-#include "Interface/File.h"
 #ifndef BDBPLUGIN
 #include "Server.h"
 #else
@@ -36,6 +35,7 @@
 #endif
 #include "Query.h"
 #include "sqlite/sqlite3.h"
+#include "Interface/File.h"
 extern "C"
 {
 	#include "sqlite/shell.h"
@@ -212,7 +212,7 @@ bool CDatabase::EndTransaction(void)
 	}
 	if(waited)
 	{
-		Server->wait(1000);
+		Server->wait(50);
 	}
 	return true;
 }
@@ -372,8 +372,8 @@ bool CDatabase::LockForTransaction(void)
 void CDatabase::UnlockForTransaction(void)
 {
 	--lock_count;
-	lock_mutex->Unlock();
 	unlock_cond->notify_all();
+	lock_mutex->Unlock();
 }
 
 bool CDatabase::isInTransaction(void)

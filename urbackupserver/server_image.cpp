@@ -213,6 +213,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, true);
 	Server->getThreadPool()->execute(running_updater);
 	unsigned char verify_checksum[sha_size];
+	bool warned_about_parenthashfile_error=false;
 
 	bool has_parent=false;
 	if(!pParentvhd.empty())
@@ -579,7 +580,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								}
 							}
 
-							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
+							nextblock=updateNextblock(nextblock, currblock, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error);
 							sha256_update(&shactx, (unsigned char *)blockdata, blocksize);
 
 							vhdfile->writeBuffer(mbr_offset+currblock*blocksize, blockdata, blocksize);
@@ -611,7 +612,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						{
 							if(nextblock<=totalblocks)
 							{
-								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
+								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile,
+												hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error);
 
 								if(nextblock!=0)
 								{
@@ -731,7 +733,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								{
 									if(nextblock<hblock)
 									{
-										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata, has_parent, vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize);
+										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata, has_parent,
+														vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error);
 										sha256_update(&shactx, (unsigned char *)zeroblockdata, blocksize);						
 									}
 									if( (nextblock%vhd_blocksize==0 || hblock==blocks) && nextblock!=0)
@@ -912,7 +915,9 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 	return 1024*512;
 }
 
-int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize)
+int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn,
+	ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize,
+	int64 mbr_offset, int64 vhd_blocksize, bool& warned_about_parenthashfile_error)
 {
 	if(nextblock==currblock)
 		return nextblock+1;
@@ -950,13 +955,31 @@ int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_
 				bool b=parenthashfile->Seek((nextblock/vhd_blocksize)*sha_size);
 				if(!b)
 				{
-					Server->Log("Seeking in parenthashfile failed", LL_ERROR);
+					if(!warned_about_parenthashfile_error)
+					{
+						Server->Log("Seeking in parent hash file failed (May be caused by a volume with increased size)", LL_WARNING);
+						warned_about_parenthashfile_error=true;
+					}
+					hashfile->Write((char*)zero_hash, sha_size);
 				}
-				char dig[sha_size];
-				_u32 rc=parenthashfile->Read(dig, sha_size);
-				if(rc!=sha_size)
-					Server->Log("Reading from parenthashfile failed", LL_ERROR);
-				hashfile->Write(dig, sha_size);
+				else
+				{
+					char dig[sha_size];
+					_u32 rc=parenthashfile->Read(dig, sha_size);
+					if(rc!=sha_size)
+					{
+						if(!warned_about_parenthashfile_error)
+						{
+							Server->Log("Reading from parent hash file failed (May be caused by a volume with increased size)", LL_WARNING);
+							warned_about_parenthashfile_error=true;
+						}
+						hashfile->Write((char*)zero_hash, sha_size);
+					}
+					else
+					{
+						hashfile->Write(dig, sha_size);
+					}
+				}
 			}
 			nextblock+=vhd_blocksize;
 		}

@@ -147,8 +147,8 @@ private:
 #ifdef _WIN32
 	bool wait_for(IVssAsync *vsasync);
 	std::string GetErrorHResErrStr(HRESULT res);
-	bool check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg);
-	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg);
+	bool check_writer_status(IVssBackupComponents *backupcom, std::wstring& errmsg, int loglevel, bool* retryable_error);
+	bool checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HRESULT pHrResultFailure, std::wstring& errmsg, int loglevel, bool* retryable_error);
 #endif
 	
 	void VSSLog(const std::string& msg, int loglevel);

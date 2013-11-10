@@ -315,12 +315,15 @@ void ServerUpdateStats::update_files(void)
 				last_commit_time=Server->getTimeMS();
 			}
 
-			int pc=(int)((float)total_i/(float)delfiles_num*100.f+0.5f);
-			if(pc!=last_pc)
+			if(delfiles_num>0)
 			{
-				measureSpeed();
-				Server->Log( "Updating del files stats: "+nconvert(pc)+"%", LL_INFO);
-				last_pc=pc;
+				int pc=(int)((float)total_i/(float)delfiles_num*100.f+0.5f);
+				if(pc!=last_pc)
+				{
+					measureSpeed();
+					Server->Log( "Updating del files stats: "+nconvert(pc)+"%", LL_INFO);
+					last_pc=pc;
+				}
 			}
 
 			_i64 rsize=os_atoi64(wnarrow(res[i][L"rsize"]));
@@ -535,12 +538,15 @@ void ServerUpdateStats::update_files(void)
 				last_commit_time=Server->getTimeMS();
 			}
 
-			int pc=(int)((float)total_i/(float)ncount_files_num*100.f+0.5f);
-			if(pc!=last_pc)
+			if(ncount_files_num>0)
 			{
-				measureSpeed();
-				Server->Log( "Updating files stats: "+nconvert(pc)+"%", LL_INFO);
-				last_pc=pc;
+				int pc=(int)((float)total_i/(float)ncount_files_num*100.f+0.5f);
+				if(pc!=last_pc)
+				{
+					measureSpeed();
+					Server->Log( "Updating files stats: "+nconvert(pc)+"%", LL_INFO);
+					last_pc=pc;
+				}
 			}
 
 			_i64 rsize=os_atoi64(wnarrow(res[i][L"rsize"]));

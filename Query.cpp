@@ -215,15 +215,6 @@ bool CQuery::Execute(int timeoutms)
 
 	//Server->Log("Write done: "+stmt_str);
 
-	if( err!=SQLITE_DONE )
-	{
-		if(timeoutms<0)
-		{
-			Server->Log("Error in CQuery::Execute - "+(std::string)sqlite3_errmsg(db->getDatabase()) +"  Stmt: ["+stmt_str+"]", LL_ERROR);
-		}
-		return false;
-	}
-
 	if( err==SQLITE_IOERR )
 	{
 		Server->setFailBit(IServer::FAIL_DATABASE_IOERR);
@@ -231,6 +222,15 @@ bool CQuery::Execute(int timeoutms)
 	if(err==SQLITE_CORRUPT)
 	{
 		Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);			
+	}
+
+	if( err!=SQLITE_DONE )
+	{
+		if(timeoutms<0)
+		{
+			Server->Log("Error in CQuery::Execute - "+(std::string)sqlite3_errmsg(db->getDatabase()) +"  Stmt: ["+stmt_str+"]", LL_ERROR);
+		}
+		return false;
 	}
 
 	return true;
