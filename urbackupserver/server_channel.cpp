@@ -33,6 +33,7 @@
 #include "serverinterface/helper.h"
 #include <memory.h>
 #include <algorithm>
+#include <limits.h>
 
 const unsigned short serviceport=35623;
 extern std::string server_identity;
@@ -75,6 +76,8 @@ server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(inter
 		combat_mode=true;
 	}
 	tcpstack.setAddChecksum(internet_mode);
+
+	img_id_offset=Server->getRandomNumber()%((unsigned int)INT_MAX/2);
 }
 
 ServerChannelThread::~ServerChannelThread(void)
@@ -458,14 +461,14 @@ void ServerChannelThread::GET_BACKUPIMAGES(const std::wstring& clientname)
 	q=db->Prepare("SELECT backupid AS id,strftime('%s', backuptime) AS timestamp, strftime('%d.%m.%Y %H:%M',backuptime) AS backuptime FROM ((SELECT id AS backupid, clientid, backuptime, letter, complete FROM backup_images) c INNER JOIN (SELECT assoc_id, img_id FROM assoc_images WHERE img_id=?) b ON backupid=b.assoc_id) a WHERE a.complete=1 ORDER BY backuptime DESC");
 	for(size_t i=0;i<res.size();++i)
 	{
-		r+=Server->ConvertToUTF8(res[i][L"id"])+"|"+Server->ConvertToUTF8(res[i][L"timestamp"])+"|"+Server->ConvertToUTF8(res[i][L"backuptime"])+"|"+Server->ConvertToUTF8(res[i][L"letter"])+"\n";
+		r+=nconvert(img_id_offset+watoi(res[i][L"id"]))+"|"+Server->ConvertToUTF8(res[i][L"timestamp"])+"|"+Server->ConvertToUTF8(res[i][L"backuptime"])+"|"+Server->ConvertToUTF8(res[i][L"letter"])+"\n";
 			
 		q->Bind(watoi(res[i][L"id"]));
 		db_results res2=q->Read();
 		q->Reset();
 		for(size_t j=0;j<res2.size();++j)
 		{
-			r+="#|"+Server->ConvertToUTF8(res2[j][L"id"])+"|"+Server->ConvertToUTF8(res2[j][L"timestamp"])+"|"+Server->ConvertToUTF8(res2[j][L"backuptime"])+"\n";
+			r+="#|"+nconvert(img_id_offset+watoi(res2[j][L"id"]))+"|"+Server->ConvertToUTF8(res2[j][L"timestamp"])+"|"+Server->ConvertToUTF8(res2[j][L"backuptime"])+"\n";
 		}
 	}
 	tcpstack.Send(input, r);
@@ -477,7 +480,7 @@ void ServerChannelThread::GET_BACKUPIMAGES(const std::wstring& clientname)
 
 void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 {
-	int img_id=watoi(params[L"img_id"]);
+	int img_id=watoi(params[L"img_id"])-img_id_offset;
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	IQuery *q=db->Prepare("SELECT path, version, clientid FROM backup_images WHERE id=? AND strftime('%s', backuptime)=?");

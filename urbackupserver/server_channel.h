@@ -52,4 +52,6 @@ private:
 	std::wstring session;
 	std::vector<int> client_right_ids;
 	bool all_client_rights;
+
+	int img_id_offset;
 };
