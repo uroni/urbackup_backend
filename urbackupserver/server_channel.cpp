@@ -266,6 +266,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		Server->destroy(input);
 		input=NULL;
 		tcpstack.reset();
+		Server->wait(60000);
 	}
 	return "";
 }
