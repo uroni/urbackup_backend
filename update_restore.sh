@@ -10,6 +10,9 @@ cd urbackupclient
 make
 cd ..
 
+./switch_build.sh server
+make
+
 LANG=en
 
 mkdir restore_cd/urbackup
@@ -19,7 +22,7 @@ touch restore_cd/urbackup/new.txt
 
 cp urbackup_srv restore_cd/urbackup_client
 cp urbackupclient/.libs/liburbackupclient.so restore_cd/liburbackupclient.so
-cp fsimageplugin/.libs/liburbackupserver_fsimageplugin.so restore_cd/libfsimageplugin.so
+cp fsimageplugin/.libs/liburbackupclient_fsimageplugin.so restore_cd/libfsimageplugin.so
 cp fileservplugin/.libs/liburbackupclient_fileservplugin.so restore_cd/libfileservplugin.so
 cp urbackupserver/restore/$LANG/* restore_cd/urbackup/restore/
 cp urbackupserver/restore/* restore_cd/urbackup/restore/

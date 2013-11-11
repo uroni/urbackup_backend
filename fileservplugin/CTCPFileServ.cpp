@@ -215,7 +215,7 @@ bool CTCPFileServ::TcpStep(void)
 	conn[0].fd=mSocket;
 	conn[0].events=POLLIN;
 	conn[0].revents=0;
-	rc = poll(&conn, 1, REFRESH_SECONDS*1000);
+	int rc = poll(conn, 1, REFRESH_SECONDS*1000);
 #endif
 
 	if(rc>0)
