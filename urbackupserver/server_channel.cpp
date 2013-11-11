@@ -151,7 +151,7 @@ void ServerChannelThread::operator()(void)
 
 					bool was_updated;
 					settings->getSettings(&was_updated);
-					if(was_updated && !combat_mode)
+					if(input!=NULL && was_updated && !combat_mode)
 					{
 						IScopedLock lock(mutex);
 						Server->destroy(input);
@@ -257,9 +257,12 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 
 		DOWNLOAD_IMAGE(params);
 	}
-	else if(msg=="ERR")
+	else
 	{
-		Server->wait(60000);
+		IScopedLock lock(mutex);
+		Server->destroy(input);
+		input=NULL;
+		tcpstack.reset();
 	}
 	return "";
 }
