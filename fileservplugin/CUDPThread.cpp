@@ -176,7 +176,7 @@ bool CUDPThread::UdpStep(void)
 		conn[0].fd=udpsock;
 		conn[0].events=POLLIN;
 		conn[0].revents=0;
-		rc = poll(&conn, 1, 60*1000);
+		rc = poll(conn, 1, 60*1000);
 #endif
 	}
 	else
