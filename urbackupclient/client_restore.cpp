@@ -19,6 +19,7 @@
 #include "../urbackupcommon/mbrdata.h"
 #include "../fileservplugin/settings.h"
 #include "../fileservplugin/packet_ids.h"
+#include <memory>
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -369,8 +370,8 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	CTCPStack tcpstack;
 	std::vector<SImage> ret;
 
-	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
-	if(c==NULL)
+	std::auto_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+	if(client_pipe.get()==NULL)
 	{
 		Server->Log("Error connecting to client service -1", LL_ERROR);
 		return 10;
@@ -382,83 +383,70 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 		s_offset="&offset="+nconvert(offset);
 	}
 
-	tcpstack.Send(c, "DOWNLOAD IMAGE#pw="+pw+"&img_id="+nconvert(img_id)+"&time="+img_time+"&mbr="+nconvert(mbr)+s_offset);
+	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+nconvert(img_id)+"&time="+img_time+"&mbr="+nconvert(mbr)+s_offset);
 
 	std::string restore_out=outfile;
-	IFile *out=Server->openFile(restore_out, MODE_RW);
-	if(out==NULL)
+	std::auto_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
+	if(out_file.get()==NULL)
 	{
 		Server->Log("Could not open \""+restore_out+"\" for writing", LL_ERROR);
-		Server->destroy(c);return 2;
+		return 2;
 	}
 
 	_i64 imgsize=-1;
-	c->Read((char*)&imgsize, sizeof(_i64), 60000);
+	client_pipe->Read((char*)&imgsize, sizeof(_i64), 60000);
 	if(imgsize==-1)
 	{
 		Server->Log("Error reading size", LL_ERROR);
-		Server->destroy(c);Server->destroy(out);return 3;
+		return 3;
 	}
 	if(imgsize==-2)
 	{
 		Server->Log("Connection timeout", LL_ERROR);
 		int rc=retryDownload(5, img_id, img_time, outfile, mbr, offset, recur_depth);
-		Server->destroy(c);Server->destroy(out);return rc;
+		return rc;
 	}
 
-	char buf[4096];
+	const size_t c_buffer_size=32768;
+	const unsigned int c_block_size=4096;
+
+	char buf[c_buffer_size];
 	if(mbr==true)
 	{
 		_i64 read=0;
 		while(read<imgsize)
 		{
-			size_t c_read=c->Read(buf, 4096, 180000);
+			size_t c_read=client_pipe->Read(buf, c_buffer_size, 180000);
 			if(c_read==0)
 			{
 				int rc=retryDownload(4, img_id, img_time, outfile, mbr, offset, recur_depth);
-				Server->destroy(c);Server->destroy(out);return rc;
+				return rc;
 			}
-			out->Write(buf, (_u32)c_read);
+			out_file->Write(buf, (_u32)c_read);
 			read+=c_read;
 		}
-		Server->destroy(c);Server->destroy(out);return 0;
+		return 0;
 	}
 	else
 	{
 		_i64 read=0;
-		/*while(read<512)
-		{
-			size_t c_read=c->Read(buf, 512-(size_t)read, 60000);
-			if(c_read==0)
-			{
-				Server->Log("Read Timeout -1", LL_ERROR);
-				Server->destroy(c);Server->destroy(out);return 4;
-			}
-			_u32 w=out->Write(buf,(_u32)c_read);
-			if(w!=c_read)
-			{
-				Server->Log("Writing to output file failed", LL_ERROR);
-				Server->destroy(c);Server->destroy(out);return 6;
-			}
-			read+=c_read;
-		}*/
-
 		unsigned int blockleft=0;
 		unsigned int off=0;
-		char blockdata[4096];
+		char blockdata[c_block_size];
 		bool first=true;
 		bool has_data=false;
 		_i64 pos=0;
 		while(pos<imgsize)
 		{
-			size_t r=c->Read(&buf[off], 4096-off, 180000);
+			size_t r=client_pipe->Read(&buf[off], c_buffer_size-off, 180000);
 			if(r!=0)
 				r+=off;
 			off=0;
 			if( r==0 )
 			{
 				Server->Log("Read Timeout: Retrying", LL_WARNING);
-				Server->destroy(c);Server->destroy(out);
+				client_pipe.reset(NULL);
+				out_file.reset(NULL);
 				if(has_data)
 				{
 					return retryDownload(4, img_id, img_time, outfile, mbr, pos, recur_depth);
@@ -475,18 +463,21 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 				{
 					if(!first)
 					{
-						_u32 tw=4096;
-						if(imgsize>=pos && imgsize-pos<4096)
+						//Only write one block
+						_u32 tw=c_block_size;
+						//Don't write over blockdev boundary
+						if(imgsize>=pos && imgsize-pos<c_block_size)
 							tw=(_u32)(imgsize-pos);
 
+						//Write to blockdev
 						_u32 woff=0;
 						do
 						{
-							_u32 w=out->Write(&blockdata[woff], tw-woff);
+							_u32 w=out_file->Write(&blockdata[woff], tw-woff);
 							if(w==0)
 							{
 								Server->Log("Writing to output file failed", LL_ERROR);
-								Server->destroy(c);Server->destroy(out);return 6;
+								return 6;
 							}
 							woff+=w;
 						}
@@ -506,31 +497,28 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 
 					if(r-off>=sizeof(_i64) )
 					{
-						blockleft=4096;
-						_i64 s;
-						memcpy((char*)&s, &buf[off], sizeof(_i64) );
-						if(s>imgsize)
+						blockleft=c_block_size;
+						_i64 *s=reinterpret_cast<_i64*>(&buf[off]);
+						if(*s>imgsize)
 						{
-							Server->Log("invalid seek value: "+nconvert(s), LL_ERROR);
-							pos=s;
+							Server->Log("invalid seek value: "+nconvert(*s), LL_ERROR);
+							pos=*s;
 							break;
 						}
-						else if(s<pos)
+						else if(*s<pos)
 						{
 							Server->Log("Position out of order!", LL_ERROR);
 						}
 						else
 						{
-							out->Seek(s);
-							pos=s;
+							out_file->Seek(*s);
+							pos=*s;
 						}
 						off+=sizeof(_i64);
 					}
 					else if(r-off>0)
 					{
-						char buf2[4096];
-						memcpy(buf2, &buf[off], r-off);
-						memcpy(buf, buf2, r-off);
+						memmove(buf, &buf[off], r-off);
 						off=(_u32)r-off;
 						break;
 					}
@@ -545,7 +533,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 					unsigned int available=(std::min)((unsigned int)r-off, blockleft);
 					if(available>0)
 					{
-						memcpy(&blockdata[4096-blockleft], &buf[off], (_u32)available );
+						memcpy(&blockdata[c_block_size-blockleft], &buf[off], (_u32)available );
 					}
 					read+=available;
 					blockleft-=available;
@@ -559,7 +547,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 			}
 		}
 
-		Server->destroy(c);Server->destroy(out);return 0;
+		return 0;
 	}
 	return 0;
 }
@@ -1419,7 +1407,10 @@ void restore_wizard(void)
 			}break;
 		case 5:
 			{
-				RestoreThread rt(selimage.id, nconvert(selimage.time_s), "/dev/"+seldrive+nconvert( selpart ));
+				//Disable IO scheduler for drive
+				system(("echo noop > /sys/block/"+seldrive+"/queue/scheduler").c_str());
+				const std::string selected_partition="/dev/"+seldrive+nconvert( selpart );
+				RestoreThread rt(selimage.id, nconvert(selimage.time_s), selected_partition);
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
 				while(true)
 				{

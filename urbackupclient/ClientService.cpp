@@ -1589,7 +1589,9 @@ void ClientConnector::downloadImage(str_map params)
 			return;
 		}
 
-		char buf[4096];
+		const size_t c_buffer_size=32768;
+		const unsigned int c_blocksize=4096;
+		char buf[c_buffer_size];
 		_i64 read=0;
 
 		if(params[L"mbr"]==L"true")
@@ -1597,7 +1599,7 @@ void ClientConnector::downloadImage(str_map params)
 			Server->Log("Downloading MBR...", LL_DEBUG);
 			while(read<imgsize)
 			{
-				size_t c_read=c->Read(buf, 4096, 60000);
+				size_t c_read=c->Read(buf, c_buffer_size, 60000);
 				if(c_read==0)
 				{
 					Server->Log("Read Timeout", LL_ERROR);
@@ -1621,7 +1623,7 @@ void ClientConnector::downloadImage(str_map params)
 		_i64 pos=0;
 		while(pos<imgsize)
 		{
-			size_t r=c->Read(&buf[off], 4096-off, 180000);
+			size_t r=c->Read(&buf[off], c_buffer_size-off, 180000);
 			if( r==0 )
 			{
 				Server->Log("Read Timeout -2 CS", LL_ERROR);
@@ -1643,7 +1645,7 @@ void ClientConnector::downloadImage(str_map params)
 				{
 					if(r-off>=sizeof(_i64) )
 					{
-						blockleft=4096;
+						blockleft=c_blocksize;
 						_i64 s;
 						memcpy((char*)&s, &buf[off], sizeof(_i64) );
 						if(s>imgsize)
@@ -1655,9 +1657,7 @@ void ClientConnector::downloadImage(str_map params)
 					}
 					else if(r-off>0)
 					{
-						char buf2[4096];
-						memcpy(buf2, &buf[off], r-off);
-						memcpy(buf, buf2, r-off);
+						memmove(buf, &buf[off], r-off);
 						off=(_u32)r-off;
 						break;
 					}

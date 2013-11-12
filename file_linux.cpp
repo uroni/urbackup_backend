@@ -52,7 +52,10 @@ bool File::Open(std::wstring pfn, int mode)
 	fn=pfn;
 	int flags=0;
 	mode_t imode=S_IRWXU|S_IRWXG;
-	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)
+	if( mode==MODE_READ
+		|| mode==MODE_READ_DEVICE
+		|| mode==MODE_READ_SEQUENTIAL
+		|| mode==MODE_READ_SEQUENTIAL_BACKUP)
 	{
 		flags=O_RDONLY;
 	}
@@ -65,7 +68,10 @@ bool File::Open(std::wstring pfn, int mode)
 	{
 		flags=O_RDWR | O_APPEND;
 	}
-	else if( mode==MODE_RW || mode==MODE_RW_CREATE)
+	else if( mode==MODE_RW
+		|| mode==MODE_RW_SEQUENTIAL
+		|| mode==MODE_RW_CREATE
+		|| mode==MODE_RW_READNONE )
 	{
 		flags=O_RDWR;
 		if( mode==MODE_RW_CREATE )
@@ -84,9 +90,16 @@ bool File::Open(std::wstring pfn, int mode)
 	
 	fd=open64(Server->ConvertToUTF8(fn).c_str(), flags|O_LARGEFILE, imode);
 
-	if(mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)
+	if(mode==MODE_READ_SEQUENTIAL
+		|| mode==MODE_READ_SEQUENTIAL_BACKUP
+		|| mode==MODE_RW_SEQUENTIAL)
 	{
 		posix_fadvise64(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+	}
+
+	if( mode==MODE_RW_READNONE )
+	{
+		posix_fadvise64(fd, 0, 0, POSIX_FADV_DONTNEED);
 	}
 	
 	if( fd!=-1 )

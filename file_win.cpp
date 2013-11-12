@@ -37,7 +37,10 @@ bool File::Open(std::wstring pfn, int mode)
 	DWORD dwCreationDisposition;
 	DWORD dwDesiredAccess;
 	DWORD dwShareMode=FILE_SHARE_READ;
-	if( mode==MODE_READ || mode==MODE_READ_DEVICE || mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)
+	if( mode==MODE_READ
+		|| mode==MODE_READ_DEVICE
+		|| mode==MODE_READ_SEQUENTIAL
+		|| mode==MODE_READ_SEQUENTIAL_BACKUP)
 	{
 		dwCreationDisposition=OPEN_EXISTING;
 		dwDesiredAccess=GENERIC_READ;
@@ -48,14 +51,20 @@ bool File::Open(std::wstring pfn, int mode)
 		dwCreationDisposition=CREATE_NEW;
 		dwDesiredAccess=GENERIC_WRITE;
 	}
-	else if( mode==MODE_APPEND|| mode==MODE_TEMP )
+	else if( mode==MODE_APPEND
+		|| mode==MODE_TEMP )
 	{
 		dwCreationDisposition=OPEN_EXISTING;
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
-	else if( mode==MODE_RW || mode==MODE_RW_CREATE)
+	else if( mode==MODE_RW 
+		|| mode==MODE_RW_SEQUENTIAL
+		|| mode==MODE_RW_CREATE
+		|| mode==MODE_RW_READNONE)
 	{
-		if(mode==MODE_RW)
+		if(mode==MODE_RW
+			|| mode==MODE_RW_SEQUENTIAL
+			|| mode==MODE_RW_READNONE)
 		{
 			dwCreationDisposition=OPEN_EXISTING;
 		}
@@ -72,7 +81,9 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 
 	DWORD flags=FILE_ATTRIBUTE_NORMAL;
-	if(mode==MODE_READ_SEQUENTIAL || mode==MODE_READ_SEQUENTIAL_BACKUP)
+	if(mode==MODE_READ_SEQUENTIAL
+		|| mode==MODE_READ_SEQUENTIAL_BACKUP
+		|| mode==MODE_RW_SEQUENTIAL)
 	{
 		flags|=FILE_FLAG_SEQUENTIAL_SCAN;
 	}
