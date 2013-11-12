@@ -47,17 +47,50 @@ extern std::string server_identity;
 extern std::string server_token;
 extern IFSImageFactory *image_fak;
 
-void writeZeroblockdata(void)
+
+namespace
 {
-	const int64 vhd_blocksize=(1024*1024/2);
-	unsigned char *zeroes=new unsigned char[vhd_blocksize];
-	memset(zeroes, 0, vhd_blocksize);
-	unsigned char dig[sha_size];
-	sha256(zeroes, vhd_blocksize, dig);
-	IFile *out=Server->openFile("zero.hash", MODE_WRITE);
-	out->Write((char*)dig, sha_size);
-	Server->destroy(out);
-	delete []zeroes;
+	void writeZeroblockdata(void)
+	{
+		const int64 vhd_blocksize=(1024*1024/2);
+		unsigned char *zeroes=new unsigned char[vhd_blocksize];
+		memset(zeroes, 0, vhd_blocksize);
+		unsigned char dig[sha_size];
+		sha256(zeroes, vhd_blocksize, dig);
+		IFile *out=Server->openFile("zero.hash", MODE_WRITE);
+		out->Write((char*)dig, sha_size);
+		Server->destroy(out);
+		delete []zeroes;
+	}
+
+	enum ESendErr
+	{
+		ESendErr_Ok,
+		ESendErr_Read,
+		ESendErr_Send
+	};
+
+	ESendErr sendFileToPipe(IFile* file, IPipe* outputpipe, int clientid)
+	{
+		file->Seek(0);
+		const unsigned int c_send_buffer_size=8192;
+		char send_buffer[c_send_buffer_size];
+		for(size_t i=0,hsize=(size_t)file->Size();i<hsize;i+=c_send_buffer_size)
+		{
+			size_t tsend=(std::min)((size_t)c_send_buffer_size, hsize-i);
+			if(file->Read(send_buffer, (_u32)tsend)!=tsend)
+			{
+				ServerLogger::Log(clientid, "Reading from file failed", LL_ERROR);
+				return ESendErr_Read;
+			}
+			if(!outputpipe->Write(send_buffer, tsend))
+			{
+				ServerLogger::Log(clientid, "Sending file data failed", LL_ERROR);
+				return ESendErr_Send;
+			}
+		}
+		return ESendErr_Ok;
+	}
 }
 
 bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum)
@@ -108,25 +141,12 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 			Server->destroy(hashfile);
 			return false;
 		}
-		hashfile->Seek(0);
-		char buffer[4096];
-		for(size_t i=0,hsize=(size_t)hashfile->Size();i<hsize;i+=4096)
+		if(sendFileToPipe(hashfile, cc, clientid)!=ESendErr_Ok)
 		{
-			size_t tsend=(std::min)((size_t)4096, hsize-i);
-			if(hashfile->Read(buffer, (_u32)tsend)!=tsend)
-			{
-				ServerLogger::Log(clientid, "Reading from hashfile failed", LL_ERROR);
-				Server->destroy(cc);
-				Server->destroy(hashfile);
-				return false;
-			}
-			if(!cc->Write(buffer, tsend))
-			{
-				ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
-				Server->destroy(cc);
-				Server->destroy(hashfile);
-				return false;
-			}
+			ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
+			Server->destroy(cc);
+			Server->destroy(hashfile);
+			return false;
 		}
 		Server->destroy(hashfile);
 	}
@@ -186,7 +206,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
 	bool first=true;
-	char buffer[4096];
+	const unsigned int c_buffer_size=32768;
+	char buffer[c_buffer_size];
 	unsigned int blocksize=0xFFFFFFFF;
 	unsigned int blockleft=0;
 	int64 currblock=-1;
@@ -240,7 +261,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		size_t r=0;
 		if(cc!=NULL)
 		{
-			r=cc->Read(&buffer[off], 4096-off, curr_image_recv_timeout);
+			r=cc->Read(&buffer[off], c_buffer_size-off, curr_image_recv_timeout);
 		}
 		if(r!=0)
 			r+=off;
@@ -321,31 +342,25 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				else
 				{
 					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id)+"&hashsize="+nconvert(parenthashfile->Size());
-					size_t rc=tcpstack.Send(cc, server_identity+ts);
-					if(rc==0)
+					size_t sent=tcpstack.Send(cc, server_identity+ts);
+					if(sent==0)
 					{
 						ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_ERROR);
 						goto do_image_cleanup;
 					}
-					parenthashfile->Seek(0);
-					char buffer[4096];
-					for(size_t i=0,hsize=(size_t)parenthashfile->Size();i<hsize;i+=4096)
+					ESendErr rc = sendFileToPipe(parenthashfile, cc, clientid);
+					if(rc==ESendErr_Send)
 					{
-						size_t tsend=(std::min)((size_t)4096, hsize-i);
-						if(parenthashfile->Read(buffer, (_u32)tsend)!=tsend)
-						{
-							ServerLogger::Log(clientid, "Reading from hashfile failed i="+nconvert(i), LL_ERROR);
-							goto do_image_cleanup;
-						}
-						if(!cc->Write(buffer, tsend))
-						{
-							ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
-							Server->destroy(cc);
-							cc=NULL;
-							break;
-						}
+						ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
+						Server->destroy(cc);
+						cc=NULL;
+						break;
 					}
-
+					else if(rc!=ESendErr_Ok)
+					{
+						ServerLogger::Log(clientid, "Reading from hashfile failed", LL_ERROR);
+						goto do_image_cleanup;
+					}
 				}
 				off=0;
 				starttime=Server->getTimeMS();
@@ -797,9 +812,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					{
 						if(r-off>0)
 						{
-							char buf2[4096];
-							memcpy(buf2, &buffer[off], r-off);
-							memcpy(buffer, buf2, r-off);
+							memmove(buffer, &buffer[off], r-off);
 							off=(_u32)r-off;
 							break;
 						}
