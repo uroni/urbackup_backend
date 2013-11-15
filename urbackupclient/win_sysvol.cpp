@@ -146,7 +146,7 @@ bool isBootable(const PWCHAR VolumeName)
 	HANDLE hVolume=CreateFileW(VolumeName, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		LOG("Error opening device for reading bootable flag", LL_ERROR);
+		LOG(L"Error opening device for reading bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
 		return false;
 	}
 
@@ -157,7 +157,7 @@ bool isBootable(const PWCHAR VolumeName)
 
 	if(b==FALSE)
 	{
-		LOG("Error reading partition information for bootable flag", LL_ERROR);
+		LOG(L"Error reading partition information for bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
 		return false;
 	}
 
@@ -165,13 +165,13 @@ bool isBootable(const PWCHAR VolumeName)
 	{
 		if(partition_information.PartitionStyle==PARTITION_STYLE_GPT)
 		{
-			LOG("GPT formated hard disk encountered. UrBackup does not support GPT formated hard disks!", LL_ERROR);
+			LOG(L"GPT formated hard disk encountered. UrBackup does not support GPT formated hard disks! (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
 
 			return false;
 		}
 		else
 		{
-			LOG("Unknown partition style encountered", LL_ERROR);
+			LOG(L"Unknown partition style encountered (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
 
 			return false;
 		}
