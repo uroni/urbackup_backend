@@ -243,6 +243,7 @@ void BackupServerGet::operator ()(void)
 	}
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	DBScopedFreeMemory free_db_memory(db);
 
 	server_settings=new ServerSettings(db);
 

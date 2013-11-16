@@ -50,6 +50,8 @@ public:
 	virtual void AttachDBs(void);
 
 	virtual bool Backup(const std::string &pFile);
+
+	virtual void freeMemory();
 private:
 	
 	bool backup_db(const std::string &pFile, const std::string &pDB);

@@ -469,7 +469,7 @@ THREAD_ID CServer::Execute(const std::wstring &action, const std::wstring &conte
 
 		action_ptr->Execute( GET, POST, tid, PARAMS);
 
-		ClearDatabases(tid);
+		clearDatabases(tid);
 
 		WriteRaw(tid, NULL, 0, false);
 
@@ -782,7 +782,7 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 	}
 }
 
-void CServer::ClearDatabases(THREAD_ID tid)
+void CServer::clearDatabases(THREAD_ID tid)
 {
 	IScopedLock lock(db_mutex);
 

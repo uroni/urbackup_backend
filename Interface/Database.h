@@ -32,6 +32,20 @@ public:
 	virtual void AttachDBs(void)=0;
 
 	virtual bool Backup(const std::string &pFile)=0;
+
+	virtual void freeMemory()=0;
+};
+
+class DBScopedFreeMemory
+{
+public:
+	DBScopedFreeMemory(IDatabase* db)
+		: db(db) {}
+	~DBScopedFreeMemory() {
+		db->freeMemory();
+	}
+private:
+	IDatabase* db;
 };
 
 #endif

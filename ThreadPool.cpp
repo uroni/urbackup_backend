@@ -29,6 +29,7 @@ CPoolThread::CPoolThread(CThreadPool *pMgr)
 
 void CPoolThread::operator()(void)
 {
+	THREAD_ID tid = Server->getThreadID();
 	THREADPOOL_TICKET ticket;
 	IThread *tr=mgr->getRunnable(&ticket, false);
 	if(tr!=NULL)
@@ -37,7 +38,10 @@ void CPoolThread::operator()(void)
 	{
 		IThread *tr=mgr->getRunnable(&ticket, true);
 		if(tr!=NULL)
+		{
 		  (*tr)();
+		  Server->clearDatabases(tid);
+		}
 	}
 	mgr->Remove(this);
 	delete this;
@@ -128,7 +132,7 @@ void CThreadPool::Shutdown(void)
 		Server->wait(100);
 		lock.relock(mutex);
 
-		//max 300 smec warten
+		//wait for max 300 msec
 		if( (!do_leak_check && max>=3) || (do_leak_check && max>=30) )
 		{
 			Server->Log("Maximum wait time for thread pool exceeded. Shutting down the hard way", LL_ERROR);

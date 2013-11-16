@@ -524,4 +524,9 @@ bool CDatabase::Backup(const std::string &pFile)
 	return true;
 }
 
-#endif
+void CDatabase::freeMemory()
+{
+	sqlite3_db_release_memory(db);
+}
+
+#endif //NO_SQLITE

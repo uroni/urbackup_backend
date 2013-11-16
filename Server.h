@@ -174,6 +174,8 @@ public:
 	virtual void clearFailBit(size_t failbit);
 	virtual size_t getFailBits(void);
 
+	void clearDatabases(THREAD_ID tid);
+
 private:
 
 	void logToCircularBuffer(const std::string& msg, int loglevel);
@@ -181,8 +183,6 @@ private:
 	bool UnloadDLLs(void);
 	void UnloadDLLs2(void);
 	
-
-	void ClearDatabases(THREAD_ID tid);
 
 	int loglevel;
 	bool logfile_a;
