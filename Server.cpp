@@ -54,6 +54,7 @@
 #include "SQLiteFactory.h"
 #include "PipeThrottler.h"
 #include "mt19937ar.h"
+#include "Query.h"
 
 
 
@@ -128,6 +129,8 @@ void CServer::setup(void)
 	CDatabase::initMutex();
 	registerDatabaseFactory("sqlite", new SQLiteFactory );
 #endif
+
+	CQuery::init_mutex();
 }
 
 void CServer::destroyAllDatabases(void)

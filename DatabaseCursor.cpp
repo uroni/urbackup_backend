@@ -7,11 +7,19 @@ DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)
 	: query(query), transaction_lock(false), tries(60), timeoutms(timeoutms), lastErr(SQLITE_OK), _has_error(false)
 {
 	query->setupStepping(timeoutms);
+
+#ifdef DEBUG_QUERIES
+	active_query=new ScopedAddActiveQuery(query);
+#endif
 }
 
 DatabaseCursor::~DatabaseCursor(void)
 {
 	query->shutdownStepping(lastErr, timeoutms, transaction_lock);
+
+#ifdef DEBUG_QUERIES
+	delete active_query;
+#endif
 }
 
 bool DatabaseCursor::next(db_single_result &res)
