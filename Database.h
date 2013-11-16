@@ -9,6 +9,8 @@
 struct sqlite3;
 class CQuery;
 
+const int c_sqlite_busy_timeout_default=10000; //10 seconds
+
 class CDatabase : public IDatabaseInt
 {
 public:

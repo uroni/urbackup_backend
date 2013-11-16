@@ -121,7 +121,7 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 		Write("PRAGMA synchronous=NORMAL");
 		#endif
 		Write("PRAGMA foreign_keys = ON");
-		sqlite3_busy_timeout(db, 50);
+		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
 		AttachDBs();
 
 		return true;
