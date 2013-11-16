@@ -97,6 +97,14 @@ struct STimeSpan
 	float stop_hour;
 };
 
+class ServerSettings;
+
+struct SSettingsCacheItem
+{
+	SSettings* settings;
+	size_t refcount;
+};
+
 class ServerSettings
 {
 public:
@@ -134,17 +142,20 @@ private:
 	void readStringClientSetting(const std::string &name, std::string *output);
 	void readIntClientSetting(const std::string &name, int *output);
 	void readSizeClientSetting(const std::string &name, size_t *output);
+	void createSettingsReaders();
 
-	SSettings settings;
+	SSettings* settings;
 
 	ISettingsReader *settings_default;
 	ISettingsReader *settings_client;
+	IDatabase* db;
 
 	volatile bool do_update;
 
 	int clientid;
 
 	static std::vector<ServerSettings*> g_settings;
+	static std::map<int, SSettingsCacheItem> g_settings_cache;
 	static IMutex *g_mutex;
 };
 

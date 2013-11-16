@@ -20,6 +20,7 @@
 #include "../urbackupcommon/settingslist.h"
 #include "../urbackupcommon/os_functions.h"
 #include <stdlib.h>
+#include <assert.h>
 #ifndef CLIENT_ONLY
 
 #include "server_settings.h"
@@ -27,6 +28,9 @@
 
 std::vector<ServerSettings*> ServerSettings::g_settings;
 IMutex *ServerSettings::g_mutex=NULL;
+std::map<int, SSettingsCacheItem> ServerSettings::g_settings_cache;
+
+//#define CLEAR_SETTINGS_CACHE
 
 void ServerSettings::init_mutex(void)
 {
@@ -42,30 +46,55 @@ void ServerSettings::destroy_mutex(void)
 	}
 }
 
-ServerSettings::ServerSettings(IDatabase *db, int pClientid) : clientid(pClientid)
+ServerSettings::ServerSettings(IDatabase *db, int pClientid)
+	: clientid(pClientid), settings_default(NULL),
+		settings_client(NULL), db(db)
 {
-	{
-		IScopedLock lock(g_mutex);
-		g_settings.push_back(this);
-	}
+	IScopedLock lock(g_mutex);
+		
+	g_settings.push_back(this);
 
-	settings_default=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
-	if(clientid!=-1)
+	std::map<int, SSettingsCacheItem>::iterator iter=g_settings_cache.find(clientid);
+	if(iter!=g_settings_cache.end())
 	{
-		settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(clientid));
+		++iter->second.refcount;
+		settings=iter->second.settings;
+		do_update=false;
+		return;
 	}
 	else
 	{
-		settings_client=NULL;
+		settings=new SSettings();
+		SSettingsCacheItem cache_item = { settings, 1 };
+		g_settings_cache.insert(std::make_pair(clientid, cache_item));
 	}
 
 	update();
 	do_update=false;
 }
 
+void ServerSettings::createSettingsReaders()
+{
+	if(settings_default==NULL)
+	{
+		settings_default=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
+		if(clientid!=-1)
+		{
+			settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(clientid));
+		}
+		else
+		{
+			settings_client=NULL;
+		}
+	}
+}
+
 ServerSettings::~ServerSettings(void)
 {
-	Server->destroy(settings_default);
+	if(settings_default!=NULL)
+	{
+		Server->destroy(settings_default);
+	}
 	if(settings_client!=NULL)
 	{
 		Server->destroy(settings_client);
@@ -81,12 +110,45 @@ ServerSettings::~ServerSettings(void)
 				break;
 			}
 		}
+
+		std::map<int, SSettingsCacheItem>::iterator iter=g_settings_cache.find(clientid);
+		if(iter==g_settings_cache.end())
+		{
+			assert(false);
+		}
+		else
+		{
+			--iter->second.refcount;
+#ifdef CLEAR_SETTINGS_CACHE
+			if(iter->second.refcount==0)
+			{
+				delete iter->second.settings;
+				g_settings_cache.erase(iter);
+			}
+#endif
+		}
 	}
 }
 
 void ServerSettings::updateAll(void)
 {
 	IScopedLock lock(g_mutex);
+
+	for(std::map<int, SSettingsCacheItem>::iterator it=g_settings_cache.begin();
+		it!=g_settings_cache.end();)
+	{
+		if(it->second.refcount==0)
+		{
+			std::map<int, SSettingsCacheItem>::iterator delit=it++;
+			delete delit->second.settings;
+			g_settings_cache.erase(delit);
+		}
+		else
+		{
+			++it;
+		}
+	}
+
 	for(size_t i=0;i<g_settings.size();++i)
 	{
 		g_settings[i]->doUpdate();
@@ -95,6 +157,10 @@ void ServerSettings::updateAll(void)
 
 void ServerSettings::update(void)
 {
+	createSettingsReaders();
+
+	IScopedLock lock(g_mutex);
+
 	readSettingsDefault();
 	if(settings_client!=NULL)
 	{
@@ -122,208 +188,208 @@ SSettings *ServerSettings::getSettings(bool *was_updated)
 		if(was_updated!=NULL)
 			*was_updated=false;
 	}
-	return &settings;
+	return settings;
 }
 
 void ServerSettings::readSettingsDefault(void)
 {
-	settings.update_freq_incr=settings_default->getValue("update_freq_incr", 5*60*60);
-	settings.update_freq_full=settings_default->getValue("update_freq_full", 30*24*60*60);
-	settings.update_freq_image_incr=settings_default->getValue("update_freq_image_incr", 7*24*60*60);
-	settings.update_freq_image_full=settings_default->getValue("update_freq_image_full", 60*24*60*60);
-	settings.max_file_incr=settings_default->getValue("max_file_incr", 100);
-	settings.min_file_incr=settings_default->getValue("min_file_incr", 40);
-	settings.max_file_full=settings_default->getValue("max_file_full", 10);
-	settings.min_file_full=settings_default->getValue("min_file_full", 2);
-	settings.min_image_incr=settings_default->getValue("min_image_incr", 4);
-	settings.max_image_incr=settings_default->getValue("max_image_incr", 30);
-	settings.min_image_full=settings_default->getValue("min_image_full", 2);
-	settings.max_image_full=settings_default->getValue("max_image_full", 5);
-	settings.no_images=(settings_default->getValue("no_images", "false")=="true");
-	settings.no_file_backups=(settings_default->getValue("no_file_backups", "false")=="true");
-	settings.overwrite=false;
-	settings.allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
-	settings.backupfolder=trim(settings_default->getValue(L"backupfolder", L"C:\\urbackup"));
-	settings.backupfolder_uncompr=trim(settings_default->getValue(L"backupfolder_uncompr", settings.backupfolder));
-	settings.client_overwrite=true;
-	settings.autoshutdown=(settings_default->getValue("autoshutdown", "false")=="true");;
-	settings.startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
-	settings.download_client=(settings_default->getValue("download_client", "true")=="true");
-	settings.autoupdate_clients=(settings_default->getValue("autoupdate_clients", "true")=="true");
-	settings.backup_window_incr_file=settings_default->getValue("backup_window_incr_file", "1-7/0-24");
-	settings.backup_window_full_file=settings_default->getValue("backup_window_full_file", "1-7/0-24");
-	settings.backup_window_incr_image=settings_default->getValue("backup_window_incr_image", "1-7/0-24");
-	settings.backup_window_full_image=settings_default->getValue("backup_window_full_image", "1-7/0-24");
-	settings.max_active_clients=settings_default->getValue("max_active_clients", 100);
-	settings.max_sim_backups=settings_default->getValue("max_sim_backups", 10);
-	settings.exclude_files=settings_default->getValue(L"exclude_files", L"");
-	settings.include_files=settings_default->getValue(L"include_files", L"");
-	settings.default_dirs=settings_default->getValue(L"default_dirs", L"");
-	settings.cleanup_window=settings_default->getValue("cleanup_window", "1-7/3-4");
-	settings.allow_config_paths=(settings_default->getValue("allow_config_paths", "true")=="true");
-	settings.allow_starting_full_file_backups=(settings_default->getValue("allow_starting_full_file_backups", "true")=="true");
-	settings.allow_starting_incr_file_backups=(settings_default->getValue("allow_starting_incr_file_backups", "true")=="true");
-	settings.allow_starting_full_image_backups=(settings_default->getValue("allow_starting_full_image_backups", "true")=="true");
-	settings.allow_starting_incr_image_backups=(settings_default->getValue("allow_starting_incr_image_backups", "true")=="true");
-	settings.allow_pause=(settings_default->getValue("allow_pause", "true")=="true");
-	settings.allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
-	settings.image_letters=settings_default->getValue("image_letters", "C");
-	settings.backup_database=(settings_default->getValue("backup_database", "true")=="true");
-	settings.internet_server_port=(unsigned short)(atoi(settings_default->getValue("internet_server_port", "55415").c_str()));
-	settings.client_set_settings=false;
-	settings.internet_server=settings_default->getValue("internet_server", "");
-	settings.internet_image_backups=(settings_default->getValue("internet_image_backups", "false")=="true");
-	settings.internet_full_file_backups=(settings_default->getValue("internet_full_file_backups", "false")=="true");
-	settings.internet_encrypt=(settings_default->getValue("internet_encrypt", "true")=="true");
-	settings.internet_compress=(settings_default->getValue("internet_compress", "true")=="true");
-	settings.internet_compression_level=atoi(settings_default->getValue("internet_compress", "6").c_str());
-	settings.internet_speed=atoi(settings_default->getValue("internet_speed", "-1").c_str());
-	settings.local_speed=atoi(settings_default->getValue("local_speed", "-1").c_str());
-	settings.global_internet_speed=atoi(settings_default->getValue("global_internet_speed", "-1").c_str());
-	settings.global_local_speed=atoi(settings_default->getValue("global_local_speed", "-1").c_str());
-	settings.internet_mode_enabled=(settings_default->getValue("internet_mode_enabled", "false")=="true");
-	settings.silent_update=(settings_default->getValue("silent_update", "false")=="true");
-	settings.use_tmpfiles=(settings_default->getValue("use_tmpfiles", "false")=="true");
-	settings.use_tmpfiles_images=(settings_default->getValue("use_tmpfiles_images", "false")=="true");
-	settings.tmpdir=settings_default->getValue(L"tmpdir",L"");
-	settings.local_full_file_transfer_mode=settings_default->getValue("local_full_file_transfer_mode", "hashed");
-	settings.internet_full_file_transfer_mode=settings_default->getValue("internet_full_file_transfer_mode", "hashed");
-	settings.local_incr_file_transfer_mode=settings_default->getValue("local_incr_file_transfer_mode", "hashed");
-	settings.internet_incr_file_transfer_mode=settings_default->getValue("internet_incr_file_transfer_mode", "blockhash");
-	settings.local_image_transfer_mode=settings_default->getValue("local_image_transfer_mode", "hashed");
-	settings.internet_image_transfer_mode=settings_default->getValue("internet_image_transfer_mode", "hashed");
-	settings.file_hash_collect_amount=static_cast<size_t>(settings_default->getValue("file_hash_collect_amount", 1000));
-	settings.file_hash_collect_timeout=static_cast<size_t>(settings_default->getValue("file_hash_collect_timeout", 10000));
-	settings.file_hash_collect_cachesize=static_cast<size_t>(settings_default->getValue("file_hash_collect_cachesize", 40960));
-	settings.update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 409600));
-	settings.global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
-	settings.filescache_type=settings_default->getValue("filescache_type", "none");
-	settings.filescache_size=watoi64(settings_default->getValue(L"filescache_size", L"68719476736")); //64GB
-	settings.suspend_index_limit=settings_default->getValue("suspend_index_limit", 100000);
-	settings.client_quota=settings_default->getValue("client_quota", "100%");
-	settings.end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
-	settings.internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "false")=="true");
+	settings->update_freq_incr=settings_default->getValue("update_freq_incr", 5*60*60);
+	settings->update_freq_full=settings_default->getValue("update_freq_full", 30*24*60*60);
+	settings->update_freq_image_incr=settings_default->getValue("update_freq_image_incr", 7*24*60*60);
+	settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", 60*24*60*60);
+	settings->max_file_incr=settings_default->getValue("max_file_incr", 100);
+	settings->min_file_incr=settings_default->getValue("min_file_incr", 40);
+	settings->max_file_full=settings_default->getValue("max_file_full", 10);
+	settings->min_file_full=settings_default->getValue("min_file_full", 2);
+	settings->min_image_incr=settings_default->getValue("min_image_incr", 4);
+	settings->max_image_incr=settings_default->getValue("max_image_incr", 30);
+	settings->min_image_full=settings_default->getValue("min_image_full", 2);
+	settings->max_image_full=settings_default->getValue("max_image_full", 5);
+	settings->no_images=(settings_default->getValue("no_images", "false")=="true");
+	settings->no_file_backups=(settings_default->getValue("no_file_backups", "false")=="true");
+	settings->overwrite=false;
+	settings->allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
+	settings->backupfolder=trim(settings_default->getValue(L"backupfolder", L"C:\\urbackup"));
+	settings->backupfolder_uncompr=trim(settings_default->getValue(L"backupfolder_uncompr", settings->backupfolder));
+	settings->client_overwrite=true;
+	settings->autoshutdown=(settings_default->getValue("autoshutdown", "false")=="true");;
+	settings->startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
+	settings->download_client=(settings_default->getValue("download_client", "true")=="true");
+	settings->autoupdate_clients=(settings_default->getValue("autoupdate_clients", "true")=="true");
+	settings->backup_window_incr_file=settings_default->getValue("backup_window_incr_file", "1-7/0-24");
+	settings->backup_window_full_file=settings_default->getValue("backup_window_full_file", "1-7/0-24");
+	settings->backup_window_incr_image=settings_default->getValue("backup_window_incr_image", "1-7/0-24");
+	settings->backup_window_full_image=settings_default->getValue("backup_window_full_image", "1-7/0-24");
+	settings->max_active_clients=settings_default->getValue("max_active_clients", 100);
+	settings->max_sim_backups=settings_default->getValue("max_sim_backups", 10);
+	settings->exclude_files=settings_default->getValue(L"exclude_files", L"");
+	settings->include_files=settings_default->getValue(L"include_files", L"");
+	settings->default_dirs=settings_default->getValue(L"default_dirs", L"");
+	settings->cleanup_window=settings_default->getValue("cleanup_window", "1-7/3-4");
+	settings->allow_config_paths=(settings_default->getValue("allow_config_paths", "true")=="true");
+	settings->allow_starting_full_file_backups=(settings_default->getValue("allow_starting_full_file_backups", "true")=="true");
+	settings->allow_starting_incr_file_backups=(settings_default->getValue("allow_starting_incr_file_backups", "true")=="true");
+	settings->allow_starting_full_image_backups=(settings_default->getValue("allow_starting_full_image_backups", "true")=="true");
+	settings->allow_starting_incr_image_backups=(settings_default->getValue("allow_starting_incr_image_backups", "true")=="true");
+	settings->allow_pause=(settings_default->getValue("allow_pause", "true")=="true");
+	settings->allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
+	settings->image_letters=settings_default->getValue("image_letters", "C");
+	settings->backup_database=(settings_default->getValue("backup_database", "true")=="true");
+	settings->internet_server_port=(unsigned short)(atoi(settings_default->getValue("internet_server_port", "55415").c_str()));
+	settings->client_set_settings=false;
+	settings->internet_server=settings_default->getValue("internet_server", "");
+	settings->internet_image_backups=(settings_default->getValue("internet_image_backups", "false")=="true");
+	settings->internet_full_file_backups=(settings_default->getValue("internet_full_file_backups", "false")=="true");
+	settings->internet_encrypt=(settings_default->getValue("internet_encrypt", "true")=="true");
+	settings->internet_compress=(settings_default->getValue("internet_compress", "true")=="true");
+	settings->internet_compression_level=atoi(settings_default->getValue("internet_compress", "6").c_str());
+	settings->internet_speed=atoi(settings_default->getValue("internet_speed", "-1").c_str());
+	settings->local_speed=atoi(settings_default->getValue("local_speed", "-1").c_str());
+	settings->global_internet_speed=atoi(settings_default->getValue("global_internet_speed", "-1").c_str());
+	settings->global_local_speed=atoi(settings_default->getValue("global_local_speed", "-1").c_str());
+	settings->internet_mode_enabled=(settings_default->getValue("internet_mode_enabled", "false")=="true");
+	settings->silent_update=(settings_default->getValue("silent_update", "false")=="true");
+	settings->use_tmpfiles=(settings_default->getValue("use_tmpfiles", "false")=="true");
+	settings->use_tmpfiles_images=(settings_default->getValue("use_tmpfiles_images", "false")=="true");
+	settings->tmpdir=settings_default->getValue(L"tmpdir",L"");
+	settings->local_full_file_transfer_mode=settings_default->getValue("local_full_file_transfer_mode", "hashed");
+	settings->internet_full_file_transfer_mode=settings_default->getValue("internet_full_file_transfer_mode", "hashed");
+	settings->local_incr_file_transfer_mode=settings_default->getValue("local_incr_file_transfer_mode", "hashed");
+	settings->internet_incr_file_transfer_mode=settings_default->getValue("internet_incr_file_transfer_mode", "blockhash");
+	settings->local_image_transfer_mode=settings_default->getValue("local_image_transfer_mode", "hashed");
+	settings->internet_image_transfer_mode=settings_default->getValue("internet_image_transfer_mode", "hashed");
+	settings->file_hash_collect_amount=static_cast<size_t>(settings_default->getValue("file_hash_collect_amount", 1000));
+	settings->file_hash_collect_timeout=static_cast<size_t>(settings_default->getValue("file_hash_collect_timeout", 10000));
+	settings->file_hash_collect_cachesize=static_cast<size_t>(settings_default->getValue("file_hash_collect_cachesize", 40960));
+	settings->update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 409600));
+	settings->global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
+	settings->filescache_type=settings_default->getValue("filescache_type", "none");
+	settings->filescache_size=watoi64(settings_default->getValue(L"filescache_size", L"68719476736")); //64GB
+	settings->suspend_index_limit=settings_default->getValue("suspend_index_limit", 100000);
+	settings->client_quota=settings_default->getValue("client_quota", "100%");
+	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
+	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
 {	
 	std::string stmp=settings_client->getValue("internet_authkey", generateRandomAuthKey());
 	if(!stmp.empty())
-		settings.internet_authkey=stmp;
+		settings->internet_authkey=stmp;
 
 	stmp=settings_client->getValue("client_overwrite", "");
 	if(!stmp.empty())
-		settings.client_overwrite=(stmp=="true");
+		settings->client_overwrite=(stmp=="true");
 
-	if(!settings.client_overwrite)
+	if(!settings->client_overwrite)
 		return;
 
 	int tmp=settings_client->getValue("update_freq_incr", -1);
 	if(tmp!=-1)
-		settings.update_freq_incr=tmp;
+		settings->update_freq_incr=tmp;
 	tmp=settings_client->getValue("update_freq_full", -1);
 	if(tmp!=-1)
-		settings.update_freq_full=tmp;
+		settings->update_freq_full=tmp;
 	tmp=settings_client->getValue("update_freq_image_incr", -1);
 	if(tmp!=-1)
-		settings.update_freq_image_incr=tmp;
+		settings->update_freq_image_incr=tmp;
 	tmp=settings_client->getValue("update_freq_image_full", -1);
 	if(tmp!=-1)
-		settings.update_freq_image_full=tmp;
+		settings->update_freq_image_full=tmp;
 	tmp=settings_client->getValue("max_file_incr", -1);
 	if(tmp!=-1)
-		settings.max_file_incr=tmp;
+		settings->max_file_incr=tmp;
 	tmp=settings_client->getValue("min_file_incr", -1);
 	if(tmp!=-1)
-		settings.min_file_incr=tmp;
+		settings->min_file_incr=tmp;
 	tmp=settings_client->getValue("max_file_full", -1);
 	if(tmp!=-1)
-		settings.max_file_full=tmp;
+		settings->max_file_full=tmp;
 	tmp=settings_client->getValue("min_file_full", -1);
 	if(tmp!=-1)
-		settings.min_file_full=tmp;
+		settings->min_file_full=tmp;
 	tmp=settings_client->getValue("min_image_incr", -1);
 	if(tmp!=-1)
-		settings.min_image_incr=tmp;
+		settings->min_image_incr=tmp;
 	tmp=settings_client->getValue("max_image_incr", -1);
 	if(tmp!=-1)
-		settings.max_image_incr=tmp;
+		settings->max_image_incr=tmp;
 	tmp=settings_client->getValue("min_image_full", -1);
 	if(tmp!=-1)
-		settings.min_image_full=tmp;
+		settings->min_image_full=tmp;
 	tmp=settings_client->getValue("max_image_full", -1);
 	if(tmp!=-1)
-		settings.max_image_full=tmp;
+		settings->max_image_full=tmp;
 	tmp=settings_client->getValue("startup_backup_delay", -1);
 	if(tmp!=-1)
-		settings.startup_backup_delay=tmp;
+		settings->startup_backup_delay=tmp;
 	stmp=settings_client->getValue("backup_window_incr_file", "");
 	if(!stmp.empty())
-		settings.backup_window_incr_file=stmp;
+		settings->backup_window_incr_file=stmp;
 	stmp=settings_client->getValue("backup_window_full_file", "");
 	if(!stmp.empty())
-		settings.backup_window_full_file=stmp;
+		settings->backup_window_full_file=stmp;
 	stmp=settings_client->getValue("backup_window_incr_image", "");
 	if(!stmp.empty())
-		settings.backup_window_full_image=stmp;
+		settings->backup_window_full_image=stmp;
 	stmp=settings_client->getValue("backup_window_full_image", "");
 	if(!stmp.empty())
-		settings.backup_window_incr_file=stmp;
+		settings->backup_window_incr_file=stmp;
 	std::wstring swtmp=settings_client->getValue(L"computername", L"");
 	if(!swtmp.empty())
-		settings.computername=swtmp;
+		settings->computername=swtmp;
 	if(settings_client->getValue(L"exclude_files", &swtmp))
-		settings.exclude_files=swtmp;
+		settings->exclude_files=swtmp;
 	if(settings_client->getValue(L"include_files", &swtmp))
-		settings.include_files=swtmp;
+		settings->include_files=swtmp;
 	swtmp=settings_client->getValue(L"default_dirs", L"");
 	if(!swtmp.empty())
-		settings.default_dirs=swtmp;
+		settings->default_dirs=swtmp;
 	stmp=settings_client->getValue("image_letters", "");
 	if(!stmp.empty())
-		settings.image_letters=stmp;
+		settings->image_letters=stmp;
 	stmp=settings_client->getValue("internet_speed", "");
 	if(!stmp.empty())
-		settings.internet_speed=atoi(stmp.c_str());
+		settings->internet_speed=atoi(stmp.c_str());
 	stmp=settings_client->getValue("local_speed", "");
 	if(!stmp.empty())
-		settings.local_speed=atoi(stmp.c_str());
+		settings->local_speed=atoi(stmp.c_str());
 	stmp=settings_client->getValue("client_quota", "");
 	if(!stmp.empty())
-		settings.client_quota=stmp;
+		settings->client_quota=stmp;
 
-	readStringClientSetting("local_full_file_transfer_mode", &settings.local_full_file_transfer_mode);
-	readStringClientSetting("internet_full_file_transfer_mode", &settings.internet_full_file_transfer_mode);
-	readStringClientSetting("internet_incr_file_transfer_mode", &settings.internet_incr_file_transfer_mode);
-	readStringClientSetting("local_image_transfer_mode", &settings.local_image_transfer_mode);
-	readStringClientSetting("internet_image_transfer_mode", &settings.internet_image_transfer_mode);
-	readSizeClientSetting("file_hash_collect_amount", &settings.file_hash_collect_amount);
-	readSizeClientSetting("file_hash_collect_timeout", &settings.file_hash_collect_timeout);
-	readSizeClientSetting("file_hash_collect_cachesize", &settings.file_hash_collect_cachesize);
+	readStringClientSetting("local_full_file_transfer_mode", &settings->local_full_file_transfer_mode);
+	readStringClientSetting("internet_full_file_transfer_mode", &settings->internet_full_file_transfer_mode);
+	readStringClientSetting("internet_incr_file_transfer_mode", &settings->internet_incr_file_transfer_mode);
+	readStringClientSetting("local_image_transfer_mode", &settings->local_image_transfer_mode);
+	readStringClientSetting("internet_image_transfer_mode", &settings->internet_image_transfer_mode);
+	readSizeClientSetting("file_hash_collect_amount", &settings->file_hash_collect_amount);
+	readSizeClientSetting("file_hash_collect_timeout", &settings->file_hash_collect_timeout);
+	readSizeClientSetting("file_hash_collect_cachesize", &settings->file_hash_collect_cachesize);
 
-	readBoolClientSetting("end_to_end_file_backup_verification", &settings.end_to_end_file_backup_verification);
-	readBoolClientSetting("client_set_settings", &settings.client_set_settings);
-	readBoolClientSetting("internet_mode_enabled", &settings.internet_mode_enabled);
-	readBoolClientSetting("internet_full_file_backups", &settings.internet_full_file_backups);
-	readBoolClientSetting("internet_image_backups", &settings.internet_image_backups);
-	readBoolClientSetting("internet_compress", &settings.internet_compress);
-	readBoolClientSetting("internet_encrypt", &settings.internet_encrypt);
-	readBoolClientSetting("silent_update", &settings.silent_update);
-	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings.internet_calculate_filehashes_on_client);
+	readBoolClientSetting("end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
+	readBoolClientSetting("client_set_settings", &settings->client_set_settings);
+	readBoolClientSetting("internet_mode_enabled", &settings->internet_mode_enabled);
+	readBoolClientSetting("internet_full_file_backups", &settings->internet_full_file_backups);
+	readBoolClientSetting("internet_image_backups", &settings->internet_image_backups);
+	readBoolClientSetting("internet_compress", &settings->internet_compress);
+	readBoolClientSetting("internet_encrypt", &settings->internet_encrypt);
+	readBoolClientSetting("silent_update", &settings->silent_update);
+	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);
 
-	readBoolClientSetting("overwrite", &settings.overwrite);
+	readBoolClientSetting("overwrite", &settings->overwrite);
 
-	if(!settings.overwrite)
+	if(!settings->overwrite)
 		return;
 
-	readBoolClientSetting("allow_config_paths", &settings.allow_config_paths);
-	readBoolClientSetting("allow_starting_full_file_backups", &settings.allow_starting_full_file_backups);
-	readBoolClientSetting("allow_starting_incr_file_backups", &settings.allow_starting_incr_file_backups);
-	readBoolClientSetting("allow_starting_full_image_backups", &settings.allow_starting_full_image_backups);
-	readBoolClientSetting("allow_starting_incr_image_backups", &settings.allow_starting_incr_image_backups);
-	readBoolClientSetting("allow_pause", &settings.allow_pause);
-	readBoolClientSetting("allow_log_view", &settings.allow_log_view);
-	readBoolClientSetting("allow_overwrite", &settings.allow_overwrite);
+	readBoolClientSetting("allow_config_paths", &settings->allow_config_paths);
+	readBoolClientSetting("allow_starting_full_file_backups", &settings->allow_starting_full_file_backups);
+	readBoolClientSetting("allow_starting_incr_file_backups", &settings->allow_starting_incr_file_backups);
+	readBoolClientSetting("allow_starting_full_image_backups", &settings->allow_starting_full_image_backups);
+	readBoolClientSetting("allow_starting_incr_image_backups", &settings->allow_starting_incr_image_backups);
+	readBoolClientSetting("allow_pause", &settings->allow_pause);
+	readBoolClientSetting("allow_log_view", &settings->allow_log_view);
+	readBoolClientSetting("allow_overwrite", &settings->allow_overwrite);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)

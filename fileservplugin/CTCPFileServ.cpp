@@ -170,7 +170,8 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 		delete udpthread;
 		udpthread=NULL;
 	}
-	if(udpthread==NULL)
+	if(udpthread==NULL
+		&& Server->getServerParameter("internet_test_mode")!="true")
 	{
 		udpthread=new CUDPThread(udpport,pServername);
 		if(!udpthread->hasError())

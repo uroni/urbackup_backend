@@ -1018,6 +1018,14 @@ void update26_27(void)
 	}
 }
 
+void update27_28()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE INDEX settings_db.settings_idx ON settings (key, clientid)");
+	db->Write("CREATE INDEX settings_db.si_users_idx ON si_users (name)");
+	db->Write("CREATE INDEX settings_db.si_permissions_idx ON si_permissions (clientid, t_domain)");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1039,7 +1047,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=27;
+	int max_v=28;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1167,6 +1175,10 @@ void upgrade(void)
 				break;
 			case 26:
 				update26_27();
+				++ver;
+				break;
+			case 27:
+				update27_28();
 				++ver;
 				break;
 			default:
