@@ -585,7 +585,8 @@ void CQuery::removeActiveQuery(const std::string& query_str)
 	std::vector<std::string>::iterator iter =
 		std::find(active_queries.begin(), active_queries.end(),
 				  query_str);
-	active_queries.erase(iter);
+	if(iter!=active_queries.end())
+		active_queries.erase(iter);
 #endif
 }
 
