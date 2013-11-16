@@ -185,6 +185,7 @@ bool CQuery::Execute(int timeoutms)
 			}
 			else if(!db->isInTransaction() && transaction_lock==false)
 			{
+				sqlite3_reset(ps);
 				if(db->LockForTransaction())
 				{
 					Server->Log("LockForTransaction in CQuery::Execute Stmt: ["+stmt_str+"]", LL_DEBUG);
@@ -194,6 +195,7 @@ bool CQuery::Execute(int timeoutms)
 			}
 			else
 			{
+				sqlite3_reset(ps);
 				--tries;
 				if(tries==-1)
 				{
