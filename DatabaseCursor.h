@@ -3,6 +3,7 @@
 
 #include "Interface/DatabaseCursor.h"
 #include "Interface/Object.h"
+#include "Query.h"
 
 class CQuery;
 
@@ -24,6 +25,10 @@ private:
 	int *timeoutms;
 	int lastErr;
 	bool _has_error;
+
+#ifdef DEBUG_QUERIES
+	ScopedAddActiveQuery *active_query;
+#endif
 };
 
 #endif //DATABASECURSOR_H_

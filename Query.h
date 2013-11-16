@@ -1,4 +1,8 @@
+#ifndef CQUERY_H_
+#define CQUERY_H_
+
 #include "Interface/Query.h"
+#include "Interface/Mutex.h"
 
 struct sqlite3_stmt;
 struct sqlite3;
@@ -6,11 +10,17 @@ struct sqlite3;
 class CDatabase;
 class DatabaseCursor;
 
+#define DEBUG_QUERIES
+
+class ScopedAddActiveQuery;
+
 class CQuery : public IQuery
 {
 public:
 	CQuery(const std::string &pStmt_str, sqlite3_stmt *prepared_statement, CDatabase *pDB);
 	~CQuery();
+
+	static void init_mutex(void);
 
 	virtual void Bind(const std::string &str);
 	virtual void Bind(const std::wstring &str);
@@ -47,9 +57,46 @@ public:
 private:
 	bool Execute(int timeoutms);
 
+	void addActiveQuery(const std::string& query_str);
+	void removeActiveQuery(const std::string& query_str);
+	void showActiveQueries(int loglevel);
+
 	sqlite3_stmt *ps;
 	std::string stmt_str;
 	CDatabase *db;
 	int curr_idx;
 	DatabaseCursor *cursor;
+
+#ifdef DEBUG_QUERIES
+	static IMutex* active_mutex;
+	static std::vector<std::string> active_queries;
+#endif
+
+	friend class ScopedAddActiveQuery;
 };
+
+class CQuery;
+
+class ScopedAddActiveQuery
+{
+public:
+	ScopedAddActiveQuery(CQuery* query)
+		: query(query)
+	{
+#ifdef DEBUG_QUERIES
+		query->addActiveQuery(query->stmt_str);
+#endif
+	}
+
+	~ScopedAddActiveQuery()
+	{
+#ifdef DEBUG_QUERIES
+		query->removeActiveQuery(query->stmt_str);
+#endif
+	}
+
+private:
+	CQuery* query;
+};
+
+#endif //CQUERY_H_

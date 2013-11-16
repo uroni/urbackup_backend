@@ -35,6 +35,13 @@
 #include "Database.h"
 #include "DatabaseCursor.h"
 #include <memory.h>
+#include <algorithm>
+#include "stringtools.h"
+
+#ifdef DEBUG_QUERIES
+IMutex* CQuery::active_mutex;
+std::vector<std::string> CQuery::active_queries;
+#endif
 
 CQuery::CQuery(const std::string &pStmt_str, sqlite3_stmt *prepared_statement, CDatabase *pDB)
 	: stmt_str(pStmt_str), cursor(NULL)
@@ -56,6 +63,13 @@ CQuery::~CQuery()
 	}
 
 	delete cursor;
+}
+
+void CQuery::init_mutex(void)
+{
+#ifdef DEBUG_QUERIES
+	active_mutex=Server->createMutex();
+#endif
 }
 
 void CQuery::Bind(const std::string &str)
@@ -178,10 +192,12 @@ bool CQuery::Execute(int timeoutms)
 				if(tries==-1)
 				{
 				  Server->Log("SQLITE: Long running query  Stmt: ["+stmt_str+"]", LL_ERROR);
+				  showActiveQueries(LL_ERROR);
 				}
 				else if(tries>=0)
 				{
 				    Server->Log("SQLITE_BUSY in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_INFO);
+					showActiveQueries(LL_INFO);
 				}
 			}
 		}
@@ -194,6 +210,7 @@ bool CQuery::Execute(int timeoutms)
 			if(!db->WaitForUnlock())
 			{
 				Server->Log("DEADLOCK in CQuery::Execute  Stmt: ["+stmt_str+"]", LL_ERROR);
+				showActiveQueries(LL_ERROR);
 				Server->wait(1000);
 				if(timeoutms>=0)
 				{
@@ -282,6 +299,8 @@ db_nresults CQuery::ReadN(int *timeoutms)
 	bool transaction_lock=false;
 	int tries=60; //10min
 
+	ScopedAddActiveQuery active_query(this);
+
 	setupStepping(timeoutms);
 	
 	db_nsingle_result res;
@@ -308,6 +327,8 @@ db_results CQuery::Read(int *timeoutms)
 
 	bool transaction_lock=false;
 	int tries=60; //10min
+
+	ScopedAddActiveQuery active_query(this);
 
 	setupStepping(timeoutms);
 
@@ -362,8 +383,13 @@ int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transa
 				if(tries==-1)
 				{
 				  Server->Log("SQLITE: Long runnning query  Stmt: ["+stmt_str+"]", LL_ERROR);
+				  showActiveQueries(LL_ERROR);
 				}
-				Server->Log("SQLITE_BUSY in CQuery::Read  Stmt: ["+stmt_str+"]", LL_INFO);
+				else
+				{
+					Server->Log("SQLITE_BUSY in CQuery::Read  Stmt: ["+stmt_str+"]", LL_INFO);
+					showActiveQueries(LL_INFO);
+				}
 			}
 		}
 		else if( err==SQLITE_ROW )
@@ -476,8 +502,13 @@ int CQuery::stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& tran
 				if(tries==-1)
 				{
 				  Server->Log("SQLITE: Long running query  Stmt: ["+stmt_str+"]", LL_ERROR);
+				  showActiveQueries(LL_ERROR);
 				}
-				Server->Log("SQLITE_BUSY in CQuery::ReadN  Stmt: ["+stmt_str+"]", LL_INFO);
+				else
+				{
+					Server->Log("SQLITE_BUSY in CQuery::ReadN  Stmt: ["+stmt_str+"]", LL_INFO);
+					showActiveQueries(LL_INFO);
+				}
 			}
 		}
 		else if( err==SQLITE_ROW )
@@ -533,6 +564,40 @@ std::string CQuery::getStatement(void)
 std::string CQuery::getErrMsg(void)
 {
 	return std::string(sqlite3_errmsg(db->getDatabase()));
+}
+
+void CQuery::addActiveQuery(const std::string& query_str)
+{
+#ifdef DEBUG_QUERIES
+	IScopedLock lock(active_mutex);
+	if(std::find(active_queries.begin(), active_queries.end(),
+		query_str)==active_queries.end())
+	{
+		active_queries.push_back(query_str);
+	}
+#endif
+}
+
+void CQuery::removeActiveQuery(const std::string& query_str)
+{
+#ifdef DEBUG_QUERIES
+	IScopedLock lock(active_mutex);
+	std::vector<std::string>::iterator iter =
+		std::find(active_queries.begin(), active_queries.end(),
+				  query_str);
+	active_queries.erase(iter);
+#endif
+}
+
+void CQuery::showActiveQueries(int loglevel)
+{
+#ifdef DEBUG_QUERIES
+	IScopedLock lock(active_mutex);
+	for(size_t i=0;i<active_queries.size();++i)
+	{
+		Server->Log("Active query("+nconvert(i)+"): "+active_queries[i], loglevel);
+	}
+#endif
 }
 
 #endif
