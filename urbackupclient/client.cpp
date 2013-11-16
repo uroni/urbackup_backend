@@ -674,11 +674,13 @@ void IndexThread::indexDirs(void)
 			last_transaction_start=Server->getTimeMS();
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true);
 
+			db->BeginTransaction();
 			cd->copyFromTmpFiles();
 			cd->copyFromTmpFileHashes();
 			cd->deleteTmpFileHashes();
 			commitModifyFilesBuffer();
 			commitModifyHashBuffer();
+			db->EndTransaction();
 
 			if(stop_index)
 			{
@@ -709,11 +711,13 @@ void IndexThread::indexDirs(void)
 		}
 	}
 
+	db->BeginTransaction();
 	cd->copyFromTmpFiles();
 	cd->copyFromTmpFileHashes();
 	cd->deleteTmpFileHashes();
 	commitModifyFilesBuffer();
 	commitModifyHashBuffer();
+	db->EndTransaction();
 
 #ifdef _WIN32
 	if(!has_stale_shadowcopy)
@@ -830,8 +834,10 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 							cd->addFileHash(key_path, files[i].size, files[i].last_modified, hash);
 							if(Server->getTimeMS()-last_tmp_update_time>10*60*1000) //10min
 							{
+								db->BeginTransaction();
 								cd->copyFromTmpFileHashes();
 								cd->deleteTmpFileHashes();
+								db->EndTransaction();
 								last_tmp_update_time=Server->getTimeMS();
 							}
 						}

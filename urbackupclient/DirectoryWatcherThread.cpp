@@ -319,23 +319,27 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstrin
 
 			if(!fn.empty())
 			{
+				db->BeginTransaction();
 				q_add_file->Bind(dir_id);
 				q_add_file->Bind(fn);
 				q_add_file->Bind(dir_id);
 				q_add_file->Bind(fn);
 				q_add_file->Write();
 				q_add_file->Reset();
+				db->EndTransaction();
 			}
 		}
 		else if(!fn.empty())
 		{
 			_i64 dir_id=watoi64(res[0][L"id"]);
+			db->BeginTransaction();
 			q_add_file->Bind(dir_id);
 			q_add_file->Bind(fn);
 			q_add_file->Bind(dir_id);
 			q_add_file->Bind(fn);
 			q_add_file->Write();
 			q_add_file->Reset();
+			db->EndTransaction();
 		}			
 
 		SLastEntries e;
@@ -348,10 +352,12 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstrin
 
 void DirectoryWatcherThread::OnDirRm(const std::wstring &dir)
 {
+	db->BeginTransaction();
 	q_add_del_dir->Bind(dir);
 	q_add_del_dir->Bind(dir);
 	q_add_del_dir->Write();
 	q_add_del_dir->Reset();
+	db->EndTransaction();
 }
 
 void DirectoryWatcherThread::stop(void)

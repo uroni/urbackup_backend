@@ -832,6 +832,8 @@ bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::wstring &des
 
 void BackupServerHash::copyFilesFromTmp(void)
 {
+	db->DetachDBs();
+	db->BeginTransaction();
 	if(filecache==NULL)
 	{
 		q_copy_files->Write();
@@ -842,6 +844,9 @@ void BackupServerHash::copyFilesFromTmp(void)
 		q_copy_files_to_new->Write();
 		q_copy_files_to_new->Reset();
 	}
+	db->EndTransaction();
+	db->AttachDBs();
+
 	q_delete_all_files_tmp->Write();
 	q_delete_all_files_tmp->Reset();
 

@@ -567,7 +567,9 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	delete []pData;
 	db->destroyQuery(q_add_frn_tmp);
 	q_add_frn_tmp=NULL;
+	db->BeginTransaction();
 	db->Write("INSERT INTO map_frn (name, pid, frn, rid) SELECT name, pid, frn, rid FROM map_frn_tmp");
+	db->EndTransaction();
 	db->Write("DROP TABLE map_frn_tmp");
 
 	update(true, sj->vol_str);
