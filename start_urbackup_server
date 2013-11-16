@@ -144,7 +144,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	if [ "x$RUN_IN_GDB" = "x1" ]
 	then
 		S_DAEMON=""
-	else
+	fi
 	
 	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
 else
