@@ -572,11 +572,7 @@ void CQuery::addActiveQuery(const std::string& query_str)
 {
 #ifdef DEBUG_QUERIES
 	IScopedLock lock(active_mutex);
-	if(std::find(active_queries.begin(), active_queries.end(),
-		query_str)==active_queries.end())
-	{
-		active_queries.push_back(query_str);
-	}
+	active_queries.push_back(query_str);
 #endif
 }
 
