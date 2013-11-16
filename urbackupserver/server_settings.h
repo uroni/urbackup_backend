@@ -131,7 +131,15 @@ public:
 	std::vector<STimeSpan> getCleanupWindow(void);
 	std::vector<std::string> getBackupVolumes(void);
 
+	int getUpdateFreqImageIncr();
+	int getUpdateFreqFileIncr();
+	int getUpdateFreqImageFull();
+	int getUpdateFreqFileFull();
+
 private:
+	void operator=(const ServerSettings& other){};
+	ServerSettings(const ServerSettings& other){};
+
 	std::vector<STimeSpan> getWindow(std::string window);
 	float parseTimeDet(std::string t);
 	STimeSpan parseTime(std::string t);
@@ -143,8 +151,10 @@ private:
 	void readIntClientSetting(const std::string &name, int *output);
 	void readSizeClientSetting(const std::string &name, size_t *output);
 	void createSettingsReaders();
+	void updateInternal(bool* was_updated);
 
 	SSettings* settings;
+	SSettings* local_settings;
 
 	ISettingsReader *settings_default;
 	ISettingsReader *settings_client;

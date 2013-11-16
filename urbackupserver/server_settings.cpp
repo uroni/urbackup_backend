@@ -47,7 +47,7 @@ void ServerSettings::destroy_mutex(void)
 }
 
 ServerSettings::ServerSettings(IDatabase *db, int pClientid)
-	: clientid(pClientid), settings_default(NULL),
+	: local_settings(NULL), clientid(pClientid), settings_default(NULL),
 		settings_client(NULL), db(db)
 {
 	IScopedLock lock(g_mutex);
@@ -128,6 +128,8 @@ ServerSettings::~ServerSettings(void)
 #endif
 		}
 	}
+
+	delete local_settings;
 }
 
 void ServerSettings::updateAll(void)
@@ -166,6 +168,12 @@ void ServerSettings::update(void)
 	{
 		readSettingsClient();
 	}
+
+	if(local_settings!=NULL)
+	{
+		local_settings=new SSettings();
+		*local_settings=*settings;
+	}
 }
 
 void ServerSettings::doUpdate(void)
@@ -173,7 +181,7 @@ void ServerSettings::doUpdate(void)
 	do_update=true;
 }
 
-SSettings *ServerSettings::getSettings(bool *was_updated)
+void ServerSettings::updateInternal(bool* was_updated)
 {
 	if(do_update)
 	{
@@ -188,7 +196,19 @@ SSettings *ServerSettings::getSettings(bool *was_updated)
 		if(was_updated!=NULL)
 			*was_updated=false;
 	}
-	return settings;
+}
+
+SSettings *ServerSettings::getSettings(bool *was_updated)
+{
+	updateInternal(was_updated);
+
+	if(local_settings==NULL)
+	{
+		IScopedLock lock(g_mutex);
+		*local_settings=*settings;
+	}
+
+	return local_settings;
 }
 
 void ServerSettings::readSettingsDefault(void)
@@ -625,6 +645,34 @@ std::string ServerSettings::generateRandomBinaryKey(void)
 	key.resize(32);
 	Server->secureRandomFill((char*)key.data(), 32);
 	return key;
+}
+
+int ServerSettings::getUpdateFreqImageIncr()
+{
+	updateInternal(NULL);
+	IScopedLock lock(g_mutex);
+	return settings->update_freq_image_incr;
+}
+
+int ServerSettings::getUpdateFreqFileIncr()
+{
+	updateInternal(NULL);
+	IScopedLock lock(g_mutex);
+	return settings->update_freq_incr;
+}
+
+int ServerSettings::getUpdateFreqImageFull()
+{
+	updateInternal(NULL);
+	IScopedLock lock(g_mutex);
+	return settings->update_freq_image_full;
+}
+
+int ServerSettings::getUpdateFreqFileFull()
+{
+	updateInternal(NULL);
+	IScopedLock lock(g_mutex);
+	return settings->update_freq_full;
 }
 
 #endif //CLIENT_ONLY

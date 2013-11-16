@@ -336,10 +336,14 @@ ACTION_IMPL(status)
 
 			ServerSettings settings(db, clientid);
 
-			int time_filebackup=settings.getSettings()->update_freq_incr;
-			if( time_filebackup<0 && settings.getSettings()->update_freq_full<time_filebackup && settings.getSettings()->update_freq_full>=0 )
+			int time_filebackup=settings.getUpdateFreqFileIncr();
+			if( time_filebackup<0)
 			{
-				time_filebackup=settings.getSettings()->update_freq_full;
+				int time_filebackup_full=settings.getUpdateFreqFileFull();
+				if(time_filebackup_full<time_filebackup && time_filebackup_full>=0 )
+				{
+					time_filebackup=time_filebackup_full;
+				}
 			}
 			
 			IQuery *q=db->Prepare("SELECT id FROM clients WHERE lastbackup IS NOT NULL AND datetime('now','-"+nconvert((int)(time_filebackup*backup_ok_mod_file+0.5))+" seconds')<lastbackup AND id=?");
@@ -348,10 +352,14 @@ ACTION_IMPL(status)
 			q->Reset();
 			stat.set("file_ok", !res_file_ok.empty());
 
-			int time_imagebackup=settings.getSettings()->update_freq_image_incr;
-			if( time_imagebackup<0 && settings.getSettings()->update_freq_image_full<time_imagebackup && settings.getSettings()->update_freq_image_full>=0 )
+			int time_imagebackup=settings.getUpdateFreqImageIncr();
+			if( time_imagebackup<0)
 			{
-				time_imagebackup=settings.getSettings()->update_freq_image_full;
+				int time_imagebackup_full=settings.getUpdateFreqImageFull();
+				if(time_imagebackup_full<time_imagebackup && time_imagebackup_full>=0 )
+				{
+					time_imagebackup=time_imagebackup_full;
+				}
 			}
 
 			q=db->Prepare("SELECT id FROM clients WHERE lastbackup_image IS NOT NULL AND datetime('now','-"+nconvert((int)(time_imagebackup*backup_ok_mod_image+0.5))+" seconds')<lastbackup_image AND id=?");
