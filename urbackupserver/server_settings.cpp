@@ -205,7 +205,7 @@ SSettings *ServerSettings::getSettings(bool *was_updated)
 	if(local_settings==NULL)
 	{
 		IScopedLock lock(g_mutex);
-		*local_settings=*settings;
+		local_settings=new SSettings(*settings);
 	}
 
 	return local_settings;
