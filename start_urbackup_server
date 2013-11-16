@@ -1,11 +1,11 @@
 #!/bin/sh
 
 NAME="urbackup_srv"
-PREFIX=/usr
+PREFIX=/usr/local
 DAEMON=$PREFIX/sbin/urbackup_srv
 if ! test -x $DAEMON
 then
-    PREFIX=/usr/local
+    PREFIX=/usr
     DAEMON=$PREFIX/sbin/urbackup_srv
 fi
 
@@ -84,6 +84,7 @@ print_version()
 	exit 0
 }
 
+RUN_IN_GDB=0
 
 if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	FASTCGI_PORT=55413
@@ -96,7 +97,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	RESET_PW=""
 	CLEANUP=""
 	BROADCAST_INTERFACES=""
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces: -- "$@"`
+	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -116,6 +117,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--cleanup_database) CLEANUP="--app cleanup_database"; shift ;;
 			--repair_database) CLEANUP="--app repair_database"; shift ;;
 			--broadcast_interfaces) BROADCAST_INTERFACES="--broadcast_interfaces \"$2\""; shift 2 ;;
+			--run_in_gdb) RUN_IN_GDB=1; shift ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac
@@ -139,6 +141,11 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		S_DAEMON="--no-server"
 	fi
 	
+	if [ "x$RUN_IN_GDB" = "x1" ]
+	then
+		S_DAEMON=""
+	else
+	
 	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
 else
 	DAEMON_ARGS="$*"
@@ -158,4 +165,9 @@ export MPLCONFIGDIR=$DAEMON_DIR/urbackup
 DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
 
 cd $DAEMON_DIR
-exec $DAEMON $S_DAEMON $DAEMON_ARGS
+if [ "x$RUN_IN_GDB" = "x1" ]
+then
+	gdb --args $DAEMON $S_DAEMON $DAEMON_ARGS
+else
+	exec $DAEMON $S_DAEMON $DAEMON_ARGS
+fi
