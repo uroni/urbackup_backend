@@ -412,6 +412,10 @@ bool ClientConnector::Run(void)
 					writeUpdateFile(hashdatafile, "UrBackupUpdate.sig");
 					writeUpdateFile(hashdatafile, "UrBackupUpdate_untested.exe");
 
+					std::wstring hashdatafile_fn=hashdatafile->getFilenameW();
+					Server->destroy(hashdatafile);
+					Server->deleteFile(hashdatafile_fn);
+
 					if(crypto_fak!=NULL)
 					{
 						IFile *updatefile=Server->openFile("UrBackupUpdate_untested.exe");
