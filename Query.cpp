@@ -172,6 +172,10 @@ bool CQuery::Execute(int timeoutms)
 	int err=sqlite3_step(ps);
 	while( err==SQLITE_IOERR_BLOCKED || err==SQLITE_BUSY || err==SQLITE_ROW || err==SQLITE_LOCKED )
 	{
+		if(err==SQLITE_IOERR_BLOCKED)
+		{
+			Server->Log("SQlite is blocked!", LL_ERROR);
+		}
 		if(err==SQLITE_BUSY || err==SQLITE_IOERR_BLOCKED)
 		{
 			if(timeoutms>=0)
