@@ -194,8 +194,17 @@ int main(int argc, char *argv[])
 	else if(cmd=="test")
 	{
 		std::string clientdir=backupfolder+os_file_sepn()+"testA54hj5luZtlorr494";
-		if(os_create_dir(clientdir))
-		{			
+		
+		bool create_dir_rc=os_create_dir(clientdir);
+		if(!create_dir_rc)
+		{	
+			remove_subvolume(clientdir+os_file_sepn()+"A");
+			remove_subvolume(clientdir+os_file_sepn()+"B");
+			os_remove_dir(clientdir);
+		}
+		create_dir_rc = create_dir_rc || os_create_dir(clientdir);
+		if(create_dir_rc)
+		{	
 			if(!create_subvolume(clientdir+os_file_sepn()+"A") )
 			{
 				std::cout << "Creating test subvolume failed" << std::endl;
