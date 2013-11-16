@@ -116,7 +116,10 @@ void InternetServiceConnector::cleanup_pipes(bool remove_connection)
 void InternetServiceConnector::cleanup(void)
 {
 	if(connection_done_cond!=NULL)
+	{
 		Server->destroy(connection_done_cond);
+		connection_done_cond=NULL;
+	}
 }
 
 void InternetServiceConnector::do_stop_connecting(void)
@@ -408,7 +411,10 @@ void InternetServiceConnector::ReceivePackets(void)
 						}
 						
 						IScopedLock lock(local_mutex);
-						connection_done_cond->notify_all();
+						if(connection_done_cond!=NULL)
+						{
+							connection_done_cond->notify_all();
+						}
 						connection_done_cond=NULL;
 					}
 				}break;
