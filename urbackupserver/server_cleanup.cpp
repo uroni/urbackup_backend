@@ -675,9 +675,7 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 		_i64 stat_id;
 		if(update_stat)
 		{
-			db->BeginTransaction();
 			cleanupdao->addToImageStats(size_correction, backupid);
-			db->EndTransaction();
 			stat_id=db->getLastInsertID();
 		}
 

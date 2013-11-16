@@ -174,13 +174,11 @@ ACTION_IMPL(status)
 			}
 			else
 			{
-				db->BeginTransaction();
 				IQuery *q=db->Prepare("INSERT INTO settings_db.extra_clients (hostname) SELECT ? AS hostname WHERE NOT EXISTS (SELECT hostname FROM settings_db.extra_clients WHERE hostname=?)");
 				q->Bind(hostname);
 				q->Bind(hostname);
 				q->Write();
 				q->Reset();
-				db->EndTransaction();
 			}
 		}
 		if(GET.find(L"clientname")!=GET.end() && helper.getRights("add_client")=="all" )

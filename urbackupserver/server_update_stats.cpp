@@ -122,11 +122,9 @@ void ServerUpdateStats::operator()(void)
 		q_create_hist->Write();
 		q_create_hist->Reset();
 
-		db->BeginTransaction();
 		q_save_client_hist->Bind(db->getLastInsertID());
 		q_save_client_hist->Write();
 		q_save_client_hist->Reset();
-		db->EndTransaction();
 	}
 
 	update_images();
