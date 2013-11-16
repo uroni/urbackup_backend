@@ -161,6 +161,8 @@ bool CQuery::Write(int timeoutms)
 bool CQuery::Execute(int timeoutms)
 {
 	//Server->Log("Write: "+stmt_str);
+	ScopedAddActiveQuery active_query(this);
+
 	bool transaction_lock=false;
 	int tries=60; //10min
 	if(timeoutms>=0)
