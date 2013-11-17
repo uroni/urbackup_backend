@@ -113,7 +113,7 @@ bool is_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return true;
 #else
-	int rc=system((btrfs_cmd+" subvolume list \""+subvolume_folder+"\"").c_str());
+	int rc=system((btrfs_cmd+" subvolume list \""+subvolume_folder+"\" > /dev/null").c_str());
 	return rc==0;
 #endif
 }	
