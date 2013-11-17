@@ -27,7 +27,9 @@ bool DatabaseCursor::next(db_single_result &res)
 	res.clear();
 	do
 	{
-		lastErr=query->step(res, timeoutms, tries, transaction_lock);
+		bool reset=false;
+		lastErr=query->step(res, timeoutms, tries, transaction_lock, reset);
+		//TODO handle reset (should not happen in WAL mode)
 		if(lastErr==SQLITE_ROW)
 		{
 			return true;

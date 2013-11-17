@@ -44,9 +44,9 @@ public:
 	void setupStepping(int *timeoutms);
 	void shutdownStepping(int err, int *timeoutms, bool& transaction_lock);
 
-	int step(db_single_result& res, int *timeoutms, int& tries, bool& transaction_lock);
+	int step(db_single_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset);
 
-	int stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& transaction_lock);
+	int stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset);
 
 	bool resultOkay(int rc);
 

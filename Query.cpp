@@ -320,7 +320,12 @@ db_nresults CQuery::ReadN(int *timeoutms)
 	db_nsingle_result res;
 	do
 	{
-		err=stepN(res, timeoutms, tries, transaction_lock);
+		bool reset=false;
+		err=stepN(res, timeoutms, tries, transaction_lock, reset);
+		if(reset)
+		{
+			rows.clear();
+		}
 		if(err==SQLITE_ROW)
 		{
 			rows.push_back(res);
@@ -349,7 +354,12 @@ db_results CQuery::Read(int *timeoutms)
 	db_single_result res;
 	do
 	{
-		err=step(res, timeoutms, tries, transaction_lock);
+		bool reset=false;
+		err=step(res, timeoutms, tries, transaction_lock, reset);
+		if(reset)
+		{
+			rows.clear();
+		}
 		if(err==SQLITE_ROW)
 		{
 			rows.push_back(res);
@@ -370,7 +380,7 @@ bool CQuery::resultOkay(int rc)
 			rc==SQLITE_IOERR_BLOCKED;
 }
 
-int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transaction_lock)
+int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset)
 {
 	int err=sqlite3_step(ps);
 	if( resultOkay(err) )
@@ -383,6 +393,8 @@ int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transa
 			}
 			else if(!db->isInTransaction() && transaction_lock==false)
 			{
+				sqlite3_reset(ps);
+				reset=true;
 				if(db->LockForTransaction())
 				{
 					Server->Log("LockForTransaction in CQuery::Read Stmt: ["+stmt_str+"]", LL_DEBUG);
@@ -391,6 +403,8 @@ int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transa
 			}
 			else
 			{
+				sqlite3_reset(ps);
+				reset=true;
 				--tries;
 				if(tries==-1)
 				{
@@ -487,7 +501,7 @@ int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transa
 	return err;
 }
 
-int CQuery::stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& transaction_lock)
+int CQuery::stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& transaction_lock, bool& reset)
 {
 	int err=sqlite3_step(ps);
 	if(resultOkay(err))
@@ -500,6 +514,8 @@ int CQuery::stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& tran
 			}
 			else if(!db->isInTransaction() && transaction_lock==false)
 			{
+				sqlite3_reset(ps);
+				reset=true;
 				if(db->LockForTransaction())
 				{
 					Server->Log("LockForTransaction in CQuery::ReadN Stmt: ["+stmt_str+"]", LL_DEBUG);
@@ -508,6 +524,8 @@ int CQuery::stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& tran
 			}
 			else
 			{
+				sqlite3_reset(ps);
+				reset=true;
 				--tries;
 				if(tries==-1)
 				{
