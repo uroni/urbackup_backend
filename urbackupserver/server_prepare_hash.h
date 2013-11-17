@@ -18,7 +18,7 @@ public:
 class BackupServerPrepareHash : public IThread, public IChunkPatcherCallback
 {
 public:
-	BackupServerPrepareHash(IPipe *pPipe, IPipe *pExitpipe, IPipe *pOutput, IPipe *pExitpipe_hash, int pClientid);
+	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid);
 	~BackupServerPrepareHash(void);
 
 	void operator()(void);
@@ -38,9 +38,7 @@ private:
 	std::string hash_with_patch(IFile *f, IFile *patch);
 
 	IPipe *pipe;
-	IPipe *exitpipe;
 	IPipe *output;
-	IPipe *exitpipe_hash;
 
 	int clientid;
 

@@ -44,6 +44,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <memory>
+#include <assert.h>
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
 #endif
@@ -75,7 +76,8 @@ size_t BackupServerGet::tmpfile_num=0;
 BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName,
 	     bool internet_connection, bool use_snapshots, bool use_reflink)
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
-	  use_snapshots(use_snapshots), use_reflink(use_reflink), local_hash(NULL)
+	  use_snapshots(use_snapshots), use_reflink(use_reflink), local_hash(NULL), bsh(NULL),
+	  bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare(NULL), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -84,10 +86,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	clientname=pName;
 	clientid=0;
 
-	hashpipe=Server->createMemoryPipe();
-	hashpipe_prepare=Server->createMemoryPipe();
-	exitpipe=Server->createMemoryPipe();
-	exitpipe_prepare=Server->createMemoryPipe();
+	hashpipe=NULL;
+	hashpipe_prepare=NULL;
 
 	do_full_backup_now=false;
 	do_incr_backup_now=false;
@@ -109,6 +109,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	settings_client=NULL;
 	SSettings tmp = {};
 	curr_intervals = tmp;
+	
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -209,7 +210,6 @@ void BackupServerGet::operator ()(void)
 					pipe->Write("ok");
 					Server->Log(L"server_get Thread for client \""+clientname+L"\" finished and the identity was not recognized", LL_INFO);
 
-					cleanup_pipes();
 					delete this;
 					return;
 				}
@@ -239,7 +239,6 @@ void BackupServerGet::operator ()(void)
 
 		pipe->Write("ok");
 		Server->Log(L"server_get Thread for client "+clientname+L" finished, restore thread");
-		cleanup_pipes();
 		delete this;
 		return;
 	}
@@ -259,7 +258,6 @@ void BackupServerGet::operator ()(void)
 		ServerStatus::setTooManyClients(clientname, true);
 		ServerLogger::reset(clientid);
 		delete server_settings;
-		cleanup_pipes();
 		delete this;
 		return;
 	}
@@ -274,7 +272,6 @@ void BackupServerGet::operator ()(void)
 	{
 		pipe->Write("ok");
 		delete server_settings;
-		cleanup_pipes();
 		delete this;
 		return;
 	}
@@ -288,7 +285,6 @@ void BackupServerGet::operator ()(void)
 		Server->Log(L"Could not get client capabilities", LL_ERROR);
 		pipe->Write("ok");
 		delete server_settings;
-		cleanup_pipes();
 		delete this;
 		return;
 	}
@@ -315,16 +311,12 @@ void BackupServerGet::operator ()(void)
 		}
 	}
 
-	bsh=new BackupServerHash(hashpipe, exitpipe, clientid, use_snapshots, use_reflink, use_tmpfiles);
-	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, exitpipe_prepare, hashpipe, exitpipe, clientid);
-	Server->getThreadPool()->execute(bsh);
-	Server->getThreadPool()->execute(bsh_prepare);
 	ServerChannelThread channel_thread(this, clientid, internet_connection);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 	if(internet_connection && server_settings->getSettings()->internet_calculate_filehashes_on_client)
 	{
-		local_hash=new BackupServerHash(NULL, NULL, clientid, use_snapshots, use_reflink, use_tmpfiles);
+		local_hash=new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles);
 		local_hash->setupDatabase();
 	}
 
@@ -486,7 +478,11 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
+					createHashThreads(use_reflink);
+
 					r_success=doFullBackup(with_hashes, disk_error, log_backup);
+
+					destroyHashThreads();
 
 					if(do_full_backup_now)
 					{
@@ -521,6 +517,8 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
+					createHashThreads(use_reflink);
+
 					bool intra_file_diffs;
 					if(internet_connection)
 					{
@@ -532,6 +530,8 @@ void BackupServerGet::operator ()(void)
 					}
 
 					r_success=doIncrBackup(with_hashes, intra_file_diffs, use_snapshots, disk_error, log_backup);
+
+					destroyHashThreads();
 
 					if(do_incr_backup_now)
 					{
@@ -814,18 +814,6 @@ void BackupServerGet::operator ()(void)
 		Server->Log("Stopping channel...", LL_DEBUG);
 		channel_thread.doExit();
 		Server->getThreadPool()->waitFor(channel_thread_id);
-	}
-
-	if(do_exit_now)
-	{
-		hashpipe_prepare->Write("exitnow");
-		std::string msg;
-		exitpipe_prepare->Read(&msg);
-		Server->destroy(exitpipe_prepare);
-	}
-	else
-	{
-		hashpipe_prepare->Write("exit");
 	}
 	
 	
@@ -2589,7 +2577,7 @@ void BackupServerGet::waitForFileThreads(void)
 		hashpipe->Write("flush");
 		Server->wait(1000);
 		while(bsh->isWorking()) Server->wait(1000);
-	}
+	}	
 }
 
 bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error)
@@ -3964,14 +3952,6 @@ IPipe * BackupServerGet::new_fileclient_connection(void)
 	return rp;
 }
 
-void BackupServerGet::cleanup_pipes(void)
-{
-	Server->destroy(hashpipe);
-	Server->destroy(hashpipe_prepare);
-	Server->destroy(exitpipe);
-	Server->destroy(exitpipe_prepare);
-}
-
 std::wstring BackupServerGet::shortenFilename(const std::wstring& fn)
 {
 	std::wstring ret;
@@ -4165,4 +4145,30 @@ bool BackupServerGet::createDirectoryForClient(void)
 		return false;
 	}
 	return true;
+}
+
+void BackupServerGet::createHashThreads(bool use_reflink)
+{
+	assert(bsh==NULL);
+	assert(bsh_prepare==NULL);
+
+	hashpipe=Server->createMemoryPipe();
+	hashpipe_prepare=Server->createMemoryPipe();
+
+	bsh=new BackupServerHash(hashpipe, clientid, use_snapshots, use_reflink, use_tmpfiles);
+	bsh_prepare=new BackupServerPrepareHash(hashpipe_prepare, hashpipe, clientid);
+	bsh_ticket = Server->getThreadPool()->execute(bsh);
+	bsh_prepare_ticket = Server->getThreadPool()->execute(bsh_prepare);
+}
+
+void BackupServerGet::destroyHashThreads()
+{
+	hashpipe_prepare->Write("exit");
+	Server->getThreadPool()->waitFor(bsh_ticket);
+	Server->getThreadPool()->waitFor(bsh_prepare_ticket);
+
+	bsh_ticket=ILLEGAL_THREADPOOL_TICKET;
+	bsh_prepare_ticket=ILLEGAL_THREADPOOL_TICKET;
+	hashpipe=NULL;
+	hashpipe_prepare=NULL;
 }

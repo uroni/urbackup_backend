@@ -49,12 +49,11 @@ void destroy_mutex1(void)
 	Server->destroy(delete_mutex);
 }
 
-BackupServerHash::BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles)
+BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles)
 	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), copy_limit(1000)
 {
 	pipe=pPipe;
 	clientid=pClientid;
-	exitpipe=pExitpipe;
 	link_logcnt=0;
 	tmp_count=0;
 	space_logcnt=0;
@@ -186,19 +185,9 @@ void BackupServerHash::operator()(void)
 		}
 		
 		working=true;
-		if(data=="exitnow")
-		{
-			exitpipe->Write("ok");
-			deinitDatabase();
-			Server->Log("server_hash Thread finished - exitnow ");
-			db->AttachDBs();
-			delete this;
-			return;
-		}
-		else if(data=="exit")
+		if(data=="exit")
 		{
 			deinitDatabase();
-			Server->destroy(exitpipe);
 			Server->Log("server_hash Thread finished - normal");
 			db->AttachDBs();
 			delete this;

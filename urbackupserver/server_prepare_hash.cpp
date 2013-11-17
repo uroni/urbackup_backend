@@ -28,12 +28,10 @@
 #include "../md5.h"
 #include <memory.h>
 
-BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pExitpipe, IPipe *pOutput, IPipe *pExitpipe_hash, int pClientid)
+BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid)
 {
 	pipe=pPipe;
-	exitpipe=pExitpipe;
 	output=pOutput;
-	exitpipe_hash=pExitpipe_hash;
 	clientid=pClientid;
 	working=false;
 	chunk_patcher.setCallback(this);
@@ -52,22 +50,9 @@ void BackupServerPrepareHash::operator()(void)
 		working=false;
 		std::string data;
 		size_t rc=pipe->Read(&data);
-		if(data=="exitnow")
+		if(data=="exit")
 		{
-			output->Write("exitnow");
-			std::string t;
-			exitpipe_hash->Read(&t);
-			Server->destroy(exitpipe_hash);
-			exitpipe->Write("ok");
-			Server->Log("server_prepare_hash Thread finished");
-			delete this;
-			return;
-		}
-		else if(data=="exit")
-		{
-			output->Write("exit");
-			Server->destroy(exitpipe);
-			Server->Log("server_prepare_hash Thread finished");
+			Server->Log("server_prepare_hash Thread finished (exit)");
 			delete this;
 			return;
 		}

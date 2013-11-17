@@ -145,8 +145,6 @@ private:
 
 	IPipeThrottler *getThrottler(size_t speed_bps);
 
-	void cleanup_pipes(void);
-
 	void update_sql_intervals(bool update_sql);
 
 	bool verify_file_backup(IFile *fileentries);
@@ -156,6 +154,9 @@ private:
 	void logVssLogdata(void);
 
 	bool createDirectoryForClient(void);
+
+	void createHashThreads(bool use_reflink);
+	void destroyHashThreads();
 
 	SSettings curr_intervals;
 
@@ -219,8 +220,6 @@ private:
 
 	IPipe *hashpipe;
 	IPipe *hashpipe_prepare;
-	IPipe *exitpipe;
-	IPipe *exitpipe_prepare;
 
 	ServerPingThread *pingthread;
 	THREADPOOL_TICKET pingthread_ticket;
@@ -259,6 +258,8 @@ private:
 	IPipeThrottler *client_throttler;
 
 	BackupServerHash *bsh;
+	THREADPOOL_TICKET bsh_ticket;
 	BackupServerPrepareHash *bsh_prepare;
+	THREADPOOL_TICKET bsh_prepare_ticket;
 	BackupServerHash *local_hash;
 };

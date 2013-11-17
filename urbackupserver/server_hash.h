@@ -24,7 +24,7 @@ struct STmpFile
 class BackupServerHash : public IThread, public INotEnoughSpaceCallback, public IChunkPatcherCallback
 {
 public:
-	BackupServerHash(IPipe *pPipe, IPipe *pExitpipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles);
+	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles);
 	~BackupServerHash(void);
 
 	void operator()(void);
@@ -86,7 +86,6 @@ private:
 	IQuery *q_count_files_tmp;
 
 	IPipe *pipe;
-	IPipe *exitpipe;
 
 	IDatabase *db;
 
