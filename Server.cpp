@@ -86,6 +86,7 @@
 #endif
 
 const size_t SEND_BLOCKSIZE=8192;
+const size_t MAX_THREAD_ID=std::string::npos;
 
 extern bool run;
 
@@ -698,15 +699,14 @@ THREAD_ID CServer::getThreadID(void)
 	}
 
 	++curr_thread_id;
-	if( curr_thread_id>10000 )
+	if( curr_thread_id>=MAX_THREAD_ID )
 		curr_thread_id=0;
 
 	threads.insert( std::pair<boost::thread::id, THREAD_ID>( ct, curr_thread_id) );
 
 	return curr_thread_id;
 #else
-#ifdef _WIN32
-#else
+#ifndef _WIN32
 	IScopedLock lock(thread_mutex);
 	
 	pthread_t ct=pthread_self();
@@ -718,7 +718,7 @@ THREAD_ID CServer::getThreadID(void)
 	}
 
 	++curr_thread_id;
-	if( curr_thread_id>100000 )
+	if( curr_thread_id>=MAX_THREAD_ID )
 		curr_thread_id=0;
 
 	threads.insert( std::pair<pthread_t, THREAD_ID>( ct, curr_thread_id) );
