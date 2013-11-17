@@ -171,8 +171,7 @@ void ServerSettings::update(void)
 
 	if(local_settings!=NULL)
 	{
-		local_settings=new SSettings();
-		*local_settings=*settings;
+		local_settings=new SSettings(*settings);
 	}
 }
 

@@ -132,7 +132,7 @@ void InternetServiceConnector::do_stop_connecting(void)
 
 bool InternetServiceConnector::Run(void)
 {
-	if(stop_connecting)
+	if(stop_connecting && state!=ISS_USED)
 	{
 		do_stop_connecting();
 		return false;

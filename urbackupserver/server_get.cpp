@@ -107,6 +107,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 
 	settings=NULL;
 	settings_client=NULL;
+	SSettings tmp = {};
+	curr_intervals = tmp;
 }
 
 BackupServerGet::~BackupServerGet(void)
