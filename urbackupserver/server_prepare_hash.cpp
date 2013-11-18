@@ -52,6 +52,7 @@ void BackupServerPrepareHash::operator()(void)
 		size_t rc=pipe->Read(&data);
 		if(data=="exit")
 		{
+			output->Write("exit");
 			Server->Log("server_prepare_hash Thread finished (exit)");
 			delete this;
 			return;

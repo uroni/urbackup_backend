@@ -2574,8 +2574,7 @@ void BackupServerGet::waitForFileThreads(void)
 		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
 	}
 	{
-		hashpipe->Write("flush");
-		Server->wait(1000);
+		Server->wait(10);
 		while(bsh->isWorking()) Server->wait(1000);
 	}	
 }
@@ -4171,4 +4170,6 @@ void BackupServerGet::destroyHashThreads()
 	bsh_prepare_ticket=ILLEGAL_THREADPOOL_TICKET;
 	hashpipe=NULL;
 	hashpipe_prepare=NULL;
+	bsh=NULL;
+	bsh_prepare=NULL;
 }
