@@ -103,6 +103,7 @@ public:
 	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite")=0;
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)=0;
 	virtual void destroyAllDatabases(void)=0;
+	virtual void destroyDatabases(THREAD_ID tid)=0;
 	virtual ISessionMgr *getSessionMgr(void)=0;
 	virtual IPlugin* getPlugin(THREAD_ID tid, PLUGIN_ID pIdentifier)=0;
 

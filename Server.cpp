@@ -150,6 +150,22 @@ void CServer::destroyAllDatabases(void)
 	}
 }
 
+void CServer::destroyDatabases(THREAD_ID tid)
+{
+	IScopedLock lock(db_mutex);
+
+	for(std::map<DATABASE_ID, SDatabase >::iterator i=databases.begin();
+		i!=databases.end();++i)
+	{
+		std::map<THREAD_ID, IDatabaseInt*>::iterator iter=i->second.tmap.find(tid);
+		if(iter!=i->second.tmap.end())
+		{
+			delete iter->second;
+			i->second.tmap.erase(iter);
+		}
+	}
+}
+
 CServer::~CServer()
 {
 	if(getServerParameter("leak_check")!="true") //minimal cleanup

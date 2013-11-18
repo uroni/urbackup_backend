@@ -68,17 +68,6 @@ BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapsho
 
 BackupServerHash::~BackupServerHash(void)
 {
-	db->destroyQuery(q_find_file_hash);
-	db->destroyQuery(q_del_file);
-	db->destroyQuery(q_add_file);
-	db->destroyQuery(q_delete_files_tmp);
-	db->destroyQuery(q_del_file_tmp);
-	db->destroyQuery(q_copy_files);
-	db->destroyQuery(q_copy_files_to_new);
-	db->destroyQuery(q_delete_all_files_tmp);
-	db->destroyQuery(q_count_files_tmp);
-	db->destroyQuery(q_move_del_file);
-
 	if(pipe!=NULL)
 	{
 		Server->destroy(pipe);
@@ -125,6 +114,17 @@ void BackupServerHash::deinitDatabase(void)
 	copyFilesFromTmp();
 	db->Write("DROP TABLE files_tmp");
 	db->freeMemory();
+
+	db->destroyQuery(q_find_file_hash);
+	db->destroyQuery(q_del_file);
+	db->destroyQuery(q_add_file);
+	db->destroyQuery(q_delete_files_tmp);
+	db->destroyQuery(q_del_file_tmp);
+	db->destroyQuery(q_copy_files);
+	db->destroyQuery(q_copy_files_to_new);
+	db->destroyQuery(q_delete_all_files_tmp);
+	db->destroyQuery(q_count_files_tmp);
+	db->destroyQuery(q_move_del_file);
 }
 
 void BackupServerHash::operator()(void)
@@ -190,6 +190,7 @@ void BackupServerHash::operator()(void)
 			deinitDatabase();
 			Server->Log("server_hash Thread finished - normal");
 			db->AttachDBs();
+			Server->destroyDatabases(Server->getThreadID());
 			delete this;
 			return;
 		}

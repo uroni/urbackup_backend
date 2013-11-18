@@ -68,6 +68,7 @@ void ServerRunningUpdater::operator()(void)
 	}
 
 	db->destroyQuery(q);
+	db->freeMemory();
 	delete this;
 }
 

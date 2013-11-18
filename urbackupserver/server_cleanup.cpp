@@ -95,6 +95,8 @@ void ServerCleanupThread::operator()(void)
 			break;
 		}
 		
+		delete cleanupdao;
+		Server->destroyDatabases(Server->getThreadID());
 		delete this;
 		return;
 	}
