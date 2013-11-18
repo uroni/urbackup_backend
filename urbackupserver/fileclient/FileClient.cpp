@@ -162,39 +162,61 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 			Server->Log("Getting interface ips failed", LL_ERROR);
 		}
 #else
-		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
-	
+		char hostname[MAX_PATH];
+        struct    hostent* h;
 
-		int optval=1;
-		int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
-		if(rc==SOCKET_ERROR)
+        _i32 rc=gethostname(hostname, MAX_PATH);
+        if(rc==SOCKET_ERROR)
 		{
-			Server->Log("Failed setting SO_REUSEADDR in FileClient", LL_ERROR);
+			Server->Log("Error getting Hostname", LL_ERROR);
+            return;
 		}
+		std::vector<_u32> addresses;
 
-		sockaddr_in source_addr;
-		memset(&source_addr, 0, sizeof(source_addr));
-		source_addr.sin_family = AF_INET;
-		source_addr.sin_addr.s_addr = INADDR_ANY;
-		source_addr.sin_port = htons(UDP_SOURCE_PORT);
+        if(NULL != (h = gethostbyname(hostname)))
+        {
+			if(h->h_addrtype!=AF_INET)
+			{
+				Server->Log("Hostname hostent is not AF_INET (ipv4)", LL_ERROR);
+			}
+			else
+			{
+				for(_u32 x = 0; (h->h_addr_list[x]); x++)
+				{
+					SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);	
 
-		rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
-		if(rc<0)
-		{
-			Server->Log("Binding UDP socket failed", LL_ERROR);
-		}
+					int optval=1;
+					int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+					if(rc==SOCKET_ERROR)
+					{
+						Server->Log("Failed setting SO_REUSEADDR in FileClient", LL_ERROR);
+					}
 
-		setSockP(udpsock);
+					sockaddr_in source_addr;
+					memset(&source_addr, 0, sizeof(source_addr));
+					source_addr.sin_family = AF_INET;
+					source_addr.sin_addr.s_addr = *((_u32*)h->h_addr_list[x]);
+					source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
-		BOOL val=TRUE;
-		rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
-		if(rc<0)
-		{
-			Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
-		}
+					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+					if(rc<0)
+					{
+						Server->Log("Binding UDP socket failed", LL_ERROR);
+					}
 
-		udpsocks.push_back(udpsock);
+					setSockP(udpsock);
 
+					BOOL val=TRUE;
+					rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
+					if(rc<0)
+					{
+						Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
+					}
+
+					udpsocks.push_back(udpsock);
+				}
+			}				
+        }
 #endif
 	}
 
