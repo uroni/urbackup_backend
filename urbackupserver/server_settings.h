@@ -103,6 +103,7 @@ struct SSettingsCacheItem
 {
 	SSettings* settings;
 	size_t refcount;
+	bool needs_update;
 };
 
 class ServerSettings
@@ -153,7 +154,7 @@ private:
 	void createSettingsReaders();
 	void updateInternal(bool* was_updated);
 
-	SSettings* settings;
+	SSettingsCacheItem* settings_cache;
 	SSettings* local_settings;
 
 	ISettingsReader *settings_default;
@@ -164,7 +165,7 @@ private:
 
 	int clientid;
 
-	static std::vector<ServerSettings*> g_settings;
+	static std::map<ServerSettings*, bool> g_settings;
 	static std::map<int, SSettingsCacheItem> g_settings_cache;
 	static IMutex *g_mutex;
 };

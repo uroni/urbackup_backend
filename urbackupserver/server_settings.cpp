@@ -26,7 +26,7 @@
 #include "server_settings.h"
 #include "../Interface/Server.h"
 
-std::vector<ServerSettings*> ServerSettings::g_settings;
+std::map<ServerSettings*, bool> ServerSettings::g_settings;
 IMutex *ServerSettings::g_mutex=NULL;
 std::map<int, SSettingsCacheItem> ServerSettings::g_settings_cache;
 
@@ -52,25 +52,25 @@ ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 {
 	IScopedLock lock(g_mutex);
 		
-	g_settings.push_back(this);
+	g_settings[this]=true;
 
 	std::map<int, SSettingsCacheItem>::iterator iter=g_settings_cache.find(clientid);
 	if(iter!=g_settings_cache.end())
 	{
 		++iter->second.refcount;
-		settings=iter->second.settings;
-		do_update=false;
+		settings_cache=&iter->second;
+		do_update=settings_cache->needs_update;
 		return;
 	}
 	else
 	{
-		settings=new SSettings();
-		SSettingsCacheItem cache_item = { settings, 1 };
-		g_settings_cache.insert(std::make_pair(clientid, cache_item));
-	}
-
-	update();
-	do_update=false;
+		SSettings* settings=new SSettings();
+		SSettingsCacheItem cache_item = { settings, 1 , true};
+		std::map<int, SSettingsCacheItem>::iterator iter = g_settings_cache.insert(std::make_pair(clientid, cache_item)).first;
+		settings_cache=&iter->second;
+		update();
+		do_update=false;
+	}	
 }
 
 void ServerSettings::createSettingsReaders()
@@ -102,31 +102,22 @@ ServerSettings::~ServerSettings(void)
 
 	{
 		IScopedLock lock(g_mutex);
-		for(size_t i=0;i<g_settings.size();++i)
-		{
-			if(g_settings[i]==this)
-			{
-				g_settings.erase(g_settings.begin()+i);
-				break;
-			}
-		}
 
-		std::map<int, SSettingsCacheItem>::iterator iter=g_settings_cache.find(clientid);
-		if(iter==g_settings_cache.end())
-		{
-			assert(false);
-		}
-		else
-		{
-			--iter->second.refcount;
+		std::map<ServerSettings*, bool>::iterator it=g_settings.find(this);
+		assert(it!=g_settings.end());
+		g_settings.erase(it);
+
+		
+		--settings_cache->refcount;
 #ifdef CLEAR_SETTINGS_CACHE
-			if(iter->second.refcount==0)
-			{
-				delete iter->second.settings;
-				g_settings_cache.erase(iter);
-			}
-#endif
+		if(settings_cache->refcount==0)
+		{
+			std::map<int, SSettingsCacheItem>::iterator iter=g_settings_cache.find(clientid);
+			assert(iter!=g_settings_cache.end());
+			delete iter->second.settings;
+			g_settings_cache.erase(iter);
 		}
+#endif
 	}
 
 	delete local_settings;
@@ -147,13 +138,15 @@ void ServerSettings::updateAll(void)
 		}
 		else
 		{
+			it->second.needs_update=true;
 			++it;
 		}
 	}
 
-	for(size_t i=0;i<g_settings.size();++i)
+	for(std::map<ServerSettings*, bool>::iterator it=g_settings.begin();
+		it!=g_settings.end(); ++it)
 	{
-		g_settings[i]->doUpdate();
+		it->first->doUpdate();
 	}
 }
 
@@ -163,15 +156,20 @@ void ServerSettings::update(void)
 
 	IScopedLock lock(g_mutex);
 
-	readSettingsDefault();
-	if(settings_client!=NULL)
+	if(settings_cache->needs_update)
 	{
-		readSettingsClient();
+		readSettingsDefault();
+		if(settings_client!=NULL)
+		{
+			readSettingsClient();
+		}
+		settings_cache->needs_update=false;
 	}
 
 	if(local_settings!=NULL)
 	{
-		local_settings=new SSettings(*settings);
+		delete local_settings;
+		local_settings=new SSettings(*settings_cache->settings);
 	}
 }
 
@@ -204,7 +202,7 @@ SSettings *ServerSettings::getSettings(bool *was_updated)
 	if(local_settings==NULL)
 	{
 		IScopedLock lock(g_mutex);
-		local_settings=new SSettings(*settings);
+		local_settings=new SSettings(*settings_cache->settings);
 	}
 
 	return local_settings;
@@ -212,6 +210,7 @@ SSettings *ServerSettings::getSettings(bool *was_updated)
 
 void ServerSettings::readSettingsDefault(void)
 {
+	SSettings* settings=settings_cache->settings;
 	settings->update_freq_incr=settings_default->getValue("update_freq_incr", 5*60*60);
 	settings->update_freq_full=settings_default->getValue("update_freq_full", 30*24*60*60);
 	settings->update_freq_image_incr=settings_default->getValue("update_freq_image_incr", 7*24*60*60);
@@ -292,6 +291,7 @@ void ServerSettings::readSettingsDefault(void)
 
 void ServerSettings::readSettingsClient(void)
 {	
+	SSettings* settings=settings_cache->settings;
 	std::string stmp=settings_client->getValue("internet_authkey", generateRandomAuthKey());
 	if(!stmp.empty())
 		settings->internet_authkey=stmp;
@@ -650,28 +650,29 @@ int ServerSettings::getUpdateFreqImageIncr()
 {
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
-	return settings->update_freq_image_incr;
+	return settings_cache->settings->update_freq_image_incr;
 }
 
 int ServerSettings::getUpdateFreqFileIncr()
 {
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
-	return settings->update_freq_incr;
+	return settings_cache->settings->update_freq_incr;
 }
 
 int ServerSettings::getUpdateFreqImageFull()
 {
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
-	return settings->update_freq_image_full;
+	return settings_cache->settings->update_freq_image_full;
 }
 
 int ServerSettings::getUpdateFreqFileFull()
 {
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
-	return settings->update_freq_full;
+	return settings_cache->settings->update_freq_full;
 }
 
 #endif //CLIENT_ONLY
+
