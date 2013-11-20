@@ -60,6 +60,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	comm_pipe=cs;
 	is_pipe=NULL;
 	comp_pipe=NULL;
+	connect_start=false;
 	do_connect=false;
 	stop_connecting=false;
 	is_connected=false;
@@ -103,7 +104,6 @@ void InternetServiceConnector::cleanup_pipes(bool remove_connection)
 
 	if(remove_connection)
 	{
-		IScopedLock lock(mutex);
 		std::vector<InternetServiceConnector*>& spare_connections = client_data[clientname].spare_connections;
 		std::vector<InternetServiceConnector*>::iterator it=std::find(spare_connections.begin(), spare_connections.end(), this);
 		if(it!=spare_connections.end())
@@ -113,26 +113,20 @@ void InternetServiceConnector::cleanup_pipes(bool remove_connection)
 	}
 }
 
-void InternetServiceConnector::cleanup(void)
-{
-	if(connection_done_cond!=NULL)
-	{
-		Server->destroy(connection_done_cond);
-		connection_done_cond=NULL;
-	}
-}
-
 void InternetServiceConnector::do_stop_connecting(void)
 {
 	IScopedLock lock(local_mutex);
 	cleanup_pipes(false);
-	connection_stop_cond->notify_all();
-	local_mutex=NULL;
+	if(connection_stop_cond!=NULL)
+	{
+		connection_stop_cond->notify_all();
+		local_mutex=NULL;
+	}
 }
 
 bool InternetServiceConnector::Run(void)
 {
-	if(stop_connecting && state!=ISS_USED)
+	if(stop_connecting)
 	{
 		do_stop_connecting();
 		return false;
@@ -149,19 +143,7 @@ bool InternetServiceConnector::Run(void)
 	
 	if( has_timeout )
 	{
-		IScopedLock lock(local_mutex);
-		if(has_timeout)
-		{
-			if(free_connection)
-			{
-				cleanup_pipes(true);
-				return false;
-			}
-			else
-			{
-				return true;
-			}
-		}
+		return false;
 	}
 
 	if(state==ISS_QUIT)
@@ -173,11 +155,14 @@ bool InternetServiceConnector::Run(void)
 	if(do_connect && state==ISS_AUTHED )
 	{
 		CWData data;
-		data.addChar(ID_ISC_CONNECT);
-		data.addChar(target_service);
+		{
+			IScopedLock lock(local_mutex);
+			data.addChar(ID_ISC_CONNECT);
+			data.addChar(target_service);
+			state=ISS_CONNECTING;
+		}
 		tcpstack.Send(comm_pipe, data);
-		Server->Log("Connecting to target service...", LL_DEBUG);
-		state=ISS_CONNECTING;
+		Server->Log("Connecting to target service...", LL_DEBUG);		
 		starttime=Server->getTimeMS();
 	}
 
@@ -194,11 +179,12 @@ bool InternetServiceConnector::Run(void)
 		if(Server->getTimeMS()-lastpingtime>ping_timeout)
 		{
 			Server->Log("Ping timeout in InternetServiceConnector::Run", LL_DEBUG);
-			IScopedLock lock(local_mutex);
-			if(!do_connect)
+			IScopedLock lock(mutex);
+			IScopedLock lock2(local_mutex);
+			if(!connect_start)
 			{
-				has_timeout=true;
-				free_connection=true;
+				cleanup_pipes(true);
+				return false;
 			}
 		}
 	}
@@ -220,11 +206,12 @@ void InternetServiceConnector::ReceivePackets(void)
 	{
 		if( state!=ISS_CONNECTING && state!=ISS_USED )
 		{
-			IScopedLock lock(local_mutex);
-			if(!do_connect)
+			IScopedLock lock(mutex);
+			IScopedLock lock2(local_mutex);
+			if(!connect_start)
 			{
 				has_timeout=true;
-				free_connection=true;
+				cleanup_pipes(true);
 			}
 		}
 		return;
@@ -401,9 +388,6 @@ void InternetServiceConnector::ReceivePackets(void)
 					if(id==ID_ISC_CONNECT_OK)
 					{
 						state=ISS_USED;
-
-						is_connected=true;
-
 						
 						{
 							IScopedLock lock(mutex);
@@ -411,10 +395,8 @@ void InternetServiceConnector::ReceivePackets(void)
 						}
 						
 						IScopedLock lock(local_mutex);
-						if(connection_done_cond!=NULL)
-						{
-							connection_done_cond->notify_all();
-						}
+						is_connected=true;
+						connection_done_cond->notify_all();
 						connection_done_cond=NULL;
 					}
 				}break;
@@ -454,76 +436,61 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 		}
 		else
 		{
-			InternetServiceConnector *isc=NULL;
-			do{
-				isc=iter->second.spare_connections.front();
-				iter->second.spare_connections.pop_back();
-				if(isc->hasTimeout())
-				{
-					isc->freeConnection();
-					isc=NULL;
-				}
-			}
-			while(isc==NULL && !iter->second.spare_connections.empty());
+			InternetServiceConnector *isc=iter->second.spare_connections.front();
+			iter->second.spare_connections.pop_back();
 
-			if(isc==NULL)
-				continue;
-				
+			isc->connectStart();
+
 			lock.relock(NULL);
 
 			ICondition *cond_ok=Server->createCondition();
 			ICondition *cond_stop=Server->createCondition();
-			if(isc->Connect(cond_ok, cond_stop, service))
-			{
-				unsigned int rtime=Server->getTimeMS()-starttime;
-				if((int)rtime<timeoutms)
-					rtime=timeoutms-rtime;
-				else
-					rtime=0;
+			isc->Connect(cond_ok, cond_stop, service);
 
-				if(rtime<100) rtime=100;
-				
-				isc->localWait(cond_ok, rtime);
-				
-				if(!isc->isConnected())
-				{
-					isc->stopConnectingAndWait();
-					Server->destroy(cond_stop);
-					Server->destroy(cond_ok);
-					Server->Log("Connecting on internet connection failed. Service="+nconvert((int)service), LL_DEBUG);
-				}
-				else
-				{
-					Server->destroy(cond_stop);
-					Server->destroy(cond_ok);
-					IPipe *ret=isc->getISPipe();
-					isc->freeConnection();
-					CompressedPipe *comp_pipe=dynamic_cast<CompressedPipe*>(ret);
-					if(comp_pipe!=NULL)
-					{
-						InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(comp_pipe->getRealPipe());
-						if(isc_pipe!=NULL)
-						{
-							isc_pipe->destroyBackendPipeOnDelete(true);
-						}
-						comp_pipe->destroyBackendPipeOnDelete(true);
-					}
-					else
-					{
-						InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(ret);
-						if(isc_pipe!=NULL)
-						{
-							isc_pipe->destroyBackendPipeOnDelete(true);
-						}
-					}
-					Server->Log("Established internet connection. Service="+nconvert((int)service), LL_DEBUG);
-					
-					return ret;
-				}
+			unsigned int rtime=Server->getTimeMS()-starttime;
+			if((int)rtime<timeoutms)
+				rtime=timeoutms-rtime;
+			else
+				rtime=0;
+
+			if(rtime<100) rtime=100;
+							
+			if(!isc->waitForConnection(cond_ok, rtime))
+			{
+				isc->stopConnectingAndWait();
+				Server->destroy(cond_stop);
+				Server->destroy(cond_ok);
+				Server->Log("Connecting on internet connection failed. Service="+nconvert((int)service), LL_DEBUG);
 			}
 			else
 			{
-				Server->Log("Error: Could not start connection process. Service="+nconvert((int)service), LL_ERROR);
+				Server->destroy(cond_stop);
+				Server->destroy(cond_ok);
+
+				IPipe *ret=isc->getISPipe();
+				isc->freeConnection(); //deletes ics
+
+				CompressedPipe *comp_pipe=dynamic_cast<CompressedPipe*>(ret);
+				if(comp_pipe!=NULL)
+				{
+					InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(comp_pipe->getRealPipe());
+					if(isc_pipe!=NULL)
+					{
+						isc_pipe->destroyBackendPipeOnDelete(true);
+					}
+					comp_pipe->destroyBackendPipeOnDelete(true);
+				}
+				else
+				{
+					InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(ret);
+					if(isc_pipe!=NULL)
+					{
+						isc_pipe->destroyBackendPipeOnDelete(true);
+					}
+				}
+				Server->Log("Established internet connection. Service="+nconvert((int)service), LL_DEBUG);
+					
+				return ret;
 			}
 		}
 	}while(timeoutms==-1 || Server->getTimeMS()-starttime<(unsigned int)timeoutms);
@@ -557,19 +524,18 @@ bool InternetServiceConnector::closeSocket(void)
 		return true;
 }
 
-bool InternetServiceConnector::Connect(ICondition *n_cond, ICondition *stop_cond, char service)
+void InternetServiceConnector::connectStart()
+{
+	connect_start=true;
+}
+
+void InternetServiceConnector::Connect(ICondition *n_cond, ICondition *stop_cond, char service)
 {
 	IScopedLock lock(local_mutex);
-	if(do_connect==false)
-	{
-		connection_done_cond=n_cond;
-		connection_stop_cond=stop_cond;
-		target_service=service;
-		do_connect=true;
-		has_timeout=false;
-		return true;
-	}
-	return false;
+	connection_done_cond=n_cond;
+	connection_stop_cond=stop_cond;
+	target_service=service;
+	do_connect=true;
 }
 
 IPipe *InternetServiceConnector::getISPipe(void)
@@ -592,11 +558,6 @@ void InternetServiceConnector::stopConnectingAndWait(void)
 		connection_stop_cond->wait(&lock);
 	}
 	Server->destroy(local_mutex_tmp);
-}
-
-bool InternetServiceConnector::isConnected(void)
-{
-	return is_connected;
 }
 
 void InternetServiceConnector::freeConnection(void)
@@ -652,15 +613,11 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 	return ret;
 }
 
-bool InternetServiceConnector::hasTimeout(void)
-{
-	return has_timeout;
-}
-
-void InternetServiceConnector::localWait(ICondition *cond, int timems)
+bool InternetServiceConnector::waitForConnection(ICondition *cond, int timems)
 {
 	IScopedLock lock(local_mutex);
 	cond->wait(&lock, timems);
+	return is_connected;
 }
 
 std::string InternetServiceConnector::generateOnetimeToken(const std::string &clientname)

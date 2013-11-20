@@ -433,12 +433,10 @@ void BackupServerGet::operator ()(void)
 			if(internet_connection)
 			{
 				image_hashed_transfer= (server_settings->getSettings()->internet_image_transfer_mode=="hashed");
-				ServerLogger::Log(clientid, "Image transfer hashed="+nconvert(image_hashed_transfer), LL_DEBUG);
 			}
 			else
 			{
 				image_hashed_transfer= (server_settings->getSettings()->local_image_transfer_mode=="hashed");
-				ServerLogger::Log(clientid, "Image transfer hashed="+nconvert(image_hashed_transfer), LL_DEBUG);
 			}
 
 			ServerStatus::stopBackup(clientname, false);
@@ -806,7 +804,10 @@ void BackupServerGet::operator ()(void)
 			internet_connection=(msg[7+sizeof(sockaddr_in)]==0)?false:true;
 		}
 
-		Server->Log("msg="+msg, LL_DEBUG);
+		if(!msg.empty())
+		{
+			Server->Log("msg="+msg, LL_DEBUG);
+		}
 	}
 
 	//destroy channel
@@ -2851,10 +2852,6 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 		size_t rc=cc->Read(&ret, timeout);
 		if(rc==0)
 		{
-			if(logerr)
-				ServerLogger::Log(clientid, errmsg, max_loglevel);
-			else
-				Server->Log(errmsg, max_loglevel);
 			break;
 		}
 		tcpstack.AddData((char*)ret.c_str(), ret.size());
@@ -2871,7 +2868,6 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 				if(logerr)
 					ServerLogger::Log(clientid, errmsg, max_loglevel);
 				else
-					Server->Log(errmsg, max_loglevel);
 
 				if(retok_err!=NULL)
 					*retok_err=true;

@@ -68,23 +68,21 @@ public:
 	static IPipe *getConnection(const std::string &clientname, char service, int timeoutms=-1);
 	static std::vector<std::string> getOnlineClients(void);
 
-	bool Connect(ICondition *n_cond, ICondition *stop_cond, char service);
+	void connectStart();
+	void Connect(ICondition *n_cond, ICondition *stop_cond, char service);
 	void stopConnecting(void);
 	void stopConnectingAndWait(void);
-	bool isConnected(void);
 	void freeConnection(void);
-	bool hasTimeout(void);
 
 	virtual bool wantReceive(void);
 	virtual bool closeSocket(void);
 
 	IPipe *getISPipe(void);
 	
-	void localWait(ICondition *cond, int timems);
+	bool waitForConnection(ICondition *cond, int timems);
 private:
 
 	void cleanup_pipes(bool remove_connection);
-	void cleanup(void);
 	void do_stop_connecting(void);
 
 	std::string  generateOnetimeToken(const std::string &clientname);
@@ -104,22 +102,23 @@ private:
 	CompressedPipe *comp_pipe;
 	IPipe *comm_pipe;
 	IMutex *local_mutex;
-	ICondition * volatile connection_done_cond;
-	ICondition * volatile connection_stop_cond;
+	ICondition* connection_done_cond;
+	ICondition* connection_stop_cond;
 
 	CTCPStack tcpstack;
 
 	unsigned int starttime;
 	unsigned int lastpingtime;
 	bool pinging;
-	volatile bool has_timeout;
+	bool has_timeout;
 
+	bool connect_start;
 	volatile bool do_connect;
 	volatile bool stop_connecting;
-	volatile bool is_connected;
+	bool is_connected;
 	volatile bool free_connection;
 
-	volatile char target_service;
+	char target_service;
 
 	std::string clientname;
 	std::string challenge;

@@ -333,7 +333,7 @@ void BackupServer::startClients(FileClient &fc)
 			{
 				if(it->second.offlinecount==max_offline)
 				{
-					Server->Log(L"Client exitet: "+it->first);
+					Server->Log(L"Client exited: "+it->first);
 					it->second.pipe->Write("exit");
 					++it->second.offlinecount;
 					ServerStatus::setOnline(it->first, false);
