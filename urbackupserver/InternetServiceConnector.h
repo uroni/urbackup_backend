@@ -81,6 +81,9 @@ public:
 	
 	bool waitForConnection(ICondition *cond, int timems);
 private:
+	void operator=(const InternetServiceConnector& other){}
+	void operator()(const InternetServiceConnector& other){}
+	InternetServiceConnector(const InternetServiceConnector& other){}
 
 	void cleanup_pipes(bool remove_connection);
 	void do_stop_connecting(void);

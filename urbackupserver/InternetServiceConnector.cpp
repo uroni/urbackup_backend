@@ -14,6 +14,7 @@
 
 #include <memory.h>
 #include <algorithm>
+#include <assert.h>
 
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
@@ -47,10 +48,7 @@ InternetServiceConnector::InternetServiceConnector(void)
 
 InternetServiceConnector::~InternetServiceConnector(void)
 {
-	if(local_mutex!=NULL)
-	{
-		Server->destroy(local_mutex);
-	}
+	Server->destroy(local_mutex);
 }
 
 void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
@@ -117,11 +115,8 @@ void InternetServiceConnector::do_stop_connecting(void)
 {
 	IScopedLock lock(local_mutex);
 	cleanup_pipes(false);
-	if(connection_stop_cond!=NULL)
-	{
-		connection_stop_cond->notify_all();
-		local_mutex=NULL;
-	}
+	assert(connection_stop_cond);
+	connection_stop_cond->notify_all();
 }
 
 bool InternetServiceConnector::Run(void)
@@ -396,8 +391,10 @@ void InternetServiceConnector::ReceivePackets(void)
 						
 						IScopedLock lock(local_mutex);
 						is_connected=true;
-						connection_done_cond->notify_all();
-						connection_done_cond=NULL;
+						if(connection_done_cond)
+						{
+							connection_done_cond->notify_all();
+						}
 					}
 				}break;
 			}
@@ -551,13 +548,9 @@ void InternetServiceConnector::stopConnecting(void)
 
 void InternetServiceConnector::stopConnectingAndWait(void)
 {
-	IMutex *local_mutex_tmp=local_mutex;
-	{
-		IScopedLock lock(local_mutex_tmp);
-		stop_connecting=true;
-		connection_stop_cond->wait(&lock);
-	}
-	Server->destroy(local_mutex_tmp);
+	IScopedLock lock(local_mutex);
+	stop_connecting=true;
+	connection_stop_cond->wait(&lock);
 }
 
 void InternetServiceConnector::freeConnection(void)
@@ -617,6 +610,7 @@ bool InternetServiceConnector::waitForConnection(ICondition *cond, int timems)
 {
 	IScopedLock lock(local_mutex);
 	cond->wait(&lock, timems);
+	connection_done_cond=NULL;
 	return is_connected;
 }
 
