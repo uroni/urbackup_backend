@@ -227,5 +227,8 @@ private:
 
 	unsigned int last_tmp_update_time;
 
+	std::wstring index_root_path;
+	bool index_error;
+
 	std::vector<std::pair<std::string, int> > vsslog;
 };

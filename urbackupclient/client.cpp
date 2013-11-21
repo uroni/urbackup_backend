@@ -123,6 +123,7 @@ IFileServ *IndexThread::filesrv=NULL;
 IMutex *IndexThread::filesrv_mutex=NULL;
 
 IndexThread::IndexThread(void)
+	: index_error(false)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -595,6 +596,7 @@ void IndexThread::indexDirs(void)
 	std::vector<SCRef*> past_refs;
 
 	last_tmp_update_time=Server->getTimeMS();
+	index_error=false;
 
 	{
 		std::fstream outfile(filelist_fn, std::ios::out|std::ios::binary);
@@ -672,6 +674,7 @@ void IndexThread::indexDirs(void)
 			outfile << "d\"" << Server->ConvertToUTF8(backup_dirs[i].tname) << "\"\n";
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
+			index_root_path=mod_path;
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true);
 
 			cd->copyFromTmpFiles();
@@ -718,10 +721,17 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 	if(!has_stale_shadowcopy)
 	{
-		VSSLog("Deleting backup of changed dirs...", LL_DEBUG);
-		cd->deleteSavedChangedDirs();
-		cd->deleteSavedDelDirs();
-		cd->deleteSavedChangedFiles();
+		if(!index_error)
+		{
+			VSSLog("Deleting backup of changed dirs...", LL_DEBUG);
+			cd->deleteSavedChangedDirs();
+			cd->deleteSavedDelDirs();
+			cd->deleteSavedChangedFiles();
+		}
+		else
+		{
+			VSSLog("Did not delete backup of changed dirs because there was an error while indexing which might not occur the next time.", LL_INFO);
+		}
 	}
 	else
 	{
@@ -964,15 +974,24 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				{
 					if(!tmp[i].isdir)
 					{
-						std::vector<SFile>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
-						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name ) ||
-							( it_db_file!=db_files.end() && (*it_db_file).name==tmp[i].name && (*it_db_file).last_modified<0 ) )
+						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
 						{
 							tmp[i].last_modified*=Server->getRandomNumber();
 							if(tmp[i].last_modified>0)
 								tmp[i].last_modified*=-1;
 							else if(tmp[i].last_modified==0)
 								tmp[i].last_modified=-1;
+						}
+						else
+						{
+							std::vector<SFile>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+							if( it_db_file!=db_files.end()
+								 && (*it_db_file).name==tmp[i].name
+								 && (*it_db_file).isdir==tmp[i].isdir
+								 && (*it_db_file).last_modified<0 )
+							{
+								tmp[i].last_modified=it_db_file->last_modified;
+							}
 						}
 					}
 				}
@@ -1001,15 +1020,21 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		{
 			++index_c_fs;
 
-			std::wstring tpath=path;
-			if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
-				tpath=L"\\\\?\\"+path;
+			std::wstring tpath=os_file_prefix(path);
 
 			bool has_error;
 			tmp=getFiles(tpath, &has_error);
 			if(has_error)
 			{
-				VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+				if(os_directory_exists(index_root_path))
+				{
+					VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+				}
+				else
+				{
+					VSSLog(L"Error while getting files in folder \""+path+L"\". Windows errorcode: "+convert((int)GetLastError())+". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+					index_error=true;
+				}
 			}
 			cd->addFiles(path_lower, tmp);
 			return tmp;
