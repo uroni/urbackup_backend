@@ -69,7 +69,13 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 	fHandle=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
 	if(fHandle==INVALID_HANDLE_VALUE)
 	{
-		if(tpath.find(L"\\\\?\\")==0)
+		if(tpath.find(L"\\\\?\\UNC")==0)
+		{
+			tpath.erase(0, 7);
+			tpath=L"\\"+tpath;
+			fHandle=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
+		}
+		else if(tpath.find(L"\\\\?\\")==0)
 		{
 			tpath.erase(0, 4);
 			fHandle=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
@@ -376,7 +382,16 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
 std::wstring os_file_prefix(std::wstring path)
 {
 	if(path.size()>=2 && path[0]=='\\' && path[1]=='\\' )
-		return path;
+	{
+		if(path.size()>=3 && path[2]=='?')
+		{
+			return path;
+		}
+		else
+		{
+			return L"\\\\?\\UNC"+path.substr(1);
+		}
+	}
 	else
 		return L"\\\\?\\"+path;
 }

@@ -948,9 +948,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 	{
 		++index_c_fs;
 
-		std::wstring tpath=path;
-		if(path.size()<2 || (path[0]!='\\' && path[1]!='\\' ) )
-			tpath=L"\\\\?\\"+path;
+		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
 		tmp=getFiles(tpath, &has_error);
@@ -1032,7 +1030,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 				}
 				else
 				{
-					VSSLog(L"Error while getting files in folder \""+path+L"\". Windows errorcode: "+convert((int)GetLastError())+". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+					VSSLog(L"Error while getting files in folder \""+path+L"\". Windows errorcode: "+convert((int)GetLastError())+L". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
 					index_error=true;
 				}
 			}
@@ -2544,17 +2542,16 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 	for(size_t i=0;i<changed_dirs.size();++i)
 	{
-		std::wstring tpath=changed_dirs[i].name;
-
-		if(tpath.find(volume)!=0)
+		std::wstring vsstpath;
 		{
-			continue;
+			std::wstring tpath=changed_dirs[i].name;
+
+			if(tpath.find(volume)!=0)
+			{
+				continue;
+			}
+			vsstpath=vssvolume+tpath.substr(volume.size());
 		}
-
-		std::wstring vsstpath=vssvolume+tpath.substr(volume.size());
-
-		if(vsstpath.size()<2 || (vsstpath[0]!='\\' && vsstpath[1]!='\\' ) )
-			tpath=L"\\\\?\\"+tpath;
 
 		bool has_error;
 		std::vector<SFile> files = getFiles(vsstpath, &has_error);

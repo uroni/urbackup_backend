@@ -421,9 +421,16 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 
 #ifdef _WIN32
-				if(filename.size()<2 || (filename[0]!='\\' && filename[1]!='\\' ) )
+				if(filename.size()>=2 && filename[0]=='\\' && filename[1]=='\\' )
 				{
-					filename=L"\\\\?\\"+filename;			
+					if(filename.size()<3 || filename[2]!='?')
+					{
+						filename=L"\\\\?\\UNC"+filename.substr(1);
+					}
+				}
+				else
+				{
+					filename = L"\\\\?\\"+filename;
 				}
 
 				if(bufmgr==NULL)
@@ -1091,8 +1098,17 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	hash_func.init();
 
 #ifdef _WIN32
-	if(filename.size()<2 || (filename[0]!='\\' && filename[1]!='\\' ) )
-		filename=L"\\\\?\\"+filename;			
+	if(filename.size()>=2 && filename[0]=='\\' && filename[1]=='\\' )
+	{
+		if(filename.size()<3 || filename[2]!='?')
+		{
+			filename=L"\\\\?\\UNC"+filename.substr(1);
+		}
+	}
+	else
+	{
+		filename = L"\\\\?\\"+filename;
+	}		
 #endif
 				
 #ifdef _WIN32
