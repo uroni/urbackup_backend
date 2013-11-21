@@ -444,6 +444,7 @@ bool ClientConnector::Run(void)
 								else
 								{									
 									Server->Log("Verifying update file failed. Signature did not match", LL_ERROR);
+									Server->deleteFile("UrBackupUpdate_untested.exe");
 									tcpstack.Send(pipe, "verify_sig_err");
 								}
 							}
@@ -451,6 +452,7 @@ bool ClientConnector::Run(void)
 							{
 								Server->destroy(updatefile);
 								Server->Log("Verifing update file failed. Update was installed previously", LL_ERROR);
+								Server->deleteFile("UrBackupUpdate_untested.exe");
 								tcpstack.Send(pipe, "verify_sig_already_used_err");
 							}
 						}
