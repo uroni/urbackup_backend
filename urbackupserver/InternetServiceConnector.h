@@ -23,8 +23,7 @@ enum InternetServiceState
 	ISS_AUTHED,
 	ISS_CAPA,
 	ISS_CONNECTING,
-	ISS_USED,
-	ISS_QUIT
+	ISS_USED
 };
 
 
@@ -69,24 +68,21 @@ public:
 	static std::vector<std::string> getOnlineClients(void);
 
 	void connectStart();
-	void Connect(ICondition *n_cond, ICondition *stop_cond, char service);
+	bool Connect(char service, int timems);
 	void stopConnecting(void);
-	void stopConnectingAndWait(void);
 	void freeConnection(void);
 
 	virtual bool wantReceive(void);
 	virtual bool closeSocket(void);
 
 	IPipe *getISPipe(void);
-	
-	bool waitForConnection(ICondition *cond, int timems);
+
 private:
 	void operator=(const InternetServiceConnector& other){}
 	void operator()(const InternetServiceConnector& other){}
 	InternetServiceConnector(const InternetServiceConnector& other){}
 
 	void cleanup_pipes(bool remove_connection);
-	void do_stop_connecting(void);
 
 	std::string  generateOnetimeToken(const std::string &clientname);
 	std::string getOnetimeToken(unsigned int id, std::string *cname);
@@ -106,7 +102,6 @@ private:
 	IPipe *comm_pipe;
 	IMutex *local_mutex;
 	ICondition* connection_done_cond;
-	ICondition* connection_stop_cond;
 
 	CTCPStack tcpstack;
 

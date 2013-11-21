@@ -21,6 +21,7 @@
 #ifndef _WIN32
 #include <sys/time.h>
 #endif
+#include <assert.h>
 
 #include "Server.h"
 #include "stringtools.h"
@@ -41,7 +42,9 @@ CCondition::~CCondition()
 
 void CCondition::wait(IScopedLock *lock, int timems)
 {
-	pthread_mutex_t *ptmutex=((CLock*)lock->getLock())->getLock();
+	CLock* clock = (CLock*)lock->getLock();
+	assert(clock);
+	pthread_mutex_t *ptmutex=clock->getLock();
 	if(timems<0)
 	{
 		pthread_cond_wait(&cond, ptmutex);
