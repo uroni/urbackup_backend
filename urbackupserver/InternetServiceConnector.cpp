@@ -421,7 +421,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 		}
 		else
 		{
-			InternetServiceConnector *isc=iter->second.spare_connections.front();
+			InternetServiceConnector *isc=iter->second.spare_connections.back();
 			iter->second.spare_connections.pop_back();
 
 			isc->connectStart();
@@ -577,7 +577,7 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 		Server->Log("Establish timeout: Deleting internet client \""+it->first+"\"", LL_DEBUG);
 		while(!it->second.spare_connections.empty())
 		{
-			InternetServiceConnector *isc=it->second.spare_connections.front();
+			InternetServiceConnector *isc=it->second.spare_connections.back();
 			it->second.spare_connections.pop_back();
 			isc->connectStart();
 			isc->stopConnecting();
