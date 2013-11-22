@@ -108,7 +108,7 @@ void CServiceWorker::operator()(void)
 				}
 			}
 
-			for(size_t i=0;i<clients.size();++i)
+			for(size_t i=0;i<clients.size();)
 			{
 				bool b=clients[i].first->Run();
 
@@ -124,7 +124,10 @@ void CServiceWorker::operator()(void)
 					clients.erase( clients.begin()+i );
 					IScopedLock lock2(nc_mutex);
 					--nClients;
-					continue;
+				}
+				else
+				{
+					++i;
 				}
 			}
 

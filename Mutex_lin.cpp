@@ -19,25 +19,31 @@
 #include "Mutex_lin.h"
 #include "Server.h"
 #include "stringtools.h"
+#include <assert.h>
 
 CMutex::CMutex(void)
 {
 	pthread_mutexattr_t attr;
-	if(pthread_mutexattr_init(&attr)!=0)
+	int rc;
+	if((rc=pthread_mutexattr_init(&attr))!=0)
 	{
-		Server->Log("Error initializing mutexattr", LL_ERROR);
+		Server->Log("Error initializing mutexattr rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
-	if(pthread_mutexattr_settype (&attr, PTHREAD_MUTEX_RECURSIVE)!=0)
+	if((rc=pthread_mutexattr_settype (&attr, PTHREAD_MUTEX_RECURSIVE))!=0)
 	{
-		Server->Log("Error setting PTHREAD_MUTEX_RECURSIVE", LL_ERROR);
+		Server->Log("Error setting PTHREAD_MUTEX_RECURSIVE rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
-	if(pthread_mutex_init(&ptmutex, &attr)!=0)
+	if((rc=pthread_mutex_init(&ptmutex, &attr))!=0)
 	{
-		Server->Log("Error initializing mutex", LL_ERROR);
+		Server->Log("Error initializing mutex rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
-	if(pthread_mutexattr_destroy(&attr)!=0)
+	if((rc=pthread_mutexattr_destroy(&attr))!=0)
 	{
-		Server->Log("Error destroing mutexattr", LL_ERROR);
+		Server->Log("Error destroing mutexattr rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
 }
 
@@ -47,14 +53,17 @@ CMutex::~CMutex(void)
 	if( (rc=pthread_mutex_destroy(&ptmutex))!=0)
 	{
 		Server->Log("Error destroying mutex rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
 }
 
 void CMutex::Lock(void)
 {
-	if(pthread_mutex_lock( &ptmutex )!=0)
+	int rc;
+	if((rc=pthread_mutex_lock( &ptmutex ))!=0)
 	{
-		Server->Log("Error locking mutex", LL_ERROR);
+		Server->Log("Error locking mutex rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
 }
 
@@ -70,26 +79,32 @@ ILock * CMutex::Lock2(void)
 
 void CMutex::Unlock(void)
 {
-	if(pthread_mutex_unlock( &ptmutex )!=0)
+	int rc;
+	if((rc=pthread_mutex_unlock( &ptmutex ))!=0)
 	{
-		Server->Log("Error unlocking mutex", LL_ERROR);
+		Server->Log("Error unlocking mutex rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
 }
 
 CLock::CLock(pthread_mutex_t *ptmutex)
 {
-	if(pthread_mutex_lock(ptmutex)!=0)
+	int rc;
+	if((rc=pthread_mutex_lock(ptmutex))!=0)
 	{
-		Server->Log("Error locking mutex -2", LL_ERROR);
+		Server->Log("Error locking mutex -2 rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
 	lock=ptmutex;
 }
 
 CLock::~CLock()
 {
-	if(pthread_mutex_unlock(lock)!=0)
+	int rc;
+	if((rc=pthread_mutex_unlock(lock))!=0)
 	{
-		Server->Log("Error unlocking mutex -2", LL_ERROR);
+		Server->Log("Error unlocking mutex -2 rc="+nconvert(rc), LL_ERROR);
+		assert(false);
 	}
 }
 

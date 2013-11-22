@@ -165,8 +165,8 @@ bool CStreamPipe::Write(const std::string &str, int timeoutms)
 
 size_t CStreamPipe::Read(std::string *ret, int timeoutms)
 {
-	char buffer[2000];
-	size_t l=Read(buffer, 2000, timeoutms);
+	char buffer[8192];
+	size_t l=Read(buffer, 8192, timeoutms);
 	if( l>0 )
 	{
 		ret->resize(l);

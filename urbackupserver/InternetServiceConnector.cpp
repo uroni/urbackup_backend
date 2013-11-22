@@ -165,7 +165,6 @@ bool InternetServiceConnector::Run(void)
 		{
 			Server->Log("Ping timeout in InternetServiceConnector::Run", LL_DEBUG);
 			IScopedLock lock(mutex);
-			IScopedLock lock2(local_mutex);
 			if(!connect_start)
 			{
 				cleanup_pipes(true);
@@ -178,7 +177,7 @@ bool InternetServiceConnector::Run(void)
 
 void InternetServiceConnector::ReceivePackets(void)
 {
-	if(state==ISS_USED)
+	if(state==ISS_USED || has_timeout)
 	{
 		return;
 	}
@@ -192,7 +191,6 @@ void InternetServiceConnector::ReceivePackets(void)
 		if( state!=ISS_CONNECTING && state!=ISS_USED )
 		{
 			IScopedLock lock(mutex);
-			IScopedLock lock2(local_mutex);
 			if(!connect_start)
 			{
 				has_timeout=true;
