@@ -3,6 +3,7 @@ sbin_PROGRAMS = urbackup_srv
 urbackup_srv_SOURCES = AcceptThread.cpp Client.cpp Database.cpp Query.cpp SelectThread.cpp Server.cpp ServerLinux.cpp ServiceAcceptor.cpp ServiceWorker.cpp SessionMgr.cpp StreamPipe.cpp Template.cpp WorkerThread.cpp main.cpp md5.cpp stringtools.cpp libfastcgi/fastcgi.cpp Mutex_lin.cpp LoadbalancerClient.cpp DBSettingsReader.cpp file_common.cpp file_fstream.cpp file_linux.cpp FileSettingsReader.cpp LookupService.cpp SettingsReader.cpp Table.cpp OutputStream.cpp ThreadPool.cpp MemoryPipe.cpp Condition_lin.cpp MemorySettingsReader.cpp sqlite/sqlite3.c sqlite/shell.c SQLiteFactory.cpp PipeThrottler.cpp mt19937ar.cpp DatabaseCursor.cpp
 urbackup_srv_LDADD = $(PTHREAD_LIBS) $(DLOPEN_LIBS)
 sbin_SCRIPTS = start_urbackup_server
+AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
 AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY
 AM_LDFLAGS = 
