@@ -1191,6 +1191,7 @@ void thread_helper_f(IThread *t)
 	}
 	__except(CServer::WriteDump(GetExceptionInformation()))
 	{
+		throw;
 	}
 #endif
 }
