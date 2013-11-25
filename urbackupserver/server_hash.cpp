@@ -207,51 +207,85 @@ void BackupServerHash::operator()(void)
 		{
 			CRData rd(&data);
 
-			std::string temp_fn;
-			rd.getStr(&temp_fn);
+			int iaction;
+			rd.getInt(&iaction);
+			EAction action=static_cast<EAction>(iaction);
 
-			int backupid;
-			rd.getInt(&backupid);
-
-			char incremental;
-			rd.getChar(&incremental);
-
-			std::string tfn;
-			rd.getStr(&tfn);
-
-			std::string hashpath;
-			rd.getStr(&hashpath);
-
-			std::string sha2;
-			if(!rd.getStr(&sha2))
-				ServerLogger::Log(clientid, "Reading hash from pipe failed", LL_ERROR);
-
-			if(sha2.size()!=64)
-				ServerLogger::Log(clientid, "SHA512 length of file \""+tfn+"\" wrong.", LL_ERROR);
-
-			std::string hashoutput_fn;
-			rd.getStr(&hashoutput_fn);
-
-			bool diff_file=!hashoutput_fn.empty();
-
-			std::string old_file_fn;
-			rd.getStr(&old_file_fn);
-
-			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
-
-			if(tf==NULL)
+			if(action==EAction_LinkOrCopy)
 			{
-				ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading", LL_ERROR);
+				std::string temp_fn;
+				rd.getStr(&temp_fn);
+
+				int backupid;
+				rd.getInt(&backupid);
+
+				char incremental;
+				rd.getChar(&incremental);
+
+				std::string tfn;
+				rd.getStr(&tfn);
+
+				std::string hashpath;
+				rd.getStr(&hashpath);
+
+				std::string sha2;
+				if(!rd.getStr(&sha2))
+					ServerLogger::Log(clientid, "Reading hash from pipe failed", LL_ERROR);
+
+				if(sha2.size()!=64)
+					ServerLogger::Log(clientid, "SHA512 length of file \""+tfn+"\" wrong.", LL_ERROR);
+
+				std::string hashoutput_fn;
+				rd.getStr(&hashoutput_fn);
+
+				bool diff_file=!hashoutput_fn.empty();
+
+				std::string old_file_fn;
+				rd.getStr(&old_file_fn);
+
+				IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ_SEQUENTIAL);
+
+				if(tf==NULL)
+				{
+					ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading", LL_ERROR);
+					has_error=true;
+				}
+				else
+				{
+					addFile(backupid, incremental, tf, Server->ConvertToUnicode(tfn), Server->ConvertToUnicode(hashpath), sha2,
+						diff_file, old_file_fn, hashoutput_fn);
+				}
+
+				if(diff_file)
+				{
+					Server->deleteFile(hashoutput_fn);
+				}
 			}
-			else
+			else if(action==EAction_Copy)
 			{
-				addFile(backupid, incremental, tf, Server->ConvertToUnicode(tfn), Server->ConvertToUnicode(hashpath), sha2,
-					diff_file, old_file_fn, hashoutput_fn);
-			}
+				std::string source;
+				rd.getStr(&source);
+				
+				std::string dest;
+				rd.getStr(&dest);
 
-			if(diff_file)
-			{
-				Server->deleteFile(hashoutput_fn);
+				IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(source)), MODE_READ_SEQUENTIAL);
+
+				if(tf==NULL)
+				{
+					ServerLogger::Log(clientid, "Error opening file \""+source+"\" from pipe for reading", LL_ERROR);
+					has_error=true;
+				}
+				else
+				{
+					if(!copyFile(tf, Server->ConvertToUnicode(dest)))
+					{
+						ServerLogger::Log(clientid, "Error while copying file \""+source+"\" to \""+dest+"\"", LL_ERROR);
+						has_error=true;
+					}
+				}
+
+				Server->destroy(tf);
 			}
 		}
 
