@@ -1214,9 +1214,18 @@ void CServer::createThread(IThread *thread)
 #ifdef _WIN32
 	
 #else
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+#ifndef _LP64
+	//Only on 32bit architectures
+	pthread_attr_setstacksize(&attr, 1*1024*1024);
+#endif
+
 	pthread_t t;
-	pthread_create(&t, NULL, &thread_helper_f,  (void*)thread);
+	pthread_create(&t, &attr, &thread_helper_f,  (void*)thread);
 	pthread_detach(t);
+
+	pthread_attr_destroy(&attr);
 #endif
 #endif //THREAD_BOOST
 }
