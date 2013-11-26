@@ -4,7 +4,6 @@
 
 void open_server_database(bool &use_berkeleydb, bool init_db);
 
-const DATABASE_ID URBACKUPDB_SERVER_SETTINGS=30;
 
 void open_settings_database_full(bool use_berkeleydb)
 {
@@ -12,16 +11,16 @@ void open_settings_database_full(bool use_berkeleydb)
 	{
 		if(! Server->openDatabase("urbackup/backup_server_settings.db", URBACKUPDB_SERVER_SETTINGS, "sqlite") )
 		{
-			Server->Log("Couldn't open Database backup_server_settings.db", LL_ERROR);
-			return;
+			Server->Log("Couldn't open Database backup_server_settings.db. Exiting.", LL_ERROR);
+			exit(1);
 		}
 	}
 	else
 	{
 		if(! Server->openDatabase("urbackup/backup_server_settings.bdb", URBACKUPDB_SERVER_SETTINGS, "bdb") )
 		{
-			Server->Log("Couldn't open Database backup_server_settings.bdb", LL_ERROR);
-			return;
+			Server->Log("Couldn't open Database backup_server_settings.bdb. Exiting.", LL_ERROR);
+			exit(1);
 		}
 	}
 }
