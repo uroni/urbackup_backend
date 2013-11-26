@@ -24,6 +24,13 @@ struct STmpFile
 class BackupServerHash : public IThread, public INotEnoughSpaceCallback, public IChunkPatcherCallback
 {
 public:
+
+	enum EAction
+	{
+		EAction_LinkOrCopy,
+		EAction_Copy
+	};
+
 	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles);
 	~BackupServerHash(void);
 

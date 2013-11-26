@@ -158,6 +158,8 @@ private:
 	void createHashThreads(bool use_reflink);
 	void destroyHashThreads();
 
+	void copyFile(const std::wstring& source, const std::wstring& dest);
+
 	SSettings curr_intervals;
 
 	IPipe *pipe;

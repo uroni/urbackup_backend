@@ -97,6 +97,7 @@ bool test_amatch(void);
 bool test_amatch(void);
 bool verify_hashes(std::string arg);
 void updateRights(int t_userid, std::string s_rights, IDatabase *db);
+void open_settings_database_full(bool use_berkeleydb);
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
@@ -163,8 +164,8 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 			
 		if(! Server->openDatabase(db_fn, URBACKUPDB_SERVER, engine) )
 		{
-			Server->Log("Couldn't open Database "+db_fn, LL_ERROR);
-			return;
+			Server->Log("Couldn't open Database "+db_fn+". Exiting.", LL_ERROR);
+			exit(1);
 		}
 
 		if(init_db)
@@ -182,8 +183,8 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 			Server->Log("Warning: Switching to Berkley DB", LL_WARNING);
 			if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER_TMP) )
 			{
-				Server->Log("Couldn't open Database backup_server.db", LL_ERROR);
-				return;
+				Server->Log("Couldn't open Database backup_server.db. Exiting.", LL_ERROR);
+				exit(1);
 			}
 
 			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER_TMP);
@@ -197,8 +198,8 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 
 				if(! Server->openDatabase("urbackup/backup_server.bdb", URBACKUPDB_SERVER, "bdb") )
 				{
-					Server->Log("Couldn't open Database backup_server.bdb", LL_ERROR);
-					return;
+					Server->Log("Couldn't open Database backup_server.bdb. Exiting.", LL_ERROR);
+					exit(1);
 				}
 				db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 				if(db->Import("urbackup/backup_server.dat") )
@@ -208,24 +209,31 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 				}
 				else
 				{
-					Server->Log("Importing data into new BerkleyDB database failed", LL_ERROR);
-					return;
+					Server->Log("Importing data into new BerkleyDB database failed. Exiting.", LL_ERROR);
+					exit(1);
 				}
 			}
 			else
 			{
-				Server->Log("Dumping Database failed", LL_ERROR);
-				return;
+				Server->Log("Dumping Database failed. Exiting", LL_ERROR);
+				exit(1);
 			}
 		}
 		else
 		{
 			if(! Server->openDatabase("urbackup/backup_server.db", URBACKUPDB_SERVER) )
 			{
-				Server->Log("Couldn't open Database backup_server.db", LL_ERROR);
-				return;
+				Server->Log("Couldn't open Database backup_server.db. Exiting.", LL_ERROR);
+				exit(1);
 			}
 		}
+	}
+
+	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
+	{
+		Server->Log(L"Couldn't open backup server database. Exiting. Expecting database at \""+
+			Server->getServerWorkingDir()+os_file_sep()+L"urbackup"+os_file_sep()+L"backup_server.db\"", LL_ERROR);
+		exit(1);
 	}
 }
 
@@ -379,6 +387,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	BackupServerGet::init_mutex();
 
 	open_settings_database(use_berkeleydb);
+	open_settings_database_full(use_berkeleydb);
 
 	Server->destroyAllDatabases();
 
@@ -398,6 +407,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 		db->Write("PRAGMA journal_mode=WAL");
+	}
+
+	if(!Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
+	{
+		Server->Log(L"Couldn't open backup server settings database. Exiting. Expecting database at \""+
+			Server->getServerWorkingDir()+os_file_sep()+L"urbackup"+os_file_sep()+L"backup_server_settings.db\"", LL_ERROR);
+		exit(1);
 	}
 		
 	if( FileExists("urbackup/backupfolder") )

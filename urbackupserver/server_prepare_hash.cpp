@@ -19,6 +19,7 @@
 #ifndef CLIENT_ONLY
 
 #include "server_prepare_hash.h"
+#include "server_hash.h"
 #include "../common/data.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
@@ -133,6 +134,7 @@ void BackupServerPrepareHash::operator()(void)
 				}
 				
 				CWData data;
+				data.addInt(BackupServerHash::EAction_LinkOrCopy);
 				data.addString(temp_fn);
 				data.addInt(backupid);
 				data.addChar(incremental);

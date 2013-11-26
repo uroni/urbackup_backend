@@ -2367,28 +2367,29 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						std::wstring srcpath=last_backuppath+local_curr_os_path;
 						bool too_many_hardlinks;
 						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
+						if(!b && too_many_hardlinks)
+						{
+							ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Hardlink limit was reached. Copying file...", LL_DEBUG);
+							copyFile(srcpath, backuppath+local_curr_os_path);
+							b=true;
+						}
+
 						if(!b)
 						{
-							if(too_many_hardlinks)
+							if(link_logcnt<5)
 							{
-								ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Hardlink limit was reached. Loading file...", LL_DEBUG);
+								ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
+							}
+							else if(link_logcnt==5)
+							{
+								ServerLogger::Log(clientid, L"More warnings of kind: Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file... Skipping.", LL_WARNING);
 							}
 							else
 							{
-								if(link_logcnt<5)
-								{
-									ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
-								}
-								else if(link_logcnt==5)
-								{
-									ServerLogger::Log(clientid, L"More warnings of kind: Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file... Skipping.", LL_WARNING);
-								}
-								else
-								{
-									Server->Log(L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
-								}
-								++link_logcnt;
+								Server->Log(L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
 							}
+							++link_logcnt;
+
 							std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
 
 							if(r_offline==false && hash_it!=extra_params.end())
@@ -4168,4 +4169,14 @@ void BackupServerGet::destroyHashThreads()
 	hashpipe_prepare=NULL;
 	bsh=NULL;
 	bsh_prepare=NULL;
+}
+
+void BackupServerGet::copyFile(const std::wstring& source, const std::wstring& dest)
+{
+	CWData data;
+	data.addInt(BackupServerHash::EAction_Copy);
+	data.addString(Server->ConvertToUTF8(source));
+	data.addString(Server->ConvertToUTF8(dest));
+
+	hashpipe->Write(data.getDataPtr(), data.getDataSize());
 }
