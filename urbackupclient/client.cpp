@@ -1314,7 +1314,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 			{
 				VSSLog("Snapshotting failed because of Writer. Retrying in 30s...", LL_WARNING);
 			}
-			bool bcom_ok;
+			bool bcom_ok=true;
 			CHECK_COM_RESULT_OK(backupcom->BackupComplete(&pb_result), bcom_ok);
 			if(bcom_ok)
 			{
