@@ -2363,18 +2363,21 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					}
 					else if(!on_snapshot) //is not changed
 					{			
-						f_ok=true;
 						std::wstring srcpath=last_backuppath+local_curr_os_path;
 						bool too_many_hardlinks;
 						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
-						if(!b && too_many_hardlinks)
+						if(b)
+						{
+							f_ok=true;
+						}
+						else if(!b && too_many_hardlinks)
 						{
 							ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Hardlink limit was reached. Copying file...", LL_DEBUG);
 							copyFile(srcpath, backuppath+local_curr_os_path);
-							b=true;
+							f_ok=true;
 						}
 
-						if(!b)
+						if(!f_ok)
 						{
 							if(link_logcnt<5)
 							{
@@ -2414,16 +2417,14 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 									ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 									r_offline=true;
 									incr_backup_stoptime=Server->getTimeMS();
-									f_ok=false;
 								}
 								else
 								{
-									f_ok=download_ok;
+									if(download_ok)
+									{
+										f_ok=true;
+									}
 								}
-							}
-							else
-							{
-								f_ok=false;
 							}
 						}
 						else if(with_hashes)
