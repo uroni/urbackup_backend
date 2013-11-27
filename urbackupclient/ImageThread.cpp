@@ -18,7 +18,7 @@
 
 extern IFSImageFactory *image_fak;
 
-ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe **mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile)
+ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile)
 	: client(client), pipe(pipe), mempipe(mempipe), image_inf(image_inf), server_token(server_token), hashdatafile(hashdatafile)
 {
 }
@@ -66,7 +66,7 @@ void ImageThread::sendFullImageThread(void)
 		if(image_inf->shadowdrive.empty() && !image_inf->no_shadowcopy)
 		{
 			std::string msg;
-			(*mempipe)->Read(&msg);
+			mempipe->Read(&msg);
 			if(msg.find("done")==0)
 			{
 				image_inf->shadowdrive=getafter("-", msg);
@@ -85,8 +85,8 @@ void ImageThread::sendFullImageThread(void)
 				ImageErr("Creating Shadow drive failed. Stopping.");
 				run=false;
 			}
-			(*mempipe)->Write("exit");
-			*mempipe=Server->createMemoryPipe();
+			mempipe->Write("exit");
+			mempipe=NULL;
 		}
 		else
 		{
@@ -319,14 +319,6 @@ void ImageThread::sendFullImageThread(void)
 	if(!has_error && !image_inf->no_shadowcopy)
 	{
 		removeShadowCopyThread(save_id);
-		std::string msg;
-		(*mempipe)->Read(&msg);
-		if(msg.find("done")!=0)
-		{
-			Server->Log("Removing shadow copy failed in image streaming: "+msg, LL_ERROR);
-		}
-		(*mempipe)->Write("exit");
-		*mempipe=Server->createMemoryPipe();
 	}
 	client->doQuitClient();
 }
@@ -335,15 +327,25 @@ void ImageThread::removeShadowCopyThread(int save_id)
 {
 	if(!image_inf->no_shadowcopy)
 	{
+		IPipe* local_pipe=Server->createMemoryPipe();
+
 		CWData data;
 		data.addChar(3);
-		data.addVoidPtr(*mempipe);
+		data.addVoidPtr(local_pipe);
 		data.addString(image_inf->image_letter);
 		data.addString(server_token);
 		data.addUChar(1);
 		data.addInt(save_id);
 
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+
+		std::string msg;
+		local_pipe->Read(&msg);
+		if(msg.find("done")!=0)
+		{
+			Server->Log("Removing shadow copy failed in image streaming: "+msg, LL_ERROR);
+		}
+		local_pipe->Write("exit");
 	}
 }
 
@@ -368,7 +370,7 @@ void ImageThread::sendIncrImageThread(void)
 		if(image_inf->shadowdrive.empty())
 		{
 			std::string msg;
-			(*mempipe)->Read(&msg);
+			mempipe->Read(&msg);
 			if(msg.find("done")==0)
 			{
 				image_inf->shadowdrive=getafter("-", msg);
@@ -387,8 +389,8 @@ void ImageThread::sendIncrImageThread(void)
 				ImageErr("Creating Shadow drive failed. Stopping.");
 				run=false;
 			}
-			(*mempipe)->Write("exit");
-			*mempipe=Server->createMemoryPipe();
+			mempipe->Write("exit");
+			mempipe=NULL;
 		}
 		else
 		{
@@ -658,14 +660,6 @@ void ImageThread::sendIncrImageThread(void)
 	if(!has_error)
 	{
 		removeShadowCopyThread(save_id);
-		std::string msg;
-		(*mempipe)->Read(&msg);
-		if(msg.find("done")!=0)
-		{
-			Server->Log("Removing shadow copy failed in image streaming: "+msg, LL_ERROR);
-		}
-		(*mempipe)->Write("exit");
-		*mempipe=Server->createMemoryPipe();
 	}
 	client->doQuitClient();
 }

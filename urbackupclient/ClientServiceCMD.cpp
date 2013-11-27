@@ -83,6 +83,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
 	data.addInt(calculateFilehashesOnClient()?1:0);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+	mempipe_owner=false;
 
 	lasttime=Server->getTimeMS();
 
@@ -107,6 +108,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
 	data.addInt(calculateFilehashesOnClient()?1:0);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+	mempipe_owner=false;
 
 	lasttime=Server->getTimeMS();
 
@@ -129,6 +131,7 @@ void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 		data.addString(dir);
 		data.addString(server_token);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+		mempipe_owner=false;
 		lasttime=Server->getTimeMS();
 	}
 	else
@@ -153,6 +156,7 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 		data.addString(dir);
 		data.addString(server_token);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+		mempipe_owner=false;
 		lasttime=Server->getTimeMS();
 	}
 	else
@@ -622,6 +626,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			data.addUChar(1); //image backup
 			data.addUChar(0); //filesrv
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+			mempipe_owner=false;
 		}
 		else if(image_inf.shadow_id!=-1)
 		{
@@ -631,6 +636,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			data.addVoidPtr(mempipe);
 			data.addInt(image_inf.shadow_id);
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+			mempipe_owner=false;
 		}
 
 		if(image_inf.no_shadowcopy)
@@ -704,6 +710,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				data.addUChar(1); //image backup
 				data.addUChar(0); //file serv?
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+				mempipe_owner=false;
 			}
 			else if(image_inf.shadow_id!=-1)
 			{
@@ -713,6 +720,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 				data.addVoidPtr(mempipe);
 				data.addInt(image_inf.shadow_id);
 				IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+				mempipe_owner=false;
 			}
 			hashdatafile=Server->openTemporaryFile();
 			if(hashdatafile==NULL)
@@ -1115,13 +1123,13 @@ void ClientConnector::CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::
 void ClientConnector::CMD_GET_VSSLOG(const std::string &cmd)
 {
 	CWData data;
+	IPipe* localpipe=Server->createMemoryPipe();
 	data.addChar(IndexThread::IndexThreadAction_GetLog);
-	data.addVoidPtr(mempipe);
+	data.addVoidPtr(localpipe);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 
 	std::string ret;
-	mempipe->Read(&ret, 8000);
+	localpipe->Read(&ret, 8000);
 	tcpstack.Send(pipe, ret);
-	mempipe->Write("exit");
-	mempipe=Server->createMemoryPipe();
+	localpipe->Write("exit");
 }

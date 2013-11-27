@@ -165,6 +165,7 @@ private:
 
 	IPipe *pipe;
 	IPipe *mempipe;
+	bool mempipe_owner;
 	THREAD_ID tid;
 	ClientConnectorState state;
 	unsigned int lasttime;

@@ -10,7 +10,7 @@ struct ImageInformation;
 class ImageThread : public IThread
 {
 public:
-	ImageThread(ClientConnector *client, IPipe *pipe, IPipe **mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile);
+	ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile);
 
 	void operator()(void);
 
@@ -25,7 +25,7 @@ private:
 	void removeShadowCopyThread(int save_id);
 
 	IPipe *pipe;
-	IPipe **mempipe;
+	IPipe *mempipe;
 	ClientConnector *client;
 	std::string server_token;
 	IFile *hashdatafile;

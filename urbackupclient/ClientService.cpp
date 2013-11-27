@@ -160,6 +160,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	if(mempipe==NULL)
 	{
 		mempipe=Server->createMemoryPipe();
+		mempipe_owner=true;
 	}
 	lasttime=Server->getTimeMS();
 	do_quit=false;
@@ -174,9 +175,16 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 
 ClientConnector::~ClientConnector(void)
 {
-	if(mempipe!=NULL)
+	if(mempipe_owner)
 	{
-		Server->destroy(mempipe);
+		if(mempipe!=NULL)
+		{
+			Server->destroy(mempipe);
+		}
+	}
+	else
+	{
+		mempipe->Write("exit");
 	}
 }
 
@@ -249,6 +257,7 @@ bool ClientConnector::Run(void)
 			{
 				mempipe->Write("exit");
 				mempipe=Server->createMemoryPipe();
+				mempipe_owner=true;
 				if(waitForThread())
 				{
 					do_quit=true;
@@ -263,6 +272,7 @@ bool ClientConnector::Run(void)
 			{
 				mempipe->Write("exit");
 				mempipe=Server->createMemoryPipe();
+				mempipe_owner=true;
 				tcpstack.Send(pipe, "DONE");
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
@@ -271,6 +281,7 @@ bool ClientConnector::Run(void)
 			{
 				mempipe->Write("exit");
 				mempipe=Server->createMemoryPipe();
+				mempipe_owner=true;
 				tcpstack.Send(pipe, msg);
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
@@ -292,6 +303,7 @@ bool ClientConnector::Run(void)
 			{
 				mempipe->Write("exit");
 				mempipe=Server->createMemoryPipe();
+				mempipe_owner=true;
 				if(waitForThread())
 				{
 					do_quit=true;
@@ -303,6 +315,7 @@ bool ClientConnector::Run(void)
 			{
 				mempipe->Write("exit");
 				mempipe=Server->createMemoryPipe();
+				mempipe_owner=true;
 				tcpstack.Send(pipe, "DONE");
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
@@ -311,6 +324,7 @@ bool ClientConnector::Run(void)
 			{
 				mempipe->Write("exit");
 				mempipe=Server->createMemoryPipe();
+				mempipe_owner=true;
 				tcpstack.Send(pipe, "FAILED");
 				lasttime=Server->getTimeMS();
 				state=CCSTATE_NORMAL;
@@ -1297,7 +1311,9 @@ void ClientConnector::getLogLevel(int logid, int loglevel, std::string &data)
 bool ClientConnector::sendFullImage(void)
 {
 	image_inf.thread_action=TA_FULL_IMAGE;
-	image_inf.image_thread=new ImageThread(this, pipe, &mempipe, &image_inf, server_token, hashdatafile);
+	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile);
+	mempipe=Server->createMemoryPipe();
+	mempipe_owner=true;
 	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
 	state=CCSTATE_IMAGE;
 	IScopedLock lock(backup_mutex);
@@ -1310,7 +1326,9 @@ bool ClientConnector::sendFullImage(void)
 bool ClientConnector::sendIncrImage(void)
 {
 	image_inf.thread_action=TA_INCR_IMAGE;
-	image_inf.image_thread=new ImageThread(this, pipe, &mempipe, &image_inf, server_token, hashdatafile);
+	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile);
+	mempipe=Server->createMemoryPipe();
+	mempipe_owner=true;
 	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
 	state=CCSTATE_IMAGE_HASHDATA;
 	IScopedLock lock(backup_mutex);

@@ -241,8 +241,6 @@ void IndexThread::operator()(void)
 #endif
 #endif
 	
-	//indexDirs();
-
 	updateDirs();
 
 	while(true)
@@ -260,6 +258,7 @@ void IndexThread::operator()(void)
 				}
 			}
 			Server->destroy(contractor);
+			contractor=NULL;
 		}
 		msgpipe->Read(&msg);
 
