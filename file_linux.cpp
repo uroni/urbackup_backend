@@ -90,6 +90,7 @@ bool File::Open(std::wstring pfn, int mode)
 	
 	fd=open64(Server->ConvertToUTF8(fn).c_str(), flags|O_LARGEFILE, imode);
 
+#ifdef __linux__
 	if(mode==MODE_READ_SEQUENTIAL
 		|| mode==MODE_READ_SEQUENTIAL_BACKUP
 		|| mode==MODE_RW_SEQUENTIAL)
@@ -101,6 +102,7 @@ bool File::Open(std::wstring pfn, int mode)
 	{
 		posix_fadvise64(fd, 0, 0, POSIX_FADV_DONTNEED);
 	}
+#endif
 	
 	if( fd!=-1 )
 	{
