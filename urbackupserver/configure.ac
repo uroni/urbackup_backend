@@ -11,15 +11,9 @@ AM_INIT_AUTOMAKE
 AC_ARG_ENABLE([packaging],
     AS_HELP_STRING([--enable-packaging], [Will be installed for packaging.]))
 	
-AC_ARG_ENABLE(enable_fortify,
-  AS_HELP_STRING([--disable-fortify], [Disable GCC/runtime fortification]),
-  [case "${enableval}" in
-     yes | no ) WITH_FORTIFY="${enableval}" ;;
-     *) AC_MSG_ERROR(bad value ${enableval} for --disable-fortify) ;;
-   esac],
-  [WITH_FORTIFY="yes"]
-)
-AM_CONDITIONAL([WITH_FORTIFY], [test "x$WITH_FORTIFY" = "xyes"])
+AC_ARG_ENABLE([disable_fortify],
+     AS_HELP_STRING([--disable-fortify], [Disable GCC/runtime fortification]))
+AM_CONDITIONAL(WITH_FORTIFY, test "x$disable_fortify" = xno)
 
 # Checks for programs.
 AC_PROG_CXX
