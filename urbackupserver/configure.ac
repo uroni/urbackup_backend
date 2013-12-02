@@ -11,9 +11,9 @@ AM_INIT_AUTOMAKE
 AC_ARG_ENABLE([packaging],
     AS_HELP_STRING([--enable-packaging], [Will be installed for packaging.]))
 	
-AC_ARG_ENABLE([disable_fortify],
+AC_ARG_ENABLE([fortify],
      AS_HELP_STRING([--disable-fortify], [Disable GCC/runtime fortification]))
-AM_CONDITIONAL(WITH_FORTIFY, test "x$disable_fortify" != xyes)
+AM_CONDITIONAL(WITH_FORTIFY, test "x$enable_fortify" != xno)
 
 # Checks for programs.
 AC_PROG_CXX
