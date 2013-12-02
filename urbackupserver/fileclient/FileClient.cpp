@@ -367,7 +367,12 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 					for(size_t j=0;j<addr_hints.size();++j)
 					{
 						char ch=ID_PING;
+						sockaddr_in addr_udp;
+						addr_udp.sin_family=AF_INET;
+						addr_udp.sin_port=htons(UDP_PORT);
 						addr_udp.sin_addr.s_addr=addr_hints[j].s_addr;
+						memset(addr_udp.sin_zero,0, sizeof(addr_udp.sin_zero));
+
 						sendto(udpsocks[i], &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
 					}
 
