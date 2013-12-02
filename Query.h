@@ -10,7 +10,7 @@ struct sqlite3;
 class CDatabase;
 class DatabaseCursor;
 
-#define DEBUG_QUERIES
+//#define DEBUG_QUERIES
 
 class ScopedAddActiveQuery;
 
