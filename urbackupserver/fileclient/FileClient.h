@@ -85,6 +85,7 @@ private:
 		bool Reconnect(void);
 
         std::vector<SOCKET> udpsocks;
+		std::vector<sockaddr_in> broadcast_addrs;
         IPipe *tcpsock;
 
         _u32 starttime;

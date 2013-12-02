@@ -127,6 +127,8 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 					source_addr.sin_family = AF_INET;
 					source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
+					broadcast_addrs.push_back(*((struct sockaddr_in *)ifap->ifa_broadaddr));
+
 					Server->Log(std::string("Binding to interface ")+std::string(ifap->ifa_name)+" for broadcasting...", LL_DEBUG);
 
 					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
@@ -322,17 +324,20 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 				sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
 			}
 				
-#else //Linux
-		
-			sockaddr_in addr_udp;
-			addr_udp.sin_family=AF_INET;
-			addr_udp.sin_port=htons(UDP_PORT);
-			addr_udp.sin_addr.s_addr=INADDR_BROADCAST;
-			memset(addr_udp.sin_zero,0, sizeof(addr_udp.sin_zero));
-		
+#else //Linux		
 
 			for(size_t i=0;i<udpsocks.size();++i)
 			{
+				sockaddr_in addr_udp;
+				addr_udp.sin_family=AF_INET;
+				addr_udp.sin_port=htons(UDP_PORT);
+#ifdef __FreeBSD__
+				addr_udp.sin_addr.s_addr=broadcast_addrs[i].sin_addr.s_addr;
+#else
+				addr_udp.sin_addr.s_addr=INADDR_BROADCAST;
+#endif
+				memset(addr_udp.sin_zero,0, sizeof(addr_udp.sin_zero));
+
 				char ch=ID_PING;
 				int rc=sendto(udpsocks[0], &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 				if(rc==-1)
@@ -351,6 +356,14 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 						Server->Log("Error setting socket to not broadcast", LL_ERROR);
 					}
 
+					#if defined(__FreeBSD__)
+					int optval=0;
+					if(setsockopt(udpsocks[i], IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+					{
+						Server->Log(std::string("Error setting IP_ONESBCAST" ), LL_ERROR);
+					}
+					#endif
+
 					for(size_t j=0;j<addr_hints.size();++j)
 					{
 						char ch=ID_PING;
@@ -363,6 +376,14 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 					{
 						Server->Log("Error setting socket to broadcast", LL_ERROR);
 					}
+
+					#if defined(__FreeBSD__)
+					optval=1;
+					if(setsockopt(udpsocks[i], IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+					{
+						Server->Log(std::string("Error setting IP_ONESBCAST" ), LL_ERROR);
+					}
+					#endif
 				}
 			}
 #endif

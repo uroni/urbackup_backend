@@ -250,7 +250,11 @@ mdb_sem_wait(sem_t *sem)
  * Otherwise compile with the less efficient -DMDB_DSYNC=O_SYNC.
  */
 #ifndef MDB_DSYNC
+#ifndef __FreeBSD__
 # define MDB_DSYNC	O_DSYNC
+#else
+# define MDB_DSYNC	O_SYNC
+#endif
 #endif
 #endif
 
