@@ -5,7 +5,7 @@ noinst_HEADERS = IPychartFactory.h IPychart.h pluginmgr.h PychartFactory.h Pycha
 ACLOCAL_AMFLAGS=-I m4
 AM_CXXFLAGS = -DLINUX $(BOOST_CPPFLAGS) -I$(PYTHON_INCLUDE_DIR)
 if WITH_FORTIFY
-	AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
+AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 endif
 AM_LDFLAGS = 
 install-data-local: $(srcdir)/pychart.py

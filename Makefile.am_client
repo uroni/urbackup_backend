@@ -4,7 +4,7 @@ urbackup_client_SOURCES = AcceptThread.cpp Client.cpp Database.cpp Query.cpp Sel
 urbackup_client_LDADD = -ldl
 sbin_SCRIPTS = start_urbackup_client
 if WITH_FORTIFY
-	AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
+AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 endif
 AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
 AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY

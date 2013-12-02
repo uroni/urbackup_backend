@@ -2,7 +2,7 @@ lib_LTLIBRARIES = liburbackupclient_fsimageplugin.la
 liburbackupclient_fsimageplugin_la_SOURCES = dllmain.cpp ../stringtools.cpp filesystem.cpp FSImageFactory.cpp pluginmgr.cpp vhdfile.cpp ../urbackupcommon/sha2/sha2.c fs/ntfs.cpp fs/unknown.cpp
 noinst_HEADERS = filesystem.h FSImageFactory.h IFilesystem.h IFSImageFactory.h IVHDFile.h pluginmgr.h vhdfile.h fs/ntfs.h fs/unknown.h
 if WITH_FORTIFY
-	AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
+AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 endif
 AM_CXXFLAGS = -DLINUX
 AM_LDFLAGS = -Wl,--no-undefined

@@ -13,7 +13,7 @@ AC_ARG_ENABLE([packaging],
 	
 AC_ARG_ENABLE([disable_fortify],
      AS_HELP_STRING([--disable-fortify], [Disable GCC/runtime fortification]))
-AM_CONDITIONAL(WITH_FORTIFY, test "x$disable_fortify" = xno)
+AM_CONDITIONAL(WITH_FORTIFY, test "x$disable_fortify" != xyes)
 
 # Checks for programs.
 AC_PROG_CXX

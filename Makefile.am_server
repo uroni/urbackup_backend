@@ -5,7 +5,7 @@ urbackup_srv_LDADD = $(PTHREAD_LIBS) $(DLOPEN_LIBS)
 sbin_SCRIPTS = start_urbackup_server
 
 if WITH_FORTIFY
-	AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
+AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 endif
 
 AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
