@@ -85,7 +85,7 @@ namespace
 			}
 			if(!outputpipe->Write(send_buffer, tsend))
 			{
-				ServerLogger::Log(clientid, "Sending file data failed", LL_ERROR);
+				ServerLogger::Log(clientid, "Sending file data failed", LL_WARNING);
 				return ESendErr_Send;
 			}
 		}
@@ -337,7 +337,15 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 				if(pParentvhd.empty())
 				{
-					tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id));
+					size_t sent = tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id));
+					if(sent==0)
+					{
+						ServerLogger::Log(clientid, "Sending 'FULL IMAGE' command failed", LL_WARNING);
+						transferred_bytes+=cc->getTransferedBytes();
+						Server->destroy(cc);
+						cc=NULL;
+						continue;
+					}
 				}
 				else
 				{
@@ -345,16 +353,20 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					size_t sent=tcpstack.Send(cc, server_identity+ts);
 					if(sent==0)
 					{
-						ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_ERROR);
-						goto do_image_cleanup;
+						ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_WARNING);
+						transferred_bytes+=cc->getTransferedBytes();
+						Server->destroy(cc);
+						cc=NULL;
+						continue;
 					}
 					ESendErr rc = sendFileToPipe(parenthashfile, cc, clientid);
 					if(rc==ESendErr_Send)
 					{
-						ServerLogger::Log(clientid, "Sending hashdata failed", LL_ERROR);
+						ServerLogger::Log(clientid, "Sending hashdata failed", LL_WARNING);
+						transferred_bytes+=cc->getTransferedBytes();
 						Server->destroy(cc);
 						cc=NULL;
-						break;
+						continue;
 					}
 					else if(rc!=ESendErr_Ok)
 					{
