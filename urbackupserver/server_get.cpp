@@ -1394,7 +1394,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 	if(ServerStatus::isBackupStopped(clientname))
 	{
-		ServerLogger::Log(clientid, L"Server admin stopped backup. -1", LL_WARNING);
+		ServerLogger::Log(clientid, L"Server admin stopped backup. -1", LL_ERROR);
 		has_error=true;
 		return false;
 	}
@@ -1427,7 +1427,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		if(ServerStatus::isBackupStopped(clientname))
 		{
 			r_done=true;
-			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_WARNING);
+			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
 			break;
 		}
 		filelist_currpos+=read;
@@ -2185,7 +2185,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			{
 				r_offline=true;
 				backup_stopped=true;
-				ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_WARNING);
+				ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
 			}
 		}
 

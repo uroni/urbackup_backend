@@ -255,7 +255,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	{
 		if(ServerStatus::isBackupStopped(clientname))
 		{
-			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_WARNING);
+			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
 			goto do_image_cleanup;
 		}
 		size_t r=0;
@@ -281,7 +281,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				{
 					if(ServerStatus::isBackupStopped(clientname))
 					{
-						ServerLogger::Log(clientid, L"Server admin stopped backup. (2)", LL_WARNING);
+						ServerLogger::Log(clientid, L"Server admin stopped backup. (2)", LL_ERROR);
 						goto do_image_cleanup;
 					}
 					ServerStatus::setROnline(clientname, false);
