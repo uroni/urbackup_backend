@@ -85,7 +85,7 @@ namespace
 			}
 			if(!outputpipe->Write(send_buffer, tsend))
 			{
-				ServerLogger::Log(clientid, "Sending file data failed", LL_WARNING);
+				ServerLogger::Log(clientid, "Sending file data failed", LL_DEBUG);
 				return ESendErr_Send;
 			}
 		}
@@ -353,7 +353,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					size_t sent=tcpstack.Send(cc, server_identity+ts);
 					if(sent==0)
 					{
-						ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_WARNING);
+						ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_DEBUG);
 						transferred_bytes+=cc->getTransferedBytes();
 						Server->destroy(cc);
 						cc=NULL;
@@ -362,7 +362,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					ESendErr rc = sendFileToPipe(parenthashfile, cc, clientid);
 					if(rc==ESendErr_Send)
 					{
-						ServerLogger::Log(clientid, "Sending hashdata failed", LL_WARNING);
+						ServerLogger::Log(clientid, "Sending hashdata failed", LL_DEBUG);
 						transferred_bytes+=cc->getTransferedBytes();
 						Server->destroy(cc);
 						cc=NULL;
