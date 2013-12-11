@@ -1080,7 +1080,7 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 
 void ClientConnector::CMD_CAPA(const std::string &cmd)
 {
-	std::string client_version_str=std::string(c_client_version);
+	std::wstring client_version_str=std::wstring(c_client_version);
 #ifdef _WIN32
 	std::wstring buf;
 	buf.resize(1024);
@@ -1091,11 +1091,11 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	}
 
 	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
-		"&CLIENT_VERSION_STR="+EscapeParamString(client_version_str)+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
+		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
 #else
 	std::string os_version_str="not Windows";
 	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1"
-		"&CLIENT_VERSION_STR="+EscapeParamString(client_version_str)+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
+		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
 #endif
 }
 
