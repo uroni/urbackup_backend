@@ -1356,7 +1356,7 @@ bool checkhtml(const std::string &str)
 	for(size_t i=0;i<str.size();++i)
 	{
 		char ch=str[i];
-		if( ch=='<' || ch=='>')
+		if( ch=='<' || ch=='>' || ch=='&')
 			return false;
 	}
 

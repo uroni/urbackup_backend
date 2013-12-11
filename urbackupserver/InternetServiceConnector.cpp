@@ -281,18 +281,30 @@ void InternetServiceConnector::ReceivePackets(void)
 								}
 								else
 								{
-									errmsg="Auth failed";
+									errmsg="Auth failed (Authkey wrong)";
 								}
 							}
 							else if(errmsg.empty())
 							{
-								if(db_timeout)
+								if(authkey.empty())
+								{
+									errmsg="No Authentication key";
+								}
+								else if(db_timeout)
 								{
 									errmsg="Database timeout while looking for client";
 								}
 								else
 								{
-									errmsg="Unknown client";
+									if(checkhtml(clientname))
+									{
+										errmsg="Unknown client ("+clientname+")";
+									}
+									else
+									{
+										Server->Log("HTML injection detected", LL_WARNING);
+										errmsg="Unknown client";
+									}									
 								}
 							}
 						}
