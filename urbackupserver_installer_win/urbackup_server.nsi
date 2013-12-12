@@ -7,8 +7,8 @@
 SetCompressor /FINAL /SOLID lzma
 
 CRCCheck On
-Name "UrBackup Server 1.3"
-OutFile "UrBackup Server 1.3-1.exe"
+Name "UrBackup Server 1.3.1"
+OutFile "UrBackup Server 1.3.1-1.exe"
 InstallDir "$PROGRAMFILES\UrBackupServer"
 RequestExecutionLevel highest
 
