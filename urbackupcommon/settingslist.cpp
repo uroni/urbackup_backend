@@ -16,7 +16,10 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"min_image_full");
 	ret.push_back(L"max_image_full");
 	ret.push_back(L"startup_backup_delay");
-	ret.push_back(L"backup_window");
+	ret.push_back(L"backup_window_incr_file");
+	ret.push_back(L"backup_window_full_file");
+	ret.push_back(L"backup_window_incr_image");
+	ret.push_back(L"backup_window_full_image");
 	ret.push_back(L"exclude_files");
 	ret.push_back(L"include_files");
 	ret.push_back(L"computername");

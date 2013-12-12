@@ -1775,6 +1775,7 @@ function getArchivePars()
 }
 function saveGeneralSettings()
 {
+	backupWindowChange();
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
 	if(!validate_text_int_or_empty(["global_local_speed"])) return;
@@ -1880,6 +1881,7 @@ function updateUserOverwrite(clientid)
 	I('update_freq_image_incr_disable').disabled=!checked;
 	I('update_freq_image_full_disable').disabled=!checked;
 	
+	I('backup_window').disabled=!checked;
 	
 	if(clientid)
 	{
@@ -1889,6 +1891,9 @@ function updateUserOverwrite(clientid)
 function saveClientSettings(clientid, skip)
 {
 	if(!startLoading()) return;
+	
+	backupWindowChange();
+	
 	var pars="";
 	pars+=getPar("overwrite");
 	if(!skip)
@@ -3007,6 +3012,9 @@ function recalculateStatistics()
 		stopLoading();
 	}
 }
+
+g.showing_backup_window_details=true;
+
 function setBackupWindowDisplay(display)
 {
 	I('backup_window_incr_file_row').style.display=display;
@@ -3018,6 +3026,7 @@ function showBackupWindowDetails()
 {
 	setBackupWindowDisplay("table-row");
 	I('backup_window_row').style.display="none";
+	g.showing_backup_window_details=true;
 }
 function hideBackupWindowDetails()
 {
@@ -3027,9 +3036,22 @@ function hideBackupWindowDetails()
 	{
 		setBackupWindowDisplay("none");
 		I('backup_window').value=I('backup_window_incr_file').value;
+		g.showing_backup_window_details=false;
 	}
 	else
 	{
 		showBackupWindowDetails();
+	}
+}
+
+function backupWindowChange()
+{
+	if(!g.showing_backup_window_details)
+	{
+		var val = I('backup_window').value;
+		I('backup_window_incr_file').value=val;
+		I('backup_window_full_file').value=val;
+		I('backup_window_incr_image').value=val;
+		I('backup_window_full_image').value=val;
 	}
 }

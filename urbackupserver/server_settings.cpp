@@ -350,10 +350,10 @@ void ServerSettings::readSettingsClient(void)
 		settings->backup_window_full_file=stmp;
 	stmp=settings_client->getValue("backup_window_incr_image", "");
 	if(!stmp.empty())
-		settings->backup_window_full_image=stmp;
+		settings->backup_window_incr_image=stmp;
 	stmp=settings_client->getValue("backup_window_full_image", "");
 	if(!stmp.empty())
-		settings->backup_window_incr_file=stmp;
+		settings->backup_window_full_image=stmp;
 	std::wstring swtmp=settings_client->getValue(L"computername", L"");
 	if(!swtmp.empty())
 		settings->computername=swtmp;

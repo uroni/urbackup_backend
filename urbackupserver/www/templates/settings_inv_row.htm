@@ -119,7 +119,7 @@
 </tr>
 <tr id="backup_window_row">
 <td>#{tBackup window}</td>
-<td><input type="text" id="backup_window" value="#{backup_window}"/>&nbsp;<a href="javascript: showBackupWindowDetails()">#{tShow details}</a>&nbsp;&nbsp;<a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
+<td><input type="text" id="backup_window" value="#{backup_window}" onchange="backupWindowChange()"/>&nbsp;<a href="javascript: showBackupWindowDetails()">#{tShow details}</a>&nbsp;&nbsp;<a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
 </tr>
 <tr id="backup_window_incr_file_row">
 <td>#{tBackup window for incremental file backups}</td>
