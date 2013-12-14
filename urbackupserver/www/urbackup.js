@@ -1435,9 +1435,6 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params2, "internet_incr_file_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
-						
-			if(data.settings.update_freq_image_full<0)
-				data.settings.update_freq_image_full*=-1;
 			
 			data.settings.update_freq_incr/=60*60;
 			data.settings.update_freq_full/=60*60*24;
@@ -1583,7 +1580,6 @@ function show_settings2(data)
 		I('data_f').innerHTML=ndata;
 		g.data_f=ndata;
 		update_tabber=true;
-		settingsCheckboxChange();
 		if(I('backup_window_incr_file_row'))
 		{
 			hideBackupWindowDetails();
@@ -1598,6 +1594,8 @@ function show_settings2(data)
 	{
 		changePW();
 	}
+	
+	settingsCheckboxChange();
 	
 	if(update_tabber)
 	{
