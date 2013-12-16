@@ -30,7 +30,7 @@ public:
 
 	static void reset(int clientid);
 
-	static const std::vector<SCircularLogEntry>& getCircularLogdata(int clientid);
+	static std::vector<SCircularLogEntry> getCircularLogdata(int clientid, size_t minid);
 
 private:
 

@@ -199,20 +199,26 @@ void ServerLogger::reset(int clientid)
 	}
 }
 
-const std::vector<SCircularLogEntry>& ServerLogger::getCircularLogdata(int clientid)
+std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, size_t minid )
 {
 	IScopedLock lock(mutex);
 
 	std::map<int, SCircularData>::const_iterator iter=circular_logdata.find(clientid);
 	if(iter!=circular_logdata.end())
 	{
-		return iter->second.data;
+		if(minid==std::string::npos)
+			return iter->second.data;
+
+		for(size_t i=0;i<iter->second.data.size();++i)
+		{
+			if(iter->second.data[i].id>minid &&
+				iter->second.data[i].id!=std::string::npos)
+				return iter->second.data;
+		}
+		return std::vector<SCircularLogEntry>();
 	}
 	else
 	{
-		SCircularData& data=circular_logdata[clientid];
-		data.id=0;
-		data.idx=0;
-		return data.data;
+		return std::vector<SCircularLogEntry>();
 	}
 }

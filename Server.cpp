@@ -1743,9 +1743,25 @@ void CServer::setLogCircularBufferSize(size_t size)
 	has_circular_log_buffer=size>0?true:false;
 }
 
-const std::vector<SCircularLogEntry>& CServer::getCicularLogBuffer(void)
+std::vector<SCircularLogEntry> CServer::getCicularLogBuffer( size_t minid )
 {
-	return circular_log_buffer;
+	IScopedLock lock(log_mutex);
+
+	if(minid==std::string::npos)
+	{
+		return circular_log_buffer;
+	}
+
+	for(size_t i=0;i<circular_log_buffer.size();++i)
+	{
+		if(circular_log_buffer[i].id>minid &&
+			circular_log_buffer[i].id!=std::string::npos)
+		{
+			return circular_log_buffer;
+		}
+	}
+
+	return std::vector<SCircularLogEntry>();
 }
 
 void CServer::logToCircularBuffer(const std::string& msg, int loglevel)

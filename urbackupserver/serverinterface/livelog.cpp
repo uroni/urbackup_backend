@@ -6,60 +6,36 @@ namespace
 {
 	const unsigned int max_wait_time=10000;
 
-	const std::vector<SCircularLogEntry>* wait_for_new_data(Helper &helper, int clientid, size_t lastid)
+	void wait_for_new_data(Helper &helper, int clientid, size_t lastid, std::vector<SCircularLogEntry>& entries)
 	{
 		unsigned int starttime=Server->getTimeMS();
 
-		const std::vector<SCircularLogEntry>* logdata;
-
 		do
 		{
-			logdata=&ServerLogger::getCircularLogdata(clientid);
+			entries=ServerLogger::getCircularLogdata(clientid, lastid);
 
-			if(lastid==std::string::npos)
-				return logdata;
-
-			for(size_t i=0;i<logdata->size();++i)
-			{
-				if((*logdata)[i].id>lastid && (*logdata)[i].id!=std::string::npos)
-				{
-					return logdata;
-				}
-			}
+			if(!entries.empty())
+				return;
 
 			helper.sleep(500);
 		}
 		while(Server->getTimeMS()-starttime<max_wait_time);
-
-		return logdata;
 	}
 
-	const std::vector<SCircularLogEntry>* wait_for_new_data(Helper &helper, size_t lastid)
+	void wait_for_new_data(Helper &helper, size_t lastid, std::vector<SCircularLogEntry>& entries)
 	{
 		unsigned int starttime=Server->getTimeMS();
 
-		const std::vector<SCircularLogEntry>* logdata;
-
 		do
 		{
-			logdata=&Server->getCicularLogBuffer();
+			entries=Server->getCicularLogBuffer(lastid);
 
-			if(lastid==std::string::npos)
-				return logdata;
-
-			for(size_t i=0;i<logdata->size();++i)
-			{
-				if((*logdata)[i].id>lastid && (*logdata)[i].id!=std::string::npos)
-				{
-					return logdata;
-				}
-			}
+			if(!entries.empty())
+				return;
 
 			helper.sleep(500);
 		}
 		while(Server->getTimeMS()-starttime<max_wait_time);
-
-		return logdata;
 	}
 
 	struct LogEntryTimeSort
@@ -70,13 +46,10 @@ namespace
 		}
 	};
 
-	std::vector<SCircularLogEntry> time_sort(const std::vector<SCircularLogEntry>* input)
+	void time_sort(std::vector<SCircularLogEntry>& input)
 	{
-		std::vector<SCircularLogEntry> sort_copy=*input;
 		LogEntryTimeSort timesort;
-		std::stable_sort(sort_copy.begin(), sort_copy.end(), timesort);
-
-		return sort_copy;
+		std::stable_sort(input.begin(), input.end(), timesort);
 	}
 }
 
@@ -101,31 +74,26 @@ ACTION_IMPL(livelog)
 		lastid=watoi(s_lastid);
 	}
 
-	const std::vector<SCircularLogEntry>* logdata=NULL;
+	std::vector<SCircularLogEntry> logdata;
 
 	std::vector<int> right_ids;
 	if(clientid==0 && helper.getRights("logs")=="all")
 	{
-		logdata=wait_for_new_data(helper, lastid);
+		wait_for_new_data(helper, lastid, logdata);
 	}
 	else if(clientid!=0 && helper.hasRights(clientid, helper.getRights("logs"), right_ids) )
 	{
-		logdata=wait_for_new_data(helper, clientid, lastid);
+		wait_for_new_data(helper, clientid, lastid, logdata);
 	}
 
-	if(logdata==NULL)
-	{
-		return;
-	}
-
-	std::vector<SCircularLogEntry> sorted_logdata=time_sort(logdata);
+	time_sort(logdata);
 
 	JSON::Object ret;
 	JSON::Array j_logdata;
 
-	for(size_t i=0;i<sorted_logdata.size();++i)
+	for(size_t i=0;i<logdata.size();++i)
 	{
-		const SCircularLogEntry& entry=sorted_logdata[i];
+		const SCircularLogEntry& entry=logdata[i];
 		if(entry.id!=std::string::npos && (lastid==std::string::npos || entry.id>lastid) )
 		{
 			JSON::Object obj;

@@ -57,7 +57,7 @@ public:
 	virtual void setLogLevel(int LogLevel)=0;
 	virtual void setLogFile(const std::string &plf, std::string chown_user="")=0;
 	virtual void setLogCircularBufferSize(size_t size)=0;
-	virtual const std::vector<SCircularLogEntry>& getCicularLogBuffer(void)=0;
+	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid)=0;
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO)=0;
 	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO)=0;
 	virtual void Write(THREAD_ID tid, const std::string &str, bool cached=true)=0;
