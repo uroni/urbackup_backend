@@ -38,7 +38,6 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <errno.h>
 
 #if defined(__FreeBSD__)
 #define lstat64 lstat
@@ -195,14 +194,14 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 	int src_desc=open64(Server->ConvertToUTF8(fname).c_str(), O_RDONLY);
 	if( src_desc<0)
 	{
-		Server->Log("Error opening source file. errno="+nconvert(errono));
+		Server->Log("Error opening source file. errno="+nconvert(errno));
 	    return false;
 	}
 
 	int dst_desc=open64(Server->ConvertToUTF8(linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
 	if( dst_desc<0 )
 	{
-		Server->Log("Error opening destination file. errno="+nconvert(errono));
+		Server->Log("Error opening destination file. errno="+nconvert(errno));
 	    close(src_desc);
 	    return false;
 	}
@@ -214,7 +213,7 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 	
 	if(rc)
 	{
-		Server->Log("Reflink ioctl failed. errno="+nconvert(errono));
+		Server->Log("Reflink ioctl failed. errno="+nconvert(errno));
 	}
 
 	close(src_desc);
