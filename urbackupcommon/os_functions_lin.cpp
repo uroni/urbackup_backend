@@ -193,11 +193,15 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 #ifndef sun
 	int src_desc=open64(Server->ConvertToUTF8(fname).c_str(), O_RDONLY);
 	if( src_desc<0)
+	{
+		Server->Log("Error opening source file. errno="+nconvert(errono));
 	    return false;
+	}
 
 	int dst_desc=open64(Server->ConvertToUTF8(linkname).c_str(), O_WRONLY | O_CREAT | O_EXCL, S_IRWXU | S_IRWXG);
 	if( dst_desc<0 )
 	{
+		Server->Log("Error opening destination file. errno="+nconvert(errono));
 	    close(src_desc);
 	    return false;
 	}
@@ -206,6 +210,11 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 #define BTRFS_IOC_CLONE _IOW (BTRFS_IOCTL_MAGIC, 9, int)
 	
 	int rc=ioctl(dst_desc, BTRFS_IOC_CLONE, src_desc);
+	
+	if(rc)
+	{
+		Server->Log("Reflink ioctl failed. errno="+nconvert(errono));
+	}
 
 	close(src_desc);
 	close(dst_desc);

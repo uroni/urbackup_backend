@@ -774,7 +774,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 								if( memcmp(verify_checksum, dig, sha_size)!=0)
 								{
-									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size), LL_DEBUG);
+									Server->Log("Client hash="+base64_encode(dig, sha_size)+" Server hash="+base64_encode(verify_checksum, sha_size)+" hblock="+nconvert(hblock), LL_DEBUG);
 									if(num_hash_errors<10)
 									{
 										ServerLogger::Log(clientid, "Checksum for image block wrong. Retrying...", LL_WARNING);
