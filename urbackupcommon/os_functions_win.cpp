@@ -293,10 +293,19 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 	HANDLE hJunc=INVALID_HANDLE_VALUE;
 	char *buf=NULL;
 
-	if(wtarget.find(os_file_prefix(L""))==0)
+	if(wtarget.find(L"\\\\?\\UNC")==0)
+	{
+		wtarget.erase(0, 7);
+		wtarget=L"\\"+wtarget;
+	}
+	else if(wtarget.find(os_file_prefix(L""))==0)
+	{
 		wtarget.erase(0, os_file_prefix(L"").size());
+	}
+
 	if(!wtarget.empty() && wtarget[0]!='\\')
 		wtarget=L"\\??\\"+wtarget;
+
 	if(!wtarget.empty() && wtarget[target.size()-1]=='\\')
 		wtarget.erase(target.size()-1, 1);
 
