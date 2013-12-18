@@ -290,7 +290,10 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 					int broadcast=0;
 #ifdef _WIN32
 #define SETSOCK_CAST (char*)
+#else
+#define SETSOCK_CAST
 #endif
+
 					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, SETSOCK_CAST &broadcast, sizeof(int))==-1)
 					{
 						Server->Log("Error setting socket to not broadcast", LL_ERROR);
