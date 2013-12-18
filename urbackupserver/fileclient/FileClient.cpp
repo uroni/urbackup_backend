@@ -263,69 +263,6 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
         if(start==true)
         {
 			max_version=0;
-#if defined(_WIN32)
-
-			SOCKET udpsock;
-			if(udpsocks.empty())
-			{
-				Server->Log("No udp socket present", LL_ERROR);
-				return ERR_ERROR;
-			}
-
-			udpsock=udpsocks[0];
-
-            //get local ip address
-            char hostname[MAX_PATH];
-            struct    hostent* h;
-            _u32     address;
-
-            _i32 rc=gethostname(hostname, MAX_PATH);
-            if(rc==SOCKET_ERROR)
-                    return 0;
-
-				std::vector<_u32> addresses;
-
-            if(NULL != (h = gethostbyname(hostname)))
-            {
-				for(_u32 x = 0; (h->h_addr_list[x]); x++)
-				{
-			//		  Server->Log("Found address for hostname", LL_DEBUG);
-						((uchar*)(&address))[0] = h->h_addr_list[x][0];
-						((uchar*)(&address))[1] = h->h_addr_list[x][1];
-						((uchar*)(&address))[2] = h->h_addr_list[x][2];
-						((uchar*)(&address))[3] = h->h_addr_list[x][3];
-						((uchar*)(&address))[3]=255;
-						addresses.push_back(address);
-						local_ip=address;
-				}
-            }
-
-
-			sockaddr_in addr_udp;
-			addr_udp.sin_family=AF_INET;
-			addr_udp.sin_port=htons(UDP_PORT);
-			addr_udp.sin_addr.s_addr=INADDR_BROADCAST;
-                
-			char ch=ID_PING;
-			sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-
-			for(size_t i=0;i<addresses.size();++i)
-			{
-					char *ip=(char*)&addresses[i];
-					//Server->Log("Sending broadcast to "+nconvert((unsigned char)ip[0])+"."+nconvert((unsigned char)ip[1])+"."+nconvert((unsigned char)ip[2])+"."+nconvert((unsigned char)ip[3]), LL_DEBUG);
-					addr_udp.sin_addr.s_addr=addresses[i];
-					sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-			}
-
-
-			for(size_t i=0;i<addr_hints.size();++i)
-			{
-				addr_udp.sin_addr.s_addr=addr_hints[i].s_addr;
-				sendto(udpsock, &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in) );
-			}
-				
-#else //Linux		
-
 			for(size_t i=0;i<udpsocks.size();++i)
 			{
 				sockaddr_in addr_udp;
@@ -339,7 +276,7 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 				memset(addr_udp.sin_zero,0, sizeof(addr_udp.sin_zero));
 
 				char ch=ID_PING;
-				int rc=sendto(udpsocks[0], &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
+				int rc=sendto(udpsocks[i], &ch, 1, 0, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 				if(rc==-1)
 				{
 					Server->Log("Sending broadcast failed!", LL_ERROR);
@@ -351,7 +288,10 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 				for(size_t i=0;i<udpsocks.size();++i)
 				{
 					int broadcast=0;
-					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
+#ifdef _WIN32
+#define SETSOCK_CAST (char*)
+#endif
+					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, SETSOCK_CAST &broadcast, sizeof(int))==-1)
 					{
 						Server->Log("Error setting socket to not broadcast", LL_ERROR);
 					}
@@ -377,10 +317,12 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 					}
 
 					broadcast=1;
-					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(int))==-1)
+					if(setsockopt(udpsocks[i], SOL_SOCKET, SO_BROADCAST, SETSOCK_CAST &broadcast, sizeof(int))==-1)
 					{
 						Server->Log("Error setting socket to broadcast", LL_ERROR);
 					}
+
+#undef SETSOCK_CAST
 
 					#if defined(__FreeBSD__)
 					optval=1;
@@ -391,7 +333,6 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 					#endif
 				}
 			}
-#endif
 
 			starttime=Server->getTimeMS();
 
