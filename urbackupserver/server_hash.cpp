@@ -125,6 +125,9 @@ void BackupServerHash::deinitDatabase(void)
 	db->destroyQuery(q_delete_all_files_tmp);
 	db->destroyQuery(q_count_files_tmp);
 	db->destroyQuery(q_move_del_file);
+
+	delete filecache;
+	filecache=NULL;
 }
 
 void BackupServerHash::operator()(void)
