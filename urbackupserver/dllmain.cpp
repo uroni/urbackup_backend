@@ -235,6 +235,10 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 			Server->getServerWorkingDir()+os_file_sep()+L"urbackup"+os_file_sep()+L"backup_server.db\"", LL_ERROR);
 		exit(1);
 	}
+	else
+	{
+		Server->destroyDatabases(Server->getThreadID());
+	}
 }
 
 void open_settings_database(bool use_berkeleydb)
