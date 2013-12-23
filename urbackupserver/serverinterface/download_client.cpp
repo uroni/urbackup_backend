@@ -31,6 +31,7 @@ namespace
 		ret+="internet_server="+settingsptr->internet_server+"\r\n";
 		ret+="internet_server_port="+nconvert(settingsptr->internet_server_port)+"\r\n";
 		ret+="internet_authkey="+settingsptr->internet_authkey+"\r\n";
+		ret+="computername="+Server->ConvertToUTF8(settingsptr->computername)+"\r\n";
 		return ret;
 	}
 
