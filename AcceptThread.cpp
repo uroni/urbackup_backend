@@ -45,7 +45,10 @@ void OutputCallback::operator() (const void* buf, size_t count)
     int rc;
     rc = send(fd, (const char*)buf, (int)count, MSG_NOSIGNAL);
     if (rc < 0)
-		Server->Log("Send failed in OutputCallback");
+	{
+		Server->Log("Send failed in OutputCallback", LL_INFO);
+		throw std::runtime_error("Send failed in OutputCallback");
+	}
 }
 
 CAcceptThread::CAcceptThread( unsigned int nWorkerThreadsPerMaster, unsigned short int uPort ) : error(false)

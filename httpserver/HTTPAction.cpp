@@ -20,8 +20,38 @@
 
 #include "../Interface/Server.h"
 #include "../Interface/Pipe.h"
+#include "../Interface/OutputStream.h"
 
 #include "../stringtools.h"
+
+namespace
+{
+	class PipeOutputStream : public IOutputStream
+	{
+	public:
+		PipeOutputStream(IPipe* pipe)
+			: _pipe(pipe)
+		{
+		}
+
+		virtual void write(const std::string &tw)
+		{
+			write(tw.c_str(), tw.size(), STDOUT);
+		}
+
+		virtual void write(const char* buf, size_t count, ostream_type_t stream)
+		{
+			if(!_pipe->Write(buf, count))
+			{
+				Server->Log("Send failed in PipeOutputStream", LL_INFO);
+				throw std::runtime_error("Send failed in PipeOutputStream");
+			}
+		}
+
+	private:
+		IPipe* _pipe;
+	};
+}
 
 CHTTPAction::CHTTPAction(const std::wstring &pName, const std::wstring pContext, const std::string &pGETStr, const std::string pPOSTStr, const str_nmap &pRawPARAMS, IPipe *pOutput)
 {
@@ -47,17 +77,23 @@ void CHTTPAction::operator()(void)
 	MAP("POSTFILEKEY","POSTFILEKEY");
 	MAP("ACCEPT-LANGUAGE", "ACCEPT_LANGUAGE");
 
-	std::string op=Server->Execute(name, context, GET, POST, PARAMS);
+	PipeOutputStream pipe_output_stream(output);
 
-	if( op.empty() )
+	THREAD_ID tid=0;
+	try
 	{
-		output->Write("HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: 22\r\n\r\nSorry. File not found.");
+		pipe_output_stream.write("HTTP/1.1 200 ok\r\nCache-Control: max-age=0\r\n");
+		tid = Server->Execute(name, context, GET, POST, PARAMS, &pipe_output_stream);
+	}
+	catch(...)
+	{
 		return;
 	}
 
-	size_t content_length=op.size()-(op.find("\r\n\r\n")+4);
-
-	op="HTTP/1.1 200 ok\r\nCache-Control: max-age=0\r\nContent-Length: "+nconvert(content_length)+"\r\n"+op;
-
-	output->Write(op);
+	if( tid==0 )
+	{
+		std::wstring error=L"Error: Unknown action ["+name+L"]";
+		Server->Log(error, LL_WARNING);
+		output->Write("Content-type: text/html; charset=UTF-8\r\n\r\n"+wnarrow(error));
+	}
 }
