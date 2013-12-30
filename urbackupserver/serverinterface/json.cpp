@@ -352,6 +352,15 @@ namespace JSON
 			{
 				r+="\\r";
 			}
+			else if(t[i]<32)
+			{
+				std::string hex = byteToHex(t[i]);
+				if(hex.size()<2)
+				{
+					hex="0"+hex;
+				}
+				r+="\\x"+hex;
+			}
 			else
 			{
 				r+=t[i];
