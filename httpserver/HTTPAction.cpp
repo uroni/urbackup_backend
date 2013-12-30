@@ -24,6 +24,8 @@
 
 #include "../stringtools.h"
 
+#include <stdexcept>
+
 namespace
 {
 	class PipeOutputStream : public IOutputStream
