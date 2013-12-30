@@ -21,7 +21,7 @@ namespace
 		return crypto_fak->verifyFile(pubkey_fn, "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig");
 	}
 
-	std::string constructClientSettings(Helper& helper, int clientid)
+	std::string constructClientSettings(Helper& helper, int clientid, const std::string& clientname)
 	{
 		ServerSettings settings(helper.getDatabase(), clientid);
 		SSettings *settingsptr=settings.getSettings();
@@ -31,7 +31,10 @@ namespace
 		ret+="internet_server="+settingsptr->internet_server+"\r\n";
 		ret+="internet_server_port="+nconvert(settingsptr->internet_server_port)+"\r\n";
 		ret+="internet_authkey="+settingsptr->internet_authkey+"\r\n";
-		ret+="computername="+Server->ConvertToUTF8(settingsptr->computername)+"\r\n";
+		if(!clientname.empty())
+		{
+			ret+="computername="+clientname+"\r\n";
+		}
 		return ret;
 	}
 
@@ -121,19 +124,20 @@ ACTION_IMPL(download_client)
 			Server->Log("Verifying UrBackupUpdate.exe signature...", LL_INFO);
 			if(verify_signature())
 			{
-				std::string data=getFile("urbackup/UrBackupUpdate.exe");
-				if( replaceStrings(helper, constructClientSettings(helper, clientid), data) )
+				IQuery *q=helper.getDatabase()->Prepare("SELECT name FROM clients WHERE id=?");
+				q->Bind(clientid);
+				db_results res=q->Read();
+				q->Reset();
+
+				std::string clientname;
+				if(!res.empty())
 				{
-					IQuery *q=helper.getDatabase()->Prepare("SELECT name FROM clients WHERE id=?");
-					q->Bind(clientid);
-					db_results res=q->Read();
+					clientname=Server->ConvertToUTF8(res[0][L"name"]);
+				}
 
-					std::string clientname;
-					if(!res.empty())
-					{
-						clientname=Server->ConvertToUTF8(res[0][L"name"]);
-					}
-
+				std::string data=getFile("urbackup/UrBackupUpdate.exe");
+				if( replaceStrings(helper, constructClientSettings(helper, clientid, clientname), data) )
+				{
 					Server->setContentType(tid, "application/octet-stream");
 					Server->addHeader(tid, "Content-Disposition: attachment; filename=\"UrBackup Client ("+clientname+").exe\"");
 					Server->addHeader(tid, "Content-Length: "+nconvert(data.size()) );
