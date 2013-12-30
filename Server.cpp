@@ -491,12 +491,17 @@ THREAD_ID CServer::Execute(const std::wstring &action, const std::wstring &conte
 
 		clearDatabases(tid);
 
-		WriteRaw(tid, NULL, 0, false);
+		bool b = WriteRaw(tid, NULL, 0, false);
 
 		if( current_req!=NULL )
 		{
 			IScopedLock lock(requests_mutex);
 			current_requests[tid]=current_req;
+		}
+
+		if(!b)
+		{
+			throw std::runtime_error("OutputStream error");
 		}
 
 		return tid;
@@ -581,8 +586,9 @@ unsigned int CServer::getTimeMS(void)
 #endif
 }
 
-void CServer::WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached)
+bool CServer::WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached)
 {
+	bool ret=true;
 	if( cached==false )
 	{
 		IOutputStream* req=NULL;
@@ -623,6 +629,7 @@ void CServer::WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached
 				catch(std::exception&)
 				{
 					Server->Log("Sending data failed", LL_INFO);
+					ret=false;
 				}				
 				curr_output->clear();
 			}
@@ -644,6 +651,7 @@ void CServer::WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached
 			catch(std::exception&)
 			{
 				Server->Log("Sending data failed", LL_INFO);
+				ret=false;
 			}
 		}
 		else
@@ -662,14 +670,16 @@ void CServer::WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached
 			else
 			{
 				Log("Couldn't find THREAD_ID - cached=false", LL_ERROR);
+				ret=false;
 			}
 		}
 	}
+	return ret;
 }
 
-void CServer::Write(THREAD_ID tid, const std::string &str, bool cached)
+bool CServer::Write(THREAD_ID tid, const std::string &str, bool cached)
 {
-	WriteRaw(tid, str.c_str(), str.size(), cached);
+	return WriteRaw(tid, str.c_str(), str.size(), cached);
 }
 
 bool CServer::UnloadDLLs(void)

@@ -60,8 +60,8 @@ public:
 	virtual std::vector<SCircularLogEntry> getCicularLogBuffer(size_t minid)=0;
 	virtual void Log(const std::string &pStr, int LogLevel=LL_INFO)=0;
 	virtual void Log(const std::wstring &pStr, int LogLevel=LL_INFO)=0;
-	virtual void Write(THREAD_ID tid, const std::string &str, bool cached=true)=0;
-	virtual void WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true)=0;
+	virtual bool Write(THREAD_ID tid, const std::string &str, bool cached=true)=0;
+	virtual bool WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached=true)=0;
 
 	virtual std::string getServerParameter(const std::string &key)=0;
 	virtual std::string getServerParameter(const std::string &key, const std::string &def)=0;

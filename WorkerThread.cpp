@@ -226,6 +226,8 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 
 	str_map::iterator iter2=GET.find(L"a");
 
+	bool has_error=false;
+
 	if( iter2!=GET.end() )
 	{
 		int starttime=Server->getTimeMS();
@@ -236,14 +238,30 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 		if( iter3!=GET.end() )
 			context=iter3->second;
 
-		THREAD_ID tid=Server->Execute(iter2->second, context, GET, POST, req->params, req );
-
-		if( tid==0 )
+		try
 		{
-			std::wstring error=L"Error: Unknown action ["+iter2->second+L"]";
-			Server->Log(error, LL_WARNING);
-			req->write("Content-type: text/html; charset=UTF-8\r\n\r\n"+wnarrow(error));
+			THREAD_ID tid=Server->Execute(iter2->second, context, GET, POST, req->params, req );
+
+			if( tid==0 )
+			{
+				std::wstring error=L"Error: Unknown action ["+iter2->second+L"]";
+				Server->Log(error, LL_WARNING);
+				try
+				{
+					req->write("Content-type: text/html; charset=UTF-8\r\n\r\n"+wnarrow(error));
+				}
+				catch (std::exception&)
+				{
+					Server->Log("Error sending via FastCGI -1", LL_INFO);
+					has_error=true;
+				}
+			}
 		}
+		catch (std::exception&)
+		{
+			Server->Log("Error sending via FastCGI -3", LL_INFO);
+			has_error=true;
+		}				
 
 		starttime=Server->getTimeMS()-starttime;
 		//Server->Log("Execution Time: "+nconvert(starttime)+" ms - time="+nconvert(Server->getTimeMS() ), LL_INFO);
@@ -251,7 +269,15 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 	else
 	{
 		std::string error="Error: Parameter 'action' not given.";
-		req->write("Content-type: text/html; charset=UTF-8\r\n\r\n"+error);
+		try
+		{
+			req->write("Content-type: text/html; charset=UTF-8\r\n\r\n"+error);
+		}
+		catch (std::exception&)
+		{
+			Server->Log("Error sending via FastCGI -2", LL_INFO);
+			has_error=true;
+		}
 	}
 	
 	if(postfile)
@@ -259,7 +285,21 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 		Server->clearPostFiles(pfkey);
 	}
 
-	req->end_request(0, FCGIRequest::REQUEST_COMPLETE);
+	try
+	{
+		if(!has_error && !req->aborted)
+		{
+			req->end_request(0, FCGIRequest::REQUEST_COMPLETE);
+		}
+		else if(req->aborted)
+		{
+			Server->Log("FastCGI request was aborted", LL_INFO);
+		}		
+	}
+	catch (std::exception&)
+	{
+		Server->Log("Error sending via FastCGI -2", LL_INFO);
+	}
 }
 
 POSTFILE_KEY CWorkerThread::ParseMultipartData(const std::string &data, const std::string &boundary)
