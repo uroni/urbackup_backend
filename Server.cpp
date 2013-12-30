@@ -606,30 +606,44 @@ void CServer::WriteRaw(THREAD_ID tid, const char *buf, size_t bsize, bool cached
 					co->first=true;
 				}
 				
-				if(curr_output->size()<SEND_BLOCKSIZE)
+				try
 				{
-					req->write(*curr_output);
-				}
-				else
-				{
-					for(size_t i=0,size=curr_output->size();i<size;i+=SEND_BLOCKSIZE)
+					if(curr_output->size()<SEND_BLOCKSIZE)
 					{
-						req->write(&(*curr_output)[i], (std::min)(SEND_BLOCKSIZE, size-i) );
+						req->write(*curr_output);
+					}
+					else
+					{
+						for(size_t i=0,size=curr_output->size();i<size;i+=SEND_BLOCKSIZE)
+						{
+							req->write(&(*curr_output)[i], (std::min)(SEND_BLOCKSIZE, size-i) );
+						}
 					}
 				}
+				catch(std::exception&)
+				{
+					Server->Log("Sending data failed", LL_INFO);
+				}				
 				curr_output->clear();
 			}
 
-			if( bsize>0 && bsize<SEND_BLOCKSIZE)
+			try
 			{
-				req->write(buf, bsize);
-			}
-			else if(bsize>0 )
-			{
-				for(size_t i=0,size=bsize;i<size;i+=SEND_BLOCKSIZE)
+				if( bsize>0 && bsize<SEND_BLOCKSIZE)
 				{
-					req->write(&buf[i], (std::min)(SEND_BLOCKSIZE, size-i) );
+					req->write(buf, bsize);
 				}
+				else if(bsize>0 )
+				{
+					for(size_t i=0,size=bsize;i<size;i+=SEND_BLOCKSIZE)
+					{
+						req->write(&buf[i], (std::min)(SEND_BLOCKSIZE, size-i) );
+					}
+				}
+			}
+			catch(std::exception&)
+			{
+				Server->Log("Sending data failed", LL_INFO);
 			}
 		}
 		else
