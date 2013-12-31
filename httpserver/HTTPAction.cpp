@@ -43,6 +43,9 @@ namespace
 
 		virtual void write(const char* buf, size_t count, ostream_type_t stream)
 		{
+			if(count==0)
+				return;
+
 			if(!_pipe->Write(buf, count))
 			{
 				Server->Log("Send failed in PipeOutputStream", LL_INFO);

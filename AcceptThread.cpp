@@ -42,18 +42,20 @@ OutputCallback::~OutputCallback()
 
 void OutputCallback::operator() (const void* buf, size_t count)
 {
-    int rc;
-    rc = send(fd, (const char*)buf, (int)count, MSG_NOSIGNAL);
-    if (rc < 0)
+	for(int rc=0;rc<=static_cast<int>(count);)
 	{
-		int ec;
-#ifdef _WIN32
-		ec=GetLastError();
-#else
-		ec=errno;
-#endif
-		Server->Log("Send failed in OutputCallback ec="+nconvert(ec), LL_INFO);
-		throw std::runtime_error("Send failed in OutputCallback");
+		rc = send(fd, (const char*)buf+rc, static_cast<int>(count)-rc, MSG_NOSIGNAL);
+		if (rc < 0)
+		{
+			int ec;
+	#ifdef _WIN32
+			ec=GetLastError();
+	#else
+			ec=errno;
+	#endif
+			Server->Log("Send failed in OutputCallback ec="+nconvert(ec), LL_INFO);
+			throw std::runtime_error("Send failed in OutputCallback");
+		}
 	}
 }
 
