@@ -46,7 +46,13 @@ void OutputCallback::operator() (const void* buf, size_t count)
     rc = send(fd, (const char*)buf, (int)count, MSG_NOSIGNAL);
     if (rc < 0)
 	{
-		Server->Log("Send failed in OutputCallback", LL_INFO);
+		int ec;
+#ifdef _WIN32
+		ec=GetLastError();
+#else
+		ec=errno;
+#endif
+		Server->Log("Send failed in OutputCallback ec="+nconvert(ec), LL_INFO);
 		throw std::runtime_error("Send failed in OutputCallback");
 	}
 }
