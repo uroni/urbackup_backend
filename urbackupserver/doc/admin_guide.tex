@@ -746,6 +746,39 @@ of log messages. You need to restart the server for this change to come into
 effect. On Linux this depends on the distribution. On Debian one changes the
 setting in \textsl{/etc/default/urbackup\_srv}.
 
+\subsection{Used network ports}
+\label{sec:ports}
+
+The Server uses following default ports:
+
+\begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|}
+\hline
+Port  & Usage \\
+\hline
+55413 & FastCGI for web interface \\
+\hline
+55414 & HTTP web interface \\
+\hline
+55415 & Internet clients \\
+\hline
+35623 & UDP broadcasts (sending) \\
+\hline
+\end{tabular}\\\\
+
+\noindent The Client uses following default ports:
+
+\begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|}
+\hline
+Port  & Usage \\
+\hline
+35622 & UDP broadcasts (receiving) \\
+\hline
+35621 & Sending files during file backups \\
+\hline
+35623 & Commands and image backups \\
+\hline
+\end{tabular}
+
 \section{Storage}
 
 The UrBackup server storage system is designed in a way that it is able to save
