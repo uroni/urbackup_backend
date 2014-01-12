@@ -11,8 +11,10 @@ AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY
 AM_LDFLAGS = $(PTHREAD_LIBS)
 SUBDIRS=. $(P_SUBDIRS)
 install-exec-local: defaults_client init.d_client
+if INSTALL_INITD
 	$(INSTALL) -D "$(srcdir)/init.d_client" "$(sysconfdir)/init.d/urbackup_client"
 	if ! test -e "$(sysconfdir)/default/urbackup_client"; then $(INSTALL) -D "$(srcdir)/defaults_client" "$(sysconfdir)/default/urbackup_client"; fi
+endif
 
 	mkdir -p "$(DESTDIR)$(localstatedir)/urbackup"
 	mkdir -p "$(DESTDIR)$(localstatedir)/urbackup/data"
