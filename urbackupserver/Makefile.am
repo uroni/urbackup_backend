@@ -6,12 +6,12 @@ AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werro
 endif
 AM_CXXFLAGS = -DLINUX $(PTHREAD_CFLAGS)
 install-data-local: backup_server.db ../urbackup/status.htm ../urbackup/google_chart.js www/*.js www/*.htm www/*.css $(srcdir)/www/*.png www/*.gif urbackup_dsa.pub
-	$(INSTALL_DATA) $(INSTALL_OPTS) -d "$(DESTDIR)$(localstatedir)/urbackup"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup"
 	chmod +x "$(DESTDIR)$(localstatedir)/urbackup"
 	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/backup_server.db" "$(DESTDIR)$(localstatedir)/urbackup/backup_server.db.template"
 	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/../urbackup/status.htm" "$(DESTDIR)$(localstatedir)/urbackup/status.htm"
 	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/../urbackup/google_chart.js" "$(DESTDIR)$(localstatedir)/urbackup/"
-	$(INSTALL_DATA) $(INSTALL_OPTS) -d "$(DESTDIR)$(localstatedir)/urbackup/www"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www"
 if !PACKAGING
 	chmod u+x "$(DESTDIR)$(localstatedir)/urbackup/www"
 endif
