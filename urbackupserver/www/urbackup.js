@@ -16,7 +16,8 @@ g.languages=[
 				{ l: "Français", s: "fr" },
 				{ l: "Россия", s: "ru"},
 				{ l: "简体中文", s: "zh_CN" },
-				{ l: "繁体中文", s: "zh_TW" }				
+				{ l: "繁体中文", s: "zh_TW" },
+				{ l: "فارسی", s: "fa" }
 			];
 
 function startup()
