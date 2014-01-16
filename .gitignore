@@ -200,3 +200,5 @@ SQLGenOld/ipch/sqlgen-6c3cb888/sqlgen-97ce3bd6.ipch
 client/
 urbackupclient/sysvol_test/x64/*
 urbackup/sqlite3_.exe
+urbackup/sqlite.exe
+urbackup/sqlite3_analyzer.exe
