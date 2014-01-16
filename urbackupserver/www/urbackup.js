@@ -1586,6 +1586,8 @@ function show_settings2(data)
 		}
 	}
 	
+	settingsCheckboxChange();
+	
 	if(data.sa && data.sa=="clientsettings")
 	{
 		updateUserOverwrite();
@@ -1594,8 +1596,6 @@ function show_settings2(data)
 	{
 		changePW();
 	}
-	
-	settingsCheckboxChange();
 	
 	if(update_tabber)
 	{
