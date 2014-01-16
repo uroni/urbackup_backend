@@ -480,7 +480,7 @@ ACTION_IMPL(settings)
 			
 			if(rights=="all" )
 			{
-				IQuery *q=db->Prepare("SELECT id,name FROM clients");
+				IQuery *q=db->Prepare("SELECT id,name FROM clients ORDER BY name");
 				db_results res=q->Read();
 				q->Reset();
 				for(size_t i=0;i<res.size();++i)

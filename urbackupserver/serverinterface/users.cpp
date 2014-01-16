@@ -30,7 +30,7 @@ ACTION_IMPL(users)
 	if(session!=NULL && helper.getRights("users")=="all" )
 	{
 		IDatabase *db=helper.getDatabase();
-		IQuery *q=db->Prepare("SELECT id, name FROM clients");
+		IQuery *q=db->Prepare("SELECT id, name FROM clients ORDER BY name");
 		db_results res=q->Read();
 		
 		JSON::Array users;

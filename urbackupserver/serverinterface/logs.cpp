@@ -70,7 +70,7 @@ ACTION_IMPL(logs)
 		IDatabase *db=helper.getDatabase();
 		std::string qstr="SELECT c.id AS id, c.name AS name FROM clients c WHERE ";
 		if(!clientid.empty()) qstr+=constructFilter(clientid, "c.id")+" AND ";
-		qstr+=" EXISTS (SELECT id FROM logs l WHERE l.clientid=c.id LIMIT 1)";
+		qstr+=" EXISTS (SELECT id FROM logs l WHERE l.clientid=c.id LIMIT 1) ORDER BY name";
 		
 		IQuery *q_clients=db->Prepare(qstr);
 		db_results res=q_clients->Read();
@@ -90,7 +90,7 @@ ACTION_IMPL(logs)
 		ret.set("clients", clients);
 
 		IQuery *q_log_right_clients=db->Prepare("SELECT id, name FROM clients"+(clientid.empty()?""
-											:" WHERE "+constructFilter(clientid, "id")));
+											:" WHERE "+constructFilter(clientid, "id"))+" ORDER BY name");
 
 		res=q_log_right_clients->Read();
 		q_log_right_clients->Reset();

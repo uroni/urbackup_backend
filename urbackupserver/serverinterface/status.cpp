@@ -66,7 +66,7 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 	bool clientid_rights_all;
 	std::vector<int> clientid_rights=helper.clientRights(RIGHT_SETTINGS, clientid_rights_all);
 
-	db_results res=db->Read("SELECT id, name FROM clients");
+	db_results res=db->Read("SELECT id, name FROM clients ORDER BY name");
 
 	bool has_client=false;
 
@@ -244,7 +244,7 @@ ACTION_IMPL(status)
 			}
 		}
 		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen, 'localtime') AS lastseen,"
-			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image, 'localtime') AS lastbackup_image FROM clients"+filter);
+			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image, 'localtime') AS lastbackup_image FROM clients"+filter+" ORDER BY name");
 
 		double backup_ok_mod_file=3.;
 		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_file' AND clientid=0");

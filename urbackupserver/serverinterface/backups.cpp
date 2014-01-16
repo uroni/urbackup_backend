@@ -53,7 +53,7 @@ ACTION_IMPL(backups)
 		IDatabase *db=helper.getDatabase();
 		if(sa.empty())
 		{
-			std::string qstr="SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup FROM clients";
+			std::string qstr="SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup FROM clients ORDER BY name";
 			if(!clientid.empty()) qstr+=" WHERE "+constructFilter(clientid, "id");
 			IQuery *q=db->Prepare(qstr);
 			db_results res=q->Read();
