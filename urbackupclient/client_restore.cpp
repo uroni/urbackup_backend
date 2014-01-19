@@ -1481,7 +1481,7 @@ void restore_wizard(void)
 			}break;
 		case 6:
 			{
-				int r=system("dialog --menu \"`cat urbackup/restore/restore_success`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_computer`\" \"b\" \"`cat urbackup/restore/bootable_on_different_hardware`\" \"o\" \"`cat urbackup/restore/restore_other`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out");
+				int r=system("dialog --menu \"`cat urbackup/restore/restore_success`\" 15 70 10 \"r\" \"`cat urbackup/restore/restart_computer`\" \"b\" \"`cat urbackup/restore/bootable_on_different_hardware`\" \"o\" \"`cat urbackup/restore/restore_other`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out");
 				if(r!=0)
 				{
 					state=start_state;
