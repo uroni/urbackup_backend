@@ -57,6 +57,7 @@ echo|set /p="set build_revision=" > "build_revision.bat"
 git rev-parse HEAD >> "build_revision.bat"
 call build_revision.bat
 
+cd "%~dp0"
 FOR /F "tokens=*" %%G IN (pdb_dirs_server.txt) DO symstore add /compress /r /f "%~dp0%%G" /s "C:\symstore" /t "UrBackup Server /v "%build_revision%" /c "Release"
 
 :skip_symbols
