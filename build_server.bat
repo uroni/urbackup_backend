@@ -51,4 +51,14 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 "C:\Program Files (x86)\NSIS\Unicode\makensis.exe" "%~dp0urbackupserver_installer_win/urbackup_server.nsi"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
+if NOT "%STORE_SYMBOLS%" == "1" GOTO skip_symbols
+
+echo|set /p="set build_revision=" > "build_revision.bat"
+git rev-parse HEAD >> "build_revision.bat"
+call build_revision.bat
+
+FOR /F "tokens=*" %%G IN (pdb_dirs_server.txt) DO symstore add /compress /r /f "%~dp0%%G" /s "C:\symstore" /t "UrBackup Server /v "%build_revision%" /c "Release"
+
+:skip_symbols
+
 exit /b 0
