@@ -1009,6 +1009,7 @@ void restore_wizard(void)
 	SImage selimage;
 	SImage r_selimage;
 	std::string seldrive;
+	std::string windows_partition;
 	int selpart;
 	std::string err;
 	bool res_sysvol=false;
@@ -1410,6 +1411,10 @@ void restore_wizard(void)
 				//Disable IO scheduler for drive
 				system(("echo noop > /sys/block/"+seldrive+"/queue/scheduler").c_str());
 				const std::string selected_partition="/dev/"+seldrive+nconvert( selpart );
+				if(windows_partition.empty())
+				{
+					windows_partition=selected_partition;
+				}
 				RestoreThread rt(selimage.id, nconvert(selimage.time_s), selected_partition);
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
 				while(true)
@@ -1476,7 +1481,7 @@ void restore_wizard(void)
 			}break;
 		case 6:
 			{
-				int r=system("dialog --menu \"`cat urbackup/restore/restore_success`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_computer`\" \"o\" \"`cat urbackup/restore/restore_other`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out");
+				int r=system("dialog --menu \"`cat urbackup/restore/restore_success`\" 15 50 10 \"r\" \"`cat urbackup/restore/restart_computer`\" \"b\" \"`cat urbackup/restore/bootable_on_different_hardware`\" \"o\" \"`cat urbackup/restore/restore_other`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out");
 				if(r!=0)
 				{
 					state=start_state;
@@ -1490,6 +1495,8 @@ void restore_wizard(void)
 					state=2;
 				else if(out=="s")
 					system("bash");
+				else if(out=="b")
+					system(("python3 urbackup/restore/driver_edit.py "+windows_partition).c_str());
 				else
 					system("init 6");
 
