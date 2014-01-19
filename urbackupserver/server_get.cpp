@@ -719,6 +719,7 @@ void BackupServerGet::operator ()(void)
 				{
 					updateLastBackup();
 					setBackupComplete();
+					ServerLogger::Log(clientid, "Backup succeeded", LL_INFO);
 				}
 				status.pcdone=100;
 				ServerStatus::setServerStatus(status, true);
@@ -734,6 +735,7 @@ void BackupServerGet::operator ()(void)
 				else
 				{
 					updateLastImageBackup();
+					ServerLogger::Log(clientid, "Backup succeeded", LL_INFO);
 				}
 				status.pcdone=100;
 				ServerStatus::setServerStatus(status, true);
