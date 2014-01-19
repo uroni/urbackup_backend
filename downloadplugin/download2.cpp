@@ -239,207 +239,219 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                 {
                         bytes = recv(Cs, Buffer, BUFFERSIZE,  MSG_NOSIGNAL);
 
-                        if( writing==true )
-                        {
-                                if( chunked==false )
-                                {
-                                        out.write(Buffer,bytes);
-                                        totalbytes+=bytes;
-                                }
-                                else
-                                {
-                                        int off=0;
-                                        if( chunksize!=-1 )
-                                        {
-                                                if( chunksize-bytes>0 )
-                                                {
-                                                        out.write(Buffer, bytes);
-                                                        totalbytes+=bytes;
-                                                        chunksize-=bytes;
-                                                }
-                                                else
-                                                {
-                                                        out.write(Buffer, chunksize);
-                                                        totalbytes+=chunksize;
-                                                        off=chunksize;
-                                                        tmpbuf.clear();
-                                                        chunksize=-1;
-                                                 }
-                                        }
-                                        if( chunksize==-1 )
-                                        {
-                                                size_t osize=tmpbuf.size();
-                                                tmpbuf.resize( tmpbuf.size()+(bytes-off) );
-                                                memcpy(&tmpbuf[osize], &Buffer[off], bytes-off);
+						if(bytes>0)
+						{
+							if( writing==true )
+							{
+									if( chunked==false )
+									{
+											out.write(Buffer,bytes);
+											totalbytes+=bytes;
+									}
+									else
+									{
+											int off=0;
+											if( chunksize!=-1 )
+											{
+													if( chunksize-bytes>0 )
+													{
+															out.write(Buffer, bytes);
+															totalbytes+=bytes;
+															chunksize-=bytes;
+													}
+													else
+													{
+															out.write(Buffer, chunksize);
+															totalbytes+=chunksize;
+															off=chunksize;
+															tmpbuf.clear();
+															chunksize=-1;
+													 }
+											}
+											if( chunksize==-1 )
+											{
+													size_t osize=tmpbuf.size();
+													tmpbuf.resize( tmpbuf.size()+(bytes-off) );
+													memcpy(&tmpbuf[osize], &Buffer[off], bytes-off);
 
-                                                std::string csize2=getbetween("\r\n","\r\n", tmpbuf);
+													std::string csize2=getbetween("\r\n","\r\n", tmpbuf);
 
-                                                if( csize2!="" )
-                                                {
-                                                        chunksize=(int)hexToULong((char*)csize2.c_str() );
-														chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
-                                                        while( chunksize<=(int)(tmpbuf.size()-4-csize2.size()) && chunksize>0)
-                                                        {
-                                                                out.write(&tmpbuf[4+csize2.size()], chunksize);
-                                                                out.flush();
-                                                                totalbytes+=chunksize;
-                                                                tmpbuf.erase(0,4+csize2.size()+chunksize);
+													if( csize2!="" )
+													{
+															chunksize=(int)hexToULong((char*)csize2.c_str() );
+															chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
+															while( chunksize<=(int)(tmpbuf.size()-4-csize2.size()) && chunksize>0)
+															{
+																	out.write(&tmpbuf[4+csize2.size()], chunksize);
+																	out.flush();
+																	totalbytes+=chunksize;
+																	tmpbuf.erase(0,4+csize2.size()+chunksize);
 
-                                                                csize2=getbetween("\r\n","\r\n", tmpbuf);
+																	csize2=getbetween("\r\n","\r\n", tmpbuf);
 
-                                                                if( csize2!="" )
-                                                                {
-                                                                        chunksize=hexToULong((char*)csize2.c_str() );
-																		chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
-                                                                }
-                                                                else
-                                                                        chunksize=-1;
+																	if( csize2!="" )
+																	{
+																			chunksize=hexToULong((char*)csize2.c_str() );
+																			chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
+																	}
+																	else
+																			chunksize=-1;
 
-                                                        }
+															}
                                                         
-                                                        if( chunksize==0 )
-                                                        {
-                                                                exit=true;
-                                                        }
-                                                        else if( chunksize>0 )
-                                                        {
-                                                                out.write(&tmpbuf[4+csize2.size()], tmpbuf.size()-4-csize2.size());
-                                                                out.flush();
-                                                                chunksize-=tmpbuf.size()-4-csize2.size();
-                                                                totalbytes+=(int)(tmpbuf.size()-4-csize2.size());
-                                                                tmpbuf.clear();
-                                                        }
-                                                }
-                                        }
-                                }
-                        }
-                        else
-                        {
-                                size_t osize=tmpbuf.size();
-                                tmpbuf.resize( tmpbuf.size()+bytes);
-								if(bytes>0)
-								{
-									memcpy(&tmpbuf[osize], Buffer, bytes);
-								}
+															if( chunksize==0 )
+															{
+																	exit=true;
+															}
+															else if( chunksize>0 )
+															{
+																	out.write(&tmpbuf[4+csize2.size()], tmpbuf.size()-4-csize2.size());
+																	out.flush();
+																	chunksize-=tmpbuf.size()-4-csize2.size();
+																	totalbytes+=(int)(tmpbuf.size()-4-csize2.size());
+																	tmpbuf.clear();
+															}
+													}
+											}
+									}
+							}
+							else
+							{
+									size_t osize=tmpbuf.size();
+									tmpbuf.resize( tmpbuf.size()+bytes);
+									if(bytes>0)
+									{
+										memcpy(&tmpbuf[osize], Buffer, bytes);
+									}
 
-                                if( Buffer[bytes]==0 )
-                                {
-                                        int xsds=2;
-                                }
+									if( Buffer[bytes]==0 )
+									{
+											int xsds=2;
+									}
 
-                                size_t offadd=4;
-                                size_t off=tmpbuf.find("\r\n\r\n");
-                                if( off==std::string::npos )
-                                {
-                                        off=tmpbuf.find("\n\n");
-                                        offadd=2;
-                                }
+									size_t offadd=4;
+									size_t off=tmpbuf.find("\r\n\r\n");
+									if( off==std::string::npos )
+									{
+											off=tmpbuf.find("\n\n");
+											offadd=2;
+									}
 
-                                if( off!=std::string::npos && off+offadd<tmpbuf.size())
-                                {
-                                        std::string length=getbetween("Content-Length: ","\n", tmpbuf);
+									if( off!=std::string::npos && off+offadd<tmpbuf.size())
+									{
+											std::string length=getbetween("Content-Length: ","\n", tmpbuf);
 
-                                        std::string error_code=getbetween("HTTP/1.1 "," ",tmpbuf);
+											std::string error_code=getbetween("HTTP/1.1 "," ",tmpbuf);
 
-                                        if( error_code=="" )
-                                                error_code=getbetween("HTTP/1.0 "," ",tmpbuf);
+											if( error_code=="" )
+													error_code=getbetween("HTTP/1.0 "," ",tmpbuf);
 
-                                        if( trim(getbetween("Transfer-Encoding:", "\r\n", tmpbuf))=="chunked" )
-                                        {
-                                                chunked=true;
-                                        }
+											if( trim(getbetween("Transfer-Encoding:", "\r\n", tmpbuf))=="chunked" )
+											{
+													chunked=true;
+											}
 
-                                        if( error_code!="200" )
-                                        {
-                                                CWData wd;
-												wd.addUChar(DL2_ERROR);
-                                                wd.addUChar(DL2_ERR_404);
-												pipe->Write(wd.getDataPtr(), wd.getDataSize());
+											if( error_code!="200" )
+											{
+													CWData wd;
+													wd.addUChar(DL2_ERROR);
+													wd.addUChar(DL2_ERR_404);
+													pipe->Write(wd.getDataPtr(), wd.getDataSize());
 
-                                                out.close();
+													out.close();
 
-                                                delete[] Buffer;
+													delete[] Buffer;
 
-                                                closesocket(Cs);
+													closesocket(Cs);
 
-                                                _unlink(filename.c_str() );
+													_unlink(filename.c_str() );
                                                 
-                                                return false;
+													return false;
                                                 
-                                        }
+											}
 
-                                        if( length!="" )
-                                        {
-                                                int dlength=atoi( length.c_str() );
+											if( length!="" )
+											{
+													int dlength=atoi( length.c_str() );
 
-                                                CWData wd;
-												wd.addUChar(DL2_CONTENT_LENGTH);
-                                                wd.addInt(dlength);
-												pipe->Write(wd.getDataPtr(), wd.getDataSize());
-                                        }
+													CWData wd;
+													wd.addUChar(DL2_CONTENT_LENGTH);
+													wd.addInt(dlength);
+													pipe->Write(wd.getDataPtr(), wd.getDataSize());
+											}
 
-                                        if( chunked==true )
-                                        {
-                                                std::string csize1=getbetween("\r\n\r\n","\r\n", tmpbuf);
-                                                if( csize1!="" )
-                                                {
-                                                        chunksize=hexToULong((char*)csize1.c_str() );
-                                                        chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
-                                                }
-                                                offadd+=csize1.size()+2;
-                                        }
+											if( chunked==true )
+											{
+													std::string csize1=getbetween("\r\n\r\n","\r\n", tmpbuf);
+													if( csize1!="" )
+													{
+															chunksize=hexToULong((char*)csize1.c_str() );
+															chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
+													}
+													offadd+=csize1.size()+2;
+											}
 
-                                        if( chunked==false )
-                                        {
-                                                out.write(&tmpbuf[off+offadd], tmpbuf.size()-off-offadd );
-                                                totalbytes+=(int)(tmpbuf.size()-off-offadd);
-                                                writing=true;
-                                        }
-                                        else if( chunksize!=-1 )
-                                        {
-                                                while( (int)(tmpbuf.size()-off-offadd)>=chunksize && chunksize>0 )
-                                                {
-                                                        out.write(&tmpbuf[off+offadd], chunksize);
-                                                        out.flush();
-                                                        totalbytes+=chunksize;
-                                                        tmpbuf.erase(0, off+offadd+chunksize);
-                                                        std::string ncsize=getbetween("\r\n", "\r\n", tmpbuf);
-                                                        if( ncsize!="" )
-                                                        {
-                                                                chunksize=hexToULong((char*)ncsize.c_str() );
-                                                                chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
-                                                                off=4+ncsize.size();
-                                                                offadd=0;
-                                                        }
-                                                        else
-                                                        {
-                                                                chunksize=-1;
-                                                        }
-                                                }
+											if( chunked==false )
+											{
+													out.write(&tmpbuf[off+offadd], tmpbuf.size()-off-offadd );
+													totalbytes+=(int)(tmpbuf.size()-off-offadd);
+													writing=true;
+											}
+											else if( chunksize!=-1 )
+											{
+													while( (int)(tmpbuf.size()-off-offadd)>=chunksize && chunksize>0 )
+													{
+															out.write(&tmpbuf[off+offadd], chunksize);
+															out.flush();
+															totalbytes+=chunksize;
+															tmpbuf.erase(0, off+offadd+chunksize);
+															std::string ncsize=getbetween("\r\n", "\r\n", tmpbuf);
+															if( ncsize!="" )
+															{
+																	chunksize=hexToULong((char*)ncsize.c_str() );
+																	chunksize=(std::max)(-1, (std::min)(1048576,chunksize) );
+																	off=4+ncsize.size();
+																	offadd=0;
+															}
+															else
+															{
+																	chunksize=-1;
+															}
+													}
 
-                                                if(chunksize>0 )
-                                                {
-                                                        out.write(&tmpbuf[off+offadd], tmpbuf.size()-off-offadd );
-                                                        out.flush();
-                                                        chunksize-=tmpbuf.size()-off-offadd;
-                                                        totalbytes+=(int)(tmpbuf.size()-off-offadd);
-							tmpbuf.clear();                                                
-                                                }
-                                                else if( chunksize==0 )
-                                                {
-                                                        exit=true;
-                                                }
+													if(chunksize>0 )
+													{
+															out.write(&tmpbuf[off+offadd], tmpbuf.size()-off-offadd );
+															out.flush();
+															chunksize-=tmpbuf.size()-off-offadd;
+															totalbytes+=(int)(tmpbuf.size()-off-offadd);
+								tmpbuf.clear();                                                
+													}
+													else if( chunksize==0 )
+													{
+															exit=true;
+													}
 
-                                                writing=true;
-                                        }
-                                }
-                        }
-                        {
-                                CWData wd;
-								wd.addUChar(DL2_BYTES);
-                                wd.addInt(totalbytes);
-								pipe->Write(wd.getDataPtr(), wd.getDataSize());
-                        }
+													writing=true;
+											}
+									}
+							}
+							{
+									CWData wd;
+									wd.addUChar(DL2_BYTES);
+									wd.addInt(totalbytes);
+									pipe->Write(wd.getDataPtr(), wd.getDataSize());
+							}
+						}
+						else
+						{
+							CWData wd;
+							wd.addUChar(DL2_ERROR);
+							wd.addUChar(DL2_ERR_TIMEOUT);
+							pipe->Write(wd.getDataPtr(), wd.getDataSize());
+
+							bytes=0;
+						}
                 }
                 else
                 {
