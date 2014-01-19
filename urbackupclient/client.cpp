@@ -1053,6 +1053,12 @@ void IndexThread::stopIndex(void)
 #ifdef _WIN32
 bool IndexThread::wait_for(IVssAsync *vsasync)
 {
+	if(vsasync==NULL)
+	{
+		VSSLog("vsasync is NULL", LL_ERROR);
+		return false;
+	}
+
 	CHECK_COM_RESULT(vsasync->Wait());
 
 	HRESULT res;
@@ -1234,6 +1240,12 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 	{		
 		CHECK_COM_RESULT_RELEASE(CreateVssBackupComponents(&backupcom));
 
+		if(!backupcom)
+		{
+			VSSLog("backupcom is NULL", LL_ERROR);
+			return false;
+		}
+
 		CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
 
 		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, TRUE, VSS_BT_FULL, FALSE));
@@ -1302,7 +1314,12 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, NULL);
 		}
 		--tries;
-		if(!snapshot_ok)
+		if(!snapshot_ok && !retryable_error)
+		{
+			VSSLog("Writer is in error state during snapshot creation. Writer data may not be consistent.", LL_ERROR);
+			break;
+		}
+		else if(!snapshot_ok)
 		{
 			if(tries==0)
 			{
@@ -1705,10 +1722,16 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 	}
 #undef HR_ERR
 
+	std::wstring writerName;
+	if(pbstrWriter)
+		writerName=pbstrWriter;
+	else
+		writerName=L"(NULL)";
+
 	if(failure || has_error)
 	{
-		const std::wstring erradd=L" UrBackup will continue with the backup but the associated data may not be consistent.";
-		std::wstring nerrmsg=L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err;
+		const std::wstring erradd=L". UrBackup will continue with the backup but the associated data may not be consistent.";
+		std::wstring nerrmsg=L"Writer "+writerName+L" has failure state "+state+L" with error "+err;
 		if(retryable_error && pHrResultFailure==VSS_E_WRITERERROR_RETRYABLE)
 		{
 			loglevel=LL_INFO;
@@ -1724,7 +1747,7 @@ bool IndexThread::checkErrorAndLog(BSTR pbstrWriter, VSS_WRITER_STATE pState, HR
 	}
 	else
 	{
-		VSSLog(L"Writer "+std::wstring(pbstrWriter)+L" has failure state "+state+L" with error "+err+L".", LL_DEBUG);
+		VSSLog(L"Writer "+writerName+L" has failure state "+state+L" with error "+err+L".", LL_DEBUG);
 	}
 
 	return true;
@@ -1739,6 +1762,7 @@ bool IndexThread::check_writer_status(IVssBackupComponents *backupcom, std::wstr
 	if(!wait_for(pb_result))
 	{
 		VSSLog("Error while waiting for result from GatherWriterStatus", LL_ERROR);
+		return false;
 	}
 
 	UINT nWriters;
