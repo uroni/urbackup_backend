@@ -1496,7 +1496,7 @@ void restore_wizard(void)
 				else if(out=="s")
 					system("bash");
 				else if(out=="b")
-					system(("python3 urbackup/restore/driver_edit.py "+windows_partition).c_str());
+					system(("python3 driver_edit.py "+windows_partition).c_str());
 				else
 					system("init 6");
 
