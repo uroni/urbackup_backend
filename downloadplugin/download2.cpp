@@ -239,7 +239,7 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
                 {
                         bytes = recv(Cs, Buffer, BUFFERSIZE,  MSG_NOSIGNAL);
 
-						if(bytes>0)
+						if(bytes>=0)
 						{
 							if( writing==true )
 							{
