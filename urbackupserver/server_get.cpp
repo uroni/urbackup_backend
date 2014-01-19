@@ -840,7 +840,7 @@ void BackupServerGet::prepareSQL(void)
 	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0)", false);
 	q_get_last_incremental=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_get_last_incremental_complete=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
-	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=CURRENT_TIMESTAMP WHERE id=?", false);
+	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=(SELECT backuptime FROM backups WHERE id=?) WHERE id=?", false);
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
 	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
 	q_set_complete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
@@ -849,7 +849,7 @@ void BackupServerGet::prepareSQL(void)
 	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, "+nconvert(curr_image_version)+",?)", false);
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
-	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=CURRENT_TIMESTAMP WHERE id=?", false);
+	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=(SELECT backuptime FROM backup_images WHERE id=?) WHERE id=?", false);
 	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
 	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
@@ -2765,6 +2765,7 @@ std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
 
 void BackupServerGet::updateLastBackup(void)
 {
+	q_set_last_backup->Bind(backupid);
 	q_set_last_backup->Bind(clientid);
 	q_set_last_backup->Write();
 	q_set_last_backup->Reset();
@@ -2772,6 +2773,7 @@ void BackupServerGet::updateLastBackup(void)
 
 void BackupServerGet::updateLastImageBackup(void)
 {
+	q_set_last_image_backup->Bind(backupid);
 	q_set_last_image_backup->Bind(clientid);
 	q_set_last_image_backup->Write();
 	q_set_last_image_backup->Reset();
