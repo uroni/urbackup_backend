@@ -1,0 +1,7 @@
+x64
+Release
+Release Server 2003
+Release Service
+Release WinXP
+client\x64
+client\Release
