@@ -96,7 +96,14 @@ print_version()
 
 RUN_IN_GDB=0
 
-if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
+GETOPT=getopt
+
+if test -x /usr/local/bin/getopt
+then
+	GETOPT=/usr/local/bin/getopt
+fi
+
+if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	FASTCGI_PORT=55413
 	HTTP_PORT=55414
 	LOGFILE="urbackup.log"
@@ -107,7 +114,7 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	RESET_PW=""
 	CLEANUP=""
 	BROADCAST_INTERFACES=""
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb -- "$@"`
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
