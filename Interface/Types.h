@@ -54,30 +54,6 @@ typedef std::map<std::wstring, std::wstring> db_single_result;
 typedef std::vector< db_single_result > db_results;
 
 #ifdef _WIN32
-#if  _MSC_VER<1600
-const class
-{
-public:
-  template<class T> operator T*() const {return 0;}
-  template<class C, class T> operator T C::*() const {return 0;}
-private:
-  void operator&() const;
-}
-nullptr = {};
-#endif
-#else
-const class
-{
-public:
-  template<class T> operator T*() const {return 0;}
-  template<class C, class T> operator T C::*() const {return 0;}
-private:
-  void operator&() const;
-}
-nullptr = {};
-#endif
-
-#ifdef _WIN32
 #if defined(_WIN64)
 typedef unsigned __int64 SOCKET;
 #else
