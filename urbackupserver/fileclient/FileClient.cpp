@@ -182,7 +182,7 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 
 				sockaddr_in source_addr;
 				memset(&source_addr, 0, sizeof(source_addr));
-				source_addr.sin_addr = INADDR_ANY;
+				source_addr.sin_addr.s_addr = INADDR_ANY;
 				source_addr.sin_family = AF_INET;
 				source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
@@ -191,13 +191,14 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 				rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
 				if(rc<0)
 				{
-					Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed", LL_ERROR);
+					Server->Log("Enabling SO_BROADCAST for UDP socket failed", LL_ERROR);
 					closesocket(udpsock);
 				}
 				else
 				{
 					udpsocks.push_back(udpsock);
-					broadcast_addrs.push_back(INADDR_BROADCAST);
+					source_addr.sin_addr.s_addr = INADDR_BROADCAST;
+					broadcast_addrs.push_back(source_addr);
 				}
 			}
 		}
