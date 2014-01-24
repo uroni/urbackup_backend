@@ -29,7 +29,7 @@ endif
 	
 if !PACKAGING
 if FREEBSD
-	pw groupadd urbackup -q
+	pw groupadd urbackup -q || true
 	pw useradd urbackup -q -g urbackup -d "$(DESTDIR)$(localstatedir)/urbackup" -m -s /usr/bin/false || true
 else
 	adduser urbackup --system --quiet --group --home "$(DESTDIR)$(localstatedir)/urbackup" || true
