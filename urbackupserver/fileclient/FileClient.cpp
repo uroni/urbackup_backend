@@ -29,6 +29,10 @@
 #include <memory.h>
 #include <algorithm>
 
+#ifndef _WIN32
+#include <errno.h>
+#endif
+
 extern std::string server_identity;
 
 namespace
@@ -127,8 +131,6 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 					source_addr.sin_family = AF_INET;
 					source_addr.sin_port = htons(UDP_SOURCE_PORT);
 
-					broadcast_addrs.push_back(*((struct sockaddr_in *)ifap->ifa_broadaddr));
-
 					Server->Log(std::string("Binding to interface ")+std::string(ifap->ifa_name)+" for broadcasting...", LL_DEBUG);
 
 					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
@@ -136,7 +138,6 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 					{
 						Server->Log(std::string("Binding UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
 					}
-
 				
 					rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
 					if(rc<0)
@@ -154,6 +155,7 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 					}
 					#endif
 
+					broadcast_addrs.push_back(*((struct sockaddr_in *)ifap->ifa_broadaddr));
 					udpsocks.push_back(udpsock);
 				}
 			}
@@ -161,7 +163,43 @@ FileClient::FileClient(bool enable_find_servers, int protocol_version, bool inte
 		}
 		else
 		{
-			Server->Log("Getting interface ips failed", LL_ERROR);
+			Server->Log("Getting interface ips failed. errno="+nconvert(errno)+
+				". Server may not listen properly on all network devices when discovering clients.", LL_ERROR);
+
+			SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+			if(udpsock==-1)
+			{
+				Server->Log("Error creating socket", LL_ERROR);
+			}
+			else
+			{
+				BOOL val=TRUE;
+				int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
+				if(rc<0)
+				{
+					Server->Log("Setting SO_REUSEADDR failed", LL_ERROR);
+				}
+
+				sockaddr_in source_addr;
+				memset(&source_addr, 0, sizeof(source_addr));
+				source_addr.sin_addr = INADDR_ANY;
+				source_addr.sin_family = AF_INET;
+				source_addr.sin_port = htons(UDP_SOURCE_PORT);
+
+				Server->Log("Binding to no interface for broadcasting. Entering IP on restore CD won't work.", LL_WARNING);
+
+				rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
+				if(rc<0)
+				{
+					Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed", LL_ERROR);
+					closesocket(udpsock);
+				}
+				else
+				{
+					udpsocks.push_back(udpsock);
+					broadcast_addrs.push_back(INADDR_BROADCAST);
+				}
+			}
 		}
 #else
 		char hostname[MAX_PATH];
