@@ -204,7 +204,7 @@ THREADPOOL_TICKET CThreadPool::execute(IThread *runnable)
 	}
 
 	toexecute.push_back(std::pair<IThread*, THREADPOOL_TICKET>(runnable, ++currticket) );
-	running.insert(std::pair<THREADPOOL_TICKET, ICondition*>(currticket, nullptr) );
+	running.insert(std::pair<THREADPOOL_TICKET, ICondition*>(currticket, NULL) );
 	++nRunning;
 	cond->notify_one();
 	return currticket;
