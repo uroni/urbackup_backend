@@ -23,6 +23,7 @@
 #include <fstream>
 #include <sstream> 
 #include <map>
+#include <stdlib.h>
 
 #ifndef _WIN32
 #include <memory.h>

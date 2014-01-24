@@ -5,6 +5,7 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include <algorithm>
+#include <stdlib.h>
 
 ICondition *ServerAutomaticArchive::cond=NULL;
 IMutex *ServerAutomaticArchive::mutex=NULL;
