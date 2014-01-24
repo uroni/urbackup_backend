@@ -62,6 +62,21 @@ AC_STRUCT_TM
 
 AX_LIB_SOCKET_NSL
 
+AC_MSG_CHECKING([for operating system])
+case "$host_os" in
+freebsd*)
+        opsys="freebsd"
+        ;;
+linux*)
+        opsys="linux"
+        ;;
+*)
+        opsys=""
+        ;;
+esac
+AM_CONDITIONAL([FREEBSD], test x"$opsys" = x"freebsd")
+AM_CONDITIONAL([LINUX], test x"$opsys" = x"linux")
+
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
