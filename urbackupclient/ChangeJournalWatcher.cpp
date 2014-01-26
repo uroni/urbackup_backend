@@ -568,8 +568,8 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 				memcpy(&filename[0], (PBYTE) pRecord + pRecord->FileNameOffset, pRecord->FileNameLength);
 				addFrnTmp(filename, pRecord->ParentFileReferenceNumber, pRecord->FileReferenceNumber, sj->rid);
 				++nDirFRNs;
-				++nFRNs;
 			}
+			++nFRNs;
 			pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
 		}
 		med.StartFileReferenceNumber = * (DWORDLONG *) pData;
