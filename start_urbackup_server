@@ -57,10 +57,10 @@ fi
 SNAPSHOT_HELPER="$PREFIX/bin/urbackup_snapshot_helper"
 if ! test -x $SNAPSHOT_HELPER
 then
-	echo "Snapshot helper not found. Btrfs mode will not work."
+	echo "Info: Snapshot helper not found. Btrfs mode will not work."
 fi
 
-DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --user urbackup --snapshot_helper $SNAPSHOT_HELPER"
+DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --snapshot_helper $SNAPSHOT_HELPER"
 S_DAEMON="--daemon"
 
 print_help()
@@ -80,6 +80,7 @@ print_help()
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
 	echo "--repair_database		Tries to repair the database"
 	echo "--broadcast_interfaces   List of network interfaces from which to send broadcasts (separated by ,)"
+	echo "--user			   Start as specific user (default: urbackup)"
 	echo ""
 	echo "Have a nice day!"
 	exit 0
@@ -114,7 +115,8 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	RESET_PW=""
 	CLEANUP=""
 	BROADCAST_INTERFACES=""
-	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb -- "$@"`
+	URB_USER="urbackup"
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,user: -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -135,6 +137,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--repair_database) CLEANUP="--app repair_database"; shift ;;
 			--broadcast_interfaces) BROADCAST_INTERFACES="--broadcast_interfaces \"$2\""; shift 2 ;;
 			--run_in_gdb) RUN_IN_GDB=1; shift ;;
+			--user) URB_USER="$2"; shift 2;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac
@@ -163,9 +166,9 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		S_DAEMON=""
 	fi
 	
-	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
+	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE --user $URB_USER $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
 else
-	DAEMON_ARGS="$*"
+	DAEMON_ARGS="--user urbackup $*"
 fi
 
 
