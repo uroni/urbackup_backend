@@ -1,7 +1,8 @@
 #!/bin/sh
 
 NAME="urbackup_srv"
-PREFIX=/usr/local
+BASEDIR=`dirname $0`
+PREFIX=`dirname $BASEDIR`
 DAEMON=$PREFIX/sbin/urbackup_srv
 if ! test -x $DAEMON
 then
