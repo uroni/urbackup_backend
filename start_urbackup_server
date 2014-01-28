@@ -13,16 +13,24 @@ fi
 DAEMON_DIR="/var"
 if ! test -f $DAEMON_DIR/urbackup/backup_server.db
 then
-    DAEMON_DIR="/usr/local/var"
+    DAEMON_DIR="$PREFIX/var"
     if ! test -f $DAEMON_DIR/urbackup/backup_server.db
     then
-		DAEMON_DIR="/var"
-		if ! test -d $DAEMON_DIR/urbackup
+		DAEMON_DIR="/usr/local/var"
+		if ! test -f $DAEMON_DIR/urbackup/backup_server.db
 		then
-			DAEMON_DIR="/usr/local/var"
+			DAEMON_DIR="/var"
 			if ! test -d $DAEMON_DIR/urbackup
 			then
-				DAEMON_DIR="/usr/var"
+				DAEMON_DIR="$PREFIX/var"
+				if ! test -d $DAEMON_DIR/urbackup
+				then
+					DAEMON_DIR="/usr/local/var"
+					if ! test -d $DAEMON_DIR/urbackup
+					then
+						DAEMON_DIR="/usr/var"
+					fi
+				fi
 			fi
 		fi
     fi
