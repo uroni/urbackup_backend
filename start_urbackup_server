@@ -108,9 +108,9 @@ RUN_IN_GDB=0
 
 GETOPT=getopt
 
-if test -x /usr/local/bin/getopt
+if test -x $PREFIX/bin/getopt
 then
-	GETOPT=/usr/local/bin/getopt
+	GETOPT=$PREFIX/bin/getopt
 fi
 
 if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
