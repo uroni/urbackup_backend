@@ -9,6 +9,7 @@ then
 	PREFIX=/usr/local
     DAEMON=$PREFIX/sbin/urbackup_srv
 	if ! test -x $DAEMON
+	then
 		PREFIX=/usr
 		DAEMON=$PREFIX/sbin/urbackup_srv
 	fi
