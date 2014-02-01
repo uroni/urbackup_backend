@@ -6,8 +6,12 @@ PREFIX=`dirname $BASEDIR`
 DAEMON=$PREFIX/sbin/urbackup_srv
 if ! test -x $DAEMON
 then
-    PREFIX=/usr
+	PREFIX=/usr/local
     DAEMON=$PREFIX/sbin/urbackup_srv
+	if ! test -x $DAEMON
+		PREFIX=/usr
+		DAEMON=$PREFIX/sbin/urbackup_srv
+	fi
 fi
 
 DAEMON_DIR="/var"
