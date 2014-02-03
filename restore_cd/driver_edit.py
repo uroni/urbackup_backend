@@ -12,7 +12,8 @@ def padNum(x, i):
 
 if len(sys.argv)<2:
     print("Not enough arguments")
-    
+   
+call("clear", shell=True)
     
 print("Mounting Windows partition...");
 
@@ -98,6 +99,8 @@ if os.path.isdir(windows_path):
 
 os.rmdir(mountpoint)
 
-
 print("Done.")
+
+input("Press Enter to continue...")
+
 exit(0)
