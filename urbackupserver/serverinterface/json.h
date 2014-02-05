@@ -120,7 +120,7 @@ namespace JSON
 		void init(const wchar_t* val);
 		void init(long unsigned int val);
 
-		std::string escape(const std::string &t);
+		std::wstring escape(const std::wstring &t);
 
 		void *data;
 		Value_type data_type;

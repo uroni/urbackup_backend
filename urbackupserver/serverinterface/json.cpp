@@ -331,35 +331,35 @@ namespace JSON
 		return *this;
 	}
 
-	std::string Value::escape(const std::string &t)
+	std::wstring Value::escape(const std::wstring &t)
 	{
-		std::string r;
+		std::wstring r;
 		for(size_t i=0;i<t.size();++i)
 		{
 			if(t[i]=='\\')
 			{
-				r+="\\\\";
+				r+=L"\\\\";
 			}
 			else if(t[i]=='"')
 			{
-				r+="\\\"";
+				r+=L"\\\"";
 			}
 			else if(t[i]=='\n')
 			{
-				r+="\\n";
+				r+=L"\\n";
 			}
 			else if(t[i]=='\r')
 			{
-				r+="\\r";
+				r+=L"\\r";
 			}
 			else if(t[i]<32)
 			{
-				std::string hex = byteToHex(t[i]);
+				std::string hex = byteToHex(static_cast<unsigned char>(t[i]));
 				if(hex.size()<2)
 				{
 					hex="0"+hex;
 				}
-				r+="\\x"+hex;
+				r+=L"\\u00"+widen(hex);
 			}
 			else
 			{
@@ -373,8 +373,8 @@ namespace JSON
 	{
 		switch(data_type)
 		{
-			case str_type: return "\""+escape(*((std::string*)data))+"\"";
-			case wstr_type: return "\""+escape(Server->ConvertToUTF8(*((std::wstring*)data)))+"\"";
+			case str_type: return "\""+Server->ConvertToUTF8(escape(Server->ConvertToUnicode(*((std::string*)data))))+"\"";
+			case wstr_type: return "\""+Server->ConvertToUTF8(escape(*((std::wstring*)data)))+"\"";
 			case obj_type: return ((Object*)data)->get(compressed);
 			case array_type: return ((Array*)data)->get(compressed);
 			case bool_type: return nconvert(*((bool*)data));
