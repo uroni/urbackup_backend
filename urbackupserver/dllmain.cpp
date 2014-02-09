@@ -403,7 +403,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	ADD_ACTION(login);
 	ADD_ACTION(google_chart);
-	ADD_ACTION(generate_templ);
 		
 	upgrade();
 

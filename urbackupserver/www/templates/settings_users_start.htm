@@ -3,12 +3,12 @@
 <br />
 <table cellspacing="0" cellpadding="0">
 <tr>			
-	<th style="width: 150px" class="tabHeader">#{tUsername}</th>
-	<th style="width: 200px" class="tabHeader">#{tRights}</th>
-	<th style="width: 350px" class="tabHeaderRight">#{tActions}</th>
+	<th style="width: 150px" class="tabHeader">{tUsername}</th>
+	<th style="width: 200px" class="tabHeader">{tRights}</th>
+	<th style="width: 350px" class="tabHeaderRight">{tActions}</th>
 </tr>
-#{rows}
+{rows|s}
 </table>
 <br />
 <br />
-<input type="button" value="#{tCreate user}" onclick="createUser()"/>
+<input type="button" value="{tCreate user}" onclick="createUser()"/>

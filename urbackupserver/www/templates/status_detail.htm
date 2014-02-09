@@ -1,70 +1,89 @@
 <span id="new_version_available"></span>
-<h1>#{tBackup status}</h1>
+<h1>{tBackup status}</h1>
 
-#{nospc_fatal}
-#{nospc_stalled}
-#{dir_error}
-#{tmpdir_error}
-#{database_error}
+{nospc_fatal|s}
+{nospc_stalled|s}
+{dir_error|s}
+{tmpdir_error|s}
+{database_error|s}
 
-#{modify_clients_top}
+{modify_clients_top|s}<br /><br />
 <table cellspacing="0" cellpadding="0" id="status_table">
+<thead>
 <tr>			
-	<th style="width: 150px" class="tabHeader">#{tComputer name}</th>
-	<th style="width: 50px" class="tabHeader">#{tOnline}</th>
-	<th style="width: 100px" class="tabHeader">#{tStatus}</th>
-	<th style="width: 150px" class="tabHeader">#{tLast seen}</th>
-	<th style="width: 150px" class="tabHeader">#{tLast file backup}</th>
-	<th style="width: 150px" class="tabHeader">#{tLast image backup}</th>
-	<th style="width: 130px" class="tabHeader">#{tFile backup status}</th>
-	<th style="width: 130px" class="tabHeader">#{tImage backup status}</th>
-	<th style="width: 50px" class="tabHeader">#{tIP}</th>
-	<th style="width: auto" class="tabHeader">#{tClient version}</th>
-	<th style="width: auto" class="#{class_prev}">#{tOperating System}</th>
-#{Actions_start}
+	<th style="width: 150px" class="tabHeader">{tComputer name}</th>
+	<th style="width: 50px" class="tabHeader">{tOnline}</th>
+	<th style="width: 100px" class="tabHeader">{tStatus}</th>
+	<th style="width: 150px" class="tabHeader">{tLast seen}</th>
+	<th style="width: 150px" class="tabHeader">{tLast file backup}</th>
+	<th style="width: 150px" class="tabHeader">{tLast image backup}</th>
+	<th style="width: 130px" class="tabHeader">{tFile backup status}</th>
+	<th style="width: 130px" class="tabHeader">{tImage backup status}</th>
+	<th style="width: 50px" class="tabHeader">{tIP}</th>
+	<th style="width: auto" class="tabHeader">{tClient version}</th>
+	<th style="width: auto" class="{class_prev}">{tOperating System}</th>
+{Actions_start|s}
 	<th style="width: 50px" class="tabHeaderRight">&nbsp;</td>
-#{Actions_end}
+{Actions_end|s}
 </tr>
-#{rows}
+</thead>
+<tbody>
+{rows|s}
+</tbody>
 </table>
+<br /><br />
+{modify_clients|s}
+{?removed_clients_table}
+<br /><br />
+<table cellspacing="0" cellpadding="0" id="status_table">
+<thead>
+	<th style="width: 150px" class="tabHeader">{tComputer name}</th>
+	<th style="width: 400px"  class="tabHeaderRight">&nbsp;</th>
+</thead>
+<tbody>
+	{#removed_clients}
+		<td class="tabFLeft">{name}</td>
+		<td class="tabFRight">{tThis client is going to be removed. }&#32;{?remove_client}<a href="javascript: stopRemove({id})">{tStop removing client}</a>.&#32;{/remove_client}{tClients are removed during the cleanup time window, if they are offline. }</td>
+	{/removed_clients}
+</tbody>
+</table>
+{/removed_clients_table}
 <br />
-#{modify_clients}
-<br />
-#{status_client_download}
-<h3>#{tExtra clients}</h3>
+{status_client_download|s}
+<h3>{tExtra clients}</h3>
 
 <table cellspacing="0" cellpadding="0">
 <tr>			
-	<th style="width: 150px" class="tabHeader">#{tHostname/IP}</th>
-	<th style="width: 200px" class="tabHeader">#{tOnline}</th>
-	<th style="width: 200px" class="tabHeaderRight">#{tActions}</th>
+	<th style="width: 150px" class="tabHeader">{tHostname/IP}</th>
+	<th style="width: 200px" class="tabHeader">{tOnline}</th>
+	<th style="width: 200px" class="tabHeaderRight">{tActions}</th>
 </tr>
-#{extra_clients_rows}
+{extra_clients_rows|s}
 </table>
 
 <form action="#" onsubmit="addExtraClient(); return false;">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
-<td>#{tHostname/IP}:</td>
+<td>{tHostname/IP}:</td>
 <td><input type="text" size="40" id="hostname" value=""/> </td>
-<td><input type="submit" value="#{tAdd}"/></td>
+<td><input type="submit" value="{tAdd}"/></td>
 </tr>
 </table>
 </form>
 <br />
-<h3>#{tInternet clients}</h3>
+<h3>{tInternet clients}</h3>
 <br />
-#{internet_client_added}
-#{tAdd additional internet clients}:
+{internet_client_added}
+{tAdd additional internet clients}:
 <form action="#" onsubmit="addInternetClient(); return false;">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
-<td>#{tClient name}:</td>
+<td>{tClient name}:</td>
 <td><input type="text" size="40" id="clientname" value=""/> </td>
-<td><input type="submit" value="#{tAdd}"/></td>
+<td><input type="submit" value="{tAdd}"/></td>
 </tr>
 </table>
 </form>
-<h3>#{tServer identity}</h3>
-#{server_identity}
+<h3>{tServer identity}</h3>
+{server_identity}
 <br>

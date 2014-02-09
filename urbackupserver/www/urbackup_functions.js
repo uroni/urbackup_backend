@@ -142,22 +142,6 @@ function getURL(action, parameters)
 		return "x?a="+action+ses+iernd();
 	}
 }
-	
-function AJAXRequestPure(action, parameters)
-{
-	if( window.Ajax )
-		new window.Ajax.Request(getURL(action, parameters), { method: 'get' });
-	else
-	{
-		req = new window.qx.io.remote.Request(getURL(action, parameters), "GET", "text/javascript");
-		req.send();
-	}
-}
-
-function AJAXUpdate(container, action, parameters)
-{
-	new window.Ajax.Updater( container, getURL( action, parameters), { evalScripts: 'true', method: 'get' } );
-}
 
 function clone(obj){
     if(obj == null || typeof(obj) != 'object')
@@ -207,62 +191,31 @@ getJSON = function(action, parameters, callback)
 		g.last_action=action;
 	}
 	
-	new window.Ajax.Request(getURL(action, parameters),
-		{
-			method: 'get',
-			onComplete: function(transport)
+	$.ajax(
+	{ url: getURL(action, parameters),
+	  dataType: "json"
+	}
+	).done(function(data)
+		{			
+			data=sanitizeJSON(data);
+			
+			if(data.error && data.error==1)
 			{
-				var j;
-				if(window.JSON)
-					j=JSON.parse(transport.responseText);
-				else
-					j=transport.responseText.evalJSON(true);
-					
-				j=sanitizeJSON(j);
-				
-				if(j.error && j.error==1)
-				{
-				    g.session_timeout_cb();
-				}
-				else
-				{
-					if(t_action!="isimageready" && t_action!="piegraph" && t_action!="usagegraph")
-					{
-						g.last_function=cb;
-						g.last_data=clone(j);
-					}
-				    cb(j);
-				}
-			},
-			onException: function(e,ex)
+				g.session_timeout_cb();
+			}
+			else
 			{
-				throw ex;
+				if(t_action!="isimageready" && t_action!="piegraph" && t_action!="usagegraph")
+				{
+					g.last_function=cb;
+					g.last_data=clone(data);
+				}
+				cb(data);
 			}
 		});
 }
 
 g.tmpls={};
-
-loadTmpl = function(name, callback)
-{
-	var cb=callback;
-	
-	if(g.tmpls[name])
-	{
-		cb(g.tmpls[name]);
-		return;
-	}
-	
-	new window.Ajax.Request(getURL("tmpl", "name="+name),
-		{
-			method: 'get',
-			onComplete: function(transport)
-			{
-				g.tmpls[name]=new Template(transport.responseText);
-				cb(g.tmpls[name]);
-			}
-		});
-}
 
 function loadGraph(action, parameters, pDivid, pGraphdata)
 {
@@ -561,7 +514,7 @@ function validate_text_nonempty(a)
 			}
 			else
 			{
-				alert( (new Template(trans("validate_text_empty"))).evaluate({name: trans("validate_name_"+a[i])}));
+				alert( dustCompileRender(trans("validate_text_empty"), {name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -589,7 +542,7 @@ function validate_text_int(a)
 			}
 			else
 			{
-				alert( (new Template(trans("validate_text_notint"))).evaluate({name: trans("validate_name_"+a[i])}));
+				alert( dustCompileRender(trans("validate_text_notint"), {name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -610,7 +563,7 @@ function validate_text_int_or_empty(a)
 			}
 			else
 			{
-				alert( (new Template(trans("validate_text_notint"))).evaluate({name: trans("validate_name_"+a[i])}));
+				alert( dustCompileRender(trans("validate_text_notint"), {name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -625,13 +578,22 @@ function validate_text_regex(a)
 	{
 		if(!a[i].regexp.test(I(a[i].id).value))
 		{
-			if(trans("validate_err_notregexp_"+a[i].id))
+			var errid=a[i].id;
+			if(a[i].errid)
 			{
-				alert(trans("validate_err_notregexp_"+a[i].id));
+				errid=a[i].errid;
+			}
+			if(trans("validate_err_notregexp_"+errid))
+			{
+				alert(trans("validate_err_notregexp_"+errid));
+			}
+			else if( trans("validate_text_notregexp") )
+			{
+				alert( dustCompileRender(trans("validate_text_notregexp"), {name: trans("validate_name_"+a[i].id)}));
 			}
 			else
 			{
-				alert( (new Template(trans("validate_text_notregexp"))).evaluate({name: trans("validate_name_"+a[i].id)}));
+				alert("Field format wrong!");
 			}
 			I(a[i].id).focus();
 			return false;
@@ -674,3 +636,19 @@ function show_hide_column(table_id, col_no, do_show)
 String.prototype.trim = function() {
     return this.replace(/^\s+|\s+$/g, "");
 };
+
+function dustCompileRender(template, data)
+{
+	dust.compile(template, "tmp");
+	return dustRender("tmp", data);
+}
+
+function dustRender(template, data)
+{
+	var result;
+	dust.render(template, data, function(err, res) {
+		if(err) throw err;
+	   result = res;
+	});
+	return result;
+}

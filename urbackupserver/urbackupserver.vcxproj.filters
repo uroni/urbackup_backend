@@ -5,10 +5,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Ressourcendateien">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
-    </Filter>
     <Filter Include="fileclient">
       <UniqueIdentifier>{f70d5b3e-4aa3-4fea-9439-c17050638704}</UniqueIdentifier>
     </Filter>
@@ -39,6 +35,10 @@
     </Filter>
     <Filter Include="filescache">
       <UniqueIdentifier>{3ec8a037-dfb3-443f-aa14-dd5a1f016e35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Ressourcendateien">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -142,9 +142,6 @@
       <Filter>serverinterface</Filter>
     </ClCompile>
     <ClCompile Include="serverinterface\status.cpp">
-      <Filter>serverinterface</Filter>
-    </ClCompile>
-    <ClCompile Include="serverinterface\templ.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
     <ClCompile Include="serverinterface\usage.cpp">

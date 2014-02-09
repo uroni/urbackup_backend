@@ -5,7 +5,6 @@ namespace Actions
 	ACTION(progress);
 	ACTION(login);
 	ACTION(salt);
-	ACTION(generate_templ);
 	ACTION(lastacts);
 	ACTION(piegraph);
 	ACTION(usagegraph);

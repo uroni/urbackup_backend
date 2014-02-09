@@ -1,29 +1,29 @@
-﻿<h1>#{tStorage allocation}</h1>
+﻿<h1>{tStorage allocation}</h1>
 
-<div id="piegraph"><img src="indicator.gif" />#{tLoading}...<br /><br /></div>
+<div id="piegraph"><img src="indicator.gif" />{tLoading}...<br /><br /></div>
 
 <table cellspacing="0" cellpadding="0">
 <tr>			
-	<th style="width: 150px" class="tabHeader">#{tComputer name}</th>
-	<th style="width: 150px" class="tabHeader">#{tImages}</th>
-	<th style="width: 150px" class="tabHeader">#{tFiles}</th>
-	<th style="width: 150px" class="tabHeaderRight">#{tAll}</th>
+	<th style="width: 150px" class="tabHeader">{tComputer name}</th>
+	<th style="width: 150px" class="tabHeader">{tImages}</th>
+	<th style="width: 150px" class="tabHeader">{tFiles}</th>
+	<th style="width: 150px" class="tabHeaderRight">{tAll}</th>
 </tr>
-#{rows}
+{rows|s}
 <tr>
 	<td class="tabFRight" colspan="4" style="height:0px"></td>
 </tr>
 <tr>
-	<td class="tabFLeft">#{tSum}</td>
-	<td class="tabFLeft">#{images_total}</td>
-	<td class="tabFLeft">#{files_total}</td>
-	<td class="tabFRight">#{used_total}</td>
+	<td class="tabFLeft">{tSum}</td>
+	<td class="tabFLeft">{images_total}</td>
+	<td class="tabFLeft">{files_total}</td>
+	<td class="tabFRight">{used_total}</td>
 </tr>
 </table>
 
 <br />
-<input value="#{tRecalculate statistics}" onclick="recalculateStatistics()" type="button"></td>
+<input value="{tRecalculate statistics}" onclick="recalculateStatistics()" type="button"></td>
 
-<h1>#{tStorage usage}</h1>
+<h1>{tStorage usage}</h1>
 
-<div id="usagegraph"><img src="indicator.gif" />#{tLoading}...</div>
+<div id="usagegraph"><img src="indicator.gif" />{tLoading}...</div>

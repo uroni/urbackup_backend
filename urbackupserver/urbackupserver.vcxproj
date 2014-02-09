@@ -297,7 +297,6 @@
     <ClCompile Include="serverinterface\settings.cpp" />
     <ClCompile Include="serverinterface\shutdown.cpp" />
     <ClCompile Include="serverinterface\status.cpp" />
-    <ClCompile Include="serverinterface\templ.cpp" />
     <ClCompile Include="serverinterface\usage.cpp" />
     <ClCompile Include="serverinterface\usagegraph.cpp" />
     <ClCompile Include="serverinterface\users.cpp" />

@@ -111,7 +111,7 @@ function aboutUrBackup()
 	stopLoading();
 	clearTimeout(g.refresh_timeout);
 	
-	var ndata=tmpls.about_urbackup.evaluate({version: I('server_version').innerHTML.trim()});
+	var ndata=dustRender("about_urbackup", {version: I('server_version').innerHTML.trim()});
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -141,7 +141,7 @@ function try_anonymous_login(data)
 	if(data.upgrading_database)
 	{
 		data.upgrade_error_text=trans("upgrade_error_text");
-		var ndata=tmpls.upgrade_error.evaluate(data);
+		var ndata=dustRender("upgrade_error", data);
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;
@@ -153,7 +153,7 @@ function try_anonymous_login(data)
 	if(data.creating_filescache)
 	{
 		data.creating_filescache_text=trans("creating_filescache_text");
-		var ndata=tmpls.file_cache_error.evaluate(data);
+		var ndata=dustRender("file_cache_error", data);
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;
@@ -170,7 +170,7 @@ function try_anonymous_login(data)
 	}
 	else
 	{
-		var ndata=tmpls.login.evaluate();
+		var ndata=dustRender("login");
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;
@@ -231,11 +231,11 @@ function build_main_nav()
 				p=g.nav_params[i+1];
 			if(i+1==g.main_nav_pos)
 			{
-				ndata+=tmpls.main_nav_sel.evaluate({func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
+				ndata+=dustRender("main_nav_sel", {func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
 			}
 			else
 			{
-				ndata+=tmpls.main_nav.evaluate({func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
+				ndata+=dustRender("main_nav", {func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
 			}
 		}
 	}
@@ -315,13 +315,13 @@ function show_progress2(data)
 		for(var i=0;i<data.progress.length;++i)
 		{
 			data.progress[i].action=trans("action_"+data.progress[i].action);
-			rows+=tmpls.progress_row.evaluate(data.progress[i]);
+			rows+=dustRender("progress_row", data.progress[i]);
 		}
-		tdata=tmpls.progress_table.evaluate({"rows": rows});
+		tdata=dustRender("progress_table", {"rows": rows});
 	}
 	else
 	{
-		tdata=tmpls.progress_table_none.evaluate();
+		tdata=dustRender("progress_table_none");
 	}	
 	
 	if(data.lastacts.length>0)
@@ -360,9 +360,9 @@ function show_progress2(data)
 			obj.duration=Math.ceil(obj.duration);
 			obj.duration+=" min";
 			
-			rows+=tmpls.lastacts_row.evaluate(obj);
+			rows+=dustRender("lastacts_row", obj);
 		}
-		tdata+=tmpls.lastacts_table.evaluate({rows: rows});
+		tdata+=dustRender("lastacts_table", {rows: rows});
 	}
 	
 	if(g.data_f!=tdata)
@@ -442,9 +442,9 @@ function show_statistics3(data)
 		obj.used=format_size(obj.used);
 		obj.files=format_size(obj.files);
 		obj.images=format_size(obj.images);
-		rows+=tmpls.stat_general_row.evaluate(obj);
+		rows+=dustRender("stat_general_row", obj);
 	}
-	ndata=tmpls.stat_general.evaluate({rows: rows, used_total: format_size(used_total), files_total: format_size(files_total), images_total: format_size(images_total), ses: g.session});
+	ndata=dustRender("stat_general", {rows: rows, used_total: format_size(used_total), files_total: format_size(files_total), images_total: format_size(images_total), ses: g.session});
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -467,7 +467,7 @@ function stat_client(id, name)
 		var name=g.stat_data.users[idx].name;
 		var id=g.stat_data.users[idx].id;
 		g.settings_nav_pos=idx+1;
-		g.data_f=tmpls.stat_user.evaluate({clientid: id, clientname: name, ses: g.session});
+		g.data_f=dustRender("stat_user", {clientid: id, clientname: name, ses: g.session});
 		I('data_f').innerHTML=g.data_f;
 		new loadGraph("usagegraph", "clientid="+id, "usagegraph", {pie: false, width: 700, height: 700, 
 			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") });
@@ -549,6 +549,7 @@ function show_status2(data)
 	
 	var ndata="";
 	var rows="";
+	var removed_clients=[];
 	for(var i=0;i<data.status.length;++i)
 	{
 		var obj=data.status[i];
@@ -609,11 +610,11 @@ function show_status2(data)
 		{
 			if(obj.status>=1 && obj.status<=2)
 			{
-				obj.start_file_backup=tmpls.status_percent_done.evaluate({pcdone: obj.done_pc});
+				obj.start_file_backup=dustRender("status_percent_done", {pcdone: obj.done_pc});
 			}
 			else
 			{
-				obj.start_image_backup=tmpls.status_percent_done.evaluate({pcdone: obj.done_pc});
+				obj.start_image_backup=dustRender("status_percent_done", {pcdone: obj.done_pc});
 			}
 		}	
 				
@@ -663,45 +664,20 @@ function show_status2(data)
 		
 		if( obj.delete_pending && obj.delete_pending==1)
 		{
-			if(data.details)
-			{
-				if(data.allow_modify_clients)
-					obj.colspan=9;
-				else
-					obj.colspan=8;
-			}
-			else
-			{
-				if(data.allow_modify_clients)
-					obj.colspan=6;
-				else
-					obj.colspan=5;
-			}
-			
-			if(data.remove_client)
-			{
-				obj.stop_remove_start="";
-				obj.stop_remove_stop="";
-			}
-			else
-			{
-				obj.stop_remove_start="<!--";
-				obj.stop_remove_stop="-->";
-			}
-			
-			rows+=tmpls.status_row_delete_pending.evaluate(obj);
+			obj.remove_client=data.remove_client;
+			removed_clients.push(obj);
 		}
 		else
 		{
 			if(data.details)
 			{
-				rows+=tmpls.status_detail_row.evaluate(obj);
+				rows+=dustRender("status_detail_row", obj);
 			}
 			else
 			{
 				if(!obj.rejected)
 				{
-					rows+=tmpls.status_row.evaluate(obj);
+					rows+=dustRender("status_row", obj);
 				}
 			}
 		}
@@ -711,31 +687,31 @@ function show_status2(data)
 	{
 		var ext_text="";
 		if(data.dir_error_ext) ext_text="("+data.dir_error_ext+")";
-		dir_error=tmpls.dir_error.evaluate({ext_text: ext_text, dir_error_text: trans("dir_error_text")});
+		dir_error=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text")});
 	}
 	
 	var tmpdir_error="";
 	if(data.tmpdir_error)
 	{
-		tmpdir_error=tmpls.tmpdir_error.evaluate({tmpdir_error_text: trans("tmpdir_error_text")});
+		tmpdir_error=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text")});
 	}
 	
 	var nospc_stalled="";
 	if(data.nospc_stalled)
 	{
-		nospc_stalled=tmpls.nospc_stalled.evaluate({nospc_stalled_text: trans("nospc_stalled_text")});
+		nospc_stalled=dustRender("nospc_stalled", {nospc_stalled_text: trans("nospc_stalled_text")});
 	}
 	
 	var database_error="";
 	if(data.database_error)
 	{
-		database_error=tmpls.database_error.evaluate({database_error_text: trans("database_error_text")});
+		database_error=dustRender("database_error", {database_error_text: trans("database_error_text")});
 	}
 	
 	var nospc_fatal="";
 	if(data.nospc_fatal)
 	{
-		nospc_fatal=tmpls.nospc_fatal.evaluate({nospc_fatal_text: trans("nospc_fatal_text")});
+		nospc_fatal=dustRender("nospc_fatal", {nospc_fatal_text: trans("nospc_fatal_text")});
 	}
 	
 	var dlt_mod_start="<!--";
@@ -757,17 +733,17 @@ function show_status2(data)
 			if(obj.online) obj.online=trans("yes");
 			else obj.online=trans("no");
 			
-			extra_clients_rows+=tmpls.status_detail_extra_row.evaluate(obj);
+			extra_clients_rows+=dustRender("status_detail_extra_row", obj);
 		}
 	}
 	else
 	{
-		extra_clients_rows=tmpls.status_detail_extra_empty.evaluate();
+		extra_clients_rows=dustRender("status_detail_extra_empty");
 	}
 	
-	var c_tmpl=tmpls.status;
+	var c_tmpl="status";
 	
-	if(data.details) c_tmpl=tmpls.status_detail;
+	if(data.details) c_tmpl="status_detail";
 	
 	var dtl_c1="<!--";
 	var dtl_c2="-->";
@@ -807,12 +783,12 @@ function show_status2(data)
 		var status_modify_params={rem_start: rem_start, rem_stop: rem_stop, backup_type_num: 0, no_images_start: no_images_start,
 							      no_images_stop: no_images_stop, no_file_backups_start: no_file_backups_start, no_file_backups_stop: no_file_backups_stop };
 								  
-		modify_clients=tmpls.status_modify_clients.evaluate(status_modify_params);
+		modify_clients=dustRender("status_modify_clients", status_modify_params);
 		
 		if(data.status.length>10)
 		{
 			status_modify_params.backup_type_num=1;
-			modify_clients_top=tmpls.status_modify_clients.evaluate(status_modify_params);
+			modify_clients_top=dustRender("status_modify_clients", status_modify_params);
 			dtl_c1_top=dtl_c1;
 			dtl_c2_top=dtl_c2;
 		}
@@ -844,10 +820,10 @@ function show_status2(data)
 	if(data.client_downloads)
 	{
 		var client_download_data=build_client_download_select(data.client_downloads);
-		status_client_download=tmpls.status_client_download.evaluate({download_clients: client_download_data});
+		status_client_download=dustRender("status_client_download", {download_clients: client_download_data});
 	}
 	
-	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
+	ndata=dustRender(c_tmpl, {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
 		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal,
 		extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
 		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
@@ -855,7 +831,7 @@ function show_status2(data)
 		modify_clients_top: modify_clients_top,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
 		status_client_download: status_client_download, dtl_c1_top: dtl_c1_top, dtl_c2_top: dtl_c2_top,
-		database_error: database_error});
+		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients});
 	
 	if(g.data_f!=ndata)
 	{
@@ -889,6 +865,8 @@ function show_status2(data)
 				show_hide_column('status_table', 4, false);
 			}
 		}
+		
+		$("#status_table").dataTable({ "iDisplayLength":25 });
 	}
 	
 	if(data.admin)
@@ -907,7 +885,7 @@ g.checkForNewVersion = function()
 {
 	if(g.online_version.num>g.current_version && I('new_version_available'))
 	{
-		I('new_version_available').innerHTML=tmpls.new_version_available.evaluate({new_version_number: g.online_version.str} );
+		I('new_version_available').innerHTML=dustRender("new_version_available", {new_version_number: g.online_version.str} );
 	}
 }
 function downloadClient(clientid)
@@ -968,9 +946,9 @@ function show_backups2(data)
 			var obj=data.clients[i];
 			if(obj.lastbackup.length==0)
 				obj.lastbackup="&nbsp;";
-			rows+=tmpls.backups_clients_row.evaluate(obj);
+			rows+=dustRender("backups_clients_row", obj);
 		}
-		ndata=tmpls.backups_clients.evaluate({rows: rows, ses: g.session});
+		ndata=dustRender("backups_clients", {rows: rows, ses: g.session});
 	}
 	else if(data.backups)
 	{
@@ -1012,9 +990,9 @@ function show_backups2(data)
 			
 			obj.clientid=data.clientid;
 				
-			rows+=tmpls.backups_backups_row.evaluate(obj);
+			rows+=dustRender("backups_backups_row", obj);
 		}
-		ndata=tmpls.backups_backups.evaluate({rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid});
+		ndata=dustRender("backups_backups", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid});
 	}
 	else if(data.files)
 	{
@@ -1036,7 +1014,7 @@ function show_backups2(data)
 		if(els.length>1 && (els[1].length>0 || els.length>2))
 		{
 			cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+data.backupid+")\">"+data.backuptime+"</a> > ";
-			rows+=tmpls.backups_files_row.evaluate({size:"&nbsp;", name:"..", proc:"Files", path: last_path, clientid: data.clientid, backupid:data.backupid});
+			rows+=dustRender("backups_files_row", {size:"&nbsp;", name:"..", proc:"Files", path: last_path, clientid: data.clientid, backupid:data.backupid});
 		}
 		else
 		{
@@ -1060,7 +1038,7 @@ function show_backups2(data)
 			obj.backupid=data.backupid;
 			obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
 				
-			rows+=tmpls.backups_files_row.evaluate(obj);
+			rows+=dustRender("backups_files_row", obj);
 		}
 		
 		for(var i=0;i<els.length;++i)
@@ -1083,7 +1061,7 @@ function show_backups2(data)
 			}
 		}
 		
-		ndata=tmpls.backups_files.evaluate({rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid, cpath: cp, backuptime: data.backuptime});
+		ndata=dustRender("backups_files", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid, cpath: cp, backuptime: data.backuptime});
 	}
 	
 	if(g.data_f!=ndata)
@@ -1384,12 +1362,12 @@ function show_settings2(data)
 				data.settings.no_compname_end_inet="";
 			}
 			
-			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
-			ndata+=tmpls.settings_general.evaluate(data.settings);
+			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
+			ndata+=dustRender("settings_general", data.settings);
 			
 			if(data.saved_ok)
 			{
-				ndata+=tmpls.settings_save_ok.evaluate();
+				ndata+=dustRender("settings_save_ok");
 				tabber_set_idx=g.tabberidx;
 			}
 		}
@@ -1474,12 +1452,12 @@ function show_settings2(data)
 				data.settings.no_compname_end_inet="";
 			}
 						
-			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
-			ndata+=tmpls.settings_user.evaluate(data.settings);
+			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
+			ndata+=dustRender("settings_user", data.settings);
 			
 			if(data.saved_ok)
 			{
-				ndata+=tmpls.settings_save_ok.evaluate();
+				ndata+=dustRender("settings_save_ok");
 				tabber_set_idx=g.tabberidx;
 			}
 			else if(data.saved_part)
@@ -1494,21 +1472,21 @@ function show_settings2(data)
 			if(data.settings.mail_check_certificate=="true") data.settings.mail_check_certificate="checked=\"checked\"";
 			else data.settings.mail_check_certificate="";
 			
-			ndata+=tmpls.settings_mail.evaluate(data.settings);
+			ndata+=dustRender("settings_mail", data.settings);
 			
 			if(data.saved_ok)
 			{
-				ndata+=tmpls.settings_save_ok.evaluate();
+				ndata+=dustRender("settings_save_ok");
 			}
 			if(data.mail_test)
 			{
 				if(data.mail_test=="ok")
 				{
-					ndata+=tmpls.settings_mail_test_ok.evaluate();
+					ndata+=dustRender("settings_mail_test_ok");
 				}
 				else
 				{
-					ndata+=tmpls.settings_mail_test_failed.evaluate({mail_err: data.mail_test});
+					ndata+=dustRender("settings_mail_test_failed", {mail_err: data.mail_test});
 				}
 			}
 		}
@@ -1516,19 +1494,19 @@ function show_settings2(data)
 		{
 			if(data.add_ok)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_add_done") });
+				ndata+=dustRender("settings_user_add_done", {msg: trans("user_add_done") });
 			}
 			if(data.removeuser)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_remove_done") });
+				ndata+=dustRender("settings_user_add_done", {msg: trans("user_remove_done") });
 			}
 			if(data.update_right)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_update_right_done") });
+				ndata+=dustRender("settings_user_add_done", {msg: trans("user_update_right_done") });
 			}
 			if(data.change_ok)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_pw_change_ok") });
+				ndata+=dustRender("settings_user_add_done", {msg: trans("user_pw_change_ok") });
 			}
 			
 			
@@ -1561,15 +1539,15 @@ function show_settings2(data)
 					
 					obj.rights=t_rights;
 					
-					rows+=tmpls.settings_users_start_row.evaluate(obj);
+					rows+=dustRender("settings_users_start_row", obj);
 				}
 			}
 			else
 			{
-				rows=tmpls.settings_users_start_row_empty.evaluate();
+				rows=dustRender("settings_users_start_row_empty");
 			}
 			g.num_users=data.users.length;
-			ndata+=tmpls.settings_users_start.evaluate({ rows:rows });
+			ndata+=dustRender("settings_users_start", { rows:rows });
 		}
 	}
 	
@@ -1750,10 +1728,10 @@ function validateCommonSettings()
 	if(!validate_text_int_or_empty(["local_speed"])) return false;
 	if(I('internet_speed') && !validate_text_int_or_empty(["internet_speed"])) return false;
 	var backup_window_regex = /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
-	if(!validate_text_regex([{ id: "backup_window_incr_file", regexp: backup_window_regex },
-							 { id: "backup_window_full_file", regexp: backup_window_regex },
-							 { id: "backup_window_incr_image", regexp: backup_window_regex },
-							 { id: "backup_window_full_image", regexp: backup_window_regex } ]) ) return false;
+	if(!validate_text_regex([{ id: "backup_window_incr_file", errid: "backup_window", regexp: backup_window_regex },
+							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
+							 { id: "backup_window_incr_image", errid: "backup_window", regexp: backup_window_regex },
+							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ]) ) return false;
 	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
 }
@@ -1939,9 +1917,9 @@ function createUser()
 	
 	var ndata="";
 	if(g.num_users==0)
-		ndata=tmpls.settings_user_create_admin.evaluate({ rights: rights });
+		ndata=dustRender("settings_user_create_admin", { rights: rights });
 	else
-		ndata=tmpls.settings_user_create.evaluate({ rights: rights });
+		ndata=dustRender("settings_user_create", { rights: rights });
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -2131,7 +2109,7 @@ function deleteUser(uid)
 }
 function changeUserPassword(uid, name)
 {
-	var ndata=tmpls.settings_user_pw_change.evaluate({userid: uid, username: name});
+	var ndata=dustRender("settings_user_pw_change", {userid: uid, username: name});
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -2150,7 +2128,7 @@ function changePW(el)
 	{
 		I('change_pw_el').innerHTML="<strong>"+trans("change_pw")+"</strong>";
 	}
-	var ndata=tmpls.change_pw.evaluate();
+	var ndata=dustRender("change_pw");
 	g.settings_nav_pos=g.user_nav_pos_offset-1;
 	if(g.data_f!=ndata)
 	{
@@ -2210,7 +2188,7 @@ function doChangePW3(data)
 	var ndata;
 	if(data.change_ok)
 	{
-		ndata=tmpls.change_pw_ok.evaluate();
+		ndata=dustRender("change_pw_ok");
 	}
 	else
 	{
@@ -2221,7 +2199,7 @@ function doChangePW3(data)
 			I('old_password').focus();
 			return;
 		}
-		ndata=tmpls.change_pw_fail.evaluate({fail_reason: fail_reason});
+		ndata=dustRender("change_pw_fail", {fail_reason: fail_reason});
 	}
 	if(g.data_f!=ndata)
 	{
@@ -2320,9 +2298,9 @@ function changeUserRights(uid, name)
 		obj.n=i;
 		
 		
-		rows+=tmpls.settings_user_rights_change_row.evaluate(obj);
+		rows+=dustRender("settings_user_rights_change_row", obj);
 	}
-	var ndata=tmpls.settings_user_rights_change.evaluate({userid: uid, username: name, rows: rows});
+	var ndata=dustRender("settings_user_rights_change", {userid: uid, username: name, rows: rows});
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -2417,7 +2395,7 @@ function show_logs2(data)
 			np+="</option>";
 		}
 		np+="</select> ";
-		np+=tmpls.logs_filter.evaluate();
+		np+=dustRender("logs_filter");
 		
 		
 		I('nav_pos').innerHTML=np;
@@ -2435,7 +2413,7 @@ function show_logs2(data)
 	}
 	else
 	{
-		var np=tmpls.log_single_filter.evaluate();
+		var np=dustRender("log_single_filter");
 		I('nav_pos').innerHTML=np;
 	}
 	
@@ -2473,10 +2451,10 @@ function show_logs2(data)
 			
 			obj.action=trans(a);
 			
-			rows+=tmpls.logs_row.evaluate(obj);
+			rows+=dustRender("logs_row", obj);
 		}
 		if(data.logs.length==0)
-			rows=tmpls.logs_none.evaluate();
+			rows=dustRender("logs_none");
 			
 			
 		var sel="selected=\"selected\"";
@@ -2492,7 +2470,7 @@ function show_logs2(data)
 		td.sel_error=(data.report_loglevel==2)?sel:"";
 		td.live_log_clients=live_log_clients;
 			
-		ndata+=tmpls.logs_table.evaluate(td);
+		ndata+=dustRender("logs_table", td);
 	}
 	
 	if(data.log)
@@ -2503,7 +2481,7 @@ function show_logs2(data)
 			ll=g.logfilter;
 		var rows=createLog(g.logdata,ll);
 		if(rows=="")
-			rows=tmpls.log_single_none.evaluate();
+			rows=dustRender("log_single_none");
 		g.logclientname=data.log.clientname;
 		var params="";
 		if(g.has_logsfilter)
@@ -2513,12 +2491,12 @@ function show_logs2(data)
 			if(params.length>0) params+="&";
 			params+="filter="+g.logclients;
 		}
-		ndata+=tmpls.log_single.evaluate({rows:rows, name: data.log.clientname, params: params});
+		ndata+=dustRender("log_single", {rows:rows, name: data.log.clientname, params: params});
 	}
 	
 	if(data.saved_ok)
 	{
-		ndata+=tmpls.settings_save_ok.evaluate();
+		ndata+=dustRender("settings_save_ok");
 	}	
 	
 	if(g.data_f!=ndata)
@@ -2545,7 +2523,7 @@ function logs_draw_mail()
 	{
 		if(a[i]!="")
 		{
-			d+=tmpls.logs_report_mail.evaluate( {report_single_mail: a[i], num: i} );
+			d+=dustRender("logs_report_mail",  {report_single_mail: a[i], num: i} );
 		}
 	}
 	I('s_report_mails').innerHTML=d;
@@ -2618,7 +2596,7 @@ function createLog(d, ll)
 				
 			obj.level=trans("loglevel_"+obj.level);
 			
-			rows+=tmpls.log_single_row.evaluate(obj);
+			rows+=dustRender("log_single_row", obj);
 		}
 	}
 	return rows;
@@ -2654,8 +2632,8 @@ function logFilterChange()
 	
 	var rows=createLog(g.logdata,v);
 	if(rows=="")
-			rows=tmpls.log_single_none.evaluate();
-	var ndata=tmpls.log_single.evaluate({rows:rows, name: g.logclientname});
+			rows=dustRender("log_single_none");
+	var ndata=dustRender("log_single", {rows:rows, name: g.logclientname});
 	
 	if(g.data_f!=ndata)
 	{
@@ -2704,7 +2682,8 @@ function show_live_log()
 {
 	var clientid=I('live_log_clientid').value;
 	var win = window.open('', '_blank', '');
-	win.document.write(tmpls.live_log.evaluate({session: g.session, clientid: clientid, clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text}));
+	var live_log_page = dustRender("live_log", {session: g.session, clientid: clientid, clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text});
+	win.document.write(live_log_page);
 	win.document.close();
 	win.focus();
 }
@@ -2900,7 +2879,7 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 		row_vals.archive_timeleft=archive_timeleft;
 	}
 	
-	new_item.innerHTML=tmpls.settings_archive_row.evaluate( row_vals );
+	new_item.innerHTML=dustRender("settings_archive_row",  row_vals );
 	
 	var archive_table=getArchiveTable();
 	
@@ -2925,7 +2904,7 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 function replaceArchiveId(old_id, new_id)
 {
 	var item=I('archive_'+old_id);
-	item.innerHTML=tmpls.settings_archive_row.evaluate( { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
+	item.innerHTML=dustRender("settings_archive_row",  { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
 			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
 			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value,
 			archive_timeleft: I('archive_timeleft_'+old_id).value } );
