@@ -1154,9 +1154,9 @@ void ServerCleanupThread::backup_database(void)
 
 	if(settings.getSettings()->backup_database)
 	{
-		db_results res = db->Read("PRAGMA integrity_check");
-
 		Server->Log("Checking database integrity...", LL_INFO);
+		db_results res = db->Read("PRAGMA quick_check");
+
 		if(!res.empty() && res[0][L"integrity_check"]==L"ok")
 		{
 			std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
@@ -1187,6 +1187,7 @@ void ServerCleanupThread::backup_database(void)
 		{
 			Server->Log("Database integrity check failed. Skipping Database backup.", LL_ERROR);
 			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);
+			BackupServerGet::sendMailToAdmins("Database integrity check failed", "Database integrity check failed before database backup. You should restore the UrBackup database from a backup or try to repair it.");
 		}
 	}
 }
