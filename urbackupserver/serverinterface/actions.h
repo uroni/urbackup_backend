@@ -14,9 +14,7 @@ namespace Actions
 	ACTION(backups);
 	ACTION(settings);
 	ACTION(logs);
-	ACTION(isimageready);
 	ACTION(getimage);
-	ACTION(google_chart);
 	ACTION(shutdown);
 	ACTION(download_client);
 	ACTION(livelog);

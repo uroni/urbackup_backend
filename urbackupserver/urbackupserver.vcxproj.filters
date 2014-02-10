@@ -111,13 +111,7 @@
     <ClCompile Include="serverinterface\getimage.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
-    <ClCompile Include="serverinterface\google_chart.cpp">
-      <Filter>serverinterface</Filter>
-    </ClCompile>
     <ClCompile Include="serverinterface\helper.cpp">
-      <Filter>serverinterface</Filter>
-    </ClCompile>
-    <ClCompile Include="serverinterface\isimageready.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
     <ClCompile Include="serverinterface\json.cpp">

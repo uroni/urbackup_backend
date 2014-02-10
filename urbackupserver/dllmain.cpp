@@ -39,7 +39,6 @@ IServer *Server;
 #include "../Interface/File.h"
 
 #include "../fsimageplugin/IFSImageFactory.h"
-#include "../pychart/IPychartFactory.h"
 #include "../downloadplugin/IDownloadFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urlplugin/IUrlFactory.h"
@@ -71,7 +70,6 @@ SStartupStatus startup_status;
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
-IPychartFactory *pychart_fak;
 IDownloadFactory *download_fak;
 ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
@@ -402,7 +400,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	ADD_ACTION(login);
-	ADD_ACTION(google_chart);
 		
 	upgrade();
 
@@ -498,7 +495,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(backups);
 	ADD_ACTION(settings);
 	ADD_ACTION(logs);
-	ADD_ACTION(isimageready);
 	ADD_ACTION(getimage);
 	ADD_ACTION(download_client);
 	ADD_ACTION(livelog);
@@ -512,11 +508,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	
 	str_map params;
-	pychart_fak=(IPychartFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("pychart", params));
-	if(pychart_fak==NULL)
-	{
-		Server->Log("Error loading IPychartFactory", LL_INFO);
-	}
 	download_fak=(IDownloadFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("download", params));
 	if(download_fak==NULL)
 	{

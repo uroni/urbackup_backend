@@ -2,7 +2,6 @@
 g.loading=false;
 g.lang="-";
 g.startup=true;
-g.google_chart_loaded=false;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.status_detail=false;
@@ -38,11 +37,6 @@ function startup()
 			available_langs+=",";
 	}
 	new getJSON("login", available_langs, try_anonymous_login);
-	
-	if(g.use_google_chart)
-	{
-		LoadScript("https://www.google.com/jsapi?callback=google_chart_ready&rnd="+rnd(), "google_jsapi");
-	}	
 }
 
 function refresh_page()
@@ -193,15 +187,6 @@ function stopLoading()
 {
 	I('l_div').style.visibility="hidden";
 	g.loading=false;
-}
-
-function google_chart_ready()
-{
-	google.load("visualization", "1", {packages:["corechart"], callback: chartLoaded});
-}
-
-function chartLoaded()
-{
 }
 
 function build_main_nav()

@@ -220,77 +220,75 @@ g.tmpls={};
 function loadGraph(action, parameters, pDivid, pGraphdata)
 {
 	var divid=pDivid;
-	var img_id=-1;
 	var f=this;
 	var graphdata=pGraphdata;
 	
 	this.init_cb = function(data)
-	{		
-		img_id=data.image_id;
-		
-		if(typeof img_id!="undefined")
+	{	
+		I(divid).style.width = graphdata.width+"px";
+		I(divid).style.height = graphdata.height+"px";
+		I(divid).innerHTML="";
+		I(divid).style.display="inline-block";
+		if(graphdata.pie)
 		{
-			setTimeout(f.update_graph, 100);
+			var jqdata = [];
+			for(var i=0;i<data.data.length;++i)
+			{
+				var obj=data.data[i];
+				jqdata.push([obj.label, obj.data]);
+			}
+			
+			var piegraph = jQuery.jqplot (divid, [jqdata],
+			{
+				  seriesDefaults: {
+					renderer: jQuery.jqplot.PieRenderer,
+					rendererOptions: {
+					  showDataLabels: true,
+					}
+				  },
+				  legend: {
+					show:true,
+					location: 'e',
+					rendererOptions: {numberRows: 10, numberColumns: 2}
+				  },
+				  title: graphdata.title				  
+			});
+			
 		}
 		else
 		{
-			if(graphdata.pie)
+			var series = [];
+			var ticks = [];
+			for(var i=0;i<data.data.length;++i)
 			{
-				var gdata = new google.visualization.DataTable();
-				gdata.addColumn('string', graphdata.colname1);
-				gdata.addColumn('number', graphdata.colname2);
-				gdata.addRows(data.data.length);
-				for(var i=0;i<data.data.length;++i)
-				{
-					var obj=data.data[i];
-					gdata.setValue(i, 0, obj.label);
-					gdata.setValue(i, 1, obj.data);
-				}
-				I(divid).innerHTML="";
-				var chart = new google.visualization.PieChart(I(divid));
-				chart.draw(gdata, {width: graphdata.width, height: graphdata.height, title: graphdata.title});
+				var obj=data.data[i];
+				series.push(obj.data);
+				ticks.push(obj.xlabel);
 			}
-			else
-			{
-				var gdata = new google.visualization.DataTable();
-				gdata.addColumn('string', graphdata.colname1);
-				gdata.addColumn('number', graphdata.colname2);
-				gdata.addRows(data.data.length);
-				for(var i=0;i<data.data.length;++i)
-				{
-					var obj=data.data[i];
-					gdata.setValue(i, 0, obj.xlabel);
-					gdata.setValue(i, 1, obj.data);
-				}
-				
-				I(divid).innerHTML="";
-				var chart = new google.visualization.ColumnChart(I(divid));
-				chart.draw(gdata, {width: graphdata.width, height: graphdata.height, title: graphdata.title,
-					  hAxis: {title: graphdata.xtitle, titleTextStyle: {color: 'red'}},
-					  vAxis: {minValue: 0, title: data.ylabel, titleTextStyle: {color: 'blue'}}
-					 });
+			
+			var plot1 = $.jqplot(divid, [series], {
 
-			}
-		}
-	}
-	
-	this.update_graph = function()
-	{
-		if(typeof img_id!="undefined" && I(divid))
-		{
-			getJSON("isimageready", "image_id="+img_id, f.update);
-		}
-	}
-	
-	this.update = function(data)
-	{
-		if(data.image_ready)
-		{
-			I(divid).innerHTML="<img src=\"x?a=getimage&image_id="+img_id+"&ses="+g.session+"\" alt=\"Graph\" />";
-		}
-		else
-		{
-			setTimeout(f.update_graph, 100);
+				seriesDefaults:{
+					renderer:$.jqplot.BarRenderer,
+					rendererOptions: {fillToZero: true}
+				},
+				legend: {
+					show: false,
+				},
+				axes: {
+					xaxis: {
+						renderer: $.jqplot.CategoryAxisRenderer,
+						ticks: ticks,
+						label: graphdata.colname1
+					},
+					yaxis: {
+						pad: 1.05,
+						tickOptions: {formatString: '%d'+data.ylabel},
+						label: graphdata.colname2
+					}
+				},
+				title: graphdata.title
+			});
 		}
 	}
 	

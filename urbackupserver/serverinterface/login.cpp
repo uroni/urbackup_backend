@@ -58,11 +58,6 @@ ACTION_IMPL(login)
 		has_session=true;
 	}
 
-	if(pychart_fak==NULL)
-	{
-		ret.set("use_googlechart", true);
-	}
-
 	std::wstring username=GET[L"username"];
 	if(!username.empty())
 	{

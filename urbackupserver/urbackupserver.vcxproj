@@ -283,9 +283,7 @@
     <ClCompile Include="serverinterface\backups.cpp" />
     <ClCompile Include="serverinterface\download_client.cpp" />
     <ClCompile Include="serverinterface\getimage.cpp" />
-    <ClCompile Include="serverinterface\google_chart.cpp" />
     <ClCompile Include="serverinterface\helper.cpp" />
-    <ClCompile Include="serverinterface\isimageready.cpp" />
     <ClCompile Include="serverinterface\json.cpp" />
     <ClCompile Include="serverinterface\lastacts.cpp" />
     <ClCompile Include="serverinterface\livelog.cpp" />

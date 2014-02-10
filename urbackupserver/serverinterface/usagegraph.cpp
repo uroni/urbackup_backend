@@ -102,7 +102,6 @@ ACTION_IMPL(usagegraph)
 				c_lim=watoi(res_c[0][L"c"]);
 		}
 			
-		//IQuery *q=db->Prepare("SELECT strftime('"+date_format_str+"', created, 'localtime') AS tdate, strftime('"+date_format_str_short+"', created, 'localtime') AS tdate_short, (MAX(bytes_used_files)+MAX(bytes_used_images)) AS used , id FROM clients_hist "+t_where+" GROUP BY strftime('"+date_format_str+"', created, 'localtime'), id ORDER BY created DESC LIMIT "+nconvert(c_lim*(n_items*2)));
 		IQuery *q=db->Prepare("SELECT id, (MAX(b.bytes_used_files)+MAX(b.bytes_used_images)) AS used, strftime('"+date_format_str+"', MAX(b.created), 'localtime') AS tdate, strftime('"+date_format_str_short+"', MAX(b.created), 'localtime') AS tdate_short "
 				    "FROM "
 				    "("
@@ -144,7 +143,7 @@ ACTION_IMPL(usagegraph)
 				size_gb=true;
 		}
 
-		SBarInfo bi;
+		JSON::Array data;
 		for(int i=(int)used.size()-1;i>=0;--i)
 		{
 			double size=used[i].used;
@@ -156,42 +155,20 @@ ACTION_IMPL(usagegraph)
 			{
 				size/=1024*1024;
 			}
-			bi.xlabels.push_back(Server->ConvertToUTF8(used[i].tdate_short));
-			bi.data.push_back((float)size);
+			JSON::Object obj;
+			obj.set("xlabel", Server->ConvertToUTF8(used[i].tdate_short));
+			obj.set("data", (float)size);
+			data.add(obj);
 		}
-		bi.title="";
-		if(size_gb)
-			bi.ylabel="GB";
-		else
-			bi.ylabel="MB";
 
-		bi.sizex=800;
-		bi.sizey=500;
-		bi.barwidth=1.f;
+		ret.set("data", data);
+
+		if(size_gb)
+			ret.set("ylabel", "GB");
+		else
+			ret.set("ylabel", "MB");
 
 		helper.update(tid, &GET, &PARAMS);
-
-		if(pychart_fak!=NULL)
-		{
-			session=helper.getSession();
-			IPychart *pychart=pychart_fak->getPychart();
-			unsigned int id=pychart->drawBar(bi);
-			session->mInt[L"image_"+convert(id)]=1;
-			ret.set("image_id", id);
-		}
-		else
-		{
-			JSON::Array data;
-			for(size_t i=0;i<bi.data.size();++i)
-			{
-				JSON::Object obj;
-				obj.set("xlabel", bi.xlabels[i]);
-				obj.set("data", bi.data[i]);
-				data.add(obj);
-			}
-			ret.set("data", data);
-			ret.set("ylabel", bi.ylabel);
-		}
 	}
 	else
 	{

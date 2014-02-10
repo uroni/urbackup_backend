@@ -35,86 +35,15 @@ ACTION_IMPL(piegraph)
 		IQuery *q=db->Prepare("SELECT (bytes_used_files+bytes_used_images) AS used, name FROM clients ORDER BY (bytes_used_files+bytes_used_images) DESC");
 		db_results res=q->Read();
 
-		SPieInfo pi;
-		if(pychart_fak!=NULL)
+		JSON::Array data;
+		for(size_t i=0;i<res.size();++i)
 		{
-			std::vector<float> used;
-			used.resize(res.size());
-			float total=0;
-			for(size_t i=0;i<res.size();++i)
-			{
-				used[i]=(float)atof(wnarrow(res[i][L"used"]).c_str());
-				total+=used[i];
-			}
-
-			float other_pc=0;
-			std::string other_name;
-			size_t other_num=0;
-
-			
-			for(size_t i=0;i<res.size();++i)
-			{
-				float pc=used[i]/total;
-				if(pc>.05f)
-				{
-					pi.data.push_back(pc);
-					pi.labels.push_back(Server->ConvertToUTF8(res[i][L"name"]));
-				}
-				else
-				{
-					other_pc+=pc;
-					++other_num;
-					other_name=Server->ConvertToUTF8(res[i][L"name"]);
-				}
-			}
-
-			if(other_pc>0)
-			{
-				pi.data.push_back(other_pc);
-				if(other_num==1)
-				{
-					pi.labels.push_back(other_name);
-				}
-				else
-				{
-					pi.labels.push_back("other");
-				}
-			}
+			JSON::Object obj;
+			obj.set("data", ((float)atof(wnarrow(res[i][L"used"]).c_str())));
+			obj.set("label", Server->ConvertToUTF8(res[i][L"name"]));
+			data.add(obj);
 		}
-		else
-		{
-			for(size_t i=0;i<res.size();++i)
-			{
-				pi.data.push_back((float)atof(wnarrow(res[i][L"used"]).c_str()));
-				pi.labels.push_back(Server->ConvertToUTF8(res[i][L"name"]));
-			}
-
-		}
-
-		pi.title="";
-		pi.sizex=700;
-		pi.sizey=700;
-
-		helper.update(tid, &GET, &PARAMS);
-		if(pychart_fak!=NULL)
-		{
-			IPychart *pychart=pychart_fak->getPychart();
-			unsigned int id=pychart->drawPie(pi);
-			session->mInt[L"image_"+convert(id)]=1;
-			ret.set("image_id", id);
-		}
-		else
-		{
-			JSON::Array data;
-			for(size_t i=0;i<pi.data.size();++i)
-			{
-				JSON::Object obj;
-				obj.set("label", pi.labels[i]);
-				obj.set("data", pi.data[i]);
-				data.add(obj);
-			}
-			ret.set("data", data);
-		}
+		ret.set("data", data);		
 	}	
 	else
 	{
