@@ -2854,6 +2854,34 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 	return "";
 }
 
+bool BackupServerGet::sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel, bool *retok_err)
+{
+	bool res;
+	do
+	{
+		unsigned int starttime=Server->getTimeMS();
+		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, max_loglevel, retok_err);
+
+		if(retry>0)
+		{
+			--retry;
+			unsigned int passed_time=timeout;
+			unsigned int currtime = Server->getTimeMS();
+			if(currtime>starttime)
+				passed_time=currtime-starttime;
+
+			Server->wait(timeout-passed_time);
+		}
+		else
+		{
+			return res;
+		}
+	}
+	while(!res);
+
+	return res;
+}
+
 bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err)
 {
 	CTCPStack tcpstack(internet_connection);
@@ -2936,7 +2964,7 @@ void BackupServerGet::stop_shadowcopy(const std::string &path)
 
 void BackupServerGet::notifyClientBackupSuccessfull(void)
 {
-	sendClientMessage("DID BACKUP", "OK", L"Sending status (DID BACKUP) to client failed", 10000);
+	sendClientMessageRetry("DID BACKUP", "OK", L"Sending status (DID BACKUP) to client failed", 10000, 5);
 }
 
 void BackupServerGet::sendClientBackupIncrIntervall(void)
