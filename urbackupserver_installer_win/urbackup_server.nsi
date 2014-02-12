@@ -1,4 +1,4 @@
-!define MUI_BRANDINGTEXT "UrBackup Server v1.3.2"
+!define MUI_BRANDINGTEXT "UrBackup Server v1.4"
 !include "${NSISDIR}\Contrib\Modern UI\System.nsh"
 !include WinVer.nsh
 !include "x64.nsh"
@@ -7,8 +7,8 @@
 SetCompressor /FINAL /SOLID lzma
 
 CRCCheck On
-Name "UrBackup Server 1.3.2"
-OutFile "UrBackup Server 1.3.2-1.exe"
+Name "UrBackup Server 1.4"
+OutFile "UrBackup Server 1.4-1.exe"
 InstallDir "$PROGRAMFILES\UrBackupServer"
 RequestExecutionLevel highest
 
@@ -173,21 +173,12 @@ Section "install"
 	File "data_common\urbackup\backup_server_init.sql"
 	File "data_common\urbackup\status.htm"
 	SetOutPath "$INSTDIR\urbackup\www"
-	File "data_common\urbackup\www\arr.png"
 	File "data_common\urbackup\www\favico.ico"
-	File "data_common\urbackup\www\header.png"
+	File "data_common\urbackup\www\*.png"
 	File "data_common\urbackup\www\index.htm"
-	File "data_common\urbackup\www\indicator.gif"
-	File "data_common\urbackup\www\layout.css"
-	File "data_common\urbackup\www\md5.js"
-	File "data_common\urbackup\www\progress.png"
-	File "data_common\urbackup\www\prototype.js"
-	File "data_common\urbackup\www\templates.js"
-	File "data_common\urbackup\www\translation.js"
-	File "data_common\urbackup\www\urbackup.js"
-	File "data_common\urbackup\www\urbackup_functions.js"
-	File "data_common\urbackup\www\tabber-minimized.js"
-	File "data_common\urbackup\www\stopwatch.png"
+	File "data_common\urbackup\www\*.gif"
+	File "data_common\urbackup\www\*.css"
+	File "data_common\urbackup\www\*.js"
 	
 	
 	${IfNot} ${RunningX64}
