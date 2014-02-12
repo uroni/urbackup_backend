@@ -320,8 +320,7 @@ void BackupServerGet::operator ()(void)
 		local_hash->setupDatabase();
 	}
 
-	sendSettings();
-
+	bool received_client_settings=true;
 	ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
 	if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
 	{
@@ -330,7 +329,13 @@ void BackupServerGet::operator ()(void)
 		if(!getClientSettings())
 		{
 			ServerLogger::Log(clientid, "Getting client settings failed -1", LL_ERROR);
+			received_client_settings=false;
 		}
+	}
+
+	if(received_client_settings)
+	{
+		sendSettings();
 	}
 
 	ServerLogger::Log(clientid, "Sending backup incr intervall...", LL_DEBUG);
@@ -366,6 +371,7 @@ void BackupServerGet::operator ()(void)
 		if(!skip_checking)
 		{
 			{
+				bool received_client_settings=true;
 				bool settings_updated=false;
 				server_settings_updated.getSettings(&settings_updated);
 				if(do_update_settings || settings_updated)
@@ -375,10 +381,11 @@ void BackupServerGet::operator ()(void)
 					if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
 					{
 						ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
+						received_client_settings=false;
 					}
 				}
 
-				if(settings_updated)
+				if(settings_updated && received_client_settings)
 				{
 					sendSettings();
 				}
