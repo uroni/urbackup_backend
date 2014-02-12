@@ -70,7 +70,6 @@
     <Feature Id='urbackup_server' Title='UrBackup Server' Level='1'>
 	  <ComponentGroupRef Id='UrBackupData' />
 	  <ComponentGroupRef Id='UrBackupDataCommon' />
-	  <ComponentGroupRef Id='UrBackupDataPython' />
 	  <ComponentRef Id='InstallService' />
     </Feature>
 	<Feature Id="VCRedist" Title="Visual C++ 2010 Runtime" AllowAdvertise="no" Display="hidden" Level="1">
