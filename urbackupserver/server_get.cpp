@@ -45,6 +45,7 @@
 #include <limits.h>
 #include <memory>
 #include <assert.h>
+#include <math.h>
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
 #endif
@@ -56,7 +57,6 @@ extern std::string server_token;
 const unsigned short serviceport=35623;
 const unsigned int full_backup_construct_timeout=4*60*60*1000;
 const unsigned int shadow_copy_timeout=30*60*1000;
-const unsigned int check_time_intervall_tried_backup=30*60*1000;
 const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const size_t minfreespace_min=50*1024*1024;
@@ -65,6 +65,9 @@ const unsigned int ident_err_retry_time=1*60*1000;
 const unsigned int ident_err_retry_time_retok=10*60*1000;
 const unsigned int c_filesrv_connect_timeout=10000;
 const unsigned int c_internet_fileclient_timeout=30*60*1000;
+const unsigned int c_sleeptime_failed_imagebackup=20*60;
+const unsigned int c_sleeptime_failed_filebackup=20*60;
+const unsigned int c_exponential_backoff_div=2;
 
 
 int BackupServerGet::running_backups=0;
@@ -109,6 +112,12 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	settings_client=NULL;
 	SSettings tmp = {};
 	curr_intervals = tmp;
+
+	last_image_backup_try=0;
+	count_image_backup_try=0;
+
+	last_image_backup_try=0;
+	count_image_backup_try=0;
 	
 }
 
@@ -363,7 +372,6 @@ void BackupServerGet::operator ()(void)
 	ServerSettings server_settings_updated(db);
 
 	bool do_exit_now=false;
-	bool tried_backup=false;
 	bool file_backup_err=false;
 	
 	while(true)
@@ -393,7 +401,6 @@ void BackupServerGet::operator ()(void)
 
 			update_sql_intervals(true);
 
-			tried_backup=false;
 			unsigned int ttime=Server->getTimeMS();
 			status.starttime=ttime;
 			has_error=false;
@@ -460,7 +467,8 @@ void BackupServerGet::operator ()(void)
 				with_hashes=true;
 
 			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
-				( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindowFullFile())) || do_full_backup_now )
+				( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindowFullFile())
+					&& exponentialBackoffFile() ) || do_full_backup_now )
 				&& isBackupsRunningOkay(true, true) )
 			{
 				hbu=true;
@@ -498,7 +506,8 @@ void BackupServerGet::operator ()(void)
 				do_full_backup_now=false;
 			}
 			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups
-				&& ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindowIncrFile())) || do_incr_backup_now )
+				&& ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindowIncrFile())
+					  && exponentialBackoffFile() ) || do_incr_backup_now )
 				&& isBackupsRunningOkay(true, true) )
 			{
 				hbu=true;
@@ -547,7 +556,8 @@ void BackupServerGet::operator ()(void)
 				do_incr_backup_now=false;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
-				&& ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindowFullImage())) || do_full_image_now)
+				&& ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindowFullImage())
+					  && exponentialBackoffImage() ) || do_full_image_now)
 				&& isBackupsRunningOkay(true, false) )
 			{
 				ScopedActiveThread sat;
@@ -597,7 +607,8 @@ void BackupServerGet::operator ()(void)
 				do_full_image_now=false;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
-				&& ( (isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindowIncrImage())) || do_incr_image_now)
+				&& ((isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindowIncrImage()) 
+					 && exponentialBackoffImage() ) || do_incr_image_now)
 				&& isBackupsRunningOkay(true, false) )
 			{
 				ScopedActiveThread sat;
@@ -704,7 +715,6 @@ void BackupServerGet::operator ()(void)
 				{				
 					Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true) ) );
 				}
-				tried_backup=true;
 			}
 
 			status.action_done=false;
@@ -721,12 +731,15 @@ void BackupServerGet::operator ()(void)
 				if(!r_success)
 				{
 					ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
+					last_file_backup_try=Server->getTimeSeconds();
+					++count_file_backup_try;
 				}
 				else
 				{
 					updateLastBackup();
 					setBackupComplete();
 					ServerLogger::Log(clientid, "Backup succeeded", LL_INFO);
+					count_file_backup_try=0;
 				}
 				status.pcdone=100;
 				ServerStatus::setServerStatus(status, true);
@@ -738,11 +751,14 @@ void BackupServerGet::operator ()(void)
 				if(!r_success)
 				{
 					ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
+					last_image_backup_try=Server->getTimeSeconds();
+					++count_image_backup_try;
 				}
 				else
 				{
 					updateLastImageBackup();
 					ServerLogger::Log(clientid, "Backup succeeded", LL_INFO);
+					count_image_backup_try=0;
 				}
 				status.pcdone=100;
 				ServerStatus::setServerStatus(status, true);
@@ -788,10 +804,7 @@ void BackupServerGet::operator ()(void)
 		}
 
 		std::string msg;
-		if(tried_backup)
-			pipe->Read(&msg, check_time_intervall_tried_backup);
-		else
-			pipe->Read(&msg, skip_checking?0:check_time_intervall);
+		pipe->Read(&msg, skip_checking?0:check_time_intervall);
 		
 		skip_checking=false;
 		if(msg=="exit")
@@ -4191,4 +4204,26 @@ void BackupServerGet::copyFile(const std::wstring& source, const std::wstring& d
 	data.addString(Server->ConvertToUTF8(dest));
 
 	hashpipe->Write(data.getDataPtr(), data.getDataSize());
+}
+
+bool BackupServerGet::exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div)
+{
+	if(count>0)
+	{
+		unsigned int passed_time=static_cast<unsigned int>(Server->getTimeSeconds()-lasttime);
+		unsigned int sleeptime_exp=static_cast<unsigned int>((std::max)(static_cast<double>(sleeptime), pow(static_cast<double>(sleeptime), count/static_cast<double>(div))));
+
+		return passed_time>=sleeptime_exp;
+	}
+	return true;
+}
+
+bool BackupServerGet::exponentialBackoffImage()
+{
+	return exponentialBackoff(count_image_backup_try, last_image_backup_try, c_sleeptime_failed_imagebackup, c_exponential_backoff_div);
+}
+
+bool BackupServerGet::exponentialBackoffFile()
+{
+	return exponentialBackoff(count_file_backup_try, last_file_backup_try, c_sleeptime_failed_filebackup, c_exponential_backoff_div);
 }

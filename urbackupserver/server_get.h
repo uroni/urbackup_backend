@@ -160,6 +160,10 @@ private:
 
 	void copyFile(const std::wstring& source, const std::wstring& dest);
 
+	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);
+	bool exponentialBackoffImage();
+	bool exponentialBackoffFile();
+
 	SSettings curr_intervals;
 
 	IPipe *pipe;
@@ -264,4 +268,10 @@ private:
 	BackupServerPrepareHash *bsh_prepare;
 	THREADPOOL_TICKET bsh_prepare_ticket;
 	BackupServerHash *local_hash;
+
+	int64 last_image_backup_try;
+	size_t count_image_backup_try;
+
+	int64 last_file_backup_try;
+	size_t count_file_backup_try;
 };
