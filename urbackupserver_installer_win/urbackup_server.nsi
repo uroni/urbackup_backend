@@ -72,8 +72,6 @@ Section "install"
 		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
 		; Delete '$TEMP\vcredist_x64.exe'
 ; VSRedist90Installed64:
-		File "vcredist\vcredist_2008_x64.exe"
-		ExecWait '"$TEMP\vcredist_2008_x64.exe" /q /norestart'
 		File "vcredist\vcredist_2010sp1_x64.exe"
 		ExecWait '"$TEMP\vcredist_2010sp1_x64.exe" /q /norestart'
 		File "vcredist\idndl.amd64.exe"
@@ -103,8 +101,6 @@ Section "install"
 		; ExecWait '"$TEMP\vcredist_x86.exe" /q'  
 		; Delete '$TEMP\vcredist_x86.exe'
 ; VSRedist90Installed86:
-		File "vcredist\vcredist_2008_x86.exe"
-		ExecWait '"$TEMP\vcredist_2008_x86.exe" /q /norestart'
 		File "vcredist\vcredist_2010sp1_x86.exe"
 		ExecWait '"$TEMP\vcredist_2010sp1_x86.exe" /q /norestart'
 		File "vcredist\idndl.x86.exe"
