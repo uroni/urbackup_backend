@@ -315,10 +315,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=repair_cmd();
 		}
+		else if(app=="defrag_database")
+		{
+			rc=cleanup_database();
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database");
 		}
 		exit(rc);
 	}

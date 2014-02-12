@@ -138,6 +138,7 @@ Section "install"
 	File "data_common\remove_unknown.bat"
 	File "data_common\reset_pw.bat"
 	File "data_common\cleanup_database.bat"
+	File "data_common\defrag_database.bat"
 	File "data_common\urbackup_dsa.pub"
 	File "data_common\repair_database.bat"
 	
