@@ -317,7 +317,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 		else if(app=="defrag_database")
 		{
-			rc=cleanup_database();
+			rc=defrag_database();
 		}
 		else
 		{
