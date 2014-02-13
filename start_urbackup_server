@@ -131,7 +131,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	CLEANUP=""
 	BROADCAST_INTERFACES=""
 	URB_USER="urbackup"
-	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,user: -- "$@"`
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,user:,defrag_database -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -153,6 +153,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--broadcast_interfaces) BROADCAST_INTERFACES="--broadcast_interfaces \"$2\""; shift 2 ;;
 			--run_in_gdb) RUN_IN_GDB=1; shift ;;
 			--user) URB_USER="$2"; shift 2;;
+			--defrag_database) CLEANUP="--app defrag_database"; shift ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac
