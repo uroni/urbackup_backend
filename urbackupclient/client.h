@@ -138,7 +138,7 @@ private:
 	bool isExcluded(const std::wstring &path);
 	bool isIncluded(const std::wstring &path, bool *adding_worthless);
 
-	std::vector<SFile> getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db=true);
+	std::vector<SFileAndHash> getFilesProxy(const std::wstring &orig_path, const std::wstring &path, const std::wstring& named_path, bool use_db=true);
 
 	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool restart_own=false, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL);
 	bool release_shadowcopy(SCDirs *dir, bool for_imagebackup=false, int save_id=-1, SCDirs *dontdel=NULL);
@@ -161,10 +161,12 @@ private:
 
 	void start_filesrv(void);
 
-	void modifyFilesInt(std::wstring path, const std::vector<SFile> &data);
+	bool skipFile(const std::wstring& filepath, const std::wstring& namedpath);
+
+	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::wstring &orig_path, const std::wstring& filepath, const std::wstring& namedpath);
+
+	void modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data);
 	void commitModifyFilesBuffer(void);
-	void modifyHashInt(const std::string& hash, const std::wstring& path, int64 filesize, int64 modifytime);
-	void commitModifyHashBuffer(void);
 
 	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
 
@@ -217,7 +219,7 @@ private:
 
 	static std::map<std::wstring, std::wstring> filesrv_share_dirs;
 
-	std::vector< std::pair<std::wstring, std::vector<SFile> > > modify_file_buffer;
+	std::vector< std::pair<std::wstring, std::vector<SFileAndHash> > > modify_file_buffer;
 	std::vector< SHashedFile > modify_hash_buffer;
 	size_t modify_file_buffer_size;
 	size_t modify_hash_buffer_size;

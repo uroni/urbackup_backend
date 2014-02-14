@@ -334,6 +334,13 @@ void upgrade_client9_10(IDatabase *db)
 	db->Write("CREATE UNIQUE INDEX filehashes_idx ON filehashes (name ASC)");
 }
 
+void update_client10_11(IDatabase *db)
+{
+	db->Write("DROP TABLE filehashes");
+	db->Write("DROP INDEX filehashes_idx");
+	db->Write("DELETE FROM files");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -389,6 +396,10 @@ bool upgrade_client(void)
 				break;
 			case 9:
 				upgrade_client9_10(db);
+				++ver;
+				break;
+			case 10:
+				update_client10_11(db);
 				++ver;
 				break;
 			default:

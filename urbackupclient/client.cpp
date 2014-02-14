@@ -677,10 +677,7 @@ void IndexThread::indexDirs(void)
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true);
 
 			cd->copyFromTmpFiles();
-			cd->copyFromTmpFileHashes();
-			cd->deleteTmpFileHashes();
 			commitModifyFilesBuffer();
-			commitModifyHashBuffer();
 
 			if(stop_index)
 			{
@@ -712,10 +709,7 @@ void IndexThread::indexDirs(void)
 	}
 
 	cd->copyFromTmpFiles();
-	cd->copyFromTmpFileHashes();
-	cd->deleteTmpFileHashes();
 	commitModifyFilesBuffer();
-	commitModifyHashBuffer();
 
 #ifdef _WIN32
 	if(!has_stale_shadowcopy)
@@ -764,6 +758,20 @@ void IndexThread::resetFileEntries(void)
 	db->Write("DELETE FROM mfiles_backup");
 }
 
+bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& namedpath)
+{
+	if( isExcluded(filepath) || isExcluded(namedpath) )
+	{
+		return true;
+	}
+	if( !isIncluded(filepath, NULL) && !isIncluded(namedpath, NULL) )
+	{
+		return true;
+	}
+
+	return false;
+}
+
 bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first)
 {
 	bool has_include=false;
@@ -789,17 +797,13 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 		return false;
 	}
 
-	std::vector<SFile> files=getFilesProxy(orig_dir, dir, !first);
+	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first);
 	
 	for(size_t i=0;i<files.size();++i)
 	{
 		if( !files[i].isdir )
 		{
-			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(named_path+os_file_sep()+files[i].name) )
-			{
-				continue;
-			}
-			if( !isIncluded(orig_dir+os_file_sep()+files[i].name, NULL) && !isIncluded(named_path+os_file_sep()+files[i].name, NULL) )
+			if( skipFile(orig_dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name) )
 			{
 				continue;
 			}
@@ -812,41 +816,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 
 				if(calculate_filehashes_on_client)
 				{
-					std::string hash;
-					if(files[i].size<=save_filehash_limit)
-					{
-						hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
-					}
-					else
-					{
-						std::wstring key_path=orig_dir+os_file_sep()+files[i].name;
-					
-						_i64 filesize;
-						_i64 modifytime;
-						if(cd->getFileHash(key_path, filesize, modifytime, hash))
-						{
-							if( filesize!=files[i].size ||
-								files[i].last_modified!=modifytime )
-							{
-								hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
-
-								modifyHashInt(hash, key_path, files[i].size, files[i].last_modified);
-							}
-						}
-						else
-						{
-							hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
-							cd->addFileHash(key_path, files[i].size, files[i].last_modified, hash);
-							if(Server->getTimeMS()-last_tmp_update_time>10*60*1000) //10min
-							{
-								cd->copyFromTmpFileHashes();
-								cd->deleteTmpFileHashes();
-								last_tmp_update_time=Server->getTimeMS();
-							}
-						}
-					}
-
-					outfile << "sha512=" << base64_encode(reinterpret_cast<const unsigned char*>(hash.c_str()), static_cast<unsigned int>(hash.size()));
+					outfile << "sha512=" << base64_encode(reinterpret_cast<const unsigned char*>(files[i].hash.c_str()), static_cast<unsigned int>(files[i].hash.size()));
 				}
 				
 				if(end_to_end_file_backup_verification_enabled)
@@ -918,7 +888,88 @@ void IndexThread::readBackupDirs(void)
 	}
 }
 
-std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db)
+namespace
+{
+	std::vector<SFileAndHash> convertToFileAndHash(const std::vector<SFile> files)
+	{
+		std::vector<SFileAndHash> ret;
+		ret.resize(files.size());
+		for(size_t i=0;i<files.size();++i)
+		{
+			ret[i].isdir=files[i].isdir;
+			ret[i].last_modified=files[i].last_modified;
+			ret[i].name=files[i].name;
+			ret[i].size=files[i].size;
+		}
+		return ret;
+	}
+}
+
+bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::wstring &orig_path, const std::wstring& filepath, const std::wstring& namedpath)
+{
+	bool calculated_hash=false;
+
+	if(fsfiles!=NULL)
+	{
+		for(size_t i=0;i<fsfiles->size();++i)
+		{
+			SFileAndHash& fsfile = fsfiles->at(i);
+			if( fsfile.isdir )
+				continue;
+
+			if(!fsfile.hash.empty())
+				continue;
+
+			if(skipFile(orig_path+os_file_sep()+fsfile.name, namedpath+os_file_sep()+fsfile.name))
+				continue;			
+
+			bool needs_hashing=true;
+
+			if(dbfiles!=NULL)
+			{
+				std::vector<SFileAndHash>::iterator it = std::lower_bound(dbfiles->begin(), dbfiles->end(), fsfile);
+
+				if( it!=dbfiles->end()
+					&& it->name==fsfile.name
+					&& it->isdir==false
+					&& it->last_modified==fsfile.last_modified
+					&& it->size==fsfile.size )
+				{
+					fsfile.hash=it->hash;
+					needs_hashing=false;
+				}
+			}
+
+			if(needs_hashing)
+			{
+				fsfile.hash=getSHA512Binary(filepath+os_file_sep()+fsfile.name);
+				calculated_hash=true;
+			}
+		}
+	}
+	else if(dbfiles!=NULL)
+	{
+		for(size_t i=0;i<dbfiles->size();++i)
+		{
+			SFileAndHash& dbfile = dbfiles->at(i);
+			if( dbfile.isdir )
+				continue;
+
+			if(!dbfile.hash.empty())
+				continue;
+
+			if(skipFile(orig_path+os_file_sep()+dbfile.name, namedpath+os_file_sep()+dbfile.name))
+				continue;
+
+			dbfile.hash=getSHA512Binary(filepath+os_file_sep()+dbfile.name);
+			calculated_hash=true;
+		}
+	}
+
+	return calculated_hash;
+}
+
+std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_path, const std::wstring &path, const std::wstring& named_path, bool use_db)
 {
 #ifndef _WIN32
 	if(path.empty())
@@ -932,6 +983,7 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 #else
 	std::wstring path_lower=strlower(orig_path+os_file_sep());
 	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
+#ifdef _WIN32
 	if(use_db)
 	{
 		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, path_lower) );
@@ -942,68 +994,84 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 	{
 		use_db=false;
 	}
-	std::vector<SFile> tmp;
-	if(it_dir!=changed_dirs.end() || use_db==false)
+#else
+	use_db=false;
+#endif
+	std::vector<SFileAndHash> tmp;
+	if(use_db==false || it_dir!=changed_dirs.end())
 	{
 		++index_c_fs;
 
 		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
-		tmp=getFiles(tpath, &has_error);
+		tmp=convertToFileAndHash(getFiles(tpath, &has_error));
 
 		if(has_error)
 		{
-			VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+			if(os_directory_exists(index_root_path))
+			{
+				VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+			}
+			else
+			{
+				VSSLog(L"Error while getting files in folder \""+path+L"\". Windows errorcode: "+convert((int)GetLastError())+L". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+				index_error=true;
+			}
 		}
 
-		if(use_db)
+		std::vector<SFileAndHash> db_files;
+		bool has_files=cd->getFiles(path_lower, db_files);
+
+#ifdef _WIN32
+		std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
+		std::sort(changed_files.begin(), changed_files.end());
+
+		if(!changed_files.empty())
 		{
-			std::vector<SFile> db_files;
-			bool has_files=cd->getFiles(path_lower, db_files);
-
-			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
-			std::sort(changed_files.begin(), changed_files.end());
-
-			if(!changed_files.empty())
+			for(size_t i=0;i<tmp.size();++i)
 			{
-				for(size_t i=0;i<tmp.size();++i)
+				if(!tmp[i].isdir)
 				{
-					if(!tmp[i].isdir)
+					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
 					{
-						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
+						tmp[i].last_modified*=Server->getRandomNumber();
+						if(tmp[i].last_modified>0)
+							tmp[i].last_modified*=-1;
+						else if(tmp[i].last_modified==0)
+							tmp[i].last_modified=-1;
+					}
+					else
+					{
+						std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+						if( it_db_file!=db_files.end()
+								&& (*it_db_file).name==tmp[i].name
+								&& (*it_db_file).isdir==tmp[i].isdir
+								&& (*it_db_file).last_modified<0 )
 						{
-							tmp[i].last_modified*=Server->getRandomNumber();
-							if(tmp[i].last_modified>0)
-								tmp[i].last_modified*=-1;
-							else if(tmp[i].last_modified==0)
-								tmp[i].last_modified=-1;
-						}
-						else
-						{
-							std::vector<SFile>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
-							if( it_db_file!=db_files.end()
-								 && (*it_db_file).name==tmp[i].name
-								 && (*it_db_file).isdir==tmp[i].isdir
-								 && (*it_db_file).last_modified<0 )
-							{
-								tmp[i].last_modified=it_db_file->last_modified;
-							}
+							tmp[i].last_modified=it_db_file->last_modified;
 						}
 					}
 				}
 			}
-
-			if( has_files)
-			{
-				++index_c_db_update;
-				modifyFilesInt(path_lower, tmp);
-			}
-			else
-			{
-				cd->addFiles(path_lower, tmp);
-			}
 		}
+#endif
+
+		if(calculate_filehashes_on_client)
+		{
+			addMissingHashes(has_files ? &db_files : NULL, &tmp, orig_path, path, named_path);
+		}
+
+		if( has_files)
+		{
+			++index_c_db_update;
+			modifyFilesInt(path_lower, tmp);
+		}
+		else
+		{
+			cd->addFiles(path_lower, tmp);
+		}
+
 		return tmp;
 	}
 	else
@@ -1011,6 +1079,16 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		if( cd->getFiles(path_lower, tmp) )
 		{
 			++index_c_db;
+
+			if(calculate_filehashes_on_client)
+			{
+				if(addMissingHashes(&tmp, NULL, orig_path, path, named_path))
+				{
+					++index_c_db_update;
+					modifyFilesInt(path_lower, tmp);
+				}
+			}
+
 			return tmp;
 		}
 		else
@@ -1020,12 +1098,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 			std::wstring tpath=os_file_prefix(path);
 
 			bool has_error;
-			tmp=getFiles(tpath, &has_error);
+			tmp=convertToFileAndHash(getFiles(tpath, &has_error));
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
 				{
-					VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+					VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
 				}
 				else
 				{
@@ -1033,6 +1111,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 					index_error=true;
 				}
 			}
+
+			if(calculate_filehashes_on_client)
+			{
+				addMissingHashes(NULL, &tmp, orig_path, path, named_path);
+			}
+
 			cd->addFiles(path_lower, tmp);
 			return tmp;
 		}
@@ -2315,19 +2399,20 @@ void IndexThread::doStop(void)
 	msgpipe->Write(wd.getDataPtr(), wd.getDataSize());
 }
 
-void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFile> &data)
+void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data)
 {
 	size_t add_size=path.size()*sizeof(wchar_t)+sizeof(std::wstring);
 	for(size_t i=0;i<data.size();++i)
 	{
 		add_size+=data[i].name.size()*sizeof(wchar_t);
-		add_size+=sizeof(SFile);
+		add_size+=sizeof(SFileAndHash);
+		add_size+=data[i].hash.size();
 	}
 	add_size+=sizeof(std::vector<SFile>);
 
 	modify_file_buffer_size+=add_size;
 
-	modify_file_buffer.push_back(std::pair<std::wstring, std::vector<SFile> >(path, data) );
+	modify_file_buffer.push_back(std::pair<std::wstring, std::vector<SFileAndHash> >(path, data) );
 
 	if( modify_file_buffer_size>max_modify_file_buffer_size)
 	{
@@ -2439,34 +2524,6 @@ void IndexThread::VSSLog(const std::wstring& msg, int loglevel)
 	{
 		vsslog.push_back(std::make_pair(Server->ConvertToUTF8(msg), loglevel));
 	}
-}
-
-void IndexThread::modifyHashInt(const std::string& hash, const std::wstring& path, int64 filesize, int64 modifytime)
-{
-	size_t add_size=sizeof(SHashedFile);
-
-	modify_hash_buffer.push_back(SHashedFile(path, filesize, modifytime, hash));
-	add_size+=hash.size()+path.size();
-
-	modify_hash_buffer_size+=add_size;
-
-	if(modify_hash_buffer_size>max_modify_hash_buffer_size)
-	{
-		commitModifyHashBuffer();
-	}
-}
-
-void IndexThread::commitModifyHashBuffer(void)
-{
-	db->BeginTransaction();
-	for(size_t i=0;i<modify_hash_buffer.size();++i)
-	{
-		cd->modifyFileHash(modify_hash_buffer[i].hash, modify_hash_buffer[i].filesize, modify_hash_buffer[i].modifytime, modify_hash_buffer[i].path);
-	}
-	db->EndTransaction();
-
-	modify_hash_buffer.clear();
-	modify_hash_buffer_size=0;
 }
 
 #ifdef _WIN32
