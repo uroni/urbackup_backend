@@ -53,6 +53,12 @@ IServer *Server;
 #include "InternetClient.h"
 #include <stdlib.h>
 
+#ifdef _WIN32
+#include <Windows.h>
+#include <Sddl.h>
+#include <Aclapi.h>
+#endif
+
 PLUGIN_ID filesrv_pluginid;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
@@ -74,14 +80,19 @@ std::string time_format_str="%m/%d/%Y %H:%M";
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
+const std::string pw_change_file="pw_change.txt";
 const std::string new_file="new.txt";
 #else
 const std::string pw_file="urbackup/pw.txt";
+const std::string pw_change_file="urbackup/pw_change.txt";
 const std::string new_file="urbackup/new.txt";
 #endif
 
 THREADPOOL_TICKET indexthread_ticket;
 THREADPOOL_TICKET internetclient_ticket;
+
+namespace
+{
 
 bool copy_file(const std::wstring &src, const std::wstring &dst)
 {
@@ -103,6 +114,172 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 	Server->destroy(fsrc);
 	Server->destroy(fdst);
 	return true;
+}
+
+#ifdef _WIN32
+
+const TCHAR * szSD = TEXT("D:")       // Discretionary ACL
+        //TEXT("(D;OICI;GA;;;WD)")     // Deny access to 
+                                     // built-in guests
+        TEXT("(A;OICI;GA;;;SY)") // Deny access to 
+                                     // to authenticated 
+                                     // users
+        TEXT("(A;OICI;GA;;;BA)");    // Allow full control 
+                                     // to administrators
+
+bool change_file_permissions(const std::string& filename)
+{
+	PSECURITY_DESCRIPTOR pSDCNV = NULL;
+
+     BOOL b=ConvertStringSecurityDescriptorToSecurityDescriptor(
+                szSD,
+                SDDL_REVISION_1,
+				&pSDCNV,
+                NULL);
+
+	 if(!b)
+	 {
+		 Server->Log("Error creating security descriptor", LL_ERROR);
+		 return false;
+	 }
+
+	SECURITY_DESCRIPTOR sd = {};
+	 DWORD sd_size = sizeof(sd);
+	 PACL pDACL = NULL;
+	 DWORD dwDACLSize = 0;
+	 PACL pSACL = NULL;
+	 DWORD dwSACLSize = 0;
+	 DWORD dwOwnerSIDSize = 0;
+	 DWORD dwGroupSIDSize = 0;
+
+
+	 if (! MakeAbsoluteSD(pSDCNV, &sd, &sd_size, 
+           pDACL, &dwDACLSize, 
+           pSACL, &dwSACLSize, 
+           NULL, &dwOwnerSIDSize, 
+           NULL, &dwGroupSIDSize) ) {
+ 
+ 
+		  pDACL = (PACL) GlobalAlloc(GPTR, dwDACLSize);
+		  pSACL = (PACL) GlobalAlloc(GPTR, dwSACLSize);
+ 
+		  if (! MakeAbsoluteSD(pSDCNV, &sd, &sd_size, pDACL, &dwDACLSize, 
+				   pSACL, &dwSACLSize, NULL, &dwOwnerSIDSize, 
+				   NULL, &dwGroupSIDSize) ) {
+			Server->Log("Error: MakeAbsoluteSD", LL_ERROR);
+			LocalFree(pSDCNV);
+			GlobalFree(pDACL);
+			GlobalFree(pSACL);
+			return false;
+		  }
+	 }
+
+
+	 bool ret=true;
+
+	 DWORD rc = SetNamedSecurityInfoA(const_cast<char*>(filename.c_str()), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION, NULL, NULL, pDACL, NULL);
+	 if(rc!=ERROR_SUCCESS)
+	 {
+		 Server->Log("Error setting security information. rc: "+nconvert((int)rc), LL_ERROR);
+		 ret=false;
+	 }
+
+	 GlobalFree(pDACL);
+	 GlobalFree(pSACL);
+
+	 LocalFree(pSDCNV);
+
+	 return ret;
+}
+
+bool write_pw_change_file()
+{
+	SECURITY_ATTRIBUTES  sa;      
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = FALSE;
+
+
+     BOOL b=ConvertStringSecurityDescriptorToSecurityDescriptor(
+                szSD,
+                SDDL_REVISION_1,
+				&(sa.lpSecurityDescriptor),
+                NULL);
+
+	 if(!b)
+	 {
+		 Server->Log("Error creating security descriptor", LL_ERROR);
+		 return false;
+	 }
+
+	 HANDLE file = CreateFileA(pw_change_file.c_str(),
+		 GENERIC_READ | GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, 0, NULL);
+
+	 if(file==INVALID_HANDLE_VALUE)
+	 {
+		 Server->Log("Error creating pw file", LL_ERROR);
+		 LocalFree(sa.lpSecurityDescriptor);
+		 return false;
+	 }
+
+	 std::string pw = wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L""));
+
+	 DWORD written=0;
+	 while(written<pw.size())
+	 {
+		b = WriteFile(file, pw.data()+written, static_cast<DWORD>(pw.size())-written, &written, NULL);
+		if(!b)
+		{
+			Server->Log("Error writing to pw file", LL_ERROR);
+			CloseHandle(file);
+			LocalFree(sa.lpSecurityDescriptor);
+			return false;
+		}
+	 }
+
+	 CloseHandle(file);
+	 LocalFree(sa.lpSecurityDescriptor);
+	 return true;
+}
+
+#else
+
+bool write_pw_change_file()
+{
+	int fd = open(pw_change_file.c_str(), O_CREAT, S_IRWXU);
+
+	if(fd==-1)
+	{
+		Server->Log("Error opening pw file", LL_ERROR);
+		return false;
+	}
+
+	std::string pw = wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L""));
+
+	ssize_t rc = write(fd, pw.data(), pw.size());
+
+	if(rc<pw.size())
+	{
+		Server->Log("Error writing to pw file", LL_ERROR);
+		close(fd);
+		return false;
+	}
+	
+	close(fd);
+	return true;
+}
+
+bool change_file_permissions(const std::string& filename)
+{
+	if(chmod(filename.c_str(), S_IRWXU)!=0)
+	{
+		Server->Log("Error setting file permissions", LL_ERROR);
+		return false;
+	}
+	return true;
+}
+
+#endif
+
 }
 
 DLLEXPORT void LoadActions(IServer* pServer)
@@ -167,12 +344,18 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		writestring(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), pw_file);
 	}
+	if(getFile(pw_change_file).size()<5)
+	{
+		write_pw_change_file();
+	}
 
 	if( !FileExists("urbackup/backup_client.db") && FileExists("urbackup/backup_client.db.template") )
 	{
 		//Copy file
 		copy_file(L"urbackup/backup_client.db.template", L"urbackup/backup_client.db");
 	}
+
+	change_file_permissions("urbackup/backup_client.db");
 
 	if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT) )
 	{
@@ -193,6 +376,19 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		copy_file(L"initial_settings.cfg", L"urbackup/data/settings.cfg");
 		Server->deleteFile("initial_settings.cfg");
 	}
+
+	if(FileExists("urbackup/data/settings.cfg"))
+	{
+		change_file_permissions("urbackup/data/settings.cfg");
+	}
+
+	if(FileExists("urbackup/data/filelist.ub"))
+	{
+		change_file_permissions("urbackup/data/filelist.ub");
+	}
+
+	change_file_permissions("urbackup");
+	change_file_permissions("urbackup/data");
 
 #ifndef _DEBUG
 	if(FileExists(new_file) )

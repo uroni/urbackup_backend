@@ -97,7 +97,7 @@ public:
 	void setIsInternetConnection(void);
 
 private:
-	bool checkPassword(const std::wstring &cmd);
+	bool checkPassword(const std::wstring &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default=false);
 	void updateLastBackup(void);
 	std::string replaceChars(std::string in);
