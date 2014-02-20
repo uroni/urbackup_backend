@@ -417,7 +417,7 @@ void BackupServerGet::operator ()(void)
 			r_incremental=false;
 			pingthread=NULL;
 			pingthread_ticket=ILLEGAL_THREADPOOL_TICKET;
-			status.pcdone=0;
+			status.pcdone=-1;
 			status.hashqueuesize=0;
 			status.prepare_hashqueuesize=0;
 			backupid=-1;
@@ -3220,7 +3220,7 @@ int BackupServerGet::getPCDone(void)
 {
 	SStatus st=ServerStatus::getStatus(clientname);
 	if(!st.has_status)
-		return 0;
+		return -1;
 	else
 		return st.pcdone;
 }

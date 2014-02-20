@@ -38,7 +38,14 @@ void ServerPingThread::operator()(void)
 	while(stop==false)
 	{
 		//Server->Log("Sending ping running...", LL_DEBUG);
-		if(server_get->sendClientMessage("PING RUNNING -"+nconvert(server_get->getPCDone())+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false, LL_DEBUG))
+		std::string pcdone;
+		int i_pcdone = server_get->getPCDone();
+		if(i_pcdone>=0)
+		{
+			pcdone=nconvert(i_pcdone);
+		}
+
+		if(server_get->sendClientMessage("PING RUNNING -"+pcdone+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false, LL_DEBUG))
 		{
 			last_ping_ok=Server->getTimeMS();
 		}

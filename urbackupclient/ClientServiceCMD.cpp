@@ -91,7 +91,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	backup_running=RUNNING_INCR_FILE;
 	last_pingtime=Server->getTimeMS();
-	pcdone=0;
+	pcdone=-1;
 	backup_source_token=server_token;
 }
 
@@ -116,7 +116,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	backup_running=RUNNING_FULL_FILE;
 	last_pingtime=Server->getTimeMS();
-	pcdone=0;
+	pcdone=-1;
 	backup_source_token=server_token;
 }
 
@@ -459,10 +459,13 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 	IScopedLock lock(backup_mutex);
 	lasttime=Server->getTimeMS();
 	last_pingtime=Server->getTimeMS();
-	int pcdone_new=atoi(getbetween("-","-", cmd).c_str());
+	std::string pcdone_new=getbetween("-","-", cmd);
 	if(backup_source_token.empty() || backup_source_token==server_token )
 	{
-		pcdone=pcdone_new;
+		if(pcdone_new.empty())
+			pcdone=-1;
+		else
+			pcdone=atoi(pcdone_new.c_str());
 	}
 	last_token_times[server_token]=Server->getTimeSeconds();
 
