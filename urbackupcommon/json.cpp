@@ -17,8 +17,8 @@
 **************************************************************************/
 
 #include "json.h"
-#include "../../stringtools.h"
-#include "../../Interface/Server.h"
+#include "../stringtools.h"
+#include "../Interface/Server.h"
 
 namespace JSON
 {

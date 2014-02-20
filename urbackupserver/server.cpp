@@ -200,12 +200,15 @@ void BackupServer::startClients(FileClient &fc)
 {
 	std::vector<std::wstring> names;
 	std::vector<sockaddr_in> servers;
+	std::vector<std::string> endpoint_names;
 
 	if(!internet_test_mode)
 	{
 		names=fc.getServerNames();
 		servers=fc.getServers();
 	}
+
+	endpoint_names.resize(servers.size());
 
 	for(size_t i=0;i<names.size();++i)
 	{
@@ -215,10 +218,10 @@ void BackupServer::startClients(FileClient &fc)
 	std::vector<bool> inetclient;
 	inetclient.resize(names.size());
 	std::fill(inetclient.begin(), inetclient.end(), false);
-	std::vector<std::string> anames=InternetServiceConnector::getOnlineClients();
+	std::vector<std::pair<std::string, std::string> > anames=InternetServiceConnector::getOnlineClients();
 	for(size_t i=0;i<anames.size();++i)
 	{
-		std::wstring new_name=Server->ConvertToUnicode(conv_filename(anames[i]));
+		std::wstring new_name=Server->ConvertToUnicode(conv_filename(anames[i].first));
 		bool skip=false;
 		for(size_t j=0;j<names.size();++j)
 		{
@@ -236,6 +239,7 @@ void BackupServer::startClients(FileClient &fc)
 		sockaddr_in n;
 		memset(&n, 0, sizeof(sockaddr_in));
 		servers.push_back(n);
+		endpoint_names.push_back(anames[i].second);
 	}
 
 	for(size_t i=0;i<names.size();++i)
@@ -261,7 +265,14 @@ void BackupServer::startClients(FileClient &fc)
 			c.addr=servers[i];
 			c.internet_connection=inetclient[i];
 
-			ServerStatus::setIP(names[i], c.addr.sin_addr.s_addr);
+			if(c.internet_connection)
+			{
+				ServerStatus::setIP(names[i], inet_addr(endpoint_names[i].c_str()));
+			}
+			else
+			{
+				ServerStatus::setIP(names[i], c.addr.sin_addr.s_addr);
+			}
 
 			clients.insert(std::pair<std::wstring, SClient>(names[i], c) );
 		}

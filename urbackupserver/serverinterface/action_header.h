@@ -3,7 +3,7 @@
 #include "../../Interface/File.h"
 #include "actions.h"
 #include "helper.h"
-#include "json.h"
+#include "../../urbackupcommon/json.h"
 #include "../../stringtools.h"
 #include "../../urbackupcommon/settings.h"
 #include <stdlib.h>

@@ -3,7 +3,7 @@
 #include <map>
 #include <exception>
 
-#include "../../Interface/Types.h"
+#include "../Interface/Types.h"
 
 namespace JSON
 {

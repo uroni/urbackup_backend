@@ -20,7 +20,7 @@ struct SShareProxy
 class CHTTPClient : public ICustomClient
 {
 public:
-	virtual void Init(THREAD_ID pTID, IPipe *pPipe);
+	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint);
 
 	virtual void ReceivePackets(void);
 	virtual bool Run(void);

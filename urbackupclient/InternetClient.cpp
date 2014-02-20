@@ -37,6 +37,7 @@ int InternetClient::auth_err=0;
 std::queue<std::pair<unsigned int, std::string> > InternetClient::onetime_tokens;
 bool InternetClient::do_exit=false;
 IMutex *InternetClient::onetime_token_mutex=NULL;
+std::string InternetClient::status_msg="initializing";
 
 const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
@@ -72,6 +73,21 @@ void InternetClient::hasLANConnection(void)
 {
 	IScopedLock lock(mutex);
 	last_lan_connection=Server->getTimeMS();
+}
+
+unsigned int InternetClient::timeSinceLastLanConnection()
+{
+	unsigned int ctime=Server->getTimeMS();
+	IScopedLock lock(mutex);
+
+	if(ctime>last_lan_connection)
+	{
+		return ctime-last_lan_connection;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 bool InternetClient::isConnected(void)
@@ -120,6 +136,7 @@ void InternetClient::resetAuthErr(void)
 void InternetClient::operator()(void)
 {
 	Server->waitForStartupComplete();
+	setStatusMsg("wait_local");
 	if(Server->getServerParameter("internet_test_mode")!="true")
 	{
 		Server->Log("Internet test mode not enabled. Waiting for local server...", LL_DEBUG);
@@ -171,6 +188,7 @@ void InternetClient::operator()(void)
 		}
 		else
 		{
+			setStatusMsg("connected_local");
 			wakeup_cond->wait(&lock, ic_lan_timeout);
 		}
 	}
@@ -244,7 +262,10 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 {
 	std::string name=server_settings.name;
 	if(name.empty())
+	{
+		setStatusMsg("no_server");
 		return false;
+	}
 
 	unsigned short port=server_settings.port;
 	lock->relock(NULL);
@@ -256,10 +277,12 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 		Server->Log("Successfully connected.", LL_DEBUG);
 		Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
 		newConnection();
+		setStatusMsg("connected");
 		return true;
 	}
 	else
 	{
+		setStatusMsg("connecting_failed");
 		Server->Log("Connecting failed.", LL_DEBUG);
 	}
 	return false;
@@ -327,6 +350,18 @@ std::pair<unsigned int, std::string> InternetClient::getOnetimeToken(void)
 	}
 }
 
+std::string InternetClient::getStatusMsg()
+{
+	IScopedLock lock(mutex);
+	return status_msg;
+}
+
+void InternetClient::setStatusMsg(const std::string& msg)
+{
+	IScopedLock lock(mutex);
+	status_msg=msg;
+}
+
 InternetClientThread::InternetClientThread(IPipe *cs, const SServerSettings &server_settings)
 	: cs(cs), server_settings(server_settings)
 {
@@ -376,6 +411,7 @@ void InternetClientThread::operator()(void)
 			Server->Log("Connecting to server "+server_settings.name+" failed", LL_INFO);
 			InternetClient::rmConnection();
 			InternetClient::setHasConnection(false);
+			InternetClient::setStatusMsg("connecting_failed");
 			return;
 		}
 	}
@@ -415,21 +451,27 @@ void InternetClientThread::operator()(void)
 				&& rd.getInt(&compression_level)
 				&& rd.getUInt(&server_iterations) ))
 			{
-				Server->Log("Not enough challenge fields -1", LL_ERROR);
+				std::string error = "Not enough challenge fields -1";
+				Server->Log(error, LL_ERROR);
+				InternetClient::setStatusMsg("error:"+error);
 				delete []buf;
 				goto cleanup;
 			}
 
 			if(challenge.size()<32)
 			{
-				Server->Log("Challenge not long enough -1", LL_ERROR);
+				std::string error = "Challenge not long enough -1";
+				Server->Log(error, LL_ERROR);
+				InternetClient::setStatusMsg("error:"+error);
 				delete []buf;
 				goto cleanup;
 			}
 		}
 		else
 		{
-			Server->Log("Unknown response id -2", LL_ERROR);
+			std::string error = "Unknown response id -2";
+			Server->Log(error, LL_ERROR);
+			InternetClient::setStatusMsg("error:"+error);
 			delete []buf;
 			goto cleanup;
 		}
@@ -497,12 +539,15 @@ void InternetClientThread::operator()(void)
 			std::string errmsg="None";
 			rd.getStr(&errmsg);
 			Server->Log("Internet server auth failed. Error: "+errmsg, LL_ERROR);
+			InternetClient::setStatusMsg("error:Authentication failure: "+errmsg);
 			delete []buf;
 			goto cleanup;
 		}
 		else if(id!=ID_ISC_AUTH_OK)
 		{
-			Server->Log("Unknown response id -1", LL_ERROR);
+			std::string error = "Unknown response id -1";
+			Server->Log(error, LL_ERROR);
+			InternetClient::setStatusMsg("error:"+error);
 			delete []buf;
 			goto cleanup;
 		}
@@ -512,7 +557,9 @@ void InternetClientThread::operator()(void)
 			rd.getStr(&hmac);
 			if(hmac!=challenge_response)
 			{
-				Server->Log("Server authentification failed", LL_ERROR);
+				std::string error = "Server authentification failed";
+				Server->Log(error, LL_ERROR);
+				InternetClient::setStatusMsg("error:"+error);
 				delete []buf;
 				goto cleanup;
 			}
@@ -645,7 +692,7 @@ cleanup:
 
 void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 {
-	client->Init(Server->getThreadID(), pipe);
+	client->Init(Server->getThreadID(), pipe, server_settings.name);
 	ClientConnector * cc=dynamic_cast<ClientConnector*>(client);
 	if(cc!=NULL)
 	{

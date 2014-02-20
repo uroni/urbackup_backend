@@ -152,7 +152,7 @@ bool ClientConnector::wantReceive(void)
 	return want_receive;
 }
 
-void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
+void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName)
 {
 	tid=pTID;
 	pipe=pPipe;
@@ -173,6 +173,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	internet_conn=false;
 	tcpstack.setAddChecksum(false);
 	last_update_time=lasttime;
+	endpoint_name = pEndpointName;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -825,6 +826,10 @@ void ClientConnector::ReceivePackets(void)
 			else if(cmd=="STATUS" )
 			{
 				CMD_STATUS(cmd); continue;
+			}
+			else if(cmd=="STATUS DETAIL")
+			{
+				CMD_STATUS_DETAIL(cmd); continue;
 			}
 			else if(cmd=="START BACKUP INCR" )
 			{

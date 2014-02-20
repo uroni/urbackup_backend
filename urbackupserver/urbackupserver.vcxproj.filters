@@ -114,9 +114,6 @@
     <ClCompile Include="serverinterface\helper.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
-    <ClCompile Include="serverinterface\json.cpp">
-      <Filter>serverinterface</Filter>
-    </ClCompile>
     <ClCompile Include="serverinterface\lastacts.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
@@ -243,6 +240,9 @@
     <ClCompile Include="serverinterface\livelog.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\json.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -321,9 +321,6 @@
       <Filter>serverinterface</Filter>
     </ClInclude>
     <ClInclude Include="serverinterface\helper.h">
-      <Filter>serverinterface</Filter>
-    </ClInclude>
-    <ClInclude Include="serverinterface\json.h">
       <Filter>serverinterface</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h">
@@ -424,6 +421,9 @@
     </ClInclude>
     <ClInclude Include="apps\repair_cmd.h">
       <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\json.h">
+      <Filter>serverinterface</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

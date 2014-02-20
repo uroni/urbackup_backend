@@ -21,7 +21,7 @@ public:
 	void operator ()(void);
 
 	int getAvailableSlots(void);
-	void AddClient(SOCKET pSocket);
+	void AddClient(SOCKET pSocket, const std::string& endpoint);
 
 	void stop(void);
 
@@ -30,7 +30,7 @@ private:
 	void addNewClients(void);
 
 	std::vector<std::pair<ICustomClient*, CStreamPipe*> > clients;
-	std::vector<SOCKET> new_clients;
+	std::vector<std::pair<SOCKET, std::string> > new_clients;
 
 	IMutex* mutex;
 	IMutex* nc_mutex;

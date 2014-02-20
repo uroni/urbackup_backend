@@ -59,13 +59,14 @@ struct ImageInformation
 
 struct SChannel
 {
-	SChannel(IPipe *pipe, bool internet_connection)
-		: pipe(pipe), internet_connection(internet_connection) {}
+	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name)
+		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name) {}
 	SChannel(void)
 		: pipe(NULL), internet_connection(false) {}
 
 	IPipe *pipe;
 	bool internet_connection;
+	std::string endpoint_name;
 };
 
 const unsigned int x_pingtimeout=180000;
@@ -74,7 +75,7 @@ class ClientConnector : public ICustomClient
 {
 public:
 	ClientConnector(void);
-	virtual void Init(THREAD_ID pTID, IPipe *pPipe);
+	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
 	~ClientConnector(void);
 
 	virtual bool Run(void);
@@ -122,6 +123,10 @@ private:
 	void update_silent(void);
 	bool calculateFilehashesOnClient(void);
 
+	std::string getLastBackupTime();
+
+	std::string getCurrRunningJob();
+
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
 	void CMD_START_FULL_FILEBACKUP(const std::string &cmd);
@@ -133,6 +138,7 @@ private:
 	void CMD_GET_INCRINTERVAL(const std::string &cmd);
 	void CMD_DID_BACKUP(const std::string &cmd);
 	void CMD_STATUS(const std::string &cmd);
+	void CMD_STATUS_DETAIL(const std::string &cmd);
 	void CMD_UPDATE_SETTINGS(const std::string &cmd);
 	void CMD_PING_RUNNING(const std::string &cmd);
 	void CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock);
@@ -213,5 +219,5 @@ private:
 
 	bool internet_conn;
 
-	
+	std::string endpoint_name;
 };

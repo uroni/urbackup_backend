@@ -1,5 +1,6 @@
 #include "../Interface/Server.h"
 #include "ClientService.h"
+#include "InternetClient.h"
 #include "ServerIdentityMgr.h"
 #include "../common/data.h"
 #include "../urbackupcommon/capa_bits.h"
@@ -7,6 +8,7 @@
 #include "client.h"
 #include "database.h"
 #include "../stringtools.h"
+#include "../urbackupcommon/json.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #include "win_ver.h"
@@ -266,14 +268,13 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 	IndexThread::execute_postbackup_hook();
 }
 
-void ClientConnector::CMD_STATUS(const std::string &cmd)
+std::string ClientConnector::getLastBackupTime()
 {
-	IScopedLock lock(backup_mutex);
-
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	IQuery *q=db->Prepare("SELECT strftime('"+time_format_str+"',last_backup, 'localtime') AS last_backup FROM status");
 	if(q==NULL)
-		return;
+		return std::string();
+
 	int timeoutms=300;
 	db_results res=q->Read(&timeoutms);
 	if(timeoutms==1)
@@ -285,49 +286,61 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 		cached_status=res;
 	}
 
-	std::string ret;
 	if(res.size()>0)
 	{
-		ret+=Server->ConvertToUTF8(res[0][L"last_backup"]);
+		return Server->ConvertToUTF8(res[0][L"last_backup"]);
+	}
+	else
+	{
+		return std::string();
+	}
+}
+
+std::string ClientConnector::getCurrRunningJob()
+{
+	if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout)
+	{
+		return "NOA";
 	}
 
 	if(backup_running==RUNNING_NONE)
 	{
 		if(backup_done)
-			ret+="#DONE";
+			return "DONE";
 		else
-			ret+="#NOA";
+			return "NOA";
 
 		backup_done=false;
 	}
 	else if(backup_running==RUNNING_INCR_FILE)
 	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#INCR";
+		return "INCR";
 	}
 	else if(backup_running==RUNNING_FULL_FILE)
 	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#FULL";
+		return "FULL";
 	}
 	else if(backup_running==RUNNING_FULL_IMAGE)
 	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#FULLI";
+		return "FULLI";
 	}
 	else if(backup_running==RUNNING_INCR_IMAGE)
 	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#INCRI";
+		return "INCRI";
 	}
+
+	return std::string();
+}
+
+void ClientConnector::CMD_STATUS(const std::string &cmd)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+
+	IScopedLock lock(backup_mutex);
+
+	std::string ret = getLastBackupTime();
+
+	ret += "#" + getCurrRunningJob();
 
 	if(backup_running!=RUNNING_INCR_IMAGE)
 		ret+="#"+nconvert(pcdone);
@@ -390,14 +403,49 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 	lasttime=Server->getTimeMS();
 }
 
-void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
+void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 {
-	if(last_capa & DONT_SHOW_SETTINGS)
+	IScopedLock lock(backup_mutex);
+
+	JSON::Object ret;
+
+	ret.set("last_backup_time", getLastBackupTime());
+
+	if(backup_running!=RUNNING_INCR_IMAGE)
+		ret.set("percent_done", pcdone);
+	else
+		ret.set("percent_done", pcdone);
+
+	ret.set("currently_running", getCurrRunningJob());
+
+	JSON::Array servers;
+
+	for(size_t i=0;i<channel_pipes.size();++i)
 	{
-		tcpstack.Send(pipe, "FAILED");
-		return;
+		JSON::Object obj;
+		obj.set("internet_connection", channel_pipes[i].internet_connection);
+		obj.set("name", channel_pipes[i].endpoint_name);
+		servers.add(obj);
 	}
 
+	ret.set("servers", servers);
+
+	ret.set("time_since_last_lan_connection", InternetClient::timeSinceLastLanConnection());
+
+	ret.set("internet_connected", InternetClient::isConnected());
+
+	ret.set("internet_status", InternetClient::getStatusMsg());
+
+	tcpstack.Send(pipe, ret.get(false));
+
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	db->destroyAllQueries();
+
+	lasttime=Server->getTimeMS();
+}
+
+void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
+{
 	std::string s_settings=cmd.substr(9);
 	unescapeMessage(s_settings);
 	updateSettings( s_settings );
@@ -428,8 +476,8 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 	if(!img_download_running)
 	{
 		g_lock->relock(backup_mutex);
-		channel_pipe=SChannel(pipe, internet_conn);
-		channel_pipes.push_back(SChannel(pipe, internet_conn));
+		channel_pipe=SChannel(pipe, internet_conn, endpoint_name);
+		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
@@ -493,6 +541,12 @@ void ClientConnector::CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cm
 
 void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 {
+	if(last_capa & DONT_SHOW_SETTINGS)
+	{
+		tcpstack.Send(pipe, "FAILED");
+		return;
+	}
+
 	std::string s_settings=cmd.substr(16);
 	lasttime=Server->getTimeMS();
 	unescapeMessage(s_settings);

@@ -46,7 +46,7 @@ IMutex *CHTTPClient::share_mutex=NULL;
 std::map<std::string, SShareProxy> CHTTPClient::shared_connections;
 extern std::vector<std::string> allowed_urls;
 
-void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe)
+void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint)
 {
 	pipe=pPipe;
 	do_quit=false;

@@ -285,6 +285,11 @@ void BackupServerGet::operator ()(void)
 		return;
 	}
 
+	if(server_settings->getSettings()->computername.empty())
+	{
+		server_settings->getSettings()->computername=clientname;
+	}
+
 	prepareSQL();
 
 	updateLastseen();	
@@ -3060,11 +3065,10 @@ void BackupServerGet::sendSettings(void)
 			if(!settings->getValue(key, &value) )
 				key=L"";
 		}
-		
-		key+=L"_def";
 
 		if(!key.empty())
 		{
+			key+=L"_def";
 			s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";
 		}
 	}

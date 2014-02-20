@@ -156,12 +156,6 @@ ACTION_IMPL(status)
 			}
 		}
 
-		bool details=false;
-		if(GET.find(L"details")!=GET.end())
-		{
-			details=true;
-			ret.set("details", true);
-		}
 		std::wstring hostname=GET[L"hostname"];
 		if(!hostname.empty() && rights=="all")
 		{

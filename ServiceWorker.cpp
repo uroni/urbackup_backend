@@ -61,9 +61,9 @@ void CServiceWorker::addNewClients(void)
 {
     for(size_t i=0;i<new_clients.size();++i)
     {
-		CStreamPipe *pipe=new CStreamPipe(new_clients[i]);
+		CStreamPipe *pipe=new CStreamPipe(new_clients[i].first);
 		ICustomClient *nc=service->createClient();
-		nc->Init(tid, pipe);
+		nc->Init(tid, pipe, new_clients[i].second);
 		clients.push_back( std::pair<ICustomClient*, CStreamPipe*>(nc, pipe) );
     }
     new_clients.clear();
@@ -211,11 +211,11 @@ int CServiceWorker::getAvailableSlots(void)
 	return max_clients-nClients;
 }
 
-void CServiceWorker::AddClient(SOCKET pSocket)
+void CServiceWorker::AddClient(SOCKET pSocket, const std::string& endpoint)
 {
 	IScopedLock lock(mutex);
 
-	new_clients.push_back( pSocket );
+	new_clients.push_back( std::make_pair(pSocket, endpoint) );
 	
 	cond->notify_all();
 	
