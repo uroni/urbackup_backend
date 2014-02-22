@@ -2,7 +2,7 @@
 <Include>
 	<?define Platform  = "x64"?>
 	<?define shared_data_dir  = "data"?>
-	<?define ProductID="3228c193-db9d-4f58-ad3a-6431ae64d05f"?>
+	<?define ProductID="07726240-2c4a-4638-bb80-ac4ea4f2c9af"?>
 	<?if $(var.Platform)=x64 ?>
 		<?define ProgramFilesFolder="ProgramFiles64Folder"?>
 		<?define ComponentID="5d0aca93-8f4c-4192-8645-75c3d489721c"?>
