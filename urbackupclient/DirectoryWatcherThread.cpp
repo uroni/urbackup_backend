@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -75,7 +75,8 @@ void DirectoryWatcherThread::operator()(void)
 			dcw.WatchDirectory(watching[i], FILE_NOTIFY_CHANGE_FILE_NAME|FILE_NOTIFY_CHANGE_DIR_NAME|FILE_NOTIFY_CHANGE_LAST_WRITE, &cl, TRUE);
 		#else
 		    dcw.watchDir(watching[i]);
-		#endif
+		#endif
+
 	}
 
 
