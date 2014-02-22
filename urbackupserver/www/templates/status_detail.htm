@@ -7,7 +7,7 @@
 {tmpdir_error|s}
 {database_error|s}
 
-{modify_clients_top|s}<br /><br />
+<br /><br />
 <table cellspacing="0" cellpadding="0" id="status_table">
 <thead>
 <tr>			
@@ -33,6 +33,9 @@
 </table>
 <br /><br />
 {modify_clients|s}
+{?status_can_show_all}
+&#32;| <a href="javascript: g.status_show_all=true; show_status1();">{tShow all clients}</a><br /><br />
+{/status_can_show_all}
 {?removed_clients_table}
 <br /><br />
 <table cellspacing="0" cellpadding="0" id="status_table">
@@ -52,6 +55,7 @@
 {status_client_download|s}
 <h3>{tExtra clients}</h3>
 
+{?status_extra_clients}
 <table cellspacing="0" cellpadding="0">
 <tr>			
 	<th style="width: 150px" class="tabHeader">{tHostname/IP}</th>
@@ -87,3 +91,4 @@
 <h3>{tServer identity}</h3>
 {server_identity}
 <br>
+{/status_extra_clients}

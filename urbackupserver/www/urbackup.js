@@ -4,9 +4,9 @@ g.lang="-";
 g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
-g.status_detail=false;
 g.progress_stop_id=-1;
 g.current_version=1003000000;
+g.status_show_all=false;
 
 g.languages=[ 
 				{ l: "Deutsch", s: "de" },
@@ -460,21 +460,12 @@ function stat_client(id, name)
 	}
 }
 
-function show_status1(details, hostname, action, remove_client, stop_client_remove, start_backup_type)
+function show_status1(hostname, action, remove_client, stop_client_remove)
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
 	g.refresh_timeout=-1;
 	var pars="";
-	
-	if(typeof details=="undefined")
-		details=g.status_detail;
-	else
-		g.status_detail=details;
-	if(details==true)
-	{
-		pars="details=true";
-	}
 	
 	if(hostname && hostname.length>0)
 	{
@@ -495,12 +486,6 @@ function show_status1(details, hostname, action, remove_client, stop_client_remo
 		{
 			pars+="clientname="+hostname;			
 		}
-	}
-	if(start_backup_type && start_backup_type.length>0)
-	{
-		if(pars!="") pars+="&";
-		pars+="start_client="+remove_client.join();
-		pars+="&start_type="+start_backup_type;
 	}
 	else if(remove_client && remove_client.length>0)
 	{
@@ -602,6 +587,15 @@ function show_status2(data)
 				obj.start_image_backup=dustRender("status_percent_done", {pcdone: obj.done_pc});
 			}
 		}	
+		
+		if(obj.start_file_backup=="")
+		{
+			obj.start_file_backup="<span id=\"start_file_backup_"+obj.id+"\" />";
+		}
+		if(obj.start_image_backup=="")
+		{
+			obj.start_image_backup="<span id=\"start_image_backup_"+obj.id+"\" />";
+		}
 				
 		switch(obj.status)
 		{
@@ -613,6 +607,7 @@ function show_status2(data)
 			case 10: obj.status=trans("starting"); break;
 			case 11: obj.status=trans("ident_err")+" <a href=\"http://www.urbackup.org/FAQ.php#ident_err\" target=\"_blank\">?</a>"; break;
 			case 12: obj.status=trans("too_many_clients_err"); break;
+			default: obj.status="&nbsp;"
 		}
 		
 		if(data.allow_modify_clients)
@@ -626,26 +621,7 @@ function show_status2(data)
 			obj.dtl_c1="<!--";
 			obj.dtl_c2="-->";
 			obj.style_pre_last="tabFRight";
-		}		
-		 
-		if(typeof obj.start_ok!="undefined")
-		{
-			if(obj.start_ok)
-			{
-				if( obj.start_type=="incr_file" || obj.start_type=="full_file" )
-					obj.start_file_backup="<br />"+trans("queued_backup");
-				else if( obj.start_type=="incr_image" || obj.start_type=="full_image" )
-					obj.start_image_backup="<br />"+trans("queued_backup");
-			}
-			else
-			{
-				if( obj.start_type=="incr_file" || obj.start_type=="full_file" )
-					obj.start_file_backup="<br />"+trans("starting_backup_failed");
-				else if( obj.start_type=="incr_image" || obj.start_type=="full_image" )
-					obj.start_image_backup="<br />"+trans("starting_backup_failed");
-			}
-		}
-		
+		}				
 		
 		if( obj.delete_pending && obj.delete_pending==1)
 		{
@@ -654,16 +630,9 @@ function show_status2(data)
 		}
 		else
 		{
-			if(data.details)
+			if(!obj.rejected || g.status_show_all)
 			{
 				rows+=dustRender("status_detail_row", obj);
-			}
-			else
-			{
-				if(!obj.rejected)
-				{
-					rows+=dustRender("status_row", obj);
-				}
 			}
 		}
 	}
@@ -726,22 +695,18 @@ function show_status2(data)
 		extra_clients_rows=dustRender("status_detail_extra_empty");
 	}
 	
-	var c_tmpl="status";
-	
-	if(data.details) c_tmpl="status_detail";
-	
-	var dtl_c1="<!--";
-	var dtl_c2="-->";
-	var dtl_c1_top=dtl_c1;
-	var dtl_c2_top=dtl_c2;
+	var status_can_show_all=false;
+	var status_extra_clients=false;
 	
 	if(data.allow_extra_clients)
 	{
-		dtl_c1="";
-		dtl_c2="";
+		if(!g.status_show_all)
+		{
+			status_can_show_all=true;
+		}
+		status_extra_clients=true;
 	}
 	var modify_clients="";
-	var modify_clients_top="";
 	if(data.allow_modify_clients)
 	{
 		var rem_start="<!--";
@@ -769,14 +734,6 @@ function show_status2(data)
 							      no_images_stop: no_images_stop, no_file_backups_start: no_file_backups_start, no_file_backups_stop: no_file_backups_stop };
 								  
 		modify_clients=dustRender("status_modify_clients", status_modify_params);
-		
-		if(data.status.length>10)
-		{
-			status_modify_params.backup_type_num=1;
-			modify_clients_top=dustRender("status_modify_clients", status_modify_params);
-			dtl_c1_top=dtl_c1;
-			dtl_c2_top=dtl_c2;
-		}
 	}
 	
 	var class_prev;
@@ -808,14 +765,13 @@ function show_status2(data)
 		status_client_download=dustRender("status_client_download", {download_clients: client_download_data});
 	}
 	
-	ndata=dustRender(c_tmpl, {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
+	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
 		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal,
-		extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
+		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
 		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
 		server_identity: data.server_identity, modify_clients: modify_clients,
-		modify_clients_top: modify_clients_top,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
-		status_client_download: status_client_download, dtl_c1_top: dtl_c1_top, dtl_c2_top: dtl_c2_top,
+		status_client_download: status_client_download,
 		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients});
 	
 	if(g.data_f!=ndata)
@@ -825,33 +781,67 @@ function show_status2(data)
 		
 		if(data.no_images)
 		{
-			if(data.details)
-			{
-				show_hide_column('status_table', 5, false);
-				show_hide_column('status_table', 7, false);
-			}
-			else
-			{
-				show_hide_column('status_table', 3, false);
-				show_hide_column('status_table', 5, false);
-			}
+			show_hide_column('status_table', 5, false);
+			show_hide_column('status_table', 7, false);
 		}
 		
 		if(data.no_file_backups)
 		{
-			if(data.details)
-			{
-				show_hide_column('status_table', 4, false);
-				show_hide_column('status_table', 6, false);
-			}
-			else
-			{
-				show_hide_column('status_table', 2, false);
-				show_hide_column('status_table', 4, false);
-			}
+			show_hide_column('status_table', 4, false);
+			show_hide_column('status_table', 6, false);
 		}
 		
-		$("#status_table").dataTable({ "iDisplayLength":25 });
+		$("#status_table").dataTable({
+			"iDisplayLength" : 25,
+			"sDom" : 'CT<"clear">lfrtip',
+			"aoColumnDefs": [
+				{ "bVisible": false, "aTargets": [ 2, 8, 9, 10 ]
+				},
+				{ "bSortable": false, 'aTargets': [ 11 ] }
+			],
+			"oColVis": {
+				"bRestore": true,
+				"sRestore": "Restore to default",
+				"aiExclude": [ 0, 11 ]
+			},
+			"oTableTools": {
+				"aButtons": [
+					{
+						"sExtends":    "collection",
+						"sButtonText": "Save",
+						"aButtons":    [ "csv", "xls", 
+						{
+							"sExtends": "pdf",
+							"mColumns": [0, 3, 4, 5, 6, 7]
+						}
+						]
+					}					
+				],
+				"sSwfPath": "copy_csv_xls_pdf.swf"
+			},
+			"sPaginationType": "full_numbers",
+			"sScrollX": "100%",
+			"bScrollCollapse": true,
+			"bStateSave": true,
+			
+			"oLanguage": {
+				"oPaginate": {
+					"sFirst": "First",
+					"sLast": "Last",
+					"sNext": "Next",
+					"sPrevious": "Previous"
+				},
+				"sEmptyTable": "No data available in table",
+				"sInfo": "Showing _START_ to _END_ of _TOTAL_ entries",
+				"sInfoEmpty": "Showing 0 to 0 of 0 entries",
+				"sInfoFiltered": "(filtered from _MAX_ total entries)",
+				"sInfoThousands": ",",
+				"sLengthMenu": "Show _MENU_ entries",
+				"sProcessing": "Processing...",
+				"sSearch": "Search:",
+				"sZeroRecords": "No matching records found"
+			}
+		});
 	}
 	
 	if(data.admin)
@@ -865,6 +855,8 @@ function show_status2(data)
 			g.checkForNewVersion();
 		}
 	}
+	
+	g.status_show_all=false;
 }
 g.checkForNewVersion = function()
 {
@@ -890,7 +882,7 @@ function addExtraClient()
 		return;
 	}
 	
-	show_status1(true, I('hostname').value);
+	show_status1(I('hostname').value);
 }
 function addInternetClient()
 {
@@ -901,11 +893,11 @@ function addInternetClient()
 		return;
 	}
 	
-	show_status1(true, I('clientname').value, 2);
+	show_status1(I('clientname').value, 2);
 }
 function removeExtraClient(id)
 {
-	show_status1(true, id+"", 1);
+	show_status1(id+"", 1);
 }
 
 function show_backups1()
@@ -2677,7 +2669,7 @@ function removeClient(clientid)
 	var b=confirm(trans("really_remove_client"));
 	if(b)
 	{
-		show_status1(g.status_detail, "", false, [clientid]);
+		show_status1("", false, [clientid]);
 	}
 }
 function removeClients()
@@ -2701,7 +2693,7 @@ function removeClients()
 		var b=confirm(trans("really_remove_clients"));
 		if(b)
 		{
-			show_status1(g.status_detail, "", false, ids);
+			show_status1("", false, ids);
 		}
 	}
 	else
@@ -2727,7 +2719,7 @@ function selectNoClients()
 }
 function stopRemove(clientid)
 {
-	show_status1(g.status_detail, "", false, [clientid], true);
+	show_status1("", false, [clientid], true);
 }
 function unarchive_single(backupid, clientid)
 {
@@ -2945,11 +2937,53 @@ function startBackups(backup_type_num)
 	}
 	if(ids.length>0)
 	{	
-		show_status1(g.status_detail, "", false, ids, false, I('backup_type'+backup_type_num).value);
+		startLoading();
+		new getJSON("start_backup", "start_type="+I('backup_type'+backup_type_num).value+"&start_client="+ids.join(","), backups_started);
 	}
 	else
 	{
 		alert(trans("no_client_selected"));
+	}
+}
+function backups_started(data)
+{
+	stopLoading();
+	
+	if(data.result)
+	{
+		for(var i=0;i<data.result.length;++i)
+		{
+			var res = data.result[i];
+			
+			var text;
+			var dom_id;
+			if(res.start_type==="full_file" || res.start_type==="incr_file")
+			{
+				dom_id = 'start_file_backup_'+res.clientid;
+				if(res.start_ok)
+				{
+					text = "<br />"+trans("queued_backup");
+				}
+				else
+				{
+					text = "<br />"+trans("starting_backup_failed");
+				}
+			}
+			else
+			{
+				dom_id = 'start_image_backup_'+res.clientid;
+				if(res.start_ok)
+				{
+					text = "<br />"+trans("queued_backup");
+				}
+				else
+				{
+					text = "<br />"+trans("starting_backup_failed");
+				}
+			}
+			
+			I(dom_id).innerHTML = text;
+		}
 	}
 }
 function stopBackup(clientid)
