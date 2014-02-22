@@ -134,7 +134,6 @@ ACTION_IMPL(usagegraph)
 		if(db->getEngineName()=="sqlite")
 		{
 			cache_res=db->Read("PRAGMA cache_size");
-			ServerSettings server_settings(db);
 			db->Write("PRAGMA cache_size = -51200"); //50MB
 		}
 			
