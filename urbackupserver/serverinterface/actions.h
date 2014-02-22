@@ -18,4 +18,5 @@ namespace Actions
 	ACTION(shutdown);
 	ACTION(download_client);
 	ACTION(livelog);
+	ACTION(start_backup);
 }

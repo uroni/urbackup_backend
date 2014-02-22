@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 #include "../server_settings.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../server_status.h"
-#include "../../Interface/Pipe.h"
 #include "../server_get.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
 
@@ -32,22 +31,6 @@ extern ICryptoFactory *crypto_fak;
 
 namespace
 {
-
-bool start_backup(IPipe *comm_pipe, std::wstring backup_type)
-{
-	if(backup_type==L"full_file")
-		comm_pipe->Write("START BACKUP FULL");
-	else if(backup_type==L"incr_file")
-		comm_pipe->Write("START BACKUP INCR");
-	else if(backup_type==L"full_image")
-		comm_pipe->Write("START IMAGE FULL");
-	else if(backup_type==L"incr_image")
-		comm_pipe->Write("START IMAGE INCR");
-	else
-		return false;
-
-	return true;
-}
 
 bool client_download(Helper& helper, JSON::Array &client_downloads)
 {
@@ -209,20 +192,7 @@ ACTION_IMPL(status)
 					q->Reset();
 				}
 			}
-		}
-
-		std::wstring s_start_client=GET[L"start_client"];
-		std::vector<int> start_client;
-		std::wstring start_type=GET[L"start_type"];
-		if(!s_start_client.empty() && helper.getRights("start_backup")=="all")
-		{
-			std::vector<std::wstring> sv_start_client;
-			Tokenize(s_start_client, sv_start_client, L",");
-			for(size_t i=0;i<sv_start_client.size();++i)
-			{
-				start_client.push_back(watoi(sv_start_client[i]));
-			}
-		}
+		}		
 
 		JSON::Array status;
 		IDatabase *db=helper.getDatabase();
@@ -297,26 +267,6 @@ ACTION_IMPL(status)
 						i_status=12;
 					else
 						i_status=client_status[j].statusaction;
-				}
-			}
-
-			if(std::find(start_client.begin(), start_client.end(), clientid)!=start_client.end())
-			{
-				stat.set("start_type", start_type);
-				if(!online || curr_status->comm_pipe==NULL)
-				{
-					stat.set("start_ok", false);
-				}
-				else
-				{
-					if(start_backup(curr_status->comm_pipe, start_type) )
-					{
-						stat.set("start_ok", true);
-					}
-					else
-					{
-						stat.set("start_ok", false);
-					}
 				}
 			}
 

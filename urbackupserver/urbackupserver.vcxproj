@@ -294,6 +294,7 @@
     <ClCompile Include="serverinterface\salt.cpp" />
     <ClCompile Include="serverinterface\settings.cpp" />
     <ClCompile Include="serverinterface\shutdown.cpp" />
+    <ClCompile Include="serverinterface\start_backup.cpp" />
     <ClCompile Include="serverinterface\status.cpp" />
     <ClCompile Include="serverinterface\usage.cpp" />
     <ClCompile Include="serverinterface\usagegraph.cpp" />

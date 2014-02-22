@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -98,8 +98,8 @@ void updateRights(int t_userid, std::string s_rights, IDatabase *db);
 void open_settings_database_full(bool use_berkeleydb);
 
 std::string lang="en";
-std::string time_format_str_de="%d.%m.%Y %H:%M";
 std::string time_format_str="%Y-%m-%d %H:%M";
+std::string time_format_str_de=time_format_str;
 
 THREADPOOL_TICKET tt_cleanup_thread;
 THREADPOOL_TICKET tt_automatic_archive_thread;
@@ -502,6 +502,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(getimage);
 	ADD_ACTION(download_client);
 	ADD_ACTION(livelog);
+	ADD_ACTION(start_backup);
 
 	if(Server->getServerParameter("allow_shutdown")=="true")
 	{
