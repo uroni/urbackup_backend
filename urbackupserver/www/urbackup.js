@@ -409,6 +409,67 @@ function show_statistics2(data)
 	}
 	I('nav_pos').innerHTML=ndata;
 }
+function render_useagegraph_single(selectedIdx, idx, key, params)
+{
+	var ret="";
+	if(selectedIdx==idx)
+	{
+		ret+="<strong>"+trans(key)+"</strong>";
+	}
+	else
+	{
+		ret+="<a href=\"javascript: createUsageGraph("+idx+", '"+params+"');\">"+trans(key)+"</a>";
+	}
+	return ret;
+}
+function render_sel_usagegraph(selectedIdx, params)
+{
+	var ret="<span style='float: right; z-Index: 100'>";
+	ret+=render_useagegraph_single(selectedIdx, 0, "day", params);
+	ret+=" | ";
+	ret+=render_useagegraph_single(selectedIdx, 1, "month", params);
+	ret+=" | ";
+	ret+=render_useagegraph_single(selectedIdx, 2, "year", params);
+	ret+="</span>";
+	return ret;
+}
+function createUsageGraph(selectedIdx, params)
+{
+	var addUsagegraph = render_sel_usagegraph(selectedIdx, params);
+	
+	I('usagegraph').innerHTML = "<img src=\"indicator.gif\" />"+trans("loading")+"...";
+	
+	var scale;
+	var dateFormat;
+	var transKey;
+	if(selectedIdx==1)
+	{
+		scale="m";
+		dateFormat="%b";
+		transKey="month";
+	}
+	else if(selectedIdx==2)
+	{	
+		scale="y";
+		dateFormat="%y";
+		transKey="year";
+	}
+	else
+	{
+		scale="d";
+		dateFormat="%#d";
+		transKey="day";
+	}
+	
+	if(params.length>0)
+	{
+		params= "&" + params;
+	}
+	
+	new loadGraph("usagegraph", "scale="+scale+params, "usagegraph", {pie: false, width: 800, height: 500, 
+			title: trans("storage_usage_bar_graph_title"), colname1: trans(transKey), colname2: trans("storage_usage_bar_graph_colname2"), dateFormat: dateFormat },
+			addUsagegraph);
+}
 function show_statistics3(data)
 {
 	stopLoading();
@@ -431,12 +492,13 @@ function show_statistics3(data)
 	}
 	ndata=dustRender("stat_general", {rows: rows, used_total: format_size(used_total), files_total: format_size(files_total), images_total: format_size(images_total), ses: g.session});
 	if(g.data_f!=ndata)
-	{
+	{	
 		I('data_f').innerHTML=ndata;
 		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 700, height: 700, 
-			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") } );
-		new loadGraph("usagegraph", "", "usagegraph", {pie: false, width: 800, height: 500, 
-			title: trans("storage_usage_bar_graph_title"), colname1: trans("storage_usage_bar_graph_colname1"), colname2: trans("storage_usage_bar_graph_colname2") });
+			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") }, "" );
+		
+		createUsageGraph(0, "");
+		
 		g.data_f=ndata;
 	}
 }
@@ -454,8 +516,7 @@ function stat_client(id, name)
 		g.settings_nav_pos=idx+1;
 		g.data_f=dustRender("stat_user", {clientid: id, clientname: name, ses: g.session});
 		I('data_f').innerHTML=g.data_f;
-		new loadGraph("usagegraph", "clientid="+id, "usagegraph", {pie: false, width: 700, height: 700, 
-			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") });
+		createUsageGraph(0, "clientid="+id);
 		show_statistics2(g.stat_data);
 	}
 }

@@ -217,17 +217,18 @@ getJSON = function(action, parameters, callback)
 
 g.tmpls={};
 
-function loadGraph(action, parameters, pDivid, pGraphdata)
+function loadGraph(action, parameters, pDivid, pGraphdata, pAddHtml)
 {
 	var divid=pDivid;
 	var f=this;
 	var graphdata=pGraphdata;
+	var addHtml = pAddHtml;
 	
 	this.init_cb = function(data)
 	{	
 		I(divid).style.width = graphdata.width+"px";
 		I(divid).style.height = graphdata.height+"px";
-		I(divid).innerHTML="";
+		I(divid).innerHTML="<span id='"+divid+"_plot' style='width: 100%; height: 100%; display: inline-block'></span>"+addHtml;
 		I(divid).style.display="inline-block";
 		if(graphdata.pie)
 		{
@@ -238,12 +239,13 @@ function loadGraph(action, parameters, pDivid, pGraphdata)
 				jqdata.push([obj.label, obj.data]);
 			}
 			
-			var piegraph = jQuery.jqplot (divid, [jqdata],
+			var piegraph = jQuery.jqplot (divid+"_plot", [jqdata],
 			{
 				  seriesDefaults: {
 					renderer: jQuery.jqplot.PieRenderer,
 					rendererOptions: {
 					  showDataLabels: true,
+					  highlightMouseOver: true
 					}
 				  },
 				  legend: {
@@ -251,7 +253,16 @@ function loadGraph(action, parameters, pDivid, pGraphdata)
 					location: 'e',
 					rendererOptions: {numberRows: 10, numberColumns: 2}
 				  },
-				  title: graphdata.title				  
+				  title: graphdata.title,
+				  highlighter: {
+					show: true,
+					formatString:'%s', 
+					tooltipLocation:'sw', 
+					useAxesFormatters:false
+				  },
+				  cursor: {
+					show: true
+				  }
 			});
 			
 		}
@@ -262,23 +273,19 @@ function loadGraph(action, parameters, pDivid, pGraphdata)
 			for(var i=0;i<data.data.length;++i)
 			{
 				var obj=data.data[i];
-				series.push(obj.data);
-				ticks.push(obj.xlabel);
+				series.push([obj.xlabel, obj.data]);
 			}
 			
-			var plot1 = $.jqplot(divid, [series], {
-
-				seriesDefaults:{
-					renderer:$.jqplot.BarRenderer,
-					rendererOptions: {fillToZero: true}
-				},
+			var plot1 = $.jqplot(divid+"_plot", [series], {
 				legend: {
 					show: false,
 				},
 				axes: {
 					xaxis: {
-						renderer: $.jqplot.CategoryAxisRenderer,
-						ticks: ticks,
+						renderer:$.jqplot.DateAxisRenderer,
+						tickOptions: {
+							formatString: graphdata.dateFormat
+						},
 						label: graphdata.colname1
 					},
 					yaxis: {
@@ -287,7 +294,14 @@ function loadGraph(action, parameters, pDivid, pGraphdata)
 						label: graphdata.colname2
 					}
 				},
-				title: graphdata.title
+				title: graphdata.title,
+				highlighter: {
+					show: true,
+					formatString: graphdata.colname1+": %s "+graphdata.colname2+": %s"
+				},
+				cursor: {
+					show: false
+				}
 			});
 		}
 	}
