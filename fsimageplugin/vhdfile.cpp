@@ -37,53 +37,6 @@ const int64 unixtime_offset=946684800;
 
 const unsigned int sector_size=512;
 
-inline unsigned int endian_swap(unsigned int x)
-{
-    return (x>>24) | 
-        ((x<<8) & 0x00FF0000) |
-        ((x>>8) & 0x0000FF00) |
-        (x<<24);
-}
-
-inline unsigned short endian_swap(unsigned short x)
-{
-    return x = (x>>8) | 
-        (x<<8);
-}
-
-inline std::string endian_swap_utf16(std::string str)
-{
-	for(size_t i=0;i<str.size();i+=2)
-	{
-		unsigned short *t=(unsigned short*)&str[i];
-		*t=endian_swap(*t);
-	}
-	return str;
-}
-
-inline uint64 endian_swap(uint64 x)
-{
-#ifdef _WIN32
-    return (x>>56) | 
-        ((x<<40) & 0x00FF000000000000) |
-        ((x<<24) & 0x0000FF0000000000) |
-        ((x<<8)  & 0x000000FF00000000) |
-        ((x>>8)  & 0x00000000FF000000) |
-        ((x>>24) & 0x0000000000FF0000) |
-        ((x>>40) & 0x000000000000FF00) |
-        (x<<56);
-#else
-    return (x>>56) | 
-        ((x<<40) & 0x00FF000000000000LLU) |
-        ((x<<24) & 0x0000FF0000000000LLU) |
-        ((x<<8)  & 0x000000FF00000000LLU) |
-        ((x>>8)  & 0x00000000FF000000LLU) |
-        ((x>>24) & 0x0000000000FF0000LLU) |
-        ((x>>40) & 0x000000000000FF00LLU) |
-        (x<<56);
-#endif
-}
-
 VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode)
 	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0)
 {
@@ -275,23 +228,23 @@ bool VHDFile::write_header(bool diff)
 	footer.cookie[5]='t';
 	footer.cookie[6]='i';
 	footer.cookie[7]='x';
-	footer.features=endian_swap((unsigned int)0x00000002);
-	footer.format_version=endian_swap((unsigned int)0x00010000);
-	footer.data_offset=endian_swap(dynamic_header_offset);
-	footer.timestamp=endian_swap((unsigned int)(Server->getTimeSeconds()-unixtime_offset));
+	footer.features=big_endian((unsigned int)0x00000002);
+	footer.format_version=big_endian((unsigned int)0x00010000);
+	footer.data_offset=big_endian(dynamic_header_offset);
+	footer.timestamp=big_endian((unsigned int)(Server->getTimeSeconds()-unixtime_offset));
 	footer.creator_application[0]='v';
 	footer.creator_application[1]='p';
 	footer.creator_application[2]='c';
 	footer.creator_application[3]=' ';
-	footer.creator_version=endian_swap((unsigned int)0x00050003);
-	footer.creator_os=endian_swap((unsigned int)0x5769326B);
-	footer.original_size=endian_swap(dstsize);
-	footer.current_size=endian_swap(dstsize);
+	footer.creator_version=big_endian((unsigned int)0x00050003);
+	footer.creator_os=big_endian((unsigned int)0x5769326B);
+	footer.original_size=big_endian(dstsize);
+	footer.current_size=big_endian(dstsize);
 	footer.disk_geometry=calculate_chs();
 	if(diff)
-		footer.disk_type=endian_swap((unsigned int)4);
+		footer.disk_type=big_endian((unsigned int)4);
 	else
-		footer.disk_type=endian_swap((unsigned int)3);
+		footer.disk_type=big_endian((unsigned int)3);
 	footer.checksum=0;
 	Server->randomFill(footer.uid, 16);
 	footer.saved_state=0;
@@ -356,7 +309,7 @@ unsigned int VHDFile::calculate_chs(void)
 	unsigned short cylinders = cylinderTimesHeads / heads;
 
 	unsigned int chs=(cylinders<<16)+(heads<<8)+sectorsPerTrack;
-	return endian_swap(chs);
+	return big_endian(chs);
 }
 
 unsigned int VHDFile::calculate_checksum(const unsigned char * data, size_t dsize)
@@ -366,7 +319,7 @@ unsigned int VHDFile::calculate_checksum(const unsigned char * data, size_t dsiz
 	{
 		checksum+=data[i];
 	}
-	return ~endian_swap(checksum);
+	return ~big_endian(checksum);
 }
 
 bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::wstring parentfn)
@@ -386,17 +339,17 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 #else
 	dynamicheader.dataoffset=0xFFFFFFFFFFFFFFFFLLU;
 #endif
-	dynamicheader.tableoffset=endian_swap(bat_offset);
-	dynamicheader.header_version=endian_swap((unsigned int)0x00010000);
-	dynamicheader.table_entries=endian_swap(batsize);
-	dynamicheader.blocksize=endian_swap(blocksize);
+	dynamicheader.tableoffset=big_endian(bat_offset);
+	dynamicheader.header_version=big_endian((unsigned int)0x00010000);
+	dynamicheader.table_entries=big_endian(batsize);
+	dynamicheader.blocksize=big_endian(blocksize);
 	dynamicheader.checksum=0;
 	if(parent_uid!=NULL)
 	{
 		//Differencing file
 		memcpy(dynamicheader.parent_uid, parent_uid, 16);
-		dynamicheader.parent_timestamp=endian_swap(parent_timestamp);
-		std::string unicodename=endian_swap_utf16(Server->ConvertToUTF16(ExtractFileName(parentfn)));
+		dynamicheader.parent_timestamp=big_endian(parent_timestamp);
+		std::string unicodename=big_endian_utf16(Server->ConvertToUTF16(ExtractFileName(parentfn)));
 		std::string rel_unicodename=Server->ConvertToUTF16(L".\\"+ExtractFileName(parentfn));
 		std::string abs_unicodename=Server->ConvertToUTF16(parentfn);
 		unicodename.resize(unicodename.size()+2);
@@ -404,16 +357,16 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		unicodename[unicodename.size()-1]=0;
 		memcpy(dynamicheader.parent_unicodename, &unicodename[0], unicodename.size());
 		unsigned int locator_blocks_abs=static_cast<unsigned int>((abs_unicodename.size())/sector_size)+(((abs_unicodename.size())%sector_size!=0)?1:0);
-		dynamicheader.parentlocator[0].platform_code=endian_swap((unsigned int)0x57326B75);
-		dynamicheader.parentlocator[0].platform_space=endian_swap(locator_blocks_abs*sector_size);
-		dynamicheader.parentlocator[0].platform_length=endian_swap((unsigned int)abs_unicodename.size());
+		dynamicheader.parentlocator[0].platform_code=big_endian((unsigned int)0x57326B75);
+		dynamicheader.parentlocator[0].platform_space=big_endian(locator_blocks_abs*sector_size);
+		dynamicheader.parentlocator[0].platform_length=big_endian((unsigned int)abs_unicodename.size());
 		uint64 abs_locator_offset=def_bat_offset_parent-512;
 		if(locator_blocks_abs>1)
 		{
 			abs_locator_offset=nextblock_offset;
 			nextblock_offset+=abs_locator_offset*sector_size;
 		}
-		dynamicheader.parentlocator[0].platform_offset=endian_swap(abs_locator_offset);
+		dynamicheader.parentlocator[0].platform_offset=big_endian(abs_locator_offset);
 
 		if(!file->Seek(abs_locator_offset))
 			return false;
@@ -421,12 +374,12 @@ bool VHDFile::write_dynamicheader(char *parent_uid, unsigned int parent_timestam
 		if(rc!=abs_unicodename.size())
 			return false;
 
-		dynamicheader.parentlocator[1].platform_code=endian_swap((unsigned int)0x57327275);
+		dynamicheader.parentlocator[1].platform_code=big_endian((unsigned int)0x57327275);
 		unsigned int locator_blocks=(rel_unicodename.size())/sector_size+((rel_unicodename.size())%sector_size!=0)?1:0;
 		if(locator_blocks<128) locator_blocks=128;
-		dynamicheader.parentlocator[1].platform_space=endian_swap(locator_blocks*sector_size);
-		dynamicheader.parentlocator[1].platform_length=endian_swap((unsigned int)rel_unicodename.size());
-		dynamicheader.parentlocator[1].platform_offset=endian_swap(nextblock_offset);
+		dynamicheader.parentlocator[1].platform_space=big_endian(locator_blocks*sector_size);
+		dynamicheader.parentlocator[1].platform_length=big_endian((unsigned int)rel_unicodename.size());
+		dynamicheader.parentlocator[1].platform_offset=big_endian(nextblock_offset);
 		if(!file->Seek(nextblock_offset))
 			return false;
 
@@ -524,21 +477,21 @@ bool VHDFile::read_footer(void)
 
 bool VHDFile::process_footer(void)
 {
-	if(endian_swap(footer.format_version)!=0x00010000)
+	if(big_endian(footer.format_version)!=0x00010000)
 	{
 		Server->Log("Unrecognized vhd format version", LL_ERROR);
 		return false;
 	}
 
-	if(endian_swap(footer.disk_type)!=3 && endian_swap(footer.disk_type)!=4 )
+	if(big_endian(footer.disk_type)!=3 && big_endian(footer.disk_type)!=4 )
 	{
 		Server->Log("Unsupported disk type", LL_ERROR);
 		return false;
 	}
 
-	dstsize=endian_swap(footer.current_size);
+	dstsize=big_endian(footer.current_size);
 	header_offset=0;
-	dynamic_header_offset=endian_swap(footer.data_offset);
+	dynamic_header_offset=big_endian(footer.data_offset);
 	return true;
 }
 
@@ -567,17 +520,17 @@ bool VHDFile::read_dynamicheader(void)
 	}
 	dynamicheader.checksum=checksum;
 
-	bat_offset=endian_swap(dynamicheader.tableoffset);
-	batsize=endian_swap(dynamicheader.table_entries);
-	blocksize=endian_swap(dynamicheader.blocksize);
+	bat_offset=big_endian(dynamicheader.tableoffset);
+	batsize=big_endian(dynamicheader.table_entries);
+	blocksize=big_endian(dynamicheader.blocksize);
 
-	if(endian_swap(footer.disk_type)==4)
+	if(big_endian(footer.disk_type)==4)
 	{
 		//differencing hd
 		std::string parent_unicodename;
 		parent_unicodename.resize(512);
 		memcpy(&parent_unicodename[0], dynamicheader.parent_unicodename, 512);
-		parent_unicodename=endian_swap_utf16(parent_unicodename);
+		parent_unicodename=big_endian_utf16(parent_unicodename);
 		std::wstring parent_fn=Server->ConvertFromUTF16(parent_unicodename);
 		parent_fn.resize(wcslen(parent_fn.c_str()));
 		parent_fn=ExtractFilePath(file->getFilenameW())+L"/"+parent_fn;
@@ -596,7 +549,7 @@ bool VHDFile::read_dynamicheader(void)
 			return false;
 		}
 
-		if(parent->getTimestamp()!=endian_swap(dynamicheader.parent_timestamp) )
+		if(parent->getTimestamp()!=big_endian(dynamicheader.parent_timestamp) )
 		{
 			Server->Log("Parent timestamp wrong. Parent was modified? Continueing anyways. But this is dangerous!", LL_ERROR);
 		}
@@ -689,7 +642,7 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 
 	while(true)
 	{
-		unsigned int bat_off=endian_swap(bat[block]);
+		unsigned int bat_off=big_endian(bat[block]);
 		if(bat_off==0xFFFFFFFF)
 		{
 			unsigned int wantread=(unsigned int)(std::min)(remaining, toread);
@@ -844,7 +797,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 	while(true)
 	{
 		uint64 dataoffset;
-		unsigned int bat_ref=endian_swap(bat[block]);
+		unsigned int bat_ref=big_endian(bat[block]);
 		bool new_block=false;
 		if(bat_ref==0xFFFFFFFF)
 		{
@@ -853,7 +806,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 			nextblock_offset=nextblock_offset+(sector_size-nextblock_offset%sector_size);
 			dwrite_footer=true;
 			new_block=true;
-			bat[block]=endian_swap((unsigned int)(dataoffset/(uint64)(sector_size)));
+			bat[block]=big_endian((unsigned int)(dataoffset/(uint64)(sector_size)));
 		}
 		else
 		{
@@ -978,7 +931,7 @@ bool VHDFile::has_block(void)
 		return false;
 	}
 
-	unsigned int bat_off=endian_swap(bat[block]);
+	unsigned int bat_off=big_endian(bat[block]);
 	if(bat_off==0xFFFFFFFF)
 	{
 		if(parent==NULL)
@@ -1081,7 +1034,7 @@ uint64 VHDFile::usedSize(void)
 bool VHDFile::has_sector(void)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
-	unsigned int bat_ref=endian_swap(bat[block]);
+	unsigned int bat_ref=big_endian(bat[block]);
 	if(bat_ref==0xFFFFFFFF)
 	{
 		if(parent!=NULL)
@@ -1101,7 +1054,7 @@ bool VHDFile::has_sector(void)
 bool VHDFile::this_has_sector(void)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
-	unsigned int bat_ref=endian_swap(bat[block]);
+	unsigned int bat_ref=big_endian(bat[block]);
 	if(bat_ref==0xFFFFFFFF)
 	{
 		return false;
@@ -1119,7 +1072,7 @@ char *VHDFile::getUID(void)
 
 unsigned int VHDFile::getTimestamp(void)
 {
-	return endian_swap(footer.timestamp);
+	return big_endian(footer.timestamp);
 }
 
 unsigned int VHDFile::getBlocksize()

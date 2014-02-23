@@ -324,52 +324,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 	{
 		switch(id)
 		{
-		case ID_GET_GAMELIST:
-			{	
-#ifdef CHECK_IDENT
-				std::string ident;
-				data->getStr(&ident);
-				if(!FileServ::checkIdentity(ident))
-				{
-					Log("Identity check failed -1", LL_DEBUG);
-					return false;
-				}
-#endif
-
-				hFile=0;
-				std::vector<std::wstring> games=get_maps();
-
-
-				Log("Sending game list", LL_DEBUG);
-
-				EnableNagle();
-
-				CWData data;
-				data.addUChar( ID_GAMELIST );
-				data.addUInt( (unsigned int)games.size() );
-
-				stack.Send(clientpipe, data);
-
-				for(size_t i=0;i<games.size();++i)
-				{
-					std::string version;
-					std::wstring udir;
-					version=getFile(wnarrow(map_file(games[i]+L"\\version.uri",true,&udir)));
-
-					if( udir!=L"" )
-						games[i]+=L"|"+udir;
-
-					std::string game=Server->ConvertToUTF8(games[i]);
-					
-
-					stack.Send(clientpipe, (char*)game.c_str(), game.size() );					
-					stack.Send(clientpipe, (char*)version.c_str(), version.size() );
-				}
-				
-				Log("done.", LL_DEBUG);
-
-				DisableNagle();
-			}break;
 		case ID_GET_FILE_RESUME:
 		case ID_GET_FILE:
 		case ID_GET_FILE_RESUME_HASH:

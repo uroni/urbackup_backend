@@ -108,5 +108,226 @@ std::string PrettyPrintSpeed(size_t bps);
 std::string PrettyPrintTime(unsigned int ms);
 std::string EscapeParamString(const std::string &pStr);
 
+namespace
+{
+
+bool is_big_endian(void)
+{
+    union {
+        unsigned int i;
+        char c[4];
+    } bint = {0x01020304};
+
+    return bint.c[0] == 1; 
+}
+
+unsigned int endian_swap(unsigned int x)
+{
+    return (x>>24) | 
+        ((x<<8) & 0x00FF0000) |
+        ((x>>8) & 0x0000FF00) |
+        (x<<24);
+}
+
+unsigned short endian_swap(unsigned short x)
+{
+    return x = (x>>8) | 
+        (x<<8);
+}
+
+std::string endian_swap_utf16(std::string str)
+{
+	for(size_t i=0;i<str.size();i+=2)
+	{
+		unsigned short *t=(unsigned short*)&str[i];
+		*t=endian_swap(*t);
+	}
+	return str;
+}
+
+uint64 endian_swap(uint64 x)
+{
+#ifdef _WIN32
+    return (x>>56) | 
+        ((x<<40) & 0x00FF000000000000) |
+        ((x<<24) & 0x0000FF0000000000) |
+        ((x<<8)  & 0x000000FF00000000) |
+        ((x>>8)  & 0x00000000FF000000) |
+        ((x>>24) & 0x0000000000FF0000) |
+        ((x>>40) & 0x000000000000FF00) |
+        (x<<56);
+#else
+    return (x>>56) | 
+        ((x<<40) & 0x00FF000000000000LLU) |
+        ((x<<24) & 0x0000FF0000000000LLU) |
+        ((x<<8)  & 0x000000FF00000000LLU) |
+        ((x>>8)  & 0x00000000FF000000LLU) |
+        ((x>>24) & 0x0000000000FF0000LLU) |
+        ((x>>40) & 0x000000000000FF00LLU) |
+        (x<<56);
+#endif
+}
+
+unsigned int little_endian(unsigned int x)
+{
+	if(is_big_endian())
+	{
+		return endian_swap(x);
+	}
+	else
+	{
+		return x;
+	}
+}
+
+unsigned short little_endian(unsigned short x)
+{
+	if(is_big_endian())
+	{
+		return endian_swap(x);
+	}
+	else
+	{
+		return x;
+	}
+}
+
+int little_endian(int x)
+{
+	if(is_big_endian())
+	{
+		return static_cast<int>(endian_swap(static_cast<unsigned int>(x)));
+	}
+	else
+	{
+		return x;
+	}
+}
+
+uint64 little_endian(uint64 x)
+{
+	if(is_big_endian())
+	{
+		return endian_swap(x);
+	}
+	else
+	{
+		return x;
+	}
+}
+
+int64 little_endian(int64 x)
+{
+	if(is_big_endian())
+	{
+		return static_cast<int64>(endian_swap(static_cast<uint64>(x)));
+	}
+	else
+	{
+		return x;
+	}
+}
+
+float little_endian(float x)
+{
+	if(is_big_endian())
+	{
+		unsigned int* ptr=reinterpret_cast<unsigned int*>(&x);
+		unsigned int ret = endian_swap(*ptr);
+		return *reinterpret_cast<float*>(&ret);
+	}
+	else
+	{
+		return x;
+	}
+}
+
+unsigned int big_endian(unsigned int x)
+{
+	if(!is_big_endian())
+	{
+		return endian_swap(x);
+	}
+	else
+	{
+		return x;
+	}
+}
+
+unsigned short big_endian(unsigned short x)
+{
+	if(!is_big_endian())
+	{
+		return endian_swap(x);
+	}
+	else
+	{
+		return x;
+	}
+}
+
+int big_endian(int x)
+{
+	if(!is_big_endian())
+	{
+		return static_cast<int>(endian_swap(static_cast<unsigned int>(x)));
+	}
+	else
+	{
+		return x;
+	}
+}
+
+uint64 big_endian(uint64 x)
+{
+	if(!is_big_endian())
+	{
+		return endian_swap(x);
+	}
+	else
+	{
+		return x;
+	}
+}
+
+int64 big_endian(int64 x)
+{
+	if(!is_big_endian())
+	{
+		return static_cast<int64>(endian_swap(static_cast<uint64>(x)));
+	}
+	else
+	{
+		return x;
+	}
+}
+
+float big_endian(float x)
+{
+	if(!is_big_endian())
+	{
+		unsigned int* ptr=reinterpret_cast<unsigned int*>(&x);
+		unsigned int ret = endian_swap(*ptr);
+		return *reinterpret_cast<float*>(&ret);
+	}
+	else
+	{
+		return x;
+	}
+}
+
+std::string big_endian_utf16(std::string str)
+{
+	if(!is_big_endian())
+	{
+		return endian_swap_utf16(str);
+	}
+	else
+	{
+		return str;
+	}
+}
+
+}
 
 #endif

@@ -66,7 +66,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	{
 		size_t off=1+sizeof(_i64)+sizeof(_u32);
 		*chunk_buf=ID_WHOLE_BLOCK;
-		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
+		_i64 chunk_startpos = little_endian(chunk->startpos);
+		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 
 		unsigned int blockleft;
 		if(file->Size()-chunk->startpos<c_checkpoint_dist)
@@ -76,7 +77,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		md5_hash.init();
 
-		memcpy(chunk_buf+1+sizeof(_i64), &blockleft, sizeof(unsigned int));
+		unsigned tmp_blockleft=little_endian(blockleft);
+		memcpy(chunk_buf+1+sizeof(_i64), &tmp_blockleft, sizeof(unsigned int));
 
 		Log("Sending whole block start="+nconvert(chunk->startpos)+" size="+nconvert(blockleft), LL_DEBUG);
 		_u32 r;
@@ -106,7 +108,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		md5_hash.finalize();
 		*chunk_buf=ID_BLOCK_HASH;
-		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
+		chunk_startpos = little_endian(chunk->startpos);
+		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
 
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
@@ -149,8 +152,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 					memcpy(tmp_backup, cptr-c_chunk_padding, c_chunk_padding);
 
 					*(cptr-c_chunk_padding)=ID_UPDATE_CHUNK;
-					memcpy(cptr-sizeof(_i64)-sizeof(_u32), &curr_pos, sizeof(_i64));
-					memcpy(cptr-sizeof(_u32), &r, sizeof(_u32));
+					_i64 curr_pos_tmp = little_endian(curr_pos);
+					memcpy(cptr-sizeof(_i64)-sizeof(_u32), &curr_pos_tmp, sizeof(_i64));
+					_u32 r_tmp = little_endian(r);
+					memcpy(cptr-sizeof(_u32), &r_tmp, sizeof(_u32));
 
 					Log("Sending chunk start="+nconvert(curr_pos)+" size="+nconvert(r), LL_DEBUG);
 
@@ -177,15 +182,17 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		Log("Sending whole block(2) start="+nconvert(chunk->startpos)+" size="+nconvert(read_total), LL_DEBUG);
 
 		*chunk_buf=ID_WHOLE_BLOCK;
-		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
-		memcpy(chunk_buf+1+sizeof(_i64), &read_total, sizeof(_u32));
+		_i64 chunk_startpos = little_endian(chunk->startpos);
+		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
+		unsigned int read_total_tmp = little_endian(read_total);
+		memcpy(chunk_buf+1+sizeof(_i64), &read_total_tmp, sizeof(_u32));
 		if(parent->SendInt(chunk_buf, read_total+1+sizeof(_i64)+sizeof(_u32))==SOCKET_ERROR)
 			return false;
 
 		if( FileServ::isPause() ) Sleep(500);
 
 		*chunk_buf=ID_BLOCK_HASH;
-		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
+		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
 			return false;
@@ -195,7 +202,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	else if(!sent_update)
 	{
 		*chunk_buf=ID_NO_CHANGE;
-		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
+		_i64 chunk_startpos = little_endian(chunk->startpos);
+		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64))==SOCKET_ERROR)
 			return false;
 
@@ -204,7 +212,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	else
 	{
 		*chunk_buf=ID_BLOCK_HASH;
-		memcpy(chunk_buf+1, &chunk->startpos, sizeof(_i64));
+		_i64 chunk_startpos = little_endian(chunk->startpos);
+		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
 			return false;

@@ -18,6 +18,7 @@
 
 #include <memory.h>
 #include "data.h"
+#include "../stringtools.h"
 
 
 char* CWData::getDataPtr(void)
@@ -35,6 +36,7 @@ unsigned long CWData::getDataSize(void)
 
 void CWData::addInt(int ta)
 {
+	ta=little_endian(ta);
 	size_t cpos=data.size();
 	data.resize(cpos+sizeof(int) );
 	memcpy(&data[cpos],&ta,sizeof(int) );
@@ -42,6 +44,7 @@ void CWData::addInt(int ta)
 
 void CWData::addUInt(unsigned int ta)
 {
+	ta=little_endian(ta);
 	size_t cpos=data.size();
 	data.resize(cpos+sizeof(unsigned int) );
 	memcpy(&data[cpos],&ta,sizeof(unsigned int) );
@@ -49,6 +52,7 @@ void CWData::addUInt(unsigned int ta)
 
 void CWData::addInt64(_i64 ta)
 {
+	ta=little_endian(ta);
 	size_t cpos=data.size();
 	data.resize(cpos+sizeof(_i64) );
 	memcpy(&data[cpos],&ta,sizeof(_i64) );
@@ -56,6 +60,7 @@ void CWData::addInt64(_i64 ta)
 
 void CWData::addUInt64(uint64 ta)
 {
+	ta=little_endian(ta);
 	size_t cpos=data.size();
 	data.resize(cpos+sizeof(uint64) );
 	memcpy(&data[cpos],&ta,sizeof(uint64) );
@@ -63,6 +68,7 @@ void CWData::addUInt64(uint64 ta)
 
 void CWData::addFloat(float ta)
 {
+	ta=little_endian(ta);
 	size_t cpos=data.size();
 	data.resize(cpos+sizeof(float) );
 	memcpy(&data[cpos],&ta,sizeof(float) );
@@ -70,6 +76,7 @@ void CWData::addFloat(float ta)
 
 void CWData::addUShort(unsigned short ta)
 {
+	ta=little_endian(ta);
 	size_t cpos=data.size();
 	data.resize(cpos+sizeof(unsigned short) );
 	memcpy(&data[cpos],&ta,sizeof(unsigned short) );
@@ -167,6 +174,7 @@ bool CRData::getInt(int *ret)
 
 	memcpy(ret, &data[streampos], sizeof(int) );
 	streampos+=sizeof(int);
+	*ret=little_endian(*ret);
 	return true;
 }
 
@@ -179,6 +187,7 @@ bool CRData::getInt64(_i64 *ret)
 
 	memcpy(ret, &data[streampos], sizeof(_i64) );
 	streampos+=sizeof(_i64);
+	*ret=little_endian(*ret);
 	return true;
 }
 
@@ -191,6 +200,7 @@ bool CRData::getUInt(unsigned int *ret)
 
 	memcpy(ret, &data[streampos], sizeof(unsigned int ) );
 	streampos+=sizeof(unsigned int);
+	*ret=little_endian(*ret);
 	return true;
 }
 	
@@ -203,6 +213,7 @@ bool CRData::getFloat(float *ret)
 
 	memcpy(ret, &data[streampos], sizeof(float) );
 	streampos+=sizeof(float);
+	*ret=little_endian(*ret);
 	return true;
 }
 
@@ -215,6 +226,7 @@ bool CRData::getUShort( unsigned short *ret)
 
 	memcpy(ret, &data[streampos], sizeof(unsigned short) );
 	streampos+=sizeof(unsigned short);
+	*ret=little_endian(*ret);
 	return true;	
 }
 
