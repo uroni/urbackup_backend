@@ -57,6 +57,8 @@ IServer *Server;
 #include <Windows.h>
 #include <Sddl.h>
 #include <Aclapi.h>
+#else
+#include <sys/fcntl.h>
 #endif
 
 PLUGIN_ID filesrv_pluginid;
