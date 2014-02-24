@@ -21,12 +21,6 @@
 #include "../Interface/Server.h"
 #include <memory.h>
 
-/**
-* @-SQLGenTempSetup
-* @sql
-*	CREATE TEMPORARY TABLE filehashes_tmp (name TEXT, filesize INTEGER, modifytime INTEGER, hashdata BLOB)
-*/
-
 ClientDAO::ClientDAO(IDatabase *pDB)
 {
 	db=pDB;
@@ -67,7 +61,6 @@ void ClientDAO::prepareQueries(void)
 	q_get_pattern=db->Prepare("SELECT tvalue FROM misc WHERE tkey=?", false);
 	q_insert_pattern=db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)", false);
 	q_update_pattern=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey=?", false);
-	q_get_file_hash=db->Prepare("SELECT hashdata, filesize, modifytime FROM filehashes WHERE name=?", false);
 }
 
 void ClientDAO::destroyQueries(void)
@@ -103,7 +96,6 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_get_pattern);
 	db->destroyQuery(q_insert_pattern);
 	db->destroyQuery(q_update_pattern);
-	db->destroyQuery(q_get_file_hash);
 }
 
 //@-SQLGenSetup
@@ -166,7 +158,12 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 		ptr+=sizeof(unsigned short);
 
 		f.hash.resize(hashsize);
-		memcpy(&f.hash[0], ptr, hashsize);
+		if(hashsize>0)
+		{
+			memcpy(&f.hash[0], ptr, hashsize);
+		}
+
+		ptr+=hashsize;
 
 		data.push_back(f);
 	}
@@ -210,6 +207,7 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		memcpy(ptr, &hashsize, sizeof(hashsize));
 		ptr+=sizeof(hashsize);
 		memcpy(ptr, data[i].hash.data(), hashsize);
+		ptr+=hashsize;
 	}
 	return buffer;
 }

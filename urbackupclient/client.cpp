@@ -231,7 +231,6 @@ void IndexThread::operator()(void)
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
 	db->Write("CREATE TEMPORARY TABLE files_tmp (num NUMERIC, data BLOB, name TEXT);");
-	db->Write("CREATE TEMPORARY TABLE filehashes_tmp (name TEXT, filesize INTEGER, modifytime INTEGER, hashdata BLOB);");
 
 	cd=new ClientDAO(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 
@@ -363,7 +362,6 @@ void IndexThread::operator()(void)
 
 				Server->Log("Deleting files... doing full index...", LL_INFO);
 				resetFileEntries();
-				db->Write("DELETE FROM filehashes");
 			}
 			execute_prebackup_hook();
 			indexDirs();
@@ -816,7 +814,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 
 				if(calculate_filehashes_on_client)
 				{
-					outfile << "sha512=" << base64_encode(reinterpret_cast<const unsigned char*>(files[i].hash.c_str()), static_cast<unsigned int>(files[i].hash.size()));
+					outfile << "sha512=" << ReplaceChar(base64_encode(reinterpret_cast<const unsigned char*>(files[i].hash.c_str()), static_cast<unsigned int>(files[i].hash.size())), '=', '%');
 				}
 				
 				if(end_to_end_file_backup_verification_enabled)
@@ -1023,33 +1021,36 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		std::vector<SFileAndHash> db_files;
 		bool has_files=cd->getFiles(path_lower, db_files);
 
-#ifdef _WIN32
-		std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
-		std::sort(changed_files.begin(), changed_files.end());
-
-		if(!changed_files.empty())
+#ifdef _WIN3
+		if(it_dir!=changed_dirs.end())
 		{
-			for(size_t i=0;i<tmp.size();++i)
+			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
+			std::sort(changed_files.begin(), changed_files.end());
+
+			if(!changed_files.empty())
 			{
-				if(!tmp[i].isdir)
+				for(size_t i=0;i<tmp.size();++i)
 				{
-					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
+					if(!tmp[i].isdir)
 					{
-						tmp[i].last_modified*=Server->getRandomNumber();
-						if(tmp[i].last_modified>0)
-							tmp[i].last_modified*=-1;
-						else if(tmp[i].last_modified==0)
-							tmp[i].last_modified=-1;
-					}
-					else
-					{
-						std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
-						if( it_db_file!=db_files.end()
-								&& (*it_db_file).name==tmp[i].name
-								&& (*it_db_file).isdir==tmp[i].isdir
-								&& (*it_db_file).last_modified<0 )
+						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
 						{
-							tmp[i].last_modified=it_db_file->last_modified;
+							tmp[i].last_modified*=Server->getRandomNumber();
+							if(tmp[i].last_modified>0)
+								tmp[i].last_modified*=-1;
+							else if(tmp[i].last_modified==0)
+								tmp[i].last_modified=-1;
+						}
+						else
+						{
+							std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+							if( it_db_file!=db_files.end()
+									&& (*it_db_file).name==tmp[i].name
+									&& (*it_db_file).isdir==tmp[i].isdir
+									&& (*it_db_file).last_modified<0 )
+							{
+								tmp[i].last_modified=it_db_file->last_modified;
+							}
 						}
 					}
 				}

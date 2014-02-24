@@ -179,7 +179,6 @@ private:
 	IQuery *q_get_pattern;
 	IQuery *q_insert_pattern;
 	IQuery *q_update_pattern;
-	IQuery *q_get_file_hash;
 
 	//@-SQLGenVariablesBegin
 	//@-SQLGenVariablesEnd
