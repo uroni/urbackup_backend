@@ -275,9 +275,9 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 	if(cs!=NULL)
 	{
 		Server->Log("Successfully connected.", LL_DEBUG);
+		setStatusMsg("connected");
 		Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
 		newConnection();
-		setStatusMsg("connected");
 		return true;
 	}
 	else

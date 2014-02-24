@@ -357,7 +357,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		copy_file(L"urbackup/backup_client.db.template", L"urbackup/backup_client.db");
 	}
 
+#ifndef _DEBUG
 	change_file_permissions("urbackup/backup_client.db");
+#endif
 
 	if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT) )
 	{
@@ -379,6 +381,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		Server->deleteFile("initial_settings.cfg");
 	}
 
+#ifndef _DEBUG
 	if(FileExists("urbackup/data/settings.cfg"))
 	{
 		change_file_permissions("urbackup/data/settings.cfg");
@@ -392,7 +395,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	change_file_permissions("urbackup");
 	change_file_permissions("urbackup/data");
 
-#ifndef _DEBUG
+
 	if(FileExists(new_file) )
 #endif
 	{
