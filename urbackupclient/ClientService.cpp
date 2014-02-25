@@ -1892,3 +1892,12 @@ bool ClientConnector::calculateFilehashesOnClient(void)
 
 	return false;
 }
+
+bool ClientConnector::isBackupRunning()
+{
+	IScopedLock lock(backup_mutex);
+
+	std::string job = getCurrRunningJob();
+
+	return job!="NOA" && job!="DONE";
+}

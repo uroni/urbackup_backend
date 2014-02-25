@@ -97,6 +97,8 @@ public:
 
 	void setIsInternetConnection(void);
 
+	static bool isBackupRunning();
+
 private:
 	bool checkPassword(const std::wstring &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default=false);
@@ -125,7 +127,7 @@ private:
 
 	std::string getLastBackupTime();
 
-	std::string getCurrRunningJob();
+	static std::string getCurrRunningJob();
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);

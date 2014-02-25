@@ -43,6 +43,7 @@ const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
 const unsigned int ic_auth_timeout=60000;
 const unsigned int ic_ping_timeout=31*60*1000;
+const unsigned int ic_backup_running_ping_timeout=60*1000;
 const int ic_sleep_after_auth_errs=2;
 
 const char SERVICE_COMMANDS=0;
@@ -395,15 +396,16 @@ void InternetClientThread::operator()(void)
 
 	if(cs==NULL)
 	{
-		int tries=5;
+		int tries=10;
 		while(tries>0 && cs==NULL)
 		{
 			cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
 			--tries;
+			InternetClient::setStatusMsg("connecting_failed");
 			if(cs==NULL && tries>0)
 			{
-				Server->Log("Connecting to server "+server_settings.name+" failed. Retrying...", LL_INFO);
-				Server->wait(500);
+				Server->Log("Connecting to server "+server_settings.name+" failed. Retrying in 30s...", LL_INFO);
+				Server->wait(30000);
 			}
 		}
 		if(cs==NULL)
@@ -413,6 +415,10 @@ void InternetClientThread::operator()(void)
 			InternetClient::setHasConnection(false);
 			InternetClient::setStatusMsg("connecting_failed");
 			return;
+		}
+		else
+		{
+			InternetClient::setStatusMsg("connected");
 		}
 	}
 
@@ -609,7 +615,18 @@ void InternetClientThread::operator()(void)
 	{
 		char *buf;
 		size_t bufsize;
-		buf=getReply(&tcpstack, comm_pipe, bufsize, ic_ping_timeout);
+
+		unsigned int ping_timeout;
+		if(ClientConnector::isBackupRunning())
+		{
+			ping_timeout=ic_backup_running_ping_timeout;
+		}
+		else
+		{
+			ping_timeout=ic_ping_timeout;
+		}
+
+		buf=getReply(&tcpstack, comm_pipe, bufsize, ping_timeout);
 		if(buf==NULL)
 		{
 			goto cleanup;
