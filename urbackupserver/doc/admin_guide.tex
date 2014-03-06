@@ -248,7 +248,7 @@ hash of 256 kbyte chunks and compares it to the previous image backup. If the
 hash of the chunk has not changed it does not transfer this chunk to the server,
 otherwise it does. Per default the server writes the image date directly into
 a VHD file. If enabled in the advanced configuration the server writes the image
-data to a temprary file first. 
+data to a temporary file first. 
 The temporary files have a maximum size of 1GB. After this size is exceeded the
 server continues with a new temporary file. The image data is written to a VHD
 file in parallel and is located in the client directory in
@@ -1013,7 +1013,7 @@ Thus, if \textsl{/media/backup/urbackup} is the folder where UrBackup is saving
 the paths, following commands would properly create this file:
 \begin{verbatim}
 mkdir /etc/urbackup
-echo "/etc/urbackup/backupfolder" > /etc/urbackup/backupfolder
+echo "/media/backup/urbackup" > /etc/urbackup/backupfolder
 \end{verbatim}
 You can then test if UrBackup will use the btrfs features via
 \begin{verbatim}
