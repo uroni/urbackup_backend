@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 		{	
 			if(!create_subvolume(clientdir+os_file_sepn()+"A") )
 			{
-				std::cout << "Creating test subvolume failed" << std::endl;
+				std::cout << "TEST FAILED: Creating test subvolume failed" << std::endl;
 				os_remove_dir(clientdir);
 				return 1;
 			}
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
 
 			if(!create_snapshot(clientdir+os_file_sepn()+"A", clientdir+os_file_sepn()+"B") )
 			{
-				std::cout << "Creating test snapshot failed" << std::endl;
+				std::cout << "TEST FAILED: Creating test snapshot failed" << std::endl;
 				suc=false;
 			}
 			
@@ -226,32 +226,34 @@ int main(int argc, char *argv[])
 				
 				if(!os_create_hardlink(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test", clientdir+os_file_sepn()+"A"+os_file_sepn()+"test", true, NULL))
 				{
-					std::cout << "Cross subvolume reflink failed" << std::endl;
+					std::cout << "TEST FAILED: Creating cross sub-volume reflink failed. Need Linux kernel >= 3.6." << std::endl;
 					suc=false;
 				}
-			
-				if(getFile(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test")!="test")
+				else
 				{
-					std::cout << "Cannot read reflinked file" << std::endl;
-					suc=false;
+					if(getFile(clientdir+os_file_sepn()+"B"+os_file_sepn()+"test")!="test")
+					{
+						std::cout << "TEST FAILED: Cannot read reflinked file" << std::endl;
+						suc=false;
+					}
 				}
 			}
 
 			if(!remove_subvolume(clientdir+os_file_sepn()+"A") )
 			{
-				std::cout << "Removing subvolume A failed" << std::endl;
+				std::cout << "TEST FAILED: Removing subvolume A failed" << std::endl;
 				suc=false;
 			}
 
 			if(!remove_subvolume(clientdir+os_file_sepn()+"B") )
 			{
-				std::cout << "Removing subvolume B failed" << std::endl;
+				std::cout << "TEST FAILED: Removing subvolume B failed" << std::endl;
 				suc=false;
 			}
 
 			if(!os_remove_dir(clientdir))
 			{
-				std::cout << "Removing test clientdir failed" << std::endl;
+				std::cout << "TEST FAILED: Removing test clientdir failed" << std::endl;
 				return 1;
 			}
 			
@@ -262,9 +264,10 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			std::cout << "Creating test clientdir \"" << clientdir << "\" failed" << std::endl;
+			std::cout << "TEST FAILED: Creating test clientdir \"" << clientdir << "\" failed" << std::endl;
 			return 1;
 		}
+		std::cout << "TEST OK" << std::endl;
 		return 0;
 	}
 	else if(cmd=="issubvolume")
