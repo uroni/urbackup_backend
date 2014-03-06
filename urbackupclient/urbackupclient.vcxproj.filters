@@ -114,6 +114,9 @@
     <ClCompile Include="..\urbackupcommon\json.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="file_permissions.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="watchdir\CriticalSection.h">
@@ -198,6 +201,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="win_ver.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="file_permissions.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

@@ -20,6 +20,7 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include <algorithm>
+#include "file_permissions.h"
 
 const unsigned int ident_online_timeout=1*60*60*1000; //1h
 
@@ -150,7 +151,7 @@ void ServerIdentityMgr::writeServerIdentities(void)
 		if(!idents.empty()) idents+="\r\n";
 		idents+=identities[i];
 	}
-	writestring(idents, server_ident_file);
+	write_file_only_admin(idents, server_ident_file);
 
 	std::string new_idents;
 	for(size_t i=0;i<new_identities.size();++i)
@@ -158,7 +159,7 @@ void ServerIdentityMgr::writeServerIdentities(void)
 		if(!new_idents.empty()) new_idents+="\r\n";
 		new_idents+=new_identities[i];
 	}
-	writestring(new_idents, server_new_ident_file);
+	write_file_only_admin(new_idents, server_new_ident_file);
 }
 
 bool ServerIdentityMgr::hasOnlineServer(void)

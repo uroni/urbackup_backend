@@ -72,6 +72,7 @@
     <ClCompile Include="client_restore.cpp" />
     <ClCompile Include="DirectoryWatcherThread.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="file_permissions.cpp" />
     <ClCompile Include="glob\glob.cpp" />
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
@@ -102,6 +103,7 @@
     <ClInclude Include="ClientService.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="DirectoryWatcherThread.h" />
+    <ClInclude Include="file_permissions.h" />
     <ClInclude Include="ImageThread.h" />
     <ClInclude Include="InternetClient.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
