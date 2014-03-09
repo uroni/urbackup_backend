@@ -3,7 +3,7 @@ if not exist client git clone -b next http://urpc.dyndns.org/git/urbackup_fronte
 cd client
 
 git fetch
-git checkout -b feature-quota origin/feature-quota
-git checkout feature-quota
+git checkout -b next origin/next
+git checkout next
 git reset --hard
 git pull
