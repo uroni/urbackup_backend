@@ -2,9 +2,10 @@
 #include "../../urbackupcommon/os_functions.h"
 #include "../../Interface/File.h"
 
+#include "miniz.c"
+
 namespace
 {
-#include "miniz.c"
 
 int my_stat(const wchar_t *pFilename, struct MZ_FILE_STAT_STRUCT* statbuf)
 {
