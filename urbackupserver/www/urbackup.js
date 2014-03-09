@@ -1099,7 +1099,17 @@ function show_backups2(data)
 			}
 		}
 		
-		ndata=dustRender("backups_files", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid, cpath: cp, backuptime: data.backuptime});
+		var obj = {rows: rows,
+			ses: g.session, clientname: data.clientname,
+			clientid: data.clientid, cpath: cp, backuptime: data.backuptime,
+			backupid: data.backupid, path: encodeURIComponent(path).replace(/'/g,"%27") };
+			
+		if( data.files.length>0 )
+		{
+			obj.download_zip=true;
+		}
+		
+		ndata=dustRender("backups_files", obj);
 	}
 	
 	if(g.data_f!=ndata)
@@ -1184,6 +1194,10 @@ function tabMouseClickFiles(clientid, backupid, path)
 function tabMouseClickFilesDL(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=filesdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
+}
+function downloadZIP(clientid, backupid, path)
+{
+	location.href=getURL("backups", "sa=zipdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
 }
 
 function show_settings1()

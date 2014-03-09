@@ -32,6 +32,52 @@ std::string constructFilter(const std::vector<int> &clientid, std::string key)
 	return clientf;
 }
 
+bool create_zip_to_output(const std::wstring& foldername, const std::wstring& filter);
+
+namespace
+{
+	bool sendFile(Helper& helper, const std::wstring& filename)
+	{
+		THREAD_ID tid = Server->getThreadID();
+		Server->setContentType(tid, "application/octet-stream");
+		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(ExtractFileName(filename))+"\"");
+		IFile *in=Server->openFile(os_file_prefix(filename), MODE_READ);
+		if(in!=NULL)
+		{
+			helper.releaseAll();
+
+			Server->addHeader(tid, "Content-Length: "+nconvert(in->Size()) );
+			char buf[4096];
+			_u32 r;
+			do
+			{
+				r=in->Read(buf, 4096);
+				Server->WriteRaw(tid, buf, r, false);
+			}
+			while(r>0);
+			Server->destroy(in);
+			return true;
+		}
+		else
+		{
+			Server->Log(L"Error opening file \""+filename+L"\"", LL_ERROR);
+			return false;
+		}
+	}
+
+	bool sendZip(Helper& helper, const std::wstring& foldername)
+	{
+		std::wstring zipname=ExtractFileName(foldername)+L".zip";
+
+		THREAD_ID tid = Server->getThreadID();
+		Server->setContentType(tid, "application/octet-stream");
+		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(zipname)+"\"");
+		helper.releaseAll();
+
+		return create_zip_to_output(foldername, L"");
+	}
+}
+
 ACTION_IMPL(backups)
 {
 	Helper helper(tid, &GET, &PARAMS);
@@ -135,7 +181,7 @@ ACTION_IMPL(backups)
 				ret.set("error", 2);
 			}
 		}
-		else if(sa==L"files" || sa==L"filesdl")
+		else if(sa==L"files" || sa==L"filesdl" || sa==L"zipdl" )
 		{
 			int t_clientid=watoi(GET[L"clientid"]);
 			bool r_ok=helper.hasRights(t_clientid, rights, clientid);
@@ -155,7 +201,8 @@ ACTION_IMPL(backups)
 					}
 				}
 
-				if(sa==L"filesdl" && !path.empty())
+				if( (sa==L"filesdl" || sa==L"zipdl")
+					&& !path.empty())
 				{
 					path.erase(path.size()-1, 1);
 				}
@@ -188,30 +235,18 @@ ACTION_IMPL(backups)
 
 						ret.set("backuptime", res[0][L"backuptime"]);
 
-						std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+path;
+						std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(path.empty()?L"":(os_file_sep()+path));
 
 
 						if(sa==L"filesdl")
 						{
-							Server->setContentType(tid, "application/octet-stream");
-							Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(ExtractFileName(path))+"\"");
-							IFile *in=Server->openFile(os_file_prefix(currdir), MODE_READ);
-							if(in!=NULL)
-							{
-								helper.releaseAll();
-
-								Server->addHeader(tid, "Content-Length: "+nconvert(in->Size()) );
-								char buf[4096];
-								_u32 r;
-								do
-								{
-									r=in->Read(buf, 4096);
-									Server->WriteRaw(tid, buf, r, false);
-								}
-								while(r>0);
-								Server->destroy(in);
-								return;
-							}
+							sendFile(helper, currdir);
+							return;
+						}
+						else if(sa==L"zipdl")
+						{
+							sendZip(helper, currdir);
+							return;
 						}
 
 						std::vector<SFile> tfiles=getFiles(os_file_prefix(currdir));

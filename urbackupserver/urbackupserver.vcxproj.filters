@@ -246,6 +246,9 @@
     <ClCompile Include="serverinterface\start_backup.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="serverinterface\create_zip.cpp">
+      <Filter>serverinterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
