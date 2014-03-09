@@ -3448,6 +3448,9 @@ bool BackupServerGet::sendMailToAdmins(const std::string& subj, const std::strin
 	ISettingsReader *settings=Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), "settings_db.settings", "SELECT value FROM settings WHERE key=? AND clientid=0");
 	std::string admin_addrs_str=settings->getValue("mail_admin_addrs", "");
 
+	if(admin_addrs_str.empty())
+		return false;
+
 	std::vector<std::string> admin_addrs;
 	Tokenize(admin_addrs_str, admin_addrs, ";,");
 
