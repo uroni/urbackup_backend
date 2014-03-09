@@ -396,6 +396,16 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 		}
 	}
 
+	ret+="&has_server=";
+	if(channel_pipes.empty())
+	{
+		ret+="false";
+	}
+	else
+	{
+		ret+="true";
+	}
+
 	tcpstack.Send(pipe, ret);
 
 	db->destroyAllQueries();
