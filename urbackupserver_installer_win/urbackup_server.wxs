@@ -22,13 +22,13 @@
     <Directory Id='TARGETDIR' Name='SourceDir'>
 	  <Merge Id="VCRedist" SourceFile="C:\Program Files (x86)\Common Files\Merge Modules\Microsoft_VC100_CRT_x64.msm" DiskId="1" Language="0"/>
       <Directory Id='$(var.ProgramFilesFolder)' Name='PFiles'>
-        <Directory Id='URBACKUPDIR' Name='UrBackupServer'>			
+        <Directory Id='URBACKUPDIR' Name='urbackup_srv'>			
             <Component Id='InstallService' Guid="deca7cff-6721-4270-905a-b4b02d6740ce" Win64="$(var.isx64)">
-				<File Id="WindowsService" Name="UrBackupServer.exe"
+				<File Id="WindowsService" Name="urbackup_srv.exe"
                   Source="$(var.servicedatadir)\urbackup_srv.exe" KeyPath="yes">
 					<firewall:FirewallException
 					Id="ServiceFirewallException"
-					Name="UrBackup Server"
+					Name="UrBackup Windows Server"
 					Scope="any"
 					Profile="all"
 					/>
@@ -40,8 +40,8 @@
 					  Id="ServiceInstaller"
 					  Type="ownProcess"
 					  Vital="yes"
-					  Name="UrBackupServer"
-					  DisplayName="UrBackup Server"
+					  Name="UrBackupWinServer"
+					  DisplayName="UrBackupWinServer"
 					  Description="Server for image and file backups of clients"
 					  Start="auto"
 					  Account="LocalSystem"
@@ -49,7 +49,7 @@
 					  Interactive="no"
 					  >
 					</ServiceInstall>
-					<ServiceControl Id="StartService" Start="install" Stop="both" Remove="uninstall" Name="UrBackupServer" Wait="yes" />
+					<ServiceControl Id="StartService" Start="install" Stop="both" Remove="uninstall" Name="UrBackupWinServer" Wait="yes" />
 			</Component>
 			
         </Directory>
