@@ -22,7 +22,7 @@
     <Directory Id='TARGETDIR' Name='SourceDir'>
 	  <Merge Id="VCRedist" SourceFile="C:\Program Files (x86)\Common Files\Merge Modules\Microsoft_VC100_CRT_x64.msm" DiskId="1" Language="0"/>
       <Directory Id='$(var.ProgramFilesFolder)' Name='PFiles'>
-        <Directory Id='URBACKUPDIR' Name='urbackup_srv'>			
+        <Directory Id='URBACKUPDIR' Name='UrBackupServer'>			
             <Component Id='InstallService' Guid="deca7cff-6721-4270-905a-b4b02d6740ce" Win64="$(var.isx64)">
 				<File Id="WindowsService" Name="urbackup_srv.exe"
                   Source="$(var.servicedatadir)\urbackup_srv.exe" KeyPath="yes">
