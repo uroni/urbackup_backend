@@ -3158,7 +3158,7 @@ bool BackupServerGet::getClientSettings(void)
 
 	if(mod)
 	{
-		server_settings->update();
+		server_settings->update(true);
 		unloadSQL();
 		prepareSQL();
 	}

@@ -112,7 +112,7 @@ public:
 	ServerSettings(IDatabase *db, int pClientid=-1);
 	~ServerSettings(void);
 
-	void update(void);
+	void update(bool force_update);
 
 	void doUpdate(void);
 	

@@ -68,7 +68,7 @@ ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 		SSettingsCacheItem cache_item = { settings, 1 , true};
 		std::map<int, SSettingsCacheItem>::iterator iter = g_settings_cache.insert(std::make_pair(clientid, cache_item)).first;
 		settings_cache=&iter->second;
-		update();
+		update(false);
 		do_update=false;
 	}	
 }
@@ -150,13 +150,13 @@ void ServerSettings::updateAll(void)
 	}
 }
 
-void ServerSettings::update(void)
+void ServerSettings::update(bool force_update)
 {
 	createSettingsReaders();
 
 	IScopedLock lock(g_mutex);
 
-	if(settings_cache->needs_update)
+	if(settings_cache->needs_update || force_update)
 	{
 		readSettingsDefault();
 		if(settings_client!=NULL)
@@ -186,7 +186,7 @@ void ServerSettings::updateInternal(bool* was_updated)
 			*was_updated=true;
 
 		do_update=false;
-		update();
+		update(false);
 	}
 	else
 	{
@@ -292,15 +292,31 @@ void ServerSettings::readSettingsDefault(void)
 void ServerSettings::readSettingsClient(void)
 {	
 	SSettings* settings=settings_cache->settings;
-	std::string stmp=settings_client->getValue("internet_authkey", generateRandomAuthKey());
+	std::string stmp=settings_client->getValue("internet_authkey", std::string());
 	if(!stmp.empty())
+	{
 		settings->internet_authkey=stmp;
+	}
+	else
+	{
+		settings->internet_authkey=generateRandomAuthKey();
+	}
 
 	stmp=settings_client->getValue("client_overwrite", "");
 	if(!stmp.empty())
 		settings->client_overwrite=(stmp=="true");
 
 	if(!settings->client_overwrite)
+		return;
+
+	readBoolClientSetting("overwrite", &settings->overwrite);
+
+	if(settings->overwrite)
+	{
+		readBoolClientSetting("allow_overwrite", &settings->allow_overwrite);
+	}
+
+	if(!settings->allow_overwrite)
 		return;
 
 	int tmp=settings_client->getValue("update_freq_incr", -1);
@@ -396,7 +412,7 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("silent_update", &settings->silent_update);
 	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);
 
-	readBoolClientSetting("overwrite", &settings->overwrite);
+	
 
 	if(!settings->overwrite)
 		return;
@@ -408,7 +424,6 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("allow_starting_incr_image_backups", &settings->allow_starting_incr_image_backups);
 	readBoolClientSetting("allow_pause", &settings->allow_pause);
 	readBoolClientSetting("allow_log_view", &settings->allow_log_view);
-	readBoolClientSetting("allow_overwrite", &settings->allow_overwrite);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)
