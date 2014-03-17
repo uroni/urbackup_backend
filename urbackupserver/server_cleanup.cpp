@@ -84,6 +84,7 @@ void ServerCleanupThread::operator()(void)
 			break;
 		case ECleanupAction_FreeMinspace:
 			{
+				deletePendingClients();
 				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
 				if(cleanup_action.result!=NULL)
 				{
