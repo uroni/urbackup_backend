@@ -50,7 +50,9 @@ function refresh_log2(data)
 			case  1: s_loglevel="WARNING"; break;
 			case  2: s_loglevel="ERROR"; break;
 			}
-			new_data+=dustRender("live_log_row", {time: format_date(d), loglevel: s_loglevel, message: obj.msg, background_color: background_color});
+			new_data+=dustRender("live_log_row", {
+				time: format_date(d), loglevel: s_loglevel, message: obj.msg, background_color: background_color
+			});
 			
 			g.max_log_id=obj.id;
 			++g.live_log_rows;

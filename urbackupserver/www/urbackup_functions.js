@@ -245,7 +245,9 @@ function loadGraph(action, parameters, pDivid, pGraphdata, pAddHtml)
 					renderer: jQuery.jqplot.PieRenderer,
 					rendererOptions: {
 					  showDataLabels: true,
-					  highlightMouseOver: true
+					  highlightMouseOver: true,
+					  padding: 2,
+					  sliceMargin: 2
 					}
 				  },
 				  legend: {

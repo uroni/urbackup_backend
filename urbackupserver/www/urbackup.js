@@ -278,6 +278,7 @@ function show_progress11()
 		g.progress_stop_id=-1;
 	}
 	
+	g.progress_first=true;
 	new getJSON("progress", pars, show_progress2);
 	
 	g.main_nav_pos=5;
@@ -290,8 +291,13 @@ function show_progress2(data)
 	{
 		return;
 	}
-	stopLoading();
 	if(g.main_nav_pos!=5) return;
+	if(!I('lastacts_visible') && !g.progress_first)
+	{
+		return;
+	}
+	g.progress_first=false;
+	stopLoading();
 	
 	var rows="";
 	var tdata="";
@@ -300,6 +306,14 @@ function show_progress2(data)
 		for(var i=0;i<data.progress.length;++i)
 		{
 			data.progress[i].action=trans("action_"+data.progress[i].action);
+			if(data.progress[i].pcdone>=0)
+			{
+				data.progress[i].percent=true;
+			}
+			else
+			{
+				data.progress[i].indexing=true;
+			}
 			rows+=dustRender("progress_row", data.progress[i]);
 		}
 		tdata=dustRender("progress_table", {"rows": rows});
@@ -344,7 +358,7 @@ function show_progress2(data)
 			obj.duration/=60;
 			obj.duration=Math.ceil(obj.duration);
 			obj.duration+=" min";
-			
+						
 			rows+=dustRender("lastacts_row", obj);
 		}
 		tdata+=dustRender("lastacts_table", {rows: rows});
@@ -636,6 +650,9 @@ function show_status2(data)
 		
 		obj.start_file_backup="";
 		obj.start_image_backup="";
+		
+		if(obj.done_pc<0)
+			obj.done_pc=0;
 		
 		if(obj.status>0 && obj.status<5)
 		{

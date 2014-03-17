@@ -3,10 +3,11 @@
 	<td class="tabFLeft">{action}</td>
 	<td class="tabFLeft" style="text-align: center;">
 		<div style="width: 100%; border: 1px solid black;">
-			<div style="width: {pcdone}%;background-image: url(progress.png); background-repeat:repeat-x;height:15px">
+			<div style="width: {?percent}{pcdone}%{:else}0%{/percent};background-image: url(progress.png); background-repeat:repeat-x;height:15px">
 			</div>
 		</div>
-		{pcdone}%
+		{?percent}{pcdone}%{/percent}
+		{?indexing}{tIndexing...}{/indexing}
 	<td class="tabFLeft">{queue}</td>
 	<td class="tabFRight"><input type="button" value="Stop" onclick="stopBackup({clientid})"/></td>
 </tr>
