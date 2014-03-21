@@ -82,10 +82,13 @@ public:
 		void setReconnectionTimeout(unsigned int t);
               
 private:
+		void bindToNewInterfaces();
+
 		bool Reconnect(void);
 
         std::vector<SOCKET> udpsocks;
 		std::vector<sockaddr_in> broadcast_addrs;
+		std::vector<_u32> broadcast_iface_addrs;
         IPipe *tcpsock;
 
         _u32 starttime;
@@ -130,6 +133,8 @@ private:
 		FileClient::NoFreeSpaceCallback *nofreespace_callback;
 
 		unsigned int reconnection_timeout;
+
+		bool retryBindToNewInterfaces;
 };
 
 const _u32 ERR_CONTINUE=0;
