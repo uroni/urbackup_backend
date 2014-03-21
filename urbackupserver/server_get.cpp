@@ -355,7 +355,7 @@ void BackupServerGet::operator ()(void)
 		}
 	}
 
-	if(received_client_settings)
+	if(received_client_settings || settings_doesnt_exist)
 	{
 		sendSettings();
 	}
@@ -395,11 +395,11 @@ void BackupServerGet::operator ()(void)
 				bool received_client_settings=true;
 				bool settings_updated=false;
 				server_settings_updated.getSettings(&settings_updated);
+				bool settings_dont_exist=false;
 				if(do_update_settings || settings_updated)
 				{
 					ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
 					do_update_settings=false;
-					bool settings_dont_exist=false;
 					if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_dont_exist))
 					{
 						ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
@@ -407,7 +407,7 @@ void BackupServerGet::operator ()(void)
 					}
 				}
 
-				if(settings_updated && received_client_settings)
+				if(settings_updated && (received_client_settings || settings_dont_exist) )
 				{
 					sendSettings();
 				}
