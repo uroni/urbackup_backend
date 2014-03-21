@@ -917,7 +917,7 @@ std::wstring removeChars(std::wstring in)
 	for(size_t i=0;i<in.size();++i)
 	{
 		bool found=false;
-		for(size_t j=0;j<sizeof(illegalchars);++j)
+		for(size_t j=0;j<sizeof(illegalchars)/sizeof(illegalchars[0]);++j)
 		{
 			if(illegalchars[j]==in[i])
 			{
