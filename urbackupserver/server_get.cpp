@@ -293,7 +293,7 @@ void BackupServerGet::operator ()(void)
 	prepareSQL();
 
 	updateLastseen();	
-	
+		
 	if(!updateCapabilities())
 	{
 		Server->Log(L"Could not get client capabilities", LL_ERROR);
@@ -336,14 +336,22 @@ void BackupServerGet::operator ()(void)
 
 	bool received_client_settings=true;
 	ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
-	if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
+	bool settings_doesnt_exist=false;
+	if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_doesnt_exist))
 	{
-		ServerLogger::Log(clientid, "Getting client settings failed. Retrying...", LL_INFO);
-		Server->wait(200000);
-		if(!getClientSettings())
+		if(!settings_doesnt_exist)
 		{
-			ServerLogger::Log(clientid, "Getting client settings failed -1", LL_ERROR);
-			received_client_settings=false;
+			ServerLogger::Log(clientid, "Getting client settings failed. Retrying...", LL_INFO);
+			Server->wait(200000);
+			if(!getClientSettings(settings_doesnt_exist))
+			{
+				ServerLogger::Log(clientid, "Getting client settings failed -1", LL_ERROR);
+				received_client_settings=false;
+			}
+		}
+		else
+		{
+			ServerLogger::Log(clientid, "Getting client settings failed. Not retrying because settings do not exist.", LL_INFO);
 		}
 	}
 
@@ -391,7 +399,8 @@ void BackupServerGet::operator ()(void)
 				{
 					ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
 					do_update_settings=false;
-					if(server_settings->getSettings()->allow_overwrite && !getClientSettings())
+					bool settings_dont_exist=false;
+					if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_dont_exist))
 					{
 						ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
 						received_client_settings=false;
@@ -3076,8 +3085,10 @@ void BackupServerGet::sendSettings(void)
 	sendClientMessage("SETTINGS "+s_settings, "OK", L"Sending settings to client failed", 10000);
 }	
 
-bool BackupServerGet::getClientSettings(void)
+bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 {
+	doesnt_exist=false;
+
 	FileClient fc(false, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc);
 	if(rc!=ERR_CONNECTED)
@@ -3099,6 +3110,12 @@ bool BackupServerGet::getClientSettings(void)
 		std::string tmp_fn=tmp->getFilename();
 		Server->destroy(tmp);
 		Server->deleteFile(tmp_fn);
+
+		if(rc==ERR_FILE_DOESNT_EXIST)
+		{
+			doesnt_exist=true;
+		}
+
 		return false;
 	}
 

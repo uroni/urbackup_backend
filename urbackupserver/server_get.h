@@ -92,7 +92,7 @@ private:
 	void updateLastImageBackup(void);
 	void sendClientBackupIncrIntervall(void);
 	void sendSettings(void);
-	bool getClientSettings(void);
+	bool getClientSettings(bool& doesnt_exist);
 	bool updateClientSetting(const std::wstring &key, const std::wstring &value);
 	void setBackupComplete(void);
 	void setBackupDone(void);
