@@ -46,6 +46,27 @@ void ServerSettings::destroy_mutex(void)
 	}
 }
 
+void ServerSettings::clear_cache()
+{
+	IScopedLock lock(g_mutex);
+
+	for(std::map<int, SSettingsCacheItem>::iterator it=g_settings_cache.begin();
+		it!=g_settings_cache.end();)
+	{
+		if(it->second.refcount==0)
+		{
+			std::map<int, SSettingsCacheItem>::iterator delit=it++;
+			delete delit->second.settings;
+			g_settings_cache.erase(delit);
+		}
+		else
+		{
+			Server->Log("Refcount for settings for clientid \""+nconvert(it->second.settings->clientid)+"\" is not 0. Not deleting.", LL_WARNING);
+			++it;
+		}
+	}
+}
+
 ServerSettings::ServerSettings(IDatabase *db, int pClientid)
 	: local_settings(NULL), clientid(pClientid), settings_default(NULL),
 		settings_client(NULL), db(db)
@@ -211,6 +232,7 @@ SSettings *ServerSettings::getSettings(bool *was_updated)
 void ServerSettings::readSettingsDefault(void)
 {
 	SSettings* settings=settings_cache->settings;
+	settings->clientid=clientid;
 	settings->update_freq_incr=settings_default->getValue("update_freq_incr", 5*60*60);
 	settings->update_freq_full=settings_default->getValue("update_freq_full", 30*24*60*60);
 	settings->update_freq_image_incr=settings_default->getValue("update_freq_image_incr", 7*24*60*60);

@@ -145,6 +145,7 @@ bool CHTTPClient::Run(void)
 				Server->clearPostFiles(tid);
 			}
 			delete request_handler;
+			request_handler=NULL;
 
 			if(!http_service->getProxyServer().empty() && http_service->getShareProxyConnections()==1)
 			{

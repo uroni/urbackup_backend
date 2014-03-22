@@ -111,6 +111,7 @@ print_version()
 }
 
 RUN_IN_GDB=0
+RUN_IN_VALGRIND=0
 
 GETOPT=getopt
 
@@ -131,7 +132,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	CLEANUP=""
 	BROADCAST_INTERFACES=""
 	URB_USER="urbackup"
-	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,user:,defrag_database -- "$@"`
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,run_in_valgrind,user:,defrag_database -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -152,6 +153,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--repair_database) CLEANUP="--app repair_database"; shift ;;
 			--broadcast_interfaces) BROADCAST_INTERFACES="--broadcast_interfaces \"$2\""; shift 2 ;;
 			--run_in_gdb) RUN_IN_GDB=1; shift ;;
+			--run_in_valgrind) RUN_IN_VALGRIND=1; shift ;;
 			--user) URB_USER="$2"; shift 2;;
 			--defrag_database) CLEANUP="--app defrag_database"; shift ;;
 			--) shift; break ;;
@@ -182,6 +184,11 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		S_DAEMON=""
 	fi
 	
+	if [ "x$RUN_IN_VALGRIND" = "x1" ]
+	then
+		S_DAEMON=""
+	fi
+	
 	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE --user $URB_USER $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
 else
 	DAEMON_ARGS="--user urbackup $*"
@@ -204,6 +211,9 @@ cd $DAEMON_DIR
 if [ "x$RUN_IN_GDB" = "x1" ]
 then
 	gdb --args $DAEMON $S_DAEMON $DAEMON_ARGS
+elif [ "x$RUN_IN_VALGRIND" = "x1" ]
+then
+	valgrind --leak-check=full --track-origins=yes $DAEMON $S_DAEMON $DAEMON_ARGS --allow_shutdown true --leak_check true
 else
 	exec $DAEMON $S_DAEMON $DAEMON_ARGS
 fi

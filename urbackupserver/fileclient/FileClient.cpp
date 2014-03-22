@@ -106,10 +106,11 @@ void FileClient::bindToNewInterfaces()
 		Tokenize(bcast_interfaces, bcast_filter, ";,");
 	}
 
-	ifaddrs *ifap;
-	int rc=getifaddrs(&ifap);
+	ifaddrs *start_ifap;
+	int rc=getifaddrs(&start_ifap);
 	if(rc==0)
 	{
+		ifaddrs* ifap=start_ifap;
 		for(;ifap!=NULL;ifap=ifap->ifa_next)
 		{
 			bool found_name = bcast_filter.empty() || std::find(bcast_filter.begin(), bcast_filter.end(), ifap->ifa_name)!=bcast_filter.end();
@@ -172,7 +173,7 @@ void FileClient::bindToNewInterfaces()
 				udpsocks.push_back(udpsock);
 			}
 		}
-		freeifaddrs(ifap);
+		freeifaddrs(start_ifap);
 	}
 	else
 	{

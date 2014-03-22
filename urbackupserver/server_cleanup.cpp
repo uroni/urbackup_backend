@@ -153,6 +153,7 @@ void ServerCleanupThread::operator()(void)
 			}
 			if(do_quit)
 			{
+				delete this;
 				return;
 			}
 			if(update_stats)

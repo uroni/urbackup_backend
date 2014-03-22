@@ -580,7 +580,7 @@ DLLEXPORT void UnloadActions(void)
 {
 	unsigned int wtime=500;
 	if(is_leak_check)
-		wtime=2000;
+		wtime=10000;
 
 	bool shutdown_ok=false;
 	if(server_exit_pipe!=NULL)
@@ -626,6 +626,8 @@ DLLEXPORT void UnloadActions(void)
 		InternetServiceConnector::destroy_mutex();
 		destroy_mutex1();
 		Server->destroy(startup_status.mutex);
+		Server->Log("Deleting cached server settings...", LL_INFO);
+		ServerSettings::clear_cache();
 		ServerSettings::destroy_mutex();
 		ServerStatus::destroy_mutex();
 	}

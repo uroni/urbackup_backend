@@ -20,6 +20,9 @@
 
 #include "ThreadPool.h"
 #include "Server.h"
+#include "stringtools.h"
+
+const unsigned int max_waiting_threads=2;
 
 CPoolThread::CPoolThread(CThreadPool *pMgr)
 {
@@ -31,18 +34,32 @@ void CPoolThread::operator()(void)
 {
 	THREAD_ID tid = Server->getThreadID();
 	THREADPOOL_TICKET ticket;
-	IThread *tr=mgr->getRunnable(&ticket, false);
+	bool stop=false;
+	IThread *tr=mgr->getRunnable(&ticket, false, stop);
 	if(tr!=NULL)
-	  (*tr)();
-	while(dexit==false)
 	{
-		IThread *tr=mgr->getRunnable(&ticket, true);
-		if(tr!=NULL)
+	  (*tr)();
+	  Server->clearDatabases(tid);
+	}
+
+	if(!stop)
+	{
+		while(dexit==false)
 		{
-		  (*tr)();
-		  Server->clearDatabases(tid);
+			stop=false;
+			IThread *tr=mgr->getRunnable(&ticket, true, stop);
+			if(tr!=NULL)
+			{
+			  (*tr)();
+			  Server->clearDatabases(tid);
+			}
+			else if(stop)
+			{
+				break;
+			}
 		}
 	}
+	Server->destroyDatabases(tid);
 	mgr->Remove(this);
 	delete this;
 }
@@ -52,7 +69,7 @@ void CPoolThread::shutdown(void)
 	dexit=true;
 }
 
-IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del)
+IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop)
 {
 	IScopedLock lock(mutex);
 
@@ -73,7 +90,14 @@ IThread * CThreadPool::getRunnable(THREADPOOL_TICKET *todel, bool del)
 	while(ret==NULL && dexit==false)
 	{
 		if( toexecute.size()==0)
+		{
+			if(nThreads-nRunning>max_waiting_threads)
+			{
+				stop=true;
+				return NULL;
+			}
 			cond->wait(&lock);
+		}
 		else
 		{
 			ret=toexecute[0].first;
@@ -92,6 +116,7 @@ void CThreadPool::Remove(CPoolThread *pt)
 		if( threads[i]==pt )
 		{
 			threads.erase( threads.begin()+i);
+			--nThreads;
 			return;
 		}
 	}

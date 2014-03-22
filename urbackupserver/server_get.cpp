@@ -116,8 +116,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	last_image_backup_try=0;
 	count_image_backup_try=0;
 
-	last_image_backup_try=0;
-	count_image_backup_try=0;
+	last_file_backup_try=0;
+	count_file_backup_try=0;
 	
 }
 
@@ -859,6 +859,7 @@ void BackupServerGet::operator ()(void)
 	Server->destroy(settings_client);
 	settings_client=NULL;
 	delete server_settings;
+	server_settings=NULL;
 	pipe->Write("ok");
 	Server->Log(L"server_get Thread for client "+clientname+L" finished");
 

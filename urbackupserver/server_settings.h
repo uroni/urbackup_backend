@@ -7,6 +7,7 @@
 
 struct SSettings
 {
+	int clientid;
 	std::wstring backupfolder;
 	std::wstring backupfolder_uncompr;
 	int update_freq_incr;
@@ -120,6 +121,7 @@ public:
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
+	static void clear_cache();
 	static void updateAll(void);
 	static std::string generateRandomAuthKey(size_t len=10);
 	static std::string generateRandomBinaryKey(void);
