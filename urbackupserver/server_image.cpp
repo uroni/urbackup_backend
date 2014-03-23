@@ -117,9 +117,11 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		with_checksum=true;
 	}
 
+	std::string identity= session_identity.empty()?server_identity:session_identity;
+
 	if(pParentvhd.empty())
 	{
-		tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);
+		tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&token="+server_token+chksum_str);
 	}
 	else
 	{
@@ -132,7 +134,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 			Server->destroy(cc);
 			return false;
 		}
-		std::string ts=server_identity+"INCR IMAGE letter="+pLetter+"&hashsize="+nconvert(hashfile->Size())+"&token="+server_token+chksum_str;
+		std::string ts=identity+"INCR IMAGE letter="+pLetter+"&hashsize="+nconvert(hashfile->Size())+"&token="+server_token+chksum_str;
 		size_t rc=tcpstack.Send(cc, ts);
 		if(rc==0)
 		{
@@ -337,7 +339,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 				if(pParentvhd.empty())
 				{
-					size_t sent = tcpstack.Send(cc, server_identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id));
+					size_t sent = tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id));
 					if(sent==0)
 					{
 						ServerLogger::Log(clientid, "Sending 'FULL IMAGE' command failed", LL_WARNING);
@@ -350,7 +352,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				else
 				{
 					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id)+"&hashsize="+nconvert(parenthashfile->Size());
-					size_t sent=tcpstack.Send(cc, server_identity+ts);
+					size_t sent=tcpstack.Send(cc, identity+ts);
 					if(sent==0)
 					{
 						ServerLogger::Log(clientid, "Sending 'INCR IMAGE' command failed", LL_DEBUG);

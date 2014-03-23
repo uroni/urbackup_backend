@@ -685,6 +685,7 @@ function show_status2(data)
 			case 10: obj.status=trans("starting"); break;
 			case 11: obj.status=trans("ident_err")+" <a href=\"http://www.urbackup.org/FAQ.php#ident_err\" target=\"_blank\">?</a>"; break;
 			case 12: obj.status=trans("too_many_clients_err"); break;
+			case 13: obj.status=trans("authentication_err"); break;
 			default: obj.status="&nbsp;"
 		}
 		
@@ -901,7 +902,7 @@ function show_status2(data)
 			"sScrollX": "100%",
 			"bScrollCollapse": true,
 			"bStateSave": true,
-			
+			"iCookieDuration": 365*60*60*24,
 			"oLanguage": {
 				"oPaginate": {
 					"sFirst": "First",

@@ -36,7 +36,6 @@
 #include <limits.h>
 
 const unsigned short serviceport=35623;
-extern std::string server_identity;
 extern IFSImageFactory *image_fak;
 
 namespace
@@ -61,8 +60,8 @@ namespace
 	}
 }
 
-ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode) :
-server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(internet_mode)
+ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode, const std::string& identity) :
+server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -111,11 +110,11 @@ void ServerChannelThread::operator()(void)
 				}
 				if(combat_mode)
 				{
-					tcpstack.Send(input, server_identity+"CHANNEL");
+					tcpstack.Send(input, identity+"CHANNEL");
 				}
 				else
 				{
-					tcpstack.Send(input, server_identity+"1CHANNEL capa="+nconvert(constructCapabilities()));
+					tcpstack.Send(input, identity+"1CHANNEL capa="+nconvert(constructCapabilities()));
 				}
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;

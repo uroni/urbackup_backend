@@ -12,6 +12,8 @@
 #include "../urbackupcommon/os_functions.h"
 #include "../stringtools.h"
 
+extern std::string server_identity;
+
 bool FileDownload::copy_file_fd(IFile *fsrc, IFile *fdst)
 {
 	fsrc->Seek(0);
@@ -64,7 +66,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	_u32 rc;
 	if(method==0)
 	{
-		FileClient fc(false, 2);
+		FileClient fc(false, server_identity, 2);
 		fc.Connect(cp);
 		
 		Server->Log("Downloading file...");
@@ -75,7 +77,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	else if(method==1)
 	{
 		CTCPStack tcpstack;
-		FileClientChunked fc(cp, &tcpstack, this, NULL);
+		FileClientChunked fc(cp, &tcpstack, this, NULL, server_identity);
 		fc.setDestroyPipe(true);
 
 		IFile *hashfile=Server->openTemporaryFile();
@@ -100,7 +102,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	else if(method==2)
 	{
 		CTCPStack tcpstack;
-		FileClientChunked fc(cp, &tcpstack, this, NULL);
+		FileClientChunked fc(cp, &tcpstack, this, NULL, server_identity);
 		fc.setDestroyPipe(true);
 
 		IFile *hashfile=Server->openTemporaryFile();

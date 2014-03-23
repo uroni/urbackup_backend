@@ -338,6 +338,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		time_format_str=time_format_str_de;
 	}
 
+	{
+		str_map params;
+		crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
+		if( crypto_fak==NULL )
+		{
+			Server->Log("Error loading Cryptoplugin. Internet service will not work.", LL_ERROR);
+		}
+	}
+
 	//writeZeroblockdata();
 
 	
@@ -347,6 +356,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		std::string ident="#I"+ServerSettings::generateRandomAuthKey(20)+"#";
 		writestring(ident, "urbackup/server_ident.key");
 		server_identity=ident;
+	}
+	if(!FileExists("urbackup/server_ident.pub") && crypto_fak!=NULL)
+	{
+		Server->Log("Generating Server private/public key...", LL_INFO);
+		crypto_fak->generatePrivatePublicKeyPair("urbackup/server_ident");
 	}
 	if((server_token=getFile("urbackup/server_token.key")).size()<5)
 	{
@@ -522,11 +536,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(url_fak==NULL)
 	{
 		Server->Log("Error loading IUrlFactory", LL_INFO);
-	}
-	crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
-	if( crypto_fak==NULL )
-	{
-		Server->Log("Error loading Cryptoplugin. Internet service will not work.", LL_ERROR);
 	}
 
 	server_exit_pipe=Server->createMemoryPipe();

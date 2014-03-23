@@ -130,6 +130,8 @@ private:
 	static std::string getCurrRunningJob();
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
+	void CMD_GET_CHALLENGE(const std::string &identity);
+	void CMD_SIGNATURE(const std::string &identity, const std::string &cmd);
 	void CMD_START_INCR_FILEBACKUP(const std::string &cmd);
 	void CMD_START_FULL_FILEBACKUP(const std::string &cmd);
 	void CMD_START_SHADOWCOPY(const std::string &cmd);
@@ -205,6 +207,7 @@ private:
 	static IMutex *ident_mutex;
 	static std::vector<std::string> new_server_idents;
 	static bool end_to_end_file_backup_verification_enabled;
+	static std::map<std::string, std::string> challenges;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;

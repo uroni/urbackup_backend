@@ -814,7 +814,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 
 				if(calculate_filehashes_on_client)
 				{
-					outfile << "sha512=" << ReplaceChar(base64_encode(reinterpret_cast<const unsigned char*>(files[i].hash.c_str()), static_cast<unsigned int>(files[i].hash.size())), '=', '%');
+					outfile << "sha512=" << base64_encode_dash(files[i].hash);
 				}
 				
 				if(end_to_end_file_backup_verification_enabled)

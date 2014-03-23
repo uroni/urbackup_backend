@@ -37,6 +37,7 @@
 #include "../urbackupcommon/mbrdata.h"
 #include "../Interface/PipeThrottler.h"
 #include "snapshot_helper.h"
+#include "../cryptoplugin/ICryptoFactory.h"
 #include "server.h"
 #include <algorithm>
 #include <memory.h>
@@ -51,6 +52,7 @@
 #endif
 
 extern IUrlFactory *url_fak;
+extern ICryptoFactory *crypto_fak;
 extern std::string server_identity;
 extern std::string server_token;
 
@@ -190,18 +192,29 @@ void BackupServerGet::unloadSQL(void)
 
 void BackupServerGet::operator ()(void)
 {
+	bool needs_authentification = false;
 	{
 		bool c=true;
 		while(c)
 		{
 			c=false;
 			bool retok_err=false;
-			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err);
+			std::string ret_str;
+			bool b=sendClientMessage("ADD IDENTITY", "OK", L"Sending Identity to client \""+clientname+L"\" failed. Retrying soon...", 10000, false, LL_INFO, &retok_err, &ret_str);
 			if(!b)
 			{
 				if(retok_err)
 				{
-					ServerStatus::setWrongIdent(clientname, true);
+					if(ret_str!="needs certificate")
+					{
+						ServerStatus::setStatusError(clientname, se_ident_error);
+					}
+					else
+					{
+						ServerStatus::setStatusError(clientname, se_none);
+						needs_authentification=true;
+						break;
+					}
 				}
 				
 				unsigned int retry_time=ident_err_retry_time;
@@ -225,14 +238,14 @@ void BackupServerGet::operator ()(void)
 			}
 			else
 			{
-				ServerStatus::setWrongIdent(clientname, false);
+				ServerStatus::setStatusError(clientname, se_none);
 			}
 		}
 	}
 
 	if( clientname.find(L"##restore##")==0 )
 	{
-		ServerChannelThread channel_thread(this, -1, internet_connection);
+		ServerChannelThread channel_thread(this, -1, internet_connection, server_identity);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 		while(true)
@@ -251,6 +264,38 @@ void BackupServerGet::operator ()(void)
 		delete this;
 		return;
 	}
+	else
+	{
+		bool c = false;
+		do
+		{			
+			bool b = authenticatePubKey();
+			if(!b && needs_authentification)
+			{
+				ServerStatus::setStatusError(clientname, se_authentication_error);
+
+				std::string msg;
+				pipe->Read(&msg, ident_err_retry_time);
+				if(msg=="exit" || msg=="exitnow")
+				{
+					pipe->Write("ok");
+					Server->Log(L"server_get Thread for client \""+clientname+L"\" finished and the authentification failed", LL_INFO);
+
+					delete this;
+					return;
+				}
+
+				c=true;
+			}
+			else
+			{
+				ServerStatus::setStatusError(clientname, se_none);
+			}
+		}
+		while(c);
+	}
+
+	std::string identity = session_identity.empty()?server_identity:session_identity;
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	DBScopedFreeMemory free_db_memory(db);
@@ -264,7 +309,7 @@ void BackupServerGet::operator ()(void)
 		pipe->Write("ok");
 		Server->Log(L"server_get Thread for client "+clientname+L" finished, because there were too many clients", LL_INFO);
 
-		ServerStatus::setTooManyClients(clientname, true);
+		ServerStatus::setStatusError(clientname, se_too_many_clients);
 		ServerLogger::reset(clientid);
 		delete server_settings;
 		delete this;
@@ -325,7 +370,7 @@ void BackupServerGet::operator ()(void)
 		}
 	}
 
-	ServerChannelThread channel_thread(this, clientid, internet_connection);
+	ServerChannelThread channel_thread(this, clientid, internet_connection, identity);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 	if(internet_connection && server_settings->getSettings()->internet_calculate_filehashes_on_client)
@@ -1255,7 +1300,17 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 	std::string pver="";
 	if(file_protocol_version==2) pver="2";
 
-	std::string start_backup_cmd=server_identity+pver;
+	std::string identity;
+	if(!session_identity.empty())
+	{
+		identity=session_identity;
+	}
+	else
+	{
+		identity=server_identity;
+	}
+
+	std::string start_backup_cmd=identity+pver;
 
 	if(full)
 	{
@@ -1386,8 +1441,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	{
 		ServerLogger::Log(clientid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
 	}
-
-	FileClient fc(false, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
+	std::string identity = session_identity.empty()?server_identity:session_identity;
+	FileClient fc(false, identity, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc, 10000);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -1542,7 +1597,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
 					if( hash_it!=extra_params.end())
 					{
-						if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(ReplaceChar(wnarrow(hash_it->second), '%', '=')), cf.size, true))
+						if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, true))
 						{
 							transferred+=cf.size;
 							file_ok=true;
@@ -2052,7 +2107,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	}
 
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
-	FileClient fc(false, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
+	std::string identity = session_identity.empty()?server_identity:session_identity;
+	FileClient fc(false, identity, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	FileClientChunked fc_chunked;
 	if(intra_file_diffs)
 	{
@@ -2366,7 +2422,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 						if(r_offline==false && hash_it!=extra_params.end())
 						{
-							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(ReplaceChar(wnarrow(hash_it->second), '%', '=')), cf.size, false))
+							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
 							{
 								transferred+=cf.size;
 								f_ok=true;
@@ -2434,7 +2490,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 							if(r_offline==false && hash_it!=extra_params.end())
 							{
-								if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode(ReplaceChar(wnarrow(hash_it->second), '%', '=')), cf.size, false))
+								if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
 								{
 									f_ok=true;
 								}
@@ -2814,6 +2870,37 @@ void BackupServerGet::updateLastImageBackup(void)
 	q_set_last_image_backup->Reset();
 }
 
+std::string BackupServerGet::sendClientMessageRetry(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel)
+{
+	std::string res;
+	do
+	{
+		unsigned int starttime=Server->getTimeMS();
+		res = sendClientMessage(msg, errmsg, timeout, logerr, max_loglevel);
+
+		if(res.empty())
+		{
+			if(retry>0)
+			{
+				--retry;
+				unsigned int passed_time=timeout;
+				unsigned int currtime = Server->getTimeMS();
+				if(currtime>starttime)
+					passed_time=currtime-starttime;
+
+				Server->wait(timeout-passed_time);
+			}
+			else
+			{
+				return res;
+			}
+		}
+	}
+	while(res.empty());
+
+	return res;
+}
+
 std::string BackupServerGet::sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel)
 {
 	CTCPStack tcpstack(internet_connection);
@@ -2827,7 +2914,17 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 		return "";
 	}
 
-	tcpstack.Send(cc, server_identity+msg);
+	std::string identity;
+	if(!session_identity.empty())
+	{
+		identity=session_identity;
+	}
+	else
+	{
+		identity=server_identity;
+	}
+
+	tcpstack.Send(cc, identity+msg);
 
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
@@ -2869,27 +2966,30 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 	return "";
 }
 
-bool BackupServerGet::sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel, bool *retok_err)
+bool BackupServerGet::sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str)
 {
 	bool res;
 	do
 	{
 		unsigned int starttime=Server->getTimeMS();
-		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, max_loglevel, retok_err);
+		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, max_loglevel, retok_err, retok_str);
 
-		if(retry>0)
+		if(!res)
 		{
-			--retry;
-			unsigned int passed_time=timeout;
-			unsigned int currtime = Server->getTimeMS();
-			if(currtime>starttime)
-				passed_time=currtime-starttime;
+			if(retry>0)
+			{
+				--retry;
+				unsigned int passed_time=timeout;
+				unsigned int currtime = Server->getTimeMS();
+				if(currtime>starttime)
+					passed_time=currtime-starttime;
 
-			Server->wait(timeout-passed_time);
-		}
-		else
-		{
-			return res;
+				Server->wait(timeout-passed_time);
+			}
+			else
+			{
+				return res;
+			}
 		}
 	}
 	while(!res);
@@ -2897,7 +2997,7 @@ bool BackupServerGet::sendClientMessageRetry(const std::string &msg, const std::
 	return res;
 }
 
-bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err)
+bool BackupServerGet::sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr, int max_loglevel, bool *retok_err, std::string* retok_str)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
@@ -2910,7 +3010,17 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 		return false;
 	}
 
-	tcpstack.Send(cc, server_identity+msg);
+	std::string identity;
+	if(!session_identity.empty())
+	{
+		identity=session_identity;
+	}
+	else
+	{
+		identity=server_identity;
+	}
+
+	tcpstack.Send(cc, identity+msg);
 
 	std::string ret;
 	unsigned int starttime=Server->getTimeMS();
@@ -2931,6 +3041,10 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 		{
 			ret=pck;
 			delete [] pck;
+			if(retok_str!=NULL)
+			{
+				*retok_str=ret;
+			}
 			if(ret!=retok)
 			{
 				herr=true;
@@ -3089,8 +3203,8 @@ void BackupServerGet::sendSettings(void)
 bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 {
 	doesnt_exist=false;
-
-	FileClient fc(false, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
+	std::string identity = session_identity.empty()?server_identity:session_identity;
+	FileClient fc(false, identity, filesrv_protocol_version, internet_connection, this, use_tmpfiles?NULL:this);
 	_u32 rc=getClientFilesrvConnection(&fc);
 	if(rc!=ERR_CONNECTED)
 	{
@@ -3564,7 +3678,8 @@ void BackupServerGet::checkClientVersion(void)
 			{
 				msg="CLIENTUPDATE "+nconvert(datasize);
 			}
-			tcpstack.Send(cc, server_identity+msg);
+			std::string identity= session_identity.empty()?server_identity:session_identity;
+			tcpstack.Send(cc, identity+msg);
 
 			int timeout=5*60*1000;
 
@@ -3904,12 +4019,13 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeoutms)
 {
 	FileClientChunked ret;
+	std::string identity = session_identity.empty()?server_identity:session_identity;
 	if(internet_connection)
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
 		if(cp!=NULL)
 		{
-			ret=FileClientChunked(cp, &tcpstack, this, use_tmpfiles?NULL:this);
+			ret=FileClientChunked(cp, &tcpstack, this, use_tmpfiles?NULL:this, identity);
 			ret.setReconnectionTimeout(c_internet_fileclient_timeout);
 		}
 		else
@@ -3920,7 +4036,7 @@ FileClientChunked BackupServerGet::getClientChunkedFilesrvConnection(int timeout
 		sockaddr_in addr=getClientaddr();
 		IPipe *pipe=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), TCP_PORT, timeoutms);
 		if(pipe!=NULL)
-			ret=FileClientChunked(pipe, &tcpstack, this, use_tmpfiles?NULL:this);
+			ret=FileClientChunked(pipe, &tcpstack, this, use_tmpfiles?NULL:this, identity);
 		else
 			ret=FileClientChunked();
 	}
@@ -4279,4 +4395,64 @@ bool BackupServerGet::exponentialBackoffImage()
 bool BackupServerGet::exponentialBackoffFile()
 {
 	return exponentialBackoff(count_file_backup_try, last_file_backup_try, c_sleeptime_failed_filebackup, c_exponential_backoff_div);
+}
+
+bool BackupServerGet::authenticatePubKey()
+{
+	if(crypto_fak==NULL)
+	{
+		return false;
+	}
+
+	std::string challenge = sendClientMessageRetry("GET CHALLENGE", L"Failed to get challenge from client", 10000, 10, false, LL_INFO);
+
+	if(challenge=="ERR")
+	{
+		return false;
+	}
+
+	if(!challenge.empty())
+	{
+		std::string signature;
+		std::string privkey = getFile("urbackup/server_ident.priv");
+
+		if(privkey.empty())
+		{
+			Server->Log("Cannot read private key urbackup/server_ident.priv", LL_ERROR);
+			return false;
+		}
+
+		bool rc = crypto_fak->signData(privkey, challenge, signature);
+
+		if(!rc)
+		{
+			Server->Log("Signing challenge failed", LL_ERROR);
+			return false;
+		}
+
+		std::string pubkey = getFile("urbackup/server_ident.pub");
+
+		if(pubkey.empty())
+		{
+			Server->Log("Reading public key from urbackup/server_ident.pub failed", LL_ERROR);
+			return false;
+		}
+
+		std::string identity = ServerSettings::generateRandomAuthKey(20);
+
+		bool ret = sendClientMessageRetry("SIGNATURE#pubkey="+base64_encode_dash(pubkey)+
+			"&signature="+base64_encode_dash(signature)+
+			"&session_identity="+identity, "ok", L"Error sending server signature to client", 10000, 10, true);
+
+		if(ret)
+		{
+			session_identity = "#I"+identity+"#";
+		}
+
+		return ret;
+	}
+	else
+	{
+		return false;
+	}
 }

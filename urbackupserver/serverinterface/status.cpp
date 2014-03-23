@@ -261,12 +261,17 @@ ACTION_IMPL(status)
 					os_version_string=client_status[j].os_version_string;
 					done_pc=client_status[j].pcdone;
 
-					if(client_status[j].wrong_ident)
-						i_status=11;
-					else if(client_status[j].too_many_clients)
-						i_status=12;
-					else
-						i_status=client_status[j].statusaction;
+					switch(client_status[j].status_error)
+					{
+					case se_ident_error:
+						i_status=11; break;
+					case se_too_many_clients:
+						i_status=12; break;
+					case se_authentication_error:
+						i_status=13; break;
+					default:
+						i_status=client_status[j].statusaction; break;
+					}
 				}
 			}
 
@@ -344,12 +349,17 @@ ACTION_IMPL(status)
 				ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
 				stat.set("ip", ip);
 
-				if(client_status[i].wrong_ident)
-					stat.set("status", 11);
-				else if(client_status[i].too_many_clients)
-					stat.set("status", 12);
-				else
-					stat.set("status", 10);
+				switch(client_status[i].status_error)
+				{
+				case se_ident_error:
+					stat.set("status", 11); break;
+				case se_too_many_clients:
+					stat.set("status", 12); break;
+				case se_authentication_error:
+					stat.set("status", 13); break;
+				default:
+					stat.set("status", 10); break;
+				}
 
 				stat.set("file_ok", false);
 				stat.set("image_ok", false);

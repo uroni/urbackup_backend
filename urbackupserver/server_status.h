@@ -18,13 +18,21 @@ enum SStatusAction
 	sa_full_image=4
 };
 
+enum SStatusError
+{
+	se_none,
+	se_ident_error,
+	se_authentication_error,
+	se_too_many_clients
+};
+
 class IPipe;
 
 struct SStatus
 {
 	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1;
-		prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false; wrong_ident=false;too_many_clients=false;
-		comm_pipe=NULL; stop_backup=false;}
+		prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false;
+		comm_pipe=NULL; stop_backup=false; status_error=se_none;}
 
 	std::wstring client;
 	int clientid;
@@ -39,8 +47,7 @@ struct SStatus
 	bool action_done;
 	SStatusAction statusaction;
 	unsigned int ip_addr;
-	bool wrong_ident;
-	bool too_many_clients;
+	SStatusError status_error;
 	IPipe *comm_pipe;
 	bool stop_backup;
 	std::string client_version_string;
@@ -55,8 +62,7 @@ public:
 	static void setDone(const std::wstring &clientname, bool bdone);
 	static void setROnline(const std::wstring &clientname, bool bonline);
 	static void setIP(const std::wstring &clientname, unsigned int ip);
-	static void setWrongIdent(const std::wstring &clientname, bool b);
-	static void setTooManyClients(const std::wstring &clientname, bool b);
+	static void setStatusError(const std::wstring &clientname, SStatusError se);
 	static void setCommPipe(const std::wstring &clientname, IPipe *p);
 	static void stopBackup(const std::wstring &clientname, bool b);
 	static bool isBackupStopped(const std::wstring &clientname);

@@ -9,6 +9,7 @@
 #include "database.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/json.h"
+#include "../cryptoplugin/ICryptoFactory.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #include "win_ver.h"
@@ -26,6 +27,21 @@ std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 
 extern std::string time_format_str;
 
+extern ICryptoFactory *crypto_fak;
+
+namespace
+{
+	std::string randomChallenge(size_t len)
+	{
+		std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		std::string key;
+		std::vector<unsigned int> rnd_n=Server->getSecureRandomNumbers(len);
+		for(size_t j=0;j<len;++j)
+			key+=rchars[rnd_n[j]%rchars.size()];
+		return key;
+	}	
+}
+
 void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok)
 {
 	if(identity.empty())
@@ -36,7 +52,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 	{
 		if(Server->getServerParameter("restore_mode")=="true" && !ident_ok )
 		{
-			ServerIdentityMgr::addServerIdentity(identity);
+			ServerIdentityMgr::addServerIdentity(identity, "");
 				tcpstack.Send(pipe, "OK");
 		}
 		else if( ident_ok )
@@ -48,13 +64,20 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 			ServerIdentityMgr::loadServerIdentities();
 			if( ServerIdentityMgr::checkServerIdentity(identity) )
 			{
-				tcpstack.Send(pipe, "OK");
+				if(ServerIdentityMgr::hasPublicKey(identity))
+				{
+					tcpstack.Send(pipe, "needs certificate");
+				}
+				else
+				{
+					tcpstack.Send(pipe, "OK");
+				}				
 				return;
 			}
 
 			if( ServerIdentityMgr::numServerIdentities()==0 )
 			{
-				ServerIdentityMgr::addServerIdentity(identity);
+				ServerIdentityMgr::addServerIdentity(identity, "");
 				tcpstack.Send(pipe, "OK");
 			}
 			else
@@ -67,6 +90,77 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 				tcpstack.Send(pipe, "failed");
 			}
 		}
+	}
+}
+
+void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity)
+{
+	if(identity.empty())
+	{
+		tcpstack.Send(pipe, "");
+		return;
+	}
+
+	IScopedLock lock(ident_mutex);
+	std::string challenge = randomChallenge(30);
+	challenges[identity]=challenge;
+
+	tcpstack.Send(pipe, challenge);
+}
+
+void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::string &cmd)
+{
+	if(identity.empty())
+	{
+		tcpstack.Send(pipe, "empty identity");
+		return;
+	}
+	if(crypto_fak==NULL)
+	{
+		tcpstack.Send(pipe, "no crypto");
+		return;
+	}
+
+	str_nmap::iterator challenge_it = challenges.find(identity);
+
+	if(challenge_it==challenges.end() || challenge_it->second.empty())
+	{
+		tcpstack.Send(pipe, "no challenge");
+		return;
+	}
+
+	const std::string& challenge = challenge_it->second;
+
+	size_t hashpos = cmd.find("#");
+	if(hashpos==std::string::npos)
+	{
+		tcpstack.Send(pipe, "no parameters");
+		return;
+	}
+
+	str_nmap params;
+	ParseParamStr(cmd.substr(hashpos+1), &params);
+
+	std::string pubkey = base64_decode_dash(params["pubkey"]);
+	std::string signature = base64_decode_dash(params["signature"]);
+	std::string session_identity = params["session_identity"];
+
+	if(!ServerIdentityMgr::hasPublicKey(identity))
+	{
+		ServerIdentityMgr::setPublicKey(identity, pubkey);
+	}
+
+	pubkey = ServerIdentityMgr::getPublicKey(identity);
+	
+	if(crypto_fak->verifyData(pubkey, challenge, signature))
+	{
+		ServerIdentityMgr::addSessionIdentity(session_identity);
+		tcpstack.Send(pipe, "ok");
+		challenges.erase(challenge_it);
+	}
+	else
+	{
+		tcpstack.Send(pipe, "signature verification failed");
 	}
 }
 
@@ -1171,7 +1265,7 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	std::string ident=Server->ConvertToUTF8(params[L"ident"]);
 	if(!ident.empty())
 	{
-		ServerIdentityMgr::addServerIdentity(ident);
+		ServerIdentityMgr::addServerIdentity(ident, "");
 		tcpstack.Send(pipe, "OK");
 	}
 	else

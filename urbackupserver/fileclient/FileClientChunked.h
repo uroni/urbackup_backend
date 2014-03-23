@@ -43,7 +43,7 @@ public:
 	};
 
 	FileClientChunked(IPipe *pipe, CTCPStack *stack, FileClientChunked::ReconnectionCallback *reconnection_callback,
-			FileClientChunked::NoFreeSpaceCallback *nofreespace_callback);
+			FileClientChunked::NoFreeSpaceCallback *nofreespace_callback, std::string identity);
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
@@ -150,6 +150,8 @@ private:
 	std::vector<IPipeThrottler*> throttlers;
 
 	unsigned int reconnection_timeout;
+
+	std::string identity;
 };
 
 #endif //FILECLIENTCHUNKED_H

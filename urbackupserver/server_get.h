@@ -40,9 +40,10 @@ public:
 
 	void operator()(void);
 
-	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL);
-	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL);
+	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
+	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
 	std::string sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
+	std::string sendClientMessageRetry(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR);
 	void sendToPipe(const std::string &msg);
 	int getPCDone(void);
 
@@ -165,6 +166,8 @@ private:
 	bool exponentialBackoffImage();
 	bool exponentialBackoffFile();
 
+	bool authenticatePubKey();
+
 	SSettings curr_intervals;
 
 	IPipe *pipe;
@@ -275,4 +278,6 @@ private:
 
 	int64 last_file_backup_try;
 	size_t count_file_backup_try;
+
+	std::string session_identity;
 };

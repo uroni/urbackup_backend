@@ -33,8 +33,6 @@
 #include <errno.h>
 #endif
 
-extern std::string server_identity;
-
 namespace
 {
 	const std::string str_tmpdir="C:\\Windows\\Temp";
@@ -75,14 +73,15 @@ bool setSockP(SOCKET sock)
         return true;
 }    
 
-FileClient::FileClient(bool enable_find_servers, int protocol_version, bool internet_connection,
+FileClient::FileClient(bool enable_find_servers, std::string identity, int protocol_version, bool internet_connection,
 	FileClient::ReconnectionCallback *reconnection_callback, FileClient::NoFreeSpaceCallback *nofreespace_callback)
 	: tcpsock(NULL), starttime(0), connect_starttime(0), socket_open(false), connected(false),
-	num_games(0), num_games_get(0), num_games_res(false), res_name(false), serveraddr(), local_ip(),
+	serveraddr(), local_ip(),
 	max_version(), server_addr(), connection_id(), 
 	protocol_version(protocol_version), internet_connection(internet_connection),
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
-	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true)
+	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
+	identity(identity)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
@@ -561,99 +560,6 @@ _u32 FileClient::Connect(IPipe *cp)
 		return ERR_CONNECTED;
 }
 
-_u32 FileClient::GetGameList(void)
-{
-
-		CWData data;
-		data.addUChar(ID_GET_GAMELIST);
-		data.addString( server_identity );
-
-		stack.reset();
-		stack.Send(tcpsock, data.getDataPtr(), data.getDataSize() );
-
-		starttime=Server->getTimeMS();
-		num_games_res=false;
-		num_games_get=0;
-
-		while(true)
-		{
-			size_t rc=tcpsock->Read(buffer, BUFFERSIZE_UDP, 10000);
-
-			if(rc==0)
-				return ERR_ERROR;
-
-			starttime=Server->getTimeMS();
-
-            stack.AddData(buffer, rc);
-                                
-			char *packet;
-			size_t packetsize;
-			while( (packet=stack.getPacket(&packetsize) )!=NULL )
-			{
-					if( packetsize>1 && packet[0]==ID_GAMELIST && num_games_res==false)
-					{
-							CRData data(&packet[1], packetsize);
-
-							if( !data.getUInt(&num_games) )
-							{
-									delete [] packet;
-									return ERR_ERROR;
-							}
-
-							res_name=true;
-							num_games_res=true;
-							num_games_get=0;
-
-							if( num_games==0 )
-							{
-									delete [] packet;
-									return ERR_SUCCESS;
-							}
-					}
-					else if( num_games_res==true )
-					{
-							if( res_name==true )
-							{
-									games.push_back(&packet[0]);
-									res_name=false;
-							}
-							else
-							{
-									writestring(packet, (unsigned int)packetsize, str_tmpdir+conv_filename(mServerName+"-"+games[ games.size()-1]) );
-									res_name=true;
-									num_games_get++;
-									if( num_games_get==num_games )
-									{
-											delete [] packet;
-											return ERR_SUCCESS;
-									}
-							}
-					}
-					delete []packet;
-			}
-               
-			if( Server->getTimeMS()-starttime>10000)
-            {
-                    return ERR_TIMEOUT;
-            }
-        }
-}
-
-bool FileClient::ListDownloaded(void)
-{
-        if( num_games_get==num_games )
-        {
-                return true;
-        }
-        else
-                return false;
-}
-
-std::vector<std::string> FileClient::getGameList(void)
-{
-        return games;
-}
-
 void FileClient::setServerName(std::string pName)
 {
         mServerName=pName;
@@ -721,7 +627,7 @@ bool FileClient::Reconnect(void)
     CWData data;
     data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
     data.addString( remotefn );
-	data.addString( server_identity );
+	data.addString( identity );
 
     stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 
@@ -762,7 +668,7 @@ bool FileClient::Reconnect(void)
 				CWData data;
 				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
 				data.addString( remotefn );
-				data.addString( server_identity );
+				data.addString( identity );
 
 				if( protocol_version>1 )
 				{
@@ -963,7 +869,7 @@ bool FileClient::Reconnect(void)
 					CWData data;
 					data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
 					data.addString( remotefn );
-					data.addString( server_identity );
+					data.addString( identity );
 
 					if( protocol_version>1 )
 					{

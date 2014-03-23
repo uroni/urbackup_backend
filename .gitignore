@@ -207,3 +207,6 @@ urbackupserver/www/dust-full.js
 urbackupserver/www/templates/node_modules/*
 pw_change.txt
 urbackup/backup_client.db-journal
+session_idents.txt
+urbackup/server_ident.priv
+urbackup/server_ident.pub

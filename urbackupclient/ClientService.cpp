@@ -77,6 +77,7 @@ int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
+std::map<std::string, std::string> ClientConnector::challenges;
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -699,9 +700,16 @@ void ClientConnector::ReceivePackets(void)
 			}
 		}
 
-		if(!identity.empty() && ServerIdentityMgr::checkServerIdentity(identity)==true)
+		if(!identity.empty() && ServerIdentityMgr::checkServerSessionIdentity(identity))
 		{
 			ident_ok=true;
+		}
+		else if(identity.empty() && ServerIdentityMgr::checkServerIdentity(identity))
+		{
+			if(!ServerIdentityMgr::hasPublicKey(identity) || crypto_fak==NULL)
+			{
+				ident_ok=true;
+			}
 		}
 
 		if( (ident_ok || is_channel) && !internet_conn )
@@ -712,6 +720,14 @@ void ClientConnector::ReceivePackets(void)
 		if(cmd=="ADD IDENTITY" )
 		{
 			CMD_ADD_IDENTITY(identity, cmd, ident_ok); continue;
+		}
+		else if(cmd=="GET CHALLENGE")
+		{
+			CMD_GET_CHALLENGE(identity); continue;
+		}
+		else if(next(cmd, 0, "SIGNATURE"))
+		{
+			CMD_SIGNATURE(identity, cmd); continue;
 		}
 		else if(next(cmd, 0, "FULL IMAGE ") )
 		{

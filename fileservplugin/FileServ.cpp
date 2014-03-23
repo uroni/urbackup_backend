@@ -22,6 +22,7 @@
 #include "../Interface/Server.h"
 #include "CClientThread.h"
 #include "../Interface/ThreadPool.h"
+#include <algorithm>
 
 IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
@@ -68,7 +69,11 @@ std::wstring FileServ::getShareDir(const std::wstring &name)
 void FileServ::addIdentity(const std::string &pIdentity)
 {
 	IScopedLock lock(mutex);
-	identities.push_back(pIdentity);
+	if(std::find(identities.begin(), identities.end(), pIdentity)
+		== identities.end())
+	{
+		identities.push_back(pIdentity);
+	}
 }
 
 void FileServ::init_mutex(void)
@@ -118,4 +123,19 @@ void FileServ::runClient(IPipe *cp)
 {
 	CClientThread cc(cp, NULL);
 	cc();
+}
+
+bool FileServ::removeIdentity( const std::string &pIdentity )
+{
+	IScopedLock lock(mutex);
+	std::vector<std::string>::iterator it = std::find(identities.begin(), identities.end(), pIdentity);
+	if(it!=identities.end())
+	{
+		identities.erase(it);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }

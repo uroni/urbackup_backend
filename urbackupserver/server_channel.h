@@ -11,7 +11,7 @@ class ServerSettings;
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode);
+	ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode, const std::string& identiy);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -54,4 +54,6 @@ private:
 	bool all_client_rights;
 
 	int img_id_offset;
+
+	std::string identity;
 };

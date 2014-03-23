@@ -48,7 +48,7 @@ public:
 		};
 
 
-		FileClient(bool enable_find_servers, int protocol_version=0, bool internet_connection=false,
+		FileClient(bool enable_find_servers, std::string identity, int protocol_version=0, bool internet_connection=false,
 			FileClient::ReconnectionCallback *reconnection_callback=NULL,
 			FileClient::NoFreeSpaceCallback *nofreespace_callback=NULL);
         ~FileClient(void);
@@ -68,9 +68,6 @@ public:
 		_u32 Connect(IPipe *cp);
 
         //---needs Connection
-        _u32 GetGameList(void);
-        std::vector<std::string> getGameList(void);
-
         _u32 GetFile(std::string remotefn, IFile *file, bool hashed);
 
 		void addThrottler(IPipeThrottler *throttler);
@@ -96,11 +93,6 @@ private:
 
         bool socket_open;
         bool connected;
-
-        _u32 num_games;
-        _u32 num_games_get;
-        bool num_games_res;
-        bool res_name;
 
         char buffer[BUFFERSIZE_UDP];
 
@@ -135,6 +127,8 @@ private:
 		unsigned int reconnection_timeout;
 
 		bool retryBindToNewInterfaces;
+		
+		std::string identity;
 };
 
 const _u32 ERR_CONTINUE=0;
