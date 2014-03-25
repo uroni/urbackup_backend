@@ -65,7 +65,7 @@ namespace
 		}
 	}
 
-	bool sendZip(Helper& helper, const std::wstring& foldername)
+	bool sendZip(Helper& helper, const std::wstring& foldername, const std::wstring& filter)
 	{
 		std::wstring zipname=ExtractFileName(foldername)+L".zip";
 
@@ -74,7 +74,7 @@ namespace
 		Server->addHeader(tid, "Content-Disposition: attachment; filename=\""+Server->ConvertToUTF8(zipname)+"\"");
 		helper.releaseAll();
 
-		return create_zip_to_output(foldername, L"");
+		return create_zip_to_output(foldername, filter);
 	}
 }
 
@@ -245,7 +245,7 @@ ACTION_IMPL(backups)
 						}
 						else if(sa==L"zipdl")
 						{
-							sendZip(helper, currdir);
+							sendZip(helper, currdir, GET[L"filter"]);
 							return;
 						}
 

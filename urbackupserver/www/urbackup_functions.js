@@ -389,7 +389,7 @@ function format_size(s)
 	if(s>1024)
 	{
 		s/=1024.0;
-		suffix="MB"
+		suffix="MB";
 	}
 	if(s>1024)
 	{
