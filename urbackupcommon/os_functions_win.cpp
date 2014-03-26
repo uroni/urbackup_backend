@@ -34,6 +34,10 @@
 #include <sys\stat.h>
 #include <time.h>
 
+#ifdef USE_NTFS_TXF
+#include <KtmW32.h>
+#endif
+
 #define REPARSE_MOUNTPOINT_HEADER_SIZE   8
 
 typedef struct {
@@ -151,19 +155,92 @@ int64 os_atoi64(const std::string &str)
 	return _atoi64(str.c_str());
 }
 
-bool os_create_dir(const std::wstring &dir)
+void* os_start_transaction()
 {
-	return CreateDirectoryW(dir.c_str(), NULL)!=0;
+#ifdef USE_NTFS_TXF
+	HANDLE htrans = CreateTransaction(NULL, NULL, 0, 0, 0, 0, NULL);
+	if(htrans==INVALID_HANDLE_VALUE)
+	{
+		Server->Log("Creating transaction failed. ec="+nconvert((int)GetLastError), LL_WARNING);
+		return NULL;
+	}
+	return htrans;
+#else
+	return NULL;
+#endif
 }
 
-bool os_create_dir(const std::string &dir)
+bool os_finish_transaction(void* transaction)
 {
-	return CreateDirectoryA(dir.c_str(), NULL)!=0;
+#ifdef USE_NTFS_TXF
+	if(transaction==NULL)
+	{
+		return false;
+	}
+
+	BOOL b = CommitTransaction(transaction);
+
+	if(!b)
+	{
+		Server->Log("Commiting transaction failed. ec="+nconvert((int)GetLastError), LL_ERROR);
+		CloseHandle(transaction);
+		return false;
+	}
+
+	CloseHandle(transaction);
+	return true;
+#else
+	return true;
+#endif
 }
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links)
+bool os_create_dir(const std::wstring &dir, void* transaction)
 {
-	BOOL r=CreateHardLinkW(linkname.c_str(), fname.c_str(), NULL);
+#ifdef USE_NTFS_TXF
+	if(transaction==NULL)
+	{
+#endif
+		return CreateDirectoryW(dir.c_str(), NULL)!=0;
+#ifdef USE_NTFS_TXF
+	}
+	else
+	{
+		return CreateDirectoryTransactedW(NULL, dir.c_str(), NULL, transaction)!=0;
+	}
+#endif
+}
+
+bool os_create_dir(const std::string &dir, void* transaction)
+{
+#ifdef USE_NTFS_TXF
+	if(transaction==NULL)
+	{
+#endif
+		return CreateDirectoryA(dir.c_str(), NULL)!=0;
+#ifdef USE_NTFS_TXF
+	}
+	else
+	{
+		return CreateDirectoryTransactedA(NULL, dir.c_str(), NULL, transaction)!=0;
+	}
+#endif
+}
+
+bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links, void* transaction)
+{
+	BOOL r;
+#ifdef USE_NTFS_TXF
+	if(transaction==NULL)
+	{
+#endif
+		r=CreateHardLinkW(linkname.c_str(), fname.c_str(), NULL);
+#ifdef USE_NTFS_TXF
+	}
+	else
+	{
+		r=CreateHardLinkTransactedW(linkname.c_str(), fname.c_str(), NULL, transaction);
+	}
+#endif
 	if(too_many_links!=NULL)
 	{
 		*too_many_links=false;
