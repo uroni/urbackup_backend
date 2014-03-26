@@ -104,7 +104,7 @@ bool os_remove_dir(const std::string &path)
 	return rmdir(path.c_str())==0;
 }
 
-bool os_create_dir(const std::string &path)
+bool os_create_dir(const std::string &path, void* transaction)
 {
 	return mkdir(path.c_str(), S_IRWXU | S_IRWXG)==0;
 }
