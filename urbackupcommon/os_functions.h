@@ -31,17 +31,13 @@ bool isDirectory(const std::wstring &path);
 
 int64 os_atoi64(const std::string &str);
 
-void* os_start_transaction();
+bool os_create_dir(const std::wstring &dir);
 
-bool os_finish_transaction(void* transaction);
+bool os_create_dir(const std::string &dir);
 
-bool os_create_dir(const std::wstring &dir, void* transaction=NULL);
+bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links);
 
-bool os_create_dir(const std::string &dir, void* transaction=NULL);
-
-bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_link, void* transaction=NULL);
-
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links, void* transaction=NULL);
+bool os_create_hardlink(const std::string &linkname, const std::string &fname, bool use_ioref, bool* too_many_link);
 
 int64 os_free_space(const std::wstring &path);
 

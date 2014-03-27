@@ -379,7 +379,7 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	}
 }
 
-bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last, void* transaction)
+bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last)
 {
 	int f_backupid;
 	std::wstring ff;
@@ -400,7 +400,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 	{
 		tries_once=true;
 		bool too_many_hardlinks;
-		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff), use_snapshots, &too_many_hardlinks, transaction);
+		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(ff), use_snapshots, &too_many_hardlinks);
 		if(!b)
 		{
 			if(cache_hit && !cache_requires_update)
@@ -440,7 +440,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 		{
 			if(!hash_fn.empty() && !f_hashpath.empty())
 			{
-				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(f_hashpath), use_snapshots, NULL, transaction);
+				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(f_hashpath), use_snapshots, NULL);
 				if(!b)
 				{
 					IFile *ctf=Server->openFile(os_file_prefix(f_hashpath), MODE_READ);
@@ -516,7 +516,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 	bool copy=true;
 	bool tries_once;
 	std::wstring ff_last;
-	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn, tries_once, ff_last, NULL))
+	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn, tries_once, ff_last))
 	{
 		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 		copy=false;

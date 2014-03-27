@@ -177,13 +177,13 @@ int64 os_atoi64(const std::string &str)
 	return strtoll(str.c_str(), NULL, 10);
 }
 
-bool os_create_dir(const std::wstring &dir, void* transaction)
+bool os_create_dir(const std::wstring &dir)
 {
 	int rc=mkdir(Server->ConvertToUTF8(dir).c_str(), S_IRWXU | S_IRWXG );
 	return rc==0;
 }
 
-bool os_create_dir(const std::string &path, void* transaction)
+bool os_create_dir(const std::string &path)
 {
 	return mkdir(path.c_str(), S_IRWXU | S_IRWXG)==0;
 }
@@ -225,7 +225,7 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 #endif
 }
 
-bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links, void* transaction)
+bool os_create_hardlink(const std::wstring &linkname, const std::wstring &fname, bool use_ioref, bool* too_many_links)
 {
 	if(too_many_links!=NULL)
 		*too_many_links=false;

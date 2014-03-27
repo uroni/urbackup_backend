@@ -1597,7 +1597,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
 					if( hash_it!=extra_params.end())
 					{
-						if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, true, NULL))
+						if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, true))
 						{
 							transferred+=cf.size;
 							file_ok=true;
@@ -1832,7 +1832,7 @@ bool BackupServerGet::load_file_patch(const std::wstring &fn, const std::wstring
 		return true;
 }
 
-bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql, void* transaction)
+bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql)
 {
 	std::wstring os_curr_path=convertToOSPathFromFileClient(os_path+L"/"+short_fn);
 	std::wstring dstpath=backuppath+os_curr_path;
@@ -1845,7 +1845,7 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 
 	bool tries_once;
 	std::wstring ff_last;
-	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), tries_once, ff_last, transaction);
+	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), tries_once, ff_last);
 
 	if(ok && add_sql)
 	{
@@ -2021,18 +2021,6 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	}
 
 	return rsize;
-}
-
-namespace
-{
-	void restart_transaction(void*& transaction)
-	{
-		if(transaction!=NULL)
-		{
-			os_finish_transaction(transaction);
-		}
-		transaction = os_start_transaction();
-	}
 }
 
 bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool &disk_error, bool &log_backup)
@@ -2277,8 +2265,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	
 	ServerLogger::Log(clientid, clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
 
-	void* transaction = os_start_transaction();
-
 	resetEntryState();
 	
 	bool c_has_error=false;
@@ -2366,9 +2352,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 						if(!on_snapshot || (indirchange && !r_offline) )
 						{
-							if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path), transaction))
+							if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
-								restart_transaction(transaction);
 								if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
 								{
 									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
@@ -2380,9 +2365,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 									ServerLogger::Log(clientid, L"Directory \""+backuppath+local_curr_os_path+L"\" does already exist.", LL_WARNING);
 								}
 							}
-							if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path), transaction))
+							if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 							{
-								restart_transaction(transaction);
 								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 								{
 									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
@@ -2438,7 +2422,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 						if(r_offline==false && hash_it!=extra_params.end())
 						{
-							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false, transaction))
+							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
 							{
 								transferred+=cf.size;
 								f_ok=true;
@@ -2447,8 +2431,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 						if(r_offline==false && !f_ok)
 						{
-							restart_transaction(transaction);
-
 							bool b;
 							bool download_ok;
 							if(intra_file_diffs)
@@ -2476,14 +2458,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					{			
 						std::wstring srcpath=last_backuppath+local_curr_os_path;
 						bool too_many_hardlinks;
-						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks, transaction);
+						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
 						if(b)
 						{
 							f_ok=true;
 						}
 						else if(!b && too_many_hardlinks)
 						{
-							restart_transaction(transaction);
 							ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Hardlink limit was reached. Copying file...", LL_DEBUG);
 							copyFile(srcpath, backuppath+local_curr_os_path);
 							f_ok=true;
@@ -2509,7 +2490,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 							if(r_offline==false && hash_it!=extra_params.end())
 							{
-								if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false, transaction))
+								if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
 								{
 									f_ok=true;
 								}
@@ -2517,8 +2498,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 							if(r_offline==false && !f_ok)
 							{
-								restart_transaction(transaction);
-
 								bool download_ok;
 								bool b2;
 								if(intra_file_diffs)
@@ -2543,7 +2522,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						}
 						else if(with_hashes)
 						{
-							os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, NULL, transaction);
+							os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, NULL);
 						}
 					}
 					else
@@ -2569,8 +2548,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	status.pcdone=100;
 	ServerStatus::setServerStatus(status, true);
 	Server->destroy(clientlist);
-
-	os_finish_transaction(transaction);
 
 	sendBackupOkay(r_offline==false && c_has_error==false);
 
