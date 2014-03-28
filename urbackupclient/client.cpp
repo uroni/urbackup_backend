@@ -1171,8 +1171,6 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
-	std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
-
 	cleanup_saved_shadowcopies(true);
 
 	WCHAR volume_path[MAX_PATH]; 
@@ -1245,16 +1243,12 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						VSSLog("Removing reference because of reference timeout", LL_WARNING);
 					}
 
-					std::vector<std::wstring> m_keys;
-					for(std::map<std::wstring, SCDirs*>::iterator lit=scdirs_server.begin();lit!=scdirs_server.end();++lit)
-					{
-						m_keys.push_back(lit->first);
-					}
 					SCRef *curr=sc_refs[i];
-					for(size_t k=0;k<m_keys.size();++k)
+					std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();
+						it!=scdirs_server.end();++it)
 					{
-						std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.find(m_keys[k]);
-						if(it!=scdirs_server.end() && it->second->ref==curr)
+						if(it->second->ref==curr)
 						{
 							VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
 							release_shadowcopy(it->second, false, -1, dir);
@@ -1628,7 +1622,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 #endif
 	}
 
-	std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+	
 
 	bool r=true;
 	while(r)
@@ -1643,26 +1637,31 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 				while(c)
 				{
 					c=false;
-					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();it!=scdirs_server.end();++it)
+					for(std::map<std::string, std::map<std::wstring, SCDirs*> >::iterator server_it = scdirs.begin();
+						server_it!=scdirs.end();++server_it)
 					{
-						if(it->second->ref==sc_refs[i])
+						for(std::map<std::wstring, SCDirs*>::iterator it=server_it->second.begin();
+							it!=server_it->second.end();++it)
 						{
-							if(it->second->fileserv)
+							if(it->second->ref==sc_refs[i])
 							{
-								shareDir(it->second->dir, it->second->orig_target);
-							}
-							it->second->target=it->second->orig_target;
+								if(it->second->fileserv)
+								{
+									shareDir(it->second->dir, it->second->orig_target);
+								}
+								it->second->target=it->second->orig_target;
 
-							it->second->ref=NULL;
-							if(dontdel==NULL || it->second!=dontdel )
-							{
-								delete it->second;
-								scdirs_server.erase(it);
-								c=true;
-								break;
+								it->second->ref=NULL;
+								if(dontdel==NULL || it->second!=dontdel )
+								{
+									delete it->second;
+									server_it->second.erase(it);
+									c=true;
+									break;
+								}
 							}
 						}
-					}
+					}					
 				}
 				delete sc_refs[i];
 				sc_refs.erase(sc_refs.begin()+i);
