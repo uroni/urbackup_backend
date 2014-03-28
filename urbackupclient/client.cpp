@@ -1171,6 +1171,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
+	std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+
 	cleanup_saved_shadowcopies(true);
 
 	WCHAR volume_path[MAX_PATH]; 
@@ -1207,7 +1209,14 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 				bool only_own_tokens=true;
 				for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
 				{
-					if( sc_refs[i]->starttokens[k]!=starttoken && (Server->getTimeSeconds()-ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]))<3600)
+					unsigned int curr_time = Server->getTimeSeconds();
+					unsigned int last_token_time = ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]);
+					bool token_timeout=false;
+					if(curr_time>last_token_time && curr_time-last_token_time<10*60*1000)
+					{
+						token_timeout=true;
+					}
+					if( sc_refs[i]->starttokens[k]!=starttoken && !token_timeout)
 					{
 						only_own_tokens=false;
 						break;
@@ -1237,20 +1246,21 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 					}
 
 					std::vector<std::wstring> m_keys;
-					for(std::map<std::wstring, SCDirs*>::iterator lit=scdirs.begin();lit!=scdirs.end();++lit)
+					for(std::map<std::wstring, SCDirs*>::iterator lit=scdirs_server.begin();lit!=scdirs_server.end();++lit)
 					{
 						m_keys.push_back(lit->first);
 					}
 					SCRef *curr=sc_refs[i];
 					for(size_t k=0;k<m_keys.size();++k)
 					{
-						std::map<std::wstring, SCDirs*>::iterator it=scdirs.find(m_keys[k]);
-						if(it!=scdirs.end() && it->second->ref==curr)
+						std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.find(m_keys[k]);
+						if(it!=scdirs_server.end() && it->second->ref==curr)
 						{
 							VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
 							release_shadowcopy(it->second, false, -1, dir);
 						}
 					}
+					dir->target=dir->orig_target;
 					break;
 				}
 				else
@@ -1618,6 +1628,8 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 #endif
 	}
 
+	std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+
 	bool r=true;
 	while(r)
 	{
@@ -1631,7 +1643,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 				while(c)
 				{
 					c=false;
-					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs.begin();it!=scdirs.end();++it)
+					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();it!=scdirs_server.end();++it)
 					{
 						if(it->second->ref==sc_refs[i])
 						{
@@ -1645,7 +1657,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 							if(dontdel==NULL || it->second!=dontdel )
 							{
 								delete it->second;
-								scdirs.erase(it);
+								scdirs_server.erase(it);
 								c=true;
 								break;
 							}
@@ -1957,15 +1969,16 @@ std::string IndexThread::lookup_shadowcopy(int sid)
 
 SCDirs* IndexThread::getSCDir(const std::wstring path)
 {
-	std::map<std::wstring, SCDirs*>::iterator it=scdirs.find(path);
-	if(it!=scdirs.end())
+	std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+	std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.find(path);
+	if(it!=scdirs_server.end())
 	{
 		return it->second;
 	}
 	else
 	{
 		SCDirs *nd=new SCDirs;
-		scdirs.insert(std::pair<std::wstring, SCDirs*>(path, nd) );
+		scdirs_server.insert(std::pair<std::wstring, SCDirs*>(path, nd) );
 
 		nd->running=false;
 

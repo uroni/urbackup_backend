@@ -201,7 +201,7 @@ private:
 	DirectoryWatcherThread *dwt;
 	THREADPOOL_TICKET dwt_ticket;
 
-	std::map<std::wstring, SCDirs*> scdirs;
+	std::map<std::string, std::map<std::wstring, SCDirs*> > scdirs;
 	std::vector<SCRef*> sc_refs;
 
 	int index_c_db;
