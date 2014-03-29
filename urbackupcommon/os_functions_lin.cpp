@@ -52,7 +52,7 @@ void getMousePos(int &x, int &y)
 	y=0;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks)
 {
 	if(has_error!=NULL)
 	{
@@ -83,15 +83,19 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 		
 #ifndef sun
 		f.isdir=(dirp->d_type==DT_DIR);
-		if(!f.isdir || dirp->d_type==DT_UNKNOWN || (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR) )
+		if(!f.isdir || dirp->d_type==DT_UNKNOWN 
+				|| (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR)
+				|| dirp->d_type==DT_LNK )
 		{
 #endif
 			struct stat64 f_info;
-			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
+			int rc=stat64((upath+dirp->d_name).c_str(), &f_info);
 			if(rc==0)
 			{
 #ifndef sun
-				if(dirp->d_type==DT_UNKNOWN || (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR) )
+				if(dirp->d_type==DT_UNKNOWN
+					|| (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR)
+					|| dirp->d_type==DT_LNK)
 				{
 #endif
 					f.isdir=S_ISDIR(f_info.st_mode);
@@ -104,6 +108,13 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 						f.last_modified=f_info.st_mtime;
 						if(f.last_modified<0) f.last_modified*=-1;
 						f.size=f_info.st_size;
+					}
+					else
+					{
+						if(!follow_symlinks && S_ISLNK(f_info.st_mode) )
+						{
+							continue;
+						}
 					}
 #ifndef sun
 				}

@@ -84,7 +84,7 @@ void getMousePos(int &x, int &y)
 	y=mousepos.y;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks)
 {
 	if(has_error!=NULL)
 	{
@@ -122,7 +122,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 
 	do
 	{
-		if( !(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT && wfd.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) )
+		if( !(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT && wfd.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) || follow_symlinks )
 		{
 			SFile f;
 			f.name=wfd.cFileName;

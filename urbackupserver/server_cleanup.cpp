@@ -396,6 +396,9 @@ void ServerCleanupThread::do_remove(void)
 			if(cf.name==L"current")
 				continue;
 
+			if(cf.name==L".directory_pool")
+				continue;
+
 			if(cf.isdir)
 			{
 				ServerCleanupDao::CondInt res_id=cleanupdao->findFileBackup(clientid, cf.name);

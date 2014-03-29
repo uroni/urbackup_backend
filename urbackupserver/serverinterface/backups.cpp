@@ -249,7 +249,7 @@ ACTION_IMPL(backups)
 							return;
 						}
 
-						std::vector<SFile> tfiles=getFiles(os_file_prefix(currdir));
+						std::vector<SFile> tfiles=getFiles(os_file_prefix(currdir), NULL, true);
 
 						JSON::Array files;
 						for(size_t i=0;i<tfiles.size();++i)
