@@ -14,7 +14,9 @@ fs.writeFileSync(templates_file, '');
 
 fs.readdir('.', function(err,files){
     if(err) throw err;
-    files.forEach(function(file){
+	files.sort(function(a, b) {
+        return a < b ? -1 : 1;
+    }).forEach(function(file){
 		if(getExtension(file)=="htm")
 		{
 			fs.readFile(file, 'utf8', function (err,data) {

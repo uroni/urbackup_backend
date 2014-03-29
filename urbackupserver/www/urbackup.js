@@ -1349,6 +1349,7 @@ function show_settings2(data)
 			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
 			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
 			data.settings.use_tmpfiles_images=getCheckboxValue(data.settings.use_tmpfiles_images);
+			data.settings.use_incremental_symlinks=getCheckboxValue(data.settings.use_incremental_symlinks);
 			
 			
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
