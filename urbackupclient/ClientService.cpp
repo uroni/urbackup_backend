@@ -704,7 +704,7 @@ void ClientConnector::ReceivePackets(void)
 		{
 			ident_ok=true;
 		}
-		else if(identity.empty() && ServerIdentityMgr::checkServerIdentity(identity))
+		else if(!identity.empty() && ServerIdentityMgr::checkServerIdentity(identity))
 		{
 			if(!ServerIdentityMgr::hasPublicKey(identity) || crypto_fak==NULL)
 			{
