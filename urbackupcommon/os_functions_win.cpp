@@ -687,15 +687,19 @@ std::wstring os_get_final_path(std::wstring path)
 bool os_rename_file(std::wstring src, std::wstring dst, void* transaction)
 {
 	BOOL rc;
+#ifdef USE_NTFS_TXF
 	if(transaction==NULL)
 	{
+#endif
 		DeleteFileW(dst.c_str());
 		rc=MoveFileW(src.c_str(), dst.c_str());
+#ifdef USE_NTFS_TXF
 	}
 	else
 	{
 		rc=MoveFileTransactedW(src.c_str(), dst.c_str(), NULL, NULL, MOVEFILE_REPLACE_EXISTING, transaction);
 	}	
+#endif
 #ifdef _DEBUG
 	if(rc==0)
 	{
