@@ -86,6 +86,7 @@ struct SSettings
 	std::string client_quota;
 	bool end_to_end_file_backup_verification;
 	bool internet_calculate_filehashes_on_client;
+	bool use_incremental_symlinks;
 };
 
 struct STimeSpan

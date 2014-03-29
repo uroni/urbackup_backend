@@ -1,20 +1,20 @@
-#include "ServerCleanupDAO.h"
+#include "ServerCleanupDao.h"
 #include "../../stringtools.h"
 
-ServerCleanupDAO::ServerCleanupDAO(IDatabase *db)
+ServerCleanupDao::ServerCleanupDao(IDatabase *db)
 	: db(db)
 {
 	createQueries();
 }
 
-ServerCleanupDAO::~ServerCleanupDAO(void)
+ServerCleanupDao::~ServerCleanupDao(void)
 {
 	destroyQueries();
 }
 
 /**
 * @-SQLGenAccess
-* @func std::vector<SIncompleteImages> ServerCleanupDAO::getIncompleteImages
+* @func std::vector<SIncompleteImages> ServerCleanupDao::getIncompleteImages
 * @return int id, string path
 * @sql
 *   SELECT id, path
@@ -22,10 +22,10 @@ ServerCleanupDAO::~ServerCleanupDAO(void)
 *   WHERE 
 *     complete=0 AND running<datetime('now','-300 seconds')
 */
-std::vector<ServerCleanupDAO::SIncompleteImages> ServerCleanupDAO::getIncompleteImages(void)
+std::vector<ServerCleanupDao::SIncompleteImages> ServerCleanupDao::getIncompleteImages(void)
 {
 	db_results res=q_getIncompleteImages->Read();
-	std::vector<ServerCleanupDAO::SIncompleteImages> ret;
+	std::vector<ServerCleanupDao::SIncompleteImages> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -37,11 +37,11 @@ std::vector<ServerCleanupDAO::SIncompleteImages> ServerCleanupDAO::getIncomplete
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDAO::removeImage
+* @func void ServerCleanupDao::removeImage
 * @sql
 *   DELETE FROM backup_images WHERE id=:id(int)
 */
-void ServerCleanupDAO::removeImage(int id)
+void ServerCleanupDao::removeImage(int id)
 {
 	q_removeImage->Bind(id);
 	q_removeImage->Write();
@@ -50,14 +50,14 @@ void ServerCleanupDAO::removeImage(int id)
 
 /**
 * @-SQLGenAccess
-* @func std::vector<int> ServerCleanupDAO::getClientsSortFilebackups
+* @func std::vector<int> ServerCleanupDao::getClientsSortFilebackups
 * @return int id
 * @sql
 *   SELECT DISTINCT c.id AS id FROM clients c
 *		INNER JOIN backups b ON c.id=b.clientid
 *	ORDER BY b.backuptime ASC
 */
-std::vector<int> ServerCleanupDAO::getClientsSortFilebackups(void)
+std::vector<int> ServerCleanupDao::getClientsSortFilebackups(void)
 {
 	db_results res=q_getClientsSortFilebackups->Read();
 	std::vector<int> ret;
@@ -71,7 +71,7 @@ std::vector<int> ServerCleanupDAO::getClientsSortFilebackups(void)
 
 /**
 * @-SQLGenAccess
-* @func std::vector<int> ServerCleanupDAO::getClientsSortImagebackups
+* @func std::vector<int> ServerCleanupDao::getClientsSortImagebackups
 * @return int id
 * @sql
 *   SELECT DISTINCT c.id AS id FROM clients c 
@@ -79,7 +79,7 @@ std::vector<int> ServerCleanupDAO::getClientsSortFilebackups(void)
 *				ON c.id=b.clientid
 *	ORDER BY b.backuptime ASC
 */
-std::vector<int> ServerCleanupDAO::getClientsSortImagebackups(void)
+std::vector<int> ServerCleanupDao::getClientsSortImagebackups(void)
 {
 	db_results res=q_getClientsSortImagebackups->Read();
 	std::vector<int> ret;
@@ -93,19 +93,19 @@ std::vector<int> ServerCleanupDAO::getClientsSortImagebackups(void)
 
 /**
 * @-SQLGenAccess
-* @func std::vector<SImageLetter> ServerCleanupDAO::getFullNumImages
+* @func std::vector<SImageLetter> ServerCleanupDao::getFullNumImages
 * @return int id, string letter
 * @sql
 *   SELECT id, letter FROM backup_images 
 *	WHERE clientid=:clientid(int) AND incremental=0 AND complete=1 AND length(letter)<=2
 *	ORDER BY backuptime ASC
 */
-std::vector<ServerCleanupDAO::SImageLetter> ServerCleanupDAO::getFullNumImages(int clientid)
+std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getFullNumImages(int clientid)
 {
 	q_getFullNumImages->Bind(clientid);
 	db_results res=q_getFullNumImages->Read();
 	q_getFullNumImages->Reset();
-	std::vector<ServerCleanupDAO::SImageLetter> ret;
+	std::vector<ServerCleanupDao::SImageLetter> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -117,18 +117,18 @@ std::vector<ServerCleanupDAO::SImageLetter> ServerCleanupDAO::getFullNumImages(i
 
 /**
 * @-SQLGenAccess
-* @func std::vector<SImageRef> ServerCleanupDAO::getImageRefs
+* @func std::vector<SImageRef> ServerCleanupDao::getImageRefs
 * @return int id, int complete
 * @sql
 *	SELECT id, complete FROM backup_images
 *	WHERE incremental<>0 AND incremental_ref=:incremental_ref(int)
 */
-std::vector<ServerCleanupDAO::SImageRef> ServerCleanupDAO::getImageRefs(int incremental_ref)
+std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefs(int incremental_ref)
 {
 	q_getImageRefs->Bind(incremental_ref);
 	db_results res=q_getImageRefs->Read();
 	q_getImageRefs->Reset();
-	std::vector<ServerCleanupDAO::SImageRef> ret;
+	std::vector<ServerCleanupDao::SImageRef> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -140,12 +140,12 @@ std::vector<ServerCleanupDAO::SImageRef> ServerCleanupDAO::getImageRefs(int incr
 
 /**
 * @-SQLGenAccess
-* @func string ServerCleanupDAO::getImagePath
+* @func string ServerCleanupDao::getImagePath
 * @return string path
 * @sql
 *	SELECT path FROM backup_images WHERE id=:id(int)
 */
-ServerCleanupDAO::CondString ServerCleanupDAO::getImagePath(int id)
+ServerCleanupDao::CondString ServerCleanupDao::getImagePath(int id)
 {
 	q_getImagePath->Bind(id);
 	db_results res=q_getImagePath->Read();
@@ -161,19 +161,19 @@ ServerCleanupDAO::CondString ServerCleanupDAO::getImagePath(int id)
 
 /**
 * @-SQLGenAccess
-* @func std::vector<SImageLetter> ServerCleanupDAO::getIncrNumImages
+* @func std::vector<SImageLetter> ServerCleanupDao::getIncrNumImages
 * @return int id, string letter
 * @sql
 *	SELECT id,letter FROM backup_images
 *	WHERE clientid=:clientid(int) AND incremental<>0 AND complete=1 AND length(letter)<=2
 *	ORDER BY backuptime ASC
 */
-std::vector<ServerCleanupDAO::SImageLetter> ServerCleanupDAO::getIncrNumImages(int clientid)
+std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getIncrNumImages(int clientid)
 {
 	q_getIncrNumImages->Bind(clientid);
 	db_results res=q_getIncrNumImages->Read();
 	q_getIncrNumImages->Reset();
-	std::vector<ServerCleanupDAO::SImageLetter> ret;
+	std::vector<ServerCleanupDao::SImageLetter> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -185,14 +185,14 @@ std::vector<ServerCleanupDAO::SImageLetter> ServerCleanupDAO::getIncrNumImages(i
 
 /**
 * @-SQLGenAccess
-* @func std::vector<int> ServerCleanupDAO::getFullNumFiles
+* @func std::vector<int> ServerCleanupDao::getFullNumFiles
 * @return int id
 * @sql
 *	SELECT id FROM backups
 *	WHERE clientid=:clientid(int) AND incremental=0 AND running<datetime('now','-300 seconds') AND archived=0
 *   ORDER BY backuptime ASC
 */
-std::vector<int> ServerCleanupDAO::getFullNumFiles(int clientid)
+std::vector<int> ServerCleanupDao::getFullNumFiles(int clientid)
 {
 	q_getFullNumFiles->Bind(clientid);
 	db_results res=q_getFullNumFiles->Read();
@@ -208,14 +208,14 @@ std::vector<int> ServerCleanupDAO::getFullNumFiles(int clientid)
 
 /**
 * @-SQLGenAccess
-* @func std::vector<int> ServerCleanupDAO::getIncrNumFiles
+* @func std::vector<int> ServerCleanupDao::getIncrNumFiles
 * @return int id
 * @sql
 *	SELECT id FROM backups
 *	WHERE clientid=:clientid(int) AND incremental<>0 AND running<datetime('now','-300 seconds') AND archived=0
 *	ORDER BY backuptime ASC
 */
-std::vector<int> ServerCleanupDAO::getIncrNumFiles(int clientid)
+std::vector<int> ServerCleanupDao::getIncrNumFiles(int clientid)
 {
 	q_getIncrNumFiles->Bind(clientid);
 	db_results res=q_getIncrNumFiles->Read();
@@ -231,12 +231,12 @@ std::vector<int> ServerCleanupDAO::getIncrNumFiles(int clientid)
 
 /**
 * @-SQLGenAccess
-* @func string ServerCleanupDAO::getClientName
+* @func string ServerCleanupDao::getClientName
 * @return string name
 * @sql
 *	SELECT name FROM clients WHERE id=:clientid(int)
 */
-ServerCleanupDAO::CondString ServerCleanupDAO::getClientName(int clientid)
+ServerCleanupDao::CondString ServerCleanupDao::getClientName(int clientid)
 {
 	q_getClientName->Bind(clientid);
 	db_results res=q_getClientName->Read();
@@ -252,12 +252,12 @@ ServerCleanupDAO::CondString ServerCleanupDAO::getClientName(int clientid)
 
 /**
 * @-SQLGenAccess
-* @func string ServerCleanupDAO::getFileBackupPath
+* @func string ServerCleanupDao::getFileBackupPath
 * @return string path
 * @sql
 *	SELECT path FROM backups WHERE id=:backupid(int)
 */
-ServerCleanupDAO::CondString ServerCleanupDAO::getFileBackupPath(int backupid)
+ServerCleanupDao::CondString ServerCleanupDao::getFileBackupPath(int backupid)
 {
 	q_getFileBackupPath->Bind(backupid);
 	db_results res=q_getFileBackupPath->Read();
@@ -273,11 +273,11 @@ ServerCleanupDAO::CondString ServerCleanupDAO::getFileBackupPath(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDAO::deleteFiles
+* @func void ServerCleanupDao::deleteFiles
 * @sql
 *	DELETE FROM files WHERE backupid=:backupid(int)
 */
-void ServerCleanupDAO::deleteFiles(int backupid)
+void ServerCleanupDao::deleteFiles(int backupid)
 {
 	q_deleteFiles->Bind(backupid);
 	q_deleteFiles->Write();
@@ -286,11 +286,11 @@ void ServerCleanupDAO::deleteFiles(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDAO::removeFileBackup
+* @func void ServerCleanupDao::removeFileBackup
 * @sql
 *	DELETE FROM backups WHERE id=:backupid(int)
 */
-void ServerCleanupDAO::removeFileBackup(int backupid)
+void ServerCleanupDao::removeFileBackup(int backupid)
 {
 	q_removeFileBackup->Bind(backupid);
 	q_removeFileBackup->Write();
@@ -299,12 +299,12 @@ void ServerCleanupDAO::removeFileBackup(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func SFileBackupInfo ServerCleanupDAO::getFileBackupInfo
+* @func SFileBackupInfo ServerCleanupDao::getFileBackupInfo
 * @return int id, string backuptime, string path
 * @sql
 *	SELECT id, backuptime, path FROM backups WHERE id=:backupid(int)
 */
-ServerCleanupDAO::SFileBackupInfo ServerCleanupDAO::getFileBackupInfo(int backupid)
+ServerCleanupDao::SFileBackupInfo ServerCleanupDao::getFileBackupInfo(int backupid)
 {
 	q_getFileBackupInfo->Bind(backupid);
 	db_results res=q_getFileBackupInfo->Read();
@@ -322,12 +322,12 @@ ServerCleanupDAO::SFileBackupInfo ServerCleanupDAO::getFileBackupInfo(int backup
 
 /**
 * @-SQLGenAccess
-* @func SImageBackupInfo ServerCleanupDAO::getImageBackupInfo
+* @func SImageBackupInfo ServerCleanupDao::getImageBackupInfo
 * @return int id, string backuptime, string path, string letter
 * @sql
 *	SELECT id, backuptime, path, letter FROM backup_images WHERE id=:backupid(int)
 */
-ServerCleanupDAO::SImageBackupInfo ServerCleanupDAO::getImageBackupInfo(int backupid)
+ServerCleanupDao::SImageBackupInfo ServerCleanupDao::getImageBackupInfo(int backupid)
 {
 	q_getImageBackupInfo->Bind(backupid);
 	db_results res=q_getImageBackupInfo->Read();
@@ -346,14 +346,14 @@ ServerCleanupDAO::SImageBackupInfo ServerCleanupDAO::getImageBackupInfo(int back
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDAO::moveFiles
+* @func void ServerCleanupDao::moveFiles
 * @sql
 *	INSERT INTO files_del
 *		(backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del)
 *	SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 1 AS is_del
 *		FROM files WHERE backupid=:backupid(int)
 */
-void ServerCleanupDAO::moveFiles(int backupid)
+void ServerCleanupDao::moveFiles(int backupid)
 {
 	q_moveFiles->Bind(backupid);
 	q_moveFiles->Write();
@@ -362,7 +362,7 @@ void ServerCleanupDAO::moveFiles(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDAO::removeImageSize
+* @func void ServerCleanupDao::removeImageSize
 * @sql
 *	UPDATE clients
 *	SET bytes_used_images=( (SELECT bytes_used_images
@@ -380,7 +380,7 @@ void ServerCleanupDAO::moveFiles(int backupid)
 *			  FROM backup_images
 *			  WHERE id=:backupid(int))
 */
-void ServerCleanupDAO::removeImageSize(int backupid)
+void ServerCleanupDao::removeImageSize(int backupid)
 {
 	q_removeImageSize->Bind(backupid);
 	q_removeImageSize->Bind(backupid);
@@ -391,13 +391,13 @@ void ServerCleanupDAO::removeImageSize(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDAO::addToImageStats
+* @func void ServerCleanupDao::addToImageStats
 * @sql
 *	INSERT INTO del_stats (backupid, image, delsize, clientid, incremental)
 *	SELECT id, 1 AS image, (size_bytes+:size_correction(int64)) AS delsize, clientid, incremental
 *		FROM backup_images WHERE id=:backupid(int)
 */
-void ServerCleanupDAO::addToImageStats(int64 size_correction, int backupid)
+void ServerCleanupDao::addToImageStats(int64 size_correction, int backupid)
 {
 	q_addToImageStats->Bind(size_correction);
 	q_addToImageStats->Bind(backupid);
@@ -407,11 +407,11 @@ void ServerCleanupDAO::addToImageStats(int64 size_correction, int backupid)
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDAO::updateDelImageStats
+* @func void ServerCleanupDao::updateDelImageStats
 * @sql
 *	UPDATE del_stats SET stoptime=CURRENT_TIMESTAMP WHERE rowid=:rowid(int64)
 */
-void ServerCleanupDAO::updateDelImageStats(int64 rowid)
+void ServerCleanupDao::updateDelImageStats(int64 rowid)
 {
 	q_updateDelImageStats->Bind(rowid);
 	q_updateDelImageStats->Reset();
@@ -419,17 +419,17 @@ void ServerCleanupDAO::updateDelImageStats(int64 rowid)
 
 /**
 * @-SQLGenAccess
-* @func vector<SImageBackupInfo> ServerCleanupDAO::getClientImages
+* @func vector<SImageBackupInfo> ServerCleanupDao::getClientImages
 * @return int id, string path
 * @sql
 *	SELECT id, path FROM backup_images WHERE clientid=:clientid(int)
 */
-std::vector<ServerCleanupDAO::SImageBackupInfo> ServerCleanupDAO::getClientImages(int clientid)
+std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getClientImages(int clientid)
 {
 	q_getClientImages->Bind(clientid);
 	db_results res=q_getClientImages->Read();
 	q_getClientImages->Reset();
-	std::vector<ServerCleanupDAO::SImageBackupInfo> ret;
+	std::vector<ServerCleanupDao::SImageBackupInfo> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -442,12 +442,12 @@ std::vector<ServerCleanupDAO::SImageBackupInfo> ServerCleanupDAO::getClientImage
 
 /**
 * @-SQLGenAccess
-* @func vector<int> ServerCleanupDAO::getClientFileBackups
+* @func vector<int> ServerCleanupDao::getClientFileBackups
 * @return int id
 * @sql
 *	SELECT id FROM backups WHERE clientid=:clientid(int)
 */
-std::vector<int> ServerCleanupDAO::getClientFileBackups(int clientid)
+std::vector<int> ServerCleanupDao::getClientFileBackups(int clientid)
 {
 	q_getClientFileBackups->Bind(clientid);
 	db_results res=q_getClientFileBackups->Read();
@@ -463,12 +463,12 @@ std::vector<int> ServerCleanupDAO::getClientFileBackups(int clientid)
 
 /**
 * @-SQLGenAccess
-* @func vector<int> ServerCleanupDAO::getAssocImageBackups
+* @func vector<int> ServerCleanupDao::getAssocImageBackups
 * @return int assoc_id
 * @sql
 *	SELECT assoc_id FROM assoc_images WHERE img_id=:img_id(int)
 */
-std::vector<int> ServerCleanupDAO::getAssocImageBackups(int img_id)
+std::vector<int> ServerCleanupDao::getAssocImageBackups(int img_id)
 {
 	q_getAssocImageBackups->Bind(img_id);
 	db_results res=q_getAssocImageBackups->Read();
@@ -484,12 +484,12 @@ std::vector<int> ServerCleanupDAO::getAssocImageBackups(int img_id)
 
 /**
 * @-SQLGenAccess
-* @func int64 ServerCleanupDAO::getImageSize
+* @func int64 ServerCleanupDao::getImageSize
 * @return int64 size_bytes
 * @sql
 *	SELECT size_bytes FROM backup_images WHERE id=:backupid(int)
 */
-ServerCleanupDAO::CondInt64 ServerCleanupDAO::getImageSize(int backupid)
+ServerCleanupDao::CondInt64 ServerCleanupDao::getImageSize(int backupid)
 {
 	q_getImageSize->Bind(backupid);
 	db_results res=q_getImageSize->Read();
@@ -505,15 +505,15 @@ ServerCleanupDAO::CondInt64 ServerCleanupDAO::getImageSize(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func vector<SClientInfo> ServerCleanupDAO::getClients
+* @func vector<SClientInfo> ServerCleanupDao::getClients
 * @return int id, string name
 * @sql
 *	SELECT id, name FROM clients
 */
-std::vector<ServerCleanupDAO::SClientInfo> ServerCleanupDAO::getClients(void)
+std::vector<ServerCleanupDao::SClientInfo> ServerCleanupDao::getClients(void)
 {
 	db_results res=q_getClients->Read();
-	std::vector<ServerCleanupDAO::SClientInfo> ret;
+	std::vector<ServerCleanupDao::SClientInfo> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -526,17 +526,17 @@ std::vector<ServerCleanupDAO::SClientInfo> ServerCleanupDAO::getClients(void)
 
 /**
 * @-SQLGenAccess
-* @func vector<SFileBackupInfo> ServerCleanupDAO::getFileBackupsOfClient
+* @func vector<SFileBackupInfo> ServerCleanupDao::getFileBackupsOfClient
 * @return int id, string backuptime, string path
 * @sql
 *	SELECT id, backuptime, path FROM backups WHERE clientid=:clientid(int)
 */
-std::vector<ServerCleanupDAO::SFileBackupInfo> ServerCleanupDAO::getFileBackupsOfClient(int clientid)
+std::vector<ServerCleanupDao::SFileBackupInfo> ServerCleanupDao::getFileBackupsOfClient(int clientid)
 {
 	q_getFileBackupsOfClient->Bind(clientid);
 	db_results res=q_getFileBackupsOfClient->Read();
 	q_getFileBackupsOfClient->Reset();
-	std::vector<ServerCleanupDAO::SFileBackupInfo> ret;
+	std::vector<ServerCleanupDao::SFileBackupInfo> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -550,17 +550,17 @@ std::vector<ServerCleanupDAO::SFileBackupInfo> ServerCleanupDAO::getFileBackupsO
 
 /**
 * @-SQLGenAccess
-* @func vector<SImageBackupInfo> ServerCleanupDAO::getImageBackupsOfClient
+* @func vector<SImageBackupInfo> ServerCleanupDao::getImageBackupsOfClient
 * @return int id, string backuptime, string letter, string path
 * @sql
 *	SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=:clientid(int)
 */
-std::vector<ServerCleanupDAO::SImageBackupInfo> ServerCleanupDAO::getImageBackupsOfClient(int clientid)
+std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getImageBackupsOfClient(int clientid)
 {
 	q_getImageBackupsOfClient->Bind(clientid);
 	db_results res=q_getImageBackupsOfClient->Read();
 	q_getImageBackupsOfClient->Reset();
-	std::vector<ServerCleanupDAO::SImageBackupInfo> ret;
+	std::vector<ServerCleanupDao::SImageBackupInfo> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -575,12 +575,12 @@ std::vector<ServerCleanupDAO::SImageBackupInfo> ServerCleanupDAO::getImageBackup
 
 /**
 * @-SQLGenAccess
-* @func int ServerCleanupDAO::findFileBackup
+* @func int ServerCleanupDao::findFileBackup
 * @return int id
 * @sql
 *	SELECT id FROM backups WHERE clientid=:clientid(int) AND path=:path(string)
 */
-ServerCleanupDAO::CondInt ServerCleanupDAO::findFileBackup(int clientid, const std::wstring& path)
+ServerCleanupDao::CondInt ServerCleanupDao::findFileBackup(int clientid, const std::wstring& path)
 {
 	q_findFileBackup->Bind(clientid);
 	q_findFileBackup->Bind(path);
@@ -597,23 +597,23 @@ ServerCleanupDAO::CondInt ServerCleanupDAO::findFileBackup(int clientid, const s
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDAO::removeDanglingFiles
+* @func void ServerCleanupDao::removeDanglingFiles
 * @sql
 *	DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)
 */
-void ServerCleanupDAO::removeDanglingFiles(void)
+void ServerCleanupDao::removeDanglingFiles(void)
 {
 	q_removeDanglingFiles->Write();
 }
 
 /**
 * @-SQLGenAccess
-* @func int64 ServerCleanupDAO::getUsedStorage
+* @func int64 ServerCleanupDao::getUsedStorage
 * @return int64 used_storage
 * @sql
 *	SELECT (bytes_used_files+bytes_used_images) AS used_storage FROM clients WHERE id=:clientid(int)
 */
-ServerCleanupDAO::CondInt64 ServerCleanupDAO::getUsedStorage(int clientid)
+ServerCleanupDao::CondInt64 ServerCleanupDao::getUsedStorage(int clientid)
 {
 	q_getUsedStorage->Bind(clientid);
 	db_results res=q_getUsedStorage->Read();
@@ -630,7 +630,7 @@ ServerCleanupDAO::CondInt64 ServerCleanupDAO::getUsedStorage(int clientid)
 
 
 //@-SQLGenSetup
-void ServerCleanupDAO::createQueries(void)
+void ServerCleanupDao::createQueries(void)
 {
 	q_getIncompleteImages=db->Prepare("SELECT id, path FROM backup_images WHERE  complete=0 AND running<datetime('now','-300 seconds')", false);
 	q_removeImage=db->Prepare("DELETE FROM backup_images WHERE id=?", false);
@@ -665,7 +665,7 @@ void ServerCleanupDAO::createQueries(void)
 }
 
 //@-SQLGenDestruction
-void ServerCleanupDAO::destroyQueries(void)
+void ServerCleanupDao::destroyQueries(void)
 {
 	db->destroyQuery(q_getIncompleteImages);
 	db->destroyQuery(q_removeImage);

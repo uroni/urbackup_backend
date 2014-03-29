@@ -33,8 +33,10 @@ public:
 	static void cleanupThrottlers(void);
 
 	static void testSnapshotAvailability(IDatabase *db);
-
 	static bool isSnapshotsEnabled(void);
+
+	static void testFilesystemTransactionAvailabiliy(IDatabase *db);
+	static bool isFilesystemTransactionEnabled();
 
 private:
 	void findClients(FileClient &fc);
@@ -55,6 +57,7 @@ private:
 	bool internet_test_mode;
 
 	static bool snapshots_enabled;
+	static bool filesystem_transactions_enabled;
 };
 
 #endif //URB_SERVER_H

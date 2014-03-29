@@ -43,9 +43,13 @@ int64 os_free_space(const std::wstring &path);
 
 int64 os_total_space(const std::wstring &path);
 
-bool os_remove_nonempty_dir(const std::wstring &path);
+typedef bool(*os_symlink_callback_t)(const std::wstring& linkname, void* userdata);
+
+bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback=NULL, void* userdata=NULL);
 
 bool os_remove_dir(const std::string &path);
+
+bool os_remove_dir(const std::wstring &path);
 
 bool os_remove_symlink_dir(const std::wstring &path);
 
@@ -53,7 +57,11 @@ std::wstring os_file_sep(void);
 
 std::string os_file_sepn(void);
 
-bool os_link_symbolic(const std::wstring &target, const std::wstring &lname);
+bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction=NULL);
+
+bool os_get_symlink_target(const std::wstring &lname, std::wstring &target);
+
+bool os_is_symlink(const std::wstring &lname);
 
 bool os_directory_exists(const std::wstring &path);
 
@@ -71,6 +79,10 @@ bool os_create_dir_recursive(std::wstring fn);
 
 std::wstring os_get_final_path(std::wstring path);
 
-bool os_rename_file(std::wstring src, std::wstring dst);
+bool os_rename_file(std::wstring src, std::wstring dst, void* transaction=NULL);
+
+void* os_start_transaction();
+
+bool os_finish_transaction(void* transaction);
 
 #endif //OS_FUNCTIONS_H

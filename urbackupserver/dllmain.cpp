@@ -65,6 +65,7 @@ SStartupStatus startup_status;
 #include "apps/cleanup_cmd.h"
 #include "apps/repair_cmd.h"
 #include "create_files_cache.h"
+#include "server_dir_links.h"
 
 #include <stdlib.h>
 
@@ -292,6 +293,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	init_mutex1();
 	ServerLogger::init_mutex();
+	init_dir_link_mutex();
 
 	std::string app=Server->getServerParameter("app", "");
 
@@ -523,6 +525,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(shutdown);
 	}
 
+	{
+		ServerBackupDao backup_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
+		replay_directory_link_journal(backup_dao);
+	}
+
 	Server->Log("Started UrBackup...", LL_INFO);
 
 	
@@ -639,6 +646,7 @@ DLLEXPORT void UnloadActions(void)
 		ServerSettings::clear_cache();
 		ServerSettings::destroy_mutex();
 		ServerStatus::destroy_mutex();
+		destroy_dir_link_mutex();
 	}
 
 	if(shutdown_ok)
@@ -1052,6 +1060,22 @@ void update27_28()
 	db->Write("CREATE INDEX settings_db.si_permissions_idx ON si_permissions (clientid, t_domain)");
 }
 
+void update28_29()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE directory_links ("
+		"id INTEGER PRIMARY KEY,"
+		"clientid INTGER,"
+		"name TEXT,"
+		"target TEXT)");
+	db->Write("CREATE INDEX directory_links_idx ON directory_links (clientid, name)");
+	db->Write("CREATE INDEX directory_links_target_idx ON directory_links (clientid, target)");
+	db->Write("CREATE TABLE directory_link_journal ("
+		"id INTEGER PRIMARY KEY,"
+		"linkname TEXT,"
+		"linktarget TEXT)");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1073,7 +1097,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=28;
+	int max_v=29;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1205,6 +1229,10 @@ void upgrade(void)
 				break;
 			case 27:
 				update27_28();
+				++ver;
+				break;
+			case 28:
+				update28_29();
 				++ver;
 				break;
 			default:

@@ -1,12 +1,12 @@
 #pragma once
 #include "../../Interface/Database.h"
 
-class ServerCleanupDAO
+class ServerCleanupDao
 {
 public:
 
-	ServerCleanupDAO(IDatabase *db);
-	~ServerCleanupDAO(void);
+	ServerCleanupDao(IDatabase *db);
+	~ServerCleanupDao(void);
 
 	//@-SQLGenFunctionsBegin
 	struct CondInt

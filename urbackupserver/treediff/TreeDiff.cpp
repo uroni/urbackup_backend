@@ -20,7 +20,8 @@
 #include "TreeReader.h"
 #include <algorithm>
 
-std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error, std::vector<size_t> *deleted_ids)
+std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error,
+	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees)
 {
 	std::vector<size_t> ret;
 
@@ -44,6 +45,11 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 		gatherDeletes(&(*r1.getNodes())[0], *deleted_ids);
 		std::sort(deleted_ids->begin(), deleted_ids->end());
 	}
+	if(large_unchanged_subtrees!=NULL)
+	{
+		gatherLargeUnchangedSubtrees(&(*r2.getNodes())[0], *large_unchanged_subtrees);
+		std::sort(large_unchanged_subtrees->begin(), large_unchanged_subtrees->end());
+	}
 
 	std::sort(ret.begin(), ret.end());
 
@@ -55,6 +61,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 	size_t nc_2=t2->getNumChildren();
 	size_t nc_1=t1->getNumChildren();
 	TreeNode *c2=t2->getFirstChild();
+	bool did_subtree_change=false;
 	while(c2!=NULL)
 	{		
 		bool found=false;
@@ -75,6 +82,11 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 		if(!found)
 		{
 			diffs.push_back(c2->getId());
+			if(!did_subtree_change)
+			{
+				subtreeChanged(c2);
+				did_subtree_change=true;
+			}
 		}
 
 		c2=c2->getNextSibling();
@@ -93,4 +105,57 @@ void TreeDiff::gatherDeletes(TreeNode *t1, std::vector<size_t> &deleted_ids)
 		gatherDeletes(c1, deleted_ids);
 		c1=c1->getNextSibling();
 	}
+}
+
+void TreeDiff::subtreeChanged(TreeNode* t2)
+{
+	TreeNode* p = t2->getParent();
+	if(p==NULL) return;
+
+	do
+	{
+		if(p->getSubtreeChanged())
+		{
+			return;
+		}
+
+		p->setSubtreeChanged(true);
+		p = p->getParent();
+	}
+	while(p!=NULL);
+}
+
+void TreeDiff::gatherLargeUnchangedSubtrees( TreeNode *t2, std::vector<size_t> &large_unchanged_subtrees )
+{
+	TreeNode *c2=t2->getFirstChild();
+	while(c2!=NULL)
+	{
+		if(!c2->getSubtreeChanged()
+			&& c2->getMappedNode()!=NULL
+			&& getTreesize(c2,10)>10)
+		{
+			large_unchanged_subtrees.push_back(c2->getId());
+		}
+		else
+		{
+			gatherLargeUnchangedSubtrees(c2, large_unchanged_subtrees);
+		}
+		c2=c2->getNextSibling();
+	}
+}
+
+size_t TreeDiff::getTreesize( TreeNode* t, size_t limit )
+{
+	size_t treesize=1;
+	TreeNode *c=t->getFirstChild();
+	while(c!=NULL)
+	{
+		treesize+=getTreesize(c, limit);
+		if(treesize>limit)
+		{
+			return treesize;
+		}
+		c=c->getNextSibling();
+	}
+	return treesize;
 }

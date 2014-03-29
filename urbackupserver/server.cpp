@@ -40,6 +40,7 @@ IPipeThrottler *BackupServer::global_internet_throttler=NULL;
 IPipeThrottler *BackupServer::global_local_throttler=NULL;
 IMutex *BackupServer::throttle_mutex=NULL;
 bool BackupServer::snapshots_enabled=false;
+bool BackupServer::filesystem_transactions_enabled = false;
 
 BackupServer::BackupServer(IPipe *pExitpipe)
 {
@@ -118,6 +119,7 @@ void BackupServer::operator()(void)
 	}
 
 	testSnapshotAvailability(db);
+	testFilesystemTransactionAvailabiliy(db);
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
 	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
@@ -525,6 +527,59 @@ void BackupServer::testSnapshotAvailability(IDatabase *db)
 	}
 
 	Server->destroy(settings);
+}
+
+void BackupServer::testFilesystemTransactionAvailabiliy( IDatabase *db )
+{
+	Server->Log("Testing if backup destination can handle filesystem transactions...", LL_DEBUG);
+
+	ServerSettings settings(db);
+
+	const std::wstring testdirname = L"FGHTR654kgfdfg5764578kldsfsdfgre66juzfo";
+	const std::wstring testdirname_renamed = testdirname+L"_2";
+
+	std::wstring backupfolder = settings.getSettings()->backupfolder;
+
+	void* transaction = os_start_transaction();
+
+	if(transaction==NULL)
+	{
+		filesystem_transactions_enabled=false;
+		return;
+	}
+
+	os_create_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname));
+
+	if(!os_rename_file(os_file_prefix(backupfolder+os_file_sep()+testdirname), os_file_prefix(backupfolder+os_file_sep()+testdirname_renamed), transaction))
+	{
+		os_finish_transaction(transaction);
+		filesystem_transactions_enabled=false;
+		os_remove_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname));
+		return;
+	}
+
+	if(!os_finish_transaction(transaction))
+	{
+		filesystem_transactions_enabled=false;
+		os_remove_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname));
+		return;
+	}
+
+	if(!os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+testdirname_renamed)))
+	{
+		filesystem_transactions_enabled=false;
+		os_remove_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname));
+	}
+	else
+	{
+		filesystem_transactions_enabled=true;
+		os_remove_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname_renamed));
+	}
+}
+
+bool BackupServer::isFilesystemTransactionEnabled()
+{
+	return filesystem_transactions_enabled;
 }
 
 #endif //CLIENT_ONLY

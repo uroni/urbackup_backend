@@ -38,6 +38,7 @@
 #include "../Interface/PipeThrottler.h"
 #include "snapshot_helper.h"
 #include "../cryptoplugin/ICryptoFactory.h"
+#include "server_dir_links.h"
 #include "server.h"
 #include <algorithm>
 #include <memory.h>
@@ -142,6 +143,42 @@ BackupServerGet::~BackupServerGet(void)
 	{
 		local_hash->deinitDatabase();
 		delete local_hash;
+	}
+}
+
+namespace
+{
+	void writeFileRepeat(IFile *f, const char *buf, size_t bsize)
+	{
+		_u32 written=0;
+		do
+		{
+			_u32 rc=f->Write(buf+written, (_u32)(bsize-written));
+			written+=rc;
+			if(rc==0)
+			{
+				Server->Log("Failed to write to file "+f->getFilename()+" retrying...", LL_WARNING);
+				Server->wait(10000);
+			}
+		}
+		while(written<bsize );
+	}
+
+	void writeFileRepeat(IFile *f, const std::string &str)
+	{
+		writeFileRepeat(f, str.c_str(), str.size());
+	}	
+
+	void writeFileItem(IFile* f, SFile cf)
+	{
+		if(cf.isdir)
+		{
+			writeFileRepeat(f, "d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
+		}
+		else
+		{
+			writeFileRepeat(f, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+		}
 	}
 }
 
@@ -602,7 +639,8 @@ void BackupServerGet::operator ()(void)
 						intra_file_diffs=(server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash");
 					}
 
-					r_success=doIncrBackup(with_hashes, intra_file_diffs, use_snapshots, disk_error, log_backup);
+					r_success=doIncrBackup(with_hashes, intra_file_diffs, use_snapshots,
+						!use_snapshots && server_settings->getSettings()->use_incremental_symlinks, disk_error, log_backup);
 
 					destroyHashThreads();
 
@@ -762,12 +800,14 @@ void BackupServerGet::operator ()(void)
 					{
 						if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
 						{
-							os_remove_nonempty_dir(backuppath);
+							ServerBackupDao backupdao(db);
+							remove_directory_link_dir(backuppath, backupdao, clientid);
 						}
 					}
 					else
 					{
-						os_remove_nonempty_dir(backuppath);
+						ServerBackupDao backupdao(db);
+						remove_directory_link_dir(backuppath, backupdao, clientid);
 					}	
 				}
 				else
@@ -1670,7 +1710,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 			Server->Log("Error creating \"clients\" dir for symbolic links", LL_ERROR);
 		}
 		currdir+=os_file_sep()+clientname;
-		Server->deleteFile(os_file_prefix(currdir));
+		os_remove_symlink_dir(os_file_prefix(currdir));
 		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 		if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
@@ -2023,7 +2063,7 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	return rsize;
 }
 
-bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool &disk_error, bool &log_backup)
+bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool &disk_error, bool &log_backup)
 {
 	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
@@ -2169,8 +2209,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	std::vector<size_t> deleted_ids;
 	std::vector<size_t> *deleted_ids_ref=NULL;
 	if(on_snapshot) deleted_ids_ref=&deleted_ids;
+	std::vector<size_t> large_unchanged_subtrees;
+	std::vector<size_t> *large_unchanged_subtrees_ref=NULL;
+	if(use_directory_links) large_unchanged_subtrees_ref=&large_unchanged_subtrees;
 
-	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error, deleted_ids_ref);
+	std::vector<size_t> diffs=TreeDiff::diffTrees("urbackup/clientlist_"+nconvert(clientid)+".ub", wnarrow(tmpfilename), error, deleted_ids_ref, large_unchanged_subtrees_ref);
 
 	if(error)
 	{
@@ -2254,6 +2297,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	_i64 filelist_size=tmp->Size();
 	_i64 filelist_currpos=0;
 	int indir_currdepth=0;
+	ServerBackupDao backup_dao(db);
 	
 	ServerLogger::Log(clientid, clientname+L": Calculating tree difference size...", LL_DEBUG);
 	_i64 files_size=getIncrementalSize(tmp, diffs);
@@ -2269,6 +2313,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	
 	bool c_has_error=false;
 	bool backup_stopped=false;
+	size_t skip_dir_completely=0;
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -2290,6 +2335,31 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			bool b=getNextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
+				if(skip_dir_completely>0)
+				{
+					if(cf.isdir)
+					{						
+						if(cf.name==L"..")
+						{
+							--skip_dir_completely;
+						}
+						else
+						{
+							++skip_dir_completely;
+						}
+					}
+					if(skip_dir_completely>0)
+					{
+						writeFileItem(clientlist, cf);
+						++line;
+						continue;
+					}
+					else
+					{
+						int a4=1;
+					}
+				}
+
 				unsigned int ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
@@ -2336,12 +2406,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 					if(indirchange==false || r_offline==false )
 					{
-						writeFileRepeat(clientlist, "d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
+						writeFileItem(clientlist, cf);
 					}
 					else if(cf.name==L".." && indir_currdepth>0)
 					{
 						--indir_currdepth;
-						writeFileRepeat(clientlist, "d\"..\"\n");
+						writeFileItem(clientlist, cf);
 					}
 
 					if(cf.name!=L"..")
@@ -2350,7 +2420,24 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						curr_os_path+=L"/"+short_name;
 						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
 
-						if(!on_snapshot || (indirchange && !r_offline) )
+						bool dir_linked=false;
+						if(use_directory_links && hasChange(line, large_unchanged_subtrees) )
+						{
+							std::wstring srcpath=last_backuppath+local_curr_os_path;
+							if(link_directory_pool(backup_dao, clientid, backuppath+local_curr_os_path,
+								                   srcpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled()) )
+							{
+								skip_dir_completely=1;
+								dir_linked=true;
+
+								if(with_hashes)
+								{
+									link_directory_pool(backup_dao, clientid, backuppath_hashes+local_curr_os_path,
+										last_backuppath_hashes+local_curr_os_path, dir_pool_path, BackupServer::isFilesystemTransactionEnabled());
+								}
+							}
+						}
+						if(!dir_linked && (!on_snapshot || (indirchange && !r_offline)) )
 						{
 							if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
@@ -2678,6 +2765,7 @@ void BackupServerGet::waitForFileThreads(void)
 bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error)
 {
 	resetEntryState();
+	ServerBackupDao backup_dao(db);
 
 	IFile *tmp=Server->openFile(clientlist_fn, MODE_READ);
 	if(tmp==NULL)
@@ -2721,7 +2809,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 					{
 						if(curr_dir_exists)
 						{
-							if(!os_remove_nonempty_dir(curr_fn) )
+							if(!remove_directory_link_dir(curr_fn, backup_dao, clientid) )
 							{
 								if(!no_error)
 								{
@@ -2820,6 +2908,8 @@ bool BackupServerGet::constructBackupPath(bool with_hashes, bool on_snapshot, bo
 		backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+L".hashes";
 	else
 		backuppath_hashes.clear();
+
+	dir_pool_path = backupfolder + os_file_sep() + clientname + os_file_sep() + L".directory_pool";
 
 	if(on_snapshot)
 	{
@@ -3890,27 +3980,6 @@ int BackupServerGet::getNumberOfRunningFileBackups(void)
 {
 	IScopedLock lock(running_backup_mutex);
 	return running_file_backups;
-}
-
-void BackupServerGet::writeFileRepeat(IFile *f, const std::string &str)
-{
-	writeFileRepeat(f, str.c_str(), str.size());
-}
-
-void BackupServerGet::writeFileRepeat(IFile *f, const char *buf, size_t bsize)
-{
-	_u32 written=0;
-	do
-	{
-		_u32 rc=f->Write(buf+written, (_u32)(bsize-written));
-		written+=rc;
-		if(rc==0)
-		{
-			Server->Log("Failed to write to file "+f->getFilename()+" retrying...", LL_WARNING);
-			Server->wait(10000);
-		}
-	}
-	while(written<bsize );
 }
 
 IPipeThrottler *BackupServerGet::getThrottler(size_t speed_bps)

@@ -1772,7 +1772,8 @@ g.general_settings_list=[
 "global_soft_fs_quota",
 "filescache_type",
 "filescache_size",
-"suspend_index_limit"
+"suspend_index_limit",
+"use_incremental_symlinks"
 ];
 g.mail_settings_list=[
 "mail_servername",

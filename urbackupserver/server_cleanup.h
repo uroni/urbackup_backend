@@ -4,7 +4,8 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include <vector>
-#include "dao/ServerCleanupDAO.h"
+#include "dao/ServerCleanupDao.h"
+#include "dao/ServerBackupDao.h"
 #include <sstream>
 
 class ServerSettings;
@@ -135,5 +136,6 @@ private:
 
 	CleanupAction cleanup_action;
 
-	ServerCleanupDAO *cleanupdao;
+	ServerCleanupDao* cleanupdao;
+	ServerBackupDao* backupdao;
 };

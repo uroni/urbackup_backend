@@ -249,6 +249,12 @@
     <ClCompile Include="serverinterface\create_zip.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="server_dir_links.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="dao\ServerBackupDao.cpp">
+      <Filter>dao</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -430,6 +436,12 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\json.h">
       <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="server_dir_links.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="dao\ServerBackupDao.h">
+      <Filter>dao</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
