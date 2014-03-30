@@ -1,18 +1,10 @@
-#include "../../Interface/Server.h"
-#include "../../Interface/Database.h"
-#include "../../Interface/Types.h"
+#include "app.h"
 #include "../server_settings.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../../stringtools.h"
 #include "../server_cleanup.h"
 #include "../server.h"
 
-#include "../database.h"
-#include <stdlib.h>
-
-void open_server_database(bool &use_berkeleydb, bool init_db);
-void open_settings_database(bool use_berkeleydb);
-void delete_file_caches(void);
 
 int64 cleanup_amount(std::string cleanup_pc, IDatabase *db)
 {

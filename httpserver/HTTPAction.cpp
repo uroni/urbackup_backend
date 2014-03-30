@@ -81,6 +81,7 @@ void CHTTPAction::operator()(void)
 
 	MAP("POSTFILEKEY","POSTFILEKEY");
 	MAP("ACCEPT-LANGUAGE", "ACCEPT_LANGUAGE");
+	MAP("REMOTE_ADDR", "REMOTE_ADDR");
 
 	PipeOutputStream pipe_output_stream(output);
 

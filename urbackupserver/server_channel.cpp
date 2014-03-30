@@ -31,6 +31,7 @@
 #include "server_settings.h"
 #include "../urbackupcommon/capa_bits.h"
 #include "serverinterface/helper.h"
+#include "serverinterface/login.h"
 #include <memory.h>
 #include <algorithm>
 #include <limits.h>
@@ -96,7 +97,7 @@ void ServerChannelThread::operator()(void)
 	{
 		if(input==NULL)
 		{
-			IPipe *np=server_get->getClientCommandConnection();
+			IPipe *np=server_get->getClientCommandConnection(10000, &client_addr);
 			if(np==NULL)
 			{
 				Server->Log("Connecting Channel to ClientService failed - CONNECT error -55", LL_DEBUG);
@@ -320,6 +321,7 @@ void ServerChannelThread::LOGIN(str_map& params)
 		if(session.empty())
 		{
 			session=helper.generateSession(L"anonymous");
+			logLogin(helper, PARAMS, L"anonymous", LoginMethod_RestoreCD);
 			GET[L"ses"]=session;
 			helper.update(Server->getThreadID(), &GET, &PARAMS);
 		}
@@ -330,11 +332,13 @@ void ServerChannelThread::LOGIN(str_map& params)
 		if(helper.checkPassword(params[L"username"], params[L"password"], &user_id))
 		{
 			helper.getSession()->id=user_id;
+			PARAMS["REMOTE_ADDR"]=client_addr;
+			logLogin(helper, PARAMS, params[L"username"], LoginMethod_RestoreCD);
 			tcpstack.Send(input, "ok");
 		}
 		else
 		{
-			helper.getSession()->id=0;
+			helper.getSession()->id=-1;
 			tcpstack.Send(input, "err");
 		}
 	}
@@ -398,7 +402,7 @@ bool ServerChannelThread::hasDownloadImageRights()
 	GET[L"ses"]=session;
 	Helper helper(Server->getThreadID(), &GET, &PARAMS);
 
-	if(helper.getSession()->id==0)
+	if(helper.getSession()->id==-1)
 	{
 		all_client_rights=false;
 		return false;

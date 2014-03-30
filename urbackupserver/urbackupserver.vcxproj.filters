@@ -255,6 +255,9 @@
     <ClCompile Include="dao\ServerBackupDao.cpp">
       <Filter>dao</Filter>
     </ClCompile>
+    <ClCompile Include="apps\export_auth_log.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -442,6 +445,15 @@
     </ClInclude>
     <ClInclude Include="dao\ServerBackupDao.h">
       <Filter>dao</Filter>
+    </ClInclude>
+    <ClInclude Include="apps\app.h">
+      <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\login.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="apps\export_auth_log.h">
+      <Filter>apps</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -56,4 +56,5 @@ private:
 	int img_id_offset;
 
 	std::string identity;
+	std::string client_addr;
 };

@@ -64,6 +64,7 @@ SStartupStatus startup_status;
 #include "filedownload.h"
 #include "apps/cleanup_cmd.h"
 #include "apps/repair_cmd.h"
+#include "apps/export_auth_log.h"
 #include "create_files_cache.h"
 #include "server_dir_links.h"
 
@@ -321,10 +322,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=defrag_database();
 		}
+		else if(app=="export_auth_log")
+		{
+			rc=export_auth_log();
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log");
 		}
 		exit(rc);
 	}
@@ -1076,6 +1081,17 @@ void update28_29()
 		"linktarget TEXT)");
 }
 
+void update29_30()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE settings_db.login_access_log ("
+		"id INTEGER PRIMARY KEY,"
+		"logintime DATE DEFAULT CURRENT_TIMESTAMP,"
+		"username TEXT,"
+		"ip TEXT,"
+		"method INTEGER)");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1097,7 +1113,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=29;
+	int max_v=30;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1233,6 +1249,10 @@ void upgrade(void)
 				break;
 			case 28:
 				update28_29();
+				++ver;
+				break;
+			case 29:
+				update29_30();
 				++ver;
 				break;
 			default:

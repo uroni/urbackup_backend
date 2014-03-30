@@ -94,6 +94,7 @@ print_help()
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
 	echo "--repair_database		Tries to repair the database"
 	echo "--defrag_database		Defragments the internal database and deletes the file entry cache"
+	echo "--export_auth_log		Export authentication log
 	echo "--broadcast_interfaces   List of network interfaces from which to send broadcasts (separated by ,)"
 	echo "--user			   Start as specific user (default: urbackup)"
 	echo ""
@@ -132,7 +133,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	CLEANUP=""
 	BROADCAST_INTERFACES=""
 	URB_USER="urbackup"
-	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,run_in_valgrind,user:,defrag_database -- "$@"`
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,run_in_valgrind,user:,defrag_database,export_auth_log -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -156,6 +157,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--run_in_valgrind) RUN_IN_VALGRIND=1; shift ;;
 			--user) URB_USER="$2"; shift 2;;
 			--defrag_database) CLEANUP="--app defrag_database"; shift ;;
+			--export_auth_log) CLEANUP="--app export_auth_log"; shift ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac

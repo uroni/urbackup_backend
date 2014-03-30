@@ -3996,8 +3996,14 @@ IPipeThrottler *BackupServerGet::getThrottler(size_t speed_bps)
 	return client_throttler;
 }
 
-IPipe *BackupServerGet::getClientCommandConnection(int timeoutms)
+IPipe *BackupServerGet::getClientCommandConnection(int timeoutms, std::string* clientaddr)
 {
+	if(clientaddr!=NULL)
+	{
+		unsigned int ip = ServerStatus::getStatus(clientname).ip_addr;
+		unsigned char *ips=reinterpret_cast<unsigned char*>(&ip);
+		*clientaddr=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
+	}
 	if(internet_connection)
 	{
 		IPipe *ret=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_COMMANDS, timeoutms);

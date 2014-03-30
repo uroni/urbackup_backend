@@ -55,6 +55,7 @@ private:
 	std::string tmp;
 	std::string http_header_key;
 	bool fileupload;
+	std::string endpoint;
 
 	int request_num;
 

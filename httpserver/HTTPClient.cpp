@@ -55,6 +55,7 @@ void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoin
 	request_num=0;
 	request_ticket=ILLEGAL_THREADPOOL_TICKET;
 	fileupload=false;
+	endpoint=pEndpoint;
 }
 
 void CHTTPClient::init_mutex(void)
@@ -542,7 +543,7 @@ bool CHTTPClient::processRequest(void)
 		std::string gparams=getafter("?", *pl);
 
 		pl=NULL;
-
+		http_params["REMOTE_ADDR"]=endpoint;
 		CHTTPAction *action_handler=new CHTTPAction(widen(name),widen(context),gparams, http_content, http_params, pipe);
 		request_ticket=Server->getThreadPool()->execute(action_handler);
 		request_handler=action_handler;

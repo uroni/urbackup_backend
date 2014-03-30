@@ -267,6 +267,7 @@
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="apps\cleanup_cmd.cpp" />
+    <ClCompile Include="apps\export_auth_log.cpp" />
     <ClCompile Include="apps\repair_cmd.cpp" />
     <ClCompile Include="ChunkPatcher.cpp" />
     <ClCompile Include="create_files_cache.cpp" />
@@ -344,7 +345,9 @@
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="action_header.h" />
     <ClInclude Include="actions.h" />
+    <ClInclude Include="apps\app.h" />
     <ClInclude Include="apps\cleanup_cmd.h" />
+    <ClInclude Include="apps\export_auth_log.h" />
     <ClInclude Include="apps\repair_cmd.h" />
     <ClInclude Include="ChunkPatcher.h" />
     <ClInclude Include="create_files_cache.h" />
@@ -365,6 +368,7 @@
     <ClInclude Include="serverinterface\actions.h" />
     <ClInclude Include="serverinterface\action_header.h" />
     <ClInclude Include="serverinterface\helper.h" />
+    <ClInclude Include="serverinterface\login.h" />
     <ClInclude Include="serverinterface\rights.h" />
     <ClInclude Include="server_archive.h" />
     <ClInclude Include="server_channel.h" />
