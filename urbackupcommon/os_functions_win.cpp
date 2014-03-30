@@ -162,9 +162,29 @@ void moveFile(const std::wstring &src, const std::wstring &dst)
 }
 #endif
 
-bool isDirectory(const std::wstring &path)
+bool isDirectory(const std::wstring &path, void* transaction)
 {
-        DWORD attrib = GetFileAttributesW(path.c_str());
+        DWORD attrib;
+#ifdef USE_NTFS_TXF
+		if(transaction!=NULL)
+		{
+			WIN32_FILE_ATTRIBUTE_DATA ad;
+			if(!GetFileAttributesTransactedW(path.c_str(), GetFileExInfoStandard, &ad, transaction))
+			{
+				attrib=0xFFFFFFFF;
+			}
+			else
+			{
+				attrib = ad.dwFileAttributes;
+			}
+		}
+		else
+		{
+#endif
+			attrib = GetFileAttributesW(path.c_str());
+#ifdef USE_NTFS_TXF
+		}
+#endif	
 
         if ( attrib == 0xFFFFFFFF || !(attrib & FILE_ATTRIBUTE_DIRECTORY) )
         {
@@ -247,7 +267,7 @@ int64 os_total_space(const std::wstring &path)
 
 bool os_directory_exists(const std::wstring &path)
 {
-	return isDirectory(path);
+	return isDirectory(path, NULL);
 }
 
 bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata)
@@ -318,7 +338,7 @@ bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &ln
 {
 #if (_WIN32_WINNT >= 0x0600)
 	DWORD flags=0;
-	if(isDirectory(target))
+	if(isDirectory(target, transaction))
 		flags|=SYMBOLIC_LINK_FLAG_DIRECTORY;
 
 	DWORD rc;
@@ -338,7 +358,7 @@ bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &ln
 	}
 	return rc!=0;
 #else
-	return true;
+	return false;
 #endif
 }
 
@@ -362,8 +382,8 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 	if(!wtarget.empty() && wtarget[0]!='\\')
 		wtarget=L"\\??\\"+wtarget;
 
-	if(!wtarget.empty() && wtarget[target.size()-1]=='\\')
-		wtarget.erase(target.size()-1, 1);
+	if(!wtarget.empty() && wtarget[wtarget.size()-1]=='\\')
+		wtarget.erase(wtarget.size()-1, 1);
 
 	if(!CreateDirectoryW(lname.c_str(), NULL) )
 	{
