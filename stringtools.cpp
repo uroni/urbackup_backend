@@ -1378,6 +1378,10 @@ wstring htmldecode(string str, bool html, char xc)
 			}
 			i+=2;
 		}
+		else if(str[i]=='+' && !html)
+		{
+			tmp+=' ';
+		}
 		else
 		{
 			tmp+=str[i];
