@@ -91,6 +91,8 @@ public:
 	CondInt findFileBackup(int clientid, const std::wstring& path);
 	void removeDanglingFiles(void);
 	CondInt64 getUsedStorage(int clientid);
+	void cleanupBackupLogs(void);
+	void cleanupAuthLog(void);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -130,5 +132,7 @@ private:
 	IQuery* q_findFileBackup;
 	IQuery* q_removeDanglingFiles;
 	IQuery* q_getUsedStorage;
+	IQuery* q_cleanupBackupLogs;
+	IQuery* q_cleanupAuthLog;
 	//@-SQLGenVariablesEnd
 };

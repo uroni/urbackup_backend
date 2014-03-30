@@ -272,6 +272,11 @@ void ServerCleanupThread::do_cleanup(void)
 	sus();
 	Server->Log("Done updating statistics.", LL_INFO);
 
+	Server->Log("Deleting old logs", LL_INFO);
+	cleanupdao->cleanupBackupLogs();
+	cleanupdao->cleanupAuthLog();
+	Server->Log("Done deleting old logs", LL_INFO);
+
 	if(!cache_res.empty())
 	{
 		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));

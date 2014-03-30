@@ -627,6 +627,27 @@ ServerCleanupDao::CondInt64 ServerCleanupDao::getUsedStorage(int clientid)
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::cleanupBackupLogs
+* @sql
+*     DELETE FROM logs WHERE date(created, '+182 days')<date('now')
+*/
+void ServerCleanupDao::cleanupBackupLogs(void)
+{
+	q_cleanupBackupLogs->Write();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::cleanupAuthLog
+* @sql
+*     DELETE FROM settings_db.login_access_log WHERE date(logintime, '+182 days')<date('now')
+*/
+void ServerCleanupDao::cleanupAuthLog(void)
+{
+	q_cleanupAuthLog->Write();
+}
 
 
 //@-SQLGenSetup
@@ -662,6 +683,8 @@ void ServerCleanupDao::createQueries(void)
 	q_findFileBackup=db->Prepare("SELECT id FROM backups WHERE clientid=? AND path=?", false);
 	q_removeDanglingFiles=db->Prepare("DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)", false);
 	q_getUsedStorage=db->Prepare("SELECT (bytes_used_files+bytes_used_images) AS used_storage FROM clients WHERE id=?", false);
+	q_cleanupBackupLogs=db->Prepare("DELETE FROM logs WHERE date(created, '+182 days')<date('now')", false);
+	q_cleanupAuthLog=db->Prepare("DELETE FROM settings_db.login_access_log WHERE date(logintime, '+182 days')<date('now')", false);
 }
 
 //@-SQLGenDestruction
@@ -697,4 +720,6 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_findFileBackup);
 	db->destroyQuery(q_removeDanglingFiles);
 	db->destroyQuery(q_getUsedStorage);
+	db->destroyQuery(q_cleanupBackupLogs);
+	db->destroyQuery(q_cleanupAuthLog);
 }
