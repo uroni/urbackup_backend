@@ -137,6 +137,7 @@ Section "install"
 	File "data_common\defrag_database.bat"
 	File "data_common\urbackup_dsa.pub"
 	File "data_common\repair_database.bat"
+	File "data_common\export_auth_log.bat"
 	
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	
