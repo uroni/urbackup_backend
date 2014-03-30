@@ -1207,12 +1207,12 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 				bool only_own_tokens=true;
 				for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
 				{
-					unsigned int curr_time = Server->getTimeSeconds();
 					unsigned int last_token_time = ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]);
-					bool token_timeout=false;
-					if(curr_time>last_token_time && curr_time-last_token_time<10*60*1000)
+					unsigned int curr_time = Server->getTimeSeconds();
+					bool token_timeout=true;
+					if(curr_time>=last_token_time && curr_time-last_token_time<10*60*1000)
 					{
-						token_timeout=true;
+						token_timeout=false;
 					}
 					if( sc_refs[i]->starttokens[k]!=starttoken && !token_timeout)
 					{
@@ -1232,11 +1232,11 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 					Server->destroy(volf);
 				}
 
-				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000 || (do_restart==true && restart_own==true && only_own_tokens==true ) )
+				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000 || (do_restart && restart_own && only_own_tokens ) )
 				{
-					if( only_own_tokens==true)
+					if( only_own_tokens)
 					{
-						VSSLog("Removing reference because restart own was specified and only own tokens are present", LL_WARNING);
+						VSSLog("Removing reference because restart own was specified and only own tokens or tokens with timeout are present", LL_WARNING);
 					}
 					else
 					{
@@ -1297,7 +1297,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						{
 							*stale_shadowcopy=false;
 						}
-						else if(only_own_tokens==false || restart_own==false)
+						else if(!only_own_tokens || !restart_own)
 						{
 							*stale_shadowcopy=true;
 						}
