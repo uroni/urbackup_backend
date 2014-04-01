@@ -280,7 +280,7 @@ function loadGraph(action, parameters, pDivid, pGraphdata, pAddHtml)
 			
 			var plot1 = $.jqplot(divid+"_plot", [series], {
 				legend: {
-					show: false,
+					show: false
 				},
 				axes: {
 					xaxis: {
