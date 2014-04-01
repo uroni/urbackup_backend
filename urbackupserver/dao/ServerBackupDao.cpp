@@ -44,6 +44,10 @@ ServerBackupDao::~ServerBackupDao()
 */
 void ServerBackupDao::addDirectoryLink(int clientid, const std::wstring& name, const std::wstring& target)
 {
+	if(q_addDirectoryLink==NULL)
+	{
+		q_addDirectoryLink=db->Prepare("INSERT INTO directory_links  (clientid, name, target) VALUES (?, ?, ?)", false);
+	}
 	q_addDirectoryLink->Bind(clientid);
 	q_addDirectoryLink->Bind(name);
 	q_addDirectoryLink->Bind(target);
@@ -58,12 +62,16 @@ void ServerBackupDao::addDirectoryLink(int clientid, const std::wstring& name, c
 * @sql
 *     DELETE FROM directory_links
 *          WHERE clientid=:clientid(int)
-*              AND name=:name(string)
+*			   AND target=:target(string)
 */
-void ServerBackupDao::removeDirectoryLink(int clientid, const std::wstring& name)
+void ServerBackupDao::removeDirectoryLink(int clientid, const std::wstring& target)
 {
+	if(q_removeDirectoryLink==NULL)
+	{
+		q_removeDirectoryLink=db->Prepare("DELETE FROM directory_links WHERE clientid=? AND target=?", false);
+	}
 	q_removeDirectoryLink->Bind(clientid);
-	q_removeDirectoryLink->Bind(name);
+	q_removeDirectoryLink->Bind(target);
 	q_removeDirectoryLink->Write();
 	q_removeDirectoryLink->Reset();
 }
@@ -80,6 +88,10 @@ void ServerBackupDao::removeDirectoryLink(int clientid, const std::wstring& name
 */
 int ServerBackupDao::getDirectoryRefcount(int clientid, const std::wstring& name)
 {
+	if(q_getDirectoryRefcount==NULL)
+	{
+		q_getDirectoryRefcount=db->Prepare("SELECT COUNT(*) AS c FROM directory_links WHERE clientid=? AND name=? LIMIT 1", false);
+	}
 	q_getDirectoryRefcount->Bind(clientid);
 	q_getDirectoryRefcount->Bind(name);
 	db_results res=q_getDirectoryRefcount->Read();
@@ -97,6 +109,10 @@ int ServerBackupDao::getDirectoryRefcount(int clientid, const std::wstring& name
 */
 void ServerBackupDao::addDirectoryLinkJournalEntry(const std::wstring& linkname, const std::wstring& linktarget)
 {
+	if(q_addDirectoryLinkJournalEntry==NULL)
+	{
+		q_addDirectoryLinkJournalEntry=db->Prepare("INSERT INTO directory_link_journal (linkname, linktarget) VALUES (?, ?)", false);
+	}
 	q_addDirectoryLinkJournalEntry->Bind(linkname);
 	q_addDirectoryLinkJournalEntry->Bind(linktarget);
 	q_addDirectoryLinkJournalEntry->Write();
@@ -112,6 +128,10 @@ void ServerBackupDao::addDirectoryLinkJournalEntry(const std::wstring& linkname,
 */
 void ServerBackupDao::removeDirectoryLinkJournalEntry(int64 entry_id)
 {
+	if(q_removeDirectoryLinkJournalEntry==NULL)
+	{
+		q_removeDirectoryLinkJournalEntry=db->Prepare("DELETE FROM directory_link_journal WHERE id = ?", false);
+	}
 	q_removeDirectoryLinkJournalEntry->Bind(entry_id);
 	q_removeDirectoryLinkJournalEntry->Write();
 	q_removeDirectoryLinkJournalEntry->Reset();
@@ -126,6 +146,10 @@ void ServerBackupDao::removeDirectoryLinkJournalEntry(int64 entry_id)
 */
 std::vector<ServerBackupDao::JournalEntry> ServerBackupDao::getDirectoryLinkJournalEntries(void)
 {
+	if(q_getDirectoryLinkJournalEntries==NULL)
+	{
+		q_getDirectoryLinkJournalEntries=db->Prepare("SELECT linkname, linktarget FROM directory_link_journal", false);
+	}
 	db_results res=q_getDirectoryLinkJournalEntries->Read();
 	std::vector<ServerBackupDao::JournalEntry> ret;
 	ret.resize(res.size());
@@ -145,6 +169,10 @@ std::vector<ServerBackupDao::JournalEntry> ServerBackupDao::getDirectoryLinkJour
 */
 void ServerBackupDao::removeDirectoryLinkJournalEntries(void)
 {
+	if(q_removeDirectoryLinkJournalEntries==NULL)
+	{
+		q_removeDirectoryLinkJournalEntries=db->Prepare("DELETE FROM directory_link_journal", false);
+	}
 	q_removeDirectoryLinkJournalEntries->Write();
 }
 
@@ -159,6 +187,10 @@ void ServerBackupDao::removeDirectoryLinkJournalEntries(void)
 */
 std::vector<ServerBackupDao::DirectoryLinkEntry> ServerBackupDao::getLinksInDirectory(int clientid, const std::wstring& dir)
 {
+	if(q_getLinksInDirectory==NULL)
+	{
+		q_getLinksInDirectory=db->Prepare("SELECT name, target FROM directory_links WHERE clientid=? AND target GLOB ?", false);
+	}
 	q_getLinksInDirectory->Bind(clientid);
 	q_getLinksInDirectory->Bind(dir);
 	db_results res=q_getLinksInDirectory->Read();
@@ -173,17 +205,100 @@ std::vector<ServerBackupDao::DirectoryLinkEntry> ServerBackupDao::getLinksInDire
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::deleteLinkReferenceEntry
+* @sql
+*     DELETE FROM directory_links
+*            WHERE id=:id(int64)
+*/
+void ServerBackupDao::deleteLinkReferenceEntry(int64 id)
+{
+	if(q_deleteLinkReferenceEntry==NULL)
+	{
+		q_deleteLinkReferenceEntry=db->Prepare("DELETE FROM directory_links WHERE id=?", false);
+	}
+	q_deleteLinkReferenceEntry->Bind(id);
+	q_deleteLinkReferenceEntry->Write();
+	q_deleteLinkReferenceEntry->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateLinkReferenceTarget
+* @sql
+*     UPDATE directory_links SET target=:new_target(string)
+*            WHERE id=:id(int64)
+*/
+void ServerBackupDao::updateLinkReferenceTarget(const std::wstring& new_target, int64 id)
+{
+	if(q_updateLinkReferenceTarget==NULL)
+	{
+		q_updateLinkReferenceTarget=db->Prepare("UPDATE directory_links SET target=? WHERE id=?", false);
+	}
+	q_updateLinkReferenceTarget->Bind(new_target);
+	q_updateLinkReferenceTarget->Bind(id);
+	q_updateLinkReferenceTarget->Write();
+	q_updateLinkReferenceTarget->Reset();
+}
+
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addToOldBackupfolders
+* @sql
+*      INSERT OR REPLACE INTO settings_db.old_backupfolders (backupfolder)
+*          VALUES (:backupfolder(string))
+*/
+void ServerBackupDao::addToOldBackupfolders(const std::wstring& backupfolder)
+{
+	if(q_addToOldBackupfolders==NULL)
+	{
+		q_addToOldBackupfolders=db->Prepare("INSERT OR REPLACE INTO settings_db.old_backupfolders (backupfolder) VALUES (?)", false);
+	}
+	q_addToOldBackupfolders->Bind(backupfolder);
+	q_addToOldBackupfolders->Write();
+	q_addToOldBackupfolders->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<string> ServerBackupDao::getOldBackupfolders
+* @return string backupfolder
+* @sql
+*     SELECT backupfolder FROM settings_db.old_backupfolders
+*/
+std::vector<std::wstring> ServerBackupDao::getOldBackupfolders(void)
+{
+	if(q_getOldBackupfolders==NULL)
+	{
+		q_getOldBackupfolders=db->Prepare("SELECT backupfolder FROM settings_db.old_backupfolders", false);
+	}
+	db_results res=q_getOldBackupfolders->Read();
+	std::vector<std::wstring> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i]=res[i][L"backupfolder"];
+	}
+	return ret;
+}
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
-	q_addDirectoryLink=db->Prepare("INSERT INTO directory_links  (clientid, name, target) VALUES (?, ?, ?)", false);
-	q_removeDirectoryLink=db->Prepare("DELETE FROM directory_links WHERE clientid=? AND name=?", false);
-	q_getDirectoryRefcount=db->Prepare("SELECT COUNT(*) AS c FROM directory_links WHERE clientid=? AND name=? LIMIT 1", false);
-	q_addDirectoryLinkJournalEntry=db->Prepare("INSERT INTO directory_link_journal (linkname, linktarget) VALUES (?, ?)", false);
-	q_removeDirectoryLinkJournalEntry=db->Prepare("DELETE FROM directory_link_journal WHERE id = ?", false);
-	q_getDirectoryLinkJournalEntries=db->Prepare("SELECT linkname, linktarget FROM directory_link_journal", false);
-	q_removeDirectoryLinkJournalEntries=db->Prepare("DELETE FROM directory_link_journal", false);
-	q_getLinksInDirectory=db->Prepare("SELECT name, target FROM directory_links WHERE clientid=? AND target GLOB ?", false);
+	q_addDirectoryLink=NULL;
+	q_removeDirectoryLink=NULL;
+	q_getDirectoryRefcount=NULL;
+	q_addDirectoryLinkJournalEntry=NULL;
+	q_removeDirectoryLinkJournalEntry=NULL;
+	q_getDirectoryLinkJournalEntries=NULL;
+	q_removeDirectoryLinkJournalEntries=NULL;
+	q_getLinksInDirectory=NULL;
+	q_deleteLinkReferenceEntry=NULL;
+	q_updateLinkReferenceTarget=NULL;
+	q_addToOldBackupfolders=NULL;
+	q_getOldBackupfolders=NULL;
 }
 
 //@-SQLGenDestruction
@@ -197,6 +312,10 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getDirectoryLinkJournalEntries);
 	db->destroyQuery(q_removeDirectoryLinkJournalEntries);
 	db->destroyQuery(q_getLinksInDirectory);
+	db->destroyQuery(q_deleteLinkReferenceEntry);
+	db->destroyQuery(q_updateLinkReferenceTarget);
+	db->destroyQuery(q_addToOldBackupfolders);
+	db->destroyQuery(q_getOldBackupfolders);
 }
 
 void ServerBackupDao::commit()

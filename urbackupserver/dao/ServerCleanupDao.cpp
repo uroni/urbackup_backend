@@ -24,6 +24,10 @@ ServerCleanupDao::~ServerCleanupDao(void)
 */
 std::vector<ServerCleanupDao::SIncompleteImages> ServerCleanupDao::getIncompleteImages(void)
 {
+	if(q_getIncompleteImages==NULL)
+	{
+		q_getIncompleteImages=db->Prepare("SELECT id, path FROM backup_images WHERE  complete=0 AND running<datetime('now','-300 seconds')", false);
+	}
 	db_results res=q_getIncompleteImages->Read();
 	std::vector<ServerCleanupDao::SIncompleteImages> ret;
 	ret.resize(res.size());
@@ -43,6 +47,10 @@ std::vector<ServerCleanupDao::SIncompleteImages> ServerCleanupDao::getIncomplete
 */
 void ServerCleanupDao::removeImage(int id)
 {
+	if(q_removeImage==NULL)
+	{
+		q_removeImage=db->Prepare("DELETE FROM backup_images WHERE id=?", false);
+	}
 	q_removeImage->Bind(id);
 	q_removeImage->Write();
 	q_removeImage->Reset();
@@ -59,6 +67,10 @@ void ServerCleanupDao::removeImage(int id)
 */
 std::vector<int> ServerCleanupDao::getClientsSortFilebackups(void)
 {
+	if(q_getClientsSortFilebackups==NULL)
+	{
+		q_getClientsSortFilebackups=db->Prepare("SELECT DISTINCT c.id AS id FROM clients c INNER JOIN backups b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
+	}
 	db_results res=q_getClientsSortFilebackups->Read();
 	std::vector<int> ret;
 	ret.resize(res.size());
@@ -81,6 +93,10 @@ std::vector<int> ServerCleanupDao::getClientsSortFilebackups(void)
 */
 std::vector<int> ServerCleanupDao::getClientsSortImagebackups(void)
 {
+	if(q_getClientsSortImagebackups==NULL)
+	{
+		q_getClientsSortImagebackups=db->Prepare("SELECT DISTINCT c.id AS id FROM clients c  INNER JOIN (SELECT * FROM backup_images WHERE length(letter)<=2) b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
+	}
 	db_results res=q_getClientsSortImagebackups->Read();
 	std::vector<int> ret;
 	ret.resize(res.size());
@@ -102,6 +118,10 @@ std::vector<int> ServerCleanupDao::getClientsSortImagebackups(void)
 */
 std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getFullNumImages(int clientid)
 {
+	if(q_getFullNumImages==NULL)
+	{
+		q_getFullNumImages=db->Prepare("SELECT id, letter FROM backup_images  WHERE clientid=? AND incremental=0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
+	}
 	q_getFullNumImages->Bind(clientid);
 	db_results res=q_getFullNumImages->Read();
 	q_getFullNumImages->Reset();
@@ -125,6 +145,10 @@ std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getFullNumImages(i
 */
 std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefs(int incremental_ref)
 {
+	if(q_getImageRefs==NULL)
+	{
+		q_getImageRefs=db->Prepare("SELECT id, complete FROM backup_images WHERE incremental<>0 AND incremental_ref=?", false);
+	}
 	q_getImageRefs->Bind(incremental_ref);
 	db_results res=q_getImageRefs->Read();
 	q_getImageRefs->Reset();
@@ -147,6 +171,10 @@ std::vector<ServerCleanupDao::SImageRef> ServerCleanupDao::getImageRefs(int incr
 */
 ServerCleanupDao::CondString ServerCleanupDao::getImagePath(int id)
 {
+	if(q_getImagePath==NULL)
+	{
+		q_getImagePath=db->Prepare("SELECT path FROM backup_images WHERE id=?", false);
+	}
 	q_getImagePath->Bind(id);
 	db_results res=q_getImagePath->Read();
 	q_getImagePath->Reset();
@@ -170,6 +198,10 @@ ServerCleanupDao::CondString ServerCleanupDao::getImagePath(int id)
 */
 std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getIncrNumImages(int clientid)
 {
+	if(q_getIncrNumImages==NULL)
+	{
+		q_getIncrNumImages=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental<>0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
+	}
 	q_getIncrNumImages->Bind(clientid);
 	db_results res=q_getIncrNumImages->Read();
 	q_getIncrNumImages->Reset();
@@ -194,6 +226,10 @@ std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getIncrNumImages(i
 */
 std::vector<int> ServerCleanupDao::getFullNumFiles(int clientid)
 {
+	if(q_getFullNumFiles==NULL)
+	{
+		q_getFullNumFiles=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental=0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
+	}
 	q_getFullNumFiles->Bind(clientid);
 	db_results res=q_getFullNumFiles->Read();
 	q_getFullNumFiles->Reset();
@@ -217,6 +253,10 @@ std::vector<int> ServerCleanupDao::getFullNumFiles(int clientid)
 */
 std::vector<int> ServerCleanupDao::getIncrNumFiles(int clientid)
 {
+	if(q_getIncrNumFiles==NULL)
+	{
+		q_getIncrNumFiles=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental<>0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
+	}
 	q_getIncrNumFiles->Bind(clientid);
 	db_results res=q_getIncrNumFiles->Read();
 	q_getIncrNumFiles->Reset();
@@ -238,6 +278,10 @@ std::vector<int> ServerCleanupDao::getIncrNumFiles(int clientid)
 */
 ServerCleanupDao::CondString ServerCleanupDao::getClientName(int clientid)
 {
+	if(q_getClientName==NULL)
+	{
+		q_getClientName=db->Prepare("SELECT name FROM clients WHERE id=?", false);
+	}
 	q_getClientName->Bind(clientid);
 	db_results res=q_getClientName->Read();
 	q_getClientName->Reset();
@@ -259,6 +303,10 @@ ServerCleanupDao::CondString ServerCleanupDao::getClientName(int clientid)
 */
 ServerCleanupDao::CondString ServerCleanupDao::getFileBackupPath(int backupid)
 {
+	if(q_getFileBackupPath==NULL)
+	{
+		q_getFileBackupPath=db->Prepare("SELECT path FROM backups WHERE id=?", false);
+	}
 	q_getFileBackupPath->Bind(backupid);
 	db_results res=q_getFileBackupPath->Read();
 	q_getFileBackupPath->Reset();
@@ -279,6 +327,10 @@ ServerCleanupDao::CondString ServerCleanupDao::getFileBackupPath(int backupid)
 */
 void ServerCleanupDao::deleteFiles(int backupid)
 {
+	if(q_deleteFiles==NULL)
+	{
+		q_deleteFiles=db->Prepare("DELETE FROM files WHERE backupid=?", false);
+	}
 	q_deleteFiles->Bind(backupid);
 	q_deleteFiles->Write();
 	q_deleteFiles->Reset();
@@ -292,6 +344,10 @@ void ServerCleanupDao::deleteFiles(int backupid)
 */
 void ServerCleanupDao::removeFileBackup(int backupid)
 {
+	if(q_removeFileBackup==NULL)
+	{
+		q_removeFileBackup=db->Prepare("DELETE FROM backups WHERE id=?", false);
+	}
 	q_removeFileBackup->Bind(backupid);
 	q_removeFileBackup->Write();
 	q_removeFileBackup->Reset();
@@ -306,6 +362,10 @@ void ServerCleanupDao::removeFileBackup(int backupid)
 */
 ServerCleanupDao::SFileBackupInfo ServerCleanupDao::getFileBackupInfo(int backupid)
 {
+	if(q_getFileBackupInfo==NULL)
+	{
+		q_getFileBackupInfo=db->Prepare("SELECT id, backuptime, path FROM backups WHERE id=?", false);
+	}
 	q_getFileBackupInfo->Bind(backupid);
 	db_results res=q_getFileBackupInfo->Read();
 	q_getFileBackupInfo->Reset();
@@ -329,6 +389,10 @@ ServerCleanupDao::SFileBackupInfo ServerCleanupDao::getFileBackupInfo(int backup
 */
 ServerCleanupDao::SImageBackupInfo ServerCleanupDao::getImageBackupInfo(int backupid)
 {
+	if(q_getImageBackupInfo==NULL)
+	{
+		q_getImageBackupInfo=db->Prepare("SELECT id, backuptime, path, letter FROM backup_images WHERE id=?", false);
+	}
 	q_getImageBackupInfo->Bind(backupid);
 	db_results res=q_getImageBackupInfo->Read();
 	q_getImageBackupInfo->Reset();
@@ -355,6 +419,10 @@ ServerCleanupDao::SImageBackupInfo ServerCleanupDao::getImageBackupInfo(int back
 */
 void ServerCleanupDao::moveFiles(int backupid)
 {
+	if(q_moveFiles==NULL)
+	{
+		q_moveFiles=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 1 AS is_del FROM files WHERE backupid=?", false);
+	}
 	q_moveFiles->Bind(backupid);
 	q_moveFiles->Write();
 	q_moveFiles->Reset();
@@ -382,6 +450,10 @@ void ServerCleanupDao::moveFiles(int backupid)
 */
 void ServerCleanupDao::removeImageSize(int backupid)
 {
+	if(q_removeImageSize==NULL)
+	{
+		q_removeImageSize=db->Prepare("UPDATE clients SET bytes_used_images=( (SELECT bytes_used_images FROM clients WHERE id=( SELECT clientid FROM backup_images WHERE id=? ) ) -  (SELECT size_bytes FROM backup_images WHERE id=? ) ) WHERE id=(SELECT clientid FROM backup_images WHERE id=?)", false);
+	}
 	q_removeImageSize->Bind(backupid);
 	q_removeImageSize->Bind(backupid);
 	q_removeImageSize->Bind(backupid);
@@ -399,6 +471,10 @@ void ServerCleanupDao::removeImageSize(int backupid)
 */
 void ServerCleanupDao::addToImageStats(int64 size_correction, int backupid)
 {
+	if(q_addToImageStats==NULL)
+	{
+		q_addToImageStats=db->Prepare("INSERT INTO del_stats (backupid, image, delsize, clientid, incremental) SELECT id, 1 AS image, (size_bytes+?) AS delsize, clientid, incremental FROM backup_images WHERE id=?", false);
+	}
 	q_addToImageStats->Bind(size_correction);
 	q_addToImageStats->Bind(backupid);
 	q_addToImageStats->Write();
@@ -413,6 +489,10 @@ void ServerCleanupDao::addToImageStats(int64 size_correction, int backupid)
 */
 void ServerCleanupDao::updateDelImageStats(int64 rowid)
 {
+	if(q_updateDelImageStats==NULL)
+	{
+		q_updateDelImageStats=db->Prepare("UPDATE del_stats SET stoptime=CURRENT_TIMESTAMP WHERE rowid=?", false);
+	}
 	q_updateDelImageStats->Bind(rowid);
 	q_updateDelImageStats->Reset();
 }
@@ -426,6 +506,10 @@ void ServerCleanupDao::updateDelImageStats(int64 rowid)
 */
 std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getClientImages(int clientid)
 {
+	if(q_getClientImages==NULL)
+	{
+		q_getClientImages=db->Prepare("SELECT id, path FROM backup_images WHERE clientid=?", false);
+	}
 	q_getClientImages->Bind(clientid);
 	db_results res=q_getClientImages->Read();
 	q_getClientImages->Reset();
@@ -449,6 +533,10 @@ std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getClientImage
 */
 std::vector<int> ServerCleanupDao::getClientFileBackups(int clientid)
 {
+	if(q_getClientFileBackups==NULL)
+	{
+		q_getClientFileBackups=db->Prepare("SELECT id FROM backups WHERE clientid=?", false);
+	}
 	q_getClientFileBackups->Bind(clientid);
 	db_results res=q_getClientFileBackups->Read();
 	q_getClientFileBackups->Reset();
@@ -470,6 +558,10 @@ std::vector<int> ServerCleanupDao::getClientFileBackups(int clientid)
 */
 std::vector<int> ServerCleanupDao::getAssocImageBackups(int img_id)
 {
+	if(q_getAssocImageBackups==NULL)
+	{
+		q_getAssocImageBackups=db->Prepare("SELECT assoc_id FROM assoc_images WHERE img_id=?", false);
+	}
 	q_getAssocImageBackups->Bind(img_id);
 	db_results res=q_getAssocImageBackups->Read();
 	q_getAssocImageBackups->Reset();
@@ -491,6 +583,10 @@ std::vector<int> ServerCleanupDao::getAssocImageBackups(int img_id)
 */
 ServerCleanupDao::CondInt64 ServerCleanupDao::getImageSize(int backupid)
 {
+	if(q_getImageSize==NULL)
+	{
+		q_getImageSize=db->Prepare("SELECT size_bytes FROM backup_images WHERE id=?", false);
+	}
 	q_getImageSize->Bind(backupid);
 	db_results res=q_getImageSize->Read();
 	q_getImageSize->Reset();
@@ -512,6 +608,10 @@ ServerCleanupDao::CondInt64 ServerCleanupDao::getImageSize(int backupid)
 */
 std::vector<ServerCleanupDao::SClientInfo> ServerCleanupDao::getClients(void)
 {
+	if(q_getClients==NULL)
+	{
+		q_getClients=db->Prepare("SELECT id, name FROM clients", false);
+	}
 	db_results res=q_getClients->Read();
 	std::vector<ServerCleanupDao::SClientInfo> ret;
 	ret.resize(res.size());
@@ -533,6 +633,10 @@ std::vector<ServerCleanupDao::SClientInfo> ServerCleanupDao::getClients(void)
 */
 std::vector<ServerCleanupDao::SFileBackupInfo> ServerCleanupDao::getFileBackupsOfClient(int clientid)
 {
+	if(q_getFileBackupsOfClient==NULL)
+	{
+		q_getFileBackupsOfClient=db->Prepare("SELECT id, backuptime, path FROM backups WHERE clientid=?", false);
+	}
 	q_getFileBackupsOfClient->Bind(clientid);
 	db_results res=q_getFileBackupsOfClient->Read();
 	q_getFileBackupsOfClient->Reset();
@@ -557,6 +661,10 @@ std::vector<ServerCleanupDao::SFileBackupInfo> ServerCleanupDao::getFileBackupsO
 */
 std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getImageBackupsOfClient(int clientid)
 {
+	if(q_getImageBackupsOfClient==NULL)
+	{
+		q_getImageBackupsOfClient=db->Prepare("SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=?", false);
+	}
 	q_getImageBackupsOfClient->Bind(clientid);
 	db_results res=q_getImageBackupsOfClient->Read();
 	q_getImageBackupsOfClient->Reset();
@@ -582,6 +690,10 @@ std::vector<ServerCleanupDao::SImageBackupInfo> ServerCleanupDao::getImageBackup
 */
 ServerCleanupDao::CondInt ServerCleanupDao::findFileBackup(int clientid, const std::wstring& path)
 {
+	if(q_findFileBackup==NULL)
+	{
+		q_findFileBackup=db->Prepare("SELECT id FROM backups WHERE clientid=? AND path=?", false);
+	}
 	q_findFileBackup->Bind(clientid);
 	q_findFileBackup->Bind(path);
 	db_results res=q_findFileBackup->Read();
@@ -603,6 +715,10 @@ ServerCleanupDao::CondInt ServerCleanupDao::findFileBackup(int clientid, const s
 */
 void ServerCleanupDao::removeDanglingFiles(void)
 {
+	if(q_removeDanglingFiles==NULL)
+	{
+		q_removeDanglingFiles=db->Prepare("DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)", false);
+	}
 	q_removeDanglingFiles->Write();
 }
 
@@ -615,6 +731,10 @@ void ServerCleanupDao::removeDanglingFiles(void)
 */
 ServerCleanupDao::CondInt64 ServerCleanupDao::getUsedStorage(int clientid)
 {
+	if(q_getUsedStorage==NULL)
+	{
+		q_getUsedStorage=db->Prepare("SELECT (bytes_used_files+bytes_used_images) AS used_storage FROM clients WHERE id=?", false);
+	}
 	q_getUsedStorage->Bind(clientid);
 	db_results res=q_getUsedStorage->Read();
 	q_getUsedStorage->Reset();
@@ -635,6 +755,10 @@ ServerCleanupDao::CondInt64 ServerCleanupDao::getUsedStorage(int clientid)
 */
 void ServerCleanupDao::cleanupBackupLogs(void)
 {
+	if(q_cleanupBackupLogs==NULL)
+	{
+		q_cleanupBackupLogs=db->Prepare("DELETE FROM logs WHERE date(created, '+182 days')<date('now')", false);
+	}
 	q_cleanupBackupLogs->Write();
 }
 
@@ -646,6 +770,10 @@ void ServerCleanupDao::cleanupBackupLogs(void)
 */
 void ServerCleanupDao::cleanupAuthLog(void)
 {
+	if(q_cleanupAuthLog==NULL)
+	{
+		q_cleanupAuthLog=db->Prepare("DELETE FROM settings_db.login_access_log WHERE date(logintime, '+182 days')<date('now')", false);
+	}
 	q_cleanupAuthLog->Write();
 }
 
@@ -653,38 +781,38 @@ void ServerCleanupDao::cleanupAuthLog(void)
 //@-SQLGenSetup
 void ServerCleanupDao::createQueries(void)
 {
-	q_getIncompleteImages=db->Prepare("SELECT id, path FROM backup_images WHERE  complete=0 AND running<datetime('now','-300 seconds')", false);
-	q_removeImage=db->Prepare("DELETE FROM backup_images WHERE id=?", false);
-	q_getClientsSortFilebackups=db->Prepare("SELECT DISTINCT c.id AS id FROM clients c INNER JOIN backups b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
-	q_getClientsSortImagebackups=db->Prepare("SELECT DISTINCT c.id AS id FROM clients c  INNER JOIN (SELECT * FROM backup_images WHERE length(letter)<=2) b ON c.id=b.clientid ORDER BY b.backuptime ASC", false);
-	q_getFullNumImages=db->Prepare("SELECT id, letter FROM backup_images  WHERE clientid=? AND incremental=0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
-	q_getImageRefs=db->Prepare("SELECT id, complete FROM backup_images WHERE incremental<>0 AND incremental_ref=?", false);
-	q_getImagePath=db->Prepare("SELECT path FROM backup_images WHERE id=?", false);
-	q_getIncrNumImages=db->Prepare("SELECT id,letter FROM backup_images WHERE clientid=? AND incremental<>0 AND complete=1 AND length(letter)<=2 ORDER BY backuptime ASC", false);
-	q_getFullNumFiles=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental=0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
-	q_getIncrNumFiles=db->Prepare("SELECT id FROM backups WHERE clientid=? AND incremental<>0 AND running<datetime('now','-300 seconds') AND archived=0 ORDER BY backuptime ASC", false);
-	q_getClientName=db->Prepare("SELECT name FROM clients WHERE id=?", false);
-	q_getFileBackupPath=db->Prepare("SELECT path FROM backups WHERE id=?", false);
-	q_deleteFiles=db->Prepare("DELETE FROM files WHERE backupid=?", false);
-	q_removeFileBackup=db->Prepare("DELETE FROM backups WHERE id=?", false);
-	q_getFileBackupInfo=db->Prepare("SELECT id, backuptime, path FROM backups WHERE id=?", false);
-	q_getImageBackupInfo=db->Prepare("SELECT id, backuptime, path, letter FROM backup_images WHERE id=?", false);
-	q_moveFiles=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 1 AS is_del FROM files WHERE backupid=?", false);
-	q_removeImageSize=db->Prepare("UPDATE clients SET bytes_used_images=( (SELECT bytes_used_images FROM clients WHERE id=( SELECT clientid FROM backup_images WHERE id=? ) ) -  (SELECT size_bytes FROM backup_images WHERE id=? ) ) WHERE id=(SELECT clientid FROM backup_images WHERE id=?)", false);
-	q_addToImageStats=db->Prepare("INSERT INTO del_stats (backupid, image, delsize, clientid, incremental) SELECT id, 1 AS image, (size_bytes+?) AS delsize, clientid, incremental FROM backup_images WHERE id=?", false);
-	q_updateDelImageStats=db->Prepare("UPDATE del_stats SET stoptime=CURRENT_TIMESTAMP WHERE rowid=?", false);
-	q_getClientImages=db->Prepare("SELECT id, path FROM backup_images WHERE clientid=?", false);
-	q_getClientFileBackups=db->Prepare("SELECT id FROM backups WHERE clientid=?", false);
-	q_getAssocImageBackups=db->Prepare("SELECT assoc_id FROM assoc_images WHERE img_id=?", false);
-	q_getImageSize=db->Prepare("SELECT size_bytes FROM backup_images WHERE id=?", false);
-	q_getClients=db->Prepare("SELECT id, name FROM clients", false);
-	q_getFileBackupsOfClient=db->Prepare("SELECT id, backuptime, path FROM backups WHERE clientid=?", false);
-	q_getImageBackupsOfClient=db->Prepare("SELECT id, backuptime, letter, path FROM backup_images WHERE clientid=?", false);
-	q_findFileBackup=db->Prepare("SELECT id FROM backups WHERE clientid=? AND path=?", false);
-	q_removeDanglingFiles=db->Prepare("DELETE FROM files WHERE backupid NOT IN (SELECT id FROM backups)", false);
-	q_getUsedStorage=db->Prepare("SELECT (bytes_used_files+bytes_used_images) AS used_storage FROM clients WHERE id=?", false);
-	q_cleanupBackupLogs=db->Prepare("DELETE FROM logs WHERE date(created, '+182 days')<date('now')", false);
-	q_cleanupAuthLog=db->Prepare("DELETE FROM settings_db.login_access_log WHERE date(logintime, '+182 days')<date('now')", false);
+	q_getIncompleteImages=NULL;
+	q_removeImage=NULL;
+	q_getClientsSortFilebackups=NULL;
+	q_getClientsSortImagebackups=NULL;
+	q_getFullNumImages=NULL;
+	q_getImageRefs=NULL;
+	q_getImagePath=NULL;
+	q_getIncrNumImages=NULL;
+	q_getFullNumFiles=NULL;
+	q_getIncrNumFiles=NULL;
+	q_getClientName=NULL;
+	q_getFileBackupPath=NULL;
+	q_deleteFiles=NULL;
+	q_removeFileBackup=NULL;
+	q_getFileBackupInfo=NULL;
+	q_getImageBackupInfo=NULL;
+	q_moveFiles=NULL;
+	q_removeImageSize=NULL;
+	q_addToImageStats=NULL;
+	q_updateDelImageStats=NULL;
+	q_getClientImages=NULL;
+	q_getClientFileBackups=NULL;
+	q_getAssocImageBackups=NULL;
+	q_getImageSize=NULL;
+	q_getClients=NULL;
+	q_getFileBackupsOfClient=NULL;
+	q_getImageBackupsOfClient=NULL;
+	q_findFileBackup=NULL;
+	q_removeDanglingFiles=NULL;
+	q_getUsedStorage=NULL;
+	q_cleanupBackupLogs=NULL;
+	q_cleanupAuthLog=NULL;
 }
 
 //@-SQLGenDestruction

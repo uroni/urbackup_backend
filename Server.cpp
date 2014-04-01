@@ -379,7 +379,7 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 
 		if( LogLevel==LL_ERROR )
 		{
-			std::cout << buffer << L"ERROR: " << out_str << std::endl;
+			std::cout << buffer << "ERROR: " << out_str << std::endl;
 			if(logfile_a)
 				logfile << buffer << "ERROR: " << out_str << std::endl;
 		}

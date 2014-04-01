@@ -219,12 +219,25 @@ namespace
 			return false;
 		}
 
-		data->backup_dao->removeDirectoryLink(data->clientid, pool_name);
+		std::wstring target_raw;
+		if(next(path,0, os_file_prefix(L"")))
+		{
+			target_raw = path.substr(os_file_prefix(L"").size());
+		}
+		else
+		{
+			target_raw = path;
+		}
 
+		data->backup_dao->removeDirectoryLink(data->clientid, target_raw);
+
+		bool ret = true;
 		if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
 		{
-			return remove_directory_link_dir(os_file_prefix(pool_path), *data->backup_dao, data->clientid);
+			ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid);
 		}
+
+		os_remove_symlink_dir(os_file_prefix(path));
 
 		return true;
 	}
@@ -235,7 +248,7 @@ bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup
 	IScopedLock lock(dir_link_mutex);
 
 	SSymlinkCallbackData userdata(&backup_dao, clientid);
-	return os_remove_nonempty_dir(path, symlink_callback, &userdata);
+	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata);
 }
 
 void init_dir_link_mutex()

@@ -22,6 +22,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/SettingsReader.h"
 #include "../Interface/ThreadPool.h"
+#include "../Interface/DatabaseCursor.h"
 #include "database.h"
 #include "../stringtools.h"
 #include "server_settings.h"
@@ -94,7 +95,7 @@ void ServerCleanupThread::operator()(void)
 				}
 			} break;
 		case ECleanupAction_RemoveUnknown:
-			do_remove();
+			do_remove_unknown();
 			break;
 		}
 		
@@ -339,9 +340,11 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 	return success;
 }
 
-void ServerCleanupThread::do_remove(void)
+void ServerCleanupThread::do_remove_unknown(void)
 {
 	ServerSettings settings(db);
+
+	replay_directory_link_journal(*backupdao);
 
 	std::wstring backupfolder=settings.getSettings()->backupfolder;
 
@@ -351,6 +354,8 @@ void ServerCleanupThread::do_remove(void)
 	{
 		int clientid=res_clients[i].id;
 		const std::wstring& clientname=res_clients[i].name;
+
+		Server->Log(L"Removing unknown for client \""+clientname+L"\"");
 
 		std::vector<ServerCleanupDao::SFileBackupInfo> res_file_backups=cleanupdao->getFileBackupsOfClient(clientid);
 
@@ -471,6 +476,7 @@ void ServerCleanupThread::do_remove(void)
 				}
 			}
 		}
+		check_symlinks(res_clients[i], backupfolder);
 	}
 
 	Server->Log("Removing dangling file entries...", LL_INFO);
@@ -988,7 +994,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 
 		if(!b)
 		{
-			b=remove_directory_link_dir(os_file_prefix(path), *backupdao, clientid);
+			b=remove_directory_link_dir(path, *backupdao, clientid);
 
 			if(!b && SnapshotHelper::isSubvolume(clientname, backuppath) )
 			{
@@ -997,14 +1003,14 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 
 				if(b)
 				{
-					b=remove_directory_link_dir(os_file_prefix(path), *backupdao, clientid);
+					b=remove_directory_link_dir(path, *backupdao, clientid);
 				}
 			}
 		}
 	}
 	else
 	{
-		b=remove_directory_link_dir(os_file_prefix(path), *backupdao, clientid);
+		b=remove_directory_link_dir(path, *backupdao, clientid);
 	}
 
 	bool del=true;
@@ -1395,6 +1401,184 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 		}
 	}
 	while(did_remove_something);
+
+	return false;
+}
+
+namespace
+{
+	std::vector<bool> check_backupfolders_exist(std::vector<std::wstring>& old_backupfolders)
+	{
+		std::vector<bool> ret;
+		ret.resize(old_backupfolders.size());
+		for(size_t i=0;i<old_backupfolders.size();++i)
+		{
+			ret[i] = os_directory_exists(os_file_prefix(old_backupfolders[i]));			
+		}
+		return ret;
+	}
+}
+
+bool ServerCleanupThread::correct_poolname( const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& pool_name, std::wstring& pool_path )
+{
+	const std::wstring pool_root = backupfolder + os_file_sep() + clientname + os_file_sep() + L".directory_pool";
+	pool_path = pool_root + os_file_sep() + pool_name.substr(0, 2) + os_file_sep() + pool_name;
+
+	if(os_directory_exists(pool_path))
+	{
+		return true;
+	}
+
+	static std::vector<std::wstring> old_backupfolders = backupdao->getOldBackupfolders();
+	static std::vector<bool> backupfolders_exist = check_backupfolders_exist(old_backupfolders);
+
+	for(size_t i=0;i<old_backupfolders.size();++i)
+	{
+		if(backupfolders_exist[i])
+		{
+			pool_path = old_backupfolders[i] + os_file_sep() + clientname + os_file_sep() + L".directory_pool"
+				+ os_file_sep() + pool_name.substr(0, 2) + os_file_sep() + pool_name;
+
+			if(os_directory_exists(pool_path))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& client_info, const std::wstring& backupfolder )
+{
+	const int clientid=client_info.id;
+	const std::wstring& clientname=client_info.name;
+	const std::wstring pool_root = backupfolder + os_file_sep() + clientname + os_file_sep() + L".directory_pool";
+
+	std::vector<int64> del_ids;
+	std::vector<std::pair<int64, std::wstring> > target_adjustments;
+
+	IQuery* q = db->Prepare("SELECT id, name, target FROM directory_links WHERE clientid=?");
+	q->Bind(clientid);
+
+	IDatabaseCursor* cursor = q->Cursor();
+
+	db_single_result res;
+	while(cursor->next(res))
+	{
+		const std::wstring& pool_name = res[L"name"];
+		const std::wstring& target = res[L"target"];
+
+		std::wstring new_target = target;
+		std::wstring pool_path;
+		bool exists=true;
+		if(!correct_poolname(backupfolder, clientname, pool_name, pool_path) || !correct_target(backupfolder, new_target))
+		{
+			if(!correct_poolname(backupfolder, clientname, pool_name, pool_path))
+			{
+				Server->Log(L"Pool directory for pool entry \""+pool_name+L"\" not found.");
+			}
+			if(!correct_target(backupfolder, new_target))
+			{
+				Server->Log(L"Pool directory source symbolic link \""+new_target+L"\" not found.");
+			}
+			Server->Log("Deleting pool reference entry");
+			del_ids.push_back(watoi(res[L"id"]));
+			exists=false;
+		}
+		else if(target!=new_target)
+		{
+			Server->Log(L"Adjusting pool directory target from \""+target+L"\" to \""+new_target+L"\"");
+			target_adjustments.push_back(std::make_pair(watoi(res[L"id"]), new_target));
+		}
+		
+		if(exists)
+		{
+			std::wstring symlink_pool_path;
+			if(os_get_symlink_target(os_file_prefix(new_target), symlink_pool_path))
+			{
+				if(symlink_pool_path!=pool_path)
+				{
+					Server->Log(L"Correcting target of symlink \""+new_target+L"\" to \""+pool_path+L"\"");
+					if(os_remove_symlink_dir(os_file_prefix(new_target)))
+					{
+						if(!os_link_symbolic(pool_path, os_file_prefix(new_target)))
+						{
+							Server->Log(L"Could not create symlink at \""+new_target+L"\" to \""+pool_path+L"\"", LL_ERROR);
+						}
+					}
+					else
+					{
+						Server->Log(L"Error deleting symlink \""+new_target+L"\"", LL_ERROR);
+					}
+				}
+			}
+		}
+	}
+	q->Reset();
+
+	for(size_t i=0;i<del_ids.size();++i)
+	{
+		backupdao->deleteLinkReferenceEntry(del_ids[i]);
+	}
+
+	for(size_t i=0;i<target_adjustments.size();++i)
+	{
+		backupdao->updateLinkReferenceTarget(target_adjustments[i].second, target_adjustments[i].first);
+	}
+
+	std::vector<SFile> first_files = getFiles(pool_root);
+	for(size_t i=0;i<first_files.size();++i)
+	{
+		if(!first_files[i].isdir)
+			continue;
+
+		std::wstring curr_path = pool_root + os_file_sep() + first_files[i].name;
+		std::vector<SFile> pool_files = getFiles(curr_path);
+
+		for(size_t j=0;i<pool_files.size();++i)
+		{
+			if(!pool_files[i].isdir)
+				continue;
+
+			std::wstring pool_path = curr_path + os_file_sep() + pool_files[i].name;
+
+			if(backupdao->getDirectoryRefcount(clientid, pool_files[i].name)==0)
+			{
+				Server->Log(L"Refcount of \""+pool_path+L"\" is zero. Deleting pool folder.");
+				if(!remove_directory_link_dir(pool_path, *backupdao, clientid))
+				{
+					Server->Log(L"Could not remove pool folder \""+pool_path+L"\"", LL_ERROR);
+				}
+			}
+		}
+	}
+}
+
+bool ServerCleanupThread::correct_target(const std::wstring& backupfolder, std::wstring& target)
+{
+	if(os_is_symlink(os_file_prefix(target)))
+	{
+		return true;
+	}
+
+	static std::vector<std::wstring> old_backupfolders = backupdao->getOldBackupfolders();
+
+	for(size_t i=0;i<old_backupfolders.size();++i)
+	{
+		size_t erase_size = old_backupfolders[i].size() + os_file_sep().size();
+		if(target.size()>erase_size &&
+			next(target, 0, old_backupfolders[i]))
+		{
+			std::wstring new_target = backupfolder + os_file_sep() + target.substr(erase_size);
+
+			if(os_is_symlink(os_file_prefix(new_target)))
+			{
+				target = new_target;
+				return true;
+			}
+		}
+	}
 
 	return false;
 }

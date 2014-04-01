@@ -1092,6 +1092,14 @@ void update29_30()
 		"method INTEGER)");
 }
 
+void update30_31()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE settings_db.old_backupfolders ("
+		"id INTEGER PRIMARY KEY,"
+		"backupfolder TEXT UNIQUE)");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1113,7 +1121,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=30;
+	int max_v=31;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1253,6 +1261,10 @@ void upgrade(void)
 				break;
 			case 29:
 				update29_30();
+				++ver;
+				break;
+			case 30:
+				update30_31();
 				++ver;
 				break;
 			default:

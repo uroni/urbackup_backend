@@ -299,6 +299,11 @@ IQuery* CDatabase::Prepare(int id, std::string pQuery)
 
 void CDatabase::destroyQuery(IQuery *q)
 {
+	if(q==NULL)
+	{
+		return;
+	}
+
 	for(size_t i=0;i<queries.size();++i)
 	{
 		if( queries[i]==q )

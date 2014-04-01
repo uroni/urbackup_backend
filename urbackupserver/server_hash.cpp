@@ -50,7 +50,7 @@ void destroy_mutex1(void)
 }
 
 BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles)
-	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), copy_limit(1000)
+	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), copy_limit(1000), backupdao(NULL), old_backupfolders_loaded(false)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -91,6 +91,7 @@ void BackupServerHash::setupDatabase(void)
 	}
 
 	prepareSQL();
+	backupdao = new ServerBackupDao(db);
 	copyFilesFromTmp();
 
 	{
@@ -128,6 +129,9 @@ void BackupServerHash::deinitDatabase(void)
 
 	delete filecache;
 	filecache=NULL;
+
+	delete backupdao;
+	backupdao=NULL;
 }
 
 void BackupServerHash::operator()(void)
@@ -419,6 +423,12 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 				IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
 				if(ctf==NULL)
 				{
+					if(!cache_hit && correctPath(ff, f_hashpath))
+					{
+						ServerLogger::Log(clientid, L"HT: Using new backupfolder for: \""+ff+L"\"", LL_DEBUG);
+						continue;
+					}
+
 					if(!cache_hit || first_logmsg==false)
 					{
 						ServerLogger::Log(clientid, L"HT: Hardlinking failed (File doesn't exist): \""+ff+L"\"", LL_DEBUG);
@@ -1204,5 +1214,52 @@ bool BackupServerHash::renameFile(IFile *tf, const std::wstring &dest)
 		return true;
 	}
 }
+
+bool BackupServerHash::correctPath( std::wstring& ff, std::wstring& f_hashpath )
+{
+	if(!old_backupfolders_loaded)
+	{
+		old_backupfolders_loaded=true;
+		db->AttachDBs();
+		old_backupfolders=backupdao->getOldBackupfolders();
+		db->DetachDBs();
+	}
+
+	if(backupfolder.empty())
+	{
+		db->AttachDBs();
+		ServerSettings settings(db);
+		backupfolder = settings.getSettings()->backupfolder;
+		db->DetachDBs();
+	}
+
+	for(size_t i=0;i<old_backupfolders.size();++i)
+	{
+		size_t erase_size = old_backupfolders[i].size() + os_file_sep().size();
+		if(ff.size()>erase_size &&
+			next(ff, 0, old_backupfolders[i]))
+		{
+			std::wstring tmp_ff = backupfolder + os_file_sep() + ff.substr(erase_size);
+						
+			IFile* f = Server->openFile(tmp_ff, MODE_READ);
+			if(f!=NULL)
+			{
+				Server->destroy(f);
+
+				if(f_hashpath.size()>erase_size)
+				{
+					f_hashpath = backupfolder + os_file_sep() + f_hashpath.substr(erase_size);
+				}
+
+				ff = tmp_ff;
+
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 
 #endif //CLIENT_ONLY

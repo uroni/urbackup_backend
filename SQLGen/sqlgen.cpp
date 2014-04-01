@@ -360,6 +360,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	{
 		stmt_type=StatementType_Insert;
 	}
+	if(strlower(sql).find("update")!=std::string::npos)
+	{
+		stmt_type=StatementType_Update;
+	}
 
 	std::string return_vals=input.annotations["return"];
 
@@ -506,8 +510,12 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 
 	gen_data.funcdecls+="\t"+funcdecl+"\r\n";
 	gen_data.variables+="\tIQuery* "+query_name+";\r\n";
-	gen_data.createQueriesCode+="\t"+query_name+"="+"db->Prepare(\""+parsedSql+"\", false);\r\n";
+	gen_data.createQueriesCode+="\t"+query_name+"=NULL;\r\n";
 	gen_data.destroyQueriesCode+="\tdb->destroyQuery("+query_name+");\r\n";
+
+	code+="\tif("+query_name+"==NULL)\r\n\t{\r\n\t";
+	code+="\t"+query_name+"=db->Prepare(\""+parsedSql+"\", false);\r\n";
+	code+="\t}\r\n";
 
 	for(size_t i=0;i<params.size();++i)
 	{
@@ -525,7 +533,9 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	{
 		code+="\tdb_results res="+query_name+"->Read();\r\n";
 	}
-	else if(stmt_type==StatementType_Delete || stmt_type==StatementType_Insert)
+	else if(stmt_type==StatementType_Delete
+		|| stmt_type==StatementType_Insert
+		|| stmt_type==StatementType_Update)
 	{
 		code+="\t"+query_name+"->Write();\r\n";
 	}

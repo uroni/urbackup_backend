@@ -27,6 +27,7 @@
 #include "../../urbackupcommon/settingslist.h"
 #include "../server_get.h"
 #include "../server_archive.h"
+#include "../dao/ServerBackupDao.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -203,7 +204,27 @@ void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q
 	}
 }
 
-void saveGeneralSettings(str_map &GET, IDatabase *db)
+namespace
+{
+	std::wstring fixupBackupfolder(const std::wstring val, ServerBackupDao& backupdao, ServerSettings &server_settings)
+	{
+		if(val!=server_settings.getSettings()->backupfolder)
+		{
+			backupdao.addToOldBackupfolders(server_settings.getSettings()->backupfolder);
+		}
+
+		if(val.find(os_file_sep())==val.size()-os_file_sep().size())
+		{
+			return val.substr(0, val.size()-os_file_sep().size());
+		}
+		else
+		{
+			return val;
+		}
+	}
+}
+
+void saveGeneralSettings(str_map &GET, IDatabase *db, ServerBackupDao& backupdao, ServerSettings &server_settings)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
@@ -215,7 +236,12 @@ void saveGeneralSettings(str_map &GET, IDatabase *db)
 		str_map::iterator it=GET.find(settings[i]);
 		if(it!=GET.end())
 		{
-			updateSetting(settings[i], it->second, q_get, q_update, q_insert);
+			std::wstring val = it->second;
+			if(settings[i]==L"backupfolder")
+			{
+				val = fixupBackupfolder(val, backupdao, server_settings);
+			}
+			updateSetting(settings[i], val, q_get, q_update, q_insert);
 		}
 	}
 
@@ -427,6 +453,7 @@ ACTION_IMPL(settings)
 	std::string rights=helper.getRights("client_settings");
 	std::vector<int> clientid;
 	IDatabase *db=helper.getDatabase();
+	ServerBackupDao backupdao(db);
 	if(rights!="all" && rights!="none" )
 	{
 		std::vector<std::string> s_clientid;
@@ -713,10 +740,11 @@ ACTION_IMPL(settings)
 		{
 			if(sa==L"general_save")
 			{
+				ServerSettings serv_settings(db);
 				db->BeginTransaction();
 				updateClientSettings(0, GET, db);
 				updateArchiveSettings(0, GET, db);
-				saveGeneralSettings(GET, db);
+				saveGeneralSettings(GET, db, backupdao, serv_settings);
 				db->EndTransaction();
 
 				ServerSettings::updateAll();

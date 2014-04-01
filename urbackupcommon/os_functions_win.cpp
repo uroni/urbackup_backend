@@ -274,6 +274,25 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 {
 	WIN32_FIND_DATAW wfd; 
 	HANDLE hf=FindFirstFileW((path+L"\\*").c_str(), &wfd);
+	std::wstring tpath=path;
+	if(hf==INVALID_HANDLE_VALUE)
+	{
+		if(next(tpath, 0, L"\\\\?\\UNC"))
+		{
+			tpath.erase(0, 7);
+			tpath=L"\\"+tpath;
+			hf=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
+		}
+		else if(next(tpath, 0, L"\\\\?\\"))
+		{
+			tpath.erase(0, 4);
+			hf=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
+		}
+		if(hf==INVALID_HANDLE_VALUE)
+		{
+			return false;
+		}
+	}
 	BOOL b=true;
 	while( b )
 	{
@@ -287,14 +306,18 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 				{
 					symlink_callback(path+L"\\"+wfd.cFileName, userdata);
 				}
-				else
+				else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 				{
 					os_remove_symlink_dir(path+L"\\"+wfd.cFileName);
+				}
+				else
+				{
+					DeleteFileW((path+L"\\"+wfd.cFileName).c_str());
 				}
 			}
 			else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
 			{
-				os_remove_nonempty_dir(path+L"\\"+wfd.cFileName);
+				os_remove_nonempty_dir(tpath+L"\\"+wfd.cFileName);
 			}
 			else
 			{
