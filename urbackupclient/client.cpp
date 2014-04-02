@@ -59,6 +59,7 @@ const unsigned int nonidlesleeptime=500;
 const unsigned short tcpport=35621;
 const unsigned short udpport=35622;
 const unsigned int shadowcopy_timeout=7*24*60*60*1000;
+const unsigned int shadowcopy_startnew_timeout=55*60*1000;
 const size_t max_modify_file_buffer_size=500*1024;
 const size_t max_modify_hash_buffer_size=500*1024;
 const int64 save_filehash_limit=20*4096;
@@ -1232,7 +1233,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 					Server->destroy(volf);
 				}
 
-				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000 || (do_restart && restart_own && only_own_tokens ) )
+				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_startnew_timeout/1000 || (do_restart && restart_own && only_own_tokens ) )
 				{
 					if( only_own_tokens)
 					{
