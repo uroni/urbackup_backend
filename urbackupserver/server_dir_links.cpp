@@ -7,29 +7,35 @@
 
 namespace
 {
-	void reference_all_sublinks(ServerBackupDao& backup_dao, int clientid, const std::wstring& target, const std::wstring& new_target)
+	std::wstring escape_glob_sql(const std::wstring& glob)
 	{
-		std::wstring escaped_target;
-		escaped_target.reserve(target.size());
-		for(size_t i=0;i<target.size();++i)
+		std::wstring ret;
+		ret.reserve(glob.size());
+		for(size_t i=0;i<glob.size();++i)
 		{
-			if(target[i]=='?')
+			if(glob[i]=='?')
 			{
-				escaped_target+=L"[?]";
+				ret+=L"[?]";
 			}
-			else if(target[i]=='[')
+			else if(glob[i]=='[')
 			{
-				escaped_target+=L"[[]";
+				ret+=L"[[]";
 			}
-			else if(target[i]=='*')
+			else if(glob[i]=='*')
 			{
-				escaped_target+=L"[*]";
+				ret+=L"[*]";
 			}
 			else
 			{
-				escaped_target+=target[i];
+				ret+=glob[i];
 			}
 		}
+		return ret;
+	}
+
+	void reference_all_sublinks(ServerBackupDao& backup_dao, int clientid, const std::wstring& target, const std::wstring& new_target)
+	{
+		std::wstring escaped_target = escape_glob_sql(target);
 
 		std::vector<ServerBackupDao::DirectoryLinkEntry> entries = backup_dao.getLinksInDirectory(clientid, escaped_target+os_file_sep()+L"*");
 
@@ -235,6 +241,10 @@ namespace
 		if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
 		{
 			ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid);
+		}
+		else
+		{
+			data->backup_dao->removeDirectoryLinkGlob(data->clientid, escape_glob_sql(target_raw)+os_file_sep()+L"*");
 		}
 
 		os_remove_symlink_dir(os_file_prefix(path));

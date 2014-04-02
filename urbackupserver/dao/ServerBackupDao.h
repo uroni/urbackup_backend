@@ -26,6 +26,7 @@ public:
 
 	void addDirectoryLink(int clientid, const std::wstring& name, const std::wstring& target);
 	void removeDirectoryLink(int clientid, const std::wstring& target);
+	void removeDirectoryLinkGlob(int clientid, const std::wstring& target);
 	int getDirectoryRefcount(int clientid, const std::wstring& name);
 	void addDirectoryLinkJournalEntry(const std::wstring& linkname, const std::wstring& linktarget);
 	void removeDirectoryLinkJournalEntry(int64 entry_id);
@@ -48,6 +49,7 @@ private:
 	//@-SQLGenVariablesBegin
 	IQuery* q_addDirectoryLink;
 	IQuery* q_removeDirectoryLink;
+	IQuery* q_removeDirectoryLinkGlob;
 	IQuery* q_getDirectoryRefcount;
 	IQuery* q_addDirectoryLinkJournalEntry;
 	IQuery* q_removeDirectoryLinkJournalEntry;

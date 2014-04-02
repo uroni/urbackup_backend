@@ -78,6 +78,26 @@ void ServerBackupDao::removeDirectoryLink(int clientid, const std::wstring& targ
 
 /**
 * @-SQLGenAccess
+* @func void ServerBackupDao::removeDirectoryLinkGlob
+* @sql
+*     DELETE FROM directory_links
+*          WHERE clientid=:clientid(int)
+*			   AND target GLOB :target(string)
+*/
+void ServerBackupDao::removeDirectoryLinkGlob(int clientid, const std::wstring& target)
+{
+	if(q_removeDirectoryLinkGlob==NULL)
+	{
+		q_removeDirectoryLinkGlob=db->Prepare("DELETE FROM directory_links WHERE clientid=? AND target GLOB ?", false);
+	}
+	q_removeDirectoryLinkGlob->Bind(clientid);
+	q_removeDirectoryLinkGlob->Bind(target);
+	q_removeDirectoryLinkGlob->Write();
+	q_removeDirectoryLinkGlob->Reset();
+}
+
+/**
+* @-SQLGenAccess
 * @func int ServerBackupDao::getDirectoryRefcount
 * @return int_raw c
 * @sql
@@ -289,6 +309,7 @@ void ServerBackupDao::prepareQueries( void )
 {
 	q_addDirectoryLink=NULL;
 	q_removeDirectoryLink=NULL;
+	q_removeDirectoryLinkGlob=NULL;
 	q_getDirectoryRefcount=NULL;
 	q_addDirectoryLinkJournalEntry=NULL;
 	q_removeDirectoryLinkJournalEntry=NULL;
@@ -306,6 +327,7 @@ void ServerBackupDao::destroyQueries( void )
 {
 	db->destroyQuery(q_addDirectoryLink);
 	db->destroyQuery(q_removeDirectoryLink);
+	db->destroyQuery(q_removeDirectoryLinkGlob);
 	db->destroyQuery(q_getDirectoryRefcount);
 	db->destroyQuery(q_addDirectoryLinkJournalEntry);
 	db->destroyQuery(q_removeDirectoryLinkJournalEntry);
