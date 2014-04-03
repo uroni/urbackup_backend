@@ -1168,7 +1168,7 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 }
 #endif
 
-bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own, std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy)
+bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy)
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
@@ -1233,7 +1233,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 					Server->destroy(volf);
 				}
 
-				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_startnew_timeout/1000 || (do_restart && restart_own && only_own_tokens ) )
+				if( do_restart && allow_restart && (Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_startnew_timeout/1000
+													|| only_own_tokens ) )
 				{
 					if( only_own_tokens)
 					{
@@ -1298,7 +1299,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						{
 							*stale_shadowcopy=false;
 						}
-						else if(!only_own_tokens || !restart_own)
+						else if(!only_own_tokens || !allow_restart)
 						{
 							*stale_shadowcopy=true;
 						}
