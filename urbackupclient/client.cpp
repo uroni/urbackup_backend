@@ -2483,7 +2483,7 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 
 	char buffer[32768];
 	unsigned int r;
-	while( (r=f->Read(buffer, 4096))>0)
+	while( (r=f->Read(buffer, 32768))>0)
 	{
 		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
 
@@ -2516,7 +2516,7 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 
 	char buffer[32768];
 	unsigned int r;
-	while( (r=f->Read(buffer, 4096))>0)
+	while( (r=f->Read(buffer, 32768))>0)
 	{
 		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
 
