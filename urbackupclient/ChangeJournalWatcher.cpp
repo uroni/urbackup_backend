@@ -928,7 +928,7 @@ const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REAS
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
 {
-	//logEntry(vol, UsnRecord);
+	logEntry(vol, UsnRecord);
 
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
 	if(dir_id!=-1) //Is a directory

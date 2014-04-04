@@ -1222,11 +1222,21 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 					}
 				}
 
+				bool cannot_open_shadowcopy = false;
+
 				IFile *volf=Server->openFile(sc_refs[i]->volpath, MODE_READ);
 				if(volf==NULL)
 				{
-					do_restart=true;
-					VSSLog("Removing reference because shadowcopy could not be openend", LL_WARNING);
+					if(!do_restart)
+					{
+						VSSLog("Cannot open shadowcopy. Creating new or choosing other.", LL_WARNING);
+						continue;
+					}
+					else
+					{
+						VSSLog("Removing reference because shadowcopy could not be openend", LL_WARNING);
+						cannot_open_shadowcopy=true;
+					}
 				}
 				else
 				{
@@ -1234,15 +1244,16 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 				}
 
 				if( do_restart && allow_restart && (Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_startnew_timeout/1000
-													|| only_own_tokens ) )
+													|| only_own_tokens 
+													|| cannot_open_shadowcopy ) )
 				{
 					if( only_own_tokens)
 					{
-						VSSLog("Removing reference because restart own was specified and only own tokens or tokens with timeout are present", LL_WARNING);
+						VSSLog(L"Restarting shadow copy of " + sc_refs[i]->target + L" because it was started by this server", LL_WARNING);
 					}
 					else
 					{
-						VSSLog("Removing reference because of reference timeout", LL_WARNING);
+						VSSLog(L"Restarting/not using already existing shadow copy of " + sc_refs[i]->target + L" because it is too old", LL_INFO);
 					}
 
 					SCRef *curr=sc_refs[i];
@@ -1257,9 +1268,9 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 						}
 					}
 					dir->target=dir->orig_target;
-					break;
+					continue;
 				}
-				else
+				else if(!cannot_open_shadowcopy)
 				{
 					dir->ref=sc_refs[i];
 					if(!dir->ref->dontincrement)
