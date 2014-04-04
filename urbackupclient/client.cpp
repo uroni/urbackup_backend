@@ -980,15 +980,19 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		return getFiles(path);
 	}
 #else
+	if(path.find(L"UrBackupServer")!=std::string::npos)
+	{
+		int a4=4;
+	}
+
 	std::wstring path_lower=strlower(orig_path+os_file_sep());
 	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
 #ifdef _WIN32
-	if(use_db)
-	{
-		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, path_lower) );
-		if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
-			it_dir=changed_dirs.end();
-	}
+
+	it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, path_lower) );
+	if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
+		it_dir=changed_dirs.end();
+	
 	if(path_lower==strlower(Server->getServerWorkingDir())+os_file_sep()+L"urbackup"+os_file_sep())
 	{
 		use_db=false;
@@ -1022,7 +1026,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		std::vector<SFileAndHash> db_files;
 		bool has_files=cd->getFiles(path_lower, db_files);
 
-#ifdef _WIN3
+#ifdef _WIN32
 		if(it_dir!=changed_dirs.end())
 		{
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
@@ -1058,6 +1062,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			}
 		}
 #endif
+
 
 		if(calculate_filehashes_on_client)
 		{
