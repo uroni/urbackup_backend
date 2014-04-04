@@ -376,6 +376,29 @@ void update_client10_11(IDatabase *db)
 	db->Write("DELETE FROM files");
 }
 
+void update_client11_12(IDatabase *db)
+{
+	db_results res = db->Read("SELECT MAX(tvalue) AS c FROM misc WHERE tkey='last_backup_filetime'");
+	db->Write("DELETE FROM misc WHERE tkey='last_backup_filetime'");
+	if(!res.empty())
+	{
+		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', '"+wnarrow(res[0][L"c"])+"')");
+	}
+
+	db_results misc = db->Read("SELECT tkey, tvalue FROM misc");
+	db->Write("DROP TABLE misc");
+	db->Write("CREATE TABLE misc (tkey TEXT UNIQUE, tvalue TEXT)");
+
+	IQuery* q_insert = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)");
+	for(size_t i=0;i<misc.size();++i)
+	{
+		q_insert->Bind(misc[i][L"tkey"]);
+		q_insert->Bind(misc[i][L"tvalue"]);
+		q_insert->Write();
+		q_insert->Reset();
+	}
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -435,6 +458,10 @@ bool upgrade_client(void)
 				break;
 			case 10:
 				update_client10_11(db);
+				++ver;
+				break;
+			case 11:
+				update_client11_12(db);
 				++ver;
 				break;
 			default:
