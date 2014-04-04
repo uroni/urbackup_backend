@@ -666,14 +666,8 @@ function show_status2(data)
 			}
 		}	
 		
-		if(obj.start_file_backup=="")
-		{
-			obj.start_file_backup="<span id=\"start_file_backup_"+obj.id+"\" />";
-		}
-		if(obj.start_image_backup=="")
-		{
-			obj.start_image_backup="<span id=\"start_image_backup_"+obj.id+"\" />";
-		}
+		obj.start_file_backup+="<span id=\"start_file_backup_"+obj.id+"\" />";
+		obj.start_image_backup+="<span id=\"start_image_backup_"+obj.id+"\" />";
 				
 		switch(obj.status)
 		{
