@@ -94,7 +94,7 @@ print_help()
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
 	echo "--repair_database		Tries to repair the database"
 	echo "--defrag_database		Defragments the internal database and deletes the file entry cache"
-	echo "--export_auth_log		Export authentication log
+	echo "--export_auth_log		Export authentication log"
 	echo "--broadcast_interfaces   List of network interfaces from which to send broadcasts (separated by ,)"
 	echo "--user			   Start as specific user (default: urbackup)"
 	echo ""
