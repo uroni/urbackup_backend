@@ -51,6 +51,12 @@
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
       <Filter>sha2</Filter>
     </ClCompile>
+    <ClCompile Include="LRUMemCache.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="CompressedFile.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="filesystem.h">
@@ -85,6 +91,12 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
       <Filter>sha2</Filter>
+    </ClInclude>
+    <ClInclude Include="LRUMemCache.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="CompressedFile.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

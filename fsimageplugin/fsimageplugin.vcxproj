@@ -169,10 +169,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
+    <ClCompile Include="CompressedFile.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="filesystem.cpp" />
     <ClCompile Include="FSImageFactory.cpp" />
     <ClCompile Include="fs\ntfs_win.cpp" />
+    <ClCompile Include="LRUMemCache.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="vhdfile.cpp" />
@@ -181,12 +183,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
+    <ClInclude Include="CompressedFile.h" />
     <ClInclude Include="filesystem.h" />
     <ClInclude Include="FSImageFactory.h" />
     <ClInclude Include="fs\ntfs_win.h" />
     <ClInclude Include="IFilesystem.h" />
     <ClInclude Include="IFSImageFactory.h" />
     <ClInclude Include="IVHDFile.h" />
+    <ClInclude Include="LRUMemCache.h" />
     <ClInclude Include="pluginmgr.h" />
     <ClInclude Include="vhdfile.h" />
     <ClInclude Include="fs\ntfs.h" />

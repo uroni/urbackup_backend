@@ -155,6 +155,16 @@ void ServerVHDWriter::operator()(void)
 		Server->getThreadPool()->waitFor(filebuf_writer_ticket);
 	}
 
+	if(!vhd->finish())
+	{
+		checkFreeSpaceAndCleanup();
+		if(!vhd->finish())
+		{
+			ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
+			has_error=true;
+		}
+	}
+
 	image_fak->destroyVHDFile(vhd);
 }
 

@@ -59,11 +59,13 @@ struct VHDDynamicHeader
 #pragma pack()
 #endif
 
+class CompressedFile;
+
 class VHDFile : public IVHDFile, public IFile
 {
 public:
-	VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false);
-	VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode=false);
+	VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize=2*1024*1024, bool fast_mode=false, bool compress=false);
+	VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode=false, bool compress=false);
 	~VHDFile();
 
 	virtual std::string Read(_u32 tr);
@@ -93,7 +95,11 @@ public:
 
 	void addVolumeOffset(_i64 offset);
 
+	bool finish();
+
 private:
+
+	bool check_if_compressed();
 
 	bool write_header(bool diff);
 	bool write_dynamicheader(char *parent_uid, unsigned int parent_timestamp, std::wstring parentfn);
@@ -118,7 +124,9 @@ private:
 
 	bool read_only;
 
-	IFile *file;
+	IFile* backing_file;
+	IFile* file;
+	CompressedFile* compressed_file;
 
 	uint64 dstsize;
 
@@ -152,4 +160,6 @@ private:
 	bool fast_mode;
 
 	_i64 volume_offset;
+
+	bool finished;
 };

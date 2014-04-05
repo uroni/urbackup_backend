@@ -20,6 +20,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/Types.h"
 #include "../stringtools.h"
+#include "CompressedFile.h"
 #include <memory.h>
 #include <stdlib.h>
 
@@ -37,9 +38,10 @@ const int64 unixtime_offset=946684800;
 
 const unsigned int sector_size=512;
 
-VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode)
-	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0)
+VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress)
+	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false)
 {
+	compressed_file=NULL;
 	parent=NULL;
 	read_only=pRead_only;
 	is_open=false;
@@ -47,19 +49,36 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 	bitmap=NULL;
 	currblock=0xFFFFFFFF;
 
-	file=Server->openFile(fn, (read_only?MODE_READ:MODE_RW) );
+	backing_file=Server->openFile(fn, (read_only?MODE_READ:MODE_RW) );
+	bool openedExisting = true;
 
-	if(!file)
+	if(!backing_file)
 	{
 		if(read_only==false)
 		{
-			file=Server->openFile(fn, MODE_WRITE);
+			backing_file=Server->openFile(fn, MODE_WRITE);
+			openedExisting=false;
 		}
-		if(file==NULL)
+		if(backing_file==NULL)
 		{
 			Server->Log("Error opening VHD file", LL_ERROR);
 			return;
 		}
+	}
+
+	if(check_if_compressed() || compress)
+	{
+		compressed_file = new CompressedFile(backing_file, openedExisting);
+		file = compressed_file;
+
+		if(compressed_file->hasError())
+		{
+			return;
+		}
+	}
+	else
+	{
+		file = backing_file;
 	}
 
 	if(file->Size()==0 && !read_only) // created file
@@ -113,9 +132,10 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 	}
 }
 
-VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode)
-	: fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0)
+VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode, bool compress)
+	: fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false)
 {
+	compressed_file=NULL;
 	curr_offset=0;
 	is_open=false;
 	read_only=pRead_only;
@@ -124,18 +144,29 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 	bitmap=NULL;
 	currblock=0xFFFFFFFF;
 
-	file=Server->openFile(fn, (read_only?MODE_READ:MODE_RW) );
-	if(!file)
+	backing_file=Server->openFile(fn, (read_only?MODE_READ:MODE_RW) );
+	bool openedExisting = true;
+	if(!backing_file)
 	{
 		if(read_only==false)
 		{
-			file=Server->openFile(fn, MODE_WRITE);
+			backing_file=Server->openFile(fn, MODE_WRITE);
+			openedExisting=false;
 		}
-		if(file==NULL)
+		if(backing_file==NULL)
 		{
 			Server->Log("Error opening VHD file", LL_ERROR);
 			return;
 		}
+	}
+
+	if(check_if_compressed() || compress)
+	{
+		file = new CompressedFile(backing_file, openedExisting);
+	}
+	else
+	{
+		file = backing_file;
 	}
 
 	parent=new VHDFile(parent_fn, true, 0);
@@ -202,17 +233,9 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 
 VHDFile::~VHDFile()
 {
-	switchBitmap(0);
-	if(fast_mode && !read_only)
+	if(!finished)
 	{
-		if(!write_footer())
-		{
-			Server->Log("Error writing footer", LL_ERROR);
-		}
-		if(!write_bat())
-		{
-			Server->Log("Error writing BAT", LL_ERROR);
-		}
+		finish();
 	}
 	delete file;
 	delete parent;
@@ -1147,4 +1170,48 @@ void VHDFile::print_last_error()
 #else
 	Server->Log("Last error: "+nconvert(errno), LL_ERROR);
 #endif
+}
+
+bool VHDFile::check_if_compressed()
+{
+	const char header_magic[] = "URBACKUP COMPRESSED FILE";
+	std::string magic = file->Read(sizeof(header_magic));
+
+	return magic == std::string(header_magic);
+}
+
+bool VHDFile::finish()
+{
+	switchBitmap(0);
+	if(fast_mode && !read_only)
+	{
+		if(!write_footer())
+		{
+			Server->Log("Error writing footer", LL_ERROR);
+			return false;
+		}
+		if(!write_bat())
+		{
+			Server->Log("Error writing BAT", LL_ERROR);
+			return false;
+		}
+	}
+
+	if(parent!=NULL)
+	{
+		if(!parent->finish())
+		{
+			return false;
+		}
+	}
+
+	CompressedFile* compfile = dynamic_cast<CompressedFile*>(file);
+	if(compfile!=NULL)
+	{
+		return compfile->finish();
+	}
+	else
+	{
+		return true;
+	}
 }

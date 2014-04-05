@@ -34,6 +34,7 @@ IServer *Server;
 #include "../Interface/File.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "../cryptoplugin/ICryptoFactory.h"
 
 #include <stdlib.h>
 
@@ -42,7 +43,7 @@ IServer *Server;
 
 #include "pluginmgr.h"
 
-
+ICryptoFactory *crypto_fak;
 
 CImagePluginMgr *imagepluginmgr;
 
@@ -51,6 +52,13 @@ void PrintInfo(IFilesystem *fs);
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
+
+	str_map params;
+	crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
+	if( crypto_fak==NULL )
+	{
+		Server->Log("Error loading Cryptoplugin. Image compression will not work.", LL_ERROR);
+	}
 
 	std::string devinfo=Server->getServerParameter("devinfo");
 

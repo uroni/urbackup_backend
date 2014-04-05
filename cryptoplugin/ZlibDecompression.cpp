@@ -35,3 +35,25 @@ size_t ZlibDecompression::decompress(const char *input, size_t input_size, std::
 		return 0;
 	}
 }
+
+size_t ZlibDecompression::decompress( const char *input, size_t input_size, char* output, size_t output_size, bool flush, bool *error)
+{
+	try
+	{
+		decomp.Put((const byte*)input, input_size);
+		if(flush)
+		{
+			decomp.Flush(true);
+		}
+		return decomp.Get(reinterpret_cast<byte*>(output), output_size);
+	}
+	catch(const CryptoPP::ZlibDecompressor::Err& err)
+	{
+		Server->Log("Error during ZLib decompression: "+err.GetWhat(), LL_WARNING);
+		if(error!=NULL)
+		{
+			*error=true;
+		}
+		return 0;
+	}
+}

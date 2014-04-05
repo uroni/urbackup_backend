@@ -13,5 +13,5 @@ public:
 	virtual std::wstring getFilenameW(void)=0;
 	virtual bool has_sector(void)=0;
 	virtual unsigned int getBlocksize()=0;
-
+	virtual bool finish() = 0;
 };
