@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
 {
 	if(argc<3)
 	{
-		std::cout << "Usage: SQLGen [SQLite database filename] [cpp-file]" << std::endl;
+		std::cout << "Usage: SQLGen [SQLite database filename] [cpp-file] ([Attached db name] [Attached db filename] ...)" << std::endl;
 		return 1;
 	}
 
@@ -28,6 +28,14 @@ int main(int argc, char* argv[])
 	if(!Server->openDatabase(sqlite_db_str, maindb))
 	{
 		std::cout << "Could not open sqlite db \"" << sqlite_db_str << "\"" << std::endl;
+	}
+
+	for(int i=3;i+1<argc;i+=2)
+	{
+		if(!Server->attachToDatabase(argv[i+1], argv[i], maindb))
+		{
+			std::cout << "Could not attach database \"" << argv[i+1] << "\"" << std::endl;
+		}
 	}
 
 	std::string cppfile_data=getFile(cppfile);

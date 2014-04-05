@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -77,11 +77,14 @@ int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
+std::map<std::string, std::string> ClientConnector::challenges;
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
+const std::string pw_change_file="pw_change.txt";
 #else
 const std::string pw_file="urbackup/pw.txt";
+const std::string pw_change_file="urbackup/pw_change.txt";
 #endif
 
 #ifdef _WIN32
@@ -150,7 +153,7 @@ bool ClientConnector::wantReceive(void)
 	return want_receive;
 }
 
-void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
+void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName)
 {
 	tid=pTID;
 	pipe=pPipe;
@@ -171,6 +174,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	internet_conn=false;
 	tcpstack.setAddChecksum(false);
 	last_update_time=lasttime;
+	endpoint_name = pEndpointName;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -663,6 +667,7 @@ void ClientConnector::ReceivePackets(void)
 		Server->Log("ClientService cmd: "+cmd, LL_DEBUG);
 
 		bool pw_ok=false;
+		bool pw_change_ok=false;
 		std::string identity;
 		bool ident_ok=false;
 		str_map params;
@@ -684,7 +689,7 @@ void ClientConnector::ReceivePackets(void)
 			ParseParamStr(getafter("#", cmd), &params, false);
 
 			cmd.erase(hashpos, cmd.size()-hashpos);
-			if(!checkPassword(params[L"pw"]))
+			if(!checkPassword(params[L"pw"], pw_change_ok))
 			{
 				Server->Log("Password wrong!", LL_ERROR);
 				continue;
@@ -695,9 +700,16 @@ void ClientConnector::ReceivePackets(void)
 			}
 		}
 
-		if(!identity.empty() && ServerIdentityMgr::checkServerIdentity(identity)==true)
+		if(!identity.empty() && ServerIdentityMgr::checkServerSessionIdentity(identity))
 		{
 			ident_ok=true;
+		}
+		else if(!identity.empty() && ServerIdentityMgr::checkServerIdentity(identity))
+		{
+			if(!ServerIdentityMgr::hasPublicKey(identity) || crypto_fak==NULL)
+			{
+				ident_ok=true;
+			}
 		}
 
 		if( (ident_ok || is_channel) && !internet_conn )
@@ -708,6 +720,14 @@ void ClientConnector::ReceivePackets(void)
 		if(cmd=="ADD IDENTITY" )
 		{
 			CMD_ADD_IDENTITY(identity, cmd, ident_ok); continue;
+		}
+		else if(cmd=="GET CHALLENGE")
+		{
+			CMD_GET_CHALLENGE(identity); continue;
+		}
+		else if(next(cmd, 0, "SIGNATURE"))
+		{
+			CMD_SIGNATURE(identity, cmd); continue;
 		}
 		else if(next(cmd, 0, "FULL IMAGE ") )
 		{
@@ -724,7 +744,7 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_START_INCR_FILEBACKUP(cmd); continue;
 			}
-			else if( (cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP") && ident_ok==true)
+			else if( cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP")
 			{
 				CMD_START_FULL_FILEBACKUP(cmd); continue;
 			}
@@ -787,21 +807,45 @@ void ClientConnector::ReceivePackets(void)
 		}
 		if(pw_ok) //Commands from client frontend
 		{
-			if( cmd=="1GET BACKUP DIRS" || cmd=="GET BACKUP DIRS" )
+			if(pw_change_ok) //Administrator commands
 			{
-				CMD_GET_BACKUPDIRS(cmd); continue;
+				if( cmd=="1GET BACKUP DIRS" || cmd=="GET BACKUP DIRS" )
+				{
+					CMD_GET_BACKUPDIRS(cmd); continue;
+				}
+				else if(cmd=="SAVE BACKUP DIRS" )
+				{
+					CMD_SAVE_BACKUPDIRS(cmd, params); continue;
+				}
+				else if(next(cmd, 0, "UPDATE SETTINGS ") )
+				{
+					CMD_TOCHANNEL_UPDATE_SETTINGS(cmd); continue;
+				}
+				else if(cmd=="GET LOGPOINTS" )
+				{
+					CMD_GET_LOGPOINTS(cmd); continue;
+				}
+				else if(cmd=="GET LOGDATA" )
+				{
+					CMD_GET_LOGDATA(cmd, params); continue;
+				}
+				else if( cmd=="NEW SERVER" )
+				{
+					CMD_NEW_SERVER(params); continue;
+				}
 			}
-			else if(cmd=="SAVE BACKUP DIRS" )
-			{
-				CMD_SAVE_BACKUPDIRS(cmd, params); continue;
-			}
-			else if(cmd=="GET INCRINTERVALL" )
+			
+			if(cmd=="GET INCRINTERVALL" )
 			{
 				CMD_GET_INCRINTERVAL(cmd); continue;
 			}
 			else if(cmd=="STATUS" )
 			{
 				CMD_STATUS(cmd); continue;
+			}
+			else if(cmd=="STATUS DETAIL")
+			{
+				CMD_STATUS_DETAIL(cmd); continue;
 			}
 			else if(cmd=="START BACKUP INCR" )
 			{
@@ -818,23 +862,11 @@ void ClientConnector::ReceivePackets(void)
 			else if(cmd=="START IMAGE INCR" )
 			{
 				CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(cmd); continue;
-			}
-			else if(next(cmd, 0, "UPDATE SETTINGS ") )
-			{
-				CMD_TOCHANNEL_UPDATE_SETTINGS(cmd); continue;
-			}
+			}			
 			else if(next(cmd, 0, "PAUSE ") )
 			{
 				CMD_PAUSE(cmd); continue;
-			}
-			else if(cmd=="GET LOGPOINTS" )
-			{
-				CMD_GET_LOGPOINTS(cmd); continue;
-			}
-			else if(cmd=="GET LOGDATA" )
-			{
-				CMD_GET_LOGDATA(cmd, params); continue;
-			}
+			}			
 			else if( cmd.find("GET BACKUPCLIENTS")==0 )
 			{
 				CMD_RESTORE_GET_BACKUPCLIENTS(cmd); continue;
@@ -859,10 +891,6 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_RESTORE_DOWNLOADPROGRESS(cmd); continue;		
 			}
-			else if( cmd=="NEW SERVER" )
-			{
-				CMD_NEW_SERVER(params); continue;
-			}
 		}
 		if(is_channel) //Channel commands from server
 		{
@@ -880,10 +908,22 @@ void ClientConnector::ReceivePackets(void)
 	}
 }
 
-bool ClientConnector::checkPassword(const std::wstring &pw)
+bool ClientConnector::checkPassword(const std::wstring &pw, bool& change_pw)
 {
 	static std::string stored_pw=getFile(pw_file);
-	return stored_pw==Server->ConvertToUTF8(pw);
+	static std::string stored_pw_change=getFile(pw_change_file);
+	std::string utf8_pw = Server->ConvertToUTF8(pw);
+	if(stored_pw_change==utf8_pw)
+	{
+		change_pw=true;
+		return true;
+	}
+	if(stored_pw==utf8_pw)
+	{
+		change_pw=false;
+		return true;
+	}
+	return false;
 }
 
 std::wstring removeChars(std::wstring in)
@@ -893,7 +933,7 @@ std::wstring removeChars(std::wstring in)
 	for(size_t i=0;i<in.size();++i)
 	{
 		bool found=false;
-		for(size_t j=0;j<sizeof(illegalchars);++j)
+		for(size_t j=0;j<sizeof(illegalchars)/sizeof(illegalchars[0]);++j)
 		{
 			if(illegalchars[j]==in[i])
 			{
@@ -1867,4 +1907,13 @@ bool ClientConnector::calculateFilehashesOnClient(void)
 	}
 
 	return false;
+}
+
+bool ClientConnector::isBackupRunning()
+{
+	IScopedLock lock(backup_mutex);
+
+	std::string job = getCurrRunningJob();
+
+	return job!="NOA" && job!="DONE";
 }

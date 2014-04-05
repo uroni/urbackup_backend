@@ -5,7 +5,6 @@ namespace Actions
 	ACTION(progress);
 	ACTION(login);
 	ACTION(salt);
-	ACTION(generate_templ);
 	ACTION(lastacts);
 	ACTION(piegraph);
 	ACTION(usagegraph);
@@ -15,10 +14,9 @@ namespace Actions
 	ACTION(backups);
 	ACTION(settings);
 	ACTION(logs);
-	ACTION(isimageready);
 	ACTION(getimage);
-	ACTION(google_chart);
 	ACTION(shutdown);
 	ACTION(download_client);
 	ACTION(livelog);
+	ACTION(start_backup);
 }

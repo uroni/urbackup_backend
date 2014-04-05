@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -299,6 +299,11 @@ IQuery* CDatabase::Prepare(int id, std::string pQuery)
 
 void CDatabase::destroyQuery(IQuery *q)
 {
+	if(q==NULL)
+	{
+		return;
+	}
+
 	for(size_t i=0;i<queries.size();++i)
 	{
 		if( queries[i]==q )

@@ -14,6 +14,7 @@ public:
 	std::wstring getServerName(void);
 	std::wstring getShareDir(const std::wstring &name);
 	void addIdentity(const std::string &pIdentity);
+	bool removeIdentity(const std::string &pIdentity);
 	void setPause(bool b);
 	bool getPause(void);
 

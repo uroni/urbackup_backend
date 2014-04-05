@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -20,12 +20,6 @@
 #include "../stringtools.h"
 #include "../Interface/Server.h"
 #include <memory.h>
-
-/**
-* @-SQLGenTempSetup
-* @sql
-*	CREATE TEMPORARY TABLE filehashes_tmp (name TEXT, filesize INTEGER, modifytime INTEGER, hashdata BLOB)
-*/
 
 ClientDAO::ClientDAO(IDatabase *pDB)
 {
@@ -67,7 +61,6 @@ void ClientDAO::prepareQueries(void)
 	q_get_pattern=db->Prepare("SELECT tvalue FROM misc WHERE tkey=?", false);
 	q_insert_pattern=db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)", false);
 	q_update_pattern=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey=?", false);
-	q_get_file_hash=db->Prepare("SELECT hashdata, filesize, modifytime FROM filehashes WHERE name=?", false);
 }
 
 void ClientDAO::destroyQueries(void)
@@ -103,25 +96,16 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_get_pattern);
 	db->destroyQuery(q_insert_pattern);
 	db->destroyQuery(q_update_pattern);
-	db->destroyQuery(q_get_file_hash);
 }
 
 //@-SQLGenSetup
 void ClientDAO::prepareQueriesGen(void)
 {
-	q_modifyFileHash=db->Prepare("UPDATE filehashes SET hashdata=?, filesize=?, modifytime=? WHERE name=?", false);
-	q_addFileHash=db->Prepare("INSERT INTO filehashes_tmp (name, filesize, modifytime, hashdata) VALUES (?, ?, ?, ?)", false);
-	q_copyFromTmpFileHashes=db->Prepare("INSERT INTO filehashes (name, filesize, modifytime, hashdata) SELECT name, filesize, modifytime, hashdata FROM filehashes_tmp", false);
-	q_deleteTmpFileHashes=db->Prepare("DELETE FROM filehashes_tmp", false);
 }
 
 //@-SQLGenDestruction
 void ClientDAO::destroyQueriesGen(void)
 {
-	db->destroyQuery(q_modifyFileHash);
-	db->destroyQuery(q_addFileHash);
-	db->destroyQuery(q_copyFromTmpFileHashes);
-	db->destroyQuery(q_deleteTmpFileHashes);
 }
 
 void ClientDAO::restartQueries(void)
@@ -132,7 +116,7 @@ void ClientDAO::restartQueries(void)
 	prepareQueriesGen();
 }
 
-bool ClientDAO::getFiles(std::wstring path, std::vector<SFile> &data)
+bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 {
 	q_get_files->Bind(path);
 	db_results res=q_get_files->Read();
@@ -149,7 +133,7 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFile> &data)
 	char *ptr=(char*)&qdata[0];
 	while(ptr-(char*)&qdata[0]<num)
 	{
-		SFile f;
+		SFileAndHash f;
 		unsigned short ss;
 		memcpy(&ss, ptr, sizeof(unsigned short));
 		ptr+=sizeof(unsigned short);
@@ -168,23 +152,38 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFile> &data)
 			f.isdir=false;
 		else
 			f.isdir=true;
+		
+		unsigned short hashsize;
+		memcpy(&hashsize, ptr, sizeof(unsigned short));
+		ptr+=sizeof(unsigned short);
+
+		f.hash.resize(hashsize);
+		if(hashsize>0)
+		{
+			memcpy(&f.hash[0], ptr, hashsize);
+		}
+
+		ptr+=hashsize;
+
 		data.push_back(f);
 	}
 	return true;
 }
 
-char * constructData(const std::vector<SFile> &data, size_t &datasize)
+char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 {
 	datasize=0;
 	std::vector<std::string> utf;
+	utf.resize(data.size());
 	for(size_t i=0;i<data.size();++i)
 	{
-		std::string us=Server->ConvertToUTF8(data[i].name);
-		datasize+=us.size();
+		utf[i]=Server->ConvertToUTF8(data[i].name);
+		datasize+=utf[i].size();
 		datasize+=sizeof(unsigned short);
 		datasize+=sizeof(int64)*2;
 		++datasize;
-		utf.push_back(us);
+		datasize+=sizeof(unsigned short);
+		datasize+=data[i].hash.size();
 	}
 	char *buffer=new char[datasize];
 	char *ptr=buffer;
@@ -204,11 +203,16 @@ char * constructData(const std::vector<SFile> &data, size_t &datasize)
 			isdir=0;
 		*ptr=isdir;
 		ptr+=sizeof(char);
+		unsigned short hashsize=static_cast<unsigned short>(data[i].hash.size());
+		memcpy(ptr, &hashsize, sizeof(hashsize));
+		ptr+=sizeof(hashsize);
+		memcpy(ptr, data[i].hash.data(), hashsize);
+		ptr+=hashsize;
 	}
 	return buffer;
 }
 
-void ClientDAO::addFiles(std::wstring path, const std::vector<SFile> &data)
+void ClientDAO::addFiles(std::wstring path, const std::vector<SFileAndHash> &data)
 {
 	size_t ds;
 	char *buffer=constructData(data, ds);
@@ -220,7 +224,7 @@ void ClientDAO::addFiles(std::wstring path, const std::vector<SFile> &data)
 	delete []buffer;
 }
 
-void ClientDAO::modifyFiles(std::wstring path, const std::vector<SFile> &data)
+void ClientDAO::modifyFiles(std::wstring path, const std::vector<SFileAndHash> &data)
 {
 	size_t ds;
 	char *buffer=constructData(data, ds);
@@ -545,74 +549,3 @@ void ClientDAO::updateMiscValue(const std::string& key, const std::wstring& valu
 		q_insert_pattern->Reset();
 	}
 }
-
-bool ClientDAO::getFileHash(const std::wstring& path, _i64& filesize, _i64& modifytime, std::string& hash)
-{
-	q_get_file_hash->Bind(path);
-	db_results res=q_get_file_hash->Read();
-	q_get_file_hash->Reset();
-	if(!res.empty())
-	{
-		std::wstring &hdata=res[0][L"hashdata"];
-		hash.resize(hdata.size()*sizeof(wchar_t));
-		memcpy(const_cast<char*>(hash.c_str()), hdata.c_str(), hdata.size()*sizeof(wchar_t));
-		filesize=watoi64(res[0][L"filesize"]);
-		modifytime=watoi64(res[0][L"modifytime"]);
-		return true;
-	}
-	return false;
-}
-
-/**
-* @-SQLGenAccess
-* @func void ClientDAO::modifyFileHash
-* @sql
-*	UPDATE filehashes SET hashdata=:hash(blob), filesize=:filesize(int64), modifytime=:modifytime(int64) WHERE name=:path(string)
-*/
-void ClientDAO::modifyFileHash(const std::string& hash, int64 filesize, int64 modifytime, const std::wstring& path)
-{
-	q_modifyFileHash->Bind(hash.c_str(), (_u32)hash.size());
-	q_modifyFileHash->Bind(filesize);
-	q_modifyFileHash->Bind(modifytime);
-	q_modifyFileHash->Bind(path);
-	q_modifyFileHash->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ClientDAO::addFileHash
-* @sql
-*	INSERT INTO filehashes_tmp (name, filesize, modifytime, hashdata) VALUES (:name(string), :filesize(int64), :modifytime(int64), :hashdata(blob))
-*/
-void ClientDAO::addFileHash(const std::wstring& name, int64 filesize, int64 modifytime, const std::string& hashdata)
-{
-	q_addFileHash->Bind(name);
-	q_addFileHash->Bind(filesize);
-	q_addFileHash->Bind(modifytime);
-	q_addFileHash->Bind(hashdata.c_str(), (_u32)hashdata.size());
-	q_addFileHash->Write();
-	q_addFileHash->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ClientDAO::copyFromTmpFileHashes
-* @sql
-*	INSERT INTO filehashes (name, filesize, modifytime, hashdata) SELECT name, filesize, modifytime, hashdata FROM filehashes_tmp
-*/
-void ClientDAO::copyFromTmpFileHashes(void)
-{
-	q_copyFromTmpFileHashes->Write();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ClientDAO::deleteTmpFileHashes
-* @sql
-*	DELETE FROM filehashes_tmp
-*/
-void ClientDAO::deleteTmpFileHashes(void)
-{
-	q_deleteTmpFileHashes->Write();
-}
-

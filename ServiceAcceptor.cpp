@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -172,7 +172,9 @@ void CServiceAcceptor::operator()(void)
 					setsockopt(ns, SOL_SOCKET, SO_SNDBUF, (char *) &window_size, sizeof(window_size));
 					setsockopt(ns, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 	#endif
-					AddToWorker(ns);				
+					std::string endpoint = inet_ntoa(naddr.sin_addr);
+
+					AddToWorker(ns, endpoint);				
 				}
 			}
 		}
@@ -186,13 +188,13 @@ void CServiceAcceptor::operator()(void)
 	exitpipe->Write("ok");
 }
 
-void CServiceAcceptor::AddToWorker(SOCKET pSocket)
+void CServiceAcceptor::AddToWorker(SOCKET pSocket, const std::string& endpoint)
 {
 	for(size_t i=0;i<workers.size();++i)
 	{
 		if( workers[i]->getAvailableSlots()>0 )
 		{
-			workers[i]->AddClient(pSocket);
+			workers[i]->AddClient(pSocket, endpoint);
 			return;
 		}
 	}
@@ -204,5 +206,5 @@ void CServiceAcceptor::AddToWorker(SOCKET pSocket)
 
 	Server->createThread(nw);
 
-	nw->AddClient( pSocket );
+	nw->AddClient( pSocket, endpoint );
 }	

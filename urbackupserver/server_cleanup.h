@@ -4,7 +4,8 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include <vector>
-#include "dao/ServerCleanupDAO.h"
+#include "dao/ServerCleanupDao.h"
+#include "dao/ServerBackupDao.h"
 #include <sstream>
 
 class ServerSettings;
@@ -80,7 +81,13 @@ private:
 	void do_cleanup(void);
 	bool do_cleanup(int64 minspace, bool switch_to_wal=false);
 
-	void do_remove(void);
+	void do_remove_unknown(void);
+
+	bool correct_target(const std::wstring& backupfolder, std::wstring& target);
+
+	bool correct_poolname(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& pool_name, std::wstring& pool_path);
+
+	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::wstring& backupfolder);
 
 	bool cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids);
 
@@ -135,5 +142,6 @@ private:
 
 	CleanupAction cleanup_action;
 
-	ServerCleanupDAO *cleanupdao;
+	ServerCleanupDao* cleanupdao;
+	ServerBackupDao* backupdao;
 };

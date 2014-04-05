@@ -16,6 +16,7 @@ public:
 	virtual void stopServer(void)=0;
 	virtual std::wstring getShareDir(const std::wstring &name)=0;
 	virtual void addIdentity(const std::string &pIdentity)=0;
+	virtual bool removeIdentity(const std::string &pIdentity)=0;
 	virtual void setPause(bool b)=0;
 	virtual bool getPause(void)=0;
 	virtual void runClient(IPipe *cp)=0;

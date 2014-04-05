@@ -1,4 +1,5 @@
 #include "ChunkPatcher.h"
+#include "../stringtools.h"
 
 ChunkPatcher::ChunkPatcher(void)
 	: cb(NULL)
@@ -22,6 +23,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 	{
 		return false;
 	}
+
+	filesize = little_endian(filesize);
 
 	patchf_pos+=sizeof(_i64);
 
@@ -88,6 +91,12 @@ bool ChunkPatcher::readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHea
 			patch_header->patch_size=0;
 			return false;
 		}
+		else
+		{
+			patch_header->patch_off = little_endian(patch_header->patch_off);
+			patch_header->patch_size = little_endian(patch_header->patch_size);
+		}
+
 		if(patch_header->patch_off==-1)
 		{
 			patchf_pos+=patch_header->patch_size;

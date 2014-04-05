@@ -131,6 +131,10 @@ bool setup_sqlite_files_cache(SStartupStatus& status)
 	}
 }
 
+bool filecache_opened_ok=false;
+
+}
+
 void delete_file_caches(void)
 {
 	Server->deleteFile("urbackup/cache/backup_server_files_cache.lmdb");
@@ -140,8 +144,6 @@ void delete_file_caches(void)
 	Server->deleteFile("urbackup/cache/backup_server_files_cache.db-wal");
 }
 
-}
-
 void create_files_cache(SStartupStatus& status)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
@@ -149,6 +151,7 @@ void create_files_cache(SStartupStatus& status)
 
 	if(settings.getSettings()->filescache_type=="lmdb")
 	{
+		filecache_opened_ok=true;
 		if(get_files_cache_type()!=L"lmdb" && settings.getSettings()->filescache_type=="lmdb")
 		{
 			delete_file_caches();
@@ -156,6 +159,7 @@ void create_files_cache(SStartupStatus& status)
 			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size), status))
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
+				filecache_opened_ok=false;
 			}
 		}
 		else if(!FileExists("urbackup/cache/backup_server_files_cache.lmdb"))
@@ -166,6 +170,7 @@ void create_files_cache(SStartupStatus& status)
 			if(!setup_lmdb_files_cache(static_cast<size_t>(settings.getSettings()->filescache_size), status))
 			{
 				Server->Log("Setting up files cache failed", LL_ERROR);
+				filecache_opened_ok=false;
 			}
 		}
 		update_files_cache_type(settings.getSettings()->filescache_type);
@@ -207,6 +212,7 @@ void create_files_cache(SStartupStatus& status)
 		{
 			update_files_cache_type(settings.getSettings()->filescache_type);
 		}
+		filecache_opened_ok=!has_error;
 		SQLiteFileCache::initFileCache();
 	}
 
@@ -227,10 +233,24 @@ void create_files_cache(SStartupStatus& status)
 
 FileCache* create_lmdb_files_cache(void)
 {
-	return new MDBFileCache(0);
+	if(filecache_opened_ok)
+	{
+		return new MDBFileCache(0);
+	}
+	else
+	{
+		return NULL;
+	}
 }
 
 FileCache* create_sqlite_files_cache(void)
 {
-	return new SQLiteFileCache();
+	if(filecache_opened_ok)
+	{
+		return new SQLiteFileCache();
+	}
+	else
+	{
+		return NULL;
+	}
 }

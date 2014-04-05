@@ -340,6 +340,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	if(return_type.find("std::vector")==0)
 	{
 		struct_name=getbetween("<", ">", return_type);
+		if(struct_name=="string")
+		{
+			return_type="std::vector<std::wstring>";
+		}
 		return_vector=true;
 	}
 
@@ -356,6 +360,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	{
 		stmt_type=StatementType_Insert;
 	}
+	if(strlower(sql).find("update")!=std::string::npos)
+	{
+		stmt_type=StatementType_Update;
+	}
 
 	std::string return_vals=input.annotations["return"];
 
@@ -364,6 +372,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	bool use_struct=false;
 	bool use_cond=false;
 	bool use_exists=false;
+	bool use_raw=false;
 	if(return_types.size()>1)
 	{
 		use_struct=true;
@@ -380,9 +389,18 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	{
 		if(return_types.size()==1)
 		{
-			use_cond=true;
-			use_exists=true;
-			struct_name=generateConditional(return_types[0], gen_data);
+			if(return_types[0].type.find("_raw")!=std::string::npos)
+			{
+				return_types[0].type=greplace("_raw", "", return_types[0].type);
+				use_raw=true;
+				struct_name=return_types[0].type;
+			}
+			else
+			{
+				use_cond=true;
+				use_exists=true;
+				struct_name=generateConditional(return_types[0], gen_data);
+			}			
 		}
 		else
 		{
@@ -418,7 +436,14 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		}
 		else
 		{
-			return_outer+=return_types[0].type;
+			if(return_types[0].type=="string")
+			{
+				return_outer+="std::wstring";
+			}
+			else
+			{
+				return_outer+=return_types[0].type;
+			}
 		}
 		return_outer+=">";
 	}
@@ -485,8 +510,12 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 
 	gen_data.funcdecls+="\t"+funcdecl+"\r\n";
 	gen_data.variables+="\tIQuery* "+query_name+";\r\n";
-	gen_data.createQueriesCode+="\t"+query_name+"="+"db->Prepare(\""+parsedSql+"\", false);\r\n";
+	gen_data.createQueriesCode+="\t"+query_name+"=NULL;\r\n";
 	gen_data.destroyQueriesCode+="\tdb->destroyQuery("+query_name+");\r\n";
+
+	code+="\tif("+query_name+"==NULL)\r\n\t{\r\n\t";
+	code+="\t"+query_name+"=db->Prepare(\""+parsedSql+"\", false);\r\n";
+	code+="\t}\r\n";
 
 	for(size_t i=0;i<params.size();++i)
 	{
@@ -504,7 +533,9 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	{
 		code+="\tdb_results res="+query_name+"->Read();\r\n";
 	}
-	else if(stmt_type==StatementType_Delete || stmt_type==StatementType_Insert)
+	else if(stmt_type==StatementType_Delete
+		|| stmt_type==StatementType_Insert
+		|| stmt_type==StatementType_Update)
 	{
 		code+="\t"+query_name+"->Write();\r\n";
 	}
@@ -523,7 +554,14 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		}
 		else
 		{
-			code+=return_types[0].type;
+			if(return_types[0].type=="string")
+			{
+				code+="std::wstring";
+			}
+			else
+			{
+				code+=return_types[0].type;
+			}
 		}
 		code+="> ret;\r\n";
 		code+="\tret.resize(res.size());\r\n";
@@ -563,13 +601,13 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			}
 			else
 			{
-				code+="\t\tret[i]=res[i][L\""+return_types[0].name+"\"]);\r\n";
+				code+="\t\tret[i]=res[i][L\""+return_types[0].name+"\"];\r\n";
 			}
 		}
 		code+="\t}\r\n";
 		code+="\treturn ret;\r\n";
 	}
-	else if(!return_types.empty())
+	else if(!return_types.empty() && !use_raw)
 	{
 		code+="\t"+struct_name+" ret = { ";
 		if(!use_cond)
@@ -645,6 +683,22 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		}
 		code+="\t}\r\n";
 		code+="\treturn ret;\r\n";			
+	}
+	else if(return_types.size()==1)
+	{
+		code+="\tassert(!res.empty());\r\n";
+		if(return_types[0].type=="int")
+		{
+			code+="\treturn watoi(res[0][L\""+return_types[0].name+"\"]);\r\n";
+		}
+		else if(return_types[0].type=="int64")
+		{
+			code+="\treturn watoi64(res[0][L\""+return_types[0].name+"\"]);\r\n";
+		}
+		else
+		{
+			code+="\treturn res[0][L\""+return_types[0].name+"\"];\r\n";
+		}
 	}
 	code+="}";
 	return AnnotatedCode(input.annotations, code);

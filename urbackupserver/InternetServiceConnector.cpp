@@ -51,7 +51,7 @@ InternetServiceConnector::~InternetServiceConnector(void)
 	Server->destroy(local_mutex);
 }
 
-void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
+void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName)
 {
 	tid=pTID;
 	cs=pPipe;
@@ -66,6 +66,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe)
 	free_connection=false;
 	state=ISS_AUTH;
 	has_timeout=false;
+	endpoint_name=pEndpointName;
 	connection_done_cond=NULL;
 	tcpstack.reset();
 	tcpstack.setAddChecksum(true);
@@ -281,30 +282,36 @@ void InternetServiceConnector::ReceivePackets(void)
 								}
 								else
 								{
-									errmsg="Auth failed (Authkey wrong)";
+									errmsg="Auth failed (Authkey/password wrong)";
 								}
 							}
 							else if(errmsg.empty())
 							{
-								if(authkey.empty())
-								{
-									errmsg="No Authentication key";
-								}
-								else if(db_timeout)
+								if(db_timeout)
 								{
 									errmsg="Database timeout while looking for client";
 								}
 								else
 								{
-									if(checkhtml(clientname))
+									if(!hasClient(clientname, db_timeout))
 									{
-										errmsg="Unknown client ("+clientname+")";
+										if(db_timeout)
+										{
+											errmsg="Database timeout while looking for client";
+										}
+										else
+										{
+											if(checkhtml(clientname))
+											{
+												errmsg="Unknown client ("+clientname+")";
+											}
+											else
+											{
+												Server->Log("HTML injection detected", LL_WARNING);
+												errmsg="Unknown client";
+											}
+										}
 									}
-									else
-									{
-										Server->Log("HTML injection detected", LL_WARNING);
-										errmsg="Unknown client";
-									}									
 								}
 							}
 						}
@@ -357,13 +364,20 @@ void InternetServiceConnector::ReceivePackets(void)
 								comm_pipe=comp_pipe;
 							}
 
+
+							size_t spare_connections_num;
+
 							{
 								IScopedLock lock(mutex);
-								client_data[clientname].spare_connections.push_back(this);
-								client_data[clientname].last_seen=Server->getTimeMS();
+								SClientData& curr_client_data = client_data[clientname];
+								curr_client_data.spare_connections.push_back(this);
+								curr_client_data.last_seen=Server->getTimeMS();
+								curr_client_data.endpoint_name = endpoint_name;
+
+								spare_connections_num = curr_client_data.spare_connections.size();
 							}
 
-							Server->Log("Authed+capa for client '"+clientname+"' "+(token_auth?"(token auth) ":"")+"- "+nconvert(client_data[clientname].spare_connections.size())+" spare connections", LL_DEBUG);
+							Server->Log("Authed+capa for client '"+clientname+"' "+(token_auth?"(token auth) ":"")+"- "+nconvert(spare_connections_num)+" spare connections", LL_DEBUG);
 
 							state=ISS_AUTHED;
 						}
@@ -551,9 +565,9 @@ void InternetServiceConnector::freeConnection(void)
 	free_connection=true;
 }
 
-std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
+std::vector<std::pair<std::string, std::string> > InternetServiceConnector::getOnlineClients(void)
 {
-	std::vector<std::string> ret;
+	std::vector<std::pair<std::string, std::string> > ret;
 
 	IScopedLock lock(mutex);
 	unsigned int ct=Server->getTimeMS();
@@ -571,7 +585,7 @@ std::vector<std::string> InternetServiceConnector::getOnlineClients(void)
 		{
 			if(ct-it->second.last_seen<offline_timeout)
 			{
-				ret.push_back(it->first);
+				ret.push_back(std::make_pair(it->first, it->second.endpoint_name));
 			}
 		}
 		else
@@ -649,6 +663,23 @@ std::string InternetServiceConnector::getAuthkeyFromDB(const std::string &client
 	}
 	
 	return std::string();
+}
+
+bool InternetServiceConnector::hasClient(const std::string &clientname, bool &db_timeout)
+{
+	IDatabase *db=Server->getDatabase(tid, URBACKUPDB_SERVER);
+	IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?", false);
+	q->Bind(clientname);
+	int timeoutms=1000;
+	db_results res=q->Read(&timeoutms);
+	db->destroyQuery(q);
+	if(timeoutms==1)
+	{
+		db_timeout=true;
+		return false;
+	}
+
+	return !res.empty();
 }
 
 void InternetServiceConnector::removeOldTokens(void)

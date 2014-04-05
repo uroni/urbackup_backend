@@ -1,4 +1,4 @@
-!define MUI_BRANDINGTEXT "UrBackup Server v1.3.2"
+!define MUI_BRANDINGTEXT "UrBackup Server v1.4"
 !include "${NSISDIR}\Contrib\Modern UI\System.nsh"
 !include WinVer.nsh
 !include "x64.nsh"
@@ -7,8 +7,8 @@
 SetCompressor /FINAL /SOLID lzma
 
 CRCCheck On
-Name "UrBackup Server 1.3.2"
-OutFile "UrBackup Server 1.3.2-1.exe"
+Name "UrBackup Server 1.4"
+OutFile "UrBackup Server 1.4-1.exe"
 InstallDir "$PROGRAMFILES\UrBackupServer"
 RequestExecutionLevel highest
 
@@ -72,8 +72,6 @@ Section "install"
 		; ExecWait '"$TEMP\vcredist_x64.exe" /q'  
 		; Delete '$TEMP\vcredist_x64.exe'
 ; VSRedist90Installed64:
-		File "vcredist\vcredist_2008_x64.exe"
-		ExecWait '"$TEMP\vcredist_2008_x64.exe" /q /norestart'
 		File "vcredist\vcredist_2010sp1_x64.exe"
 		ExecWait '"$TEMP\vcredist_2010sp1_x64.exe" /q /norestart'
 		File "vcredist\idndl.amd64.exe"
@@ -103,8 +101,6 @@ Section "install"
 		; ExecWait '"$TEMP\vcredist_x86.exe" /q'  
 		; Delete '$TEMP\vcredist_x86.exe'
 ; VSRedist90Installed86:
-		File "vcredist\vcredist_2008_x86.exe"
-		ExecWait '"$TEMP\vcredist_2008_x86.exe" /q /norestart'
 		File "vcredist\vcredist_2010sp1_x86.exe"
 		ExecWait '"$TEMP\vcredist_2010sp1_x86.exe" /q /norestart'
 		File "vcredist\idndl.x86.exe"
@@ -138,8 +134,10 @@ Section "install"
 	File "data_common\remove_unknown.bat"
 	File "data_common\reset_pw.bat"
 	File "data_common\cleanup_database.bat"
+	File "data_common\defrag_database.bat"
 	File "data_common\urbackup_dsa.pub"
 	File "data_common\repair_database.bat"
+	File "data_common\export_auth_log.bat"
 	
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	
@@ -148,7 +146,6 @@ Section "install"
 		File "data\fsimageplugin.dll"
 		File "data\urbackupserver.dll"
 		File "data\urbackupserver_prevista.dll"
-		File "data\pychart.dll"
 		File "data\httpserver.dll"
 		File "data\cryptoplugin.dll"
 		File "data_service\urbackup_srv.exe"
@@ -156,16 +153,12 @@ Section "install"
 		File "data\libssl32.dll"
 		File "data\libeay32.dll"
 		File "data\urlplugin.dll"
-		File /r "data_python\*"
-		SetOutPath "$INSTDIR\lib"
-		File "data_common\lib\site.py"
 		SetOutPath "$INSTDIR"
 	${Else}
 		File "data_x64\downloadplugin.dll"
 		File "data_x64\fsimageplugin.dll"
 		File "data_x64\urbackupserver.dll"
 		File "data_x64\urbackupserver_prevista.dll"
-		File "data_x64\pychart.dll"
 		File "data_x64\httpserver.dll"
 		File "data_service_x64\urbackup_srv.exe"
 		File "data_x64\libcurl.dll"
@@ -174,32 +167,18 @@ Section "install"
 		File "data_x64\ssleay32.dll"
 		File "data_x64\libeay32.dll"
 		File "data_x64\urlplugin.dll"
-		File /r "data_python_x64\*"
-		SetOutPath "$INSTDIR\lib"
-		File "data_common\lib\site.py"
 		SetOutPath "$INSTDIR"
 	${EndIf}
-	SetOutPath "$INSTDIR\pychart"
-	File "data_common\pychart\pychart.py"
 	SetOutPath "$INSTDIR\urbackup"
 	File "data_common\urbackup\backup_server_init.sql"
 	File "data_common\urbackup\status.htm"
 	SetOutPath "$INSTDIR\urbackup\www"
-	File "data_common\urbackup\www\arr.png"
-	File "data_common\urbackup\www\favico.ico"
-	File "data_common\urbackup\www\header.png"
+	File "data_common\urbackup\www\favicon.ico"
+	File "data_common\urbackup\www\*.png"
 	File "data_common\urbackup\www\index.htm"
-	File "data_common\urbackup\www\indicator.gif"
-	File "data_common\urbackup\www\layout.css"
-	File "data_common\urbackup\www\md5.js"
-	File "data_common\urbackup\www\progress.png"
-	File "data_common\urbackup\www\prototype.js"
-	File "data_common\urbackup\www\templates.js"
-	File "data_common\urbackup\www\translation.js"
-	File "data_common\urbackup\www\urbackup.js"
-	File "data_common\urbackup\www\urbackup_functions.js"
-	File "data_common\urbackup\www\tabber-minimized.js"
-	File "data_common\urbackup\www\stopwatch.png"
+	File "data_common\urbackup\www\*.gif"
+	File "data_common\urbackup\www\*.css"
+	File "data_common\urbackup\www\*.js"
 	
 	
 	${IfNot} ${RunningX64}

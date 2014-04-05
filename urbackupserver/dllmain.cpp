@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -39,7 +39,6 @@ IServer *Server;
 #include "../Interface/File.h"
 
 #include "../fsimageplugin/IFSImageFactory.h"
-#include "../pychart/IPychartFactory.h"
 #include "../downloadplugin/IDownloadFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urlplugin/IUrlFactory.h"
@@ -65,13 +64,14 @@ SStartupStatus startup_status;
 #include "filedownload.h"
 #include "apps/cleanup_cmd.h"
 #include "apps/repair_cmd.h"
+#include "apps/export_auth_log.h"
 #include "create_files_cache.h"
+#include "server_dir_links.h"
 
 #include <stdlib.h>
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
-IPychartFactory *pychart_fak;
 IDownloadFactory *download_fak;
 ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
@@ -100,8 +100,8 @@ void updateRights(int t_userid, std::string s_rights, IDatabase *db);
 void open_settings_database_full(bool use_berkeleydb);
 
 std::string lang="en";
-std::string time_format_str_de="%d.%m.%Y %H:%M";
 std::string time_format_str="%Y-%m-%d %H:%M";
+std::string time_format_str_de=time_format_str;
 
 THREADPOOL_TICKET tt_cleanup_thread;
 THREADPOOL_TICKET tt_automatic_archive_thread;
@@ -294,6 +294,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	init_mutex1();
 	ServerLogger::init_mutex();
+	init_dir_link_mutex();
 
 	std::string app=Server->getServerParameter("app", "");
 
@@ -317,10 +318,18 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=repair_cmd();
 		}
+		else if(app=="defrag_database")
+		{
+			rc=defrag_database();
+		}
+		else if(app=="export_auth_log")
+		{
+			rc=export_auth_log();
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log");
 		}
 		exit(rc);
 	}
@@ -336,6 +345,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		time_format_str=time_format_str_de;
 	}
 
+	{
+		str_map params;
+		crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
+		if( crypto_fak==NULL )
+		{
+			Server->Log("Error loading Cryptoplugin. Internet service will not work.", LL_ERROR);
+		}
+	}
+
 	//writeZeroblockdata();
 
 	
@@ -345,6 +363,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		std::string ident="#I"+ServerSettings::generateRandomAuthKey(20)+"#";
 		writestring(ident, "urbackup/server_ident.key");
 		server_identity=ident;
+	}
+	if(!FileExists("urbackup/server_ident.pub") && crypto_fak!=NULL)
+	{
+		Server->Log("Generating Server private/public key...", LL_INFO);
+		crypto_fak->generatePrivatePublicKeyPair("urbackup/server_ident");
 	}
 	if((server_token=getFile("urbackup/server_token.key")).size()<5)
 	{
@@ -402,8 +425,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	ADD_ACTION(login);
-	ADD_ACTION(google_chart);
-	ADD_ACTION(generate_templ);
 		
 	upgrade();
 
@@ -499,25 +520,25 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	ADD_ACTION(backups);
 	ADD_ACTION(settings);
 	ADD_ACTION(logs);
-	ADD_ACTION(isimageready);
 	ADD_ACTION(getimage);
 	ADD_ACTION(download_client);
 	ADD_ACTION(livelog);
+	ADD_ACTION(start_backup);
 
 	if(Server->getServerParameter("allow_shutdown")=="true")
 	{
 		ADD_ACTION(shutdown);
 	}
 
+	{
+		ServerBackupDao backup_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
+		replay_directory_link_journal(backup_dao);
+	}
+
 	Server->Log("Started UrBackup...", LL_INFO);
 
 	
 	str_map params;
-	pychart_fak=(IPychartFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("pychart", params));
-	if(pychart_fak==NULL)
-	{
-		Server->Log("Error loading IPychartFactory", LL_INFO);
-	}
 	download_fak=(IDownloadFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("download", params));
 	if(download_fak==NULL)
 	{
@@ -527,11 +548,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(url_fak==NULL)
 	{
 		Server->Log("Error loading IUrlFactory", LL_INFO);
-	}
-	crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
-	if( crypto_fak==NULL )
-	{
-		Server->Log("Error loading Cryptoplugin. Internet service will not work.", LL_ERROR);
 	}
 
 	server_exit_pipe=Server->createMemoryPipe();
@@ -585,7 +601,7 @@ DLLEXPORT void UnloadActions(void)
 {
 	unsigned int wtime=500;
 	if(is_leak_check)
-		wtime=2000;
+		wtime=10000;
 
 	bool shutdown_ok=false;
 	if(server_exit_pipe!=NULL)
@@ -631,8 +647,11 @@ DLLEXPORT void UnloadActions(void)
 		InternetServiceConnector::destroy_mutex();
 		destroy_mutex1();
 		Server->destroy(startup_status.mutex);
+		Server->Log("Deleting cached server settings...", LL_INFO);
+		ServerSettings::clear_cache();
 		ServerSettings::destroy_mutex();
 		ServerStatus::destroy_mutex();
+		destroy_dir_link_mutex();
 	}
 
 	if(shutdown_ok)
@@ -1046,6 +1065,41 @@ void update27_28()
 	db->Write("CREATE INDEX settings_db.si_permissions_idx ON si_permissions (clientid, t_domain)");
 }
 
+void update28_29()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE directory_links ("
+		"id INTEGER PRIMARY KEY,"
+		"clientid INTGER,"
+		"name TEXT,"
+		"target TEXT)");
+	db->Write("CREATE INDEX directory_links_idx ON directory_links (clientid, name)");
+	db->Write("CREATE INDEX directory_links_target_idx ON directory_links (clientid, target)");
+	db->Write("CREATE TABLE directory_link_journal ("
+		"id INTEGER PRIMARY KEY,"
+		"linkname TEXT,"
+		"linktarget TEXT)");
+}
+
+void update29_30()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE settings_db.login_access_log ("
+		"id INTEGER PRIMARY KEY,"
+		"logintime DATE DEFAULT CURRENT_TIMESTAMP,"
+		"username TEXT,"
+		"ip TEXT,"
+		"method INTEGER)");
+}
+
+void update30_31()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE settings_db.old_backupfolders ("
+		"id INTEGER PRIMARY KEY,"
+		"backupfolder TEXT UNIQUE)");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1067,7 +1121,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=28;
+	int max_v=31;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1199,6 +1253,18 @@ void upgrade(void)
 				break;
 			case 27:
 				update27_28();
+				++ver;
+				break;
+			case 28:
+				update28_29();
+				++ver;
+				break;
+			case 29:
+				update29_30();
+				++ver;
+				break;
+			case 30:
+				update30_31();
 				++ver;
 				break;
 			default:

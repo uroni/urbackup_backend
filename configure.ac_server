@@ -2,13 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-server], [1.3.2.BUILDID], [martin@urbackup.org])
+AC_INIT([urbackup-server], [1.4.0.BUILDID], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
-AC_ARG_WITH([pychart],
-     AS_HELP_STRING([--with-pychart], [Do use python to gaphically display statistics in the webinterface. Otherwise google chart is used.]))
 AC_ARG_WITH([mail],
      AS_HELP_STRING([--without-mail], [Disables server mailing features. Use this to remove the dependency on libcurl.]))
 AC_ARG_WITH([crypto],
@@ -62,6 +60,21 @@ AC_STRUCT_TM
 
 AX_LIB_SOCKET_NSL
 
+AC_MSG_CHECKING([for operating system])
+case "$host_os" in
+freebsd*)
+        opsys="freebsd"
+        ;;
+linux*)
+        opsys="linux"
+        ;;
+*)
+        opsys=""
+        ;;
+esac
+AM_CONDITIONAL([FREEBSD], test x"$opsys" = x"freebsd")
+AM_CONDITIONAL([LINUX], test x"$opsys" = x"linux")
+
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
@@ -75,14 +88,8 @@ AS_IF([test "x$with_mail" != "xno"],
     [P_SUBDIRS="urlplugin $P_SUBDIRS"])
 AS_IF([test "x$with_crypto" != "xno"],
     [P_SUBDIRS="cryptoplugin $P_SUBDIRS"])
-AS_IF([test "x$with_pychart" = "xyes"],
-    [P_SUBDIRS="pychart $P_SUBDIRS"])
 
 AC_SUBST([P_SUBDIRS])
-
-if test "x$with_pychart" = "xyes"; then
-    AC_CONFIG_SUBDIRS([pychart])
-fi
 
 if test "x$with_crypto" != "xno"; then
     AC_CONFIG_SUBDIRS([cryptoplugin])

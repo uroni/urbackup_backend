@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -379,7 +379,7 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 
 		if( LogLevel==LL_ERROR )
 		{
-			std::cout << buffer << L"ERROR: " << out_str << std::endl;
+			std::cout << buffer << "ERROR: " << out_str << std::endl;
 			if(logfile_a)
 				logfile << buffer << "ERROR: " << out_str << std::endl;
 		}

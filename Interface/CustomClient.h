@@ -9,7 +9,7 @@ class IPipe;
 class ICustomClient : public IObject
 {
 public:
-	virtual void Init(THREAD_ID pTID, IPipe *pPipe)=0;
+	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName)=0;
 
 	virtual bool Run(void)=0;
 	virtual void ReceivePackets(void)=0;

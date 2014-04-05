@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -34,6 +34,10 @@
 #include <sys\stat.h>
 #include <time.h>
 
+#ifdef USE_NTFS_TXF
+#include <KtmW32.h>
+#endif
+
 #define REPARSE_MOUNTPOINT_HEADER_SIZE   8
 
 typedef struct {
@@ -46,6 +50,32 @@ typedef struct {
   WCHAR ReparseTarget[1];
 } REPARSE_MOUNTPOINT_DATA_BUFFER, *PREPARSE_MOUNTPOINT_DATA_BUFFER;
 
+typedef struct _REPARSE_DATA_BUFFER {
+	ULONG  ReparseTag;
+	USHORT ReparseDataLength;
+	USHORT Reserved;
+	union {
+		struct {
+			USHORT SubstituteNameOffset;
+			USHORT SubstituteNameLength;
+			USHORT PrintNameOffset;
+			USHORT PrintNameLength;
+			ULONG  Flags;
+			WCHAR  PathBuffer[1];
+		} SymbolicLinkReparseBuffer;
+		struct {
+			USHORT SubstituteNameOffset;
+			USHORT SubstituteNameLength;
+			USHORT PrintNameOffset;
+			USHORT PrintNameLength;
+			WCHAR  PathBuffer[1];
+		} MountPointReparseBuffer;
+		struct {
+			UCHAR DataBuffer[1];
+		} GenericReparseBuffer;
+	};
+} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+
 void getMousePos(int &x, int &y)
 {
 	POINT mousepos;
@@ -54,7 +84,7 @@ void getMousePos(int &x, int &y)
 	y=mousepos.y;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks)
 {
 	if(has_error!=NULL)
 	{
@@ -92,7 +122,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 
 	do
 	{
-		if( !(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT && wfd.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) )
+		if( !(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT && wfd.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) || follow_symlinks )
 		{
 			SFile f;
 			f.name=wfd.cFileName;
@@ -132,9 +162,29 @@ void moveFile(const std::wstring &src, const std::wstring &dst)
 }
 #endif
 
-bool isDirectory(const std::wstring &path)
+bool isDirectory(const std::wstring &path, void* transaction)
 {
-        DWORD attrib = GetFileAttributesW(path.c_str());
+        DWORD attrib;
+#ifdef USE_NTFS_TXF
+		if(transaction!=NULL)
+		{
+			WIN32_FILE_ATTRIBUTE_DATA ad;
+			if(!GetFileAttributesTransactedW(path.c_str(), GetFileExInfoStandard, &ad, transaction))
+			{
+				attrib=0xFFFFFFFF;
+			}
+			else
+			{
+				attrib = ad.dwFileAttributes;
+			}
+		}
+		else
+		{
+#endif
+			attrib = GetFileAttributesW(path.c_str());
+#ifdef USE_NTFS_TXF
+		}
+#endif	
 
         if ( attrib == 0xFFFFFFFF || !(attrib & FILE_ATTRIBUTE_DIRECTORY) )
         {
@@ -217,21 +267,57 @@ int64 os_total_space(const std::wstring &path)
 
 bool os_directory_exists(const std::wstring &path)
 {
-	return isDirectory(path);
+	return isDirectory(path, NULL);
 }
 
-bool os_remove_nonempty_dir(const std::wstring &path)
+bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata)
 {
 	WIN32_FIND_DATAW wfd; 
 	HANDLE hf=FindFirstFileW((path+L"\\*").c_str(), &wfd);
+	std::wstring tpath=path;
+	if(hf==INVALID_HANDLE_VALUE)
+	{
+		if(next(tpath, 0, L"\\\\?\\UNC"))
+		{
+			tpath.erase(0, 7);
+			tpath=L"\\"+tpath;
+			hf=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
+		}
+		else if(next(tpath, 0, L"\\\\?\\"))
+		{
+			tpath.erase(0, 4);
+			hf=FindFirstFileW((tpath+L"\\*").c_str(),&wfd); 
+		}
+		if(hf==INVALID_HANDLE_VALUE)
+		{
+			return false;
+		}
+	}
 	BOOL b=true;
 	while( b )
 	{
 		if( (std::wstring)wfd.cFileName!=L"." && (std::wstring)wfd.cFileName!=L".." )
 		{
-			if(	wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+			if( wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
 			{
-				os_remove_nonempty_dir(path+L"\\"+wfd.cFileName);
+				if(symlink_callback!=NULL
+					&& (wfd.dwReserved0==IO_REPARSE_TAG_MOUNT_POINT
+					|| wfd.dwReserved0==IO_REPARSE_TAG_SYMLINK) )
+				{
+					symlink_callback(path+L"\\"+wfd.cFileName, userdata);
+				}
+				else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				{
+					os_remove_symlink_dir(path+L"\\"+wfd.cFileName);
+				}
+				else
+				{
+					DeleteFileW((path+L"\\"+wfd.cFileName).c_str());
+				}
+			}
+			else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+			{
+				os_remove_nonempty_dir(tpath+L"\\"+wfd.cFileName);
 			}
 			else
 			{
@@ -256,6 +342,11 @@ bool os_remove_dir(const std::string &path)
 	return RemoveDirectoryA(path.c_str())!=FALSE;
 }
 
+bool os_remove_dir(const std::wstring &path)
+{
+	return RemoveDirectoryW(path.c_str())!=FALSE;
+}
+
 std::wstring os_file_sep(void)
 {
 	return L"\\";
@@ -266,14 +357,22 @@ std::string os_file_sepn(void)
 	return "\\";
 }
 
-bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &lname)
+bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &lname, void* transaction)
 {
 #if (_WIN32_WINNT >= 0x0600)
 	DWORD flags=0;
-	if(isDirectory(target))
+	if(isDirectory(target, transaction))
 		flags|=SYMBOLIC_LINK_FLAG_DIRECTORY;
 
-	DWORD rc=CreateSymbolicLink(lname.c_str(), target.c_str(), flags);
+	DWORD rc;
+	if(transaction==NULL)
+	{
+		rc=CreateSymbolicLink(lname.c_str(), target.c_str(), flags);
+	}
+	else
+	{
+		rc=CreateSymbolicLinkTransactedW(lname.c_str(), target.c_str(), flags, transaction);
+	}
 	if(rc==FALSE)
 	{
 #ifndef OS_FUNC_NO_SERVER
@@ -282,7 +381,7 @@ bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &ln
 	}
 	return rc!=0;
 #else
-	return true;
+	return false;
 #endif
 }
 
@@ -306,8 +405,8 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 	if(!wtarget.empty() && wtarget[0]!='\\')
 		wtarget=L"\\??\\"+wtarget;
 
-	if(!wtarget.empty() && wtarget[target.size()-1]=='\\')
-		wtarget.erase(target.size()-1, 1);
+	if(!wtarget.empty() && wtarget[wtarget.size()-1]=='\\')
+		wtarget.erase(wtarget.size()-1, 1);
 
 	if(!CreateDirectoryW(lname.c_str(), NULL) )
 	{
@@ -380,12 +479,97 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 }
 #endif
 
-bool os_link_symbolic(const std::wstring &target, const std::wstring &lname)
+bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction)
 {
-	if(!os_link_symbolic_junctions(target, lname) )
-		return os_link_symbolic_symlink(target, lname);
+	if(transaction==NULL)
+	{
+		if(!os_link_symbolic_junctions(target, lname) )
+			return os_link_symbolic_symlink(target, lname, NULL);
+	}
+	else
+	{
+		return os_link_symbolic_symlink(target, lname, transaction);
+	}
 
 	return true;
+}
+
+bool os_get_symlink_target(const std::wstring &lname, std::wstring &target)
+{
+	HANDLE hJunc=CreateFileW(lname.c_str(), GENERIC_READ, FILE_SHARE_READ,
+		NULL, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT|FILE_ATTRIBUTE_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if(hJunc==INVALID_HANDLE_VALUE)
+		return false;
+
+	DWORD needed_buffer_size = 0;
+	DWORD bytes_returned;
+	std::string buffer;
+	buffer.resize((std::max)((size_t)REPARSE_GUID_DATA_BUFFER_HEADER_SIZE, (size_t)512));
+	BOOL b = DeviceIoControl(hJunc, FSCTL_GET_REPARSE_POINT, NULL, 0, &buffer[0], static_cast<DWORD>(buffer.size()), &bytes_returned, NULL);
+	if(!b)
+	{
+		if(GetLastError()!= ERROR_INSUFFICIENT_BUFFER)
+		{
+			CloseHandle(hJunc);
+			return false;
+		}
+	}
+	const REPARSE_DATA_BUFFER* reparse_buffer = reinterpret_cast<const REPARSE_DATA_BUFFER*>(buffer.data());
+
+	if(!IsReparseTagMicrosoft(reparse_buffer->ReparseTag))
+	{
+		CloseHandle(hJunc);
+		return false;
+	}
+
+	if(!b)
+	{
+		buffer.resize(reparse_buffer->ReparseDataLength);
+		b = DeviceIoControl(hJunc, FSCTL_GET_REPARSE_POINT, NULL, 0, &buffer[0], static_cast<DWORD>(buffer.size()), &bytes_returned, NULL);
+		if(!b)
+		{
+			CloseHandle(hJunc);
+			return false;
+		}
+	}
+
+	CloseHandle(hJunc);
+
+	bool ret=true;
+
+	if(reparse_buffer->ReparseTag==IO_REPARSE_TAG_SYMLINK)
+	{
+		target.resize(reparse_buffer->SymbolicLinkReparseBuffer.SubstituteNameLength/sizeof(wchar_t));
+		memcpy(&target[0],
+			&reparse_buffer->SymbolicLinkReparseBuffer.PathBuffer[reparse_buffer->SymbolicLinkReparseBuffer.SubstituteNameOffset/sizeof(wchar_t)],
+			reparse_buffer->SymbolicLinkReparseBuffer.SubstituteNameLength);
+	}
+	else if(reparse_buffer->ReparseTag==IO_REPARSE_TAG_MOUNT_POINT)
+	{
+		target.resize(reparse_buffer->MountPointReparseBuffer.SubstituteNameLength/sizeof(wchar_t));
+		memcpy(&target[0],
+			&reparse_buffer->MountPointReparseBuffer.PathBuffer[reparse_buffer->MountPointReparseBuffer.SubstituteNameOffset/sizeof(wchar_t)],
+			reparse_buffer->MountPointReparseBuffer.SubstituteNameLength);
+	}
+	else
+	{
+		ret=false;
+	}
+
+	if(next(target, 0, L"\\??\\"))
+		target.erase(0,4);
+
+	return ret;
+}
+
+bool os_is_symlink(const std::wstring &lname)
+{
+	DWORD attrs = GetFileAttributesW(lname.c_str());
+	if(attrs == INVALID_FILE_ATTRIBUTES)
+		return false;
+
+	return (attrs & FILE_ATTRIBUTE_REPARSE_POINT)>0;
 }
 
 std::wstring os_file_prefix(std::wstring path)
@@ -543,10 +727,22 @@ std::wstring os_get_final_path(std::wstring path)
 }
 
 #ifndef OS_FUNC_NO_SERVER
-bool os_rename_file(std::wstring src, std::wstring dst)
+bool os_rename_file(std::wstring src, std::wstring dst, void* transaction)
 {
-	DeleteFileW(dst.c_str());
-	BOOL rc=MoveFileW(src.c_str(), dst.c_str());
+	BOOL rc;
+#ifdef USE_NTFS_TXF
+	if(transaction==NULL)
+	{
+#endif
+		DeleteFileW(dst.c_str());
+		rc=MoveFileW(src.c_str(), dst.c_str());
+#ifdef USE_NTFS_TXF
+	}
+	else
+	{
+		rc=MoveFileTransactedW(src.c_str(), dst.c_str(), NULL, NULL, MOVEFILE_REPLACE_EXISTING, transaction);
+	}	
+#endif
 #ifdef _DEBUG
 	if(rc==0)
 	{
@@ -556,3 +752,39 @@ bool os_rename_file(std::wstring src, std::wstring dst)
 	return rc!=0;
 }
 #endif
+
+void* os_start_transaction()
+{
+#ifdef USE_NTFS_TXF
+	HANDLE htrans = CreateTransaction(NULL, NULL, 0, 0, 0, 0, NULL);
+	if(htrans==INVALID_HANDLE_VALUE)
+	{
+		Server->Log("Creating transaction failed. ec="+nconvert((int)GetLastError), LL_WARNING);
+		return NULL;
+	}
+	return htrans;
+#else
+	return NULL;
+#endif
+}
+
+bool os_finish_transaction(void* transaction)
+{
+#ifdef USE_NTFS_TXF
+	if(transaction==NULL)
+	{
+		return false;
+	}
+	BOOL b = CommitTransaction(transaction);
+	if(!b)
+	{
+		Server->Log("Commiting transaction failed. ec="+nconvert((int)GetLastError), LL_ERROR);
+		CloseHandle(transaction);
+		return false;
+	}
+	CloseHandle(transaction);
+	return true;
+#else
+	return true;
+#endif
+}

@@ -15,16 +15,9 @@ copy /Y "..\release\fsimageplugin.dll" "data\fsimageplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
 mkdir data_common
-mkdir data_common\pychart
-copy /Y "..\pychart\pychart.py" "data_common\pychart\pychart.py"
-if %errorlevel% neq 0 exit /b %errorlevel% 
-
 mkdir data_common\urbackup
 mkdir data_common\urbackup\www
 copy /Y "..\urbackupserver\www\*" "data_common\urbackup\www\"
-if %errorlevel% neq 0 exit /b %errorlevel% 
-
-copy /Y "..\Release\pychart.dll" "data\pychart.dll"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
 copy /Y "..\Release\downloadplugin.dll" "data\downloadplugin.dll"
@@ -54,9 +47,6 @@ copy /Y "..\x64\Release Server PreVista\urbackupserver.dll" "data_x64\urbackupse
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 copy /Y "..\x64\release\fsimageplugin.dll" "data_x64\fsimageplugin.dll"
-if %errorlevel% neq 0 exit /b %errorlevel%
-
-copy /Y "..\x64\release\pychart.dll" "data_x64\pychart.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 copy /Y "..\x64\release\downloadplugin.dll" "data_x64\downloadplugin.dll"

@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -32,8 +32,6 @@
 #ifndef _WIN32
 #include <errno.h>
 #endif
-
-extern std::string server_identity;
 
 namespace
 {
@@ -75,194 +73,213 @@ bool setSockP(SOCKET sock)
         return true;
 }    
 
-FileClient::FileClient(bool enable_find_servers, int protocol_version, bool internet_connection,
+FileClient::FileClient(bool enable_find_servers, std::string identity, int protocol_version, bool internet_connection,
 	FileClient::ReconnectionCallback *reconnection_callback, FileClient::NoFreeSpaceCallback *nofreespace_callback)
 	: tcpsock(NULL), starttime(0), connect_starttime(0), socket_open(false), connected(false),
-	num_games(0), num_games_get(0), num_games_res(false), res_name(false), serveraddr(), local_ip(),
+	serveraddr(), local_ip(),
 	max_version(), server_addr(), connection_id(), 
 	protocol_version(protocol_version), internet_connection(internet_connection),
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
-	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000)
+	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
+	identity(identity)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
 	if(enable_find_servers)
 	{
-#ifndef _WIN32
-		std::string bcast_interfaces=Server->getServerParameter("broadcast_interfaces", "");
-
-		std::vector<std::string> bcast_filter;
-		if(!bcast_interfaces.empty())
-		{
-			Tokenize(bcast_interfaces, bcast_filter, ";,");
-		}
-
-		ifaddrs *ifap;
-		int rc=getifaddrs(&ifap);
-		if(rc==0)
-		{
-			for(;ifap!=NULL;ifap=ifap->ifa_next)
-			{
-				bool found_name = bcast_filter.empty() || std::find(bcast_filter.begin(), bcast_filter.end(), ifap->ifa_name)!=bcast_filter.end();
-
-				if(found_name &&
-					!(ifap->ifa_flags & IFF_LOOPBACK) 
-					&& !(ifap->ifa_flags & IFF_POINTOPOINT) 
-					&&  (ifap->ifa_flags & IFF_BROADCAST)
-					&&  ifap->ifa_addr->sa_family == AF_INET )
-				{			
-					SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
-					if(udpsock==-1)
-					{
-						Server->Log(std::string("Error creating socket for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-						continue;
-					}
-
-					BOOL val=TRUE;
-					int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
-					if(rc<0)
-					{
-						Server->Log(std::string("Setting SO_REUSEADDR failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-					}
-
-					sockaddr_in source_addr;
-					memset(&source_addr, 0, sizeof(source_addr));
-					source_addr.sin_addr=((struct sockaddr_in *)ifap->ifa_addr)->sin_addr;
-					source_addr.sin_family = AF_INET;
-					source_addr.sin_port = htons(UDP_SOURCE_PORT);
-
-					Server->Log(std::string("Binding to interface ")+std::string(ifap->ifa_name)+" for broadcasting...", LL_DEBUG);
-
-					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
-					if(rc<0)
-					{
-						Server->Log(std::string("Binding UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-					}
-				
-					rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
-					if(rc<0)
-					{
-						Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
-						closesocket(udpsock);
-						continue;
-					}
-
-					#if defined(__FreeBSD__)
-					int optval=1;
-					if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
-					{
-						Server->Log(std::string("Error setting IP_ONESBCAST for interface " )+std::string(ifap->ifa_name), LL_ERROR);
-					}
-					#endif
-
-					broadcast_addrs.push_back(*((struct sockaddr_in *)ifap->ifa_broadaddr));
-					udpsocks.push_back(udpsock);
-				}
-			}
-			freeifaddrs(ifap);
-		}
-		else
-		{
-			Server->Log("Getting interface ips failed. errno="+nconvert(errno)+
-				". Server may not listen properly on all network devices when discovering clients.", LL_ERROR);
-
-			SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
-			if(udpsock==-1)
-			{
-				Server->Log("Error creating socket", LL_ERROR);
-			}
-			else
-			{
-				BOOL val=TRUE;
-				int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
-				if(rc<0)
-				{
-					Server->Log("Setting SO_REUSEADDR failed", LL_ERROR);
-				}
-
-				sockaddr_in source_addr;
-				memset(&source_addr, 0, sizeof(source_addr));
-				source_addr.sin_addr.s_addr = INADDR_ANY;
-				source_addr.sin_family = AF_INET;
-				source_addr.sin_port = htons(UDP_SOURCE_PORT);
-
-				Server->Log("Binding to no interface for broadcasting. Entering IP on restore CD won't work.", LL_WARNING);
-
-				rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
-				if(rc<0)
-				{
-					Server->Log("Enabling SO_BROADCAST for UDP socket failed", LL_ERROR);
-					closesocket(udpsock);
-				}
-				else
-				{
-					udpsocks.push_back(udpsock);
-					source_addr.sin_addr.s_addr = INADDR_BROADCAST;
-					broadcast_addrs.push_back(source_addr);
-				}
-			}
-		}
-#else
-		char hostname[MAX_PATH];
-        struct    hostent* h;
-
-        _i32 rc=gethostname(hostname, MAX_PATH);
-        if(rc==SOCKET_ERROR)
-		{
-			Server->Log("Error getting Hostname", LL_ERROR);
-            return;
-		}
-		std::vector<_u32> addresses;
-
-        if(NULL != (h = gethostbyname(hostname)))
-        {
-			if(h->h_addrtype!=AF_INET)
-			{
-				Server->Log("Hostname hostent is not AF_INET (ipv4)", LL_ERROR);
-			}
-			else
-			{
-				for(_u32 x = 0; (h->h_addr_list[x]); x++)
-				{
-					SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);	
-
-					int optval=1;
-					int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
-					if(rc==SOCKET_ERROR)
-					{
-						Server->Log("Failed setting SO_REUSEADDR in FileClient", LL_ERROR);
-					}
-
-					sockaddr_in source_addr;
-					memset(&source_addr, 0, sizeof(source_addr));
-					source_addr.sin_family = AF_INET;
-					source_addr.sin_addr.s_addr = *((_u32*)h->h_addr_list[x]);
-					source_addr.sin_port = htons(UDP_SOURCE_PORT);
-
-					rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
-					if(rc<0)
-					{
-						Server->Log("Binding UDP socket failed", LL_ERROR);
-					}
-
-					setSockP(udpsock);
-
-					BOOL val=TRUE;
-					rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
-					if(rc<0)
-					{
-						Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
-					}
-
-					udpsocks.push_back(udpsock);
-				}
-			}				
-        }
-#endif
+		bindToNewInterfaces();
 	}
 
 	socket_open=false;
 	stack.setAddChecksum(internet_connection);
+}
+
+void FileClient::bindToNewInterfaces()
+{
+	#ifndef _WIN32
+	std::string bcast_interfaces=Server->getServerParameter("broadcast_interfaces", "");
+
+	std::vector<std::string> bcast_filter;
+	if(!bcast_interfaces.empty())
+	{
+		Tokenize(bcast_interfaces, bcast_filter, ";,");
+	}
+
+	ifaddrs *start_ifap;
+	int rc=getifaddrs(&start_ifap);
+	if(rc==0)
+	{
+		ifaddrs* ifap=start_ifap;
+		for(;ifap!=NULL;ifap=ifap->ifa_next)
+		{
+			bool found_name = bcast_filter.empty() || std::find(bcast_filter.begin(), bcast_filter.end(), ifap->ifa_name)!=bcast_filter.end();
+
+			if(found_name &&
+				!(ifap->ifa_flags & IFF_LOOPBACK) 
+				&& !(ifap->ifa_flags & IFF_POINTOPOINT) 
+				&&  (ifap->ifa_flags & IFF_BROADCAST)
+				&&  ifap->ifa_addr->sa_family == AF_INET )
+			{			
+				sockaddr_in source_addr;
+				memset(&source_addr, 0, sizeof(source_addr));
+				source_addr.sin_addr=((struct sockaddr_in *)ifap->ifa_addr)->sin_addr;
+				source_addr.sin_family = AF_INET;
+				source_addr.sin_port = htons(UDP_SOURCE_PORT);
+
+				if(std::find(broadcast_iface_addrs.begin(), broadcast_iface_addrs.end(), source_addr.sin_addr.s_addr)!=broadcast_iface_addrs.end())
+					continue;
+
+				SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+				if(udpsock==-1)
+				{
+					Server->Log(std::string("Error creating socket for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+					continue;
+				}
+
+				BOOL val=TRUE;
+				int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
+				if(rc<0)
+				{
+					Server->Log(std::string("Setting SO_REUSEADDR failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+				}
+
+				Server->Log(std::string("Binding to interface ")+std::string(ifap->ifa_name)+" for broadcasting...", LL_DEBUG);
+
+				rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+				if(rc<0)
+				{
+					Server->Log(std::string("Binding UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+				}
+				
+				rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
+				if(rc<0)
+				{
+					Server->Log(std::string("Enabling SO_BROADCAST for UDP socket failed for interface ")+std::string(ifap->ifa_name), LL_ERROR);
+					closesocket(udpsock);
+					continue;
+				}
+
+				#if defined(__FreeBSD__)
+				int optval=1;
+				if(setsockopt(udpsock, IPPROTO_IP, IP_ONESBCAST, &optval, sizeof(int))==-1)
+				{
+					Server->Log(std::string("Error setting IP_ONESBCAST for interface " )+std::string(ifap->ifa_name), LL_ERROR);
+				}
+				#endif
+
+				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
+				broadcast_addrs.push_back(*((struct sockaddr_in *)ifap->ifa_broadaddr));
+				udpsocks.push_back(udpsock);
+			}
+		}
+		freeifaddrs(start_ifap);
+	}
+	else
+	{
+		retryBindToNewInterfaces=false;
+
+		Server->Log("Getting interface ips failed. errno="+nconvert(errno)+
+			". Server may not listen properly on all network devices when discovering clients.", LL_ERROR);
+
+		SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);
+		if(udpsock==-1)
+		{
+			Server->Log("Error creating socket", LL_ERROR);
+		}
+		else
+		{
+			BOOL val=TRUE;
+			int rc = setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(BOOL));
+			if(rc<0)
+			{
+				Server->Log("Setting SO_REUSEADDR failed", LL_ERROR);
+			}
+
+			sockaddr_in source_addr;
+			memset(&source_addr, 0, sizeof(source_addr));
+			source_addr.sin_addr.s_addr = INADDR_ANY;
+			source_addr.sin_family = AF_INET;
+			source_addr.sin_port = htons(UDP_SOURCE_PORT);
+
+			Server->Log("Binding to no interface for broadcasting. Entering IP on restore CD won't work.", LL_WARNING);
+
+			rc = setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );
+			if(rc<0)
+			{
+				Server->Log("Enabling SO_BROADCAST for UDP socket failed", LL_ERROR);
+				closesocket(udpsock);
+			}
+			else
+			{
+				udpsocks.push_back(udpsock);
+				source_addr.sin_addr.s_addr = INADDR_BROADCAST;
+				broadcast_addrs.push_back(source_addr);
+				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
+			}
+		}
+	}
+#else
+	char hostname[MAX_PATH];
+    struct    hostent* h;
+
+    _i32 rc=gethostname(hostname, MAX_PATH);
+    if(rc==SOCKET_ERROR)
+	{
+		Server->Log("Error getting Hostname", LL_ERROR);
+		retryBindToNewInterfaces=false;
+        return;
+	}
+	std::vector<_u32> addresses;
+
+    if(NULL != (h = gethostbyname(hostname)))
+    {
+		if(h->h_addrtype!=AF_INET)
+		{
+			Server->Log("Hostname hostent is not AF_INET (ipv4)", LL_ERROR);
+		}
+		else
+		{
+			for(_u32 x = 0; (h->h_addr_list[x]); x++)
+			{
+				sockaddr_in source_addr;
+				memset(&source_addr, 0, sizeof(source_addr));
+				source_addr.sin_family = AF_INET;
+				source_addr.sin_addr.s_addr = *((_u32*)h->h_addr_list[x]);
+				source_addr.sin_port = htons(UDP_SOURCE_PORT);
+
+				if(std::find(broadcast_iface_addrs.begin(), broadcast_iface_addrs.end(), source_addr.sin_addr.s_addr)!=broadcast_iface_addrs.end())
+					continue;
+
+				SOCKET udpsock=socket(AF_INET,SOCK_DGRAM,0);	
+
+				int optval=1;
+				int rc=setsockopt(udpsock, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
+				if(rc==SOCKET_ERROR)
+				{
+					Server->Log("Failed setting SO_REUSEADDR in FileClient", LL_ERROR);
+				}
+
+				rc = bind(udpsock, (struct sockaddr *)&source_addr, sizeof(source_addr));
+				if(rc<0)
+				{
+					Server->Log("Binding UDP socket failed", LL_ERROR);
+				}
+
+				setSockP(udpsock);
+
+				BOOL val=TRUE;
+				rc=setsockopt(udpsock, SOL_SOCKET, SO_BROADCAST, (char*)&val, sizeof(BOOL) );      
+				if(rc<0)
+				{
+					Server->Log("Failed setting SO_BROADCAST in FileClient", LL_ERROR);
+				}
+
+				udpsocks.push_back(udpsock);
+				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
+			}
+		}				
+    }
+#endif
 }
 
 FileClient::~FileClient(void)
@@ -301,6 +318,11 @@ _u32 FileClient::GetServers(bool start, const std::vector<in_addr> &addr_hints)
 {
         if(start==true)
         {
+			if(retryBindToNewInterfaces)
+			{
+				bindToNewInterfaces();
+			}
+
 			max_version=0;
 			for(size_t i=0;i<udpsocks.size();++i)
 			{
@@ -538,99 +560,6 @@ _u32 FileClient::Connect(IPipe *cp)
 		return ERR_CONNECTED;
 }
 
-_u32 FileClient::GetGameList(void)
-{
-
-		CWData data;
-		data.addUChar(ID_GET_GAMELIST);
-		data.addString( server_identity );
-
-		stack.reset();
-		stack.Send(tcpsock, data.getDataPtr(), data.getDataSize() );
-
-		starttime=Server->getTimeMS();
-		num_games_res=false;
-		num_games_get=0;
-
-		while(true)
-		{
-			size_t rc=tcpsock->Read(buffer, BUFFERSIZE_UDP, 10000);
-
-			if(rc==0)
-				return ERR_ERROR;
-
-			starttime=Server->getTimeMS();
-
-            stack.AddData(buffer, rc);
-                                
-			char *packet;
-			size_t packetsize;
-			while( (packet=stack.getPacket(&packetsize) )!=NULL )
-			{
-					if( packetsize>1 && packet[0]==ID_GAMELIST && num_games_res==false)
-					{
-							CRData data(&packet[1], packetsize);
-
-							if( !data.getUInt(&num_games) )
-							{
-									delete [] packet;
-									return ERR_ERROR;
-							}
-
-							res_name=true;
-							num_games_res=true;
-							num_games_get=0;
-
-							if( num_games==0 )
-							{
-									delete [] packet;
-									return ERR_SUCCESS;
-							}
-					}
-					else if( num_games_res==true )
-					{
-							if( res_name==true )
-							{
-									games.push_back(&packet[0]);
-									res_name=false;
-							}
-							else
-							{
-									writestring(packet, (unsigned int)packetsize, str_tmpdir+conv_filename(mServerName+"-"+games[ games.size()-1]) );
-									res_name=true;
-									num_games_get++;
-									if( num_games_get==num_games )
-									{
-											delete [] packet;
-											return ERR_SUCCESS;
-									}
-							}
-					}
-					delete []packet;
-			}
-               
-			if( Server->getTimeMS()-starttime>10000)
-            {
-                    return ERR_TIMEOUT;
-            }
-        }
-}
-
-bool FileClient::ListDownloaded(void)
-{
-        if( num_games_get==num_games )
-        {
-                return true;
-        }
-        else
-                return false;
-}
-
-std::vector<std::string> FileClient::getGameList(void)
-{
-        return games;
-}
-
 void FileClient::setServerName(std::string pName)
 {
         mServerName=pName;
@@ -698,7 +627,7 @@ bool FileClient::Reconnect(void)
     CWData data;
     data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
     data.addString( remotefn );
-	data.addString( server_identity );
+	data.addString( identity );
 
     stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 
@@ -739,7 +668,7 @@ bool FileClient::Reconnect(void)
 				CWData data;
 				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
 				data.addString( remotefn );
-				data.addString( server_identity );
+				data.addString( identity );
 
 				if( protocol_version>1 )
 				{
@@ -940,7 +869,7 @@ bool FileClient::Reconnect(void)
 					CWData data;
 					data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
 					data.addString( remotefn );
-					data.addString( server_identity );
+					data.addString( identity );
 
 					if( protocol_version>1 )
 					{

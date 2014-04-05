@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -221,14 +221,7 @@ void Helper::releaseAll(void)
 
 std::string Helper::getTimeFormatString(void)
 {
-	if(language=="de")
-	{
-		return "%d.%m.%Y %H:%M";
-	}
-	else
-	{
-		return "%Y-%m-%d %H:%M";
-	}
+	return "%Y-%m-%d %H:%M";
 }
 
 std::string Helper::getLanguage(void)

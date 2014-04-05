@@ -1,6 +1,7 @@
 #include "../Interface/Database.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
+#include "../Interface/DatabaseCursor.h"
 #include "database.h"
 #include "../stringtools.h"
 #include <iostream>
@@ -208,9 +209,6 @@ bool verify_hashes(std::string arg)
 		}
 	}
 
-	if(filter.empty()) wfilter=" WHERE";
-	else	wfilter=filter+" AND";
-
 	std::cout << "Calculating filesize..." << std::endl;
 	IQuery *q_num_files=db->Prepare("SELECT SUM(filesize) AS c FROM files"+filter);
 	db_results res=q_num_files->Read();
@@ -227,27 +225,21 @@ bool verify_hashes(std::string arg)
 
 	_i64 crowid=0;
 
-	IQuery *q_get_files=db->Prepare("SELECT rowid, fullpath, shahash FROM files"+wfilter+" rowid>? ORDER BY rowid ASC LIMIT 1000000");
+	IQuery *q_get_files=db->Prepare("SELECT fullpath, shahash FROM files"+wfilter);
 
 	bool is_okay=true;
 
-	do
-	{
-		q_get_files->Bind(crowid);
-		res=q_get_files->Read();
-		q_get_files->Reset();
+	IDatabaseCursor* cursor = q_get_files->Cursor();
 
-		for(size_t i=0;i<res.size();++i)
+	db_single_result res_single;
+	while(cursor->next(res_single))
+	{
+		if(! verify_file( res_single, curr_verified, verify_size) )
 		{
-			crowid=(std::max)(crowid, watoi64(res[i][L"rowid"]));
-			if(! verify_file( res[i], curr_verified, verify_size) )
-			{
-				v_failure << "Verification of \"" << Server->ConvertToUTF8(res[i][L"fullpath"]) << "\" failed\r\n";
-				is_okay=false;
-			}
+			v_failure << "Verification of \"" << Server->ConvertToUTF8(res_single[L"fullpath"]) << "\" failed\r\n";
+			is_okay=false;
 		}
 	}
-	while(!res.empty());
 	
 	if(v_failure.is_open() && is_okay)
 	{

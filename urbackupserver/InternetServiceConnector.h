@@ -33,6 +33,7 @@ struct SClientData
 {
 	std::vector<InternetServiceConnector*> spare_connections;
 	unsigned int last_seen;
+	std::string endpoint_name;
 };
 
 struct SOnetimeToken
@@ -56,7 +57,7 @@ class InternetServiceConnector : public ICustomClient
 public:
 	InternetServiceConnector(void);
 	~InternetServiceConnector(void);
-	virtual void Init(THREAD_ID pTID, IPipe *pPipe);
+	virtual void Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName);
 
 	virtual bool Run(void);
 	virtual void ReceivePackets(void);
@@ -65,7 +66,7 @@ public:
 	static void destroy_mutex(void);
 
 	static IPipe *getConnection(const std::string &clientname, char service, int timeoutms=-1);
-	static std::vector<std::string> getOnlineClients(void);
+	static std::vector<std::pair<std::string, std::string> > getOnlineClients(void);
 
 	void connectStart();
 	bool Connect(char service, int timems);
@@ -89,6 +90,8 @@ private:
 	static void removeOldTokens(void);
 
 	std::string getAuthkeyFromDB(const std::string &clientname, bool &db_timeout);
+
+	bool hasClient(const std::string &clientname, bool &db_timeout);
 
 	static std::map<std::string, SClientData> client_data;
 	static IMutex *mutex;
@@ -125,6 +128,8 @@ private:
 	int compression_level;
 
 	bool token_auth;
+
+	std::string endpoint_name;
 
 	static IMutex *onetime_token_mutex;
 	static std::map<unsigned int, SOnetimeToken> onetime_tokens;

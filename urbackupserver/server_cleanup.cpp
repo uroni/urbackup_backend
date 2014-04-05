@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/SettingsReader.h"
 #include "../Interface/ThreadPool.h"
+#include "../Interface/DatabaseCursor.h"
 #include "database.h"
 #include "../stringtools.h"
 #include "server_settings.h"
@@ -33,7 +34,8 @@
 #include "server.h"
 #include "snapshot_helper.h"
 #include "apps/cleanup_cmd.h"
-#include "dao/ServerCleanupDAO.h"
+#include "dao/ServerCleanupDao.h"
+#include "server_dir_links.h"
 #include <stdio.h>
 #include <algorithm>
 
@@ -61,7 +63,7 @@ void ServerCleanupThread::destroyMutex(void)
 }
 
 ServerCleanupThread::ServerCleanupThread(CleanupAction cleanup_action)
-	: cleanup_action(cleanup_action), cleanupdao(NULL)
+	: cleanup_action(cleanup_action), cleanupdao(NULL), backupdao(NULL)
 {
 }
 
@@ -75,7 +77,8 @@ void ServerCleanupThread::operator()(void)
 
 	if(cleanup_action.action!=ECleanupAction_None)
 	{
-		cleanupdao=new ServerCleanupDAO(db);
+		cleanupdao=new ServerCleanupDao(db);
+		backupdao=new ServerBackupDao(db);
 
 		switch(cleanup_action.action)
 		{
@@ -84,6 +87,7 @@ void ServerCleanupThread::operator()(void)
 			break;
 		case ECleanupAction_FreeMinspace:
 			{
+				deletePendingClients();
 				bool b = do_cleanup(cleanup_action.minspace, cleanup_action.switch_to_wal);
 				if(cleanup_action.result!=NULL)
 				{
@@ -91,11 +95,12 @@ void ServerCleanupThread::operator()(void)
 				}
 			} break;
 		case ECleanupAction_RemoveUnknown:
-			do_remove();
+			do_remove_unknown();
 			break;
 		}
 		
 		delete cleanupdao;
+		delete backupdao;
 		Server->destroyDatabases(Server->getThreadID());
 		delete this;
 		return;
@@ -121,13 +126,16 @@ void ServerCleanupThread::operator()(void)
 		{
 			IScopedLock lock(a_mutex);
 
-			cleanupdao=new ServerCleanupDAO(db);
+			cleanupdao=new ServerCleanupDao(db);
+			backupdao=new ServerBackupDao(db);
 
 			deletePendingClients();
 			do_cleanup();
 			
 			delete cleanupdao;
+			delete backupdao;
 			cleanupdao=NULL;
+			backupdao=NULL;
 
 			backup_database();
 		}
@@ -152,6 +160,7 @@ void ServerCleanupThread::operator()(void)
 			}
 			if(do_quit)
 			{
+				delete this;
 				return;
 			}
 			if(update_stats)
@@ -195,7 +204,8 @@ void ServerCleanupThread::operator()(void)
 					upd();
 				}
 
-				cleanupdao=new ServerCleanupDAO(db);
+				cleanupdao=new ServerCleanupDao(db);
+				backupdao=new ServerBackupDao(db);
 
 				deletePendingClients();
 				do_cleanup();
@@ -203,6 +213,7 @@ void ServerCleanupThread::operator()(void)
 				enforce_quotas();
 
 				delete cleanupdao; cleanupdao=NULL;
+				delete backupdao; backupdao=NULL;
 
 				backup_database();
 
@@ -261,6 +272,11 @@ void ServerCleanupThread::do_cleanup(void)
 	ServerUpdateStats sus;
 	sus();
 	Server->Log("Done updating statistics.", LL_INFO);
+
+	Server->Log("Deleting old logs", LL_INFO);
+	cleanupdao->cleanupBackupLogs();
+	cleanupdao->cleanupAuthLog();
+	Server->Log("Done deleting old logs", LL_INFO);
 
 	if(!cache_res.empty())
 	{
@@ -324,20 +340,24 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 	return success;
 }
 
-void ServerCleanupThread::do_remove(void)
+void ServerCleanupThread::do_remove_unknown(void)
 {
 	ServerSettings settings(db);
 
+	replay_directory_link_journal(*backupdao);
+
 	std::wstring backupfolder=settings.getSettings()->backupfolder;
 
-	std::vector<ServerCleanupDAO::SClientInfo> res_clients=cleanupdao->getClients();
+	std::vector<ServerCleanupDao::SClientInfo> res_clients=cleanupdao->getClients();
 
 	for(size_t i=0;i<res_clients.size();++i)
 	{
 		int clientid=res_clients[i].id;
 		const std::wstring& clientname=res_clients[i].name;
 
-		std::vector<ServerCleanupDAO::SFileBackupInfo> res_file_backups=cleanupdao->getFileBackupsOfClient(clientid);
+		Server->Log(L"Removing unknown for client \""+clientname+L"\"");
+
+		std::vector<ServerCleanupDao::SFileBackupInfo> res_file_backups=cleanupdao->getFileBackupsOfClient(clientid);
 
 		for(size_t j=0;j<res_file_backups.size();++j)
 		{
@@ -357,7 +377,7 @@ void ServerCleanupThread::do_remove(void)
 			}
 		}
 
-		std::vector<ServerCleanupDAO::SImageBackupInfo> res_image_backups=cleanupdao->getImageBackupsOfClient(clientid);
+		std::vector<ServerCleanupDao::SImageBackupInfo> res_image_backups=cleanupdao->getImageBackupsOfClient(clientid);
 
 		for(size_t j=0;j<res_image_backups.size();++j)
 		{
@@ -377,7 +397,7 @@ void ServerCleanupThread::do_remove(void)
 
 		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname);
 
-		std::vector<ServerCleanupDAO::SImageBackupInfo> res_images=cleanupdao->getClientImages(clientid);
+		std::vector<ServerCleanupDao::SImageBackupInfo> res_images=cleanupdao->getClientImages(clientid);
 
 		for(size_t j=0;j<files.size();++j)
 		{
@@ -386,9 +406,12 @@ void ServerCleanupThread::do_remove(void)
 			if(cf.name==L"current")
 				continue;
 
+			if(cf.name==L".directory_pool")
+				continue;
+
 			if(cf.isdir)
 			{
-				ServerCleanupDAO::CondInt res_id=cleanupdao->findFileBackup(clientid, cf.name);
+				ServerCleanupDao::CondInt res_id=cleanupdao->findFileBackup(clientid, cf.name);
 
 				if(!res_id.exists)
 				{
@@ -409,7 +432,7 @@ void ServerCleanupThread::do_remove(void)
 					if(remove_folder)
 					{
 						std::wstring rm_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+cf.name;
-						if(!os_remove_nonempty_dir(rm_dir))
+						if(!remove_directory_link_dir(rm_dir, *backupdao, clientid))
 						{
 							Server->Log(L"Could not delete directory \""+rm_dir+L"\"", LL_ERROR);
 						}
@@ -453,6 +476,7 @@ void ServerCleanupThread::do_remove(void)
 				}
 			}
 		}
+		check_symlinks(res_clients[i], backupfolder);
 	}
 
 	Server->Log("Removing dangling file entries...", LL_INFO);
@@ -528,8 +552,8 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_image_num)+" full image backups max="+nconvert(max_image_full), LL_DEBUG);
 	while(full_image_num>max_image_full)
 	{
-		ServerCleanupDAO::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
-		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		ServerCleanupDao::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
+		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
 		if(clientname.exists && res_info.exists)
 		{
 			Server->Log(L"Deleting full image backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L", letter="+res_info.letter+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
@@ -578,8 +602,8 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_image_num)+" incremental image backups max="+nconvert(max_image_incr), LL_DEBUG);
 	while(incr_image_num>max_image_incr)
 	{
-		ServerCleanupDAO::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
-		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		ServerCleanupDao::SImageBackupInfo res_info=cleanupdao->getImageBackupInfo(backupid);
+		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
 		if(clientname.exists && res_info.exists)
 		{
 			Server->Log(L"Deleting incremental image backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L", letter="+res_info.letter+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
@@ -622,7 +646,7 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 
 void ServerCleanupThread::cleanup_images(int64 minspace)
 {
-	std::vector<ServerCleanupDAO::SIncompleteImages> incomplete_images=cleanupdao->getIncompleteImages();
+	std::vector<ServerCleanupDao::SIncompleteImages> incomplete_images=cleanupdao->getIncompleteImages();
 	for(size_t i=0;i<incomplete_images.size();++i)
 	{
 		Server->Log(L"Deleting incomplete image file \""+incomplete_images[i].path+L"\"...", LL_INFO);
@@ -662,7 +686,7 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 
 	ServerStatus::updateActive();
 
-	std::vector<ServerCleanupDAO::SImageRef> refs=cleanupdao->getImageRefs(backupid);
+	std::vector<ServerCleanupDao::SImageRef> refs=cleanupdao->getImageRefs(backupid);
 
 	for(size_t i=0;i<refs.size();++i)
 	{
@@ -671,7 +695,7 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 			ret=false;
 	}
 
-	ServerCleanupDAO::CondString res=cleanupdao->getImagePath(backupid);
+	ServerCleanupDao::CondString res=cleanupdao->getImagePath(backupid);
 	if(res.exists)
 	{
 		_i64 stat_id;
@@ -710,7 +734,7 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 
 bool ServerCleanupThread::findUncompleteImageRef(int backupid)
 {
-	std::vector<ServerCleanupDAO::SImageRef> refs=cleanupdao->getImageRefs(backupid);
+	std::vector<ServerCleanupDao::SImageRef> refs=cleanupdao->getImageRefs(backupid);
 
 	for(size_t i=0;i<refs.size();++i)
 	{
@@ -722,7 +746,7 @@ bool ServerCleanupThread::findUncompleteImageRef(int backupid)
 
 size_t ServerCleanupThread::getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit)
 {
-	std::vector<ServerCleanupDAO::SImageLetter> res=cleanupdao->getFullNumImages(clientid);
+	std::vector<ServerCleanupDao::SImageLetter> res=cleanupdao->getFullNumImages(clientid);
 	std::map<std::wstring, std::vector<int> > images_ids;
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -749,7 +773,7 @@ size_t ServerCleanupThread::getImagesFullNum(int clientid, int &backupid_top, co
 
 size_t ServerCleanupThread::getImagesIncrNum(int clientid, int &backupid_top, const std::vector<int> &notit)
 {
-	std::vector<ServerCleanupDAO::SImageLetter> res=cleanupdao->getIncrNumImages(clientid);
+	std::vector<ServerCleanupDao::SImageLetter> res=cleanupdao->getIncrNumImages(clientid);
 	std::map<std::wstring, std::vector<int> > images_ids;
 	for(size_t i=0;i<res.size();++i)
 	{
@@ -791,8 +815,8 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(full_file_num)+" full file backups max="+nconvert(max_file_full), LL_DEBUG);
 	while(full_file_num>max_file_full )
 	{
-		ServerCleanupDAO::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
-		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		ServerCleanupDao::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
+		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
 		if(clientname.exists && res_info.exists)
 		{
 			Server->Log(L"Deleting full file backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
@@ -814,8 +838,8 @@ bool ServerCleanupThread::cleanup_one_filebackup_client(int clientid, int64 mins
 	Server->Log("Client with id="+nconvert(clientid)+" has "+nconvert(incr_file_num)+" incremental file backups max="+nconvert(max_file_incr), LL_DEBUG);
 	while(incr_file_num>max_file_incr )
 	{
-		ServerCleanupDAO::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
-		ServerCleanupDAO::CondString clientname=cleanupdao->getClientName(clientid);
+		ServerCleanupDao::SFileBackupInfo res_info=cleanupdao->getFileBackupInfo(backupid);
+		ServerCleanupDao::CondString clientname=cleanupdao->getClientName(clientid);
 		if(clientname.exists && res_info.exists)
 		{
 			Server->Log(L"Deleting incremental file backup ( id="+convert(res_info.id)+L", backuptime="+res_info.backuptime+L", path="+res_info.path+L" ) from client \""+clientname.value+L"\" ( id="+convert(clientid)+L" ) ...", LL_INFO);
@@ -926,7 +950,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 {
 	ServerStatus::updateActive();
 
-	ServerCleanupDAO::CondString cond_clientname=cleanupdao->getClientName(clientid);
+	ServerCleanupDao::CondString cond_clientname=cleanupdao->getClientName(clientid);
 	if(!cond_clientname.exists)
 	{
 		Server->Log("Error getting clientname in ServerCleanupThread::deleteFileBackup", LL_ERROR);
@@ -934,7 +958,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	}
 	std::wstring &clientname=cond_clientname.value;
 
-	ServerCleanupDAO::CondString cond_backuppath=cleanupdao->getFileBackupPath(backupid);
+	ServerCleanupDao::CondString cond_backuppath=cleanupdao->getFileBackupPath(backupid);
 
 	if(!cond_backuppath.exists)
 	{
@@ -970,7 +994,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 
 		if(!b)
 		{
-			b=os_remove_nonempty_dir(os_file_prefix(path));
+			b=remove_directory_link_dir(path, *backupdao, clientid);
 
 			if(!b && SnapshotHelper::isSubvolume(clientname, backuppath) )
 			{
@@ -979,14 +1003,14 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 
 				if(b)
 				{
-					b=os_remove_nonempty_dir(os_file_prefix(path));
+					b=remove_directory_link_dir(path, *backupdao, clientid);
 				}
 			}
 		}
 	}
 	else
 	{
-		b=os_remove_nonempty_dir(os_file_prefix(path));
+		b=remove_directory_link_dir(path, *backupdao, clientid);
 	}
 
 	bool del=true;
@@ -1036,7 +1060,7 @@ void ServerCleanupThread::removeClient(int clientid)
 {
 	std::wstring clientname=cleanupdao->getClientName(clientid).value;
 	Server->Log(L"Deleting client with id \""+convert(clientid)+L"\" name \""+clientname+L"\"", LL_INFO);
-	std::vector<ServerCleanupDAO::SImageBackupInfo> res_images;
+	std::vector<ServerCleanupDao::SImageBackupInfo> res_images;
 	//remove image backups
 	do
 	{
@@ -1139,7 +1163,7 @@ void ServerCleanupThread::deletePendingClients(void)
 
 int64 ServerCleanupThread::getImageSize(int backupid)
 {
-	ServerCleanupDAO::CondInt64 cond_res=cleanupdao->getImageSize(backupid);
+	ServerCleanupDao::CondInt64 cond_res=cleanupdao->getImageSize(backupid);
 	if(cond_res.exists)
 	{
 		return cond_res.value;
@@ -1154,9 +1178,9 @@ void ServerCleanupThread::backup_database(void)
 
 	if(settings.getSettings()->backup_database)
 	{
-		db_results res = db->Read("PRAGMA integrity_check");
-
 		Server->Log("Checking database integrity...", LL_INFO);
+		db_results res = db->Read("PRAGMA quick_check");
+
 		if(!res.empty() && res[0][L"integrity_check"]==L"ok")
 		{
 			std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
@@ -1187,6 +1211,7 @@ void ServerCleanupThread::backup_database(void)
 		{
 			Server->Log("Database integrity check failed. Skipping Database backup.", LL_ERROR);
 			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);
+			BackupServerGet::sendMailToAdmins("Database integrity check failed", "Database integrity check failed before database backup. You should restore the UrBackup database from a backup or try to repair it.");
 		}
 	}
 }
@@ -1246,7 +1271,7 @@ void ServerCleanupThread::enforce_quotas(void)
 		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
 	}
 
-	std::vector<ServerCleanupDAO::SClientInfo> clients=cleanupdao->getClients();
+	std::vector<ServerCleanupDao::SClientInfo> clients=cleanupdao->getClients();
 
 	for(size_t i=0;i<clients.size();++i)
 	{
@@ -1285,7 +1310,7 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 	bool did_remove_something=false;
 	do
 	{
-		ServerCleanupDAO::CondInt64 used_storage=cleanupdao->getUsedStorage(clientid);
+		ServerCleanupDao::CondInt64 used_storage=cleanupdao->getUsedStorage(clientid);
 		if(!used_storage.exists || used_storage.value<0)
 		{
 			log << "Error getting used storage of client" << std::endl;
@@ -1376,6 +1401,184 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 		}
 	}
 	while(did_remove_something);
+
+	return false;
+}
+
+namespace
+{
+	std::vector<bool> check_backupfolders_exist(std::vector<std::wstring>& old_backupfolders)
+	{
+		std::vector<bool> ret;
+		ret.resize(old_backupfolders.size());
+		for(size_t i=0;i<old_backupfolders.size();++i)
+		{
+			ret[i] = os_directory_exists(os_file_prefix(old_backupfolders[i]));			
+		}
+		return ret;
+	}
+}
+
+bool ServerCleanupThread::correct_poolname( const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& pool_name, std::wstring& pool_path )
+{
+	const std::wstring pool_root = backupfolder + os_file_sep() + clientname + os_file_sep() + L".directory_pool";
+	pool_path = pool_root + os_file_sep() + pool_name.substr(0, 2) + os_file_sep() + pool_name;
+
+	if(os_directory_exists(pool_path))
+	{
+		return true;
+	}
+
+	static std::vector<std::wstring> old_backupfolders = backupdao->getOldBackupfolders();
+	static std::vector<bool> backupfolders_exist = check_backupfolders_exist(old_backupfolders);
+
+	for(size_t i=0;i<old_backupfolders.size();++i)
+	{
+		if(backupfolders_exist[i])
+		{
+			pool_path = old_backupfolders[i] + os_file_sep() + clientname + os_file_sep() + L".directory_pool"
+				+ os_file_sep() + pool_name.substr(0, 2) + os_file_sep() + pool_name;
+
+			if(os_directory_exists(pool_path))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& client_info, const std::wstring& backupfolder )
+{
+	const int clientid=client_info.id;
+	const std::wstring& clientname=client_info.name;
+	const std::wstring pool_root = backupfolder + os_file_sep() + clientname + os_file_sep() + L".directory_pool";
+
+	std::vector<int64> del_ids;
+	std::vector<std::pair<int64, std::wstring> > target_adjustments;
+
+	IQuery* q = db->Prepare("SELECT id, name, target FROM directory_links WHERE clientid=?");
+	q->Bind(clientid);
+
+	IDatabaseCursor* cursor = q->Cursor();
+
+	db_single_result res;
+	while(cursor->next(res))
+	{
+		const std::wstring& pool_name = res[L"name"];
+		const std::wstring& target = res[L"target"];
+
+		std::wstring new_target = target;
+		std::wstring pool_path;
+		bool exists=true;
+		if(!correct_poolname(backupfolder, clientname, pool_name, pool_path) || !correct_target(backupfolder, new_target))
+		{
+			if(!correct_poolname(backupfolder, clientname, pool_name, pool_path))
+			{
+				Server->Log(L"Pool directory for pool entry \""+pool_name+L"\" not found.");
+			}
+			if(!correct_target(backupfolder, new_target))
+			{
+				Server->Log(L"Pool directory source symbolic link \""+new_target+L"\" not found.");
+			}
+			Server->Log("Deleting pool reference entry");
+			del_ids.push_back(watoi(res[L"id"]));
+			exists=false;
+		}
+		else if(target!=new_target)
+		{
+			Server->Log(L"Adjusting pool directory target from \""+target+L"\" to \""+new_target+L"\"");
+			target_adjustments.push_back(std::make_pair(watoi(res[L"id"]), new_target));
+		}
+		
+		if(exists)
+		{
+			std::wstring symlink_pool_path;
+			if(os_get_symlink_target(os_file_prefix(new_target), symlink_pool_path))
+			{
+				if(symlink_pool_path!=pool_path)
+				{
+					Server->Log(L"Correcting target of symlink \""+new_target+L"\" to \""+pool_path+L"\"");
+					if(os_remove_symlink_dir(os_file_prefix(new_target)))
+					{
+						if(!os_link_symbolic(pool_path, os_file_prefix(new_target)))
+						{
+							Server->Log(L"Could not create symlink at \""+new_target+L"\" to \""+pool_path+L"\"", LL_ERROR);
+						}
+					}
+					else
+					{
+						Server->Log(L"Error deleting symlink \""+new_target+L"\"", LL_ERROR);
+					}
+				}
+			}
+		}
+	}
+	q->Reset();
+
+	for(size_t i=0;i<del_ids.size();++i)
+	{
+		backupdao->deleteLinkReferenceEntry(del_ids[i]);
+	}
+
+	for(size_t i=0;i<target_adjustments.size();++i)
+	{
+		backupdao->updateLinkReferenceTarget(target_adjustments[i].second, target_adjustments[i].first);
+	}
+
+	std::vector<SFile> first_files = getFiles(pool_root);
+	for(size_t i=0;i<first_files.size();++i)
+	{
+		if(!first_files[i].isdir)
+			continue;
+
+		std::wstring curr_path = pool_root + os_file_sep() + first_files[i].name;
+		std::vector<SFile> pool_files = getFiles(curr_path);
+
+		for(size_t j=0;i<pool_files.size();++i)
+		{
+			if(!pool_files[i].isdir)
+				continue;
+
+			std::wstring pool_path = curr_path + os_file_sep() + pool_files[i].name;
+
+			if(backupdao->getDirectoryRefcount(clientid, pool_files[i].name)==0)
+			{
+				Server->Log(L"Refcount of \""+pool_path+L"\" is zero. Deleting pool folder.");
+				if(!remove_directory_link_dir(pool_path, *backupdao, clientid))
+				{
+					Server->Log(L"Could not remove pool folder \""+pool_path+L"\"", LL_ERROR);
+				}
+			}
+		}
+	}
+}
+
+bool ServerCleanupThread::correct_target(const std::wstring& backupfolder, std::wstring& target)
+{
+	if(os_is_symlink(os_file_prefix(target)))
+	{
+		return true;
+	}
+
+	static std::vector<std::wstring> old_backupfolders = backupdao->getOldBackupfolders();
+
+	for(size_t i=0;i<old_backupfolders.size();++i)
+	{
+		size_t erase_size = old_backupfolders[i].size() + os_file_sep().size();
+		if(target.size()>erase_size &&
+			next(target, 0, old_backupfolders[i]))
+		{
+			std::wstring new_target = backupfolder + os_file_sep() + target.substr(erase_size);
+
+			if(os_is_symlink(os_file_prefix(new_target)))
+			{
+				target = new_target;
+				return true;
+			}
+		}
+	}
 
 	return false;
 }

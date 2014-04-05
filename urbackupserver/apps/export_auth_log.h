@@ -1,0 +1,1 @@
+int export_auth_log();

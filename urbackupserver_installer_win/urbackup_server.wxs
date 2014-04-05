@@ -2,7 +2,7 @@
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:firewall='http://schemas.microsoft.com/wix/FirewallExtension'>
 	<?include $(sys.CURRENTDIR)\urbackup_server.wxi?>
 	<Product Id='$(var.ProductID)' Name='UrBackup Server' Language='1033'
-            Version='1.3.0.0' Manufacturer='Martin Raiber' UpgradeCode='b79b4110-e31a-453a-b9b4-2ce0663a55ce'>
+            Version='1.4.0.0' Manufacturer='Martin Raiber' UpgradeCode='b79b4110-e31a-453a-b9b4-2ce0663a55ce'>
 	
     <Package Description='UrBackup Server'
              Comments='UrBackup Server for file and image backups'
@@ -24,11 +24,11 @@
       <Directory Id='$(var.ProgramFilesFolder)' Name='PFiles'>
         <Directory Id='URBACKUPDIR' Name='UrBackupServer'>			
             <Component Id='InstallService' Guid="deca7cff-6721-4270-905a-b4b02d6740ce" Win64="$(var.isx64)">
-				<File Id="WindowsService" Name="UrBackupServer.exe"
+				<File Id="WindowsService" Name="urbackup_srv.exe"
                   Source="$(var.servicedatadir)\urbackup_srv.exe" KeyPath="yes">
 					<firewall:FirewallException
 					Id="ServiceFirewallException"
-					Name="UrBackup Server"
+					Name="UrBackup Windows Server"
 					Scope="any"
 					Profile="all"
 					/>
@@ -40,8 +40,8 @@
 					  Id="ServiceInstaller"
 					  Type="ownProcess"
 					  Vital="yes"
-					  Name="UrBackupServer"
-					  DisplayName="UrBackup Server"
+					  Name="UrBackupWinServer"
+					  DisplayName="UrBackupWinServer"
 					  Description="Server for image and file backups of clients"
 					  Start="auto"
 					  Account="LocalSystem"
@@ -49,7 +49,7 @@
 					  Interactive="no"
 					  >
 					</ServiceInstall>
-					<ServiceControl Id="StartService" Start="install" Stop="both" Remove="uninstall" Name="UrBackupServer" Wait="yes" />
+					<ServiceControl Id="StartService" Start="install" Stop="both" Remove="uninstall" Name="UrBackupWinServer" Wait="yes" />
 			</Component>
 			
         </Directory>
@@ -70,7 +70,6 @@
     <Feature Id='urbackup_server' Title='UrBackup Server' Level='1'>
 	  <ComponentGroupRef Id='UrBackupData' />
 	  <ComponentGroupRef Id='UrBackupDataCommon' />
-	  <ComponentGroupRef Id='UrBackupDataPython' />
 	  <ComponentRef Id='InstallService' />
     </Feature>
 	<Feature Id="VCRedist" Title="Visual C++ 2010 Runtime" AllowAdvertise="no" Display="hidden" Level="1">

@@ -7,6 +7,7 @@
 
 struct SSettings
 {
+	int clientid;
 	std::wstring backupfolder;
 	std::wstring backupfolder_uncompr;
 	int update_freq_incr;
@@ -85,6 +86,7 @@ struct SSettings
 	std::string client_quota;
 	bool end_to_end_file_backup_verification;
 	bool internet_calculate_filehashes_on_client;
+	bool use_incremental_symlinks;
 };
 
 struct STimeSpan
@@ -112,7 +114,7 @@ public:
 	ServerSettings(IDatabase *db, int pClientid=-1);
 	~ServerSettings(void);
 
-	void update(void);
+	void update(bool force_update);
 
 	void doUpdate(void);
 	
@@ -120,6 +122,7 @@ public:
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
+	static void clear_cache();
 	static void updateAll(void);
 	static std::string generateRandomAuthKey(size_t len=10);
 	static std::string generateRandomBinaryKey(void);

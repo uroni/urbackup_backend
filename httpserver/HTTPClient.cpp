@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ IMutex *CHTTPClient::share_mutex=NULL;
 std::map<std::string, SShareProxy> CHTTPClient::shared_connections;
 extern std::vector<std::string> allowed_urls;
 
-void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe)
+void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpoint)
 {
 	pipe=pPipe;
 	do_quit=false;
@@ -55,6 +55,7 @@ void CHTTPClient::Init(THREAD_ID pTID, IPipe *pPipe)
 	request_num=0;
 	request_ticket=ILLEGAL_THREADPOOL_TICKET;
 	fileupload=false;
+	endpoint=pEndpoint;
 }
 
 void CHTTPClient::init_mutex(void)
@@ -145,6 +146,7 @@ bool CHTTPClient::Run(void)
 				Server->clearPostFiles(tid);
 			}
 			delete request_handler;
+			request_handler=NULL;
 
 			if(!http_service->getProxyServer().empty() && http_service->getShareProxyConnections()==1)
 			{
@@ -541,7 +543,7 @@ bool CHTTPClient::processRequest(void)
 		std::string gparams=getafter("?", *pl);
 
 		pl=NULL;
-
+		http_params["REMOTE_ADDR"]=endpoint;
 		CHTTPAction *action_handler=new CHTTPAction(widen(name),widen(context),gparams, http_content, http_params, pipe);
 		request_ticket=Server->getThreadPool()->execute(action_handler);
 		request_handler=action_handler;

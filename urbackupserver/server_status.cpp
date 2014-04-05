@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -110,18 +110,11 @@ void ServerStatus::setIP(const std::wstring &clientname, unsigned int ip)
 	s->ip_addr=ip;
 }
 
-void ServerStatus::setWrongIdent(const std::wstring &clientname, bool b)
+void ServerStatus::setStatusError(const std::wstring &clientname, SStatusError se)
 {
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
-	s->wrong_ident=b;
-}
-
-void ServerStatus::setTooManyClients(const std::wstring &clientname, bool b)
-{
-	IScopedLock lock(mutex);
-	SStatus *s=&status[clientname];
-	s->too_many_clients=b;
+	s->status_error=se;
 }
 
 void ServerStatus::setCommPipe(const std::wstring &clientname, IPipe *p)

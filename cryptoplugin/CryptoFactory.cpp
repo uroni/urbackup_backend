@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -155,4 +155,55 @@ IZlibCompression* CryptoFactory::createZlibCompression(int compression_level)
 IZlibDecompression* CryptoFactory::createZlibDecompression(void)
 {
 	return new ZlibDecompression;
+}
+
+bool CryptoFactory::signData(const std::string &pubkey, const std::string &data, std::string &signature)
+{
+	CryptoPP::DSA::PrivateKey PrivateKey; 
+	CryptoPP::AutoSeededRandomPool rnd;
+
+	try
+	{
+		PrivateKey.Load(CryptoPP::StringSource(reinterpret_cast<const byte*>(pubkey.c_str()), pubkey.size(), true).Ref());
+
+		CryptoPP::DSA::Signer signer( PrivateKey );
+		CryptoPP::StringSource( reinterpret_cast<const byte*>(data.c_str()), data.size(), true,
+			new CryptoPP::SignerFilter( rnd, signer,
+			new CryptoPP::StringSink( signature )
+			) // SignerFilter
+			);
+
+		return true;
+	}
+	catch(...)
+	{
+		Server->Log("Exception occured in CryptoFactory::signData", LL_ERROR);
+	}
+
+	return false;
+}
+
+bool CryptoFactory::verifyData( const std::string &pubkey, const std::string &data, const std::string &signature )
+{
+	CryptoPP::DSA::PublicKey PublicKey; 
+	CryptoPP::AutoSeededRandomPool rnd;
+
+	try
+	{
+		PublicKey.Load(CryptoPP::StringSource(reinterpret_cast<const byte*>(pubkey.c_str()), pubkey.size(), true).Ref());
+
+		CryptoPP::DSA::Verifier verifier( PublicKey );
+		CryptoPP::SignatureVerificationFilter svf(verifier);
+
+		CryptoPP::StringSource( reinterpret_cast<const byte*>(signature.c_str()), signature.size(), true, new CryptoPP::Redirector( svf, CryptoPP::Redirector::PASS_WAIT_OBJECTS ) );
+		CryptoPP::StringSource( reinterpret_cast<const byte*>(data.c_str()), data.size(), true, new CryptoPP::Redirector( svf ) );
+
+		return svf.GetLastResult();
+	}
+	catch(...)
+	{
+		Server->Log("Exception occured in CryptoFactory::verifyFile", LL_ERROR);
+	}
+
+	return false;
 }

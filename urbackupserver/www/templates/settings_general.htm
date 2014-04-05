@@ -1,64 +1,67 @@
 ﻿<br />
 <div class="tabber" id="settings_tabber">
-<div class="tabbertab" title="#{tServer}">
+<div class="tabbertab" title="{tServer}">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
-<td>#{tBackup storage path}:</td>
-<td><input type="text" size="40" id="backupfolder" value="#{backupfolder}"/> </td>
+<td>{tBackup storage path}:</td>
+<td><input type="text" size="40" id="backupfolder" value="{backupfolder|s}"/> </td>
 </tr>
 <tr>
-<td>#{tDo not do image backups}:</td>
-<td><input type="checkbox" id="no_images" value="true" #{no_images}/></td>
+<td>{tDo not do image backups}:</td>
+<td><input type="checkbox" id="no_images" value="true" {no_images}/></td>
 </tr>
 <tr>
-<td>#{tDo not do file backups}:</td>
-<td><input type="checkbox" id="no_file_backups" value="true" #{no_file_backups}/></td>
+<td>{tDo not do file backups}:</td>
+<td><input type="checkbox" id="no_file_backups" value="true" {no_file_backups}/></td>
 </tr>
 <tr>
-<td>#{tAutomatically shut down server}:</td>
-<td><input type="checkbox" id="autoshutdown" value="true" #{autoshutdown}/></td>
+<td>{tAutomatically shut down server}:</td>
+<td><input type="checkbox" id="autoshutdown" value="true" {autoshutdown}/></td>
 </tr>
 <tr>
-<td>#{tDownload client from update server}:</td>
-<td><input type="checkbox" id="download_client" value="true" #{download_client}/></td>
+<td>{tDownload client from update server}:</td>
+<td><input type="checkbox" id="download_client" value="true" {download_client}/></td>
 </tr>
 <tr>
-<td>#{tAutoupdate clients}:</td>
-<td><input type="checkbox" id="autoupdate_clients" value="true" #{autoupdate_clients}/></td>
+<td>{tAutoupdate clients}:</td>
+<td><input type="checkbox" id="autoupdate_clients" value="true" {autoupdate_clients}/></td>
 </tr>
 <tr>
-<td>#{tMax number of simultaneous backups}:</td>
-<td><input type="text" id="max_sim_backups" value="#{max_sim_backups}" /></td>
+<td>{tMax number of simultaneous backups}:</td>
+<td><input type="text" id="max_sim_backups" value="{max_sim_backups}" /></td>
 </tr>
 <tr>
-<td>#{tMax number of recently active clients}:</td>
-<td><input type="text" id="max_active_clients" value="#{max_active_clients}" /></td>
+<td>{tMax number of recently active clients}:</td>
+<td><input type="text" id="max_active_clients" value="{max_active_clients}" /></td>
 </tr>
-#{ONLY_WIN32_BEGIN}
+{ONLY_WIN32_BEGIN|s}
 <tr>
-<td>#{tNondefault temporary file directory}:</td>
-<td><input type="text" id="tmpdir" value="#{tmpdir}" /></td>
+<td>{tNondefault temporary file directory}:</td>
+<td><input type="text" id="tmpdir" value="{tmpdir|s}" /></td>
 </tr>
-#{ONLY_WIN32_END}
+{ONLY_WIN32_END|s}
 <tr>
-<td>#{tCleanup time window}:</td>
-<td><input type="text" id="cleanup_window" value="#{cleanup_window}" /><a href="http://www.urbackup.org/FAQ.php#cleanup_window" target="_blank">?</a></td></td>
-</tr>
-<tr>
-<td>#{tAutomatically backup UrBackup database}:</td>
-<td><input type="checkbox" size="40" id="backup_database" #{backup_database}/> </td>
+<td>{tCleanup time window}:</td>
+<td><input type="text" id="cleanup_window" value="{cleanup_window|s}" /><a href="http://www.urbackup.org/FAQ.php#cleanup_window" target="_blank">?</a></td></td>
 </tr>
 <tr>
-<td>#{tTotal max backup speed for local network}:</td>
-<td><input type="text" id="global_local_speed" value="#{global_local_speed}"/> MBit/s</td>
+<td>{tAutomatically backup UrBackup database}:</td>
+<td><input type="checkbox" size="40" id="backup_database" {backup_database}/> </td>
 </tr>
 <tr>
-<td>#{tGlobal soft filesystem quota}:</td>
-<td><input type="text" id="global_soft_fs_quota" value="#{global_soft_fs_quota}"/><a href="http://www.urbackup.org/FAQ.php#global_soft_fs_quota" target="_blank">?</a></td>
+<td>{tTotal max backup speed for local network}:</td>
+<td><input type="text" id="global_local_speed" value="{global_local_speed}"/> MBit/s</td>
+</tr>
+<tr>
+<td>{tGlobal soft filesystem quota}:</td>
+<td><input type="text" id="global_soft_fs_quota" value="{global_soft_fs_quota}"/><a href="http://www.urbackup.org/FAQ.php#global_soft_fs_quota" target="_blank">?</a></td>
 </tr>
 </table>
-</div>#{settings_inv}
+</div>
+
+{settings_inv|s}
+
 </div>
 <br />
 <br />
-<input type="button" value="#{tSave}" onClick="saveGeneralSettings()" />
+<input type="button" value="{tSave}" onClick="saveGeneralSettings()" />

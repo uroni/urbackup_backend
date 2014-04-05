@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../../Interface/Database.h"
 #include "../../Interface/Server.h"
 #include "../../Interface/SessionMgr.h"

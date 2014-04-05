@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -19,6 +19,19 @@
 #ifndef CLIENT_ONLY
 
 #include "action_header.h"
+#include "login.h"
+
+void logLogin(Helper& helper, str_nmap& PARAMS, const std::wstring& username, LoginMethod method)
+{
+	IQuery* q = helper.getDatabase()->Prepare("INSERT INTO settings_db.login_access_log (username, ip, method)"
+		" VALUES (?, ?, ?)");
+
+	q->Bind(username);
+	q->Bind(PARAMS["REMOTE_ADDR"]);
+	q->Bind(static_cast<int>(method));
+	q->Write();
+	q->Reset();
+}
 
 ACTION_IMPL(login)
 {
@@ -58,11 +71,6 @@ ACTION_IMPL(login)
 		has_session=true;
 	}
 
-	if(pychart_fak==NULL)
-	{
-		ret.set("use_googlechart", true);
-	}
-
 	std::wstring username=GET[L"username"];
 	if(!username.empty())
 	{
@@ -80,6 +88,7 @@ ACTION_IMPL(login)
 			if(helper.checkPassword(username, GET[L"password"], &user_id) )
 			{
 				ret.set("success", JSON::Value(true));
+				logLogin(helper, PARAMS, username, LoginMethod_Webinterface);
 				session->mStr[L"login"]=L"ok";
 				session->mStr[L"username"]=username;
 				session->id=user_id;
@@ -123,6 +132,7 @@ ACTION_IMPL(login)
 			SUser *session=helper.getSession();
 			if(session!=NULL)
 			{
+				logLogin(helper, PARAMS, L"anonymous", LoginMethod_Webinterface);
 				session->mStr[L"login"]=L"ok";
 				session->id=0;
 			}

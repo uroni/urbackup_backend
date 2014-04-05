@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -1202,6 +1202,49 @@ void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> 
 	}
 }
 
+void ParseParamStr(const std::string &pStr, std::map<std::string,std::string> *pMap, bool escape_params)
+{
+	std::string key;
+	std::string value;
+
+	int pos=0;
+	for(size_t i=0;i<pStr.size();++i)
+	{
+		char ch=pStr[i];
+		if( ch=='=' && pos==0)
+		{
+			pos=1;
+		}
+		else if( (ch=='&'||ch=='$') && pos==1 )
+		{
+			pos=0;
+			if(escape_params)
+			{
+				value=EscapeSQLString(value);
+			}
+			pMap->insert( std::pair<std::string, std::string>(key,value) );
+			key.clear(); value.clear();
+		}
+		else if( pos==0 )
+		{
+			key+=ch;
+		}
+		else if( pos==1 )
+		{
+			value+=ch;
+		}
+	}
+
+	if( value.size()>0 || key.size()>0 )
+	{
+		if(escape_params)
+		{
+			value=EscapeSQLString(value);
+		}
+		pMap->insert( std::pair<std::string, std::string>(key,value) );
+	}
+}
+
 int round(float f)
 {
   return (int)(f<0?f-0.5f:f+0.5f);
@@ -1334,6 +1377,10 @@ wstring htmldecode(string str, bool html, char xc)
 				tmp+=ch;
 			}
 			i+=2;
+		}
+		else if(str[i]=='+' && !html)
+		{
+			tmp+=' ';
 		}
 		else
 		{
@@ -1507,6 +1554,20 @@ std::string base64_encode(unsigned char const* bytes_to_encode, unsigned int in_
 
 }
 
+std::string base64_encode_dash(const std::string& data)
+{
+	std::string ret = base64_encode(reinterpret_cast<const unsigned char*>(data.c_str()),
+		static_cast<unsigned int>(data.size()));
+
+	for(size_t i=0;i<ret.size();++i)
+	{
+		if(ret[i]=='=')
+			ret[i]='-';
+	}
+
+	return ret;
+}
+
 std::string base64_decode(std::string const& encoded_string) {
   int in_len = (int)encoded_string.size();
   int i = 0;
@@ -1546,6 +1607,17 @@ std::string base64_decode(std::string const& encoded_string) {
   }
 
   return ret;
+}
+
+std::string base64_decode_dash(std::string s)
+{
+	for(size_t i=0;i<s.size();++i)
+	{
+		if(s[i]=='%')
+			s[i]='-';
+	}
+
+	return base64_decode(s);
 }
 
 bool CheckForIllegalChars(const std::string &str)

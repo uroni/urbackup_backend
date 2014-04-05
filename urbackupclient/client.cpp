@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ const unsigned int nonidlesleeptime=500;
 const unsigned short tcpport=35621;
 const unsigned short udpport=35622;
 const unsigned int shadowcopy_timeout=7*24*60*60*1000;
+const unsigned int shadowcopy_startnew_timeout=55*60*1000;
 const size_t max_modify_file_buffer_size=500*1024;
 const size_t max_modify_hash_buffer_size=500*1024;
 const int64 save_filehash_limit=20*4096;
@@ -231,7 +232,6 @@ void IndexThread::operator()(void)
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
 	db->Write("CREATE TEMPORARY TABLE files_tmp (num NUMERIC, data BLOB, name TEXT);");
-	db->Write("CREATE TEMPORARY TABLE filehashes_tmp (name TEXT, filesize INTEGER, modifytime INTEGER, hashdata BLOB);");
 
 	cd=new ClientDAO(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 
@@ -363,7 +363,6 @@ void IndexThread::operator()(void)
 
 				Server->Log("Deleting files... doing full index...", LL_INFO);
 				resetFileEntries();
-				db->Write("DELETE FROM filehashes");
 			}
 			execute_prebackup_hook();
 			indexDirs();
@@ -677,10 +676,7 @@ void IndexThread::indexDirs(void)
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true);
 
 			cd->copyFromTmpFiles();
-			cd->copyFromTmpFileHashes();
-			cd->deleteTmpFileHashes();
 			commitModifyFilesBuffer();
-			commitModifyHashBuffer();
 
 			if(stop_index)
 			{
@@ -712,10 +708,7 @@ void IndexThread::indexDirs(void)
 	}
 
 	cd->copyFromTmpFiles();
-	cd->copyFromTmpFileHashes();
-	cd->deleteTmpFileHashes();
 	commitModifyFilesBuffer();
-	commitModifyHashBuffer();
 
 #ifdef _WIN32
 	if(!has_stale_shadowcopy)
@@ -764,6 +757,20 @@ void IndexThread::resetFileEntries(void)
 	db->Write("DELETE FROM mfiles_backup");
 }
 
+bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& namedpath)
+{
+	if( isExcluded(filepath) || isExcluded(namedpath) )
+	{
+		return true;
+	}
+	if( !isIncluded(filepath, NULL) && !isIncluded(namedpath, NULL) )
+	{
+		return true;
+	}
+
+	return false;
+}
+
 bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first)
 {
 	bool has_include=false;
@@ -789,17 +796,13 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 		return false;
 	}
 
-	std::vector<SFile> files=getFilesProxy(orig_dir, dir, !first);
+	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first);
 	
 	for(size_t i=0;i<files.size();++i)
 	{
 		if( !files[i].isdir )
 		{
-			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(named_path+os_file_sep()+files[i].name) )
-			{
-				continue;
-			}
-			if( !isIncluded(orig_dir+os_file_sep()+files[i].name, NULL) && !isIncluded(named_path+os_file_sep()+files[i].name, NULL) )
+			if( skipFile(orig_dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name) )
 			{
 				continue;
 			}
@@ -812,41 +815,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 
 				if(calculate_filehashes_on_client)
 				{
-					std::string hash;
-					if(files[i].size<=save_filehash_limit)
-					{
-						hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
-					}
-					else
-					{
-						std::wstring key_path=orig_dir+os_file_sep()+files[i].name;
-					
-						_i64 filesize;
-						_i64 modifytime;
-						if(cd->getFileHash(key_path, filesize, modifytime, hash))
-						{
-							if( filesize!=files[i].size ||
-								files[i].last_modified!=modifytime )
-							{
-								hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
-
-								modifyHashInt(hash, key_path, files[i].size, files[i].last_modified);
-							}
-						}
-						else
-						{
-							hash=getSHA512Binary(dir+os_file_sep()+files[i].name);
-							cd->addFileHash(key_path, files[i].size, files[i].last_modified, hash);
-							if(Server->getTimeMS()-last_tmp_update_time>10*60*1000) //10min
-							{
-								cd->copyFromTmpFileHashes();
-								cd->deleteTmpFileHashes();
-								last_tmp_update_time=Server->getTimeMS();
-							}
-						}
-					}
-
-					outfile << "sha512=" << base64_encode(reinterpret_cast<const unsigned char*>(hash.c_str()), static_cast<unsigned int>(hash.size()));
+					outfile << "sha512=" << base64_encode_dash(files[i].hash);
 				}
 				
 				if(end_to_end_file_backup_verification_enabled)
@@ -918,7 +887,88 @@ void IndexThread::readBackupDirs(void)
 	}
 }
 
-std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, const std::wstring &path, bool use_db)
+namespace
+{
+	std::vector<SFileAndHash> convertToFileAndHash(const std::vector<SFile> files)
+	{
+		std::vector<SFileAndHash> ret;
+		ret.resize(files.size());
+		for(size_t i=0;i<files.size();++i)
+		{
+			ret[i].isdir=files[i].isdir;
+			ret[i].last_modified=files[i].last_modified;
+			ret[i].name=files[i].name;
+			ret[i].size=files[i].size;
+		}
+		return ret;
+	}
+}
+
+bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::wstring &orig_path, const std::wstring& filepath, const std::wstring& namedpath)
+{
+	bool calculated_hash=false;
+
+	if(fsfiles!=NULL)
+	{
+		for(size_t i=0;i<fsfiles->size();++i)
+		{
+			SFileAndHash& fsfile = fsfiles->at(i);
+			if( fsfile.isdir )
+				continue;
+
+			if(!fsfile.hash.empty())
+				continue;
+
+			if(skipFile(orig_path+os_file_sep()+fsfile.name, namedpath+os_file_sep()+fsfile.name))
+				continue;			
+
+			bool needs_hashing=true;
+
+			if(dbfiles!=NULL)
+			{
+				std::vector<SFileAndHash>::iterator it = std::lower_bound(dbfiles->begin(), dbfiles->end(), fsfile);
+
+				if( it!=dbfiles->end()
+					&& it->name==fsfile.name
+					&& it->isdir==false
+					&& it->last_modified==fsfile.last_modified
+					&& it->size==fsfile.size )
+				{
+					fsfile.hash=it->hash;
+					needs_hashing=false;
+				}
+			}
+
+			if(needs_hashing)
+			{
+				fsfile.hash=getSHA512Binary(filepath+os_file_sep()+fsfile.name);
+				calculated_hash=true;
+			}
+		}
+	}
+	else if(dbfiles!=NULL)
+	{
+		for(size_t i=0;i<dbfiles->size();++i)
+		{
+			SFileAndHash& dbfile = dbfiles->at(i);
+			if( dbfile.isdir )
+				continue;
+
+			if(!dbfile.hash.empty())
+				continue;
+
+			if(skipFile(orig_path+os_file_sep()+dbfile.name, namedpath+os_file_sep()+dbfile.name))
+				continue;
+
+			dbfile.hash=getSHA512Binary(filepath+os_file_sep()+dbfile.name);
+			calculated_hash=true;
+		}
+	}
+
+	return calculated_hash;
+}
+
+std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_path, const std::wstring &path, const std::wstring& named_path, bool use_db)
 {
 #ifndef _WIN32
 	if(path.empty())
@@ -930,38 +980,55 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		return getFiles(path);
 	}
 #else
+	if(path.find(L"UrBackupServer")!=std::string::npos)
+	{
+		int a4=4;
+	}
+
 	std::wstring path_lower=strlower(orig_path+os_file_sep());
 	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
-	if(use_db)
-	{
-		it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, path_lower) );
-		if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
-			it_dir=changed_dirs.end();
-	}
+#ifdef _WIN32
+
+	it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, path_lower) );
+	if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
+		it_dir=changed_dirs.end();
+	
 	if(path_lower==strlower(Server->getServerWorkingDir())+os_file_sep()+L"urbackup"+os_file_sep())
 	{
 		use_db=false;
 	}
-	std::vector<SFile> tmp;
-	if(it_dir!=changed_dirs.end() || use_db==false)
+#else
+	use_db=false;
+#endif
+	std::vector<SFileAndHash> tmp;
+	if(use_db==false || it_dir!=changed_dirs.end())
 	{
 		++index_c_fs;
 
 		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
-		tmp=getFiles(tpath, &has_error);
+		tmp=convertToFileAndHash(getFiles(tpath, &has_error));
 
 		if(has_error)
 		{
-			VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+			if(os_directory_exists(index_root_path))
+			{
+				VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+			}
+			else
+			{
+				VSSLog(L"Error while getting files in folder \""+path+L"\". Windows errorcode: "+convert((int)GetLastError())+L". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+				index_error=true;
+			}
 		}
 
-		if(use_db)
-		{
-			std::vector<SFile> db_files;
-			bool has_files=cd->getFiles(path_lower, db_files);
+		std::vector<SFileAndHash> db_files;
+		bool has_files=cd->getFiles(path_lower, db_files);
 
+#ifdef _WIN32
+		if(it_dir!=changed_dirs.end())
+		{
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
 			std::sort(changed_files.begin(), changed_files.end());
 
@@ -981,11 +1048,11 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 						}
 						else
 						{
-							std::vector<SFile>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+							std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
 							if( it_db_file!=db_files.end()
-								 && (*it_db_file).name==tmp[i].name
-								 && (*it_db_file).isdir==tmp[i].isdir
-								 && (*it_db_file).last_modified<0 )
+									&& (*it_db_file).name==tmp[i].name
+									&& (*it_db_file).isdir==tmp[i].isdir
+									&& (*it_db_file).last_modified<0 )
 							{
 								tmp[i].last_modified=it_db_file->last_modified;
 							}
@@ -993,17 +1060,25 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 					}
 				}
 			}
-
-			if( has_files)
-			{
-				++index_c_db_update;
-				modifyFilesInt(path_lower, tmp);
-			}
-			else
-			{
-				cd->addFiles(path_lower, tmp);
-			}
 		}
+#endif
+
+
+		if(calculate_filehashes_on_client)
+		{
+			addMissingHashes(has_files ? &db_files : NULL, &tmp, orig_path, path, named_path);
+		}
+
+		if( has_files)
+		{
+			++index_c_db_update;
+			modifyFilesInt(path_lower, tmp);
+		}
+		else
+		{
+			cd->addFiles(path_lower, tmp);
+		}
+
 		return tmp;
 	}
 	else
@@ -1011,6 +1086,16 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 		if( cd->getFiles(path_lower, tmp) )
 		{
 			++index_c_db;
+
+			if(calculate_filehashes_on_client)
+			{
+				if(addMissingHashes(&tmp, NULL, orig_path, path, named_path))
+				{
+					++index_c_db_update;
+					modifyFilesInt(path_lower, tmp);
+				}
+			}
+
 			return tmp;
 		}
 		else
@@ -1020,12 +1105,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 			std::wstring tpath=os_file_prefix(path);
 
 			bool has_error;
-			tmp=getFiles(tpath, &has_error);
+			tmp=convertToFileAndHash(getFiles(tpath, &has_error));
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
 				{
-					VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM probably does not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+					VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
 				}
 				else
 				{
@@ -1033,6 +1118,12 @@ std::vector<SFile> IndexThread::getFilesProxy(const std::wstring &orig_path, con
 					index_error=true;
 				}
 			}
+
+			if(calculate_filehashes_on_client)
+			{
+				addMissingHashes(NULL, &tmp, orig_path, path, named_path);
+			}
+
 			cd->addFiles(path_lower, tmp);
 			return tmp;
 		}
@@ -1082,7 +1173,7 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 }
 #endif
 
-bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own, std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy)
+bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy)
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
@@ -1122,53 +1213,69 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 				bool only_own_tokens=true;
 				for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
 				{
-					if( sc_refs[i]->starttokens[k]!=starttoken && (Server->getTimeSeconds()-ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]))<3600)
+					unsigned int last_token_time = ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]);
+					unsigned int curr_time = Server->getTimeSeconds();
+					bool token_timeout=true;
+					if(curr_time>=last_token_time && curr_time-last_token_time<10*60*1000)
+					{
+						token_timeout=false;
+					}
+					if( sc_refs[i]->starttokens[k]!=starttoken && !token_timeout)
 					{
 						only_own_tokens=false;
 						break;
 					}
 				}
 
+				bool cannot_open_shadowcopy = false;
+
 				IFile *volf=Server->openFile(sc_refs[i]->volpath, MODE_READ);
 				if(volf==NULL)
 				{
-					do_restart=true;
-					VSSLog("Removing reference because shadowcopy could not be openend", LL_WARNING);
+					if(!do_restart)
+					{
+						VSSLog("Cannot open shadowcopy. Creating new or choosing other.", LL_WARNING);
+						continue;
+					}
+					else
+					{
+						VSSLog("Removing reference because shadowcopy could not be openend", LL_WARNING);
+						cannot_open_shadowcopy=true;
+					}
 				}
 				else
 				{
 					Server->destroy(volf);
 				}
 
-				if(Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_timeout/1000 || (do_restart==true && restart_own==true && only_own_tokens==true ) )
+				if( do_restart && allow_restart && (Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_startnew_timeout/1000
+													|| only_own_tokens 
+													|| cannot_open_shadowcopy ) )
 				{
-					if( only_own_tokens==true)
+					if( only_own_tokens)
 					{
-						VSSLog("Removing reference because restart own was specified and only own tokens are present", LL_WARNING);
+						VSSLog(L"Restarting shadow copy of " + sc_refs[i]->target + L" because it was started by this server", LL_WARNING);
 					}
 					else
 					{
-						VSSLog("Removing reference because of reference timeout", LL_WARNING);
+						VSSLog(L"Restarting/not using already existing shadow copy of " + sc_refs[i]->target + L" because it is too old", LL_INFO);
 					}
 
-					std::vector<std::wstring> m_keys;
-					for(std::map<std::wstring, SCDirs*>::iterator lit=scdirs.begin();lit!=scdirs.end();++lit)
-					{
-						m_keys.push_back(lit->first);
-					}
 					SCRef *curr=sc_refs[i];
-					for(size_t k=0;k<m_keys.size();++k)
+					std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();
+						it!=scdirs_server.end();++it)
 					{
-						std::map<std::wstring, SCDirs*>::iterator it=scdirs.find(m_keys[k]);
-						if(it!=scdirs.end() && it->second->ref==curr)
+						if(it->second->ref==curr)
 						{
 							VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
 							release_shadowcopy(it->second, false, -1, dir);
 						}
 					}
-					break;
+					dir->target=dir->orig_target;
+					continue;
 				}
-				else
+				else if(!cannot_open_shadowcopy)
 				{
 					dir->ref=sc_refs[i];
 					if(!dir->ref->dontincrement)
@@ -1208,7 +1315,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool restart_own,
 						{
 							*stale_shadowcopy=false;
 						}
-						else if(only_own_tokens==false || restart_own==false)
+						else if(!only_own_tokens || !allow_restart)
 						{
 							*stale_shadowcopy=true;
 						}
@@ -1533,6 +1640,8 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 #endif
 	}
 
+	
+
 	bool r=true;
 	while(r)
 	{
@@ -1546,26 +1655,31 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 				while(c)
 				{
 					c=false;
-					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs.begin();it!=scdirs.end();++it)
+					for(std::map<std::string, std::map<std::wstring, SCDirs*> >::iterator server_it = scdirs.begin();
+						server_it!=scdirs.end();++server_it)
 					{
-						if(it->second->ref==sc_refs[i])
+						for(std::map<std::wstring, SCDirs*>::iterator it=server_it->second.begin();
+							it!=server_it->second.end();++it)
 						{
-							if(it->second->fileserv)
+							if(it->second->ref==sc_refs[i])
 							{
-								shareDir(it->second->dir, it->second->orig_target);
-							}
-							it->second->target=it->second->orig_target;
+								if(it->second->fileserv)
+								{
+									shareDir(it->second->dir, it->second->orig_target);
+								}
+								it->second->target=it->second->orig_target;
 
-							it->second->ref=NULL;
-							if(dontdel==NULL || it->second!=dontdel )
-							{
-								delete it->second;
-								scdirs.erase(it);
-								c=true;
-								break;
+								it->second->ref=NULL;
+								if(dontdel==NULL || it->second!=dontdel )
+								{
+									delete it->second;
+									server_it->second.erase(it);
+									c=true;
+									break;
+								}
 							}
 						}
-					}
+					}					
 				}
 				delete sc_refs[i];
 				sc_refs.erase(sc_refs.begin()+i);
@@ -1872,15 +1986,16 @@ std::string IndexThread::lookup_shadowcopy(int sid)
 
 SCDirs* IndexThread::getSCDir(const std::wstring path)
 {
-	std::map<std::wstring, SCDirs*>::iterator it=scdirs.find(path);
-	if(it!=scdirs.end())
+	std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+	std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.find(path);
+	if(it!=scdirs_server.end())
 	{
 		return it->second;
 	}
 	else
 	{
 		SCDirs *nd=new SCDirs;
-		scdirs.insert(std::pair<std::wstring, SCDirs*>(path, nd) );
+		scdirs_server.insert(std::pair<std::wstring, SCDirs*>(path, nd) );
 
 		nd->running=false;
 
@@ -2315,19 +2430,20 @@ void IndexThread::doStop(void)
 	msgpipe->Write(wd.getDataPtr(), wd.getDataSize());
 }
 
-void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFile> &data)
+void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data)
 {
 	size_t add_size=path.size()*sizeof(wchar_t)+sizeof(std::wstring);
 	for(size_t i=0;i<data.size();++i)
 	{
 		add_size+=data[i].name.size()*sizeof(wchar_t);
-		add_size+=sizeof(SFile);
+		add_size+=sizeof(SFileAndHash);
+		add_size+=data[i].hash.size();
 	}
 	add_size+=sizeof(std::vector<SFile>);
 
 	modify_file_buffer_size+=add_size;
 
-	modify_file_buffer.push_back(std::pair<std::wstring, std::vector<SFile> >(path, data) );
+	modify_file_buffer.push_back(std::pair<std::wstring, std::vector<SFileAndHash> >(path, data) );
 
 	if( modify_file_buffer_size>max_modify_file_buffer_size)
 	{
@@ -2372,7 +2488,7 @@ std::string IndexThread::getSHA256(const std::wstring& fn)
 
 	char buffer[32768];
 	unsigned int r;
-	while( (r=f->Read(buffer, 4096))>0)
+	while( (r=f->Read(buffer, 32768))>0)
 	{
 		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
 
@@ -2405,7 +2521,7 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 
 	char buffer[32768];
 	unsigned int r;
-	while( (r=f->Read(buffer, 4096))>0)
+	while( (r=f->Read(buffer, 32768))>0)
 	{
 		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
 
@@ -2439,34 +2555,6 @@ void IndexThread::VSSLog(const std::wstring& msg, int loglevel)
 	{
 		vsslog.push_back(std::make_pair(Server->ConvertToUTF8(msg), loglevel));
 	}
-}
-
-void IndexThread::modifyHashInt(const std::string& hash, const std::wstring& path, int64 filesize, int64 modifytime)
-{
-	size_t add_size=sizeof(SHashedFile);
-
-	modify_hash_buffer.push_back(SHashedFile(path, filesize, modifytime, hash));
-	add_size+=hash.size()+path.size();
-
-	modify_hash_buffer_size+=add_size;
-
-	if(modify_hash_buffer_size>max_modify_hash_buffer_size)
-	{
-		commitModifyHashBuffer();
-	}
-}
-
-void IndexThread::commitModifyHashBuffer(void)
-{
-	db->BeginTransaction();
-	for(size_t i=0;i<modify_hash_buffer.size();++i)
-	{
-		cd->modifyFileHash(modify_hash_buffer[i].hash, modify_hash_buffer[i].filesize, modify_hash_buffer[i].modifytime, modify_hash_buffer[i].path);
-	}
-	db->EndTransaction();
-
-	modify_hash_buffer.clear();
-	modify_hash_buffer_size=0;
 }
 
 #ifdef _WIN32

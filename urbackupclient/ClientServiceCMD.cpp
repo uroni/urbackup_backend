@@ -1,5 +1,6 @@
 #include "../Interface/Server.h"
 #include "ClientService.h"
+#include "InternetClient.h"
 #include "ServerIdentityMgr.h"
 #include "../common/data.h"
 #include "../urbackupcommon/capa_bits.h"
@@ -7,6 +8,8 @@
 #include "client.h"
 #include "database.h"
 #include "../stringtools.h"
+#include "../urbackupcommon/json.h"
+#include "../cryptoplugin/ICryptoFactory.h"
 #ifdef _WIN32
 #include "win_sysvol.h"
 #include "win_ver.h"
@@ -24,6 +27,21 @@ std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 
 extern std::string time_format_str;
 
+extern ICryptoFactory *crypto_fak;
+
+namespace
+{
+	std::string randomChallenge(size_t len)
+	{
+		std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		std::string key;
+		std::vector<unsigned int> rnd_n=Server->getSecureRandomNumbers(len);
+		for(size_t j=0;j<len;++j)
+			key+=rchars[rnd_n[j]%rchars.size()];
+		return key;
+	}	
+}
+
 void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok)
 {
 	if(identity.empty())
@@ -34,7 +52,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 	{
 		if(Server->getServerParameter("restore_mode")=="true" && !ident_ok )
 		{
-			ServerIdentityMgr::addServerIdentity(identity);
+			ServerIdentityMgr::addServerIdentity(identity, "");
 				tcpstack.Send(pipe, "OK");
 		}
 		else if( ident_ok )
@@ -46,13 +64,20 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 			ServerIdentityMgr::loadServerIdentities();
 			if( ServerIdentityMgr::checkServerIdentity(identity) )
 			{
-				tcpstack.Send(pipe, "OK");
+				if(ServerIdentityMgr::hasPublicKey(identity))
+				{
+					tcpstack.Send(pipe, "needs certificate");
+				}
+				else
+				{
+					tcpstack.Send(pipe, "OK");
+				}				
 				return;
 			}
 
 			if( ServerIdentityMgr::numServerIdentities()==0 )
 			{
-				ServerIdentityMgr::addServerIdentity(identity);
+				ServerIdentityMgr::addServerIdentity(identity, "");
 				tcpstack.Send(pipe, "OK");
 			}
 			else
@@ -65,6 +90,77 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 				tcpstack.Send(pipe, "failed");
 			}
 		}
+	}
+}
+
+void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity)
+{
+	if(identity.empty())
+	{
+		tcpstack.Send(pipe, "");
+		return;
+	}
+
+	IScopedLock lock(ident_mutex);
+	std::string challenge = randomChallenge(30);
+	challenges[identity]=challenge;
+
+	tcpstack.Send(pipe, challenge);
+}
+
+void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::string &cmd)
+{
+	if(identity.empty())
+	{
+		tcpstack.Send(pipe, "empty identity");
+		return;
+	}
+	if(crypto_fak==NULL)
+	{
+		tcpstack.Send(pipe, "no crypto");
+		return;
+	}
+
+	str_nmap::iterator challenge_it = challenges.find(identity);
+
+	if(challenge_it==challenges.end() || challenge_it->second.empty())
+	{
+		tcpstack.Send(pipe, "no challenge");
+		return;
+	}
+
+	const std::string& challenge = challenge_it->second;
+
+	size_t hashpos = cmd.find("#");
+	if(hashpos==std::string::npos)
+	{
+		tcpstack.Send(pipe, "no parameters");
+		return;
+	}
+
+	str_nmap params;
+	ParseParamStr(cmd.substr(hashpos+1), &params);
+
+	std::string pubkey = base64_decode_dash(params["pubkey"]);
+	std::string signature = base64_decode_dash(params["signature"]);
+	std::string session_identity = params["session_identity"];
+
+	if(!ServerIdentityMgr::hasPublicKey(identity))
+	{
+		ServerIdentityMgr::setPublicKey(identity, pubkey);
+	}
+
+	pubkey = ServerIdentityMgr::getPublicKey(identity);
+	
+	if(crypto_fak->verifyData(pubkey, challenge, signature))
+	{
+		ServerIdentityMgr::addSessionIdentity(session_identity);
+		tcpstack.Send(pipe, "ok");
+		challenges.erase(challenge_it);
+	}
+	else
+	{
+		tcpstack.Send(pipe, "signature verification failed");
 	}
 }
 
@@ -89,7 +185,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	backup_running=RUNNING_INCR_FILE;
 	last_pingtime=Server->getTimeMS();
-	pcdone=0;
+	pcdone=-1;
 	backup_source_token=server_token;
 }
 
@@ -114,7 +210,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	backup_running=RUNNING_FULL_FILE;
 	last_pingtime=Server->getTimeMS();
-	pcdone=0;
+	pcdone=-1;
 	backup_source_token=server_token;
 }
 
@@ -266,14 +362,13 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 	IndexThread::execute_postbackup_hook();
 }
 
-void ClientConnector::CMD_STATUS(const std::string &cmd)
+std::string ClientConnector::getLastBackupTime()
 {
-	IScopedLock lock(backup_mutex);
-
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	IQuery *q=db->Prepare("SELECT strftime('"+time_format_str+"',last_backup, 'localtime') AS last_backup FROM status");
 	if(q==NULL)
-		return;
+		return std::string();
+
 	int timeoutms=300;
 	db_results res=q->Read(&timeoutms);
 	if(timeoutms==1)
@@ -285,49 +380,61 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 		cached_status=res;
 	}
 
-	std::string ret;
 	if(res.size()>0)
 	{
-		ret+=Server->ConvertToUTF8(res[0][L"last_backup"]);
+		return Server->ConvertToUTF8(res[0][L"last_backup"]);
+	}
+	else
+	{
+		return std::string();
+	}
+}
+
+std::string ClientConnector::getCurrRunningJob()
+{
+	if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout)
+	{
+		return "NOA";
 	}
 
 	if(backup_running==RUNNING_NONE)
 	{
 		if(backup_done)
-			ret+="#DONE";
+			return "DONE";
 		else
-			ret+="#NOA";
+			return "NOA";
 
 		backup_done=false;
 	}
 	else if(backup_running==RUNNING_INCR_FILE)
 	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#INCR";
+		return "INCR";
 	}
 	else if(backup_running==RUNNING_FULL_FILE)
 	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#FULL";
+		return "FULL";
 	}
 	else if(backup_running==RUNNING_FULL_IMAGE)
 	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#FULLI";
+		return "FULLI";
 	}
 	else if(backup_running==RUNNING_INCR_IMAGE)
 	{
-		if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout )
-			ret+="#NOA";
-		else
-			ret+="#INCRI";
+		return "INCRI";
 	}
+
+	return std::string();
+}
+
+void ClientConnector::CMD_STATUS(const std::string &cmd)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+
+	IScopedLock lock(backup_mutex);
+
+	std::string ret = getLastBackupTime();
+
+	ret += "#" + getCurrRunningJob();
 
 	if(backup_running!=RUNNING_INCR_IMAGE)
 		ret+="#"+nconvert(pcdone);
@@ -383,6 +490,16 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 		}
 	}
 
+	ret+="&has_server=";
+	if(channel_pipes.empty())
+	{
+		ret+="false";
+	}
+	else
+	{
+		ret+="true";
+	}
+
 	tcpstack.Send(pipe, ret);
 
 	db->destroyAllQueries();
@@ -390,14 +507,49 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 	lasttime=Server->getTimeMS();
 }
 
-void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
+void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 {
-	if(last_capa & DONT_SHOW_SETTINGS)
+	IScopedLock lock(backup_mutex);
+
+	JSON::Object ret;
+
+	ret.set("last_backup_time", getLastBackupTime());
+
+	if(backup_running!=RUNNING_INCR_IMAGE)
+		ret.set("percent_done", pcdone);
+	else
+		ret.set("percent_done", pcdone);
+
+	ret.set("currently_running", getCurrRunningJob());
+
+	JSON::Array servers;
+
+	for(size_t i=0;i<channel_pipes.size();++i)
 	{
-		tcpstack.Send(pipe, "FAILED");
-		return;
+		JSON::Object obj;
+		obj.set("internet_connection", channel_pipes[i].internet_connection);
+		obj.set("name", channel_pipes[i].endpoint_name);
+		servers.add(obj);
 	}
 
+	ret.set("servers", servers);
+
+	ret.set("time_since_last_lan_connection", InternetClient::timeSinceLastLanConnection());
+
+	ret.set("internet_connected", InternetClient::isConnected());
+
+	ret.set("internet_status", InternetClient::getStatusMsg());
+
+	tcpstack.Send(pipe, ret.get(false));
+
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	db->destroyAllQueries();
+
+	lasttime=Server->getTimeMS();
+}
+
+void ClientConnector::CMD_UPDATE_SETTINGS(const std::string &cmd)
+{
 	std::string s_settings=cmd.substr(9);
 	unescapeMessage(s_settings);
 	updateSettings( s_settings );
@@ -411,10 +563,13 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 	IScopedLock lock(backup_mutex);
 	lasttime=Server->getTimeMS();
 	last_pingtime=Server->getTimeMS();
-	int pcdone_new=atoi(getbetween("-","-", cmd).c_str());
+	std::string pcdone_new=getbetween("-","-", cmd);
 	if(backup_source_token.empty() || backup_source_token==server_token )
 	{
-		pcdone=pcdone_new;
+		if(pcdone_new.empty())
+			pcdone=-1;
+		else
+			pcdone=atoi(pcdone_new.c_str());
 	}
 	last_token_times[server_token]=Server->getTimeSeconds();
 
@@ -428,8 +583,8 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 	if(!img_download_running)
 	{
 		g_lock->relock(backup_mutex);
-		channel_pipe=SChannel(pipe, internet_conn);
-		channel_pipes.push_back(SChannel(pipe, internet_conn));
+		channel_pipe=SChannel(pipe, internet_conn, endpoint_name);
+		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name));
 		is_channel=true;
 		state=CCSTATE_CHANNEL;
 		last_channel_ping=Server->getTimeMS();
@@ -493,6 +648,12 @@ void ClientConnector::CMD_TOCHANNEL_START_INCR_IMAGEBACKUP(const std::string &cm
 
 void ClientConnector::CMD_TOCHANNEL_UPDATE_SETTINGS(const std::string &cmd)
 {
+	if(last_capa & DONT_SHOW_SETTINGS)
+	{
+		tcpstack.Send(pipe, "FAILED");
+		return;
+	}
+
 	std::string s_settings=cmd.substr(16);
 	lasttime=Server->getTimeMS();
 	unescapeMessage(s_settings);
@@ -1104,7 +1265,7 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	std::string ident=Server->ConvertToUTF8(params[L"ident"]);
 	if(!ident.empty())
 	{
-		ServerIdentityMgr::addServerIdentity(ident);
+		ServerIdentityMgr::addServerIdentity(ident, "");
 		tcpstack.Send(pipe, "OK");
 	}
 	else

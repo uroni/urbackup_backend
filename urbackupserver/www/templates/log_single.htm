@@ -1,12 +1,12 @@
-﻿<a href="javascript: show_logs1('#{params}')">#{tBack}</a>
+﻿<a href="javascript: show_logs1('{params}')">{tBack}</a>
 
-<h1>#{tLog} (#{name})</h1>
+<h1>{tLog} ({name})</h1>
 
 <table cellspacing="0" cellpadding="0">
 <tr>	
-	<th style="width: 50px" class="tabHeader">#{tLevel}</th>
-	<th style="width: 150px" class="tabHeader">#{tTime}</th>
-	<th style="width: 650px" class="tabHeaderRight">#{tMessage}</th>
+	<th style="width: 50px" class="tabHeader">{tLevel}</th>
+	<th style="width: 150px" class="tabHeader">{tTime}</th>
+	<th style="width: 650px" class="tabHeaderRight">{tMessage}</th>
 </tr>
-#{rows}
+{rows|s}
 </table>

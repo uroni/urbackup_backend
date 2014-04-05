@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -20,16 +20,17 @@
 
 #include "action_header.h"
 
-const unsigned int n_items=30;
-
-struct SUsed
+namespace
 {
-	SUsed(void):used(0) {}
-	SUsed(const std::wstring &pTdate_short, const std::wstring &pTdate, double pUsed): tdate_short(pTdate_short), tdate(pTdate), used(pUsed) {}
-	std::wstring tdate_short;
-	std::wstring tdate;
-	double used;
-};
+	struct SUsed
+	{
+		SUsed(void):used(0) {}
+		SUsed(const std::wstring &pTdate_full, const std::wstring &pTdate, double pUsed): tdate_full(pTdate_full), tdate(pTdate), used(pUsed) {}
+		std::wstring tdate_full;
+		std::wstring tdate;
+		double used;
+	};
+}
 
 ACTION_IMPL(usagegraph)
 {
@@ -73,7 +74,7 @@ ACTION_IMPL(usagegraph)
 				}
 			}
 		}
-	}
+	}	
 
 	JSON::Object ret;
 	SUser *session=helper.getSession();
@@ -84,7 +85,12 @@ ACTION_IMPL(usagegraph)
 	{	
 		helper.releaseAll();
 		
-		std::wstring scale=GET[L"scale"];
+		std::string scale = wnarrow(GET[L"scale"]);
+
+		if(scale.empty())
+		{
+			scale="d";
+		}
 
 		std::string t_where=" 0=0";
 		if(clientid!=-1)
@@ -101,21 +107,49 @@ ACTION_IMPL(usagegraph)
 			if(!res_c.empty())
 				c_lim=watoi(res_c[0][L"c"]);
 		}
+
+		unsigned int n_items;
+		std::string back;
+		std::string date_fmt;
+		if(scale=="y")
+		{
+			back="-10 year";
+			n_items=10;
+			date_fmt="%Y";
+		}
+		else if(scale=="m")
+		{
+			back="-1 year";
+			n_items=12;
+			date_fmt="%Y-%m";
+		}
+		else
+		{
+			back="-1 month";
+			n_items=31;
+			date_fmt="%Y-%m-%d";
+		}
+
+		db_results cache_res;
+		if(db->getEngineName()=="sqlite")
+		{
+			cache_res=db->Read("PRAGMA cache_size");
+			db->Write("PRAGMA cache_size = -51200"); //50MB
+		}
 			
-		//IQuery *q=db->Prepare("SELECT strftime('"+date_format_str+"', created, 'localtime') AS tdate, strftime('"+date_format_str_short+"', created, 'localtime') AS tdate_short, (MAX(bytes_used_files)+MAX(bytes_used_images)) AS used , id FROM clients_hist "+t_where+" GROUP BY strftime('"+date_format_str+"', created, 'localtime'), id ORDER BY created DESC LIMIT "+nconvert(c_lim*(n_items*2)));
-		IQuery *q=db->Prepare("SELECT id, (MAX(b.bytes_used_files)+MAX(b.bytes_used_images)) AS used, strftime('"+date_format_str+"', MAX(b.created), 'localtime') AS tdate, strftime('"+date_format_str_short+"', MAX(b.created), 'localtime') AS tdate_short "
+		IQuery *q=db->Prepare("SELECT id, (MAX(b.bytes_used_files)+MAX(b.bytes_used_images)) AS used, strftime('"+date_fmt+"', MAX(b.created), 'localtime') AS tdate, strftime('%Y-%m-%d', MAX(b.created), 'localtime') AS tdate_full "
 				    "FROM "
 				    "("
 				    "SELECT MAX(created) AS mcreated "
 					"FROM "
-					"(SELECT * FROM clients_hist WHERE "+t_where+" AND created>date('now','-1 month') ) "
-				    "GROUP BY strftime('"+date_format_str+"', created, 'localtime'), id "
-					"HAVING mcreated>date('now','-1 month') "
+					"(SELECT * FROM clients_hist WHERE "+t_where+" AND created>date('now','"+back+"') ) "
+				    "GROUP BY strftime('"+date_fmt+"', created, 'localtime'), id "
+					"HAVING mcreated>date('now','"+back+"') "
 				    "ORDER BY mcreated DESC "
 				    "LIMIT "+nconvert(c_lim*(n_items*2))+" "
 				    ") a "
-				    "INNER JOIN clients_hist b ON a.mcreated=b.created WHERE "+t_where+" AND b.created>date('now','-1 month') "
-				    "GROUP BY strftime('"+date_format_str+"', b.created, 'localtime'), id "
+				    "INNER JOIN clients_hist b ON a.mcreated=b.created WHERE "+t_where+" AND b.created>date('now','"+back+"') "
+				    "GROUP BY strftime('"+date_fmt+"', b.created, 'localtime'), id "
 				    "ORDER BY b.created DESC");
 				    
 		db_results res=q->Read();
@@ -133,8 +167,13 @@ ACTION_IMPL(usagegraph)
 			}
 			if(!found && used.size()<n_items)
 			{
-				used.push_back(SUsed(res[i][L"tdate_short"], res[i][L"tdate"], atof(wnarrow(res[i][L"used"]).c_str()) ) );
+				used.push_back(SUsed(res[i][L"tdate_full"], res[i][L"tdate"], atof(wnarrow(res[i][L"used"]).c_str()) ) );
 			}
+		}
+
+		if(!cache_res.empty())
+		{
+			db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
 		}
 
 		bool size_gb=false;
@@ -144,7 +183,7 @@ ACTION_IMPL(usagegraph)
 				size_gb=true;
 		}
 
-		SBarInfo bi;
+		JSON::Array data;
 		for(int i=(int)used.size()-1;i>=0;--i)
 		{
 			double size=used[i].used;
@@ -156,42 +195,20 @@ ACTION_IMPL(usagegraph)
 			{
 				size/=1024*1024;
 			}
-			bi.xlabels.push_back(Server->ConvertToUTF8(used[i].tdate_short));
-			bi.data.push_back((float)size);
+			JSON::Object obj;
+			obj.set("xlabel", Server->ConvertToUTF8(used[i].tdate_full));
+			obj.set("data", (float)size);
+			data.add(obj);
 		}
-		bi.title="";
-		if(size_gb)
-			bi.ylabel="GB";
-		else
-			bi.ylabel="MB";
 
-		bi.sizex=800;
-		bi.sizey=500;
-		bi.barwidth=1.f;
+		ret.set("data", data);
+
+		if(size_gb)
+			ret.set("ylabel", "GB");
+		else
+			ret.set("ylabel", "MB");
 
 		helper.update(tid, &GET, &PARAMS);
-
-		if(pychart_fak!=NULL)
-		{
-			session=helper.getSession();
-			IPychart *pychart=pychart_fak->getPychart();
-			unsigned int id=pychart->drawBar(bi);
-			session->mInt[L"image_"+convert(id)]=1;
-			ret.set("image_id", id);
-		}
-		else
-		{
-			JSON::Array data;
-			for(size_t i=0;i<bi.data.size();++i)
-			{
-				JSON::Object obj;
-				obj.set("xlabel", bi.xlabels[i]);
-				obj.set("data", bi.data[i]);
-				data.add(obj);
-			}
-			ret.set("data", data);
-			ret.set("ylabel", bi.ylabel);
-		}
 	}
 	else
 	{

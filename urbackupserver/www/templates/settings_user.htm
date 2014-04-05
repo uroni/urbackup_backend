@@ -2,16 +2,16 @@
 <div style="height:20px">
 <table cellspacing="0" cellpadding="0" border="0" class="formtable">
 <tr>
-<td>#{tSeparate settings for this client}</td>
-<td><input type="checkbox" onclick="updateUserOverwrite(#{clientid})" id="overwrite" #{overwrite} /></td>
+<td>{tSeparate settings for this client}</td>
+<td><input type="checkbox" onclick="updateUserOverwrite({clientid})" id="overwrite" {overwrite} /></td>
 </tr>
 </table>
 </div>
 <br />
-<div class="tabber" id="settings_tabber">#{settings_inv}</div>
+<div class="tabber" id="settings_tabber">{settings_inv|s}</div>
 <br />
 <br />
-#{overwrite_warning_start}
-<div style="color: red">#{tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings.}</div><br /><br />
-#{overwrite_warning_end}
-<input type="button" value="#{tSave}" onClick="saveClientSettings(#{clientid})" id="user_submit" />
+{overwrite_warning_start|s}
+<div style="color: red">{tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings. }</div><br /><br />
+{overwrite_warning_end|s}
+<input type="button" value="{tSave}" onClick="saveClientSettings({clientid})" id="user_submit" />

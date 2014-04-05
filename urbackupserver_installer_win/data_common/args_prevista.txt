@@ -5,8 +5,6 @@ fsimageplugin.dll
 --plugin
 downloadplugin.dll
 --plugin
-pychart.dll
---plugin
 httpserver.dll
 --plugin
 cryptoplugin.dll

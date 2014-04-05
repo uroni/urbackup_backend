@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ IPipeThrottler *BackupServer::global_internet_throttler=NULL;
 IPipeThrottler *BackupServer::global_local_throttler=NULL;
 IMutex *BackupServer::throttle_mutex=NULL;
 bool BackupServer::snapshots_enabled=false;
+bool BackupServer::filesystem_transactions_enabled = false;
 
 BackupServer::BackupServer(IPipe *pExitpipe)
 {
@@ -118,11 +119,12 @@ void BackupServer::operator()(void)
 	}
 
 	testSnapshotAvailability(db);
+	testFilesystemTransactionAvailabiliy(db);
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
 	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
 
-	FileClient fc(true);
+	FileClient fc(true, "");
 
 	Server->wait(1000);
 
@@ -200,12 +202,15 @@ void BackupServer::startClients(FileClient &fc)
 {
 	std::vector<std::wstring> names;
 	std::vector<sockaddr_in> servers;
+	std::vector<std::string> endpoint_names;
 
 	if(!internet_test_mode)
 	{
 		names=fc.getServerNames();
 		servers=fc.getServers();
 	}
+
+	endpoint_names.resize(servers.size());
 
 	for(size_t i=0;i<names.size();++i)
 	{
@@ -215,10 +220,10 @@ void BackupServer::startClients(FileClient &fc)
 	std::vector<bool> inetclient;
 	inetclient.resize(names.size());
 	std::fill(inetclient.begin(), inetclient.end(), false);
-	std::vector<std::string> anames=InternetServiceConnector::getOnlineClients();
+	std::vector<std::pair<std::string, std::string> > anames=InternetServiceConnector::getOnlineClients();
 	for(size_t i=0;i<anames.size();++i)
 	{
-		std::wstring new_name=Server->ConvertToUnicode(conv_filename(anames[i]));
+		std::wstring new_name=Server->ConvertToUnicode(conv_filename(anames[i].first));
 		bool skip=false;
 		for(size_t j=0;j<names.size();++j)
 		{
@@ -236,6 +241,7 @@ void BackupServer::startClients(FileClient &fc)
 		sockaddr_in n;
 		memset(&n, 0, sizeof(sockaddr_in));
 		servers.push_back(n);
+		endpoint_names.push_back(anames[i].second);
 	}
 
 	for(size_t i=0;i<names.size();++i)
@@ -261,7 +267,14 @@ void BackupServer::startClients(FileClient &fc)
 			c.addr=servers[i];
 			c.internet_connection=inetclient[i];
 
-			ServerStatus::setIP(names[i], c.addr.sin_addr.s_addr);
+			if(c.internet_connection)
+			{
+				ServerStatus::setIP(names[i], inet_addr(endpoint_names[i].c_str()));
+			}
+			else
+			{
+				ServerStatus::setIP(names[i], c.addr.sin_addr.s_addr);
+			}
 
 			clients.insert(std::pair<std::wstring, SClient>(names[i], c) );
 		}
@@ -514,6 +527,59 @@ void BackupServer::testSnapshotAvailability(IDatabase *db)
 	}
 
 	Server->destroy(settings);
+}
+
+void BackupServer::testFilesystemTransactionAvailabiliy( IDatabase *db )
+{
+	Server->Log("Testing if backup destination can handle filesystem transactions...", LL_DEBUG);
+
+	ServerSettings settings(db);
+
+	const std::wstring testdirname = L"FGHTR654kgfdfg5764578kldsfsdfgre66juzfo";
+	const std::wstring testdirname_renamed = testdirname+L"_2";
+
+	std::wstring backupfolder = settings.getSettings()->backupfolder;
+
+	void* transaction = os_start_transaction();
+
+	if(transaction==NULL)
+	{
+		filesystem_transactions_enabled=false;
+		return;
+	}
+
+	os_create_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname));
+
+	if(!os_rename_file(os_file_prefix(backupfolder+os_file_sep()+testdirname), os_file_prefix(backupfolder+os_file_sep()+testdirname_renamed), transaction))
+	{
+		os_finish_transaction(transaction);
+		filesystem_transactions_enabled=false;
+		os_remove_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname));
+		return;
+	}
+
+	if(!os_finish_transaction(transaction))
+	{
+		filesystem_transactions_enabled=false;
+		os_remove_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname));
+		return;
+	}
+
+	if(!os_directory_exists(os_file_prefix(backupfolder+os_file_sep()+testdirname_renamed)))
+	{
+		filesystem_transactions_enabled=false;
+		os_remove_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname));
+	}
+	else
+	{
+		filesystem_transactions_enabled=true;
+		os_remove_dir(os_file_prefix(backupfolder+os_file_sep()+testdirname_renamed));
+	}
+}
+
+bool BackupServer::isFilesystemTransactionEnabled()
+{
+	return filesystem_transactions_enabled;
 }
 
 #endif //CLIENT_ONLY

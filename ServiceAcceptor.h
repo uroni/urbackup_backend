@@ -16,7 +16,7 @@ public:
 	void operator()(void);
 
 private:
-	void AddToWorker(SOCKET pSocket);
+	void AddToWorker(SOCKET pSocket, const std::string& endpoint);
 
 	std::vector<CServiceWorker*> workers;
 	SOCKET s;

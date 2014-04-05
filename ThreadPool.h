@@ -39,8 +39,9 @@ public:
 
 	void Shutdown(void);
 
-	IThread * getRunnable(THREADPOOL_TICKET *todel, bool del);
 private:
+	IThread * getRunnable(THREADPOOL_TICKET *todel, bool del, bool& stop);
+
 	bool isRunningInt(THREADPOOL_TICKET ticket);
 
 	unsigned int nThreads;
@@ -54,4 +55,6 @@ private:
 
 	THREADPOOL_TICKET currticket;
 	volatile bool dexit;
+
+	friend class CPoolThread;
 };

@@ -11,7 +11,9 @@ public:
 	virtual IZlibDecompression* createZlibDecompression(void);
 	virtual bool generatePrivatePublicKeyPair(const std::string &keybasename);
 	virtual bool signFile(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename);
+	virtual bool signData(const std::string &pubkey, const std::string &data, std::string &signature);
 	virtual bool verifyFile(const std::string &keyfilename, const std::string &filename, const std::string &sigfilename);
+	virtual bool verifyData(const std::string &pubkey, const std::string &data, const std::string &signature);
 	virtual std::string generatePasswordHash(const std::string &password, const std::string &salt, size_t iterations=10000);
 	virtual std::string generateBinaryPasswordHash(const std::string &password, const std::string &salt, size_t iterations=10000);
 };

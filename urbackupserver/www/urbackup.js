@@ -2,12 +2,11 @@
 g.loading=false;
 g.lang="-";
 g.startup=true;
-g.google_chart_loaded=false;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
-g.status_detail=false;
 g.progress_stop_id=-1;
 g.current_version=1003000000;
+g.status_show_all=false;
 
 g.languages=[ 
 				{ l: "Deutsch", s: "de" },
@@ -38,11 +37,6 @@ function startup()
 			available_langs+=",";
 	}
 	new getJSON("login", available_langs, try_anonymous_login);
-	
-	if(g.use_google_chart)
-	{
-		LoadScript("https://www.google.com/jsapi?callback=google_chart_ready&rnd="+rnd(), "google_jsapi");
-	}	
 }
 
 function refresh_page()
@@ -111,7 +105,7 @@ function aboutUrBackup()
 	stopLoading();
 	clearTimeout(g.refresh_timeout);
 	
-	var ndata=tmpls.about_urbackup.evaluate({version: I('server_version').innerHTML.trim()});
+	var ndata=dustRender("about_urbackup", {version: I('server_version').innerHTML.trim()});
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -141,7 +135,7 @@ function try_anonymous_login(data)
 	if(data.upgrading_database)
 	{
 		data.upgrade_error_text=trans("upgrade_error_text");
-		var ndata=tmpls.upgrade_error.evaluate(data);
+		var ndata=dustRender("upgrade_error", data);
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;
@@ -153,7 +147,7 @@ function try_anonymous_login(data)
 	if(data.creating_filescache)
 	{
 		data.creating_filescache_text=trans("creating_filescache_text");
-		var ndata=tmpls.file_cache_error.evaluate(data);
+		var ndata=dustRender("file_cache_error", data);
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;
@@ -170,7 +164,7 @@ function try_anonymous_login(data)
 	}
 	else
 	{
-		var ndata=tmpls.login.evaluate();
+		var ndata=dustRender("login");
 		if(g.data_f!=ndata)
 		{
 			I('data_f').innerHTML=ndata;
@@ -193,15 +187,6 @@ function stopLoading()
 {
 	I('l_div').style.visibility="hidden";
 	g.loading=false;
-}
-
-function google_chart_ready()
-{
-	google.load("visualization", "1", {packages:["corechart"], callback: chartLoaded});
-}
-
-function chartLoaded()
-{
 }
 
 function build_main_nav()
@@ -231,11 +216,11 @@ function build_main_nav()
 				p=g.nav_params[i+1];
 			if(i+1==g.main_nav_pos)
 			{
-				ndata+=tmpls.main_nav_sel.evaluate({func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
+				ndata+=dustRender("main_nav_sel", {func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
 			}
 			else
 			{
-				ndata+=tmpls.main_nav.evaluate({func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
+				ndata+=dustRender("main_nav", {func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
 			}
 		}
 	}
@@ -293,6 +278,7 @@ function show_progress11()
 		g.progress_stop_id=-1;
 	}
 	
+	g.progress_first=true;
 	new getJSON("progress", pars, show_progress2);
 	
 	g.main_nav_pos=5;
@@ -305,8 +291,13 @@ function show_progress2(data)
 	{
 		return;
 	}
-	stopLoading();
 	if(g.main_nav_pos!=5) return;
+	if(!I('lastacts_visible') && !g.progress_first)
+	{
+		return;
+	}
+	g.progress_first=false;
+	stopLoading();
 	
 	var rows="";
 	var tdata="";
@@ -315,13 +306,21 @@ function show_progress2(data)
 		for(var i=0;i<data.progress.length;++i)
 		{
 			data.progress[i].action=trans("action_"+data.progress[i].action);
-			rows+=tmpls.progress_row.evaluate(data.progress[i]);
+			if(data.progress[i].pcdone>=0)
+			{
+				data.progress[i].percent=true;
+			}
+			else
+			{
+				data.progress[i].indexing=true;
+			}
+			rows+=dustRender("progress_row", data.progress[i]);
 		}
-		tdata=tmpls.progress_table.evaluate({"rows": rows});
+		tdata=dustRender("progress_table", {"rows": rows});
 	}
 	else
 	{
-		tdata=tmpls.progress_table_none.evaluate();
+		tdata=dustRender("progress_table_none");
 	}	
 	
 	if(data.lastacts.length>0)
@@ -359,10 +358,10 @@ function show_progress2(data)
 			obj.duration/=60;
 			obj.duration=Math.ceil(obj.duration);
 			obj.duration+=" min";
-			
-			rows+=tmpls.lastacts_row.evaluate(obj);
+						
+			rows+=dustRender("lastacts_row", obj);
 		}
-		tdata+=tmpls.lastacts_table.evaluate({rows: rows});
+		tdata+=dustRender("lastacts_table", {rows: rows});
 	}
 	
 	if(g.data_f!=tdata)
@@ -424,6 +423,67 @@ function show_statistics2(data)
 	}
 	I('nav_pos').innerHTML=ndata;
 }
+function render_useagegraph_single(selectedIdx, idx, key, params)
+{
+	var ret="";
+	if(selectedIdx==idx)
+	{
+		ret+="<strong>"+trans(key)+"</strong>";
+	}
+	else
+	{
+		ret+="<a href=\"javascript: createUsageGraph("+idx+", '"+params+"');\">"+trans(key)+"</a>";
+	}
+	return ret;
+}
+function render_sel_usagegraph(selectedIdx, params)
+{
+	var ret="<span style='float: right; z-Index: 100'>";
+	ret+=render_useagegraph_single(selectedIdx, 0, "day", params);
+	ret+=" | ";
+	ret+=render_useagegraph_single(selectedIdx, 1, "month", params);
+	ret+=" | ";
+	ret+=render_useagegraph_single(selectedIdx, 2, "year", params);
+	ret+="</span>";
+	return ret;
+}
+function createUsageGraph(selectedIdx, params)
+{
+	var addUsagegraph = render_sel_usagegraph(selectedIdx, params);
+	
+	I('usagegraph').innerHTML = "<img src=\"indicator.gif\" />"+trans("loading")+"...";
+	
+	var scale;
+	var dateFormat;
+	var transKey;
+	if(selectedIdx==1)
+	{
+		scale="m";
+		dateFormat="%b";
+		transKey="month";
+	}
+	else if(selectedIdx==2)
+	{	
+		scale="y";
+		dateFormat="%y";
+		transKey="year";
+	}
+	else
+	{
+		scale="d";
+		dateFormat="%#d";
+		transKey="day";
+	}
+	
+	if(params.length>0)
+	{
+		params= "&" + params;
+	}
+	
+	new loadGraph("usagegraph", "scale="+scale+params, "usagegraph", {pie: false, width: 800, height: 500, 
+			title: trans("storage_usage_bar_graph_title"), colname1: trans(transKey), colname2: trans("storage_usage_bar_graph_colname2"), dateFormat: dateFormat },
+			addUsagegraph);
+}
 function show_statistics3(data)
 {
 	stopLoading();
@@ -442,16 +502,17 @@ function show_statistics3(data)
 		obj.used=format_size(obj.used);
 		obj.files=format_size(obj.files);
 		obj.images=format_size(obj.images);
-		rows+=tmpls.stat_general_row.evaluate(obj);
+		rows+=dustRender("stat_general_row", obj);
 	}
-	ndata=tmpls.stat_general.evaluate({rows: rows, used_total: format_size(used_total), files_total: format_size(files_total), images_total: format_size(images_total), ses: g.session});
+	ndata=dustRender("stat_general", {rows: rows, used_total: format_size(used_total), files_total: format_size(files_total), images_total: format_size(images_total), ses: g.session});
 	if(g.data_f!=ndata)
-	{
+	{	
 		I('data_f').innerHTML=ndata;
 		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 700, height: 700, 
-			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") } );
-		new loadGraph("usagegraph", "", "usagegraph", {pie: false, width: 800, height: 500, 
-			title: trans("storage_usage_bar_graph_title"), colname1: trans("storage_usage_bar_graph_colname1"), colname2: trans("storage_usage_bar_graph_colname2") });
+			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") }, "" );
+		
+		createUsageGraph(0, "");
+		
 		g.data_f=ndata;
 	}
 }
@@ -467,29 +528,19 @@ function stat_client(id, name)
 		var name=g.stat_data.users[idx].name;
 		var id=g.stat_data.users[idx].id;
 		g.settings_nav_pos=idx+1;
-		g.data_f=tmpls.stat_user.evaluate({clientid: id, clientname: name, ses: g.session});
+		g.data_f=dustRender("stat_user", {clientid: id, clientname: name, ses: g.session});
 		I('data_f').innerHTML=g.data_f;
-		new loadGraph("usagegraph", "clientid="+id, "usagegraph", {pie: false, width: 700, height: 700, 
-			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") });
+		createUsageGraph(0, "clientid="+id);
 		show_statistics2(g.stat_data);
 	}
 }
 
-function show_status1(details, hostname, action, remove_client, stop_client_remove, start_backup_type)
+function show_status1(hostname, action, remove_client, stop_client_remove)
 {
 	if(!startLoading()) return;
 	clearTimeout(g.refresh_timeout);
 	g.refresh_timeout=-1;
 	var pars="";
-	
-	if(typeof details=="undefined")
-		details=g.status_detail;
-	else
-		g.status_detail=details;
-	if(details==true)
-	{
-		pars="details=true";
-	}
 	
 	if(hostname && hostname.length>0)
 	{
@@ -510,12 +561,6 @@ function show_status1(details, hostname, action, remove_client, stop_client_remo
 		{
 			pars+="clientname="+hostname;			
 		}
-	}
-	if(start_backup_type && start_backup_type.length>0)
-	{
-		if(pars!="") pars+="&";
-		pars+="start_client="+remove_client.join();
-		pars+="&start_type="+start_backup_type;
 	}
 	else if(remove_client && remove_client.length>0)
 	{
@@ -549,6 +594,7 @@ function show_status2(data)
 	
 	var ndata="";
 	var rows="";
+	var removed_clients=[];
 	for(var i=0;i<data.status.length;++i)
 	{
 		var obj=data.status[i];
@@ -605,17 +651,23 @@ function show_status2(data)
 		obj.start_file_backup="";
 		obj.start_image_backup="";
 		
+		if(obj.done_pc<0)
+			obj.done_pc=0;
+		
 		if(obj.status>0 && obj.status<5)
 		{
 			if(obj.status>=1 && obj.status<=2)
 			{
-				obj.start_file_backup=tmpls.status_percent_done.evaluate({pcdone: obj.done_pc});
+				obj.start_file_backup=dustRender("status_percent_done", {pcdone: obj.done_pc});
 			}
 			else
 			{
-				obj.start_image_backup=tmpls.status_percent_done.evaluate({pcdone: obj.done_pc});
+				obj.start_image_backup=dustRender("status_percent_done", {pcdone: obj.done_pc});
 			}
 		}	
+		
+		obj.start_file_backup+="<span id=\"start_file_backup_"+obj.id+"\" />";
+		obj.start_image_backup+="<span id=\"start_image_backup_"+obj.id+"\" />";
 				
 		switch(obj.status)
 		{
@@ -627,6 +679,8 @@ function show_status2(data)
 			case 10: obj.status=trans("starting"); break;
 			case 11: obj.status=trans("ident_err")+" <a href=\"http://www.urbackup.org/FAQ.php#ident_err\" target=\"_blank\">?</a>"; break;
 			case 12: obj.status=trans("too_many_clients_err"); break;
+			case 13: obj.status=trans("authentication_err"); break;
+			default: obj.status="&nbsp;"
 		}
 		
 		if(data.allow_modify_clients)
@@ -640,69 +694,18 @@ function show_status2(data)
 			obj.dtl_c1="<!--";
 			obj.dtl_c2="-->";
 			obj.style_pre_last="tabFRight";
-		}		
-		 
-		if(typeof obj.start_ok!="undefined")
-		{
-			if(obj.start_ok)
-			{
-				if( obj.start_type=="incr_file" || obj.start_type=="full_file" )
-					obj.start_file_backup="<br />"+trans("queued_backup");
-				else if( obj.start_type=="incr_image" || obj.start_type=="full_image" )
-					obj.start_image_backup="<br />"+trans("queued_backup");
-			}
-			else
-			{
-				if( obj.start_type=="incr_file" || obj.start_type=="full_file" )
-					obj.start_file_backup="<br />"+trans("starting_backup_failed");
-				else if( obj.start_type=="incr_image" || obj.start_type=="full_image" )
-					obj.start_image_backup="<br />"+trans("starting_backup_failed");
-			}
-		}
-		
+		}				
 		
 		if( obj.delete_pending && obj.delete_pending==1)
 		{
-			if(data.details)
-			{
-				if(data.allow_modify_clients)
-					obj.colspan=9;
-				else
-					obj.colspan=8;
-			}
-			else
-			{
-				if(data.allow_modify_clients)
-					obj.colspan=6;
-				else
-					obj.colspan=5;
-			}
-			
-			if(data.remove_client)
-			{
-				obj.stop_remove_start="";
-				obj.stop_remove_stop="";
-			}
-			else
-			{
-				obj.stop_remove_start="<!--";
-				obj.stop_remove_stop="-->";
-			}
-			
-			rows+=tmpls.status_row_delete_pending.evaluate(obj);
+			obj.remove_client=data.remove_client;
+			removed_clients.push(obj);
 		}
 		else
 		{
-			if(data.details)
+			if(!obj.rejected || g.status_show_all)
 			{
-				rows+=tmpls.status_detail_row.evaluate(obj);
-			}
-			else
-			{
-				if(!obj.rejected)
-				{
-					rows+=tmpls.status_row.evaluate(obj);
-				}
+				rows+=dustRender("status_detail_row", obj);
 			}
 		}
 	}
@@ -711,31 +714,31 @@ function show_status2(data)
 	{
 		var ext_text="";
 		if(data.dir_error_ext) ext_text="("+data.dir_error_ext+")";
-		dir_error=tmpls.dir_error.evaluate({ext_text: ext_text, dir_error_text: trans("dir_error_text")});
+		dir_error=dustRender("dir_error", {ext_text: ext_text, dir_error_text: trans("dir_error_text")});
 	}
 	
 	var tmpdir_error="";
 	if(data.tmpdir_error)
 	{
-		tmpdir_error=tmpls.tmpdir_error.evaluate({tmpdir_error_text: trans("tmpdir_error_text")});
+		tmpdir_error=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text")});
 	}
 	
 	var nospc_stalled="";
 	if(data.nospc_stalled)
 	{
-		nospc_stalled=tmpls.nospc_stalled.evaluate({nospc_stalled_text: trans("nospc_stalled_text")});
+		nospc_stalled=dustRender("nospc_stalled", {nospc_stalled_text: trans("nospc_stalled_text")});
 	}
 	
 	var database_error="";
 	if(data.database_error)
 	{
-		database_error=tmpls.database_error.evaluate({database_error_text: trans("database_error_text")});
+		database_error=dustRender("database_error", {database_error_text: trans("database_error_text")});
 	}
 	
 	var nospc_fatal="";
 	if(data.nospc_fatal)
 	{
-		nospc_fatal=tmpls.nospc_fatal.evaluate({nospc_fatal_text: trans("nospc_fatal_text")});
+		nospc_fatal=dustRender("nospc_fatal", {nospc_fatal_text: trans("nospc_fatal_text")});
 	}
 	
 	var dlt_mod_start="<!--";
@@ -757,30 +760,26 @@ function show_status2(data)
 			if(obj.online) obj.online=trans("yes");
 			else obj.online=trans("no");
 			
-			extra_clients_rows+=tmpls.status_detail_extra_row.evaluate(obj);
+			extra_clients_rows+=dustRender("status_detail_extra_row", obj);
 		}
 	}
 	else
 	{
-		extra_clients_rows=tmpls.status_detail_extra_empty.evaluate();
+		extra_clients_rows=dustRender("status_detail_extra_empty");
 	}
 	
-	var c_tmpl=tmpls.status;
-	
-	if(data.details) c_tmpl=tmpls.status_detail;
-	
-	var dtl_c1="<!--";
-	var dtl_c2="-->";
-	var dtl_c1_top=dtl_c1;
-	var dtl_c2_top=dtl_c2;
+	var status_can_show_all=false;
+	var status_extra_clients=false;
 	
 	if(data.allow_extra_clients)
 	{
-		dtl_c1="";
-		dtl_c2="";
+		if(!g.status_show_all)
+		{
+			status_can_show_all=true;
+		}
+		status_extra_clients=true;
 	}
 	var modify_clients="";
-	var modify_clients_top="";
 	if(data.allow_modify_clients)
 	{
 		var rem_start="<!--";
@@ -807,15 +806,7 @@ function show_status2(data)
 		var status_modify_params={rem_start: rem_start, rem_stop: rem_stop, backup_type_num: 0, no_images_start: no_images_start,
 							      no_images_stop: no_images_stop, no_file_backups_start: no_file_backups_start, no_file_backups_stop: no_file_backups_stop };
 								  
-		modify_clients=tmpls.status_modify_clients.evaluate(status_modify_params);
-		
-		if(data.status.length>10)
-		{
-			status_modify_params.backup_type_num=1;
-			modify_clients_top=tmpls.status_modify_clients.evaluate(status_modify_params);
-			dtl_c1_top=dtl_c1;
-			dtl_c2_top=dtl_c2;
-		}
+		modify_clients=dustRender("status_modify_clients", status_modify_params);
 	}
 	
 	var class_prev;
@@ -844,18 +835,17 @@ function show_status2(data)
 	if(data.client_downloads)
 	{
 		var client_download_data=build_client_download_select(data.client_downloads);
-		status_client_download=tmpls.status_client_download.evaluate({download_clients: client_download_data});
+		status_client_download=dustRender("status_client_download", {download_clients: client_download_data});
 	}
 	
-	ndata=c_tmpl.evaluate({rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
+	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
 		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal,
-		extra_clients_rows: extra_clients_rows, dtl_c1:dtl_c1, dtl_c2:dtl_c2, 
+		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
 		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
 		server_identity: data.server_identity, modify_clients: modify_clients,
-		modify_clients_top: modify_clients_top,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
-		status_client_download: status_client_download, dtl_c1_top: dtl_c1_top, dtl_c2_top: dtl_c2_top,
-		database_error: database_error});
+		status_client_download: status_client_download,
+		database_error: database_error, removed_clients_table: removed_clients.length>0, removed_clients: removed_clients});
 	
 	if(g.data_f!=ndata)
 	{
@@ -864,31 +854,67 @@ function show_status2(data)
 		
 		if(data.no_images)
 		{
-			if(data.details)
-			{
-				show_hide_column('status_table', 5, false);
-				show_hide_column('status_table', 7, false);
-			}
-			else
-			{
-				show_hide_column('status_table', 3, false);
-				show_hide_column('status_table', 5, false);
-			}
+			show_hide_column('status_table', 5, false);
+			show_hide_column('status_table', 7, false);
 		}
 		
 		if(data.no_file_backups)
 		{
-			if(data.details)
-			{
-				show_hide_column('status_table', 4, false);
-				show_hide_column('status_table', 6, false);
-			}
-			else
-			{
-				show_hide_column('status_table', 2, false);
-				show_hide_column('status_table', 4, false);
-			}
+			show_hide_column('status_table', 4, false);
+			show_hide_column('status_table', 6, false);
 		}
+		
+		$("#status_table").dataTable({
+			"iDisplayLength" : 25,
+			"sDom" : 'CT<"clear">lfrtip',
+			"aoColumnDefs": [
+				{ "bVisible": false, "aTargets": [ 2, 8, 9, 10 ]
+				},
+				{ "bSortable": false, 'aTargets': [ 11 ] }
+			],
+			"oColVis": {
+				"bRestore": true,
+				"sRestore": "Restore to default",
+				"aiExclude": [ 0, 11 ]
+			},
+			"oTableTools": {
+				"aButtons": [
+					{
+						"sExtends":    "collection",
+						"sButtonText": "Save",
+						"aButtons":    [ "csv", "xls", 
+						{
+							"sExtends": "pdf",
+							"mColumns": [0, 3, 4, 5, 6, 7]
+						}
+						]
+					}					
+				],
+				"sSwfPath": "copy_csv_xls_pdf.swf"
+			},
+			"sPaginationType": "full_numbers",
+			"sScrollX": "100%",
+			"bScrollCollapse": true,
+			"bStateSave": true,
+			"iCookieDuration": 365*60*60*24,
+			"oLanguage": {
+				"oPaginate": {
+					"sFirst": "First",
+					"sLast": "Last",
+					"sNext": "Next",
+					"sPrevious": "Previous"
+				},
+				"sEmptyTable": "No data available in table",
+				"sInfo": "Showing _START_ to _END_ of _TOTAL_ entries",
+				"sInfoEmpty": "Showing 0 to 0 of 0 entries",
+				"sInfoFiltered": "(filtered from _MAX_ total entries)",
+				"sInfoThousands": ",",
+				"sLengthMenu": "Show _MENU_ entries",
+				"sProcessing": "Processing...",
+				"sSearch": "Search:",
+				"sZeroRecords": "No matching records found"
+			}
+		});
 	}
 	
 	if(data.admin)
@@ -902,12 +928,14 @@ function show_status2(data)
 			g.checkForNewVersion();
 		}
 	}
+	
+	g.status_show_all=false;
 }
 g.checkForNewVersion = function()
 {
 	if(g.online_version.num>g.current_version && I('new_version_available'))
 	{
-		I('new_version_available').innerHTML=tmpls.new_version_available.evaluate({new_version_number: g.online_version.str} );
+		I('new_version_available').innerHTML=dustRender("new_version_available", {new_version_number: g.online_version.str} );
 	}
 }
 function downloadClient(clientid)
@@ -927,7 +955,7 @@ function addExtraClient()
 		return;
 	}
 	
-	show_status1(true, I('hostname').value);
+	show_status1(I('hostname').value);
 }
 function addInternetClient()
 {
@@ -938,11 +966,11 @@ function addInternetClient()
 		return;
 	}
 	
-	show_status1(true, I('clientname').value, 2);
+	show_status1(I('clientname').value, 2);
 }
 function removeExtraClient(id)
 {
-	show_status1(true, id+"", 1);
+	show_status1(id+"", 1);
 }
 
 function show_backups1()
@@ -968,9 +996,9 @@ function show_backups2(data)
 			var obj=data.clients[i];
 			if(obj.lastbackup.length==0)
 				obj.lastbackup="&nbsp;";
-			rows+=tmpls.backups_clients_row.evaluate(obj);
+			rows+=dustRender("backups_clients_row", obj);
 		}
-		ndata=tmpls.backups_clients.evaluate({rows: rows, ses: g.session});
+		ndata=dustRender("backups_clients", {rows: rows, ses: g.session});
 	}
 	else if(data.backups)
 	{
@@ -1012,9 +1040,9 @@ function show_backups2(data)
 			
 			obj.clientid=data.clientid;
 				
-			rows+=tmpls.backups_backups_row.evaluate(obj);
+			rows+=dustRender("backups_backups_row", obj);
 		}
-		ndata=tmpls.backups_backups.evaluate({rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid});
+		ndata=dustRender("backups_backups", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid});
 	}
 	else if(data.files)
 	{
@@ -1036,7 +1064,7 @@ function show_backups2(data)
 		if(els.length>1 && (els[1].length>0 || els.length>2))
 		{
 			cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+data.backupid+")\">"+data.backuptime+"</a> > ";
-			rows+=tmpls.backups_files_row.evaluate({size:"&nbsp;", name:"..", proc:"Files", path: last_path, clientid: data.clientid, backupid:data.backupid});
+			rows+=dustRender("backups_files_row", {size:"&nbsp;", name:"..", proc:"Files", path: last_path, clientid: data.clientid, backupid:data.backupid});
 		}
 		else
 		{
@@ -1060,7 +1088,7 @@ function show_backups2(data)
 			obj.backupid=data.backupid;
 			obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
 				
-			rows+=tmpls.backups_files_row.evaluate(obj);
+			rows+=dustRender("backups_files_row", obj);
 		}
 		
 		for(var i=0;i<els.length;++i)
@@ -1083,7 +1111,17 @@ function show_backups2(data)
 			}
 		}
 		
-		ndata=tmpls.backups_files.evaluate({rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid, cpath: cp, backuptime: data.backuptime});
+		var obj = {rows: rows,
+			ses: g.session, clientname: data.clientname,
+			clientid: data.clientid, cpath: cp, backuptime: data.backuptime,
+			backupid: data.backupid, path: encodeURIComponent(path).replace(/'/g,"%27") };
+			
+		if( data.files.length>0 )
+		{
+			obj.download_zip=true;
+		}
+		
+		ndata=dustRender("backups_files", obj);
 	}
 	
 	if(g.data_f!=ndata)
@@ -1168,6 +1206,10 @@ function tabMouseClickFiles(clientid, backupid, path)
 function tabMouseClickFilesDL(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=filesdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
+}
+function downloadZIP(clientid, backupid, path)
+{
+	location.href=getURL("backups", "sa=zipdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
 }
 
 function show_settings1()
@@ -1301,6 +1343,7 @@ function show_settings2(data)
 			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
 			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
 			data.settings.use_tmpfiles_images=getCheckboxValue(data.settings.use_tmpfiles_images);
+			data.settings.use_incremental_symlinks=getCheckboxValue(data.settings.use_incremental_symlinks);
 			
 			
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
@@ -1384,12 +1427,12 @@ function show_settings2(data)
 				data.settings.no_compname_end_inet="";
 			}
 			
-			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
-			ndata+=tmpls.settings_general.evaluate(data.settings);
+			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
+			ndata+=dustRender("settings_general", data.settings);
 			
 			if(data.saved_ok)
 			{
-				ndata+=tmpls.settings_save_ok.evaluate();
+				ndata+=dustRender("settings_save_ok");
 				tabber_set_idx=g.tabberidx;
 			}
 		}
@@ -1474,12 +1517,12 @@ function show_settings2(data)
 				data.settings.no_compname_end_inet="";
 			}
 						
-			data.settings.settings_inv=tmpls.settings_inv_row.evaluate(data.settings);
-			ndata+=tmpls.settings_user.evaluate(data.settings);
+			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
+			ndata+=dustRender("settings_user", data.settings);
 			
 			if(data.saved_ok)
 			{
-				ndata+=tmpls.settings_save_ok.evaluate();
+				ndata+=dustRender("settings_save_ok");
 				tabber_set_idx=g.tabberidx;
 			}
 			else if(data.saved_part)
@@ -1494,21 +1537,21 @@ function show_settings2(data)
 			if(data.settings.mail_check_certificate=="true") data.settings.mail_check_certificate="checked=\"checked\"";
 			else data.settings.mail_check_certificate="";
 			
-			ndata+=tmpls.settings_mail.evaluate(data.settings);
+			ndata+=dustRender("settings_mail", data.settings);
 			
 			if(data.saved_ok)
 			{
-				ndata+=tmpls.settings_save_ok.evaluate();
+				ndata+=dustRender("settings_save_ok");
 			}
 			if(data.mail_test)
 			{
 				if(data.mail_test=="ok")
 				{
-					ndata+=tmpls.settings_mail_test_ok.evaluate();
+					ndata+=dustRender("settings_mail_test_ok");
 				}
 				else
 				{
-					ndata+=tmpls.settings_mail_test_failed.evaluate({mail_err: data.mail_test});
+					ndata+=dustRender("settings_mail_test_failed", {mail_err: data.mail_test});
 				}
 			}
 		}
@@ -1516,19 +1559,19 @@ function show_settings2(data)
 		{
 			if(data.add_ok)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_add_done") });
+				ndata+=dustRender("settings_user_add_done", {msg: trans("user_add_done") });
 			}
 			if(data.removeuser)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_remove_done") });
+				ndata+=dustRender("settings_user_add_done", {msg: trans("user_remove_done") });
 			}
 			if(data.update_right)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_update_right_done") });
+				ndata+=dustRender("settings_user_add_done", {msg: trans("user_update_right_done") });
 			}
 			if(data.change_ok)
 			{
-				ndata+=tmpls.settings_user_add_done.evaluate({msg: trans("user_pw_change_ok") });
+				ndata+=dustRender("settings_user_add_done", {msg: trans("user_pw_change_ok") });
 			}
 			
 			
@@ -1561,15 +1604,15 @@ function show_settings2(data)
 					
 					obj.rights=t_rights;
 					
-					rows+=tmpls.settings_users_start_row.evaluate(obj);
+					rows+=dustRender("settings_users_start_row", obj);
 				}
 			}
 			else
 			{
-				rows=tmpls.settings_users_start_row_empty.evaluate();
+				rows=dustRender("settings_users_start_row_empty");
 			}
 			g.num_users=data.users.length;
-			ndata+=tmpls.settings_users_start.evaluate({ rows:rows });
+			ndata+=dustRender("settings_users_start", { rows:rows });
 		}
 	}
 	
@@ -1724,7 +1767,8 @@ g.general_settings_list=[
 "global_soft_fs_quota",
 "filescache_type",
 "filescache_size",
-"suspend_index_limit"
+"suspend_index_limit",
+"use_incremental_symlinks"
 ];
 g.mail_settings_list=[
 "mail_servername",
@@ -1750,10 +1794,10 @@ function validateCommonSettings()
 	if(!validate_text_int_or_empty(["local_speed"])) return false;
 	if(I('internet_speed') && !validate_text_int_or_empty(["internet_speed"])) return false;
 	var backup_window_regex = /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
-	if(!validate_text_regex([{ id: "backup_window_incr_file", regexp: backup_window_regex },
-							 { id: "backup_window_full_file", regexp: backup_window_regex },
-							 { id: "backup_window_incr_image", regexp: backup_window_regex },
-							 { id: "backup_window_full_image", regexp: backup_window_regex } ]) ) return false;
+	if(!validate_text_regex([{ id: "backup_window_incr_file", errid: "backup_window", regexp: backup_window_regex },
+							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
+							 { id: "backup_window_incr_image", errid: "backup_window", regexp: backup_window_regex },
+							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ]) ) return false;
 	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
 }
@@ -1939,9 +1983,9 @@ function createUser()
 	
 	var ndata="";
 	if(g.num_users==0)
-		ndata=tmpls.settings_user_create_admin.evaluate({ rights: rights });
+		ndata=dustRender("settings_user_create_admin", { rights: rights });
 	else
-		ndata=tmpls.settings_user_create.evaluate({ rights: rights });
+		ndata=dustRender("settings_user_create", { rights: rights });
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -2131,7 +2175,7 @@ function deleteUser(uid)
 }
 function changeUserPassword(uid, name)
 {
-	var ndata=tmpls.settings_user_pw_change.evaluate({userid: uid, username: name});
+	var ndata=dustRender("settings_user_pw_change", {userid: uid, username: name});
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -2150,7 +2194,7 @@ function changePW(el)
 	{
 		I('change_pw_el').innerHTML="<strong>"+trans("change_pw")+"</strong>";
 	}
-	var ndata=tmpls.change_pw.evaluate();
+	var ndata=dustRender("change_pw");
 	g.settings_nav_pos=g.user_nav_pos_offset-1;
 	if(g.data_f!=ndata)
 	{
@@ -2210,7 +2254,7 @@ function doChangePW3(data)
 	var ndata;
 	if(data.change_ok)
 	{
-		ndata=tmpls.change_pw_ok.evaluate();
+		ndata=dustRender("change_pw_ok");
 	}
 	else
 	{
@@ -2221,7 +2265,7 @@ function doChangePW3(data)
 			I('old_password').focus();
 			return;
 		}
-		ndata=tmpls.change_pw_fail.evaluate({fail_reason: fail_reason});
+		ndata=dustRender("change_pw_fail", {fail_reason: fail_reason});
 	}
 	if(g.data_f!=ndata)
 	{
@@ -2320,9 +2364,9 @@ function changeUserRights(uid, name)
 		obj.n=i;
 		
 		
-		rows+=tmpls.settings_user_rights_change_row.evaluate(obj);
+		rows+=dustRender("settings_user_rights_change_row", obj);
 	}
-	var ndata=tmpls.settings_user_rights_change.evaluate({userid: uid, username: name, rows: rows});
+	var ndata=dustRender("settings_user_rights_change", {userid: uid, username: name, rows: rows});
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
@@ -2417,7 +2461,7 @@ function show_logs2(data)
 			np+="</option>";
 		}
 		np+="</select> ";
-		np+=tmpls.logs_filter.evaluate();
+		np+=dustRender("logs_filter");
 		
 		
 		I('nav_pos').innerHTML=np;
@@ -2435,7 +2479,7 @@ function show_logs2(data)
 	}
 	else
 	{
-		var np=tmpls.log_single_filter.evaluate();
+		var np=dustRender("log_single_filter");
 		I('nav_pos').innerHTML=np;
 	}
 	
@@ -2473,10 +2517,10 @@ function show_logs2(data)
 			
 			obj.action=trans(a);
 			
-			rows+=tmpls.logs_row.evaluate(obj);
+			rows+=dustRender("logs_row", obj);
 		}
 		if(data.logs.length==0)
-			rows=tmpls.logs_none.evaluate();
+			rows=dustRender("logs_none");
 			
 			
 		var sel="selected=\"selected\"";
@@ -2492,7 +2536,7 @@ function show_logs2(data)
 		td.sel_error=(data.report_loglevel==2)?sel:"";
 		td.live_log_clients=live_log_clients;
 			
-		ndata+=tmpls.logs_table.evaluate(td);
+		ndata+=dustRender("logs_table", td);
 	}
 	
 	if(data.log)
@@ -2503,7 +2547,7 @@ function show_logs2(data)
 			ll=g.logfilter;
 		var rows=createLog(g.logdata,ll);
 		if(rows=="")
-			rows=tmpls.log_single_none.evaluate();
+			rows=dustRender("log_single_none");
 		g.logclientname=data.log.clientname;
 		var params="";
 		if(g.has_logsfilter)
@@ -2513,12 +2557,12 @@ function show_logs2(data)
 			if(params.length>0) params+="&";
 			params+="filter="+g.logclients;
 		}
-		ndata+=tmpls.log_single.evaluate({rows:rows, name: data.log.clientname, params: params});
+		ndata+=dustRender("log_single", {rows:rows, name: data.log.clientname, params: params});
 	}
 	
 	if(data.saved_ok)
 	{
-		ndata+=tmpls.settings_save_ok.evaluate();
+		ndata+=dustRender("settings_save_ok");
 	}	
 	
 	if(g.data_f!=ndata)
@@ -2545,7 +2589,7 @@ function logs_draw_mail()
 	{
 		if(a[i]!="")
 		{
-			d+=tmpls.logs_report_mail.evaluate( {report_single_mail: a[i], num: i} );
+			d+=dustRender("logs_report_mail",  {report_single_mail: a[i], num: i} );
 		}
 	}
 	I('s_report_mails').innerHTML=d;
@@ -2618,7 +2662,7 @@ function createLog(d, ll)
 				
 			obj.level=trans("loglevel_"+obj.level);
 			
-			rows+=tmpls.log_single_row.evaluate(obj);
+			rows+=dustRender("log_single_row", obj);
 		}
 	}
 	return rows;
@@ -2654,8 +2698,8 @@ function logFilterChange()
 	
 	var rows=createLog(g.logdata,v);
 	if(rows=="")
-			rows=tmpls.log_single_none.evaluate();
-	var ndata=tmpls.log_single.evaluate({rows:rows, name: g.logclientname});
+			rows=dustRender("log_single_none");
+	var ndata=dustRender("log_single", {rows:rows, name: g.logclientname});
 	
 	if(g.data_f!=ndata)
 	{
@@ -2704,7 +2748,8 @@ function show_live_log()
 {
 	var clientid=I('live_log_clientid').value;
 	var win = window.open('', '_blank', '');
-	win.document.write(tmpls.live_log.evaluate({session: g.session, clientid: clientid, clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text}));
+	var live_log_page = dustRender("live_log", {session: g.session, clientid: clientid, clientname: I('live_log_clientid').options[I('live_log_clientid').selectedIndex].text});
+	win.document.write(live_log_page);
 	win.document.close();
 	win.focus();
 }
@@ -2713,7 +2758,7 @@ function removeClient(clientid)
 	var b=confirm(trans("really_remove_client"));
 	if(b)
 	{
-		show_status1(g.status_detail, "", false, [clientid]);
+		show_status1("", false, [clientid]);
 	}
 }
 function removeClients()
@@ -2737,7 +2782,7 @@ function removeClients()
 		var b=confirm(trans("really_remove_clients"));
 		if(b)
 		{
-			show_status1(g.status_detail, "", false, ids);
+			show_status1("", false, ids);
 		}
 	}
 	else
@@ -2763,7 +2808,7 @@ function selectNoClients()
 }
 function stopRemove(clientid)
 {
-	show_status1(g.status_detail, "", false, [clientid], true);
+	show_status1("", false, [clientid], true);
 }
 function unarchive_single(backupid, clientid)
 {
@@ -2900,7 +2945,7 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 		row_vals.archive_timeleft=archive_timeleft;
 	}
 	
-	new_item.innerHTML=tmpls.settings_archive_row.evaluate( row_vals );
+	new_item.innerHTML=dustRender("settings_archive_row",  row_vals );
 	
 	var archive_table=getArchiveTable();
 	
@@ -2925,7 +2970,7 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 function replaceArchiveId(old_id, new_id)
 {
 	var item=I('archive_'+old_id);
-	item.innerHTML=tmpls.settings_archive_row.evaluate( { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
+	item.innerHTML=dustRender("settings_archive_row",  { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
 			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
 			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value,
 			archive_timeleft: I('archive_timeleft_'+old_id).value } );
@@ -2981,11 +3026,53 @@ function startBackups(backup_type_num)
 	}
 	if(ids.length>0)
 	{	
-		show_status1(g.status_detail, "", false, ids, false, I('backup_type'+backup_type_num).value);
+		startLoading();
+		new getJSON("start_backup", "start_type="+I('backup_type'+backup_type_num).value+"&start_client="+ids.join(","), backups_started);
 	}
 	else
 	{
 		alert(trans("no_client_selected"));
+	}
+}
+function backups_started(data)
+{
+	stopLoading();
+	
+	if(data.result)
+	{
+		for(var i=0;i<data.result.length;++i)
+		{
+			var res = data.result[i];
+			
+			var text;
+			var dom_id;
+			if(res.start_type==="full_file" || res.start_type==="incr_file")
+			{
+				dom_id = 'start_file_backup_'+res.clientid;
+				if(res.start_ok)
+				{
+					text = "<br />"+trans("queued_backup");
+				}
+				else
+				{
+					text = "<br />"+trans("starting_backup_failed");
+				}
+			}
+			else
+			{
+				dom_id = 'start_image_backup_'+res.clientid;
+				if(res.start_ok)
+				{
+					text = "<br />"+trans("queued_backup");
+				}
+				else
+				{
+					text = "<br />"+trans("starting_backup_failed");
+				}
+			}
+			
+			I(dom_id).innerHTML = text;
+		}
 	}
 }
 function stopBackup(clientid)

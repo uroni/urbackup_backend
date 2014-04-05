@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -52,6 +52,7 @@ IServer *Server;
 #endif
 #include "InternetClient.h"
 #include <stdlib.h>
+#include "file_permissions.h"
 
 PLUGIN_ID filesrv_pluginid;
 IFSImageFactory *image_fak;
@@ -74,14 +75,19 @@ std::string time_format_str="%m/%d/%Y %H:%M";
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
+const std::string pw_change_file="pw_change.txt";
 const std::string new_file="new.txt";
 #else
 const std::string pw_file="urbackup/pw.txt";
+const std::string pw_change_file="urbackup/pw_change.txt";
 const std::string new_file="urbackup/new.txt";
 #endif
 
 THREADPOOL_TICKET indexthread_ticket;
 THREADPOOL_TICKET internetclient_ticket;
+
+namespace
+{
 
 bool copy_file(const std::wstring &src, const std::wstring &dst)
 {
@@ -103,6 +109,8 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 	Server->destroy(fsrc);
 	Server->destroy(fdst);
 	return true;
+}
+
 }
 
 DLLEXPORT void LoadActions(IServer* pServer)
@@ -167,12 +175,20 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		writestring(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), pw_file);
 	}
+	if(getFile(pw_change_file).size()<5)
+	{
+		write_file_only_admin(wnarrow(Server->getSessionMgr()->GenerateSessionIDWithUser(L"",L"")), pw_change_file);
+	}
 
 	if( !FileExists("urbackup/backup_client.db") && FileExists("urbackup/backup_client.db.template") )
 	{
 		//Copy file
 		copy_file(L"urbackup/backup_client.db.template", L"urbackup/backup_client.db");
 	}
+
+#ifndef _DEBUG
+	change_file_permissions_admin_only("urbackup/backup_client.db");
+#endif
 
 	if(! Server->openDatabase("urbackup/backup_client.db", URBACKUPDB_CLIENT) )
 	{
@@ -195,6 +211,25 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 #ifndef _DEBUG
+	if(FileExists("urbackup/data/settings.cfg"))
+	{
+		change_file_permissions_admin_only("urbackup/data/settings.cfg");
+	}
+
+	if(FileExists("urbackup/data/filelist.ub"))
+	{
+		change_file_permissions_admin_only("urbackup/data/filelist.ub");
+	}
+
+	change_file_permissions_admin_only("urbackup");
+	change_file_permissions_admin_only("urbackup/data");
+
+	if(FileExists("debug.log"))
+	{
+		change_file_permissions_admin_only("debug.log");
+	}
+
+
 	if(FileExists(new_file) )
 #endif
 	{
@@ -334,6 +369,36 @@ void upgrade_client9_10(IDatabase *db)
 	db->Write("CREATE UNIQUE INDEX filehashes_idx ON filehashes (name ASC)");
 }
 
+void update_client10_11(IDatabase *db)
+{
+	db->Write("DROP TABLE filehashes");
+	db->Write("DROP INDEX filehashes_idx");
+	db->Write("DELETE FROM files");
+}
+
+void update_client11_12(IDatabase *db)
+{
+	db_results res = db->Read("SELECT MAX(tvalue) AS c FROM misc WHERE tkey='last_backup_filetime'");
+	db->Write("DELETE FROM misc WHERE tkey='last_backup_filetime'");
+	if(!res.empty())
+	{
+		db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', '"+wnarrow(res[0][L"c"])+"')");
+	}
+
+	db_results misc = db->Read("SELECT tkey, tvalue FROM misc");
+	db->Write("DROP TABLE misc");
+	db->Write("CREATE TABLE misc (tkey TEXT UNIQUE, tvalue TEXT)");
+
+	IQuery* q_insert = db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)");
+	for(size_t i=0;i<misc.size();++i)
+	{
+		q_insert->Bind(misc[i][L"tkey"]);
+		q_insert->Bind(misc[i][L"tvalue"]);
+		q_insert->Write();
+		q_insert->Reset();
+	}
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -389,6 +454,14 @@ bool upgrade_client(void)
 				break;
 			case 9:
 				upgrade_client9_10(db);
+				++ver;
+				break;
+			case 10:
+				update_client10_11(db);
+				++ver;
+				break;
+			case 11:
+				update_client11_12(db);
 				++ver;
 				break;
 			default:

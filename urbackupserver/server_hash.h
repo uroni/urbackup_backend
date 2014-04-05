@@ -7,6 +7,8 @@
 #include "ChunkPatcher.h"
 #include "server_prepare_hash.h"
 #include "FileCache.h"
+#include "dao/ServerBackupDao.h"
+#include <vector>
 
 struct STmpFile
 {
@@ -79,6 +81,8 @@ private:
 	bool renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
 	bool renameFile(IFile *tf, const std::wstring &dest);
 
+	bool correctPath(std::wstring& ff, std::wstring& f_hashpath);
+
 	std::map<std::pair<std::string, _i64>, std::vector<STmpFile> > files_tmp;
 
 	IQuery *q_find_file_hash;
@@ -91,6 +95,8 @@ private:
 	IQuery *q_copy_files_to_new;
 	IQuery *q_delete_all_files_tmp;
 	IQuery *q_count_files_tmp;
+
+	ServerBackupDao* backupdao;
 
 	IPipe *pipe;
 
@@ -117,4 +123,8 @@ private:
 	int copy_limit;
 
 	FileCache *filecache;
+
+	std::wstring backupfolder;
+	bool old_backupfolders_loaded;
+	std::vector<std::wstring> old_backupfolders;
 };

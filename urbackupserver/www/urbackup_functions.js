@@ -142,22 +142,6 @@ function getURL(action, parameters)
 		return "x?a="+action+ses+iernd();
 	}
 }
-	
-function AJAXRequestPure(action, parameters)
-{
-	if( window.Ajax )
-		new window.Ajax.Request(getURL(action, parameters), { method: 'get' });
-	else
-	{
-		req = new window.qx.io.remote.Request(getURL(action, parameters), "GET", "text/javascript");
-		req.send();
-	}
-}
-
-function AJAXUpdate(container, action, parameters)
-{
-	new window.Ajax.Updater( container, getURL( action, parameters), { evalScripts: 'true', method: 'get' } );
-}
 
 function clone(obj){
     if(obj == null || typeof(obj) != 'object')
@@ -207,137 +191,120 @@ getJSON = function(action, parameters, callback)
 		g.last_action=action;
 	}
 	
-	new window.Ajax.Request(getURL(action, parameters),
-		{
-			method: 'get',
-			onComplete: function(transport)
+	$.ajax(
+	{ url: getURL(action, parameters),
+	  dataType: "json"
+	}
+	).done(function(data)
+		{			
+			data=sanitizeJSON(data);
+			
+			if(data.error && data.error==1)
 			{
-				var j;
-				if(window.JSON)
-					j=JSON.parse(transport.responseText);
-				else
-					j=transport.responseText.evalJSON(true);
-					
-				j=sanitizeJSON(j);
-				
-				if(j.error && j.error==1)
-				{
-				    g.session_timeout_cb();
-				}
-				else
-				{
-					if(t_action!="isimageready" && t_action!="piegraph" && t_action!="usagegraph")
-					{
-						g.last_function=cb;
-						g.last_data=clone(j);
-					}
-				    cb(j);
-				}
-			},
-			onException: function(e,ex)
+				g.session_timeout_cb();
+			}
+			else
 			{
-				throw ex;
+				if(t_action!="isimageready" && t_action!="piegraph" && t_action!="usagegraph")
+				{
+					g.last_function=cb;
+					g.last_data=clone(data);
+				}
+				cb(data);
 			}
 		});
 }
 
 g.tmpls={};
 
-loadTmpl = function(name, callback)
-{
-	var cb=callback;
-	
-	if(g.tmpls[name])
-	{
-		cb(g.tmpls[name]);
-		return;
-	}
-	
-	new window.Ajax.Request(getURL("tmpl", "name="+name),
-		{
-			method: 'get',
-			onComplete: function(transport)
-			{
-				g.tmpls[name]=new Template(transport.responseText);
-				cb(g.tmpls[name]);
-			}
-		});
-}
-
-function loadGraph(action, parameters, pDivid, pGraphdata)
+function loadGraph(action, parameters, pDivid, pGraphdata, pAddHtml)
 {
 	var divid=pDivid;
-	var img_id=-1;
 	var f=this;
 	var graphdata=pGraphdata;
+	var addHtml = pAddHtml;
 	
 	this.init_cb = function(data)
-	{		
-		img_id=data.image_id;
-		
-		if(typeof img_id!="undefined")
+	{	
+		I(divid).style.width = graphdata.width+"px";
+		I(divid).style.height = graphdata.height+"px";
+		I(divid).innerHTML="<span id='"+divid+"_plot' style='width: 100%; height: 100%; display: inline-block'></span>"+addHtml;
+		I(divid).style.display="inline-block";
+		if(graphdata.pie)
 		{
-			setTimeout(f.update_graph, 100);
+			var jqdata = [];
+			for(var i=0;i<data.data.length;++i)
+			{
+				var obj=data.data[i];
+				jqdata.push([obj.label, obj.data]);
+			}
+			
+			var piegraph = jQuery.jqplot (divid+"_plot", [jqdata],
+			{
+				  seriesDefaults: {
+					renderer: jQuery.jqplot.PieRenderer,
+					rendererOptions: {
+					  showDataLabels: true,
+					  highlightMouseOver: true,
+					  padding: 2,
+					  sliceMargin: 2
+					}
+				  },
+				  legend: {
+					show:true,
+					location: 'e',
+					rendererOptions: {numberRows: 10, numberColumns: 2}
+				  },
+				  title: graphdata.title,
+				  highlighter: {
+					show: true,
+					formatString:'%s', 
+					tooltipLocation:'sw', 
+					useAxesFormatters:false
+				  },
+				  cursor: {
+					show: true
+				  }
+			});
+			
 		}
 		else
 		{
-			if(graphdata.pie)
+			var series = [];
+			var ticks = [];
+			for(var i=0;i<data.data.length;++i)
 			{
-				var gdata = new google.visualization.DataTable();
-				gdata.addColumn('string', graphdata.colname1);
-				gdata.addColumn('number', graphdata.colname2);
-				gdata.addRows(data.data.length);
-				for(var i=0;i<data.data.length;++i)
-				{
-					var obj=data.data[i];
-					gdata.setValue(i, 0, obj.label);
-					gdata.setValue(i, 1, obj.data);
-				}
-				I(divid).innerHTML="";
-				var chart = new google.visualization.PieChart(I(divid));
-				chart.draw(gdata, {width: graphdata.width, height: graphdata.height, title: graphdata.title});
+				var obj=data.data[i];
+				series.push([obj.xlabel, obj.data]);
 			}
-			else
-			{
-				var gdata = new google.visualization.DataTable();
-				gdata.addColumn('string', graphdata.colname1);
-				gdata.addColumn('number', graphdata.colname2);
-				gdata.addRows(data.data.length);
-				for(var i=0;i<data.data.length;++i)
-				{
-					var obj=data.data[i];
-					gdata.setValue(i, 0, obj.xlabel);
-					gdata.setValue(i, 1, obj.data);
+			
+			var plot1 = $.jqplot(divid+"_plot", [series], {
+				legend: {
+					show: false
+				},
+				axes: {
+					xaxis: {
+						renderer:$.jqplot.DateAxisRenderer,
+						tickOptions: {
+							formatString: graphdata.dateFormat
+						},
+						label: graphdata.colname1
+					},
+					yaxis: {
+						pad: 1.05,
+						tickOptions: {formatString: '%d'+data.ylabel},
+						label: graphdata.colname2
+					}
+				},
+				title: graphdata.title,
+				highlighter: {
+					show: true,
+					formatString: graphdata.colname1+": %s "+graphdata.colname2+": %s"
+				},
+				cursor: {
+					show: false
 				}
-				
-				I(divid).innerHTML="";
-				var chart = new google.visualization.ColumnChart(I(divid));
-				chart.draw(gdata, {width: graphdata.width, height: graphdata.height, title: graphdata.title,
-					  hAxis: {title: graphdata.xtitle, titleTextStyle: {color: 'red'}},
-					  vAxis: {minValue: 0, title: data.ylabel, titleTextStyle: {color: 'blue'}}
-					 });
-
-			}
-		}
-	}
-	
-	this.update_graph = function()
-	{
-		if(typeof img_id!="undefined" && I(divid))
-		{
-			getJSON("isimageready", "image_id="+img_id, f.update);
-		}
-	}
-	
-	this.update = function(data)
-	{
-		if(data.image_ready)
-		{
-			I(divid).innerHTML="<img src=\"x?a=getimage&image_id="+img_id+"&ses="+g.session+"\" alt=\"Graph\" />";
-		}
-		else
-		{
-			setTimeout(f.update_graph, 100);
+			});
 		}
 	}
 	
@@ -422,7 +389,7 @@ function format_size(s)
 	if(s>1024)
 	{
 		s/=1024.0;
-		suffix="MB"
+		suffix="MB";
 	}
 	if(s>1024)
 	{
@@ -561,7 +528,7 @@ function validate_text_nonempty(a)
 			}
 			else
 			{
-				alert( (new Template(trans("validate_text_empty"))).evaluate({name: trans("validate_name_"+a[i])}));
+				alert( dustCompileRender(trans("validate_text_empty"), {name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -589,7 +556,7 @@ function validate_text_int(a)
 			}
 			else
 			{
-				alert( (new Template(trans("validate_text_notint"))).evaluate({name: trans("validate_name_"+a[i])}));
+				alert( dustCompileRender(trans("validate_text_notint"), {name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -610,7 +577,7 @@ function validate_text_int_or_empty(a)
 			}
 			else
 			{
-				alert( (new Template(trans("validate_text_notint"))).evaluate({name: trans("validate_name_"+a[i])}));
+				alert( dustCompileRender(trans("validate_text_notint"), {name: trans("validate_name_"+a[i])}));
 			}
 			I(a[i]).focus();
 			return false;
@@ -625,13 +592,22 @@ function validate_text_regex(a)
 	{
 		if(!a[i].regexp.test(I(a[i].id).value))
 		{
-			if(trans("validate_err_notregexp_"+a[i].id))
+			var errid=a[i].id;
+			if(a[i].errid)
 			{
-				alert(trans("validate_err_notregexp_"+a[i].id));
+				errid=a[i].errid;
+			}
+			if(trans("validate_err_notregexp_"+errid))
+			{
+				alert(trans("validate_err_notregexp_"+errid));
+			}
+			else if( trans("validate_text_notregexp") )
+			{
+				alert( dustCompileRender(trans("validate_text_notregexp"), {name: trans("validate_name_"+a[i].id)}));
 			}
 			else
 			{
-				alert( (new Template(trans("validate_text_notregexp"))).evaluate({name: trans("validate_name_"+a[i].id)}));
+				alert("Field format wrong!");
 			}
 			I(a[i].id).focus();
 			return false;
@@ -674,3 +650,19 @@ function show_hide_column(table_id, col_no, do_show)
 String.prototype.trim = function() {
     return this.replace(/^\s+|\s+$/g, "");
 };
+
+function dustCompileRender(template, data)
+{
+	dust.compile(template, "tmp");
+	return dustRender("tmp", data);
+}
+
+function dustRender(template, data)
+{
+	var result;
+	dust.render(template, data, function(err, res) {
+		if(err) throw err;
+	   result = res;
+	});
+	return result;
+}

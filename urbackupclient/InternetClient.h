@@ -31,6 +31,7 @@ public:
 	static void hasLANConnection(void);
 	static bool isConnected(void);
 	static void setHasConnection(bool b);
+	static unsigned int timeSinceLastLanConnection();
 
 	static void newConnection(void);
 	static void rmConnection(void);
@@ -51,7 +52,12 @@ public:
 	static void addOnetimeToken(const std::string &token);
 	static std::pair<unsigned int, std::string> getOnetimeToken(void);
 
+	static std::string getStatusMsg();
+
+	static void setStatusMsg(const std::string& msg);
+
 private:
+
 	static IMutex *mutex;
 	static IMutex *onetime_token_mutex;
 	static bool connected;
@@ -63,6 +69,7 @@ private:
 	static int auth_err;
 	static std::queue<std::pair<unsigned int, std::string> > onetime_tokens;
 	static bool do_exit;
+	static std::string status_msg;
 };
 
 class InternetClientThread : public IThread

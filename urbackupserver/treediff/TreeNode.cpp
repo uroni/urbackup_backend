@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -19,12 +19,13 @@
 #include "TreeNode.h"
 
 TreeNode::TreeNode(const std::string &name, const std::string &data, TreeNode *parent)
-	: name(name), data(data), parent(parent), num_children(0), nextSibling(NULL), mapped_node(NULL)
+	: name(name), data(data), parent(parent), num_children(0), nextSibling(NULL), mapped_node(NULL),
+	  subtree_changed(false)
 {
 }
 
 TreeNode::TreeNode(void)
-	: num_children(0), nextSibling(NULL), mapped_node(NULL)
+	: num_children(0), nextSibling(NULL), mapped_node(NULL), subtree_changed(false), parent(NULL)
 {
 }
 
@@ -127,4 +128,14 @@ TreeNode *TreeNode::getMappedNode()
 void TreeNode::setMappedNode(TreeNode *pMappedNode)
 {
 	mapped_node=pMappedNode;
+}
+
+void TreeNode::setSubtreeChanged( bool b )
+{
+	subtree_changed=b;
+}
+
+bool TreeNode::getSubtreeChanged()
+{
+	return subtree_changed;
 }

@@ -1,17 +1,10 @@
-#include "../../Interface/Server.h"
-#include "../../Interface/Database.h"
-#include "../../Interface/Types.h"
+#include "app.h"
 #include "../server_settings.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../../stringtools.h"
 #include "../server_cleanup.h"
 #include "../server.h"
 
-#include "../database.h"
-#include <stdlib.h>
-
-void open_server_database(bool &use_berkeleydb, bool init_db);
-void open_settings_database(bool use_berkeleydb);
 
 int64 cleanup_amount(std::string cleanup_pc, IDatabase *db)
 {
@@ -126,7 +119,39 @@ int cleanup_cmd(void)
 
 	Server->Log("Cleanup successfull.", LL_INFO);
 
-	
+	return 0;
+}
+
+int defrag_database(void)
+{
+	Server->Log("Shutting down all database instances...", LL_INFO);
+	Server->destroyAllDatabases();
+
+	Server->Log("Opening urbackup server database...", LL_INFO);
+	bool use_bdb;
+	open_server_database(use_bdb, true);
+
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	if(db==NULL)
+	{
+		Server->Log("Could not open database", LL_ERROR);
+		return 1;
+	}
+
+	Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
+	db->Write("PRAGMA journal_mode = DELETE");
+
+	Server->Log("Rebuilding Database...", LL_INFO);
+	db->Write("PRAGMA page_size = 4096");
+	db->Write("VACUUM");
+
+	Server->Log("Rebuilding Database successfull.", LL_INFO);
+
+	Server->Log("Deleting file entry cache, if present...", LL_INFO);
+
+	delete_file_caches();
+
+	Server->Log("Done.");
 
 	return 0;
 }

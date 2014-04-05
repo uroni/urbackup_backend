@@ -31,6 +31,9 @@ public:
 	TreeNode *getMappedNode();
 	void setMappedNode(TreeNode *pMappedNode);
 
+	void setSubtreeChanged(bool b);
+	bool getSubtreeChanged();
+
 private:
 
 	std::string name;
@@ -40,6 +43,7 @@ private:
 	TreeNode *parent;
 	TreeNode *mapped_node;
 	size_t num_children;
+	bool subtree_changed;
 
 	size_t id;
 };

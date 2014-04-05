@@ -40,8 +40,10 @@ public:
 
 	void operator()(void);
 
-	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL);
+	bool sendClientMessage(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
+	bool sendClientMessageRetry(const std::string &msg, const std::string &retok, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR, bool *retok_err=NULL, std::string* retok_str=NULL);
 	std::string sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
+	std::string sendClientMessageRetry(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR);
 	void sendToPipe(const std::string &msg);
 	int getPCDone(void);
 
@@ -58,7 +60,7 @@ public:
 	static int getNumberOfRunningFileBackups(void);
 	static int getClientID(IDatabase *db, const std::wstring &clientname, ServerSettings *server_settings, bool *new_client);
 
-	IPipe *getClientCommandConnection(int timeoutms=10000);
+	IPipe *getClientCommandConnection(int timeoutms=10000, std::string* clientaddr=NULL);
 
 	virtual IPipe * new_fileclient_connection(void);
 
@@ -84,14 +86,14 @@ private:
 	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok, bool hashed_transfer);
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql);
 	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal, bool &download_ok);
-	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool &disk_error, bool &log_backup);
+	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool &disk_error, bool &log_backup);
 	SBackup getLastIncremental(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	void updateLastBackup(void);
 	void updateLastImageBackup(void);
 	void sendClientBackupIncrIntervall(void);
 	void sendSettings(void);
-	bool getClientSettings(void);
+	bool getClientSettings(bool& doesnt_exist);
 	bool updateClientSetting(const std::wstring &key, const std::wstring &value);
 	void setBackupComplete(void);
 	void setBackupDone(void);
@@ -134,9 +136,6 @@ private:
 
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
 
-	void writeFileRepeat(IFile *f, const std::string &str);
-	void writeFileRepeat(IFile *f, const char *buf, size_t bsize);
-
 	int64 updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize, bool &warned_about_parenthashfile_error);
 
 	std::wstring convertToOSPathFromFileClient(std::wstring path);
@@ -160,6 +159,12 @@ private:
 
 	void copyFile(const std::wstring& source, const std::wstring& dest);
 
+	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);
+	bool exponentialBackoffImage();
+	bool exponentialBackoffFile();
+
+	bool authenticatePubKey();
+
 	SSettings curr_intervals;
 
 	IPipe *pipe;
@@ -170,6 +175,7 @@ private:
 	std::wstring clientname;
 	
 	std::wstring backuppath;
+	std::wstring dir_pool_path;
 	std::wstring backuppath_hashes;
 	std::wstring backuppath_single;
 
@@ -264,4 +270,12 @@ private:
 	BackupServerPrepareHash *bsh_prepare;
 	THREADPOOL_TICKET bsh_prepare_ticket;
 	BackupServerHash *local_hash;
+
+	int64 last_image_backup_try;
+	size_t count_image_backup_try;
+
+	int64 last_file_backup_try;
+	size_t count_file_backup_try;
+
+	std::string session_identity;
 };

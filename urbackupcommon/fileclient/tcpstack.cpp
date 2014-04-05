@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include "tcpstack.h"
 #include "../../common/data.h"
 #include "../../md5.h"
+#include "../../stringtools.h"
 #include <memory.h>
 
 #define SEND_TIMEOUT 10000
@@ -59,7 +60,7 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen)
 		len_off=checksum_len;
 	}
 
-	MAX_PACKETSIZE len=(MAX_PACKETSIZE)msglen;
+	MAX_PACKETSIZE len=little_endian((MAX_PACKETSIZE)msglen);
 
 	memcpy(&buffer[len_off], &len, sizeof(MAX_PACKETSIZE) );
 	if(msglen>0)
@@ -110,6 +111,7 @@ char* CTCPStack::getPacket(size_t* packetsize)
 		{
 			MAX_PACKETSIZE len;
 			memcpy(&len, &buffer[0], sizeof(MAX_PACKETSIZE) );
+			len=little_endian(len);
 
 			if(buffer.size()>=(size_t)len+sizeof(MAX_PACKETSIZE))
 			{
@@ -135,6 +137,7 @@ char* CTCPStack::getPacket(size_t* packetsize)
 		{
 			MAX_PACKETSIZE len;
 			memcpy(&len, &buffer[checksum_len], sizeof(MAX_PACKETSIZE) );
+			len=little_endian(len);
 
 			if(buffer.size()>=checksum_len+(size_t)len+sizeof(MAX_PACKETSIZE))
 			{

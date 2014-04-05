@@ -9,7 +9,7 @@ then
 	automake --add-missing || true
 	libtoolize || true
 	autoreconf --install
-	./configure --with-pychart
+	./configure
 	touch build_server_ok
 fi
 ./switch_build.sh server

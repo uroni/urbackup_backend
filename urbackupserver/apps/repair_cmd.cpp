@@ -1,10 +1,4 @@
-#include "../../Interface/Server.h"
-#include "../../Interface/Database.h"
-#include "../database.h"
-
-#include <stdlib.h>
-
-void open_server_database(bool &use_berkeleydb, bool init_db);
+#include "app.h"
 
 
 void open_settings_database_full(bool use_berkeleydb)

@@ -1,6 +1,6 @@
 /*************************************************************************
 *    UrBackup - Client/Server backup system
-*    Copyright (C) 2011  Martin Raiber
+*    Copyright (C) 2011-2014 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
 *    it under the terms of the GNU General Public License as published by
@@ -425,7 +425,8 @@ bool DownloadfileThreaded(std::string url,std::string filename, IPipe *pipe, std
 															out.flush();
 															chunksize-=tmpbuf.size()-off-offadd;
 															totalbytes+=(int)(tmpbuf.size()-off-offadd);
-								tmpbuf.clear();                                                
+								tmpbuf.clear();
+                                                
 													}
 													else if( chunksize==0 )
 													{
