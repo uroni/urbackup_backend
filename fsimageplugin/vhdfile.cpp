@@ -56,7 +56,7 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 	{
 		if(read_only==false)
 		{
-			backing_file=Server->openFile(fn, MODE_WRITE);
+			backing_file=Server->openFile(fn, MODE_RW_CREATE);
 			openedExisting=false;
 		}
 		if(backing_file==NULL)
@@ -68,7 +68,7 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 
 	if(check_if_compressed() || compress)
 	{
-		compressed_file = new CompressedFile(backing_file, openedExisting);
+		compressed_file = new CompressedFile(backing_file, openedExisting, read_only);
 		file = compressed_file;
 
 		if(compressed_file->hasError())
@@ -150,7 +150,7 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 	{
 		if(read_only==false)
 		{
-			backing_file=Server->openFile(fn, MODE_WRITE);
+			backing_file=Server->openFile(fn, MODE_RW_CREATE);
 			openedExisting=false;
 		}
 		if(backing_file==NULL)
@@ -162,7 +162,7 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 
 	if(check_if_compressed() || compress)
 	{
-		file = new CompressedFile(backing_file, openedExisting);
+		file = new CompressedFile(backing_file, openedExisting, read_only);
 	}
 	else
 	{
@@ -1175,13 +1175,14 @@ void VHDFile::print_last_error()
 bool VHDFile::check_if_compressed()
 {
 	const char header_magic[] = "URBACKUP COMPRESSED FILE";
-	std::string magic = file->Read(sizeof(header_magic));
+	std::string magic = backing_file->Read(sizeof(header_magic)-1);
 
 	return magic == std::string(header_magic);
 }
 
 bool VHDFile::finish()
 {
+	finished=true;
 	switchBitmap(0);
 	if(fast_mode && !read_only)
 	{

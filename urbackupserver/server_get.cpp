@@ -682,13 +682,13 @@ void BackupServerGet::operator ()(void)
 						{
 							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
 				
-							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0))
+							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0, server_settings->getSettings()->compress_images))
 							{
 								sysvol_id=backupid;
 							}
 							ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
 						}
-						bool b=doImage(vols[i]+":", L"", 0, 0, image_protocol_version>0);
+						bool b=doImage(vols[i]+":", L"", 0, 0, image_protocol_version>0, server_settings->getSettings()->compress_images);
 						if(!b)
 						{
 							r_success=false;
@@ -733,7 +733,7 @@ void BackupServerGet::operator ()(void)
 						if(strlower(letter)=="c:")
 						{
 							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
-							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0))
+							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0, server_settings->getSettings()->compress_images))
 							{
 								sysvol_id=backupid;
 							}
@@ -748,7 +748,8 @@ void BackupServerGet::operator ()(void)
 						}
 						else
 						{
-							r_success=doImage(letter, last.path, last.incremental+1, last.incremental_ref, image_hashed_transfer);
+							r_success=doImage(letter, last.path, last.incremental+1,
+								last.incremental_ref, image_hashed_transfer, server_settings->getSettings()->compress_images);
 						}
 
 						if(r_success && sysvol_id!=-1)
@@ -2928,7 +2929,7 @@ bool BackupServerGet::constructBackupPath(bool with_hashes, bool on_snapshot, bo
 	}
 }
 
-std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
+std::wstring BackupServerGet::constructImagePath(const std::wstring &letter, bool compress)
 {
 	time_t tt=time(NULL);
 #ifdef _WIN32
@@ -2941,7 +2942,16 @@ std::wstring BackupServerGet::constructImagePath(const std::wstring &letter)
 	char buffer[500];
 	strftime(buffer, 500, "%y%m%d-%H%M", t);
 	std::wstring backupfolder_uncompr=server_settings->getSettings()->backupfolder_uncompr;
-	return backupfolder_uncompr+os_file_sep()+clientname+os_file_sep()+L"Image_"+letter+L"_"+widen((std::string)buffer)+L".vhd";
+	std::wstring imgpath = backupfolder_uncompr+os_file_sep()+clientname+os_file_sep()+L"Image_"+letter+L"_"+widen((std::string)buffer);
+	if(!compress)
+	{
+		imgpath+=L".vhd";
+	}
+	else
+	{
+		imgpath+=L".vhdz";
+	}
+	return imgpath;
 }
 
 void BackupServerGet::updateLastBackup(void)

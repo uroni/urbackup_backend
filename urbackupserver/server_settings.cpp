@@ -310,6 +310,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "false")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
+	settings->compress_images=(settings_default->getValue("compress_images", "true")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
