@@ -317,7 +317,7 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 			}
 			else if(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
 			{
-				os_remove_nonempty_dir(tpath+L"\\"+wfd.cFileName);
+				os_remove_nonempty_dir(tpath+L"\\"+wfd.cFileName, symlink_callback, userdata);
 			}
 			else
 			{

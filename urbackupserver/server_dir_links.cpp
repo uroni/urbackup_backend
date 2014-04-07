@@ -241,6 +241,7 @@ namespace
 		if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
 		{
 			ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid);
+			ret = ret && os_remove_dir(os_file_prefix(pool_path));
 		}
 		else
 		{
