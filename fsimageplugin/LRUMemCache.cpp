@@ -11,7 +11,7 @@ char* LRUMemCache::get( __int64 offset, size_t& bsize )
 	for(size_t i=0;i<lruItems.size();++i)
 	{
 		if(lruItems[i].offset<=offset &&
-			lruItems[i].offset+static_cast<__int64>(buffersize)<offset)
+			lruItems[i].offset+static_cast<__int64>(buffersize)>offset)
 		{
 			size_t innerOffset = static_cast<size_t>(offset-lruItems[i].offset);
 			bsize = buffersize - innerOffset;
@@ -27,7 +27,7 @@ bool LRUMemCache::put( __int64 offset, const char* buffer, size_t bsize )
 	for(size_t i=0;i<lruItems.size();++i)
 	{
 		if(lruItems[i].offset<=offset &&
-			lruItems[i].offset+static_cast<__int64>(buffersize)<offset)
+			lruItems[i].offset+static_cast<__int64>(buffersize)>offset)
 		{
 			size_t innerOffset = static_cast<size_t>(offset-lruItems[i].offset);
 
@@ -60,6 +60,9 @@ bool LRUMemCache::put( __int64 offset, const char* buffer, size_t bsize )
 
 void LRUMemCache::putBack( size_t idx )
 {
+	if(idx == lruItems.size()-1)
+		return;
+
 	SCacheItem item = lruItems[idx];
 	lruItems.erase(lruItems.begin()+idx);
 	lruItems.push_back(item);
@@ -74,18 +77,21 @@ void LRUMemCache::clear()
 {
 	for(size_t i=0;i<lruItems.size();++i)
 	{
-		evict(lruItems[i]);
+		evict(lruItems[i], true);
 	}
 	lruItems.clear();
 }
 
-void LRUMemCache::evict( SCacheItem& item )
+void LRUMemCache::evict( SCacheItem& item, bool deleteBuffer )
 {
 	if(callback!=NULL)
 	{
 		callback->evictFromLruCache(item);
 	}
-	delete item.buffer;
+	if(deleteBuffer)
+	{
+		delete item.buffer;
+	}
 }
 
 LRUMemCache::~LRUMemCache()
@@ -95,15 +101,24 @@ LRUMemCache::~LRUMemCache()
 
 SCacheItem LRUMemCache::createInt( __int64 offset )
 {
+	char* buffer=NULL;
 	if(lruItems.size()==nbuffers)
 	{
 		SCacheItem& toremove = lruItems[0];
-		evict(toremove);
+		buffer = toremove.buffer;
+		evict(toremove, false);
 		lruItems.erase(lruItems.begin());
 	}
 
 	SCacheItem newItem;
-	newItem.buffer=new char[buffersize];
+	if(buffer!=NULL)
+	{
+		newItem.buffer=buffer;
+	}
+	else
+	{
+		newItem.buffer=new char[buffersize];
+	}
 	newItem.offset=offset - offset % buffersize;
 
 	lruItems.push_back(newItem);

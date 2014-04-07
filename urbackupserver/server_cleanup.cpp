@@ -443,7 +443,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 			{
 				std::wstring extension=findextension(cf.name);
 
-				if(extension!=L"vhd")
+				if(extension!=L"vhd" && extension!=L"vhdz")
 					continue;
 
 				bool found=false;

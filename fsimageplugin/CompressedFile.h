@@ -5,8 +5,6 @@
 
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
-#include "../cryptoplugin/IZlibDecompression.h"
-#include "../cryptoplugin/IZlibCompression.h"
 #include "LRUMemCache.h"
 
 
@@ -14,7 +12,7 @@ class CompressedFile : public IFile, public ICacheEvictionCallback
 {
 public:
 	CompressedFile(std::wstring pFilename, int pMode);
-	CompressedFile(IFile* file, bool openExisting);
+	CompressedFile(IFile* file, bool openExisting, bool readOnly);
 	~CompressedFile();
 
 	virtual std::string Read(_u32 tr);
@@ -34,10 +32,13 @@ public:
 private:
 	void readHeader();
 	void readIndex();
-	bool fillCache(__int64 offset);
+	bool fillCache(__int64 offset, bool errorMsg);
 	virtual void evictFromLruCache(const SCacheItem& item);
 	void writeHeader();
 	void writeIndex();
+
+	_u32 readFromFile(char* buffer, _u32 bsize);
+	_u32 writeToFile(const char* buffer, _u32 bsize);
 
 	__int64 filesize;
 	__int64 index_offset;
@@ -53,10 +54,9 @@ private:
 
 	std::vector<char> compressedBuffer;
 
-	IZlibDecompression* zlibDecompression;
-	IZlibCompression* zlibCompression;
-
 	bool error;
 
 	bool finished;
+
+	bool readOnly;
 };

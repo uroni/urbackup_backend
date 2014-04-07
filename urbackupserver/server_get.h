@@ -102,7 +102,7 @@ private:
 	std::wstring getUserRights(int userid, std::string domain);
 	void saveClientLogdata(int image, int incremental, bool r_success);
 	void sendLogdataMail(bool r_success, int image, int incremental, int errors, int warnings, int infos, std::wstring &data);
-	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum);
+	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, bool compress);
 	std::string getMBR(const std::wstring &dl);
 	unsigned int writeMBR(ServerVHDWriter *vhdfile, uint64 volsize);
 	int createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path, std::string letter);
@@ -126,7 +126,7 @@ private:
 
 	void saveImageAssociation(int image_id, int assoc_id);
 	
-	std::wstring constructImagePath(const std::wstring &letter);
+	std::wstring constructImagePath(const std::wstring &letter, bool compress);
 	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
 	void resetEntryState(void);
 	bool getNextEntry(char ch, SFile &data, std::map<std::wstring, std::wstring>* extra);

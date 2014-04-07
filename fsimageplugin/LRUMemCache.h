@@ -48,7 +48,7 @@ private:
 
 	void putBack(size_t idx);
 
-	void evict(SCacheItem& item);
+	void evict(SCacheItem& item, bool deleteBuffer);
 
 	std::vector<SCacheItem> lruItems;
 
