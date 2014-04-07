@@ -97,8 +97,6 @@ namespace
 
 size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 {
-	doThrottle(bsize, false);
-
 	int rc = selectSocketRead(s, timeoutms);
 
 	if( rc>0 )
@@ -108,6 +106,10 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 		{
 			has_error=true;
 			return 0;
+		}
+		else
+		{
+			doThrottle(rc, false);
 		}
 	}
 	if( rc>0 )
