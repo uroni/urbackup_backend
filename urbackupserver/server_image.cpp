@@ -453,7 +453,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							true, compress?IFSImageFactory::CompressionSetting_Zlib:IFSImageFactory::CompressionSetting_None);
 					}
 
-					if(r_vhdfile==NULL)
+					if(r_vhdfile==NULL || !r_vhdfile->isOpen())
 					{
 						ServerLogger::Log(clientid, L"Error opening VHD file \""+imagefn+L"\"", LL_ERROR);
 						goto do_image_cleanup;

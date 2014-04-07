@@ -34,7 +34,6 @@ IServer *Server;
 #include "../Interface/File.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/sha2/sha2.h"
-#include "../cryptoplugin/ICryptoFactory.h"
 
 #include <stdlib.h>
 
@@ -43,7 +42,8 @@ IServer *Server;
 
 #include "pluginmgr.h"
 
-ICryptoFactory *crypto_fak;
+#include "CompressedFile.h"
+
 
 CImagePluginMgr *imagepluginmgr;
 
@@ -53,11 +53,108 @@ DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
 
-	str_map params;
-	crypto_fak=(ICryptoFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("cryptoplugin", params));
-	if( crypto_fak==NULL )
+	std::string compress_file = Server->getServerParameter("compress");
+	if(!compress_file.empty())
 	{
-		Server->Log("Error loading Cryptoplugin. Image compression will not work.", LL_ERROR);
+		IFile* in = Server->openFile(compress_file, MODE_READ_SEQUENTIAL);
+		if(in==NULL)
+		{
+			Server->Log("Cannot open file \""+compress_file+"\" to compress", LL_ERROR);
+			exit(1);
+		}
+
+		{
+			Server->deleteFile(compress_file+".urz");
+			CompressedFile compFile(widen(compress_file+".urz"), MODE_RW_CREATE);
+
+			if(compFile.hasError())
+			{
+				Server->Log("Error opening compressed file", LL_ERROR);
+				exit(3);
+			}
+
+			char buffer[4096];
+			_u32 read;
+			do 
+			{
+				read = in->Read(buffer, 4096);
+				if(read>0)
+				{
+					if(compFile.Write(buffer, read)!=read)
+					{
+						Server->Log("Error writing to compressed file", LL_ERROR);
+						exit(2);
+					}
+				}			
+			} while (read>0);
+
+			compFile.finish();
+			delete in;
+		}	
+
+		exit(0);
+	}
+
+	std::string decompress = Server->getServerParameter("decompress");
+	if(!decompress.empty())
+	{
+		std::string targetName;
+		if(findextension(decompress)=="vhdz")
+		{
+			targetName = decompress.substr(0, decompress.size()-1);
+		}
+		else if(findextension(decompress)=="urz")
+		{
+			targetName = decompress.substr(0, decompress.size()-4);
+		}
+		else
+		{
+			Server->Log("Unknown file extension: "+findextension(decompress), LL_ERROR);
+			exit(1);
+		}
+
+		IFile* out = Server->openFile(targetName, MODE_WRITE);
+
+		if(out==NULL)
+		{
+			Server->Log("Error opening output file \""+targetName+"\"", LL_ERROR);
+			exit(2);
+		}
+
+		int pcdone = 0;
+
+		{
+			CompressedFile compFile(widen(decompress), MODE_READ);
+
+			__int64 decompressed = 0;
+			char buffer[4096];
+			_u32 read;
+			do 
+			{
+				read = compFile.Read(buffer, 4096);
+				if(read>0)
+				{
+					if(out->Write(buffer, read)!=read)
+					{
+						Server->Log("Error writing to output file", LL_ERROR);
+						exit(3);
+					}
+				}
+				decompressed+=read;
+				int currentpc = static_cast<int>(static_cast<float>(decompressed)/compFile.Size()+0.5f);
+				if(currentpc!=pcdone)
+				{
+					pcdone=currentpc;
+					Server->Log("Decompressing \""+decompress+"\"... "+nconvert(pcdone)+"% done", LL_INFO);
+				}
+			} while (read>0);
+
+			compFile.finish();
+			delete out;
+		}
+		
+
+		exit(0);
 	}
 
 	std::string devinfo=Server->getServerParameter("devinfo");

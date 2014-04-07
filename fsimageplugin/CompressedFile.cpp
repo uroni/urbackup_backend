@@ -1,9 +1,14 @@
 #include "CompressedFile.h"
 #include "../stringtools.h"
-#include "../cryptoplugin/ICryptoFactory.h"
 #include <assert.h>
 #include <memory>
 #include <algorithm>
+
+#define MINIZ_NO_STDIO
+#define MINIZ_NO_TIME
+#define MINIZ_NO_ARCHIVE_APIS
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../common/miniz.c"
 
 const size_t c_cacheBuffersize = 2*1024*1024;
 const size_t c_ncacheItems = 5;
@@ -12,7 +17,6 @@ const _u32 mode_none = 0;
 const _u32 mode_zlib = 1;
 const size_t c_header_size = sizeof(headerMagic) + sizeof(__int64) + sizeof(__int64) + sizeof(_u32);
 
-extern ICryptoFactory *crypto_fak;
 
 CompressedFile::CompressedFile( std::wstring pFilename, int pMode )
 	: hotCache(NULL), error(false), currentPosition(0),
@@ -28,7 +32,7 @@ CompressedFile::CompressedFile( std::wstring pFilename, int pMode )
 	}
 
 	if(pMode == MODE_READ ||
-		pMode == MODE_RW)
+		pMode == MODE_RW )
 	{
 		readOnly=true;
 		readHeader();
@@ -39,6 +43,7 @@ CompressedFile::CompressedFile( std::wstring pFilename, int pMode )
 		blocksize = c_cacheBuffersize;
 		writeHeader();
 		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems));
+		compressedBuffer.resize(mz_compressBound(static_cast<mz_ulong>(blocksize)));
 	}
 	hotCache->setCacheEvictionCallback(this);
 }
@@ -56,6 +61,7 @@ CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly)
 		blocksize = c_cacheBuffersize;
 		writeHeader();
 		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems));
+		compressedBuffer.resize(mz_compressBound(static_cast<mz_ulong>(blocksize)));
 	}
 	if(hotCache.get()!=NULL)
 	{
@@ -180,6 +186,8 @@ _u32 CompressedFile::Read( char* buffer, _u32 bsize )
 
 	memcpy(buffer, cachePtr, canRead);
 
+	currentPosition+=canRead;
+
 	if(canRead<bsize)
 	{
 		return static_cast<_u32>(canRead) + Read(buffer + canRead, bsize-static_cast<_u32>(canRead));
@@ -220,6 +228,11 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg)
 	}
 
 	char* buf = hotCache->create(offset);
+
+	if(error)
+	{
+		return false;
+	}
 
 	const __int64 blockDataOffset = blockOffsets[block];	
 
@@ -272,17 +285,16 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg)
 		}
 	}
 	
-	size_t rdecomp;
+	mz_ulong rdecomp;
 	if(mode==mode_zlib)
 	{
-		std::auto_ptr<IZlibDecompression> zlibDecompression(crypto_fak->createZlibDecompression());
+		rdecomp = blocksize;
+		int rc = mz_uncompress(reinterpret_cast<unsigned char*>(buf), &rdecomp,
+			reinterpret_cast<const unsigned char*>(compressedBuffer.data()), static_cast<mz_ulong>(compressedSize));
 
-		bool error = false;
-		rdecomp = zlibDecompression->decompress(compressedBuffer.data(), compressedSize, buf, blocksize, true, &error);
-
-		if(error)
+		if(rc != MZ_OK)
 		{
-			Server->Log("Error while decompressing file", LL_ERROR);
+			Server->Log("Error while decompressing file. Error code "+nconvert(rc), LL_ERROR);
 			return false;
 		}
 	}
@@ -290,7 +302,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg)
 
 	if(rdecomp!=blocksize && offset+blocksize<filesize)
 	{
-		Server->Log("Did not receive enough bytes from compressed stream. Expected "+nconvert(blocksize)+" received "+nconvert(rdecomp), LL_ERROR);
+		Server->Log("Did not receive enough bytes from compressed stream. Expected "+nconvert(blocksize)+" received "+nconvert((size_t)rdecomp), LL_ERROR);
 		return false;
 	}
 
@@ -314,6 +326,12 @@ _u32 CompressedFile::Write( const char* buffer, _u32 bsize )
 	if(cachePtr==NULL)
 	{
 		fillCache(currentPosition, false);
+	}
+
+	if(error)
+	{
+		error=false;
+		return 0;
 	}
 
 	hotCache->put(currentPosition, buffer, write);
@@ -356,9 +374,16 @@ void CompressedFile::evictFromLruCache( const SCacheItem& item )
 		return;
 	}
 
-	std::auto_ptr<IZlibCompression> zlibCompression(crypto_fak->createZlibCompression(6));
+	mz_ulong compBytes = static_cast<mz_ulong>(compressedBuffer.size());
+	int rc = mz_compress(reinterpret_cast<unsigned char*>(compressedBuffer.data()), &compBytes,
+		reinterpret_cast<const unsigned char*>(item.buffer), blocksize);
 
-	size_t compBytes = zlibCompression->compress(item.buffer, blocksize, &compressedBuffer, true);
+	if(rc!=MZ_OK)
+	{
+		error=true;
+		Server->Log("Error while compressing data. Error code: "+nconvert(rc), LL_ERROR);
+		return;
+	}
 
 	char blockheaderBuf[2*sizeof(_u32)];
 	_u32 compBytesEndian = little_endian(static_cast<_u32>(compBytes));

@@ -2,7 +2,8 @@
 #include "../../urbackupcommon/os_functions.h"
 #include "../../Interface/File.h"
 
-#include "miniz.c"
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../../common/miniz.c"
 
 namespace
 {

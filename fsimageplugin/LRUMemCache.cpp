@@ -8,7 +8,7 @@ LRUMemCache::LRUMemCache( size_t buffersize, size_t nbuffers )
 
 char* LRUMemCache::get( __int64 offset, size_t& bsize )
 {
-	for(size_t i=0;i<lruItems.size();++i)
+	for(size_t i=lruItems.size(); i-->0; )
 	{
 		if(lruItems[i].offset<=offset &&
 			lruItems[i].offset+static_cast<__int64>(buffersize)>offset)
@@ -24,7 +24,7 @@ char* LRUMemCache::get( __int64 offset, size_t& bsize )
 
 bool LRUMemCache::put( __int64 offset, const char* buffer, size_t bsize )
 {
-	for(size_t i=0;i<lruItems.size();++i)
+	for(size_t i=lruItems.size(); i-->0; )
 	{
 		if(lruItems[i].offset<=offset &&
 			lruItems[i].offset+static_cast<__int64>(buffersize)>offset)
