@@ -3359,6 +3359,7 @@ bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 		}
 	}
 
+	std::vector<std::wstring> only_server_settings = getOnlyServerClientSettingsList();
 	
 	for(size_t i=0;i<setting_names.size();++i)
 	{
@@ -3366,6 +3367,12 @@ bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 		std::wstring value;
 
 		if(internet_connection && key==L"computername")
+		{
+			continue;
+		}
+
+		if(std::find(only_server_settings.begin(), only_server_settings.end(),
+			key)!=only_server_settings.end())
 		{
 			continue;
 		}

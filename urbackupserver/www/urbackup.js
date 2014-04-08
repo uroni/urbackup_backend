@@ -1344,7 +1344,7 @@ function show_settings2(data)
 			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
 			data.settings.use_tmpfiles_images=getCheckboxValue(data.settings.use_tmpfiles_images);
 			data.settings.use_incremental_symlinks=getCheckboxValue(data.settings.use_incremental_symlinks);
-			
+			data.settings.compress_images=getCheckboxValue(data.settings.compress_images);
 			
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
 			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
@@ -1469,6 +1469,7 @@ function show_settings2(data)
 			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
 			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
+			data.settings.compress_images=getCheckboxValue(data.settings.compress_images);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1745,7 +1746,8 @@ g.settings_list=[
 "file_hash_collect_amount",
 "file_hash_collect_timeout",
 "file_hash_collect_cachesize",
-"internet_calculate_filehashes_on_client"
+"internet_calculate_filehashes_on_client",
+"compress_images"
 ];
 g.general_settings_list=[
 "backupfolder",
