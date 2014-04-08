@@ -24,6 +24,7 @@
 #include "../server_status.h"
 #include "../server_get.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
+#include "../server.h"
 
 #include <algorithm>
 
@@ -192,6 +193,7 @@ ACTION_IMPL(status)
 					q->Reset();
 				}
 			}
+			BackupServer::updateDeletePending();
 		}		
 
 		JSON::Array status;

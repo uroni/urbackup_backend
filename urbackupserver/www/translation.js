@@ -414,7 +414,7 @@ translations.de={
 "tOnline": "Online",
 "tActions": "Aktionen",
 "tAdd": "Hinzufügen",
-"tClients are removed during the cleanup time window, if they are offline.": "Clients werden in dem Aufräumzeitfenster gelöscht, falls sie nicht mehr online sind.",
+"tClients are removed during the cleanup in the cleanup time window.": "Clients werden beim Aufräumen im Aufräumzeitfenster gelöscht.",
 "tPerform autoupdates silently": "Autoupdates im Hintergrund ausführen",
 "tArchived": "Archiviert",
 "nospc_stalled_text": "Es is momentan nicht genügend Speicherplatz für Backups vorhanden. UrBackup löscht gerade alte Datei- und Image-Backups innerhalb der Grenzen die in den Einstellungen festgelegt sind. Wärend dieses Vorgangs ist die Performanz des Backupservers eventuell eingeschränkt; Laufende Backups sind eventuell pausiert.",

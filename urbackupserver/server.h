@@ -38,10 +38,15 @@ public:
 	static void testFilesystemTransactionAvailabiliy(IDatabase *db);
 	static bool isFilesystemTransactionEnabled();
 
+	static void updateDeletePending();
+
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);
 	void removeAllClients(void);
+	void maybeUpdateDeletePendingClients();
+	bool isDeletePendingClient(const std::wstring& clientname);
+
 
 	std::map<std::wstring, SClient> clients;
 
@@ -58,6 +63,9 @@ private:
 
 	static bool snapshots_enabled;
 	static bool filesystem_transactions_enabled;
+
+	static volatile bool update_delete_pending_clients;
+	std::vector<std::wstring> delete_pending_clients;
 };
 
 #endif //URB_SERVER_H

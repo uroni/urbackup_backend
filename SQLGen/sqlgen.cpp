@@ -348,21 +348,29 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	}
 
 	StatementType stmt_type=StatementType_None;
-	if(strlower(sql).find("select")!=std::string::npos)
+	size_t op_pos;
+	if( (op_pos=strlower(sql).find("select"))!=std::string::npos)
 	{
 		stmt_type=StatementType_Select;
 	}
-	if(strlower(sql).find("delete")!=std::string::npos)
+	size_t new_pos;
+	if( (new_pos = strlower(sql).find("delete"))!=std::string::npos
+		&& new_pos<op_pos)
 	{
 		stmt_type=StatementType_Delete;
+		op_pos=new_pos;
 	}
-	if(strlower(sql).find("insert")!=std::string::npos)
+	if( (new_pos = strlower(sql).find("insert"))!=std::string::npos
+		&& new_pos<op_pos)
 	{
 		stmt_type=StatementType_Insert;
+		op_pos=new_pos;
 	}
-	if(strlower(sql).find("update")!=std::string::npos)
+	if( (new_pos = strlower(sql).find("update"))!=std::string::npos
+		&& new_pos<op_pos)
 	{
 		stmt_type=StatementType_Update;
+		op_pos=new_pos;
 	}
 
 	std::string return_vals=input.annotations["return"];

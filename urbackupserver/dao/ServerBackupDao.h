@@ -37,6 +37,7 @@ public:
 	void updateLinkReferenceTarget(const std::wstring& new_target, int64 id);
 	void addToOldBackupfolders(const std::wstring& backupfolder);
 	std::vector<std::wstring> getOldBackupfolders(void);
+	std::vector<std::wstring> getDeletePendingClientNames(void);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -60,6 +61,7 @@ private:
 	IQuery* q_updateLinkReferenceTarget;
 	IQuery* q_addToOldBackupfolders;
 	IQuery* q_getOldBackupfolders;
+	IQuery* q_getDeletePendingClientNames;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

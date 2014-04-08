@@ -304,6 +304,29 @@ std::vector<std::wstring> ServerBackupDao::getOldBackupfolders(void)
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func vector<string> ServerBackupDao::getDeletePendingClientNames
+* @return string name
+* @sql
+*      SELECT name FROM clients WHERE delete_pending=1
+*/
+std::vector<std::wstring> ServerBackupDao::getDeletePendingClientNames(void)
+{
+	if(q_getDeletePendingClientNames==NULL)
+	{
+		q_getDeletePendingClientNames=db->Prepare("SELECT name FROM clients WHERE delete_pending=1", false);
+	}
+	db_results res=q_getDeletePendingClientNames->Read();
+	std::vector<std::wstring> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i]=res[i][L"name"];
+	}
+	return ret;
+}
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -320,6 +343,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_updateLinkReferenceTarget=NULL;
 	q_addToOldBackupfolders=NULL;
 	q_getOldBackupfolders=NULL;
+	q_getDeletePendingClientNames=NULL;
 }
 
 //@-SQLGenDestruction
@@ -338,6 +362,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_updateLinkReferenceTarget);
 	db->destroyQuery(q_addToOldBackupfolders);
 	db->destroyQuery(q_getOldBackupfolders);
+	db->destroyQuery(q_getDeletePendingClientNames);
 }
 
 void ServerBackupDao::commit()

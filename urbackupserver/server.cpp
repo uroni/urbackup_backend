@@ -31,6 +31,7 @@
 #include "InternetServiceConnector.h"
 #include "../Interface/PipeThrottler.h"
 #include "snapshot_helper.h"
+#include "dao/ServerBackupDao.h"
 #include <memory.h>
 
 const unsigned int waittime=50*1000; //1 min
@@ -41,6 +42,8 @@ IPipeThrottler *BackupServer::global_local_throttler=NULL;
 IMutex *BackupServer::throttle_mutex=NULL;
 bool BackupServer::snapshots_enabled=false;
 bool BackupServer::filesystem_transactions_enabled = false;
+volatile bool BackupServer::update_delete_pending_clients=true;
+
 
 BackupServer::BackupServer(IPipe *pExitpipe)
 {
@@ -244,8 +247,16 @@ void BackupServer::startClients(FileClient &fc)
 		endpoint_names.push_back(anames[i].second);
 	}
 
+	std::vector<bool> delete_pending_curr;
+	delete_pending_curr.resize(names.size());
+	maybeUpdateDeletePendingClients();
+
 	for(size_t i=0;i<names.size();++i)
 	{
+		delete_pending_curr[i]=isDeletePendingClient(names[i]);
+		if(delete_pending_curr[i])
+			continue;
+
 		std::map<std::wstring, SClient>::iterator it=clients.find(names[i]);
 		if( it==clients.end() )
 		{
@@ -336,6 +347,9 @@ void BackupServer::startClients(FileClient &fc)
 			bool found=false;
 			for(size_t i=0;i<names.size();++i)
 			{
+				if(delete_pending_curr[i])
+					continue;
+
 				if( it->first==names[i] )
 				{
 					found=true;
@@ -580,6 +594,30 @@ void BackupServer::testFilesystemTransactionAvailabiliy( IDatabase *db )
 bool BackupServer::isFilesystemTransactionEnabled()
 {
 	return filesystem_transactions_enabled;
+}
+
+void BackupServer::updateDeletePending()
+{
+	IScopedLock lock(throttle_mutex);
+	update_delete_pending_clients=true;
+}
+
+bool BackupServer::isDeletePendingClient( const std::wstring& clientname )
+{
+	return std::find(delete_pending_clients.begin(), delete_pending_clients.end(), clientname)!=
+		delete_pending_clients.end();
+}
+
+void BackupServer::maybeUpdateDeletePendingClients()
+{
+	IScopedLock lock(throttle_mutex);
+	if(update_delete_pending_clients)
+	{
+		update_delete_pending_clients=false;
+		IDatabase *db=Server->getDatabase(Server->getThreadID(),URBACKUPDB_SERVER);
+		ServerBackupDao backupDao(db);
+		delete_pending_clients = backupDao.getDeletePendingClientNames();
+	}
 }
 
 #endif //CLIENT_ONLY
