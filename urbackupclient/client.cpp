@@ -2367,7 +2367,17 @@ void IndexThread::start_filesrv(void)
 			Server->destroy(curr_settings);
 		}
 	}
-	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(tcpport, udpport, name);
+
+	unsigned int curr_tcpport = tcpport;
+	unsigned int curr_udpport = udpport;
+	std::string s_tcpport=Server->getServerParameter("fileserv_tcpport");
+	if(!s_tcpport.empty())
+		curr_tcpport=atoi(s_tcpport.c_str());
+	std::string s_udpport=Server->getServerParameter("fileserv_udpport");
+	if(!s_udpport.empty())
+		curr_udpport=atoi(s_udpport.c_str());
+
+	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(curr_tcpport, curr_udpport, name);
 	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
 
 	ServerIdentityMgr::setFileServ(filesrv);

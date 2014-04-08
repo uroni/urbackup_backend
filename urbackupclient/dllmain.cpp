@@ -60,7 +60,7 @@ ICryptoFactory *crypto_fak;
 std::string server_identity;
 std::string server_token;
 
-const unsigned short serviceport=35623;
+const unsigned short default_urbackup_serviceport=35623;
 
 void init_mutex1(void);
 bool testEscape(void);
@@ -272,7 +272,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	bool do_leak_check=(Server->getServerParameter("leak_check")=="true");
 
 	ClientConnector::init_mutex();
-	Server->StartCustomStreamService(new ClientService(), "urbackupserver", serviceport);
+	unsigned short urbackup_serviceport = default_urbackup_serviceport;
+	if(!Server->getServerParameter("urbackup_serviceport").empty())
+	{
+		urbackup_serviceport = static_cast<unsigned short>(atoi(Server->getServerParameter("urbackup_serviceport").c_str()));
+	}
+	Server->StartCustomStreamService(new ClientService(), "urbackupserver", urbackup_serviceport);
 
 	str_map params;
 	filesrv_pluginid=Server->StartPlugin("fileserv", params);
