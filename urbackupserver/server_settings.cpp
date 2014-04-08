@@ -340,7 +340,7 @@ void ServerSettings::readSettingsClient(void)
 		readBoolClientSetting("allow_overwrite", &settings->allow_overwrite);
 	}
 
-	if(!settings->allow_overwrite)
+	if(!settings->overwrite && !settings->allow_overwrite)
 		return;
 
 	int tmp=settings_client->getValue("update_freq_incr", -1);
@@ -435,6 +435,7 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("internet_encrypt", &settings->internet_encrypt);
 	readBoolClientSetting("silent_update", &settings->silent_update);
 	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);
+	readBoolClientSetting("compress_images", &settings->compress_images);
 
 	
 
