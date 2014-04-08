@@ -33,6 +33,7 @@
 #include "snapshot_helper.h"
 #include "dao/ServerBackupDao.h"
 #include <memory.h>
+#include <algorithm>
 
 const unsigned int waittime=50*1000; //1 min
 const int max_offline=5;
