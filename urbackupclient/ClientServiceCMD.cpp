@@ -102,7 +102,7 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity)
 	}
 
 	IScopedLock lock(ident_mutex);
-	std::string challenge = randomChallenge(30);
+	std::string challenge = randomChallenge(30)+"-"+nconvert(Server->getTimeSeconds())+"-"+nconvert(Server->getTimeMS());
 	challenges[identity]=challenge;
 
 	tcpstack.Send(pipe, challenge);
