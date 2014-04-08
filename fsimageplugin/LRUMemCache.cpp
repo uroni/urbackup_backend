@@ -1,4 +1,5 @@
 #include "LRUMemCache.h"
+#include <string.h>
 
 
 LRUMemCache::LRUMemCache( size_t buffersize, size_t nbuffers )
