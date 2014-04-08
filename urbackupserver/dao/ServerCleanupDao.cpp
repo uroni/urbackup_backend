@@ -457,7 +457,7 @@ void ServerCleanupDao::removeImageSize(int backupid)
 	q_removeImageSize->Bind(backupid);
 	q_removeImageSize->Bind(backupid);
 	q_removeImageSize->Bind(backupid);
-	db_results res=q_removeImageSize->Read();
+	q_removeImageSize->Write();
 	q_removeImageSize->Reset();
 }
 
@@ -494,6 +494,7 @@ void ServerCleanupDao::updateDelImageStats(int64 rowid)
 		q_updateDelImageStats=db->Prepare("UPDATE del_stats SET stoptime=CURRENT_TIMESTAMP WHERE rowid=?", false);
 	}
 	q_updateDelImageStats->Bind(rowid);
+	q_updateDelImageStats->Write();
 	q_updateDelImageStats->Reset();
 }
 
@@ -777,6 +778,38 @@ void ServerCleanupDao::cleanupAuthLog(void)
 	q_cleanupAuthLog->Write();
 }
 
+/**
+* @-SQLGenAccess
+* @func vector<SIncompleteFileBackup> ServerCleanupDao::getIncompleteFileBackups
+* @return int id, int clientid, int incremental, string backuptime, string path, string clientname
+* @sql
+*      SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM
+			backups b INNER JOIN clients c ON b.clientid=c.id
+*        WHERE complete=0 AND archived=0 AND EXISTS
+*            ( SELECT * FROM backups e WHERE b.clientid = e.clientid AND
+*                     e.backuptime>b.backuptime AND e.done=1)
+*/
+std::vector<ServerCleanupDao::SIncompleteFileBackup> ServerCleanupDao::getIncompleteFileBackups(void)
+{
+	if(q_getIncompleteFileBackups==NULL)
+	{
+		q_getIncompleteFileBackups=db->Prepare("SELECT b.id, b.clientid, b.incremental, b.backuptime, b.path, c.name AS clientname FROM backups b INNER JOIN clients c ON b.clientid=c.id WHERE complete=0 AND archived=0 AND EXISTS ( SELECT * FROM backups e WHERE b.clientid = e.clientid AND e.backuptime>b.backuptime AND e.done=1)", false);
+	}
+	db_results res=q_getIncompleteFileBackups->Read();
+	std::vector<ServerCleanupDao::SIncompleteFileBackup> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].clientid=watoi(res[i][L"clientid"]);
+		ret[i].incremental=watoi(res[i][L"incremental"]);
+		ret[i].backuptime=res[i][L"backuptime"];
+		ret[i].path=res[i][L"path"];
+		ret[i].clientname=res[i][L"clientname"];
+	}
+	return ret;
+}
+
 
 //@-SQLGenSetup
 void ServerCleanupDao::createQueries(void)
@@ -813,6 +846,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getUsedStorage=NULL;
 	q_cleanupBackupLogs=NULL;
 	q_cleanupAuthLog=NULL;
+	q_getIncompleteFileBackups=NULL;
 }
 
 //@-SQLGenDestruction
@@ -850,4 +884,5 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getUsedStorage);
 	db->destroyQuery(q_cleanupBackupLogs);
 	db->destroyQuery(q_cleanupAuthLog);
+	db->destroyQuery(q_getIncompleteFileBackups);
 }

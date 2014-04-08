@@ -863,6 +863,8 @@ void ServerCleanupThread::cleanup_files(int64 minspace)
 {
 	ServerSettings settings(db);
 
+	delete_incomplete_file_backups();
+
 	bool deleted_something=true;
 	while(deleted_something)
 	{
@@ -1581,6 +1583,28 @@ bool ServerCleanupThread::correct_target(const std::wstring& backupfolder, std::
 	}
 
 	return false;
+}
+
+void ServerCleanupThread::delete_incomplete_file_backups( void )
+{
+	std::vector<ServerCleanupDao::SIncompleteFileBackup> incomplete_file_backups =
+		cleanupdao->getIncompleteFileBackups();
+
+	ServerSettings settings(db);
+
+	for(size_t i=0;i<incomplete_file_backups.size();++i)
+	{
+		const ServerCleanupDao::SIncompleteFileBackup& backup = incomplete_file_backups[i];
+		Server->Log(L"Deleting incomplete file backup ( id="+convert(backup.id)+L", backuptime="+backup.backuptime+L", path="+backup.path+L" ) from client \""+backup.clientname+L"\" ( id="+convert(backup.clientid)+L" ) ...", LL_INFO);
+		if(!deleteFileBackup(settings.getSettings()->backupfolder, backup.clientid, backup.id))
+		{
+			Server->Log("Error deleting file backup", LL_WARNING);
+		}
+		else
+		{
+			Server->Log("done.");
+		}
+	}
 }
 
 

@@ -126,6 +126,8 @@ private:
 
 	bool enforce_quota(int clientid, std::ostringstream& log);
 
+	void delete_incomplete_file_backups(void);
+
 	IDatabase *db;
 
 	static IMutex *mutex;

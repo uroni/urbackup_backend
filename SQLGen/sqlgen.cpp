@@ -444,14 +444,21 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		}
 		else
 		{
-			if(return_types[0].type=="string")
+			if(return_types.empty())
 			{
-				return_outer+="std::wstring";
+				std::cout << "@return is missing!" << std::endl;
 			}
 			else
 			{
-				return_outer+=return_types[0].type;
-			}
+				if(return_types[0].type=="string")
+				{
+					return_outer+="std::wstring";
+				}
+				else
+				{
+					return_outer+=return_types[0].type;
+				}
+			}			
 		}
 		return_outer+=">";
 	}
@@ -562,13 +569,21 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		}
 		else
 		{
-			if(return_types[0].type=="string")
+			if(!return_types.empty())
 			{
-				code+="std::wstring";
+				if(return_types[0].type=="string")
+				{
+					code+="std::wstring";
+				}
+				else
+				{
+					code+=return_types[0].type;
+				}
 			}
 			else
 			{
-				code+=return_types[0].type;
+				std::cout << "@return is missing!" << std::endl;
+				//TODO error handling
 			}
 		}
 		code+="> ret;\r\n";
@@ -599,17 +614,24 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		}
 		else
 		{
-			if(return_types[0].type=="int")
+			if(!return_types.empty())
 			{
-				code+="\t\tret[i]=watoi(res[i][L\""+return_types[0].name+"\"]);\r\n";
-			}
-			else if(return_types[0].type=="int64")
-			{
-				code+="\t\tret[i]=watoi64(res[i][L\""+return_types[0].name+"\"]);\r\n";
+				if(return_types[0].type=="int")
+				{
+					code+="\t\tret[i]=watoi(res[i][L\""+return_types[0].name+"\"]);\r\n";
+				}
+				else if(return_types[0].type=="int64")
+				{
+					code+="\t\tret[i]=watoi64(res[i][L\""+return_types[0].name+"\"]);\r\n";
+				}
+				else
+				{
+					code+="\t\tret[i]=res[i][L\""+return_types[0].name+"\"];\r\n";
+				}
 			}
 			else
 			{
-				code+="\t\tret[i]=res[i][L\""+return_types[0].name+"\"];\r\n";
+				//TODO: ERROR handling
 			}
 		}
 		code+="\t}\r\n";

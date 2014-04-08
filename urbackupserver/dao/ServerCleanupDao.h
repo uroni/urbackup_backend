@@ -54,6 +54,15 @@ public:
 		int id;
 		int complete;
 	};
+	struct SIncompleteFileBackup
+	{
+		int id;
+		int clientid;
+		int incremental;
+		std::wstring backuptime;
+		std::wstring path;
+		std::wstring clientname;
+	};
 	struct SIncompleteImages
 	{
 		int id;
@@ -93,6 +102,7 @@ public:
 	CondInt64 getUsedStorage(int clientid);
 	void cleanupBackupLogs(void);
 	void cleanupAuthLog(void);
+	std::vector<SIncompleteFileBackup> getIncompleteFileBackups(void);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -134,5 +144,6 @@ private:
 	IQuery* q_getUsedStorage;
 	IQuery* q_cleanupBackupLogs;
 	IQuery* q_cleanupAuthLog;
+	IQuery* q_getIncompleteFileBackups;
 	//@-SQLGenVariablesEnd
 };
