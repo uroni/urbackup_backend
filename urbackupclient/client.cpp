@@ -973,17 +973,9 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 #ifndef _WIN32
 	if(path.empty())
 	{
-		return getFiles(os_file_sep());
+		path = os_file_sep();
 	}
-	else
-	{
-		return getFiles(path);
-	}
-#else
-	if(path.find(L"UrBackupServer")!=std::string::npos)
-	{
-		int a4=4;
-	}
+#endif
 
 	std::wstring path_lower=strlower(orig_path+os_file_sep());
 	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
@@ -1014,11 +1006,19 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		{
 			if(os_directory_exists(index_root_path))
 			{
+#ifdef _WIN32
 				VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
+#else
+				VSSLog(L"Error while getting files in folder \""+path+L"\". User may not have permissions to access this folder. Errorno is "+convert(errno), LL_ERROR);
+#endif
 			}
 			else
 			{
+#ifdef _WIN32
 				VSSLog(L"Error while getting files in folder \""+path+L"\". Windows errorcode: "+convert((int)GetLastError())+L". Access to root directory is gone too. Shadow copy was probably deleted while indexing.", LL_ERROR);
+#else
+				VSSLog(L"Error while getting files in folder \""+path+L"\". Errorno is "+convert(errno)+L". Access to root directory is gone too. Snapshot was probably deleted while indexing.", LL_ERROR);
+#endif
 				index_error=true;
 			}
 		}
@@ -1076,11 +1076,19 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		}
 		else
 		{
-			cd->addFiles(path_lower, tmp);
+#ifndef _WIN32
+			if(calculate_filehashes_on_client)
+			{
+#endif
+				cd->addFiles(path_lower, tmp);
+#ifndef _WIN32
+			}
+#endif
 		}
 
 		return tmp;
 	}
+#ifdef _WIN32
 	else
 	{	
 		if( cd->getFiles(path_lower, tmp) )
