@@ -8,6 +8,8 @@
 #include <Aclapi.h>
 #else
 #include <sys/fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 #ifdef _WIN32
