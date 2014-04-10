@@ -968,7 +968,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 	return calculated_hash;
 }
 
-std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_path, const std::wstring &path, const std::wstring& named_path, bool use_db)
+std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_path, std::wstring path, const std::wstring& named_path, bool use_db/*=true*/)
 {
 #ifndef _WIN32
 	if(path.empty())

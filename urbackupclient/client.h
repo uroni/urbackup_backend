@@ -138,7 +138,7 @@ private:
 	bool isExcluded(const std::wstring &path);
 	bool isIncluded(const std::wstring &path, bool *adding_worthless);
 
-	std::vector<SFileAndHash> getFilesProxy(const std::wstring &orig_path, const std::wstring &path, const std::wstring& named_path, bool use_db=true);
+	std::vector<SFileAndHash> getFilesProxy(const std::wstring &orig_path, std::wstring path, const std::wstring& named_path, bool use_db=true);
 
 	bool start_shadowcopy(SCDirs *dir, bool *onlyref=NULL, bool allow_restart=false, std::vector<SCRef*> no_restart_refs=std::vector<SCRef*>(), bool for_imagebackup=false, bool *stale_shadowcopy=NULL);
 	bool release_shadowcopy(SCDirs *dir, bool for_imagebackup=false, int save_id=-1, SCDirs *dontdel=NULL);
