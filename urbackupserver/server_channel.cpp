@@ -233,14 +233,14 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		std::string s_params=msg.substr(6);
 		str_map params;
-		ParseParamStr(s_params, &params);
+		ParseParamStrHttp(s_params, &params);
 		LOGIN(params);
 	}
 	else if(msg.find("SALT ")==0 && !internet_mode)
 	{
 		std::string s_params=msg.substr(5);
 		str_map params;
-		ParseParamStr(s_params, &params);
+		ParseParamStrHttp(s_params, &params);
 		SALT(params);
 	}
 	else if(msg=="GET BACKUPCLIENTS" && !internet_mode && hasDownloadImageRights() )
@@ -256,7 +256,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		std::string s_params=msg.substr(15);
 		str_map params;
-		ParseParamStr(s_params, &params);
+		ParseParamStrHttp(s_params, &params);
 
 		DOWNLOAD_IMAGE(params);
 	}

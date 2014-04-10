@@ -596,7 +596,7 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 		{
 			std::string s_params=cmd.substr(9);
 			str_map params;
-			ParseParamStr(s_params, &params);
+			ParseParamStrHttp(s_params, &params, false);
 			capa=watoi(params[L"capa"]);
 		}
 		channel_capa.push_back(capa);
@@ -732,7 +732,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		lasttime=Server->getTimeMS();
 		std::string s_params=cmd.substr(11);
 		str_map params;
-		ParseParamStr(s_params, &params);
+		ParseParamStrHttp(s_params, &params, false);
 
 		server_token=Server->ConvertToUTF8(params[L"token"]);
 		image_inf.image_letter=Server->ConvertToUTF8(params[L"letter"]);
@@ -825,7 +825,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 		lasttime=Server->getTimeMS();
 		std::string s_params=cmd.substr(11);
 		str_map params;
-		ParseParamStr(s_params, &params);
+		ParseParamStrHttp(s_params, &params, false);
 
 		server_token=Server->ConvertToUTF8(params[L"token"]);
 
@@ -932,7 +932,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	lasttime=Server->getTimeMS();
 	std::string s_params=cmd.substr(4);
 	str_map params;
-	ParseParamStr(s_params, &params);
+	ParseParamStrHttp(s_params, &params, false);
 
 	std::wstring dl=params[L"driveletter"];
 
@@ -1204,7 +1204,7 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 	else
 	{
 		str_map params;
-		ParseParamStr(cmd.substr(14), &params);
+		ParseParamStrHttp(cmd.substr(14), &params, false);
 
 		hashdataleft=watoi(params[L"size"]);
 		silent_update=(params[L"silent_update"]==L"true");

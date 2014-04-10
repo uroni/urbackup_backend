@@ -120,7 +120,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 			if(hashpos!=std::string::npos)
 			{
 				str_nmap params;
-				ParseParamStr(l.substr(hashpos+1), &params, false);
+				ParseParamStr(l.substr(hashpos+1), &params);
 				
 				publickeys.push_back(base64_decode_dash(params["pubkey"]));
 

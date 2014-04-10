@@ -195,7 +195,7 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 			if( iter->second[i]=='+' )
 				iter->second[i]=' ';
 		}
-		ParseParamStr(iter->second, &GET );			
+		ParseParamStrHttp(iter->second, &GET );			
 		req->params.erase( iter );
 	}
 	
@@ -213,7 +213,7 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 				if( req->stdin_stream[i]=='+' )
 					req->stdin_stream[i]=' ';
 			}
-			ParseParamStr(req->stdin_stream, &POST );
+			ParseParamStrHttp(req->stdin_stream, &POST );
 		}
 	}
 	else

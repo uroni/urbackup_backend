@@ -1309,7 +1309,7 @@ bool BackupServerGet::getNextEntry(char ch, SFile &data, std::map<std::wstring, 
 		{
 			if(extra!=NULL)
 			{
-				ParseParamStr(t_name, extra, false);
+				ParseParamStrHttp(t_name, extra, false);
 			}
 			resetEntryState();
 			return true;
@@ -3261,7 +3261,7 @@ bool BackupServerGet::updateCapabilities(void)
 	if(cap!="ERR" && !cap.empty())
 	{
 		str_map params;
-		ParseParamStr(cap, &params);
+		ParseParamStrHttp(cap, &params);
 		if(params[L"IMAGE"]!=L"1")
 		{
 			Server->Log("Client doesn't have IMAGE capability", LL_DEBUG);

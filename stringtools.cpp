@@ -1157,7 +1157,7 @@ std::wstring UnescapeSQLString(const std::wstring &pStr)
 
 wstring htmldecode(string str, bool html, char xc='%');
 
-void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap, bool escape_params)
+void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap, bool escape_params)
 {
 	std::wstring key;
 	std::string value;
@@ -1202,7 +1202,7 @@ void ParseParamStr(const std::string &pStr, std::map<std::wstring,std::wstring> 
 	}
 }
 
-void ParseParamStr(const std::string &pStr, std::map<std::string,std::string> *pMap, bool escape_params)
+void ParseParamStr(const std::string &pStr, std::map<std::string,std::string> *pMap)
 {
 	std::string key;
 	std::string value;
@@ -1218,10 +1218,6 @@ void ParseParamStr(const std::string &pStr, std::map<std::string,std::string> *p
 		else if( (ch=='&'||ch=='$') && pos==1 )
 		{
 			pos=0;
-			if(escape_params)
-			{
-				value=EscapeSQLString(value);
-			}
 			pMap->insert( std::pair<std::string, std::string>(key,value) );
 			key.clear(); value.clear();
 		}
@@ -1237,10 +1233,6 @@ void ParseParamStr(const std::string &pStr, std::map<std::string,std::string> *p
 
 	if( value.size()>0 || key.size()>0 )
 	{
-		if(escape_params)
-		{
-			value=EscapeSQLString(value);
-		}
 		pMap->insert( std::pair<std::string, std::string>(key,value) );
 	}
 }
@@ -1613,8 +1605,8 @@ std::string base64_decode_dash(std::string s)
 {
 	for(size_t i=0;i<s.size();++i)
 	{
-		if(s[i]=='%')
-			s[i]='-';
+		if(s[i]=='-')
+			s[i]='=';
 	}
 
 	return base64_decode(s);

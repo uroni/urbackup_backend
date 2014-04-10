@@ -303,7 +303,7 @@ void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 void updateRights(int t_userid, std::string s_rights, IDatabase *db)
 {
 	str_map rights;
-	ParseParamStr(s_rights, &rights);
+	ParseParamStrHttp(s_rights, &rights);
 	
 	IQuery *q_del=db->Prepare("DELETE FROM settings_db.si_permissions WHERE clientid=?");
 	q_del->Bind(t_userid);
