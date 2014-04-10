@@ -1253,10 +1253,20 @@ bool BackupServerGet::getNextEntry(char ch, SFile &data, std::map<std::wstring, 
 	case 2:
 		if(state==2 && ch=='"')
 			state=3;
+		else if(state==2 && ch=='\\')
+			state=7;
 		else if(state==3)
 			state=2;
 		
 		t_name+=ch;
+		break;
+	case 7:
+		if(ch!='"' && ch!='\\')
+		{
+			t_name+='\\';
+		}
+		t_name+=ch;
+		state=2;
 		break;
 	case 4:
 		if(ch!=' ')
@@ -1635,7 +1645,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 						curr_path=ExtractFilePath(curr_path);
 						curr_os_path=ExtractFilePath(curr_os_path);
 					}
-					writeFileRepeat(clientlist, "d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
+					writeFileItem(clientlist, cf);
 				}
 				else
 				{
@@ -1663,7 +1673,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					}
 					if( file_ok )
 					{
-						writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+						writeFileItem(clientlist, cf);
 					}
 				}
 			}
@@ -2664,7 +2674,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					
 					if(f_ok)
 					{
-						writeFileRepeat(clientlist, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+						writeFileItem(clientlist, cf);
 					}
 				}
 				++line;

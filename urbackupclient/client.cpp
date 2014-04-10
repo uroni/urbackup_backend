@@ -669,7 +669,7 @@ void IndexThread::indexDirs(void)
 			index_c_db=0;
 			index_c_fs=0;
 			index_c_db_update=0;
-			outfile << "d\"" << Server->ConvertToUTF8(backup_dirs[i].tname) << "\"\n";
+			outfile << "d\"" << escapeListName(Server->ConvertToUTF8(backup_dirs[i].tname)) << "\"\n";
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
@@ -807,7 +807,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				continue;
 			}
 			has_include=true;
-			outfile << "f\"" << Server->ConvertToUTF8(files[i].name) << "\" " << files[i].size << " " << files[i].last_modified;
+			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].last_modified;
 
 			if(end_to_end_file_backup_verification_enabled || calculate_filehashes_on_client)
 			{
@@ -849,7 +849,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
 				std::streampos pos=outfile.tellp();
-				outfile << "d\"" << Server->ConvertToUTF8(files[i].name) << "\"\n";
+				outfile << "d\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\"\n";
 				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile);			
 				outfile << "d\"..\"\n";
 
@@ -2779,4 +2779,26 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 	changed_dirs.insert(changed_dirs.end(), additional_changed_dirs.begin(), additional_changed_dirs.end());
 	std::sort(changed_dirs.begin(), changed_dirs.end());
 #endif
+}
+
+std::string IndexThread::escapeListName( const std::string& listname )
+{
+	std::string ret;
+	ret.reserve(listname.size());
+	for(size_t i=0;i<listname.size();++i)
+	{
+		if(listname[i]=='"')
+		{
+			ret+="\\\"";
+		}
+		else if(listname[i]=='\\')
+		{
+			ret+="\\\\";
+		}
+		else
+		{
+			ret+=listname[i];
+		}
+	}
+	return ret;
 }

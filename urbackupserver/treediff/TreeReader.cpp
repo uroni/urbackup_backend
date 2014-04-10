@@ -182,10 +182,22 @@ bool TreeReader::readTree(const std::string &fn)
 					{
 						state=3;
 					}
+					else if(ch=='\\')
+					{
+						state=5;
+					}
 					else
 					{
 						name+=ch;
 					}
+					break;
+				case 5:
+					if(ch!='\"' && ch!='\\')
+					{
+						name+='\\';
+					}
+					name+=ch;
+					state=2;
 					break;
 				case 3:
 					if(ch==' ')

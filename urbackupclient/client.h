@@ -177,7 +177,9 @@ private:
 
 	void addFileExceptions(void);
 
-	void handleHardLinks(const std::wstring& bpath, const std::wstring& vsspath);	
+	void handleHardLinks(const std::wstring& bpath, const std::wstring& vsspath);
+
+	std::string escapeListName(const std::string& listname);
 
 	std::string starttoken;
 
