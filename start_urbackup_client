@@ -40,18 +40,27 @@ print_help()
 print_version()
 {
 	echo "UrBackup Client v1.4"
-	echo "Copyright (C) 2011 Martin Raiber"
+	echo "Copyright (C) 2011-2014 Martin Raiber"
 	echo "This is free software; see the source for copying conditions. There is NO"
 	echo "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
 	exit 0
 }
 
+RUN_IN_GDB=0
+RUN_IN_VALGRIND=0
 
-if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
+GETOPT=getopt
+
+if test -x $PREFIX/bin/getopt
+then
+	GETOPT=$PREFIX/bin/getopt
+fi
+
+if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	LOGFILE="urbackup_client.log"
 	LOGLEVEL="warn"
 	PIDFILE="/var/run/urbackup_client.pid"
-	TEMP=`getopt -o f:h:l:v -n start_urbackup_client --long version,no_daemon,help,logfile:,loglevel:,pidfile: -- "$@"`
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_client --long version,no_daemon,help,logfile:,loglevel:,pidfile:,run_in_gdb,run_in_valgrind -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -59,6 +68,8 @@ if `getopt -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			-v|--loglevel) LOGLEVEL="$2"; shift 2 ;;
 			--pidfile) PIDFILE="$2"; shift 2 ;;
 			--no_daemon) S_DAEMON=""; shift ;;
+			--run_in_gdb) RUN_IN_GDB=1; shift ;;
+			--run_in_valgrind) RUN_IN_VALGRIND=1; shift ;;
 			--help) print_help ;;
 			--version) print_version ;;
 			--) shift; break ;;
@@ -83,4 +94,12 @@ ulimit -n 10000 > /dev/null 2>&1
 DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
 
 cd $DAEMON_DIR
-exec $DAEMON $S_DAEMON $DAEMON_ARGS
+if [ "x$RUN_IN_GDB" = "x1" ]
+then
+	gdb --args $DAEMON $S_DAEMON $DAEMON_ARGS
+elif [ "x$RUN_IN_VALGRIND" = "x1" ]
+then
+	valgrind --leak-check=full --track-origins=yes $DAEMON $S_DAEMON $DAEMON_ARGS --leak_check true
+else
+	exec $DAEMON $S_DAEMON $DAEMON_ARGS
+fi
