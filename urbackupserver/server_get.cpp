@@ -167,17 +167,39 @@ namespace
 	void writeFileRepeat(IFile *f, const std::string &str)
 	{
 		writeFileRepeat(f, str.c_str(), str.size());
-	}	
+	}
+
+	std::string escapeListName( const std::string& listname )
+	{
+		std::string ret;
+		ret.reserve(listname.size());
+		for(size_t i=0;i<listname.size();++i)
+		{
+			if(listname[i]=='"')
+			{
+				ret+="\\\"";
+			}
+			else if(listname[i]=='\\')
+			{
+				ret+="\\\\";
+			}
+			else
+			{
+				ret+=listname[i];
+			}
+		}
+		return ret;
+	}
 
 	void writeFileItem(IFile* f, SFile cf)
 	{
 		if(cf.isdir)
 		{
-			writeFileRepeat(f, "d\""+Server->ConvertToUTF8(cf.name)+"\"\n");
+			writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\"\n");
 		}
 		else
 		{
-			writeFileRepeat(f, "f\""+Server->ConvertToUTF8(cf.name)+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
+			writeFileRepeat(f, "f\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
 		}
 	}
 }
