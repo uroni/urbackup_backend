@@ -139,7 +139,7 @@ bool write_file_only_admin(const std::string& data, const std::string& fn)
 
 bool write_file_only_admin(const std::string& data, const std::string& fn)
 {
-	int fd = open(fn.c_str(), O_CREAT, S_IRWXU);
+	int fd = open(fn.c_str(), O_WRONLY|O_CREAT, S_IRWXU);
 
 	if(fd==-1)
 	{
