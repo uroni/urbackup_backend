@@ -1591,13 +1591,13 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 			bool b=getNextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
-				std::wstring short_name=shortenFilename(cf.name);
+				std::wstring osspecific_name=fixFilenameForOS(cf.name);
 				if(cf.isdir==true)
 				{
 					if(cf.name!=L"..")
 					{
 						curr_path+=L"/"+cf.name;
-						curr_os_path+=L"/"+short_name;
+						curr_os_path+=L"/"+osspecific_name;
 						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
 
 						if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
@@ -1643,7 +1643,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
 					if( hash_it!=extra_params.end())
 					{
-						if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, true))
+						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, true))
 						{
 							transferred+=cf.size;
 							file_ok=true;
@@ -1651,7 +1651,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					}
 					if(!file_ok)
 					{
-						bool b=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, L"", L"", file_ok, hashed_transfer, save_incomplete_files);
+						bool b=load_file(cf.name, osspecific_name, curr_path, curr_os_path, fc, with_hashes, L"", L"", file_ok, hashed_transfer, save_incomplete_files);
 						if(!b)
 						{
 							ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
@@ -2422,7 +2422,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					ServerStatus::setServerStatus(status, true);
 				}
 
-				std::wstring short_name=shortenFilename(cf.name);				
+				std::wstring osspecific_name=fixFilenameForOS(cf.name);				
 				if(cf.isdir==true)
 				{
 					if(indirchange==false && hasChange(line, diffs) )
@@ -2462,7 +2462,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					if(cf.name!=L"..")
 					{
 						curr_path+=L"/"+cf.name;
-						curr_os_path+=L"/"+short_name;
+						curr_os_path+=L"/"+osspecific_name;
 						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
 
 						bool dir_linked=false;
@@ -2544,7 +2544,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				}
 				else //is file
 				{
-					std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+L"/"+short_name);
+					std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+L"/"+osspecific_name);
 					
 					bool f_ok=false;
 
@@ -2554,7 +2554,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 						if(r_offline==false && hash_it!=extra_params.end())
 						{
-							if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
+							if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
 							{
 								transferred+=cf.size;
 								f_ok=true;
@@ -2566,9 +2566,9 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							bool b;
 							bool download_ok;
 							if(intra_file_diffs)
-								b=load_file_patch(cf.name, short_name, curr_path, curr_os_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, intra_file_diffs, download_ok);
+								b=load_file_patch(cf.name, osspecific_name, curr_path, curr_os_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, intra_file_diffs, download_ok);
 							else
-								b=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer, intra_file_diffs);
+								b=load_file(cf.name, osspecific_name, curr_path, curr_os_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer, intra_file_diffs);
 
 							if(!b)
 							{
@@ -2622,7 +2622,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 							if(r_offline==false && hash_it!=extra_params.end())
 							{
-								if(link_file(cf.name, short_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
+								if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
 								{
 									f_ok=true;
 								}
@@ -2633,9 +2633,9 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								bool download_ok;
 								bool b2;
 								if(intra_file_diffs)
-									b2=load_file_patch(cf.name, short_name, curr_path, curr_os_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, intra_file_diffs, download_ok);
+									b2=load_file_patch(cf.name, osspecific_name, curr_path, curr_os_path, last_backuppath, last_backuppath_complete, fc_chunked, fc, intra_file_diffs, download_ok);
 								else
-									b2=load_file(cf.name, short_name, curr_path, curr_os_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer, intra_file_diffs);
+									b2=load_file(cf.name, osspecific_name, curr_path, curr_os_path, fc, with_hashes, last_backuppath, last_backuppath_complete, download_ok, hashed_transfer, intra_file_diffs);
 
 								if(!b2)
 								{
@@ -2848,8 +2848,8 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 
 				if( hasChange(line, deleted_ids) )
 				{
-					std::wstring short_fn=shortenFilename(curr_file.name);
-					std::wstring curr_fn=convertToOSPathFromFileClient(curr_os_path+os_file_sep()+short_fn);
+					std::wstring osspecific_name=fixFilenameForOS(curr_file.name);
+					std::wstring curr_fn=convertToOSPathFromFileClient(curr_os_path+os_file_sep()+osspecific_name);
 					if(curr_file.isdir)
 					{
 						if(curr_dir_exists)
@@ -2865,7 +2865,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 							}
 						}
 						curr_path+=os_file_sep()+curr_file.name;
-						curr_os_path+=os_file_sep()+short_fn;
+						curr_os_path+=os_file_sep()+osspecific_name;
 						curr_dir_exists=false;
 					}
 					else
@@ -2887,7 +2887,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 				else if( curr_file.isdir && curr_file.name!=L".." )
 				{
 					curr_path+=os_file_sep()+curr_file.name;
-					curr_os_path+=os_file_sep()+shortenFilename(curr_file.name);
+					curr_os_path+=os_file_sep()+fixFilenameForOS(curr_file.name);
 				}
 				++line;
 			}
@@ -4278,10 +4278,11 @@ IPipe * BackupServerGet::new_fileclient_connection(void)
 	return rp;
 }
 
-std::wstring BackupServerGet::shortenFilename(const std::wstring& fn)
+std::wstring BackupServerGet::fixFilenameForOS(const std::wstring& fn)
 {
 	std::wstring ret;
 	bool shortened_file=false;
+	bool has_disallowed_char = false;
 #ifdef _WIN32
 	if(fn.size()>=MAX_PATH-15)
 	{
@@ -4290,6 +4291,21 @@ std::wstring BackupServerGet::shortenFilename(const std::wstring& fn)
 		ret.resize(MAX_PATH-15);
 		shortened_file=true;
 	}
+	std::wstring windows_disallowed_chars = L"\\:*?\"<>|";	
+	for(size_t i=0;i<windows_disallowed_chars.size();++i)
+	{
+		wchar_t ch = windows_disallowed_chars[i];
+		if(fn.find(ch)!=std::string::npos)
+		{
+			if(!has_disallowed_char)
+			{
+				ret = fn;
+				has_disallowed_char=true;
+			}
+			ServerLogger::Log(clientid, L"Filename \""+fn+L"\" contains '"+std::wstring(ch, 1)+L"' which Windows does not allow in paths. Replacing '"+std::wstring(ch, 1)+L"' with '_'.", LL_WARNING);
+			ret = ReplaceChar(ret, ch, '_');
+		}
+	}	
 #else
 	if(Server->ConvertToUTF8(fn).size()>=NAME_MAX-11)
 	{
@@ -4315,7 +4331,14 @@ std::wstring BackupServerGet::shortenFilename(const std::wstring& fn)
 	}
 	else
 	{
-		return fn;
+		if(has_disallowed_char)
+		{
+			return ret;
+		}
+		else
+		{
+			return fn;
+		}
 	}
 }
 

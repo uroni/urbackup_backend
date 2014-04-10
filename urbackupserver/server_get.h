@@ -119,7 +119,7 @@ private:
 
 	bool deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error);
 
-	std::wstring shortenFilename(const std::wstring& fn);
+	std::wstring fixFilenameForOS(const std::wstring& fn);
 
 	_u32 getClientFilesrvConnection(FileClient *fc, int timeoutms=10000);
 	FileClientChunked getClientChunkedFilesrvConnection(int timeoutms=10000);
