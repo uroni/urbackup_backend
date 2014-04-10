@@ -1252,11 +1252,18 @@ bool BackupServerGet::getNextEntry(char ch, SFile &data, std::map<std::wstring, 
 		}
 	case 2:
 		if(state==2 && ch=='"')
+		{
 			state=3;
+		}
 		else if(state==2 && ch=='\\')
+		{
 			state=7;
+			break;
+		}
 		else if(state==3)
+		{
 			state=2;
+		}
 		
 		t_name+=ch;
 		break;
@@ -4291,15 +4298,14 @@ IPipe * BackupServerGet::new_fileclient_connection(void)
 std::wstring BackupServerGet::fixFilenameForOS(const std::wstring& fn)
 {
 	std::wstring ret;
-	bool shortened_file=false;
-	bool has_disallowed_char = false;
+	bool modified_filename=false;
 #ifdef _WIN32
 	if(fn.size()>=MAX_PATH-15)
 	{
 		ret=fn;
-		ServerLogger::Log(clientid, L"Filename \""+fn+L"\" too long. Shortening it.", LL_WARNING);
+		ServerLogger::Log(clientid, L"Filename \""+fn+L"\" too long. Shortening it and appending hash.", LL_WARNING);
 		ret.resize(MAX_PATH-15);
-		shortened_file=true;
+		modified_filename=true;
 	}
 	std::wstring windows_disallowed_chars = L"\\:*?\"<>|";	
 	for(size_t i=0;i<windows_disallowed_chars.size();++i)
@@ -4307,12 +4313,12 @@ std::wstring BackupServerGet::fixFilenameForOS(const std::wstring& fn)
 		wchar_t ch = windows_disallowed_chars[i];
 		if(fn.find(ch)!=std::string::npos)
 		{
-			if(!has_disallowed_char)
+			if(!modified_filename)
 			{
 				ret = fn;
-				has_disallowed_char=true;
+				modified_filename=true;
 			}
-			ServerLogger::Log(clientid, L"Filename \""+fn+L"\" contains '"+std::wstring(ch, 1)+L"' which Windows does not allow in paths. Replacing '"+std::wstring(ch, 1)+L"' with '_'.", LL_WARNING);
+			ServerLogger::Log(clientid, L"Filename \""+fn+L"\" contains '"+std::wstring(1, ch)+L"' which Windows does not allow in paths. Replacing '"+std::wstring(1, ch)+L"' with '_' and appending hash.", LL_WARNING);
 			ret = ReplaceChar(ret, ch, '_');
 		}
 	}	
@@ -4329,26 +4335,19 @@ std::wstring BackupServerGet::fixFilenameForOS(const std::wstring& fn)
 				log_msg=false;
 			}
 			ret.resize(ret.size()-1);
-			shortened_file=true;
+			modified_filename=true;
 		}
 		while( Server->ConvertToUTF8(ret).size()>=NAME_MAX-11 );
 	}
 #endif
-	if(shortened_file)
+	if(modified_filename)
 	{
 		std::string hex_md5=Server->GenerateHexMD5(fn);
-		return ret+widen(hex_md5.substr(0, 10));
+		return ret+L"-"+widen(hex_md5.substr(0, 10));
 	}
 	else
 	{
-		if(has_disallowed_char)
-		{
-			return ret;
-		}
-		else
-		{
-			return fn;
-		}
+		return fn;
 	}
 }
 
