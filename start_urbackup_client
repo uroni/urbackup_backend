@@ -77,6 +77,16 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		esac
 	done
 	
+	if [ "x$RUN_IN_GDB" = "x1" ]
+	then
+		S_DAEMON=""
+	fi
+	
+	if [ "x$RUN_IN_VALGRIND" = "x1" ]
+	then
+		S_DAEMON=""
+	fi
+	
 	DAEMON_ARGS="--logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --pidfile $PIDFILE"
 else
 	DAEMON_ARGS="$*"
