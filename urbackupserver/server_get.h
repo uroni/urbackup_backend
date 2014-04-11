@@ -82,7 +82,7 @@ private:
 	void start_shadowcopy(const std::string &path);
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
-	bool request_filelist_construct(bool full, bool with_token=true, bool *no_backup_dirs=NULL);
+	bool request_filelist_construct(bool full, bool with_token, bool& no_backup_dirs, bool& connect_fail);
 	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok, bool hashed_transfer, bool save_incomplete_file);
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql);
 	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal, bool save_incomplete_file, bool &download_ok);

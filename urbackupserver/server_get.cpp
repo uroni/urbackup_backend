@@ -1354,7 +1354,7 @@ void BackupServerGet::resetEntryState(void)
 	state=0;
 }
 
-bool BackupServerGet::request_filelist_construct(bool full, bool with_token, bool *no_backup_dirs)
+bool BackupServerGet::request_filelist_construct(bool full, bool with_token, bool& no_backup_dirs, bool& connect_fail)
 {
 	if(server_settings->getSettings()->end_to_end_file_backup_verification)
 	{
@@ -1374,6 +1374,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 	if(cc==NULL)
 	{
 		ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error during filelist construction", LL_ERROR);
+		connect_fail=true;
 		return false;
 	}
 
@@ -1420,7 +1421,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 			{
 				Server->destroy(cc);
 				ServerLogger::Log(clientid, clientname+L": Trying old filelist request", LL_WARNING);
-				return request_filelist_construct(full, false, no_backup_dirs);
+				return request_filelist_construct(full, false, no_backup_dirs, connect_fail);
 			}
 			else
 			{
@@ -1458,10 +1459,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 				else
 				{
 					ServerLogger::Log(clientid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret)+L". Please add paths to backup on the client (via tray icon) or configure default paths to backup.", LL_ERROR);
-					if(no_backup_dirs!=NULL)
-					{
-						*no_backup_dirs=true;
-					}
+					no_backup_dirs=true;
 					break;
 				}				
 			}
@@ -1483,12 +1481,13 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		return false;
 	
 	bool no_backup_dirs=false;
-	bool b=request_filelist_construct(true, true, &no_backup_dirs);
+	bool connect_fail=false;
+	bool b=request_filelist_construct(true, true, no_backup_dirs, connect_fail);
 	if(!b)
 	{
 		has_error=true;
 
-		if(no_backup_dirs)
+		if(no_backup_dirs || connect_fail)
 		{
 			log_backup=false;
 		}
@@ -2191,12 +2190,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	}
 	
 	bool no_backup_dirs=false;
-	bool b=request_filelist_construct(false, true, &no_backup_dirs);
+	bool connect_fail = false;
+	bool b=request_filelist_construct(false, true, no_backup_dirs, connect_fail);
 	if(!b)
 	{
 		has_error=true;
 
-		if(no_backup_dirs)
+		if(no_backup_dirs || connect_fail)
 		{
 			log_backup=false;
 		}
