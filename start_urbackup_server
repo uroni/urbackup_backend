@@ -257,12 +257,13 @@ then
 	DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
 fi
 
-cd $DAEMON_DIR
 if [ "x$RUN_IN_GDB" = "x1" ]
 then
+	cd $DAEMON_DIR
 	gdb --args $DAEMON $S_DAEMON $DAEMON_ARGS
 elif [ "x$RUN_IN_VALGRIND" = "x1" ]
 then
+	cd $DAEMON_DIR
 	valgrind --leak-check=full --track-origins=yes $DAEMON $S_DAEMON $DAEMON_ARGS --allow_shutdown true --leak_check true
 elif [ "x$MOUNTVHD" != "x" ]
 then
@@ -272,5 +273,8 @@ then
 	echo "Starting mounting..."
 	mount -v -o ro "$MOUNTVHD_TMPDIR/volume" "$MOUNTVHD_MOUNTPOINT"
 else
+	if [ "x$DECOMPRESS" = "x" ]; then
+		cd $DAEMON_DIR
+	fi
 	exec $DAEMON $S_DAEMON $DAEMON_ARGS
 fi
