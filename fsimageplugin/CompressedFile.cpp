@@ -167,7 +167,7 @@ _u32 CompressedFile::Read( char* buffer, _u32 bsize )
 
 	if(cachePtr == NULL)
 	{
-		if(!fillCache(currentPosition, true))
+		if(!fillCache(currentPosition, !readOnly))
 		{
 			return 0;
 		}

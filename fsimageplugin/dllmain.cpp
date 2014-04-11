@@ -121,17 +121,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			exit(2);
 		}
 
-		int pcdone = 0;
+		int pcdone = -1;
 
 		{
 			CompressedFile compFile(widen(decompress), MODE_READ);
 
 			__int64 decompressed = 0;
-			char buffer[4096];
+			char buffer[32768];
 			_u32 read;
 			do 
 			{
-				read = compFile.Read(buffer, 4096);
+				read = compFile.Read(buffer, 32768);
 				if(read>0)
 				{
 					if(out->Write(buffer, read)!=read)
@@ -141,11 +141,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 					}
 				}
 				decompressed+=read;
-				int currentpc = static_cast<int>(static_cast<float>(decompressed)/compFile.Size()+0.5f);
+				int currentpc = static_cast<int>(static_cast<float>(decompressed)/compFile.Size()*100.f+0.5f);
 				if(currentpc!=pcdone)
 				{
 					pcdone=currentpc;
-					Server->Log("Decompressing \""+decompress+"\"... "+nconvert(pcdone)+"% done", LL_INFO);
+					Server->Log("Decompressing \""+decompress+"\"... "+nconvert(pcdone)+"%", LL_INFO);
 				}
 			} while (read>0);
 

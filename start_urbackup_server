@@ -74,6 +74,12 @@ then
 	echo "Info: Snapshot helper not found. Btrfs mode will not work."
 fi
 
+HAS_MOUNTVHD=1
+if ! test -e $DAEMON_LIBS/liburbackupserver_fuseplugin.so
+then
+	HAS_MOUNTVHD=0
+fi	
+
 DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --snapshot_helper $SNAPSHOT_HELPER"
 S_DAEMON="--daemon"
 
@@ -97,6 +103,12 @@ print_help()
 	echo "--export_auth_log		Export authentication log"
 	echo "--broadcast_interfaces   List of network interfaces from which to send broadcasts (separated by ,)"
 	echo "--user			   Start as specific user (default: urbackup)"
+	echo "--decompress {file}	Decompress a UrBackup compressed file"
+	if [ "x$HAS_MOUNTVHD" = "x1" ]; then
+		echo "--mountvhd {file} 	Mount the VHD(z)-file"
+		echo "--mountpoint {dir}	Mount the VHD(z)-file at this mountpoint"
+		echo "--tempmount {dir}		Use this directory as temporary mountpoint"
+	fi
 	echo ""
 	echo "Have a nice day!"
 	exit 0
@@ -113,6 +125,9 @@ print_version()
 
 RUN_IN_GDB=0
 RUN_IN_VALGRIND=0
+MOUNTVHD=""
+MOUNTVHD_TMPDIR=""
+MOUNTVHD_MOUNTPOINT=""
 
 GETOPT=getopt
 
@@ -132,8 +147,9 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	RESET_PW=""
 	CLEANUP=""
 	BROADCAST_INTERFACES=""
-	URB_USER="urbackup"
-	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,run_in_valgrind,user:,defrag_database,export_auth_log -- "$@"`
+	URB_USER="urbackup"	
+	DECOMPRESS=""
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,run_in_valgrind,user:,defrag_database,export_auth_log,mountvhd:,mountpoint:,tempmount:,decompress: -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -158,6 +174,10 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--user) URB_USER="$2"; shift 2;;
 			--defrag_database) CLEANUP="--app defrag_database"; shift ;;
 			--export_auth_log) CLEANUP="--app export_auth_log"; shift ;;
+			--mountvhd) MOUNTVHD="$2"; shift 2 ;;
+			--mountpoint) MOUNTVHD_MOUNTPOINT="$2"; shift 2;;
+			--tempmount) MOUNTVHD_TMPDIR="$2"; shift 2;;
+			--decompress) DECOMPRESS="$2"; shift 2 ;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac
@@ -188,10 +208,35 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	
 	if [ "x$RUN_IN_VALGRIND" = "x1" ]
 	then
-		S_DAEMON=""
+		S_DAEMON="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so"
 	fi
 	
-	DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE --user $URB_USER $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
+	if [ "x$MOUNTVHD_MOUNTPOINT" != "x" ]; then
+		if [ "x$MOUNTVHD" = "x" ]; then
+			echo "Please specify the VHD file via the --mountvhd argument"
+			exit 1
+		fi
+	fi
+	
+	if [ "x$MOUNTVHD" != "x" ]
+	then
+		if [ "x$MOUNTVHD_MOUNTPOINT" = "x" ]; then
+			echo "Please specify the mountpoint via the --mountpoint argument"
+			exit 1
+		fi
+		if [ "x$MOUNTVHD_TMPDIR" = "x" ]; then
+			MOUNTVHD_TMPDIR=`mktemp -d`
+		fi
+		echo "Using temporary mountpoint $MOUNTVHD_TMPDIR"
+		S_DAEMON="--daemon"
+		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fuseplugin.so --mount $MOUNTVHD --mountpoint $MOUNTVHD_TMPDIR --loglevel debug"
+	elif [ "x$DECOMPRESS" != "x" ]
+	then
+		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --decompress $DECOMPRESS --loglevel debug"
+		S_DAEMON=""
+	else
+		DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE --user $URB_USER $SQLITE_TMPDIR $VERIFY_HASHES $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
+	fi
 else
 	DAEMON_ARGS="--user urbackup $*"
 fi
@@ -207,7 +252,10 @@ ulimit -n 100000 > /dev/null 2>&1
 
 export MPLCONFIGDIR=$DAEMON_DIR/urbackup
 
-DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
+if [ "x$MOUNTVHD" = "x" ]
+then
+	DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
+fi
 
 cd $DAEMON_DIR
 if [ "x$RUN_IN_GDB" = "x1" ]
@@ -216,6 +264,13 @@ then
 elif [ "x$RUN_IN_VALGRIND" = "x1" ]
 then
 	valgrind --leak-check=full --track-origins=yes $DAEMON $S_DAEMON $DAEMON_ARGS --allow_shutdown true --leak_check true
+elif [ "x$MOUNTVHD" != "x" ]
+then
+	echo "Starting VHD background process.."
+	$DAEMON $S_DAEMON $DAEMON_ARGS
+	sleep 3
+	echo "Starting mounting..."
+	mount -v -o ro "$MOUNTVHD_TMPDIR/volume" "$MOUNTVHD_MOUNTPOINT"
 else
 	exec $DAEMON $S_DAEMON $DAEMON_ARGS
 fi
