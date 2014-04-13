@@ -381,19 +381,7 @@ void ServerSettings::readSettingsClient(void)
 		settings->max_image_full=tmp;
 	tmp=settings_client->getValue("startup_backup_delay", -1);
 	if(tmp!=-1)
-		settings->startup_backup_delay=tmp;
-	stmp=settings_client->getValue("backup_window_incr_file", "");
-	if(!stmp.empty())
-		settings->backup_window_incr_file=stmp;
-	stmp=settings_client->getValue("backup_window_full_file", "");
-	if(!stmp.empty())
-		settings->backup_window_full_file=stmp;
-	stmp=settings_client->getValue("backup_window_incr_image", "");
-	if(!stmp.empty())
-		settings->backup_window_incr_image=stmp;
-	stmp=settings_client->getValue("backup_window_full_image", "");
-	if(!stmp.empty())
-		settings->backup_window_full_image=stmp;
+		settings->startup_backup_delay=tmp;	
 	std::wstring swtmp=settings_client->getValue(L"computername", L"");
 	if(!swtmp.empty())
 		settings->computername=swtmp;
@@ -413,6 +401,30 @@ void ServerSettings::readSettingsClient(void)
 	stmp=settings_client->getValue("local_speed", "");
 	if(!stmp.empty())
 		settings->local_speed=atoi(stmp.c_str());
+
+	readBoolClientSetting("client_set_settings", &settings->client_set_settings);
+	readBoolClientSetting("internet_mode_enabled", &settings->internet_mode_enabled);
+	readBoolClientSetting("internet_full_file_backups", &settings->internet_full_file_backups);
+	readBoolClientSetting("internet_image_backups", &settings->internet_image_backups);
+	readBoolClientSetting("internet_compress", &settings->internet_compress);
+	readBoolClientSetting("internet_encrypt", &settings->internet_encrypt);
+
+	if(!settings->overwrite)
+		return;
+
+	stmp=settings_client->getValue("backup_window_incr_file", "");
+	if(!stmp.empty())
+		settings->backup_window_incr_file=stmp;
+	stmp=settings_client->getValue("backup_window_full_file", "");
+	if(!stmp.empty())
+		settings->backup_window_full_file=stmp;
+	stmp=settings_client->getValue("backup_window_incr_image", "");
+	if(!stmp.empty())
+		settings->backup_window_incr_image=stmp;
+	stmp=settings_client->getValue("backup_window_full_image", "");
+	if(!stmp.empty())
+		settings->backup_window_full_image=stmp;
+
 	stmp=settings_client->getValue("client_quota", "");
 	if(!stmp.empty())
 		settings->client_quota=stmp;
@@ -427,20 +439,9 @@ void ServerSettings::readSettingsClient(void)
 	readSizeClientSetting("file_hash_collect_cachesize", &settings->file_hash_collect_cachesize);
 
 	readBoolClientSetting("end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
-	readBoolClientSetting("client_set_settings", &settings->client_set_settings);
-	readBoolClientSetting("internet_mode_enabled", &settings->internet_mode_enabled);
-	readBoolClientSetting("internet_full_file_backups", &settings->internet_full_file_backups);
-	readBoolClientSetting("internet_image_backups", &settings->internet_image_backups);
-	readBoolClientSetting("internet_compress", &settings->internet_compress);
-	readBoolClientSetting("internet_encrypt", &settings->internet_encrypt);
+	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);	
 	readBoolClientSetting("silent_update", &settings->silent_update);
-	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);
 	readBoolClientSetting("compress_images", &settings->compress_images);
-
-	
-
-	if(!settings->overwrite)
-		return;
 
 	readBoolClientSetting("allow_config_paths", &settings->allow_config_paths);
 	readBoolClientSetting("allow_starting_full_file_backups", &settings->allow_starting_full_file_backups);

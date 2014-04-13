@@ -64,6 +64,23 @@ std::vector<std::wstring> getSettingsList(void)
 std::vector<std::wstring> getOnlyServerClientSettingsList(void)
 {
 	std::vector<std::wstring> ret;
+	ret.push_back(L"backup_window_incr_file");
+	ret.push_back(L"backup_window_full_file");
+	ret.push_back(L"backup_window_incr_image");
+	ret.push_back(L"backup_window_full_image");
+	ret.push_back(L"silent_update");
+	ret.push_back(L"client_quota");
+	ret.push_back(L"local_full_file_transfer_mode");
+	ret.push_back(L"internet_full_file_transfer_mode");
+	ret.push_back(L"local_incr_file_transfer_mode");
+	ret.push_back(L"internet_incr_file_transfer_mode");
+	ret.push_back(L"local_image_transfer_mode");
+	ret.push_back(L"internet_image_transfer_mode");
+	ret.push_back(L"file_hash_collect_amount");
+	ret.push_back(L"file_hash_collect_timeout");
+	ret.push_back(L"file_hash_collect_cachesize");
+	ret.push_back(L"end_to_end_file_backup_verification");
+	ret.push_back(L"internet_calculate_filehashes_on_client");
 	ret.push_back(L"compress_images");
 	return ret;
 }
