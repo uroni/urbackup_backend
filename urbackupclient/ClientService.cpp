@@ -740,11 +740,11 @@ void ClientConnector::ReceivePackets(void)
 
 		if(ident_ok) //Commands from Server
 		{
-			if( (cmd=="START BACKUP" || cmd=="2START BACKUP") )
+			if( (cmd=="START BACKUP" || next(cmd, 0, "2START BACKUP") ) )
 			{
 				CMD_START_INCR_FILEBACKUP(cmd); continue;
 			}
-			else if( cmd=="START FULL BACKUP" || cmd=="2START FULL BACKUP")
+			else if( cmd=="START FULL BACKUP" || next(cmd, 0, "2START FULL BACKUP") )
 			{
 				CMD_START_FULL_FILEBACKUP(cmd); continue;
 			}

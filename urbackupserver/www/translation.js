@@ -4,6 +4,8 @@ translations.en={
 "action_2": "Full file backup",
 "action_3": "Incremental image backup",
 "action_4": "Full image backup",
+"action_5": "Resumed incremental file backup",
+"action_6": "Resumed full file backup",
 "action_1_d": "Deleting incremental file backup",
 "action_2_d": "Deleting full file backup",
 "action_3_d": "Deleting incremental image backup",

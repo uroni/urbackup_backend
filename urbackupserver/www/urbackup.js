@@ -339,10 +339,20 @@ function show_progress2(data)
 			}
 			else
 			{
-				if(obj.incremental>0)
-					action=3;
+				if(obj.resumed>0)
+				{
+					if(obj.incremental>0)
+						action=3;
+					else
+						action=4;
+				}
 				else
-					action=4;
+				{
+					if(obj.incremental>0)
+						action=5;
+					else
+						action=6;
+				}
 			}
 			var a="action_"+action;
 			if(obj.del)
@@ -654,9 +664,10 @@ function show_status2(data)
 		if(obj.done_pc<0)
 			obj.done_pc=0;
 		
-		if(obj.status>0 && obj.status<5)
+		if(obj.status>0 && obj.status<7)
 		{
-			if(obj.status>=1 && obj.status<=2)
+			if(obj.status==1 || obj.status==2 ||
+				obj.status==5 || obj.status==6)
 			{
 				obj.start_file_backup=dustRender("status_percent_done", {pcdone: obj.done_pc});
 			}
@@ -676,6 +687,8 @@ function show_status2(data)
 			case 2: obj.status="full_file"; break;
 			case 3: obj.status="incr_image"; break;
 			case 4: obj.status="full_image"; break;
+			case 5: obj.status="resume_incr_file"; break;
+			case 6: obj.status="resume_full_file"; break;
 			case 10: obj.status=trans("starting"); break;
 			case 11: obj.status=trans("ident_err")+" <a href=\"http://www.urbackup.org/FAQ.php#ident_err\" target=\"_blank\">?</a>"; break;
 			case 12: obj.status=trans("too_many_clients_err"); break;
@@ -2510,10 +2523,20 @@ function show_logs2(data)
 			}
 			else
 			{
-				if(obj.incremental>0)
-					action=3;
+				if(obj.resumed>0)
+				{
+					if(obj.incremental>0)
+						action=3;
+					else
+						action=4;
+				}
 				else
-					action=4;
+				{
+					if(obj.incremental>0)
+						action=5;
+					else
+						action=6;
+				}
 			}
 			var a="action_"+action;
 			

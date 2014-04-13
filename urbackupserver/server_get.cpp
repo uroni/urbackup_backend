@@ -980,8 +980,8 @@ void BackupServerGet::prepareSQL(void)
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1", false);
 	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1", false);
-	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0)", false);
-	q_get_last_incremental=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
+	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?)", false);
+	q_get_last_incremental=db->Prepare("SELECT incremental,path,resumed,complete FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_get_last_incremental_complete=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=(SELECT backuptime FROM backups WHERE id=?) WHERE id=?", false);
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
@@ -1071,6 +1071,8 @@ SBackup BackupServerGet::getLastIncremental(void)
 		SBackup b;
 		b.incremental=watoi(res[0][L"incremental"]);
 		b.path=res[0][L"path"];
+		b.is_complete=watoi(res[0][L"complete"])>0;
+		b.is_resumed=watoi(res[0][L"resumed"])>0;
 
 		q_get_last_incremental_complete->Bind(clientid);
 		res=q_get_last_incremental_complete->Read();
@@ -1116,11 +1118,12 @@ SBackup BackupServerGet::getLastIncrementalImage(const std::string &letter)
 	}
 }
 
-int BackupServerGet::createBackupSQL(int incremental, int clientid, std::wstring path)
+int BackupServerGet::createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed)
 {
 	q_create_backup->Bind(incremental);
 	q_create_backup->Bind(clientid);
 	q_create_backup->Bind(path);
+	q_create_backup->Bind(resumed?1:0);
 	q_create_backup->Write();
 	q_create_backup->Reset();
 	return (int)db->getLastInsertID();
@@ -1354,7 +1357,7 @@ void BackupServerGet::resetEntryState(void)
 	state=0;
 }
 
-bool BackupServerGet::request_filelist_construct(bool full, bool with_token, bool& no_backup_dirs, bool& connect_fail)
+bool BackupServerGet::request_filelist_construct(bool full, bool resume, bool with_token, bool& no_backup_dirs, bool& connect_fail)
 {
 	if(server_settings->getSettings()->end_to_end_file_backup_verification)
 	{
@@ -1393,13 +1396,22 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 
 	std::string start_backup_cmd=identity+pver;
 
-	if(full)
+	if(full && !resume)
 	{
 		start_backup_cmd+="START FULL BACKUP";
 	}
 	else
 	{
 		start_backup_cmd+="START BACKUP";
+	}
+
+	if(resume && file_protocol_version>=3)
+	{
+		start_backup_cmd+=" resume=";
+		if(full)
+			start_backup_cmd+="full";
+		else
+			start_backup_cmd+="incr";
 	}
 
 	if(with_token)
@@ -1421,7 +1433,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool with_token, boo
 			{
 				Server->destroy(cc);
 				ServerLogger::Log(clientid, clientname+L": Trying old filelist request", LL_WARNING);
-				return request_filelist_construct(full, false, no_backup_dirs, connect_fail);
+				return request_filelist_construct(full, resume, false, no_backup_dirs, connect_fail);
 			}
 			else
 			{
@@ -1482,7 +1494,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	
 	bool no_backup_dirs=false;
 	bool connect_fail=false;
-	bool b=request_filelist_construct(true, true, no_backup_dirs, connect_fail);
+	bool b=request_filelist_construct(true, false, true, no_backup_dirs, connect_fail);
 	if(!b)
 	{
 		has_error=true;
@@ -1553,7 +1565,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		return false;
 	}
 
-	backupid=createBackupSQL(0, clientid, backuppath_single);
+	backupid=createBackupSQL(0, clientid, backuppath_single, false);
 	
 	tmp->Seek(0);
 	
@@ -2188,10 +2200,27 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 		return doFullBackup(with_hashes, disk_error, log_backup);
 	}
+
+	bool resumed_backup = !last.is_complete;
+	bool resumed_full = (resumed_backup && last.incremental==0);
+
+	if(resumed_backup)
+	{
+		if(resumed_full)
+		{
+			status.statusaction=sa_resume_full_file;
+		}
+		else
+		{
+			status.statusaction=sa_resume_incr_file;
+		}
+		
+		ServerStatus::setServerStatus(status, true);
+	}
 	
 	bool no_backup_dirs=false;
 	bool connect_fail = false;
-	bool b=request_filelist_construct(false, true, no_backup_dirs, connect_fail);
+	bool b=request_filelist_construct(resumed_full, resumed_backup, true, no_backup_dirs, connect_fail);
 	if(!b)
 	{
 		has_error=true;
@@ -2277,7 +2306,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	ServerLogger::Log(clientid, clientname+L" Starting incremental backup...", LL_DEBUG);
 
 	
-	backupid=createBackupSQL(last.incremental+1, clientid, backuppath_single);
+	backupid=createBackupSQL(resumed_full?0:(last.incremental+1), clientid, backuppath_single, resumed_backup);
 
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	std::wstring last_backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path;

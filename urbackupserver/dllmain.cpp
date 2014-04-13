@@ -952,20 +952,20 @@ void upgrade20_21(void)
 	db->Write("UPDATE settings_db.automatic_archival SET archive_window='*;*;*;*' WHERE archive_window IS NULL");
 }
 
-void update21_22(void)
+void upgrade21_22(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("CREATE INDEX files_del_idx ON files_del (shahash, filesize, clientid)");
 }
 
-void update22_23(void)
+void upgrade22_23(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("INSERT INTO misc (tkey, tvalue) VALUES ('files_cache', 'none')");
 	db->Write("CREATE TABLE files_new ( backupid INTEGER, fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER, incremental INTEGER)");
 }
 
-void update23_24(void)
+void upgrade23_24(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db_results res=db->Read("SELECT value, clientid FROM settings_db.settings WHERE key='allow_starting_file_backups'");
@@ -1003,14 +1003,14 @@ void update23_24(void)
 	}
 }
 
-void update24_25(void)
+void upgrade24_25(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("ALTER TABLE backups ADD size_calculated INTEGER");
 	db->Write("UPDATE backups SET size_calculated=0 WHERE size_calculated IS NULL");
 }
 
-void update25_26(void)
+void upgrade25_26(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db_results res=db->Read("SELECT clientid, t_right FROM settings_db.si_permissions WHERE t_domain='settings'");
@@ -1024,7 +1024,7 @@ void update25_26(void)
 	}
 }
 
-void update26_27(void)
+void upgrade26_27(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db_results res=db->Read("SELECT value, clientid FROM settings_db.settings WHERE key='backup_window'");
@@ -1057,7 +1057,7 @@ void update26_27(void)
 	}
 }
 
-void update27_28()
+void upgrade27_28()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("CREATE INDEX settings_db.settings_idx ON settings (key, clientid)");
@@ -1065,7 +1065,7 @@ void update27_28()
 	db->Write("CREATE INDEX settings_db.si_permissions_idx ON si_permissions (clientid, t_domain)");
 }
 
-void update28_29()
+void upgrade28_29()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("CREATE TABLE directory_links ("
@@ -1081,7 +1081,7 @@ void update28_29()
 		"linktarget TEXT)");
 }
 
-void update29_30()
+void upgrade29_30()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("CREATE TABLE settings_db.login_access_log ("
@@ -1092,12 +1092,19 @@ void update29_30()
 		"method INTEGER)");
 }
 
-void update30_31()
+void upgrade30_31()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("CREATE TABLE settings_db.old_backupfolders ("
 		"id INTEGER PRIMARY KEY,"
 		"backupfolder TEXT UNIQUE)");
+}
+
+void upgrade31_32()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE backups ADD resumed INTEGER");
+	db->Write("UPDATE backups SET resumed=0 WHERE resumed IS NULL");
 }
 
 void upgrade(void)
@@ -1121,7 +1128,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=31;
+	int max_v=32;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1228,43 +1235,47 @@ void upgrade(void)
 				++ver;
 				break;
 			case 21:
-				update21_22();
+				upgrade21_22();
 				++ver;
 				break;
 			case 22:
-				update22_23();
+				upgrade22_23();
 				++ver;
 				break;
 			case 23:
-				update23_24();
+				upgrade23_24();
 				++ver;
 				break;
 			case 24:
-				update24_25();
+				upgrade24_25();
 				++ver;
 				break;
 			case 25:
-				update25_26();
+				upgrade25_26();
 				++ver;
 				break;
 			case 26:
-				update26_27();
+				upgrade26_27();
 				++ver;
 				break;
 			case 27:
-				update27_28();
+				upgrade27_28();
 				++ver;
 				break;
 			case 28:
-				update28_29();
+				upgrade28_29();
 				++ver;
 				break;
 			case 29:
-				update29_30();
+				upgrade29_30();
 				++ver;
 				break;
 			case 30:
-				update30_31();
+				upgrade30_31();
+				++ver;
+				break;
+			case 31:
+				upgrade31_32();
 				++ver;
 				break;
 			default:

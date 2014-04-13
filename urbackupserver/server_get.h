@@ -28,6 +28,8 @@ struct SBackup
 	std::wstring path;
 	int incremental_ref;
 	std::wstring complete;
+	bool is_complete;
+	bool is_resumed;
 };
 
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback,
@@ -77,12 +79,12 @@ private:
 	bool isUpdateFullImage(const std::string &letter);
 	bool isUpdateIncrImage(const std::string &letter);
 	bool doFullBackup(bool with_hashes, bool &disk_error, bool &log_backup);
-	int createBackupSQL(int incremental, int clientid, std::wstring path);
+	int createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed);
 	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file);
 	void start_shadowcopy(const std::string &path);
 	void stop_shadowcopy(const std::string &path);
 	void notifyClientBackupSuccessfull(void);
-	bool request_filelist_construct(bool full, bool with_token, bool& no_backup_dirs, bool& connect_fail);
+	bool request_filelist_construct(bool full, bool resume, bool with_token, bool& no_backup_dirs, bool& connect_fail);
 	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok, bool hashed_transfer, bool save_incomplete_file);
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql);
 	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal, bool save_incomplete_file, bool &download_ok);

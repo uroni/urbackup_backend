@@ -261,6 +261,10 @@ ACTION_IMPL(server_status)
 					action=L"incr_image"; break;
 				case sa_full_image:
 					action=L"full_image"; break;
+				case sa_resume_full_file:
+					action=L"resume_full_file"; break;
+				case sa_resume_incr_file:
+					action=L"resume_incr_file"; break;
 				}
 				tab->addString(L"ACTION", action);
 			}

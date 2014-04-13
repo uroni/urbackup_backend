@@ -166,7 +166,26 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 
 void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 {
-	if(cmd=="2START BACKUP") file_version=2;
+	std::string s_params;
+	if(cmd=="2START BACKUP")
+	{
+		file_version=2;
+		if(cmd.size()>14)
+			s_params=cmd.substr(14);
+	}
+	else
+	{
+		if(cmd.size()>13)
+			s_params=cmd.substr(13);
+	}
+
+	str_map params;
+	if(!s_params.empty())
+	{
+		ParseParamStrHttp(s_params, &params, false);
+	}
+
+	std::wstring resume = params[L"resume"];
 
 	state=CCSTATE_START_FILEBACKUP;
 
@@ -183,7 +202,19 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	lasttime=Server->getTimeMS();
 
-	backup_running=RUNNING_INCR_FILE;
+	if(resume.empty())
+	{
+		backup_running=RUNNING_INCR_FILE;
+	}
+	else if(resume==L"full")
+	{
+		backup_running=RUNNING_RESUME_FULL_FILE;
+	}
+	else if(resume==L"incr")
+	{
+		backup_running=RUNNING_RESUME_INCR_FILE;
+	}
+	
 	last_pingtime=Server->getTimeMS();
 	pcdone=-1;
 	backup_source_token=server_token;
@@ -191,7 +222,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 {
-	if(cmd=="2START FULL BACKUP") file_version=2;
+	if(next(cmd,0,"2START FULL BACKUP")) file_version=2;
 
 	state=CCSTATE_START_FILEBACKUP;
 
@@ -351,7 +382,8 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 
 	{
 		IScopedLock lock(backup_mutex);
-		if(backup_running==RUNNING_INCR_FILE || backup_running==RUNNING_FULL_FILE)
+		if(backup_running==RUNNING_INCR_FILE || backup_running==RUNNING_FULL_FILE ||
+			backup_running==RUNNING_RESUME_INCR_FILE || backup_running==RUNNING_RESUME_FULL_FILE )
 		{
 			backup_running=RUNNING_NONE;
 			backup_done=true;
@@ -421,6 +453,14 @@ std::string ClientConnector::getCurrRunningJob()
 	else if(backup_running==RUNNING_INCR_IMAGE)
 	{
 		return "INCRI";
+	}
+	else if(backup_running==RUNNING_RESUME_INCR_FILE)
+	{
+		return "R_INCR";
+	}
+	else if(backup_running==RUNNING_RESUME_FULL_FILE)
+	{
+		return "R_FULL";
 	}
 
 	return std::string();
@@ -1251,11 +1291,11 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		os_version_str=Server->ConvertToUTF8(std::wstring(buf.c_str()));
 	}
 
-	tcpstack.Send(pipe, "FILE=2&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
+	tcpstack.Send(pipe, "FILE=3&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
 #else
 	std::string os_version_str="not Windows";
-	tcpstack.Send(pipe, "FILE=2&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1"
+	tcpstack.Send(pipe, "FILE=3&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
 #endif
 }
