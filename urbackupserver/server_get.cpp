@@ -528,6 +528,7 @@ void BackupServerGet::operator ()(void)
 			bool disk_error=false;
 			bool log_backup=true;
 			r_incremental=false;
+			bool r_resumed=false;
 			pingthread=NULL;
 			pingthread_ticket=ILLEGAL_THREADPOOL_TICKET;
 			status.pcdone=-1;
@@ -662,7 +663,8 @@ void BackupServerGet::operator ()(void)
 					}
 
 					r_success=doIncrBackup(with_hashes, intra_file_diffs, use_snapshots,
-						!use_snapshots && server_settings->getSettings()->use_incremental_symlinks, disk_error, log_backup);
+						!use_snapshots && server_settings->getSettings()->use_incremental_symlinks,
+						disk_error, log_backup, r_incremental, r_resumed);
 
 					destroyHashThreads();
 
@@ -892,7 +894,7 @@ void BackupServerGet::operator ()(void)
 
 				if(log_backup)
 				{
-					saveClientLogdata(r_image?1:0, r_incremental?1:0, r_success && !has_error);
+					saveClientLogdata(r_image?1:0, r_incremental?1:0, r_success && !has_error, r_resumed);
 					sendClientLogdata();
 				}
 				else
@@ -998,7 +1000,7 @@ void BackupServerGet::prepareSQL(void)
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
 	q_set_done=db->Prepare("UPDATE backups SET done=1 WHERE id=?", false);
-	q_save_logdata=db->Prepare("INSERT INTO logs (clientid, logdata, errors, warnings, infos, image, incremental) VALUES (?,?,?,?,?,?,?)", false);
+	q_save_logdata=db->Prepare("INSERT INTO logs (clientid, logdata, errors, warnings, infos, image, incremental, resumed) VALUES (?,?,?,?,?,?,?,?)", false);
 	q_get_unsent_logdata=db->Prepare("SELECT id, strftime('%s', created) AS created, logdata FROM logs WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 	q_save_image_assoc=db->Prepare("INSERT INTO assoc_images (img_id, assoc_id) VALUES (?,?)", false);
@@ -1383,6 +1385,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool resume, bool wi
 
 	std::string pver="";
 	if(file_protocol_version==2) pver="2";
+	else if(file_protocol_version>=3) pver="3";
 
 	std::string identity;
 	if(!session_identity.empty())
@@ -2158,7 +2161,8 @@ _i64 BackupServerGet::getIncrementalSize(IFile *f, const std::vector<size_t> &di
 	return rsize;
 }
 
-bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool &disk_error, bool &log_backup)
+bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot,
+	bool use_directory_links, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed)
 {
 	int64 free_space=os_free_space(os_file_prefix(server_settings->getSettings()->backupfolder));
 	if(free_space!=-1 && free_space<minfreespace_min)
@@ -2206,8 +2210,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(resumed_backup)
 	{
+		r_resumed=true;
+
 		if(resumed_full)
 		{
+			r_incremental=false;
 			status.statusaction=sa_resume_full_file;
 		}
 		else
@@ -3593,7 +3600,7 @@ void BackupServerGet::sendClientLogdata(void)
 	}
 }
 
-void BackupServerGet::saveClientLogdata(int image, int incremental, bool r_success)
+void BackupServerGet::saveClientLogdata(int image, int incremental, bool r_success, bool resumed)
 {
 	int errors=0;
 	int warnings=0;
@@ -3607,6 +3614,7 @@ void BackupServerGet::saveClientLogdata(int image, int incremental, bool r_succe
 	q_save_logdata->Bind(infos);
 	q_save_logdata->Bind(image);
 	q_save_logdata->Bind(incremental);
+	q_save_logdata->Bind(resumed?1:0);
 	q_save_logdata->Write();
 	q_save_logdata->Reset();
 

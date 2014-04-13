@@ -1105,6 +1105,8 @@ void upgrade31_32()
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("ALTER TABLE backups ADD resumed INTEGER");
 	db->Write("UPDATE backups SET resumed=0 WHERE resumed IS NULL");
+	db->Write("ALTER TABLE logs ADD resumed INTEGER");
+	db->Write("UPDATE logs SET resumed=0 WHERE resumed IS NULL");
 }
 
 void upgrade(void)

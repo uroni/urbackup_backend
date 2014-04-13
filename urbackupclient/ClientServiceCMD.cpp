@@ -167,16 +167,15 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 {
 	std::string s_params;
-	if(cmd=="2START BACKUP")
+	if(cmd=="3START BACKUP")
 	{
 		file_version=2;
 		if(cmd.size()>14)
 			s_params=cmd.substr(14);
 	}
-	else
+	else if("2START BACKUP")
 	{
-		if(cmd.size()>13)
-			s_params=cmd.substr(13);
+		file_version=2;
 	}
 
 	str_map params;
@@ -222,7 +221,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 {
-	if(next(cmd,0,"2START FULL BACKUP")) file_version=2;
+	if(cmd=="2START FULL BACKUP") file_version=2;
+	if(next(cmd,0,"3START FULL BACKUP")) file_version=2;
 
 	state=CCSTATE_START_FILEBACKUP;
 
