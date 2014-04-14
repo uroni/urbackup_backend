@@ -3,12 +3,21 @@
 cbuild=""
 CPWD=`pwd`
 
+copy_cond()
+{
+	R_CMP=`cmp $1 $2`
+	if [ "xR_CMP" != "x0" ]
+	then
+		cp $1 $2
+	fi
+}
+
 switch_m_build()
 {
 	if test -e defaults_$cbuild
 	then
-		cp defaults_$cbuild defaults
-		cp init.d_$cbuild init.d
+		copy_cond defaults_$cbuild defaults
+		copy_cond init.d_$cbuild init.d
 	fi
 }
 
@@ -17,8 +26,8 @@ switch_build()
 	if test -e Makefile.am_$cbuild
 	then
 		pwd
-		cp Makefile.am_$cbuild Makefile.am
-		cp configure.ac_$cbuild configure.ac
+		copy_cond Makefile.am_$cbuild Makefile.am
+		copy_cond configure.ac_$cbuild configure.ac
 		if test -e BUILDID
 		then
 		    BUILDID=`cat BUILDID`
