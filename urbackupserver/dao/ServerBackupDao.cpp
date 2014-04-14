@@ -19,7 +19,7 @@
 #include "ServerBackupDao.h"
 #include "../../stringtools.h"
 #include <assert.h>
-
+#include <string.h>
 
 /**
 * @-SQLGenTempSetup
