@@ -104,7 +104,7 @@ private:
 	void sendClientLogdata(void);
 	std::wstring getUserRights(int userid, std::string domain);
 	void saveClientLogdata(int image, int incremental, bool r_success, bool resumed);
-	void sendLogdataMail(bool r_success, int image, int incremental, int errors, int warnings, int infos, std::wstring &data);
+	void sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::wstring &data);
 	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, bool compress);
 	std::string getMBR(const std::wstring &dl);
 	unsigned int writeMBR(ServerVHDWriter *vhdfile, uint64 volsize);

@@ -3686,7 +3686,7 @@ void BackupServerGet::saveClientLogdata(int image, int incremental, bool r_succe
 	q_save_logdata->Write();
 	q_save_logdata->Reset();
 
-	sendLogdataMail(r_success, image, incremental, errors, warnings, infos, logdata);
+	sendLogdataMail(r_success, image, incremental, resumed, errors, warnings, infos, logdata);
 
 	ServerLogger::reset(clientid);
 }
@@ -3712,7 +3712,7 @@ std::wstring BackupServerGet::getUserRights(int userid, std::string domain)
 	}
 }
 
-void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental, int errors, int warnings, int infos, std::wstring &data)
+void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::wstring &data)
 {
 	MailServer mail_server=getMailServerSettings();
 	if(mail_server.servername.empty())
@@ -3770,13 +3770,29 @@ void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental
 					std::string msg="UrBackup just did ";
 					if(incremental>0)
 					{
-						msg+="an incremental ";
-						subj="Incremental ";
+						if(resumed)
+						{
+							msg+="a resumed incremental ";
+							subj+="Resumed incremental ";
+						}
+						else
+						{
+							msg+="an incremental ";
+							subj="Incremental ";
+						}
 					}
 					else
 					{
-						msg+="a full ";
-						subj="Full ";
+						if(resumed)
+						{
+							msg+="a resumed full ";
+							subj="Resumed full ";
+						}
+						else
+						{
+							msg+="a full ";
+							subj="Full ";
+						}
 					}
 
 					if(image>0)
