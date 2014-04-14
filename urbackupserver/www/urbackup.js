@@ -332,19 +332,12 @@ function show_progress2(data)
 			var action=0;
 			if(obj.image==0)
 			{
-				if(obj.incremental>0)
-					action=1;
-				else
-					action=2;
-			}
-			else
-			{
-				if(obj.resumed>0)
+				if(obj.resumed==0)
 				{
 					if(obj.incremental>0)
-						action=3;
+						action=1;
 					else
-						action=4;
+						action=2;
 				}
 				else
 				{
@@ -353,6 +346,13 @@ function show_progress2(data)
 					else
 						action=6;
 				}
+			}
+			else
+			{
+				if(obj.incremental>0)
+					action=3;
+				else
+					action=4;				
 			}
 			var a="action_"+action;
 			if(obj.del)
@@ -2516,19 +2516,12 @@ function show_logs2(data)
 			var action=0;
 			if(obj.image==0)
 			{
-				if(obj.incremental>0)
-					action=1;
-				else
-					action=2;
-			}
-			else
-			{
-				if(obj.resumed>0)
+				if(obj.resumed==0)
 				{
 					if(obj.incremental>0)
-						action=3;
+						action=1;
 					else
-						action=4;
+						action=2;
 				}
 				else
 				{
@@ -2537,6 +2530,13 @@ function show_logs2(data)
 					else
 						action=6;
 				}
+			}
+			else
+			{
+				if(obj.incremental>0)
+					action=3;
+				else
+					action=4;
 			}
 			var a="action_"+action;
 			
