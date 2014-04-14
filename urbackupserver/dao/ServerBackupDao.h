@@ -22,6 +22,14 @@ public:
 		std::wstring linkname;
 		std::wstring linktarget;
 	};
+	struct SFileEntry
+	{
+		bool exists;
+		std::wstring fullpath;
+		std::wstring hashpath;
+		std::string shahash;
+		int64 filesize;
+	};
 
 
 	void addDirectoryLink(int clientid, const std::wstring& name, const std::wstring& target);
@@ -38,6 +46,17 @@ public:
 	void addToOldBackupfolders(const std::wstring& backupfolder);
 	std::vector<std::wstring> getOldBackupfolders(void);
 	std::vector<std::wstring> getDeletePendingClientNames(void);
+	bool createTemporaryLastFilesTable(void);
+	void dropTemporaryLastFilesTable(void);
+	bool createTemporaryLastFilesTableIndex(void);
+	bool dropTemporaryLastFilesTableIndex(void);
+	bool copyToTemporaryLastFilesTable(int backupid);
+	SFileEntry getFileEntryFromTemporaryTable(const std::wstring& fullpath);
+	std::vector<SFileEntry> getFileEntriesFromTemporaryTableGlob(const std::wstring& fullpath_glob);
+	bool createTemporaryNewFilesTable(void);
+	void dropTemporaryNewFilesTable(void);
+	void insertIntoTemporaryNewFilesTable(const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize);
+	void copyFromTemporaryNewFilesTable(int backupid, int clientid, int incremental);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -62,6 +81,17 @@ private:
 	IQuery* q_addToOldBackupfolders;
 	IQuery* q_getOldBackupfolders;
 	IQuery* q_getDeletePendingClientNames;
+	IQuery* q_createTemporaryLastFilesTable;
+	IQuery* q_dropTemporaryLastFilesTable;
+	IQuery* q_createTemporaryLastFilesTableIndex;
+	IQuery* q_dropTemporaryLastFilesTableIndex;
+	IQuery* q_copyToTemporaryLastFilesTable;
+	IQuery* q_getFileEntryFromTemporaryTable;
+	IQuery* q_getFileEntriesFromTemporaryTableGlob;
+	IQuery* q_createTemporaryNewFilesTable;
+	IQuery* q_dropTemporaryNewFilesTable;
+	IQuery* q_insertIntoTemporaryNewFilesTable;
+	IQuery* q_copyFromTemporaryNewFilesTable;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

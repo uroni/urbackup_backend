@@ -7,6 +7,8 @@ void init_dir_link_mutex();
 
 void destroy_dir_link_mutex();
 
+std::wstring escape_glob_sql(const std::wstring& glob);
+
 bool link_directory_pool(ServerBackupDao& backup_dao, int clientid, const std::wstring& target_dir, const std::wstring& src_dir, const std::wstring& pooldir, bool with_transaction);
 
 bool replay_directory_link_journal(ServerBackupDao& backup_dao);

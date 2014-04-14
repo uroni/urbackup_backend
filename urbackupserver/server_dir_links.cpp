@@ -7,32 +7,6 @@
 
 namespace
 {
-	std::wstring escape_glob_sql(const std::wstring& glob)
-	{
-		std::wstring ret;
-		ret.reserve(glob.size());
-		for(size_t i=0;i<glob.size();++i)
-		{
-			if(glob[i]=='?')
-			{
-				ret+=L"[?]";
-			}
-			else if(glob[i]=='[')
-			{
-				ret+=L"[[]";
-			}
-			else if(glob[i]=='*')
-			{
-				ret+=L"[*]";
-			}
-			else
-			{
-				ret+=glob[i];
-			}
-		}
-		return ret;
-	}
-
 	void reference_all_sublinks(ServerBackupDao& backup_dao, int clientid, const std::wstring& target, const std::wstring& new_target)
 	{
 		std::wstring escaped_target = escape_glob_sql(target);
@@ -48,6 +22,32 @@ namespace
 	}
 
 	IMutex* dir_link_mutex;
+}
+
+std::wstring escape_glob_sql(const std::wstring& glob)
+{
+	std::wstring ret;
+	ret.reserve(glob.size());
+	for(size_t i=0;i<glob.size();++i)
+	{
+		if(glob[i]=='?')
+		{
+			ret+=L"[?]";
+		}
+		else if(glob[i]=='[')
+		{
+			ret+=L"[[]";
+		}
+		else if(glob[i]=='*')
+		{
+			ret+=L"[*]";
+		}
+		else
+		{
+			ret+=glob[i];
+		}
+	}
+	return ret;
 }
 
 

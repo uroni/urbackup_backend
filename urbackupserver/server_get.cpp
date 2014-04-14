@@ -983,7 +983,7 @@ void BackupServerGet::prepareSQL(void)
 	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1", false);
 	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1", false);
 	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?)", false);
-	q_get_last_incremental=db->Prepare("SELECT incremental,path,resumed,complete FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incremental=db->Prepare("SELECT incremental,path,resumed,complete,id FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_get_last_incremental_complete=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=(SELECT backuptime FROM backups WHERE id=?) WHERE id=?", false);
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
@@ -1075,6 +1075,7 @@ SBackup BackupServerGet::getLastIncremental(void)
 		b.path=res[0][L"path"];
 		b.is_complete=watoi(res[0][L"complete"])>0;
 		b.is_resumed=watoi(res[0][L"resumed"])>0;
+		b.backupid=watoi(res[0][L"id"]);
 
 		q_get_last_incremental_complete->Bind(clientid);
 		res=q_get_last_incremental_complete->Read();
@@ -2312,8 +2313,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	
 	ServerLogger::Log(clientid, clientname+L" Starting incremental backup...", LL_DEBUG);
 
-	
-	backupid=createBackupSQL(resumed_full?0:(last.incremental+1), clientid, backuppath_single, resumed_backup);
+	int incremental_num = resumed_full?0:(last.incremental+1);
+	backupid=createBackupSQL(incremental_num, clientid, backuppath_single, resumed_backup);
 
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	std::wstring last_backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path;
@@ -2395,6 +2396,22 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 	}
 
+	ServerBackupDao backup_dao(db);
+
+	bool copy_file_entries=false;
+	if(true)//resumed_backup) TODO
+	{
+		copy_file_entries = backup_dao.createTemporaryNewFilesTable();
+		copy_file_entries = copy_file_entries && backup_dao.createTemporaryLastFilesTable();
+		backup_dao.createTemporaryLastFilesTableIndex();
+
+		if ( copy_file_entries )
+		{
+			copy_file_entries = copy_file_entries && backup_dao.copyToTemporaryLastFilesTable(last.backupid);
+		}
+		
+	}
+
 	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub", MODE_WRITE);
 
 	tmp=Server->openFile(tmpfilename, MODE_READ);
@@ -2417,7 +2434,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	_i64 filelist_size=tmp->Size();
 	_i64 filelist_currpos=0;
 	int indir_currdepth=0;
-	ServerBackupDao backup_dao(db);
+	
 	
 	ServerLogger::Log(clientid, clientname+L": Calculating tree difference size...", LL_DEBUG);
 	_i64 files_size=getIncrementalSize(tmp, diffs);
@@ -2549,11 +2566,33 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							{
 								skip_dir_completely=1;
 								dir_linked=true;
+								bool curr_has_hashes = false;
+
+								std::wstring src_hashpath = last_backuppath_hashes+local_curr_os_path;
 
 								if(with_hashes)
 								{
-									link_directory_pool(backup_dao, clientid, backuppath_hashes+local_curr_os_path,
-										last_backuppath_hashes+local_curr_os_path, dir_pool_path, BackupServer::isFilesystemTransactionEnabled());
+									curr_has_hashes = link_directory_pool(backup_dao, clientid, backuppath_hashes+local_curr_os_path,
+										src_hashpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled());
+								}
+
+								if(copy_file_entries)
+								{
+									std::vector<ServerBackupDao::SFileEntry> file_entries = backup_dao.getFileEntriesFromTemporaryTableGlob(escape_glob_sql(srcpath)+os_file_sep()+L"*");
+									for(size_t i=0;i<file_entries.size();++i)
+									{
+										if(file_entries[i].fullpath.size()>srcpath.size())
+										{
+											std::wstring entry_hashpath;
+											if( curr_has_hashes && next(file_entries[i].hashpath, 0, src_hashpath))
+											{
+												entry_hashpath = backuppath_hashes+local_curr_os_path + file_entries[i].hashpath.substr(src_hashpath.size());
+											}
+
+											backup_dao.insertIntoTemporaryNewFilesTable(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
+												file_entries[i].shahash, file_entries[i].filesize);
+										}
+									}
 								}
 							}
 						}
@@ -2620,8 +2659,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				else //is file
 				{
 					std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+L"/"+osspecific_name);
+					std::wstring srcpath=last_backuppath+local_curr_os_path;
 					
 					bool f_ok=false;
+					bool copy_curr_file_entry=false;
+					bool curr_has_hash = false;
 
 					if(indirchange==true || hasChange(line, diffs)) //is changed
 					{
@@ -2662,8 +2704,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						}
 					}
 					else if(!on_snapshot) //is not changed
-					{			
-						std::wstring srcpath=last_backuppath+local_curr_os_path;
+					{						
 						bool too_many_hardlinks;
 						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
 						if(b)
@@ -2677,7 +2718,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							f_ok=true;
 						}
 
-						if(!f_ok)
+						if(!f_ok) //creating hard link failed and not because of too many hard links per inode
 						{
 							if(link_logcnt<5)
 							{
@@ -2727,14 +2768,32 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								}
 							}
 						}
-						else if(with_hashes)
+						else //created hard link successfully
 						{
-							os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, NULL);
+							copy_curr_file_entry=copy_file_entries;						
+
+							if(with_hashes)
+							{
+								curr_has_hash = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, NULL);
+							}
 						}
 					}
 					else
 					{
+						copy_curr_file_entry=copy_file_entries;
+						curr_has_hash = with_hashes;
 						f_ok=true;
+					}
+
+					if(copy_curr_file_entry)
+					{
+						ServerBackupDao::SFileEntry fileEntry = backup_dao.getFileEntryFromTemporaryTable(srcpath);
+
+						if(fileEntry.exists)
+						{
+							backup_dao.insertIntoTemporaryNewFilesTable(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
+								fileEntry.shahash, fileEntry.filesize);
+						}
 					}
 					
 					if(f_ok)
@@ -2757,6 +2816,15 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	Server->destroy(clientlist);
 
 	sendBackupOkay(r_offline==false && c_has_error==false);
+
+	if(copy_file_entries)
+	{
+		backup_dao.copyFromTemporaryNewFilesTable(backupid, clientid, incremental_num);
+
+		backup_dao.dropTemporaryLastFilesTableIndex();
+		backup_dao.dropTemporaryLastFilesTable();
+		backup_dao.dropTemporaryNewFilesTable();
+	}
 
 	waitForFileThreads();
 

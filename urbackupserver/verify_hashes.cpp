@@ -75,7 +75,7 @@ void draw_progress(std::wstring curr_fn, _i64 curr_verified, _i64 verify_size)
 bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size)
 {
 	std::wstring fp=res[L"fullpath"];
-	IFile *f=Server->openFile(fp, MODE_READ);
+	IFile *f=Server->openFile(os_file_prefix(fp), MODE_READ);
 	if( f==NULL )
 	{
 		Server->Log(L"Error opening file \""+fp+L"\"", LL_ERROR);
@@ -150,7 +150,6 @@ bool verify_hashes(std::string arg)
 	int cid=0;
 	int backupid=0;
 	std::string filter;
-	std::string wfilter;
 
 	if(!clientname.empty())
 	{
@@ -225,7 +224,7 @@ bool verify_hashes(std::string arg)
 
 	_i64 crowid=0;
 
-	IQuery *q_get_files=db->Prepare("SELECT fullpath, shahash FROM files"+wfilter);
+	IQuery *q_get_files=db->Prepare("SELECT fullpath, shahash, filesize FROM files"+filter);
 
 	bool is_okay=true;
 

@@ -261,6 +261,8 @@ void generateStructure(std::string name, std::vector<ReturnType> return_types, G
 		std::string type=return_types[i].type;
 		if(type=="string")
 			type="std::wstring";
+		if(type=="blob")
+			type="std::string";
 
 		code+="\t\t"+type+" "+return_types[i].name+";\r\n";
 	}
@@ -291,6 +293,8 @@ std::string generateConditional(ReturnType rtype, GeneratedData& gen_data)
 	std::string type=rtype.type;
 	if(type=="string")
 		type="std::wstring";
+	if(type=="blob")
+		type="std::string";
 	code+="\t\t"+type+" value;\r\n";
 	code+="\t};\r\n";
 
@@ -306,10 +310,28 @@ enum StatementType
 	StatementType_Delete,
 	StatementType_Insert,
 	StatementType_Update,
+	StatementType_Create,
+	StatementType_Drop,
 	StatementType_None
 };
 
-AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedData& gen_data)
+std::string return_blob(size_t tabs, std::string value_name, std::string sql_name, std::string res_idx, bool do_return)
+{
+	std::string ret;
+	static int nb = 0;
+	std::string tabss(tabs, '\t');
+	++nb;
+	ret+=tabss+"std::wstring& val"+nconvert(nb)+" = res["+res_idx+"][L\""+sql_name+"\"];\r\n";
+	ret+=tabss+value_name+".resize(val"+nconvert(nb)+".size()*sizeof(wchar_t));\r\n";
+	ret+=tabss+"memcpy(&"+value_name+"[0], val"+nconvert(nb)+".data(), val"+nconvert(nb)+".size()*sizeof(wchar_t));\r\n";
+	if(do_return)
+	{
+		ret+=tabss+"return "+value_name+";\r\n";
+	}
+	return ret;
+}
+
+AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedData& gen_data, bool check)
 {
 	std::string sql=input.annotations["sql"];
 	std::string func=input.annotations["func"];
@@ -372,6 +394,18 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		stmt_type=StatementType_Update;
 		op_pos=new_pos;
 	}
+	if( (new_pos = strlower(sql).find("create"))!=std::string::npos
+		&& new_pos<op_pos)
+	{
+		stmt_type=StatementType_Create;
+		op_pos=new_pos;
+	}
+	if( (new_pos = strlower(sql).find("drop"))!=std::string::npos
+		&& new_pos<op_pos)
+	{
+		stmt_type=StatementType_Drop;
+		op_pos=new_pos;
+	}
 
 	std::string return_vals=input.annotations["return"];
 
@@ -393,7 +427,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			generateStructure(struct_name, return_types, gen_data, false);
 		}
 	}
-	else if(strlower(return_type)!="void")
+	else if(strlower(return_type)!="void" && strlower(return_type)!="bool")
 	{
 		if(return_types.size()==1)
 		{
@@ -420,19 +454,20 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 	std::vector<ReturnType> params;
 	std::string parsedSql=parseSqlString(sql, params);
 
-	IQuery *q=db->Prepare("EXPLAIN "+parsedSql, true);
-
-	if(q==NULL)
+	if(check)
 	{
-		std::cout << "ERROR preparing statement: " << parsedSql << std::endl;
-		return AnnotatedCode(input.annotations, "");
-	}
-	else
-	{
-		q->Read();
-	}
+		IQuery *q=db->Prepare("EXPLAIN "+parsedSql, true);
 
-	
+		if(q==NULL)
+		{
+			std::cout << "ERROR preparing statement: " << parsedSql << std::endl;
+			return AnnotatedCode(input.annotations, "");
+		}
+		else
+		{
+			q->Read();
+		}
+	}	
 
 	std::string return_outer=return_type;
 	if(return_vector)
@@ -467,7 +502,8 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		return_outer=(classname.empty()?"":classname+"::")+struct_name;
 		return_type=struct_name;
 	}
-	else if(struct_name!="string" && struct_name!="void" && struct_name!="int")
+	else if(struct_name!="string" && struct_name!="void" && struct_name!="int"
+		&& struct_name!="bool")
 	{
 		return_outer=(classname.empty()?"":classname+"::")+struct_name;
 		return_type=struct_name;
@@ -544,20 +580,37 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		}
 	}
 
+	bool has_return=false;
+
 	if(stmt_type==StatementType_Select)
 	{
 		code+="\tdb_results res="+query_name+"->Read();\r\n";
 	}
 	else if(stmt_type==StatementType_Delete
 		|| stmt_type==StatementType_Insert
-		|| stmt_type==StatementType_Update)
+		|| stmt_type==StatementType_Update
+		|| stmt_type==StatementType_Create
+		|| stmt_type==StatementType_Drop )
 	{
-		code+="\t"+query_name+"->Write();\r\n";
+		if(return_type=="bool")
+		{
+			code+="\tbool ret = "+query_name+"->Write();\r\n";
+			has_return=true;
+		}
+		else
+		{
+			code+="\t"+query_name+"->Write();\r\n";
+		}
 	}
 
 	if(!params.empty())
 	{
 		code+="\t"+query_name+"->Reset();\r\n";
+	}
+
+	if(has_return)
+	{
+		code+="\treturn ret;\r\n";
 	}
 
 	if(return_vector)
@@ -606,6 +659,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				{
 					code+="\t\tret[i]."+return_types[i].name+"=watoi64(res[i][L\""+return_types[i].name+"\"]);\r\n";
 				}
+				else if(return_types[i].type=="blob")
+				{
+					code+=return_blob(2, "ret[i]."+return_types[i].name, return_types[i].name, "i", false);
+				}
 				else
 				{
 					code+="\t\tret[i]."+return_types[i].name+"=res[i][L\""+return_types[i].name+"\"];\r\n";
@@ -623,6 +680,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				else if(return_types[0].type=="int64")
 				{
 					code+="\t\tret[i]=watoi64(res[i][L\""+return_types[0].name+"\"]);\r\n";
+				}
+				else if(return_types[0].type=="blob")
+				{
+					code+=return_blob(2, "ret[i]", return_types[0].name, "i", false);
 				}
 				else
 				{
@@ -649,6 +710,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				{
 					code+="0";
 				}
+				else if(return_types[i].type=="blob")
+				{
+					code+="\"\"";
+				}
 				else
 				{
 					code+="L\"\"";
@@ -665,6 +730,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			if(return_types[0].type=="int" || return_types[0].type=="int64")
 			{
 				code+="0";
+			}
+			else if(return_types[0].type=="blob")
+			{
+				code+="\"\"";
 			}
 			else
 			{
@@ -690,6 +759,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				{
 					code+="\t\tret."+return_types[i].name+"=watoi64(res[0][L\""+return_types[i].name+"\"]);\r\n";
 				}
+				else if(return_types[i].type=="blob")
+				{
+					code+=return_blob(2, "ret."+return_types[i].name, return_types[i].name, "0", false);
+				}
 				else
 				{
 					code+="\t\tret."+return_types[i].name+"=res[0][L\""+return_types[i].name+"\"];\r\n";
@@ -705,6 +778,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			else if(return_types[0].type=="int64")
 			{
 				code+="\t\tret.value=watoi64(res[0][L\""+return_types[0].name+"\"]);\r\n";
+			}
+			else if(return_types[0].type=="blob")
+			{
+				code+=return_blob(2, "ret.value", return_types[0].name, "0", false);
 			}
 			else
 			{
@@ -724,6 +801,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		else if(return_types[0].type=="int64")
 		{
 			code+="\treturn watoi64(res[0][L\""+return_types[0].name+"\"]);\r\n";
+		}
+		else if(return_types[0].type=="blob")
+		{
+			code+=return_blob(1, "tmp", return_types[0].name, "0", true);
 		}
 		else
 		{
@@ -762,7 +843,11 @@ void generateCode1(IDatabase* db, std::vector<AnnotatedCode>& annotated_code, Ge
 		{
 			if(curr.annotations.find("-SQLGenAccess")!=curr.annotations.end())
 			{
-				annotated_code[i]=generateSqlFunction(db, curr, generated_data);
+				annotated_code[i]=generateSqlFunction(db, curr, generated_data, true);
+			}
+			else if(curr.annotations.find("-SQLGenAccessNoCheck")!=curr.annotations.end())
+			{
+				annotated_code[i]=generateSqlFunction(db, curr, generated_data, false);
 			}
 		}
 	}

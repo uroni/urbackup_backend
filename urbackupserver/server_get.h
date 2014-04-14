@@ -30,6 +30,7 @@ struct SBackup
 	std::wstring complete;
 	bool is_complete;
 	bool is_resumed;
+	int backupid;
 };
 
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback,
