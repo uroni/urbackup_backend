@@ -63,4 +63,31 @@ private:
 	IFile *file;
 };
 
+namespace
+{
+
+std::string readToString(IFile* f)
+{
+	std::string ret;
+	ret.resize(static_cast<size_t>(f->Size()));
+	f->Seek(0);
+	size_t pos = 0;
+	while (pos < static_cast<size_t>(f->Size()) )
+	{
+		_u32 r = f->Read(&ret[pos], static_cast<_u32>(f->Size())-static_cast<_u32>(pos));
+		if(r==0)
+		{
+			break;
+		}
+		pos += r;
+	}
+	if(pos!=f->Size())
+	{
+		ret.resize(pos);
+	}
+	return ret;
+}
+
+}
+
 #endif //IFILE_H

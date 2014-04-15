@@ -12,6 +12,11 @@ public:
 	int64 getLastId();
 
 	//@-SQLGenFunctionsBegin
+	struct CondString
+	{
+		bool exists;
+		std::wstring value;
+	};
 	struct DirectoryLinkEntry
 	{
 		std::wstring name;
@@ -57,6 +62,8 @@ public:
 	void dropTemporaryNewFilesTable(void);
 	void insertIntoTemporaryNewFilesTable(const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize);
 	void copyFromTemporaryNewFilesTable(int backupid, int clientid, int incremental);
+	void insertIntoOrigClientSettings(int clientid, std::string data);
+	CondString getOrigClientSettings(int clientid);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -92,6 +99,8 @@ private:
 	IQuery* q_dropTemporaryNewFilesTable;
 	IQuery* q_insertIntoTemporaryNewFilesTable;
 	IQuery* q_copyFromTemporaryNewFilesTable;
+	IQuery* q_insertIntoOrigClientSettings;
+	IQuery* q_getOrigClientSettings;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

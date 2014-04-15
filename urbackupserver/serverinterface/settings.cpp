@@ -32,6 +32,47 @@
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
 
+void updateRights(int t_userid, std::string s_rights, IDatabase *db)
+{
+	str_map rights;
+	ParseParamStrHttp(s_rights, &rights);
+
+	IQuery *q_del=db->Prepare("DELETE FROM settings_db.si_permissions WHERE clientid=?");
+	q_del->Bind(t_userid);
+	q_del->Write();
+	q_del->Reset();
+
+	str_map::iterator idx=rights.find(L"idx");
+
+	if(idx!=rights.end())
+	{
+		std::vector<std::wstring> elms;
+		Tokenize(idx->second, elms, L",");
+
+		if(!elms.empty())
+		{
+			IQuery *q_insert=db->Prepare("INSERT INTO settings_db.si_permissions (t_domain, t_right, clientid) VALUES (?,?,?)");
+
+			for(size_t i=0;i<elms.size();++i)
+			{
+				str_map::iterator it_domain=rights.find(elms[i]+L"_domain");
+				str_map::iterator it_right=rights.find(elms[i]+L"_right");
+				if(it_domain!=rights.end() && it_right!=rights.end())
+				{
+					q_insert->Bind(it_domain->second);
+					q_insert->Bind(it_right->second);
+					q_insert->Bind(t_userid);
+					q_insert->Write();
+					q_insert->Reset();
+				}
+			}
+		}
+	}
+}
+
+namespace 
+{
+
 std::vector<std::wstring> getMailSettingsList(void)
 {
 	std::vector<std::wstring> tmp;
@@ -300,44 +341,6 @@ void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 	}
 }
 
-void updateRights(int t_userid, std::string s_rights, IDatabase *db)
-{
-	str_map rights;
-	ParseParamStrHttp(s_rights, &rights);
-	
-	IQuery *q_del=db->Prepare("DELETE FROM settings_db.si_permissions WHERE clientid=?");
-	q_del->Bind(t_userid);
-	q_del->Write();
-	q_del->Reset();
-
-	str_map::iterator idx=rights.find(L"idx");
-
-	if(idx!=rights.end())
-	{
-		std::vector<std::wstring> elms;
-		Tokenize(idx->second, elms, L",");
-
-		if(!elms.empty())
-		{
-			IQuery *q_insert=db->Prepare("INSERT INTO settings_db.si_permissions (t_domain, t_right, clientid) VALUES (?,?,?)");
-
-			for(size_t i=0;i<elms.size();++i)
-			{
-				str_map::iterator it_domain=rights.find(elms[i]+L"_domain");
-				str_map::iterator it_right=rights.find(elms[i]+L"_right");
-				if(it_domain!=rights.end() && it_right!=rights.end())
-				{
-					q_insert->Bind(it_domain->second);
-					q_insert->Bind(it_right->second);
-					q_insert->Bind(t_userid);
-					q_insert->Write();
-					q_insert->Reset();
-				}
-			}
-		}
-	}
-}
-
 void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 {
 	int i=0;
@@ -441,6 +444,42 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 		arr.add(ca);
 	}
 	obj.set("archive_settings", arr);
+}
+
+void updateOnlineClientSettings(IDatabase *db, int clientid)
+{
+	IQuery *q=db->Prepare("SELECT name FROM clients WHERE id=?");
+	q->Bind(clientid);
+	db_results res = q->Read();
+	q->Reset();
+	if(!res.empty())
+	{
+		std::wstring clientname = res[0][L"name"];
+
+		IPipe* comm_pipe = ServerStatus::getStatus(clientname).comm_pipe;
+		if(comm_pipe!=NULL)
+		{
+			comm_pipe->Write("UPDATE SETTINGS");
+		}
+	}
+}
+
+void updateAllOnlineClientSettings(IDatabase *db)
+{
+	IQuery *q=db->Prepare("SELECT name FROM clients");
+	db_results res = q->Read();
+	for(size_t i=0;i<res.size();++i)
+	{
+		std::wstring clientname = res[i][L"name"];
+
+		IPipe* comm_pipe = ServerStatus::getStatus(clientname).comm_pipe;
+		if(comm_pipe!=NULL)
+		{
+			comm_pipe->Write("UPDATE SETTINGS");
+		}
+	}
+}
+
 }
 
 ACTION_IMPL(settings)
@@ -590,6 +629,8 @@ ACTION_IMPL(settings)
 					}
 
 					ServerSettings::updateAll();
+
+					updateOnlineClientSettings(db, t_clientid);
 				}
 				
 				ServerSettings settings(db, t_clientid);
@@ -749,6 +790,8 @@ ACTION_IMPL(settings)
 				db->EndTransaction();
 
 				ServerSettings::updateAll();
+
+				updateAllOnlineClientSettings(db);
 
 				ret.set("saved_ok", true);
 				sa=L"general";

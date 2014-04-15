@@ -956,6 +956,8 @@ void BackupServerGet::operator ()(void)
 		}
 	}
 
+	ServerStatus::setCommPipe(clientname, NULL);
+
 	//destroy channel
 	{
 		Server->Log("Stopping channel...", LL_DEBUG);
@@ -3461,7 +3463,15 @@ void BackupServerGet::sendSettings(void)
 		stmp=settings->getValue("allow_overwrite", "");
 	if(!stmp.empty())
 		allow_overwrite=(stmp=="true");
-		
+
+	ServerBackupDao backupdao(db);
+	ServerBackupDao::CondString origSettingsData = backupdao.getOrigClientSettings(clientid);
+
+	ISettingsReader* origSettings = NULL;
+	if(origSettingsData.exists)
+	{
+		origSettings = Server->createMemorySettingsReader(Server->ConvertToUTF8(origSettingsData.value));
+	}
 
 	for(size_t i=0;i<settings_names.size();++i)
 	{
@@ -3483,12 +3493,25 @@ void BackupServerGet::sendSettings(void)
 			{
 				s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";
 			}
+			else if(origSettings!=NULL)
+			{
+				std::wstring orig_v;
+				if( (origSettings->getValue(key, &orig_v) ||
+					origSettings->getValue(key+L"_def", &orig_v) ) && orig_v!=value)
+				{
+					s_settings+=Server->ConvertToUTF8(key)+"_orig="+Server->ConvertToUTF8(orig_v)+"\n";
+				}
+			}
 			key+=L"_def";
 			s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";
 		}
 	}
+	delete origSettings;
 	escapeClientMessage(s_settings);
-	sendClientMessage("SETTINGS "+s_settings, "OK", L"Sending settings to client failed", 10000);
+	if(sendClientMessage("SETTINGS "+s_settings, "OK", L"Sending settings to client failed", 10000))
+	{
+		backupdao.insertIntoOrigClientSettings(clientid, s_settings);
+	}
 }	
 
 bool BackupServerGet::getClientSettings(bool& doesnt_exist)
@@ -3525,6 +3548,8 @@ bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 		return false;
 	}
 
+	std::string settings_data = readToString(tmp);
+
 	ISettingsReader *sr=Server->createFileSettingsReader(tmp->getFilename());
 
 	std::vector<std::wstring> setting_names=getSettingsList();
@@ -3554,6 +3579,8 @@ bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 				b=updateClientSetting(L"client_set_settings_time", settings_update_time);
 				if(b)
 				{
+					ServerBackupDao backupdao(db);
+					backupdao.insertIntoOrigClientSettings(clientid, settings_data);
 					mod=true;
 				}
 				else

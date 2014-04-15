@@ -1109,6 +1109,15 @@ void upgrade31_32()
 	db->Write("UPDATE logs SET resumed=0 WHERE resumed IS NULL");
 }
 
+void upgrade32_33()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE TABLE orig_client_settings ("
+		"id INTEGER PRIMARY KEY,"
+		"clientid INTEGER UNIQUE,"
+		"data TEXT )");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1130,7 +1139,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=32;
+	int max_v=33;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1278,6 +1287,10 @@ void upgrade(void)
 				break;
 			case 31:
 				upgrade31_32();
+				++ver;
+				break;
+			case 32:
+				upgrade32_33();
 				++ver;
 				break;
 			default:

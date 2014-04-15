@@ -559,6 +559,49 @@ void ServerBackupDao::copyFromTemporaryNewFilesTable(int backupid, int clientid,
 	q_copyFromTemporaryNewFilesTable->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::insertIntoOrigClientSettings
+* @sql
+*      INSERT OR REPLACE INTO orig_client_settings (clientid, data)
+*          VALUES (:clientid(int), :data(std::string))
+*/
+void ServerBackupDao::insertIntoOrigClientSettings(int clientid, std::string data)
+{
+	if(q_insertIntoOrigClientSettings==NULL)
+	{
+		q_insertIntoOrigClientSettings=db->Prepare("INSERT OR REPLACE INTO orig_client_settings (clientid, data) VALUES (?, ?)", false);
+	}
+	q_insertIntoOrigClientSettings->Bind(clientid);
+	q_insertIntoOrigClientSettings->Bind(data);
+	q_insertIntoOrigClientSettings->Write();
+	q_insertIntoOrigClientSettings->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getOrigClientSettings
+* @return string data
+* @sql
+*      SELECT data FROM orig_client_settings WHERE clientid = :clientid(int)
+*/
+ServerBackupDao::CondString ServerBackupDao::getOrigClientSettings(int clientid)
+{
+	if(q_getOrigClientSettings==NULL)
+	{
+		q_getOrigClientSettings=db->Prepare("SELECT data FROM orig_client_settings WHERE clientid = ?", false);
+	}
+	q_getOrigClientSettings->Bind(clientid);
+	db_results res=q_getOrigClientSettings->Read();
+	q_getOrigClientSettings->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"data"];
+	}
+	return ret;
+}
 
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
@@ -588,6 +631,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_dropTemporaryNewFilesTable=NULL;
 	q_insertIntoTemporaryNewFilesTable=NULL;
 	q_copyFromTemporaryNewFilesTable=NULL;
+	q_insertIntoOrigClientSettings=NULL;
+	q_getOrigClientSettings=NULL;
 }
 
 //@-SQLGenDestruction
@@ -618,6 +663,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_dropTemporaryNewFilesTable);
 	db->destroyQuery(q_insertIntoTemporaryNewFilesTable);
 	db->destroyQuery(q_copyFromTemporaryNewFilesTable);
+	db->destroyQuery(q_insertIntoOrigClientSettings);
+	db->destroyQuery(q_getOrigClientSettings);
 }
 
 void ServerBackupDao::commit()
