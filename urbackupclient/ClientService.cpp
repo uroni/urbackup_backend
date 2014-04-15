@@ -1153,10 +1153,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 		{
 			if(client_set_settings)
 			{
-				std::wstring old_v;
+				std::wstring orig_v;
 				std::wstring nv;
-				if(new_settings->getValue(key+L"_old", &old_v) &&
-					old_v==v &&
+				if(new_settings->getValue(key+L"_orig", &orig_v) &&
+					orig_v==v &&
 					(new_settings->getValue(key, &nv) ||
 					 new_settings->getValue(key+L"_def", &nv) ) )
 				{
