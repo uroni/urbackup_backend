@@ -1116,6 +1116,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	std::vector<std::wstring> settings_names=getSettingsList();
 	settings_names.push_back(L"client_set_settings");
+	settings_names.push_back(L"client_set_settings_time");
 	std::wstring new_settings_str=L"";
 	bool mod=false;
 	std::string tmp_str;
@@ -1247,20 +1248,69 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		data.addVoidPtr(NULL);
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
-	
+
+	ISettingsReader* old_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+
+	std::vector<std::wstring> new_keys = new_settings->getKeys();
+	bool modified_settings=true;
+	if(old_settings!=NULL)
+	{
+		modified_settings=false;
+		std::vector<std::wstring> old_keys = old_settings->getKeys();
+
+		for(size_t i=0;i<old_keys.size();++i)
+		{
+			std::wstring old_val;
+			std::wstring new_val;
+			if( old_settings->getValue(old_keys[i], &old_val) &&
+			    (!new_settings->getValue(old_keys[i], &new_val) ||
+					old_val!=new_val ) )
+			{
+				modified_settings=true;
+				break;
+			}
+		}
+
+		if(!modified_settings)
+		{
+			for(size_t i=0;i<new_keys.size();++i)
+			{
+				std::wstring old_val;
+				if(!old_settings->getValue(new_keys[i], &old_val))
+				{
+					modified_settings=true;
+					break;
+				}
+			}
+		}
+
+		Server->destroy(old_settings);
+	}
+
+	if(modified_settings)
+	{
+		std::string new_data;
+
+		for(size_t i=0;i<new_keys.size();++i)
+		{
+			if(new_keys[i]==L"client_set_settings" ||
+				new_keys[i]==L"client_set_settings_time")
+				continue;
+
+			std::wstring val;
+			if(new_settings->getValue(new_keys[i], &val))
+			{
+				new_data+=Server->ConvertToUTF8(new_keys[i])+"="+Server->ConvertToUTF8(val)+"\n";
+			}
+		}
+
+		new_data+="client_set_settings=true\n";
+		new_data+="client_set_settings_time="+nconvert(Server->getTimeSeconds())+"\n";
+
+		writestring(new_data, "urbackup/data/settings.cfg");
+	}
+
 	Server->destroy(new_settings);
-	IFile *sf=Server->openFile("urbackup/data/settings.cfg", MODE_WRITE);
-	if(sf==NULL)
-	{
-		Server->Log("Error opening settings file!", LL_ERROR);
-		return;
-	}
-	sf->Write(pData);
-	if(pData.find("\r\nclient_set_settings=true")==std::string::npos)
-	{
-		sf->Write("\r\nclient_set_settings=true");
-	}
-	Server->destroy(sf);
 }
 
 void ClientConnector::saveLogdata(const std::string &created, const std::string &pData)

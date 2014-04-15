@@ -2,6 +2,7 @@
 #define INTERFACE_SETTINGSREADER_H
 
 #include <string>
+#include <vector>
 #include "Object.h"
 
 class ISettingsReader : public IObject
@@ -19,6 +20,8 @@ public:
 	virtual std::wstring getValue(std::wstring key)=0;
 	virtual int getValue(std::wstring key, int def)=0;
 	virtual float getValue(std::wstring key, float def)=0;
+	
+	virtual std::vector<std::wstring> getKeys() = 0;
 };
 
 #endif //INTERFACE_SETTINGSREADER_H

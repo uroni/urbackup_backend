@@ -30,6 +30,8 @@ public:
 	static void cleanup();
 	static void setup();
 
+	virtual std::vector<std::wstring> CFileSettingsReader::getKeys();
+
 private:
 	
 	static std::map<std::string, SCachedSettings*> *settings;

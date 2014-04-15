@@ -10,6 +10,8 @@ public:
 	bool getValue(std::string key, std::string *value);	
 	bool getValue(std::wstring key, std::wstring *value);
 
+	std::vector<std::wstring> getKeys();
+
 private:
 	std::string table;	
 

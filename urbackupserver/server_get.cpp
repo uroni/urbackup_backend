@@ -1552,7 +1552,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		return false;
 	}
 	
-	IFile *tmp=getTemporaryFileRetry();;
+	IFile *tmp=getTemporaryFileRetry();
 	if(tmp==NULL) 
 	{
 		ServerLogger::Log(clientid, L"Error creating temporary file in ::doFullBackup", LL_ERROR);
@@ -3479,6 +3479,10 @@ void BackupServerGet::sendSettings(void)
 
 		if(!key.empty())
 		{
+			if(!allow_overwrite)
+			{
+				s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";
+			}
 			key+=L"_def";
 			s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";
 		}
@@ -3543,6 +3547,24 @@ bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 			bool b=updateClientSetting(L"client_set_settings", L"true");
 			if(b)
 				mod=true;
+
+			std::wstring settings_update_time;
+			if(sr->getValue(L"client_set_settings_time", &settings_update_time))
+			{
+				b=updateClientSetting(L"client_set_settings_time", settings_update_time);
+				if(b)
+				{
+					mod=true;
+				}
+				else
+				{
+					Server->destroy(sr);
+					std::string tmp_fn=tmp->getFilename();
+					Server->destroy(tmp);
+					Server->deleteFile(tmp_fn);
+					return true;
+				}
+			}
 		}
 	}
 

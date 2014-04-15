@@ -86,4 +86,7 @@ bool CDBSettingsReader::getValue(std::wstring key, std::wstring *value)
 		return false;
 }
 
-
+std::vector<std::wstring> CDBSettingsReader::getKeys()
+{
+	return std::vector<std::wstring>();
+}

@@ -143,3 +143,16 @@ void CFileSettingsReader::setup()
 {
 	settings_mutex=Server->createMutex();
 }
+
+std::vector<std::wstring> CFileSettingsReader::getKeys()
+{
+	IScopedLock lock(cached_settings->smutex);
+
+	std::vector<std::wstring> ret;
+	for(std::map<std::wstring,std::wstring>::iterator i=cached_settings->mSettingsMap.begin();
+		i!=cached_settings->mSettingsMap.end();++i)
+	{
+		ret.push_back(i->first);
+	}
+	return ret;
+}

@@ -64,10 +64,6 @@ std::vector<std::wstring> getSettingsList(void)
 std::vector<std::wstring> getOnlyServerClientSettingsList(void)
 {
 	std::vector<std::wstring> ret;
-	ret.push_back(L"backup_window_incr_file");
-	ret.push_back(L"backup_window_full_file");
-	ret.push_back(L"backup_window_incr_image");
-	ret.push_back(L"backup_window_full_image");
 	ret.push_back(L"silent_update");
 	ret.push_back(L"client_quota");
 	ret.push_back(L"local_full_file_transfer_mode");

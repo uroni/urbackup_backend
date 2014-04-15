@@ -71,3 +71,13 @@ bool CMemorySettingsReader::getValue(std::wstring key, std::wstring *value)
 	return false;
 	
 }
+
+std::vector<std::wstring> CMemorySettingsReader::getKeys()
+{
+	std::vector<std::wstring> ret;
+	for(std::map<std::wstring,std::wstring>::iterator i=mSettingsMap.begin();i!=mSettingsMap.end();++i)
+	{
+		ret.push_back(i->first);
+	}
+	return ret;
+}

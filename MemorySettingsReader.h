@@ -10,6 +10,8 @@ public:
 	virtual bool getValue(std::string key, std::string *value);
 	virtual bool getValue(std::wstring key, std::wstring *value);
 
+	virtual std::vector<std::wstring> getKeys();
+
 private:
 	std::map<std::wstring,std::wstring> mSettingsMap;
 };
