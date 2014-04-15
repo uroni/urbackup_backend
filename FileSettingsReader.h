@@ -30,7 +30,7 @@ public:
 	static void cleanup();
 	static void setup();
 
-	virtual std::vector<std::wstring> CFileSettingsReader::getKeys();
+	virtual std::vector<std::wstring> getKeys();
 
 private:
 	
