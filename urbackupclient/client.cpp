@@ -637,7 +637,6 @@ void IndexThread::indexDirs(void)
 			{
 #ifdef _WIN32
 				VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
-				mod_path = os_get_final_path(mod_path);
 #endif
 			}
 			else
@@ -648,6 +647,13 @@ void IndexThread::indexDirs(void)
 
 			mod_path=removeDirectorySeparatorAtEnd(mod_path);
 			backup_dirs[i].path=removeDirectorySeparatorAtEnd(backup_dirs[i].path);
+
+#ifdef _WIN32
+			if(mod_path.size()==2) //e.g. C:
+			{
+				mod_path+=os_file_sep();
+			}
+#endif
 
 #ifdef _WIN32
 			if(!b || !onlyref)
