@@ -637,6 +637,7 @@ void IndexThread::indexDirs(void)
 			{
 #ifdef _WIN32
 				VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
+				mod_path = os_get_final_path(mod_path);
 #endif
 			}
 			else
