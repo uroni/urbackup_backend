@@ -326,13 +326,17 @@ void IndexThread::operator()(void)
 			if(!stop_index)
 			{
 				indexDirs();
-				if(!stop_index)
+				if(stop_index)
 				{
-					contractor->Write("done");
+					contractor->Write("error - stopped indexing 2");
+				}
+				else if(index_error)
+				{
+					contractor->Write("error - index error");
 				}
 				else
 				{
-					contractor->Write("error - stop_index 2");
+					contractor->Write("done");
 				}
 			}
 			else
@@ -367,13 +371,17 @@ void IndexThread::operator()(void)
 			execute_prebackup_hook();
 			indexDirs();
 			execute_postindex_hook();
-			if(!stop_index)
+			if(stop_index)
 			{
-				contractor->Write("done");
+				contractor->Write("error - stopped indexing");
+			}
+			else if(index_error)
+			{
+				contractor->Write("error - index error");
 			}
 			else
 			{
-				contractor->Write("error");
+				contractor->Write("done");
 			}
 		}
 		else if(action==2) // create shadowcopy
@@ -678,7 +686,7 @@ void IndexThread::indexDirs(void)
 			cd->copyFromTmpFiles();
 			commitModifyFilesBuffer();
 
-			if(stop_index)
+			if(stop_index || index_error)
 			{
 				for(size_t k=0;k<backup_dirs.size();++k)
 				{
@@ -688,6 +696,12 @@ void IndexThread::indexDirs(void)
 				
 				outfile.close();
 				removeFile(Server->ConvertToUnicode(filelist_fn));
+
+				if(stop_index)
+				{
+					VSSLog(L"Indexing files failed, because of error", LL_ERROR);
+				}
+
 				return;
 			}
 			//db->EndTransaction();
@@ -796,7 +810,19 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 		return false;
 	}
 
+	if(first && !os_directory_exists(os_file_prefix(dir)) )
+	{
+		VSSLog(L"Cannot access directory to backup: \""+dir+L"\"", LL_ERROR);
+		index_error=true;
+		return false;
+	}
+
 	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first);
+
+	if(index_error)
+	{
+		return false;
+	}
 	
 	for(size_t i=0;i<files.size();++i)
 	{
@@ -863,6 +889,11 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				else
 				{
 					has_include=true;
+				}
+
+				if(index_error)
+				{
+					return false;
 				}
 			}
 		}
@@ -1004,7 +1035,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 		if(has_error)
 		{
-			if(os_directory_exists(index_root_path))
+			if(os_directory_exists(os_file_prefix(index_root_path)))
 			{
 #ifdef _WIN32
 				VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
