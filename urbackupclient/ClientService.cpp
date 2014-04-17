@@ -955,13 +955,16 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 	db->BeginTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
 	db->Prepare("DELETE FROM backupdirs")->Write();
-	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default) VALUES (?, ? ,"+nconvert(server_default?1:0)+")");
+	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional) VALUES (?, ? ,"+nconvert(server_default?1:0)+", ?)");
+	/**
+	Use empty client settings
 	if(server_default==false)
 	{
-		q->Bind(L"*"); q->Bind(L"*");;
+		q->Bind(L"*"); q->Bind(L"*"); q->Bind(1);
 		q->Write();
 		q->Reset();
 	}
+	*/
 	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
 	std::wstring dir;
 	size_t i=0;
@@ -977,6 +980,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 				name=name_arg->second;
 			else
 				name=ExtractFileName(dir);
+
+			bool optional = false;
+			size_t optional_off = name.find(L"/optional");
+			if(optional_off == name.size()-9)
+			{
+				optional=true;
+				name.resize(optional_off);
+			}
 
 			name=removeChars(name);
 
@@ -1018,6 +1029,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			
 			q->Bind(name);
 			q->Bind(dir);
+			q->Bind(optional?1:0);
 			q->Write();
 			q->Reset();
 		}

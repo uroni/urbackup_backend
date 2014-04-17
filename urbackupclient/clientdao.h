@@ -27,6 +27,7 @@ struct SBackupDir
 	int id;
 	std::wstring tname;
 	std::wstring path;
+	bool optional;
 };
 
 struct SShadowCopy

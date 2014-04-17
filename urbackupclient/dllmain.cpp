@@ -404,6 +404,12 @@ void update_client11_12(IDatabase *db)
 	}
 }
 
+void update_client12_13(IDatabase *db)
+{
+	db->Write("ALTER TABLE backupdirs ADD optional INTEGER");
+	db->Write("UPDATE backupdirs SET optional=0 WHERE optional IS NULL");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -467,6 +473,10 @@ bool upgrade_client(void)
 				break;
 			case 11:
 				update_client11_12(db);
+				++ver;
+				break;
+			case 12:
+				update_client12_13(db);
 				++ver;
 				break;
 			default:

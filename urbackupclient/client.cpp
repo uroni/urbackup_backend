@@ -688,7 +688,7 @@ void IndexThread::indexDirs(void)
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
-			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true);
+			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true, backup_dirs[i].optional);
 
 			cd->copyFromTmpFiles();
 			commitModifyFilesBuffer();
@@ -792,7 +792,7 @@ bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& nam
 	return false;
 }
 
-bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first)
+bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional)
 {
 	bool has_include=false;
 
@@ -820,7 +820,10 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	if(first && !os_directory_exists(os_file_prefix(dir)) )
 	{
 		VSSLog(L"Cannot access directory to backup: \""+dir+L"\"", LL_ERROR);
-		index_error=true;
+		if(!optional)
+		{
+			index_error=true;
+		}
 		return false;
 	}
 
@@ -883,7 +886,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			{
 				std::streampos pos=outfile.tellp();
 				outfile << "d\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\"\n";
-				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile);			
+				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional);			
 				outfile << "d\"..\"\n";
 
 				if(!b)

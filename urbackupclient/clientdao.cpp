@@ -259,6 +259,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.id=watoi(res[i][L"id"]);
 		dir.tname=res[i][L"name"];
 		dir.path=res[i][L"path"];
+		dir.optional=(res[i][L"optional"]==L"1");
 
 		if(dir.tname!=L"*")
 			ret.push_back(dir);
