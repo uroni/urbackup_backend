@@ -80,7 +80,7 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 		addr_udp.sin_port=htons(udpport);
 		addr_udp.sin_addr.s_addr=INADDR_ANY;
 
-		Log("Binding udp socket...", LL_DEBUG);
+		Log("Binding udp socket at port "+nconvert(udpport)+"...", LL_DEBUG);
 		rc=bind(udpsock, (sockaddr*)&addr_udp, sizeof(sockaddr_in));
 		if(rc==SOCKET_ERROR)
 		{
