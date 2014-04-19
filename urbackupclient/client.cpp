@@ -1315,7 +1315,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();
 						it!=scdirs_server.end();)
 					{
-						std::map<std::wstring, SCDirs*>::iterator nextit = ++it;
+						std::map<std::wstring, SCDirs*>::iterator nextit = it;
+						++nextit;
 						if(it->second->ref==curr)
 						{
 							VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
