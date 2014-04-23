@@ -1,0 +1,8 @@
+[main]
+host = https://www.transifex.com
+
+[urbackup.webinterface]
+file_filter = translations/urbackup.webinterface/<lang>.po
+source_lang = en
+type = PO
+

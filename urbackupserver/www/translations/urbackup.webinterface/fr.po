@@ -1,0 +1,1128 @@
+# UrBackup translation
+# Copyright (C) 2011-2014 See translators
+# This file is distributed under the same license as the UrBackup package.
+# Translators:
+msgid ""
+msgstr ""
+"Project-Id-Version: UrBackup\n"
+"PO-Revision-Date: 2014-04-23 20:38+0000\n"
+"Last-Translator: uroni <urpc@gmx.de>\n"
+"Language-Team: French (http://www.transifex.com/projects/p/urbackup/language/fr/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fr\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "action_1"
+msgstr "Sauvegarde incrémentielle"
+
+msgid "action_2"
+msgstr "Sauvegarde complète"
+
+msgid "action_3"
+msgstr "Image incrémentielle"
+
+msgid "action_4"
+msgstr "Image complète"
+
+msgid "action_1_d"
+msgstr "Effacement Sauvegarde incrémentielle"
+
+msgid "action_2_d"
+msgstr "Effacement Sauvegarde complète"
+
+msgid "action_3_d"
+msgstr "Effacement Image incrémentielle"
+
+msgid "action_4_d"
+msgstr "Effacement Image complète"
+
+msgid "nav_item_6"
+msgstr "Etats"
+
+msgid "nav_item_5"
+msgstr "Activités"
+
+msgid "nav_item_4"
+msgstr "Sauvegardes"
+
+msgid "nav_item_3"
+msgstr "Journaux"
+
+msgid "nav_item_2"
+msgstr "Stats"
+
+msgid "nav_item_1"
+msgstr "Réglages"
+
+msgid "unknown"
+msgstr "inconnu"
+
+msgid "overview"
+msgstr "Résumé"
+
+msgid "ok"
+msgstr "Ok"
+
+msgid "no_recent_backup"
+msgstr "Pas de sauvegarde récente"
+
+msgid "backup_never"
+msgstr "Jamais"
+
+msgid "yes"
+msgstr "Oui"
+
+msgid "no"
+msgstr "Non"
+
+msgid "tBackup status"
+msgstr "Statut de Sauvegarde"
+
+msgid "tComputer name"
+msgstr "Nom de l'ordinateur"
+
+msgid "tLast seen"
+msgstr "Vu récemment"
+
+msgid "tLast file backup"
+msgstr "Dernière Sauvegarde de fichiers"
+
+msgid "tLast image backup"
+msgstr "Dernière Sauvegarde Image"
+
+msgid "tFile backup status"
+msgstr "Statut de la Sauvegarde fichiers"
+
+msgid "tImage backup status"
+msgstr "Statut de la Sauvegarde Image"
+
+msgid "tShow details"
+msgstr "Plus de détails"
+
+msgid "tExtra clients"
+msgstr "Clients supplémentaires"
+
+msgid "tNo extra clients"
+msgstr "Pas de clients supplémentaires"
+
+msgid "tActions"
+msgstr "Action"
+
+msgid "tOnline"
+msgstr "En ligne"
+
+msgid "tHostname/IP"
+msgstr "HOTE/IP"
+
+msgid "tServer identity"
+msgstr "Identité du serveur"
+
+msgid "users"
+msgstr "Utilisateurs"
+
+msgid "general_settings"
+msgstr "Général"
+
+msgid "admin"
+msgstr "Administrateur"
+
+msgid "user"
+msgstr "Utilisateur"
+
+msgid "username_empty"
+msgstr "Merci d'entrer votre nom"
+
+msgid "password_empty"
+msgstr "Merci d'entrer votre mot de passe"
+
+msgid "password_differ"
+msgstr "Les deux mots de passe sont différents"
+
+msgid "user_n_exist"
+msgstr "l'utilisateur n'existe pas"
+
+msgid "password_wrong"
+msgstr "Mauvais mot de passe"
+
+msgid "user_exists"
+msgstr "Un utilisateur avec ce nom existe déjà"
+
+msgid "session_timeout"
+msgstr "La session n'est plus valide. Merci de vous reconnecter."
+
+msgid "really_del_user"
+msgstr "Etes vous sûr de vouloir supprimer cet utilisateur?"
+
+msgid "user_add_done"
+msgstr "Nouvel utilisateur créé avec succès."
+
+msgid "user_remove_done"
+msgstr "Utilisateur supprimé avec succès ."
+
+msgid "user_update_right_done"
+msgstr "Droits changés avec succès."
+
+msgid "user_pw_change_ok"
+msgstr "Mot de passe de l'utilisateur changé avec succès."
+
+msgid "right_all"
+msgstr "Tous les droits"
+
+msgid "right_none"
+msgstr "Aucun droit"
+
+msgid "filter"
+msgstr "Filtrer"
+
+msgid "all"
+msgstr "Tous"
+
+msgid "loglevel_0"
+msgstr "Information"
+
+msgid "loglevel_1"
+msgstr "Alertes"
+
+msgid "loglevel_2"
+msgstr "Erreurs"
+
+msgid "dir_error_text"
+msgstr "Le dossier de sauvegarde UrBackup est inaccessible. Merci de changer le chemin dans 'Réglages' ou en donnant à UrBackup les droits d'accès à ce répertoire."
+
+msgid "tmpdir_error_text"
+msgstr "Le dossier de sauvegarde temporaire UrBackup est inaccessible. Merci de changer le chemin dans 'Réglages' ou en donnant à UrBackup les droits d'accès à ce répertoire."
+
+msgid "starting"
+msgstr "Démarrage"
+
+msgid "ident_err"
+msgstr "Serveur rejeté"
+
+msgid "enter_hostname"
+msgstr "Merci d'entrer un nom d'hôte ou une adresse IP."
+
+msgid "clients"
+msgstr "Clients"
+
+msgid "validate_text_empty"
+msgstr "Merci d'entrer une valeur pour le {name}"
+
+msgid "validate_text_notint"
+msgstr "Merci d'entrer une valeur numérique pour le {name}"
+
+msgid "validate_name_update_freq_incr"
+msgstr "Tranche horaire pour la sauvegarde incrémentielle"
+
+msgid "validate_name_update_freq_full"
+msgstr "Tranche horaire pour la sauvegarde complète"
+
+msgid "validate_name_update_freq_image_full"
+msgstr "Tranche horaire pour l'image incrémentielle"
+
+msgid "validate_name_update_freq_image_incr"
+msgstr "Tranche horaire pour l'image complète"
+
+msgid "validate_name_max_file_incr"
+msgstr "Nombre maximal de sauvegardes incrémentielles"
+
+msgid "validate_name_min_file_incr"
+msgstr "Nombre minimal de sauvegardes incrémentielles"
+
+msgid "validate_name_max_file_full"
+msgstr "Nombre maximal de sauvegardes complètes"
+
+msgid "validate_name_min_file_full"
+msgstr "Nombre minimal de sauvegardes complètes"
+
+msgid "validate_name_min_image_incr"
+msgstr "Nombre minimal d'images incrémentielles"
+
+msgid "validate_name_max_image_incr"
+msgstr "Nombre maximal d'images incrémentielles"
+
+msgid "validate_name_min_image_full"
+msgstr "Nombre minimal d'images complètes"
+
+msgid "validate_name_max_image_full"
+msgstr "Nombre maximal d'images complètes"
+
+msgid "validate_name_startup_backup_delay"
+msgstr "Délai après démarrage du système"
+
+msgid "validate_err_notregexp_backup_window"
+msgstr "Erreur dans le format de l'intervalle"
+
+msgid "validate_name_max_active_clients"
+msgstr "Nombre maximal de client récents actifs"
+
+msgid "validate_name_max_sim_backups"
+msgstr "Nombre maximal de sauvegardes simultanées"
+
+msgid "validate_name_backupfolder"
+msgstr "Chemin du répertoire de sauvegarde"
+
+msgid "validate_name_computername"
+msgstr "Nom de l'ordinateur"
+
+msgid "too_many_clients_err"
+msgstr "Trop de clients"
+
+msgid "really_remove_client"
+msgstr "Etes vous sûr de vouloir supprimer ce client ? Cela implique que tous les fichiers et images sauvegardés seront supprimés !"
+
+msgid "computername"
+msgstr "Nom de l'ordinateur"
+
+msgid "storage_usage_pie_graph_title"
+msgstr "Utilisation d'espace"
+
+msgid "storage_usage_pie_graph_colname1"
+msgstr "Nom de l'ordinateur"
+
+msgid "storage_usage_pie_graph_colname2"
+msgstr "Utilisation d'espace"
+
+msgid "storage_usage_bar_graph_title"
+msgstr "Utilisation d'espace"
+
+msgid "storage_usage_bar_graph_colname1"
+msgstr "Date"
+
+msgid "storage_usage_bar_graph_colname2"
+msgstr "Utilisation d'espace"
+
+msgid "tImages"
+msgstr "Images"
+
+msgid "tFiles"
+msgstr "Fichiers"
+
+msgid "tSum"
+msgstr "Total"
+
+msgid "validate_err_notregexp_cleanup_window"
+msgstr "Format de l'intervalle de purge erroné"
+
+msgid "mail_settings"
+msgstr "Email"
+
+msgid "upgrade_error_text"
+msgstr "UrBackup met à jour sa base interne. Cela peut prendre du temps. Le serveur est ainsi inaccessible et ne fera aucune sauvegarde durant cet intervalle ."
+
+msgid "tActivities"
+msgstr "Activités"
+
+msgid "tAction"
+msgstr "Action"
+
+msgid "tProgress"
+msgstr ""
+
+msgid "tFiles in queue"
+msgstr "Fichier en cours"
+
+msgid "tLast activities"
+msgstr "Dernières activités"
+
+msgid "tStarting time"
+msgstr "Lancement"
+
+msgid "tRequired time"
+msgstr "Temps nécessaire"
+
+msgid "tUsed Storage"
+msgstr "Espace utilisé"
+
+msgid "tClients"
+msgstr "Clients"
+
+msgid "tLogs"
+msgstr "Journaux"
+
+msgid "tReports"
+msgstr "Rapports"
+
+msgid "tSend reports to"
+msgstr "Envoyer les rapports à "
+
+msgid "tSend"
+msgstr "Envoyer"
+
+msgid "tBackups with a log message of at least log level"
+msgstr "Afficher les journaux au niveau "
+
+msgid "tBackup time"
+msgstr "Durée"
+
+msgid "tErrors"
+msgstr "Erreurs"
+
+msgid "tWarnings"
+msgstr "Alertes"
+
+msgid "tStorage allocation"
+msgstr "Espace alloué"
+
+msgid "tStorage usage"
+msgstr "Utilisation d'espace"
+
+msgid "tAll"
+msgstr "Tous"
+
+msgid "tBackup storage path"
+msgstr "Chemin du répertoire de sauvegarde"
+
+msgid "tDo not do image backups"
+msgstr "Désactiver la sauvegarde Image "
+
+msgid "tDo not do file backups"
+msgstr "Désactiver la sauvegarde de fichiers"
+
+msgid "tAutomatically shut down server"
+msgstr "Eteindre automatiquement le serveur"
+
+msgid "tAutoupdate clients"
+msgstr "Mettre à jour les clients"
+
+msgid "tMax number of simultaneous backups"
+msgstr "Nombre maximal de sauvegardes simultanées"
+
+msgid "tMax number of recently active clients"
+msgstr "Nombre maximal de clients actifs"
+
+msgid "tCleanup time window"
+msgstr "Intervalle de purge"
+
+msgid "tAutomatically backup UrBackup database"
+msgstr "Sauvegarder automatiquement la base de données du serveur"
+
+msgid "tInterval for incremental file backups"
+msgstr "Intervalle pour la sauvegarde incrémentielle de fichiers"
+
+msgid "tInterval for full file backups"
+msgstr "Intervalle pour la sauvegarde complète de fichiers"
+
+msgid "tInterval for incremental image backups"
+msgstr ""
+
+msgid "tInterval for full image backups"
+msgstr "Intervalle pour la sauvegarde Image complète"
+
+msgid "tMaximal number of incremental file backups"
+msgstr "Nombre maximal de sauvegardes fichiers incrémentielles"
+
+msgid "tMinimal number of incremental file backups"
+msgstr "Nombre minimal de sauvegardes fichiers incrémentielles"
+
+msgid "tMaximal number of full file backups"
+msgstr "Nombre maximal de sauvegardes fichiers complètes"
+
+msgid "tMinimal number of full file backups"
+msgstr "Nombre minimal de sauvegardes fichiers complètes"
+
+msgid "tMaximal number of incremental image backups"
+msgstr "Nombre maximal de sauvegardes image incrémentielles"
+
+msgid "tMinimal number of incremental image backups"
+msgstr "Nombre minimal de sauvegardes image incrémentielles"
+
+msgid "tMaximal number of full image backups"
+msgstr "Nombre maximal de sauvegardes image complètes"
+
+msgid "tMinimal number of full image backups"
+msgstr "Nombre minimal de sauvegardes image complètes"
+
+msgid "tDelay after system startup"
+msgstr "Délai après lancement"
+
+msgid "tBackup window"
+msgstr "Intervalle de sauvegarde"
+
+msgid "tExcluded files (with wildcards)"
+msgstr "Fichiers exclus (avec Wildcards)"
+
+msgid "tIncluded files (with wildcards)"
+msgstr "Fichiers inclus (avec Wildcards)"
+
+msgid "tDefault directories to backup"
+msgstr "Répertoires par défaut à sauvegarder "
+
+msgid "tVolumes to backup"
+msgstr "Volumes à sauvegarder"
+
+msgid "tAllow client-side changing of the directories to backup"
+msgstr "Permettre au client de définir les répertoires de sauvegarde"
+
+msgid "tAllow client-side starting of file backups"
+msgstr "Permettre au client de lancer une sauvegarde fichiers"
+
+msgid "tAllow client-side starting of image backups"
+msgstr "Permettre au client de lancer une sauvegarde Image"
+
+msgid "tAllow client-side viewing of backup logs"
+msgstr "Permettre au client de consulter les journaux"
+
+msgid "tAllow client-side pausing of backups"
+msgstr "Permettre au client de mettre en pause les sauvegardes"
+
+msgid "tAllow client-side changing of settings"
+msgstr "Permettre au client de changer les réglages"
+
+msgid "tdays"
+msgstr "Jours"
+
+msgid "thours"
+msgstr "Heures"
+
+msgid "tmin"
+msgstr "min"
+
+msgid "tMail server name"
+msgstr "Adresse du serveur SMTP"
+
+msgid "tMail server port"
+msgstr "Port du serveur SMTP"
+
+msgid "tMail server username (empty for none)"
+msgstr "Nom du compte email"
+
+msgid "tMail server password"
+msgstr "Mot de passe"
+
+msgid "tSender E-Mail Address"
+msgstr "Emetteur de l'email"
+
+msgid "tSend mails only with SSL/TLS"
+msgstr "N'envoyer qu'avec SSL/TLS"
+
+msgid "tCheck SSL/TLS certificate"
+msgstr "Vérifier le certificat SSL/TLS"
+
+msgid ""
+"tSend test mail to this email address after saving the settings (leave empty"
+" to not send a test mail)"
+msgstr "Envoyer un email TEST à cette adresse après avoir sauvé les paramètres (laisser vide pour ignorer l'envoi)"
+
+msgid "tTest Mail sent successfully"
+msgstr "Succès d'envoi de l'email TEST"
+
+msgid "tSending test mail failed. Error:"
+msgstr "Echec d'envoi de l'email TEST avec l'erreur :"
+
+msgid "tFilter"
+msgstr "Filtre"
+
+msgid "tBack"
+msgstr "Précédent"
+
+msgid "tAdd"
+msgstr "Ajouter"
+
+msgid "tRemove"
+msgstr "Enlever"
+
+msgid "tSave"
+msgstr "Enregistrer"
+
+msgid "tLevel"
+msgstr "Niveau"
+
+msgid "tTime"
+msgstr "Temps"
+
+msgid "tMessage"
+msgstr "Message"
+
+msgid "tLog"
+msgstr "Journaux"
+
+msgid "tUsername"
+msgstr "Nom utilisateur"
+
+msgid "tRights"
+msgstr "Droits"
+
+msgid "tNo Users"
+msgstr "Aucun utilisateur"
+
+msgid "tCreate user"
+msgstr "Créer un utilisateur"
+
+msgid "tPassword"
+msgstr "Mot de passe"
+
+msgid "tRepeat password"
+msgstr "Répéter le mot de passe"
+
+msgid "tRights for"
+msgstr "Droits pour"
+
+msgid "tAbort"
+msgstr "Abandonner"
+
+msgid "tCreate"
+msgstr "Créer"
+
+msgid "tChange rights"
+msgstr "Changer les droits"
+
+msgid "tChange password"
+msgstr "Changer le mot de passe"
+
+msgid "tLogin"
+msgstr "Login"
+
+msgid "tInfos"
+msgstr "Information"
+
+msgid "tSeparate settings for this client"
+msgstr "Paramétrage individuel pour ce client"
+
+msgid "tServer"
+msgstr "Serveur"
+
+msgid "tFile backups"
+msgstr "Sauvegarde Fichiers"
+
+msgid "tImage backups"
+msgstr "Sauvegarde Image"
+
+msgid "tPermissions"
+msgstr "Droits"
+
+msgid "tClient"
+msgstr ""
+
+msgid "tArchival"
+msgstr "Archivage"
+
+msgid "tInternet"
+msgstr ""
+
+msgid "tPerform autoupdates silently"
+msgstr "Appliquer les mises à jour automatiques en silence"
+
+msgid "tMax backup speed for local network"
+msgstr "Vitesse maximale du réseau local"
+
+msgid "tNo activities"
+msgstr "Pas d'activité"
+
+msgid "tSelect all"
+msgstr "Tout sélectionner"
+
+msgid "tSelect none"
+msgstr "Ne rien sélectionner"
+
+msgid "tRemove selected"
+msgstr "Supprimer sélectionnés"
+
+msgid "tStart for selected"
+msgstr "Lancer les sélectionnés"
+
+msgid "tInternet clients"
+msgstr ""
+
+msgid "tAdd additional internet clients"
+msgstr ""
+
+msgid "tClient name"
+msgstr ""
+
+msgid "tNo entries for this filter"
+msgstr "Pas d'entrée dans cette vue"
+
+msgid "tNo data"
+msgstr ""
+
+msgid "tTotal max backup speed for local network"
+msgstr "Somme totale de la vitesse maximale pour le réseau local"
+
+msgid "tArchive every"
+msgstr "Archiver tous les"
+
+msgid "tArchive for"
+msgstr "Archives pour"
+
+msgid "tArchive window"
+msgstr "Intervalle d'archivage"
+
+msgid "tBackup type"
+msgstr "Type de sauvegarde"
+
+msgid "tEnable internet mode (requires server restart)"
+msgstr "Activer le mode internet (nécessite un redémarrage du serveur)"
+
+msgid "tInternet server name/IP"
+msgstr "Adresse internet du serveur HOTE/IP"
+
+msgid "tInternet server port"
+msgstr "Port du serveur Internet"
+
+msgid "tDo image backups over internet"
+msgstr "Activer la sauvegarde Image via Internet"
+
+msgid "tDo full file backups over internet"
+msgstr "Activer les sauvegardes complètes par internet"
+
+msgid "tMax backup speed for internet connection"
+msgstr "Vitesse maximale du réseau internet"
+
+msgid "tTotal max backup speed for internet connection"
+msgstr "Somme totale de la vitesse maximale pour le réseau internet"
+
+msgid "tEncrypted transfer"
+msgstr "Encrypter les échanges"
+
+msgid "tCompressed transfer"
+msgstr "Compresser les échanges"
+
+msgid "file_backup"
+msgstr ""
+
+msgid "hours"
+msgstr "heures"
+
+msgid "days"
+msgstr "jours"
+
+msgid "weeks"
+msgstr "semaines"
+
+msgid "months"
+msgstr "mois"
+
+msgid "year"
+msgstr "année"
+
+msgid "hour"
+msgstr "heure"
+
+msgid "day"
+msgstr "jour"
+
+msgid "week"
+msgstr "semaine"
+
+msgid "month"
+msgstr "mois"
+
+msgid "years"
+msgstr "années"
+
+msgid "min"
+msgstr "minute"
+
+msgid "mins"
+msgstr "minutes"
+
+msgid "validate_name_archive_every"
+msgstr "Archiver tous les"
+
+msgid "validate_name_archive_for"
+msgstr "Archives pour"
+
+msgid "forever"
+msgstr "Pour toujours"
+
+msgid "backup_in_progress"
+msgstr "Sauvegarde en cours..."
+
+msgid "really_remove_clients"
+msgstr "Etes vous sûr de vouloir supprimer ce client ? Cela implique que tous les fichiers et images sauvegardés seront supprimés !"
+
+msgid "no_client_selected"
+msgstr "Aucun client n'a été sélectionné"
+
+msgid "queued_backup"
+msgstr "Sauvegarde planifiée"
+
+msgid "starting_backup_failed"
+msgstr "Le lancement de la sauvegarde a échoué"
+
+msgid "trying_to_stop_backup"
+msgstr "Tentative d'interruption de la sauvegarde. Cela peut prendre du temps."
+
+msgid "unarchived_in"
+msgstr "Ne sera plus archivé dans"
+
+msgid "validate_err_notregexp_archive_window"
+msgstr "Le format pour l'intervalle d'archivage est mauvais"
+
+msgid "wait_for_archive_window"
+msgstr "Attente du prochain lancement"
+
+msgid "validate_err_notregexp_image_letters"
+msgstr "Le format pour la lettre de disque est mauvais"
+
+msgid "validate_name_global_local_speed"
+msgstr "Vitesse max totale pour la sauvegarde en réseau local"
+
+msgid "validate_name_global_internet_speed"
+msgstr "Vitesse max totale pour la sauvegarde via internet"
+
+msgid "validate_name_local_speed"
+msgstr "Vitesse maximale pour la sauvegarde en réseau local"
+
+msgid "validate_name_internet_speed"
+msgstr "Vitesse maximale pour la sauvegarde via internet"
+
+msgid "enter_clientname"
+msgstr "Merci d'entrer un nom de client"
+
+msgid "internet_client_added"
+msgstr "Client ajouté. Vous pouvez voir la clef du client (ou mot de passe) dans le menu Réglages."
+
+msgid "change_pw"
+msgstr "Changer le mot de passe"
+
+msgid "old_pw_wrong"
+msgstr "Ancien mot de passe erroné"
+
+msgid "tID"
+msgstr "ID"
+
+msgid "tFile"
+msgstr "Fichier"
+
+msgid "tSize"
+msgstr "Taille"
+
+msgid "tIncremental"
+msgstr "Incrémentielle"
+
+msgid "tLoading"
+msgstr "Chargement"
+
+msgid "tStorage usage of"
+msgstr "Espace utilisé pour"
+
+msgid "tDelete domain"
+msgstr "Détruire un domaine"
+
+msgid "tChange rights for user"
+msgstr "Changer les droits pour l'utilisateur:"
+
+msgid "tDomain"
+msgstr "Domaine"
+
+msgid "tTranslation"
+msgstr "Traduction"
+
+msgid "tNew domain"
+msgstr "Nouveau Domaine"
+
+msgid "tChange"
+msgstr "Changer"
+
+msgid "tChange password for user"
+msgstr "Changer le mot de passe pour l'utilisateur:"
+
+msgid "tSaved settings successfully"
+msgstr "Enregistré avec succès"
+
+msgid "tThis client is going to be removed."
+msgstr ""
+
+msgid "tStop removing client"
+msgstr ""
+
+msgid "tFailed"
+msgstr "Echec"
+
+msgid "tSuccessfull"
+msgstr "Succès"
+
+msgid "tInfo"
+msgstr "Info"
+
+msgid "tError"
+msgstr "Erreurs"
+
+msgid "tWarning"
+msgstr "Alertes"
+
+msgid "tCurrent version"
+msgstr "Version actuelle"
+
+msgid "tTarget version"
+msgstr "Version cible"
+
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings."
+msgstr "Alerte: Les paramètres configurés sur le client seront ceux pris en compte. Si vous ne le voulez pas, désactiver les droits de paramétrage pour le client. "
+
+msgid "tNext archival"
+msgstr "Prochain archivage"
+
+msgid "tweeks"
+msgstr "Semaines"
+
+msgid "tmonth"
+msgstr "Mois"
+
+msgid "tyears"
+msgstr "Années"
+
+msgid "tforever"
+msgstr "Pour toujours"
+
+msgid "tFile backup"
+msgstr "Sauvegarde de fichiers"
+
+msgid "tIncremental file backup"
+msgstr "Sauvegarde de fichiers incrémentielle"
+
+msgid "tFull file backup"
+msgstr "Sauvegarde de fichiers complète"
+
+msgid "tEnable internet mode"
+msgstr "Activer le mode internet"
+
+msgid "tInternet auth key"
+msgstr "Clé d'authentification du serveur internet"
+
+msgid "tIncremental image backup"
+msgstr "Sauvegarde image incrémentielle"
+
+msgid "tFull image backup"
+msgstr "Sauvegarde image complète"
+
+msgid ""
+"tClients are removed during the cleanup time window, if they are offline."
+msgstr "Les clients seront supprimés durant l'intervalle de purge, si ils ne sont pas en ligne."
+
+msgid "tArchived"
+msgstr "Archivés"
+
+msgid "nospc_stalled_text"
+msgstr "Il n' y a plus d'espace disponible dans le répertoire de sauvegarde. UrBackup efface les anciennes sauvegardes de fichiers et image pour faire de l'espace, selon les paramètres définis dans Réglages. Pendant cette phase, les performances de la sauvegarde diminuent, et les sauvegardes sont stoppées ."
+
+msgid "nospc_fatal_text"
+msgstr "Il n' y a plus d'espace disponible dans le répertoire de sauvegarde. UrBackup a tenté de purger les anciennes sauvegardes mais ne peut en effacer plus à cause des paramètres définis. Merci de changer ces paramètres à la baisse ou d'augmenter l'espace de stockage alloué afin de permettre à UrBackup de poursuivre."
+
+msgid "tNondefault temporary file directory"
+msgstr "Répertoire temporaire"
+
+msgid "tClients are removed during the cleanup in the cleanup time window."
+msgstr ""
+
+msgid "about_urbackup"
+msgstr ""
+
+msgid "loading"
+msgstr ""
+
+msgid "authentication_err"
+msgstr ""
+
+msgid "tInverval for incremental image backups"
+msgstr "Intervalle pour la sauvegarde Image incrémentielle"
+
+msgid "action_5"
+msgstr ""
+
+msgid "action_6"
+msgstr ""
+
+msgid "really_recalculate"
+msgstr ""
+
+msgid "database_error_text"
+msgstr ""
+
+msgid "creating_filescache_text"
+msgstr ""
+
+msgid "tDownload folder as ZIP"
+msgstr ""
+
+msgid "tOld password"
+msgstr ""
+
+msgid "tNew password"
+msgstr ""
+
+msgid "tRepeat new password"
+msgstr ""
+
+msgid "tChanging password failed:"
+msgstr ""
+
+msgid "tChanged password successfully"
+msgstr ""
+
+msgid "tNumber of file entries processed"
+msgstr ""
+
+msgid "tUrBackup live log"
+msgstr ""
+
+msgid "tLive Log"
+msgstr ""
+
+msgid "tShow"
+msgstr ""
+
+msgid "tThere is a new version of UrBackup server available"
+msgstr ""
+
+msgid "tIndexing..."
+msgstr ""
+
+msgid "tDelete"
+msgstr ""
+
+msgid "tDownload client from update server"
+msgstr ""
+
+msgid "tGlobal soft filesystem quota"
+msgstr ""
+
+msgid "tDisable"
+msgstr ""
+
+msgid "tCompress image backups"
+msgstr ""
+
+msgid "tAllow client-side starting of full file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of incremental file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of full image backups"
+msgstr ""
+
+msgid "tAllow client-side starting of incremental image backups"
+msgstr ""
+
+msgid "tBackup window for incremental file backups"
+msgstr ""
+
+msgid "tBackup window for full file backups"
+msgstr ""
+
+msgid "tBackup window for incremental image backups"
+msgstr ""
+
+msgid "tBackup window for full image backups"
+msgstr ""
+
+msgid "tSoft client quota"
+msgstr ""
+
+msgid "tCalculate file-hashes on the client"
+msgstr ""
+
+msgid "tAdvanced"
+msgstr ""
+
+msgid "tTemporary files as file backup buffer"
+msgstr ""
+
+msgid "tTemporary files as image backup buffer"
+msgstr ""
+
+msgid "tLocal full file backup transfer mode"
+msgstr ""
+
+msgid "tRaw"
+msgstr ""
+
+msgid "tHashed"
+msgstr ""
+
+msgid "tInternet full file backup transfer mode"
+msgstr ""
+
+msgid "tLocal incremental file backup transfer mode"
+msgstr ""
+
+msgid "tBlock differences - hashed"
+msgstr ""
+
+msgid "tInternet incremental file backup transfer mode"
+msgstr ""
+
+msgid "tLocal image backup transfer mode"
+msgstr ""
+
+msgid "tInternet image backup transfer mode"
+msgstr ""
+
+msgid "tFile hash collection amount"
+msgstr ""
+
+msgid "tFile hash collection timeout"
+msgstr ""
+
+msgid "tFile hash collection database cachesize"
+msgstr ""
+
+msgid "tMB"
+msgstr ""
+
+msgid "tUpdate stats database cachesize"
+msgstr ""
+
+msgid "tCache database type for file entries"
+msgstr ""
+
+msgid "tNone"
+msgstr ""
+
+msgid "tCache database size for file entries"
+msgstr ""
+
+msgid "tSuspend index limit"
+msgstr ""
+
+msgid "tUse symlinks during incremental file backups"
+msgstr ""
+
+msgid "tEnd-to-end verification of all file backups"
+msgstr ""
+
+msgid "tServer admin mail address"
+msgstr ""
+
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings. "
+msgstr ""
+
+msgid "tClient download"
+msgstr ""
+
+msgid "tDownload"
+msgstr ""
+
+msgid "tStatus"
+msgstr ""
+
+msgid "tIP"
+msgstr ""
+
+msgid "tClient version"
+msgstr ""
+
+msgid "tOperating System"
+msgstr ""
+
+msgid "tShow all clients"
+msgstr ""
+
+msgid "tThis client is going to be removed. "
+msgstr ""
+
+msgid "tClients are removed during the cleanup in the cleanup time window. "
+msgstr ""
+
+msgid "tRecalculate statistics"
+msgstr ""

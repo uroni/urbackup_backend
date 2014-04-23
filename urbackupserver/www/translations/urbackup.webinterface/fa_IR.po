@@ -1,0 +1,1128 @@
+# UrBackup translation
+# Copyright (C) 2011-2014 See translators
+# This file is distributed under the same license as the UrBackup package.
+# Translators:
+msgid ""
+msgstr ""
+"Project-Id-Version: UrBackup\n"
+"PO-Revision-Date: 2014-04-23 20:38+0000\n"
+"Last-Translator: uroni <urpc@gmx.de>\n"
+"Language-Team: Persian (Iran) (http://www.transifex.com/projects/p/urbackup/language/fa_IR/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: fa_IR\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "action_1"
+msgstr "پشتیبان گیری افزایشی فایل"
+
+msgid "action_2"
+msgstr "پشتیبان گیری کامل فایل"
+
+msgid "action_3"
+msgstr "پشتیبان گیری افزایشی تصویر"
+
+msgid "action_4"
+msgstr "پشتیبان گیری کامل تصویر"
+
+msgid "action_1_d"
+msgstr "حذف پشتیبان گیری افزایشی فایل"
+
+msgid "action_2_d"
+msgstr "حذف پشتیبان گیری کامل فایل"
+
+msgid "action_3_d"
+msgstr "حذف پشتیبان گیری افزایشی تصویر"
+
+msgid "action_4_d"
+msgstr "حذف پشتیبان گیری کامل تصویر"
+
+msgid "nav_item_6"
+msgstr "وضعیت"
+
+msgid "nav_item_5"
+msgstr "عملیات"
+
+msgid "nav_item_4"
+msgstr "پشتیبان گیری ها"
+
+msgid "nav_item_3"
+msgstr "لاگ ها"
+
+msgid "nav_item_2"
+msgstr "ارقام"
+
+msgid "nav_item_1"
+msgstr "تنظیمات"
+
+msgid "unknown"
+msgstr "ناشناخته"
+
+msgid "overview"
+msgstr "بازبینی"
+
+msgid "ok"
+msgstr "تایید"
+
+msgid "no_recent_backup"
+msgstr "بدون پشتیبان گیری"
+
+msgid "backup_never"
+msgstr "هرگز"
+
+msgid "yes"
+msgstr "بله"
+
+msgid "no"
+msgstr "خیر"
+
+msgid "tBackup status"
+msgstr "وضعیت پشتیبان گیری"
+
+msgid "tComputer name"
+msgstr "نام کامپیوتر"
+
+msgid "tLast seen"
+msgstr "آخرین دیدار"
+
+msgid "tLast file backup"
+msgstr "آخرین پشتیبان گیری فایل"
+
+msgid "tLast image backup"
+msgstr "آخرین پشتیبان گیری تصویر"
+
+msgid "tFile backup status"
+msgstr "وضعیت پشتیبان گیری فایل"
+
+msgid "tImage backup status"
+msgstr "وضعیت پشتیبان گیری تصویر"
+
+msgid "tShow details"
+msgstr "نمایش جزییات"
+
+msgid "tExtra clients"
+msgstr "مشتریان اضافی"
+
+msgid "tNo extra clients"
+msgstr "بدون مشتریان اضافی"
+
+msgid "tActions"
+msgstr "فعالیت ها"
+
+msgid "tOnline"
+msgstr "برخط"
+
+msgid "tHostname/IP"
+msgstr "IP/نام"
+
+msgid "tServer identity"
+msgstr "هویت سرور"
+
+msgid "users"
+msgstr "کاربران"
+
+msgid "general_settings"
+msgstr "تنظیمات عمومی"
+
+msgid "admin"
+msgstr "مدیر"
+
+msgid "user"
+msgstr "کاربر"
+
+msgid "username_empty"
+msgstr "لطفا نام کاربری را وارد کنید"
+
+msgid "password_empty"
+msgstr "لطفا کلمه عبور را وارد کنید"
+
+msgid "password_differ"
+msgstr "کلمات عبور متفاوت هستند"
+
+msgid "user_n_exist"
+msgstr "کاربر وجود ندارد"
+
+msgid "password_wrong"
+msgstr "کلمه عبور اشتباه است"
+
+msgid "user_exists"
+msgstr "کاربری با این نام از قبل وجود دارد"
+
+msgid "session_timeout"
+msgstr "با توجه به عدم فعالیت، شما باید مجدد وارد شوید"
+
+msgid "really_del_user"
+msgstr "از حذف کاربر مطمئن هستید؟"
+
+msgid "user_add_done"
+msgstr "کاربر جدید با موفقیت اضافه شد"
+
+msgid "user_remove_done"
+msgstr "کاربر با موفقیت حذف شد"
+
+msgid "user_update_right_done"
+msgstr "کاربر با موفقیت به روز شد"
+
+msgid "user_pw_change_ok"
+msgstr "کلمه عبور با موفقیت تغییر کرد"
+
+msgid "right_all"
+msgstr "تمام حقوق"
+
+msgid "right_none"
+msgstr "بدون حقوق"
+
+msgid "filter"
+msgstr "فیلتر"
+
+msgid "all"
+msgstr "همه"
+
+msgid "loglevel_0"
+msgstr "اطلاعات"
+
+msgid "loglevel_1"
+msgstr "هشدار"
+
+msgid "loglevel_2"
+msgstr "خطا"
+
+msgid "dir_error_text"
+msgstr "دایرکتوری ذخیره پشتیبان ها در دسترس نیست.لطفا تنظیمات دایرکتوری را تغییر داده و یا حقوق دسترسی برنامه را عوض کنید"
+
+msgid "tmpdir_error_text"
+msgstr "دایرکتوری ذخیره فایل های موقت در دسترس نیست.لطفا تنظیمات دایرکتوری را تغییر داده و یا حقوق دسترسی برنامه را عوض کنید"
+
+msgid "starting"
+msgstr "شروع"
+
+msgid "ident_err"
+msgstr "سرور رد کرد"
+
+msgid "enter_hostname"
+msgstr "را وارد کنید IP لطفا نام میزبان و یا"
+
+msgid "clients"
+msgstr "مشتریان"
+
+msgid "validate_text_empty"
+msgstr "Please enter a value for # {name}"
+
+msgid "validate_text_notint"
+msgstr "Please enter a numeric value for # {name}"
+
+msgid "validate_name_update_freq_incr"
+msgstr "بازه پشتیبان گیری افزایشی فایل"
+
+msgid "validate_name_update_freq_full"
+msgstr "بازه پشتیبان گیری کامل فایل"
+
+msgid "validate_name_update_freq_image_full"
+msgstr "بازه پشتیبان گیری کامل تصویر"
+
+msgid "validate_name_update_freq_image_incr"
+msgstr "بازه پشتیبان گیری افزایشی تصویر"
+
+msgid "validate_name_max_file_incr"
+msgstr "بیشترین تعداد پشتیبان گیری افزایشی فایل"
+
+msgid "validate_name_min_file_incr"
+msgstr "کمترین تعداد پشتیبان گیری افزایشی فایل"
+
+msgid "validate_name_max_file_full"
+msgstr "بیشترین تعداد پشتیبان گیری کامل فایل"
+
+msgid "validate_name_min_file_full"
+msgstr "کمترین تعداد پشتیبان گیری کامل فایل"
+
+msgid "validate_name_min_image_incr"
+msgstr "کمترین تعداد پشتیبان گیری افزایشی تصویر"
+
+msgid "validate_name_max_image_incr"
+msgstr "بیشترین تعداد پشتیبان گیری افزایشی تصویر"
+
+msgid "validate_name_min_image_full"
+msgstr "کمترین تعداد پشتیبان گیری کامل تصویر"
+
+msgid "validate_name_max_image_full"
+msgstr "بیشترین تعداد پشتیبان گیری کامل تصویر"
+
+msgid "validate_name_startup_backup_delay"
+msgstr "تاخیر در راه اندازی سیستم"
+
+msgid "validate_err_notregexp_backup_window"
+msgstr "فرمت اشتباه"
+
+msgid "validate_name_max_active_clients"
+msgstr "بیشترین تعداد مشتریان فعال"
+
+msgid "validate_name_max_sim_backups"
+msgstr "بیشترین تعداد پشتیبان گیری همزمان"
+
+msgid "validate_name_backupfolder"
+msgstr "نام فولدر پشتیبان گیری"
+
+msgid "validate_name_computername"
+msgstr "نام کامپیوتر"
+
+msgid "too_many_clients_err"
+msgstr "تعداد مشتریان بیش از حد مجاز است"
+
+msgid "really_remove_client"
+msgstr "آیا از حذف این مشتری مطمئن هستید؟ با حذف آن تمام فایل ها و تصاویر پشتیبان مربوط به آن حذف میشوند"
+
+msgid "computername"
+msgstr ""
+
+msgid "storage_usage_pie_graph_title"
+msgstr "استفاده از فضا"
+
+msgid "storage_usage_pie_graph_colname1"
+msgstr "نام کامپیوتر"
+
+msgid "storage_usage_pie_graph_colname2"
+msgstr "استفاده از فضا"
+
+msgid "storage_usage_bar_graph_title"
+msgstr "تاریخچه استفاده از فضا"
+
+msgid "storage_usage_bar_graph_colname1"
+msgstr "تاریخ"
+
+msgid "storage_usage_bar_graph_colname2"
+msgstr "استفاده از فضا"
+
+msgid "tImages"
+msgstr "تصاویر"
+
+msgid "tFiles"
+msgstr "فایل ها"
+
+msgid "tSum"
+msgstr "مجموع"
+
+msgid "validate_err_notregexp_cleanup_window"
+msgstr "فرمت پنجره زمان پاکسازی اشتباه است"
+
+msgid "mail_settings"
+msgstr "ایمیل"
+
+msgid "upgrade_error_text"
+msgstr "دیتابیس برنامه داخلی است به همین دلیل ارتقا کمی طول میکشد. در حین ارتقا رابط کاربری برنامه غیرفعال بوده و هیچ پشتیبان گیری انجام نمیشود"
+
+msgid "tActivities"
+msgstr "فعالیت ها"
+
+msgid "tAction"
+msgstr "عملیات"
+
+msgid "tProgress"
+msgstr ""
+
+msgid "tFiles in queue"
+msgstr "فایل های در صف"
+
+msgid "tLast activities"
+msgstr "فعالیت های اخیر"
+
+msgid "tStarting time"
+msgstr "زمان شروع"
+
+msgid "tRequired time"
+msgstr "زمان درخواستی"
+
+msgid "tUsed Storage"
+msgstr "فضای استفاده شده"
+
+msgid "tClients"
+msgstr "مشتریان"
+
+msgid "tLogs"
+msgstr "لاگ ها"
+
+msgid "tReports"
+msgstr "گزارش ها"
+
+msgid "tSend reports to"
+msgstr "ارسال گزارش ها برای"
+
+msgid "tSend"
+msgstr "ارسال"
+
+msgid "tBackups with a log message of at least log level"
+msgstr "پشتیبان گیری با پیام لاگ از کمترین سطح"
+
+msgid "tBackup time"
+msgstr "زمان پشتیبان گیری"
+
+msgid "tErrors"
+msgstr "خطا"
+
+msgid "tWarnings"
+msgstr "هشدار"
+
+msgid "tStorage allocation"
+msgstr "تخصیص فضا"
+
+msgid "tStorage usage"
+msgstr "مصرف حافظه"
+
+msgid "tAll"
+msgstr "همه"
+
+msgid "tBackup storage path"
+msgstr "مسیر پشتیبان گیری"
+
+msgid "tDo not do image backups"
+msgstr "پشتیبان گیری تصویر وجود ندارد"
+
+msgid "tDo not do file backups"
+msgstr "پشتیبان گیری فایل اجرا نشود"
+
+msgid "tAutomatically shut down server"
+msgstr "خاموش کردن سرور به صورت خودکار"
+
+msgid "tAutoupdate clients"
+msgstr "به روزرسانی خودکار مشتریان"
+
+msgid "tMax number of simultaneous backups"
+msgstr "بیشترین تعداد پشتیبان گیری همزمان"
+
+msgid "tMax number of recently active clients"
+msgstr "بیشترین تعداد مشتریان فعال"
+
+msgid "tCleanup time window"
+msgstr "پنجره زمان پاکسازی"
+
+msgid "tAutomatically backup UrBackup database"
+msgstr "بانک اطلاعاتی پشتیبان گیری خودکار برنامه"
+
+msgid "tInterval for incremental file backups"
+msgstr "بازه پشتیبان گیری افزایشی فایل"
+
+msgid "tInterval for full file backups"
+msgstr "بازه پشتیبان گیری کامل فایل"
+
+msgid "tInterval for incremental image backups"
+msgstr "بازه پشتیبان گیری افزایشی تصویر"
+
+msgid "tInterval for full image backups"
+msgstr "بازه پشتیبان گیری کامل تصویر"
+
+msgid "tMaximal number of incremental file backups"
+msgstr "بیشترین تعداد پشتیبان گیری افزایشی فایل"
+
+msgid "tMinimal number of incremental file backups"
+msgstr "کمترین تعداد پشتیبان گیری افزایشی فایل"
+
+msgid "tMaximal number of full file backups"
+msgstr "بیشترین تعداد پشتیبان گیری کامل فایل"
+
+msgid "tMinimal number of full file backups"
+msgstr "کمترین تعداد پشتیبان گیری کامل فایل"
+
+msgid "tMaximal number of incremental image backups"
+msgstr "بیشترین تعداد پشتیبان گیری افزایشی تصویر"
+
+msgid "tMinimal number of incremental image backups"
+msgstr "کمترین تعداد پشتیبان گیری افزایشی تصویر"
+
+msgid "tMaximal number of full image backups"
+msgstr "بیشترین تعداد پشتیبان گیری کامل تصویر"
+
+msgid "tMinimal number of full image backups"
+msgstr "کمترین تعداد پشتیبان گیری کامل تصویر"
+
+msgid "tDelay after system startup"
+msgstr "تاخیر در راه اندازی سیستم"
+
+msgid "tBackup window"
+msgstr "پنجره پشتیبان گیری"
+
+msgid "tExcluded files (with wildcards)"
+msgstr "(Wildcardsفایل های محروم (با"
+
+msgid "tIncluded files (with wildcards)"
+msgstr "(Wildcardsفایل های مشمول (با"
+
+msgid "tDefault directories to backup"
+msgstr "دایرکتوری پیش فرض برای پشتیبان گیری"
+
+msgid "tVolumes to backup"
+msgstr "مقدار پشتیبان گیری"
+
+msgid "tAllow client-side changing of the directories to backup"
+msgstr "به مشتریان مجوز تغییر دایرکتوری پشتیبان گیری را بده"
+
+msgid "tAllow client-side starting of file backups"
+msgstr "به مشتریان مجوز شروع پشتیبان گیری فایل را میدهد"
+
+msgid "tAllow client-side starting of image backups"
+msgstr "به مشتریان مجوز شروع پشتیبان گیری تصویر را میدهد"
+
+msgid "tAllow client-side viewing of backup logs"
+msgstr "به مشتریان مجوز مشاهده لاگ پشتیبان گیری را میدهد"
+
+msgid "tAllow client-side pausing of backups"
+msgstr "به مشتریان مجوز توقف پشتیبان گیری را میدهد"
+
+msgid "tAllow client-side changing of settings"
+msgstr "به مشتریان اجازه تغییر تنظیمات را میدهد"
+
+msgid "tdays"
+msgstr "روزها"
+
+msgid "thours"
+msgstr "ساعات"
+
+msgid "tmin"
+msgstr "دقیقه"
+
+msgid "tMail server name"
+msgstr "نام سرور ایمیل"
+
+msgid "tMail server port"
+msgstr "پورت سرور ایمیل"
+
+msgid "tMail server username (empty for none)"
+msgstr "(نام کاربری سرور ایمیل (برای هیچ خالی بگذارید"
+
+msgid "tMail server password"
+msgstr "کلمه عبور سرور ایمیل"
+
+msgid "tSender E-Mail Address"
+msgstr "آدرس فرستنده ایمیل"
+
+msgid "tSend mails only with SSL/TLS"
+msgstr "ارسال کن SSL/TLSایمیل ها را تنها با "
+
+msgid "tCheck SSL/TLS certificate"
+msgstr "SSL/TLS بررسی اعتبار"
+
+msgid ""
+"tSend test mail to this email address after saving the settings (leave empty"
+" to not send a test mail)"
+msgstr "پس از ذخیره تنظیمات یک ایمیل آزمایشی به این آدرس ارسال کن"
+
+msgid "tTest Mail sent successfully"
+msgstr "ایمیل آزمایشی با موفقیت ارسال شد"
+
+msgid "tSending test mail failed. Error:"
+msgstr "ارسال ایمیل آزمایشی شکست خورد"
+
+msgid "tFilter"
+msgstr "فیلتر"
+
+msgid "tBack"
+msgstr "بازگشت"
+
+msgid "tAdd"
+msgstr "افزودن"
+
+msgid "tRemove"
+msgstr "برداشتن"
+
+msgid "tSave"
+msgstr "ذخیره"
+
+msgid "tLevel"
+msgstr "مرحله"
+
+msgid "tTime"
+msgstr "زمان"
+
+msgid "tMessage"
+msgstr "پیام"
+
+msgid "tLog"
+msgstr "لاگ"
+
+msgid "tUsername"
+msgstr "نام کاربری"
+
+msgid "tRights"
+msgstr "حقوق"
+
+msgid "tNo Users"
+msgstr "هیچ کاربری"
+
+msgid "tCreate user"
+msgstr "ایجاد کاربر"
+
+msgid "tPassword"
+msgstr "کلمه عبور"
+
+msgid "tRepeat password"
+msgstr "کلمه عبور را تکرار کنید"
+
+msgid "tRights for"
+msgstr "حقوق برای"
+
+msgid "tAbort"
+msgstr "لغو"
+
+msgid "tCreate"
+msgstr "ایجاد"
+
+msgid "tChange rights"
+msgstr "تغییر حقوق"
+
+msgid "tChange password"
+msgstr "تفییر کلمه عبور"
+
+msgid "tLogin"
+msgstr "ورود"
+
+msgid "tInfos"
+msgstr "اطلاعات"
+
+msgid "tSeparate settings for this client"
+msgstr "تنظیمات جداگانه برای این مشتری"
+
+msgid "tServer"
+msgstr "سرور"
+
+msgid "tFile backups"
+msgstr "پشتیبان گیری فایل"
+
+msgid "tImage backups"
+msgstr "پشتیبان گیری تصویر"
+
+msgid "tPermissions"
+msgstr "مجوز"
+
+msgid "tClient"
+msgstr ""
+
+msgid "tArchival"
+msgstr "بایگانی"
+
+msgid "tInternet"
+msgstr ""
+
+msgid "tPerform autoupdates silently"
+msgstr "انجام به روز رسانی خودکار در پس زمینه"
+
+msgid "tMax backup speed for local network"
+msgstr "بیشترین سرعت اتصال به شبکه محلی"
+
+msgid "tNo activities"
+msgstr "بدون فعالیت"
+
+msgid "tSelect all"
+msgstr "انتخاب همه"
+
+msgid "tSelect none"
+msgstr "انتخاب هیچ کدام"
+
+msgid "tRemove selected"
+msgstr "برداشتن انتخاب شدگان"
+
+msgid "tStart for selected"
+msgstr "شروغ انتخاب شوندگان"
+
+msgid "tInternet clients"
+msgstr ""
+
+msgid "tAdd additional internet clients"
+msgstr ""
+
+msgid "tClient name"
+msgstr ""
+
+msgid "tNo entries for this filter"
+msgstr "چیزی مطابق با معیارهای این فیلتر وجود ندارد"
+
+msgid "tNo data"
+msgstr ""
+
+msgid "tTotal max backup speed for local network"
+msgstr "حداکثر سرعت کلی شبکه محلی"
+
+msgid "tArchive every"
+msgstr "بایگانی در هر"
+
+msgid "tArchive for"
+msgstr "بایگانی برای"
+
+msgid "tArchive window"
+msgstr "پنجره بایگانی"
+
+msgid "tBackup type"
+msgstr "نوع پشتیبان گیری"
+
+msgid "tEnable internet mode (requires server restart)"
+msgstr "(فعال سازی حالت اینترنت (سرور باید ریست شود"
+
+msgid "tInternet server name/IP"
+msgstr "نام سرور اینترنت"
+
+msgid "tInternet server port"
+msgstr "پورت اینترنت"
+
+msgid "tDo image backups over internet"
+msgstr "انجام پشتیبان گیری تصویر بر روی اینترنت"
+
+msgid "tDo full file backups over internet"
+msgstr "انجام پشتیبان گیری فایل بر روی اینترنت"
+
+msgid "tMax backup speed for internet connection"
+msgstr "بیشترین سرعت اتصال به اینترنت"
+
+msgid "tTotal max backup speed for internet connection"
+msgstr "حداکثر سرعت کلی اینترنت"
+
+msgid "tEncrypted transfer"
+msgstr "رمزنگاری انتقال"
+
+msgid "tCompressed transfer"
+msgstr "انتقال فشرده"
+
+msgid "file_backup"
+msgstr ""
+
+msgid "hours"
+msgstr "ساعات"
+
+msgid "days"
+msgstr "روزها"
+
+msgid "weeks"
+msgstr "هفته ها"
+
+msgid "months"
+msgstr "ماه ها"
+
+msgid "year"
+msgstr "سال"
+
+msgid "hour"
+msgstr "ساعت"
+
+msgid "day"
+msgstr "روز"
+
+msgid "week"
+msgstr "هفته"
+
+msgid "month"
+msgstr "ماه"
+
+msgid "years"
+msgstr "سال ها"
+
+msgid "min"
+msgstr "دقیقه"
+
+msgid "mins"
+msgstr "دقایق"
+
+msgid "validate_name_archive_every"
+msgstr "بایگانی"
+
+msgid "validate_name_archive_for"
+msgstr "بایگانی برای"
+
+msgid "forever"
+msgstr "همیشه"
+
+msgid "backup_in_progress"
+msgstr "در حال پشتیبان گیری"
+
+msgid "really_remove_clients"
+msgstr "آیا از حذف این مشتری مطمئن هستید؟ با این کار تمام فایل ها و تصاویر پشتیبان مربوط به او حذف میشوند"
+
+msgid "no_client_selected"
+msgstr "مشتری انتخاب نشده است"
+
+msgid "queued_backup"
+msgstr "پشتیبان گیری در صف"
+
+msgid "starting_backup_failed"
+msgstr "پشتیبان گیری شروع نشد"
+
+msgid "trying_to_stop_backup"
+msgstr "پشتیبان گیری را متوقف کنید"
+
+msgid "unarchived_in"
+msgstr "بایگانی نشده در"
+
+msgid "validate_err_notregexp_archive_window"
+msgstr "فرمت اشتباه برای پنجره بایگانی"
+
+msgid "wait_for_archive_window"
+msgstr "در انتظار پنجره بایگانی"
+
+msgid "validate_err_notregexp_image_letters"
+msgstr "فرمت نام حجم اشتباه است"
+
+msgid "validate_name_global_local_speed"
+msgstr "سرعت اتصال به شبکه محلی"
+
+msgid "validate_name_global_internet_speed"
+msgstr "سرعت اتصال به اینترنت"
+
+msgid "validate_name_local_speed"
+msgstr "بیشترین سرعت اتصال به شبکه محلی"
+
+msgid "validate_name_internet_speed"
+msgstr "بیشترین سرعت اتصال به اینترن"
+
+msgid "enter_clientname"
+msgstr "نام مشتری را وارد کنید"
+
+msgid "internet_client_added"
+msgstr "مشتری اضافه شد. برای تغییر کلمه عبور به بخش تنظیمات بروید"
+
+msgid "change_pw"
+msgstr "تغییر کلمه عبور"
+
+msgid "old_pw_wrong"
+msgstr "کلمه عبور قبلی اشتباه است"
+
+msgid "tID"
+msgstr "شناسه"
+
+msgid "tFile"
+msgstr "فایل"
+
+msgid "tSize"
+msgstr "حجم"
+
+msgid "tIncremental"
+msgstr "افزایشی"
+
+msgid "tLoading"
+msgstr "بارگیری"
+
+msgid "tStorage usage of"
+msgstr "فضای استفاده شده از"
+
+msgid "tDelete domain"
+msgstr "حذف دامین"
+
+msgid "tChange rights for user"
+msgstr "تغییر حقوق برای کاربر"
+
+msgid "tDomain"
+msgstr "دامین"
+
+msgid "tTranslation"
+msgstr "ترجمه"
+
+msgid "tNew domain"
+msgstr "دامین جدید"
+
+msgid "tChange"
+msgstr "تغییر"
+
+msgid "tChange password for user"
+msgstr "تغییر کلمه عبور برای کاربر"
+
+msgid "tSaved settings successfully"
+msgstr "تنظیمات با موفقیت ذخیره شدند"
+
+msgid "tThis client is going to be removed."
+msgstr "این مشتری برداشته میشوند"
+
+msgid "tStop removing client"
+msgstr "توقف برداشتن مشتری"
+
+msgid "tFailed"
+msgstr "ناموفق"
+
+msgid "tSuccessfull"
+msgstr "موفق"
+
+msgid "tInfo"
+msgstr "اطلاعات"
+
+msgid "tError"
+msgstr "خطا"
+
+msgid "tWarning"
+msgstr "هشدار"
+
+msgid "tCurrent version"
+msgstr "نسخه فعلی"
+
+msgid "tTarget version"
+msgstr "نسخه هدف"
+
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings."
+msgstr "هشدار : تنظیمات مشتری بر تنظیماتی که اینجا انجام میشود تاثیر میگذرد. اگر نمیخواهید این اتفاق افتد مجوز تغییر تنظیمات کاربر را لغو کنید"
+
+msgid "tNext archival"
+msgstr "بایگانی بعدی"
+
+msgid "tweeks"
+msgstr "هفته ها"
+
+msgid "tmonth"
+msgstr "ماه"
+
+msgid "tyears"
+msgstr "سال ها"
+
+msgid "tforever"
+msgstr "همیشه"
+
+msgid "tFile backup"
+msgstr "فایل پشتیبان"
+
+msgid "tIncremental file backup"
+msgstr "فایل پشتیبان افزایشی"
+
+msgid "tFull file backup"
+msgstr "فایل پشتیبان کامل"
+
+msgid "tEnable internet mode"
+msgstr "فعال سازی حالت اینترنت"
+
+msgid "tInternet auth key"
+msgstr "اینترنت کلیدی"
+
+msgid "tIncremental image backup"
+msgstr "پشتیبان گیری افزایشی تصویر"
+
+msgid "tFull image backup"
+msgstr "پشتیبان گیری کامل تصویر"
+
+msgid ""
+"tClients are removed during the cleanup time window, if they are offline."
+msgstr "مشتریان در حین پاکسازی اگر آفلاین باشند حذف میشوند"
+
+msgid "tArchived"
+msgstr "بایگانی شده"
+
+msgid "nospc_stalled_text"
+msgstr "فضای لازم برای پشتیبان گیری وجود ندارد.برنامه فایل ها و تصاویر پشتیبان قدیمی را حذف میکند."
+
+msgid "nospc_fatal_text"
+msgstr "فضای لازم برای پشتیبان گیری وجود ندارد.برنامه فایل ها و تصاویر پشتیبان قدیمی را حذف میکند. ولی همچنان فضا کم است. لطفا در بخش تنظیمات فضای بیشتری به پشتیبان گیری اختصاص دهید."
+
+msgid "tNondefault temporary file directory"
+msgstr "دایرکتوری پیش فرضی برای فایل های موقت وجود ندارد"
+
+msgid "tClients are removed during the cleanup in the cleanup time window."
+msgstr ""
+
+msgid "about_urbackup"
+msgstr "درباره برنامه"
+
+msgid "loading"
+msgstr ""
+
+msgid "authentication_err"
+msgstr ""
+
+msgid "tInverval for incremental image backups"
+msgstr ""
+
+msgid "action_5"
+msgstr ""
+
+msgid "action_6"
+msgstr ""
+
+msgid "really_recalculate"
+msgstr ""
+
+msgid "database_error_text"
+msgstr ""
+
+msgid "creating_filescache_text"
+msgstr ""
+
+msgid "tDownload folder as ZIP"
+msgstr ""
+
+msgid "tOld password"
+msgstr ""
+
+msgid "tNew password"
+msgstr ""
+
+msgid "tRepeat new password"
+msgstr ""
+
+msgid "tChanging password failed:"
+msgstr ""
+
+msgid "tChanged password successfully"
+msgstr ""
+
+msgid "tNumber of file entries processed"
+msgstr ""
+
+msgid "tUrBackup live log"
+msgstr ""
+
+msgid "tLive Log"
+msgstr ""
+
+msgid "tShow"
+msgstr ""
+
+msgid "tThere is a new version of UrBackup server available"
+msgstr ""
+
+msgid "tIndexing..."
+msgstr ""
+
+msgid "tDelete"
+msgstr ""
+
+msgid "tDownload client from update server"
+msgstr ""
+
+msgid "tGlobal soft filesystem quota"
+msgstr ""
+
+msgid "tDisable"
+msgstr ""
+
+msgid "tCompress image backups"
+msgstr ""
+
+msgid "tAllow client-side starting of full file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of incremental file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of full image backups"
+msgstr ""
+
+msgid "tAllow client-side starting of incremental image backups"
+msgstr ""
+
+msgid "tBackup window for incremental file backups"
+msgstr ""
+
+msgid "tBackup window for full file backups"
+msgstr ""
+
+msgid "tBackup window for incremental image backups"
+msgstr ""
+
+msgid "tBackup window for full image backups"
+msgstr ""
+
+msgid "tSoft client quota"
+msgstr ""
+
+msgid "tCalculate file-hashes on the client"
+msgstr ""
+
+msgid "tAdvanced"
+msgstr ""
+
+msgid "tTemporary files as file backup buffer"
+msgstr ""
+
+msgid "tTemporary files as image backup buffer"
+msgstr ""
+
+msgid "tLocal full file backup transfer mode"
+msgstr ""
+
+msgid "tRaw"
+msgstr ""
+
+msgid "tHashed"
+msgstr ""
+
+msgid "tInternet full file backup transfer mode"
+msgstr ""
+
+msgid "tLocal incremental file backup transfer mode"
+msgstr ""
+
+msgid "tBlock differences - hashed"
+msgstr ""
+
+msgid "tInternet incremental file backup transfer mode"
+msgstr ""
+
+msgid "tLocal image backup transfer mode"
+msgstr ""
+
+msgid "tInternet image backup transfer mode"
+msgstr ""
+
+msgid "tFile hash collection amount"
+msgstr ""
+
+msgid "tFile hash collection timeout"
+msgstr ""
+
+msgid "tFile hash collection database cachesize"
+msgstr ""
+
+msgid "tMB"
+msgstr ""
+
+msgid "tUpdate stats database cachesize"
+msgstr ""
+
+msgid "tCache database type for file entries"
+msgstr ""
+
+msgid "tNone"
+msgstr ""
+
+msgid "tCache database size for file entries"
+msgstr ""
+
+msgid "tSuspend index limit"
+msgstr ""
+
+msgid "tUse symlinks during incremental file backups"
+msgstr ""
+
+msgid "tEnd-to-end verification of all file backups"
+msgstr ""
+
+msgid "tServer admin mail address"
+msgstr ""
+
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings. "
+msgstr ""
+
+msgid "tClient download"
+msgstr ""
+
+msgid "tDownload"
+msgstr ""
+
+msgid "tStatus"
+msgstr ""
+
+msgid "tIP"
+msgstr ""
+
+msgid "tClient version"
+msgstr ""
+
+msgid "tOperating System"
+msgstr ""
+
+msgid "tShow all clients"
+msgstr ""
+
+msgid "tThis client is going to be removed. "
+msgstr ""
+
+msgid "tClients are removed during the cleanup in the cleanup time window. "
+msgstr ""
+
+msgid "tRecalculate statistics"
+msgstr ""
