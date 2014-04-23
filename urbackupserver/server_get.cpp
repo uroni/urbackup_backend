@@ -2401,7 +2401,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	ServerBackupDao backup_dao(db);
 
 	bool copy_file_entries=false;
-	if(true)//resumed_backup) TODO
+	if(resumed_backup)
 	{
 		copy_file_entries = backup_dao.createTemporaryNewFilesTable();
 		copy_file_entries = copy_file_entries && backup_dao.createTemporaryLastFilesTable();

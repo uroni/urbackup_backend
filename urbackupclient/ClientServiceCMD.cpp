@@ -167,13 +167,13 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 {
 	std::string s_params;
-	if(cmd=="3START BACKUP")
+	if(next(cmd, 0, "3START BACKUP"))
 	{
 		file_version=2;
 		if(cmd.size()>14)
 			s_params=cmd.substr(14);
 	}
-	else if("2START BACKUP")
+	else if(cmd=="2START BACKUP")
 	{
 		file_version=2;
 	}
