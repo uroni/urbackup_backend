@@ -489,7 +489,6 @@ void BackupServerGet::operator ()(void)
 	ServerSettings server_settings_updated(db);
 
 	bool do_exit_now=false;
-	bool file_backup_err=false;
 	
 	while(true)
 	{
@@ -554,8 +553,6 @@ void BackupServerGet::operator ()(void)
 
 			if(do_incr_backup_now)
 			{
-				if(file_backup_err)
-					ServerLogger::Log(clientid, "Cannot do incremental file backup because file_backup_err=true", LL_DEBUG);
 				if(server_settings->getSettings()->no_file_backups)
 					ServerLogger::Log(clientid, "Cannot do incremental file backup because no_file_backups=true", LL_DEBUG);
 				if(!isBackupsRunningOkay(false, true))
@@ -585,7 +582,7 @@ void BackupServerGet::operator ()(void)
 			if( server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash")
 				with_hashes=true;
 
-			if( !file_backup_err && !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
+			if( !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
 				( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindowFullFile())
 					&& exponentialBackoffFile() ) || do_full_backup_now )
 				&& isBackupsRunningOkay(true, true) )
@@ -624,7 +621,7 @@ void BackupServerGet::operator ()(void)
 
 				do_full_backup_now=false;
 			}
-			else if( !file_backup_err && !server_settings->getSettings()->no_file_backups
+			else if( !server_settings->getSettings()->no_file_backups
 				&& ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindowIncrFile())
 					  && exponentialBackoffFile() ) || do_incr_backup_now )
 				&& isBackupsRunningOkay(true, true) )
@@ -789,8 +786,6 @@ void BackupServerGet::operator ()(void)
 				do_incr_image_now=false;
 			}
 
-			file_backup_err=false;
-
 			if(local_hash!=NULL)
 			{
 				local_hash->copyFromTmpTable(true);
@@ -818,7 +813,7 @@ void BackupServerGet::operator ()(void)
 			else if(hbu && has_error)
 			{
 				ServerLogger::Log(clientid, "Backup had errors. Deleting partial backup.", LL_ERROR);
-				file_backup_err=true;
+
 				if(backupid==-1)
 				{
 					if(use_snapshots)
