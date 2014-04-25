@@ -2,11 +2,12 @@
 # Copyright (C) 2011-2014 See translators
 # This file is distributed under the same license as the UrBackup package.
 # Translators:
+# luismi.munoz <lm@redlm.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-04-23 20:37+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2014-04-25 13:24+0000\n"
+"Last-Translator: luismi.munoz <lm@redlm.com>\n"
 "Language-Team: Spanish (http://www.transifex.com/projects/p/urbackup/language/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -117,7 +118,7 @@ msgid "tHostname/IP"
 msgstr "Nombre/IP"
 
 msgid "tServer identity"
-msgstr ""
+msgstr "Identidad del Servidor"
 
 msgid "users"
 msgstr "Usuarios"
@@ -318,7 +319,7 @@ msgid "tAction"
 msgstr "Acción"
 
 msgid "tProgress"
-msgstr ""
+msgstr "Progreso"
 
 msgid "tFiles in queue"
 msgstr "Archivos en cola"
@@ -393,7 +394,7 @@ msgid "tMax number of recently active clients"
 msgstr "Número máximo de clientes activos recientemente"
 
 msgid "tCleanup time window"
-msgstr ""
+msgstr "Ventana de tiempo de limpieza"
 
 msgid "tAutomatically backup UrBackup database"
 msgstr "Copiar automáticamente la base de datos de UrBackup"
@@ -593,13 +594,13 @@ msgid "tPermissions"
 msgstr "Permisos"
 
 msgid "tClient"
-msgstr ""
+msgstr "Cliente"
 
 msgid "tArchival"
 msgstr "Archivar"
 
 msgid "tInternet"
-msgstr ""
+msgstr "Internet"
 
 msgid "tPerform autoupdates silently"
 msgstr "Actualizaciones automáticas silenciosas"
@@ -623,19 +624,19 @@ msgid "tStart for selected"
 msgstr "Comenzar en los seleccionados"
 
 msgid "tInternet clients"
-msgstr ""
+msgstr "Clientes Internet"
 
 msgid "tAdd additional internet clients"
-msgstr ""
+msgstr "Añadir clientes internet adicionales"
 
 msgid "tClient name"
-msgstr ""
+msgstr "Nombre del Cliente"
 
 msgid "tNo entries for this filter"
 msgstr "No hay entradas para este filtro"
 
 msgid "tNo data"
-msgstr ""
+msgstr "Sin datos"
 
 msgid "tTotal max backup speed for local network"
 msgstr "Velocidad máxima de backup en la red local"
@@ -900,172 +901,172 @@ msgid "tArchived"
 msgstr "Archivado"
 
 msgid "nospc_stalled_text"
-msgstr ""
+msgstr "No hay suficiente espacio en la carpeta de backup. Urbackup está borrando backups imagen y de ficheros antiguos para liberar espacio, dentro de los límites definidos. Durante este proceso el rendimiento del backup se ve afectado, y las copias pausadas."
 
 msgid "nospc_fatal_text"
-msgstr ""
+msgstr "No hay suficiente espacio en la carpeta de backup. Urbackup intentó liberar espacio borrando copias imagen y de archivos antiguas per no tiene permiso para borrar más. Por favor, cambie los ajustes para guardar menos copias o incremente el espacio de almacenamiento para permitir a Urbackup seguir realizando copias."
 
 msgid "tNondefault temporary file directory"
-msgstr ""
+msgstr "Carpeta temporal específica"
 
 msgid "tClients are removed during the cleanup in the cleanup time window."
-msgstr ""
+msgstr "Los Clientes son eliminados durante el periodo de limpieza configurado."
 
 msgid "about_urbackup"
-msgstr ""
+msgstr "Sobre Urbackup"
 
 msgid "loading"
-msgstr ""
+msgstr "Cargando"
 
 msgid "authentication_err"
-msgstr ""
+msgstr "Error durante la autenticación del server."
 
 msgid "tInverval for incremental image backups"
-msgstr ""
+msgstr "Intervalo para copias imagen incrementales."
 
 msgid "action_5"
-msgstr ""
+msgstr "Copia imagen incremental reanudada."
 
 msgid "action_6"
-msgstr ""
+msgstr "Copia de archivos completa reanudada."
 
 msgid "really_recalculate"
-msgstr ""
+msgstr "¿Seguro que quire recalcular las estadísticas? Eso puede llevar bastante tiempo."
 
 msgid "database_error_text"
-msgstr ""
+msgstr "Ocurrió un error al acceder o comprobar la base de datos interna de Urbackup. Esto significa que la base de datos estará dañada o no hay suficiente espacio. Si el error persiste, restaure la base de datos a partir de los archivos urbackup_server.db and urbackup_server_settings.db que tenga en un backup. Revise el archivo de log para obtener más detalles."
 
 msgid "creating_filescache_text"
-msgstr ""
+msgstr "Ubvackup está creando una entrada en el archivo de caché. Esto puede llevar bastante tiempo."
 
 msgid "tDownload folder as ZIP"
-msgstr ""
+msgstr "Carpeta descargada como ZIP"
 
 msgid "tOld password"
-msgstr ""
+msgstr "Contraseña anterior"
 
 msgid "tNew password"
-msgstr ""
+msgstr "Contraseña nueva"
 
 msgid "tRepeat new password"
-msgstr ""
+msgstr "Repita la contraseña nueva"
 
 msgid "tChanging password failed:"
-msgstr ""
+msgstr "Falló el cambio de contraseña:"
 
 msgid "tChanged password successfully"
-msgstr ""
+msgstr "Contraseña cambiada."
 
 msgid "tNumber of file entries processed"
-msgstr ""
+msgstr "Numero de entradas de archivos procesadas"
 
 msgid "tUrBackup live log"
-msgstr ""
+msgstr "Log de Urbackup en tiempo real"
 
 msgid "tLive Log"
-msgstr ""
+msgstr "Log en tiempo real"
 
 msgid "tShow"
-msgstr ""
+msgstr "Mostrar"
 
 msgid "tThere is a new version of UrBackup server available"
-msgstr ""
+msgstr "Hay una nueva versión del servidor Urbackp disponible"
 
 msgid "tIndexing..."
-msgstr ""
+msgstr "Indexando..."
 
 msgid "tDelete"
-msgstr ""
+msgstr "Borrar"
 
 msgid "tDownload client from update server"
-msgstr ""
+msgstr "Descargar Cliente desde el servidor de actualizaciones"
 
 msgid "tGlobal soft filesystem quota"
-msgstr ""
+msgstr "Cuota global del sistema de archivos"
 
 msgid "tDisable"
-msgstr ""
+msgstr "Deshabilitar"
 
 msgid "tCompress image backups"
-msgstr ""
+msgstr "Comprimir las copias imagen"
 
 msgid "tAllow client-side starting of full file backups"
-msgstr ""
+msgstr "Permitir al cliente lanzar copias de archivos completas"
 
 msgid "tAllow client-side starting of incremental file backups"
-msgstr ""
+msgstr "Permitir al cliente lanzar copias de archivos incrementales"
 
 msgid "tAllow client-side starting of full image backups"
-msgstr ""
+msgstr "Permitir al cliente lanzar copias imagen completas"
 
 msgid "tAllow client-side starting of incremental image backups"
-msgstr ""
+msgstr "Permitir al cliente lanzar copias imagen incrementales"
 
 msgid "tBackup window for incremental file backups"
-msgstr ""
+msgstr "Ventana de backup para copias de archivos incrementales"
 
 msgid "tBackup window for full file backups"
-msgstr ""
+msgstr "Ventana de backup para copias de archivos completa"
 
 msgid "tBackup window for incremental image backups"
-msgstr ""
+msgstr "Ventana de backup para copias imagen completa"
 
 msgid "tBackup window for full image backups"
-msgstr ""
+msgstr "Ventana de backup para copias imagen completas"
 
 msgid "tSoft client quota"
-msgstr ""
+msgstr "Cuota de disco para el Cliente"
 
 msgid "tCalculate file-hashes on the client"
-msgstr ""
+msgstr "Calcule hashes de ficheros en el Cliente"
 
 msgid "tAdvanced"
-msgstr ""
+msgstr "Avanzado"
 
 msgid "tTemporary files as file backup buffer"
-msgstr ""
+msgstr "Ficheros temporales como buffer de copia de ficheros"
 
 msgid "tTemporary files as image backup buffer"
-msgstr ""
+msgstr "Ficheros temporales como buffer de copia imagen"
 
 msgid "tLocal full file backup transfer mode"
 msgstr ""
 
 msgid "tRaw"
-msgstr ""
+msgstr "Raw"
 
 msgid "tHashed"
-msgstr ""
+msgstr "Hashed"
 
 msgid "tInternet full file backup transfer mode"
-msgstr ""
+msgstr "Modo de transferencia de copia completa de ficheros por Internet"
 
 msgid "tLocal incremental file backup transfer mode"
-msgstr ""
+msgstr "Modo de transferencia de copia incremental de ficheros en local"
 
 msgid "tBlock differences - hashed"
-msgstr ""
+msgstr "Diferencia de bloques - hashed"
 
 msgid "tInternet incremental file backup transfer mode"
-msgstr ""
+msgstr "Modo de transferencia de copia incremental de ficheros por Internet"
 
 msgid "tLocal image backup transfer mode"
-msgstr ""
+msgstr "Modo de transferencia de copia imagen en local"
 
 msgid "tInternet image backup transfer mode"
-msgstr ""
+msgstr "Modo de transferencia de copia imagen por Internet"
 
 msgid "tFile hash collection amount"
-msgstr ""
+msgstr "Cantidad recogida de hash de ficheros"
 
 msgid "tFile hash collection timeout"
-msgstr ""
+msgstr "Tiempo máximo de espera de recepcion de hash de ficheros"
 
 msgid "tFile hash collection database cachesize"
 msgstr ""
 
 msgid "tMB"
-msgstr ""
+msgstr "MB"
 
 msgid "tUpdate stats database cachesize"
 msgstr ""
@@ -1074,7 +1075,7 @@ msgid "tCache database type for file entries"
 msgstr ""
 
 msgid "tNone"
-msgstr ""
+msgstr "Ninguno"
 
 msgid "tCache database size for file entries"
 msgstr ""
@@ -1083,46 +1084,46 @@ msgid "tSuspend index limit"
 msgstr ""
 
 msgid "tUse symlinks during incremental file backups"
-msgstr ""
+msgstr "Utilice symlinks durante las copias incrementales de archivos."
 
 msgid "tEnd-to-end verification of all file backups"
-msgstr ""
+msgstr "Verificación de copia extremo a extremo."
 
 msgid "tServer admin mail address"
-msgstr ""
+msgstr "Dirección de correo del administrador del servidor"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
 "configured here. If you want to change this behaviour do not allow the "
 "client to change settings. "
-msgstr ""
+msgstr "Atención: la configuración en el Cliente tiene preferencia sobre la del servidor. Si no quiere que esto ocurra, no permita que el cliente haga cambios en la configuración."
 
 msgid "tClient download"
-msgstr ""
+msgstr "Descarga del cliente."
 
 msgid "tDownload"
-msgstr ""
+msgstr "Descarga."
 
 msgid "tStatus"
-msgstr ""
+msgstr "Estado."
 
 msgid "tIP"
-msgstr ""
+msgstr "IP"
 
 msgid "tClient version"
-msgstr ""
+msgstr "Versión del cliente"
 
 msgid "tOperating System"
-msgstr ""
+msgstr "Sistema operativo"
 
 msgid "tShow all clients"
-msgstr ""
+msgstr "Mostrar todos los clientes."
 
 msgid "tThis client is going to be removed. "
-msgstr ""
+msgstr "Este cliente será eliminado."
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
-msgstr ""
+msgstr "Los clientes se eliminan durante la ventana de limpieza del servidor."
 
 msgid "tRecalculate statistics"
-msgstr ""
+msgstr "Recalcular estadísticas."
