@@ -18,6 +18,51 @@ g.languages=[
 				{ l: "繁体中文", s: "zh_TW" },
 				{ l: "فارسی", s: "fa" }
 			];
+			
+g.datatable_default_config = {
+			"iDisplayLength" : 25,
+			"sDom" : 'CT<"clear">lfrtip',
+			"oColVis": {
+				"bRestore": true,
+				"sRestore": "Restore to default"
+			},
+			"oTableTools": {
+				"aButtons": [
+					{
+						"sExtends":    "collection",
+						"sButtonText": "Save",
+						"aButtons":    [ "csv", "xls", 
+						{
+							"sExtends": "pdf"
+						}
+						]
+					}					
+				],
+				"sSwfPath": "copy_csv_xls_pdf.swf"
+			},
+			"sPaginationType": "full_numbers",
+			"sScrollX": "100%",
+			"bScrollCollapse": true,
+			"bStateSave": true,
+			"iCookieDuration": 365*60*60*24,
+			"oLanguage": {
+				"oPaginate": {
+					"sFirst": "First",
+					"sLast": "Last",
+					"sNext": "Next",
+					"sPrevious": "Previous"
+				},
+				"sEmptyTable": "No data available in table",
+				"sInfo": "Showing _START_ to _END_ of _TOTAL_ entries",
+				"sInfoEmpty": "Showing 0 to 0 of 0 entries",
+				"sInfoFiltered": "(filtered from _MAX_ total entries)",
+				"sInfoThousands": ",",
+				"sLengthMenu": "Show _MENU_ entries",
+				"sProcessing": "Processing...",
+				"sSearch": "Search:",
+				"sZeroRecords": "No matching records found"
+			}
+};
 
 function startup()
 {
@@ -494,6 +539,23 @@ function createUsageGraph(selectedIdx, params)
 			title: trans("storage_usage_bar_graph_title"), colname1: trans(transKey), colname2: trans("storage_usage_bar_graph_colname2"), dateFormat: dateFormat },
 			addUsagegraph);
 }
+function set_button_filename(buttons, text)
+{
+	for(var i=0;i<buttons.length;++i)
+	{
+		var cd = getISODatestamp();
+		if(i==2)
+		{
+			cd+=".pdf";
+		}
+		else
+		{
+			cd+=".csv";
+		}
+		buttons[i].sFileName = text+" "+cd;
+	}
+	return buttons;
+}
 function show_statistics3(data)
 {
 	stopLoading();
@@ -509,9 +571,9 @@ function show_statistics3(data)
 		used_total+=obj.used;
 		files_total+=obj.files;
 		images_total+=obj.images;
-		obj.used=format_size(obj.used);
+		/*obj.used=format_size(obj.used);
 		obj.files=format_size(obj.files);
-		obj.images=format_size(obj.images);
+		obj.images=format_size(obj.images);*/
 		rows+=dustRender("stat_general_row", obj);
 	}
 	ndata=dustRender("stat_general", {rows: rows, used_total: format_size(used_total), files_total: format_size(files_total), images_total: format_size(images_total), ses: g.session});
@@ -522,6 +584,33 @@ function show_statistics3(data)
 			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") }, "" );
 		
 		createUsageGraph(0, "");
+		
+		var datatable_config = g.datatable_default_config;
+		datatable_config.aoColumnDefs =
+			[ {
+				"aTargets": [ 1, 2, 3 ],
+				"mData": function ( source, type, val ) {
+					if (type === 'set') {
+						source.bsize = val;
+						source.bsize_display = format_size(val)
+						return;
+					}
+					else if (type === 'display') {
+					  return source.bsize_display;
+					}
+					else if (type === 'filter') {
+					  return source.bsize_display;
+					}
+					return source.bsize;
+				}
+			} ];
+		datatable_config.aaSorting = [[ 3, "desc" ]];
+		var save_buttons = datatable_config.oTableTools.aButtons[0].aButtons;
+		save_buttons[2].mColumns = [0, 1, 2, 3];
+		save_buttons[2].sTitle = "UrBackup statistics - " + getISODatestamp();
+		save_buttons = set_button_filename(save_buttons, "UrBackup statistics");
+		datatable_config.oTableTools.aButtons[0].aButtons = save_buttons;
+		$("#statistics_table").dataTable(datatable_config);
 		
 		g.data_f=ndata;
 	}
@@ -877,57 +966,36 @@ function show_status2(data)
 			show_hide_column('status_table', 6, false);
 		}
 		
-		$("#status_table").dataTable({
-			"iDisplayLength" : 25,
-			"sDom" : 'CT<"clear">lfrtip',
-			"aoColumnDefs": [
+		var datatable_config = g.datatable_default_config;
+		
+		datatable_config.aoColumnDefs = [
 				{ "bVisible": false, "aTargets": [ 2, 8, 9, 10 ]
 				},
 				{ "bSortable": false, 'aTargets': [ 11 ] }
-			],
-			"oColVis": {
-				"bRestore": true,
-				"sRestore": "Restore to default",
-				"aiExclude": [ 0, 11 ]
-			},
-			"oTableTools": {
-				"aButtons": [
-					{
-						"sExtends":    "collection",
-						"sButtonText": "Save",
-						"aButtons":    [ "csv", "xls", 
-						{
-							"sExtends": "pdf",
-							"mColumns": [0, 3, 4, 5, 6, 7]
-						}
-						]
-					}					
-				],
-				"sSwfPath": "copy_csv_xls_pdf.swf"
-			},
-			"sPaginationType": "full_numbers",
-			"sScrollX": "100%",
-			"bScrollCollapse": true,
-			"bStateSave": true,
-			"iCookieDuration": 365*60*60*24,
-			"oLanguage": {
-				"oPaginate": {
-					"sFirst": "First",
-					"sLast": "Last",
-					"sNext": "Next",
-					"sPrevious": "Previous"
-				},
-				"sEmptyTable": "No data available in table",
-				"sInfo": "Showing _START_ to _END_ of _TOTAL_ entries",
-				"sInfoEmpty": "Showing 0 to 0 of 0 entries",
-				"sInfoFiltered": "(filtered from _MAX_ total entries)",
-				"sInfoThousands": ",",
-				"sLengthMenu": "Show _MENU_ entries",
-				"sProcessing": "Processing...",
-				"sSearch": "Search:",
-				"sZeroRecords": "No matching records found"
-			}
-		});
+			];
+			
+		datatable_config.oColVis.aiExclude = [ 0, 11 ];
+		
+		var columns = [ 0 ];
+		
+		if(!data.no_file_backups)
+			columns.push(4);		
+		if(!data.no_images)
+			columns.push(5);
+		if(!data.no_file_backups)
+			columns.push(6);		
+		if(!data.no_images)
+			columns.push(7);
+
+		var save_buttons = datatable_config.oTableTools.aButtons[0].aButtons;
+		save_buttons[2].mColumns = columns;
+		save_buttons[2].sTitle = "UrBackup client status - " + getISODatestamp();
+		save_buttons = set_button_filename(save_buttons, "UrBackup client status");
+		datatable_config.oTableTools.aButtons[0].aButtons = save_buttons;			
+		
+		datatable_config.oTableTools.aButtons[0].aButtons[2].mColumns = columns;
+		
+		$("#status_table").dataTable(datatable_config);
 	}
 	
 	if(data.admin)

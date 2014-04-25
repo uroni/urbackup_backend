@@ -666,3 +666,14 @@ function dustRender(template, data)
 	});
 	return result;
 }
+function getISODatestamp()
+{
+	var d = new Date();
+	var m = d.getMonth() + 1;
+	if(m<10)
+		m = "0" +m;
+	var day = d.getDate();
+	if( day<10)
+		day = "0"+day;
+	return d.getFullYear() + '-' + m + '-' + day;
+}

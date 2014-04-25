@@ -179,6 +179,7 @@ Section "install"
 	File "data_common\urbackup\www\*.gif"
 	File "data_common\urbackup\www\*.css"
 	File "data_common\urbackup\www\*.js"
+	File "data_common\urbackup\www\*.swf"
 	
 	
 	${IfNot} ${RunningX64}

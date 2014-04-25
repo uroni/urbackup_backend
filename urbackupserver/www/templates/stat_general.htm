@@ -2,23 +2,27 @@
 
 <div id="piegraph"><img src="indicator.gif" />{tLoading}...<br /><br /></div>
 
-<table cellspacing="0" cellpadding="0">
+<br />
+
+<table cellspacing="0" cellpadding="0" id="statistics_table">
+<thead>
 <tr>			
 	<th style="width: 150px" class="tabHeader">{tComputer name}</th>
 	<th style="width: 150px" class="tabHeader">{tImages}</th>
 	<th style="width: 150px" class="tabHeader">{tFiles}</th>
 	<th style="width: 150px" class="tabHeaderRight">{tAll}</th>
 </tr>
+</thead>
+<tbody>
 {rows|s}
-<tr>
-	<td class="tabFRight" colspan="4" style="height:0px"></td>
-</tr>
-<tr>
-	<td class="tabFLeft">{tSum}</td>
-	<td class="tabFLeft">{images_total}</td>
-	<td class="tabFLeft">{files_total}</td>
-	<td class="tabFRight">{used_total}</td>
-</tr>
+</tbody>
+</table>
+
+<h3>{tSum}</h3>
+<table cellspacing="0" cellpadding="0">
+<tr><td style="padding-right: 1em;font-weight:bold;">{tImages}</td><td>{images_total}</td></tr>
+<tr><td style="padding-right: 1em;font-weight:bold;">{tFiles}</td><td>{files_total}</td></tr>
+<tr><td style="padding-right: 1em;font-weight:bold;">{tAll}</td><td>{used_total}</td></tr>
 </table>
 
 <br />
