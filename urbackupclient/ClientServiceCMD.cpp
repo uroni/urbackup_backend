@@ -15,6 +15,7 @@
 #include "win_ver.h"
 #include "win_all_volumes.h"
 #else
+#include "lin_ver.h"
 std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 #endif
 #include "../client_version.h"
@@ -1286,19 +1287,14 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 #ifdef _WIN32
 	std::wstring buf;
 	buf.resize(1024);
-	std::string os_version_str;
-	if( GetOSDisplayString(const_cast<wchar_t*>(buf.c_str())) )
-	{
-		os_version_str=Server->ConvertToUTF8(std::wstring(buf.c_str()));
-	}
-
+	std::string os_version_str = get_windows_version();
 	std::string win_volumes = get_all_volumes_list();
 
 	tcpstack.Send(pipe, "FILE=3&IMAGE=1&UPDATE=1&MBR=1&FILESRV=2&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str))+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes);
 #else
-	std::string os_version_str="not Windows";
+	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=3&FILESRV=2&SET_SETTINGS=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
 #endif

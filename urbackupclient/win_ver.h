@@ -1,9 +1,9 @@
 #ifndef _WIN_VER_H_
 #define _WIN_VER_H_
 
-#include <Windows.h>
+#include <string>
 
-BOOL GetOSDisplayString( LPTSTR pszOS);
+std::string get_windows_version( void );
 
 
 #endif //_WIN_VER_H_
