@@ -258,6 +258,7 @@ private:
 	volatile bool internet_connection;
 	int image_protocol_version;
 	int update_version;
+	std::string all_volumes;
 
 	bool use_snapshots;
 	bool use_reflink;

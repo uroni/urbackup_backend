@@ -80,6 +80,7 @@
     <ClCompile Include="watchdir\CriticalSection.cpp" />
     <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp" />
     <ClCompile Include="watchdir\DirectoryChanges.cpp" />
+    <ClCompile Include="win_all_volumes.cpp" />
     <ClCompile Include="win_sysvol.cpp" />
     <ClCompile Include="win_ver.cpp" />
   </ItemGroup>
@@ -111,6 +112,7 @@
     <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h" />
     <ClInclude Include="watchdir\DirectoryChanges.h" />
     <ClInclude Include="watchdir\Event.h" />
+    <ClInclude Include="win_all_volumes.h" />
     <ClInclude Include="win_sysvol.h" />
     <ClInclude Include="win_ver.h" />
   </ItemGroup>

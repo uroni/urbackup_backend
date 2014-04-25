@@ -117,6 +117,9 @@
     <ClCompile Include="file_permissions.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="win_all_volumes.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="watchdir\CriticalSection.h">
@@ -204,6 +207,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="file_permissions.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="win_all_volumes.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

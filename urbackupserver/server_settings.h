@@ -134,7 +134,7 @@ public:
 	std::vector<STimeSpan> getBackupWindowFullImage(void);
 
 	std::vector<STimeSpan> getCleanupWindow(void);
-	std::vector<std::string> getBackupVolumes(void);
+	std::vector<std::string> getBackupVolumes(const std::string& all_volumes);
 
 	int getUpdateFreqImageIncr();
 	int getUpdateFreqFileIncr();

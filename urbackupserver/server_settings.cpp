@@ -521,9 +521,13 @@ std::vector<STimeSpan> ServerSettings::getBackupWindowFullImage(void)
 	return getWindow(window);
 }
 
-std::vector<std::string> ServerSettings::getBackupVolumes(void)
+std::vector<std::string> ServerSettings::getBackupVolumes(const std::string& all_volumes)
 {
 	std::string vols=getSettings()->image_letters;
+	if(vols=="ALL")
+	{
+		vols=all_volumes;
+	}
 	std::vector<std::string> ret;
 	Tokenize(vols, ret, ";,");
 	for(size_t i=0;i<ret.size();++i)
