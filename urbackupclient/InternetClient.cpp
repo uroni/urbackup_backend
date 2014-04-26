@@ -229,7 +229,9 @@ void InternetClient::doUpdateSettings(void)
 		Server->Log("Cannot read internet_authkey", LL_INFO);
 		return;
 	}
-	if(!settings->getValue("computername", &computername) || computername.empty())
+	if( (!settings->getValue("computername", &computername)
+		 && !settings->getValue("computername_def", &computername) ) 
+		   || computername.empty())
 	{
 		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
 	}
