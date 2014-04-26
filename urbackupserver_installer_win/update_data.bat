@@ -20,9 +20,6 @@ mkdir data_common\urbackup\www
 copy /Y "..\urbackupserver\www\*" "data_common\urbackup\www\"
 if %errorlevel% neq 0 exit /b %errorlevel% 
 
-copy /Y "..\Release\downloadplugin.dll" "data\downloadplugin.dll"
-if %errorlevel% neq 0 exit /b %errorlevel%
-
 copy /Y "..\Release\httpserver.dll" "data\httpserver.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
@@ -47,9 +44,6 @@ copy /Y "..\x64\Release Server PreVista\urbackupserver.dll" "data_x64\urbackupse
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 copy /Y "..\x64\release\fsimageplugin.dll" "data_x64\fsimageplugin.dll"
-if %errorlevel% neq 0 exit /b %errorlevel%
-
-copy /Y "..\x64\release\downloadplugin.dll" "data_x64\downloadplugin.dll"
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 copy /Y "..\x64\release\httpserver.dll" "data_x64\httpserver.dll"

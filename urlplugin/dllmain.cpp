@@ -26,13 +26,13 @@
 
 #define DEF_SERVER
 #include "../Interface/Server.h"
+IServer *Server;
+
 #include "../Interface/Action.h"
 #include "../stringtools.h"
 
 #include "pluginmgr.h"
 #include "IUrlFactory.h"
-
-IServer *Server;
 
 CUrlPluginMgr *urlpluginmgr=NULL;
 

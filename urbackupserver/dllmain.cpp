@@ -39,7 +39,6 @@ IServer *Server;
 #include "../Interface/File.h"
 
 #include "../fsimageplugin/IFSImageFactory.h"
-#include "../downloadplugin/IDownloadFactory.h"
 #include "../cryptoplugin/ICryptoFactory.h"
 #include "../urlplugin/IUrlFactory.h"
 
@@ -72,7 +71,6 @@ SStartupStatus startup_status;
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
-IDownloadFactory *download_fak;
 ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
 
@@ -539,11 +537,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	
 	str_map params;
-	download_fak=(IDownloadFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("download", params));
-	if(download_fak==NULL)
-	{
-		Server->Log("Error loading IDownloadFactory", LL_ERROR);
-	}
 	url_fak=(IUrlFactory*)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("url", params));
 	if(url_fak==NULL)
 	{

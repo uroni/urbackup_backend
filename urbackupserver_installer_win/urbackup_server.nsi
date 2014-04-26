@@ -142,7 +142,6 @@ Section "install"
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	
 	${IfNot} ${RunningX64} 
-		File "data\downloadplugin.dll"
 		File "data\fsimageplugin.dll"
 		File "data\urbackupserver.dll"
 		File "data\urbackupserver_prevista.dll"
@@ -155,7 +154,6 @@ Section "install"
 		File "data\urlplugin.dll"
 		SetOutPath "$INSTDIR"
 	${Else}
-		File "data_x64\downloadplugin.dll"
 		File "data_x64\fsimageplugin.dll"
 		File "data_x64\urbackupserver.dll"
 		File "data_x64\urbackupserver_prevista.dll"

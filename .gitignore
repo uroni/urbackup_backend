@@ -9,9 +9,6 @@ cryptoplugin/Release/*
 cryptoplugin/x64/*
 dcsearch/*
 Debug/*
-downloadplugin/Debug/*
-downloadplugin/Release/*
-downloadplugin/x64/*
 *.vcproj
 fetchmail/*
 fileservplugin/Debug/*

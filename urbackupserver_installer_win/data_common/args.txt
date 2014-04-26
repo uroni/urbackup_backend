@@ -3,8 +3,6 @@ urlplugin.dll
 --plugin
 fsimageplugin.dll
 --plugin
-downloadplugin.dll
---plugin
 httpserver.dll
 --plugin
 cryptoplugin.dll

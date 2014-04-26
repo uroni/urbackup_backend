@@ -44,12 +44,6 @@ fi
 
 
 DAEMON_LIBS="$PREFIX/lib"
-PLUGIN_PYCHART="--plugin $DAEMON_LIBS/liburbackupserver_pychart.so"
-if ! test -e $DAEMON_LIBS/liburbackupserver_pychart.so
-then
-	PLUGIN_PYCHART=""
-fi
-
 PLUGIN_URL="--plugin $DAEMON_LIBS/liburbackupserver_urlplugin.so"
 if ! test -e $DAEMON_LIBS/liburbackupserver_urlplugin.so
 then
@@ -80,7 +74,7 @@ then
 	HAS_MOUNTVHD=0
 fi	
 
-DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_PYCHART $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_downloadplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --snapshot_helper $SNAPSHOT_HELPER"
+DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --snapshot_helper $SNAPSHOT_HELPER"
 S_DAEMON="--daemon"
 
 print_help()

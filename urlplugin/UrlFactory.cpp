@@ -5,49 +5,80 @@
 
 #include "../stringtools.h"
 
-struct RDUserS
-{
-	RDUserS(void) : pos(0) {}
-	size_t pos;
-	std::string text;
-};
 
-static size_t read_callback(void *ptr, size_t size, size_t nmemb, void *userp)
+namespace
 {
-  struct RDUserS *pooh = (struct RDUserS*)userp;
-  const char *data;
- 
-  if(size*nmemb < 1)
-    return 0;
 
-  if(pooh->pos<pooh->text.size())
-  { 
-	data = &pooh->text[pooh->pos];
- 
-	size_t len = (std::min)(pooh->text.size()-pooh->pos, size*nmemb);
-    memcpy(ptr, data, len);
-    pooh->pos+=len;
-    return len;
-  }
-  return 0;
-}
+	struct RDUserS
+	{
+		RDUserS(void) : pos(0) {}
+		size_t pos;
+		std::string text;
+	};
 
-std::string format_time(std::string fs)
-{
-	time_t rawtime;		
-	char buffer [100];
-	time ( &rawtime );
+	static size_t read_callback(void *ptr, size_t size, size_t nmemb, void *userp)
+	{
+		struct RDUserS *pooh = (struct RDUserS*)userp;
+		const char *data;
+
+		if(size*nmemb < 1)
+			return 0;
+
+		if(pooh->pos<pooh->text.size())
+		{ 
+			data = &pooh->text[pooh->pos];
+
+			size_t len = (std::min)(pooh->text.size()-pooh->pos, size*nmemb);
+			memcpy(ptr, data, len);
+			pooh->pos+=len;
+			return len;
+		}
+		return 0;
+	}
+
+	std::string format_time(std::string fs)
+	{
+		time_t rawtime;		
+		char buffer [100];
+		time ( &rawtime );
 #ifdef _WIN32
-	struct tm  timeinfo;
-	localtime_s(&timeinfo, &rawtime);
-	strftime (buffer,100,fs.c_str(),&timeinfo);
+		struct tm  timeinfo;
+		localtime_s(&timeinfo, &rawtime);
+		strftime (buffer,100,fs.c_str(),&timeinfo);
 #else
-	struct tm *timeinfo;
-	timeinfo = localtime ( &rawtime );
-	strftime (buffer,100,fs.c_str(),timeinfo);
+		struct tm *timeinfo;
+		timeinfo = localtime ( &rawtime );
+		strftime (buffer,100,fs.c_str(),timeinfo);
 #endif	
-	std::string r(buffer);
-	return r;
+		std::string r(buffer);
+		return r;
+	}
+
+	size_t write_string_callback( char *ptr, size_t size, size_t nmemb, void *userdata)
+	{
+		size_t bytes = size*nmemb;
+
+		if(bytes>0)
+		{
+			std::string* output = reinterpret_cast<std::string*>(userdata);
+			output->append(ptr, ptr+bytes);
+		}
+
+		return bytes;
+	}
+
+	size_t write_file_callback( char *ptr, size_t size, size_t nmemb, void *userdata)
+	{
+		size_t bytes = size*nmemb;
+
+		if(bytes>0)
+		{
+			IFile* output = reinterpret_cast<IFile*>(userdata);
+			return output->Write(ptr, static_cast<_u32>(bytes));
+		}
+
+		return bytes;
+	}
 }
 
 bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::string> &to, 
@@ -97,7 +128,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	errbuf.resize(CURL_ERROR_SIZE*2);
 	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
 	CURLcode res= curl_easy_perform(curl);
-	if(res!=0)
+	if(res!=CURLE_OK)
 	{
 		errbuf.resize(strlen(errbuf.c_str()));
 		if(errmsg==NULL)
@@ -106,7 +137,7 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 		}
 		else
 		{
-			*errmsg="ec="+nconvert(res)+" -- "+errbuf;
+			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + nconvert(res) + "), " + errbuf;
 		}
 		curl_slist_free_all(recpt);
 		curl_easy_cleanup(curl);
@@ -115,4 +146,88 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 	curl_slist_free_all(recpt);
 	curl_easy_cleanup(curl);
 	return true;
+}
+
+std::string UrlFactory::downloadString( const std::string& url, const std::string& http_proxy, std::string *errmsg/*=NULL*/ )
+{
+	if(errmsg!=NULL)
+	{
+		errmsg->clear();
+	}
+
+	CURL *curl=curl_easy_init();
+
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1);
+	
+	if(!http_proxy.empty())
+	{
+		curl_easy_setopt(curl, CURLOPT_PROXY, http_proxy.c_str() );
+	}
+
+	std::string output;
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_callback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &output);
+	
+	std::string errbuf;
+	errbuf.resize(CURL_ERROR_SIZE*2);
+	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
+	CURLcode res = curl_easy_perform(curl);
+	if(res!=CURLE_OK)
+	{
+		errbuf.resize(strlen(errbuf.c_str()));
+		if(errmsg==NULL)
+		{
+			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" (ec="+nconvert(res)+"), "+errbuf, LL_DEBUG);
+		}
+		else
+		{
+			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + nconvert(res) + "), " + errbuf;
+		}
+		output.clear();
+	}
+
+	curl_easy_cleanup(curl);
+	return output;
+}
+
+bool UrlFactory::downloadFile(const std::string& url, IFile* output, const std::string& http_proxy, std::string *errmsg)
+{
+	if(errmsg!=NULL)
+	{
+		errmsg->clear();
+	}
+
+	CURL *curl=curl_easy_init();
+
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1);
+
+	if(!http_proxy.empty())
+	{
+		curl_easy_setopt(curl, CURLOPT_PROXY, http_proxy.c_str() );
+	}
+
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_file_callback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, output);
+
+	std::string errbuf;
+	errbuf.resize(CURL_ERROR_SIZE*2);
+	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
+	CURLcode res = curl_easy_perform(curl);
+	if(res!=CURLE_OK)
+	{
+		errbuf.resize(strlen(errbuf.c_str()));
+		if(errmsg==NULL)
+		{
+			Server->Log(std::string("Error during cURL operation occured: ")+curl_easy_strerror(res)+" (ec="+nconvert(res)+"), "+errbuf, LL_DEBUG);
+		}
+		else
+		{
+			*errmsg=std::string(curl_easy_strerror(res)) + "(ec=" + nconvert(res) + "), " + errbuf;
+		}
+	}
+
+	curl_easy_cleanup(curl);
+	return res==CURLE_OK;
 }

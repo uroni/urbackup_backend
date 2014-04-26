@@ -5,8 +5,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fileservplugin", "fileservp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fsimageplugin", "fsimageplugin\fsimageplugin.vcxproj", "{20375DC0-38DA-4254-B479-EFA8028C29B1}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "downloadplugin", "downloadplugin\downloadplugin.vcxproj", "{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "urlplugin", "urlplugin\urlplugin.vcxproj", "{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "urbackupserver", "urbackupserver\urbackupserver.vcxproj", "{A4E2527B-4886-4163-9411-10BF66A931BE}"
@@ -71,23 +69,6 @@ Global
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release|Win32.Build.0 = Release|Win32
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release|x64.ActiveCfg = Release|x64
 		{20375DC0-38DA-4254-B479-EFA8028C29B1}.Release|x64.Build.0 = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Debug|Win32.ActiveCfg = Debug|Win32
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Debug|Win32.Build.0 = Debug|Win32
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Debug|x64.ActiveCfg = Debug|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Debug|x64.Build.0 = Debug|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Server PreVista|Win32.ActiveCfg = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Server PreVista|x64.ActiveCfg = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Server PreVista|x64.Build.0 = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Service|Win32.ActiveCfg = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Service|x64.ActiveCfg = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release Service|x64.Build.0 = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release x64|Win32.ActiveCfg = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release x64|x64.ActiveCfg = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release x64|x64.Build.0 = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release|Win32.ActiveCfg = Release|Win32
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release|Win32.Build.0 = Release|Win32
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release|x64.ActiveCfg = Release|x64
-		{835A9C1D-BDEE-44A2-97DB-EF9C4AE59F45}.Release|x64.Build.0 = Release|x64
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug|Win32.ActiveCfg = Debug|Win32
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug|Win32.Build.0 = Debug|Win32
 		{3E6BBB51-77D4-4DC7-BF09-FC6F21CA04D5}.Debug|x64.ActiveCfg = Debug|x64

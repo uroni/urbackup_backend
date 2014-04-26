@@ -15,139 +15,87 @@
 *    You should have received a copy of the GNU General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
-#define _CRT_SECURE_NO_WARNINGS
-
 #include "server_update.h"
-#include "../downloadplugin/IDownloadFactory.h"
+#include "../urlplugin/IUrlFactory.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../stringtools.h"
-#include "../urbackupcommon/os_functions.h"
 #include <stdlib.h>
 
-extern IDownloadFactory *download_fak;
-
-namespace
-{
-	void set_proxy_from_env(IFileDownload *dl)
-	{
-		char *http_proxy_s=getenv("http_proxy");
-		if(http_proxy_s)
-		{
-			std::string http_proxy=http_proxy_s;
-			if(!http_proxy.empty())
-			{
-				unsigned short proxy_port=8080;
-				std::string proxy_name;
-				if(http_proxy.find(":")!=std::string::npos)
-				{
-					proxy_port=atoi(getafter(":", http_proxy).c_str());
-					proxy_name=getbetween("//", ":", http_proxy);
-
-					if(proxy_name.empty())
-					{
-						proxy_name=getuntil(":", http_proxy);
-					}
-				}
-				else
-				{
-					proxy_name=getbetween("//", "/", http_proxy);
-
-					if(proxy_name.empty())
-					{
-						proxy_name=getafter("//", http_proxy);
-
-						if(proxy_name.empty())
-						{
-							proxy_name=http_proxy;
-						}
-					}
-				}
-
-				if(!proxy_name.empty())
-				{
-					dl->setProxy(proxy_name, proxy_port);
-				}
-			}
-		}
-	}
-}
+extern IUrlFactory *url_fak;
 
 ServerUpdate::ServerUpdate(void)
 {
 }
 
-bool ServerUpdate::waitForDownload(IFileDownload *dl)
-{
-	while(true)
-	{
-		uchar rc=dl->download();
-		if(rc==FD_ERR_SUCCESS)
-		{
-			Server->Log("Downloaded file successfully", LL_INFO);
-			return true;
-		}
-		else if(rc==FD_ERR_TIMEOUT || rc==FD_ERR_SOCKET_ERROR || rc==FD_ERR_FILE_DOESNT_EXIST || rc==FD_ERR_ERROR )
-		{
-			Server->Log("Download err: "+dl->getErrorString(rc), LL_ERROR);
-			return false;
-		}
-	}
-}
-
 void ServerUpdate::operator()(void)
 {
-	IFileDownload *dl=download_fak->createFileDownload();
-
-	if(!Server->getServerParameter("http_proxy").empty())
+	if(url_fak==NULL)
 	{
-		dl->setProxy(Server->getServerParameter("http_proxy"), (unsigned short)atoi(Server->getServerParameter("http_proxy_port").c_str()));
-	}
-	else
-	{
-		set_proxy_from_env(dl);
-	}
-
-
-	IFile *tmp=Server->openTemporaryFile();
-	if(tmp==NULL) return;
-	std::string tfn=tmp->getFilename();
-	Server->destroy(tmp);
-	Server->Log("Downloading version file...", LL_INFO);
-	dl->download("http://update1.urbackup.org/version.txt", tfn);
-
-	if(!waitForDownload(dl))
-	{
-		download_fak->destroyFileDownload(dl);
+		Server->Log("Urlplugin not found. Cannot download client for autoupdate.", LL_ERROR);
 		return;
 	}
 
-	std::string version=getFile(tfn);
+
+	std::string http_proxy = Server->getServerParameter("http_proxy");
+
+	std::string errmsg;
+	Server->Log("Downloading version file...", LL_INFO);
+	std::string version = url_fak->downloadString("http://update1.urbackup.org/version.txt", http_proxy, &errmsg);
+	if(version.empty())
+	{
+		Server->Log("Error while downloading version info from http://update1.urbackup.org/version.txt: " + errmsg, LL_ERROR);
+		return;
+	}
 	std::string curr_version=getFile("urbackup/version.txt");
 	if(curr_version.empty()) curr_version="0";
 	
-	Server->deleteFile(tfn);
-
 	if(atoi(version.c_str())>atoi(curr_version.c_str()))
 	{
 		Server->Log("Downloading signature...", LL_INFO);
-		dl->download("http://update1.urbackup.org/UrBackupUpdate.sig", "urbackup/UrBackupUpdate.sig");
-		if(!waitForDownload(dl))
+
+		IFile* sig_file = Server->openFile("urbackup/UrBackupUpdate.sig", MODE_WRITE);
+		if(sig_file==NULL)
 		{
-			download_fak->destroyFileDownload(dl);
+			Server->Log("Error opening signature output file urbackup/UrBackupUpdate.sig", LL_ERROR);
 			return;
 		}
-		Server->Log("Downloading update...", LL_INFO);
-		dl->download("http://update1.urbackup.org/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.exe");
-		if(!waitForDownload(dl))
+		ObjectScope sig_file_scope(sig_file);
+
+		bool b = url_fak->downloadFile("http://update1.urbackup.org/UrBackupUpdate.sig", sig_file, http_proxy, &errmsg);
+
+		if(!b)
 		{
-			download_fak->destroyFileDownload(dl);
+			Server->Log("Error while downloading update signature from http://update1.urbackup.org/UrBackupUpdate.sig: " + errmsg, LL_ERROR);
+		}
+
+		Server->Log("Getting update file URL...", LL_INFO);
+		std::string update_url = url_fak->downloadString("http://update1.urbackup.org/UrBackupUpdate.url", http_proxy, &errmsg);
+
+		if(update_url.empty())
+		{
+			Server->Log("Error while downloading update url from http://update1.urbackup.org/UrBackupUpdate.url: " + errmsg, LL_ERROR);
 			return;
 		}
 
+		IFile* update_file = Server->openFile("urbackup/UrBackupUpdate.exe", MODE_WRITE);
+		if(update_file==NULL)
+		{
+			Server->Log("Error opening update output file urbackup/UrBackupUpdate.exe", LL_ERROR);
+			return;
+		}
+		ObjectScope update_file_scope(update_file);
+
+		Server->Log("Downloading update file...", LL_INFO);
+		b = url_fak->downloadFile(update_url, update_file, http_proxy, &errmsg);
+
+		if(!b)
+		{
+			Server->Log("Error while downloading update file from "+update_url+": " + errmsg, LL_ERROR);
+			return;
+		}
+
+		Server->Log("Successfully downloaded update file.", LL_INFO);
 		writestring(version, "urbackup/version.txt");
 	}
-
-	download_fak->destroyFileDownload(dl);
 }
