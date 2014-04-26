@@ -6,7 +6,7 @@ if WITH_FORTIFY
 AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 endif
 AM_CXXFLAGS = -DLINUX $(PTHREAD_CFLAGS)
-install-data-local: backup_server.db ../urbackup/status.htm www/*.js www/*.htm www/*.css $(srcdir)/www/*.png www/*.gif urbackup_dsa.pub
+install-data-local: backup_server.db ../urbackup/status.htm www/*.js www/*.htm www/*.css $(srcdir)/www/*.png www/*.gif urbackup_dsa.pub www/*.swf
 	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup"
 	chmod +x "$(DESTDIR)$(localstatedir)/urbackup"
 	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/backup_server.db" "$(DESTDIR)$(localstatedir)/urbackup/backup_server.db.template"
@@ -21,5 +21,6 @@ endif
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/www/*.png "$(DESTDIR)$(localstatedir)/urbackup/www/"
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/www/*.gif "$(DESTDIR)$(localstatedir)/urbackup/www/"
 	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackup_dsa.pub "$(DESTDIR)$(localstatedir)/urbackup/urbackup_dsa.pub"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/www/*.swf "$(DESTDIR)$(localstatedir)/urbackup/www/"
 noinst_HEADERS = server_ping.h server_cleanup.h ../urbackupcommon/os_functions.h server_image.h ../urbackupcommon/json.h serverinterface/helper.h serverinterface/action_header.h serverinterface/actions.h server_writer.h ../urbackupcommon/settings.h server_image.h server_settings.h zero_hash.h server_update.h server_log.h server_hash.h server_status.h ../urbackupcommon/bufmgr.h server_update_stats.h ../urbackupcommon/sha2/sha2.h ../md5.h fileclient/FileClient.h ../common/data.h fileclient/socket_header.h ../urbackupcommon/fileclient/tcpstack.h fileclient/packet_ids.h database.h mbr_code.h action_header.h ../urbackupcommon/escape.h server.h server_running.h server_prepare_hash.h actions.h server_channel.h server_get.h treediff/TreeDiff.h treediff/TreeNode.h treediff/TreeReader.h ../fileservplugin/IFileServFactory.h ../fileservplugin/IFileServ.h ../urlplugin/IUrlFactory.h ../urbackupcommon/capa_bits.h ../cryptoplugin/ICryptoFactory.h fileclient/FileClientChunked.h ChunkPatcher.h ../urbackupcommon/CompressedPipe.h ../urbackupcommon/InternetServicePipe.h ../urbackupcommon/InternetServiceIDs.h InternetServiceConnector.h ../md5.h ../urbackupcommon/settingslist.h server_archive.h ../cryptoplugin/IZlibCompression.h ../cryptoplugin/IZlibDecompression.h ../cryptoplugin/ICryptoFactory.h ../cryptoplugin/IAESEncryption.h ../cryptoplugin/IAESDecryption.h ../fileservplugin/chunk_settings.h ../urbackupcommon/internet_pipe_capabilities.h ../urbackupcommon/mbrdata.h filedownload.h snapshot_helper.h apps/cleanup_cmd.h apps/repair_cmd.h dao/ServerCleanupDao.h lmdb/lmdb.h lmdb/midl.h MDBFileCache.h DatabaseFileCache.h create_files_cache.h FileCache.h SQLiteFileCache.h serverinterface/rights.h ../common/miniz.c server_dir_links.h dao/ServerBackupDao.h apps/app.h apps/export_auth_log.h serverinterface/login.h
-EXTRA_DIST = backup_server.db ../urbackup/status.htm www/*.js www/*.htm www/*.css www/*.png www/*.gif www/*.ico urbackup_dsa.pub
+EXTRA_DIST = backup_server.db ../urbackup/status.htm www/*.js www/*.htm www/*.css www/*.png www/*.gif www/*.ico urbackup_dsa.pub www/*.swf
