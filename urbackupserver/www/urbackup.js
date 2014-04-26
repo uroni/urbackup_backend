@@ -1002,7 +1002,7 @@ function show_status2(data)
 	{
 		if(!g.online_version_loaded)
 		{
-			LoadScript("http://urbackup.org/server_version_info.js", "server_version_info_struct");
+			LoadScript("https://ssl.webpack.de/serverupdate.urbackup.org/server_version_info.js", "server_version_info_struct");
 		}
 		else
 		{
