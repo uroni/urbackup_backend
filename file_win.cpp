@@ -16,9 +16,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
-#ifdef _DEBUG
 #include "Server.h"
-#endif
 #include "file.h"
 #include "types.h"
 #include "stringtools.h"
