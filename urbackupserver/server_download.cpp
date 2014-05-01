@@ -35,7 +35,7 @@ ServerDownloadThread::~ServerDownloadThread()
 void ServerDownloadThread::operator()( void )
 {
 	fc.setQueueCallback(this);
-	if(fc_chunked!=NULL && filesrv_protocol_version>2)
+	if(fc_chunked!=NULL && filesrv_protocol_version>5)
 	{
 		fc_chunked->setQueueCallback(this);
 	}

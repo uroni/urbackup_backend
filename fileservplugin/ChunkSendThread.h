@@ -9,7 +9,7 @@ struct SChunk;
 class ChunkSendThread : public IThread
 {
 public:
-	ChunkSendThread(CClientThread *parent, IFile *file, _i64 curr_hash_size);
+	ChunkSendThread(CClientThread *parent);
 	~ChunkSendThread(void);
 
 	void operator()(void);

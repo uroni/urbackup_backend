@@ -13,8 +13,8 @@
 unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
 
-ChunkSendThread::ChunkSendThread(CClientThread *parent, IFile *file, _i64 curr_hash_size)
-	: parent(parent), file(file), curr_hash_size(curr_hash_size)
+ChunkSendThread::ChunkSendThread(CClientThread *parent)
+	: parent(parent)
 {
 	chunk_buf=new char[(c_checkpoint_dist/c_chunk_size)*(c_chunk_size)+c_chunk_padding];
 }

@@ -1145,7 +1145,15 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 			Log("Could not open file from handle", LL_ERROR);
 			return false;
 		}
-		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this, tf, curr_hash_size) );
+
+		SChunk chunk;
+		chunk.update_file = tf;
+		chunk.startpos = curr_filesize;
+		chunk.hashsize = curr_hash_size;
+
+		next_chunks.push(chunk);
+
+		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this) );
 	}
 	else
 	{
@@ -1155,6 +1163,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		if(chunk.update_file==NULL)
 		{
 			Log("Could not open update file from handle", LL_ERROR);
+			return false;
 		}
 		else
 		{
