@@ -766,7 +766,7 @@ void IndexThread::indexDirs(void)
 	{
 		readPatterns(patterns_changed, true);
 	}
-	share_dirs(starttoken);
+	share_dirs();
 }
 
 void IndexThread::resetFileEntries(void)
@@ -924,7 +924,7 @@ void IndexThread::readBackupDirs(void)
 #endif
 
 		if(filesrv!=NULL)
-			shareDir(backup_dirs[i].tname, backup_dirs[i].path);
+			shareDir(L"", backup_dirs[i].tname, backup_dirs[i].path);
 	}
 }
 
@@ -1348,7 +1348,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 					dir->target=dir->ref->volpath+os_file_sep()+dir->target;
 					if(dir->fileserv)
 					{
-						shareDir(dir->dir, dir->target);
+						shareDir(widen(starttoken), dir->dir, dir->target);
 					}
 
 					if(for_imagebackup && dir->ref->save_id!=-1)
@@ -1532,7 +1532,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	dir->target=dir->ref->volpath+os_file_sep()+dir->target;
 	if(dir->fileserv)
 	{
-		shareDir(dir->dir, dir->target);
+		shareDir(widen(starttoken), dir->dir, dir->target);
 	}
 
 	SShadowCopy tsc;
@@ -1717,7 +1717,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 							{
 								if(it->second->fileserv)
 								{
-									shareDir(it->second->dir, it->second->orig_target);
+									shareDir(widen(server_it->first), it->second->dir, it->second->orig_target);
 								}
 								it->second->target=it->second->orig_target;
 
@@ -2436,14 +2436,22 @@ void IndexThread::start_filesrv(void)
 	ServerIdentityMgr::loadServerIdentities();
 }
 
-void IndexThread::shareDir(const std::wstring &name, const std::wstring &path)
+void IndexThread::shareDir(const std::wstring& token, std::wstring name, const std::wstring &path)
 {
+	if(!token.empty())
+	{
+		name = token + L"|" +name;
+	}
 	IScopedLock lock(filesrv_mutex);
 	filesrv_share_dirs[name]=path;
 }
 
-void IndexThread::removeDir(const std::wstring &name)
+void IndexThread::removeDir(const std::wstring& token, std::wstring name)
 {
+	if(!token.empty())
+	{
+		name = token + L"|" +name;
+	}
 	IScopedLock lock(filesrv_mutex);
 	std::map<std::wstring, std::wstring>::iterator it=filesrv_share_dirs.find(name);
 	if(it!=filesrv_share_dirs.end())
@@ -2458,28 +2466,22 @@ std::wstring IndexThread::getShareDir(const std::wstring &name)
 	return filesrv_share_dirs[name];
 }
 
-void IndexThread::share_dirs(const std::string &token)
+void IndexThread::share_dirs()
 {
 	IScopedLock lock(filesrv_mutex);
 	for(std::map<std::wstring, std::wstring>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
 	{
 		std::wstring dir=it->first;
-		if(!token.empty())
-			dir=widen(token)+L"|"+dir;
-
 		filesrv->shareDir(dir, it->second);
 	}
 }
 
-void IndexThread::unshare_dirs(const std::string &token)
+void IndexThread::unshare_dirs()
 {
 	IScopedLock lock(filesrv_mutex);
 	for(std::map<std::wstring, std::wstring>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
 	{
 		std::wstring dir=it->first;
-		if(!token.empty())
-			dir=widen(token)+L"|"+dir;
-
 		filesrv->removeDir(dir);
 	}
 }

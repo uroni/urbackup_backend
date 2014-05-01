@@ -258,7 +258,7 @@ bool miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
 bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername, const std::wstring& foldername, const std::wstring& filter)
 {
 	bool has_error=false;
-	const std::vector<SFile> files = getFiles(foldername, &has_error);
+	const std::vector<SFile> files = getFiles(foldername, &has_error, true, false);
 
 	if(has_error)
 		return false;

@@ -49,6 +49,8 @@ struct SChunk
 	char transfer_all;
 	char big_hash[big_hash_size];
 	char small_hash[small_hash_size*(c_checkpoint_dist/c_small_hash_dist)];
+	IFile* update_file;
+	_i64 hashsize;
 };
 
 struct SLPData
@@ -85,7 +87,7 @@ public:
 	void StopThread(void);
 
 	int SendInt(const char *buf, size_t bsize);
-	bool getNextChunk(SChunk *chunk, IFile **new_file, _i64 *new_hash_size);
+	bool getNextChunk(SChunk *chunk);
 private:
 
 	bool RecvMessage(void);
@@ -128,12 +130,10 @@ private:
 	_i64 next_checkpoint;
 	_i64 sent_bytes;
 	_i64 curr_filesize;
-	_i64 curr_hash_size;
 
 	IMutex *mutex;
 	ICondition *cond;
 	std::queue<SChunk> next_chunks;
-	IFile *update_file;
 
 	uchar cmd_id;
 

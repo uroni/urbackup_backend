@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Interface/Thread.h"
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"

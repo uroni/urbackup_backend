@@ -184,7 +184,6 @@
     <ClCompile Include="CTCPFileServ.cpp" />
     <ClCompile Include="CUDPThread.cpp" />
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="download.cpp" />
     <ClCompile Include="FileServ.cpp" />
     <ClCompile Include="FileServFactory.cpp" />
     <ClCompile Include="log.cpp" />
@@ -205,7 +204,6 @@
     <ClInclude Include="CriticalSection.h" />
     <ClInclude Include="CTCPFileServ.h" />
     <ClInclude Include="CUDPThread.h" />
-    <ClInclude Include="download.h" />
     <ClInclude Include="FileServ.h" />
     <ClInclude Include="FileServFactory.h" />
     <ClInclude Include="IFileServ.h" />

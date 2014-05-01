@@ -28,6 +28,7 @@
 #include <iostream>
 #include <memory.h>
 #include <algorithm>
+#include <assert.h>
 
 #ifndef _WIN32
 #include <errno.h>
@@ -42,6 +43,8 @@ namespace
 #else
 	const unsigned int DISCOVERY_TIMEOUT=1000; //1sec
 #endif
+
+	const size_t maxQueuedFiles = 2000;
 }
 
 void Log(std::string str)
@@ -81,7 +84,7 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	protocol_version(protocol_version), internet_connection(internet_connection),
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
-	identity(identity)
+	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
@@ -92,10 +95,19 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 
 	socket_open=false;
 	stack.setAddChecksum(internet_connection);
+
+	mutex = Server->createMutex();
 }
 
 void FileClient::bindToNewInterfaces()
 {
+	std::string s_broadcast_source_port = Server->getServerParameter("broadcast_source_port");
+	unsigned short broadcast_source_port = UDP_SOURCE_PORT;
+	if(!s_broadcast_source_port.empty())
+	{
+		broadcast_source_port = static_cast<unsigned short>(atoi(s_broadcast_source_port.c_str()));
+	}
+
 	#ifndef _WIN32
 	std::string bcast_interfaces=Server->getServerParameter("broadcast_interfaces", "");
 
@@ -124,7 +136,7 @@ void FileClient::bindToNewInterfaces()
 				memset(&source_addr, 0, sizeof(source_addr));
 				source_addr.sin_addr=((struct sockaddr_in *)ifap->ifa_addr)->sin_addr;
 				source_addr.sin_family = AF_INET;
-				source_addr.sin_port = htons(UDP_SOURCE_PORT);
+				source_addr.sin_port = htons(broadcast_source_port);
 
 				if(std::find(broadcast_iface_addrs.begin(), broadcast_iface_addrs.end(), source_addr.sin_addr.s_addr)!=broadcast_iface_addrs.end())
 					continue;
@@ -199,7 +211,7 @@ void FileClient::bindToNewInterfaces()
 			memset(&source_addr, 0, sizeof(source_addr));
 			source_addr.sin_addr.s_addr = INADDR_ANY;
 			source_addr.sin_family = AF_INET;
-			source_addr.sin_port = htons(UDP_SOURCE_PORT);
+			source_addr.sin_port = htons(broadcast_source_port);
 
 			Server->Log("Binding to no interface for broadcasting. Entering IP on restore CD won't work.", LL_WARNING);
 
@@ -245,7 +257,7 @@ void FileClient::bindToNewInterfaces()
 				memset(&source_addr, 0, sizeof(source_addr));
 				source_addr.sin_family = AF_INET;
 				source_addr.sin_addr.s_addr = *((_u32*)h->h_addr_list[x]);
-				source_addr.sin_port = htons(UDP_SOURCE_PORT);
+				source_addr.sin_port = htons(broadcast_source_port);
 
 				if(std::find(broadcast_iface_addrs.begin(), broadcast_iface_addrs.end(), source_addr.sin_addr.s_addr)!=broadcast_iface_addrs.end())
 					continue;
@@ -292,6 +304,8 @@ FileClient::~FileClient(void)
 	{
 		closesocket(udpsocks[i]);
 	}
+
+	Server->destroy(mutex);
 }
 
 std::vector<sockaddr_in> FileClient::getServers(void)
@@ -577,6 +591,13 @@ bool FileClient::isConnected(void)
 
 bool FileClient::Reconnect(void)
 {
+	dl_off=0;
+	queued.clear();
+	if(queue_callback!=NULL)
+	{
+		queue_callback->resetQueueFull();
+	}
+
 	transferred_bytes+=tcpsock->getTransferedBytes();
 	Server->destroy(tcpsock);
 	connect_starttime=Server->getTimeMS();
@@ -624,12 +645,22 @@ bool FileClient::Reconnect(void)
 		protocol_version=1;
 	}
 
-    CWData data;
-    data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
-    data.addString( remotefn );
-	data.addString( identity );
+	if(queued.empty())
+	{
+		assert(queued.empty());
 
-    stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+		CWData data;
+		data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
+		data.addString( remotefn );
+		data.addString( identity );
+
+		stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+	}
+	else
+	{
+		assert(queued.front() == remotefn);
+		queued.pop_front();
+	}
 
 	_u64 filesize=0;
 	_u64 received=0;
@@ -642,16 +673,19 @@ bool FileClient::Reconnect(void)
 
     starttime=Server->getTimeMS();
 
-	char buf[BUFFERSIZE];
 	int state=0;
 	char hash_buf[16];
 	_u32 hash_r;
 	MD5 hash_func;
 
+	char* buf = dl_buf;
 
 	while(true)
 	{        
-		size_t rc=tcpsock->Read(buf, BUFFERSIZE, 120000);
+		fillQueue();
+
+		size_t rc=tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, 120000)+dl_off;
+		dl_off=0;
 
         if( rc==0 )
         {
@@ -703,35 +737,68 @@ bool FileClient::Reconnect(void)
                         
             if( firstpacket==true)
             {
-                    if(PID==ID_COULDNT_OPEN)
-                    {
-                        return ERR_FILE_DOESNT_EXIST;
-                    }
-					else if(PID==ID_BASE_DIR_LOST)
+				firstpacket=false;
+				if(PID==ID_COULDNT_OPEN)
+				{
+					if(rc>1)
 					{
-						return ERR_BASE_DIR_LOST;
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
 					}
-                    else if(PID==ID_FILESIZE && rc >= 1+sizeof(_u64))
-                    {
-                            memcpy(&filesize, buf+1, sizeof(_u64) );
-                            off=1+sizeof(_u64);
+					return ERR_FILE_DOESNT_EXIST;
+				}
+				else if(PID==ID_BASE_DIR_LOST)
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_BASE_DIR_LOST;
+				}
+				else if(PID==ID_FILESIZE)
+				{
+					if(rc >= 1+sizeof(_u64))
+					{
+						memcpy(&filesize, buf+1, sizeof(_u64) );
+						off=1+sizeof(_u64);
 
-                            if( filesize==0 )
-                            {
-                                    return ERR_SUCCESS;
-                            }
-
-							if(protocol_version>1)
+						if( filesize==0 )
+						{
+							if(rc>off)
 							{
-								if(filesize<next_checkpoint)
-									next_checkpoint=filesize;
+								memmove(dl_buf, dl_buf+off, rc-off);
+								dl_off = rc-off;
 							}
-							else
-							{
+							return ERR_SUCCESS;
+						}
+
+						if(protocol_version>1)
+						{
+							if(filesize<next_checkpoint)
 								next_checkpoint=filesize;
-							}
-                    }
-                    firstpacket=false;
+						}
+						else
+						{
+							next_checkpoint=filesize;
+						}
+					}
+					else
+					{
+						dl_off=rc;
+						firstpacket=true;
+						continue;
+					}
+				}
+				else
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_ERROR;
+				}
             }
 
 			if( state==1 && (_u32) rc > off )
@@ -756,6 +823,12 @@ bool FileClient::Reconnect(void)
 
 				if(received >= filesize && state==0)
 				{
+					assert(received==filesize);
+					if(off < rc)
+					{
+						memmove(dl_buf, dl_buf+off, rc-off);
+						dl_off = rc-off;
+					}
 					return ERR_SUCCESS;
 				}
 			}
@@ -813,17 +886,20 @@ bool FileClient::Reconnect(void)
 						{
 							memcpy(hash_buf, &buf[written], (std::min)(hash_r, (_u32)16));
 
-							if(hash_r>16)
+							if(received<filesize)
 							{
-								hash_r=16;
-								c=true;
-								write_remaining=next_checkpoint-received;
+								if(hash_r>16)
+								{
+									hash_r=16;
+									c=true;
+									write_remaining=next_checkpoint-received;
+									written+=16;
+								}
+							}
+							else if(hash_r>=16)
+							{
 								written+=16;
 							}
-						}
-						else
-						{
-							int asfsf=3;
 						}
 
 						hash_off+=hash_r;
@@ -847,8 +923,19 @@ bool FileClient::Reconnect(void)
 					}
 				}
 
+				{
+					IScopedLock lock(mutex);
+					received_data_bytes+=written-off;
+				}
+
 				if( received >= filesize && state==0)
-                {
+				{
+					assert(received==filesize);
+					if(written < rc)
+					{
+						memmove(dl_buf, dl_buf+written, rc-written);
+						dl_off = rc-written;
+					}
 					return ERR_SUCCESS;
 				}
             }
@@ -856,40 +943,40 @@ bool FileClient::Reconnect(void)
             
 	    if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
 		{
-				Server->Log("Server timeout in FileClient. Trying to reconnect...", LL_INFO);
-				bool b=Reconnect();
-				--tries;
-				if(!b || tries<=0 )
+			Server->Log("Server timeout in FileClient. Trying to reconnect...", LL_INFO);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
+				data.addString( remotefn );
+				data.addString( identity );
+
+				if( protocol_version>1 )
 				{
-					Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
-					return ERR_TIMEOUT;
+					received=last_checkpoint;
 				}
-				else
-				{
-					CWData data;
-					data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
-					data.addString( remotefn );
-					data.addString( identity );
 
-					if( protocol_version>1 )
-					{
-						received=last_checkpoint;
-					}
+				if( firstpacket==false )
+					data.addInt64( received ); 
 
-					if( firstpacket==false )
-						data.addInt64( received ); 
+				file->Seek(received);
 
-					file->Seek(received);
+				stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				starttime=Server->getTimeMS();
 
-					stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
-					starttime=Server->getTimeMS();
+				if(protocol_version>0)
+					firstpacket=true;
 
-					if(protocol_version>0)
-						firstpacket=true;
-
-					hash_func.init();
-					state=0;
-				}
+				hash_func.init();
+				state=0;
+			}
 		}
 	}
 }
@@ -928,6 +1015,48 @@ std::string FileClient::getErrorString(_u32 ec)
 void FileClient::setReconnectionTimeout(unsigned int t)
 {
 	reconnection_timeout=t;
+}
+
+_i64 FileClient::getReceivedDataBytes( void )
+{
+	IScopedLock lock(mutex);
+	return received_data_bytes;
+}
+
+void FileClient::resetReceivedDataBytes( void )
+{
+	IScopedLock lock(mutex);
+	received_data_bytes=0;
+}
+
+void FileClient::setQueueCallback( QueueCallback* cb )
+{
+	queue_callback = cb;
+}
+
+void FileClient::fillQueue()
+{
+	if(queue_callback==NULL)
+		return;
+
+	while(queued.size()<maxQueuedFiles)
+	{
+		std::string queue_fn = queue_callback->getQueuedFileFull();
+
+		if(queue_fn.empty())
+		{
+			return;
+		}
+
+		CWData data;
+		data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
+		data.addString( queue_fn );
+		data.addString( identity );
+
+		stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+
+		queued.push_back(queue_fn);
+	}
 }
 
 

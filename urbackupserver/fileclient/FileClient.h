@@ -1,11 +1,13 @@
 #ifndef CFILECLIENT_H
 #define CFILECLIENT_H
 
+#include <deque>
 #include "packet_ids.h"
 #include "../../urbackupcommon/fileclient/tcpstack.h"
 #include "socket_header.h"
 #include "../../Interface/Pipe.h"
 #include "../../Interface/File.h"
+#include "../../Interface/Mutex.h"
 
 #define TCP_PORT 35621
 #define UDP_PORT 35622
@@ -47,6 +49,13 @@ public:
 			virtual bool handle_not_enough_space(const std::wstring &path)=0;
 		};
 
+		class QueueCallback
+		{
+		public:
+			virtual std::string getQueuedFileFull() = 0;
+			virtual void resetQueueFull() = 0;
+		};
+
 
 		FileClient(bool enable_find_servers, std::string identity, int protocol_version=0, bool internet_connection=false,
 			FileClient::ReconnectionCallback *reconnection_callback=NULL,
@@ -74,14 +83,21 @@ public:
 
 		_i64 getTransferredBytes(void);
 
+		_i64 getReceivedDataBytes(void);
+		void resetReceivedDataBytes(void);
+
 		static std::string getErrorString(_u32 ec);
 
 		void setReconnectionTimeout(unsigned int t);
+
+		void setQueueCallback(FileClient::QueueCallback* cb);
               
 private:
 		void bindToNewInterfaces();
 
 		bool Reconnect(void);
+
+		void fillQueue();
 
         std::vector<SOCKET> udpsocks;
 		std::vector<sockaddr_in> broadcast_addrs;
@@ -124,11 +140,21 @@ private:
 		FileClient::ReconnectionCallback *reconnection_callback;
 		FileClient::NoFreeSpaceCallback *nofreespace_callback;
 
+		FileClient::QueueCallback* queue_callback;
 		unsigned int reconnection_timeout;
 
 		bool retryBindToNewInterfaces;
 		
 		std::string identity;
+
+		_i64 received_data_bytes;
+
+		IMutex* mutex;
+
+		std::deque<std::string> queued;
+
+		char dl_buf[BUFFERSIZE];
+		size_t dl_off;
 };
 
 const _u32 ERR_CONTINUE=0;

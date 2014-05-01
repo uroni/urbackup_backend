@@ -716,7 +716,10 @@ bool CServer::UnloadDLL(const std::string &name)
 
 void CServer::destroy(IObject *obj)
 {
-	obj->Remove();
+	if(obj!=NULL)
+	{
+		obj->Remove();
+	}
 }
 
 ITemplate* CServer::createTemplate(std::string pFile)

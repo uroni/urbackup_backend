@@ -21,7 +21,7 @@ struct SFile
 	}
 };
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false);
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false, bool exact_filesize=true);
 
 void removeFile(const std::wstring &path);
 

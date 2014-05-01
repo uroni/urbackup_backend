@@ -36,9 +36,6 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="download.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="FileServ.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -93,9 +90,6 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="CUDPThread.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="download.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="FileServ.h">

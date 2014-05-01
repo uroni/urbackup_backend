@@ -114,11 +114,11 @@ public:
 
 	static void stopIndex(void);
 
-	static void shareDir(const std::wstring &name, const std::wstring &path);
-	static void removeDir(const std::wstring &name);
+	static void shareDir(const std::wstring& token, std::wstring name, const std::wstring &path);
+	static void removeDir(const std::wstring& token, std::wstring name);
 	static std::wstring getShareDir(const std::wstring &name);
-	static void share_dirs(const std::string &token);
-	static void unshare_dirs(const std::string &token);
+	static void share_dirs();
+	static void unshare_dirs();
 	
 	static void execute_postbackup_hook(void);
 

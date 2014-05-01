@@ -27,19 +27,21 @@ ChunkSendThread::~ChunkSendThread(void)
 void ChunkSendThread::operator()(void)
 {
 	SChunk chunk;
-	IFile *new_file=NULL;
-	_i64 new_hash_size;
-	while(parent->getNextChunk(&chunk, &new_file, &new_hash_size))
+	while(parent->getNextChunk(&chunk))
 	{
-		if(new_file!=NULL)
+		if(chunk.update_file!=NULL)
 		{
 			if(file!=NULL)
 			{
 				Server->destroy(file);
 			}
-			file=new_file;
-			new_file=NULL;
-			curr_hash_size=new_hash_size;
+			file=chunk.update_file;
+			curr_hash_size=chunk.hashsize;
+
+			CWData sdata;
+			sdata.addUChar(ID_FILESIZE);
+			sdata.addUInt64(chunk.startpos);
+			parent->SendInt(sdata.getDataPtr(), sdata.getDataSize());
 		}
 		else
 		{
@@ -70,10 +72,19 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 
 		unsigned int blockleft;
-		if(file->Size()-chunk->startpos<c_checkpoint_dist)
-			blockleft=(unsigned int)(file->Size()-chunk->startpos);
+		_i64 filesize = file->Size();
+		if(filesize<=chunk->startpos)
+		{
+			blockleft=0;
+		}
+		else if(file->Size()-chunk->startpos<c_checkpoint_dist)
+		{
+			blockleft=static_cast<unsigned int>(file->Size()-chunk->startpos);
+		}
 		else
+		{
 			blockleft=c_checkpoint_dist;
+		}
 
 		md5_hash.init();
 
@@ -82,29 +93,33 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		Log("Sending whole block start="+nconvert(chunk->startpos)+" size="+nconvert(blockleft), LL_DEBUG);
 		_u32 r;
-		do
+		if(blockleft>0)
 		{
-			r=file->Read(chunk_buf+off, c_chunk_size);
-			if(r>0)
+			do
 			{
-				md5_hash.update((unsigned char*)chunk_buf+off, r);
+				r=file->Read(chunk_buf+off, c_chunk_size);
+				if(r>0)
+				{
+					md5_hash.update((unsigned char*)chunk_buf+off, r);
+				}
+				if(r+off>0)
+				{
+					if(parent->SendInt(chunk_buf, off+r)==SOCKET_ERROR)
+						return false;
+
+					if( FileServ::isPause() ) Sleep(500);
+
+					off=0;
+				}
+
+				if(r<=blockleft)
+					blockleft-=r;
+				else
+					blockleft=0;
+
 			}
-			if(r+off>0)
-			{
-				if(parent->SendInt(chunk_buf, off+r)==SOCKET_ERROR)
-					return false;
-
-				if( FileServ::isPause() ) Sleep(500);
-
-				off=0;
-			}
-
-			if(r<=blockleft)
-				blockleft-=r;
-			else
-				blockleft=0;
-
-		}while(r==c_chunk_size && blockleft>0);
+			while(r==c_chunk_size && blockleft>0);
+		}		
 
 		md5_hash.finalize();
 		*chunk_buf=ID_BLOCK_HASH;

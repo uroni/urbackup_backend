@@ -11,8 +11,8 @@ public:
 	virtual THREADPOOL_TICKET execute(IThread *runnable)=0;
 	virtual void executeWait(IThread *runnable)=0;
 	virtual bool isRunning(THREADPOOL_TICKET ticket)=0;
-	virtual void waitFor(std::vector<THREADPOOL_TICKET> tickets)=0;
-	virtual void waitFor(THREADPOOL_TICKET ticket)=0;
+	virtual bool waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems=-1)=0;
+	virtual bool waitFor(THREADPOOL_TICKET ticket, int timems=-1)=0;
 };
 
 #endif //ITHREADPOOL_H_

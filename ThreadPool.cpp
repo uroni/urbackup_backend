@@ -182,8 +182,14 @@ bool CThreadPool::isRunning(THREADPOOL_TICKET ticket)
 	return isRunningInt(ticket);
 }
 
-void CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets)
+bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 {
+	unsigned int starttime;
+	if(timems>=0)
+	{
+		starttime = Server->getTimeMS();
+	}
+
 	IScopedLock lock(mutex);
 	ICondition *cond=Server->createCondition();
 
@@ -196,12 +202,14 @@ void CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets)
 		}
 	}
 
+	bool ret=false;
+
 	while(true)
 	{
 		bool r=false;
 		for(size_t i=0;i<tickets.size();++i)
 		{
-			if( isRunningInt(tickets[i])==true )
+			if( isRunningInt(tickets[i]) )
 			{
 				r=true;
 				break;
@@ -209,12 +217,26 @@ void CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets)
 		}
 
 		if( r==false )
+		{
+			ret = true;
 			break;
+		}
 
-		cond->wait(&lock);
+		cond->wait(&lock, timems);
+
+		if(timems>=0)
+		{
+			unsigned int ctime = Server->getTimeMS();
+			if(ctime-starttime>static_cast<unsigned int>(timems))
+			{
+				break;
+			}
+		}
 	}
 	
 	Server->destroy(cond);
+
+	return ret;
 }
 
 THREADPOOL_TICKET CThreadPool::execute(IThread *runnable)
@@ -241,10 +263,10 @@ void CThreadPool::executeWait(IThread *runnable)
 	waitFor(ticket);
 }
 
-void CThreadPool::waitFor(THREADPOOL_TICKET ticket)
+bool CThreadPool::waitFor(THREADPOOL_TICKET ticket, int timems)
 {
 	std::vector<THREADPOOL_TICKET> t;
 	t.push_back(ticket);
-	waitFor(t);
+	return waitFor(t, timems);
 }
 

@@ -77,7 +77,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	else if(method==1)
 	{
 		CTCPStack tcpstack;
-		FileClientChunked fc(cp, &tcpstack, this, NULL, server_identity);
+		FileClientChunked fc(cp, true, &tcpstack, this, NULL, server_identity, NULL);
 		fc.setDestroyPipe(true);
 
 		IFile *hashfile=Server->openTemporaryFile();
@@ -87,7 +87,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 		Server->Log("Downloading file...");
-		rc=fc.GetFileChunked(remotefn, dstfile, hashfile, hashfile_output);
+		rc=fc.GetFileChunked(remotefn, dstfile, hashfile, hashfile_output, -1);
 
 		cleanup_tmpfile(hashfile);
 		cleanup_tmpfile(hashfile_output);
@@ -102,7 +102,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	else if(method==2)
 	{
 		CTCPStack tcpstack;
-		FileClientChunked fc(cp, &tcpstack, this, NULL, server_identity);
+		FileClientChunked fc(cp, true, &tcpstack, this, NULL, server_identity, NULL);
 		fc.setDestroyPipe(true);
 
 		IFile *hashfile=Server->openTemporaryFile();
@@ -113,7 +113,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 		Server->Log("Downloading file...");
-		rc=fc.GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output);
+		rc=fc.GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, -1);
 
 		IFile *tmpfile=Server->openTemporaryFile();
 		Server->Log("Copying to temporary...");

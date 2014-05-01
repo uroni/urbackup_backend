@@ -306,6 +306,7 @@
     <ClCompile Include="server_channel.cpp" />
     <ClCompile Include="server_cleanup.cpp" />
     <ClCompile Include="server_dir_links.cpp" />
+    <ClCompile Include="server_download.cpp" />
     <ClCompile Include="server_get.cpp" />
     <ClCompile Include="server_hash.cpp" />
     <ClCompile Include="server_image.cpp" />
@@ -374,6 +375,7 @@
     <ClInclude Include="server_channel.h" />
     <ClInclude Include="server_cleanup.h" />
     <ClInclude Include="server_dir_links.h" />
+    <ClInclude Include="server_download.h" />
     <ClInclude Include="server_get.h" />
     <ClInclude Include="server_hash.h" />
     <ClInclude Include="server_image.h" />

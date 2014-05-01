@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Interface/Thread.h"
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"
@@ -14,6 +16,8 @@
 #include "../urbackupcommon/sha2/sha2.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "server_settings.h"
+
+#include <memory>
 
 class ServerVHDWriter;
 class IFile;
@@ -69,6 +73,12 @@ public:
 
 	virtual bool handle_not_enough_space(const std::wstring &path);
 
+	static IFile *getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, int clientid);
+
+	static void destroyTemporaryFile(IFile *tmp);
+
+	static std::wstring convertToOSPathFromFileClient(std::wstring path);
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -82,13 +92,10 @@ private:
 	bool doFullBackup(bool with_hashes, bool &disk_error, bool &log_backup);
 	int createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed);
 	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file);
-	void start_shadowcopy(const std::string &path);
-	void stop_shadowcopy(const std::string &path);
+	
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool resume, bool with_token, bool& no_backup_dirs, bool& connect_fail);
-	bool load_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, FileClient &fc, bool with_hashes, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, bool &download_ok, bool hashed_transfer, bool save_incomplete_file);
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql);
-	bool load_file_patch(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::wstring &last_backuppath, const std::wstring &last_backuppath_complete, FileClientChunked &fc, FileClient &fc_normal, bool save_incomplete_file, bool &download_ok);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
 	SBackup getLastIncremental(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
@@ -125,7 +132,7 @@ private:
 	std::wstring fixFilenameForOS(const std::wstring& fn);
 
 	_u32 getClientFilesrvConnection(FileClient *fc, int timeoutms=10000);
-	FileClientChunked getClientChunkedFilesrvConnection(int timeoutms=10000);
+	bool getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, int timeoutms=10000);
 
 	void saveImageAssociation(int image_id, int assoc_id);
 	
@@ -140,10 +147,6 @@ private:
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
 
 	int64 updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn, ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize, int64 mbr_offset, int64 vhd_blocksize, bool &warned_about_parenthashfile_error);
-
-	std::wstring convertToOSPathFromFileClient(std::wstring path);
-	IFile *getTemporaryFileRetry(void);
-	void destroyTemporaryFile(IFile *tmp);
 
 	IPipeThrottler *getThrottler(size_t speed_bps);
 

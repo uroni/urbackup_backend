@@ -84,7 +84,7 @@ void getMousePos(int &x, int &y)
 	y=mousepos.y;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks, bool exact_filesize)
 {
 	if(has_error!=NULL)
 	{
@@ -128,6 +128,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			f.name=wfd.cFileName;
 			if(f.name==L"." || f.name==L".." )
 				continue;
+
 			f.isdir=(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)>0;			
 			LARGE_INTEGER lwt;
 			lwt.HighPart=wfd.ftLastWriteTime.dwHighDateTime;
@@ -137,6 +138,16 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			size.HighPart=wfd.nFileSizeHigh;
 			size.LowPart=wfd.nFileSizeLow;
 			f.size=size.QuadPart;
+
+			HANDLE hfile=CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+			if(hfile!=INVALID_HANDLE_VALUE)
+			{
+				BOOL b = GetFileSizeEx(hfile, &size);
+				if(b)
+				{
+					f.size = size.QuadPart;
+				}
+			}
 
 			if(f.last_modified<0) f.last_modified*=-1;
 			tmp.push_back(f);		

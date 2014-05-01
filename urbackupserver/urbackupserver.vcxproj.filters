@@ -258,6 +258,9 @@
     <ClCompile Include="apps\export_auth_log.cpp">
       <Filter>apps</Filter>
     </ClCompile>
+    <ClCompile Include="server_download.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -454,6 +457,9 @@
     </ClInclude>
     <ClInclude Include="apps\export_auth_log.h">
       <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="server_download.h">
+      <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

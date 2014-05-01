@@ -2,16 +2,18 @@
 #define FILECLIENTCHUNKED_H
 
 #include "../../Interface/Types.h"
+#include "../../Interface/Mutex.h"
 #include "FileClient.h"
 #include "../../md5.h"
 #include "../../fileservplugin/chunk_settings.h"
 #include <map>
+#include <queue>
 
 class IFile;
 class IPipe;
 class CTCPStack;
 
-const unsigned int c_max_queued_chunks=20;
+const unsigned int c_max_queued_chunks=100;
 
 enum EChunkedState
 {
@@ -42,13 +44,20 @@ public:
 		virtual bool handle_not_enough_space(const std::wstring &path)=0;
 	};
 
-	FileClientChunked(IPipe *pipe, CTCPStack *stack, FileClientChunked::ReconnectionCallback *reconnection_callback,
-			FileClientChunked::NoFreeSpaceCallback *nofreespace_callback, std::string identity);
+	class QueueCallback
+	{
+	public:
+		virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize) = 0;
+		virtual void resetQueueChunked() = 0;
+	};
+
+	FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stack, FileClientChunked::ReconnectionCallback *reconnection_callback,
+			FileClientChunked::NoFreeSpaceCallback *nofreespace_callback, std::string identity, FileClientChunked* prev);
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
-	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput);
-	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput);
+	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64 predicted_filesize);
+	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64 predicted_filesize);
 
 	_i64 getSize(void);
 
@@ -58,18 +67,32 @@ public:
 
 	_i64 getTransferredBytes(void);
 
+	_i64 getReceivedDataBytes();
+
+	void resetReceivedDataBytes(void);
+
 	void addThrottler(IPipeThrottler *throttler);
 
 	IPipe *getPipe();
 
 	void setReconnectionTimeout(unsigned int t);
 
+	void setQueueCallback(FileClientChunked::QueueCallback* cb);
+
 private:
+	FileClientChunked(const FileClientChunked& other) {};
+	void operator=(const FileClientChunked& other) {}
+
+	void setQueueOnly(bool b);
+
+	void setInitialBytes(const char* buf, size_t bsize);
 
 	_u32 GetFile(std::string remotefn);
 
+	_u32 handle_data(char* buf, size_t bsize, bool ignore_filesize);
+
 	void State_First(void);
-	void State_Acc(void);
+	void State_Acc(bool ignore_filesize);
 	void State_Block(void);
 	void State_Chunk(void);
 
@@ -84,7 +107,29 @@ private:
 
 	void invalidateLastPatches(void);
 
+	void calcTotalChunks();
+
+	_u32 loadFileOutOfBand();
+
+	bool constructOutOfBandPipe();
+
+	_u32 loadChunkOutOfBand(_i64 chunk_pos);
+
 	bool Reconnect(void);
+
+	FileClientChunked* getNextFileClient();
+
+	void clearFileClientQueue();
+
+	unsigned int queuedChunks();
+	void incrQueuedChunks();
+	void decrQueuedChunks();
+	void resetQueuedChunks();
+
+	void addReceivedBytes(size_t bytes);
+
+	IPipe* ofbPipe();
+	void setOfbPipe(IPipe* p);
 
 	std::string remote_filename;
 
@@ -152,6 +197,23 @@ private:
 	unsigned int reconnection_timeout;
 
 	std::string identity;
+
+	_i64 received_data_bytes;
+
+	IMutex* mutex;
+
+	FileClientChunked* parent;
+	bool did_queue_fc;
+	std::queue<FileClientChunked*> queued_fcs;
+
+	FileClientChunked::QueueCallback* queue_callback;
+	bool queue_only;
+
+	std::vector<char> initial_bytes;
+
+	IPipe* ofb_pipe;
+
+	_i64 hashfilesize;
 };
 
 #endif //FILECLIENTCHUNKED_H

@@ -71,7 +71,7 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 		reference_all_sublinks(backup_dao, clientid, src_dir, target_dir);
 		backup_dao.commit();
 	}
-	else
+	else if(os_directory_exists(os_file_prefix(src_dir)))
 	{
 		std::wstring parent_src_dir;
 		do 
@@ -148,6 +148,10 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 		{
 			backup_dao.removeDirectoryLinkJournalEntry(replay_entry_id);
 		}
+	}
+	else
+	{
+		return false;
 	}
 
 	if(!os_link_symbolic(os_file_prefix(link_src_dir), os_file_prefix(target_dir)))

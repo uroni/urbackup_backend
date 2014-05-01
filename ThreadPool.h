@@ -33,8 +33,8 @@ public:
 	THREADPOOL_TICKET execute(IThread *runnable);
 	void executeWait(IThread *runnable);
 	bool isRunning(THREADPOOL_TICKET ticket);
-	void waitFor(std::vector<THREADPOOL_TICKET> tickets);
-	void waitFor(THREADPOOL_TICKET ticket);
+	bool waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems=-1);
+	bool waitFor(THREADPOOL_TICKET ticket, int timems=-1);
 	void Remove(CPoolThread *pt);
 
 	void Shutdown(void);

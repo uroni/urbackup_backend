@@ -39,10 +39,6 @@
 #define CHECK_BASE_PATH
 #define SEND_TIMEOUT 10000
 
-CriticalSection cs;
-
-int curr_tid=0;
-
 #ifdef _WIN32
 bool isDirectory(const std::wstring &path)
 {
@@ -113,7 +109,6 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	mutex=NULL;
 	cond=NULL;
 	state=CS_NONE;
-	update_file=NULL;
 	chunk_send_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
 }
 
@@ -135,7 +130,6 @@ CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent)
 	state=CS_NONE;
 	mutex=NULL;
 	cond=NULL;
-	update_file=NULL;
 	chunk_send_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
 
 	stack.setAddChecksum(true);
@@ -231,11 +225,13 @@ void CClientThread::operator()(void)
 			IScopedLock lock(mutex);
 			state=CS_NONE;
 			while(!next_chunks.empty())
-				next_chunks.pop();
-			if(update_file!=NULL)
 			{
-				Server->destroy(update_file);
-				update_file=NULL;
+				if(next_chunks.front().update_file!=NULL)
+				{
+					Server->destroy(next_chunks.front().update_file);
+				}
+
+				next_chunks.pop();
 			}
 			cond->notify_all();
 		}
@@ -1026,8 +1022,11 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	_i64 start_offset=0;
 	data->getInt64(&start_offset);
 
-	curr_hash_size=0;
+	_i64 curr_hash_size=0;
 	data->getInt64(&curr_hash_size);
+
+	_i64 requested_filesize=-1;
+	data->getInt64(&requested_filesize);
 
 	Log("Sending file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
 
@@ -1121,15 +1120,14 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	curr_filesize=stat_buf.st_size;
 #endif
 
+	if(curr_filesize>requested_filesize)
+	{
+		curr_filesize = requested_filesize;
+	}
+
 	next_checkpoint=start_offset+c_checkpoint_dist;
 	if(next_checkpoint>curr_filesize)
 		next_checkpoint=curr_filesize;
-
-
-	CWData sdata;
-	sdata.addUChar(ID_FILESIZE);
-	sdata.addUInt64(curr_filesize);
-	SendInt(sdata.getDataPtr(), sdata.getDataSize());
 
 	if(mutex==NULL)
 	{
@@ -1152,12 +1150,20 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	else
 	{
 		IScopedLock lock(mutex);
-		update_file=Server->openFileFromHandle((void*)hFile);
-		if(update_file==NULL)
+		SChunk chunk;
+		chunk.update_file = Server->openFileFromHandle((void*)hFile);
+		if(chunk.update_file==NULL)
 		{
 			Log("Could not open update file from handle", LL_ERROR);
 		}
-		cond->notify_all();
+		else
+		{
+			chunk.startpos = curr_filesize;
+			chunk.hashsize = curr_hash_size;
+
+			next_chunks.push(chunk);
+			cond->notify_all();
+		}
 	}
 	hFile=(HANDLE)NULL;
 
@@ -1167,6 +1173,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
 {
 	SChunk chunk;
+	chunk.update_file = NULL;
 	bool b=data->getInt64(&chunk.startpos);
 	if(!b)
 		return false;
@@ -1192,20 +1199,12 @@ bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
 	return true;
 }
 
-bool CClientThread::getNextChunk(SChunk *chunk, IFile **new_file, _i64 *new_hash_size)
+bool CClientThread::getNextChunk(SChunk *chunk)
 {
 	IScopedLock lock(mutex);
-	while(next_chunks.empty() && state==CS_BLOCKHASH && update_file==NULL)
+	while(next_chunks.empty() && state==CS_BLOCKHASH)
 	{
 		cond->wait(&lock);
-	}
-
-	if(update_file!=NULL)
-	{
-		*new_file=update_file;
-		*new_hash_size=curr_hash_size;
-		update_file=NULL;
-		return true;
 	}
 
 	if(!next_chunks.empty())
