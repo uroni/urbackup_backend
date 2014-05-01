@@ -22,8 +22,13 @@
 #include "file.h"
 #include "types.h"
 #include "stringtools.h"
+#include <sstream>
 
 #ifdef MODE_WIN
+
+size_t File::tmp_file_index = 0;
+IMutex* File::index_mutex = NULL;
+std::wstring File::random_prefix;
 
 File::File()
 	: hfile(INVALID_HANDLE_VALUE)
@@ -51,10 +56,14 @@ bool File::Open(std::wstring pfn, int mode)
 		dwCreationDisposition=CREATE_NEW;
 		dwDesiredAccess=GENERIC_WRITE;
 	}
-	else if( mode==MODE_APPEND
-		|| mode==MODE_TEMP )
+	else if( mode==MODE_APPEND )
 	{
 		dwCreationDisposition=OPEN_EXISTING;
+		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
+	}
+	else if( mode==MODE_TEMP )
+	{
+		dwCreationDisposition=CREATE_NEW;
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
 	else if( mode==MODE_RW 
@@ -111,6 +120,8 @@ bool File::Open(std::wstring pfn, int mode)
 
 bool File::OpenTemporaryFile(const std::wstring &tmpdir)
 {
+	std::wostringstream filename;
+
 	if(tmpdir.empty())
 	{
 		wchar_t tmpp[MAX_PATH];
@@ -119,29 +130,29 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir)
 		{
 			wcscpy_s(tmpp,L"C:\\");
 		}
-
-		wchar_t filename[MAX_PATH];
-		if( GetTempFileNameW(tmpp, L"urbackup.t", 0, filename)==0 )
-		{
-			hfile=NULL;
-			int err=GetLastError();
-			return false;
-		}
-
-		return Open(filename, MODE_TEMP);
+		
+		filename << tmpp;
 	}
 	else
 	{
-		wchar_t filename[MAX_PATH];
-		if( GetTempFileNameW(tmpdir.c_str(), L"urbackup.t", 0, filename)==0 )
-		{
-			hfile=NULL;
-			int err=GetLastError();
-			return false;
-		}
+		filename << tmpdir;
 
-		return Open(filename, MODE_TEMP);
+		if(tmpdir[tmpdir.size()-1]!='\\')
+		{
+			filename << L"\\";
+		}
 	}
+
+	filename << L"urb" << random_prefix << L"-" << std::hex;
+
+	{
+		IScopedLock lock(index_mutex);
+		filename << ++tmp_file_index;
+	}
+
+	filename << L".tmp";
+
+	return Open(filename.str(), MODE_TEMP);
 }
 
 bool File::Open(void *handle)
@@ -227,6 +238,22 @@ void File::Close()
 		BOOL b=CloseHandle( hfile );
 		hfile=NULL;
 	}
+}
+
+void File::init_mutex()
+{
+	index_mutex = Server->createMutex();
+
+	std::string rnd;
+	rnd.resize(5);
+	Server->randomFill(&rnd[0], rnd.size());
+
+	random_prefix = widen(bytesToHex(reinterpret_cast<unsigned char*>(&rnd[0]), rnd.size()));
+}
+
+void File::destroy_mutex()
+{
+	Server->destroy(index_mutex);
 }
 
 #endif

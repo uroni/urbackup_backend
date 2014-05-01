@@ -20,6 +20,7 @@ const int MODE_TEMP=4;
 #endif
 #ifdef MODE_WIN
 #	include <windows.h>
+#	include "Interface/Mutex.h"
 #endif
 #ifdef MODE_LIN
 #ifndef _LARGEFILE64_SOURCE
@@ -47,6 +48,11 @@ public:
 	bool Seek(_i64 spos);
 	_i64 Size(void);
 	void Close();
+
+#ifdef _WIN32
+	static void init_mutex();
+	static void destroy_mutex();
+#endif
 	
 	std::string getFilename(void);
 	std::wstring getFilenameW(void);
@@ -61,6 +67,12 @@ private:
 	int fd;
 #endif
 	std::wstring fn;
+
+#ifdef _WIN32
+	static size_t tmp_file_index;
+	static IMutex* index_mutex;
+	static std::wstring random_prefix;
+#endif
 };
 
 bool DeleteFileInt(std::string pFilename);

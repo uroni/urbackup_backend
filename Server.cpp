@@ -132,6 +132,10 @@ void CServer::setup(void)
 #endif
 
 	CQuery::init_mutex();
+
+#ifdef MODE_WIN
+	File::init_mutex();
+#endif
 }
 
 void CServer::destroyAllDatabases(void)
@@ -267,6 +271,10 @@ CServer::~CServer()
 	destroy(rnd_mutex);
 #ifndef NO_SQLITE
 	CDatabase::destroyMutex();
+#endif
+
+#ifdef MODE_WIN
+	File::destroy_mutex();
 #endif
 
 	std::cout << "Server cleanup done..." << std::endl;
