@@ -14,7 +14,7 @@ unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
 
 ChunkSendThread::ChunkSendThread(CClientThread *parent)
-	: parent(parent)
+	: parent(parent), file(NULL)
 {
 	chunk_buf=new char[(c_checkpoint_dist/c_chunk_size)*(c_chunk_size)+c_chunk_padding];
 }
