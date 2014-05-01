@@ -252,20 +252,17 @@ bool CClientThread::RecvMessage(void)
 		rc=-1;
 	if( rc==0 )
 	{
-		if(state==CS_NONE)
+		Log("1 min Timeout deleting Buffers ("+nconvert((NBUFFERS*READSIZE)/1024 )+" KB) and waiting 1h more...", LL_DEBUG);
+		delete bufmgr;
+		bufmgr=NULL;
+		lon.tv_sec=3600;
+		int n=0;
+		while(stopped==false && rc==0 && n<60)
 		{
-			Log("1 min Timeout deleting Buffers ("+nconvert((NBUFFERS*READSIZE)/1024 )+" KB) and waiting 1h more...", LL_DEBUG);
-			delete bufmgr;
-			bufmgr=NULL;
-			lon.tv_sec=3600;
-			int n=0;
-			while(stopped==false && rc==0 && n<60)
-			{
-				rc=clientpipe->isReadable(lon.tv_sec*1000);
-				if(clientpipe->hasError())
-					rc=-1;
-				++n;
-			}
+			rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
+			if(clientpipe->hasError())
+				rc=-1;
+			++n;
 		}
 	}
 	
@@ -1120,7 +1117,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	curr_filesize=stat_buf.st_size;
 #endif
 
-	if(curr_filesize>requested_filesize)
+	if(requested_filesize!=-1 && curr_filesize>requested_filesize)
 	{
 		curr_filesize = requested_filesize;
 	}
