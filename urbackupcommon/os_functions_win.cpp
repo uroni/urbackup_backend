@@ -147,6 +147,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 				{
 					f.size = size.QuadPart;
 				}
+				CloseHandle(hfile);
 			}
 
 			if(f.last_modified<0) f.last_modified*=-1;
