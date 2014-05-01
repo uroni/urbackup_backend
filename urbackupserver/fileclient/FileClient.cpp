@@ -684,7 +684,15 @@ bool FileClient::Reconnect(void)
 	{        
 		fillQueue();
 
-		size_t rc=tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, 120000)+dl_off;
+		size_t rc;
+		if(tcpsock->isReadable() || dl_off==0 || (firstpacket && dl_off<1+sizeof(_u64) ) )
+		{
+			rc = tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, 120000)+dl_off;
+		}
+		else
+		{
+			rc = dl_off;
+		}
 		dl_off=0;
 
         if( rc==0 )

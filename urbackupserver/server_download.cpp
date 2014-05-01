@@ -35,7 +35,7 @@ ServerDownloadThread::~ServerDownloadThread()
 void ServerDownloadThread::operator()( void )
 {
 	fc.setQueueCallback(this);
-	if(fc_chunked!=NULL && filesrv_protocol_version>5)
+	if(fc_chunked!=NULL && filesrv_protocol_version>2)
 	{
 		fc_chunked->setQueueCallback(this);
 	}
@@ -135,7 +135,10 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	}
 	cond->notify_one();
 
-	sleepQueue(lock);
+	if(!at_front)
+	{
+		sleepQueue(lock);
+	}
 }
 
 

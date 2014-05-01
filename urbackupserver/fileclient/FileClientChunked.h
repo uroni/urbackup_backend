@@ -128,6 +128,8 @@ private:
 
 	void addReceivedBytes(size_t bytes);
 
+	void addReceivedBlock(_i64 block_start);
+
 	IPipe* ofbPipe();
 	void setOfbPipe(IPipe* p);
 

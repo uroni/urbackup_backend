@@ -9,6 +9,8 @@
 #include <queue>
 #include <memory>
 
+#define VLOG(x) //x
+
 const unsigned int chunkhash_file_off=sizeof(_i64);
 const unsigned int chunkhash_single_size=big_hash_size+small_hash_size*(c_checkpoint_dist/c_small_hash_dist);
 const unsigned int c_reconnection_tries=30;
@@ -124,7 +126,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		}
 		else
 		{
-			Server->Log("Old filesize="+nconvert(hashfilesize), LL_DEBUG);
+			VLOG(Server->Log("Old filesize="+nconvert(hashfilesize), LL_DEBUG));
 		}
 	}
 
@@ -420,7 +422,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 		}
 		else
 		{
-			Server->Log("Finalizing info packet... packet_buf_off="+nconvert(packet_buf_off)+" remaining_bufptr_bytes="+nconvert(remaining_bufptr_bytes)+" need_bytes="+nconvert(need_bytes), LL_DEBUG);
+			VLOG(Server->Log("Finalizing info packet... packet_buf_off="+nconvert(packet_buf_off)+" remaining_bufptr_bytes="+nconvert(remaining_bufptr_bytes)+" need_bytes="+nconvert(need_bytes), LL_DEBUG));
 			memcpy(&packet_buf[packet_buf_off], bufptr, need_bytes);
 			msg.set(packet_buf, total_need_bytes);
 		}
@@ -438,7 +440,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				}
 				if(!ignore_filesize)
 				{
-					Server->Log("Receiving filesize...", LL_DEBUG);
+					VLOG(Server->Log("Receiving filesize...", LL_DEBUG));
 					_i64 new_remote_filesize;
 					msg.getInt64(&new_remote_filesize);
 
@@ -449,10 +451,13 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 
 					if(remote_filesize!=-1 && new_remote_filesize>remote_filesize)
 					{
-						Server->Log("Filesize increase from predicted filesize. Loading file out of band... Use a newer Client!", LL_WARNING);
-						retval=loadFileOutOfBand();
-						getfile_done=true;
-						Reconnect();
+						Server->Log("Filesize increase from predicted filesize. Loading file out of band...", LL_WARNING);
+						assert(false);
+						if(!Reconnect())
+						{
+							getfile_done=true;
+							retval=ERR_CONN_LOST;
+						}
 						return;
 					}
 
@@ -491,11 +496,12 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				msg.getInt64(&block_start);
 				chunk_start=block_start;
 
-				Server->Log("FileClientChunked: Whole block start="+nconvert(block_start), LL_DEBUG);
+				VLOG(Server->Log("FileClientChunked: Whole block start="+nconvert(block_start), LL_DEBUG));
 
 				if(pending_chunks.find(block_start)==pending_chunks.end())
 				{
 					Server->Log("Block not requested.", LL_ERROR);
+					assert(false);
 					retval=ERR_ERROR;
 					getfile_done=true;
 					return;
@@ -503,7 +509,10 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 
 				file_pos=block_start;
 				if(!m_file->Seek(block_start))
+				{
 					Server->Log("Chunked Transfer: Seeking failed", LL_ERROR);
+					assert(false);
+				}
 
 				block_for_chunk_start=block_start;
 
@@ -527,7 +536,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				Hash_upto(new_chunk_start, new_block);
 				msg.getUInt(&adler_remaining);
 
-				Server->Log("FileClientChunked: Chunk start="+nconvert(chunk_start)+" remaining="+nconvert(adler_remaining), LL_DEBUG);
+				VLOG(Server->Log("FileClientChunked: Chunk start="+nconvert(chunk_start)+" remaining="+nconvert(adler_remaining), LL_DEBUG));
 
 				file_pos=chunk_start;
 				_i64 block=chunk_start/c_checkpoint_dist;
@@ -536,6 +545,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				if(it==pending_chunks.end())
 				{
 					Server->Log("Chunk not requested.", LL_ERROR);
+					assert(false);
 					retval=ERR_ERROR;
 					getfile_done=true;
 					return;
@@ -575,7 +585,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 	}
 	else
 	{
-		Server->Log("Accumulating data for info packet... packet_buf_off="+nconvert(packet_buf_off)+" remaining_bufptr_bytes="+nconvert(remaining_bufptr_bytes), LL_DEBUG);
+		VLOG(Server->Log("Accumulating data for info packet... packet_buf_off="+nconvert(packet_buf_off)+" remaining_bufptr_bytes="+nconvert(remaining_bufptr_bytes), LL_DEBUG));
 		if(remaining_bufptr_bytes>0)
 		{
 			memcpy(&packet_buf[packet_buf_off], bufptr, remaining_bufptr_bytes);
@@ -601,7 +611,7 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 		patch_buf_pos=0;
 		hash_for_whole_block=false;
 		chunk_start=block_start;
-		Server->Log("Chunk is in new block", LL_DEBUG);
+		VLOG(Server->Log("Chunk is in new block", LL_DEBUG));
 	}
 	else
 	{
@@ -616,7 +626,7 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 		{
 			_u32 toread=(std::min)((_u32)BUFFERSIZE, (_u32)(new_chunk_start-chunk_start));
 			size_t r=m_file->Read(buf2,  toread);
-			Server->Log("Read for hash at chunk_start="+nconvert(chunk_start)+" toread="+nconvert(toread)+" n="+nconvert(r), LL_DEBUG);
+			VLOG(Server->Log("Read for hash at chunk_start="+nconvert(chunk_start)+" toread="+nconvert(toread)+" n="+nconvert(r), LL_DEBUG));
 			if(r<toread)
 			{
 				retval=ERR_INT_ERROR;
@@ -635,7 +645,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 {
 	if(!hash_for_whole_block)
 	{
-		Server->Log("Not a whole block. currpos="+nconvert(curr_pos)+" block_for_chunk_start="+nconvert(block_for_chunk_start), LL_DEBUG);
+		VLOG(Server->Log("Not a whole block. currpos="+nconvert(curr_pos)+" block_for_chunk_start="+nconvert(block_for_chunk_start), LL_DEBUG));
 		if(curr_pos==block_for_chunk_start && block_for_chunk_start!=-1)
 		{
 			_i64 dest_pos=curr_pos+c_checkpoint_dist;
@@ -643,14 +653,14 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			if(dest_pos>remote_filesize)
 				dest_pos=remote_filesize;
 
-			Server->Log("dest_pos="+nconvert(dest_pos), LL_DEBUG);
+			VLOG(Server->Log("dest_pos="+nconvert(dest_pos), LL_DEBUG));
 		
 			char buf2[BUFFERSIZE];
 			m_file->Seek(chunk_start);
 			while(chunk_start<dest_pos)
 			{
 				size_t r=m_file->Read(buf2, (std::min)((_u32)BUFFERSIZE, (_u32)(dest_pos-chunk_start)) );
-				Server->Log("Read for hash finalize at block_start="+nconvert(chunk_start)+" n="+nconvert(r), LL_DEBUG);
+				VLOG(Server->Log("Read for hash finalize at block_start="+nconvert(chunk_start)+" n="+nconvert(r), LL_DEBUG));
 				if(r==0)
 				{
 					Server->Log("Read err in Hash_finalize", LL_WARNING);
@@ -702,12 +712,14 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 		std::map<_i64, SChunkHashes>::iterator it=pending_chunks.find(curr_pos);
 		if(it!=pending_chunks.end())
 		{
+			addReceivedBlock(curr_pos);
 			pending_chunks.erase(it);
 			decrQueuedChunks();
 		}
 		else
 		{
 			Server->Log("Pending chunk not found -1", LL_ERROR);
+			assert(false);
 		}
 	}
 
@@ -719,6 +731,7 @@ void FileClientChunked::Hash_nochange(_i64 curr_pos)
 	std::map<_i64, SChunkHashes>::iterator it=pending_chunks.find(curr_pos);
 	if(it!=pending_chunks.end())
 	{
+		addReceivedBlock(curr_pos);
 		m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
 		writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
 		pending_chunks.erase(it);
@@ -751,8 +764,6 @@ void FileClientChunked::State_Block(void)
 		writePatch(file_pos, (unsigned int)rbytes, bufptr, whole_block_remaining==0);
 		file_pos+=rbytes;
 	}
-
-	addReceivedBytes(rbytes);
 	
 	chunk_start+=(unsigned int)rbytes;
 
@@ -835,8 +846,6 @@ void FileClientChunked::State_Chunk(void)
 			writePatch(file_pos, (unsigned int)rbytes, bufptr, adler_remaining==0);
 			file_pos+=rbytes;
 		}
-
-		addReceivedBytes(rbytes);
 
 		remaining_bufptr_bytes-=rbytes;
 		bufptr_bytes_done+=rbytes;
@@ -1029,7 +1038,7 @@ bool FileClientChunked::Reconnect(void)
 					next_chunk=it->first/c_checkpoint_dist;
 				}
 			}
-			Server->Log("next_chunk="+nconvert(next_chunk), LL_DEBUG);
+			VLOG(Server->Log("next_chunk="+nconvert(next_chunk), LL_DEBUG));
 
 			if(patch_mode)
 			{
@@ -1304,7 +1313,7 @@ void FileClientChunked::decrQueuedChunks()
 {
 	if(parent)
 	{
-		return parent->incrQueuedChunks();
+		return parent->decrQueuedChunks();
 	}
 	else
 	{
@@ -1316,7 +1325,7 @@ void FileClientChunked::resetQueuedChunks()
 {
 	if(parent)
 	{
-		return parent->incrQueuedChunks();
+		return parent->resetQueuedChunks();
 	}
 	else
 	{
@@ -1358,6 +1367,18 @@ void FileClientChunked::addReceivedBytes( size_t bytes )
 	{
 		IScopedLock lock(mutex);
 		received_data_bytes += bytes;
+	}
+}
+
+void FileClientChunked::addReceivedBlock( _i64 block_start )
+{
+	if(remote_filesize-block_start<c_checkpoint_dist)
+	{
+		addReceivedBytes(static_cast<size_t>(remote_filesize-block_start));
+	}
+	else
+	{
+		addReceivedBytes(c_checkpoint_dist);
 	}
 }
 
