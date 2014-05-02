@@ -29,7 +29,11 @@ void ChunkSendThread::operator()(void)
 	SChunk chunk;
 	while(parent->getNextChunk(&chunk))
 	{
-		if(chunk.update_file!=NULL)
+		if(chunk.msg != ID_ILLEGAL)
+		{
+			parent->SendInt(&chunk.msg, 1);
+		}
+		else if(chunk.update_file!=NULL)
 		{
 			if(file!=NULL)
 			{

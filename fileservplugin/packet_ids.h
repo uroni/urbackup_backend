@@ -1,3 +1,8 @@
+#pragma once
+
+namespace
+{
+
 //from client
 const uchar ID_GET_FILE=0;
 const uchar ID_GET_FILE_RESUME=6;
@@ -19,3 +24,9 @@ const uchar ID_BLOCK_REQUEST=9;
 		const uchar ID_UPDATE_CHUNK=14;
 		const uchar ID_NO_CHANGE=15;
 		const uchar ID_BLOCK_HASH=16;
+
+//internal
+const uchar ID_ILLEGAL = 245;
+
+}
+

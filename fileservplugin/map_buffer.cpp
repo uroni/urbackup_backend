@@ -25,6 +25,7 @@
 #include "../stringtools.h"
 #include "log.h"
 #include "settings.h"
+#include "../Interface/Server.h"
 
 struct s_mapl
 {
@@ -110,6 +111,7 @@ std::wstring map_file(std::wstring fn, bool append_urd, std::wstring *udir=NULL)
 	if(i==mapbuffer.end() )
 	{
 		mapcs.Leave();
+		Log("Could not find share \""+Server->ConvertToUTF8(ts)+"\"", LL_WARNING);
 		return L"";
 	}
 	else

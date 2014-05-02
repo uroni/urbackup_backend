@@ -30,6 +30,7 @@ class IMutex;
 class ICondition;
 
 #include "chunk_settings.h"
+#include "packet_ids.h"
 
 struct SSendData
 {
@@ -45,6 +46,19 @@ struct SSendData
 
 struct SChunk
 {
+	SChunk()
+		: msg(ID_ILLEGAL)
+	{
+
+	}
+
+	explicit SChunk(char msg)
+		: msg(msg)
+	{
+
+	}
+
+	char msg;
 	_i64 startpos;
 	char transfer_all;
 	char big_hash[big_hash_size];
@@ -102,6 +116,8 @@ private:
 
 	bool GetFileBlockdiff(CRData *data);
 	bool Handle_ID_BLOCK_REQUEST(CRData *data);
+
+	void queueChunk(SChunk chunk);
 
 
 	volatile bool stopped;

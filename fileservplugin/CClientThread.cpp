@@ -340,7 +340,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				_i64 start_offset=0;
 				bool offset_set=data->getInt64(&start_offset);
 
-				Log("Sending file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+				Log("Sending file (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
 
 				std::wstring filename=map_file(o_filename);
 
@@ -1025,7 +1025,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	_i64 requested_filesize=-1;
 	data->getInt64(&requested_filesize);
 
-	Log("Sending file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+	Log("Sending file (chunked) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
 
 	std::wstring filename=map_file(o_filename);
 
@@ -1033,14 +1033,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	if(filename.empty())
 	{
-		char ch=ID_BASE_DIR_LOST;
-		int rc=SendInt(&ch, 1);
-
-		if(rc==SOCKET_ERROR)
-		{
-			Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -1", LL_DEBUG);
-			return false;
-		}
+		queueChunk(SChunk(ID_BASE_DIR_LOST));
 		Log("Info: Base dir lost -1", LL_DEBUG);
 		return true;
 	}
@@ -1078,25 +1071,13 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
 		if(!isDirectory(basePath))
 		{
-			char ch=ID_BASE_DIR_LOST;
-			int rc=SendInt(&ch, 1);
-			if(rc==SOCKET_ERROR)
-			{
-				Log("Error: Socket Error - DBG: Send BASE_DIR_LOST", LL_DEBUG);
-				return false;
-			}
+			queueChunk(SChunk(ID_BASE_DIR_LOST));
 			Log("Info: Base dir lost", LL_DEBUG);
 			return true;
 		}
 #endif
 					
-		char ch=ID_COULDNT_OPEN;
-		int rc=SendInt(&ch, 1);
-		if(rc==SOCKET_ERROR)
-		{
-			Log("Error: Socket Error - DBG: Send COULDNT OPEN", LL_DEBUG);
-			return false;
-		}
+		queueChunk(SChunk(ID_COULDNT_OPEN));
 		Log("Info: Couldn't open file", LL_DEBUG);
 		return true;
 	}
@@ -1134,43 +1115,20 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	state=CS_BLOCKHASH;
 
-	if(chunk_send_thread_ticket==ILLEGAL_THREADPOOL_TICKET)
+	IFile * tf=Server->openFileFromHandle((void*)hFile);
+	if(tf==NULL)
 	{
-		IFile * tf=Server->openFileFromHandle((void*)hFile);
-		if(tf==NULL)
-		{
-			Log("Could not open file from handle", LL_ERROR);
-			return false;
-		}
-
-		SChunk chunk;
-		chunk.update_file = tf;
-		chunk.startpos = curr_filesize;
-		chunk.hashsize = curr_hash_size;
-
-		next_chunks.push(chunk);
-
-		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this) );
+		Log("Could not open file from handle", LL_ERROR);
+		return false;
 	}
-	else
-	{
-		IScopedLock lock(mutex);
-		SChunk chunk;
-		chunk.update_file = Server->openFileFromHandle((void*)hFile);
-		if(chunk.update_file==NULL)
-		{
-			Log("Could not open update file from handle", LL_ERROR);
-			return false;
-		}
-		else
-		{
-			chunk.startpos = curr_filesize;
-			chunk.hashsize = curr_hash_size;
 
-			next_chunks.push(chunk);
-			cond->notify_all();
-		}
-	}
+	SChunk chunk;
+	chunk.update_file = tf;
+	chunk.startpos = curr_filesize;
+	chunk.hashsize = curr_hash_size;
+
+	queueChunk(chunk);
+
 	hFile=(HANDLE)NULL;
 
 	return true;
@@ -1198,9 +1156,7 @@ bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
 		return false;
 	}
 
-	IScopedLock lock(mutex);
-	next_chunks.push(chunk);
-	cond->notify_all();
+	queueChunk(chunk);
 
 	return true;
 }
@@ -1222,5 +1178,22 @@ bool CClientThread::getNextChunk(SChunk *chunk)
 	else
 	{
 		return false;
+	}
+}
+
+void CClientThread::queueChunk( SChunk chunk )
+{
+	if(chunk_send_thread_ticket==ILLEGAL_THREADPOOL_TICKET)
+	{
+		next_chunks.push(chunk);
+
+		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this) );
+	}
+	else
+	{
+		IScopedLock lock(mutex);
+
+		next_chunks.push(chunk);
+		cond->notify_all();
 	}
 }
