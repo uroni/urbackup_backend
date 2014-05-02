@@ -447,6 +447,11 @@ void IndexThread::operator()(void)
 				Server->Log("done.", LL_DEBUG);
 				if(!b || scd->ref==NULL)
 				{
+					if(scd->fileserv)
+					{
+						shareDir(widen(starttoken), scd->dir, scd->target);
+					}
+
 					contractor->Write("failed");
 #ifdef _WIN32
 					Server->Log(L"Creating shadowcopy of \""+scd->dir+L"\" failed.", LL_ERROR);
@@ -638,6 +643,7 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 				VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
 #endif
+				shareDir(widen(starttoken), scd->dir, scd->target);
 			}
 			else
 			{
