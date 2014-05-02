@@ -58,7 +58,7 @@ struct SChunk
 
 	}
 
-	char msg;
+	uchar msg;
 	_i64 startpos;
 	char transfer_all;
 	char big_hash[big_hash_size];

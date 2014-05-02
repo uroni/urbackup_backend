@@ -1107,12 +1107,6 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	if(next_checkpoint>curr_filesize)
 		next_checkpoint=curr_filesize;
 
-	if(mutex==NULL)
-	{
-		mutex=Server->createMutex();
-		cond=Server->createCondition();
-	}
-
 	state=CS_BLOCKHASH;
 
 	IFile * tf=Server->openFileFromHandle((void*)hFile);
@@ -1183,6 +1177,12 @@ bool CClientThread::getNextChunk(SChunk *chunk)
 
 void CClientThread::queueChunk( SChunk chunk )
 {
+	if(mutex==NULL)
+	{
+		mutex=Server->createMutex();
+		cond=Server->createCondition();
+	}
+
 	if(chunk_send_thread_ticket==ILLEGAL_THREADPOOL_TICKET)
 	{
 		next_chunks.push(chunk);

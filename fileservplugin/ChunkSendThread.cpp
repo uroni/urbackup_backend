@@ -31,7 +31,7 @@ void ChunkSendThread::operator()(void)
 	{
 		if(chunk.msg != ID_ILLEGAL)
 		{
-			parent->SendInt(&chunk.msg, 1);
+			parent->SendInt(reinterpret_cast<char*>(&chunk.msg), 1);
 		}
 		else if(chunk.update_file!=NULL)
 		{

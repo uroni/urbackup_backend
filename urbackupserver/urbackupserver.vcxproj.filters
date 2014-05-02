@@ -459,7 +459,7 @@
       <Filter>apps</Filter>
     </ClInclude>
     <ClInclude Include="server_download.h">
-      <Filter>Quelldateien</Filter>
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

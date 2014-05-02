@@ -2746,7 +2746,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 		}
 
 		bool has_error;
-		std::vector<SFile> files = getFiles(vsstpath, &has_error, false, false);
+		std::vector<SFile> files = getFiles(os_file_prefix(vsstpath), &has_error, false, false);
 
 		if(has_error)
 		{
@@ -2761,7 +2761,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 			}
 
 			std::wstring fn=vsstpath+files[i].name;
-			HANDLE hFile = CreateFileW(fn.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+			HANDLE hFile = CreateFileW(os_file_prefix(fn).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 			if(hFile==INVALID_HANDLE_VALUE)
 			{
@@ -2784,12 +2784,12 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 					std::wstring outBuf;
 					DWORD stringLength=4096;
 					outBuf.resize(stringLength);
-					HANDLE hFn=FindFirstFileNameW(fn.c_str(), 0, &stringLength, &outBuf[0]);
+					HANDLE hFn=FindFirstFileNameW(os_file_prefix(fn).c_str(), 0, &stringLength, &outBuf[0]);
 
 					if(hFn==INVALID_HANDLE_VALUE && GetLastError()==ERROR_MORE_DATA)
 					{
 						outBuf.resize(stringLength);
-						hFn=FindFirstFileNameW(fn.c_str(), 0, &stringLength, &outBuf[0]);
+						hFn=FindFirstFileNameW(os_file_prefix(fn).c_str(), 0, &stringLength, &outBuf[0]);
 					}
 
 					if(hFn==INVALID_HANDLE_VALUE)

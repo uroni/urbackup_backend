@@ -4301,21 +4301,8 @@ std::wstring BackupServerGet::fixFilenameForOS(const std::wstring& fn)
 		ret.resize(MAX_PATH-15);
 		modified_filename=true;
 	}
-	std::wstring windows_disallowed_chars = L"\\:*?\"<>|";	
-	for(size_t i=0;i<windows_disallowed_chars.size();++i)
-	{
-		wchar_t ch = windows_disallowed_chars[i];
-		if(fn.find(ch)!=std::string::npos)
-		{
-			if(!modified_filename)
-			{
-				ret = fn;
-				modified_filename=true;
-			}
-			ServerLogger::Log(clientid, L"Filename \""+fn+L"\" contains '"+std::wstring(1, ch)+L"' which Windows does not allow in paths. Replacing '"+std::wstring(1, ch)+L"' with '_' and appending hash.", LL_WARNING);
-			ret = ReplaceChar(ret, ch, '_');
-		}
-	}	
+	std::wstring disallowed_chars = L"\\:*?\"<>|/";	
+		
 #else
 	if(Server->ConvertToUTF8(fn).size()>=NAME_MAX-11)
 	{
@@ -4333,7 +4320,25 @@ std::wstring BackupServerGet::fixFilenameForOS(const std::wstring& fn)
 		}
 		while( Server->ConvertToUTF8(ret).size()>=NAME_MAX-11 );
 	}
+
+	std::wstring disallowed_chars = L"/";	
 #endif
+
+	for(size_t i=0;i<disallowed_chars.size();++i)
+	{
+		wchar_t ch = disallowed_chars[i];
+		if(fn.find(ch)!=std::string::npos)
+		{
+			if(!modified_filename)
+			{
+				ret = fn;
+				modified_filename=true;
+			}
+			ServerLogger::Log(clientid, L"Filename \""+fn+L"\" contains '"+std::wstring(1, ch)+L"' which the operating system does not allow in paths. Replacing '"+std::wstring(1, ch)+L"' with '_' and appending hash.", LL_WARNING);
+			ret = ReplaceChar(ret, ch, '_');
+		}
+	}
+
 	if(modified_filename)
 	{
 		std::string hex_md5=Server->GenerateHexMD5(fn);
