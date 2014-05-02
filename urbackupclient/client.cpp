@@ -2721,6 +2721,8 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 	std::vector<SMDir> additional_changed_dirs;
 
+	std::wstring prev_path;
+
 	for(size_t i=0;i<changed_dirs.size();++i)
 	{
 		std::wstring vsstpath;
@@ -2734,8 +2736,17 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 			vsstpath=vssvolume+tpath.substr(volume.size());
 		}
 
+		if(!prev_path.empty() && prev_path==vsstpath)
+		{
+			continue;
+		}
+		else
+		{
+			prev_path = vsstpath;
+		}
+
 		bool has_error;
-		std::vector<SFile> files = getFiles(vsstpath, &has_error);
+		std::vector<SFile> files = getFiles(vsstpath, &has_error, false, false);
 
 		if(has_error)
 		{
@@ -2744,6 +2755,11 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 		for(size_t i=0;i<files.size();++i)
 		{
+			if(files[i].isdir)
+			{
+				continue;
+			}
+
 			std::wstring fn=vsstpath+files[i].name;
 			HANDLE hFile = CreateFileW(fn.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
