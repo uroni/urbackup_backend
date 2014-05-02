@@ -21,6 +21,7 @@ private:
 	CClientThread *parent;
 	IFile *file;
 	_i64 curr_hash_size;
+	_i64 curr_file_size;
 
 	char *chunk_buf;
 

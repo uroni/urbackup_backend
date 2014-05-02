@@ -41,10 +41,11 @@ void ChunkSendThread::operator()(void)
 			}
 			file=chunk.update_file;
 			curr_hash_size=chunk.hashsize;
+			curr_file_size=chunk.startpos;
 
 			CWData sdata;
 			sdata.addUChar(ID_FILESIZE);
-			sdata.addUInt64(chunk.startpos);
+			sdata.addUInt64(little_endian(curr_file_size));
 			parent->SendInt(sdata.getDataPtr(), sdata.getDataSize());
 		}
 		else
@@ -76,14 +77,13 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 
 		unsigned int blockleft;
-		_i64 filesize = file->Size();
-		if(filesize<=chunk->startpos)
+		if(curr_file_size<=chunk->startpos)
 		{
 			blockleft=0;
 		}
-		else if(file->Size()-chunk->startpos<c_checkpoint_dist)
+		else if(curr_file_size-chunk->startpos<c_checkpoint_dist)
 		{
-			blockleft=static_cast<unsigned int>(file->Size()-chunk->startpos);
+			blockleft=static_cast<unsigned int>(curr_file_size-chunk->startpos);
 		}
 		else
 		{
@@ -97,33 +97,36 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		Log("Sending whole block start="+nconvert(chunk->startpos)+" size="+nconvert(blockleft), LL_DEBUG);
 		_u32 r;
-		if(blockleft>0)
+
+		do
 		{
-			do
+			r=0;
+			if(blockleft>0)
 			{
-				r=file->Read(chunk_buf+off, c_chunk_size);
-				if(r>0)
-				{
-					md5_hash.update((unsigned char*)chunk_buf+off, r);
-				}
-				if(r+off>0)
-				{
-					if(parent->SendInt(chunk_buf, off+r)==SOCKET_ERROR)
-						return false;
-
-					if( FileServ::isPause() ) Sleep(500);
-
-					off=0;
-				}
-
-				if(r<=blockleft)
-					blockleft-=r;
-				else
-					blockleft=0;
-
+				r=file->Read(chunk_buf+off, (std::min)(blockleft, c_chunk_size) );
 			}
-			while(r==c_chunk_size && blockleft>0);
-		}		
+
+			if(r>0)
+			{
+				md5_hash.update((unsigned char*)chunk_buf+off, r);
+			}
+			if(r+off>0)
+			{
+				if(parent->SendInt(chunk_buf, off+r)==SOCKET_ERROR)
+					return false;
+
+				if( FileServ::isPause() ) Sleep(500);
+
+				off=0;
+			}
+
+			if(r<=blockleft)
+				blockleft-=r;
+			else
+				blockleft=0;
+
+		}
+		while(r==c_chunk_size && blockleft>0);	
 
 		md5_hash.finalize();
 		*chunk_buf=ID_BLOCK_HASH;

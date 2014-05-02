@@ -33,6 +33,7 @@
 #include <fcntl.h>
 #include <sys\stat.h>
 #include <time.h>
+#include <assert.h>
 
 #ifdef USE_NTFS_TXF
 #include <KtmW32.h>
@@ -140,9 +141,11 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			f.size=size.QuadPart;
 
 			HANDLE hfile=CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+			assert(hfile!=INVALID_HANDLE_VALUE);
 			if(hfile!=INVALID_HANDLE_VALUE)
 			{
 				BOOL b = GetFileSizeEx(hfile, &size);
+				assert(b);
 				if(b)
 				{
 					f.size = size.QuadPart;
