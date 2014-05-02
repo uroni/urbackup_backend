@@ -1177,14 +1177,14 @@ bool CClientThread::getNextChunk(SChunk *chunk)
 
 void CClientThread::queueChunk( SChunk chunk )
 {
-	if(mutex==NULL)
-	{
-		mutex=Server->createMutex();
-		cond=Server->createCondition();
-	}
-
 	if(chunk_send_thread_ticket==ILLEGAL_THREADPOOL_TICKET)
 	{
+		if(mutex==NULL)
+		{
+			mutex=Server->createMutex();
+			cond=Server->createCondition();
+		}
+
 		next_chunks.push(chunk);
 
 		chunk_send_thread_ticket=Server->getThreadPool()->execute(new ChunkSendThread(this) );

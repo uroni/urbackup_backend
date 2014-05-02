@@ -9,7 +9,7 @@
 #include <queue>
 #include <memory>
 
-#define VLOG(x) //x
+#define VLOG(x) x
 
 const unsigned int chunkhash_file_off=sizeof(_i64);
 const unsigned int chunkhash_single_size=big_hash_size+small_hash_size*(c_checkpoint_dist/c_small_hash_dist);
@@ -362,12 +362,20 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 			&& pending_chunks.empty() )
 			|| getfile_done  )
 		{
-			FileClientChunked* next = getNextFileClient();
-			if( next				
-				&& remaining_bufptr_bytes>0)
+
+			if(!getfile_done ||
+				(retval==ERR_BASE_DIR_LOST
+				 || retval==ERR_FILE_DOESNT_EXIST
+				 || retval==ERR_SUCCESS) )
 			{
-				next->setInitialBytes(bufptr, remaining_bufptr_bytes);
+				FileClientChunked* next = getNextFileClient();
+				if( next				
+					&& remaining_bufptr_bytes>0)
+				{
+					next->setInitialBytes(bufptr, remaining_bufptr_bytes);
+				}
 			}
+			
 
 			if(!getfile_done)
 			{
@@ -687,7 +695,11 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			invalidateLastPatches();
 			if(getNextFileClient())
 			{
+				size_t backup_remaining_bufptr_bytes=remaining_bufptr_bytes;
+				char* backup_bufptr = bufptr;
 				loadChunkOutOfBand(curr_pos);
+				remaining_bufptr_bytes = backup_remaining_bufptr_bytes;
+				bufptr = backup_bufptr;
 			}
 			else
 			{
