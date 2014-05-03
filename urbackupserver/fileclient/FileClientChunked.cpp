@@ -9,7 +9,7 @@
 #include <queue>
 #include <memory>
 
-#define VLOG(x) //x
+#define VLOG(x) x
 
 const unsigned int chunkhash_file_off=sizeof(_i64);
 const unsigned int chunkhash_single_size=big_hash_size+small_hash_size*(c_checkpoint_dist/c_small_hash_dist);
