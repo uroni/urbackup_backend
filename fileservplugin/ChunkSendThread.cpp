@@ -155,7 +155,18 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	{
 		cptr+=r;
 
-		r=file->Read(cptr, c_chunk_size);
+		_u32 to_read = c_chunk_size;
+
+		if(curr_file_size<=curr_pos)
+		{
+			to_read = 0;
+		}
+		else if(curr_file_size-currpos<to_read)
+		{
+			to_read = curr_file_size-curr_pos;
+		}
+
+		r=file->Read(cptr, to_read);
 
 		if(r>0)
 		{
