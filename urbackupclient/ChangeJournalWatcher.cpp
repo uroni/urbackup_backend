@@ -1072,7 +1072,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				{
 					save_fn=true;
 				}
-				else if( (UsnRecord->Reason & USN_REASON_DATA_OVERWRITE) &&
+				else if( ( (UsnRecord->Reason & USN_REASON_DATA_OVERWRITE) || (UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME ) ) &&
 					     !( (UsnRecord->Reason & USN_REASON_DATA_EXTEND) || (UsnRecord->Reason & USN_REASON_DATA_TRUNCATION) ) )
 				{
 					WIN32_FILE_ATTRIBUTE_DATA fad;
