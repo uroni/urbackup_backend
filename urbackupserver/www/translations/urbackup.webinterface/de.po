@@ -2,11 +2,12 @@
 # Copyright (C) 2011-2014 See translators
 # This file is distributed under the same license as the UrBackup package.
 # Translators:
+# Translators:
 # uroni <urpc@gmx.de>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-04-23 21:01+0000\n"
+"PO-Revision-Date: 2014-05-04 21:41+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/urbackup/language/de/)\n"
 "MIME-Version: 1.0\n"
@@ -1127,3 +1128,48 @@ msgstr "Clients werden im Aufräumzeitfenster entfernt."
 
 msgid "tRecalculate statistics"
 msgstr "Statistiken neu berechnen"
+
+msgid "First"
+msgstr "Erste"
+
+msgid "Last"
+msgstr "Letzte"
+
+msgid "Next"
+msgstr "Nächste"
+
+msgid "Previous"
+msgstr "Vorherige"
+
+msgid "No data available in table"
+msgstr "Keine Daten für Tabelle vorhanden"
+
+msgid "Showing _START_ to _END_ of _TOTAL_ entries"
+msgstr "Zeige _START_ bis _END_ von _TOTAL_ Einträge"
+
+msgid "Showing 0 to 0 of 0 entries"
+msgstr "Zeige 0 bis 0 von 0 Einträgen"
+
+msgid "(filtered from _MAX_ total entries)"
+msgstr "(gefiltert von _MAX_ Einträgen insgesamt)"
+
+msgid "sInfoThousands"
+msgstr "."
+
+msgid "Show _MENU_ entries"
+msgstr "Zeige _MENU_ Einträge"
+
+msgid "Processing..."
+msgstr "Verarbeite..."
+
+msgid "Search:"
+msgstr "Suche:"
+
+msgid "No matching records found"
+msgstr "Keine übereinstimmenden Einträge gefunden"
+
+msgid "Restore to default"
+msgstr "Standardeinstellung zurücksetzen"
+
+msgid "Save"
+msgstr "Speichern"

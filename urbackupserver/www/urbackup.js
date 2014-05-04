@@ -55,7 +55,7 @@ function init_datatables()
 						"sNext": trans("Next"),
 						"sPrevious": trans("Previous")
 					},
-					"sEmptyTable": trans("No data available in table",
+					"sEmptyTable": trans("No data available in table"),
 					"sInfo": trans("Showing _START_ to _END_ of _TOTAL_ entries"),
 					"sInfoEmpty": trans("Showing 0 to 0 of 0 entries"),
 					"sInfoFiltered": trans("(filtered from _MAX_ total entries)"),
