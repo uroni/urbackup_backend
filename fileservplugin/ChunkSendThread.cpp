@@ -177,7 +177,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 			if(read_total==next_smallhash || r!=c_chunk_size)
 			{
-				if(c_adler!=*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num])
+				if(c_adler!=little_endian(*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]))
 					|| curr_pos+r>curr_hash_size)
 				{
 					sent_update=true;

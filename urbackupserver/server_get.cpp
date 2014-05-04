@@ -4396,6 +4396,7 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 	unsigned int read;
 	char buffer[4096];
 	std::wstring curr_path=backuppath;
+	size_t verified_files=0;
 	SFile cf;
 	fileentries->Seek(0);
 	resetEntryState();
@@ -4407,6 +4408,7 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 			bool b=getNextEntry(buffer[i], cf, &extras);
 			if(b)
 			{
+				std::wstring cfn = fixFilenameForOS(cf.name);
 				if( !cf.isdir )
 				{
 					std::string sha256hex=Server->ConvertToUTF8(extras[L"sha256"]);
@@ -4418,12 +4420,16 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 						ServerLogger::Log(clientid, msg, LL_ERROR);
 						log << msg << std::endl;
 					}
-					else if(getSHA256(curr_path+os_file_sep()+cf.name)!=sha256hex)
+					else if(getSHA256(curr_path+os_file_sep()+cfn)!=sha256hex)
 					{
 						std::string msg="Hashes for \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" differ. Verification failed.";
 						verify_ok=false;
 						ServerLogger::Log(clientid, msg, LL_ERROR);
 						log << msg << std::endl;
+					}
+					else
+					{
+						++verified_files;
 					}
 				}
 				else
@@ -4434,7 +4440,7 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 					}
 					else
 					{
-						curr_path+=os_file_sep()+cf.name;
+						curr_path+=os_file_sep()+cfn;
 					}
 				}
 			}
@@ -4444,6 +4450,10 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 	if(!verify_ok)
 	{
 		sendMailToAdmins("File backup verification failed", log.str());
+	}
+	else
+	{
+		ServerLogger::Log(clientid, "Verified "+nconvert(verified_files)+" files", LL_DEBUG);
 	}
 
 	return verify_ok;

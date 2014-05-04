@@ -118,6 +118,8 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		return ERR_INT_ERROR;
 	}
 
+	hashfilesize = little_endian(hashfilesize);
+
 	if(patch_mode)
 	{
 		if(hashfilesize!=m_file->Size())
@@ -483,7 +485,8 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					}
 
 					m_hashoutput->Seek(0);
-					writeFileRepeat(m_hashoutput, (char*)&remote_filesize, sizeof(_i64));
+					_i64 endian_remote_filesize = little_endian(remote_filesize);
+					writeFileRepeat(m_hashoutput, (char*)&endian_remote_filesize, sizeof(_i64));
 				}				
 			}break;
 		case ID_BASE_DIR_LOST:
@@ -789,7 +792,8 @@ void FileClientChunked::State_Block(void)
 		adler_remaining-=(unsigned int)adler_bytes;
 		if(adler_remaining==0 || whole_block_remaining==0)
 		{
-			writeFileRepeat(m_hashoutput, (char*)&adler_hash, small_hash_size);
+			_u32 endian_adler_hash = little_endian(adler_hash);
+			writeFileRepeat(m_hashoutput, (char*)&endian_adler_hash, small_hash_size);
 			adler_hash=adler32(0, NULL, 0);
 			adler_remaining=c_chunk_size;
 		}
@@ -865,7 +869,8 @@ void FileClientChunked::State_Chunk(void)
 
 	if(adler_remaining==0)
 	{
-		writeFileRepeat(m_hashoutput, (char*)&adler_hash, small_hash_size);
+		_u32 endian_adler_hash = little_endian(adler_hash);
+		writeFileRepeat(m_hashoutput, (char*)&endian_adler_hash, small_hash_size);
 		state=CS_ID_FIRST;
 	}
 }
