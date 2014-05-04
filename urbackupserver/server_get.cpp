@@ -1794,11 +1794,24 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 	waitForFileThreads();
 
+	bool verification_ok = true;
+
+	if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
+	{
+		ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+		c_has_error=true;
+		verification_ok = false;
+	}
+	else if(server_settings->getSettings()->end_to_end_file_backup_verification)
+	{
+		ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+	}
+
 	if( bsh->hasError() || bsh_prepare->hasError() )
 	{
 		disk_error=true;
 	}
-	else
+	else if(verification_ok)
 	{
 		db->BeginTransaction();
 		if(!os_rename_file(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub") )
@@ -1824,16 +1837,6 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		currdir+=os_file_sep()+clientname;
 		os_remove_symlink_dir(os_file_prefix(currdir));
 		os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
-
-		if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
-		{
-			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
-			c_has_error=true;
-		}
-		else if(server_settings->getSettings()->end_to_end_file_backup_verification)
-		{
-			ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
-		}
 	}
 
 	{
@@ -2647,27 +2650,31 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	{
 		disk_error=true;
 	}
-	
-	if(r_offline==false && c_has_error==false && disk_error==false)
+		
+	if(!r_offline && !c_has_error && !disk_error)
 	{
-		std::wstring dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new.ub";
-
-		db->BeginTransaction();
-		bool b=os_rename_file(dst_file, L"urbackup/clientlist_"+convert(clientid)+L".ub");
-		if(b)
-		{
-			setBackupDone();
-		}
-		db->EndTransaction();
-
-		if(b && server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
+		if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
 		{
 			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
 			c_has_error=true;
 		}
-		else if(b && server_settings->getSettings()->end_to_end_file_backup_verification)
+		else if(server_settings->getSettings()->end_to_end_file_backup_verification)
 		{
 			ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+		}
+
+		bool b=false;
+		if(!c_has_error)
+		{
+			std::wstring dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new.ub";
+
+			db->BeginTransaction();
+			b=os_rename_file(dst_file, L"urbackup/clientlist_"+convert(clientid)+L".ub");
+			if(b)
+			{
+				setBackupDone();
+			}
+			db->EndTransaction();
 		}
 
 		if(b)
@@ -2693,7 +2700,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 			ServerLogger::Log(clientid, "Symbolic links created.", LL_DEBUG);
 		}
-		else
+		else if(!c_has_error)
 		{
 			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
 			sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));

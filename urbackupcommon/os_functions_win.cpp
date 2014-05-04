@@ -140,18 +140,22 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			size.LowPart=wfd.nFileSizeLow;
 			f.size=size.QuadPart;
 
-			HANDLE hfile=CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
-			assert(hfile!=INVALID_HANDLE_VALUE);
-			if(hfile!=INVALID_HANDLE_VALUE)
+			if(exact_filesize)
 			{
-				BOOL b = GetFileSizeEx(hfile, &size);
-				assert(b);
-				if(b)
+				HANDLE hfile=CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+				assert(hfile!=INVALID_HANDLE_VALUE);
+				if(hfile!=INVALID_HANDLE_VALUE)
 				{
-					f.size = size.QuadPart;
+					BOOL b = GetFileSizeEx(hfile, &size);
+					assert(b);
+					if(b)
+					{
+						f.size = size.QuadPart;
+					}
+					CloseHandle(hfile);
 				}
-				CloseHandle(hfile);
 			}
+			
 
 			if(f.last_modified<0) f.last_modified*=-1;
 			tmp.push_back(f);		
