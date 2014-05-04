@@ -1126,3 +1126,48 @@ msgstr "Clients are removed during the cleanup in the cleanup time window. "
 
 msgid "tRecalculate statistics"
 msgstr "Recalculate statistics"
+
+msgid "First"
+msgstr "First"
+
+msgid "Last"
+msgstr "Last"
+
+msgid "Next"
+msgstr "Next"
+
+msgid "Previous"
+msgstr "Previous"
+
+msgid "No data available in table"
+msgstr "No data available in table"
+
+msgid "Showing _START_ to _END_ of _TOTAL_ entries"
+msgstr "Showing _START_ to _END_ of _TOTAL_ entries"
+
+msgid "Showing 0 to 0 of 0 entries"
+msgstr "Showing 0 to 0 of 0 entries"
+
+msgid "(filtered from _MAX_ total entries)"
+msgstr "(filtered from _MAX_ total entries)"
+
+msgid "sInfoThousands"
+msgstr ","
+
+msgid "Show _MENU_ entries"
+msgstr "Show _MENU_ entries"
+
+msgid "Processing..."
+msgstr "Processing..."
+
+msgid "Search:"
+msgstr "Search:"
+
+msgid "No matching records found"
+msgstr "No matching records found"
+
+msgid "Restore to default"
+msgstr "Restore to default"
+
+msgid "Save"
+msgstr "Save"

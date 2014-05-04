@@ -7,6 +7,7 @@ g.tabberidx=-1;
 g.progress_stop_id=-1;
 g.current_version=1003000000;
 g.status_show_all=false;
+g.datatable_default_config={};
 
 g.languages=[ 
 				{ l: "Deutsch", s: "de" },
@@ -18,51 +19,54 @@ g.languages=[
 				{ l: "繁体中文", s: "zh_TW" },
 				{ l: "فارسی", s: "fa" }
 			];
-			
-g.datatable_default_config = {
-			"iDisplayLength" : 25,
-			"sDom" : 'CT<"clear">lfrtip',
-			"oColVis": {
-				"bRestore": true,
-				"sRestore": "Restore to default"
-			},
-			"oTableTools": {
-				"aButtons": [
-					{
-						"sExtends":    "collection",
-						"sButtonText": "Save",
-						"aButtons":    [ "csv", "xls", 
-						{
-							"sExtends": "pdf"
-						}
-						]
-					}					
-				],
-				"sSwfPath": "copy_csv_xls_pdf.swf"
-			},
-			"sPaginationType": "full_numbers",
-			"sScrollX": "100%",
-			"bScrollCollapse": true,
-			"bStateSave": true,
-			"iCookieDuration": 365*60*60*24,
-			"oLanguage": {
-				"oPaginate": {
-					"sFirst": "First",
-					"sLast": "Last",
-					"sNext": "Next",
-					"sPrevious": "Previous"
+		
+function init_datatables()
+{		
+	g.datatable_default_config = {
+				"iDisplayLength" : 25,
+				"sDom" : 'CT<"clear">lfrtip',
+				"oColVis": {
+					"bRestore": true,
+					"sRestore": trans("Restore to default")
 				},
-				"sEmptyTable": "No data available in table",
-				"sInfo": "Showing _START_ to _END_ of _TOTAL_ entries",
-				"sInfoEmpty": "Showing 0 to 0 of 0 entries",
-				"sInfoFiltered": "(filtered from _MAX_ total entries)",
-				"sInfoThousands": ",",
-				"sLengthMenu": "Show _MENU_ entries",
-				"sProcessing": "Processing...",
-				"sSearch": "Search:",
-				"sZeroRecords": "No matching records found"
-			}
-};
+				"oTableTools": {
+					"aButtons": [
+						{
+							"sExtends":    "collection",
+							"sButtonText": trans("Save"),
+							"aButtons":    [ "csv", "xls", 
+							{
+								"sExtends": "pdf"
+							}
+							]
+						}					
+					],
+					"sSwfPath": "copy_csv_xls_pdf.swf"
+				},
+				"sPaginationType": "full_numbers",
+				"sScrollX": "100%",
+				"bScrollCollapse": true,
+				"bStateSave": true,
+				"iCookieDuration": 365*60*60*24,
+				"oLanguage": {
+					"oPaginate": {
+						"sFirst": trans("First"),
+						"sLast": trans("Last"),
+						"sNext": trans("Next"),
+						"sPrevious": trans("Previous")
+					},
+					"sEmptyTable": trans("No data available in table",
+					"sInfo": trans("Showing _START_ to _END_ of _TOTAL_ entries"),
+					"sInfoEmpty": trans("Showing 0 to 0 of 0 entries"),
+					"sInfoFiltered": trans("(filtered from _MAX_ total entries)"),
+					"sInfoThousands": trans("sInfoThousands"),
+					"sLengthMenu": trans("Show _MENU_ entries"),
+					"sProcessing": trans("Processing..."),
+					"sSearch": trans("Search:"),
+					"sZeroRecords": trans("No matching records found")
+				}
+	};
+}
 
 function startup()
 {
@@ -143,6 +147,7 @@ function change_lang(l, refresh)
 		refresh_page();
 	}
 	
+	init_datatables();
 	I('about_urbackup').innerHTML=trans("about_urbackup");
 }
 function aboutUrBackup()
