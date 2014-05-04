@@ -588,7 +588,6 @@ void IndexThread::indexDirs(void)
 #ifdef _WIN32
 	//Invalidate cache
 	DirectoryWatcherThread::freeze();
-	DirectoryWatcherThread::update_last_backup_time();
 	Server->wait(10000);
 	DirectoryWatcherThread::update_and_wait();
 	changed_dirs=cd->getChangedDirs();
@@ -758,6 +757,7 @@ void IndexThread::indexDirs(void)
 	}
 
 	DirectoryWatcherThread::unfreeze();
+	DirectoryWatcherThread::update_last_backup_time();
 	DirectoryWatcherThread::commit_last_backup_time();
 #endif
 
