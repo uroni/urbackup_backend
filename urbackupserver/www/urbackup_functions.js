@@ -542,7 +542,14 @@ function isInt(x)
 	var y=parseInt(x);
 	if (isNaN(y)) return false;
 	return x==y && x.toString()==y.toString();
-} 
+}
+
+function isFloat(x)
+{
+	var y=parseFloat(x);
+	if (isNaN(y)) return false;
+	return true;
+}
 
 function validate_text_int(a)
 {
@@ -553,6 +560,27 @@ function validate_text_int(a)
 			if(trans("validate_err_notint_"+a[i]))
 			{
 				alert(trans("validate_err_notint_"+a[i]));
+			}
+			else
+			{
+				alert( dustCompileRender(trans("validate_text_notint"), {name: trans("validate_name_"+a[i])}));
+			}
+			I(a[i]).focus();
+			return false;
+		}
+	}
+	return true;
+}
+
+function validate_text_float(a)
+{
+	for(var i=0;i<a.length;++i)
+	{
+		if(!isFloat(I(a[i]).value))
+		{
+			if(trans("validate_err_notfloat_"+a[i]))
+			{
+				alert(trans("validate_err_notfloat_"+a[i]));
 			}
 			else
 			{

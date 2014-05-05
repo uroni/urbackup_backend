@@ -286,7 +286,7 @@ function getPar(p)
 		return "&"+p+"="+(obj.checked?"true":"false");
 	}
 	var val=obj.value;
-	if(p=="update_freq_incr"){ val*=60*60; if(obj.disabled) val*=-1; }
+	if(p=="update_freq_incr"){ val*=60.0*60.0; if(obj.disabled) val*=-1; }
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
 		{ val*=60*60*24; if(obj.disabled) val*=-1; }
 	if(p=="startup_backup_delay") val*=60;
@@ -1463,7 +1463,7 @@ function show_settings2(data)
 			data.settings=addSelectSelected(filescache_type_params, "filescache_type", data.settings);
 			data.settings.filescache_size/=1024.0*1024.0;
 			
-			data.settings.update_freq_incr/=60*60;
+			data.settings.update_freq_incr/=60.0*60.0;
 			data.settings.update_freq_full/=60*60*24;
 			data.settings.update_freq_image_incr/=60*60*24;
 			data.settings.update_freq_image_full/=60*60*24;
@@ -1567,7 +1567,7 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
-			data.settings.update_freq_incr/=60*60;
+			data.settings.update_freq_incr/=60.0*60.0;
 			data.settings.update_freq_full/=60*60*24;
 			data.settings.update_freq_image_incr/=60*60*24;
 			data.settings.update_freq_image_full/=60*60*24;
@@ -1875,7 +1875,8 @@ g.internet_settings_list=[
 
 function validateCommonSettings()
 {
-	if(!validate_text_int(["update_freq_incr", "update_freq_full", "update_freq_image_incr", 
+	if(!validate_text_float(["update_freq_incr"]) ) return false;
+	if(!validate_text_int(["update_freq_full", "update_freq_image_incr", 
 							"update_freq_image_full", "max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
