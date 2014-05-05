@@ -1135,6 +1135,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 								}
 								else
 								{
+									VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
 									tmp[i].last_modified*=Server->getRandomNumber();
 									if(tmp[i].last_modified>0)
 										tmp[i].last_modified*=-1;
