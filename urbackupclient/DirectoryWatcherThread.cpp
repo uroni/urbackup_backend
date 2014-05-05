@@ -166,18 +166,15 @@ void DirectoryWatcherThread::operator()(void)
 #ifdef CHANGE_JOURNAL
 			else if( msg[0]=='t' )
 			{
-				FILETIME ft;
-				SYSTEMTIME st;
-				GetSystemTime(&st);
-				SystemTimeToFileTime(&st, &ft);
-				last_backup_filetime=static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
-				dcw.set_last_backup_time(last_backup_filetime);				
+				last_backup_filetime=get_current_filetime();				
 
 				IScopedLock lock(update_mutex);
 				update_cond->notify_all();
 			}
 			else if( msg[0]=='T' )
 			{
+				dcw.set_last_backup_time(last_backup_filetime);
+
 				q_update_last_backup_time->Bind(last_backup_filetime);
 				q_update_last_backup_time->Write();
 				q_update_last_backup_time->Reset();
@@ -476,5 +473,14 @@ std::wstring DirectoryWatcherThread::addSlashIfMissing(const std::wstring &strDi
 		return strDirName+os_file_sep();
 	}
 	return strDirName;
+}
+
+_i64 DirectoryWatcherThread::get_current_filetime()
+{
+	FILETIME ft;
+	SYSTEMTIME st;
+	GetSystemTime(&st);
+	SystemTimeToFileTime(&st, &ft);
+	return static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
 }
 

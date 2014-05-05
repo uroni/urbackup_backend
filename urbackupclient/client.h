@@ -235,4 +235,6 @@ private:
 	bool index_error;
 
 	std::vector<std::pair<std::string, int> > vsslog;
+
+	_i64 last_filebackup_filetime;
 };

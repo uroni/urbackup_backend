@@ -138,14 +138,16 @@ public:
 	std::wstring getOldIncludePattern(void);
 	void updateOldIncludePattern(const std::wstring &pattern);
 
+	std::wstring getMiscValue(const std::string& key);
+	void updateMiscValue(const std::string& key, const std::wstring& value);
+
 	//@-SQLGenFunctionsBegin
 
 
 	//@-SQLGenFunctionsEnd
 
 private:
-	std::wstring getMiscValue(const std::string& key);
-	void updateMiscValue(const std::string& key, const std::wstring& value);
+	
 
 	IDatabase *db;
 

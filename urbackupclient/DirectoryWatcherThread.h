@@ -52,6 +52,8 @@ public:
 	static void update_last_backup_time(void);
 	static void commit_last_backup_time(void);
 
+	static _i64 get_current_filetime();
+
 private:
 
 	std::wstring addSlashIfMissing(const std::wstring &strDirName);

@@ -124,7 +124,7 @@ IFileServ *IndexThread::filesrv=NULL;
 IMutex *IndexThread::filesrv_mutex=NULL;
 
 IndexThread::IndexThread(void)
-	: index_error(false)
+	: index_error(false), last_filebackup_filetime(0)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -600,8 +600,21 @@ void IndexThread::indexDirs(void)
 	{
 		cd->removeDeletedDir(deldirs[i]);
 	}
+
+	std::wstring tmp = cd->getMiscValue("last_filebackup_filetime_lower");
+	if(!tmp.empty())
+	{
+		last_filebackup_filetime = watoi64(tmp);
+	}
+	else
+	{
+		last_filebackup_filetime = 0;
+	}
+
+	_i64 last_filebackup_filetime_new = DirectoryWatcherThread::get_current_filetime();
 #endif
 	std::sort(changed_dirs.begin(), changed_dirs.end());
+
 
 	std::vector<SCRef*> past_refs;
 
@@ -685,6 +698,11 @@ void IndexThread::indexDirs(void)
 			}
 #endif
 
+			for(size_t k=0;k<changed_dirs.size();++k)
+			{
+				VSSLog(L"Changed dir: " + changed_dirs[k].name, LL_DEBUG);
+			}
+
 			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 			index_c_db=0;
 			index_c_fs=0;
@@ -745,6 +763,11 @@ void IndexThread::indexDirs(void)
 			cd->deleteSavedChangedDirs();
 			cd->deleteSavedDelDirs();
 			cd->deleteSavedChangedFiles();
+
+			DirectoryWatcherThread::update_last_backup_time();
+			DirectoryWatcherThread::commit_last_backup_time();
+
+			cd->updateMiscValue("last_filebackup_filetime_lower", convert(last_filebackup_filetime_new));
 		}
 		else
 		{
@@ -757,8 +780,7 @@ void IndexThread::indexDirs(void)
 	}
 
 	DirectoryWatcherThread::unfreeze();
-	DirectoryWatcherThread::update_last_backup_time();
-	DirectoryWatcherThread::commit_last_backup_time();
+	
 #endif
 
 	{
@@ -1076,6 +1098,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 #ifdef _WIN32
 		if(it_dir!=changed_dirs.end())
 		{
+			VSSLog(L"Indexing changed dir: " + path, LL_DEBUG);
+
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
 			std::sort(changed_files.begin(), changed_files.end());
 
@@ -1087,6 +1111,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 					{
 						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
 						{
+							VSSLog(L"Found changed file: " + tmp[i].name, LL_DEBUG);
+
 							tmp[i].last_modified*=Server->getRandomNumber();
 							if(tmp[i].last_modified>0)
 								tmp[i].last_modified*=-1;
@@ -1101,7 +1127,18 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 									&& (*it_db_file).isdir==tmp[i].isdir
 									&& (*it_db_file).last_modified<0 )
 							{
-								tmp[i].last_modified=it_db_file->last_modified;
+								VSSLog(L"File changed at last backup: "+ tmp[i].name, LL_DEBUG);
+
+								if( tmp[i].last_modified<last_filebackup_filetime)
+								{
+									tmp[i].last_modified=it_db_file->last_modified;
+								}
+								else
+								{
+									tmp[i].last_modified*=Server->getRandomNumber();
+									if(tmp[i].last_modified>0)
+										tmp[i].last_modified*=-1;
+								}
 							}
 						}
 					}

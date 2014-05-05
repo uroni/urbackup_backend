@@ -532,7 +532,7 @@ std::wstring ClientDAO::getMiscValue(const std::string& key)
 
 void ClientDAO::updateMiscValue(const std::string& key, const std::wstring& value)
 {
-	q_get_pattern->Bind(exclude_pattern_key);
+	q_get_pattern->Bind(key);
 	db_results res=q_get_pattern->Read();
 	q_get_pattern->Reset();
 	if(!res.empty())
@@ -550,3 +550,4 @@ void ClientDAO::updateMiscValue(const std::string& key, const std::wstring& valu
 		q_insert_pattern->Reset();
 	}
 }
+
