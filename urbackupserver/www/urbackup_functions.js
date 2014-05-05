@@ -681,7 +681,8 @@ String.prototype.trim = function() {
 
 function dustCompileRender(template, data)
 {
-	dust.compile(template, "tmp");
+	var compiled = dust.compile(template, "tmp");
+	dust.loadSource(compiled);
 	return dustRender("tmp", data);
 }
 
