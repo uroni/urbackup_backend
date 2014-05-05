@@ -852,6 +852,7 @@ void BackupServerGet::operator ()(void)
 					ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
 					last_file_backup_try=Server->getTimeSeconds();
 					++count_file_backup_try;
+					ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeFile()) + " before next file backup", LL_WARNING);
 				}
 				else
 				{
@@ -872,6 +873,7 @@ void BackupServerGet::operator ()(void)
 					ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
 					last_image_backup_try=Server->getTimeSeconds();
 					++count_image_backup_try;
+					ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeImage()) + " before next image backup", LL_WARNING);					
 				}
 				else
 				{
@@ -4559,17 +4561,38 @@ void BackupServerGet::copyFile(const std::wstring& source, const std::wstring& d
 	hashpipe->Write(data.getDataPtr(), data.getDataSize());
 }
 
+
+unsigned int BackupServerGet::exponentialBackoffTime( size_t count, unsigned int sleeptime, unsigned div )
+{
+	return static_cast<unsigned int>((std::max)(static_cast<double>(sleeptime), pow(static_cast<double>(sleeptime), count/static_cast<double>(div))));
+}
+
+
 bool BackupServerGet::exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div)
 {
 	if(count>0)
 	{
 		unsigned int passed_time=static_cast<unsigned int>(Server->getTimeSeconds()-lasttime);
-		unsigned int sleeptime_exp=static_cast<unsigned int>((std::max)(static_cast<double>(sleeptime), pow(static_cast<double>(sleeptime), count/static_cast<double>(div))));
+		unsigned int sleeptime_exp = exponentialBackoffTime(count, sleeptime, div);
 
 		return passed_time>=sleeptime_exp;
 	}
 	return true;
 }
+
+
+unsigned int BackupServerGet::exponentialBackoffTimeImage()
+{
+	return exponentialBackoffTime(count_image_backup_try, c_sleeptime_failed_imagebackup, c_exponential_backoff_div);
+}
+
+
+unsigned int BackupServerGet::exponentialBackoffTimeFile()
+{
+	return exponentialBackoffTime(count_file_backup_try, c_sleeptime_failed_filebackup, c_exponential_backoff_div);
+}
+
+
 
 bool BackupServerGet::exponentialBackoffImage()
 {

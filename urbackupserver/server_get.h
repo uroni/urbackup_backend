@@ -165,7 +165,10 @@ private:
 
 	void copyFile(const std::wstring& source, const std::wstring& dest);
 
+	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
 	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);
+	unsigned int exponentialBackoffTimeImage();
+	unsigned int exponentialBackoffTimeFile();
 	bool exponentialBackoffImage();
 	bool exponentialBackoffFile();
 
