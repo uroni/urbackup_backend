@@ -28,7 +28,11 @@ IPipe *DirectoryWatcherThread::pipe=NULL;
 IMutex *DirectoryWatcherThread::update_mutex=NULL;
 ICondition *DirectoryWatcherThread::update_cond=NULL;
 
-const unsigned int mindifftime=120000;
+namespace
+{
+	const unsigned int max_change_ram_cache=10*60*1000;
+}
+
 
 DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs)
 {
@@ -264,28 +268,24 @@ void DirectoryWatcherThread::commit_last_backup_time(void)
 void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstring &fn)
 {
 	bool found=false;
-	bool c=true;
 	unsigned int currtime=Server->getTimeMS();
-	while(c)
+
+	for(std::list<SLastEntries>::iterator it=lastentries.begin();it!=lastentries.end();)
 	{
-		c=false;
-		for(std::list<SLastEntries>::iterator it=lastentries.begin();it!=lastentries.end();++it)
+		if(currtime-(*it).time>max_change_ram_cache)
 		{
-			if(currtime-(*it).time>mindifftime)
-			{
-				lastentries.erase(it);
-				c=true;
-				break;
-			}
-			else if( (*it).dir==dir && (*it).fn==fn)
-			{
-				(*it).time=currtime;
-				found=true;
-				break;
-			}
+			lastentries.erase(it++);
+			continue;
 		}
+		else if( (*it).dir==dir && (*it).fn==fn)
+		{
+			(*it).time=currtime;
+			found=true;
+			break;
+		}
+		it++;
 	}
-	
+
 	if(found==false)
 	{
 		q_get_dir->Bind(dir);
