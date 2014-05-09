@@ -88,7 +88,7 @@ ServerChannelThread::~ServerChannelThread(void)
 
 void ServerChannelThread::operator()(void)
 {
-	unsigned int lastpingtime=0;
+	int64 lastpingtime=0;
 	lasttime=0;
 
 	settings=new ServerSettings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER), clientid);
@@ -589,7 +589,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 
 			input->Write(buffer, (_u32)read);*/
 
-			unsigned int last_update_time=Server->getTimeMS();
+			int64 last_update_time=Server->getTimeMS();
 
 			bool is_ok=true;
 			do

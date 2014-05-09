@@ -230,7 +230,7 @@ void CWorkerThread::ProcessRequest(CClient *client, FCGIRequest *req)
 
 	if( iter2!=GET.end() )
 	{
-		int starttime=Server->getTimeMS();
+		int64 starttime=Server->getTimeMS();
 
 		str_map::iterator iter3=GET.find(L"c");
 

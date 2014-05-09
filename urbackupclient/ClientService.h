@@ -89,7 +89,7 @@ public:
 	virtual bool wantReceive(void);
 
 
-	static unsigned int getLastTokenTime(const std::string & tok);
+	static int64 getLastTokenTime(const std::string & tok);
 
 	void doQuitClient(void);
 	bool isQuitting(void);
@@ -147,6 +147,7 @@ private:
 	void CMD_STATUS_DETAIL(const std::string &cmd);
 	void CMD_UPDATE_SETTINGS(const std::string &cmd);
 	void CMD_PING_RUNNING(const std::string &cmd);
+	void CMD_PING_RUNNING2(const std::string &cmd);
 	void CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock);
 	void CMD_CHANNEL_PONG(const std::string &cmd);
 	void CMD_CHANNEL_PING(const std::string &cmd);
@@ -180,8 +181,8 @@ private:
 	bool mempipe_owner;
 	THREAD_ID tid;
 	ClientConnectorState state;
-	unsigned int lasttime;
-	unsigned int last_update_time;
+	int64 lasttime;
+	int64 last_update_time;
 	int file_version;
 	CTCPStack tcpstack;
 	volatile bool do_quit;
@@ -191,20 +192,21 @@ private:
 	static volatile bool backup_done;
 	static IMutex *backup_mutex;
 	static unsigned int incr_update_intervall;
-	static unsigned int last_pingtime;
+	static int64 last_pingtime;
 	static SChannel channel_pipe;
 	static std::vector<SChannel> channel_pipes;
 	static std::vector<IPipe*> channel_exit;
 	static std::vector<IPipe*> channel_ping;
 	static std::vector<int> channel_capa;
-	unsigned int last_channel_ping;
+	int64 last_channel_ping;
 	static int pcdone;
+	static int64 eta_ms;
 	static int pcdone2;
 	static IMutex *progress_mutex;
 	static volatile bool img_download_running;
 	static db_results cached_status;
 	static std::string backup_source_token;
-	static std::map<std::string, unsigned int> last_token_times;
+	static std::map<std::string, int64> last_token_times;
 	static int last_capa;
 	static IMutex *ident_mutex;
 	static std::vector<std::string> new_server_idents;

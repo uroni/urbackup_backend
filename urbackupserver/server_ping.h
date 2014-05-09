@@ -6,7 +6,7 @@ class BackupServerGet;
 class ServerPingThread : public IThread
 {
 public:
-	ServerPingThread(BackupServerGet *pServer_get);
+	ServerPingThread(BackupServerGet *pServer_get, bool with_eta);
 	void operator()(void);
 	void setStop(bool b);
 
@@ -16,4 +16,5 @@ private:
 	BackupServerGet *server_get;
 	volatile bool stop;
 	volatile bool is_timeout;
+	bool with_eta;
 };

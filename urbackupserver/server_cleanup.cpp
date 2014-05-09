@@ -106,7 +106,7 @@ void ServerCleanupThread::operator()(void)
 		return;
 	}
 
-	unsigned int last_cleanup=0;
+	int64 last_cleanup=0;
 
 	{
 		IScopedLock lock(mutex);

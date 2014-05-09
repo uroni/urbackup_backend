@@ -21,7 +21,7 @@ void FileCache::operator()(void)
 		{
 			IScopedLock lock(mutex);
 
-			unsigned int starttime=Server->getTimeMS();
+			int64 starttime=Server->getTimeMS();
 			while(cache_buffer.size()<min_size_no_wait
 				&& Server->getTimeMS()-starttime<max_wait_time)
 			{

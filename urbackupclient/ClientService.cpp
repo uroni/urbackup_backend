@@ -60,9 +60,10 @@ RunningAction ClientConnector::backup_running=RUNNING_NONE;
 volatile bool ClientConnector::backup_done=false;
 IMutex *ClientConnector::backup_mutex=NULL;
 unsigned int ClientConnector::incr_update_intervall=0;
-unsigned int ClientConnector::last_pingtime=0;
+int64 ClientConnector::last_pingtime=0;
 SChannel ClientConnector::channel_pipe;
 int ClientConnector::pcdone=0;
+int64 ClientConnector::eta_ms=0;
 int ClientConnector::pcdone2=0;
 std::vector<SChannel> ClientConnector::channel_pipes;
 std::vector<IPipe*> ClientConnector::channel_exit;
@@ -72,7 +73,7 @@ IMutex *ClientConnector::progress_mutex=NULL;
 volatile bool ClientConnector::img_download_running=false;
 db_results ClientConnector::cached_status;
 std::string ClientConnector::backup_source_token;
-std::map<std::string, unsigned int> ClientConnector::last_token_times;
+std::map<std::string, int64> ClientConnector::last_token_times;
 int ClientConnector::last_capa=0;
 IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
@@ -771,6 +772,10 @@ void ClientConnector::ReceivePackets(void)
 			else if(next(cmd, 0, "PING RUNNING") )
 			{
 				CMD_PING_RUNNING(cmd); continue;
+			}
+			else if(next(cmd, 0, "2PING RUNNING ") )
+			{
+				CMD_PING_RUNNING2(cmd); continue;
 			}
 			else if( (cmd=="CHANNEL" || next(cmd, 0, "1CHANNEL") ) )
 			{
@@ -1644,11 +1649,11 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 #endif //WIN_32
 }
 
-const unsigned int receive_timeouttime=60000;
+const int64 receive_timeouttime=60000;
 
 std::string ClientConnector::receivePacket(IPipe *p)
 {
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=receive_timeouttime)
 	{
 		std::string ret;
@@ -1851,11 +1856,11 @@ void ClientConnector::waitForPings(IScopedLock *lock)
 	Server->Log("done. (Waiting for pings)", LL_DEBUG);
 }
 
-unsigned int ClientConnector::getLastTokenTime(const std::string & tok)
+int64 ClientConnector::getLastTokenTime(const std::string & tok)
 {
 	IScopedLock lock(backup_mutex);
 
-	std::map<std::string, unsigned int>::iterator it=last_token_times.find(tok);
+	std::map<std::string, int64>::iterator it=last_token_times.find(tok);
 	if(it!=last_token_times.end())
 	{
 		return it->second;

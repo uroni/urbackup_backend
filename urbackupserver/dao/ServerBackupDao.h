@@ -27,6 +27,11 @@ public:
 		std::wstring linkname;
 		std::wstring linktarget;
 	};
+	struct SDuration
+	{
+		int64 indexing_time_ms;
+		int64 duration;
+	};
 	struct SFileEntry
 	{
 		bool exists;
@@ -64,6 +69,8 @@ public:
 	void copyFromTemporaryNewFilesTable(int backupid, int clientid, int incremental);
 	void insertIntoOrigClientSettings(int clientid, std::string data);
 	CondString getOrigClientSettings(int clientid);
+	std::vector<SDuration> getLastIncrementalDurations(int clientid);
+	std::vector<SDuration> getLastFullDurations(int clientid);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -101,6 +108,8 @@ private:
 	IQuery* q_copyFromTemporaryNewFilesTable;
 	IQuery* q_insertIntoOrigClientSettings;
 	IQuery* q_getOrigClientSettings;
+	IQuery* q_getLastIncrementalDurations;
+	IQuery* q_getLastFullDurations;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

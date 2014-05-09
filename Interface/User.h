@@ -17,7 +17,7 @@ struct SUser
 	int_map mInt;
 	float_map mFloat;
 	std::map<std::string, IObject* > mCustom;
-	unsigned int lastused;
+	int64 lastused;
 
 	void* getCustomPtr(std::string str)
 	{

@@ -31,7 +31,7 @@ public:
 	static void hasLANConnection(void);
 	static bool isConnected(void);
 	static void setHasConnection(bool b);
-	static unsigned int timeSinceLastLanConnection();
+	static int64 timeSinceLastLanConnection();
 
 	static void newConnection(void);
 	static void rmConnection(void);
@@ -62,7 +62,7 @@ private:
 	static IMutex *onetime_token_mutex;
 	static bool connected;
 	static size_t n_connections;
-	static unsigned int last_lan_connection;
+	static int64 last_lan_connection;
 	static bool update_settings;
 	static SServerSettings server_settings;
 	static ICondition *wakeup_cond;

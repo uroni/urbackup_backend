@@ -104,8 +104,8 @@ private:
 		std::vector<_u32> broadcast_iface_addrs;
         IPipe *tcpsock;
 
-        _u32 starttime;
-        _u32 connect_starttime;
+        int64 starttime;
+        int64 connect_starttime;
 
         bool socket_open;
         bool connected;

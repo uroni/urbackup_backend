@@ -114,7 +114,7 @@ private:
 	IQuery *q_del_entry_frn;
 	IQuery *q_del_journal_id;
 
-	unsigned int last_index_update;
+	int64 last_index_update;
 
 	bool has_error;
 	bool indexing_in_progress;

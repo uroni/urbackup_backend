@@ -35,6 +35,8 @@ struct SBackup
 	bool is_complete;
 	bool is_resumed;
 	int backupid;
+	int64 indexing_time_ms;
+	int64 backup_time_ms;
 };
 
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback,
@@ -53,6 +55,7 @@ public:
 	std::string sendClientMessageRetry(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR);
 	void sendToPipe(const std::string &msg);
 	int getPCDone(void);
+	int64 getETAms();
 
 	sockaddr_in getClientaddr(void);
 
@@ -90,7 +93,7 @@ private:
 	bool isUpdateFullImage(const std::string &letter);
 	bool isUpdateIncrImage(const std::string &letter);
 	bool doFullBackup(bool with_hashes, bool &disk_error, bool &log_backup);
-	int createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed);
+	int createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed, int64 indexing_time_ms);
 	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file);
 	
 	void notifyClientBackupSuccessfull(void);
@@ -98,6 +101,7 @@ private:
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
 	SBackup getLastIncremental(void);
+	SBackup getLastFullDurations(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	void updateLastBackup(void);
 	void updateLastImageBackup(void);
@@ -265,6 +269,7 @@ private:
 	int image_protocol_version;
 	int update_version;
 	std::string all_volumes;
+	int eta_version;
 
 	bool use_snapshots;
 	bool use_reflink;
@@ -288,4 +293,6 @@ private:
 	size_t count_file_backup_try;
 
 	std::string session_identity;
+
+	ServerBackupDao* backup_dao;
 };

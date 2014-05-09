@@ -154,7 +154,7 @@ private:
 	_i64 num_chunks;
 	_i64 remote_filesize;
 	_i64 num_total_chunks;
-	unsigned int starttime;
+	int64 starttime;
 	unsigned int queued_chunks;
 
 	EChunkedState state;

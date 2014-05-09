@@ -8,7 +8,7 @@ namespace
 
 	void wait_for_new_data(Helper &helper, int clientid, size_t lastid, std::vector<SCircularLogEntry>& entries)
 	{
-		unsigned int starttime=Server->getTimeMS();
+		int64 starttime=Server->getTimeMS();
 
 		do
 		{
@@ -24,7 +24,7 @@ namespace
 
 	void wait_for_new_data(Helper &helper, size_t lastid, std::vector<SCircularLogEntry>& entries)
 	{
-		unsigned int starttime=Server->getTimeMS();
+		int64 starttime=Server->getTimeMS();
 
 		do
 		{

@@ -6,7 +6,7 @@ struct SLogEntry
 {
 	std::string data;
 	int loglevel;
-	unsigned int time;
+	int64 time;
 };
 
 struct SCircularData

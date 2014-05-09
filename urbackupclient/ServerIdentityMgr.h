@@ -28,10 +28,10 @@ private:
 
 	static std::vector<std::string> identities;
 	static std::vector<std::string> publickeys;
-	static std::vector<unsigned int> online_identities;
+	static std::vector<int64> online_identities;
 	static std::vector<std::string> new_identities;
 	static std::vector<std::string> session_identities;
-	static std::vector<unsigned int> online_session_identities;
+	static std::vector<int64> online_session_identities;
 
 	static IMutex *mutex;
 

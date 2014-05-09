@@ -27,11 +27,11 @@ const unsigned int ident_online_timeout=1*60*60*1000; //1h
 std::vector<std::string> ServerIdentityMgr::identities;
 IMutex *ServerIdentityMgr::mutex=NULL;
 IFileServ *ServerIdentityMgr::filesrv=NULL;
-std::vector<unsigned int> ServerIdentityMgr::online_identities;
+std::vector<int64> ServerIdentityMgr::online_identities;
 std::vector<std::string> ServerIdentityMgr::new_identities;
 std::vector<std::string> ServerIdentityMgr::publickeys;
 std::vector<std::string> ServerIdentityMgr::session_identities;
-std::vector<unsigned int> ServerIdentityMgr::online_session_identities;
+std::vector<int64> ServerIdentityMgr::online_session_identities;
 
 #ifdef _WIN32
 const std::string server_ident_file="server_idents.txt";
@@ -102,7 +102,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 {
 	IScopedLock lock(mutex);
 	std::vector<std::string> old_identities=identities;
-	std::vector<unsigned int> old_online_identities=online_identities;
+	std::vector<int64> old_online_identities=online_identities;
 	identities.clear();
 	online_identities.clear();
 	std::string data=getFile(server_ident_file);
@@ -234,7 +234,7 @@ void ServerIdentityMgr::writeServerIdentities(void)
 bool ServerIdentityMgr::hasOnlineServer(void)
 {
 	IScopedLock lock(mutex);
-	unsigned int ctime=Server->getTimeMS();
+	int64 ctime=Server->getTimeMS();
 	for(size_t i=0;i<online_identities.size();++i)
 	{
 		if(online_identities[i]!=0 && ctime-online_identities[i]<ident_online_timeout)

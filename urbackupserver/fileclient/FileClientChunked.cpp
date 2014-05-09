@@ -305,7 +305,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 			}
 		}
 
-		unsigned int ctime = Server->getTimeMS();
+		int64 ctime = Server->getTimeMS();
 		if(ctime>starttime && ctime-starttime>=SERVER_TIMEOUT)
 		{
 			Server->Log("Connection timeout. Reconnecting...", LL_DEBUG);
@@ -1001,7 +1001,7 @@ bool FileClientChunked::Reconnect(void)
 	if(reconnection_callback==NULL)
 		return false;
 
-	unsigned int reconnect_starttime=Server->getTimeMS();
+	int64 reconnect_starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-reconnect_starttime<reconnection_timeout)
 	{
 		IPipe *nc=reconnection_callback->new_fileclient_connection();
@@ -1159,7 +1159,7 @@ bool FileClientChunked::constructOutOfBandPipe()
 		Server->destroy(ofbPipe());
 	}
 
-	unsigned int reconnect_starttime=Server->getTimeMS();
+	int64 reconnect_starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-reconnect_starttime<reconnection_timeout)
 	{
 		setOfbPipe(reconnection_callback->new_fileclient_connection());
@@ -1245,7 +1245,7 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 			}
 		}
 
-		unsigned int ctime = Server->getTimeMS();
+		int64 ctime = Server->getTimeMS();
 		if(ctime>starttime && ctime-starttime>=SERVER_TIMEOUT)
 		{
 			Server->Log("OFB-Connection timeout. Reconnecting...", LL_DEBUG);

@@ -15,7 +15,7 @@ public:
 private:
 	size_t throttle_bps;
 	size_t curr_bytes;
-	unsigned int lastresettime;
+	int64 lastresettime;
 
 	IMutex *mutex;
 };

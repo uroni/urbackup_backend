@@ -268,7 +268,7 @@ void DirectoryWatcherThread::commit_last_backup_time(void)
 void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstring &fn)
 {
 	bool found=false;
-	unsigned int currtime=Server->getTimeMS();
+	int64 currtime=Server->getTimeMS();
 
 	for(std::list<SLastEntries>::iterator it=lastentries.begin();it!=lastentries.end();)
 	{

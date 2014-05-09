@@ -195,10 +195,10 @@ unsigned int CSessionMgr::TimeoutSessions(void)
 		Server->Log("Looking for old Sessions... "+nconvert(mSessions.size())+" sessions", LL_INFO);
 	unsigned int ret=0;
 	IScopedLock lock( sess_mutex );
-	unsigned int ttime=Server->getTimeMS();
+	int64 ttime=Server->getTimeMS();
 	for(std::map<std::wstring, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
 	{
-		unsigned int diff=ttime-i->second->lastused;
+		int64 diff=ttime-i->second->lastused;
 		if( diff > (unsigned int)(SESSION_TIMEOUT_S)*1000 )
 		{
 			Server->Log(L"Session timeout: Session "+i->first, LL_INFO);
@@ -207,7 +207,7 @@ unsigned int CSessionMgr::TimeoutSessions(void)
 		}
 		else
 		{
-		    ret=(std::max)(diff, ret);
+		    ret=static_cast<unsigned int>((std::max)(diff, static_cast<int64>(ret)));
 		}
 	}
 	return (unsigned int)((SESSION_TIMEOUT_S)*1000)-ret+1000;

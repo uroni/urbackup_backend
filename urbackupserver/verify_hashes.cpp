@@ -18,10 +18,10 @@ const size_t c_max_l_length=80;
 void draw_progress(std::wstring curr_fn, _i64 curr_verified, _i64 verify_size)
 {
 	static _i64 last_progress_bytes=0;
-	static unsigned int last_time=0;
+	static int64 last_time=0;
 	static size_t max_line_length=0;
 
-	unsigned int passed_time=Server->getTimeMS()-last_time;
+	int64 passed_time=Server->getTimeMS()-last_time;
 	if(passed_time>1000)
 	{
 		_i64 new_bytes=curr_verified-last_progress_bytes;

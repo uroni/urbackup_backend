@@ -25,7 +25,7 @@
 
 IMutex *ServerStatus::mutex=NULL;
 std::map<std::wstring, SStatus> ServerStatus::status;
-unsigned int ServerStatus::last_status_update;
+int64 ServerStatus::last_status_update;
 
 int ServerStatus::server_nospc_stalled=0;
 bool ServerStatus::server_nospc_fatal=false;
@@ -54,6 +54,8 @@ void ServerStatus::setServerStatus(const SStatus &pStatus, bool setactive)
 	s->has_status=true;
 	s->statusaction=pStatus.statusaction;
 	s->clientid=pStatus.clientid;
+	s->eta_ms = pStatus.eta_ms;
+	s->eta_set_time = pStatus.eta_set_time;
 	if(setactive)
 	{
 		last_status_update=Server->getTimeMS();

@@ -362,7 +362,7 @@ void ImageThread::sendIncrImageThread(void)
 	int save_id=-1;
 	int update_cnt=0;
 
-	unsigned int lastsendtime=Server->getTimeMS();
+	int64 lastsendtime=Server->getTimeMS();
 
 	bool run=true;
 	while(run)
@@ -582,7 +582,7 @@ void ImageThread::sendIncrImageThread(void)
 					else
 					{
 						//Server->Log("Block didn't change: "+nconvert(i), LL_DEBUG);
-						unsigned int tt=Server->getTimeMS();
+						int64 tt=Server->getTimeMS();
 						if(tt-lastsendtime>10000)
 						{
 							int64 bs=-125;
@@ -597,7 +597,7 @@ void ImageThread::sendIncrImageThread(void)
 				}
 				else
 				{
-					unsigned int tt=Server->getTimeMS();
+					int64 tt=Server->getTimeMS();
 					if(tt-lastsendtime>10000)
 					{
 						int64 bs=-125;

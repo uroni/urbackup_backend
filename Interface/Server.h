@@ -48,7 +48,7 @@ struct SCircularLogEntry
 	std::string utf8_msg;
 	int loglevel;
 	size_t id;
-	unsigned int time;
+	int64 time;
 };
 
 class IServer
@@ -78,8 +78,8 @@ public:
 	virtual void setActionContext(std::wstring context)=0;
 	virtual void resetActionContext(void)=0;
 
-	virtual unsigned int getTimeSeconds(void)=0;
-	virtual unsigned int getTimeMS(void)=0;
+	virtual int64 getTimeSeconds(void)=0;
+	virtual int64 getTimeMS(void)=0;
 
 	virtual bool LoadDLL(const std::string &name)=0;
 	virtual bool UnloadDLL(const std::string &name)=0;

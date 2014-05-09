@@ -184,7 +184,7 @@ bool CThreadPool::isRunning(THREADPOOL_TICKET ticket)
 
 bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 {
-	unsigned int starttime;
+	int64 starttime;
 	if(timems>=0)
 	{
 		starttime = Server->getTimeMS();
@@ -226,8 +226,8 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 
 		if(timems>=0)
 		{
-			unsigned int ctime = Server->getTimeMS();
-			if(ctime-starttime>static_cast<unsigned int>(timems))
+			int64 ctime = Server->getTimeMS();
+			if(ctime-starttime>timems)
 			{
 				break;
 			}

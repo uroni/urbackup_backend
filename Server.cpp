@@ -560,23 +560,23 @@ void CServer::resetActionContext(void)
 	action_context.clear();
 }
 
-unsigned int CServer::getTimeSeconds(void)
+int64 CServer::getTimeSeconds(void)
 {
 #ifdef _WIN32
 	SYSTEMTIME st;
 	GetSystemTime(&st);
-	return (unsigned int)(unix_timestamp(&st));
+	return unix_timestamp(&st);
 #else
 	timeval t;
 	gettimeofday(&t,NULL);
-	return (unsigned int)t.tv_sec;
+	return t.tv_sec;
 #endif
 }
 
-unsigned int CServer::getTimeMS(void)
+int64 CServer::getTimeMS(void)
 {
 #ifdef _WIN32
-	return GetTickCount();
+	return GetTickCount64();
 #else
 	//return (unsigned int)(((double)clock()/(double)CLOCKS_PER_SEC)*1000.0);
 	/*

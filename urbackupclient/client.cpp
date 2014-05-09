@@ -54,7 +54,7 @@ const char IndexThread::IndexThreadAction_GetLog=9;
 
 extern PLUGIN_ID filesrv_pluginid;
 
-const unsigned int idletime=60000;
+const int64 idletime=60000;
 const unsigned int nonidlesleeptime=500;
 const unsigned short tcpport=35621;
 const unsigned short udpport=35622;
@@ -83,7 +83,7 @@ void IdleCheckerThread::operator()(void)
 	lx=x;
 	ly=y;
 
-	unsigned int last_move=Server->getTimeMS();
+	int64 last_move=Server->getTimeMS();
 
 	while(true)
 	{
@@ -1306,8 +1306,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 				bool only_own_tokens=true;
 				for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
 				{
-					unsigned int last_token_time = ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]);
-					unsigned int curr_time = Server->getTimeSeconds();
+					int64 last_token_time = ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]);
+					int64 curr_time = Server->getTimeSeconds();
 					bool token_timeout=true;
 					if(curr_time>=last_token_time && curr_time-last_token_time<10*60*1000)
 					{

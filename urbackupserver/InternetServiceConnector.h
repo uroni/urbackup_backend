@@ -32,7 +32,7 @@ class InternetServiceConnector;
 struct SClientData
 {
 	std::vector<InternetServiceConnector*> spare_connections;
-	unsigned int last_seen;
+	int64 last_seen;
 	std::string endpoint_name;
 };
 
@@ -45,7 +45,7 @@ struct SOnetimeToken
 		token=ServerSettings::generateRandomBinaryKey();
 	}
 	std::string token;
-	unsigned int created;
+	int64 created;
 	std::string clientname;
 };
 
@@ -108,8 +108,8 @@ private:
 
 	CTCPStack tcpstack;
 
-	unsigned int starttime;
-	unsigned int lastpingtime;
+	int64 starttime;
+	int64 lastpingtime;
 	bool pinging;
 	bool has_timeout;
 
@@ -135,5 +135,5 @@ private:
 	static std::map<unsigned int, SOnetimeToken> onetime_tokens;
 	static unsigned int onetime_token_id;
 
-	static unsigned int last_token_remove;
+	static int64 last_token_remove;
 };

@@ -62,6 +62,7 @@ const unsigned short serviceport=35623;
 const unsigned int full_backup_construct_timeout=4*60*60*1000;
 const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
+const unsigned int eta_update_intervall=60000;
 const size_t minfreespace_min=50*1024*1024;
 const unsigned int curr_image_version=1;
 const unsigned int ident_err_retry_time=1*60*1000;
@@ -83,7 +84,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	     bool internet_connection, bool use_snapshots, bool use_reflink)
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
 	  use_snapshots(use_snapshots), use_reflink(use_reflink), local_hash(NULL), bsh(NULL),
-	  bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare(NULL), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET)
+	  bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare(NULL), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET),
+	  backup_dao(NULL)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -107,6 +109,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	file_protocol_version=1;
 	image_protocol_version=0;
 	update_version=0;
+	eta_version=0;
 
 	set_settings_version=0;
 	tcpstack.setAddChecksum(internet_connection);
@@ -359,6 +362,9 @@ void BackupServerGet::operator ()(void)
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	DBScopedFreeMemory free_db_memory(db);
 
+	std::auto_ptr<ServerBackupDao> local_server_backup_dao(new ServerBackupDao(db));
+	backup_dao = local_server_backup_dao.get();
+
 	server_settings=new ServerSettings(db);
 
 	clientid=getClientID(db, clientname, server_settings, NULL);
@@ -518,7 +524,7 @@ void BackupServerGet::operator ()(void)
 
 			update_sql_intervals(true);
 
-			unsigned int ttime=Server->getTimeMS();
+			int64 ttime=Server->getTimeMS();
 			status.starttime=ttime;
 			has_error=false;
 			bool hbu=false;
@@ -604,7 +610,7 @@ void BackupServerGet::operator ()(void)
 				}
 				else
 				{
-					pingthread=new ServerPingThread(this);
+					pingthread=new ServerPingThread(this, eta_version>0);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 					createHashThreads(use_reflink);
@@ -644,7 +650,7 @@ void BackupServerGet::operator ()(void)
 				}
 				else
 				{
-					pingthread=new ServerPingThread(this);
+					pingthread=new ServerPingThread(this, eta_version>0);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 					createHashThreads(use_reflink);
@@ -689,7 +695,7 @@ void BackupServerGet::operator ()(void)
 				
 				r_image=true;
 
-				pingthread=new ServerPingThread(this);
+				pingthread=new ServerPingThread(this, eta_version>0);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 				r_success=true;
@@ -741,7 +747,7 @@ void BackupServerGet::operator ()(void)
 				r_image=true;
 				r_incremental=true;
 			
-				pingthread=new ServerPingThread(this);
+				pingthread=new ServerPingThread(this, eta_version>0);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes);
@@ -820,14 +826,12 @@ void BackupServerGet::operator ()(void)
 					{
 						if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
 						{
-							ServerBackupDao backupdao(db);
-							remove_directory_link_dir(backuppath, backupdao, clientid);
+							remove_directory_link_dir(backuppath, *backup_dao, clientid);
 						}
 					}
 					else
 					{
-						ServerBackupDao backupdao(db);
-						remove_directory_link_dir(backuppath, backupdao, clientid);
+						remove_directory_link_dir(backuppath, *backup_dao, clientid);
 					}	
 				}
 				else
@@ -843,7 +847,7 @@ void BackupServerGet::operator ()(void)
 
 			ServerStatus::setServerStatus(status);
 
-			unsigned int ptime=Server->getTimeMS()-ttime;
+			int64 ptime=Server->getTimeMS()-ttime;
 			if(hbu && !has_error)
 			{
 				ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(ptime)), LL_INFO);
@@ -981,7 +985,7 @@ void BackupServerGet::prepareSQL(void)
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1", false);
 	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1", false);
-	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?)", false);
+	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?)", false);
 	q_get_last_incremental=db->Prepare("SELECT incremental,path,resumed,complete,id FROM backups WHERE clientid=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_get_last_incremental_complete=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND done=1 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_set_last_backup=db->Prepare("UPDATE clients SET lastbackup=(SELECT backuptime FROM backups WHERE id=?) WHERE id=?", false);
@@ -994,7 +998,7 @@ void BackupServerGet::prepareSQL(void)
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
 	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=(SELECT backuptime FROM backup_images WHERE id=?) WHERE id=?", false);
-	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path,indexing_time_ms,(strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
 	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
@@ -1062,6 +1066,35 @@ int BackupServerGet::getClientID(IDatabase *db, const std::wstring &clientname, 
 	}
 }
 
+namespace
+{
+	ServerBackupDao::SDuration interpolateDurations(const std::vector<ServerBackupDao::SDuration>& durations)
+	{
+		float duration=0;
+		float indexing_time_ms=0;
+		if(!durations.empty())
+		{
+			duration = static_cast<float>(durations[durations.size()-1].duration);
+			indexing_time_ms = static_cast<float>(durations[durations.size()-1].indexing_time_ms);
+		}
+
+		if(durations.size()>1)
+		{
+			for(size_t i=durations.size()-1;i--;)
+			{
+				duration = 0.9f*duration + 0.1f*durations[i].duration;
+				indexing_time_ms = 0.9f*indexing_time_ms + 0.1f*durations[i].indexing_time_ms;
+			}
+		}
+
+		ServerBackupDao::SDuration ret = {
+			static_cast<int>(indexing_time_ms+0.5f),
+			static_cast<int>(duration+0.5f) };
+
+		return ret;
+	}
+}
+
 SBackup BackupServerGet::getLastIncremental(void)
 {
 	q_get_last_incremental->Bind(clientid);
@@ -1084,6 +1117,14 @@ SBackup BackupServerGet::getLastIncremental(void)
 		{
 			b.complete=res[0][L"path"];
 		}
+
+		std::vector<ServerBackupDao::SDuration> durations = 
+			backup_dao->getLastIncrementalDurations(clientid);
+
+		ServerBackupDao::SDuration duration = interpolateDurations(durations);
+
+		b.indexing_time_ms = duration.indexing_time_ms;
+		b.backup_time_ms = duration.duration*1000;
 
 		b.incremental_ref=0;
 		return b;
@@ -1109,6 +1150,7 @@ SBackup BackupServerGet::getLastIncrementalImage(const std::string &letter)
 		b.incremental=watoi(res[0][L"incremental"]);
 		b.path=res[0][L"path"];
 		b.incremental_ref=watoi(res[0][L"id"]);
+		b.backup_time_ms=watoi(res[0][L"duration"])*1000;
 		return b;
 	}
 	else
@@ -1120,12 +1162,30 @@ SBackup BackupServerGet::getLastIncrementalImage(const std::string &letter)
 	}
 }
 
-int BackupServerGet::createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed)
+
+SBackup BackupServerGet::getLastFullDurations( void )
+{
+	std::vector<ServerBackupDao::SDuration> durations = 
+		backup_dao->getLastFullDurations(clientid);
+
+	ServerBackupDao::SDuration duration = interpolateDurations(durations);
+
+	SBackup b;
+
+	b.indexing_time_ms = duration.indexing_time_ms;
+	b.backup_time_ms = duration.duration*1000;
+
+	return b;
+}
+
+
+int BackupServerGet::createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed, int64 indexing_time_ms)
 {
 	q_create_backup->Bind(incremental);
 	q_create_backup->Bind(clientid);
 	q_create_backup->Bind(path);
 	q_create_backup->Bind(resumed?1:0);
+	q_create_backup->Bind(indexing_time_ms);
 	q_create_backup->Write();
 	q_create_backup->Reset();
 	return (int)db->getLastInsertID();
@@ -1426,7 +1486,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool resume, bool wi
 
 	ServerLogger::Log(clientid, clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=timeout_time)
 	{
 		size_t rc=cc->Read(&ret, 60000);
@@ -1494,6 +1554,14 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 {
 	if(!handle_not_enough_space(L""))
 		return false;
+
+
+	SBackup last_backup_info = getLastFullDurations();
+
+	status.eta_ms = last_backup_info.backup_time_ms + last_backup_info.indexing_time_ms;
+	ServerStatus::setServerStatus(status, true);
+
+	int64 indexing_start_time = Server->getTimeMS();
 	
 	bool no_backup_dirs=false;
 	bool connect_fail=false;
@@ -1558,7 +1626,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		return false;
 	}
 
-	unsigned int full_backup_starttime=Server->getTimeMS();
+	int64 full_backup_starttime=Server->getTimeMS();
 
 	rc=fc.GetFile("urbackup/filelist.ub", tmp, hashed_transfer);
 	if(rc!=ERR_SUCCESS)
@@ -1568,7 +1636,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		return false;
 	}
 
-	backupid=createBackupSQL(0, clientid, backuppath_single, false);
+	backupid=createBackupSQL(0, clientid, backuppath_single, false, Server->getTimeMS()-indexing_start_time);
 	
 	tmp->Seek(0);
 	
@@ -1599,7 +1667,10 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	SFile cf;
 	int depth=0;
 	bool r_done=false;
-	unsigned int laststatsupdate=0;
+	int64 laststatsupdate=0;
+	int64 last_eta_update=0;
+	int64 last_eta_received_bytes=0;
+	double eta_estimated_speed=0;
 	ServerStatus::setServerStatus(status, true);
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
 	Server->getThreadPool()->execute(running_updater);
@@ -1639,7 +1710,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 			bool b=getNextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
-				unsigned int ctime=Server->getTimeMS();
+				int64 ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
 					laststatsupdate=ctime;
@@ -1654,6 +1725,37 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					status.hashqueuesize=(_u32)hashpipe->getNumElements();
 					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 					ServerStatus::setServerStatus(status, true);
+				}
+
+				if(ctime-last_eta_update>eta_update_intervall)
+				{
+					last_eta_update=ctime;
+
+					int64 received_data_bytes = fc.getReceivedDataBytes();
+
+					int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
+					int64 passed_time = Server->getTimeMS() - status.eta_set_time;
+					
+					status.eta_set_time = Server->getTimeMS();
+
+					double speed_bpms = static_cast<double>(new_bytes)/passed_time;
+
+					if(eta_estimated_speed==0)
+					{
+						eta_estimated_speed = speed_bpms;
+					}
+					else
+					{
+						eta_estimated_speed = eta_estimated_speed*0.9 + eta_estimated_speed*0.1;
+					}
+
+					if(last_eta_received_bytes>0)
+					{
+						status.eta_ms = static_cast<int64>((files_size-received_data_bytes)/eta_estimated_speed + 0.5);
+						ServerStatus::setServerStatus(status, true);
+					}
+
+					last_eta_received_bytes = received_data_bytes;
 				}
 
 				if(server_download->isOffline())
@@ -1848,7 +1950,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
-	unsigned int passed_time=Server->getTimeMS()-full_backup_starttime;
+	int64 passed_time=Server->getTimeMS()-full_backup_starttime;
 	if(passed_time==0) passed_time=1;
 
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
@@ -2009,6 +2111,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		return doFullBackup(with_hashes, disk_error, log_backup);
 	}
 
+	status.eta_set_time = Server->getTimeMS();
+	status.eta_ms = last.backup_time_ms + last.indexing_time_ms;
+	ServerStatus::setServerStatus(status, true);
+
+
+	int64 indexing_start_time = Server->getTimeMS();
 	bool resumed_backup = !last.is_complete;
 	bool resumed_full = (resumed_backup && last.incremental==0);
 
@@ -2105,8 +2213,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		return false;
 	}
 
-	unsigned int incr_backup_starttime=Server->getTimeMS();
-	unsigned int incr_backup_stoptime=0;
+	int64 incr_backup_starttime=Server->getTimeMS();
+	int64 incr_backup_stoptime=0;
 
 	rc=fc.GetFile("urbackup/filelist.ub", tmp, hashed_transfer);
 	if(rc!=ERR_SUCCESS)
@@ -2119,7 +2227,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	ServerLogger::Log(clientid, clientname+L" Starting incremental backup...", LL_DEBUG);
 
 	int incremental_num = resumed_full?0:(last.incremental+1);
-	backupid=createBackupSQL(incremental_num, clientid, backuppath_single, resumed_backup);
+	backupid=createBackupSQL(incremental_num, clientid, backuppath_single, resumed_backup, Server->getTimeMS()-indexing_start_time);
 
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	std::wstring last_backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+last.path;
@@ -2201,18 +2309,16 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 	}
 
-	ServerBackupDao backup_dao(db);
-
 	bool copy_file_entries=false;
 	if(resumed_backup)
 	{
-		copy_file_entries = backup_dao.createTemporaryNewFilesTable();
-		copy_file_entries = copy_file_entries && backup_dao.createTemporaryLastFilesTable();
-		backup_dao.createTemporaryLastFilesTableIndex();
+		copy_file_entries = backup_dao->createTemporaryNewFilesTable();
+		copy_file_entries = copy_file_entries && backup_dao->createTemporaryLastFilesTable();
+		backup_dao->createTemporaryLastFilesTableIndex();
 
 		if ( copy_file_entries )
 		{
-			copy_file_entries = copy_file_entries && backup_dao.copyToTemporaryLastFilesTable(last.backupid);
+			copy_file_entries = copy_file_entries && backup_dao->copyToTemporaryLastFilesTable(last.backupid);
 		}
 		
 	}
@@ -2259,8 +2365,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	_i64 files_size=getIncrementalSize(tmp, diffs);
 	tmp->Seek(0);
 	
-	unsigned int laststatsupdate=0;
+	int64 laststatsupdate=0;
 	ServerStatus::setServerStatus(status, true);
+
+	int64 last_eta_update=0;
+	int64 last_eta_received_bytes=0;
+	double eta_estimated_speed=0;
 	
 	ServerLogger::Log(clientid, clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
 
@@ -2310,7 +2420,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					}
 				}
 
-				unsigned int ctime=Server->getTimeMS();
+				int64 ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
 					laststatsupdate=ctime;
@@ -2325,6 +2435,37 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					status.hashqueuesize=(_u32)hashpipe->getNumElements();
 					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 					ServerStatus::setServerStatus(status, true);
+				}
+
+				if(ctime-last_eta_update>eta_update_intervall)
+				{
+					last_eta_update=ctime;
+
+					int64 received_data_bytes = fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0);
+
+					int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
+					int64 passed_time = Server->getTimeMS() - status.eta_set_time;
+
+					status.eta_set_time = Server->getTimeMS();
+
+					double speed_bpms = static_cast<double>(new_bytes)/passed_time;
+
+					if(eta_estimated_speed==0)
+					{
+						eta_estimated_speed = speed_bpms;
+					}
+					else
+					{
+						eta_estimated_speed = eta_estimated_speed*0.9 + eta_estimated_speed*0.1;
+					}
+
+					if(last_eta_received_bytes>0)
+					{
+						status.eta_ms = static_cast<int64>((files_size-received_data_bytes)/eta_estimated_speed + 0.5);
+						ServerStatus::setServerStatus(status, true);
+					}
+
+					last_eta_received_bytes = received_data_bytes;
 				}
 
 				if(server_download->isOffline() && !r_offline)
@@ -2370,7 +2511,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						if(use_directory_links && hasChange(line, large_unchanged_subtrees) )
 						{
 							std::wstring srcpath=last_backuppath+local_curr_os_path;
-							if(link_directory_pool(backup_dao, clientid, backuppath+local_curr_os_path,
+							if(link_directory_pool(*backup_dao, clientid, backuppath+local_curr_os_path,
 								                   srcpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled()) )
 							{
 								skip_dir_completely=1;
@@ -2381,13 +2522,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 								if(with_hashes)
 								{
-									curr_has_hashes = link_directory_pool(backup_dao, clientid, backuppath_hashes+local_curr_os_path,
+									curr_has_hashes = link_directory_pool(*backup_dao, clientid, backuppath_hashes+local_curr_os_path,
 										src_hashpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled());
 								}
 
 								if(copy_file_entries)
 								{
-									std::vector<ServerBackupDao::SFileEntry> file_entries = backup_dao.getFileEntriesFromTemporaryTableGlob(escape_glob_sql(srcpath)+os_file_sep()+L"*");
+									std::vector<ServerBackupDao::SFileEntry> file_entries = backup_dao->getFileEntriesFromTemporaryTableGlob(escape_glob_sql(srcpath)+os_file_sep()+L"*");
 									for(size_t i=0;i<file_entries.size();++i)
 									{
 										if(file_entries[i].fullpath.size()>srcpath.size())
@@ -2398,7 +2539,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 												entry_hashpath = backuppath_hashes+local_curr_os_path + file_entries[i].hashpath.substr(src_hashpath.size());
 											}
 
-											backup_dao.insertIntoTemporaryNewFilesTable(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
+											backup_dao->insertIntoTemporaryNewFilesTable(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
 												file_entries[i].shahash, file_entries[i].filesize);
 										}
 									}
@@ -2565,11 +2706,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 					if(copy_curr_file_entry)
 					{
-						ServerBackupDao::SFileEntry fileEntry = backup_dao.getFileEntryFromTemporaryTable(srcpath);
+						ServerBackupDao::SFileEntry fileEntry = backup_dao->getFileEntryFromTemporaryTable(srcpath);
 
 						if(fileEntry.exists)
 						{
-							backup_dao.insertIntoTemporaryNewFilesTable(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
+							backup_dao->insertIntoTemporaryNewFilesTable(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
 								fileEntry.shahash, fileEntry.filesize);
 						}
 					}
@@ -2639,11 +2780,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(copy_file_entries)
 	{
-		backup_dao.copyFromTemporaryNewFilesTable(backupid, clientid, incremental_num);
+		backup_dao->copyFromTemporaryNewFilesTable(backupid, clientid, incremental_num);
 
-		backup_dao.dropTemporaryLastFilesTableIndex();
-		backup_dao.dropTemporaryLastFilesTable();
-		backup_dao.dropTemporaryNewFilesTable();
+		backup_dao->dropTemporaryLastFilesTableIndex();
+		backup_dao->dropTemporaryLastFilesTable();
+		backup_dao->dropTemporaryNewFilesTable();
 	}
 
 	waitForFileThreads();
@@ -2733,7 +2874,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes()+(fc_chunked.get()?fc_chunked->getTransferredBytes():0);
-	unsigned int passed_time=incr_backup_stoptime-incr_backup_starttime;
+	int64 passed_time=incr_backup_stoptime-incr_backup_starttime;
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 
 	if(c_has_error) return false;
@@ -2781,7 +2922,6 @@ void BackupServerGet::waitForFileThreads(void)
 bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error)
 {
 	resetEntryState();
-	ServerBackupDao backup_dao(db);
 
 	IFile *tmp=Server->openFile(clientlist_fn, MODE_READ);
 	if(tmp==NULL)
@@ -2825,7 +2965,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 					{
 						if(curr_dir_exists)
 						{
-							if(!remove_directory_link_dir(curr_fn, backup_dao, clientid) )
+							if(!remove_directory_link_dir(curr_fn, *backup_dao, clientid) )
 							{
 								if(!no_error)
 								{
@@ -2959,7 +3099,7 @@ std::string BackupServerGet::sendClientMessageRetry(const std::string &msg, cons
 	std::string res;
 	do
 	{
-		unsigned int starttime=Server->getTimeMS();
+		int64 starttime=Server->getTimeMS();
 		res = sendClientMessage(msg, errmsg, timeout, logerr, max_loglevel);
 
 		if(res.empty())
@@ -2967,12 +3107,12 @@ std::string BackupServerGet::sendClientMessageRetry(const std::string &msg, cons
 			if(retry>0)
 			{
 				--retry;
-				unsigned int passed_time=timeout;
-				unsigned int currtime = Server->getTimeMS();
-				if(currtime>starttime)
-					passed_time=currtime-starttime;
 
-				Server->wait(timeout-passed_time);
+				int64 passed_time=Server->getTimeMS()-starttime;
+				if(passed_time<timeout)
+				{
+					Server->wait(static_cast<unsigned int>(timeout-passed_time));
+				}
 			}
 			else
 			{
@@ -3011,7 +3151,7 @@ std::string BackupServerGet::sendClientMessage(const std::string &msg, const std
 	tcpstack.Send(cc, identity+msg);
 
 	std::string ret;
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	bool ok=false;
 	bool herr=false;
 	while(Server->getTimeMS()-starttime<=timeout)
@@ -3055,7 +3195,7 @@ bool BackupServerGet::sendClientMessageRetry(const std::string &msg, const std::
 	bool res;
 	do
 	{
-		unsigned int starttime=Server->getTimeMS();
+		int64 starttime=Server->getTimeMS();
 		res = sendClientMessage(msg, retok, errmsg, timeout, logerr, max_loglevel, retok_err, retok_str);
 
 		if(!res)
@@ -3063,12 +3203,12 @@ bool BackupServerGet::sendClientMessageRetry(const std::string &msg, const std::
 			if(retry>0)
 			{
 				--retry;
-				unsigned int passed_time=timeout;
-				unsigned int currtime = Server->getTimeMS();
-				if(currtime>starttime)
-					passed_time=currtime-starttime;
+				int64 passed_time=Server->getTimeMS()-starttime;
 
-				Server->wait(timeout-passed_time);
+				if(passed_time<timeout)
+				{
+					Server->wait(static_cast<unsigned int>(timeout-passed_time));
+				}
 			}
 			else
 			{
@@ -3107,7 +3247,7 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 	tcpstack.Send(cc, identity+msg);
 
 	std::string ret;
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	bool ok=false;
 	bool herr=false;
 	while(Server->getTimeMS()-starttime<=timeout)
@@ -3229,6 +3369,11 @@ bool BackupServerGet::updateCapabilities(void)
 		{
 			all_volumes=Server->ConvertToUTF8(it->second);
 		}
+		it=params.find(L"ETA");
+		if(it!=params.end())
+		{
+			eta_version=watoi(it->second);
+		}
 	}
 
 	return !cap.empty();
@@ -3255,8 +3400,7 @@ void BackupServerGet::sendSettings(void)
 	if(!stmp.empty())
 		allow_overwrite=(stmp=="true");
 
-	ServerBackupDao backupdao(db);
-	ServerBackupDao::CondString origSettingsData = backupdao.getOrigClientSettings(clientid);
+	ServerBackupDao::CondString origSettingsData = backup_dao->getOrigClientSettings(clientid);
 
 	ISettingsReader* origSettings = NULL;
 	if(origSettingsData.exists)
@@ -3316,7 +3460,7 @@ void BackupServerGet::sendSettings(void)
 	escapeClientMessage(s_settings);
 	if(sendClientMessage("SETTINGS "+s_settings, "OK", L"Sending settings to client failed", 10000))
 	{
-		backupdao.insertIntoOrigClientSettings(clientid, s_settings);
+		backup_dao->insertIntoOrigClientSettings(clientid, s_settings);
 	}
 }	
 
@@ -3385,8 +3529,7 @@ bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 				b=updateClientSetting(L"client_set_settings_time", settings_update_time);
 				if(b)
 				{
-					ServerBackupDao backupdao(db);
-					backupdao.insertIntoOrigClientSettings(clientid, settings_data);
+					backup_dao->insertIntoOrigClientSettings(clientid, settings_data);
 					mod=true;
 				}
 				else
@@ -3504,6 +3647,20 @@ int BackupServerGet::getPCDone(void)
 		return -1;
 	else
 		return st.pcdone;
+}
+
+int64 BackupServerGet::getETAms(void)
+{
+	SStatus st=ServerStatus::getStatus(clientname);
+	if(!st.has_status)
+	{
+		return -1;
+	}
+	else
+	{
+		int64 add_time = Server->getTimeMS() - st.eta_set_time;
+		return st.eta_ms - add_time;
+	}
 }
 
 void BackupServerGet::sendClientLogdata(void)
@@ -3900,7 +4057,7 @@ void BackupServerGet::checkClientVersion(void)
 
 
 			std::string ret;
-			unsigned int starttime=Server->getTimeMS();
+			int64 starttime=Server->getTimeMS();
 			bool ok=false;
 			while(Server->getTimeMS()-starttime<=5*60*1000)
 			{

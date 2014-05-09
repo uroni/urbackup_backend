@@ -600,7 +600,7 @@ DLLEXPORT void UnloadActions(void)
 	if(server_exit_pipe!=NULL)
 	{
 		std::string msg="exit";
-		unsigned int starttime=Server->getTimeMS();
+		int64 starttime=Server->getTimeMS();
 		while(msg!="ok" && Server->getTimeMS()-starttime<wtime)
 		{
 			server_exit_pipe->Write("exit");
@@ -1111,6 +1111,13 @@ void upgrade32_33()
 		"data TEXT )");
 }
 
+void upgrade33_34()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE backups ADD indexing_time_s INTEGER");
+	db->Write("UPDATE backups SET indexing_time_s=0 WHERE indexing_time_s IS NULL");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1132,7 +1139,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=33;
+	int max_v=34;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1284,6 +1291,10 @@ void upgrade(void)
 				break;
 			case 32:
 				upgrade32_33();
+				++ver;
+				break;
+			case 33:
+				upgrade33_34();
 				++ver;
 				break;
 			default:

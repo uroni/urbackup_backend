@@ -15,7 +15,7 @@ struct SLastEntries
 {
 	std::wstring dir;
 	std::wstring fn;
-	unsigned int time;
+	int64 time;
 };
 
 class DirectoryWatcherThread : public IThread, public IChangeJournalListener

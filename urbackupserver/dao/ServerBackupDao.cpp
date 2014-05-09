@@ -603,6 +603,64 @@ ServerBackupDao::CondString ServerBackupDao::getOrigClientSettings(int clientid)
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func vector<SDuration> ServerBackupDao::getLastIncrementalDurations
+* @return int64 indexing_time_ms, int64 duration 
+* @sql
+*      SELECT indexing_time_ms, (strftime('%s',running)-strftime('%s',backuptime)) AS duration
+*		FROM backups 
+*		WHERE clientid=:clientid(int) AND done=1 AND complete=1 AND incremental<>0 AND resumed=0
+*		ORDER BY backuptime DESC LIMIT 10
+*/
+std::vector<ServerBackupDao::SDuration> ServerBackupDao::getLastIncrementalDurations(int clientid)
+{
+	if(q_getLastIncrementalDurations==NULL)
+	{
+		q_getLastIncrementalDurations=db->Prepare("SELECT indexing_time_ms, (strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backups  WHERE clientid=? AND done=1 AND complete=1 AND incremental<>0 AND resumed=0 ORDER BY backuptime DESC LIMIT 10", false);
+	}
+	q_getLastIncrementalDurations->Bind(clientid);
+	db_results res=q_getLastIncrementalDurations->Read();
+	q_getLastIncrementalDurations->Reset();
+	std::vector<ServerBackupDao::SDuration> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].indexing_time_ms=watoi64(res[i][L"indexing_time_ms"]);
+		ret[i].duration=watoi64(res[i][L"duration"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<SDuration> ServerBackupDao::getLastFullDurations
+* @return int64 indexing_time_ms, int64 duration 
+* @sql
+*      SELECT indexing_time_ms, (strftime('%s',running)-strftime('%s',backuptime)) AS duration
+*		FROM backups 
+*		WHERE clientid=:clientid(int) AND done=1 AND complete=1 AND incremental=0 AND resumed=0
+*		ORDER BY backuptime DESC LIMIT 1
+*/
+std::vector<ServerBackupDao::SDuration> ServerBackupDao::getLastFullDurations(int clientid)
+{
+	if(q_getLastFullDurations==NULL)
+	{
+		q_getLastFullDurations=db->Prepare("SELECT indexing_time_ms, (strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backups  WHERE clientid=? AND done=1 AND complete=1 AND incremental=0 AND resumed=0 ORDER BY backuptime DESC LIMIT 1", false);
+	}
+	q_getLastFullDurations->Bind(clientid);
+	db_results res=q_getLastFullDurations->Read();
+	q_getLastFullDurations->Reset();
+	std::vector<ServerBackupDao::SDuration> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].indexing_time_ms=watoi64(res[i][L"indexing_time_ms"]);
+		ret[i].duration=watoi64(res[i][L"duration"]);
+	}
+	return ret;
+}
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -633,6 +691,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_copyFromTemporaryNewFilesTable=NULL;
 	q_insertIntoOrigClientSettings=NULL;
 	q_getOrigClientSettings=NULL;
+	q_getLastIncrementalDurations=NULL;
+	q_getLastFullDurations=NULL;
 }
 
 //@-SQLGenDestruction
@@ -665,6 +725,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_copyFromTemporaryNewFilesTable);
 	db->destroyQuery(q_insertIntoOrigClientSettings);
 	db->destroyQuery(q_getOrigClientSettings);
+	db->destroyQuery(q_getLastIncrementalDurations);
+	db->destroyQuery(q_getLastFullDurations);
 }
 
 void ServerBackupDao::commit()

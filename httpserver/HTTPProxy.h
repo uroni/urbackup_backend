@@ -32,7 +32,7 @@ private:
 	IPipe *notify;
 	IPipe *timeoutpipe;
 
-	std::vector<unsigned int> timeouts;
+	std::vector<int64> timeouts;
 	std::vector<IPipe*> output;
 	std::vector<int> sync;
 	std::vector< std::queue<CBuffer> > output_buffer;

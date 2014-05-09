@@ -21,7 +21,7 @@ public:
 	void doExit(void);
 
 private:
-	unsigned int lasttime;
+	int64 lasttime;
 	int clientid;
 
 	int constructCapabilities(void);

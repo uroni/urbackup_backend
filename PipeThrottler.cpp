@@ -19,7 +19,7 @@ void PipeThrottler::addBytes(size_t new_bytes)
 
 	if(throttle_bps==0) return;
 
-	unsigned int ctime=Server->getTimeMS();
+	int64 ctime=Server->getTimeMS();
 
 	if(ctime-lastresettime>1000)
 	{
@@ -29,7 +29,7 @@ void PipeThrottler::addBytes(size_t new_bytes)
 
 	curr_bytes+=new_bytes;
 
-	unsigned int passed_time=ctime-lastresettime;
+	int64 passed_time=ctime-lastresettime;
 	if(passed_time>0)
 	{
 		size_t bps=(size_t)(((_i64)curr_bytes*1000)/passed_time);

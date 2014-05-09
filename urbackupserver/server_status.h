@@ -34,12 +34,14 @@ struct SStatus
 {
 	SStatus(void){ online=false; has_status=false; done=false; statusaction=sa_none; r_online=false; clientid=0; pcdone=-1;
 		prepare_hashqueuesize=0; hashqueuesize=0; starttime=0; action_done=false;
-		comm_pipe=NULL; stop_backup=false; status_error=se_none;}
+		comm_pipe=NULL; stop_backup=false; status_error=se_none; eta_ms=0; eta_set_time=0; }
 
 	std::wstring client;
 	int clientid;
-	unsigned int starttime;
+	int64 starttime;
 	int pcdone;
+	int64 eta_ms;
+	int64 eta_set_time;
 	unsigned int prepare_hashqueuesize;
 	unsigned int hashqueuesize;
 	bool has_status;
@@ -89,7 +91,7 @@ public:
 private:
 	static std::map<std::wstring, SStatus> status;
 	static IMutex *mutex;
-	static unsigned int last_status_update;
+	static int64 last_status_update;
 
 	static int server_nospc_stalled;
 	static bool server_nospc_fatal;

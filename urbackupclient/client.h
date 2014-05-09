@@ -58,7 +58,7 @@ struct SCRef
 #endif
 	int rcount;
 	std::wstring volpath;
-	unsigned int starttime;
+	int64 starttime;
 	std::wstring target;
 	int save_id;
 	bool ok;
@@ -74,7 +74,7 @@ struct SCDirs
 	std::wstring orig_target;
 	bool running;
 	SCRef *ref;
-	unsigned int starttime;
+	int64 starttime;
 	bool fileserv;
 };
 
@@ -217,7 +217,7 @@ private:
 	std::vector<int> include_depth;
 	std::vector<std::wstring> include_prefix;
 
-	unsigned int last_transaction_start;
+	int64 last_transaction_start;
 
 	static std::map<std::wstring, std::wstring> filesrv_share_dirs;
 
@@ -229,7 +229,7 @@ private:
 	int end_to_end_file_backup_verification_enabled;
 	int calculate_filehashes_on_client;
 
-	unsigned int last_tmp_update_time;
+	int64 last_tmp_update_time;
 
 	std::wstring index_root_path;
 	bool index_error;

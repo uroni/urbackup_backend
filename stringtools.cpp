@@ -1746,7 +1746,7 @@ std::string PrettyPrintSpeed(size_t bps)
 	return nconvert(bit_ps/(1000.f*1000.f*1000.f))+" GBit/s";
 }
 
-std::string PrettyPrintTime(unsigned int ms)
+std::string PrettyPrintTime(int64 ms)
 {
 	std::string ret;
 
@@ -1757,7 +1757,7 @@ std::string PrettyPrintTime(unsigned int ms)
 
 	if( ms>c_d)
 	{
-		unsigned int t=ms/c_d;
+		int64 t=ms/c_d;
 		if(!ret.empty()) ret+=" ";
 		ret+=nconvert(t)+" days";
 		ms-=t*c_d;
@@ -1765,7 +1765,7 @@ std::string PrettyPrintTime(unsigned int ms)
 
 	if( ms>c_h)
 	{
-		unsigned int t=ms/c_h;
+		int64 t=ms/c_h;
 		if(!ret.empty()) ret+=" ";
 		ret+=nconvert(t)+"h";
 		ms-=t*c_h;
@@ -1773,7 +1773,7 @@ std::string PrettyPrintTime(unsigned int ms)
 
 	if( ms>c_m)
 	{
-		unsigned int t=ms/c_m;
+		int64 t=ms/c_m;
 		if(!ret.empty()) ret+=" ";
 		ret+=nconvert(t)+"m";
 		ms-=t*c_m;
@@ -1781,7 +1781,7 @@ std::string PrettyPrintTime(unsigned int ms)
 
 	if( ms>c_s)
 	{
-		unsigned int t=ms/c_s;
+		int64 t=ms/c_s;
 		if(!ret.empty()) ret+=" ";
 		ret+=nconvert(t)+"s";
 		ms-=t*c_s;

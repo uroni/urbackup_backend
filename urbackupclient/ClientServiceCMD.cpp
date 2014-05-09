@@ -560,7 +560,9 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 	if(backup_running!=RUNNING_INCR_IMAGE)
 		ret.set("percent_done", pcdone);
 	else
-		ret.set("percent_done", pcdone);
+		ret.set("percent_done", pcdone2);
+
+	ret.set("eta_ms", eta_ms);
 
 	ret.set("currently_running", getCurrRunningJob());
 
@@ -612,6 +614,37 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 			pcdone=-1;
 		else
 			pcdone=atoi(pcdone_new.c_str());
+
+		eta_ms = 0;
+	}
+	last_token_times[server_token]=Server->getTimeSeconds();
+
+#ifdef _WIN32
+	SetThreadExecutionState(ES_SYSTEM_REQUIRED);
+#endif
+}
+
+void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
+{
+	std::string params_str = cmd.substr(14);
+	str_map params;
+	ParseParamStrHttp(params_str, &params, false);
+	tcpstack.Send(pipe, "OK");
+
+	IScopedLock lock(backup_mutex);
+	lasttime=Server->getTimeMS();
+	last_pingtime=Server->getTimeMS();
+
+	if(backup_source_token.empty() || backup_source_token==server_token )
+	{
+		std::wstring pcdone_new=params[L"pc_done"];
+
+		if(pcdone_new.empty())
+			pcdone=-1;
+		else
+			pcdone=watoi(pcdone_new);
+
+		eta_ms = watoi64(params[L"eta_ms"]);
 	}
 	last_token_times[server_token]=Server->getTimeSeconds();
 
@@ -1291,12 +1324,13 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	std::string win_volumes = get_all_volumes_list();
 
 	tcpstack.Send(pipe, "FILE=3&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
-		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str))+
-		"&ALL_VOLUMES="+EscapeParamString(win_volumes);
+		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
+		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1");
 #else
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=3&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"
-		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str));
+		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
+		+"&ETA=1");
 #endif
 }
 

@@ -215,8 +215,8 @@ void ServerUpdateStats::update_images(void)
 
 void ServerUpdateStats::measureSpeed(void)
 {
-	unsigned int ttime=Server->getTimeMS();
-	static unsigned int lasttime=ttime;
+	int64 ttime=Server->getTimeMS();
+	static int64 lasttime=ttime;
 	if(lasttime!=ttime)
 	{
 		float speed=num_updated_files/((ttime-lasttime)/1000.f);
@@ -229,8 +229,8 @@ void ServerUpdateStats::measureSpeed(void)
 void ServerUpdateStats::update_files(void)
 {
 	std::map<int, _i64> size_data=getSizes();
-	unsigned int last_update_time=Server->getTimeMS();
-	unsigned int last_commit_time=Server->getTimeMS();
+	int64 last_update_time=Server->getTimeMS();
+	int64 last_commit_time=Server->getTimeMS();
 	num_updated_files=0;
 
 	files_num_clients_del_cache.clear();

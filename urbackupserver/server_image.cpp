@@ -34,7 +34,8 @@
 #include <memory.h>
 #include <stdlib.h>
 
-const unsigned int stat_update_skip=20;
+const unsigned int status_update_intervall=1000;
+const unsigned int eta_update_intervall=60000;
 const unsigned int sector_size=512;
 const unsigned int sha_size=32;
 const size_t minfreespace_image=1000*1024*1024; //1000 MB
@@ -206,7 +207,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		backupid=createBackupImageSQL(incremental, incremental_ref, clientid, imagefn, pLetter);
 
 	std::string ret;
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	bool first=true;
 	const unsigned int c_buffer_size=32768;
 	char buffer[c_buffer_size];
@@ -246,11 +247,16 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	sha256_init(&shactx);
 
 	_i64 transferred_bytes=0;
-	unsigned int image_backup_starttime=Server->getTimeMS();
+	int64 image_backup_starttime=Server->getTimeMS();
 
 	unsigned int curr_image_recv_timeout=image_recv_timeout;
 
-	unsigned int stat_update_cnt=0;
+	int64 last_status_update=0;
+	int64 last_eta_update=0;
+	int64 last_eta_update_blocks=0;
+	double eta_estimated_speed = 0;
+	status.eta_set_time = Server->getTimeMS();
+
 	int num_hash_errors=0;
 
 	while(Server->getTimeMS()-starttime<=image_timeout)
@@ -598,10 +604,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						if(nextblock<=currblock)
 						{
 							++numblocks;
-							++stat_update_cnt;
-							if(stat_update_cnt%stat_update_skip==0)
+							int64 ctime=Server->getTimeMS();
+							if(ctime-last_status_update>status_update_intervall)
 							{
-								stat_update_cnt=0;
 								if(blockcnt!=0)
 								{
 									if(has_parent)
@@ -613,6 +618,39 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 										status.pcdone=(int)(((double)numblocks/(double)blockcnt)*100.0+0.5);
 									}
 									ServerStatus::setServerStatus(status, true);
+								}
+							}
+
+							if(ctime-last_status_update>eta_update_intervall)
+							{
+								if(blockcnt!=0)
+								{
+									int64 rel_blocks = has_parent?currblock:numblocks;
+									int64 new_blocks = rel_blocks - last_eta_update_blocks;
+									if(new_blocks>0)
+									{
+										last_eta_update_blocks = rel_blocks;
+
+										int64 currtime = Server->getTimeMS();
+										int64 passed_time = currtime - status.eta_set_time;
+										status.eta_set_time = Server->getTimeMS();
+
+										double speed_bpms = static_cast<double>(new_blocks) / passed_time;
+										
+										if(eta_estimated_speed==0)
+										{
+											eta_estimated_speed = speed_bpms;
+										}
+										else
+										{
+											eta_estimated_speed = 0.9*eta_estimated_speed + 0.1*speed_bpms;
+										}
+
+										int64 remaining_blocks = (has_parent?totalblocks:blockcnt)-rel_blocks;
+										status.eta_ms = static_cast<int64>(remaining_blocks/speed_bpms+0.5);
+
+										ServerStatus::setServerStatus(status, true);
+									}									
 								}
 							}
 
@@ -707,7 +745,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							running_updater->stop();
 							updateRunning(true);
 
-							unsigned int passed_time=Server->getTimeMS()-image_backup_starttime;
+							int64 passed_time=Server->getTimeMS()-image_backup_starttime;
 							if(passed_time==0) passed_time=1;
 
 							ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
@@ -865,7 +903,7 @@ do_image_cleanup:
 	{
 		transferred_bytes+=cc->getTransferedBytes();
 	}
-	unsigned int passed_time=Server->getTimeMS()-image_backup_starttime;
+	int64 passed_time=Server->getTimeMS()-image_backup_starttime;
 	if(passed_time==0) passed_time=1;
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time) )), LL_INFO );
 	if(cc!=NULL)

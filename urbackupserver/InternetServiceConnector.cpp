@@ -26,7 +26,7 @@ IMutex *InternetServiceConnector::mutex=NULL;
 IMutex *InternetServiceConnector::onetime_token_mutex=NULL;
 std::map<unsigned int, SOnetimeToken> InternetServiceConnector::onetime_tokens;
 unsigned int InternetServiceConnector::onetime_token_id=0;
-unsigned int InternetServiceConnector::last_token_remove=0;
+int64 InternetServiceConnector::last_token_remove=0;
 
 extern ICryptoFactory *crypto_fak;
 const size_t pbkdf2_iterations=20000;
@@ -432,7 +432,7 @@ void InternetServiceConnector::destroy_mutex(void)
 IPipe *InternetServiceConnector::getConnection(const std::string &clientname, char service, int timeoutms)
 {
 
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	do
 	{
 		IScopedLock lock(mutex);
@@ -454,7 +454,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 
 			lock.relock(NULL);
 
-			unsigned int rtime=Server->getTimeMS()-starttime;
+			int64 rtime=Server->getTimeMS()-starttime;
 			if((int)rtime<timeoutms)
 				rtime=timeoutms-rtime;
 			else
@@ -462,7 +462,7 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 
 			if(rtime<100) rtime=100;			
 							
-			if(!isc->Connect(service, rtime))
+			if(!isc->Connect(service, static_cast<int>(rtime)))
 			{
 				//Automatically freed
 				Server->Log("Connecting on internet connection failed. Service="+nconvert((int)service), LL_DEBUG);
@@ -570,7 +570,7 @@ std::vector<std::pair<std::string, std::string> > InternetServiceConnector::getO
 	std::vector<std::pair<std::string, std::string> > ret;
 
 	IScopedLock lock(mutex);
-	unsigned int ct=Server->getTimeMS();
+	int64 ct=Server->getTimeMS();
 
 	if(ct-last_token_remove>30*60*1000)
 	{
@@ -685,7 +685,7 @@ bool InternetServiceConnector::hasClient(const std::string &clientname, bool &db
 void InternetServiceConnector::removeOldTokens(void)
 {
 	IScopedLock lock(onetime_token_mutex);
-	unsigned int tt=Server->getTimeMS();
+	int64 tt=Server->getTimeMS();
 	std::vector<unsigned int> todel;
 	for(std::map<unsigned int, SOnetimeToken>::iterator it=onetime_tokens.begin();it!=onetime_tokens.end();++it)
 	{

@@ -98,10 +98,10 @@ size_t CompressedPipe::Read(char *buffer, size_t bsize, int timeoutms)
 		return rc;
 	}
 
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	do
 	{
-		unsigned int left=timeoutms-(Server->getTimeMS()-starttime);
+		int left=timeoutms-static_cast<int>(Server->getTimeMS()-starttime);
 
 		rc=cs->Read(buffer, bsize, left);
 		if(rc==0)
@@ -113,7 +113,7 @@ size_t CompressedPipe::Read(char *buffer, size_t bsize, int timeoutms)
 		}
 		rc=ReadToBuffer(buffer, bsize);
 	}
-	while(rc==0 && Server->getTimeMS()-starttime<(unsigned int)timeoutms);
+	while(rc==0 && Server->getTimeMS()-starttime<static_cast<int64>(timeoutms));
 
 	return rc;
 }
@@ -232,10 +232,10 @@ size_t CompressedPipe::Read(std::string *ret, int timeoutms)
 		return rc;
 	}
 
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	do
 	{
-		unsigned int left=timeoutms-(Server->getTimeMS()-starttime);
+		int left=timeoutms-static_cast<int>(Server->getTimeMS()-starttime);
 
 		rc=cs->Read(ret, left);
 		if(rc==0)
@@ -248,7 +248,7 @@ size_t CompressedPipe::Read(std::string *ret, int timeoutms)
 		}
 		rc=ReadToString(ret);
 	}
-	while(rc==0 && Server->getTimeMS()-starttime<(unsigned int)timeoutms);
+	while(rc==0 && Server->getTimeMS()-starttime<static_cast<int64>(timeoutms));
 
 	return rc;
 }

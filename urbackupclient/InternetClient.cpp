@@ -29,7 +29,7 @@ const unsigned int pbkdf2_iterations=20000;
 IMutex *InternetClient::mutex=NULL;
 bool InternetClient::connected=NULL;
 size_t InternetClient::n_connections=0;
-unsigned int InternetClient::last_lan_connection=0;
+int64 InternetClient::last_lan_connection=0;
 bool InternetClient::update_settings=false;
 SServerSettings InternetClient::server_settings;
 ICondition *InternetClient::wakeup_cond=NULL;
@@ -76,9 +76,9 @@ void InternetClient::hasLANConnection(void)
 	last_lan_connection=Server->getTimeMS();
 }
 
-unsigned int InternetClient::timeSinceLastLanConnection()
+int64 InternetClient::timeSinceLastLanConnection()
 {
-	unsigned int ctime=Server->getTimeMS();
+	int64 ctime=Server->getTimeMS();
 	IScopedLock lock(mutex);
 
 	if(ctime>last_lan_connection)
@@ -372,7 +372,7 @@ InternetClientThread::InternetClientThread(IPipe *cs, const SServerSettings &ser
 
 char *InternetClientThread::getReply(CTCPStack *tcpstack, IPipe *pipe, size_t &replysize, unsigned int timeoutms)
 {
-	unsigned int starttime=Server->getTimeMS();
+	int64 starttime=Server->getTimeMS();
 	char *buf;
 	while(Server->getTimeMS()-starttime<timeoutms)
 	{

@@ -72,8 +72,8 @@ public:
 	virtual void setActionContext(std::wstring context);
 	virtual void resetActionContext(void);
 
-	virtual unsigned int getTimeSeconds(void);
-	virtual unsigned int getTimeMS(void);
+	virtual int64 getTimeSeconds(void);
+	virtual int64 getTimeMS(void);
 
 	virtual bool LoadDLL(const std::string &name);
 	virtual bool UnloadDLL(const std::string &name);
