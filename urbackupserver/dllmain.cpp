@@ -1114,8 +1114,8 @@ void upgrade32_33()
 void upgrade33_34()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	db->Write("ALTER TABLE backups ADD indexing_time_s INTEGER");
-	db->Write("UPDATE backups SET indexing_time_s=0 WHERE indexing_time_s IS NULL");
+	db->Write("ALTER TABLE backups ADD indexing_time_ms INTEGER");
+	db->Write("UPDATE backups SET indexing_time_ms=0 WHERE indexing_time_ms IS NULL");
 }
 
 void upgrade(void)
