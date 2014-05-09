@@ -1729,33 +1729,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 				if(ctime-last_eta_update>eta_update_intervall)
 				{
-					last_eta_update=ctime;
-
-					int64 received_data_bytes = fc.getReceivedDataBytes();
-
-					int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
-					int64 passed_time = Server->getTimeMS() - status.eta_set_time;
-					
-					status.eta_set_time = Server->getTimeMS();
-
-					double speed_bpms = static_cast<double>(new_bytes)/passed_time;
-
-					if(eta_estimated_speed==0)
-					{
-						eta_estimated_speed = speed_bpms;
-					}
-					else
-					{
-						eta_estimated_speed = eta_estimated_speed*0.9 + eta_estimated_speed*0.1;
-					}
-
-					if(last_eta_received_bytes>0)
-					{
-						status.eta_ms = static_cast<int64>((files_size-received_data_bytes)/eta_estimated_speed + 0.5);
-						ServerStatus::setServerStatus(status, true);
-					}
-
-					last_eta_received_bytes = received_data_bytes;
+					calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, last_eta_received_bytes, eta_estimated_speed, files_size);
 				}
 
 				if(server_download->isOffline())
@@ -1850,6 +1824,12 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		status.hashqueuesize=(_u32)hashpipe->getNumElements();
 		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 		ServerStatus::setServerStatus(status, true);
+
+		int64 ctime = Server->getTimeMS();
+		if(ctime-last_eta_update>eta_update_intervall)
+		{
+			calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, last_eta_received_bytes, eta_estimated_speed, files_size);
+		}
 	}
 
 	if(server_download->isOffline())
@@ -2439,33 +2419,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 				if(ctime-last_eta_update>eta_update_intervall)
 				{
-					last_eta_update=ctime;
-
-					int64 received_data_bytes = fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0);
-
-					int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
-					int64 passed_time = Server->getTimeMS() - status.eta_set_time;
-
-					status.eta_set_time = Server->getTimeMS();
-
-					double speed_bpms = static_cast<double>(new_bytes)/passed_time;
-
-					if(eta_estimated_speed==0)
-					{
-						eta_estimated_speed = speed_bpms;
-					}
-					else
-					{
-						eta_estimated_speed = eta_estimated_speed*0.9 + eta_estimated_speed*0.1;
-					}
-
-					if(last_eta_received_bytes>0)
-					{
-						status.eta_ms = static_cast<int64>((files_size-received_data_bytes)/eta_estimated_speed + 0.5);
-						ServerStatus::setServerStatus(status, true);
-					}
-
-					last_eta_received_bytes = received_data_bytes;
+					calculateEtaFileBackup(last_eta_update, ctime, fc, fc_chunked.get(), last_eta_received_bytes, eta_estimated_speed, files_size);
 				}
 
 				if(server_download->isOffline() && !r_offline)
@@ -2725,8 +2679,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		if(read<4096)
 			break;
 	}
-	status.pcdone=100;
-	ServerStatus::setServerStatus(status, true);
 
 	server_download->queueStop();
 
@@ -2743,6 +2695,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		status.hashqueuesize=(_u32)hashpipe->getNumElements();
 		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
 		ServerStatus::setServerStatus(status, true);
+
+		int64 ctime = Server->getTimeMS();
+		if(ctime-last_eta_update>eta_update_intervall)
+		{
+			calculateEtaFileBackup(last_eta_update, ctime, fc, fc_chunked.get(), last_eta_received_bytes, eta_estimated_speed, files_size);
+		}
 	}
 
 	if(server_download->isOffline())
@@ -4819,4 +4777,35 @@ bool BackupServerGet::authenticatePubKey()
 	{
 		return false;
 	}
+}
+
+void BackupServerGet::calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size )
+{
+	last_eta_update=ctime;
+
+	int64 received_data_bytes = fc.getReceivedDataBytes() + (fc_chunked?fc_chunked->getReceivedDataBytes():0);
+
+	int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
+	int64 passed_time = Server->getTimeMS() - status.eta_set_time;
+
+	status.eta_set_time = Server->getTimeMS();
+
+	double speed_bpms = static_cast<double>(new_bytes)/passed_time;
+
+	if(eta_estimated_speed==0)
+	{
+		eta_estimated_speed = speed_bpms;
+	}
+	else
+	{
+		eta_estimated_speed = eta_estimated_speed*0.9 + eta_estimated_speed*0.1;
+	}
+
+	if(last_eta_received_bytes>0)
+	{
+		status.eta_ms = static_cast<int64>((files_size-received_data_bytes)/eta_estimated_speed + 0.5);
+		ServerStatus::setServerStatus(status, true);
+	}
+
+	last_eta_received_bytes = received_data_bytes;
 }
