@@ -1701,6 +1701,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		{
 			r_done=true;
 			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
+			server_download->queueStop(true);
 			break;
 		}
 
@@ -1809,7 +1810,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 			break;
 	}
 
-	server_download->queueStop();
+	server_download->queueStop(false);
 
 	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
 	{
@@ -2369,6 +2370,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				r_offline=true;
 				backup_stopped=true;
 				ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
+				server_download->queueSkip();
 			}
 		}
 
@@ -2680,7 +2682,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			break;
 	}
 
-	server_download->queueStop();
+	server_download->queueStop(false);
 
 	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
 	{
@@ -2703,7 +2705,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 	}
 
-	if(server_download->isOffline())
+	if(server_download->isOffline() && !r_offline)
 	{
 		ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 		r_offline=true;
@@ -2723,7 +2725,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				{
 					writeFileItem(clientlist, cf);
 				}
-				else if( server_download->isDownloadOk(line))
+				else if( server_download->isDownloadOk(line) )
 				{
 					writeFileItem(clientlist, cf);
 				}

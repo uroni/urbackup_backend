@@ -27,7 +27,8 @@ enum EQueueAction
 	EQueueAction_Fileclient,
 	EQueueAction_Quit,
 	EQueueAction_StopShadowcopy,
-	EQueueAction_StartShadowcopy
+	EQueueAction_StartShadowcopy,
+	EQueueAction_Skip
 };
 
 struct SPatchDownloadFiles
@@ -84,7 +85,9 @@ public:
 
 	void addToQueueStopShadowcopy(const std::wstring& fn);
 
-	void queueStop();
+	void queueStop(bool immediately);
+
+	void queueSkip();
 	
 	bool load_file(SQueueItem todl);
 		
@@ -137,6 +140,7 @@ private:
 	IPipe* hashpipe_prepare;
 	BackupServerGet* server_get;
 	int filesrv_protocol_version;
+	bool skipping;
 
 	bool is_offline;
 

@@ -20,7 +20,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
-	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version)
+	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -57,8 +57,12 @@ void ServerDownloadThread::operator()( void )
 		{
 			break;
 		}
+		else if(curr.action=EQueueAction_Skip)
+		{
+			skipping = true;
+		}
 
-		if(is_offline)
+		if(is_offline || skipping)
 		{
 			download_nok_ids.push_back(curr.id);
 
@@ -516,13 +520,20 @@ bool ServerDownloadThread::isOffline()
 	return is_offline;
 }
 
-void ServerDownloadThread::queueStop()
+void ServerDownloadThread::queueStop(bool immediately)
 {
 	SQueueItem ni;
 	ni.action = EQueueAction_Quit;
 
 	IScopedLock lock(mutex);
-	dl_queue.push_back(ni);
+	if(immediately)
+	{
+		dl_queue.push_front(ni);
+	}
+	else
+	{
+		dl_queue.push_back(ni);
+	}
 	cond->notify_one();
 }
 
@@ -747,4 +758,14 @@ void ServerDownloadThread::sleepQueue(IScopedLock& lock)
 		Server->wait(1000);
 		lock.relock(mutex);
 	}
+}
+
+void ServerDownloadThread::queueSkip()
+{
+	SQueueItem ni;
+	ni.action = EQueueAction_Skip;
+
+	IScopedLock lock(mutex);
+	dl_queue.push_front(ni);
+	cond->notify_one();
 }
