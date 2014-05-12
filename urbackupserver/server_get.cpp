@@ -856,7 +856,7 @@ void BackupServerGet::operator ()(void)
 					ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
 					last_file_backup_try=Server->getTimeSeconds();
 					++count_file_backup_try;
-					ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeFile()) + " before next file backup", LL_WARNING);
+					ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeFile()*1000) + " before next file backup", LL_WARNING);
 				}
 				else
 				{
@@ -877,7 +877,7 @@ void BackupServerGet::operator ()(void)
 					ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
 					last_image_backup_try=Server->getTimeSeconds();
 					++count_image_backup_try;
-					ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeImage()) + " before next image backup", LL_WARNING);					
+					ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeImage()*1000) + " before next image backup", LL_WARNING);					
 				}
 				else
 				{
@@ -1955,7 +1955,8 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 
 	bool tries_once;
 	std::wstring ff_last;
-	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), tries_once, ff_last);
+	bool hardlink_limit;
+	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), tries_once, ff_last, hardlink_limit);
 
 	if(ok && add_sql)
 	{

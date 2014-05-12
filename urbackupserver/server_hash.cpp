@@ -383,8 +383,11 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 	}
 }
 
-bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last)
+bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2,
+	bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit)
 {
+	hardlink_limit=false;
+
 	int f_backupid;
 	std::wstring ff;
 	std::wstring f_hashpath;
@@ -416,10 +419,13 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 			if(too_many_hardlinks)
 			{
 				ServerLogger::Log(clientid, L"HT: Hardlinking failed (Maximum hardlink count reached): \""+ff+L"\"", LL_DEBUG);
+				hardlink_limit = true;
 				break;
 			}
 			else
 			{
+				hardlink_limit = false;
+
 				IFile *ctf=Server->openFile(os_file_prefix(ff), MODE_READ);
 				if(ctf==NULL)
 				{
@@ -441,7 +447,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 				else
 				{
 					Server->destroy(ctf);
-					ServerLogger::Log(clientid, L"HT: Hardlinking failed (Maximum hardlink count reached?): \""+ff+L"\"", LL_DEBUG);
+					ServerLogger::Log(clientid, L"HT: Hardlinking failed (unkown error): \""+ff+L"\"", LL_DEBUG);
 					break;
 				}		
 			}
@@ -526,7 +532,8 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 	bool copy=true;
 	bool tries_once;
 	std::wstring ff_last;
-	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn, tries_once, ff_last))
+	bool hardlink_limit;
+	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn, tries_once, ff_last, hardlink_limit))
 	{
 		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 		copy=false;
@@ -538,7 +545,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		++tmp_count;
 	}
 
-	if(tries_once && copy)
+	if(tries_once && copy && !hardlink_limit)
 	{
 		if(link_logcnt<5)
 		{
