@@ -14,7 +14,7 @@ unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
 
 ChunkSendThread::ChunkSendThread(CClientThread *parent)
-	: parent(parent), file(NULL)
+	: parent(parent), file(NULL), has_error(false)
 {
 	chunk_buf=new char[(c_checkpoint_dist/c_chunk_size)*(c_chunk_size)+c_chunk_padding];
 }
@@ -27,11 +27,14 @@ ChunkSendThread::~ChunkSendThread(void)
 void ChunkSendThread::operator()(void)
 {
 	SChunk chunk;
-	while(parent->getNextChunk(&chunk))
+	while(parent->getNextChunk(&chunk, has_error))
 	{
 		if(chunk.msg != ID_ILLEGAL)
 		{
-			parent->SendInt(reinterpret_cast<char*>(&chunk.msg), 1);
+			if(parent->SendInt(reinterpret_cast<char*>(&chunk.msg), 1)==SOCKET_ERROR)
+			{
+				has_error = true;
+			}
 		}
 		else if(chunk.update_file!=NULL)
 		{
@@ -46,7 +49,10 @@ void ChunkSendThread::operator()(void)
 			CWData sdata;
 			sdata.addUChar(ID_FILESIZE);
 			sdata.addUInt64(little_endian(curr_file_size));
-			parent->SendInt(sdata.getDataPtr(), sdata.getDataSize());
+			if(parent->SendInt(sdata.getDataPtr(), sdata.getDataSize())!=sdata.getDataSize())
+			{
+				has_error = true;
+			}
 		}
 		else
 		{
@@ -54,7 +60,10 @@ void ChunkSendThread::operator()(void)
 			{
 				Sleep(500);
 			}
-			sendChunk(&chunk);
+			if(!sendChunk(&chunk))
+			{
+				has_error = true;
+			}
 		}
 	}
 	if(file!=NULL)
@@ -113,7 +122,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			if(r+off>0)
 			{
 				if(parent->SendInt(chunk_buf, off+r)==SOCKET_ERROR)
+				{
+					Log("Error sending whole block", LL_DEBUG);
 					return false;
+				}
 
 				if( FileServ::isPause() ) Sleep(500);
 
@@ -135,7 +147,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
 
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
+		{
+			Log("Error sending block hash", LL_DEBUG);
 			return false;
+		}
 
 		if( FileServ::isPause() ) Sleep(500);
 
@@ -193,7 +208,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 					Log("Sending chunk start="+nconvert(curr_pos)+" size="+nconvert(r), LL_DEBUG);
 
 					if(parent->SendInt(cptr-c_chunk_padding, c_chunk_padding+r)==SOCKET_ERROR)
+					{
+						Log("Error sending chunk", LL_DEBUG);
 						return false;
+					}
 
 					if( FileServ::isPause() ) Sleep(500);
 
@@ -220,7 +238,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		unsigned int read_total_tmp = little_endian(read_total);
 		memcpy(chunk_buf+1+sizeof(_i64), &read_total_tmp, sizeof(_u32));
 		if(parent->SendInt(chunk_buf, read_total+1+sizeof(_i64)+sizeof(_u32))==SOCKET_ERROR)
+		{
+			Log("Error sending whole block", LL_DEBUG);
 			return false;
+		}
 
 		if( FileServ::isPause() ) Sleep(500);
 
@@ -228,7 +249,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
+		{
+			Log("Error sending whole block hash", LL_DEBUG);
 			return false;
+		}
 
 		if( FileServ::isPause() ) Sleep(500);
 	}
@@ -238,7 +262,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		_i64 chunk_startpos = little_endian(chunk->startpos);
 		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64))==SOCKET_ERROR)
+		{
+			Log("Error sending no change", LL_DEBUG);
 			return false;
+		}
 
 		if( FileServ::isPause() ) Sleep(500);
 	}
@@ -249,7 +276,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 		memcpy(chunk_buf+1+sizeof(_i64), md5_hash.raw_digest_int(), big_hash_size);
 		if(parent->SendInt(chunk_buf, 1+sizeof(_i64)+big_hash_size)==SOCKET_ERROR)
+		{
+			Log("Error sending block hash");
 			return false;
+		}
 
 		if( FileServ::isPause() ) Sleep(500);
 	}

@@ -657,7 +657,7 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 		patch_buf_pos=0;
 		hash_for_whole_block=false;
 		chunk_start=block_start;
-		VLOG(Server->Log("Chunk is in new block", LL_DEBUG));
+		VLOG(Server->Log("Chunk is in new block. block_start="+nconvert(block_start)+" block_for_chunk_start="+nconvert(block_for_chunk_start), LL_DEBUG));
 	}
 	else
 	{
@@ -699,7 +699,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			if(dest_pos>remote_filesize)
 				dest_pos=remote_filesize;
 
-			VLOG(Server->Log("dest_pos="+nconvert(dest_pos), LL_DEBUG));
+			VLOG(Server->Log("dest_pos="+nconvert(dest_pos)+" chunk_start="+nconvert(chunk_start), LL_DEBUG));
 		
 			char buf2[BUFFERSIZE];
 			m_file->Seek(chunk_start);
@@ -722,6 +722,10 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 
 		block_for_chunk_start=-1;
 		md5_hash.finalize();
+	}
+	else
+	{
+		VLOG(Server->Log("Whole block. currpos="+nconvert(curr_pos)+" block_for_chunk_start="+nconvert(block_for_chunk_start)+" chunk_start="+nconvert(chunk_start), LL_DEBUG));
 	}
 
 	if(memcmp(hash_from_client, md5_hash.raw_digest_int(), big_hash_size)!=0)

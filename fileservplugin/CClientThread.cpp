@@ -37,7 +37,7 @@
 
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
-#define SEND_TIMEOUT 10000
+#define SEND_TIMEOUT 300000
 
 #ifdef _WIN32
 bool isDirectory(const std::wstring &path)
@@ -1155,15 +1155,22 @@ bool CClientThread::Handle_ID_BLOCK_REQUEST(CRData *data)
 	return true;
 }
 
-bool CClientThread::getNextChunk(SChunk *chunk)
+bool CClientThread::getNextChunk(SChunk *chunk, bool has_error)
 {
 	IScopedLock lock(mutex);
+
+	if(has_error)
+	{
+		clientpipe->shutdown();
+		return false;
+	}
+	
 	while(next_chunks.empty() && state==CS_BLOCKHASH)
 	{
 		cond->wait(&lock);
 	}
 
-	if(!next_chunks.empty())
+	if(!next_chunks.empty() && state==CS_BLOCKHASH)
 	{
 		*chunk=next_chunks.front();
 		next_chunks.pop();

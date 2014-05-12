@@ -101,7 +101,7 @@ public:
 	void StopThread(void);
 
 	int SendInt(const char *buf, size_t bsize);
-	bool getNextChunk(SChunk *chunk);
+	bool getNextChunk(SChunk *chunk, bool has_error);
 private:
 
 	bool RecvMessage(void);

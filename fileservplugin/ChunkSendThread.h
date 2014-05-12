@@ -25,5 +25,7 @@ private:
 
 	char *chunk_buf;
 
+	bool has_error;
+
 	MD5 md5_hash;
 };
