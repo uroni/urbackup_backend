@@ -53,6 +53,7 @@ public:
 		{
 		public:
 			virtual std::string getQueuedFileFull() = 0;
+			virtual void unqueueFileFull(const std::string& fn) = 0;
 			virtual void resetQueueFull() = 0;
 		};
 

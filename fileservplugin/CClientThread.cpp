@@ -577,7 +577,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				{
 					CWData data;
 					data.addUChar(ID_FILESIZE);
-					data.addUInt64(little_endian(filesize));
+					data.addUInt64(little_endian(static_cast<uint64>(filesize)));
 
 					int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
 					if(rc==SOCKET_ERROR)

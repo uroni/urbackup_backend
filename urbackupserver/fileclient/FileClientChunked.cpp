@@ -177,6 +177,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		{			
 			while(queuedChunks()<c_max_queued_chunks && next_chunk<num_total_chunks)
 			{
+				if(!pipe->isWritable())
+				{
+					break;
+				}
+
 				if(next_chunk<num_chunks)
 				{
 					m_chunkhashes->Seek(chunkhash_file_off+next_chunk*chunkhash_single_size);
@@ -190,7 +195,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 					{
 						memset(&buf[2*sizeof(char)+sizeof(_i64)+r], 0, chunkhash_single_size-r);
 					}
-					stack->Send( pipe, buf, chunkhash_single_size+2*sizeof(char)+sizeof(_i64));
+					const size_t send_size = chunkhash_single_size+2*sizeof(char)+sizeof(_i64);
+					if(stack->Send( pipe, buf, send_size) != send_size)
+					{
+						break;
+					}
 
 					char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
 					SChunkHashes chhash;
@@ -204,7 +213,10 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 					data.addUChar(ID_BLOCK_REQUEST);
 					data.addInt64(next_chunk*c_checkpoint_dist);
 					data.addChar(1);
-					stack->Send( pipe, data.getDataPtr(), data.getDataSize());
+					if(stack->Send( pipe, data.getDataPtr(), data.getDataSize()) != data.getDataSize() )
+					{
+						break;
+					}
 
 					pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, SChunkHashes() ));
 				}
@@ -233,7 +245,9 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 			IFile* hashoutput;
 			_i64 predicted_filesize;
 
-			if(queue_callback && queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize))
+			if(queue_callback && 
+				pipe->isWritable() &&
+				queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize))
 			{
 				did_queue_fc=true;
 
@@ -252,8 +266,25 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 				next->setQueueCallback(queue_callback);
 
 				next->setQueueOnly(true);
-				next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize);
-				next->setQueueOnly(false);				
+				if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize)!=ERR_SUCCESS)
+				{
+					if(parent)
+					{
+						parent->queued_fcs.pop();
+					}
+					else
+					{
+						queued_fcs.pop();
+					}
+					delete next;
+					did_queue_fc=false;
+
+					queue_callback->unqueueFileChunked(remotefn);
+				}
+				else
+				{
+					next->setQueueOnly(false);
+				}
 			}
 		}
 

@@ -48,6 +48,7 @@ public:
 	{
 	public:
 		virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize) = 0;
+		virtual void unqueueFileChunked(const std::string& remotefn) = 0;
 		virtual void resetQueueChunked() = 0;
 	};
 

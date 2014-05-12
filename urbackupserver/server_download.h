@@ -107,6 +107,10 @@ public:
 
 	virtual std::string getQueuedFileFull();
 
+	virtual void unqueueFileFull(const std::string& fn);
+
+	virtual void unqueueFileChunked(const std::string& remotefn);
+
 	virtual void resetQueueChunked();
 
 private:

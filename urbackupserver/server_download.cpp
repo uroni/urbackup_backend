@@ -769,3 +769,35 @@ void ServerDownloadThread::queueSkip()
 	dl_queue.push_front(ni);
 	cond->notify_one();
 }
+
+void ServerDownloadThread::unqueueFileFull( const std::string& fn )
+{
+	IScopedLock lock(mutex);
+	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
+		it!=dl_queue.end();++it)
+	{
+		if(it->action==EQueueAction_Fileclient && 
+			it->queued && it->fileclient==EFileClient_Full
+			&& Server->ConvertToUTF8(getDLPath(*it)) == fn)
+		{
+			it->queued=false;
+			return;
+		}
+	}
+}
+
+void ServerDownloadThread::unqueueFileChunked( const std::string& remotefn )
+{
+	IScopedLock lock(mutex);
+	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
+		it!=dl_queue.end();++it)
+	{
+		if(it->action==EQueueAction_Fileclient && 
+			it->queued && it->fileclient==EFileClient_Chunked
+			&& Server->ConvertToUTF8(getDLPath(*it)) == remotefn )
+		{
+			it->queued=false;
+			return;
+		}
+	}
+}

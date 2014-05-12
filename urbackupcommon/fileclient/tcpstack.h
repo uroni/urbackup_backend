@@ -9,6 +9,8 @@
 
 class CWData;
 
+const int c_default_timeout = 10000;
+
 class CTCPStack
 {
 public:
@@ -17,9 +19,9 @@ public:
 
 	char* getPacket(size_t* packsize);
 
-	size_t Send(IPipe* p, char* buf, size_t msglen);
-	size_t Send(IPipe* p, CWData data);
-	size_t Send(IPipe* p, const std::string &msg);
+	size_t Send(IPipe* p, char* buf, size_t msglen, int timeoutms = c_default_timeout);
+	size_t Send(IPipe* p, CWData data, int timeoutms = c_default_timeout);
+	size_t Send(IPipe* p, const std::string &msg, int timeoutms = c_default_timeout);
 
     void reset(void);
 

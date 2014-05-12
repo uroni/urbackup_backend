@@ -139,7 +139,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 			written+=rc;
 			if( written<bsize )
 			{
-				return Write(buffer+written, bsize-written, timeoutms);
+				return Write(buffer+written, bsize-written, -1);
 			}
 		}
 		else

@@ -22,7 +22,6 @@
 #include "../../stringtools.h"
 #include <memory.h>
 
-#define SEND_TIMEOUT 10000
 #define MAX_PACKET 4096
 
 const unsigned int checksum_len=16;
@@ -42,7 +41,7 @@ void CTCPStack::AddData(char* buf, size_t datasize)
 	}
 }
 
-size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen)
+size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms)
 {
 	char* buffer;
 	size_t msg_off=sizeof(MAX_PACKETSIZE);
@@ -76,10 +75,12 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen)
 
 	size_t currpos=0;
 
+	bool first_packet = true;
 	while(currpos<packet_len)
 	{
 		size_t ts=(std::min)((size_t)MAX_PACKET, packet_len-currpos);
-		bool b=p->Write(&buffer[currpos], ts, SEND_TIMEOUT );
+		bool b=p->Write(&buffer[currpos], ts, first_packet ? timeoutms : -1 );
+		first_packet=false;
 		currpos+=ts;
 		if(!b)
 		{
@@ -92,14 +93,14 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen)
 	return msglen;
 }
 
-size_t  CTCPStack::Send(IPipe* p, CWData data)
+size_t  CTCPStack::Send(IPipe* p, CWData data, int timeoutms)
 {
-	return Send(p, data.getDataPtr(), data.getDataSize() );
+	return Send(p, data.getDataPtr(), data.getDataSize(), timeoutms);
 }
 
-size_t CTCPStack::Send(IPipe* p, const std::string &msg)
+size_t CTCPStack::Send(IPipe* p, const std::string &msg, int timeoutms)
 {
-	return Send(p, (char*)msg.c_str(), msg.size());
+	return Send(p, (char*)msg.c_str(), msg.size(), timeoutms);
 }
 
 

@@ -1049,6 +1049,11 @@ void FileClient::fillQueue()
 
 	while(queued.size()<maxQueuedFiles)
 	{
+		if(!tcpsock->isWritable())
+		{
+			return;
+		}
+
 		std::string queue_fn = queue_callback->getQueuedFileFull();
 
 		if(queue_fn.empty())
@@ -1061,7 +1066,12 @@ void FileClient::fillQueue()
 		data.addString( queue_fn );
 		data.addString( identity );
 
-		stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		{
+			Server->Log("Queueing file failed", LL_DEBUG);
+			queue_callback->unqueueFileFull(queue_fn);
+			return;
+		}
 
 		queued.push_back(queue_fn);
 	}
