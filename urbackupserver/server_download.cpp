@@ -57,7 +57,7 @@ void ServerDownloadThread::operator()( void )
 		{
 			break;
 		}
-		else if(curr.action=EQueueAction_Skip)
+		else if(curr.action==EQueueAction_Skip)
 		{
 			skipping = true;
 		}

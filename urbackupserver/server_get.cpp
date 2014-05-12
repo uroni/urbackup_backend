@@ -998,7 +998,7 @@ void BackupServerGet::prepareSQL(void)
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
 	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=(SELECT backuptime FROM backup_images WHERE id=?) WHERE id=?", false);
-	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path,indexing_time_ms,(strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path,(strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
 	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);

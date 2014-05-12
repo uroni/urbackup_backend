@@ -654,7 +654,11 @@ bool FileClient::Reconnect(void)
 		data.addString( remotefn );
 		data.addString( identity );
 
-		stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		{
+			Server->Log("Timeout during file request (1)", LL_ERROR);
+			return ERR_TIMEOUT;
+		}
 	}
 	else
 	{
@@ -976,7 +980,11 @@ bool FileClient::Reconnect(void)
 
 				file->Seek(received);
 
-				stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+				{
+					Server->Log("Timeout during file request (2)", LL_ERROR);
+					return ERR_TIMEOUT;
+				}
 				starttime=Server->getTimeMS();
 
 				if(protocol_version>0)

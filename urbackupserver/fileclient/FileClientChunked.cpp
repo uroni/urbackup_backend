@@ -146,7 +146,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 			data.addInt64(remote_filesize);
 		}
 
-		stack->Send( pipe, data.getDataPtr(), data.getDataSize() );
+		if(stack->Send( pipe, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		{
+			Server->Log("Timout during file request (3)", LL_ERROR);
+			return ERR_TIMEOUT;
+		}
 
 		next_chunk=0;
 	}
