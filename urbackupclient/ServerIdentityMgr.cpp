@@ -107,7 +107,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 	online_identities.clear();
 	std::string data=getFile(server_ident_file);
 	int numl=linecount(data);
-	for(int i=0;i<numl;++i)
+	for(int i=0;i<=numl;++i)
 	{
 		std::string l=trim(getline(i, data));
 		if(!l.empty() && l[0]=='#')
@@ -146,7 +146,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 	new_identities.clear();
 	data=getFile(server_new_ident_file);
 	numl=linecount(data);
-	for(int i=0;i<numl;++i)
+	for(int i=0;i<=numl;++i)
 	{
 		std::string l=trim(getline(i, data));
 		if(l.size()>5)
@@ -159,7 +159,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 	session_identities.clear();
 	data=getFile(server_session_ident_file);
 	numl=linecount(data);
-	for(int i=0;i<numl;++i)
+	for(int i=0;i<=numl;++i)
 	{
 		std::string l=trim(getline(i, data));
 		if(l.size()>5)
