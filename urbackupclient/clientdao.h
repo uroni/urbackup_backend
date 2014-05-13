@@ -79,7 +79,8 @@ struct SFileAndHash
 		return name == other.name &&
 			size == other.size &&
 			last_modified == other.last_modified &&
-			isdir == other.isdir;
+			isdir == other.isdir &&
+			hash == other.hash;
 	}
 };
 

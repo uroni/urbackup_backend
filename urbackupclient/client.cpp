@@ -613,6 +613,7 @@ void IndexThread::indexDirs(void)
 
 	_i64 last_filebackup_filetime_new = DirectoryWatcherThread::get_current_filetime();
 #endif
+
 	std::sort(changed_dirs.begin(), changed_dirs.end());
 
 
@@ -1044,9 +1045,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 	{
 		path = os_file_sep();
 	}
+	std::wstring path_lower=orig_path + os_file_sep();
+#else
+	std::wstring path_lower=strlower(orig_path+os_file_sep());
 #endif
 
-	std::wstring path_lower=strlower(orig_path+os_file_sep());
 	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
 #ifdef _WIN32
 
@@ -1093,7 +1096,16 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		}
 
 		std::vector<SFileAndHash> db_files;
-		bool has_files=cd->getFiles(path_lower, db_files);
+		bool has_files=false;
+		
+#ifndef _WIN32
+		if(calculate_filehashes_on_client)
+		{
+#endif
+			has_files = cd->getFiles(path_lower, db_files);
+#ifndef _WIN32
+		}
+#endif
 
 #ifdef _WIN32
 		if(it_dir!=changed_dirs.end())
@@ -1156,8 +1168,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 		if( has_files)
 		{
-			++index_c_db_update;
-			modifyFilesInt(path_lower, tmp);
+			if(tmp!=db_files)
+			{
+				++index_c_db_update;
+				modifyFilesInt(path_lower, tmp);
+			}
 		}
 		else
 		{
