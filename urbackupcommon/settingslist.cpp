@@ -120,5 +120,6 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"global_soft_fs_quota");
 	ret.push_back(L"filescache_type");
 	ret.push_back(L"filescache_size");
+	ret.push_back(L"trust_client_hashes");
 	return ret;
 }

@@ -31,6 +31,7 @@
 #include "InternetServiceConnector.h"
 #include "server_update_stats.h"
 #include "../urbackupcommon/escape.h"
+#include "../urbackupcommon/adler32.h"
 #include "server_running.h"
 #include "server_cleanup.h"
 #include "treediff/TreeDiff.h"
@@ -39,6 +40,7 @@
 #include "../Interface/PipeThrottler.h"
 #include "snapshot_helper.h"
 #include "../cryptoplugin/ICryptoFactory.h"
+#include "server_hash_existing.h"
 #include "server_dir_links.h"
 #include "server.h"
 #include <algorithm>
@@ -125,6 +127,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 
 	last_file_backup_try=0;
 	count_file_backup_try=0;
+
+	hash_existing_mutex = Server->createMutex();
 	
 }
 
@@ -148,6 +152,8 @@ BackupServerGet::~BackupServerGet(void)
 		local_hash->deinitDatabase();
 		delete local_hash;
 	}
+
+	Server->destroy(hash_existing_mutex);
 }
 
 namespace
@@ -2292,8 +2298,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 	}
 
+	bool copy_file_entries_sparse = internet_connection && server_settings->getSettings()->internet_calculate_filehashes_on_client;
+	int copy_file_entries_sparse_modulo = server_settings->getSettings()->min_file_incr;
+	bool trust_client_hashes = server_settings->getSettings()->trust_client_hashes;
+
 	bool copy_file_entries=false;
-	if(resumed_backup)
+	if(resumed_backup || copy_file_entries_sparse)
 	{
 		copy_file_entries = backup_dao->createTemporaryNewFilesTable();
 		copy_file_entries = copy_file_entries && backup_dao->createTemporaryLastFilesTable();
@@ -2302,8 +2312,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		if ( copy_file_entries )
 		{
 			copy_file_entries = copy_file_entries && backup_dao->copyToTemporaryLastFilesTable(last.backupid);
+
+			if(copy_file_entries && resumed_full)
+			{
+				copy_file_entries_sparse = false;
+			}
 		}
-		
 	}
 
 	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub", MODE_WRITE);
@@ -2321,6 +2335,15 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	THREADPOOL_TICKET server_download_ticket = 
 		Server->getThreadPool()->execute(server_download.get());
+
+	std::auto_ptr<ServerHashExisting> server_hash_existing;
+	THREADPOOL_TICKET server_hash_existing_ticket = ILLEGAL_THREADPOOL_TICKET;
+	if(copy_file_entries_sparse && !trust_client_hashes)
+	{
+		server_hash_existing.reset(new ServerHashExisting(clientid, this));
+		server_hash_existing_ticket =
+			Server->getThreadPool()->execute(server_hash_existing.get());
+	}
 	
 	char buffer[4096];
 	_u32 read;
@@ -2373,6 +2396,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				backup_stopped=true;
 				ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
 				server_download->queueSkip();
+				server_hash_existing->queueStop(true);
 			}
 		}
 
@@ -2566,15 +2590,23 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					
 					bool copy_curr_file_entry=false;
 					bool curr_has_hash = false;
-
-					if(indirchange==true || hasChange(line, diffs)) //is changed
+					bool copy_curr_file_entry_sparse=false;
+					std::string curr_sha2;
 					{
-						std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
-
-						bool f_ok=false;
+						std::map<std::wstring, std::wstring>::iterator hash_it = 
+							( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );					
 						if(hash_it!=extra_params.end())
 						{
-							if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
+							curr_sha2 = base64_decode_dash(wnarrow(hash_it->second));
+						}
+					}
+					
+					if(indirchange==true || hasChange(line, diffs)) //is changed
+					{
+						bool f_ok=false;
+						if(!curr_sha2.empty())
+						{
+							if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, curr_sha2 , cf.size, false))
 							{
 								f_ok=true;
 							}
@@ -2624,13 +2656,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							}
 							++link_logcnt;
 
-							std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash==NULL)?extra_params.end():extra_params.find(L"sha512") );
-
-							if(hash_it!=extra_params.end())
+							if(!curr_sha2.empty())
 							{
-								if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, false))
+								if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, curr_sha2, cf.size, false))
 								{
 									f_ok=true;
+									copy_curr_file_entry=copy_file_entries;						
+									copy_curr_file_entry_sparse = copy_file_entries_sparse;
 								}
 							}
 
@@ -2649,6 +2681,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						else //created hard link successfully
 						{
 							copy_curr_file_entry=copy_file_entries;						
+							copy_curr_file_entry_sparse = copy_file_entries_sparse;
 
 							if(with_hashes)
 							{
@@ -2659,6 +2692,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					else
 					{
 						copy_curr_file_entry=copy_file_entries;
+						copy_curr_file_entry_sparse = copy_file_entries_sparse;
 						curr_has_hash = with_hashes;
 					}
 
@@ -2670,6 +2704,27 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						{
 							backup_dao->insertIntoTemporaryNewFilesTable(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
 								fileEntry.shahash, fileEntry.filesize);
+
+							copy_curr_file_entry_sparse=false;
+						}
+					}
+
+					if(copy_curr_file_entry_sparse)
+					{
+						std::string curr_path = curr_path + "/" + Server->ConvertToUTF8(cf.name);
+						int crc32 = static_cast<int>(adler32(0, curr_path.c_str(), curr_path.size()));
+						if(crc32 % copy_file_entries_sparse_modulo == incremental_num )
+						{
+							if(trust_client_hashes && !curr_sha2.empty())
+							{
+								backup_dao->insertIntoTemporaryNewFilesTable(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
+									curr_sha2, cf.size);
+							}							
+							else if(server_hash_existing.get())
+							{
+								addExistingHashesToDb();
+								server_hash_existing->queueFile(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring());
+							}
 						}
 					}
 				}
@@ -2685,6 +2740,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	}
 
 	server_download->queueStop(false);
+	server_hash_existing->queueStop(false);
+
 
 	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
 	{
@@ -2713,6 +2770,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		r_offline=true;
 	}
 
+	sendBackupOkay(r_offline==false && c_has_error==false);
+
 	tmp->Seek(0);
 	line = 0;
 	resetEntryState();
@@ -2738,7 +2797,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	Server->destroy(clientlist);
 
-	sendBackupOkay(r_offline==false && c_has_error==false);
+	if(server_hash_existing_ticket!=ILLEGAL_THREADPOOL_TICKET)
+	{
+		Server->getThreadPool()->waitFor(server_hash_existing_ticket);
+	}
+
+	addExistingHashesToDb();
 
 	if(copy_file_entries)
 	{
@@ -4816,4 +4880,28 @@ void BackupServerGet::calculateEtaFileBackup( int64 &last_eta_update, int64 ctim
 	}
 
 	last_eta_received_bytes = received_data_bytes;
+}
+
+void BackupServerGet::addExistingHash( const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize )
+{
+	ServerBackupDao::SFileEntry file_entry;
+	file_entry.exists = true;
+	file_entry.fullpath = fullpath;
+	file_entry.hashpath = hashpath;
+	file_entry.shahash = shahash;
+	file_entry.filesize = filesize;
+
+	IScopedLock lock(hash_existing_mutex);
+	hash_existing.push_back(file_entry);
+}
+
+void BackupServerGet::addExistingHashesToDb()
+{
+	IScopedLock lock(hash_existing_mutex);
+	for(size_t i=0;i<hash_existing.size();++i)
+	{
+		backup_dao->insertIntoTemporaryNewFilesTable(hash_existing[i].fullpath, hash_existing[i].hashpath,
+			hash_existing[i].shahash, hash_existing[i].filesize);
+	}
+	hash_existing.clear();
 }

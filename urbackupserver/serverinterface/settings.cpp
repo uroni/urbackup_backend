@@ -181,6 +181,7 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(filescache_size);
 	SET_SETTING(suspend_index_limit);
 	SET_SETTING(use_incremental_symlinks);
+	SET_SETTING(trust_client_hashes);
 
 #undef SET_SETTING
 }

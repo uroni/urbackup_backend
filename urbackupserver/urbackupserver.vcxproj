@@ -309,6 +309,7 @@
     <ClCompile Include="server_download.cpp" />
     <ClCompile Include="server_get.cpp" />
     <ClCompile Include="server_hash.cpp" />
+    <ClCompile Include="server_hash_existing.cpp" />
     <ClCompile Include="server_image.cpp" />
     <ClCompile Include="server_log.cpp" />
     <ClCompile Include="server_ping.cpp" />
@@ -331,6 +332,7 @@
   <ItemGroup>
     <ClInclude Include="..\common\data.h" />
     <ClInclude Include="..\md5.h" />
+    <ClInclude Include="..\urbackupcommon\adler32.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
@@ -378,6 +380,7 @@
     <ClInclude Include="server_download.h" />
     <ClInclude Include="server_get.h" />
     <ClInclude Include="server_hash.h" />
+    <ClInclude Include="server_hash_existing.h" />
     <ClInclude Include="server_image.h" />
     <ClInclude Include="server_log.h" />
     <ClInclude Include="server_ping.h" />

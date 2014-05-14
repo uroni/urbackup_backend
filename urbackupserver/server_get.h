@@ -25,6 +25,7 @@ class IPipe;
 class ServerPingThread;
 class FileClient;
 class IPipeThrottler;
+class ServerHashExisting;
 
 struct SBackup
 {
@@ -43,6 +44,7 @@ class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCa
 	public FileClient::ReconnectionCallback, public INotEnoughSpaceCallback,
 	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback
 {
+	friend ServerHashExisting;
 public:
 	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots, bool use_reflink);
 	~BackupServerGet(void);
@@ -181,6 +183,10 @@ private:
 
 	bool authenticatePubKey();
 
+	void addExistingHash(const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize);
+
+	void addExistingHashesToDb();
+
 	SSettings curr_intervals;
 
 	IPipe *pipe;
@@ -299,4 +305,7 @@ private:
 	std::string session_identity;
 
 	ServerBackupDao* backup_dao;
+
+	IMutex* hash_existing_mutex;
+	std::vector<ServerBackupDao::SFileEntry> hash_existing;
 };

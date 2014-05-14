@@ -120,7 +120,7 @@ void BackupServerPrepareHash::operator()(void)
 				std::string h;
 				if(!diff_file)
 				{
-					h=hash(tf);
+					h=hash_sha512(tf);
 				}
 				else
 				{
@@ -150,24 +150,25 @@ void BackupServerPrepareHash::operator()(void)
 	}
 }
 
-std::string BackupServerPrepareHash::hash(IFile *f)
+std::string BackupServerPrepareHash::hash_sha512(IFile *f)
 {
 	f->Seek(0);
-	unsigned char buf[4096];
+	unsigned char buf[32768];
 	_u32 rc;
 
-	sha512_init(&ctx);
+	sha512_ctx local_ctx;
+	sha512_init(&local_ctx);
 	do
 	{
-		rc=f->Read((char*)buf, 4096);
+		rc=f->Read((char*)buf, 32768);
 		if(rc>0)
-			sha512_update(&ctx, buf, rc);
+			sha512_update(&local_ctx, buf, rc);
 	}
-	while(rc==4096);
+	while(rc>0);
 	
 	std::string ret;
 	ret.resize(64);
-	sha512_final(&ctx, (unsigned char*)&ret[0]);
+	sha512_final(&local_ctx, (unsigned char*)&ret[0]);
 	return ret;
 }
 

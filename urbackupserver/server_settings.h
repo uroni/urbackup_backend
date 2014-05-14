@@ -88,6 +88,7 @@ struct SSettings
 	bool internet_calculate_filehashes_on_client;
 	bool use_incremental_symlinks;
 	bool compress_images;
+	bool trust_client_hashes;
 };
 
 struct STimeSpan

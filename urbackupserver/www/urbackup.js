@@ -1448,6 +1448,7 @@ function show_settings2(data)
 			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
 			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
+			data.settings.trust_client_hashes=getCheckboxValue(data.settings.trust_client_hashes);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1856,7 +1857,8 @@ g.general_settings_list=[
 "filescache_type",
 "filescache_size",
 "suspend_index_limit",
-"use_incremental_symlinks"
+"use_incremental_symlinks",
+"trust_client_hashes"
 ];
 g.mail_settings_list=[
 "mail_servername",

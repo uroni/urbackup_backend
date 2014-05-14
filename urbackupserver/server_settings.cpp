@@ -311,6 +311,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "false")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
 	settings->compress_images=(settings_default->getValue("compress_images", "true")=="true");
+	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)

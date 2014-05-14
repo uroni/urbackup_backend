@@ -261,6 +261,9 @@
     <ClCompile Include="server_download.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="server_hash_existing.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -459,6 +462,12 @@
       <Filter>apps</Filter>
     </ClInclude>
     <ClInclude Include="server_download.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\adler32.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="server_hash_existing.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

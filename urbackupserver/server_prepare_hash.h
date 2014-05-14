@@ -33,8 +33,10 @@ public:
 
 	bool hasError(void);
 
+	static std::string hash_sha512(IFile *f);
+
 private:
-	std::string hash(IFile *f);
+	
 	std::string hash_with_patch(IFile *f, IFile *patch);
 
 	IPipe *pipe;
