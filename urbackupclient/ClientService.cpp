@@ -600,12 +600,16 @@ void ClientConnector::ReceivePackets(void)
 	size_t rc=pipe->Read(&cmd, is_channel?0:-1);
 	if(rc==0 )
 	{
-		Server->Log("rc=0 hasError="+nconvert(pipe->hasError())+" state="+nconvert(state), LL_DEBUG);
+		if(!do_quit)
+		{
+			Server->Log("rc=0 hasError="+nconvert(pipe->hasError())+" state="+nconvert(state), LL_DEBUG);
 #ifdef _WIN32
 #ifdef _DEBUG
-		Server->Log("Err: "+nconvert((int)GetLastError()), LL_DEBUG);
+			Server->Log("Err: "+nconvert((int)GetLastError()), LL_DEBUG);
 #endif
 #endif
+		}
+		
 		if(is_channel && pipe->hasError())
 		{
 			do_quit=true;

@@ -25,6 +25,8 @@
 const unsigned int usn_update_freq=10*60*1000;
 const DWORDLONG usn_reindex_num=1000000; // one million
 
+#define VLOG(x) 
+
 ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener)
 	: dwt(dwt), listener(pListener), db(pDB), last_backup_time(0)
 {
@@ -969,7 +971,7 @@ const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REAS
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
 {
-	logEntry(vol, UsnRecord);
+	VLOG(logEntry(vol, UsnRecord));
 
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
 	if(dir_id!=-1) //Is a directory
