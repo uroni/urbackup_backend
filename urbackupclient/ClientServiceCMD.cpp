@@ -140,12 +140,12 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 		return;
 	}
 
-	str_nmap params;
-	ParseParamStr(cmd.substr(hashpos+1), &params);
+	str_map params;
+	ParseParamStrHttp(cmd.substr(hashpos+1), &params);
 
-	std::string pubkey = base64_decode_dash(params["pubkey"]);
-	std::string signature = base64_decode_dash(params["signature"]);
-	std::string session_identity = params["session_identity"];
+	std::string pubkey = base64_decode_dash(wnarrow(params[L"pubkey"]));
+	std::string signature = base64_decode_dash(wnarrow(params[L"signature"]));
+	std::string session_identity = Server->ConvertToUTF8(params[L"session_identity"]);
 
 	if(!ServerIdentityMgr::hasPublicKey(identity))
 	{

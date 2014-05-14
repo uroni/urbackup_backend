@@ -119,10 +119,10 @@ void ServerIdentityMgr::loadServerIdentities(void)
 			size_t hashpos = l.find("#");
 			if(hashpos!=std::string::npos)
 			{
-				str_nmap params;
-				ParseParamStr(l.substr(hashpos+1), &params);
+				str_map params;
+				ParseParamStrHttp(l.substr(hashpos+1), &params);
 				
-				publickeys.push_back(base64_decode_dash(params["pubkey"]));
+				publickeys.push_back(base64_decode_dash(wnarrow(params[L"pubkey"])));
 
 				l = l.substr(0, hashpos);
 			}

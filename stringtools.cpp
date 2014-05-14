@@ -1202,41 +1202,6 @@ void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstri
 	}
 }
 
-void ParseParamStr(const std::string &pStr, std::map<std::string,std::string> *pMap)
-{
-	std::string key;
-	std::string value;
-
-	int pos=0;
-	for(size_t i=0;i<pStr.size();++i)
-	{
-		char ch=pStr[i];
-		if( ch=='=' && pos==0)
-		{
-			pos=1;
-		}
-		else if( (ch=='&'||ch=='$') && pos==1 )
-		{
-			pos=0;
-			pMap->insert( std::pair<std::string, std::string>(key,value) );
-			key.clear(); value.clear();
-		}
-		else if( pos==0 )
-		{
-			key+=ch;
-		}
-		else if( pos==1 )
-		{
-			value+=ch;
-		}
-	}
-
-	if( value.size()>0 || key.size()>0 )
-	{
-		pMap->insert( std::pair<std::string, std::string>(key,value) );
-	}
-}
-
 int round(float f)
 {
   return (int)(f<0?f-0.5f:f+0.5f);
@@ -1384,10 +1349,11 @@ wstring htmldecode(string str, bool html, char xc)
 	{
 	    if( sizeof(wchar_t)==2 )
     		utf8::utf8to16(tmp.begin(), tmp.end(), back_inserter(ret));
-    	    else if( sizeof(wchar_t)==4 )
+    	else if( sizeof(wchar_t)==4 )
     		utf8::utf8to32(tmp.begin(), tmp.end(), back_inserter(ret));
-    	}
-    	catch(...){}
+	}
+	catch(...){}
+
 	return ret;
 }
 
@@ -1606,7 +1572,13 @@ std::string base64_decode_dash(std::string s)
 	for(size_t i=0;i<s.size();++i)
 	{
 		if(s[i]=='-')
+		{
 			s[i]='=';
+		}
+		else if(s[i]==' ')
+		{
+			s[i]='+';
+		}
 	}
 
 	return base64_decode(s);
