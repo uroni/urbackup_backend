@@ -107,6 +107,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 
 	filesrv_protocol_version=0;
 	file_protocol_version=1;
+	file_protocol_version_v2=0;
 	image_protocol_version=0;
 	update_version=0;
 	eta_version=0;
@@ -1445,7 +1446,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool resume, bool wi
 
 	std::string pver="";
 	if(file_protocol_version==2) pver="2";
-	else if(file_protocol_version>=3) pver="3";
+	if(file_protocol_version_v2>=1) pver="3";
 
 	std::string identity;
 	if(!session_identity.empty())
@@ -1468,7 +1469,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool resume, bool wi
 		start_backup_cmd+="START BACKUP";
 	}
 
-	if(resume && file_protocol_version>=3)
+	if(resume && file_protocol_version_v2>=1)
 	{
 		start_backup_cmd+=" resume=";
 		if(full)
@@ -3299,7 +3300,11 @@ bool BackupServerGet::updateCapabilities(void)
 		{
 			file_protocol_version=watoi(it->second);
 		}	
-
+		it=params.find(L"FILE2");
+		if(it!=params.end())
+		{
+			file_protocol_version_v2=watoi(it->second);
+		}
 		it=params.find(L"SET_SETTINGS");
 		if(it!=params.end())
 		{

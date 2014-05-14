@@ -267,6 +267,7 @@ private:
 
 	int filesrv_protocol_version;
 	int file_protocol_version;
+	int file_protocol_version_v2;
 	int set_settings_version;
 	volatile bool internet_connection;
 	int image_protocol_version;
