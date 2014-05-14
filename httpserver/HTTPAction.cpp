@@ -74,8 +74,8 @@ void CHTTPAction::operator()(void)
 {
 	std::map<std::wstring, std::wstring> GET;
 	std::map<std::wstring, std::wstring> POST;
-	ParseParamStrHttp(GETStr, &GET);
-	ParseParamStrHttp(POSTStr, &POST);
+	ParseParamStrHttp(GETStr, &GET, true);
+	ParseParamStrHttp(POSTStr, &POST, true);
 
 	std::map<std::string, std::string> PARAMS;
 

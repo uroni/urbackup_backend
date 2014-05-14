@@ -75,7 +75,7 @@ void EscapeCh(std::string &pStr, char ch='\\');
 void EscapeCh(std::wstring &pStr, wchar_t ch);
 std::string UnescapeSQLString(const std::string &pStr);
 std::wstring UnescapeSQLString(const std::wstring &pStr);
-void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap, bool escape_params=true);
+void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap, bool escape_params=false);
 int round(float f);
 std::string FormatTime(int timeins);
 bool IsHex(const std::string &str);

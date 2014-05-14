@@ -183,7 +183,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	str_map params;
 	if(!s_params.empty())
 	{
-		ParseParamStrHttp(s_params, &params, false);
+		ParseParamStrHttp(s_params, &params);
 	}
 
 	std::wstring resume = params[L"resume"];
@@ -628,7 +628,7 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 {
 	std::string params_str = cmd.substr(14);
 	str_map params;
-	ParseParamStrHttp(params_str, &params, false);
+	ParseParamStrHttp(params_str, &params);
 	tcpstack.Send(pipe, "OK");
 
 	IScopedLock lock(backup_mutex);
@@ -671,7 +671,7 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 		{
 			std::string s_params=cmd.substr(9);
 			str_map params;
-			ParseParamStrHttp(s_params, &params, false);
+			ParseParamStrHttp(s_params, &params);
 			capa=watoi(params[L"capa"]);
 		}
 		channel_capa.push_back(capa);
@@ -807,7 +807,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		lasttime=Server->getTimeMS();
 		std::string s_params=cmd.substr(11);
 		str_map params;
-		ParseParamStrHttp(s_params, &params, false);
+		ParseParamStrHttp(s_params, &params);
 
 		server_token=Server->ConvertToUTF8(params[L"token"]);
 		image_inf.image_letter=Server->ConvertToUTF8(params[L"letter"]);
@@ -900,7 +900,7 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 		lasttime=Server->getTimeMS();
 		std::string s_params=cmd.substr(11);
 		str_map params;
-		ParseParamStrHttp(s_params, &params, false);
+		ParseParamStrHttp(s_params, &params);
 
 		server_token=Server->ConvertToUTF8(params[L"token"]);
 
@@ -1007,7 +1007,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	lasttime=Server->getTimeMS();
 	std::string s_params=cmd.substr(4);
 	str_map params;
-	ParseParamStrHttp(s_params, &params, false);
+	ParseParamStrHttp(s_params, &params);
 
 	std::wstring dl=params[L"driveletter"];
 
@@ -1279,7 +1279,7 @@ void ClientConnector::CMD_CLIENT_UPDATE(const std::string &cmd)
 	else
 	{
 		str_map params;
-		ParseParamStrHttp(cmd.substr(14), &params, false);
+		ParseParamStrHttp(cmd.substr(14), &params);
 
 		hashdataleft=watoi(params[L"size"]);
 		silent_update=(params[L"silent_update"]==L"true");
