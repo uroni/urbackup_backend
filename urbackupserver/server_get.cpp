@@ -1451,7 +1451,7 @@ bool BackupServerGet::request_filelist_construct(bool full, bool resume, bool wi
 	}
 
 	std::string pver="";
-	if(file_protocol_version==2) pver="2";
+	if(file_protocol_version>=2) pver="2";
 	if(file_protocol_version_v2>=1) pver="3";
 
 	std::string identity;
