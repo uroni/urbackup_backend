@@ -1690,6 +1690,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, this, filesrv_protocol_version));
 
+	bool queue_downloads = filesrv_protocol_version>2;
+
 	THREADPOOL_TICKET server_download_ticket = 
 		Server->getThreadPool()->execute(server_download.get());
 
@@ -1805,7 +1807,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					}
 					if(!file_ok)
 					{
-						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path);
+						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1);
 					}
 				}
 
@@ -1969,6 +1971,15 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 	{
 		local_hash->addFileSQL(backupid, 0, dstpath, hashpath, sha2, filesize, 0);
 		local_hash->copyFromTmpTable(false);
+	}
+
+	if(ok)
+	{
+		ServerLogger::Log(clientid, L"GT: Linked file \""+fn+L"\"", LL_DEBUG);
+	}
+	else
+	{
+		ServerLogger::Log(clientid, L"GT: File \""+fn+L"\" not found via hash. Loading file...", LL_DEBUG);
 	}
 	
 	return ok;
@@ -2333,6 +2344,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, this, filesrv_protocol_version));
 
+	bool queue_downloads = filesrv_protocol_version>2;
+
 	THREADPOOL_TICKET server_download_ticket = 
 		Server->getThreadPool()->execute(server_download.get());
 
@@ -2616,11 +2629,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						{
 							if(intra_file_diffs)
 							{
-								server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, cf.size);
+								server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1);
 							}
 							else
 							{
-								server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path);
+								server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1);
 							}							
 						}
 					}
@@ -2670,11 +2683,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							{
 								if(intra_file_diffs)
 								{
-									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, cf.size);
+									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1);
 								}
 								else
 								{
-									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path);
+									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1);
 								}
 							}
 						}
@@ -2712,7 +2725,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					if(copy_curr_file_entry_sparse)
 					{
 						std::string curr_path = curr_path + "/" + Server->ConvertToUTF8(cf.name);
-						int crc32 = static_cast<int>(adler32(0, curr_path.c_str(), curr_path.size()));
+						int crc32 = static_cast<int>(adler32(0, curr_path.c_str(), static_cast<unsigned int>(curr_path.size())));
 						if(crc32 % copy_file_entries_sparse_modulo == incremental_num )
 						{
 							if(trust_client_hashes && !curr_sha2.empty())

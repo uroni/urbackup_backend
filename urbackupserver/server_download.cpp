@@ -96,7 +96,14 @@ void ServerDownloadThread::operator()( void )
 		}		
 
 		bool ret = true;
-		if(curr.fileclient == EFileClient_Full)
+
+		if((curr.fileclient == EFileClient_Full ||
+			curr.fileclient == EFileClient_Chunked) &&
+			curr.predicted_filesize == 0 )
+		{
+			ret = touch_file(curr);
+		}
+		else if(curr.fileclient == EFileClient_Full)
 		{
 			ret = load_file(curr);
 		}
@@ -115,7 +122,7 @@ void ServerDownloadThread::operator()( void )
 	std::sort(download_nok_ids.begin(), download_nok_ids.end());
 }
 
-void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool at_front )
+void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, bool at_front )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -127,6 +134,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	ni.patch_dl_files.prepared=false;
 	ni.patch_dl_files.prepare_error=false;
 	ni.action = EQueueAction_Fileclient;
+	ni.predicted_filesize = predicted_filesize;
 
 	IScopedLock lock(mutex);
 	if(!at_front)
@@ -555,7 +563,8 @@ std::string ServerDownloadThread::getQueuedFileFull()
 		it!=dl_queue.end();++it)
 	{
 		if(it->action==EQueueAction_Fileclient && 
-			!it->queued && it->fileclient==EFileClient_Full)
+			!it->queued && it->fileclient==EFileClient_Full
+			&& it->predicted_filesize>0)
 		{
 			it->queued=true;
 			return Server->ConvertToUTF8(getDLPath(*it));
@@ -600,7 +609,8 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 		it!=dl_queue.end();++it)
 	{
 		if(it->action==EQueueAction_Fileclient && 
-			!it->queued && it->fileclient==EFileClient_Chunked)
+			!it->queued && it->fileclient==EFileClient_Chunked
+			&& it->predicted_filesize>0)
 		{
 			if(it->patch_dl_files.prepare_error)
 			{
@@ -799,5 +809,30 @@ void ServerDownloadThread::unqueueFileChunked( const std::string& remotefn )
 			it->queued=false;
 			return;
 		}
+	}
+}
+
+bool ServerDownloadThread::touch_file( SQueueItem todl )
+{
+	std::wstring os_curr_path=BackupServerGet::convertToOSPathFromFileClient(todl.os_path+L"/"+todl.short_fn);		
+	std::wstring dstpath=backuppath+os_curr_path;
+
+	ServerLogger::Log(clientid, L"GT: Touching file \""+dstpath+L"\"", LL_DEBUG);
+
+	IFile* f = Server->openFile(dstpath, MODE_WRITE);
+	if(f!=NULL)
+	{
+		if(todl.id>max_ok_id)
+		{
+			max_ok_id=todl.id;
+		}
+		Server->destroy(f);
+		return true;
+	}
+	else
+	{
+		download_nok_ids.push_back(todl.id);
+		ServerLogger::Log(clientid, L"GT: Error creating file \""+dstpath+L"\"", LL_ERROR);
+		return false;
 	}
 }
