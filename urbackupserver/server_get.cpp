@@ -1701,6 +1701,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	tmp->Seek(0);
 
 	size_t line = 0;
+	int64 linked_bytes = 0;
 	
 	bool c_has_error=false;
 
@@ -1730,7 +1731,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					}
 					else
 					{
-						status.pcdone=(std::min)(100,(int)(((float)fc.getReceivedDataBytes())/((float)files_size/100.f)+0.5f));
+						status.pcdone=(std::min)(100,(int)(((float)fc.getReceivedDataBytes() + linked_bytes)/((float)files_size/100.f)+0.5f));
 					}
 					status.hashqueuesize=(_u32)hashpipe->getNumElements();
 					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
@@ -1739,7 +1740,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 				if(ctime-last_eta_update>eta_update_intervall)
 				{
-					calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, last_eta_received_bytes, eta_estimated_speed, files_size);
+					calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 				}
 
 				if(server_download->isOffline())
@@ -1803,6 +1804,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, base64_decode_dash(wnarrow(hash_it->second)), cf.size, true))
 						{
 							file_ok=true;
+							linked_bytes+=cf.size;
 						}
 					}
 					if(!file_ok)
@@ -1838,7 +1840,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		int64 ctime = Server->getTimeMS();
 		if(ctime-last_eta_update>eta_update_intervall)
 		{
-			calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, last_eta_received_bytes, eta_estimated_speed, files_size);
+			calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 		}
 	}
 
@@ -2390,6 +2392,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	int64 last_eta_update=0;
 	int64 last_eta_received_bytes=0;
 	double eta_estimated_speed=0;
+
+	int64 linked_bytes = 0;
 	
 	ServerLogger::Log(clientid, clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
 
@@ -2451,7 +2455,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					}
 					else
 					{
-						status.pcdone=(std::min)(100,(int)(((float)(fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0)))/((float)files_size/100.f)+0.5f));
+						status.pcdone=(std::min)(100,(int)(((float)(fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0) + linked_bytes))/((float)files_size/100.f)+0.5f));
 					}
 					status.hashqueuesize=(_u32)hashpipe->getNumElements();
 					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
@@ -2460,7 +2464,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 				if(ctime-last_eta_update>eta_update_intervall)
 				{
-					calculateEtaFileBackup(last_eta_update, ctime, fc, fc_chunked.get(), last_eta_received_bytes, eta_estimated_speed, files_size);
+					calculateEtaFileBackup(last_eta_update, ctime, fc, fc_chunked.get(), linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 				}
 
 				if(server_download->isOffline() && !r_offline)
@@ -2622,6 +2626,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, curr_sha2 , cf.size, false))
 							{
 								f_ok=true;
+								linked_bytes+=cf.size;
 							}
 						}
 
@@ -2676,6 +2681,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 									f_ok=true;
 									copy_curr_file_entry=copy_file_entries;						
 									copy_curr_file_entry_sparse = copy_file_entries_sparse;
+									linked_bytes+=cf.size;
 								}
 							}
 
@@ -2764,7 +2770,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 		else
 		{
-			status.pcdone=(std::min)(100,(int)(((float)(fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0)))/((float)files_size/100.f)+0.5f));
+			status.pcdone=(std::min)(100,(int)(((float)(fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0) + linked_bytes))/((float)files_size/100.f)+0.5f));
 		}
 		status.hashqueuesize=(_u32)hashpipe->getNumElements();
 		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
@@ -2773,7 +2779,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		int64 ctime = Server->getTimeMS();
 		if(ctime-last_eta_update>eta_update_intervall)
 		{
-			calculateEtaFileBackup(last_eta_update, ctime, fc, fc_chunked.get(), last_eta_received_bytes, eta_estimated_speed, files_size);
+			calculateEtaFileBackup(last_eta_update, ctime, fc, fc_chunked.get(), linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 		}
 	}
 
@@ -4864,11 +4870,11 @@ bool BackupServerGet::authenticatePubKey()
 	}
 }
 
-void BackupServerGet::calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size )
+void BackupServerGet::calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked, int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size )
 {
 	last_eta_update=ctime;
 
-	int64 received_data_bytes = fc.getReceivedDataBytes() + (fc_chunked?fc_chunked->getReceivedDataBytes():0);
+	int64 received_data_bytes = fc.getReceivedDataBytes() + (fc_chunked?fc_chunked->getReceivedDataBytes():0) + linked_bytes;
 
 	int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
 	int64 passed_time = Server->getTimeMS() - status.eta_set_time;
