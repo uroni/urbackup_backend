@@ -819,7 +819,7 @@ bool ServerDownloadThread::touch_file( SQueueItem todl )
 
 	ServerLogger::Log(clientid, L"GT: Touching file \""+dstpath+L"\"", LL_DEBUG);
 
-	IFile* f = Server->openFile(dstpath, MODE_WRITE);
+	IFile* f = Server->openFile(os_file_prefix(dstpath), MODE_WRITE);
 	if(f!=NULL)
 	{
 		if(todl.id>max_ok_id)

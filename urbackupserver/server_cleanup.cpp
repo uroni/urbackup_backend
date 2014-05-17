@@ -1529,32 +1529,35 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 		backupdao->updateLinkReferenceTarget(target_adjustments[i].second, target_adjustments[i].first);
 	}
 
-	std::vector<SFile> first_files = getFiles(pool_root, NULL, false, false);
-	for(size_t i=0;i<first_files.size();++i)
+	if(os_directory_exists(pool_root))
 	{
-		if(!first_files[i].isdir)
-			continue;
-
-		std::wstring curr_path = pool_root + os_file_sep() + first_files[i].name;
-		std::vector<SFile> pool_files = getFiles(curr_path, NULL, false, false);
-
-		for(size_t j=0;i<pool_files.size();++i)
+		std::vector<SFile> first_files = getFiles(pool_root, NULL, false, false);
+		for(size_t i=0;i<first_files.size();++i)
 		{
-			if(!pool_files[i].isdir)
+			if(!first_files[i].isdir)
 				continue;
 
-			std::wstring pool_path = curr_path + os_file_sep() + pool_files[i].name;
+			std::wstring curr_path = pool_root + os_file_sep() + first_files[i].name;
+			std::vector<SFile> pool_files = getFiles(curr_path, NULL, false, false);
 
-			if(backupdao->getDirectoryRefcount(clientid, pool_files[i].name)==0)
+			for(size_t j=0;i<pool_files.size();++i)
 			{
-				Server->Log(L"Refcount of \""+pool_path+L"\" is zero. Deleting pool folder.");
-				if(!remove_directory_link_dir(pool_path, *backupdao, clientid))
+				if(!pool_files[i].isdir)
+					continue;
+
+				std::wstring pool_path = curr_path + os_file_sep() + pool_files[i].name;
+
+				if(backupdao->getDirectoryRefcount(clientid, pool_files[i].name)==0)
 				{
-					Server->Log(L"Could not remove pool folder \""+pool_path+L"\"", LL_ERROR);
+					Server->Log(L"Refcount of \""+pool_path+L"\" is zero. Deleting pool folder.");
+					if(!remove_directory_link_dir(pool_path, *backupdao, clientid))
+					{
+						Server->Log(L"Could not remove pool folder \""+pool_path+L"\"", LL_ERROR);
+					}
 				}
 			}
 		}
-	}
+	}	
 }
 
 bool ServerCleanupThread::correct_target(const std::wstring& backupfolder, std::wstring& target)

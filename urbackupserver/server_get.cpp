@@ -1981,7 +1981,10 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 	}
 	else
 	{
-		ServerLogger::Log(clientid, L"GT: File \""+fn+L"\" not found via hash. Loading file...", LL_DEBUG);
+		if(filesize!=0)
+		{
+			ServerLogger::Log(clientid, L"GT: File \""+fn+L"\" not found via hash. Loading file...", LL_DEBUG);
+		}
 	}
 	
 	return ok;

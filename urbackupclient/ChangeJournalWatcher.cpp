@@ -770,6 +770,11 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 					{
 						if(fn!="backup_client.db" && fn!="backup_client.db-journal")
 						{
+							if(started_transaction==false)
+							{
+								started_transaction=true;
+								db->BeginTransaction();
+							}
 							saveJournalData(it->second.journal_id, it->first, TUsnRecord, nextUsn);	
 						}
 					}
