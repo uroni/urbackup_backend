@@ -41,7 +41,7 @@ DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::wstring> &
 
 	for(size_t i=0;i<watching.size();++i)
 	{
-		watching[i]=strlower(addSlashIfMissing(watching[i]));
+		watching[i]=strlower(add_trailing_slash(watching[i]));
 	}
 }
 
@@ -106,7 +106,7 @@ void DirectoryWatcherThread::operator()(void)
 		{
 			if( msg[0]=='A' )
 			{
-				std::wstring dir=strlower(addSlashIfMissing(msg.substr(1)));
+				std::wstring dir=strlower(add_trailing_slash(msg.substr(1)));
 				bool w=false;
 				for(size_t i=0;i<watching.size();++i)
 				{
@@ -129,7 +129,7 @@ void DirectoryWatcherThread::operator()(void)
 			}
 			else if( msg[0]=='D' )
 			{
-				std::wstring dir=strlower(addSlashIfMissing(msg.substr(1)));
+				std::wstring dir=strlower(add_trailing_slash(msg.substr(1)));
 #ifndef CHANGE_JOURNAL
 				dcw.UnwatchDirectory(dir);
 #endif
@@ -401,7 +401,7 @@ void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName, b
 
 void DirectoryWatcherThread::On_DirRemoved(const std::wstring & strDirName)
 {
-	std::wstring rmDir=strlower(addSlashIfMissing(strDirName));
+	std::wstring rmDir=strlower(add_trailing_slash(strDirName));
 	bool ok=false;
 	for(size_t i=0;i<watching.size();++i)
 	{
@@ -466,15 +466,6 @@ void ChangeListener::On_DirRemoved(const std::wstring & strDirName)
 	DirectoryWatcherThread::getPipe()->Write((char*)dir1.c_str(), dir1.size()*sizeof(wchar_t));
 }
 
-std::wstring DirectoryWatcherThread::addSlashIfMissing(const std::wstring &strDirName)
-{
-	if(!strDirName.empty() && strDirName[strDirName.size()-1]!=os_file_sep()[0])
-	{
-		return strDirName+os_file_sep();
-	}
-	return strDirName;
-}
-
 _i64 DirectoryWatcherThread::get_current_filetime()
 {
 	FILETIME ft;
@@ -484,3 +475,11 @@ _i64 DirectoryWatcherThread::get_current_filetime()
 	return static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
 }
 
+std::wstring add_trailing_slash(const std::wstring &strDirName)
+{
+	if(!strDirName.empty() && strDirName[strDirName.size()-1]!=os_file_sep()[0])
+	{
+		return strDirName+os_file_sep();
+	}
+	return strDirName;
+}

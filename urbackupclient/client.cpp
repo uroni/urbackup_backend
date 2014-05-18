@@ -846,7 +846,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 		return false;
 	}
 
-	if(first && !os_directory_exists(os_file_prefix(dir)) )
+	if(first && !os_directory_exists(os_file_prefix(add_trailing_slash(dir))) )
 	{
 		VSSLog(L"Cannot access directory to backup: \""+dir+L"\"", LL_ERROR);
 		if(!optional)

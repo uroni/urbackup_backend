@@ -992,7 +992,8 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 
 			bool optional = false;
 			size_t optional_off = name.find(L"/optional");
-			if(optional_off == name.size()-9)
+			if(optional_off!=std::string::npos &&
+				optional_off == name.size()-9)
 			{
 				optional=true;
 				name.resize(optional_off);

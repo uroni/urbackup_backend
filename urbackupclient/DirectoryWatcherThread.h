@@ -55,9 +55,6 @@ public:
 	static _i64 get_current_filetime();
 
 private:
-
-	std::wstring addSlashIfMissing(const std::wstring &strDirName);
-
 	static IPipe *pipe;
 	IDatabase *db;
 
@@ -90,3 +87,5 @@ public:
 	void On_ResetAll(const std::wstring &vol);
 	void On_DirRemoved(const std::wstring & strDirName);
 };
+
+std::wstring add_trailing_slash(const std::wstring &strDirName);
