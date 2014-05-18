@@ -816,6 +816,8 @@ void BackupServerGet::operator ()(void)
 				}
 			}
 
+			bool exponential_backoff_file = false;
+
 			if(hbu && !has_error)
 			{
 				if(!r_success)
@@ -826,6 +828,7 @@ void BackupServerGet::operator ()(void)
 			else if(hbu && has_error)
 			{
 				ServerLogger::Log(clientid, "Backup had errors. Deleting partial backup.", LL_ERROR);
+				exponential_backoff_file=true;
 
 				if(backupid==-1)
 				{
@@ -861,9 +864,7 @@ void BackupServerGet::operator ()(void)
 				if(!r_success)
 				{
 					ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
-					last_file_backup_try=Server->getTimeSeconds();
-					++count_file_backup_try;
-					ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeFile()*1000) + " before next file backup", LL_WARNING);
+					exponential_backoff_file=true;
 				}
 				else
 				{
@@ -874,6 +875,13 @@ void BackupServerGet::operator ()(void)
 				}
 				status.pcdone=100;
 				ServerStatus::setServerStatus(status, true);
+			}
+
+			if(exponential_backoff_file)
+			{
+				last_file_backup_try=Server->getTimeSeconds();
+				++count_file_backup_try;
+				ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeFile()*1000) + " before next file backup", LL_WARNING);
 			}
 
 			if( r_image )
