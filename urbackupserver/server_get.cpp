@@ -1710,6 +1710,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 	size_t line = 0;
 	int64 linked_bytes = 0;
+
+	size_t max_ok_id=0;
 	
 	bool c_has_error=false;
 
@@ -1719,7 +1721,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		{
 			r_done=true;
 			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
-			server_download->queueStop(true);
+			server_download->queueSkip();
 			break;
 		}
 
@@ -1813,6 +1815,10 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 						{
 							file_ok=true;
 							linked_bytes+=cf.size;
+							if(line>max_ok_id)
+							{
+								max_ok_id=line;
+							}
 						}
 					}
 					if(!file_ok)
@@ -1884,7 +1890,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				{
 					writeFileItem(clientlist, cf);
 				}
-				else if( line <= server_download->getMaxOkId()
+				else if( line <= (std::max)(server_download->getMaxOkId(), max_ok_id)
 					&& server_download->isDownloadOk(line))
 				{
 					writeFileItem(clientlist, cf);
