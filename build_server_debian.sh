@@ -12,7 +12,7 @@ then
 	automake --add-missing || true
 	libtoolize || true
 	autoreconf --install
-	./configure --with-pychart --enable-packaging --enable-install_initd
+	./configure --with-pychart --enable-packaging --enable-install_initd --with-mountvhd
 	touch build_server_debian_ok
 fi
 
