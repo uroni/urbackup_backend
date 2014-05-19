@@ -1,4 +1,4 @@
-if not exist client git clone -b next http://urpc.dyndns.org/git/urbackup_frontend_wx client
+if not exist client git clone -b next http://buildserver.urbackup.org/git/urbackup_frontend_wx client
 
 cd client
 
