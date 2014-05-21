@@ -98,5 +98,8 @@
     <ClInclude Include="CompressedFile.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="win_dialog.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

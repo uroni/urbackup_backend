@@ -44,6 +44,10 @@ IServer *Server;
 
 #include "CompressedFile.h"
 
+#ifdef _WIN32
+#include "win_dialog.h"
+#endif
+
 
 CImagePluginMgr *imagepluginmgr;
 
@@ -98,6 +102,29 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string decompress = Server->getServerParameter("decompress");
 	if(!decompress.empty())
 	{
+		bool selected_via_gui=false;
+#ifdef _WIN32
+		if(decompress=="SelectViaGUI")
+		{
+			std::wstring filter;
+			filter += L"Compressed image files (*.vhdz)";
+			filter += (wchar_t)'\0';
+			filter += L"*.vhdz";
+			filter += (wchar_t)'\0';
+			filter += (wchar_t)'\0';
+			decompress = Server->ConvertToUTF8(file_via_dialog(L"Please select compressed image file to decompress", filter));
+
+			if(decompress.empty())
+			{
+				exit(1);
+			}
+			else
+			{
+				selected_via_gui=true;
+			}
+		}
+#endif
+
 		std::string targetName;
 		if(findextension(decompress)=="vhdz")
 		{
@@ -111,6 +138,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Unknown file extension: "+findextension(decompress), LL_ERROR);
 			exit(1);
+		}
+
+		if(!Server->getServerParameter("output_fn").empty() && !selected_via_gui)
+		{
+			targetName = Server->getServerParameter("output_fn");
 		}
 
 		IFile* out = Server->openFile(targetName, MODE_WRITE);

@@ -195,6 +195,7 @@
     <ClInclude Include="vhdfile.h" />
     <ClInclude Include="fs\ntfs.h" />
     <ClInclude Include="fs\unknown.h" />
+    <ClInclude Include="win_dialog.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
