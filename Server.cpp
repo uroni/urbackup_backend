@@ -88,6 +88,26 @@
 const size_t SEND_BLOCKSIZE=8192;
 const size_t MAX_THREAD_ID=std::string::npos;
 
+namespace
+{
+	//GetTickCount64 for Windows Server 2003
+#ifdef _WIN32
+	typedef ULONGLONG(WINAPI GetTickCount64_t)(VOID);
+
+	GetTickCount64_t* GetTickCount64_fun = NULL;
+
+	void initialize_GetTickCount64()
+	{
+		HMODULE hKernel32 = GetModuleHandleW(L"Kernel32.dll");
+		if(hKernel32)
+		{
+			GetTickCount64_fun = reinterpret_cast<GetTickCount64_t*> (GetProcAddress(hKernel32, "GetTickCount64"));
+		}
+	}
+#endif
+		
+}
+
 extern bool run;
 
 CServer::CServer()
@@ -117,6 +137,10 @@ CServer::CServer()
 	startup_complete_mutex=createMutex();
 	startup_complete_cond=createCondition();
 	rnd_mutex=createMutex();
+
+#ifdef _WIN32
+	initialize_GetTickCount64();
+#endif
 }
 
 void CServer::setup(void)
@@ -576,7 +600,14 @@ int64 CServer::getTimeSeconds(void)
 int64 CServer::getTimeMS(void)
 {
 #ifdef _WIN32
-	return GetTickCount64();
+	if(GetTickCount64_fun)
+	{
+		return GetTickCount64_fun();
+	}
+	else
+	{
+		return GetTickCount();
+	}
 #else
 	//return (unsigned int)(((double)clock()/(double)CLOCKS_PER_SEC)*1000.0);
 	/*
