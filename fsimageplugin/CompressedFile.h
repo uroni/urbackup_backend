@@ -29,6 +29,8 @@ public:
 
 	bool finish();
 
+	bool hasNoMagic();
+
 private:
 	void readHeader();
 	void readIndex();
@@ -59,4 +61,6 @@ private:
 	bool finished;
 
 	bool readOnly;
+
+	bool noMagic;
 };

@@ -25,6 +25,8 @@
 
 #include <iostream>
 #include <memory.h>
+#include <stdio.h>
+#include <string>
 
 #define DEF_SERVER
 #include "../Interface/Server.h"
@@ -53,6 +55,111 @@ CImagePluginMgr *imagepluginmgr;
 
 void PrintInfo(IFilesystem *fs);
 
+namespace
+{
+	bool decompress_vhd(const std::wstring& fn, const std::wstring& output)
+	{
+		std::wstring tmp_output=output;
+
+		if(fn==output)
+		{
+			tmp_output+=L".tmp";
+		}
+
+		IFile* out = Server->openFile(tmp_output, MODE_WRITE);
+		ObjectScope out_file(out);
+
+		if(out==NULL)
+		{
+			Server->Log(L"Error opening output file \""+output+L"\"", LL_ERROR);
+			return false;
+		}
+
+		if(findextension(fn)==L"vhdz")
+		{
+			VHDFile vhdfile(fn, true, 0);
+
+			if(vhdfile.isOpen() && vhdfile.getParent()!=NULL)
+			{
+				if(vhdfile.isCompressed())
+				{
+					Server->Log("Decompressing parent VHD \""+vhdfile.getParent()->getFilename()+"\"...", LL_INFO);
+					bool b = decompress_vhd(vhdfile.getParent()->getFilenameW(), vhdfile.getParent()->getFilenameW());
+
+					if(!b)
+					{
+						Server->Log("Error decompressing parent VHD", LL_ERROR);
+						return false;
+					}
+				}				
+			}
+		}
+
+		CompressedFile compFile(fn, MODE_READ);
+
+		if(compFile.hasError())
+		{
+			if(compFile.hasNoMagic())
+			{
+				Server->Log("File is not compressed. No need to decompress.", LL_WARNING);
+				return true;
+			}
+			else
+			{
+				Server->Log("Error while reading compressed file header", LL_ERROR);
+				return false;
+			}
+		}
+
+		int pcdone = -1;
+		__int64 decompressed = 0;
+		char buffer[32768];
+		_u32 read;
+		do 
+		{
+			read = compFile.Read(buffer, 32768);
+			if(read>0)
+			{
+				if(out->Write(buffer, read)!=read)
+				{
+					Server->Log("Error writing to output file", LL_ERROR);
+					return false;
+				}
+			}
+			decompressed+=read;
+			int currentpc = static_cast<int>(static_cast<float>(decompressed)/compFile.Size()*100.f+0.5f);
+			if(currentpc!=pcdone)
+			{
+				pcdone=currentpc;
+				Server->Log(L"Decompressing \""+fn+L"\"... "+convert(pcdone)+L"%", LL_INFO);
+			}
+		} while (read>0);
+
+		compFile.finish();
+
+		if(fn==output)
+		{
+			if(Server->deleteFile(fn))
+			{
+#ifdef _WIN32
+				return _wrename(tmp_output.c_str(), fn.c_str())==0;
+#else
+				return rename(Server->ConvertToUTF8(tmp_output).c_str(), Server->ConvertToUTF8(fn).c_str())==0;
+#endif
+			}
+			else
+			{
+				Server->Log(L"Error deleting \""+fn+L"\"", LL_ERROR);
+				return false;
+			}
+		}
+		else
+		{
+			return true;
+		}
+	}
+}
+
 DLLEXPORT void LoadActions(IServer* pServer)
 {
 	Server=pServer;
@@ -77,11 +184,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				exit(3);
 			}
 
-			char buffer[4096];
+			char buffer[32768];
 			_u32 read;
 			do 
 			{
-				read = in->Read(buffer, 4096);
+				read = in->Read(buffer, 32768);
 				if(read>0)
 				{
 					if(compFile.Write(buffer, read)!=read)
@@ -125,16 +232,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 #endif
 
-		std::string targetName;
-		if(findextension(decompress)=="vhdz")
-		{
-			targetName = decompress.substr(0, decompress.size()-1);
-		}
-		else if(findextension(decompress)=="urz")
-		{
-			targetName = decompress.substr(0, decompress.size()-4);
-		}
-		else
+		std::string targetName = decompress;
+		if(findextension(decompress)!="vhdz" && findextension(decompress)!="urz")
 		{
 			Server->Log("Unknown file extension: "+findextension(decompress), LL_ERROR);
 			exit(1);
@@ -145,48 +244,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			targetName = Server->getServerParameter("output_fn");
 		}
 
-		IFile* out = Server->openFile(targetName, MODE_WRITE);
+		bool b = decompress_vhd(Server->ConvertToUnicode(decompress), Server->ConvertToUnicode(targetName));		
 
-		if(out==NULL)
-		{
-			Server->Log("Error opening output file \""+targetName+"\"", LL_ERROR);
-			exit(2);
-		}
-
-		int pcdone = -1;
-
-		{
-			CompressedFile compFile(widen(decompress), MODE_READ);
-
-			__int64 decompressed = 0;
-			char buffer[32768];
-			_u32 read;
-			do 
-			{
-				read = compFile.Read(buffer, 32768);
-				if(read>0)
-				{
-					if(out->Write(buffer, read)!=read)
-					{
-						Server->Log("Error writing to output file", LL_ERROR);
-						exit(3);
-					}
-				}
-				decompressed+=read;
-				int currentpc = static_cast<int>(static_cast<float>(decompressed)/compFile.Size()*100.f+0.5f);
-				if(currentpc!=pcdone)
-				{
-					pcdone=currentpc;
-					Server->Log("Decompressing \""+decompress+"\"... "+nconvert(pcdone)+"%", LL_INFO);
-				}
-			} while (read>0);
-
-			compFile.finish();
-			delete out;
-		}
-		
-
-		exit(0);
+		exit(b?0:3);
 	}
 
 	std::string devinfo=Server->getServerParameter("devinfo");

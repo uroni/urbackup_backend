@@ -20,7 +20,7 @@ const size_t c_header_size = sizeof(headerMagic) + sizeof(__int64) + sizeof(__in
 
 CompressedFile::CompressedFile( std::wstring pFilename, int pMode )
 	: hotCache(NULL), error(false), currentPosition(0),
-	  finished(false), filesize(0)
+	  finished(false), filesize(0), noMagic(false)
 {
 	uncompressedFile = Server->openFile(pFilename, pMode);
 
@@ -50,7 +50,8 @@ CompressedFile::CompressedFile( std::wstring pFilename, int pMode )
 
 CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly)
 	: hotCache(NULL), error(false), currentPosition(0),
-	finished(false), uncompressedFile(file), filesize(0), readOnly(readOnly)
+	finished(false), uncompressedFile(file), filesize(0), readOnly(readOnly),
+	noMagic(false)
 {
 	if(openExisting)
 	{
@@ -105,6 +106,7 @@ void CompressedFile::readHeader()
 	{
 		Server->Log("Magic in header not find for compressed file", LL_ERROR);
 		error=true;
+		noMagic=true;
 		return;
 	}
 
@@ -535,4 +537,9 @@ _u32 CompressedFile::writeToFile(const char* buffer, _u32 bsize)
 	} while (written<bsize);
 
 	return written;
+}
+
+bool CompressedFile::hasNoMagic()
+{
+	return noMagic;
 }

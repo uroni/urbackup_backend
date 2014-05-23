@@ -97,6 +97,10 @@ public:
 
 	bool finish();
 
+	VHDFile* getParent();
+
+	bool isCompressed();
+
 private:
 
 	bool check_if_compressed();

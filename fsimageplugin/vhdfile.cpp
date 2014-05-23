@@ -1216,3 +1216,13 @@ bool VHDFile::finish()
 		return true;
 	}
 }
+
+VHDFile* VHDFile::getParent()
+{
+	return parent;
+}
+
+bool VHDFile::isCompressed()
+{
+	return compressed_file!=NULL;
+}
