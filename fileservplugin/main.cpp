@@ -57,6 +57,7 @@ void RestartServer()
 	_u16 tcpport=TCPServer->getTCPPort();
 	_u16 udpport=TCPServer->getUDPPort();
 	std::string servername=TCPServer->getServername();
+	bool use_fqdn=TCPServer->getUseFQDN();
 
 	TCPServer->KickClients();
 	delete TCPServer;
@@ -64,7 +65,7 @@ void RestartServer()
 
 	TCPServer=new CTCPFileServ;
 	int tries=20;
-	while(!TCPServer->Start(tcpport,udpport,servername) )
+	while(!TCPServer->Start(tcpport, udpport, servername, use_fqdn) )
 	{
 		Sleep(1000);
 		if(tries<=0)
@@ -269,8 +270,6 @@ void termination_handler(int signum)
 }
 #endif
 
-std::string getSystemServerName(void);
-
 #ifdef CONSOLE_ON
 int main(int argc, char* argv[])
 {
@@ -278,7 +277,7 @@ int main(int argc, char* argv[])
 void my_init_fcn(void)
 {
 #elif EXPORT_METHOD_INT
-int start_server_int(unsigned short tcpport, unsigned short udpport, const std::string &pSname, const bool *pDostop)
+int start_server_int(unsigned short tcpport, unsigned short udpport, const std::string &pSname, const bool *pDostop, bool use_fqdn)
 {
 #else
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
@@ -370,7 +369,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #ifndef EXPORT_METHOD_INT
 	bool suc=TCPServer->Start(55634,55635,servername);
 #else
-	bool suc=TCPServer->Start(tcpport, udpport, (pSname=="")?servername:pSname);
+	bool suc=TCPServer->Start(tcpport, udpport, (pSname=="")?servername:pSname, use_fqdn);
 #endif
 
 	if(suc==false)

@@ -22,22 +22,23 @@
 #include "../stringtools.h"
 #include "FileServ.h"
 
-int start_server_int(unsigned short tcpport, unsigned short udpport, const std::string &pSname, const bool *pDostop);
+int start_server_int(unsigned short tcpport, unsigned short udpport, const std::string &pSname, const bool *pDostop, bool use_fqdn);
 
 class ExecThread : public IThread
 {
 public:
-	ExecThread(unsigned short pTcpport, unsigned short pUdpport, const std::wstring &pName, bool *pDostop)
+	ExecThread(unsigned short pTcpport, unsigned short pUdpport, const std::wstring &pName, bool *pDostop, bool pUse_fqdn)
 	{
 		tcpport=pTcpport;
 		udpport=pUdpport;
 		name=pName;
 		dostop=pDostop;
+		use_fqdn=pUse_fqdn;
 	}
 
 	void operator()(void)
 	{
-		int r=start_server_int(tcpport, udpport, Server->ConvertToUTF8(name), dostop);
+		int r=start_server_int(tcpport, udpport, Server->ConvertToUTF8(name), dostop, use_fqdn);
 		if(r!=2)
 		{
 			Server->Log("FileServ exit with error code: "+nconvert(r), LL_ERROR);
@@ -49,15 +50,16 @@ private:
 	unsigned short tcpport,udpport;
 	std::wstring name;
 	bool *dostop;
+	bool use_fqdn;
 };
 
-IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name)
+IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name, bool use_fqdn_default)
 {
 	bool *dostop=new bool;
 	*dostop=false;
-	ExecThread *et=new ExecThread(tcpport, udpport, name, dostop);
+	ExecThread *et=new ExecThread(tcpport, udpport, name, dostop, use_fqdn_default);
 	THREADPOOL_TICKET t=Server->getThreadPool()->execute(et);
-	FileServ *fs=new FileServ(dostop, name, t);
+	FileServ *fs=new FileServ(dostop, name, t, use_fqdn_default);
 	return fs;
 }
 

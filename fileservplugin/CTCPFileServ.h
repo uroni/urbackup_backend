@@ -19,13 +19,14 @@ public:
 	CTCPFileServ(void);
 	~CTCPFileServ(void);
 	void KickClients();
-	bool Start(_u16 tcpport,_u16 udpport, std::string pServername);
+	bool Start(_u16 tcpport,_u16 udpport, std::string pServername, bool use_fqdn);
 
 	bool Run(void);
 
 	_u16 getUDPPort();
 	_u16 getTCPPort();
 	std::string getServername();
+	bool getUseFQDN();
 
 private:
 	bool TcpStep(void);
@@ -41,6 +42,8 @@ private:
 	_u16 m_udpport;
 
 	THREADPOOL_TICKET udpticket;
+
+	bool m_use_fqdn;
 };
 
 extern CTCPFileServ *TCPServer;

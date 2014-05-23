@@ -6,7 +6,7 @@
 class FileServ : public IFileServ
 {
 public:
-	FileServ(bool *pDostop, const std::wstring &servername, THREADPOOL_TICKET serverticket);
+	FileServ(bool *pDostop, const std::wstring &servername, THREADPOOL_TICKET serverticket, bool use_fqdn);
 	~FileServ(void);
 	void shareDir(const std::wstring &name, const std::wstring &path);
 	void removeDir(const std::wstring &name);

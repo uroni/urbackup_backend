@@ -2488,7 +2488,18 @@ void IndexThread::start_filesrv(void)
 	if(!s_udpport.empty())
 		curr_udpport=atoi(s_udpport.c_str());
 
-	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(curr_tcpport, curr_udpport, name);
+	bool use_fqdn=false;
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	if(db)
+	{
+		db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey = 'use_fqdn'");
+		if(!res.empty() && res[0][L"tvalue"]==L"1")
+		{
+			use_fqdn=true;
+		}
+	}
+
+	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn);
 	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
 
 	ServerIdentityMgr::setFileServ(filesrv);

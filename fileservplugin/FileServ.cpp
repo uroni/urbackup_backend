@@ -23,20 +23,19 @@
 #include "CClientThread.h"
 #include "../Interface/ThreadPool.h"
 #include <algorithm>
+#include "CUDPThread.h"
 
 IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
 bool FileServ::pause=false;
 
-std::string getSystemServerName(void);
-
-FileServ::FileServ(bool *pDostop, const std::wstring &pServername, THREADPOOL_TICKET serverticket)
+FileServ::FileServ(bool *pDostop, const std::wstring &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
 	: servername(pServername), serverticket(serverticket)
 {
 	dostop=pDostop;
 	if(servername.empty())
 	{
-		servername=Server->ConvertToUnicode(getSystemServerName());
+		servername=Server->ConvertToUnicode(getSystemServerName(use_fqdn));
 	}
 }
 

@@ -10,7 +10,7 @@
 class CUDPThread : public IThread
 {
 public:
-	CUDPThread(_u16 udpport, std::string servername);
+	CUDPThread(_u16 udpport, std::string servername, bool use_fqdn);
 	~CUDPThread();
 
 	std::string getServername();
@@ -29,3 +29,4 @@ private:
 	volatile bool do_stop;
 };
 
+std::string getSystemServerName(bool use_fqdn);

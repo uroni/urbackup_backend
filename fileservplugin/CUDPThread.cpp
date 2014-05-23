@@ -33,25 +33,31 @@
 #include "../stringtools.h"
 #include <memory.h>
 
-std::string getSystemServerName(void)
+std::string getSystemServerName(bool use_fqdn)
 {
-#ifdef _WIN32
 	char hostname[MAX_PATH];
     _i32 rc=gethostname(hostname, MAX_PATH);
 
-	if(rc!=SOCKET_ERROR)
-		return hostname;
-	else
+	if(rc==SOCKET_ERROR)
+	{
 		return "_error_";
-#else
-	char hostname[300];
-	_i32 rc=gethostname(hostname,300);
-	
-	if( rc!=-1 )
+	}
+
+	if(!use_fqdn)
+	{
 		return hostname;
+	}
+
+	struct hostent* h;
+	h = gethostbyname(hostname);
+	if(h!=NULL)
+	{
+		return h->h_name;
+	}
 	else
-		return "_error_";
-#endif
+	{
+		return hostname;
+	}
 }
 
 bool CUDPThread::hasError(void)
@@ -59,7 +65,7 @@ bool CUDPThread::hasError(void)
 	return has_error;
 }
 
-CUDPThread::CUDPThread(_u16 udpport,std::string servername)
+CUDPThread::CUDPThread(_u16 udpport,std::string servername, bool use_fqdn)
 {
 	has_error=false;
 	do_stop=false;
@@ -118,7 +124,7 @@ CUDPThread::CUDPThread(_u16 udpport,std::string servername)
 	if( servername!="" )
 		mServername=servername;
 	else
-		mServername=getSystemServerName();
+		mServername=getSystemServerName(use_fqdn);
 
 	Log("Servername: -"+mServername+"-", LL_INFO);
 }

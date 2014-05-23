@@ -35,6 +35,7 @@ CTCPFileServ::CTCPFileServ(void)
 {
 	udpthread=NULL;
 	udpticket=ILLEGAL_THREADPOOL_TICKET;
+	m_use_fqdn=false;
 }
 
 CTCPFileServ::~CTCPFileServ(void)
@@ -98,10 +99,11 @@ std::string CTCPFileServ::getServername()
 	return udpthread->getServername();
 }
 
-bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
+bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, bool use_fqdn)
 {
 	m_tcpport=tcpport;
 	m_udpport=udpport;
+	m_use_fqdn=use_fqdn;
 	_i32 rc;
 #ifdef _WIN32
 	WSADATA wsadata;
@@ -172,7 +174,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername)
 	}
 	if(udpthread==NULL)
 	{
-		udpthread=new CUDPThread(udpport,pServername);
+		udpthread=new CUDPThread(udpport,pServername, use_fqdn);
 		if(!udpthread->hasError())
 		{
 			if(Server->getServerParameter("internet_test_mode")!="true")
@@ -269,4 +271,9 @@ void CTCPFileServ::DelClientThreads(void)
 		}
 	}
 	cs.Leave();
+}
+
+bool CTCPFileServ::getUseFQDN()
+{
+	return m_use_fqdn;
 }
