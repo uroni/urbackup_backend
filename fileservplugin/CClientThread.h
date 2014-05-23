@@ -47,13 +47,13 @@ struct SSendData
 struct SChunk
 {
 	SChunk()
-		: msg(ID_ILLEGAL)
+		: msg(ID_ILLEGAL), update_file(NULL)
 	{
 
 	}
 
 	explicit SChunk(char msg)
-		: msg(msg)
+		: msg(msg), update_file(NULL)
 	{
 
 	}
