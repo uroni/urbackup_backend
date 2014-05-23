@@ -87,5 +87,3 @@ public:
 	void On_ResetAll(const std::wstring &vol);
 	void On_DirRemoved(const std::wstring & strDirName);
 };
-
-std::wstring add_trailing_slash(const std::wstring &strDirName);

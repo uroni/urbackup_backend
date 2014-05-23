@@ -123,6 +123,15 @@ IPipe* IndexThread::msgpipe=NULL;
 IFileServ *IndexThread::filesrv=NULL;
 IMutex *IndexThread::filesrv_mutex=NULL;
 
+std::wstring add_trailing_slash(const std::wstring &strDirName)
+{
+	if(!strDirName.empty() && strDirName[strDirName.size()-1]!=os_file_sep()[0])
+	{
+		return strDirName+os_file_sep();
+	}
+	return strDirName;
+}
+
 IndexThread::IndexThread(void)
 	: index_error(false), last_filebackup_filetime(0)
 {

@@ -21,6 +21,7 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include "database.h"
+#include "client.h"
 
 #define CHANGE_JOURNAL
 
@@ -473,13 +474,4 @@ _i64 DirectoryWatcherThread::get_current_filetime()
 	GetSystemTime(&st);
 	SystemTimeToFileTime(&st, &ft);
 	return static_cast<__int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
-}
-
-std::wstring add_trailing_slash(const std::wstring &strDirName)
-{
-	if(!strDirName.empty() && strDirName[strDirName.size()-1]!=os_file_sep()[0])
-	{
-		return strDirName+os_file_sep();
-	}
-	return strDirName;
 }

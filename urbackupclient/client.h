@@ -238,3 +238,5 @@ private:
 
 	_i64 last_filebackup_filetime;
 };
+
+std::wstring add_trailing_slash(const std::wstring &strDirName);
