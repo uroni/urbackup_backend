@@ -26,6 +26,7 @@
 # 	define GetTickCount() (unsigned int)(clock()/CLOCKS_PER_SEC)
 #	define INVALID_HANDLE_VALUE -1
 #	define Sleep(x) usleep(x*1000)
+#	define MAX_PATH 260
 #endif
 #ifdef sun
 #	define MSG_NOSIGNAL 0
