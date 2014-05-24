@@ -146,7 +146,7 @@ bool isBootable(const PWCHAR VolumeName)
 	HANDLE hVolume=CreateFileW(VolumeName, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
-		LOG(L"Error opening device for reading bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
+		LOG(L"Error opening device for reading bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
 		return false;
 	}
 
@@ -157,7 +157,7 @@ bool isBootable(const PWCHAR VolumeName)
 
 	if(b==FALSE)
 	{
-		LOG(L"Error reading partition information for bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
+		LOG(L"Error reading partition information for bootable flag (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
 		return false;
 	}
 
@@ -171,7 +171,7 @@ bool isBootable(const PWCHAR VolumeName)
 		}
 		else
 		{
-			LOG(L"Unknown partition style encountered (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
+			LOG(L"Unknown partition style encountered (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
 
 			return false;
 		}
