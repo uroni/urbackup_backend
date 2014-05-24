@@ -95,47 +95,49 @@ namespace
 			}
 		}
 
-		CompressedFile compFile(fn, MODE_READ);
-
-		if(compFile.hasError())
 		{
-			if(compFile.hasNoMagic())
-			{
-				Server->Log("File is not compressed. No need to decompress.", LL_WARNING);
-				return true;
-			}
-			else
-			{
-				Server->Log("Error while reading compressed file header", LL_ERROR);
-				return false;
-			}
-		}
+			CompressedFile compFile(fn, MODE_READ);
 
-		int pcdone = -1;
-		__int64 decompressed = 0;
-		char buffer[32768];
-		_u32 read;
-		do 
-		{
-			read = compFile.Read(buffer, 32768);
-			if(read>0)
+			if(compFile.hasError())
 			{
-				if(out->Write(buffer, read)!=read)
+				if(compFile.hasNoMagic())
 				{
-					Server->Log("Error writing to output file", LL_ERROR);
+					Server->Log("File is not compressed. No need to decompress.", LL_WARNING);
+					return true;
+				}
+				else
+				{
+					Server->Log("Error while reading compressed file header", LL_ERROR);
 					return false;
 				}
 			}
-			decompressed+=read;
-			int currentpc = static_cast<int>(static_cast<float>(decompressed)/compFile.Size()*100.f+0.5f);
-			if(currentpc!=pcdone)
-			{
-				pcdone=currentpc;
-				Server->Log(L"Decompressing \""+fn+L"\"... "+convert(pcdone)+L"%", LL_INFO);
-			}
-		} while (read>0);
 
-		compFile.finish();
+			int pcdone = -1;
+			__int64 decompressed = 0;
+			char buffer[32768];
+			_u32 read;
+			do 
+			{
+				read = compFile.Read(buffer, 32768);
+				if(read>0)
+				{
+					if(out->Write(buffer, read)!=read)
+					{
+						Server->Log("Error writing to output file", LL_ERROR);
+						return false;
+					}
+				}
+				decompressed+=read;
+				int currentpc = static_cast<int>(static_cast<float>(decompressed)/compFile.Size()*100.f+0.5f);
+				if(currentpc!=pcdone)
+				{
+					pcdone=currentpc;
+					Server->Log(L"Decompressing \""+fn+L"\"... "+convert(pcdone)+L"%", LL_INFO);
+				}
+			} while (read>0);
+
+			compFile.finish();
+		}		
 
 		if(fn==output)
 		{
