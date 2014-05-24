@@ -4536,8 +4536,29 @@ std::wstring BackupServerGet::fixFilenameForOS(const std::wstring& fn)
 		ret.resize(MAX_PATH-15);
 		modified_filename=true;
 	}
-	std::wstring disallowed_chars = L"\\:*?\"<>|/";	
-		
+	std::wstring disallowed_chars = L"\\:*?\"<>|/";
+	for(char ch=1;ch<=31;++ch)
+	{
+		disallowed_chars+=ch;
+	}
+
+	if(fn==L"CON" || fn==L"PRN" || fn==L"AUX" || fn==L"NUL" || fn==L"COM1" || fn==L"COM2" || fn==L"COM3" ||
+		fn==L"COM4" || fn==L"COM5" || fn==L"COM6" || fn==L"COM7" || fn==L"COM8" || fn==L"COM9" || fn==L"LPT1" ||
+		fn==L"LPT2" || fn==L"LPT3" || fn==L"LPT4" || fn==L"LPT5" || fn==L"LPT6" || fn==L"LPT7" || fn==L"LPT8" || fn==L"LPT9")
+	{
+		ServerLogger::Log(clientid, L"Filename \""+fn+L"\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
+		ret = L"_" + fn;
+		modified_filename=true;
+	}
+
+	if(next(fn, 0, L"CON.") || next(fn, 0, L"PRN.") || next(fn, 0, L"AUX.") || next(fn, 0, L"NUL.") || next(fn, 0, L"COM1.") || next(fn, 0, L"COM2.") || next(fn, 0, L"COM3.") ||
+		next(fn, 0, L"COM4.") || next(fn, 0, L"COM5.") || next(fn, 0, L"COM6.") || next(fn, 0, L"COM7.") || next(fn, 0, L"COM8.") || next(fn, 0, L"COM9.") || next(fn, 0, L"LPT1.") ||
+		next(fn, 0, L"LPT2.") || next(fn, 0, L"LPT3.") || next(fn, 0, L"LPT4.") || next(fn, 0, L"LPT5.") || next(fn, 0, L"LPT6.") || next(fn, 0, L"LPT7.") || next(fn, 0, L"LPT8.") || next(fn, 0, L"LPT9.") )
+	{
+		ServerLogger::Log(clientid, L"Filename \""+fn+L"\" not allowed on Windows. Prefixing and appending hash.", LL_WARNING);
+		ret = L"_" + fn;
+		modified_filename=true;
+	}
 #else
 	if(Server->ConvertToUTF8(fn).size()>=NAME_MAX-11)
 	{
