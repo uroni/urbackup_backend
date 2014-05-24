@@ -637,7 +637,10 @@ std::wstring ChangeJournalWatcher::getFilename(_i64 frn, _i64 rid)
 		}
 		else
 		{
-			Server->Log(L"Couldn't follow up to root. Current path: "+path, LL_ERROR);
+			if(path!=L"$RmMetadata\\$TxfLog\\")
+			{
+				Server->Log(L"Couldn't follow up to root. Current path: "+path, LL_ERROR);
+			}
 			return L"";
 		}
 	}
