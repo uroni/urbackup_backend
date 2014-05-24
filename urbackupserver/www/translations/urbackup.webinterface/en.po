@@ -1172,3 +1172,9 @@ msgstr "Restore to default"
 
 msgid "Save"
 msgstr "Save"
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr "Connect to Internet backup server if connected to local backup server"
+
+msgid "tAllow clients to quit the tray icon"
+msgstr "Allow clients to quit the tray icon"

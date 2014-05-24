@@ -1439,6 +1439,7 @@ function show_settings2(data)
 			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
+			data.settings.allow_tray_exit=getCheckboxValue(data.settings.allow_tray_exit);
 			
 			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
 			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
@@ -1449,6 +1450,7 @@ function show_settings2(data)
 			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
 			data.settings.trust_client_hashes=getCheckboxValue(data.settings.trust_client_hashes);
+			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1548,6 +1550,8 @@ function show_settings2(data)
 			data.settings.allow_starting_incr_image_backups=getCheckboxValue(data.settings.allow_starting_incr_image_backups);
 			data.settings.allow_pause=getCheckboxValue(data.settings.allow_pause);
 			data.settings.allow_log_view=getCheckboxValue(data.settings.allow_log_view);
+			data.settings.allow_tray_exit=getCheckboxValue(data.settings.allow_tray_exit);
+			
 			data.settings.internet_mode_enabled=getCheckboxValue(data.settings.internet_mode_enabled);
 			data.settings.internet_full_file_backups=getCheckboxValue(data.settings.internet_full_file_backups);
 			data.settings.internet_image_backups=getCheckboxValue(data.settings.internet_image_backups);
@@ -1557,6 +1561,7 @@ function show_settings2(data)
 			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
 			data.settings.compress_images=getCheckboxValue(data.settings.compress_images);
+			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1812,6 +1817,7 @@ g.settings_list=[
 "allow_starting_incr_image_backups",
 "allow_pause",
 "allow_log_view",
+"allow_tray_exit",
 "image_letters",
 "internet_authkey",
 "internet_speed",
@@ -1834,7 +1840,8 @@ g.settings_list=[
 "file_hash_collect_timeout",
 "file_hash_collect_cachesize",
 "internet_calculate_filehashes_on_client",
-"compress_images"
+"compress_images",
+"internet_connect_always"
 ];
 g.general_settings_list=[
 "backupfolder",

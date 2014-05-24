@@ -49,6 +49,7 @@ struct SSettings
 	bool allow_starting_incr_image_backups;
 	bool allow_config_paths;
 	bool allow_log_view;
+	bool allow_tray_exit;
 	std::string image_letters;
 	bool backup_database;
 	std::string internet_server;
@@ -89,6 +90,7 @@ struct SSettings
 	bool use_incremental_symlinks;
 	bool compress_images;
 	bool trust_client_hashes;
+	bool internet_connect_always;
 };
 
 struct STimeSpan

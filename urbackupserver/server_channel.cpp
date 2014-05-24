@@ -300,6 +300,8 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_ALLOW_STARTING_FULL_IMAGE_BACKUPS;
 	if(!cs->allow_starting_incr_image_backups)
 		capa|=DONT_ALLOW_STARTING_INCR_IMAGE_BACKUPS;
+	if(!cs->allow_tray_exit)
+		capa|=DONT_ALLOW_EXIT_TRAY_ICON;
 
 	return capa;
 }

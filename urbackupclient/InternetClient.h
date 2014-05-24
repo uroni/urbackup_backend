@@ -21,6 +21,7 @@ struct SServerSettings
 	std::string authkey;
 	bool internet_compress;
 	bool internet_encrypt;
+	bool internet_connect_always;
 };
 
 class InternetClient : public IThread

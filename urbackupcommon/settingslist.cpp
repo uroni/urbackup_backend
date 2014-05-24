@@ -32,6 +32,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"allow_pause");
 	ret.push_back(L"allow_log_view");
 	ret.push_back(L"allow_overwrite");
+	ret.push_back(L"allow_tray_exit");
 	ret.push_back(L"image_letters");
 	ret.push_back(L"internet_server");
 	ret.push_back(L"internet_server_port");
@@ -58,6 +59,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"end_to_end_file_backup_verification");
 	ret.push_back(L"internet_calculate_filehashes_on_client");
 	ret.push_back(L"compress_images");
+	ret.push_back(L"internet_connect_always");
 	return ret;
 }
 

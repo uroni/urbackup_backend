@@ -156,7 +156,7 @@ void InternetClient::operator()(void)
 			doUpdateSettings();
 			update_settings=false;
 		}
-		if(last_lan_connection==0 || Server->getTimeMS()-last_lan_connection>ic_lan_timeout)
+		if(server_settings.internet_connect_always || last_lan_connection==0 || Server->getTimeMS()-last_lan_connection>ic_lan_timeout)
 		{
 			if(!connected)
 			{
@@ -257,6 +257,18 @@ void InternetClient::doUpdateSettings(void)
 	{
 		if(tmp=="false")
 			server_settings.internet_encrypt=false;
+	}
+	std::string internet_connect_always_str;
+	if(settings->getValue("internet_connect_always", &tmp) || settings->getValue("internet_connect_always_def", &tmp) )
+	{
+		if(tmp=="true")
+		{
+			server_settings.internet_connect_always=true;
+		}
+		else
+		{
+			server_settings.internet_connect_always=false;
+		}
 	}
 	Server->destroy(settings);
 }

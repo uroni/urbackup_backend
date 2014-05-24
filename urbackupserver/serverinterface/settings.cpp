@@ -120,6 +120,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(allow_starting_incr_image_backups);
 	SET_SETTING(allow_pause);
 	SET_SETTING(allow_log_view);
+	SET_SETTING(allow_tray_exit);
 	SET_SETTING(image_letters);
 	SET_SETTING(internet_authkey);
 	SET_SETTING(client_set_settings);
@@ -144,6 +145,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(end_to_end_file_backup_verification);
 	SET_SETTING(internet_calculate_filehashes_on_client);
 	SET_SETTING(compress_images);
+	SET_SETTING(internet_connect_always);
 #undef SET_SETTING
 	return ret;
 }

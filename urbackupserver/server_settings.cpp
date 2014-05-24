@@ -273,6 +273,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->allow_starting_incr_image_backups=(settings_default->getValue("allow_starting_incr_image_backups", "true")=="true");
 	settings->allow_pause=(settings_default->getValue("allow_pause", "true")=="true");
 	settings->allow_log_view=(settings_default->getValue("allow_log_view", "true")=="true");
+	settings->allow_tray_exit=(settings_default->getValue("allow_tray_exit", "true")=="true");
 	settings->image_letters=settings_default->getValue("image_letters", "C");
 	settings->backup_database=(settings_default->getValue("backup_database", "true")=="true");
 	settings->internet_server_port=(unsigned short)(atoi(settings_default->getValue("internet_server_port", "55415").c_str()));
@@ -312,6 +313,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
 	settings->compress_images=(settings_default->getValue("compress_images", "true")=="true");
 	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
+	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "true")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -409,6 +411,7 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("internet_image_backups", &settings->internet_image_backups);
 	readBoolClientSetting("internet_compress", &settings->internet_compress);
 	readBoolClientSetting("internet_encrypt", &settings->internet_encrypt);
+	readBoolClientSetting("internet_connect_always", &settings->internet_connect_always);
 
 	if(!settings->overwrite)
 		return;
@@ -451,6 +454,7 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("allow_starting_incr_image_backups", &settings->allow_starting_incr_image_backups);
 	readBoolClientSetting("allow_pause", &settings->allow_pause);
 	readBoolClientSetting("allow_log_view", &settings->allow_log_view);
+	readBoolClientSetting("allow_tray_exit", &settings->allow_tray_exit);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)
