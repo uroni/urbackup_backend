@@ -140,20 +140,46 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			size.LowPart=wfd.nFileSizeLow;
 			f.size=size.QuadPart;
 
-			if(exact_filesize)
+			if(exact_filesize && !(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
 			{
-				WIN32_FILE_ATTRIBUTE_DATA fad;
-				if( GetFileAttributesExW(os_file_prefix(tpath+L"\\"+f.name).c_str(),  GetFileExInfoStandard, &fad) )
+				if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT)
 				{
-					size.HighPart = fad.nFileSizeHigh;
-					size.LowPart = fad.nFileSizeLow;
-					f.size = size.QuadPart;
+					HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+						OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
-					lwt.HighPart = fad.ftLastWriteTime.dwHighDateTime;
-					lwt.LowPart = fad.ftLastWriteTime.dwLowDateTime;
+					if(hFile!=INVALID_HANDLE_VALUE)
+					{
+						BY_HANDLE_FILE_INFORMATION file_info;
+						if(GetFileInformationByHandle(hFile, &file_info))
+						{
+							size.HighPart = file_info.nFileSizeHigh;
+							size.LowPart = file_info.nFileSizeLow;
+							f.size = size.QuadPart;
 
-					f.last_modified = lwt.QuadPart;
+							lwt.HighPart = file_info.ftLastWriteTime.dwHighDateTime;
+							lwt.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
+
+							f.last_modified = lwt.QuadPart;
+						}
+
+						CloseHandle(hFile);
+					}
 				}
+				else
+				{
+					WIN32_FILE_ATTRIBUTE_DATA fad;
+					if( GetFileAttributesExW(os_file_prefix(tpath+L"\\"+f.name).c_str(),  GetFileExInfoStandard, &fad) )
+					{
+						size.HighPart = fad.nFileSizeHigh;
+						size.LowPart = fad.nFileSizeLow;
+						f.size = size.QuadPart;
+
+						lwt.HighPart = fad.ftLastWriteTime.dwHighDateTime;
+						lwt.LowPart = fad.ftLastWriteTime.dwLowDateTime;
+
+						f.last_modified = lwt.QuadPart;
+					}
+				}				
 			}			
 
 			if(f.last_modified<0) f.last_modified*=-1;
