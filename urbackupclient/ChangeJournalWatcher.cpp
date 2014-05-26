@@ -1078,13 +1078,16 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				|| (UsnRecord->Reason & watch_flags) )
 			{
 				bool save_fn=false;
-				if( (UsnRecord->Reason & USN_REASON_BASIC_INFO_CHANGE) && (UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY)==0 )
+				if( ( UsnRecord->Reason & USN_REASON_DATA_OVERWRITE ) &&
+					     !( (UsnRecord->Reason & USN_REASON_DATA_EXTEND) || (UsnRecord->Reason & USN_REASON_DATA_TRUNCATION) ) )
 				{
 					save_fn=true;
 				}
-				else if( ( UsnRecord->Reason & USN_REASON_DATA_OVERWRITE ) &&
-					     !( (UsnRecord->Reason & USN_REASON_DATA_EXTEND) || (UsnRecord->Reason & USN_REASON_DATA_TRUNCATION) ) )
+
+				if(save_fn)
 				{
+					save_fn=false;
+
 					WIN32_FILE_ATTRIBUTE_DATA fad;
 					if(GetFileAttributesExW(os_file_prefix(real_fn).c_str(), GetFileExInfoStandard, &fad) )
 					{
@@ -1095,6 +1098,8 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 						}
 					}
 				}
+				
+
 				listener->On_FileModified(real_fn, save_fn);
 			}
 		}
