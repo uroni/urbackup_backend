@@ -8,7 +8,7 @@ public:
 	PipeThrottler(size_t bps);
 	~PipeThrottler(void);
 
-	virtual void addBytes(size_t new_bytes);
+	virtual bool addBytes(size_t new_bytes, bool wait);
 
 	virtual void changeThrottleLimit(size_t bps);
 

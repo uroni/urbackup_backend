@@ -109,7 +109,7 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 		}
 		else
 		{
-			doThrottle(rc, false);
+			doThrottle(rc, false, true);
 		}
 	}
 	if( rc>0 )
@@ -126,7 +126,7 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 
 bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 {
-	doThrottle(bsize, true);
+	doThrottle(bsize, true, true);
 
 	int rc = selectSocketWrite(s, timeoutms);
 	size_t written=0;
@@ -183,6 +183,11 @@ size_t CStreamPipe::Read(std::string *ret, int timeoutms)
 
 bool CStreamPipe::isWritable(int timeoutms)
 {
+	if(!doThrottle(0, true, false))
+	{
+		return false;
+	}
+
 	int rc = selectSocketWrite(s, timeoutms);
 	if( rc>0 )
 		return true;
@@ -198,6 +203,11 @@ bool CStreamPipe::isWritable(int timeoutms)
 
 bool CStreamPipe::isReadable(int timeoutms)
 {
+	if(!doThrottle(0, false, false))
+	{
+		return false;
+	}
+
 	int rc = selectSocketRead(s, timeoutms);
 	if( rc>0 )
 		return true;
@@ -230,23 +240,27 @@ void CStreamPipe::shutdown(void)
 #endif
 }
 
-void CStreamPipe::doThrottle(size_t new_bytes, bool outgoing)
+bool CStreamPipe::doThrottle(size_t new_bytes, bool outgoing, bool wait)
 {
 	transfered_bytes+=new_bytes;
 
 	if(outgoing)
 	{
+		bool b=true;
 		for(size_t i=0;i<outgoing_throttlers.size();++i)
 		{
-			outgoing_throttlers[i]->addBytes(new_bytes);
+			b = b && outgoing_throttlers[i]->addBytes(new_bytes, wait);
 		}
+		return b;
 	}
 	else
 	{
+		bool b=true;
 		for(size_t i=0;i<incoming_throttlers.size();++i)
 		{
-			incoming_throttlers[i]->addBytes(new_bytes);
+			b = b && incoming_throttlers[i]->addBytes(new_bytes, wait);
 		}
+		return b;
 	}
 }
 

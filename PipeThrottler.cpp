@@ -13,11 +13,11 @@ PipeThrottler::~PipeThrottler(void)
 	Server->destroy(mutex);
 }
 
-void PipeThrottler::addBytes(size_t new_bytes)
+bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 {
 	IScopedLock lock(mutex);
 
-	if(throttle_bps==0) return;
+	if(throttle_bps==0) return true;
 
 	int64 ctime=Server->getTimeMS();
 
@@ -40,22 +40,33 @@ void PipeThrottler::addBytes(size_t new_bytes)
 
 			if(sleepTime>0)
 			{
-				Server->wait(sleepTime);
+				if(wait)
+				{
+					Server->wait(sleepTime);
+				}
 
 				if(Server->getTimeMS()-lastresettime>1000)
 				{
 					curr_bytes=0;
 					lastresettime=Server->getTimeMS();
 				}
+
+				return false;
 			}
 		}
 	}
 	else if(curr_bytes>=throttle_bps)
 	{
-		Server->wait(1000);
+		if(wait)
+		{
+			Server->wait(1000);
+		}
 		curr_bytes=0;
 		lastresettime=Server->getTimeMS();
+		return false;
 	}
+
+	return true;
 }
 
 void PipeThrottler::changeThrottleLimit(size_t bps)

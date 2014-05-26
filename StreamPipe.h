@@ -33,7 +33,7 @@ public:
 
 private:
 	SOCKET s;
-	void doThrottle(size_t new_bytes, bool outgoing);
+	bool doThrottle(size_t new_bytes, bool outgoing, bool wait);
 
 	_i64 transfered_bytes;
 

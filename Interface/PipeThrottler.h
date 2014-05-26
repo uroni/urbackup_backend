@@ -7,7 +7,7 @@
 class IPipeThrottler : public IObject
 {
 public:
-	virtual void addBytes(size_t n_bytes)=0;
+	virtual bool addBytes(size_t n_bytes, bool wait)=0;
 	virtual void changeThrottleLimit(size_t bps)=0;
 };
 
