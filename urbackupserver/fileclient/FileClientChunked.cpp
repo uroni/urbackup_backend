@@ -505,6 +505,10 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 						}
 						return;
 					}
+					else if(remote_filesize==-1)
+					{
+						remote_filesize = new_remote_filesize;
+					}
 
 					state=CS_ID_FIRST;
 					calcTotalChunks();
