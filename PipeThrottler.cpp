@@ -43,12 +43,12 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 				if(wait)
 				{
 					Server->wait(sleepTime);
-				}
 
-				if(Server->getTimeMS()-lastresettime>1000)
-				{
-					curr_bytes=0;
-					lastresettime=Server->getTimeMS();
+					if(Server->getTimeMS()-lastresettime>1000)
+					{
+						curr_bytes=0;
+						lastresettime=Server->getTimeMS();
+					}
 				}
 
 				return false;
