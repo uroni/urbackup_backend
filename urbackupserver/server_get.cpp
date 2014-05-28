@@ -1714,6 +1714,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	size_t max_ok_id=0;
 	
 	bool c_has_error=false;
+	bool is_offline=false;
 
 	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
 	{
@@ -1756,6 +1757,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				if(server_download->isOffline())
 				{
 					ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+					is_offline = true;
 					r_done=true;
 					break;
 				}
@@ -1858,7 +1860,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		}
 	}
 
-	if(server_download->isOffline())
+	if(server_download->isOffline() && !is_offline)
 	{
 		ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
 		r_done=true;
@@ -1866,6 +1868,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 	if(r_done==false && c_has_error==false)
 	{
+		max_ok_id = line;
 		sendBackupOkay(true);
 	}
 	else
@@ -1886,15 +1889,17 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 			bool b=getNextEntry(buffer[i], cf, NULL);
 			if(b)
 			{
-				if(cf.isdir)
+				if(line <= (std::max)(server_download->getMaxOkId(), max_ok_id))
 				{
-					writeFileItem(clientlist, cf);
-				}
-				else if( line <= (std::max)(server_download->getMaxOkId(), max_ok_id)
-					&& server_download->isDownloadOk(line))
-				{
-					writeFileItem(clientlist, cf);
-				}
+					if(cf.isdir)
+					{
+						writeFileItem(clientlist, cf);
+					}
+					else if( server_download->isDownloadOk(line))
+					{
+						writeFileItem(clientlist, cf);
+					}
+				}				
 				++line;
 			}
 		}
