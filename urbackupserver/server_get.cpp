@@ -4816,7 +4816,7 @@ void BackupServerGet::copyFile(const std::wstring& source, const std::wstring& d
 
 unsigned int BackupServerGet::exponentialBackoffTime( size_t count, unsigned int sleeptime, unsigned div )
 {
-	return static_cast<unsigned int>((std::max)(static_cast<double>(sleeptime), pow(static_cast<double>(sleeptime), count/static_cast<double>(div))));
+	return static_cast<unsigned int>((std::max)(static_cast<double>(sleeptime), static_cast<double>(sleeptime)*pow(static_cast<double>(div), static_cast<double>(count))));
 }
 
 
