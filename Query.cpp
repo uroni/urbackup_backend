@@ -38,7 +38,8 @@
 #include <algorithm>
 #include "stringtools.h"
 
-#ifdef DEBUG_QUERIES
+
+#ifdef LOG_QUERIES
 IMutex* CQuery::active_mutex;
 std::vector<std::string> CQuery::active_queries;
 #endif
@@ -67,7 +68,7 @@ CQuery::~CQuery()
 
 void CQuery::init_mutex(void)
 {
-#ifdef DEBUG_QUERIES
+#ifdef LOG_QUERIES
 	active_mutex=Server->createMutex();
 #endif
 }
@@ -155,13 +156,15 @@ void CQuery::Reset(void)
 
 bool CQuery::Write(int timeoutms)
 {
+#ifdef LOG_WRITE_QUERIES
+	ScopedAddActiveQuery active_query(this);
+#endif
 	return Execute(timeoutms);
 }
 
 bool CQuery::Execute(int timeoutms)
 {
 	//Server->Log("Write: "+stmt_str);
-	ScopedAddActiveQuery active_query(this);
 
 	bool transaction_lock=false;
 	int tries=60; //10min
@@ -313,7 +316,9 @@ db_nresults CQuery::ReadN(int *timeoutms)
 	bool transaction_lock=false;
 	int tries=60; //10min
 
+#ifdef LOG_READ_QUERIES
 	ScopedAddActiveQuery active_query(this);
+#endif
 
 	setupStepping(timeoutms);
 	
@@ -347,7 +352,9 @@ db_results CQuery::Read(int *timeoutms)
 	bool transaction_lock=false;
 	int tries=60; //10min
 
+#ifdef LOG_READ_QUERIES
 	ScopedAddActiveQuery active_query(this);
+#endif
 
 	setupStepping(timeoutms);
 
@@ -596,7 +603,7 @@ std::string CQuery::getErrMsg(void)
 
 void CQuery::addActiveQuery(const std::string& query_str)
 {
-#ifdef DEBUG_QUERIES
+#ifdef LOG_QUERIES
 	IScopedLock lock(active_mutex);
 	active_queries.push_back(query_str);
 #endif
@@ -604,7 +611,7 @@ void CQuery::addActiveQuery(const std::string& query_str)
 
 void CQuery::removeActiveQuery(const std::string& query_str)
 {
-#ifdef DEBUG_QUERIES
+#ifdef LOG_QUERIES
 	IScopedLock lock(active_mutex);
 	std::vector<std::string>::iterator iter =
 		std::find(active_queries.begin(), active_queries.end(),
@@ -616,7 +623,7 @@ void CQuery::removeActiveQuery(const std::string& query_str)
 
 void CQuery::showActiveQueries(int loglevel)
 {
-#ifdef DEBUG_QUERIES
+#ifdef LOG_QUERIES
 	IScopedLock lock(active_mutex);
 	for(size_t i=0;i<active_queries.size();++i)
 	{

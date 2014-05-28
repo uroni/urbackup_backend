@@ -10,7 +10,12 @@ struct sqlite3;
 class CDatabase;
 class DatabaseCursor;
 
-//#define DEBUG_QUERIES
+#define LOG_WRITE_QUERIES
+//#define LOG_READ_QUERIES
+
+#if defined(LOG_WRITE_QUERIES) || defined(LOG_READ_QUERIES)
+#define LOG_QUERIES
+#endif
 
 class ScopedAddActiveQuery;
 
@@ -67,7 +72,7 @@ private:
 	int curr_idx;
 	DatabaseCursor *cursor;
 
-#ifdef DEBUG_QUERIES
+#ifdef LOG_QUERIES
 	static IMutex* active_mutex;
 	static std::vector<std::string> active_queries;
 #endif
@@ -83,14 +88,14 @@ public:
 	ScopedAddActiveQuery(CQuery* query)
 		: query(query)
 	{
-#ifdef DEBUG_QUERIES
+#ifdef LOG_QUERIES
 		query->addActiveQuery(query->stmt_str);
 #endif
 	}
 
 	~ScopedAddActiveQuery()
 	{
-#ifdef DEBUG_QUERIES
+#ifdef LOG_QUERIES
 		query->removeActiveQuery(query->stmt_str);
 #endif
 	}

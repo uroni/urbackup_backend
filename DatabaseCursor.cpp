@@ -8,7 +8,7 @@ DatabaseCursor::DatabaseCursor(CQuery *query, int *timeoutms)
 {
 	query->setupStepping(timeoutms);
 
-#ifdef DEBUG_QUERIES
+#ifdef LOG_READ_QUERIES
 	active_query=new ScopedAddActiveQuery(query);
 #endif
 }
@@ -17,7 +17,7 @@ DatabaseCursor::~DatabaseCursor(void)
 {
 	query->shutdownStepping(lastErr, timeoutms, transaction_lock);
 
-#ifdef DEBUG_QUERIES
+#ifdef LOG_READ_QUERIES
 	delete active_query;
 #endif
 }
