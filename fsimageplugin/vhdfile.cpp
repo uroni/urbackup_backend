@@ -804,7 +804,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 	}
 	if(bsize+curr_offset>dstsize)
 	{
-		Server->Log("VHD file is not large enough", LL_ERROR);
+		Server->Log("VHD file is not large enough. Want to write till "+nconvert(bsize+curr_offset)+" but size is "+nconvert(dstsize), LL_ERROR);
 		return 0;
 	}
 
