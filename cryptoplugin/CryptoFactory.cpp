@@ -88,9 +88,9 @@ bool CryptoFactory::signFile(const std::string &keyfilename, const std::string &
 
 		return true;
 	}
-	catch(...)
+	catch(const CryptoPP::Exception& e)
 	{
-		Server->Log("Exception occured in CryptoFactory::signFile", LL_ERROR);
+		Server->Log("Exception occured in CryptoFactory::signFile: " + e.GetWhat(), LL_ERROR);
 	}
 
 	return false;
@@ -113,9 +113,9 @@ bool CryptoFactory::verifyFile(const std::string &keyfilename, const std::string
 
 		return svf.GetLastResult();
 	}
-	catch(...)
+	catch(const CryptoPP::Exception& e)
 	{
-		Server->Log("Exception occured in CryptoFactory::verifyFile", LL_ERROR);
+		Server->Log("Exception occured in CryptoFactory::verifyFile: " + e.GetWhat(), LL_ERROR);
 	}
 
 	return false;
@@ -175,9 +175,9 @@ bool CryptoFactory::signData(const std::string &pubkey, const std::string &data,
 
 		return true;
 	}
-	catch(...)
+	catch(const CryptoPP::Exception& e)
 	{
-		Server->Log("Exception occured in CryptoFactory::signData", LL_ERROR);
+		Server->Log("Exception occured in CryptoFactory::signData: " + e.GetWhat(), LL_ERROR);
 	}
 
 	return false;
@@ -200,9 +200,9 @@ bool CryptoFactory::verifyData( const std::string &pubkey, const std::string &da
 
 		return svf.GetLastResult();
 	}
-	catch(...)
+	catch(const CryptoPP::Exception& e)
 	{
-		Server->Log("Exception occured in CryptoFactory::verifyFile", LL_ERROR);
+		Server->Log("Exception occured in CryptoFactory::verifyData: " + e.GetWhat(), LL_ERROR);
 	}
 
 	return false;
