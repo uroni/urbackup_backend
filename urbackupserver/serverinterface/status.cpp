@@ -101,7 +101,21 @@ ACTION_IMPL(status)
 	{
 		{
 			ServerSettings settings(db);
-			if(!os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder)) || !os_directory_exists(os_file_prefix(settings.getSettings()->backupfolder_uncompr)) || settings.getSettings()->backupfolder.empty())
+			std::wstring backupfolder = settings.getSettings()->backupfolder;
+			std::wstring backupfolder_uncompr = settings.getSettings()->backupfolder_uncompr;
+
+#ifdef _WIN32
+			if(backupfolder.size()==2 && backupfolder[1]==':')
+			{
+				backupfolder+=os_file_sep();
+			}
+			if(backupfolder_uncompr.size()==2 && backupfolder_uncompr[1]==':')
+			{
+				backupfolder_uncompr+=os_file_sep();
+			}
+#endif
+
+			if(backupfolder.empty() || !os_directory_exists(os_file_prefix(backupfolder)) || !os_directory_exists(os_file_prefix(backupfolder_uncompr)) )
 			{
 				ret.set("dir_error", true);
 				if(settings.getSettings()->backupfolder.empty())
