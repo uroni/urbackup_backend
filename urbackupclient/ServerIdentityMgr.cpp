@@ -104,6 +104,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 	std::vector<std::string> old_identities=identities;
 	std::vector<int64> old_online_identities=online_identities;
 	identities.clear();
+	publickeys.clear();
 	online_identities.clear();
 	std::string data=getFile(server_ident_file);
 	int numl=linecount(data);
