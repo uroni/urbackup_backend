@@ -3,11 +3,12 @@
 # This file is distributed under the same license as the UrBackup package.
 # Translators:
 # Translators:
+# Translators:
 # luismi.munoz <lm@redlm.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-05-04 21:35+0000\n"
+"PO-Revision-Date: 2014-05-29 15:21+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Spanish (http://www.transifex.com/projects/p/urbackup/language/es/)\n"
 "MIME-Version: 1.0\n"
@@ -1172,4 +1173,10 @@ msgid "Restore to default"
 msgstr ""
 
 msgid "Save"
+msgstr ""
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr ""
+
+msgid "tAllow clients to quit the tray icon"
 msgstr ""

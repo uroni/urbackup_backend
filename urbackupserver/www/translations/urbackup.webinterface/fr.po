@@ -3,11 +3,12 @@
 # This file is distributed under the same license as the UrBackup package.
 # Translators:
 # Translators:
+# Translators:
 # charly_md <charles@cl-info.fr>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-05-04 21:35+0000\n"
+"PO-Revision-Date: 2014-05-29 15:21+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: French (http://www.transifex.com/projects/p/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
@@ -1130,46 +1131,52 @@ msgid "tRecalculate statistics"
 msgstr "Recalculer les statistiques"
 
 msgid "First"
-msgstr ""
+msgstr "Premier"
 
 msgid "Last"
-msgstr ""
+msgstr "Dernier"
 
 msgid "Next"
-msgstr ""
+msgstr "Prochain"
 
 msgid "Previous"
-msgstr ""
+msgstr "Précédent"
 
 msgid "No data available in table"
-msgstr ""
+msgstr "Pas de donnée dans cette table"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
-msgstr ""
+msgstr "Montrer _START_ to _END_ of _TOTAL_ entries"
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr ""
+msgstr "Afficher de 0 à 0 sur 0"
 
 msgid "(filtered from _MAX_ total entries)"
-msgstr ""
+msgstr "(Filtrer avec _MAX_ total enregistrements)"
 
 msgid "sInfoThousands"
-msgstr ""
+msgstr ","
 
 msgid "Show _MENU_ entries"
-msgstr ""
+msgstr "Afficher  _MENU_"
 
 msgid "Processing..."
-msgstr ""
+msgstr "En cours..."
 
 msgid "Search:"
-msgstr ""
+msgstr "Recherche : "
 
 msgid "No matching records found"
-msgstr ""
+msgstr "Pas de résultat trouvé"
 
 msgid "Restore to default"
-msgstr ""
+msgstr "Remettre par defaut"
 
 msgid "Save"
+msgstr "Sauvegarder"
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr ""
+
+msgid "tAllow clients to quit the tray icon"
 msgstr ""

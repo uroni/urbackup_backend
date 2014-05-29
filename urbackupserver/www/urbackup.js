@@ -17,8 +17,13 @@ g.languages=[
 				{ l: "Россия", s: "ru"},
 				{ l: "简体中文", s: "zh_CN" },
 				{ l: "繁体中文", s: "zh_TW" },
-				{ l: "فارسی", s: "fa" }
+				{ l: "فارسی", s: "fa" },
+				{ l: "українська мова", s: "uk" },
+				{ l: "Português do Brasil", s: "pt_BR" }
 			];
+
+g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
+
 		
 function init_datatables()
 {		
