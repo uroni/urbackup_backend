@@ -114,11 +114,13 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 {
 	if(identity.empty())
 	{
+		Server->Log("Signature error: Empty identity", LL_ERROR);
 		tcpstack.Send(pipe, "empty identity");
 		return;
 	}
 	if(crypto_fak==NULL)
 	{
+		Server->Log("Signature error: No crypto module", LL_ERROR);
 		tcpstack.Send(pipe, "no crypto");
 		return;
 	}
@@ -127,6 +129,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 
 	if(challenge_it==challenges.end() || challenge_it->second.empty())
 	{
+		Server->Log("Signature error: No challenge", LL_ERROR);
 		tcpstack.Send(pipe, "no challenge");
 		return;
 	}
@@ -136,6 +139,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	size_t hashpos = cmd.find("#");
 	if(hashpos==std::string::npos)
 	{
+		Server->Log("Signature error: No parameters", LL_ERROR);
 		tcpstack.Send(pipe, "no parameters");
 		return;
 	}
@@ -162,6 +166,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	}
 	else
 	{
+		Server->Log("Signature error: Verification failed", LL_ERROR);
 		tcpstack.Send(pipe, "signature verification failed");
 	}
 }
