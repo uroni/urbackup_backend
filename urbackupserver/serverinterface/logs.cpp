@@ -88,6 +88,7 @@ ACTION_IMPL(logs)
 			ret.set("all_clients", JSON::Value(true));
 		}
 		ret.set("clients", clients);
+		ret.set("has_user", session->id>0);
 
 		IQuery *q_log_right_clients=db->Prepare("SELECT id, name FROM clients"+(clientid.empty()?""
 											:" WHERE "+constructFilter(clientid, "id"))+" ORDER BY name");

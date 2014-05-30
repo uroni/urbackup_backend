@@ -2648,6 +2648,10 @@ function show_logs2(data)
 		td.sel_warn=(data.report_loglevel==1)?sel:"";
 		td.sel_error=(data.report_loglevel==2)?sel:"";
 		td.live_log_clients=live_log_clients;
+		if(data.has_user)
+		{
+			td.has_user=true;
+		}
 			
 		ndata+=dustRender("logs_table", td);
 	}

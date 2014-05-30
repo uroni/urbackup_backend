@@ -20,6 +20,7 @@
 <input type="button" value="{tShow}" onClick="show_live_log()" />
 
 <h1>{tReports}</h1>
+{?has_user}
 {tSend reports to}&nbsp;
 <span id="s_report_mails">
 </span>
@@ -39,3 +40,6 @@
 </select>
 <br />
 <input type="button" value="{tSave}" onClick="saveReportSettings()" />
+{:else}
+{tYou need to create a user to be able to send reports}
+{/has_user}

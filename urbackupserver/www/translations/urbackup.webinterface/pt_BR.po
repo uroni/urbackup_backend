@@ -4,11 +4,12 @@
 # Translators:
 # Translators:
 # Translators:
+# arturcorumba <artur@corumba.net>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-05-29 15:21+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2014-05-29 15:39+0000\n"
+"Last-Translator: arturcorumba <artur@corumba.net>\n"
 "Language-Team: Portuguese (Brazil) (http://www.transifex.com/projects/p/urbackup/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -119,7 +120,7 @@ msgid "tHostname/IP"
 msgstr "Nome/IP"
 
 msgid "tServer identity"
-msgstr ""
+msgstr "Identificação do servidor"
 
 msgid "users"
 msgstr "Usuários"
@@ -601,7 +602,7 @@ msgid "tArchival"
 msgstr "Arquivar"
 
 msgid "tInternet"
-msgstr ""
+msgstr "Internet"
 
 msgid "tPerform autoupdates silently"
 msgstr "Atualizações automaticas silenciosas"
@@ -625,19 +626,19 @@ msgid "tStart for selected"
 msgstr "Iniciar selecionados"
 
 msgid "tInternet clients"
-msgstr ""
+msgstr "Clientes via internet"
 
 msgid "tAdd additional internet clients"
-msgstr ""
+msgstr "Adicionar clientes via internet"
 
 msgid "tClient name"
-msgstr ""
+msgstr "Nome do cliente"
 
 msgid "tNo entries for this filter"
 msgstr "Não há entradas para este filtro"
 
 msgid "tNo data"
-msgstr ""
+msgstr "Sem dados"
 
 msgid "tTotal max backup speed for local network"
 msgstr "Velocidade máxima de backup para a rede local"
@@ -914,13 +915,13 @@ msgid "tClients are removed during the cleanup in the cleanup time window."
 msgstr ""
 
 msgid "about_urbackup"
-msgstr ""
+msgstr "Sobre UrBackup"
 
 msgid "loading"
-msgstr ""
+msgstr "Carregando"
 
 msgid "authentication_err"
-msgstr ""
+msgstr "Erro ao autenticar no servidor"
 
 msgid "tInverval for incremental image backups"
 msgstr ""
@@ -941,67 +942,67 @@ msgid "creating_filescache_text"
 msgstr ""
 
 msgid "tDownload folder as ZIP"
-msgstr ""
+msgstr "Baixar pasta em ZIP"
 
 msgid "tOld password"
-msgstr ""
+msgstr "Senha antiga"
 
 msgid "tNew password"
-msgstr ""
+msgstr "Nova senha"
 
 msgid "tRepeat new password"
-msgstr ""
+msgstr "Confirme a nova senha"
 
 msgid "tChanging password failed:"
-msgstr ""
+msgstr "Falha ao trocar senha:"
 
 msgid "tChanged password successfully"
-msgstr ""
+msgstr "Troca de senha com sucesso"
 
 msgid "tNumber of file entries processed"
-msgstr ""
+msgstr "Número de arquivos nesse processo"
 
 msgid "tUrBackup live log"
-msgstr ""
+msgstr "UrBackup log em tempo real"
 
 msgid "tLive Log"
-msgstr ""
+msgstr "Log em tempo real"
 
 msgid "tShow"
-msgstr ""
+msgstr "Mostrar"
 
 msgid "tThere is a new version of UrBackup server available"
-msgstr ""
+msgstr "Existe uma nova versão do UrBackup Server disponível"
 
 msgid "tIndexing..."
-msgstr ""
+msgstr "Indexando..."
 
 msgid "tDelete"
-msgstr ""
+msgstr "Apagar"
 
 msgid "tDownload client from update server"
-msgstr ""
+msgstr "Baixar cliente do servidor de atualizações"
 
 msgid "tGlobal soft filesystem quota"
 msgstr ""
 
 msgid "tDisable"
-msgstr ""
+msgstr "Desativar"
 
 msgid "tCompress image backups"
-msgstr ""
+msgstr "Compactar imagens de backup"
 
 msgid "tAllow client-side starting of full file backups"
-msgstr ""
+msgstr "Permitir que o cliente inicie backups completos"
 
 msgid "tAllow client-side starting of incremental file backups"
 msgstr ""
 
 msgid "tAllow client-side starting of full image backups"
-msgstr ""
+msgstr "Permitir que o cliente inicie backups completos de imagens"
 
 msgid "tAllow client-side starting of incremental image backups"
-msgstr ""
+msgstr "Permitir que o cliente inicie backups incrementais de imagens"
 
 msgid "tBackup window for incremental file backups"
 msgstr ""
@@ -1076,7 +1077,7 @@ msgid "tCache database type for file entries"
 msgstr ""
 
 msgid "tNone"
-msgstr ""
+msgstr "Nenhum"
 
 msgid "tCache database size for file entries"
 msgstr ""
@@ -1112,34 +1113,34 @@ msgid "tIP"
 msgstr ""
 
 msgid "tClient version"
-msgstr ""
+msgstr "Versão do cliente"
 
 msgid "tOperating System"
-msgstr ""
+msgstr "Sistema Operacional"
 
 msgid "tShow all clients"
-msgstr ""
+msgstr "Exibir todos os clientes"
 
 msgid "tThis client is going to be removed. "
-msgstr ""
+msgstr "Esse cliente será removido"
 
 msgid "tClients are removed during the cleanup in the cleanup time window. "
 msgstr ""
 
 msgid "tRecalculate statistics"
-msgstr ""
+msgstr "Recalculando estatísticas"
 
 msgid "First"
-msgstr ""
+msgstr "Primeiro"
 
 msgid "Last"
-msgstr ""
+msgstr "Último"
 
 msgid "Next"
-msgstr ""
+msgstr "Próximo"
 
 msgid "Previous"
-msgstr ""
+msgstr "Anterior"
 
 msgid "No data available in table"
 msgstr ""
@@ -1157,13 +1158,13 @@ msgid "sInfoThousands"
 msgstr ""
 
 msgid "Show _MENU_ entries"
-msgstr ""
+msgstr "Exibir entradas de _MENU_ "
 
 msgid "Processing..."
-msgstr ""
+msgstr "Processando..."
 
 msgid "Search:"
-msgstr ""
+msgstr "Busca:"
 
 msgid "No matching records found"
 msgstr ""

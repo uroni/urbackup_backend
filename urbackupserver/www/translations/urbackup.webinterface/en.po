@@ -1179,3 +1179,7 @@ msgstr "Connect to Internet backup server if connected to local backup server"
 
 msgid "tAllow clients to quit the tray icon"
 msgstr "Allow clients to quit the tray icon"
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr "You need to create a user to be able to send reports"
+
