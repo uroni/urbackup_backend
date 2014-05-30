@@ -384,7 +384,8 @@ translations.de = {
 "Restore to default": "Standardeinstellung zurücksetzen",
 "Save": "Speichern",
 "tConnect to Internet backup server if connected to local backup server": "Mit Internet Backup Server verbinden, wenn verbunden mit lokalem Backup Server",
-"tAllow clients to quit the tray icon": "Clients erlauben das Tray Icon zu schließen"
+"tAllow clients to quit the tray icon": "Clients erlauben das Tray Icon zu schließen",
+"tYou need to create a user to be able to send reports": "Sie müssen einen Benutzer erstellen um Reports erstellen zu können"
 }
 translations.en = {
 "action_1": "Incremental file backup",
@@ -771,7 +772,8 @@ translations.en = {
 "Restore to default": "Restore to default",
 "Save": "Save",
 "tConnect to Internet backup server if connected to local backup server": "Connect to Internet backup server if connected to local backup server",
-"tAllow clients to quit the tray icon": "Allow clients to quit the tray icon"
+"tAllow clients to quit the tray icon": "Allow clients to quit the tray icon",
+"tYou need to create a user to be able to send reports": "You need to create a user to be able to send reports"
 }
 translations.es = {
 "action_1": "Copia incremental de archivos",

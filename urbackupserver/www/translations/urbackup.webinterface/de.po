@@ -4,11 +4,12 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # uroni <urpc@gmx.de>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-05-29 15:22+0000\n"
+"PO-Revision-Date: 2014-05-30 18:43+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/urbackup/language/de/)\n"
 "MIME-Version: 1.0\n"
@@ -1180,3 +1181,6 @@ msgstr "Mit Internet Backup Server verbinden, wenn verbunden mit lokalem Backup 
 
 msgid "tAllow clients to quit the tray icon"
 msgstr "Clients erlauben das Tray Icon zu schließen"
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr "Sie müssen einen Benutzer erstellen um Reports erstellen zu können"
