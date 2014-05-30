@@ -12,7 +12,7 @@
 \hypersetup{ pdfborder={0 0 0} }
 
 \author{Martin Raiber}
-\title{Administration Manual for\\UrBackup Server 1.3.x}
+\title{Administration Manual for\\UrBackup Server 1.4.x}
 
 \maketitle
 
@@ -188,29 +188,55 @@ to the 'fastcgi.conf' file.
 
 \subsection{Client security}
 
-UrBackup Client only answers commands if the server or the interface process supply it with credentials. The server credential is saved in '/var/ lib/ urbackup/ server\_ident.key'. If it does not exist the server will randomly generate it the first time it runs. The client interface credential is generated in the same way and resides in 'pw.txt' in the UrBackup directory on the client. To give the client core process interface commands you need the contents of 'pw.txt'. The client core process saves the server credentials from which it accepts commands and which it allows to download files in 'server\_idents.txt' - one credential per line. You need to remove the preceding '\#I' and '\#' at the end of the contents of 'server\_ident.key' if you want to add a server identity to 'server\_idents.txt'. After installation the 'server\_idents.txt' does not exist and the client core process accepts(and adds) the first server it sees. After that no other servers with different credentials are accepted and you need to add their credentials manually. This prevents others from accessing files you want to be backed up in public places.\\
-If you want to have several servers to be able to do backups of a client you have two options. Either you manually supply the server credentials to the client (by copying them into 'server\_idents.txt') or you give all servers the same credentials by copying the same 'server\_ident.key' to all servers.
+UrBackup Client only answers commands if the server or the interface process supply it with credentials. The server credential is saved in '/var/ lib/ urbackup/ server\_ident.key'. If it does not exist the server will randomly generate it the first time it runs. The server identity is also confiremd by private/public key authentication. If not present the server will generate a private and public ECDSA key in 'server\_ident.priv' and 'server\_ident.pub'. 
+
+The client interface credential is generated in the same way and resides in 'pw.txt' and 'pw\_change.txt' in the UrBackup directory on the client. To give the client core process interface commands you need the contents of 'pw.txt' or 'pw\_change.txt' depending on what the command is:
+
+pw.txt:
+\begin{itemize}
+  \item Getting the current status
+  \item Get the incremental file backup interval
+  \item Start backups
+  \item Pause backups   
+\end{itemize}
+
+pw\_change.txt
+\begin{itemize}
+  \item Get the paths which are backed up during file backups
+  \item Change the paths which are backed up during file backups
+  \item Get all settings
+  \item Change all settings
+  \item Get log entries/logs
+  \item Accept a new server
+\end{itemize}
+
+Per default only priviledged users can access 'pw\_change.txt'. On Windows this leads to a elevation prompt on selecting a menu item which requires the contents of 'pw\_change.txt'. If you want to allow the commands without elevation prompt, either disable UAC or change the permissions on 'pw\_change.txt' to allow non-priviledged users read access. 
+ The client core process saves the server credentials from which it accepts commands and which it allows to download files in 'server\_idents.txt' - one credential per line. If the server is new enough to have private/public key authentication, the server's public key is also saved in 'server\_idents.txt'.
+
+If you want to manually add a server to 'server\_idents.txt' you need to remove the preceding '\#I' and '\#' at the end of the contents of 'server\_ident.key'. After installation the 'server\_idents.txt' does not exist and the client core process accepts(and adds) the first server it sees (with the public key of the server). After that no other servers with different credentials are accepted and you need to add their credentials either manually, or via clicking on the popup box, once the client has detected the new server. This prevents others from accessing files you want to be backed up in public places.\\
+If you want to have several servers to be able to do backups of a client you have two options. Either you manually supply the server credentials to the client (by copying them into 'server\_idents.txt') or you give all servers the same credentials by copying the same 'server\_ident.key', 'server\_ident.priv' and 'server\_ident.pub' to all servers.
 
 \subsection{Transfer security}
 
 The transfer of data from client to server is unencrypted on the local
 network allowing eavesdropping attacks to recover contents of the data that is
 backed up. With this in mind you should use UrBackup only in trusted local
-networks.
+networks. Be aware that it is really easy to redirect traffic in local networks, if no action has been taken to prevent that.
 
 \subsection{Internet mode security}
 
 The Internet mode uses strong authentication and encryption. The three way
 handshake is done using a shared key and PBKDF2-HMAC using SHA512 with 20000
-iterations. The data is encrypted using AES256 in CFB mode.
+iterations. The data is encrypted using AES256 in CFB mode. Additionally the local network server authentication via server identity
+key and ECDSA private/public key authentication is done.
 
 
 \section{Client discovery in local area networks}
 \label{client_discovery}
 
 UrBackup clients should be discovered automatically given that server and client reside in the same sub-network. The client discovery works as follows:\\
-The UrBackup server broadcasts a UDP message every 50 seconds on all adapters into the local subnet of this adapter. On receiving such a broadcast message the client answers back with its name. Thus it may take up to 50 seconds until a client is recognized as online.\\
-If the client you want to backup is not in the same subnet as the server you can add its IP or host name manually by clicking "show details" in the settings and then adding an "extra client". The server will then additionally send an UDP message directly to that entered IP or resolved host name allowing routers to forward the message across subnet boundaries. Be aware though that all connections are from server to client, e.g. if you use NAT you need to forward the client ports (35622 UDP, 35621 TCP, 35623 TCP) to the client. Currently there is no option to change these ports, so you would be limited to just one client if you have NAT. You should use VPN in this case.
+The UrBackup server broadcasts a UDP message every 50 seconds on all adapters into the local subnet of this adapter. (On Linux you can configure which network adapters UrBackup should broadcast on.) On receiving such a broadcast message the client answers back with its fully qualified domain name. Thus it may take up to 50 seconds until a client is recognized as online.\\
+If the client you want to backup is not in the same subnet as the server you can add its IP or host name manually by clicking "show details" in the settings and then adding an "extra client". The server will then additionally send an UDP message directly to that entered IP or resolved host name allowing routers to forward the message across subnet boundaries. Be aware though that all connections are from server to client, e.g. if you use NAT you need to forward the client ports (35622 UDP, 35621 TCP, 35623 TCP) to the client. Currently there is no option to change these ports, so you would be limited to just one client if you have NAT. You should use VPN or the Internet mode described in section \ref{sec:internet_clients} in this case.
 
 \section{Backup process}
 \label{sec_backup_process}
@@ -231,6 +257,7 @@ settings, in the temporary folder.
 On successfully downloading a file the server calculates its hash and looks if there is another file with the same hash value.
 If such a file exists they are assumed to be the same and a hard link to the other file is saved and the temporary file deleted. If no such file exists the file is moved to the new backup location. File path and hash value are saved into the server database.
 \item If the backup is incremental and a file has not changed a hard link to the file in the previous backup is created.
+\item If the backup is incremental, ``Use symlinks during incremental file backups'' is enabled and a directory with more than 10 files or folders is unchanged, it is symbollically linked to the same folder in the last backup. Because the last backup will probably be deleted before the current backup, the folder is first moved to a pool directory (``.directory\_pool'' in the client folder) and then linked from both places. The reference count of the directory is increased/decreased every time another symbolic link is created/removed to that directory.
 \item If the client goes offline during the backup and the backup is incremental the server continues creating hard links to files in the previous backup but does not try to download files again. The files that could not be downloaded are then not saved into the server side file list. If the backup is a full one and the client goes offline the backup process is interrupted and the partial file list is saved, which includes all files downloaded up to this point.
 \item If all files were transferred the server updates the 'current' symbolic link in the client backup storage location to point to the new backup. This only happens if the client did not go offline during the backup.
 \end{itemize}
@@ -247,7 +274,7 @@ sector preceded by its position on the hard disk. The client only sends sectors
 used by the file system. If the backup is incremental the client calculates a
 hash of 256 kbyte chunks and compares it to the previous image backup. If the
 hash of the chunk has not changed it does not transfer this chunk to the server,
-otherwise it does. Per default the server writes the image date directly into
+otherwise it does. Per default the server writes the image data directly into
 a VHD file. If enabled in the advanced configuration the server writes the image
 data to a temporary file first. 
 The temporary files have a maximum size of 1GB. After this size is exceeded the
@@ -258,6 +285,19 @@ Volume\textgreater\_\textless YYMMDD\_HHMM\textgreater.vhd'.\textless
 Volume\textgreater  being the drive letter of the backuped partition and YY the
 current year, MM the current month, DD the current day in the month and HHMM the
 hour and minute the image backup was started.
+
+\subsection{Collission propabilities}
+
+In this section we will look at the probability that the UrBackup backup system considers data the same, even though it is different. This can be caused by a hash collision (data has the same hash, even though the data is different). If happening, a collision can lead to files being incorrectly linked or blocks in image backups not transferred.
+
+\subsubsection{File backup collision probability}
+
+UrBackup uses SHA512 to hash the files before file deduplication. In comparison ZFS uses SHA256 for block deduplication. The choice of SHA512 is definitely on the save side. The Wikipedia page for ``Birthday attack'' has a propability table for SHA512. According to it one needs $1.6*10^{68}$ different files (of same size) to reach a probability of $10^{-18}$ of a collision. It also states that $10^{-18}$ is the best case uncorrectable bit error rate of a typical hard disk. To have $1.6*10^{68}$ different files of $1KB$ you need $1.4551915*10^{56}$ EB of hard disk space. So it is ridiculously more likely that the hard disk returns bad data or the data gets corrupted in RAM, rather than UrBackup linking the wrong files to each other.
+
+\subsection{Image backup collision probability}
+
+For the blocks in an image backup SHA256 is used. They are 256kbyte in size. The chance of a hash collision with SHA256 is $1$:($2^{256}$) ($p=\frac{1}{2^{256}}$) for two hashes. In the worst case you have $2TB/256kbyte = 8388608$ different blocks in an incremental image backup. The chance of having a collision in any of the 8388608 blocks (the worst case) is then $1-(1-\frac{1}{2^{256}})^{8388608} \approx 7*10^{-71}$. This is again ridiculously low compared to e.g. the probability of $10^{-18}$ of a typical hard disk having a uncorrectable bit error.
+
 
 \section{Internet clients}
 \label{sec:internet_clients}
@@ -271,7 +311,7 @@ use it. The minimum you have to configure is the server name or IP on which
 the backup server will be available on the Internet. As you probably have a
 Firewall or Router in between backup server and Internet you also need to forward
 the configured port (default: 55415) to the backup server.\\
-There are two ways to configure the clients illustrated in the two following sections.
+There are three ways to configure the clients illustrated in the two following sections.
 
 \subsection{Automatically push server configuration to clients}
 
@@ -281,25 +321,33 @@ generate a key for each client and push that one to the client as well. This ass
 the local area network is a secure channel. If a client has been compromised you can still
 change the key on the server and on the client.
 
+\subsection{Download a preconfigured client installer}
+
+If you enabled ``Download client from update server'' in the server settings, or manually
+downloaded a client update and put it in the appropriate folder (see section \ref{subsec:manually_update_client}),
+users can download a preconfigured client installer from the server on the ``Status'' page.
+The installer includes the server IP/domain name, the port it is listening on, the clientname and the authkey.
+This allows the installed client to automatically connect to the server the installer was downloaded from.
+
 \subsection{Manually add and configure clients}
 
 UrBackup also allows manually adding clients and manually configuring the shared key. To
 add such a client following steps are necessary:
 
 \begin{enumerate}
-  \item Go to the ``Status'' screen and select ``show details''
+  \item Go to the ``Status'' screen as administrator
   \item Under ``Internet clients'' enter the name of the Laptop/PC you want to add. This
-  must be the real computer name (i.e. the one you see in the advanced system settings, the
-  one you get but running \textsl{hostname}) or the computer name configured on the client.
-  \item After pressing add there will be a new client in the ``Status'' screen. Go to settings
+  must be the fully qualified computer name (i.e. the one you see in the advanced system settings)
+  or the computer name configured on the client.
+  \item After pressing ``add'' there will be a new client in the ``Status'' screen. Go to settings
   and select that client there.
   \item In the Internet settings enter an authentication key for that client. The key acts just like every
   normal password and should therefore be sufficiently complex. Having a different key for every
   client makes revoking compromised keys easier, but is not a requirement.
   \item On the client go to the settings and enter the same key there in the internet settings.
   Also enter the public IP or name of your backup server and the port it is reachable at.
-  \item The server and client should now connect to each other. If it does not work check the
-  client and server logs as described in section \ref{sec:logging}.
+  \item The server and client should now connect to each other. If it does not work the client shows what went wrong
+  in the ``Status'' window.
 \end{enumerate}
 
 \subsection{File transfer over Internet}
@@ -311,7 +359,7 @@ database files, virtual hard disks etc.. This comes at a cost: UrBackup has to s
 hashes of every file. Those hashes are saved the folder ``.hashes''. They are only
 saved if the Internet mode is enabled. If the hashes of a file are not present e.g.
 because Internet mode was just enabled, they are created from the files during
-the backup and may thus slow down the backup process. 
+the backup and may therefore slow down the backup process. 
 
 \section{Server settings}
 \label{server_settings}
@@ -697,6 +745,35 @@ Cache creation may take some time.
   entries with indexes enabled.
 \end{itemize}
 
+\subsection{Use symlinks during incremental file backups}
+
+If enabled UrBackup will use symbolic links to link unchanged directories with more than 10 directory/files. This will greatly improve the incremental file backup speed, if only few directories are changed, as less hard links have to be created and hard linking operations are expensive on some filesystems such as e.g. NTFS and spinning disks.\\
+
+The disadvantages are:
+
+\begin{itemize}
+  \item UrBackup needs to keep track of the number of times a directory is used. For hard links the operation system does this. UrBackup may be slower and less reliable doing this.
+  \item If the backup storage folder is moved all symbolic links are invalidated. To restore the symbolic links please run on Windows
+  \begin{verbatim}
+  C:\Program Files\UrBackupServer\remove_unkown.bat
+  \end{verbatim}
+  and on Linux while the server is not running:
+  \begin{verbatim}
+  start_urbackup_server --remove_unknown
+  \end{verbatim}
+  
+\end{itemize}
+
+Per default symbolic links are used. If the btrfs mode is used this option has no effect.
+
+\subsection{Trust client hashes during incremental file backups}
+
+To not loose any file hashes for internet client, the UrBackup server adds file entries (i.e. a file path and the sha512 hash of a file) each ``minimal number of incremental file backups'' times. If the sha512 hashes are calculated on the client side UrBackup is able to use the client provided file hash. Should it be wrong, however, a entry will be in the database mapping a file hash to wrong content. The entry may then be used to link files for other clients, causing file backups to be corrupted.
+
+If not checked the UrBackup server will not trust the client provided sha512 hash sums and calculate them itself.
+
+Per default the UrBackup server trusts the client to provide correct sha512 hashes.
+
 \subsection{End-to-end verification of all file backups}
 
 This is a setting for debugging purposes or for the paranoid. If end-to-end verification is enabled UrBackup clients >=1.3
@@ -707,6 +784,7 @@ If hashes differ the backup fails and an email is sent to the server admin.
 \section{Miscellaneous}
 
 \subsection{Manually update UrBackup clients}
+\label{subsec:manually_update_client}
 
 You should test UrBackup clients before using them on the clients. This means
 UrBackup should not automatically download the newest client version from
@@ -779,6 +857,34 @@ Port  & Usage \\
 35623 & Commands and image backups \\
 \hline
 \end{tabular}
+
+\subsection{Mounting (compressed) VHD files on GNU/Linux}
+
+If you compiled UrBackup with fuse support or installed the debian packages the UrBackup server can mount 
+VHD(Z) files directly. You compile UrBackup with fuse support by configuring:
+\begin{verbatim}
+./configure --with-mountvhd
+\end{verbatim}
+You will be able to mount a VHD(Z) file e.g. with
+\begin{verbatim}
+start_urbackup_server --mountvhd /media/backup/urbackup/testclient/\
+	Image_C_140420-1956.vhdz --mountpoint /media/testclient_C
+\end{verbatim}
+All files in the backed up ``C'' volume will then be available read-only in \textsl{/media/testclient\_C}.
+Unmount the mounts created by UrBackup (see output of \textsl{mount}), to stop the background process.
+
+\subsection{Decompress VHD files}
+
+If you want to mount the VHD files on Windows and they are compressed (file extension is VHDZ), you need
+to decompress them first. Use  \textsl{C:\textbackslash Program Files\textbackslash UrBackupServer\textbackslash uncompress\_image.bat} for that.
+Calling the batch file without parameters will open a file selection screen where you can select the VHDZ
+file to be decompressed. A temporary inflated copy is created and renamed in-place
+once the decompression is done.
+If the image is incremental the parent-VHD is automatically decompressed as well. All the image files will
+still have the VHDZ extension, as otherwise it would have to change database entries, but the files will
+not be compressed anymore.
+
+On Linux the same thing can be done with \textsl{start\_urbackup\_server --decompress [filename]}
 
 \section{Storage}
 
