@@ -596,24 +596,39 @@ function show_statistics3(data)
 		createUsageGraph(0, "");
 		
 		var datatable_config = g.datatable_default_config;
-		datatable_config.aoColumnDefs =
-			[ {
-				"aTargets": [ 1, 2, 3 ],
-				"mData": function ( source, type, val ) {
+		var sort_fun = function(idx)
+		{
+			var _idx = idx;			
+			this.sort = function( source, type, val ) {
 					if (type === 'set') {
-						source.bsize = val;
-						source.bsize_display = format_size(val)
+						source["bsize"+idx] = val;
+						source["bsize_display"+idx] = format_size(val)
 						return;
 					}
 					else if (type === 'display') {
-					  return source.bsize_display;
+					  return source["bsize_display"+idx];
 					}
 					else if (type === 'filter') {
-					  return source.bsize_display;
+					  return source["bsize_display"+idx];
 					}
-					return source.bsize;
-				}
-			} ];
+					return source["bsize"+idx];
+				};
+		}
+		
+		datatable_config.aoColumnDefs =
+			[ {
+				"aTargets": [ 1 ],
+				"mData": (new sort_fun(1)).sort
+			},
+			{
+				"aTargets": [ 2 ],
+				"mData": (new sort_fun(2)).sort
+			},
+			{
+				"aTargets": [ 3 ],
+				"mData": (new sort_fun(3)).sort
+			}];
+		
 		datatable_config.aaSorting = [[ 3, "desc" ]];
 		var save_buttons = datatable_config.oTableTools.aButtons[0].aButtons;
 		save_buttons[2].mColumns = [0, 1, 2, 3];
