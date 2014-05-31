@@ -3864,7 +3864,7 @@ void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental
 						else
 						{
 							msg+="an incremental ";
-							subj="Incremental ";
+							subj+="Incremental ";
 						}
 					}
 					else
@@ -3872,12 +3872,12 @@ void BackupServerGet::sendLogdataMail(bool r_success, int image, int incremental
 						if(resumed)
 						{
 							msg+="a resumed full ";
-							subj="Resumed full ";
+							subj+="Resumed full ";
 						}
 						else
 						{
 							msg+="a full ";
-							subj="Full ";
+							subj+="Full ";
 						}
 					}
 
