@@ -32,7 +32,8 @@ function init_datatables()
 				"sDom" : 'CT<"clear">lfrtip',
 				"oColVis": {
 					"bRestore": true,
-					"sRestore": trans("Restore to default")
+					"sRestore": trans("Restore to default"),
+					"buttonText": trans("Show/hide columns")
 				},
 				"oTableTools": {
 					"aButtons": [

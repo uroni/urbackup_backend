@@ -385,7 +385,8 @@ translations.de = {
 "Save": "Speichern",
 "tConnect to Internet backup server if connected to local backup server": "Mit Internet Backup Server verbinden, wenn verbunden mit lokalem Backup Server",
 "tAllow clients to quit the tray icon": "Clients erlauben das Tray Icon zu schließen",
-"tYou need to create a user to be able to send reports": "Sie müssen einen Benutzer erstellen um Reports erstellen zu können"
+"tYou need to create a user to be able to send reports": "Sie müssen einen Benutzer erstellen um Reports erstellen zu können",
+"Show/hide columns": "Spalten anzeigen/ausblenden"
 }
 translations.en = {
 "action_1": "Incremental file backup",
@@ -773,7 +774,8 @@ translations.en = {
 "Save": "Save",
 "tConnect to Internet backup server if connected to local backup server": "Connect to Internet backup server if connected to local backup server",
 "tAllow clients to quit the tray icon": "Allow clients to quit the tray icon",
-"tYou need to create a user to be able to send reports": "You need to create a user to be able to send reports"
+"tYou need to create a user to be able to send reports": "You need to create a user to be able to send reports",
+"Show/hide columns": "Show/hide columns"
 }
 translations.es = {
 "action_1": "Copia incremental de archivos",

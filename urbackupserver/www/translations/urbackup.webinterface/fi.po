@@ -5,10 +5,11 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-05-30 18:42+0000\n"
+"PO-Revision-Date: 2014-05-31 15:24+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Finnish (http://www.transifex.com/projects/p/urbackup/language/fi/)\n"
 "MIME-Version: 1.0\n"
@@ -1182,4 +1183,7 @@ msgid "tAllow clients to quit the tray icon"
 msgstr ""
 
 msgid "tYou need to create a user to be able to send reports"
+msgstr ""
+
+msgid "Show/hide columns"
 msgstr ""
