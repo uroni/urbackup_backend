@@ -19,7 +19,8 @@ g.languages=[
 				{ l: "繁体中文", s: "zh_TW" },
 				{ l: "فارسی", s: "fa" },
 				{ l: "українська мова", s: "uk" },
-				{ l: "Português do Brasil", s: "pt_BR" }
+				{ l: "Português do Brasil", s: "pt_BR" },
+				{ l: "slovenský jazyk", s: "sk"}
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
