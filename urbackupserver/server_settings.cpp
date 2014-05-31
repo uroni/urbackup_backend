@@ -313,7 +313,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
 	settings->compress_images=(settings_default->getValue("compress_images", "true")=="true");
 	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
-	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "true")=="true");
+	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
