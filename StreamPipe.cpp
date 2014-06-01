@@ -25,6 +25,7 @@
 #endif
 #include "Server.h"
 #include "Interface/PipeThrottler.h"
+#include "stringtools.h"
 
 CStreamPipe::CStreamPipe( SOCKET pSocket)
 	: transfered_bytes(0)
@@ -104,7 +105,18 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 		rc=recv(s, buffer, (int)bsize, MSG_NOSIGNAL);
 		if(rc<=0)
 		{
-			has_error=true;
+#ifdef _WIN32
+			DWORD err = WSAGetLastError();
+			if(err!=WSAEWOULDBLOCK && err!=WSAEINTR)
+			{
+				has_error=true;
+			}
+#else
+			if(errno!=EAGAIN && errno!=EWOULDBLOCK && errno!=EINTR)
+			{
+				has_error=true;
+			}
+#endif
 			return 0;
 		}
 		else
@@ -126,8 +138,6 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 
 bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 {
-	doThrottle(bsize, true, true);
-
 	int rc = selectSocketWrite(s, timeoutms);
 	size_t written=0;
 
@@ -136,6 +146,8 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 		rc=send(s, buffer,(int)bsize, MSG_NOSIGNAL);
 		if(rc>=0)
 		{
+			doThrottle(rc, true, true);
+
 			written+=rc;
 			if( written<bsize )
 			{
@@ -144,7 +156,28 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 		}
 		else
 		{
-			has_error=true;
+#ifdef _WIN32
+			DWORD err = WSAGetLastError();
+			if(err==EINTR)
+			{
+				return Write(buffer, bsize, timeoutms);
+			}
+
+			if(err!=WSAEWOULDBLOCK)
+			{
+				has_error = true;
+			}
+#else
+			if(errno==EINTR)
+			{
+				return Write(buffer, bsize, timeoutms);
+			}
+
+			if(errno!=EAGAIN && errno!=EWOULDBLOCK)
+			{
+				has_error=true;
+			}
+#endif
 			return false;
 		}
 	}

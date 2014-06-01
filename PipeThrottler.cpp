@@ -65,7 +65,7 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 		if(wait)
 		{
 			DLOG(Server->Log("Throttler: Sleeping for " + nconvert(maxRateTime)+ "ms", LL_DEBUG));
-			Server->wait(maxRateTime);
+			Server->wait(static_cast<unsigned int>(maxRateTime));
 		}
 		curr_bytes=0;
 		lastresettime=Server->getTimeMS();
