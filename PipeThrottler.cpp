@@ -33,12 +33,13 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 	curr_bytes+=new_bytes;
 
 	int64 passed_time=ctime-lastresettime;
+
+	size_t maxRateTime=(size_t)(((_i64)curr_bytes*1000)/throttle_bps);
 	if(passed_time>0)
 	{
 		size_t bps=(size_t)(((_i64)curr_bytes*1000)/passed_time);
 		if(bps>throttle_bps)
-		{
-			size_t maxRateTime=(size_t)(((_i64)curr_bytes*1000)/throttle_bps);
+		{		
 			unsigned int sleepTime=(unsigned int)(maxRateTime-passed_time);
 
 			if(sleepTime>0)
@@ -63,8 +64,8 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 	{
 		if(wait)
 		{
-			DLOG(Server->Log("Throttler: Sleeping for " + nconvert(1000)+ "ms", LL_DEBUG));
-			Server->wait(1000);
+			DLOG(Server->Log("Throttler: Sleeping for " + nconvert(maxRateTime)+ "ms", LL_DEBUG));
+			Server->wait(maxRateTime);
 		}
 		curr_bytes=0;
 		lastresettime=Server->getTimeMS();
