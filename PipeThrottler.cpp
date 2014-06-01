@@ -1,6 +1,9 @@
 #include "PipeThrottler.h"
 #include "Server.h"
 #include "Interface/Mutex.h"
+#include "stringtools.h"
+
+#define DLOG(x) x
 
 PipeThrottler::PipeThrottler(size_t bps)
 	: throttle_bps(bps), curr_bytes(0), lastresettime(0)
@@ -42,6 +45,7 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 			{
 				if(wait)
 				{
+					DLOG(Server->Log("Throttler: Sleeping for " + nconvert(sleepTime)+ "ms", LL_DEBUG));
 					Server->wait(sleepTime);
 
 					if(Server->getTimeMS()-lastresettime>1000)
@@ -59,6 +63,7 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 	{
 		if(wait)
 		{
+			DLOG(Server->Log("Throttler: Sleeping for " + nconvert(1000)+ "ms", LL_DEBUG));
 			Server->wait(1000);
 		}
 		curr_bytes=0;
