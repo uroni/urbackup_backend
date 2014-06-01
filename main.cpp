@@ -362,7 +362,9 @@ int main_fkt(int argc, char *argv[])
 	
 	if(!loglevel.empty())
 	{
-		if(loglevel=="debug")
+		if(FileExists("debug_logging_enabled"))
+			Server->setLogLevel(LL_DEBUG);
+		else if(loglevel=="debug")
 			Server->setLogLevel(LL_DEBUG);
 		else if(loglevel=="warn")
 			Server->setLogLevel(LL_WARNING);
