@@ -810,6 +810,116 @@ std::vector<ServerCleanupDao::SIncompleteFileBackup> ServerCleanupDao::getIncomp
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func vector<SHistItem> ServerCleanupDao::getClientHistory
+* @return int id, string name, string lastbackup, string lastseen, string lastbackup_image, int64 bytes_used_files, int64 bytes_used_images, string max_created, int64 hist_id, int current_month, int current_year
+* @sql
+*    SELECT
+*		id, name, MAX(lastbackup) AS lastbackup, MAX(lastseen) AS lastseen, MAX(lastbackup_image) AS lastbackup_image, 
+*		MAX(bytes_used_files) AS bytes_used_files, MAX(bytes_used_images) AS bytes_used_images,  MAX(created) AS max_created, MAX(hist_id) AS hist_id
+*	 FROM clients_hist
+*    WHERE created<=date('now', :back_start(string)) AND created>date('now', :back_stop(string))
+*    GROUP BY strftime(:date_grouping(string), created, 'localtime'), id, name
+*/
+std::vector<ServerCleanupDao::SHistItem> ServerCleanupDao::getClientHistory(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping)
+{
+	if(q_getClientHistory==NULL)
+	{
+		q_getClientHistory=db->Prepare("SELECT id, name, MAX(lastbackup) AS lastbackup, MAX(lastseen) AS lastseen, MAX(lastbackup_image) AS lastbackup_image,  MAX(bytes_used_files) AS bytes_used_files, MAX(bytes_used_images) AS bytes_used_images,  MAX(created) AS max_created, MAX(hist_id) AS hist_id FROM clients_hist WHERE created<=date('now', ?) AND created>date('now', ?) GROUP BY strftime(?, created, 'localtime'), id, name", false);
+	}
+	q_getClientHistory->Bind(back_start);
+	q_getClientHistory->Bind(back_stop);
+	q_getClientHistory->Bind(date_grouping);
+	db_results res=q_getClientHistory->Read();
+	q_getClientHistory->Reset();
+	std::vector<ServerCleanupDao::SHistItem> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].id=watoi(res[i][L"id"]);
+		ret[i].name=res[i][L"name"];
+		ret[i].lastbackup=res[i][L"lastbackup"];
+		ret[i].lastseen=res[i][L"lastseen"];
+		ret[i].lastbackup_image=res[i][L"lastbackup_image"];
+		ret[i].bytes_used_files=watoi64(res[i][L"bytes_used_files"]);
+		ret[i].bytes_used_images=watoi64(res[i][L"bytes_used_images"]);
+		ret[i].max_created=res[i][L"max_created"];
+		ret[i].hist_id=watoi64(res[i][L"hist_id"]);
+		ret[i].current_month=watoi(res[i][L"current_month"]);
+		ret[i].current_year=watoi(res[i][L"current_year"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::deleteClientHistory
+* @sql
+*    DELETE FROM clients_hist_id WHERE
+*				 created<date('now', :back_start(string)) AND created>date('now', :back_stop(string))
+*/
+void ServerCleanupDao::deleteClientHistory(const std::wstring& back_start, const std::wstring& back_stop)
+{
+	if(q_deleteClientHistory==NULL)
+	{
+		q_deleteClientHistory=db->Prepare("DELETE FROM clients_hist_id WHERE created<date('now', ?) AND created>date('now', ?)", false);
+	}
+	q_deleteClientHistory->Bind(back_start);
+	q_deleteClientHistory->Bind(back_stop);
+	q_deleteClientHistory->Write();
+	q_deleteClientHistory->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::insertClientHistoryId
+* @sql
+*    INSERT INTO clients_hist_id (created) VALUES (datetime(:created(string)))
+*/
+void ServerCleanupDao::insertClientHistoryId(const std::wstring& created)
+{
+	if(q_insertClientHistoryId==NULL)
+	{
+		q_insertClientHistoryId=db->Prepare("INSERT INTO clients_hist_id (created) VALUES (datetime(?))", false);
+	}
+	q_insertClientHistoryId->Bind(created);
+	q_insertClientHistoryId->Write();
+	q_insertClientHistoryId->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::insertClientHistoryItem
+* @sql
+*    INSERT INTO clients_hist (id, name, lastbackup,
+*			lastseen, lastbackup_image, bytes_used_files,
+*			bytes_used_images, created, hist_id)
+*	 VALUES
+*			(:id(int), :name(string), datetime(:lastbackup(string)),
+*			datetime(:lastseen(string)), datetime(:lastbackup(lastbackup_image)),
+*			:bytes_used_files(int64), :bytes_used_images(int64), 
+*			datetime(:lastbackup(created)), :hist_id(int64) )
+*/
+void ServerCleanupDao::insertClientHistoryItem(int id, const std::wstring& name, const std::wstring& lastbackup, const std::wstring& lastseen, int64 bytes_used_files, int64 bytes_used_images, int64 hist_id)
+{
+	if(q_insertClientHistoryItem==NULL)
+	{
+		q_insertClientHistoryItem=db->Prepare("INSERT INTO clients_hist (id, name, lastbackup, lastseen, lastbackup_image, bytes_used_files, bytes_used_images, created, hist_id) VALUES (?, ?, datetime(?), datetime(?), datetime(?), ?, ?,  datetime(?), ? )", false);
+	}
+	q_insertClientHistoryItem->Bind(id);
+	q_insertClientHistoryItem->Bind(name);
+	q_insertClientHistoryItem->Bind(lastbackup);
+	q_insertClientHistoryItem->Bind(lastseen);
+	q_insertClientHistoryItem->Bind(lastbackup);
+	q_insertClientHistoryItem->Bind(bytes_used_files);
+	q_insertClientHistoryItem->Bind(bytes_used_images);
+	q_insertClientHistoryItem->Bind(lastbackup);
+	q_insertClientHistoryItem->Bind(hist_id);
+	q_insertClientHistoryItem->Write();
+	q_insertClientHistoryItem->Reset();
+}
+
 
 //@-SQLGenSetup
 void ServerCleanupDao::createQueries(void)
@@ -847,6 +957,10 @@ void ServerCleanupDao::createQueries(void)
 	q_cleanupBackupLogs=NULL;
 	q_cleanupAuthLog=NULL;
 	q_getIncompleteFileBackups=NULL;
+	q_getClientHistory=NULL;
+	q_deleteClientHistory=NULL;
+	q_insertClientHistoryId=NULL;
+	q_insertClientHistoryItem=NULL;
 }
 
 //@-SQLGenDestruction
@@ -885,4 +999,8 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_cleanupBackupLogs);
 	db->destroyQuery(q_cleanupAuthLog);
 	db->destroyQuery(q_getIncompleteFileBackups);
+	db->destroyQuery(q_getClientHistory);
+	db->destroyQuery(q_deleteClientHistory);
+	db->destroyQuery(q_insertClientHistoryId);
+	db->destroyQuery(q_insertClientHistoryItem);
 }

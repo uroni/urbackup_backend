@@ -97,6 +97,11 @@ private:
 
 	bool cleanup_one_filebackup_client(int clientid, int64 minspace, int& filebid);
 
+
+	void rewrite_history(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping);
+
+	void cleanup_client_hist();
+
 	size_t getImagesFullNum(int clientid, int &backupid_top, const std::vector<int> &notit);
 	size_t getImagesIncrNum(int clientid, int &backupid_top, const std::vector<int> &notit);
 

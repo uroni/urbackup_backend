@@ -273,10 +273,14 @@ void ServerCleanupThread::do_cleanup(void)
 	sus();
 	Server->Log("Done updating statistics.", LL_INFO);
 
-	Server->Log("Deleting old logs", LL_INFO);
+	Server->Log("Deleting old logs...", LL_INFO);
 	cleanupdao->cleanupBackupLogs();
 	cleanupdao->cleanupAuthLog();
 	Server->Log("Done deleting old logs", LL_INFO);
+
+	Server->Log("Cleaning history...", LL_INFO);
+	cleanup_client_hist();
+	Server->Log("Done cleaning history", LL_INFO);
 
 	if(!cache_res.empty())
 	{
@@ -1608,6 +1612,35 @@ void ServerCleanupThread::delete_incomplete_file_backups( void )
 			Server->Log("done.");
 		}
 	}
+}
+
+void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping)
+{
+	std::vector<ServerCleanupDao::SHistItem> daily_history = cleanupdao->getClientHistory(L"-2 days", L"-2 month", L"%Y-%m-%d");
+
+	db->BeginTransaction();
+	cleanupdao->deleteClientHistory(L"-2 days", L"-2 month");
+
+	for(size_t i=0;i<daily_history.size();++i)
+	{
+		const ServerCleanupDao::SHistItem& hist_item = daily_history[i];
+		cleanupdao->insertClientHistoryId(hist_item.max_created);
+		int64 hist_id = db->getLastInsertID();
+		cleanupdao->insertClientHistoryItem(hist_item.id,
+			hist_item.name, hist_item.lastbackup, hist_item.lastseen,
+			hist_item.bytes_used_files, hist_item.bytes_used_images,
+			hist_id);
+	}
+}
+
+void ServerCleanupThread::cleanup_client_hist()
+{
+	Server->Log("Rewriting daily history...", LL_INFO);
+	rewrite_history(L"-2 days", L"-2 month", L"%Y-%m-%d");
+	Server->Log("Rewriting monthly history...", LL_INFO);
+	rewrite_history(L"-2 month", L"-2 years", L"%Y-%m");
+	Server->Log("Rewriting yearly history...", LL_INFO);
+	rewrite_history(L"-2 years", L"-1000 years", L"%Y");
 }
 
 
