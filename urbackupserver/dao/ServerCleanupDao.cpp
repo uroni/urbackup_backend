@@ -813,7 +813,7 @@ std::vector<ServerCleanupDao::SIncompleteFileBackup> ServerCleanupDao::getIncomp
 /**
 * @-SQLGenAccess
 * @func vector<SHistItem> ServerCleanupDao::getClientHistory
-* @return int id, string name, string lastbackup, string lastseen, string lastbackup_image, int64 bytes_used_files, int64 bytes_used_images, string max_created, int64 hist_id, int current_month, int current_year
+* @return int id, string name, string lastbackup, string lastseen, string lastbackup_image, int64 bytes_used_files, int64 bytes_used_images, string max_created, int64 hist_id
 * @sql
 *    SELECT
 *		id, name, MAX(lastbackup) AS lastbackup, MAX(lastseen) AS lastseen, MAX(lastbackup_image) AS lastbackup_image, 
@@ -846,8 +846,6 @@ std::vector<ServerCleanupDao::SHistItem> ServerCleanupDao::getClientHistory(cons
 		ret[i].bytes_used_images=watoi64(res[i][L"bytes_used_images"]);
 		ret[i].max_created=res[i][L"max_created"];
 		ret[i].hist_id=watoi64(res[i][L"hist_id"]);
-		ret[i].current_month=watoi(res[i][L"current_month"]);
-		ret[i].current_year=watoi(res[i][L"current_year"]);
 	}
 	return ret;
 }
@@ -916,11 +914,11 @@ void ServerCleanupDao::insertClientHistoryId(const std::wstring& created)
 *			bytes_used_images, created, hist_id)
 *	 VALUES
 *			(:id(int), :name(string), datetime(:lastbackup(string)),
-*			datetime(:lastseen(string)), datetime(:lastbackup(lastbackup_image)),
+*			datetime(:lastseen(string)), datetime(:lastbackup_image(string)),
 *			:bytes_used_files(int64), :bytes_used_images(int64), 
-*			datetime(:lastbackup(created)), :hist_id(int64) )
+*			datetime(:created(string)), :hist_id(int64) )
 */
-void ServerCleanupDao::insertClientHistoryItem(int id, const std::wstring& name, const std::wstring& lastbackup, const std::wstring& lastseen, int64 bytes_used_files, int64 bytes_used_images, int64 hist_id)
+void ServerCleanupDao::insertClientHistoryItem(int id, const std::wstring& name, const std::wstring& lastbackup, const std::wstring& lastseen, const std::wstring& lastbackup_image, int64 bytes_used_files, int64 bytes_used_images, const std::wstring& created, int64 hist_id)
 {
 	if(q_insertClientHistoryItem==NULL)
 	{
@@ -930,10 +928,10 @@ void ServerCleanupDao::insertClientHistoryItem(int id, const std::wstring& name,
 	q_insertClientHistoryItem->Bind(name);
 	q_insertClientHistoryItem->Bind(lastbackup);
 	q_insertClientHistoryItem->Bind(lastseen);
-	q_insertClientHistoryItem->Bind(lastbackup);
+	q_insertClientHistoryItem->Bind(lastbackup_image);
 	q_insertClientHistoryItem->Bind(bytes_used_files);
 	q_insertClientHistoryItem->Bind(bytes_used_images);
-	q_insertClientHistoryItem->Bind(lastbackup);
+	q_insertClientHistoryItem->Bind(created);
 	q_insertClientHistoryItem->Bind(hist_id);
 	q_insertClientHistoryItem->Write();
 	q_insertClientHistoryItem->Reset();

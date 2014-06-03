@@ -47,8 +47,6 @@ public:
 		int64 bytes_used_images;
 		std::wstring max_created;
 		int64 hist_id;
-		int current_month;
-		int current_year;
 	};
 	struct SImageBackupInfo
 	{
@@ -121,7 +119,7 @@ public:
 	void deleteClientHistoryIds(const std::wstring& back_start, const std::wstring& back_stop);
 	void deleteClientHistoryItems(const std::wstring& back_start, const std::wstring& back_stop);
 	void insertClientHistoryId(const std::wstring& created);
-	void insertClientHistoryItem(int id, const std::wstring& name, const std::wstring& lastbackup, const std::wstring& lastseen, int64 bytes_used_files, int64 bytes_used_images, int64 hist_id);
+	void insertClientHistoryItem(int id, const std::wstring& name, const std::wstring& lastbackup, const std::wstring& lastseen, const std::wstring& lastbackup_image, int64 bytes_used_files, int64 bytes_used_images, const std::wstring& created, int64 hist_id);
 	//@-SQLGenFunctionsEnd
 
 private:
