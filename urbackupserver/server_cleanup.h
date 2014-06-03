@@ -76,6 +76,7 @@ public:
 	static void destroyMutex(void);
 
 	static void doQuit(void);
+
 private:
 
 	void do_cleanup(void);
@@ -97,6 +98,7 @@ private:
 
 	bool cleanup_one_filebackup_client(int clientid, int64 minspace, int& filebid);
 
+	void cleanup_other();
 
 	void rewrite_history(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping);
 

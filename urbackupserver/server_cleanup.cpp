@@ -273,14 +273,7 @@ void ServerCleanupThread::do_cleanup(void)
 	sus();
 	Server->Log("Done updating statistics.", LL_INFO);
 
-	Server->Log("Deleting old logs...", LL_INFO);
-	cleanupdao->cleanupBackupLogs();
-	cleanupdao->cleanupAuthLog();
-	Server->Log("Done deleting old logs", LL_INFO);
-
-	Server->Log("Cleaning history...", LL_INFO);
-	cleanup_client_hist();
-	Server->Log("Done cleaning history", LL_INFO);
+	cleanup_other();
 
 	if(!cache_res.empty())
 	{
@@ -310,6 +303,11 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 	removeerr.clear();
 	cleanup_images(minspace);
 	cleanup_files(minspace);
+
+	if(switch_to_wal)
+	{
+		cleanup_other();
+	}
 
 	if(switch_to_wal==true)
 	{
@@ -1641,6 +1639,18 @@ void ServerCleanupThread::cleanup_client_hist()
 	rewrite_history(L"-2 month", L"-2 years", L"%Y-%m");
 	Server->Log("Rewriting yearly history...", LL_INFO);
 	rewrite_history(L"-2 years", L"-1000 years", L"%Y");
+}
+
+void ServerCleanupThread::cleanup_other()
+{
+	Server->Log("Deleting old logs...", LL_INFO);
+	cleanupdao->cleanupBackupLogs();
+	cleanupdao->cleanupAuthLog();
+	Server->Log("Done deleting old logs", LL_INFO);
+
+	Server->Log("Cleaning history...", LL_INFO);
+	cleanup_client_hist();
+	Server->Log("Done cleaning history", LL_INFO);
 }
 
 
