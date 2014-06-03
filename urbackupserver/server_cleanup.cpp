@@ -1639,7 +1639,9 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 		int64 hist_id = db->getLastInsertID();
 		cleanupdao->insertClientHistoryItem(hist_item.id,
 			hist_item.name, hist_item.lastbackup, hist_item.lastseen,
+			hist_item.lastbackup_image,
 			hist_item.bytes_used_files, hist_item.bytes_used_images,
+			hist_item.max_created,
 			hist_id);
 	}
 
