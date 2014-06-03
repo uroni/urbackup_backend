@@ -854,21 +854,40 @@ std::vector<ServerCleanupDao::SHistItem> ServerCleanupDao::getClientHistory(cons
 
 /**
 * @-SQLGenAccess
-* @func void ServerCleanupDao::deleteClientHistory
+* @func void ServerCleanupDao::deleteClientHistoryIds
 * @sql
 *    DELETE FROM clients_hist_id WHERE
 *				 created<=date('now', :back_start(string)) AND created>date('now', :back_stop(string))
 */
-void ServerCleanupDao::deleteClientHistory(const std::wstring& back_start, const std::wstring& back_stop)
+void ServerCleanupDao::deleteClientHistoryIds(const std::wstring& back_start, const std::wstring& back_stop)
 {
-	if(q_deleteClientHistory==NULL)
+	if(q_deleteClientHistoryIds==NULL)
 	{
-		q_deleteClientHistory=db->Prepare("DELETE FROM clients_hist_id WHERE created<=date('now', ?) AND created>date('now', ?)", false);
+		q_deleteClientHistoryIds=db->Prepare("DELETE FROM clients_hist_id WHERE created<=date('now', ?) AND created>date('now', ?)", false);
 	}
-	q_deleteClientHistory->Bind(back_start);
-	q_deleteClientHistory->Bind(back_stop);
-	q_deleteClientHistory->Write();
-	q_deleteClientHistory->Reset();
+	q_deleteClientHistoryIds->Bind(back_start);
+	q_deleteClientHistoryIds->Bind(back_stop);
+	q_deleteClientHistoryIds->Write();
+	q_deleteClientHistoryIds->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerCleanupDao::deleteClientHistoryItems
+* @sql
+*    DELETE FROM clients_hist WHERE
+*				 created<=date('now', :back_start(string)) AND created>date('now', :back_stop(string))
+*/
+void ServerCleanupDao::deleteClientHistoryItems(const std::wstring& back_start, const std::wstring& back_stop)
+{
+	if(q_deleteClientHistoryItems==NULL)
+	{
+		q_deleteClientHistoryItems=db->Prepare("DELETE FROM clients_hist WHERE created<=date('now', ?) AND created>date('now', ?)", false);
+	}
+	q_deleteClientHistoryItems->Bind(back_start);
+	q_deleteClientHistoryItems->Bind(back_stop);
+	q_deleteClientHistoryItems->Write();
+	q_deleteClientHistoryItems->Reset();
 }
 
 /**
@@ -958,7 +977,8 @@ void ServerCleanupDao::createQueries(void)
 	q_cleanupAuthLog=NULL;
 	q_getIncompleteFileBackups=NULL;
 	q_getClientHistory=NULL;
-	q_deleteClientHistory=NULL;
+	q_deleteClientHistoryIds=NULL;
+	q_deleteClientHistoryItems=NULL;
 	q_insertClientHistoryId=NULL;
 	q_insertClientHistoryItem=NULL;
 }
@@ -1000,7 +1020,8 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_cleanupAuthLog);
 	db->destroyQuery(q_getIncompleteFileBackups);
 	db->destroyQuery(q_getClientHistory);
-	db->destroyQuery(q_deleteClientHistory);
+	db->destroyQuery(q_deleteClientHistoryIds);
+	db->destroyQuery(q_deleteClientHistoryItems);
 	db->destroyQuery(q_insertClientHistoryId);
 	db->destroyQuery(q_insertClientHistoryItem);
 }

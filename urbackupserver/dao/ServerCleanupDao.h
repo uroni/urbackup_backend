@@ -118,7 +118,8 @@ public:
 	void cleanupAuthLog(void);
 	std::vector<SIncompleteFileBackup> getIncompleteFileBackups(void);
 	std::vector<SHistItem> getClientHistory(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping);
-	void deleteClientHistory(const std::wstring& back_start, const std::wstring& back_stop);
+	void deleteClientHistoryIds(const std::wstring& back_start, const std::wstring& back_stop);
+	void deleteClientHistoryItems(const std::wstring& back_start, const std::wstring& back_stop);
 	void insertClientHistoryId(const std::wstring& created);
 	void insertClientHistoryItem(int id, const std::wstring& name, const std::wstring& lastbackup, const std::wstring& lastseen, int64 bytes_used_files, int64 bytes_used_images, int64 hist_id);
 	//@-SQLGenFunctionsEnd
@@ -164,7 +165,8 @@ private:
 	IQuery* q_cleanupAuthLog;
 	IQuery* q_getIncompleteFileBackups;
 	IQuery* q_getClientHistory;
-	IQuery* q_deleteClientHistory;
+	IQuery* q_deleteClientHistoryIds;
+	IQuery* q_deleteClientHistoryItems;
 	IQuery* q_insertClientHistoryId;
 	IQuery* q_insertClientHistoryItem;
 	//@-SQLGenVariablesEnd

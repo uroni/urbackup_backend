@@ -1618,9 +1618,18 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 	std::vector<ServerCleanupDao::SHistItem> daily_history = cleanupdao->getClientHistory(back_start, back_stop, date_grouping);
 	Server->Log(nconvert(daily_history.size()) + " history items read", LL_DEBUG);
 
+
+	db_results foreign_keys;
+	if(db->getEngineName()=="sqlite")
+	{
+		foreign_keys=db->Read("PRAGMA foreign_keys");
+		db->Write("PRAGMA foreign_keys = 0");
+	}
+
 	db->BeginTransaction();
 	Server->Log("Deleting history...", LL_DEBUG);
-	cleanupdao->deleteClientHistory(back_start, back_stop);
+	cleanupdao->deleteClientHistoryIds(back_start, back_stop);
+	cleanupdao->deleteClientHistoryItems(back_start, back_stop);
 
 	Server->Log("Writing history...", LL_DEBUG);
 	for(size_t i=0;i<daily_history.size();++i)
@@ -1635,6 +1644,12 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 	}
 
 	db->EndTransaction();
+
+	if(db->getEngineName()=="sqlite" &&
+		!foreign_keys.empty() )
+	{
+		db->Write("PRAGMA foreign_keys = " + wnarrow(foreign_keys[0][L"foreign_keys"]));
+	}
 }
 
 void ServerCleanupThread::cleanup_client_hist()
