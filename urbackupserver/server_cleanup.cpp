@@ -1614,11 +1614,15 @@ void ServerCleanupThread::delete_incomplete_file_backups( void )
 
 void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const std::wstring& back_stop, const std::wstring& date_grouping)
 {
-	std::vector<ServerCleanupDao::SHistItem> daily_history = cleanupdao->getClientHistory(L"-2 days", L"-2 month", L"%Y-%m-%d");
+	Server->Log("Reading history...", LL_DEBUG);
+	std::vector<ServerCleanupDao::SHistItem> daily_history = cleanupdao->getClientHistory(back_start, back_stop, date_grouping);
+	Server->Log(nconvert(daily_history.size()) + " history items read", LL_DEBUG);
 
 	db->BeginTransaction();
-	cleanupdao->deleteClientHistory(L"-2 days", L"-2 month");
+	Server->Log("Deleting history...", LL_DEBUG);
+	cleanupdao->deleteClientHistory(back_start, back_stop);
 
+	Server->Log("Writing history...", LL_DEBUG);
 	for(size_t i=0;i<daily_history.size();++i)
 	{
 		const ServerCleanupDao::SHistItem& hist_item = daily_history[i];
