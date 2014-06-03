@@ -22,6 +22,7 @@
 #include "StreamPipe.h"
 #ifndef _WIN32
 #include <memory.h>
+#include <errno.h>
 #endif
 #include "Server.h"
 #include "Interface/PipeThrottler.h"
