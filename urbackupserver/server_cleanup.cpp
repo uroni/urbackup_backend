@@ -1629,6 +1629,8 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 			hist_item.bytes_used_files, hist_item.bytes_used_images,
 			hist_id);
 	}
+
+	db->EndTransaction();
 }
 
 void ServerCleanupThread::cleanup_client_hist()
