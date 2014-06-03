@@ -857,13 +857,13 @@ std::vector<ServerCleanupDao::SHistItem> ServerCleanupDao::getClientHistory(cons
 * @func void ServerCleanupDao::deleteClientHistory
 * @sql
 *    DELETE FROM clients_hist_id WHERE
-*				 created<date('now', :back_start(string)) AND created>date('now', :back_stop(string))
+*				 created<=date('now', :back_start(string)) AND created>date('now', :back_stop(string))
 */
 void ServerCleanupDao::deleteClientHistory(const std::wstring& back_start, const std::wstring& back_stop)
 {
 	if(q_deleteClientHistory==NULL)
 	{
-		q_deleteClientHistory=db->Prepare("DELETE FROM clients_hist_id WHERE created<date('now', ?) AND created>date('now', ?)", false);
+		q_deleteClientHistory=db->Prepare("DELETE FROM clients_hist_id WHERE created<=date('now', ?) AND created>date('now', ?)", false);
 	}
 	q_deleteClientHistory->Bind(back_start);
 	q_deleteClientHistory->Bind(back_stop);

@@ -1118,6 +1118,12 @@ void upgrade33_34()
 	db->Write("UPDATE backups SET indexing_time_ms=0 WHERE indexing_time_ms IS NULL");
 }
 
+void upgrade34_35()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("CREATE INDEX IF NOT EXISTS clients_hist_id_created_idx ON clients_hist_id (created)");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1139,7 +1145,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=34;
+	int max_v=35;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1295,6 +1301,10 @@ void upgrade(void)
 				break;
 			case 33:
 				upgrade33_34();
+				++ver;
+				break;
+			case 34:
+				upgrade34_35();
 				++ver;
 				break;
 			default:
