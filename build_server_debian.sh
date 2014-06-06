@@ -3,7 +3,7 @@
 set -e
 
 git reset --hard
-python build/replace_versions.py
+python3.3 build/replace_versions.py
 
 wget http://buildserver.urbackup.org/urbackup-debian.tar.gz -O urbackup-debian.tar.gz
 tar xzf urbackup-debian.tar.gz

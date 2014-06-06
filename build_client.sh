@@ -3,7 +3,7 @@
 set -e
 
 git reset --hard
-python build/replace_versions.py
+python3.3 build/replace_versions.py
 
 if ! test -e build_client_ok
 then
