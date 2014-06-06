@@ -39,7 +39,7 @@ def get_version_load(branch):
         h = http.HTTPSConnection(target.hostname, target.port, timeout=http_timeout)
     else:
         print('Unkown scheme: '+target.scheme)
-        raise Exception("Unkown scheme: "+target.scheme)
+        raise Exception("Unknown scheme: "+target.scheme)
     
     h.request(
             method,
@@ -62,7 +62,7 @@ def get_version(branch):
         if(tries==0):
             return None
         else:
-            print("API call failed. Retrying...")
+            print("Getting version failed. Retrying...")
     
     data = response.readall();
     
@@ -96,8 +96,7 @@ for short_file in server_short_files:
       
     
 replace_in_file("urbackupserver/www/index.htm", "$version_full$", version["server"]["full_rev"])
-replace_in_file("urbackupserver/www/index.htm", "$version_full$", version["server"]["full_rev"])
-replace_in_file("urbackupserver_installer_win/urbackup_server.wxs", "$version_full$", version["server"]["full"])
+replace_in_file("urbackupserver_installer_win/urbackup_server.wxs", "$version_full_numeric$", version["server"]["full_numeric"])
 replace_in_file("urbackupserver_installer_win/urbackup_server.wxi", "$product_id$", str(uuid.uuid1()))
 
 
@@ -110,7 +109,7 @@ if os.path.exists("client"):
 		replace_in_file(short_file, "$version_short$", version["client"]["short"])
 
 
-	replace_in_file("client/urbackup.wxs", "$version_full$", version["client"]["full"])
+	replace_in_file("client/urbackup.wxs", "$version_full_numeric$", version["client"]["full_numeric"])
 	replace_in_file("client/urbackup.wxi", "$product_id$", uuid.uuid1())
 
 exit(0)

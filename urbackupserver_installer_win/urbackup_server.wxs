@@ -2,7 +2,7 @@
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi' xmlns:firewall='http://schemas.microsoft.com/wix/FirewallExtension'>
 	<?include $(sys.CURRENTDIR)\urbackup_server.wxi?>
 	<Product Id='$(var.ProductID)' Name='UrBackup Server' Language='1033'
-            Version='$version_full$.0' Manufacturer='Martin Raiber' UpgradeCode='b79b4110-e31a-453a-b9b4-2ce0663a55ce'>
+            Version='$version_full_numeric$' Manufacturer='Martin Raiber' UpgradeCode='b79b4110-e31a-453a-b9b4-2ce0663a55ce'>
 	
     <Package Description='UrBackup Server'
              Comments='UrBackup Server for file and image backups'
