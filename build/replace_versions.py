@@ -21,9 +21,8 @@ def get_head_rev():
     
 
 def get_version_load(branch):
-    
-	build_info_url = "http://buildserver.urbackup.org/urbackup_build_version_"+branch+".json"
-	print("Build info url: "+build_info_url)
+    build_info_url = "http://buildserver.urbackup.org/urbackup_build_version_"+branch+".json"
+    print("Build info url: "+build_info_url)
     target = urlparse(build_info_url)
     method = 'GET'
     body = ''
