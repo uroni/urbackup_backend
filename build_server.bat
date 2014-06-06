@@ -2,6 +2,7 @@ call "C:\Program Files (x86)\Microsoft Visual Studio 10.0\VC\vcvarsall.bat"
 
 git reset --hard
 python build\replace_versions.py
+if %errorlevel% neq 0 exit /b %errorlevel% 
 
 msbuild UrBackupBackend.sln /p:Configuration=Release /p:Platform="win32"
 if %errorlevel% neq 0 exit /b %errorlevel% 

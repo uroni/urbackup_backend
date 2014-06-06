@@ -4,6 +4,7 @@ cd %~dp0
 
 git reset --hard
 python build\replace_versions.py
+if %errorlevel% neq 0 exit /b %errorlevel% 
 
 call build_client_backend.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
