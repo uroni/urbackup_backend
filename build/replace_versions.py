@@ -112,6 +112,6 @@ if os.path.exists("client"):
 
 
 	replace_in_file("client/urbackup.wxs", "$version_full_numeric$", version["client"]["full_numeric"])
-	replace_in_file("client/urbackup.wxi", "$product_id$", uuid.uuid1())
+	replace_in_file("client/urbackup.wxi", "$product_id$", str(uuid.uuid1()))
 
 exit(0)
