@@ -1,6 +1,10 @@
 call checkout_client.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
 cd %~dp0
+
+git reset --hard
+python build\replace_versions.py
+
 call build_client_backend.bat
 if %errorlevel% neq 0 exit /b %errorlevel%
 cd %~dp0\client
