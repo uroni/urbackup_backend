@@ -162,7 +162,7 @@ function aboutUrBackup()
 	stopLoading();
 	clearTimeout(g.refresh_timeout);
 	
-	var ndata=dustRender("about_urbackup", {version: I('server_version').innerHTML.trim()});
+	var ndata=dustRender("about_urbackup", {version: I('server_version_full').innerHTML.trim()});
 	if(g.data_f!=ndata)
 	{
 		I('data_f').innerHTML=ndata;
