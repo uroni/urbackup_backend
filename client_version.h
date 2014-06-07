@@ -3,7 +3,7 @@
 
 namespace
 {
-	const wchar_t* c_client_version=L"1.4";
+	const wchar_t* c_client_version=L"$version_short$";
 }
 
 #endif //_CLIENT_VERSION_H_

@@ -91,7 +91,8 @@ if version == None:
 version["server"]["full_rev"] = version["server"]["full"] + " Rev. " + get_head_rev();
 
 server_short_files = ["urbackupserver/www/index.htm",
-                      "urbackupserver_installer_win/urbackup_server.nsi"]
+                      "urbackupserver_installer_win/urbackup_server.nsi",
+					  "urbackupserver_installer_win/generate_msi.bat"]
 
 for short_file in server_short_files:
     replace_in_file(short_file, "$version_short$", version["server"]["short"])
@@ -103,7 +104,8 @@ replace_in_file("urbackupserver_installer_win/urbackup_server.wxi", "$product_id
 
 
 if os.path.exists("client"):
-	client_short_files = ["client/urbackup.nsi",
+	client_short_files = ["client_version.h",
+						  "client/urbackup.nsi",
 						  "client/urbackup_update.nsi",
 						  "client/urbackup_notray.nsi"]
 
