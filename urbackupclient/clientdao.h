@@ -145,6 +145,7 @@ public:
 	//@-SQLGenFunctionsBegin
 
 
+	void updateShadowCopyStarttime(int id);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -185,5 +186,6 @@ private:
 	IQuery *q_update_pattern;
 
 	//@-SQLGenVariablesBegin
+	IQuery* q_updateShadowCopyStarttime;
 	//@-SQLGenVariablesEnd
 };

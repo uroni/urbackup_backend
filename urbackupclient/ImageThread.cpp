@@ -60,6 +60,8 @@ void ImageThread::sendFullImageThread(void)
 	int save_id=-1;
 	bool with_checksum=image_inf->with_checksum;
 
+	int64 last_shadowcopy_update = Server->getTimeSeconds();
+
 	bool run=true;
 	while(run)
 	{
@@ -275,6 +277,12 @@ void ImageThread::sendFullImageThread(void)
 				{
 					Server->wait(30000);
 				}
+
+				if(Server->getTimeSeconds() - last_shadowcopy_update > 1*60*60)
+				{
+					updateShadowCopyStarttime(save_id);
+					last_shadowcopy_update = Server->getTimeSeconds();
+				}
 			}
 
 			for(size_t i=0;i<bufs.size();++i)
@@ -363,6 +371,7 @@ void ImageThread::sendIncrImageThread(void)
 	int update_cnt=0;
 
 	int64 lastsendtime=Server->getTimeMS();
+	int64 last_shadowcopy_update = Server->getTimeSeconds();
 
 	bool run=true;
 	while(run)
@@ -613,6 +622,12 @@ void ImageThread::sendIncrImageThread(void)
 				{
 					Server->wait(30000);
 				}
+
+				if(Server->getTimeSeconds() - last_shadowcopy_update > 1*60*60)
+				{
+					updateShadowCopyStarttime(save_id);
+					last_shadowcopy_update = Server->getTimeSeconds();
+				}
 			}
 
 			cs->doExit();
@@ -704,4 +719,18 @@ void ImageThread::operator()(void)
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
 #endif
 #endif
+}
+
+void ImageThread::updateShadowCopyStarttime( int save_id )
+{
+	if(!image_inf->no_shadowcopy)
+	{
+		CWData data;
+		data.addChar(IndexThread::IndexThreadAction_PingShadowCopy);
+		data.addVoidPtr(NULL);
+		data.addString(image_inf->image_letter);
+		data.addInt(save_id);
+
+		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
+	}
 }

@@ -25,7 +25,6 @@ ClientDAO::ClientDAO(IDatabase *pDB)
 {
 	db=pDB;
 	prepareQueries();
-	prepareQueriesGen();
 }
 
 void ClientDAO::prepareQueries(void)
@@ -61,6 +60,7 @@ void ClientDAO::prepareQueries(void)
 	q_get_pattern=db->Prepare("SELECT tvalue FROM misc WHERE tkey=?", false);
 	q_insert_pattern=db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)", false);
 	q_update_pattern=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey=?", false);
+	prepareQueriesGen();
 }
 
 void ClientDAO::destroyQueries(void)
@@ -96,24 +96,25 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_get_pattern);
 	db->destroyQuery(q_insert_pattern);
 	db->destroyQuery(q_update_pattern);
+	destroyQueriesGen();
 }
 
 //@-SQLGenSetup
 void ClientDAO::prepareQueriesGen(void)
 {
+	q_updateShadowCopyStarttime=NULL;
 }
 
 //@-SQLGenDestruction
 void ClientDAO::destroyQueriesGen(void)
 {
+	db->destroyQuery(q_updateShadowCopyStarttime);
 }
 
 void ClientDAO::restartQueries(void)
 {
 	destroyQueries();
-	destroyQueriesGen();
 	prepareQueries();
-	prepareQueriesGen();
 }
 
 bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
@@ -549,5 +550,23 @@ void ClientDAO::updateMiscValue(const std::string& key, const std::wstring& valu
 		q_insert_pattern->Write();
 		q_insert_pattern->Reset();
 	}
+}
+
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::updateShadowCopyStarttime
+* @sql
+*    UPDATE shadowcopies SET starttime=CURRENT_TIMESTAMP
+*           WHERE id=:id(int)
+*/
+void ClientDAO::updateShadowCopyStarttime(int id)
+{
+	if(q_updateShadowCopyStarttime==NULL)
+	{
+		q_updateShadowCopyStarttime=db->Prepare("UPDATE shadowcopies SET starttime=CURRENT_TIMESTAMP WHERE id=?", false);
+	}
+	q_updateShadowCopyStarttime->Bind(id);
+	q_updateShadowCopyStarttime->Write();
+	q_updateShadowCopyStarttime->Reset();
 }
 

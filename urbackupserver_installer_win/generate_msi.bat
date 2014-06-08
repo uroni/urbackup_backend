@@ -2,7 +2,7 @@ set arch=x64
 set data_dir=data_x64
 set data_common=data_common
 set data_python=data_python_x64
-set version="$version_short$"
+set version=$version_short$
 
 cd "%~dp0"
 

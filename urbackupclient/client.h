@@ -51,12 +51,11 @@ private:
 struct SCRef
 {
 #ifdef _WIN32
-	SCRef(void): rcount(0), backupcom(NULL), ok(false), dontincrement(false) {}
+	SCRef(void): backupcom(NULL), ok(false), dontincrement(false) {}
 
 	IVssBackupComponents *backupcom;
 	VSS_ID ssetid;
 #endif
-	int rcount;
 	std::wstring volpath;
 	int64 starttime;
 	std::wstring target;
@@ -102,6 +101,7 @@ class IndexThread : public IThread
 {
 public:
 	static const char IndexThreadAction_GetLog;
+	static const char IndexThreadAction_PingShadowCopy;
 
 	IndexThread(void);
 	~IndexThread();

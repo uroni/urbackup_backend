@@ -298,10 +298,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 				}
 			}
 
-			if(file_old!=NULL)
-			{
-				Server->destroy(file_old);
-			}
+			Server->destroy(file_old);
 		}
 
 		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old));

@@ -51,6 +51,8 @@ volatile bool IndexThread::stop_index=false;
 std::map<std::wstring, std::wstring> IndexThread::filesrv_share_dirs;
 
 const char IndexThread::IndexThreadAction_GetLog=9;
+const char IndexThread::IndexThreadAction_PingShadowCopy=10;
+
 
 extern PLUGIN_ID filesrv_pluginid;
 
@@ -574,6 +576,25 @@ void IndexThread::operator()(void)
 			}
 			Server->Log("VSS logdata - "+nconvert(ret.size())+" bytes", LL_DEBUG);
 			contractor->Write(ret);
+		}
+		else if(action==IndexThreadAction_PingShadowCopy)
+		{
+			std::string scdir;
+			data.getStr(&scdir);
+			SCDirs *scd=getSCDir(Server->ConvertToUnicode(scdir));
+
+			int save_id=-1;
+			data.getInt(&save_id);
+
+			if(scd!=NULL && scd->ref!=NULL)
+			{
+				scd->ref->starttime = Server->getTimeSeconds();
+			}
+
+			if(save_id!=-1)
+			{
+				cd->updateShadowCopyStarttime(save_id);
+			}
 		}
 	}
 
@@ -1400,7 +1421,6 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 					dir->ref=sc_refs[i];
 					if(!dir->ref->dontincrement)
 					{
-						dir->ref->rcount++;
 						sc_refs[i]->starttokens.push_back(starttoken);
 					}
 					else
@@ -1448,16 +1468,10 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 		}
 
 		dir->ref=new SCRef;
-		dir->ref->rcount=1;
 		dir->ref->starttime=Server->getTimeSeconds();
 		dir->ref->target=wpath;
 		dir->ref->starttokens.push_back(starttoken);
 		sc_refs.push_back(dir->ref);
-	}
-
-	if(dir->ref->rcount!=1)
-	{
-		VSSLog("Error rcount!=1", LL_ERROR);
 	}
 
 	int tries=3;
@@ -1662,7 +1676,9 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 
 	if(dir->ref!=NULL && dir->ref->backupcom!=NULL)
 	{
-		if(dir->ref->rcount<=1 || Server->getTimeSeconds()-dir->ref->starttime>shadowcopy_timeout/1000)
+		if(dir->ref->starttokens.empty() ||
+			(dir->ref->starttokens.size()==1 && dir->ref->starttokens[0]==starttoken)
+			|| Server->getTimeSeconds()-dir->ref->starttime>shadowcopy_timeout/1000)
 		{
 			IVssBackupComponents *backupcom=dir->ref->backupcom;
 			IVssAsync *pb_result;
@@ -1713,9 +1729,8 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 
 			backupcom->Release();
 			dir->ref->backupcom=NULL;
-			dir->ref->rcount=1;			
+			dir->ref->starttokens.clear();
 		}
-		--dir->ref->rcount;
 	}
 	if(dir->ref!=NULL)
 	{
@@ -1768,7 +1783,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 		r=false;
 		for(size_t i=0;i<sc_refs.size();++i)
 		{
-			if(sc_refs[i]->rcount<=0)
+			if(sc_refs[i]->starttokens.empty())
 			{
 				VSSLog(L"Deleting Shadowcopy for dir \""+sc_refs[i]->target+L"\"", LL_DEBUG);
 				bool c=true;

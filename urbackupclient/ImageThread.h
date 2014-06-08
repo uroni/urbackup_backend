@@ -23,6 +23,7 @@ private:
 	void sendIncrImageThread(void);
 
 	void removeShadowCopyThread(int save_id);
+	void updateShadowCopyStarttime(int save_id);
 
 	IPipe *pipe;
 	IPipe *mempipe;
