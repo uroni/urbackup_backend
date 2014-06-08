@@ -1965,6 +1965,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	if(passed_time==0) passed_time=1;
 
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
+
+	run_script(L"urbackup" + os_file_sep() + L"post_full_filebackup", L"\""+ backuppath + L"\"");
 	
 	if(c_has_error)
 		return false;
@@ -2946,6 +2948,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	_i64 transferred_bytes=fc.getTransferredBytes()+(fc_chunked.get()?fc_chunked->getTransferredBytes():0);
 	int64 passed_time=incr_backup_stoptime-incr_backup_starttime;
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
+
+	run_script(L"urbackup" + os_file_sep() + L"post_incr_filebackup", L"\""+ backuppath + L"\"");
 
 	if(c_has_error) return false;
 	
@@ -4969,4 +4973,55 @@ void BackupServerGet::addExistingHashesToDb()
 			hash_existing[i].shahash, hash_existing[i].filesize);
 	}
 	hash_existing.clear();
+}
+
+void BackupServerGet::run_script( std::wstring name, const std::wstring& params)
+{
+#ifdef _WIN32
+	name = name + L".bat";
+#endif
+
+	name+=L" "+params;
+
+	name +=L" 2>&1";
+
+#ifdef _WIN32
+	FILE* fp = _wpopen(name.c_str(), L"rb");
+#else
+	FILE* fp = popen(Server->ConvertToUTF8(name).c_str(), "rb");
+#endif
+
+	if(!fp)
+	{
+		ServerLogger::Log(clientid, L"Could not open pipe for command "+name, LL_DEBUG);
+		return;
+	}
+
+	std::string output;
+	while(!feof(fp) && !ferror(fp))
+	{
+		char buf[4097];
+		size_t r = fread(buf, 1, 4096, fp);
+		buf[r]=0;
+		output+=buf;
+	}
+
+#ifdef _WIN32
+	int rc = _pclose(fp);
+#else
+	int rc = pclose(fp);
+#endif
+
+	if(rc!=0)
+	{
+		ServerLogger::Log(clientid, L"Script "+name+L" had error (code "+convert(rc)+L")", LL_ERROR);
+	}
+
+	std::vector<std::string> toks;
+	Tokenize(output, toks, "\n");
+
+	for(size_t i=0;i<toks.size();++i)
+	{
+		ServerLogger::Log(clientid, "Script output Line("+nconvert(i+1)+"): " + toks[i], rc!=0?LL_ERROR:LL_INFO);
+	}
 }

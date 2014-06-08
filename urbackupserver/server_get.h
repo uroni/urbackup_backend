@@ -187,6 +187,8 @@ private:
 
 	void addExistingHashesToDb();
 
+	void run_script(std::wstring name, const std::wstring& params);
+
 	SSettings curr_intervals;
 
 	IPipe *pipe;
