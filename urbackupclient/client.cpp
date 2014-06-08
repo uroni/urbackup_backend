@@ -337,6 +337,9 @@ void IndexThread::operator()(void)
 			if(!stop_index)
 			{
 				indexDirs();
+
+				execute_postindex_hook();
+
 				if(stop_index)
 				{
 					contractor->Write("error - stopped indexing 2");
@@ -354,7 +357,6 @@ void IndexThread::operator()(void)
 			{
 				contractor->Write("error - stop_index 1");
 			}
-			execute_postindex_hook();
 		}
 		else if(action==1)
 		{
@@ -380,8 +382,11 @@ void IndexThread::operator()(void)
 				resetFileEntries();
 			}
 			execute_prebackup_hook();
+
 			indexDirs();
+
 			execute_postindex_hook();
+
 			if(stop_index)
 			{
 				contractor->Write("error - stopped indexing");
