@@ -44,7 +44,7 @@ class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCa
 	public FileClient::ReconnectionCallback, public INotEnoughSpaceCallback,
 	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback
 {
-	friend ServerHashExisting;
+	friend class ServerHashExisting;
 public:
 	BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots, bool use_reflink);
 	~BackupServerGet(void);
