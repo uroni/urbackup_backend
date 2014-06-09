@@ -4988,7 +4988,7 @@ void BackupServerGet::run_script( std::wstring name, const std::wstring& params)
 #ifdef _WIN32
 	FILE* fp = _wpopen(name.c_str(), L"rb");
 #else
-	FILE* fp = popen(Server->ConvertToUTF8(name).c_str(), "rb");
+	FILE* fp = popen(Server->ConvertToUTF8(name).c_str(), "r");
 #endif
 
 	if(!fp)
