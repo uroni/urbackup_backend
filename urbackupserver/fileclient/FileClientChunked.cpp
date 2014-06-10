@@ -240,7 +240,8 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		}
 
 		if( ( ( parent==NULL && queued_fcs.empty() ) || !did_queue_fc )
-			&& queuedChunks()<c_max_queued_chunks && next_chunk==num_total_chunks)
+			&& queuedChunks()<c_max_queued_chunks && next_chunk==num_total_chunks
+			&& remote_filesize!=-1)
 		{
 			std::string remotefn;
 			IFile* orig_file;
@@ -553,6 +554,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				if(pending_chunks.find(block_start)==pending_chunks.end())
 				{
 					Server->Log("Block not requested.", LL_ERROR);
+					logPendingChunks();
 					assert(false);
 					retval=ERR_ERROR;
 					getfile_done=true;
@@ -597,6 +599,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				if(it==pending_chunks.end())
 				{
 					Server->Log("Chunk not requested.", LL_ERROR);
+					logPendingChunks();
 					assert(false);
 					retval=ERR_ERROR;
 					getfile_done=true;
@@ -1069,6 +1072,8 @@ bool FileClientChunked::Reconnect(void)
 			block_for_chunk_start=-1;
 			state=CS_ID_FIRST;
 			patch_buf_pos=0;
+			did_queue_fc=false;
+			md5_hash.init();
 
 			_i64 fileoffset=0;
 
@@ -1441,6 +1446,15 @@ void FileClientChunked::addReceivedBlock( _i64 block_start )
 	else
 	{
 		addReceivedBytes(c_checkpoint_dist);
+	}
+}
+
+void FileClientChunked::logPendingChunks()
+{
+	for(std::map<_i64, SChunkHashes>::iterator iter=pending_chunks.begin();
+		iter!=pending_chunks.end();++iter)
+	{
+		Server->Log("Pending chunk: "+nconvert(iter->first), LL_ERROR);
 	}
 }
 

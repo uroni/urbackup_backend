@@ -134,6 +134,8 @@ private:
 	IPipe* ofbPipe();
 	void setOfbPipe(IPipe* p);
 
+	void logPendingChunks();
+
 	std::string remote_filename;
 
 	IFile *m_file;
