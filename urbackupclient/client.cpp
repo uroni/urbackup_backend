@@ -615,8 +615,7 @@ void IndexThread::indexDirs(void)
 
 	if(patterns_changed)
 	{
-		VSSLog("Deleting file-cache because include/exclude pattern changed...", LL_INFO);
-		resetFileEntries();
+		VSSLog("Include/exclude pattern changed. Not using db...", LL_INFO);
 	}
 
 	updateDirs();
@@ -747,7 +746,7 @@ void IndexThread::indexDirs(void)
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
-			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true, backup_dirs[i].optional);
+			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true, backup_dirs[i].optional, !patterns_changed);
 
 			cd->copyFromTmpFiles();
 			commitModifyFilesBuffer();
@@ -856,7 +855,7 @@ bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& nam
 	return false;
 }
 
-bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional)
+bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db)
 {
 	bool has_include=false;
 
@@ -891,7 +890,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 		return false;
 	}
 
-	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first);
+	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db);
 
 	if(index_error)
 	{
@@ -950,7 +949,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			{
 				std::streampos pos=outfile.tellp();
 				outfile << "d\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\"\n";
-				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional);			
+				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);			
 				outfile << "d\"..\"\n";
 
 				if(!b)

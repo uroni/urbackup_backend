@@ -127,7 +127,7 @@ public:
 private:
 
 	void readBackupDirs(void);
-	bool initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional);
+	bool initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db);
 
 	void indexDirs(void);
 
