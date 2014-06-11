@@ -796,6 +796,8 @@ function show_status2(data)
 		obj.start_file_backup+="<span id=\"start_file_backup_"+obj.id+"\" />";
 		obj.start_image_backup+="<span id=\"start_image_backup_"+obj.id+"\" />";
 				
+		obj.os_version_string = unescapeHTML(obj.os_version_string);
+		
 		switch(obj.status)
 		{
 			case 0: obj.status="ok"; break;
