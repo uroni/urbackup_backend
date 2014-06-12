@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <queue>
 #include <memory>
+#include <algorithm>
 
 #define VLOG(x) x
 
@@ -89,7 +90,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 	{
 		std::auto_ptr<FileClientChunked> next(queued_fcs.front());
 
-		queued_fcs.pop();
+		queued_fcs.pop_front();
 
 		assert(next->remote_filename==remotefn);
 
@@ -261,11 +262,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 
 				if(parent)
 				{
-					parent->queued_fcs.push(next);
+					parent->queued_fcs.push_back(next);
 				}
 				else
 				{
-					queued_fcs.push(next);
+					queued_fcs.push_back(next);
 				}
 
 				next->setQueueCallback(queue_callback);
@@ -273,13 +274,22 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 				next->setQueueOnly(true);
 				if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize)!=ERR_SUCCESS)
 				{
+					std::deque<FileClientChunked*>::iterator iter;
 					if(parent)
 					{
-						parent->queued_fcs.pop();
+						iter = std::find(parent->queued_fcs.begin(), parent->queued_fcs.end(), next);
+						if(iter!=parent->queued_fcs.end())
+						{
+							parent->queued_fcs.erase(iter);
+						}
 					}
 					else
 					{
-						queued_fcs.pop();
+						iter = std::find(queued_fcs.begin(), queued_fcs.end(), next);
+						if(iter!=queued_fcs.end())
+						{
+							queued_fcs.erase(iter);
+						}
 					}
 					delete next;
 					did_queue_fc=false;
@@ -1347,7 +1357,7 @@ void FileClientChunked::clearFileClientQueue()
 		while(!queued_fcs.empty())
 		{
 			delete queued_fcs.front();
-			queued_fcs.pop();
+			queued_fcs.pop_front();
 		}
 	}
 }

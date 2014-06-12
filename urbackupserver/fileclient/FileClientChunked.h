@@ -7,7 +7,7 @@
 #include "../../md5.h"
 #include "../../fileservplugin/chunk_settings.h"
 #include <map>
-#include <queue>
+#include <deque>
 
 class IFile;
 class IPipe;
@@ -209,7 +209,7 @@ private:
 
 	FileClientChunked* parent;
 	bool did_queue_fc;
-	std::queue<FileClientChunked*> queued_fcs;
+	std::deque<FileClientChunked*> queued_fcs;
 
 	FileClientChunked::QueueCallback* queue_callback;
 	bool queue_only;
