@@ -242,8 +242,13 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			&& save_incomplete_file
 			&& fd->Size()>0 )
 		{
-			ServerLogger::Log(clientid, L"Saving incomplete file.", LL_DEBUG);
+			ServerLogger::Log(clientid, L"Saving incomplete file.", LL_INFO);
 			hash_file = true;
+
+			if(todl.id>max_ok_id)
+			{
+				max_ok_id=todl.id;
+			}
 		}
 		else
 		{
@@ -454,8 +459,13 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			&& dlfiles.patchfile->Size()>0
 			&& save_incomplete_file)
 		{
-			ServerLogger::Log(clientid, L"Saving incomplete file.", LL_DEBUG);
+			ServerLogger::Log(clientid, L"Saving incomplete file.", LL_INFO);
 			hash_file=true;
+
+			if(todl.id>max_ok_id)
+			{
+				max_ok_id=todl.id;
+			}
 		}
 		else
 		{

@@ -1866,9 +1866,10 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		r_done=true;
 	}
 
+	size_t max_line = line;
+
 	if(r_done==false && c_has_error==false)
 	{
-		max_ok_id = line;
 		sendBackupOkay(true);
 	}
 	else
@@ -1889,16 +1890,15 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 			bool b=getNextEntry(buffer[i], cf, NULL);
 			if(b)
 			{
-				if(line <= (std::max)(server_download->getMaxOkId(), max_ok_id))
+				if(cf.isdir && line<max_line)
 				{
-					if(cf.isdir)
-					{
-						writeFileItem(clientlist, cf);
-					}
-					else if( server_download->isDownloadOk(line))
-					{
-						writeFileItem(clientlist, cf);
-					}
+					writeFileItem(clientlist, cf);
+				}
+				else if(!cf.isdir && 
+					line <= (std::max)(server_download->getMaxOkId(), max_ok_id) &&
+					server_download->isDownloadOk(line) )
+				{
+					writeFileItem(clientlist, cf);
 				}				
 				++line;
 			}
