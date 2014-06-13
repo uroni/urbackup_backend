@@ -314,6 +314,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->compress_images=(settings_default->getValue("compress_images", "true")=="true");
 	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
+	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)

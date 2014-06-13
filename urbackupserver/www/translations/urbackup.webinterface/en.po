@@ -6,10 +6,11 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-05-31 15:24+0000\n"
+"PO-Revision-Date: 2014-06-13 18:34+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: English (http://www.transifex.com/projects/p/urbackup/language/en/)\n"
 "MIME-Version: 1.0\n"
@@ -1187,3 +1188,6 @@ msgstr "You need to create a user to be able to send reports"
 
 msgid "Show/hide columns"
 msgstr "Show/hide columns"
+
+msgid "tShow when a new server version is available"
+msgstr "Show when a new server version is available"

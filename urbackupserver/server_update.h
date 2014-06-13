@@ -1,9 +1,11 @@
-#include "../Interface/Thread.h"
+#pragma once
 
-class ServerUpdate : public IThread
+class ServerUpdate 
 {
 public:
 	ServerUpdate(void);
 
-	void operator()(void);
+	void update_client();
+
+	void update_server_version_info();
 };

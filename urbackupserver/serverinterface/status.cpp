@@ -27,6 +27,7 @@
 #include "../server.h"
 
 #include <algorithm>
+#include <memory>
 
 extern ICryptoFactory *crypto_fak;
 
@@ -73,6 +74,26 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 	}
 
 	return has_client;
+}
+
+void set_server_version_info(JSON::Object& ret)
+{
+	std::auto_ptr<ISettingsReader> infoProperties(Server->createFileSettingsReader("urbackup/server_version_info.properties"));
+
+	if(infoProperties.get())
+	{
+		std::wstring curr_version_num;
+		if(infoProperties->getValue(L"curr_version_num", &curr_version_num))
+		{
+			ret.set("curr_version_num", watoi64(curr_version_num));
+		}
+
+		std::string curr_version_str;
+		if(infoProperties->getValue("curr_version_str", &curr_version_str))
+		{
+			ret.set("curr_version_str", curr_version_str);
+		}
+	}
 }
 
 }
@@ -437,6 +458,7 @@ ACTION_IMPL(status)
 		if(helper.getRights("all")=="all")
 		{
 			ret.set("admin", JSON::Value(true));
+			set_server_version_info(ret);
 		}
 	}
 	else

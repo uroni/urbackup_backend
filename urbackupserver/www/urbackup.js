@@ -1027,25 +1027,18 @@ function show_status2(data)
 		$("#status_table").dataTable(datatable_config);
 	}
 	
-	if(data.admin)
+	if(data.curr_version_num)
 	{
-		if(!g.online_version_loaded)
-		{
-			LoadScript("https://ssl.webpack.de/serverupdate.urbackup.org/server_version_info.js", "server_version_info_struct");
-		}
-		else
-		{
-			g.checkForNewVersion();
-		}
+		g.checkForNewVersion(data.curr_version_num, data.curr_version_str);
 	}
 	
 	g.status_show_all=false;
 }
-g.checkForNewVersion = function()
+g.checkForNewVersion = function(curr_version_num, curr_version_str)
 {
-	if(g.online_version.num>g.current_version && I('new_version_available'))
+	if(curr_version_num>g.current_version && I('new_version_available'))
 	{
-		I('new_version_available').innerHTML=dustRender("new_version_available", {new_version_number: g.online_version.str} );
+		I('new_version_available').innerHTML=dustRender("new_version_available", {new_version_number: curr_version_str} );
 	}
 }
 function downloadClient(clientid)
@@ -1450,6 +1443,7 @@ function show_settings2(data)
 			data.settings.autoshutdown=getCheckboxValue(data.settings.autoshutdown);
 			data.settings.download_client=getCheckboxValue(data.settings.download_client);
 			data.settings.autoupdate_clients=getCheckboxValue(data.settings.autoupdate_clients);
+			data.settings.show_server_updates=getCheckboxValue(data.settings.show_server_updates);
 			data.settings.backup_database=getCheckboxValue(data.settings.backup_database);
 			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
 			data.settings.use_tmpfiles_images=getCheckboxValue(data.settings.use_tmpfiles_images);
@@ -1889,7 +1883,8 @@ g.general_settings_list=[
 "filescache_size",
 "suspend_index_limit",
 "use_incremental_symlinks",
-"trust_client_hashes"
+"trust_client_hashes",
+"show_server_updates"
 ];
 g.mail_settings_list=[
 "mail_servername",

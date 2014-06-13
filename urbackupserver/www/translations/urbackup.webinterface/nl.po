@@ -6,10 +6,12 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
+# Pimmetje <pimmetje@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-05-31 15:24+0000\n"
+"PO-Revision-Date: 2014-06-13 18:34+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Dutch (http://www.transifex.com/projects/p/urbackup/language/nl/)\n"
 "MIME-Version: 1.0\n"
@@ -19,403 +21,403 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "action_1"
-msgstr ""
+msgstr "Incrementele bestand back-up"
 
 msgid "action_2"
-msgstr ""
+msgstr "Volledige bestand back-up"
 
 msgid "action_3"
-msgstr ""
+msgstr "Incrementele image back-up"
 
 msgid "action_4"
-msgstr ""
+msgstr "Volledige image back-up"
 
 msgid "action_1_d"
-msgstr ""
+msgstr "Incrementele back-up verwijderen"
 
 msgid "action_2_d"
-msgstr ""
+msgstr "volledige back-up verwijderen"
 
 msgid "action_3_d"
-msgstr ""
+msgstr "Incrementele back-up verwijderen"
 
 msgid "action_4_d"
-msgstr ""
+msgstr "Volledige back-up verwijderen"
 
 msgid "nav_item_6"
-msgstr ""
+msgstr "Status"
 
 msgid "nav_item_5"
-msgstr ""
+msgstr "Activiteit"
 
 msgid "nav_item_4"
-msgstr ""
+msgstr "Back-ups"
 
 msgid "nav_item_3"
-msgstr ""
+msgstr "Logs"
 
 msgid "nav_item_2"
-msgstr ""
+msgstr "Statistieken"
 
 msgid "nav_item_1"
-msgstr ""
+msgstr "Instellingen"
 
 msgid "unknown"
-msgstr ""
+msgstr "Onbekend"
 
 msgid "overview"
-msgstr ""
+msgstr "Overzicht"
 
 msgid "ok"
-msgstr ""
+msgstr "Ok"
 
 msgid "no_recent_backup"
-msgstr ""
+msgstr "Geen recente back-up"
 
 msgid "backup_never"
-msgstr ""
+msgstr "Nooit"
 
 msgid "yes"
-msgstr ""
+msgstr "Ja"
 
 msgid "no"
-msgstr ""
+msgstr "Nee"
 
 msgid "tBackup status"
-msgstr ""
+msgstr "Backup-status"
 
 msgid "tComputer name"
-msgstr ""
+msgstr "Computer naam"
 
 msgid "tLast seen"
-msgstr ""
+msgstr "Laatst gezien"
 
 msgid "tLast file backup"
-msgstr ""
+msgstr "Laatste back-up"
 
 msgid "tLast image backup"
-msgstr ""
+msgstr "Laatste image back-up"
 
 msgid "tFile backup status"
-msgstr ""
+msgstr "Bestand back-up status"
 
 msgid "tImage backup status"
-msgstr ""
+msgstr "Image back-up status"
 
 msgid "tShow details"
-msgstr ""
+msgstr "Details weergeven"
 
 msgid "tExtra clients"
-msgstr ""
+msgstr "Extra clients"
 
 msgid "tNo extra clients"
-msgstr ""
+msgstr "Geen extra clients"
 
 msgid "tActions"
-msgstr ""
+msgstr "Acties"
 
 msgid "tOnline"
-msgstr ""
+msgstr "Online"
 
 msgid "tHostname/IP"
-msgstr ""
+msgstr "Computernaam/IP"
 
 msgid "tServer identity"
-msgstr ""
+msgstr "Server identiteit"
 
 msgid "users"
-msgstr ""
+msgstr "Gebruikers"
 
 msgid "general_settings"
-msgstr ""
+msgstr "Algemeen"
 
 msgid "admin"
-msgstr ""
+msgstr "Administrator"
 
 msgid "user"
-msgstr ""
+msgstr "Gebruiker"
 
 msgid "username_empty"
-msgstr ""
+msgstr "Gebruikersnaam invoeren"
 
 msgid "password_empty"
-msgstr ""
+msgstr "Wachtwoord invoeren"
 
 msgid "password_differ"
-msgstr ""
+msgstr "Wachtwoorden komen niet overen"
 
 msgid "user_n_exist"
-msgstr ""
+msgstr "Gebruiker bestaat niet"
 
 msgid "password_wrong"
-msgstr ""
+msgstr "Verkeerd wachtwoord"
 
 msgid "user_exists"
-msgstr ""
+msgstr "Gebruikersnaam is al in gebruik"
 
 msgid "session_timeout"
-msgstr ""
+msgstr "Inactiviteit heeft de huidige sessie ongeldig gemaakt. Gelieve opnieuw in te loggen."
 
 msgid "really_del_user"
-msgstr ""
+msgstr "Gebruiker echt verwijderen?"
 
 msgid "user_add_done"
-msgstr ""
+msgstr "Gebruiker is met succes toegevoegd."
 
 msgid "user_remove_done"
-msgstr ""
+msgstr "Gebruiker is met succes verwijderd."
 
 msgid "user_update_right_done"
-msgstr ""
+msgstr "Gebruikersrechten zijn met succes aangepast."
 
 msgid "user_pw_change_ok"
-msgstr ""
+msgstr "Gebruikers wachtwoord is met succes veranderd."
 
 msgid "right_all"
-msgstr ""
+msgstr "Volledige rechten"
 
 msgid "right_none"
-msgstr ""
+msgstr "Geen rechten"
 
 msgid "filter"
-msgstr ""
+msgstr "Filter"
 
 msgid "all"
-msgstr ""
+msgstr "Alles"
 
 msgid "loglevel_0"
-msgstr ""
+msgstr "Info"
 
 msgid "loglevel_1"
-msgstr ""
+msgstr "Waarschuwingen"
 
 msgid "loglevel_2"
-msgstr ""
+msgstr "Fouten"
 
 msgid "dir_error_text"
-msgstr ""
+msgstr "De directory waar UrBackup de back-ups in opslaat is niet toegankelijk. Verander de directory via 'Settings' of pas de rechten van de betreffende map aan."
 
 msgid "tmpdir_error_text"
-msgstr ""
+msgstr "De directory waar UrBackup de tijdelijke bestanden in opslaat is niet toegankelijk. Verander de directory via 'Settings' of pas de rechten van de betreffende map aan."
 
 msgid "starting"
-msgstr ""
+msgstr "Beginnen"
 
 msgid "ident_err"
-msgstr ""
+msgstr "Server geweigerd"
 
 msgid "enter_hostname"
-msgstr ""
+msgstr " Gelieve computernaam of IP-adres op te geven"
 
 msgid "clients"
-msgstr ""
+msgstr "Clients"
 
 msgid "validate_text_empty"
-msgstr ""
+msgstr "Gelieve een waarde op te geven voor {name}"
 
 msgid "validate_text_notint"
-msgstr ""
+msgstr "Gelieve een numerieke waarde op te geven voor {name}"
 
 msgid "validate_name_update_freq_incr"
-msgstr ""
+msgstr "interval voor incrementele bestand back-ups"
 
 msgid "validate_name_update_freq_full"
-msgstr ""
+msgstr "Interval voor volledige bestands back-ups"
 
 msgid "validate_name_update_freq_image_full"
-msgstr ""
+msgstr "Interval voor incrementele image back-ups"
 
 msgid "validate_name_update_freq_image_incr"
-msgstr ""
+msgstr "Interval voor volledige image back-ups"
 
 msgid "validate_name_max_file_incr"
-msgstr ""
+msgstr "Maximale aantal van incrementele bestands back-ups"
 
 msgid "validate_name_min_file_incr"
-msgstr ""
+msgstr "Minimale aantal van incrementele bestands back-ups"
 
 msgid "validate_name_max_file_full"
-msgstr ""
+msgstr "Maximale aantal van volledige bestands back-ups"
 
 msgid "validate_name_min_file_full"
-msgstr ""
+msgstr "Minimale aantal van volledige bestands back-ups"
 
 msgid "validate_name_min_image_incr"
-msgstr ""
+msgstr "Minimale aantal van incrementele image back-ups"
 
 msgid "validate_name_max_image_incr"
-msgstr ""
+msgstr "Maximale aantal van incrementele image back-ups"
 
 msgid "validate_name_min_image_full"
-msgstr ""
+msgstr "Minimale aantal van volledige image back-ups"
 
 msgid "validate_name_max_image_full"
-msgstr ""
+msgstr "Maximale aantal van volledige image back-ups"
 
 msgid "validate_name_startup_backup_delay"
-msgstr ""
+msgstr "back-up uitstel na systeem start"
 
 msgid "validate_err_notregexp_backup_window"
-msgstr ""
+msgstr "Formaat voor het backup schema is niet correct"
 
 msgid "validate_name_max_active_clients"
-msgstr ""
+msgstr "Maximum aantal recent actieve clients"
 
 msgid "validate_name_max_sim_backups"
-msgstr ""
+msgstr "Maximale aantal gelijktijdige back-ups"
 
 msgid "validate_name_backupfolder"
-msgstr ""
+msgstr "back-up opslag map"
 
 msgid "validate_name_computername"
-msgstr ""
+msgstr "computernaam"
 
 msgid "too_many_clients_err"
-msgstr ""
+msgstr "Teveel clients"
 
 msgid "really_remove_client"
-msgstr ""
+msgstr "Weet u zeker dat u deze client wilt verwijderen? Dit betekend dat alle bestanden en image back-ups van deze client worden verwijderd!"
 
 msgid "computername"
-msgstr ""
+msgstr "Computer naam"
 
 msgid "storage_usage_pie_graph_title"
-msgstr ""
+msgstr "Opslag verbruikt"
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr ""
+msgstr "Computer naam"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr ""
+msgstr "Opslag verbruikt"
 
 msgid "storage_usage_bar_graph_title"
-msgstr ""
+msgstr "Opslag verbruikt"
 
 msgid "storage_usage_bar_graph_colname1"
-msgstr ""
+msgstr "Datum"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr ""
+msgstr "Opslag verbruikt"
 
 msgid "tImages"
-msgstr ""
+msgstr "Image"
 
 msgid "tFiles"
-msgstr ""
+msgstr "Bestanden"
 
 msgid "tSum"
-msgstr ""
+msgstr "Totaal"
 
 msgid "validate_err_notregexp_cleanup_window"
-msgstr ""
+msgstr "Formaat voor opruim schema is incorrect"
 
 msgid "mail_settings"
-msgstr ""
+msgstr "Email"
 
 msgid "upgrade_error_text"
-msgstr ""
+msgstr "UrBackup is de interne database aan het bijwerken. Dit kan enige tijd duren. De server is niet bereikbaar en zal geen back-ups uitvoeren gedurende de upgrade."
 
 msgid "tActivities"
-msgstr ""
+msgstr "Activiteiten"
 
 msgid "tAction"
-msgstr ""
+msgstr "Actie"
 
 msgid "tProgress"
-msgstr ""
+msgstr "Vooruitgang"
 
 msgid "tFiles in queue"
-msgstr ""
+msgstr "Bestanden in wachtrij"
 
 msgid "tLast activities"
-msgstr ""
+msgstr "Laatste activiteit"
 
 msgid "tStarting time"
-msgstr ""
+msgstr "Start tijd"
 
 msgid "tRequired time"
-msgstr ""
+msgstr "Benodigde tijd"
 
 msgid "tUsed Storage"
-msgstr ""
+msgstr "Gebruikte opslag"
 
 msgid "tClients"
-msgstr ""
+msgstr "Clients"
 
 msgid "tLogs"
-msgstr ""
+msgstr "Logs"
 
 msgid "tReports"
-msgstr ""
+msgstr "Rapporten"
 
 msgid "tSend reports to"
-msgstr ""
+msgstr "Stuur rapporten naar"
 
 msgid "tSend"
-msgstr ""
+msgstr "Versturen"
 
 msgid "tBackups with a log message of at least log level"
-msgstr ""
+msgstr "Back-ups met een log bericht van op zijn minst niveau"
 
 msgid "tBackup time"
-msgstr ""
+msgstr "Back-up tijd"
 
 msgid "tErrors"
-msgstr ""
+msgstr "Fouten"
 
 msgid "tWarnings"
-msgstr ""
+msgstr "Waarschuwingen"
 
 msgid "tStorage allocation"
-msgstr ""
+msgstr "Opslag gereserveerd"
 
 msgid "tStorage usage"
-msgstr ""
+msgstr "Opslag verbruikt"
 
 msgid "tAll"
-msgstr ""
+msgstr "Alles"
 
 msgid "tBackup storage path"
-msgstr ""
+msgstr "Back-up opslag locatie"
 
 msgid "tDo not do image backups"
-msgstr ""
+msgstr "Maar geen image back-ups"
 
 msgid "tDo not do file backups"
-msgstr ""
+msgstr "Maak geen bestand back-ups"
 
 msgid "tAutomatically shut down server"
-msgstr ""
+msgstr "Server automatisch afsluiten"
 
 msgid "tAutoupdate clients"
-msgstr ""
+msgstr "Clients automatische updaten"
 
 msgid "tMax number of simultaneous backups"
-msgstr ""
+msgstr "Maximale aantal gelijktijdige back-ups"
 
 msgid "tMax number of recently active clients"
-msgstr ""
+msgstr "Maximum aantal recent actieve clients"
 
 msgid "tCleanup time window"
-msgstr ""
+msgstr "Opruim tijd schema"
 
 msgid "tAutomatically backup UrBackup database"
-msgstr ""
+msgstr "Automatische back-up UrBackup database"
 
 msgid "tInterval for incremental file backups"
-msgstr ""
+msgstr "Interval voor incrementele bestands back-ups"
 
 msgid "tInterval for full file backups"
-msgstr ""
+msgstr "Interval voor volledige bestands back-ups"
 
 msgid "tInterval for incremental image backups"
-msgstr ""
+msgstr "Interval voor incrementele image back-ups"
 
 msgid "tInterval for full image backups"
-msgstr ""
+msgstr "Interval voor volledige image back-ups"
 
 msgid "tMaximal number of incremental file backups"
-msgstr ""
+msgstr "Maximale aantal van incrementele bestands back-ups"
 
 msgid "tMinimal number of incremental file backups"
 msgstr ""
@@ -1186,4 +1188,7 @@ msgid "tYou need to create a user to be able to send reports"
 msgstr ""
 
 msgid "Show/hide columns"
+msgstr ""
+
+msgid "tShow when a new server version is available"
 msgstr ""

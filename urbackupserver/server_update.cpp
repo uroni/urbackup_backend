@@ -21,6 +21,7 @@
 #include "../Interface/File.h"
 #include "../stringtools.h"
 #include <stdlib.h>
+#include <memory>
 
 extern IUrlFactory *url_fak;
 
@@ -28,7 +29,7 @@ ServerUpdate::ServerUpdate(void)
 {
 }
 
-void ServerUpdate::operator()(void)
+void ServerUpdate::update_client()
 {
 	if(url_fak==NULL)
 	{
@@ -97,5 +98,26 @@ void ServerUpdate::operator()(void)
 
 		Server->Log("Successfully downloaded update file.", LL_INFO);
 		writestring(version, "urbackup/version.txt");
+	}
+}
+
+void ServerUpdate::update_server_version_info()
+{
+	if(url_fak==NULL)
+	{
+		Server->Log("Urlplugin not found. Cannot download server version info.", LL_ERROR);
+		return;
+	}
+
+	std::string http_proxy = Server->getServerParameter("http_proxy");
+
+	std::string errmsg;
+	Server->Log("Downloading server version info...", LL_INFO);
+
+	std::auto_ptr<IFile> server_version_info(Server->openFile("urbackup/server_version_info.properties", MODE_WRITE));
+	if(!url_fak->downloadFile("http://update1.urbackup.org/server_version_info.properties", 
+		server_version_info.get(), http_proxy, &errmsg) )
+	{
+		Server->Log("Error downloading server version information: " + errmsg, LL_ERROR);
 	}
 }

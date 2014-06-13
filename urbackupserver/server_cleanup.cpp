@@ -144,7 +144,14 @@ void ServerCleanupThread::operator()(void)
 		{
 			IScopedLock lock(a_mutex);
 			ServerUpdate upd;
-			upd();
+			upd.update_client();
+		}
+
+		if( settings->getValue("show_server_updates", "true")=="true" )
+		{
+			IScopedLock lock(a_mutex);
+			ServerUpdate upd;
+			upd.update_server_version_info();
 		}
 
 		Server->destroy(settings);
@@ -201,7 +208,14 @@ void ServerCleanupThread::operator()(void)
 				if( settings->getValue("autoupdate_clients", "true")=="true" )
 				{
 					ServerUpdate upd;
-					upd();
+					upd.update_client();
+				}
+
+				if( settings->getValue("show_server_updates", "true")=="true" )
+				{
+					IScopedLock lock(a_mutex);
+					ServerUpdate upd;
+					upd.update_server_version_info();
 				}
 
 				cleanupdao=new ServerCleanupDao(db);

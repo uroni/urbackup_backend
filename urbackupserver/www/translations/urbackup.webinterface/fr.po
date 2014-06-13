@@ -6,11 +6,12 @@
 # Translators:
 # Translators:
 # Translators:
-# charly_md <charles@cl-info.fr>, 2014
+# Translators:
+# Charles Peltier <charles@cl-info.fr>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-05-31 15:24+0000\n"
+"PO-Revision-Date: 2014-06-13 18:34+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: French (http://www.transifex.com/projects/p/urbackup/language/fr/)\n"
 "MIME-Version: 1.0\n"
@@ -29,7 +30,7 @@ msgid "action_3"
 msgstr "Image incrémentielle"
 
 msgid "action_4"
-msgstr "Image système complète"
+msgstr "Image disque "
 
 msgid "action_1_d"
 msgstr "Effacement Sauvegarde incrémentielle"
@@ -41,7 +42,7 @@ msgid "action_3_d"
 msgstr "Effacement Image incrémentielle"
 
 msgid "action_4_d"
-msgstr "Effacement Image système complète"
+msgstr "Effacement image disque complète"
 
 msgid "nav_item_6"
 msgstr "Etats"
@@ -242,10 +243,10 @@ msgid "validate_name_min_file_full"
 msgstr "Nombre minimal de sauvegardes complètes"
 
 msgid "validate_name_min_image_incr"
-msgstr "Nombre minimal d'images systèmes incrémentielles"
+msgstr "Nombre minimal d'images système incrémentielles"
 
 msgid "validate_name_max_image_incr"
-msgstr "Nombre maximal d'images systèmes incrémentielles"
+msgstr "Nombre maximal d'images système incrémentielles"
 
 msgid "validate_name_min_image_full"
 msgstr "Nombre minimal d'images complètes"
@@ -281,25 +282,25 @@ msgid "computername"
 msgstr "Nom de l'ordinateur"
 
 msgid "storage_usage_pie_graph_title"
-msgstr "Utilisation d'espace"
+msgstr "Utilisation de l'espace"
 
 msgid "storage_usage_pie_graph_colname1"
 msgstr "Nom de l'ordinateur"
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr "Utilisation d'espace"
+msgstr "Utilisation de l'espace"
 
 msgid "storage_usage_bar_graph_title"
-msgstr "Utilisation d'espace"
+msgstr "Utilisation de l'espace"
 
 msgid "storage_usage_bar_graph_colname1"
 msgstr "Date"
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr "Utilisation d'espace"
+msgstr "Utilisation de l'espace"
 
 msgid "tImages"
-msgstr "Images systèmes"
+msgstr "images système"
 
 msgid "tFiles"
 msgstr "Fichiers"
@@ -359,7 +360,7 @@ msgid "tBackups with a log message of at least log level"
 msgstr "Afficher les journaux au niveau "
 
 msgid "tBackup time"
-msgstr "Durée"
+msgstr "Horodatage"
 
 msgid "tErrors"
 msgstr "Erreurs"
@@ -371,7 +372,7 @@ msgid "tStorage allocation"
 msgstr "Espace alloué"
 
 msgid "tStorage usage"
-msgstr "Utilisation d'espace"
+msgstr "Utilisation de l'espace"
 
 msgid "tAll"
 msgstr "Tous"
@@ -380,7 +381,7 @@ msgid "tBackup storage path"
 msgstr "Chemin du répertoire de sauvegarde"
 
 msgid "tDo not do image backups"
-msgstr "Désactiver la sauvegarde Image système"
+msgstr "Désactiver la sauvegarde d'image disque"
 
 msgid "tDo not do file backups"
 msgstr "Désactiver la sauvegarde de fichiers"
@@ -389,7 +390,7 @@ msgid "tAutomatically shut down server"
 msgstr "Eteindre automatiquement le serveur"
 
 msgid "tAutoupdate clients"
-msgstr "Mettre à jour les clients"
+msgstr "Autoriser mise à jour auto des clients"
 
 msgid "tMax number of simultaneous backups"
 msgstr "Nombre maximal de sauvegardes simultanées"
@@ -398,7 +399,7 @@ msgid "tMax number of recently active clients"
 msgstr "Nombre maximal de clients actifs"
 
 msgid "tCleanup time window"
-msgstr "Intervalle de purge"
+msgstr "Créneaux horaires de purge"
 
 msgid "tAutomatically backup UrBackup database"
 msgstr "Sauvegarder automatiquement la base de données du serveur"
@@ -410,7 +411,7 @@ msgid "tInterval for full file backups"
 msgstr "Intervalle pour la sauvegarde complète de fichiers"
 
 msgid "tInterval for incremental image backups"
-msgstr "Intervalle pour les sauvegardes système"
+msgstr "Intervalle pour les images système"
 
 msgid "tInterval for full image backups"
 msgstr "Intervalle pour la sauvegarde Image complète"
@@ -446,16 +447,16 @@ msgid "tBackup window"
 msgstr "Intervalle de sauvegarde"
 
 msgid "tExcluded files (with wildcards)"
-msgstr "Fichiers exclus (avec Wildcards)"
+msgstr "Fichiers exclus (avec jokers)"
 
 msgid "tIncluded files (with wildcards)"
-msgstr "Fichiers inclus (avec Wildcards)"
+msgstr "Fichiers inclus (avec jokers)"
 
 msgid "tDefault directories to backup"
 msgstr "Répertoires par défaut à sauvegarder "
 
 msgid "tVolumes to backup"
-msgstr "Volumes à sauvegarder"
+msgstr "Lecteurs à sauvegarder"
 
 msgid "tAllow client-side changing of the directories to backup"
 msgstr "Permettre au client de définir les répertoires de sauvegarde"
@@ -643,7 +644,7 @@ msgid "tNo data"
 msgstr "Pas de données"
 
 msgid "tTotal max backup speed for local network"
-msgstr "Somme totale de la vitesse maximale pour le réseau local"
+msgstr "Débit global maximum en mode réseau local"
 
 msgid "tArchive every"
 msgstr "Archiver tous les"
@@ -676,7 +677,7 @@ msgid "tMax backup speed for internet connection"
 msgstr "Vitesse maximale du réseau internet"
 
 msgid "tTotal max backup speed for internet connection"
-msgstr "Somme totale de la vitesse maximale pour le réseau internet"
+msgstr "Débit global maximum en mode réseau internet"
 
 msgid "tEncrypted transfer"
 msgstr "Encrypter les échanges"
@@ -986,13 +987,13 @@ msgid "tDownload client from update server"
 msgstr "Téléchargement du client depuis le serveur de mise à jour"
 
 msgid "tGlobal soft filesystem quota"
-msgstr "Système global de quota fichiers"
+msgstr "Quota global pour les sauvegardes"
 
 msgid "tDisable"
 msgstr "Désactiver"
 
 msgid "tCompress image backups"
-msgstr "Compresser les sauvegardes systèmes"
+msgstr "Compresser les images système"
 
 msgid "tAllow client-side starting of full file backups"
 msgstr "Autoriser le client à lancer une sauvegarde fichiers complètes "
@@ -1013,10 +1014,10 @@ msgid "tBackup window for full file backups"
 msgstr "Créneau pour les sauvegardes complètes de fichiers"
 
 msgid "tBackup window for incremental image backups"
-msgstr "Créneau pour les sauvegardes systèmes incrémentielles"
+msgstr "Créneau pour les sauvegardes système incrémentielles"
 
 msgid "tBackup window for full image backups"
-msgstr "Créneau pour les sauvegardes systèmes complètes"
+msgstr "Créneau pour les sauvegardes système complètes"
 
 msgid "tSoft client quota"
 msgstr "Quota par client"
@@ -1040,7 +1041,7 @@ msgid "tRaw"
 msgstr "Brut"
 
 msgid "tHashed"
-msgstr "Hachage réalisé"
+msgstr "Hachage"
 
 msgid "tInternet full file backup transfer mode"
 msgstr "Mode réseau internet pour la sauvegarde complète des fichiers"
@@ -1067,7 +1068,7 @@ msgid "tFile hash collection timeout"
 msgstr "durée de vie des enregistrements de hachage dans la bibliothèque"
 
 msgid "tFile hash collection database cachesize"
-msgstr "Taille du cache de la bibliothèque de hachage fichier"
+msgstr "Taille du cache de la bibliothèque de hachage fichiers"
 
 msgid "tMB"
 msgstr "MB"
@@ -1091,7 +1092,7 @@ msgid "tUse symlinks during incremental file backups"
 msgstr "Utiliser des liens symboliques durant le sauvegarde incrémentielle de fichiers"
 
 msgid "tEnd-to-end verification of all file backups"
-msgstr "Vérification de bout à bout de tous les fichiers de sauvegarde"
+msgstr "Vérification après transfert de tous les fichiers de sauvegarde"
 
 msgid "tServer admin mail address"
 msgstr "Adresse email de l'administrateur du serveur"
@@ -1175,7 +1176,7 @@ msgid "Restore to default"
 msgstr "Remettre par defaut"
 
 msgid "Save"
-msgstr "Sauvegarder"
+msgstr "Exporter"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
 msgstr "connecter au serveur de sauvegarde internet si déjà connecté au serveur local"
@@ -1184,7 +1185,10 @@ msgid "tAllow clients to quit the tray icon"
 msgstr "autoriser les clients à quitter l'application en barre de tache"
 
 msgid "tYou need to create a user to be able to send reports"
-msgstr ""
+msgstr "Vous devez créer un utilisateur pour pouvoir envoyer un rapport"
 
 msgid "Show/hide columns"
+msgstr "afficher/masquer les colonnes"
+
+msgid "tShow when a new server version is available"
 msgstr ""

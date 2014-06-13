@@ -37,6 +37,8 @@ ACTION_IMPL(login)
 {
 	JSON::Object ret;
 
+	ret.set("api_version", 1);
+
 	{
 		IScopedLock lock(startup_status.mutex);
 		if(startup_status.creating_filescache)

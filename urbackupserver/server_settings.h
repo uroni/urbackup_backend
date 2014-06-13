@@ -91,6 +91,7 @@ struct SSettings
 	bool compress_images;
 	bool trust_client_hashes;
 	bool internet_connect_always;
+	bool show_server_updates;
 };
 
 struct STimeSpan
