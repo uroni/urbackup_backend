@@ -295,7 +295,7 @@ function getPar(p)
 	var val=obj.value;
 	if(p=="update_freq_incr"){ val*=60.0*60.0; if(obj.disabled) val*=-1; }
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
-		{ val*=60*60*24; if(obj.disabled) val*=-1; }
+		{ val*=60.0*60.0*24.0; if(obj.disabled) val*=-1; }
 	if(p=="startup_backup_delay") val*=60;
 	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
 	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
@@ -1485,9 +1485,9 @@ function show_settings2(data)
 			data.settings.filescache_size/=1024.0*1024.0;
 			
 			data.settings.update_freq_incr/=60.0*60.0;
-			data.settings.update_freq_full/=60*60*24;
-			data.settings.update_freq_image_incr/=60*60*24;
-			data.settings.update_freq_image_full/=60*60*24;
+			data.settings.update_freq_full/=60.0*60.0*24.0;
+			data.settings.update_freq_image_incr/=60.0*60.0*24.0;
+			data.settings.update_freq_image_full/=60.0*60.0*24.0;
 			data.settings.startup_backup_delay/=60;
 			
 			if(data.settings.local_speed==-1) data.settings.local_speed="-";
@@ -1592,9 +1592,9 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
 			data.settings.update_freq_incr/=60.0*60.0;
-			data.settings.update_freq_full/=60*60*24;
-			data.settings.update_freq_image_incr/=60*60*24;
-			data.settings.update_freq_image_full/=60*60*24;
+			data.settings.update_freq_full/=60.0*60.0*24.0;
+			data.settings.update_freq_image_incr/=60.0*60.0*24.0;
+			data.settings.update_freq_image_full/=60.0*60.0*24.0;
 			data.settings.startup_backup_delay/=60;
 			
 			if(data.settings.local_speed==-1) data.settings.local_speed="-";
@@ -1903,9 +1903,9 @@ g.internet_settings_list=[
 
 function validateCommonSettings()
 {
-	if(!validate_text_float(["update_freq_incr"]) ) return false;
-	if(!validate_text_int(["update_freq_full", "update_freq_image_incr", 
-							"update_freq_image_full", "max_file_incr", "min_file_incr", "max_file_full", 
+	if(!validate_text_float(["update_freq_incr", "update_freq_full", "update_freq_image_incr", 
+							"update_freq_image_full"]) ) return false;
+	if(!validate_text_int(["max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
 	if(!validate_text_int_or_empty(["local_speed"])) return false;
