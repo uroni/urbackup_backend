@@ -1078,7 +1078,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				|| (UsnRecord->Reason & watch_flags) )
 			{
 				bool save_fn=false;
-				if( ( UsnRecord->Reason & USN_REASON_DATA_OVERWRITE ) &&
+				if( ( UsnRecord->Reason & USN_REASON_DATA_OVERWRITE || UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME) &&
 					     !( (UsnRecord->Reason & USN_REASON_DATA_EXTEND) || (UsnRecord->Reason & USN_REASON_DATA_TRUNCATION) ) )
 				{
 					save_fn=true;
