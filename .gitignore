@@ -208,3 +208,4 @@ session_idents.txt
 urbackup/server_ident.priv
 urbackup/server_ident.pub
 urbackupserver/www/polib.pyc
+urbackup/server_version_info.properties

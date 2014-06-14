@@ -83,6 +83,13 @@ h3
 	text-align:left;
 	padding: 3px;
 }
+.tabHeader2
+{
+	border: 1px solid black;
+	border-bottom: none;
+	text-align:left;
+	padding: 3px;
+}
 .tabHeaderNB
 {
 	border: none;
@@ -105,6 +112,12 @@ h3
 	padding-right: 5px;
 	border-right: none;
 	border-top: none;
+}
+.tabF2
+{
+	border: 1px solid black;
+	padding: 3px;
+	padding-right: 5px;
 }
 .tabFRight
 {

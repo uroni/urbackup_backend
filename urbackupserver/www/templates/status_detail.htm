@@ -8,23 +8,23 @@
 {database_error|s}
 
 <br /><br />
-<table cellspacing="0" cellpadding="0" id="status_table">
+<table cellspacing="0" cellpadding="0" id="status_table" class="dataTableTab">
 <thead>
 <tr>			
-	<th style="width: 150px" class="tabHeader">{tComputer name}</th>
-	<th style="width: 50px" class="tabHeader">{tOnline}</th>
-	<th style="width: 100px" class="tabHeader">{tStatus}</th>
-	<th style="width: 150px" class="tabHeader">{tLast seen}</th>
-	<th style="width: 150px" class="tabHeader">{tLast file backup}</th>
-	<th style="width: 150px" class="tabHeader">{tLast image backup}</th>
-	<th style="width: 130px" class="tabHeader">{tFile backup status}</th>
-	<th style="width: 130px" class="tabHeader">{tImage backup status}</th>
-	<th style="width: 50px" class="tabHeader">{tIP}</th>
-	<th style="width: auto" class="tabHeader">{tClient version}</th>
-	<th style="width: auto" class="{class_prev}">{tOperating System}</th>
-{Actions_start|s}
-	<th style="width: 50px" class="tabHeaderRight">&nbsp;</td>
-{Actions_end|s}
+	<th style="width: 150px" class="tabHeader2">{tComputer name}</th>
+	<th style="width: 50px" class="tabHeader2">{tOnline}</th>
+	<th style="width: 100px" class="tabHeader2">{tStatus}</th>
+	<th style="width: 150px" class="tabHeader2">{tLast seen}</th>
+	<th style="width: 150px" class="tabHeader2">{tLast file backup}</th>
+	<th style="width: 150px" class="tabHeader2">{tLast image backup}</th>
+	<th style="width: 130px" class="tabHeader2">{tFile backup status}</th>
+	<th style="width: 130px" class="tabHeader2">{tImage backup status}</th>
+	<th style="width: 50px" class="tabHeader2">{tIP}</th>
+	<th style="width: auto" class="tabHeader2">{tClient version}</th>
+	<th style="width: auto" class="tabHeader2">{tOperating System}</th>
+	{?show_select_box}
+	<th style="width: 50px" class="tabHeader2">&nbsp;</td>
+	{/show_select_box}
 </tr>
 </thead>
 <tbody>
@@ -53,9 +53,28 @@
 {/removed_clients_table}
 <br />
 {status_client_download|s}
-<h3>{tExtra clients}</h3>
 
 {?status_extra_clients}
+<br />
+<br />
+<hr style="width: 1070px;" align="left"/>
+<h3>{tInternet clients}</h3>
+<br />
+{internet_client_added|s}
+{tAdd additional internet clients}:
+<form action="#" onsubmit="addInternetClient(); return false;">
+<table cellspacing="0" cellpadding="0" border="0" class="formtable">
+<tr>
+<td>{tClient name}:</td>
+<td><input type="text" size="40" id="clientname" value=""/> </td>
+<td><input type="submit" value="{tAdd}"/></td>
+</tr>
+</table>
+</form>
+<br />
+
+<h3>{tExtra clients}</h3>
+
 <table cellspacing="0" cellpadding="0">
 <tr>			
 	<th style="width: 150px" class="tabHeader">{tHostname/IP}</th>
@@ -74,20 +93,8 @@
 </tr>
 </table>
 </form>
-<br />
-<h3>{tInternet clients}</h3>
-<br />
-{internet_client_added|s}
-{tAdd additional internet clients}:
-<form action="#" onsubmit="addInternetClient(); return false;">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tClient name}:</td>
-<td><input type="text" size="40" id="clientname" value=""/> </td>
-<td><input type="submit" value="{tAdd}"/></td>
-</tr>
-</table>
-</form>
+
+
 <h3>{tServer identity}</h3>
 {server_identity}
 <br>

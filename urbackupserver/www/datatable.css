@@ -36,6 +36,7 @@
 .dataTables_filter {
 	float: right;
 	text-align: right;
+	padding-bottom: 5px;
 }
 
 .dataTables_info {
@@ -50,6 +51,8 @@
 .dataTable
 {
 	clear: both;
+	border-collapse: collapse;
+	border-right: 1px solid black;
 }
 
 /* Pagination nested */
@@ -220,6 +223,7 @@ tr.even {
  */
 .dataTables_scroll {
 	clear: both;
+	margin-bottom: 5px;
 }
 
 .dataTables_scrollBody {

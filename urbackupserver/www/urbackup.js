@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=1003000000;
+g.current_version=1004000000;
 g.status_show_all=false;
 g.datatable_default_config={};
 
@@ -816,16 +816,8 @@ function show_status2(data)
 		
 		if(data.allow_modify_clients)
 		{
-			obj.dtl_c1="";
-			obj.dtl_c2="";
-			obj.style_pre_last="tabFLeft";
+			obj.show_select_box=true;
 		}
-		else
-		{
-			obj.dtl_c1="<!--";
-			obj.dtl_c2="-->";
-			obj.style_pre_last="tabFRight";
-		}				
 		
 		if( obj.delete_pending && obj.delete_pending==1)
 		{
@@ -940,20 +932,10 @@ function show_status2(data)
 		modify_clients=dustRender("status_modify_clients", status_modify_params);
 	}
 	
-	var class_prev;
-	var Actions_start;
-	var Actions_end;
-	if(data.remove_client)
+	var show_select_box=false;
+	if(data.allow_modify_clients)
 	{
-		class_prev="tabHeader";
-		Actions_start="";
-		Actions_end="";
-	}
-	else
-	{
-		class_prev="tabHeaderRight";
-		Actions_start="<!--";
-		Actions_end="-->";
+		show_select_box=true;
 	}
 	
 	var internet_client_added="";
@@ -972,7 +954,7 @@ function show_status2(data)
 	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
 		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal,
 		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
-		class_prev:class_prev, Actions_start:Actions_start, Actions_end:Actions_end,
+		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,
 		dlt_mod_start: dlt_mod_start, dlt_mod_end: dlt_mod_end, internet_client_added: internet_client_added,
 		status_client_download: status_client_download,
@@ -999,11 +981,19 @@ function show_status2(data)
 		
 		datatable_config.aoColumnDefs = [
 				{ "bVisible": false, "aTargets": [ 2, 8, 9, 10 ]
-				},
-				{ "bSortable": false, 'aTargets': [ 11 ] }
-			];
+				}];
+				
+		if(data.allow_modify_clients)
+		{
+			datatable_config.aoColumnDefs.push({ "bSortable": false, 'aTargets': [ 11 ] });
+		}
 			
-		datatable_config.oColVis.aiExclude = [ 0, 11 ];
+		datatable_config.oColVis.aiExclude = [ 0 ];
+		
+		if(data.allow_modify_clients)
+		{
+			datatable_config.oColVis.aiExclude.push(11);
+		}
 		
 		var columns = [ 0 ];
 		

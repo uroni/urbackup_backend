@@ -442,7 +442,13 @@ ACTION_IMPL(status)
 
 		if(helper.getRights("remove_client")=="all")
 		{
+			ret.set("allow_modify_clients", true);
 			ret.set("remove_client", true);
+		}
+
+		if(helper.getRights("start_backup")=="all")
+		{
+			ret.set("allow_modify_clients", true);
 		}
 
 		JSON::Array client_downloads;

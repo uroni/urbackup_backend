@@ -57,7 +57,7 @@ ACTION_IMPL(start_backup)
 
 			if( status_rights!="all"
 				&& std::find(status_right_clientids.begin(), status_right_clientids.end(),
-							 start_clientid)!=status_right_clientids.end())
+							 start_clientid)==status_right_clientids.end())
 			{
 				continue;
 			}
