@@ -107,7 +107,8 @@ if os.path.exists("client"):
 	client_short_files = ["client_version.h",
 						  "client/urbackup.nsi",
 						  "client/urbackup_update.nsi",
-						  "client/urbackup_notray.nsi"]
+						  "client/urbackup_notray.nsi",
+						  "client/build_msi.bat"]
 
 	for short_file in client_short_files:
 		replace_in_file(short_file, "$version_short$", version["client"]["short"])
