@@ -3,7 +3,7 @@
 #include "Interface/Mutex.h"
 #include "stringtools.h"
 
-#define DLOG(x) x
+#define DLOG(x) //x
 
 PipeThrottler::PipeThrottler(size_t bps)
 	: throttle_bps(bps), curr_bytes(0), lastresettime(0)
