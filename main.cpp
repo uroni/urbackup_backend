@@ -374,6 +374,11 @@ int main_fkt(int argc, char *argv[])
 			Server->setLogLevel(LL_ERROR);
 	}
 
+	if(is_big_endian())
+	{
+		Server->setLogLevel(LL_DEBUG);
+	}
+
 #ifndef _WIN32
 	if( !daemon_user.empty() && (getuid()==0 || geteuid()==0) )
 	{

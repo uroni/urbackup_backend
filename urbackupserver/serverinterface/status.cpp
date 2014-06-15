@@ -466,6 +466,11 @@ ACTION_IMPL(status)
 			ret.set("admin", JSON::Value(true));
 			set_server_version_info(ret);
 		}
+
+		if(is_big_endian())
+		{
+			ret.set("big_endian", true);
+		}
 	}
 	else
 	{

@@ -849,6 +849,12 @@ function show_status2(data)
 		tmpdir_error=dustRender("tmpdir_error", {tmpdir_error_text: trans("tmpdir_error_text")});
 	}
 	
+	var endian_info="";
+	if(data.big_endian)
+	{
+		endian_info=dustRender("big_endian_info", {});
+	}
+	
 	var nospc_stalled="";
 	if(data.nospc_stalled)
 	{
@@ -955,7 +961,7 @@ function show_status2(data)
 	}
 	
 	ndata=dustRender("status_detail", {rows: rows, ses: g.session, dir_error: dir_error, tmpdir_error: tmpdir_error,
-		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal,
+		nospc_stalled: nospc_stalled, nospc_fatal: nospc_fatal, endian_info: endian_info,
 		extra_clients_rows: extra_clients_rows, status_can_show_all: status_can_show_all, status_extra_clients: status_extra_clients,
 		show_select_box: show_select_box,
 		server_identity: data.server_identity, modify_clients: modify_clients,
