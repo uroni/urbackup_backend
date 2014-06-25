@@ -278,6 +278,8 @@
     <ClCompile Include="FileCache.cpp" />
     <ClCompile Include="fileclient\FileClientChunked.cpp" />
     <ClCompile Include="filedownload.cpp" />
+    <ClCompile Include="filelist_utils.cpp" />
+    <ClCompile Include="file_metadata.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />
     <ClCompile Include="lmdb\mdb.c" />
     <ClCompile Include="lmdb\midl.c" />
@@ -363,6 +365,8 @@
     <ClInclude Include="fileclient\packet_ids.h" />
     <ClInclude Include="fileclient\socket_header.h" />
     <ClInclude Include="filedownload.h" />
+    <ClInclude Include="filelist_utils.h" />
+    <ClInclude Include="file_metadata.h" />
     <ClInclude Include="InternetServiceConnector.h" />
     <ClInclude Include="lmdb\lmdb.h" />
     <ClInclude Include="lmdb\midl.h" />
@@ -370,6 +374,7 @@
     <ClInclude Include="server.h" />
     <ClInclude Include="serverinterface\actions.h" />
     <ClInclude Include="serverinterface\action_header.h" />
+    <ClInclude Include="serverinterface\backups.h" />
     <ClInclude Include="serverinterface\helper.h" />
     <ClInclude Include="serverinterface\login.h" />
     <ClInclude Include="serverinterface\rights.h" />

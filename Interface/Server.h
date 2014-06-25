@@ -94,7 +94,8 @@ public:
 	virtual void createThread(IThread *thread)=0;
 	virtual IPipe *createMemoryPipe(void)=0;
 	virtual IThreadPool *getThreadPool(void)=0;
-	virtual ISettingsReader* createFileSettingsReader(std::string pFile)=0;
+	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile)=0;
+	virtual ISettingsReader* createFileSettingsReader(const std::wstring& pFile)=0;
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData)=0;
@@ -143,6 +144,8 @@ public:
 	virtual IFile* openMemoryFile(void)=0;
 	virtual bool deleteFile(std::string pFilename)=0;
 	virtual bool deleteFile(std::wstring pFilename)=0;
+	virtual bool fileExists(std::string pFilename)=0;
+	virtual bool fileExists(std::wstring pFilename)=0;
 
 	virtual POSTFILE_KEY getPostFileKey()=0;
 	virtual void addPostFile(POSTFILE_KEY pfkey, const std::string &name, const SPostfile &pf)=0;
@@ -169,7 +172,8 @@ public:
 	virtual unsigned int getSecureRandomNumber(void)=0;
 	virtual std::vector<unsigned int> getSecureRandomNumbers(size_t n)=0;
 	virtual void secureRandomFill(char *buf, size_t blen)=0;
-
+	virtual std::string secureRandomString(size_t len)=0;
+	 
 	static const size_t FAIL_DATABASE_CORRUPTED=1;
 	static const size_t FAIL_DATABASE_IOERR=2;
 

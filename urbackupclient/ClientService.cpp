@@ -34,10 +34,13 @@
 #include "../urbackupcommon/settings.h"
 #include "ImageThread.h"
 #include "InternetClient.h"
+#include "../urbackupcommon/settingslist.h"
 
 #include <memory.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <memory>
+#include <algorithm>
 
 #ifndef _WIN32
 #define _atoi64 atoll
@@ -900,6 +903,10 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_RESTORE_DOWNLOADPROGRESS(cmd); continue;		
 			}
+			else if( cmd=="GET ACCESS PARAMETERS")
+			{
+				CMD_GET_ACCESS_PARAMS(params); continue;
+			}
 		}
 		if(is_channel) //Channel commands from server
 		{
@@ -1133,8 +1140,8 @@ std::vector<std::wstring> getSettingsList(void);
 
 void ClientConnector::updateSettings(const std::string &pData)
 {
-	ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
-	ISettingsReader *new_settings=Server->createMemorySettingsReader(pData);
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
 
 	std::vector<std::wstring> settings_names=getSettingsList();
 	settings_names.push_back(L"client_set_settings");
@@ -1153,13 +1160,19 @@ void ClientConnector::updateSettings(const std::string &pData)
 			client_set_settings=true;
 		}
 	}
+
 	for(size_t i=0;i<settings_names.size();++i)
 	{
 		std::wstring key=settings_names[i];
+
 		std::wstring v;
+		std::wstring def_v;
+		curr_settings->getValue(key+L"_def", def_v);
+
 		if(!curr_settings->getValue(key, &v) )
 		{
 			std::wstring nv;
+			std::wstring new_key;
 			if(new_settings->getValue(key, &nv) )
 			{
 				new_settings_str+=key+L"="+nv+L"\n";
@@ -1168,8 +1181,11 @@ void ClientConnector::updateSettings(const std::string &pData)
 			if(new_settings->getValue(key+L"_def", &nv) )
 			{
 				new_settings_str+=key+L"_def="+nv+L"\n";
-				mod=true;
-			}
+				if(nv!=def_v)
+				{
+					mod=true;
+				}
+			}	
 		}
 		else
 		{
@@ -1183,7 +1199,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 					 new_settings->getValue(key+L"_def", &nv) ) )
 				{
 					new_settings_str+=key+L"="+nv+L"\n";
-					mod=true;
+					if(nv!=v)
+					{
+						mod=true;
+					}
 				}
 				else
 				{
@@ -1203,7 +1222,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 					else
 					{
 						new_settings_str+=key+L"="+nv+L"\n";
-						mod=true;
+						if(v!=nv)
+						{
+							mod=true;
+						}
 					}
 				}
 				else if(key==L"internet_server" && !v.empty()
@@ -1215,7 +1237,10 @@ void ClientConnector::updateSettings(const std::string &pData)
 				if(new_settings->getValue(key+L"_def", &nv) )
 				{
 					new_settings_str+=key+L"_def="+nv+L"\n";
-					mod=true;
+					if(nv!=def_v)
+					{
+						mod=true;
+					}
 				}
 			}
 		}
@@ -1254,22 +1279,54 @@ void ClientConnector::updateSettings(const std::string &pData)
 		}
 	}
 
-	Server->destroy(curr_settings);
-	Server->destroy(new_settings);
-
 	if(mod)
 	{
-		IFile *sf=Server->openFile("urbackup/data/settings.cfg", MODE_WRITE );
-		if(sf==NULL)
-		{
-			Server->Log("Error opening settings file!", LL_ERROR);
-			return;
-		}
-
-		sf->Write(Server->ConvertToUTF8(new_settings_str));
-		Server->destroy(sf);
+		writestring(Server->ConvertToUTF8(new_settings_str), "urbackup/data/settings.cfg");
 
 		InternetClient::updateSettings();
+	}
+
+	std::auto_ptr<ISettingsReader> curr_server_settings(Server->createFileSettingsReader("urbackup/data/settings_"+server_token+".cfg"));
+	std::vector<std::wstring> global_settings = getGlobalizedSettingsList();
+
+	std::wstring new_token_settings=L"";
+
+	bool mod_server_settings=false;
+	for(size_t i=0;i<global_settings.size();++i)
+	{
+		std::wstring key=global_settings[i];
+
+		std::wstring v;
+		bool curr_v=curr_server_settings->getValue(key, &v);
+		std::wstring nv;
+		bool new_v=new_settings->getValue(key, &nv);
+
+		if(!curr_v && new_v)
+		{
+			new_token_settings+=key+L"="+nv;
+			mod_server_settings=true;
+		}
+		else if(curr_v)
+		{
+			if(new_v)
+			{
+				new_token_settings+=key+L"="+nv;
+
+				if(nv!=v)
+				{
+					mod_server_settings=true;
+				}
+			}
+			else
+			{
+				new_token_settings+=key+L"="+v;
+			}
+		}
+	}
+
+	if(mod_server_settings)
+	{
+		writestring(Server->ConvertToUTF8(new_settings_str), "urbackup/data/settings_"+server_token+".cfg");
 	}
 }
 

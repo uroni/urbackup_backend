@@ -42,7 +42,11 @@ ACTION_IMPL(start_backup)
 	std::wstring s_start_client=GET[L"start_client"];
 	std::vector<int> start_client;
 	std::wstring start_type=GET[L"start_type"];
-	if(!s_start_client.empty() && helper.getRights("start_backup")=="all")
+
+	SUser *session=helper.getSession();
+	if(session!=NULL && session->id==-1) return;
+
+	if(session!=NULL && !s_start_client.empty() && helper.getRights("start_backup")=="all")
 	{
 		std::vector<SStatus> client_status=ServerStatus::getStatus();
 

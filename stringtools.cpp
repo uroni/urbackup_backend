@@ -40,7 +40,6 @@ typedef int s32;
 typedef unsigned int u32;
 typedef float f32;
 
-
 //--------------------------------------------------------------------
 /**
 *	liefert einen teil des strings nach dem gelieferten teilstring

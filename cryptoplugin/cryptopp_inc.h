@@ -8,6 +8,7 @@
 #include <files.h>
 #include <pwdbased.h>
 #include <hex.h>
+#include <eax.h>
 #else
 #include "config.h"
 #define CRYPTOPP_INCLUDE_AES <CRYPTOPP_INCLUDE_PREFIX/aes.h>
@@ -19,6 +20,7 @@
 #define CRYPTOPP_INCLUDE_FILES <CRYPTOPP_INCLUDE_PREFIX/files.h>
 #define CRYPTOPP_INCLUDE_PWDBASED <CRYPTOPP_INCLUDE_PREFIX/pwdbased.h>
 #define CRYPTOPP_INCLUDE_HEX <CRYPTOPP_INCLUDE_PREFIX/hex.h>
+#define CRYPTOPP_INCLUDE_EAX <CRYPTOPP_INCLUDE_PREFIX/eax.h>
 
 #include CRYPTOPP_INCLUDE_AES
 #include CRYPTOPP_INCLUDE_SHA
@@ -29,4 +31,5 @@
 #include CRYPTOPP_INCLUDE_FILES
 #include CRYPTOPP_INCLUDE_PWDBASED
 #include CRYPTOPP_INCLUDE_HEX
+#include CRYPTOPP_INCLUDE_EAX
 #endif

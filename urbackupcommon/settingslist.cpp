@@ -60,6 +60,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"internet_calculate_filehashes_on_client");
 	ret.push_back(L"image_file_format");
 	ret.push_back(L"internet_connect_always");
+	ret.push_back(L"server_url");
 	return ret;
 }
 
@@ -88,6 +89,7 @@ std::vector<std::wstring> getGlobalizedSettingsList(void)
 	std::vector<std::wstring> ret;
 	ret.push_back(L"internet_server");
 	ret.push_back(L"internet_server_port");
+	ret.push_back(L"server_url");
 	return ret;
 }
 
@@ -124,5 +126,6 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"filescache_size");
 	ret.push_back(L"trust_client_hashes");
 	ret.push_back(L"show_server_updates");
+	ret.push_back(L"server_url");
 	return ret;
 }

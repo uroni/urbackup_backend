@@ -1,6 +1,7 @@
 #include "action_header.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../../Interface/File.h"
+#include "backups.h"
 
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../../common/miniz.c"
@@ -255,7 +256,8 @@ bool miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
 	return true;
 }
 
-bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername, const std::wstring& foldername, const std::wstring& filter)
+bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername, const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter,
+		bool token_authentication, const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes)
 {
 	bool has_error=false;
 	const std::vector<SFile> files = getFiles(foldername, &has_error, true, false);
@@ -267,11 +269,31 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 	{
 		const SFile& file=files[i];
 
+		if(skip_hashes
+			&& file.name==L".hashes")
+		{
+			continue;
+		}
+
 		std::wstring archivename = archivefoldername + (archivefoldername.empty()?L"":L"/") + file.name;
+		std::wstring metadataname = hashfoldername + os_file_sep() + escape_metadata_fn(file.name);
 		std::wstring filename = foldername + os_file_sep() + file.name;
 
 		if(!filter.empty() && archivename!=filter)
 			continue;
+
+		if(file.isdir)
+		{
+			metadataname+=os_file_sep()+metadata_dir_fn;
+		}
+
+		FileMetadata metadata;
+		if(token_authentication &&
+			( !read_metadata(metadataname, metadata) ||
+			  !checkFileToken(backup_tokens, tokens, metadata) ) )
+		{
+			continue;
+		}
 
 		mz_bool rc;
 		if(file.isdir)
@@ -291,7 +313,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 
 		if(file.isdir)
 		{
-			add_dir(zip_archive, archivename, filename, filter);
+			add_dir(zip_archive, archivename, filename, hashfoldername + os_file_sep() + file.name, filter,
+				token_authentication, backup_tokens, tokens, false);
 		}
 	}
 
@@ -300,7 +323,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 
 }
 
-bool create_zip_to_output(const std::wstring& foldername, const std::wstring& filter)
+bool create_zip_to_output(const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter, bool token_authentication,
+	const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes)
 {
 	mz_zip_archive zip_archive;
 	memset(&zip_archive, 0, sizeof(zip_archive));
@@ -315,7 +339,7 @@ bool create_zip_to_output(const std::wstring& foldername, const std::wstring& fi
 		return false;
 	}
 
-	if(!add_dir(zip_archive, L"", foldername, filter))
+	if(!add_dir(zip_archive, L"", foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes))
 	{
 		Server->Log("Error while adding files and folders to ZIP archive", LL_ERROR);
 		return false;

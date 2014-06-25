@@ -1305,7 +1305,12 @@ IThreadPool *CServer::getThreadPool(void)
 	return threadpool;
 }
 
-ISettingsReader* CServer::createFileSettingsReader(std::string pFile)
+ISettingsReader* CServer::createFileSettingsReader(const std::string& pFile)
+{
+	return new CFileSettingsReader(pFile);
+}
+
+ISettingsReader* CServer::createFileSettingsReader(const std::wstring& pFile)
 {
 	return new CFileSettingsReader(pFile);
 }
@@ -1401,6 +1406,25 @@ bool CServer::deleteFile(std::string pFilename)
 bool CServer::deleteFile(std::wstring pFilename)
 {
 	return DeleteFileInt(pFilename);
+}
+
+bool CServer::fileExists(std::string pFilename)
+{
+	return FileExists(pFilename);
+}
+
+bool CServer::fileExists(std::wstring pFilename)
+{
+#ifndef WIN32
+	return FileExists(ConvertToUTF8(pFilename));
+#else
+	fstream in(pFilename.c_str(), ios::in);
+	if( in.is_open()==false )
+		return false;
+
+	in.close();
+	return true;
+#endif
 }
 
 std::string CServer::ConvertToUTF8(const std::wstring &input)
@@ -1801,6 +1825,16 @@ void CServer::secureRandomFill(char *buf, size_t blen)
 		return;
 	}
 #endif
+}
+
+std::string CServer::secureRandomString(size_t len)
+{
+	std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+	std::string key;
+	std::vector<unsigned int> rnd_n=Server->getSecureRandomNumbers(len);
+	for(size_t j=0;j<len;++j)
+		key+=rchars[rnd_n[j]%rchars.size()];
+	return key;
 }
 
 void CServer::setLogCircularBufferSize(size_t size)

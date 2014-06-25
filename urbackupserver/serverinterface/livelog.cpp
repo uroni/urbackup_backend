@@ -59,6 +59,13 @@ ACTION_IMPL(livelog)
 
 	SUser *session=helper.getSession();
 	if(session!=NULL && session->id==-1) return;
+	if(session==NULL)
+	{
+		JSON::Object ret;
+		ret.set("error", true);
+		helper.Write(ret.get(false));
+		return;
+	}
 
 	int clientid=0;
 	std::wstring s_clientid=GET[L"clientid"];

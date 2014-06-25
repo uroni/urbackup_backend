@@ -88,7 +88,8 @@ public:
 	virtual IPipe *createMemoryPipe(void);
 	virtual void createThread(IThread *thread);
 	virtual IThreadPool *getThreadPool(void);
-	virtual ISettingsReader* createFileSettingsReader(std::string pFile);
+	virtual ISettingsReader* createFileSettingsReader(const std::string& pFile);
+	virtual ISettingsReader* createFileSettingsReader(const std::wstring& pFile);
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="");
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData);
@@ -138,6 +139,8 @@ public:
 	virtual IFile* openMemoryFile(void);
 	virtual bool deleteFile(std::string pFilename);
 	virtual bool deleteFile(std::wstring pFilename);
+	virtual bool fileExists(std::string pFilename);
+	virtual bool fileExists(std::wstring pFilename);
 
 	virtual POSTFILE_KEY getPostFileKey();
 	virtual void addPostFile(POSTFILE_KEY pfkey, const std::string &name, const SPostfile &pf);
@@ -171,6 +174,7 @@ public:
 	virtual unsigned int getSecureRandomNumber(void);
 	virtual std::vector<unsigned int> getSecureRandomNumbers(size_t n);
 	virtual void secureRandomFill(char *buf, size_t blen);
+	virtual std::string secureRandomString(size_t len);
 
 	virtual void setFailBit(size_t failbit);
 	virtual void clearFailBit(size_t failbit);

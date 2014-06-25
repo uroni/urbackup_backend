@@ -207,3 +207,63 @@ bool CryptoFactory::verifyData( const std::string &pubkey, const std::string &da
 
 	return false;
 }
+
+std::string CryptoFactory::encryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations/*=20000*/ )
+{
+	const size_t iv_size=CryptoPP::AES::BLOCKSIZE;
+	std::string ciphertext;
+	ciphertext.resize(iv_size);
+
+	Server->secureRandomFill(&ciphertext[0], iv_size);
+
+	CryptoPP::SecByteBlock key;
+	key.resize(CryptoPP::SHA256::DIGESTSIZE);
+
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> gen;
+	gen.DeriveKey(key.BytePtr(), CryptoPP::SHA256::DIGESTSIZE, 0, reinterpret_cast<const byte*>(password.c_str()), password.size(),
+		reinterpret_cast<const byte*>(ciphertext.data()), iv_size, static_cast<unsigned int>(iterations), 0);
+
+	CryptoPP::EAX<CryptoPP::AES>::Encryption enc;
+	enc.SetKeyWithIV(key.BytePtr(), CryptoPP::AES::BLOCKSIZE, reinterpret_cast<const byte*>(ciphertext.data()), iv_size);
+
+	
+	CryptoPP::ArraySource( reinterpret_cast<const byte*>(data.data()), data.size(), true,
+		new CryptoPP::AuthenticatedEncryptionFilter( enc,
+		new CryptoPP::StringSink( ciphertext )
+		) );
+
+	return ciphertext;
+}
+
+std::string CryptoFactory::decryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations)
+{
+	const size_t iv_size=CryptoPP::AES::BLOCKSIZE;
+	if(data.size()<iv_size)
+	{
+		return std::string();
+	}
+
+	CryptoPP::SecByteBlock key;
+	key.resize(CryptoPP::SHA256::DIGESTSIZE);
+
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> gen;
+	gen.DeriveKey(key.BytePtr(), CryptoPP::SHA256::DIGESTSIZE, 0, reinterpret_cast<const byte*>(password.c_str()), password.size(),
+		reinterpret_cast<const byte*>(data.data()), iv_size, static_cast<unsigned int>(iterations), 0);
+
+	CryptoPP::EAX<CryptoPP::AES>::Decryption dec;
+	dec.SetKeyWithIV(key.BytePtr(), CryptoPP::AES::BLOCKSIZE, reinterpret_cast<const byte*>(data.data()), iv_size);
+		
+	
+	try
+	{
+		std::string ret;
+		CryptoPP::ArraySource( reinterpret_cast<const byte*>(data.data()+iv_size), data.size()-iv_size, true,
+			new CryptoPP::AuthenticatedDecryptionFilter( dec,
+				new CryptoPP::StringSink( ret ) ) );
+		return ret;
+	}	
+	catch(const CryptoPP::HashVerificationFilter::HashVerificationFailed&)
+	{
+		return std::string();
+	}
+}

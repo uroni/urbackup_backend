@@ -11,6 +11,7 @@
 #include "fileclient/FileClient.h"
 #include "fileclient/FileClientChunked.h"
 #include "server_get.h"
+#include "file_metadata.h"
 
 
 class FileClient;
@@ -64,6 +65,7 @@ struct SQueueItem
 	bool queued;
 	EQueueAction action;
 	SPatchDownloadFiles patch_dl_files;
+	FileMetadata metadata;
 };
 
 class ServerDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback
@@ -73,13 +75,14 @@ public:
 		const std::wstring& clientname,
 		bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, BackupServerGet* server_get,
 		int filesrv_protocol_version);
+
 	~ServerDownloadThread();
 
 	void operator()(void);
 
-	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, bool at_front=false);
+	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool at_front=false);
 
-	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize);
+	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata);
 
 	void addToQueueStartShadowcopy(const std::wstring& fn);
 
@@ -99,7 +102,7 @@ public:
 
 	bool isOffline();
 
-	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize);
+	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize, const FileMetadata& metadata);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize);
 

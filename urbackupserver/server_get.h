@@ -100,8 +100,10 @@ private:
 	
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool resume, bool with_token, bool& no_backup_dirs, bool& connect_fail);
-	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql);
+	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
+
+	void getTokenFile(FileClient &fc, bool hashed_transfer );
 
 	void calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked, int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size );
 
@@ -147,8 +149,7 @@ private:
 	
 	std::wstring constructImagePath(const std::wstring &letter, std::string image_file_format);
 	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
-	void resetEntryState(void);
-	bool getNextEntry(char ch, SFile &data, std::map<std::wstring, std::wstring>* extra);
+	
 	static std::string remLeadingZeros(std::string t);
 	bool updateCapabilities(void);
 
@@ -243,10 +244,6 @@ private:
 	IQuery *q_get_report_settings;
 	IQuery *q_format_unixtime;
 	IQuery *q_get_last_incremental_complete;
-
-
-	int state;
-	std::string t_name;
 
 	int link_logcnt;
 

@@ -22,6 +22,7 @@ class CFileSettingsReader : public CSettingsReader
 {
 public:
 	CFileSettingsReader(std::string pFile);
+	CFileSettingsReader(std::wstring pFile);
 	~CFileSettingsReader();
 
 	virtual bool getValue(std::string key, std::string *value);
@@ -33,6 +34,8 @@ public:
 	virtual std::vector<std::wstring> getKeys();
 
 private:
+
+	void read(const std::string& fdata, const std::string& pFile);
 	
 	static std::map<std::string, SCachedSettings*> *settings;
 	static IMutex *settings_mutex;
