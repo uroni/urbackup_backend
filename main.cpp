@@ -132,11 +132,7 @@ int main_fkt(int argc, char *argv[])
 	}
 #endif
 
-	srand((unsigned int)time(0));
-
-	Server->initRandom(rand());
-	Server->initRandom(Server->getSecureRandomNumber());
-	
+	srand(Server->getSecureRandomNumber());
 
 	//Parse Parameters
 	

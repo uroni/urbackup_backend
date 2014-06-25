@@ -138,6 +138,9 @@ CServer::CServer()
 	startup_complete_cond=createCondition();
 	rnd_mutex=createMutex();
 
+	initRandom(static_cast<unsigned int>(time(0)));
+	initRandom(getSecureRandomNumber());
+
 #ifdef _WIN32
 	initialize_GetTickCount64();
 #endif

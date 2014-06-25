@@ -243,8 +243,10 @@ void File::init_mutex()
 	index_mutex = Server->createMutex();
 
 	std::string rnd;
-	rnd.resize(5);
-	Server->randomFill(&rnd[0], rnd.size());
+	rnd.resize(8);
+	unsigned int timesec = static_cast<unsigned int>(Server->getTimeSeconds());
+	memcpy(&rnd[0], &timesec, sizeof(timesec));
+	Server->randomFill(&rnd[4], 4);
 
 	random_prefix = widen(bytesToHex(reinterpret_cast<unsigned char*>(&rnd[0]), rnd.size()));
 }
