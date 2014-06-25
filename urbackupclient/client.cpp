@@ -1493,7 +1493,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 
 		CHECK_COM_RESULT_RELEASE(backupcom->InitializeForBackup());
 
-		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, TRUE, VSS_BT_FULL, FALSE));
+		CHECK_COM_RESULT_RELEASE(backupcom->SetBackupState(FALSE, TRUE, VSS_BT_COPY, FALSE));
 
 		IVssAsync *pb_result;
 
