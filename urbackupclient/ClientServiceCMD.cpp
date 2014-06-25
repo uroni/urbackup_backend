@@ -1,4 +1,5 @@
 #include "../Interface/Server.h"
+#include "../Interface/SettingsReader.h"
 #include "ClientService.h"
 #include "InternetClient.h"
 #include "ServerIdentityMgr.h"
@@ -23,6 +24,7 @@ std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 #include <stdlib.h>
 #include <limits.h>
 
+
 #ifndef _WIN32
 #define _atoi64 atoll
 #endif
@@ -30,19 +32,6 @@ std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 extern std::string time_format_str;
 
 extern ICryptoFactory *crypto_fak;
-
-namespace
-{
-	std::string randomChallenge(size_t len)
-	{
-		std::string rchars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-		std::string key;
-		std::vector<unsigned int> rnd_n=Server->getSecureRandomNumbers(len);
-		for(size_t j=0;j<len;++j)
-			key+=rchars[rnd_n[j]%rchars.size()];
-		return key;
-	}	
-}
 
 void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok)
 {
@@ -104,7 +93,7 @@ void ClientConnector::CMD_GET_CHALLENGE(const std::string &identity)
 	}
 
 	IScopedLock lock(ident_mutex);
-	std::string challenge = randomChallenge(30)+"-"+nconvert(Server->getTimeSeconds())+"-"+nconvert(Server->getTimeMS());
+	std::string challenge = Server->secureRandomString(30)+"-"+nconvert(Server->getTimeSeconds())+"-"+nconvert(Server->getTimeMS());
 	challenges[identity]=challenge;
 
 	tcpstack.Send(pipe, challenge);
@@ -1372,4 +1361,71 @@ void ClientConnector::CMD_GET_VSSLOG(const std::string &cmd)
 	localpipe->Read(&ret, 8000);
 	tcpstack.Send(pipe, ret);
 	localpipe->Write("exit");
+}
+
+void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
+{
+	if(crypto_fak==NULL)
+	{
+		Server->Log("No cryptoplugin present. Action not possible.", LL_ERROR);
+		tcpstack.Send(pipe, "");
+		return;
+	}
+
+	std::wstring tokens=params[L"tokens"];
+
+	std::auto_ptr<ISettingsReader> settings(
+		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+
+	std::string computername;
+	if( (!settings->getValue("computername", &computername)
+		&& !settings->getValue("computername_def", &computername) ) 
+		|| computername.empty())
+	{
+		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
+	}
+
+	std::string server_url;
+	if( (!settings->getValue("server_url", &server_url)
+		&& !settings->getValue("server_url_def", &server_url) ) 
+		|| server_url.empty())
+	{
+		Server->Log("Server url empty", LL_ERROR);
+		tcpstack.Send(pipe, "");
+		return;
+	}
+
+	std::auto_ptr<ISettingsReader> access_keys(
+		Server->createFileSettingsReader("access_keys.properties"));
+
+	std::vector<std::wstring> server_token_keys = access_keys->getKeys();
+
+	if(server_token_keys.empty())
+	{
+		Server->Log("No access key present", LL_ERROR);
+		tcpstack.Send(pipe, "");
+		return;
+	}
+
+	if(server_url[server_url.size()-1]!='/')
+	{
+		server_url+="/";
+	}
+
+	std::string ret = server_url+"#computername="+computername;
+
+	for(size_t i=0;i<server_token_keys.size();++i)
+	{
+		std::wstring server_key;
+
+		if(access_keys->getValue(server_token_keys[i],
+			&server_key) && !server_key.empty())
+		{
+			ret += "&tokens"+nconvert(i)+"="+base64_encode_dash(
+				crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
+					Server->ConvertToUTF8(server_key) ) );
+		}
+	}
+
+	tcpstack.Send(pipe, ret);
 }

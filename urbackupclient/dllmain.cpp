@@ -301,7 +301,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	internetclient_ticket=InternetClient::start(do_leak_check);
 
 	Server->Log("Started UrBackupClient Backend...", LL_INFO);
-	Server->wait(1000);	
+	Server->wait(1000);
 }
 
 DLLEXPORT void UnloadActions(void)
@@ -410,6 +410,16 @@ void update_client12_13(IDatabase *db)
 	db->Write("UPDATE backupdirs SET optional=0 WHERE optional IS NULL");
 }
 
+void update_client13_14(IDatabase *db)
+{
+	db->Write("CREATE TABLE fileaccess_tokens (id INTEGER PRIMARY KEY, username TEXT UNIQUE, token TEXT)");
+}
+
+void update_client14_15(IDatabase *db)
+{
+	db->Write("DELETE FROM files");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -477,6 +487,14 @@ bool upgrade_client(void)
 				break;
 			case 12:
 				update_client12_13(db);
+				++ver;
+				break;
+			case 13:
+				update_client13_14(db);
+				++ver;
+				break;
+			case 14:
+				update_client14_15(db);
 				++ver;
 				break;
 			default:

@@ -13,6 +13,7 @@ struct SFile
 	std::wstring name;
 	int64 size;
 	int64 last_modified;
+	int64 created;
 	bool isdir;
 
 	bool operator<(const SFile &other) const
@@ -22,6 +23,8 @@ struct SFile
 };
 
 std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false, bool exact_filesize=true);
+
+SFile getFileMetadata(const std::wstring &path);
 
 void removeFile(const std::wstring &path);
 

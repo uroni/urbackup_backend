@@ -302,6 +302,8 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_ALLOW_STARTING_INCR_IMAGE_BACKUPS;
 	if(!cs->allow_tray_exit)
 		capa|=DONT_ALLOW_EXIT_TRAY_ICON;
+	if(!cs->server_url.empty())
+		capa|=ALLOW_TOKEN_AUTHENTICATION;
 
 	return capa;
 }

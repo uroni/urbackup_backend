@@ -12,6 +12,9 @@
 #include "dao/ServerBackupDao.h"
 #include <vector>
 
+
+class FileMetadata;
+
 struct STmpFile
 {
 	STmpFile(int backupid, std::wstring fp, std::wstring hashpath)
@@ -51,7 +54,8 @@ public:
 	void setupDatabase(void);
 	void deinitDatabase(void);
 
-	bool findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit);
+	bool findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, _i64 t_filesize,
+		const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, const FileMetadata& metadata);
 
 	void addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize);
 
@@ -60,7 +64,8 @@ public:
 private:
 	void prepareSQL(void);
 	void addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
-			std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn);
+			std::wstring hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn,
+			bool with_hashes, const FileMetadata& metadata);
 	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath, bool& cache_hit);
 	std::wstring findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath);
 	bool copyFile(IFile *tf, const std::wstring &dest);

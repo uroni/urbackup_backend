@@ -20,9 +20,34 @@
 #include "stringtools.h"
 #include "Server.h"
 #include <iostream>
+#include <memory>
+#include "Interface/File.h"
 
 std::map<std::string, SCachedSettings*>* CFileSettingsReader::settings=new std::map<std::string, SCachedSettings*>;
 IMutex* CFileSettingsReader::settings_mutex=NULL;
+
+namespace
+{
+	std::string readFile(const std::wstring& fn)
+	{
+		std::auto_ptr<IFile> file(Server->openFile(fn));
+		if(file.get()==NULL)
+		{
+			return std::string();
+		}
+
+		std::string ret;
+		ret.resize(file->Size());
+
+		size_t read=0;
+		while(read<ret.size())
+		{
+			read+=file->Read(&ret[read], static_cast<_u32>(ret.size()-read));
+		}
+
+		return ret;
+	}
+}
 
 CFileSettingsReader::CFileSettingsReader(std::string pFile)
 {
@@ -35,42 +60,7 @@ CFileSettingsReader::CFileSettingsReader(std::string pFile)
 	{
 		std::string fdata=getFile(pFile);
 
-		std::vector<SSetting> mSettings;
-		int num_lines=linecount(fdata);
-		for(int i=0;i<num_lines;++i)
-		{
-			std::string line=getline(i,fdata);
-
-			if(line.size()<2 || line[0]=='#' )
-				continue;
-
-			SSetting setting;
-			setting.key=getuntil("=",line);
-
-			if(setting.key=="")
-				setting.value=line;
-			else
-			{
-				line.erase(0,setting.key.size()+1);
-				setting.value=line;
-			}		
-			
-			mSettings.push_back(setting);
-		}
-
-		cached_settings=new SCachedSettings;
-		cached_settings->smutex=Server->createMutex();
-
-		for(size_t i=0;i<mSettings.size();++i)
-		{
-			cached_settings->mSettingsMap[Server->ConvertToUnicode(mSettings[i].key)]=Server->ConvertToUnicode(mSettings[i].value);
-		}
-
-		cached_settings->refcount=1;
-		cached_settings->key=pFile;
-
-		IScopedLock lock(settings_mutex);
-		settings->insert(std::pair<std::string, SCachedSettings*>(pFile, cached_settings) );
+		read(fdata, pFile);
 	}
 	else
 	{
@@ -79,6 +69,27 @@ CFileSettingsReader::CFileSettingsReader(std::string pFile)
 		++cached_settings->refcount;
 	}
 
+}
+
+CFileSettingsReader::CFileSettingsReader( std::wstring pFile )
+{
+	std::map<std::string, SCachedSettings*>::iterator iter;
+	{
+		IScopedLock lock(settings_mutex);
+		iter=settings->find(Server->ConvertToUTF8(pFile));
+	}
+	if( iter==settings->end() )
+	{
+		std::string fdata=readFile(pFile);
+
+		read(fdata, Server->ConvertToUTF8(pFile));
+	}
+	else
+	{
+		IScopedLock lock(settings_mutex);
+		cached_settings=iter->second;
+		++cached_settings->refcount;
+	}
 }
 
 CFileSettingsReader::~CFileSettingsReader()
@@ -155,4 +166,44 @@ std::vector<std::wstring> CFileSettingsReader::getKeys()
 		ret.push_back(i->first);
 	}
 	return ret;
+}
+
+void CFileSettingsReader::read( const std::string& fdata, const std::string& pFile )
+{
+	std::vector<SSetting> mSettings;
+	int num_lines=linecount(fdata);
+	for(int i=0;i<num_lines;++i)
+	{
+		std::string line=getline(i,fdata);
+
+		if(line.size()<2 || line[0]=='#' )
+			continue;
+
+		SSetting setting;
+		setting.key=getuntil("=",line);
+
+		if(setting.key=="")
+			setting.value=line;
+		else
+		{
+			line.erase(0,setting.key.size()+1);
+			setting.value=line;
+		}		
+
+		mSettings.push_back(setting);
+	}
+
+	cached_settings=new SCachedSettings;
+	cached_settings->smutex=Server->createMutex();
+
+	for(size_t i=0;i<mSettings.size();++i)
+	{
+		cached_settings->mSettingsMap[Server->ConvertToUnicode(mSettings[i].key)]=Server->ConvertToUnicode(mSettings[i].value);
+	}
+
+	cached_settings->refcount=1;
+	cached_settings->key=pFile;
+
+	IScopedLock lock(settings_mutex);
+	settings->insert(std::pair<std::string, SCachedSettings*>(pFile, cached_settings) );
 }

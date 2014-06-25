@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"
 #include "../urbackupcommon/os_functions.h"
@@ -68,6 +70,9 @@ struct SFileAndHash
 	int64 last_modified;
 	bool isdir;
 	std::string hash;
+	std::string file_permission_bits;
+	int64 last_modified_orig;
+	int64 created;
 
 	bool operator<(const SFileAndHash &other) const
 	{
@@ -80,7 +85,10 @@ struct SFileAndHash
 			size == other.size &&
 			last_modified == other.last_modified &&
 			isdir == other.isdir &&
-			hash == other.hash;
+			hash == other.hash &&
+			file_permission_bits == other.file_permission_bits &&
+			last_modified_orig == other.last_modified_orig &&
+			created == other.created;
 	}
 };
 
@@ -143,9 +151,23 @@ public:
 	void updateMiscValue(const std::string& key, const std::wstring& value);
 
 	//@-SQLGenFunctionsBegin
+	struct CondInt64
+	{
+		bool exists;
+		int64 value;
+	};
+	struct SToken
+	{
+		int64 id;
+		std::wstring username;
+		std::wstring token;
+	};
 
 
 	void updateShadowCopyStarttime(int id);
+	void updateFileAccessToken(const std::wstring& username, const std::wstring& token);
+	std::vector<SToken> getFileAccessTokens(void);
+	CondInt64 getFileAccessTokenId(const std::wstring& username);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -187,5 +209,8 @@ private:
 
 	//@-SQLGenVariablesBegin
 	IQuery* q_updateShadowCopyStarttime;
+	IQuery* q_updateFileAccessToken;
+	IQuery* q_getFileAccessTokens;
+	IQuery* q_getFileAccessTokenId;
 	//@-SQLGenVariablesEnd
 };

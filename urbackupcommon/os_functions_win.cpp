@@ -140,6 +140,10 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			size.LowPart=wfd.nFileSizeLow;
 			f.size=size.QuadPart;
 
+			lwt.HighPart=wfd.ftCreationTime.dwHighDateTime;
+			lwt.LowPart=wfd.ftCreationTime.dwLowDateTime;
+			f.created=lwt.QuadPart;
+
 			if(exact_filesize && !(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
 			{
 				if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT)
@@ -160,6 +164,11 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 							lwt.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
 
 							f.last_modified = lwt.QuadPart;
+
+							lwt.HighPart=file_info.ftCreationTime.dwHighDateTime;
+							lwt.LowPart=file_info.ftCreationTime.dwLowDateTime;
+
+							f.created=lwt.QuadPart;
 						}
 
 						CloseHandle(hFile);
@@ -178,6 +187,11 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 						lwt.LowPart = fad.ftLastWriteTime.dwLowDateTime;
 
 						f.last_modified = lwt.QuadPart;
+
+						lwt.HighPart=fad.ftCreationTime.dwHighDateTime;
+						lwt.LowPart=fad.ftCreationTime.dwLowDateTime;
+
+						f.created=lwt.QuadPart;
 					}
 				}				
 			}			
@@ -192,6 +206,41 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 	std::sort(tmp.begin(), tmp.end());
 
 	return tmp;
+}
+
+SFile getFileMetadata( const std::wstring &path )
+{
+	SFile ret;
+	ret.name=path;
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	if( GetFileAttributesExW(path.c_str(),  GetFileExInfoStandard, &fad) )
+	{
+		if (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			ret.isdir=true;
+		}
+		LARGE_INTEGER size;
+		size.HighPart = fad.nFileSizeHigh;
+		size.LowPart = fad.nFileSizeLow;
+		ret.size = size.QuadPart;
+
+		LARGE_INTEGER lwt;
+		lwt.HighPart = fad.ftLastWriteTime.dwHighDateTime;
+		lwt.LowPart = fad.ftLastWriteTime.dwLowDateTime;
+
+		ret.last_modified = lwt.QuadPart;
+
+		lwt.HighPart=fad.ftCreationTime.dwHighDateTime;
+		lwt.LowPart=fad.ftCreationTime.dwLowDateTime;
+
+		ret.created=lwt.QuadPart;
+
+		return ret;
+	}
+	else
+	{
+		return SFile();
+	}
 }
 
 #ifndef OS_FUNC_NO_SERVER

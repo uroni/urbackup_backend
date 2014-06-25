@@ -103,12 +103,18 @@ void ClientDAO::destroyQueries(void)
 void ClientDAO::prepareQueriesGen(void)
 {
 	q_updateShadowCopyStarttime=NULL;
+	q_updateFileAccessToken=NULL;
+	q_getFileAccessTokens=NULL;
+	q_getFileAccessTokenId=NULL;
 }
 
 //@-SQLGenDestruction
 void ClientDAO::destroyQueriesGen(void)
 {
 	db->destroyQuery(q_updateShadowCopyStarttime);
+	db->destroyQuery(q_updateFileAccessToken);
+	db->destroyQuery(q_getFileAccessTokens);
+	db->destroyQuery(q_getFileAccessTokenId);
 }
 
 void ClientDAO::restartQueries(void)
@@ -166,6 +172,24 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 
 		ptr+=hashsize;
 
+		unsigned short fpb_size;
+		memcpy(&fpb_size, ptr, sizeof(unsigned short));
+		ptr+=sizeof(unsigned short);
+
+		f.file_permission_bits.resize(fpb_size);
+		if(fpb_size>0)
+		{
+			memcpy(&f.file_permission_bits[0], ptr, fpb_size);
+		}
+
+		ptr+=fpb_size;
+
+		memcpy(&f.last_modified_orig, ptr, sizeof(int64));
+		ptr+=sizeof(int64);
+
+		memcpy(&f.created, ptr, sizeof(int64));
+		ptr+=sizeof(int64);
+
 		data.push_back(f);
 	}
 	return true;
@@ -185,6 +209,9 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		++datasize;
 		datasize+=sizeof(unsigned short);
 		datasize+=data[i].hash.size();
+		datasize+=sizeof(unsigned short);
+		datasize+=data[i].file_permission_bits.size();
+		datasize+=sizeof(int64)*2;
 	}
 	char *buffer=new char[datasize];
 	char *ptr=buffer;
@@ -209,6 +236,15 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		ptr+=sizeof(hashsize);
 		memcpy(ptr, data[i].hash.data(), hashsize);
 		ptr+=hashsize;
+		unsigned short fpb_size=static_cast<unsigned short>(data[i].file_permission_bits.size());
+		memcpy(ptr, &fpb_size, sizeof(fpb_size));
+		ptr+=sizeof(fpb_size);
+		memcpy(ptr, data[i].file_permission_bits.data(), fpb_size);
+		ptr+=fpb_size;
+		memcpy(ptr, (char*)&data[i].last_modified_orig, sizeof(int64));
+		ptr+=sizeof(int64);
+		memcpy(ptr, (char*)&data[i].created, sizeof(int64));
+		ptr+=sizeof(int64);
 	}
 	return buffer;
 }
@@ -568,5 +604,78 @@ void ClientDAO::updateShadowCopyStarttime(int id)
 	q_updateShadowCopyStarttime->Bind(id);
 	q_updateShadowCopyStarttime->Write();
 	q_updateShadowCopyStarttime->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::updateFileAccessToken
+* @sql
+*    INSERT OR REPLACE INTO fileaccess_tokens
+*          (username, token)
+*      VALUES
+*           (:username(string), :token(string))
+*/
+void ClientDAO::updateFileAccessToken(const std::wstring& username, const std::wstring& token)
+{
+	if(q_updateFileAccessToken==NULL)
+	{
+		q_updateFileAccessToken=db->Prepare("INSERT OR REPLACE INTO fileaccess_tokens (username, token) VALUES (?, ?)", false);
+	}
+	q_updateFileAccessToken->Bind(username);
+	q_updateFileAccessToken->Bind(token);
+	q_updateFileAccessToken->Write();
+	q_updateFileAccessToken->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<SToken> ClientDAO::getFileAccessTokens
+* @return int64 id, string username, string token
+* @sql
+*    SELECT id, username, token
+*    FROM fileaccess_tokens
+*/
+std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
+{
+	if(q_getFileAccessTokens==NULL)
+	{
+		q_getFileAccessTokens=db->Prepare("SELECT id, username, token FROM fileaccess_tokens", false);
+	}
+	db_results res=q_getFileAccessTokens->Read();
+	std::vector<ClientDAO::SToken> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].id=watoi64(res[i][L"id"]);
+		ret[i].username=res[i][L"username"];
+		ret[i].token=res[i][L"token"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ClientDAO::getFileAccessTokenId
+* @return int64 id
+* @sql
+*    SELECT id
+*    FROM fileaccess_tokens WHERE username = :username(string)
+*/
+ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& username)
+{
+	if(q_getFileAccessTokenId==NULL)
+	{
+		q_getFileAccessTokenId=db->Prepare("SELECT id FROM fileaccess_tokens WHERE username = ?", false);
+	}
+	q_getFileAccessTokenId->Bind(username);
+	db_results res=q_getFileAccessTokenId->Read();
+	q_getFileAccessTokenId->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"id"]);
+	}
+	return ret;
 }
 

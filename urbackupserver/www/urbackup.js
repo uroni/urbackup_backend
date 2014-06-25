@@ -92,6 +92,7 @@ function startup()
 		if(i+1<g.languages.length)
 			available_langs+=",";
 	}
+	
 	new getJSON("login", available_langs, try_anonymous_login);
 }
 
@@ -213,23 +214,37 @@ function try_anonymous_login(data)
 		return;
 	}
 	
-	if(data.success)
+	params = $.deparam(window.location.hash);
+	if(params && params.fileaccesstokens)
 	{
-		g.session=data.session;
-		build_main_nav();
-		show_status1();
+		file_access(params);
 	}
 	else
-	{
-		var ndata=dustRender("login");
-		if(g.data_f!=ndata)
+	{		
+		if(data.success)
 		{
-			I('data_f').innerHTML=ndata;
-			g.data_f=ndata;
+			g.session=data.session;
+			build_main_nav();
+			show_status1();
 		}
-		I('username').focus();
+		else
+		{
+			var ndata=dustRender("login");
+			if(g.data_f!=ndata)
+			{
+				I('data_f').innerHTML=ndata;
+				g.data_f=ndata;
+			}
+			I('username').focus();
+		}
 	}
 }
+
+function file_access(params)
+{
+	new getJSON("backups", available_langs, try_anonymous_login);
+}
+
 function startLoading()
 {
 	if(g.loading)

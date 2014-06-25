@@ -28,6 +28,7 @@
 #include "../fileservplugin/chunk_settings.h"
 #include "../md5.h"
 #include <memory.h>
+#include "file_metadata.h"
 
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid)
 {
@@ -92,6 +93,12 @@ void BackupServerPrepareHash::operator()(void)
 			std::string old_file_fn;
 			rd.getStr(&old_file_fn);
 
+			char with_hashes_c;
+			rd.getChar(&with_hashes_c);
+
+			FileMetadata metadata;
+			metadata.read(rd);
+
 			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
 			IFile *old_file=NULL;
 			if(diff_file)
@@ -143,6 +150,8 @@ void BackupServerPrepareHash::operator()(void)
 				data.addString(h);
 				data.addString(hashoutput_fn);
 				data.addString(old_file_fn);
+				data.addChar(with_hashes_c);
+				metadata.serialize(data);
 
 				output->Write(data.getDataPtr(), data.getDataSize() );
 			}

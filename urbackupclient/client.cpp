@@ -34,6 +34,8 @@
 #include <algorithm>
 #include <fstream>
 #include <stdlib.h>
+#include "win_tokens.h"
+#include "file_permissions.h"
 
 //For truncating files
 #ifdef _WIN32
@@ -619,6 +621,18 @@ void IndexThread::indexDirs(void)
 	}
 
 	updateDirs();
+
+	writeTokens();
+
+	bool tokens_changed=false;
+	if(cd->getMiscValue("has_new_token")==L"true")
+	{
+		VSSLog("File access tokens changed (e.g. new user). Not using db...", LL_INFO);
+		tokens_changed=true;
+	}
+
+	token_cache.reset();
+
 #ifdef _WIN32
 	//Invalidate cache
 	DirectoryWatcherThread::freeze();
@@ -742,11 +756,15 @@ void IndexThread::indexDirs(void)
 			index_c_db=0;
 			index_c_fs=0;
 			index_c_db_update=0;
-			outfile << "d\"" << escapeListName(Server->ConvertToUTF8(backup_dirs[i].tname)) << "\"\n";
+			SFile dirInfo = getFileMetadata(os_file_prefix(mod_path));
+			std::string dir_permissions;
+			readPermissions(mod_path, dir_permissions);
+			writeDir(outfile, backup_dirs[i].tname, dirInfo.created, dirInfo.last_modified, dir_permissions);
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
-			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true, backup_dirs[i].optional, !patterns_changed);
+			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
+				backup_dirs[i].optional, !(patterns_changed || tokens_changed) );
 
 			cd->copyFromTmpFiles();
 			commitModifyFilesBuffer();
@@ -829,6 +847,10 @@ void IndexThread::indexDirs(void)
 	{
 		readPatterns(patterns_changed, true);
 	}
+	if(tokens_changed)
+	{
+		cd->updateMiscValue("has_new_token", L"false");
+	}
 	share_dirs();
 }
 
@@ -906,23 +928,20 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				continue;
 			}
 			has_include=true;
-			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].last_modified;
+			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].last_modified << "#";
 
-			if(end_to_end_file_backup_verification_enabled || calculate_filehashes_on_client)
+			outfile << "rpb=" << base64_encode_dash(files[i].file_permission_bits)
+					<< "&mod=" << nconvert(files[i].last_modified_orig)
+					<< "&creat=" << nconvert(files[i].created);
+
+			if(calculate_filehashes_on_client)
 			{
-				outfile << "#";
-
-				if(calculate_filehashes_on_client)
-				{
-					outfile << "sha512=" << base64_encode_dash(files[i].hash);
-				}
+				outfile << "&sha512=" << base64_encode_dash(files[i].hash);
+			}
 				
-				if(end_to_end_file_backup_verification_enabled)
-				{
-					if(calculate_filehashes_on_client) outfile << "&";
-
-					outfile << "sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
-				}
+			if(end_to_end_file_backup_verification_enabled)
+			{
+				outfile << "&sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
 			}
 			
 			outfile << "\n";
@@ -948,8 +967,11 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
 				std::streampos pos=outfile.tellp();
-				outfile << "d\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\"\n";
-				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);			
+				
+				writeDir(outfile, files[i].name, files[i].created, files[i].last_modified_orig, files[i].file_permission_bits);
+
+				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);		
+
 				outfile << "d\"..\"\n";
 
 				if(!b)
@@ -993,6 +1015,9 @@ void IndexThread::readBackupDirs(void)
 
 namespace
 {
+	const int64 WINDOWS_TICK=10000000;
+	const int64 SEC_TO_UNIX_EPOCH=11644473600LL;
+
 	std::vector<SFileAndHash> convertToFileAndHash(const std::vector<SFile> files)
 	{
 		std::vector<SFileAndHash> ret;
@@ -1003,6 +1028,16 @@ namespace
 			ret[i].last_modified=files[i].last_modified;
 			ret[i].name=files[i].name;
 			ret[i].size=files[i].size;
+
+#ifdef _WIN32
+			ret[i].last_modified_orig=files[i].last_modified/WINDOWS_TICK-SEC_TO_UNIX_EPOCH;
+			ret[i].created=files[i].created/WINDOWS_TICK-SEC_TO_UNIX_EPOCH;
+#else
+			ret[i].last_modified_orig=files[i].last_modified;
+			ret[i].created=files[i].created;
+#endif
+
+
 		}
 		return ret;
 	}
@@ -1098,7 +1133,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 #else
 	use_db=false;
 #endif
-	std::vector<SFileAndHash> tmp;
+	std::vector<SFileAndHash> fs_files;
 	if(use_db==false || it_dir!=changed_dirs.end())
 	{
 		++index_c_fs;
@@ -1106,7 +1141,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
-		tmp=convertToFileAndHash(getFiles(tpath, &has_error));
+		fs_files=convertToFileAndHash(getFiles(tpath, &has_error));
+		readPermissions(tpath, fs_files);
 
 		if(has_error)
 		{
@@ -1151,40 +1187,40 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 			if(!changed_files.empty())
 			{
-				for(size_t i=0;i<tmp.size();++i)
+				for(size_t i=0;i<fs_files.size();++i)
 				{
-					if(!tmp[i].isdir)
+					if(!fs_files[i].isdir)
 					{
-						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
+						if( std::binary_search(changed_files.begin(), changed_files.end(), fs_files[i].name) )
 						{
-							VSSLog(L"Found changed file: " + tmp[i].name, LL_DEBUG);
+							VSSLog(L"Found changed file: " + fs_files[i].name, LL_DEBUG);
 
-							tmp[i].last_modified*=Server->getRandomNumber();
-							if(tmp[i].last_modified>0)
-								tmp[i].last_modified*=-1;
-							else if(tmp[i].last_modified==0)
-								tmp[i].last_modified=-1;
+							fs_files[i].last_modified*=Server->getRandomNumber();
+							if(fs_files[i].last_modified>0)
+								fs_files[i].last_modified*=-1;
+							else if(fs_files[i].last_modified==0)
+								fs_files[i].last_modified=-1;
 						}
 						else
 						{
-							std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+							std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), fs_files[i]);
 							if( it_db_file!=db_files.end()
-									&& (*it_db_file).name==tmp[i].name
-									&& (*it_db_file).isdir==tmp[i].isdir
+									&& (*it_db_file).name==fs_files[i].name
+									&& (*it_db_file).isdir==fs_files[i].isdir
 									&& (*it_db_file).last_modified<0 )
 							{
-								VSSLog(L"File changed at last backup: "+ tmp[i].name, LL_DEBUG);
+								VSSLog(L"File changed at last backup: "+ fs_files[i].name, LL_DEBUG);
 
-								if( tmp[i].last_modified<last_filebackup_filetime)
+								if( fs_files[i].last_modified<last_filebackup_filetime)
 								{
-									tmp[i].last_modified=it_db_file->last_modified;
+									fs_files[i].last_modified=it_db_file->last_modified;
 								}
 								else
 								{
 									VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
-									tmp[i].last_modified*=Server->getRandomNumber();
-									if(tmp[i].last_modified>0)
-										tmp[i].last_modified*=-1;
+									fs_files[i].last_modified*=Server->getRandomNumber();
+									if(fs_files[i].last_modified>0)
+										fs_files[i].last_modified*=-1;
 								}
 							}
 						}
@@ -1197,15 +1233,15 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 		if(calculate_filehashes_on_client)
 		{
-			addMissingHashes(has_files ? &db_files : NULL, &tmp, orig_path, path, named_path);
+			addMissingHashes(has_files ? &db_files : NULL, &fs_files, orig_path, path, named_path);
 		}
 
 		if( has_files)
 		{
-			if(tmp!=db_files)
+			if(fs_files!=db_files)
 			{
 				++index_c_db_update;
-				modifyFilesInt(path_lower, tmp);
+				modifyFilesInt(path_lower, fs_files);
 			}
 		}
 		else
@@ -1214,31 +1250,31 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			if(calculate_filehashes_on_client)
 			{
 #endif
-				cd->addFiles(path_lower, tmp);
+				cd->addFiles(path_lower, fs_files);
 #ifndef _WIN32
 			}
 #endif
 		}
 
-		return tmp;
+		return fs_files;
 	}
 #ifdef _WIN32
 	else
 	{	
-		if( cd->getFiles(path_lower, tmp) )
+		if( cd->getFiles(path_lower, fs_files) )
 		{
 			++index_c_db;
 
 			if(calculate_filehashes_on_client)
 			{
-				if(addMissingHashes(&tmp, NULL, orig_path, path, named_path))
+				if(addMissingHashes(&fs_files, NULL, orig_path, path, named_path))
 				{
 					++index_c_db_update;
-					modifyFilesInt(path_lower, tmp);
+					modifyFilesInt(path_lower, fs_files);
 				}
 			}
 
-			return tmp;
+			return fs_files;
 		}
 		else
 		{
@@ -1247,7 +1283,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			std::wstring tpath=os_file_prefix(path);
 
 			bool has_error;
-			tmp=convertToFileAndHash(getFiles(tpath, &has_error));
+			fs_files=convertToFileAndHash(getFiles(tpath, &has_error));
+			readPermissions(tpath, fs_files);
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
@@ -1263,11 +1300,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 			if(calculate_filehashes_on_client)
 			{
-				addMissingHashes(NULL, &tmp, orig_path, path, named_path);
+				addMissingHashes(NULL, &fs_files, orig_path, path, named_path);
 			}
 
-			cd->addFiles(path_lower, tmp);
-			return tmp;
+			cd->addFiles(path_lower, fs_files);
+			return fs_files;
 		}
 	}
 #endif
@@ -2969,4 +3006,85 @@ std::string IndexThread::escapeListName( const std::string& listname )
 		}
 	}
 	return ret;
+}
+
+void IndexThread::writeTokens()
+{
+	std::auto_ptr<ISettingsReader> access_keys(
+		Server->createFileSettingsReader("access_keys.properties"));
+
+	std::string access_keys_data;
+	std::vector<std::wstring> keys
+		= access_keys->getKeys();
+
+
+	bool has_server_key=false;
+	std::string curr_key;
+	for(size_t i=0;i<keys.size();++i)
+	{
+		if(keys[i]==L"key."+widen(starttoken))
+		{
+			has_server_key=true;
+			curr_key=wnarrow(access_keys->getValue(keys[i], std::wstring()));
+		}
+		access_keys_data+=wnarrow(keys[i])+"="+
+			wnarrow(access_keys->getValue(keys[i], std::wstring()))+"\n";
+	}
+
+	if(!has_server_key)
+	{
+		curr_key = Server->secureRandomString(30);	
+
+		access_keys_data+="key."+starttoken+"="+
+			curr_key+"\n";
+
+		write_file_only_admin(access_keys_data, "access_keys.properties");
+	}	
+
+	write_tokens();
+	std::vector<ClientDAO::SToken> tokens = cd->getFileAccessTokens();
+
+	std::string ids;
+	for(size_t i=0;i<tokens.size();++i)
+	{
+		if(!ids.empty())
+		{
+			ids+=",";
+		}
+		ids+=nconvert(tokens[i].id);
+	}
+
+	std::string data="ids="+ids+"\n";
+
+	data+="access_key="+curr_key+"\n";
+
+	for(size_t i=0;i<tokens.size();++i)
+	{
+		data+=nconvert(tokens[i].id)+".username="+base64_encode_dash(Server->ConvertToUTF8(tokens[i].username))+"\n";
+		data+=nconvert(tokens[i].id)+".token="+Server->ConvertToUTF8(tokens[i].token)+"\n";
+	}
+
+
+	write_file_only_admin(data, "urbackup"+os_file_sepn()+"data"+os_file_sepn()+"tokens_"+starttoken+".properties");
+}
+
+void IndexThread::readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files )
+{
+	for(size_t i=0;i<files.size();++i)
+	{
+		readPermissions(dir + os_file_sep() + files[i].name, files[i].file_permission_bits);
+	}
+}
+
+void IndexThread::readPermissions( const std::wstring& path, std::string& permissions )
+{
+	permissions = get_file_tokens(path, cd, token_cache);
+}
+
+void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions )
+{
+	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\""
+		"rpb=" << base64_encode_dash(permissions) <<
+		"&mod=" << nconvert(mod) <<
+		"&creat=" << nconvert(creat) << "\n";
 }

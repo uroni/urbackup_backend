@@ -18,6 +18,8 @@
 
 \tableofcontents
 
+\newpage
+
 \section{Introduction}
 
 UrBackup is a client/server backup system. This means there exists a server
@@ -286,6 +288,8 @@ Volume\textgreater  being the drive letter of the backuped partition and YY the
 current year, MM the current month, DD the current day in the month and HHMM the
 hour and minute the image backup was started.
 
+Since UrBackup Server 1.4 the VHD-files are compressed by default. This can be disabled in the image backup settings section. On Windows there are no tools to directly mount compressed VHD files. For mounting them on Linux see section \ref{sec:mounting_image_files}. For decompressing the image files such that they can be mounted on Windows see \ref{sec:decompressing_vhd_files}. The compressed VHD files have the extension '.vhdz'. The VHD files are compressed in 2MB blocks using GZIP compression with normal compression level.
+
 \subsection{Collission propabilities}
 
 In this section we will look at the probability that the UrBackup backup system considers data the same, even though it is different. This can be caused by a hash collision (data has the same hash, even though the data is different). If happening, a collision can lead to files being incorrectly linked or blocks in image backups not transferred.
@@ -294,7 +298,7 @@ In this section we will look at the probability that the UrBackup backup system 
 
 UrBackup uses SHA512 to hash the files before file deduplication. In comparison ZFS uses SHA256 for block deduplication. The choice of SHA512 is definitely on the save side. The Wikipedia page for ``Birthday attack'' has a propability table for SHA512. According to it one needs $1.6*10^{68}$ different files (of same size) to reach a probability of $10^{-18}$ of a collision. It also states that $10^{-18}$ is the best case uncorrectable bit error rate of a typical hard disk. To have $1.6*10^{68}$ different files of $1KB$ you need $1.4551915*10^{56}$ EB of hard disk space. So it is ridiculously more likely that the hard disk returns bad data or the data gets corrupted in RAM, rather than UrBackup linking the wrong files to each other.
 
-\subsection{Image backup collision probability}
+\subsubsection{Image backup collision probability}
 
 For the blocks in an image backup SHA256 is used. They are 256kbyte in size. The chance of a hash collision with SHA256 is $1$:($2^{256}$) ($p=\frac{1}{2^{256}}$) for two hashes. In the worst case you have $2TB/256kbyte = 8388608$ different blocks in an incremental image backup. The chance of having a collision in any of the 8388608 blocks (the worst case) is then $1-(1-\frac{1}{2^{256}})^{8388608} \approx 7*10^{-71}$. This is again ridiculously low compared to e.g. the probability of $10^{-18}$ of a typical hard disk having a uncorrectable bit error.
 
@@ -565,6 +569,8 @@ Allow client-side pausing of backups & Allow the client(s) to pause backups & Ch
 \hline
 Allow client-side changing of settings & If this option is checked the clients can change their client specific settings via the client interface. If you do not check this the server settings always override the clients' settings. & Checked\\
 \hline
+Allow clients to quit the tray icon & Allow the client(s) to quit the tray icon. If the tray icon is quit current and future backups are paused. & Checked \\
+\hline
 \end{longtable}
 
 \subsubsection{Backup window}
@@ -614,6 +620,11 @@ gives the "Users" directory the name "User files" and the "Program files" direct
 
 Those locations are only the default locations. Even if you check "Separate settings for this client" and disable "Allow client to change settings", once the client modified the paths, changes in this field are not used by the client any more.
 
+Since UrBackup Client 1.4, if a directory to backup is not available the whole backup process is interuppted and the backup fails. You can mark directories such that the client continues if they are not present. With the above example you can do that by appending \textsl{/optional} to the location name as follows:
+\begin{verbatim}
+C:\Users|User files/optional;C:\Program Files|Programs/optional
+\end{verbatim}
+
 \subsection{Internet settings}
 
 \begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|p{0.1\textwidth}|}
@@ -638,6 +649,8 @@ Compressed transfer & If checked all data between server and clients is compress
 \hline
 Calculate file-hashes on the client & If checked the client calculates hashes for each file before the backups (only hashes of changed files are calculated).
 The file then does not have to be transfered if another client already transfered the same file & Not checked \\
+\hline
+Connect to Internet backup server if connected to local backup server & If checked the client will connect to the configured Internet server, even if it is connect to a backup server on the local network. & Not checked \\
 \hline
 \end{tabular}
 
@@ -859,6 +872,7 @@ Port  & Usage \\
 \end{tabular}
 
 \subsection{Mounting (compressed) VHD files on GNU/Linux}
+\label{sec:mounting_image_files}
 
 If you compiled UrBackup with fuse support or installed the debian packages the UrBackup server can mount 
 VHD(Z) files directly. You compile UrBackup with fuse support by configuring:
@@ -874,6 +888,7 @@ All files in the backed up ``C'' volume will then be available read-only in \tex
 Unmount the mounts created by UrBackup (see output of \textsl{mount}), to stop the background process.
 
 \subsection{Decompress VHD files}
+\label{sec:decompressing_vhd_files}
 
 If you want to mount the VHD files on Windows and they are compressed (file extension is VHDZ), you need
 to decompress them first. Use  \textsl{C:\textbackslash Program Files\textbackslash UrBackupServer\textbackslash uncompress\_image.bat} for that.

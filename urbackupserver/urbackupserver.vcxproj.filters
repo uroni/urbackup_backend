@@ -264,6 +264,12 @@
     <ClCompile Include="server_hash_existing.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="filelist_utils.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="file_metadata.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -469,6 +475,15 @@
     </ClInclude>
     <ClInclude Include="server_hash_existing.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="filelist_utils.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="file_metadata.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\backups.h">
+      <Filter>serverinterface</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

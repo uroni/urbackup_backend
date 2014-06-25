@@ -6,6 +6,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "clientdao.h"
 #include <map>
+#include "win_tokens.h"
 
 #ifdef _WIN32
 #ifndef VSS_XP
@@ -181,6 +182,14 @@ private:
 
 	std::string escapeListName(const std::string& listname);
 
+	void writeTokens();
+
+	void readPermissions(const std::wstring& path, std::string& permissions);
+
+	void readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files);
+
+	void writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions);
+
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
@@ -237,6 +246,8 @@ private:
 	std::vector<std::pair<std::string, int> > vsslog;
 
 	_i64 last_filebackup_filetime;
+
+	TokenCache token_cache;
 };
 
 std::wstring add_trailing_slash(const std::wstring &strDirName);

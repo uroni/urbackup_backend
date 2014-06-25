@@ -661,6 +661,70 @@ std::vector<ServerBackupDao::SDuration> ServerBackupDao::getLastFullDurations(in
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getSetting
+* @return string value
+* @sql
+*      SELECT value FROM settings_db.settings WHERE clientid=:clientid(int) AND key=:key(string)
+*/
+ServerBackupDao::CondString ServerBackupDao::getSetting(int clientid, const std::wstring& key)
+{
+	if(q_getSetting==NULL)
+	{
+		q_getSetting=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=? AND key=?", false);
+	}
+	q_getSetting->Bind(clientid);
+	q_getSetting->Bind(key);
+	db_results res=q_getSetting->Read();
+	q_getSetting->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"value"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::insertSetting
+* @sql
+*      INSERT INTO settings_db.settings (key, value, clientid) VALUES ( :key(string), :value(string), :clientid(int) )
+*/
+void ServerBackupDao::insertSetting(const std::wstring& key, const std::wstring& value, int clientid)
+{
+	if(q_insertSetting==NULL)
+	{
+		q_insertSetting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ( ?, ?, ? )", false);
+	}
+	q_insertSetting->Bind(key);
+	q_insertSetting->Bind(value);
+	q_insertSetting->Bind(clientid);
+	q_insertSetting->Write();
+	q_insertSetting->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateSetting
+* @sql
+*      UPDATE settings_db.settings SET value=:value(string) WHERE key=:key(string) AND clientid=:clientid(int)
+*/
+void ServerBackupDao::updateSetting(const std::wstring& value, const std::wstring& key, int clientid)
+{
+	if(q_updateSetting==NULL)
+	{
+		q_updateSetting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
+	}
+	q_updateSetting->Bind(value);
+	q_updateSetting->Bind(key);
+	q_updateSetting->Bind(clientid);
+	q_updateSetting->Write();
+	q_updateSetting->Reset();
+}
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -693,6 +757,9 @@ void ServerBackupDao::prepareQueries( void )
 	q_getOrigClientSettings=NULL;
 	q_getLastIncrementalDurations=NULL;
 	q_getLastFullDurations=NULL;
+	q_getSetting=NULL;
+	q_insertSetting=NULL;
+	q_updateSetting=NULL;
 }
 
 //@-SQLGenDestruction
@@ -727,6 +794,9 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getOrigClientSettings);
 	db->destroyQuery(q_getLastIncrementalDurations);
 	db->destroyQuery(q_getLastFullDurations);
+	db->destroyQuery(q_getSetting);
+	db->destroyQuery(q_insertSetting);
+	db->destroyQuery(q_updateSetting);
 }
 
 void ServerBackupDao::commit()
@@ -737,4 +807,16 @@ void ServerBackupDao::commit()
 int64 ServerBackupDao::getLastId()
 {
 	return db->getLastInsertID();
+}
+
+void ServerBackupDao::updateOrInsertSetting( int clientid, const std::wstring& key, const std::wstring& value )
+{
+	if(getSetting(clientid, key).exists)
+	{
+		updateSetting(value, key, clientid);
+	}
+	else
+	{
+		insertSetting(key, value, clientid);
+	}
 }

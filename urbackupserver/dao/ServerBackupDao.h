@@ -71,7 +71,12 @@ public:
 	CondString getOrigClientSettings(int clientid);
 	std::vector<SDuration> getLastIncrementalDurations(int clientid);
 	std::vector<SDuration> getLastFullDurations(int clientid);
+	CondString getSetting(int clientid, const std::wstring& key);
+	void insertSetting(const std::wstring& key, const std::wstring& value, int clientid);
+	void updateSetting(const std::wstring& value, const std::wstring& key, int clientid);
 	//@-SQLGenFunctionsEnd
+
+	void updateOrInsertSetting(int clientid, const std::wstring& key, const std::wstring& value);
 
 private:
 	ServerBackupDao(ServerBackupDao& other) {}
@@ -110,6 +115,9 @@ private:
 	IQuery* q_getOrigClientSettings;
 	IQuery* q_getLastIncrementalDurations;
 	IQuery* q_getLastFullDurations;
+	IQuery* q_getSetting;
+	IQuery* q_insertSetting;
+	IQuery* q_updateSetting;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;
