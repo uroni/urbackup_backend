@@ -216,10 +216,14 @@ function try_anonymous_login(data)
 		return;
 	}
 	
-	params = $.deparam(window.location.hash);
-	if(params && params.fileaccesstokens)
+	if(window.location.hash.length>0)
 	{
-		file_access(params);
+		params = $.deparam(window.location.hash.substr(1));
+		if(params && params.tokens0 && params.computername)
+		{
+			file_access(params);
+		}
+		window.location.hash="";
 	}
 	else
 	{		
@@ -244,7 +248,21 @@ function try_anonymous_login(data)
 
 function file_access(params)
 {
-	new getJSON("backups", available_langs, try_anonymous_login);
+	var p = "clientname="+params.computername;
+	
+	for(var i=0;;++i)
+	{
+		if(params["tokens"+i])
+		{
+			p+="&tokens"+i+"="+encodeURIComponent(params["tokens"+i]);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	new getJSON("backups", p, show_backups2);
 }
 
 function startLoading()
@@ -1107,6 +1125,11 @@ function show_backups2(data)
 {
 	stopLoading();
 	var ndata="";
+	
+	if(data.session && g.session.length==0)
+	{
+		g.session=data.session;
+	}
 	if(data.clients)
 	{
 		var rows="";
@@ -1161,7 +1184,13 @@ function show_backups2(data)
 				
 			rows+=dustRender("backups_backups_row", obj);
 		}
-		ndata=dustRender("backups_backups", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid});
+		var show_client_breadcrumb=false;
+		if(!data.token_authentication)
+		{
+			show_client_breadcrumb=true;
+		}
+		
+		ndata=dustRender("backups_backups", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid, show_client_breadcrumb: show_client_breadcrumb});
 	}
 	else if(data.files)
 	{
@@ -1234,6 +1263,11 @@ function show_backups2(data)
 			ses: g.session, clientname: data.clientname,
 			clientid: data.clientid, cpath: cp, backuptime: data.backuptime,
 			backupid: data.backupid, path: encodeURIComponent(path).replace(/'/g,"%27") };
+			
+		if(!data.token_authentication)
+		{
+			obj.show_client_breadcrumb=true;
+		}
 			
 		if( data.files.length>0 )
 		{
@@ -1904,7 +1938,8 @@ g.general_settings_list=[
 "suspend_index_limit",
 "use_incremental_symlinks",
 "trust_client_hashes",
-"show_server_updates"
+"show_server_updates",
+"server_url"
 ];
 g.mail_settings_list=[
 "mail_servername",
