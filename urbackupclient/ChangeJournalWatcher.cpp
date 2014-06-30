@@ -22,7 +22,6 @@
 #include "../stringtools.h"
 #include "DirectoryWatcherThread.h"
 
-const unsigned int usn_update_freq=10*60*1000;
 const DWORDLONG usn_reindex_num=1000000; // one million
 
 #define VLOG(x) 

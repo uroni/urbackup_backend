@@ -24,15 +24,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="watchdir\CriticalSection.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
-    <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
-    <ClCompile Include="watchdir\DirectoryChanges.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
       <Filter>sha2</Filter>
     </ClCompile>
@@ -125,18 +116,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="watchdir\CriticalSection.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\DirectoryChanges.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\Event.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
       <Filter>sha2</Filter>
     </ClInclude>
