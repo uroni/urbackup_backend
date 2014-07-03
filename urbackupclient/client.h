@@ -125,19 +125,25 @@ public:
 
 	static void doStop(void);
 
+	static std::vector<std::wstring> parseExcludePatterns(const std::wstring& val);
+	static std::vector<std::wstring> parseIncludePatterns(const std::wstring& val, std::vector<int>& include_depth,
+		std::vector<std::wstring>& include_prefix);
+
+	static bool isExcluded(const std::vector<std::wstring>& exlude_dirs, const std::wstring &path);
+	static bool isIncluded(const std::vector<std::wstring>& include_dirs, const std::vector<int>& include_depth,
+		const std::vector<std::wstring>& include_prefix, const std::wstring &path, bool *adding_worthless);
+
 private:
 
-	void readBackupDirs(void);
+	bool readBackupDirs(void);
 	bool initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db);
 
 	void indexDirs(void);
 
 	void updateDirs(void);
 
-	std::wstring sanitizePattern(const std::wstring &p);
-	void readPatterns(bool &pattern_changed, bool update_saved_patterns);
-	bool isExcluded(const std::wstring &path);
-	bool isIncluded(const std::wstring &path, bool *adding_worthless);
+	static std::wstring sanitizePattern(const std::wstring &p);
+	void readPatterns(bool &pattern_changed, bool update_saved_patterns);	
 
 	std::vector<SFileAndHash> getFilesProxy(const std::wstring &orig_path, std::wstring path, const std::wstring& named_path, bool use_db=true);
 
@@ -176,7 +182,7 @@ private:
 
 	void resetFileEntries(void);
 
-	void addFileExceptions(void);
+	static void addFileExceptions(std::vector<std::wstring>& exlude_dirs);
 
 	void handleHardLinks(const std::wstring& bpath, const std::wstring& vsspath);
 
@@ -188,7 +194,7 @@ private:
 
 	void readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files);
 
-	void writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions);
+	void writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra=std::string());
 
 	std::string starttoken;
 
@@ -237,6 +243,7 @@ private:
 
 	int end_to_end_file_backup_verification_enabled;
 	int calculate_filehashes_on_client;
+	int index_group;
 
 	int64 last_tmp_update_time;
 

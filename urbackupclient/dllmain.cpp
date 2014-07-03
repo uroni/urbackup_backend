@@ -444,6 +444,13 @@ void update_client14_15(IDatabase *db)
 	db->Write("DELETE FROM files");
 }
 
+void update_client15_16(IDatabase *db)
+{
+	db->Write("CREATE TABLE continuous_watch_queue (id INTEGER PRIMARY KEY, data_size INTEGER, data BLOB)");
+	db->Write("ALTER TABLE backupdirs ADD group INTEGER");
+	db->Write("UPDATE backupdirs SET group=0 WHERE group IS NULL");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);

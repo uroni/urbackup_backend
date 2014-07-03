@@ -31,29 +31,29 @@ void ClientDAO::prepareQueries(void)
 {
 	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=?", false);
 	q_add_files=db->Prepare("INSERT INTO files_tmp (name, num, data) VALUES (?,?,?)", false);
-	q_get_dirs=db->Prepare("SELECT name, path, id, optional FROM backupdirs", false);
+	q_get_dirs=db->Prepare("SELECT name, path, id, optional, continuous FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
-	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs UNION SELECT id, name FROM mdirs_backup", false);
-	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs", false);
+	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
+	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs GLOB ?", false);
 	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=?", false);
 	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=?", false);
 	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs, starttoken) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)", false);
 	q_get_shadowcopies=db->Prepare("SELECT id, vssid, ssetid, target, path, tname, orig_target, filesrv, vol, (strftime('%s','now') - strftime('%s', starttime)) AS passedtime, refs, starttoken FROM shadowcopies", false);
 	q_remove_shadowcopies=db->Prepare("DELETE FROM shadowcopies WHERE id=?", false);
-	q_save_changed_dirs=db->Prepare("INSERT OR REPLACE INTO mdirs_backup SELECT id,name FROM mdirs", false);
+	q_save_changed_dirs=db->Prepare("INSERT OR REPLACE INTO mdirs_backup SELECT id, name FROM mdirs WHERE name GLOB ?", false);
 	q_delete_saved_changed_dirs=db->Prepare("DELETE FROM mdirs_backup", false);
 	q_copy_from_tmp_files=db->Prepare("INSERT INTO files (num, data, name) SELECT num, data, name FROM files_tmp", false);
 	q_delete_tmp_files=db->Prepare("DELETE FROM files_tmp", false);
 	q_has_changed_gap=db->Prepare("SELECT name FROM mdirs WHERE name GLOB '##-GAP-##*'", false);
-	q_get_del_dirs=db->Prepare("SELECT name FROM del_dirs UNION SELECT name FROM del_dirs_backup", false);
-	q_del_del_dirs=db->Prepare("DELETE FROM del_dirs", false);
-	q_copy_del_dirs=db->Prepare("INSERT INTO del_dirs_backup SELECT name FROM del_dirs", false);
+	q_get_del_dirs=db->Prepare("SELECT name FROM del_dirs WHERE name GLOB ? UNION SELECT name FROM del_dirs_backup WHERE name GLOB ?", false);
+	q_del_del_dirs=db->Prepare("DELETE FROM del_dirs WHERE name GLOB ?", false);
+	q_copy_del_dirs=db->Prepare("INSERT INTO del_dirs_backup SELECT name FROM del_dirs WHERE name GLOB ?", false);
 	q_del_del_dirs_copy=db->Prepare("DELETE FROM del_dirs_backup", false);
 	q_remove_del_dir=db->Prepare("DELETE FROM files WHERE name GLOB ?", false);
 	q_get_shadowcopy_refcount=db->Prepare("SELECT refs FROM shadowcopies WHERE id=?", false);
 	q_set_shadowcopy_refcount=db->Prepare("UPDATE shadowcopies SET refs=? WHERE id=?", false);
-	q_save_changed_files=db->Prepare("INSERT OR REPLACE INTO mfiles_backup SELECT dir_id,name FROM mfiles", false);
-	q_remove_changed_files=db->Prepare("DELETE FROM mfiles", false);
+	q_save_changed_files=db->Prepare("INSERT OR REPLACE INTO mfiles_backup SELECT dir_id,name FROM mfiles WHERE dir_id=?", false);
+	q_remove_changed_files=db->Prepare("DELETE FROM mfiles WHERE dir_id=?", false);
 	q_delete_saved_changed_files=db->Prepare("DELETE FROM mfiles_backup", false);
 	q_has_changed_file=db->Prepare("SELECT dir_id FROM mfiles_backup WHERE dir_id=? AND name=? UNION SELECT dir_id FROM mfiles WHERE dir_id=? AND name=?", false);
 	q_get_changed_files=db->Prepare("SELECT name FROM mfiles_backup WHERE dir_id=? UNION SELECT name FROM mfiles WHERE dir_id=?", false);
@@ -297,6 +297,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.tname=res[i][L"name"];
 		dir.path=res[i][L"path"];
 		dir.optional=(res[i][L"optional"]==L"1");
+		dir.group=watoi(res[i][L"group"]);
 
 		if(dir.tname!=L"*")
 			ret.push_back(dir);
@@ -309,23 +310,25 @@ void ClientDAO::removeAllFiles(void)
 	q_remove_all->Write();
 }
 
-std::vector<SMDir> ClientDAO::getChangedDirs(bool del)
+std::vector<SMDir> ClientDAO::getChangedDirs(const std::wstring& path, bool del)
 {
 	std::vector<SMDir> ret;
-	db->BeginTransaction();
 
 	if(del)
 	{
+		q_save_changed_dirs->Bind(path+os_file_sep()+L"*");
 		q_save_changed_dirs->Write();
 		q_save_changed_dirs->Reset();
+		q_remove_changed_dirs->Bind(path+os_file_sep()+L"*");
 		q_remove_changed_dirs->Write();
 		q_remove_changed_dirs->Reset();
 	}
 
+	q_get_changed_dirs->Bind(path+os_file_sep()+L"*");
+	q_get_changed_dirs->Bind(path+os_file_sep()+L"*");
 	db_results res=q_get_changed_dirs->Read();
 	q_get_changed_dirs->Reset();
 
-	db->EndTransaction();
 	for(size_t i=0;i<res.size();++i)
 	{
 		ret.push_back(SMDir(watoi64(res[i][L"id"]), res[i][L"name"] ) );
@@ -333,16 +336,16 @@ std::vector<SMDir> ClientDAO::getChangedDirs(bool del)
 	return ret;
 }
 
-void ClientDAO::moveChangedFiles(bool del)
+void ClientDAO::moveChangedFiles(_i64 dir_id, bool del)
 {
 	if(del)
 	{
-		db->BeginTransaction();
+		q_save_changed_files->Bind(dir_id);
 		q_save_changed_files->Write();
 		q_save_changed_files->Reset();
+		q_remove_changed_files->Bind(dir_id);
 		q_remove_changed_files->Write();
 		q_remove_changed_files->Reset();
-		db->EndTransaction();
 	}	
 }
 
@@ -441,8 +444,16 @@ bool ClientDAO::hasChangedGap(void)
 	return !res.empty();
 }
 
-void ClientDAO::deleteChangedDirs(void)
+void ClientDAO::deleteChangedDirs(const std::wstring& path)
 {
+	if(path.empty())
+	{
+		q_remove_changed_dirs->Bind("*");
+	}
+	else
+	{
+		q_remove_changed_dirs->Bind(path+os_file_sep()+L"*");
+	}
 	q_remove_changed_dirs->Write();
 	q_remove_changed_dirs->Reset();
 }
@@ -461,23 +472,25 @@ std::vector<std::wstring> ClientDAO::getGapDirs(void)
 	return ret;
 }
 
-std::vector<std::wstring> ClientDAO::getDelDirs(bool del)
+std::vector<std::wstring> ClientDAO::getDelDirs(const std::wstring& path, bool del)
 {
 	std::vector<std::wstring> ret;
-	db->BeginTransaction();
 
 	if(del)
 	{
+		q_copy_del_dirs->Bind(path+os_file_sep()+L"*");
 		q_copy_del_dirs->Write();
 		q_copy_del_dirs->Reset();
+		q_del_del_dirs->Bind(path+os_file_sep()+L"*");
 		q_del_del_dirs->Write();
 		q_del_del_dirs->Reset();
 	}
 
+	q_get_del_dirs->Bind(path+os_file_sep()+L"*");
+	q_get_del_dirs->Bind(path+os_file_sep()+L"*");
 	db_results res=q_get_del_dirs->Read();
 	q_get_del_dirs->Reset();
 
-	db->EndTransaction();
 	for(size_t i=0;i<res.size();++i)
 	{
 		ret.push_back(res[i][L"name"]);

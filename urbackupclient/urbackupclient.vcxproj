@@ -77,6 +77,8 @@
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
+    <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp" />
+    <ClCompile Include="watchdir\JournalDAO.cpp" />
     <ClCompile Include="win_all_volumes.cpp" />
     <ClCompile Include="win_sysvol.cpp" />
     <ClCompile Include="win_tokens.cpp" />
@@ -106,6 +108,8 @@
     <ClInclude Include="ImageThread.h" />
     <ClInclude Include="InternetClient.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
+    <ClInclude Include="watchdir\ContinuousWatchEnqueue.h" />
+    <ClInclude Include="watchdir\JournalDAO.h" />
     <ClInclude Include="win_all_volumes.h" />
     <ClInclude Include="win_sysvol.h" />
     <ClInclude Include="win_tokens.h" />

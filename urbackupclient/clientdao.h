@@ -30,6 +30,7 @@ struct SBackupDir
 	std::wstring tname;
 	std::wstring path;
 	bool optional;
+	int group;
 };
 
 struct SShadowCopy
@@ -115,9 +116,9 @@ public:
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
-	std::vector<SMDir> getChangedDirs(bool del=true);
+	std::vector<SMDir> getChangedDirs(const std::wstring& path, bool del=true);
 
-	void moveChangedFiles(bool del=true);
+	void moveChangedFiles(_i64 dir_id, bool del=true);
 
 	std::vector<std::wstring> getChangedFiles(_i64 dir_id);
 	bool hasFileChange(_i64 dir_id, std::wstring fn);
@@ -132,11 +133,11 @@ public:
 	void deleteSavedChangedDirs(void);
 
 	bool hasChangedGap(void);
-	void deleteChangedDirs(void);
+	void deleteChangedDirs(const std::wstring& path);
 
 	std::vector<std::wstring> getGapDirs(void);
 
-	std::vector<std::wstring> getDelDirs(bool del=true);
+	std::vector<std::wstring> getDelDirs(const std::wstring& path, bool del=true);
 	void deleteSavedDelDirs(void);
 
 	void removeDeletedDir(const std::wstring &dir);

@@ -229,14 +229,14 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		server_get->sendToPipe("START IMAGE INCR");
 	}
-	else if(msg.find("LOGIN ")==0 && !internet_mode)
+	else if(next(msg, 0, "LOGIN ") && !internet_mode)
 	{
 		std::string s_params=msg.substr(6);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 		LOGIN(params);
 	}
-	else if(msg.find("SALT ")==0 && !internet_mode)
+	else if(next(msg, 0, "SALT ") && !internet_mode)
 	{
 		std::string s_params=msg.substr(5);
 		str_map params;
@@ -252,7 +252,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		GET_BACKUPIMAGES(name);
 	}
-	else if(msg.find("DOWNLOAD IMAGE ")==0 && !internet_mode && hasDownloadImageRights())
+	else if(next(msg, 0, "DOWNLOAD IMAGE ") && !internet_mode && hasDownloadImageRights())
 	{
 		std::string s_params=msg.substr(15);
 		str_map params;

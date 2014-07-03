@@ -6,6 +6,7 @@
 #include "../Interface/Condition.h"
 #include "database.h"
 #include "ChangeJournalWatcher.h"
+#include "watchdir/JournalDAO.h"
 #include <list>
 
 struct SLastEntries
@@ -28,12 +29,15 @@ public:
 
 	void stop(void);
 
-	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName);
-    void On_FileRemoved(const std::wstring & strFileName);
-    void On_FileAdded(const std::wstring & strFileName);
-    void On_FileModified(const std::wstring & strFileName, bool save_fn);
+	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed);
+	void On_DirNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed );
+    void On_FileRemoved(const std::wstring & strFileName, bool closed);
+    void On_FileAdded(const std::wstring & strFileName, bool closed);
+	void On_DirAdded( const std::wstring & strFileName, bool closed );
+    void On_FileModified(const std::wstring & strFileName, bool save_fn, bool closed);
 	void On_ResetAll(const std::wstring &vol);
-	void On_DirRemoved(const std::wstring & strDirName);
+	void On_DirRemoved(const std::wstring & strDirName, bool closed);
+	void Commit(const std::vector<IChangeJournalListener::SSequence>& sequences);
 
 	void OnDirMod(const std::wstring &dir, const std::wstring &fn);
 	void OnDirRm(const std::wstring &dir);
@@ -50,6 +54,8 @@ public:
 	static void commit_last_backup_time(void);
 
 	static _i64 get_current_filetime();
+
+	
 
 private:
 	static IPipe *pipe;
@@ -72,15 +78,4 @@ private:
 	static ICondition *update_cond;
 
 	int64 last_backup_filetime;
-};
-
-class ChangeListener : public IChangeJournalListener
-{
-public:
-	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName);
-    void On_FileRemoved(const std::wstring & strFileName);
-    void On_FileAdded(const std::wstring & strFileName);
-    void On_FileModified(const std::wstring & strFileName, bool save_fn);
-	void On_ResetAll(const std::wstring &vol);
-	void On_DirRemoved(const std::wstring & strDirName);
 };

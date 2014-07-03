@@ -101,6 +101,8 @@ public:
 
 	static bool isBackupRunning();
 
+	static bool tochannelSendChanges(const char* changes, size_t changes_size);
+
 private:
 	bool checkPassword(const std::wstring &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default=false);
@@ -213,6 +215,7 @@ private:
 	static std::vector<std::string> new_server_idents;
 	static bool end_to_end_file_backup_verification_enabled;
 	static std::map<std::string, std::string> challenges;
+	static bool has_file_changes;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;

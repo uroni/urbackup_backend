@@ -21,16 +21,15 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include "DirectoryWatcherThread.h"
+#include <memory>
 
 const DWORDLONG usn_reindex_num=1000000; // one million
 
 #define VLOG(x) 
 
-ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener)
-	: dwt(dwt), listener(pListener), db(pDB), last_backup_time(0)
+ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB)
+	: dwt(dwt), db(pDB), last_backup_time(0), journal_dao(pDB)
 {
-	createQueries();
-
 	indexing_in_progress=false;
 	has_error=false;
 	last_index_update=0;
@@ -44,49 +43,19 @@ ChangeJournalWatcher::~ChangeJournalWatcher(void)
 	}
 }
 
-void ChangeJournalWatcher::createQueries(void)
-{
-	q_get_dev_id=db->Prepare("SELECT journal_id, last_record, index_done FROM journal_ids WHERE device_name=?");
-	q_has_root=db->Prepare("SELECT id FROM map_frn WHERE rid=-1 AND name=?");
-	q_add_root=db->Prepare("INSERT INTO map_frn (name, pid, frn, rid) VALUES (?, -1, -1, -1)");
-	q_add_frn=db->Prepare("INSERT INTO map_frn (name, pid, frn, rid) VALUES (?, ?, ?, ?)");
-	q_reset_root=db->Prepare("DELETE FROM map_frn WHERE rid=?");
-	q_get_entry=db->Prepare("SELECT id FROM map_frn WHERE frn=? AND rid=?");
-	q_get_children=db->Prepare("SELECT id,frn FROM map_frn WHERE pid=? AND rid=?");
-	q_del_entry=db->Prepare("DELETE FROM map_frn WHERE id=?");
-	q_get_name=db->Prepare("SELECT name,pid FROM map_frn WHERE frn=? AND rid=?");
-	q_add_journal=db->Prepare("INSERT INTO journal_ids (journal_id, device_name, last_record, index_done) VALUES (?,?,?,0)");
-	q_update_journal_id=db->Prepare("UPDATE journal_ids SET journal_id=? WHERE device_name=?");
-	q_update_lastusn=db->Prepare("UPDATE journal_ids SET last_record=? WHERE device_name=?");
-	q_rename_entry=db->Prepare("UPDATE map_frn SET name=?, pid=? WHERE id=?");
-	q_save_journal_data=db->Prepare("INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, parent_frn, next_usn, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-	q_get_journal_data=db->Prepare("SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data WHERE device_name=? ORDER BY usn ASC");
-	q_set_index_done=db->Prepare("UPDATE journal_ids SET index_done=? WHERE device_name=?");
-	q_del_journal_data=db->Prepare("DELETE FROM journal_data WHERE device_name=?");
-	q_del_entry_frn=db->Prepare("DELETE FROM map_frn WHERE frn=? AND rid=?");
-	q_del_journal_id=db->Prepare("DELETE FROM journal_ids WHERE device_name=?");
-}
-
 void ChangeJournalWatcher::deleteJournalData(const std::wstring &vol)
 {
-	q_del_journal_data->Bind(vol);
-	q_del_journal_data->Write();
-	q_del_journal_data->Reset();
+	journal_dao.delJournalData(vol);
 }
 
 void ChangeJournalWatcher::deleteJournalId(const std::wstring &vol)
 {
-	q_del_journal_id->Bind(vol);
-	q_del_journal_id->Write();
-	q_del_journal_id->Reset();
+	journal_dao.delJournalDeviceId(vol);
 }
 
 void ChangeJournalWatcher::setIndexDone(const std::wstring &vol, int s)
 {
-	q_set_index_done->Bind(s);
-	q_set_index_done->Bind(vol);
-	q_set_index_done->Write();
-	q_set_index_done->Reset();
+	journal_dao.updateSetJournalIndexDone(s, vol);
 }
 
 void ChangeJournalWatcher::saveJournalData(DWORDLONG journal_id, const std::wstring &vol, PUSN_RECORD rec, USN nextUsn)
@@ -98,114 +67,80 @@ void ChangeJournalWatcher::saveJournalData(DWORDLONG journal_id, const std::wstr
 	if(fn==L"backup_client.db" || fn==L"backup_client.db-journal" )
 		return;
 
-	q_save_journal_data->Bind(vol);
-	q_save_journal_data->Bind((_i64)journal_id);
-	q_save_journal_data->Bind((_i64)rec->Usn);
-	q_save_journal_data->Bind((_i64)rec->Reason);
-	q_save_journal_data->Bind(fn);
-	q_save_journal_data->Bind((_i64)rec->FileReferenceNumber);
-	q_save_journal_data->Bind((_i64)rec->ParentFileReferenceNumber);
-	q_save_journal_data->Bind(nextUsn);
-	q_save_journal_data->Bind((_i64)rec->FileAttributes);
-	
-	q_save_journal_data->Write();
-	q_save_journal_data->Reset();
+	journal_dao.insertJournalData(vol, static_cast<int64>(journal_id), static_cast<int64>(rec->Usn),
+		static_cast<int64>(rec->Reason), fn, static_cast<int64>(rec->FileReferenceNumber),
+		static_cast<int64>(rec->ParentFileReferenceNumber), nextUsn, static_cast<int64>(rec->FileAttributes));
 }
 
 std::vector<UsnInt> ChangeJournalWatcher::getJournalData(const std::wstring &vol)
 {
-	q_get_journal_data->Bind(vol);
-	db_results res=q_get_journal_data->Read();
-	q_get_journal_data->Reset();
+	std::vector<JournalDAO::SJournalData> res = journal_dao.getJournalData(vol);
+
 	std::vector<UsnInt> ret;
-	for(size_t i=0;i<res.size();++i)
+	ret.resize(res.size());
+
+	for(size_t i=0;i<ret.size();++i)
 	{
-		UsnInt rec;
-		rec.Usn=os_atoi64(wnarrow(res[i][L"usn"]));
-		rec.Reason=(DWORD)os_atoi64(wnarrow(res[i][L"reason"]));
-		rec.Filename=res[i][L"filename"];
-		rec.FileReferenceNumber=os_atoi64(wnarrow(res[i][L"frn"]));
-		rec.ParentFileReferenceNumber=os_atoi64(wnarrow(res[i][L"parent_frn"]));
-		rec.NextUsn=os_atoi64(wnarrow(res[i][L"next_usn"]));
-		rec.attributes=(DWORD)os_atoi64(wnarrow(res[i][L"attributes"]));
-		ret.push_back(rec);
+		UsnInt& rec=ret[i];
+		rec.Usn=res[i].usn;
+		rec.Reason=static_cast<DWORD>(res[i].reason);
+		rec.Filename=res[i].filename;
+		rec.FileReferenceNumber=res[i].frn;
+		rec.ParentFileReferenceNumber=res[i].parent_frn;
+		rec.NextUsn=res[i].next_usn;
+		rec.attributes=static_cast<DWORD>(res[i].attributes);
 	}
 	return ret;
 }
 
 void ChangeJournalWatcher::renameEntry(const std::wstring &name, _i64 id, _i64 pid)
 {
-	q_rename_entry->Bind(name);
-	q_rename_entry->Bind(pid);
-	q_rename_entry->Bind(id);
-	q_rename_entry->Write();
-	q_rename_entry->Reset();
+	journal_dao.updateFrnNameAndPid(name, pid, id);
 }
 
 std::vector<_i64 > ChangeJournalWatcher::getChildren(_i64 frn, _i64 rid)
 {
-	std::vector<_i64> ret;
-	q_get_children->Bind(frn);
-	q_get_children->Bind(rid);
-	db_results res=q_get_children->Read();
-	q_get_children->Reset();
-	for(size_t i=0;i<res.size();++i)
-	{
-		ret.push_back(os_atoi64(wnarrow(res[i][L"frn"])));
-	}
-	return ret;
+	return journal_dao.getFrnChildren(frn, rid);
 }
 
 void ChangeJournalWatcher::deleteEntry(_i64 id)
 {
-	q_del_entry->Bind(id);
-	q_del_entry->Write();
-	q_del_entry->Reset();
+	journal_dao.delFrnEntry(id);
 }
 
 void ChangeJournalWatcher::deleteEntry(_i64 frn, _i64 rid)
 {
-	q_del_entry_frn->Bind(frn);
-	q_del_entry_frn->Bind(rid);
-	q_del_entry_frn->Write();
-	q_del_entry_frn->Reset();
+	journal_dao.delFrnEntryViaFrn(frn, rid);
 }
 
 _i64 ChangeJournalWatcher::hasEntry( _i64 rid, _i64 frn)
 {
-	q_get_entry->Bind(frn);
-	q_get_entry->Bind(rid);
-	db_results res=q_get_entry->Read();
-	q_get_entry->Reset();
-	if(res.empty())
-		return -1;
+	JournalDAO::CondInt64 res = journal_dao.getFrnEntryId(frn, rid);
+
+	if(res.exists)
+	{
+		return res.value;
+	}
 	else
-		return os_atoi64(wnarrow(res[0][L"id"]));
+	{
+		return -1;
+	}
 }
 
 void ChangeJournalWatcher::resetRoot(_i64 rid)
 {
-	q_reset_root->Bind(rid);
-	q_reset_root->Write();
-	q_reset_root->Reset();
+	journal_dao.resetRoot(rid);
 }
 
 _i64 ChangeJournalWatcher::addRoot(const std::wstring &root)
 {
-	q_add_root->Bind(root);
-	q_add_root->Write();
-	q_add_root->Reset();
+	journal_dao.addRoot(root);
 	return db->getLastInsertID();
 }
 
 void ChangeJournalWatcher::addFrn(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid)
 {
-	q_add_frn->Bind(name);
-	q_add_frn->Bind(parent_id);
-	q_add_frn->Bind(frn);
-	q_add_frn->Bind(rid);
-	q_add_frn->Write();
-	q_add_frn->Reset();
+	journal_dao.addFrn(name, parent_id, frn, rid);
 }
 
 void ChangeJournalWatcher::addFrnTmp(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid)
@@ -220,14 +155,15 @@ void ChangeJournalWatcher::addFrnTmp(const std::wstring &name, _i64 parent_id, _
 
 _i64 ChangeJournalWatcher::hasRoot(const std::wstring &root)
 {
-	q_has_root->Bind(root);
-	db_results res=q_has_root->Read();
-	q_has_root->Reset();
-	if(res.empty())
-		return -1;
+	JournalDAO::CondInt64 res = journal_dao.getRootId(root);
+
+	if(res.exists)
+	{
+		return res.value;
+	}
 	else
 	{
-		return os_atoi64(wnarrow(res[0][L"id"]));
+		return -1;
 	}
 }
 
@@ -248,7 +184,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	if(!ok)
 	{
 		Server->Log("GetVolumePathName(dir, volume_path, MAX_PATH) failed in ChangeJournalWatcher::watchDir", LL_ERROR);
-		listener->On_ResetAll(dir);
+		resetAll(dir);
 		has_error=true;
 		error_dirs.push_back(dir);
 		return;
@@ -276,7 +212,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	_i64 rid=hasRoot(vol);
 	if(rid==-1)
 	{
-		listener->On_ResetAll(vol);
+		resetAll(vol);
 		do_index=true;
 		rid=addRoot(vol);
 		setIndexDone(vol, 0);
@@ -286,7 +222,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
 		Server->Log(L"CreateFile of volume '"+vol+L"' failed. - watchDir", LL_ERROR);
-		listener->On_ResetAll(vol);
+		resetAll(vol);
 		error_dirs.push_back(vol);
 		CloseHandle(hVolume);
 		has_error=true;
@@ -302,7 +238,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		if(err==ERROR_INVALID_FUNCTION)
 		{
 			Server->Log(L"Change Journals not supported for Volume '"+vol+L"'", LL_ERROR);
-			listener->On_ResetAll(vol);
+			resetAll(vol);
 			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
@@ -311,7 +247,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		else if(err==ERROR_JOURNAL_DELETE_IN_PROGRESS)
 		{
 			Server->Log(L"Change Journals for Volume '"+vol+L"' is being deleted", LL_ERROR);
-			listener->On_ResetAll(vol);
+			resetAll(vol);
 			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
@@ -327,7 +263,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 			if(r==0)
 			{
 				Server->Log(L"Error creating change journal for Volume '"+vol+L"'", LL_ERROR);
-				listener->On_ResetAll(vol);
+				resetAll(vol);
 				error_dirs.push_back(vol);
 				CloseHandle(hVolume);
 				has_error=true;
@@ -337,7 +273,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 			if(b==0)
 			{
 				Server->Log(L"Unknown error for Volume '"+vol+L"' after creation - watchDir", LL_ERROR);
-				listener->On_ResetAll(vol);
+				resetAll(vol);
 				error_dirs.push_back(vol);
 				CloseHandle(hVolume);
 				has_error=true;
@@ -347,7 +283,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		else
 		{
 			Server->Log(L"Unknown error for Volume '"+vol+L"' - watchDir ec: "+convert((int)err), LL_ERROR);
-			listener->On_ResetAll(vol);
+			resetAll(vol);
 			error_dirs.push_back(vol);
 			CloseHandle(hVolume);
 			has_error=true;
@@ -362,15 +298,12 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 		if(info.journal_id!=data.UsnJournalID)
 		{
 			Server->Log(L"Journal id for '"+vol+L"' wrong - reindexing", LL_WARNING);
-			listener->On_ResetAll(vol);
+			resetAll(vol);
 			do_index=true;
 			setIndexDone(vol, 0);
 			info.last_record=data.NextUsn;
 
-			q_update_journal_id->Bind((_i64)data.UsnJournalID);
-			q_update_journal_id->Bind(vol);
-			q_update_journal_id->Write();
-			q_update_journal_id->Reset();
+			journal_dao.updateJournalId((_i64)data.UsnJournalID, vol);
 		}
 
 		bool needs_reindex=false;
@@ -392,7 +325,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 
 		if(needs_reindex)
 		{			
-			listener->On_ResetAll(vol);
+			resetAll(vol);
 			do_index=true;
 			setIndexDone(vol, 0);
 			info.last_record=data.NextUsn;
@@ -408,7 +341,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	}
 	else
 	{
-		listener->On_ResetAll(vol);
+		resetAll(vol);
 		Server->Log(L"Info not found at '"+vol+L"' - reindexing", LL_WARNING);
 		do_index=true;
 	}
@@ -423,16 +356,11 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	cj.path.push_back(dir);
 	cj.hVolume=hVolume;
 	cj.rid=rid;
-	cj.last_record_update=false;
 	cj.vol_str=vol;
 
 	if(!info.has_info)
 	{
-		q_add_journal->Bind((_i64)data.UsnJournalID);
-		q_add_journal->Bind(vol);
-		q_add_journal->Bind(cj.last_record);
-		q_add_journal->Write();
-		q_add_journal->Reset();
+		journal_dao.insertJournal((_i64)data.UsnJournalID, vol, cj.last_record);
 
 		setIndexDone(vol, 0);
 	}
@@ -459,7 +387,7 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	deleteJournalData(vol);
 	Server->Log("Starting indexing process..", LL_DEBUG);
 	indexRootDirs2(vol, sj);
-	listener->On_ResetAll(vol);
+	resetAll(vol);
 	indexing_in_progress=false;
 	indexing_volume.clear();
 
@@ -537,12 +465,15 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	med.HighUsn = MAXLONGLONG; //sj->last_record;
 
 	// Process MFT in 64k chunks
-	BYTE *pData=new BYTE[sizeof(DWORDLONG) + 0x10000];
+	const size_t data_size = sizeof(DWORDLONG) + 0x10000;
+	std::vector<BYTE> data;
+	data.resize(data_size);
+	BYTE* pData=&data[0];
 	DWORDLONG fnLast = 0;
 	DWORD cb;
 	size_t nDirFRNs=0;
 	size_t nFRNs=0;
-	while (DeviceIoControl(sj->hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med),pData, sizeof(DWORDLONG) + 0x10000, &cb, NULL) != FALSE)
+	while (DeviceIoControl(sj->hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med), pData, data_size, &cb, NULL) != FALSE)
 	{
 		if(indexing_in_progress)
 		{
@@ -580,7 +511,6 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	Server->Log("Added "+nconvert(nDirFRNs)+" directory FRNs to temporary database...", LL_DEBUG);
 	Server->Log("MFT has "+nconvert(nFRNs)+" FRNs.", LL_DEBUG);
 
-	delete []pData;
 	db->destroyQuery(q_add_frn_tmp);
 	q_add_frn_tmp=NULL;
 	Server->Log("Copying directory FRNs to database...", LL_DEBUG);
@@ -594,17 +524,15 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 
 SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
 {
-	q_get_dev_id->Bind(name);
-	db_results res=q_get_dev_id->Read();
-	q_get_dev_id->Reset();
+	JournalDAO::SDeviceInfo device_info = journal_dao.getDeviceInfo(name);
 	SDeviceInfo r;
 	r.has_info=false;
-	if(!res.empty())
+	if(device_info.exists)
 	{
 		r.has_info=true;
-		r.journal_id=os_atoi64(wnarrow(res[0][L"journal_id"]));
-		r.last_record=os_atoi64(wnarrow(res[0][L"last_record"]));
-		r.index_done=watoi(res[0][L"index_done"])>0;
+		r.journal_id=device_info.journal_id;
+		r.last_record=device_info.last_record;
+		r.index_done=device_info.index_done>0;
 	}
 	return r;
 }
@@ -615,22 +543,20 @@ std::wstring ChangeJournalWatcher::getFilename(_i64 frn, _i64 rid)
 	_i64 curr_id=frn;
 	while(true)
 	{
-		q_get_name->Bind(curr_id);
-		q_get_name->Bind(rid);
-		db_results res=q_get_name->Read();
-		q_get_name->Reset();
+		JournalDAO::SNameAndPid res = 
+			journal_dao.getNameAndPid(curr_id, rid);
 
-		if(!res.empty())
+		if(res.exists)
 		{
-			_i64 pid=os_atoi64(wnarrow(res[0][L"pid"]));
+			_i64 pid=res.pid;
 			if(pid!=-1)
 			{
-				path=res[0][L"name"]+os_file_sep()+path;
+				path=res.name+os_file_sep()+path;
 				curr_id=pid;
 			}
 			else
 			{
-				path=res[0][L"name"]+os_file_sep()+path;
+				path=res.name+os_file_sep()+path;
 				break;
 			}
 		}
@@ -654,6 +580,10 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 	char buffer[BUF_LEN];
 
 	bool started_transaction=false;
+
+	num_changes=0;
+
+	std::vector<IChangeJournalListener::SSequence> usn_sequences;
 
 	for(std::map<std::wstring, SChangeJournal>::iterator it=wdirs.begin();it!=wdirs.end();++it)
 	{
@@ -684,21 +614,6 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 			}
 		}
 
-		if(it->second.last_record_update)
-		{
-			if(started_transaction==false)
-			{
-				started_transaction=true;
-				db->BeginTransaction();
-			}
-
-			it->second.last_record_update=false;
-			q_update_lastusn->Bind(it->second.last_record);
-			q_update_lastusn->Bind(it->first);
-			q_update_lastusn->Write();
-			q_update_lastusn->Reset();
-		}
-
 		USN startUsn=it->second.last_record;
 		unsigned int update_bytes=0;
 
@@ -709,7 +624,7 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 			c=false;
 			READ_USN_JOURNAL_DATA data;
 			data.StartUsn=it->second.last_record;
-			data.ReasonMask=0xFFFFFFFF;//USN_REASON_DATA_EXTEND|USN_REASON_BASIC_INFO_CHANGE|USN_REASON_DATA_OVERWRITE|USN_REASON_DATA_TRUNCATION|USN_REASON_EA_CHANGE|USN_REASON_FILE_CREATE|USN_REASON_FILE_DELETE|USN_REASON_HARD_LINK_CHANGE|USN_REASON_NAMED_DATA_EXTEND|USN_REASON_NAMED_DATA_OVERWRITE|USN_REASON_NAMED_DATA_TRUNCATION|USN_REASON_RENAME_NEW_NAME|USN_REASON_REPARSE_POINT_CHANGE|USN_REASON_SECURITY_CHANGE|USN_REASON_STREAM_CHANGE;
+			data.ReasonMask=0xFFFFFFFF;
 			data.ReturnOnlyOnClose=0;
 			data.Timeout=0;
 			data.BytesToWaitFor=0;
@@ -731,11 +646,6 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 				else if(update_bytes>5000)
 				{
 					update_bytes=0;
-					/*q_update_lastusn->Bind(it->second.last_record);
-					q_update_lastusn->Bind(it->first);
-					q_update_lastusn->Write();
-					q_update_lastusn->Reset();
-					startUsn=it->second.last_record;*/
 				}
 
 				USN nextUsn=*(USN *)&buffer;
@@ -760,7 +670,7 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 
 						if(UsnRecord.Filename!=L"backup_client.db" && UsnRecord.Filename!=L"backup_client.db-journal")
 						{
-							if(started_transaction==false)
+							if(!started_transaction)
 							{
 								started_transaction=true;
 								db->BeginTransaction();
@@ -772,7 +682,7 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 					{
 						if(fn!="backup_client.db" && fn!="backup_client.db-journal")
 						{
-							if(started_transaction==false)
+							if(!started_transaction)
 							{
 								started_transaction=true;
 								db->BeginTransaction();
@@ -844,12 +754,12 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 							remove_it=true;
 						}
 					}
-					listener->On_ResetAll(it->first);
+					resetAll(it->first);
 				}
 				else
 				{
 					Server->Log(L"Unknown error for Volume '"+it->first+L"' - update err="+convert((int)err), LL_ERROR);
-					listener->On_ResetAll(it->first);
+					resetAll(it->first);
 					deleteJournalId(it->first);
 					has_error=true;
 					CloseHandle(it->second.hVolume);
@@ -859,23 +769,33 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 			}
 		}
 
+
 		if(startUsn!=it->second.last_record)
 		{
-			it->second.last_record_update=true;
+			if(!started_transaction)
+			{
+				started_transaction=true;
+				db->BeginTransaction();
+			}
+
+			journal_dao.updateJournalLastUsn(it->second.last_record, it->first);
 		}
 
-		if(force_write)
-		{
-			q_update_lastusn->Bind(it->second.last_record);
-			q_update_lastusn->Bind(it->first);
-			q_update_lastusn->Write();
-			q_update_lastusn->Reset();
-		}
+		IChangeJournalListener::SSequence seq = { it->second.journal_id, startUsn, it->second.last_record };
+		usn_sequences.push_back(seq);
 
 		if(remove_it)
 		{
 			wdirs.erase(it);
 			break;
+		}
+	}
+
+	if(num_changes>0)
+	{
+		for(size_t i=0;i<listeners.size();++i)
+		{
+			listeners[i]->Commit(usn_sequences);
 		}
 	}
 
@@ -891,19 +811,21 @@ void ChangeJournalWatcher::update_longliving(void)
 	{
 		for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
 		{
-			listener->On_FileModified(it->first, true);
+			for(size_t i=0;i<listeners.size();++i)
+				listeners[i]->On_FileModified(it->first, true, false);
 		}
 	}
 	else
 	{
 		for(std::map<std::wstring, bool>::iterator it=open_write_files_frozen.begin();it!=open_write_files_frozen.end();++it)
 		{
-			listener->On_FileModified(it->first, true);
+			for(size_t i=0;i<listeners.size();++i)
+				listeners[i]->On_FileModified(it->first, true, false);
 		}
 	}
 	for(size_t i=0;i<error_dirs.size();++i)
 	{
-		listener->On_ResetAll(error_dirs[i]);
+		resetAll(error_dirs[i]);
 	}
 }
 
@@ -980,6 +902,8 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 {
 	VLOG(logEntry(vol, UsnRecord));
 
+	bool closed = (UsnRecord->Reason & USN_REASON_CLOSE)>0;
+
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
 	if(dir_id!=-1) //Is a directory
 	{
@@ -1000,19 +924,46 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				if(UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME )
 				{
 					renameEntry(UsnRecord->Filename, dir_id, UsnRecord->ParentFileReferenceNumber);
+
+					if(UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
+					{
+						++num_changes;
+
+						for(size_t i=0;i<listeners.size();++i)
+							listeners[i]->On_DirNameChanged(rename_old_name, dir_fn+UsnRecord->Filename, closed);
+					}
+					else
+					{
+						++num_changes;
+
+						for(size_t i=0;i<listeners.size();++i)
+							listeners[i]->On_FileNameChanged(rename_old_name, dir_fn+UsnRecord->Filename, false, closed);
+					}
 				}
 				else if(UsnRecord->Reason & USN_REASON_FILE_DELETE)
 				{
 					if(UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
 					{
-						listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
+						++num_changes;
+
+						for(size_t i=0;i<listeners.size();++i)
+							listeners[i]->On_DirRemoved(dir_fn+UsnRecord->Filename, closed);
+					}
+					else
+					{
+						++num_changes;
+
+						for(size_t i=0;i<listeners.size();++i)
+							listeners[i]->On_FileRemoved(dir_fn+UsnRecord->Filename, closed);
 					}
 					deleteWithChildren(UsnRecord->FileReferenceNumber, cj.rid);
 				}
-
-				if(UsnRecord->Reason & watch_flags )
+				else if(UsnRecord->Reason & watch_flags )
 				{
-					listener->On_FileModified(dir_fn+UsnRecord->Filename, false );
+					++num_changes;
+
+					for(size_t i=0;i<listeners.size();++i)
+						listeners[i]->On_FileModified(dir_fn+UsnRecord->Filename, false, closed );
 				}
 			}
 		}
@@ -1025,15 +976,11 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			}
 			else
 			{
-				if(UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
-				{
-					listener->On_DirRemoved(dir_fn+UsnRecord->Filename);
-				}
-				listener->On_FileModified(dir_fn+UsnRecord->Filename, false);
+				rename_old_name=dir_fn+UsnRecord->Filename;
 			}
 		}
 	}
-	else //Is a file
+	else //Is a file or new directory
 	{
 		_i64 parent_id=hasEntry(cj.rid, UsnRecord->ParentFileReferenceNumber);
 		if(parent_id==-1)
@@ -1047,10 +994,20 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			
 			if( UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
 			{
-				if((UsnRecord->Reason & USN_REASON_FILE_CREATE) && (UsnRecord->Reason & USN_REASON_CLOSE) )
+				if(UsnRecord->Reason & USN_REASON_FILE_CREATE)
 				{
-					addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
-				}
+					if(UsnRecord->Reason & USN_REASON_CLOSE)
+					{
+						addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
+					}
+
+					++num_changes;
+
+					for(size_t i=0;i<listeners.size();++i)
+					{
+						listeners[i]->On_DirAdded(dir_fn, closed);
+					}
+				}				
 			}
 			else
 			{
@@ -1073,8 +1030,11 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				}
 			}
 
-			if( (UsnRecord->Reason & USN_REASON_RENAME_OLD_NAME)
-				|| (UsnRecord->Reason & watch_flags) )
+			if(UsnRecord->Reason & USN_REASON_RENAME_OLD_NAME)
+			{
+				rename_old_name=real_fn;
+			}
+			else if( UsnRecord->Reason & watch_flags )
 			{
 				bool save_fn=false;
 				if( ( UsnRecord->Reason & USN_REASON_DATA_OVERWRITE || UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME) &&
@@ -1099,8 +1059,50 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				}
 				
 
-				listener->On_FileModified(real_fn, save_fn);
+				if(UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME)
+				{
+					if( UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
+					{
+						++num_changes;
+
+						for(size_t i=0;i<listeners.size();++i)
+						{
+							listeners[i]->On_DirNameChanged(rename_old_name, real_fn, closed);
+						}
+					}
+					else
+					{
+						++num_changes;
+
+						for(size_t i=0;i<listeners.size();++i)
+						{
+							listeners[i]->On_FileNameChanged(rename_old_name, real_fn, save_fn, closed);
+						}
+					}
+				}
+				else
+				{
+					++num_changes;
+
+					for(size_t i=0;i<listeners.size();++i)
+					{
+						listeners[i]->On_FileModified(real_fn, save_fn, closed);
+					}
+				}
 			}
 		}
 	}
+}
+
+void ChangeJournalWatcher::add_listener( IChangeJournalListener *pListener )
+{
+	listeners.push_back(pListener);
+}
+
+void ChangeJournalWatcher::resetAll( const std::wstring& vol )
+{
+	++num_changes;
+
+	for(size_t i=0;i<listeners.size();++i)
+		listeners[i]->On_ResetAll(vol);
 }

@@ -114,6 +114,12 @@
     <ClCompile Include="win_tokens.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="watchdir\JournalDAO.cpp">
+      <Filter>watchdir</Filter>
+    </ClCompile>
+    <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp">
+      <Filter>watchdir</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -196,6 +202,12 @@
     </ClInclude>
     <ClInclude Include="win_tokens.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="watchdir\JournalDAO.h">
+      <Filter>watchdir</Filter>
+    </ClInclude>
+    <ClInclude Include="watchdir\ContinuousWatchEnqueue.h">
+      <Filter>watchdir</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

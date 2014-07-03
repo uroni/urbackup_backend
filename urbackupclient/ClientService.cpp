@@ -82,6 +82,8 @@ IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::string, std::string> ClientConnector::challenges;
+bool ClientConnector::has_file_changes = false;
+
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -2060,4 +2062,31 @@ bool ClientConnector::isBackupRunning()
 	std::string job = getCurrRunningJob();
 
 	return job!="NOA" && job!="DONE";
+}
+
+bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_size)
+{
+	IScopedLock lock(backup_mutex);
+
+	if(has_file_changes)
+	{
+		return false;
+	}
+
+	if(channel_pipe.pipe==NULL)
+	{
+		has_file_changes = true;
+		return false;
+	}
+
+	std::string changes_str = "CHANGES "+std::string(changes, changes+changes_size);
+
+	CTCPStack tmpstack(channel_pipe.internet_connection);
+	if(tmpstack.Send(channel_pipe.pipe, changes_str)!=changes_str.size())
+	{
+		has_file_changes = true;
+		return false;
+	}
+
+	return true;
 }

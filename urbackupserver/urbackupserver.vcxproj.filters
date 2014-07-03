@@ -270,6 +270,9 @@
     <ClCompile Include="file_metadata.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="server_continuous.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -484,6 +487,9 @@
     </ClInclude>
     <ClInclude Include="serverinterface\backups.h">
       <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="server_continuous.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
