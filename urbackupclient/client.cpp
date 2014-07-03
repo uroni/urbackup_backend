@@ -1405,17 +1405,23 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 
 					SCRef *curr=sc_refs[i];
 					std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+
+					std::vector<std::wstring> paths;
 					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();
 						it!=scdirs_server.end();)
 					{
-						std::map<std::wstring, SCDirs*>::iterator nextit = it;
-						++nextit;
-						if(it->second->ref==curr)
+						paths.push_back(it->first);
+					}
+
+					for(size_t j=0;j<paths.size();++j)
+					{
+						std::map<std::wstring, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
+						if(it!=scdirs_server.end() 
+							&& it->second->ref==curr)
 						{
 							VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
 							release_shadowcopy(it->second, false, -1, dir);
 						}
-						it=nextit;
 					}
 					dir->target=dir->orig_target;
 					continue;
