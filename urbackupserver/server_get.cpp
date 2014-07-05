@@ -51,6 +51,8 @@
 #include <memory>
 #include <assert.h>
 #include <math.h>
+#include <errno.h>
+#include <string.h>
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
 #endif
@@ -211,6 +213,19 @@ namespace
 		{
 			writeFileRepeat(f, "f\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)+"\n");
 		}
+	}
+
+	std::string systemErrorInfo()
+	{
+#ifndef _WIN32
+		int err=errno;
+		std::string ret;
+		ret+=strerror(err);
+		ret+=" (errorcode="+nconvert(err)+")";
+		return ret;
+#else
+		return "errorcode="+nconvert((int)GetLastError());
+#endif
 	}
 }
 
@@ -1773,13 +1788,13 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 
 						if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed. - " + widen(systemErrorInfo()), LL_ERROR);
 							c_has_error=true;
 							break;
 						}
 						if(with_hashes && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
+							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. - " + widen(systemErrorInfo()), LL_ERROR);
 							c_has_error=true;
 							break;
 						}
@@ -2575,7 +2590,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
 								{
-									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed.", LL_ERROR);
+									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed. - " + widen(systemErrorInfo()), LL_ERROR);
 									c_has_error=true;
 									break;
 								}
@@ -2588,13 +2603,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 								{
-									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed.", LL_ERROR);
+									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. - " + widen(systemErrorInfo()), LL_ERROR);
 									c_has_error=true;
 									break;
 								}
 								else
 								{
-									ServerLogger::Log(clientid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist.", LL_WARNING);
+									ServerLogger::Log(clientid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
 								}
 							}
 						}
@@ -3043,7 +3058,7 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 							{
 								if(!no_error)
 								{
-									ServerLogger::Log(clientid, L"Could not remove directory \""+curr_fn+L"\" in ::deleteFilesInSnapshot", LL_ERROR);
+									ServerLogger::Log(clientid, L"Could not remove directory \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo()), LL_ERROR);
 									Server->destroy(tmp);
 									return false;
 								}
@@ -3057,11 +3072,19 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 					{
 						if( curr_dir_exists )
 						{
-							if( !Server->deleteFile(curr_fn) )
+							if( !Server->deleteFile(os_file_prefix(curr_fn)) )
 							{
 								if(!no_error)
 								{
-									ServerLogger::Log(clientid, L"Could not remove file \""+curr_fn+L"\" in ::deleteFilesInSnapshot", LL_ERROR);
+									std::auto_ptr<IFile> tf(Server->openFile(os_file_prefix(curr_fn), MODE_READ));
+									if(tf.get()!=NULL)
+									{
+										ServerLogger::Log(clientid, L"Could not remove file \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo()), LL_ERROR);
+									}
+									else
+									{
+										ServerLogger::Log(clientid, L"Could not remove file \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo())+L". It was already deleted.", LL_ERROR);
+									}
 									Server->destroy(tmp);
 									return false;
 								}
