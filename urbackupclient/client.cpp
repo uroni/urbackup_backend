@@ -1319,6 +1319,8 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 {
 #ifdef _WIN32
 #ifdef ENABLE_VSS
+	const char* crash_consistent_explanation = "This means the files open by this application (e.g. databases) will be backed up in a crash consistent state instead of a properly shutdown state. Properly written applications can recover from system crashes or power failures.";
+
 	cleanup_saved_shadowcopies(true);
 
 	WCHAR volume_path[MAX_PATH]; 
@@ -1567,14 +1569,14 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 		--tries;
 		if(!snapshot_ok && !retryable_error)
 		{
-			VSSLog("Writer is in error state during snapshot creation. Writer data may not be consistent.", LL_ERROR);
+			VSSLog("Writer is in error state during snapshot creation. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
 			break;
 		}
 		else if(!snapshot_ok)
 		{
 			if(tries==0)
 			{
-				VSSLog("Creating snapshot failed after three tries. Giving up. Writer data may not be consistent.", LL_ERROR);
+				VSSLog("Creating snapshot failed after three tries. Giving up. Writer data may not be consistent. " + std::string(crash_consistent_explanation), LL_WARNING);
 				break;
 			}
 			else
