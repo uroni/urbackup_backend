@@ -5004,6 +5004,12 @@ void BackupServerGet::run_script( std::wstring name, const std::wstring& params)
 	name = name + L".bat";
 #endif
 
+	if(!FileExists(wnarrow(name)))
+	{
+		ServerLogger::Log(clientid, L"Script does not exist "+name, LL_DEBUG);
+		return;
+	}
+
 	name+=L" "+params;
 
 	name +=L" 2>&1";
