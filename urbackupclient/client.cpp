@@ -1410,7 +1410,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 
 					std::vector<std::wstring> paths;
 					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();
-						it!=scdirs_server.end();)
+						it!=scdirs_server.end();++it)
 					{
 						paths.push_back(it->first);
 					}
