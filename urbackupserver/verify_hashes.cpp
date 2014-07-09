@@ -82,6 +82,12 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size)
 		return false;
 	}
 
+	if(watoi64(res[L"filesize"])!=f->Size())
+	{
+		Server->Log(L"Filesize of \""+fp+L"\" is wrong", LL_ERROR);
+		return false;
+	}
+
 	std::wstring f_name=ExtractFileName(fp);
 
 	sha512_ctx shactx;
