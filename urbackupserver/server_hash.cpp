@@ -250,6 +250,9 @@ void BackupServerHash::operator()(void)
 				std::string old_file_fn;
 				rd.getStr(&old_file_fn);
 
+				int64 t_filesize;
+				rd.getInt64(&t_filesize);
+
 				IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ_SEQUENTIAL);
 
 				if(tf==NULL)
@@ -260,7 +263,7 @@ void BackupServerHash::operator()(void)
 				else
 				{
 					addFile(backupid, incremental, tf, Server->ConvertToUnicode(tfn), Server->ConvertToUnicode(hashpath), sha2,
-						diff_file, old_file_fn, hashoutput_fn);
+						diff_file, old_file_fn, hashoutput_fn, t_filesize);
 				}
 
 				if(diff_file)
@@ -525,10 +528,8 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 }
 
 void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
-	std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn)
+	std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize)
 {
-	_i64 t_filesize=tf->Size();
-	
 	bool copy=true;
 	bool tries_once;
 	std::wstring ff_last;

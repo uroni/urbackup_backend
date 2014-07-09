@@ -92,6 +92,9 @@ void BackupServerPrepareHash::operator()(void)
 			std::string old_file_fn;
 			rd.getStr(&old_file_fn);
 
+			int64 t_filesize;
+			rd.getInt64(&t_filesize);
+
 			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
 			IFile *old_file=NULL;
 			if(diff_file)
@@ -143,6 +146,7 @@ void BackupServerPrepareHash::operator()(void)
 				data.addString(h);
 				data.addString(hashoutput_fn);
 				data.addString(old_file_fn);
+				data.addInt64(t_filesize);
 
 				output->Write(data.getDataPtr(), data.getDataSize() );
 			}

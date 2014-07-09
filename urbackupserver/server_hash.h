@@ -60,7 +60,7 @@ public:
 private:
 	void prepareSQL(void);
 	void addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
-			std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn);
+			std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize);
 	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath, bool& cache_hit);
 	std::wstring findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath);
 	bool copyFile(IFile *tf, const std::wstring &dest);

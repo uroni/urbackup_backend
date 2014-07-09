@@ -306,7 +306,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old));
+		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old), fd->Size());
 	}
 	return ret;
 }
@@ -488,7 +488,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		pfd_destroy.release();
 		hash_tmp_destroy.release();
-		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput, Server->ConvertToUTF8(dlfiles.filepath_old));
+		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput, Server->ConvertToUTF8(dlfiles.filepath_old), fc_chunked->getSize());
 	}
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
@@ -498,7 +498,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		return true;
 }
 
-void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file)
+void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize)
 {
 	int l_backup_id=backupid;
 
@@ -518,6 +518,7 @@ void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath,
 	}
 
 	data.addString(old_file);
+	data.addInt64(t_filesize);
 
 	ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
 
