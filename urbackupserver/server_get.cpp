@@ -2662,7 +2662,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						bool f_ok=false;
 						if(!curr_sha2.empty())
 						{
-							if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, curr_sha2 , cf.size, false))
+							if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, with_hashes, curr_sha2 , cf.size, true))
 							{
 								f_ok=true;
 								linked_bytes+=cf.size;
