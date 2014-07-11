@@ -153,6 +153,8 @@ bool verify_hashes(std::string arg)
 		}
 	}
 
+	bool delete_failed = Server->getServerParameter("delete_verify_failed")=="true";
+
 	int cid=0;
 	int backupid=0;
 	std::string filter;
@@ -230,11 +232,13 @@ bool verify_hashes(std::string arg)
 
 	_i64 crowid=0;
 
-	IQuery *q_get_files=db->Prepare("SELECT fullpath, shahash, filesize FROM files"+filter);
+	IQuery *q_get_files=db->Prepare("SELECT rowid, fullpath, shahash, filesize FROM files"+filter);
 
 	bool is_okay=true;
 
 	IDatabaseCursor* cursor = q_get_files->Cursor();
+
+	std::vector<int64> todelete;
 
 	db_single_result res_single;
 	while(cursor->next(res_single))
@@ -243,6 +247,11 @@ bool verify_hashes(std::string arg)
 		{
 			v_failure << "Verification of \"" << Server->ConvertToUTF8(res_single[L"fullpath"]) << "\" failed\r\n";
 			is_okay=false;
+
+			if(delete_failed)
+			{
+				todelete.push_back(watoi64(res_single[L"rowid"]));
+			}
 		}
 	}
 	
@@ -253,6 +262,22 @@ bool verify_hashes(std::string arg)
 	}
 	
 	std::cout << std::endl;
+
+	if(delete_failed)
+	{
+		std::cout << "Deleting " << todelete.size() << " file entries with failed verification from database..." << std::endl;
+
+		IQuery* q_del=db->Prepare("DELETE FROM files WHERE rowid=?");
+		for(size_t i=0;i<todelete.size();++i)
+		{
+			q_del->Bind(todelete[i]);
+			q_del->Write();
+			q_del->Reset();
+		}
+
+		std::cout << "done." << std::endl;
+	}
+	
 
 	return is_okay;
 }
