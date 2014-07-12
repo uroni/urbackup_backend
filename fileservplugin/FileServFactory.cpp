@@ -67,3 +67,13 @@ void FileServFactory::destroyFileServ(IFileServ *filesrv)
 {
 	delete ((FileServ*)filesrv);
 }
+
+void FileServFactory::setPermissionCallback( IPermissionCallback* new_permission_callback )
+{
+	permission_callback=new_permission_callback;
+}
+
+IPermissionCallback* FileServFactory::getPermissionCallback()
+{
+	return permission_callback;
+}

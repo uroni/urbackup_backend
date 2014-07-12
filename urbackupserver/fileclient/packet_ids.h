@@ -23,5 +23,7 @@ const uchar ID_BLOCK_REQUEST=9;
 		const uchar ID_UPDATE_CHUNK=14;
 		const uchar ID_NO_CHANGE=15;
 		const uchar ID_BLOCK_HASH=16;
+const uchar ID_GET_FILE_HASH_AND_METADATA=10;
+		const uchar ID_FILE_HASH_AND_METADATA=17;
 
 #endif //PACKETIDS_H

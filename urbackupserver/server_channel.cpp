@@ -260,6 +260,10 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 
 		DOWNLOAD_IMAGE(params);
 	}
+	else if(next(msg, 0, "CHANGES "))
+	{
+		server_get->addContinuousChanges(msg.substr(8));
+	}
 	else
 	{
 		IScopedLock lock(mutex);

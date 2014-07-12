@@ -170,15 +170,21 @@ void ContinuousWatchEnqueue::On_DirRemoved( const std::wstring & strDirName, boo
 
 void ContinuousWatchEnqueue::Commit(const std::vector<IChangeJournalListener::SSequence>& sequences)
 {
-	queue.addChar(CHANGE_COMMIT);
-	queue.addUInt(static_cast<unsigned int>(sequences.size()));
+	std::string data(queue.getDataPtr(), queue.getDataPtr()+queue.getDataSize());
+	
+	CWData header;
+	header.addChar(CHANGE_HEADER);
+	header.addUInt(static_cast<unsigned int>(sequences.size()));
 	for(size_t i=0;i<sequences.size();++i)
 	{
-		queue.addInt64(sequences[i].start);
-		queue.addInt64(sequences[i].stop);
+		header.addInt64(sequences[i].id);
+		header.addInt64(sequences[i].start);
+		header.addInt64(sequences[i].stop);
 	}
+	
+	data.insert(data.begin(), header.getDataPtr(), header.getDataPtr()+header.getDataSize());
 
-	ClientConnector::tochannelSendChanges(queue.getDataPtr(), queue.getDataSize());
+	ClientConnector::tochannelSendChanges(data.data(), data.size());
 }
 
 void ContinuousWatchEnqueue::addWatchdir( SWatchItem item )

@@ -648,8 +648,6 @@ bool FileClient::Reconnect(void)
 
 	if(queued.empty())
 	{
-		assert(queued.empty());
-
 		CWData data;
 		data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
 		data.addString( remotefn );
@@ -1085,6 +1083,556 @@ void FileClient::fillQueue()
 
 		queued.push_back(queue_fn);
 	}
+}
+
+_u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash, std::string& permissions, int64& created, int64& modified )
+{
+	if(queued.empty())
+	{
+		CWData data;
+		data.addUChar( ID_GET_FILE_HASH_AND_METADATA );
+		data.addString( remotefn );
+		data.addString( identity );
+
+		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		{
+			Server->Log("Timeout during file hash request (1)", LL_ERROR);
+			return ERR_TIMEOUT;
+		}
+	}
+	else
+	{
+		assert(queued.front() == remotefn);
+		queued.pop_front();
+	}
+
+
+	bool firstpacket=true;
+	int tries=5000;
+	unsigned short metadata_size;
+	std::string metadata;
+	size_t metadata_pos=0;
+
+	while(true)
+	{        
+		fillQueue();
+
+		size_t rc;
+		if(tcpsock->isReadable() || dl_off==0 || 
+			(firstpacket && dl_buf[0]==ID_GET_FILE_HASH_AND_METADATA && dl_off<1+sizeof(unsigned short) ) )
+		{
+			rc = tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, 120000)+dl_off;
+		}
+		else
+		{
+			rc = dl_off;
+		}
+		dl_off=0;
+
+		if( rc==0 )
+		{
+			Server->Log("Server timeout (2) in FileClient while getting hash and metadata", LL_DEBUG);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( ID_GET_FILE_HASH_AND_METADATA );
+				data.addString( remotefn );
+				data.addString( identity );
+
+				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
+				{
+					Server->Log("FileClient: Error sending request for hash and metadata", LL_INFO);
+				}
+				starttime=Server->getTimeMS();
+
+				firstpacket=true;
+			}
+		}
+		else
+		{
+			starttime=Server->getTimeMS();
+
+			_u32 off=0;
+			uchar PID=dl_buf[0];
+
+			if( firstpacket==true)
+			{
+				firstpacket=false;
+				if(PID==ID_COULDNT_OPEN)
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_FILE_DOESNT_EXIST;
+				}
+				else if(PID==ID_BASE_DIR_LOST)
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_BASE_DIR_LOST;
+				}
+				else if(PID==ID_FILE_HASH_AND_METADATA)
+				{
+					if(rc >= 1+sizeof(unsigned short))
+					{
+						memcpy(&metadata_size, dl_buf+1, sizeof(metadata_size) );
+						off=1+sizeof(metadata_size);
+
+						metadata.resize(metadata_size);
+
+						if( metadata_size==0 )
+						{
+							if(rc>off)
+							{
+								memmove(dl_buf, dl_buf+off, rc-off);
+								dl_off = rc-off;
+							}
+							return ERR_ERROR;
+						}
+					}
+					else
+					{
+						dl_off=rc;
+						firstpacket=true;
+						continue;
+					}
+				}
+				else
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_ERROR;
+				}
+
+				if(rc>off)
+				{
+					size_t toread=rc-off;
+					if(toread>metadata_size)
+					{
+						toread=metadata_size;
+					}
+
+					memcpy(&metadata[metadata_pos], &dl_buf[off], toread);
+					metadata_pos+=toread;
+					
+					off+=static_cast<_u32>(toread);
+
+					if(rc>off)
+					{
+						memmove(dl_buf, dl_buf+off, rc-off);
+						dl_off = rc-off;
+					}
+
+					if(metadata_pos==metadata.size())
+					{
+						CRData data(&metadata);
+
+						if(!data.getStr(&metadata))
+						{
+							return ERR_ERROR;
+						}
+
+						if(!data.getStr(&permissions))
+						{
+							return ERR_ERROR;
+						}
+
+						if(!data.getInt64(&modified))
+						{
+							return ERR_ERROR;
+						}
+
+						if(!data.getInt64(&created))
+						{
+							return ERR_ERROR;
+						}
+
+						return ERR_SUCCESS;
+					}
+				}
+			}
+		}
+
+		if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
+		{
+			Server->Log("Server timeout in FileClient while downloading hash and metadata. Trying to reconnect...", LL_INFO);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( ID_GET_FILE_HASH_AND_METADATA );
+				data.addString( remotefn );
+				data.addString( identity );
+
+				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
+				{
+					Server->Log("FileClient: Error sending request for hash and metadata", LL_INFO);
+				}
+				starttime=Server->getTimeMS();
+
+				firstpacket=true;
+			}
+		}
+	}
+}
+
+_u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash, std::string& permissions, int64& created, int64& modified )
+{
+	if(queued.empty())
+	{
+		CWData data;
+		data.addUChar( ID_GET_FILE_HASH_AND_METADATA );
+		data.addString( remotefn );
+		data.addString( identity );
+
+		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		{
+			Server->Log("Timeout during file hash request (1)", LL_ERROR);
+			return ERR_TIMEOUT;
+		}
+	}
+	else
+	{
+		assert(queued.front() == remotefn);
+		queued.pop_front();
+	}
+
+
+	bool firstpacket=true;
+
+	while(true)
+	{        
+		fillQueue();
+
+		size_t rc;
+		if(tcpsock->isReadable() || dl_off==0 || (firstpacket && dl_off<1+sizeof(unsigned short) ) )
+		{
+			rc = tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, 120000)+dl_off;
+		}
+		else
+		{
+			rc = dl_off;
+		}
+		dl_off=0;
+
+		if( rc==0 )
+		{
+			Server->Log("Server timeout (2) in FileClient", LL_DEBUG);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
+				data.addString( remotefn );
+				data.addString( identity );
+
+				if( protocol_version>1 )
+				{
+					received=last_checkpoint;
+				}
+
+				if( firstpacket==false )
+					data.addInt64( received ); 
+
+				file->Seek(received);
+
+				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
+				{
+					Server->Log("FileClient: Error sending request", LL_INFO);
+				}
+				starttime=Server->getTimeMS();
+
+				if(protocol_version>0)
+					firstpacket=true;
+
+				hash_func.init();
+				state=0;
+			}
+		}
+		else
+		{
+			starttime=Server->getTimeMS();
+
+			_u32 off=0;
+			uchar PID=buf[0];
+
+			if( firstpacket==true)
+			{
+				firstpacket=false;
+				if(PID==ID_COULDNT_OPEN)
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_FILE_DOESNT_EXIST;
+				}
+				else if(PID==ID_BASE_DIR_LOST)
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_BASE_DIR_LOST;
+				}
+				else if(PID==ID_FILESIZE)
+				{
+					if(rc >= 1+sizeof(_u64))
+					{
+						memcpy(&filesize, buf+1, sizeof(_u64) );
+						off=1+sizeof(_u64);
+
+						if( filesize==0 )
+						{
+							if(rc>off)
+							{
+								memmove(dl_buf, dl_buf+off, rc-off);
+								dl_off = rc-off;
+							}
+							return ERR_SUCCESS;
+						}
+
+						if(protocol_version>1)
+						{
+							if(filesize<next_checkpoint)
+								next_checkpoint=filesize;
+						}
+						else
+						{
+							next_checkpoint=filesize;
+						}
+					}
+					else
+					{
+						dl_off=rc;
+						firstpacket=true;
+						continue;
+					}
+				}
+				else
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_ERROR;
+				}
+			}
+
+			if( state==1 && (_u32) rc > off )
+			{
+				_u32 tc=(std::min)((_u32)rc-off, hash_r);
+				memcpy(&hash_buf[16-hash_r], &buf[off],  tc);
+				off+=tc;
+				hash_r-=tc;
+
+				if(hash_r==0)
+				{
+					hash_func.finalize();
+					if(memcmp(hash_func.raw_digest_int(), hash_buf, 16)!=0)
+					{
+						Server->Log("Error while downloading file: hash wrong -1", LL_ERROR);
+						Reconnect();
+						return ERR_HASH;
+					}
+					hash_func.init();
+					state=0;
+				}
+
+				if(received >= filesize && state==0)
+				{
+					assert(received==filesize);
+					if(off < rc)
+					{
+						memmove(dl_buf, dl_buf+off, rc-off);
+						dl_off = rc-off;
+					}
+					return ERR_SUCCESS;
+				}
+			}
+
+			if( state==0 && (_u32) rc > off )
+			{
+				_u32 written=off;
+				_u64 write_remaining=next_checkpoint-received;
+				_u32 hash_off=0;
+				bool c=true;
+				while(c)
+				{
+					c=false;
+					while(written<rc)
+					{
+						_u32 tw=(_u32)rc-written;
+						if((_u64)tw>write_remaining)
+							tw=(_u32)write_remaining;
+
+						_u32 cw=file->Write(&buf[written], tw);
+						hash_func.update((unsigned char*)&buf[written], cw);
+						written+=cw;
+						write_remaining-=cw;
+						received+=cw;
+						if(write_remaining==0)
+							break;
+						if(written<rc)
+						{
+							if(nofreespace_callback!=NULL
+								&& !nofreespace_callback->handle_not_enough_space(file->getFilenameW()) )
+							{
+								Server->Log("Error while writing to file. No free space -2", LL_ERROR);
+								Reconnect();
+								return ERR_ERROR;
+							}
+
+							Server->Log("Failed to write to file... waiting...", LL_WARNING);
+							Server->wait(10000);
+							starttime=Server->getTimeMS();
+						}
+					}
+
+					if(write_remaining==0 && protocol_version>1) 
+					{
+						if(next_checkpoint<filesize)
+						{
+							last_checkpoint=next_checkpoint;
+						}
+						next_checkpoint+=c_checkpoint_dist;
+						if(next_checkpoint>filesize)
+							next_checkpoint=filesize;
+
+						hash_r=(_u32)rc-written;
+						if(hash_r>0)
+						{
+							memcpy(hash_buf, &buf[written], (std::min)(hash_r, (_u32)16));
+
+							if(received<filesize)
+							{
+								if(hash_r>16)
+								{
+									hash_r=16;
+									c=true;
+									write_remaining=next_checkpoint-received;
+									written+=16;
+								}
+							}
+							else if(hash_r>=16)
+							{
+								written+=16;
+							}
+						}
+
+						hash_off+=hash_r;
+
+						if(hash_r<16)
+						{
+							hash_r=16-hash_r;
+							state=1;
+						}
+						else
+						{
+							hash_func.finalize();
+							if(memcmp(hash_func.raw_digest_int(), hash_buf, 16)!=0)
+							{
+								Server->Log("Error while downloading file: hash wrong -2", LL_ERROR);
+								Reconnect();
+								return ERR_HASH;
+							}
+							hash_func.init();
+						}
+					}
+				}
+
+				{
+					IScopedLock lock(mutex);
+					received_data_bytes+=written-off;
+				}
+
+				if( received >= filesize && state==0)
+				{
+					assert(received==filesize);
+					if(written < rc)
+					{
+						memmove(dl_buf, dl_buf+written, rc-written);
+						dl_off = rc-written;
+					}
+					return ERR_SUCCESS;
+				}
+			}
+		}
+
+		if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
+		{
+			Server->Log("Server timeout in FileClient. Trying to reconnect...", LL_INFO);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
+				data.addString( remotefn );
+				data.addString( identity );
+
+				if( protocol_version>1 )
+				{
+					received=last_checkpoint;
+				}
+
+				if( firstpacket==false )
+					data.addInt64( received ); 
+
+				file->Seek(received);
+
+				if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+				{
+					Server->Log("Timeout during file request (2)", LL_ERROR);
+					return ERR_TIMEOUT;
+				}
+				starttime=Server->getTimeMS();
+
+				if(protocol_version>0)
+					firstpacket=true;
+
+				hash_func.init();
+				state=0;
+			}
+		}
 }
 
 

@@ -18,6 +18,7 @@
 #include "server_settings.h"
 
 #include <memory>
+#include "server_continuous.h"
 
 class ServerVHDWriter;
 class IFile;
@@ -26,6 +27,7 @@ class ServerPingThread;
 class FileClient;
 class IPipeThrottler;
 class ServerHashExisting;
+class BackupServerContinuous;
 
 struct SBackup
 {
@@ -84,6 +86,22 @@ public:
 
 	static std::wstring convertToOSPathFromFileClient(std::wstring path);
 
+	void addContinuousChanges(const std::string& data);
+
+	_u32 getClientFilesrvConnection(FileClient *fc, ServerSettings* server_settings, int timeoutms=10000);
+
+	bool getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, ServerSettings* server_settings, int timeoutms=10000);
+
+	int getFilesrvProtocolVersion()
+	{
+		return filesrv_protocol_version;
+	}
+
+	bool isOnInternetConnection()
+	{
+		return internet_connection;
+	}
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -141,9 +159,6 @@ private:
 	bool deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error);
 
 	std::wstring fixFilenameForOS(const std::wstring& fn);
-
-	_u32 getClientFilesrvConnection(FileClient *fc, int timeoutms=10000);
-	bool getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, int timeoutms=10000);
 
 	void saveImageAssociation(int image_id, int assoc_id);
 	
@@ -287,6 +302,7 @@ private:
 
 	CTCPStack tcpstack;
 
+	IMutex* throttle_mutex;
 	IPipeThrottler *client_throttler;
 
 	BackupServerHash *bsh;
@@ -307,4 +323,7 @@ private:
 
 	IMutex* hash_existing_mutex;
 	std::vector<ServerBackupDao::SFileEntry> hash_existing;
+
+	IMutex* continuous_mutex;
+	std::auto_ptr<BackupServerContinuous> continuous_update;
 };

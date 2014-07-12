@@ -90,6 +90,7 @@
     <ClInclude Include="..\stringtools.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
+    <ClInclude Include="..\urbackupcommon\change_ids.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />

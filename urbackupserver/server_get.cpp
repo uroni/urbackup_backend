@@ -132,7 +132,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	count_file_backup_try=0;
 
 	hash_existing_mutex = Server->createMutex();
-	
+	continuous_mutex=Server->createMutex();
+	throttle_mutex=Server->createMutex();	
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -157,6 +158,8 @@ BackupServerGet::~BackupServerGet(void)
 	}
 
 	Server->destroy(hash_existing_mutex);
+	Server->destroy(continuous_mutex);
+	Server->destroy(throttle_mutex);
 }
 
 
@@ -917,7 +920,7 @@ void BackupServerGet::operator ()(void)
 		else if(msg=="UPDATE SETTINGS") do_update_settings=true;
 		else if(msg=="START IMAGE INCR") do_incr_image_now=true;
 		else if(msg=="START IMAGE FULL") do_full_image_now=true;
-		else if(msg.find("address")==0)
+		else if(next(msg, 0, "address"))
 		{
 			IScopedLock lock(clientaddr_mutex);
 			memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
@@ -4175,6 +4178,8 @@ int BackupServerGet::getNumberOfRunningFileBackups(void)
 
 IPipeThrottler *BackupServerGet::getThrottler(size_t speed_bps)
 {
+	IScopedLock lock(throttle_mutex)
+
 	if(client_throttler==NULL)
 	{
 		client_throttler=Server->createPipeThrottler(speed_bps);
@@ -4233,7 +4238,7 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms, std::string* c
 	}
 }
 
-_u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
+_u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, ServerSettings* server_settings, int timeoutms)
 {
 	if(internet_connection)
 	{
@@ -4282,7 +4287,7 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 	}
 }
 
-bool BackupServerGet::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, int timeoutms)
+bool BackupServerGet::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunked>& fc_chunked, ServerSettings* server_settings, int timeoutms)
 {
 	std::string identity = session_identity.empty()?server_identity:session_identity;
 	if(internet_connection)
@@ -4957,4 +4962,10 @@ void BackupServerGet::getTokenFile(FileClient &fc, bool hashed_transfer )
 		backup_dao->updateOrInsertSetting(clientid, L"client_access_key", widen(access_key));
 		server_settings->update(true);
 	}
+}
+
+void BackupServerGet::addContinuousChanges(const std::string& data)
+{
+	IScopedLock lock(continuous_mutex);
+	continuous_update->addChanges(data);
 }

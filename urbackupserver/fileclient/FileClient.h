@@ -80,6 +80,8 @@ public:
         //---needs Connection
         _u32 GetFile(std::string remotefn, IFile *file, bool hashed);
 
+		_u32 GetFileHashAndMetadata(std::string remotefn, std::string& hash, std::string& permissions, int64& created, int64& modified);
+
 		void addThrottler(IPipeThrottler *throttler);
 
 		_i64 getTransferredBytes(void);

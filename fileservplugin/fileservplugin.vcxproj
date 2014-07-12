@@ -176,6 +176,7 @@
     <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="bufmgr.cpp" />
     <ClCompile Include="CampusThread.cpp" />
     <ClCompile Include="CClientThread.cpp" />
@@ -209,6 +210,7 @@
     <ClInclude Include="FileServFactory.h" />
     <ClInclude Include="IFileServ.h" />
     <ClInclude Include="IFileServFactory.h" />
+    <ClInclude Include="IPermissionCallback.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="map_buffer.h" />
     <ClInclude Include="packet_ids.h" />
