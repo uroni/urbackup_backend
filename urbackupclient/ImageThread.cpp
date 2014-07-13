@@ -698,7 +698,7 @@ void ImageThread::operator()(void)
 	}
 	else if(image_inf->thread_action==TA_INCR_IMAGE)
 	{
-		int timeouts=1800;
+		int timeouts=3600;
 		while(client->isHashdataOkay()==false)
 		{
 			Server->wait(1000);
@@ -711,6 +711,15 @@ void ImageThread::operator()(void)
 		if(timeouts>0 && client->isQuitting()==false )
 		{
 			sendIncrImageThread();
+		}
+		else
+		{
+			Server->Log("Error receiving hashdata. timouts="+nconvert(timeouts)+" isquitting="+nconvert(client->isQuitting()), LL_ERROR);
+			if(image_inf->shadowdrive.empty() && !image_inf->no_shadowcopy)
+			{
+				mempipe->Write("exit");
+				mempipe=NULL;
+			}
 		}
 	}
 	client->resetImageBackupStatus();
