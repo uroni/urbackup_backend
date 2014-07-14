@@ -5,6 +5,6 @@
 	create 640 urbackup urbackup
 	compress
 	postrotate
-		pkill -HUP urbackup_srv
+		kill -HUP `cat /var/run/urbackup_srv.pid`
 	endscript
 }
