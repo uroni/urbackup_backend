@@ -55,12 +55,16 @@ public:
 		}
 	};
 
-	BackupServerContinuous(BackupServerGet* server_get, const std::wstring& continuous_path, const std::wstring& continuous_hash_path, const std::wstring& continuous_backup_path)
+	BackupServerContinuous(BackupServerGet* server_get, const std::wstring& continuous_path, const std::wstring& continuous_hash_path, const std::wstring& continuous_backup_path,
+		const std::wstring& tmpfile_path, bool use_tmpfiles, int clientid, const std::wstring& clientname, int backupid, bool use_snapshots, bool use_reflink)
 		: server_get(server_get), collect_only(true), first_compaction(true), stop(false), continuous_path(continuous_path), continuous_hash_path(continuous_hash_path),
-		continuous_backup_path(continuous_backup_path)
+		continuous_backup_path(continuous_backup_path), tmpfile_path(tmpfile_path), use_tmpfiles(use_tmpfiles), clientid(clientid), clientname(clientname), backupid(backupid),
+		use_snapshots(use_snapshots), use_reflink(use_reflink)
 	{
 		mutex = Server->createMutex();
 		cond = Server->createCondition();
+
+		local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles));
 	}
 
 	~BackupServerContinuous()
@@ -71,6 +75,25 @@ public:
 	void operator()()
 	{
 		server_settings.reset(new ServerSettings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)));
+
+		hashed_transfer_full = true;
+		hashed_transfer_incr = true;
+		transfer_incr_blockdiff = true;
+
+		if(server_get->isOnInternetConnection())
+		{
+			hashed_transfer_full = server_settings->getSettings()->internet_full_file_transfer_mode!="raw";
+			hashed_transfer_incr = server_settings->getSettings()->internet_incr_file_transfer_mode!="raw";
+			transfer_incr_blockdiff = server_settings->getSettings()->internet_incr_file_transfer_mode=="blockhash";
+		}
+		else
+		{
+			hashed_transfer_full = server_settings->getSettings()->local_full_file_transfer_mode!="raw";
+			hashed_transfer_incr = server_settings->getSettings()->local_incr_file_transfer_mode!="raw";
+			transfer_incr_blockdiff = server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash";
+		}
+
+		if(server_settings->getSettings()->internet_full_file_transfer_mode=="raw")
 
 		while(true)
 		{
@@ -102,7 +125,7 @@ public:
 			{
 				for(size_t i=0;i<compacted_changes.size();++i)
 				{
-					execChange(compacted_changes[i]);
+					queueChange(compacted_changes[i]);
 				}
 			}
 
@@ -143,6 +166,15 @@ public:
 	}
 
 private:
+
+	struct SQueueItem
+	{
+		bool queued_metdata;
+		bool queued_dl;
+		SChange change;
+		std::string out_fn;
+		std::string out_hash_fn;
+	};
 
 	bool compactChanges()
 	{
@@ -488,6 +520,15 @@ private:
 		return continuous_hash_path+getOsFp(fn);
 	}
 
+	void queueChange(SChange& change)
+	{
+		SQueueItem new_item;
+		new_item.queued_dl=false;
+		new_item.queued_metdata=false;
+		new_item.change=change;
+		dl_queue.push_back(new_item);
+	}
+
 	bool execChange(SChange& change)
 	{
 		switch(change.action)
@@ -591,21 +632,101 @@ private:
 	{
 		std::auto_ptr<IFile> f(Server->openFile(getFullpath(change.fn1)));
 
-		if(f->Size()==0)
+		if(fileclient.get()==NULL)
 		{
-			if(fileclient.get()==NULL)
+			FileClient* new_fc=new FileClient(false, server_identity, server_get->getFilesrvProtocolVersion(), server_get->isOnInternetConnection(), server_get, server_get);
+			fileclient.reset(new_fc);
+			_u32 rc = server_get->getClientFilesrvConnection(new_fc, server_settings.get());
+			if(rc!=ERR_CONNECTED)
 			{
-				FileClient* new_fc=new FileClient(false, server_identity, server_get->getFilesrvProtocolVersion(), server_get->isOnInternetConnection(), server_get, server_get);
-				fileclient.reset(new_fc);
-				_u32 rc = server_get->getClientFilesrvConnection(new_fc, server_settings.get());
-				if(rc!=ERR_CONNECTED)
-				{
-					Server->Log("Could not connect to client in continous backup thread", LL_ERROR);
-					return false;
-				}				
+				Server->Log("Could not connect to client in continous backup thread", LL_ERROR);
+				return false;
+			}				
+		}
+
+		std::string hash;
+		std::string permissions;
+		int64 filesize;
+		int64 created;
+		int64 modified;
+		_u32 rc = fileclient->GetFileHashAndMetadata(change.fn1, hash, permissions, filesize, created, modified);
+
+		if(rc!=ERR_SUCCESS)
+		{
+			ServerLogger::Log(clientid, L"Error getting file hash and metadata for \""+Server->ConvertToUnicode(change.fn1)+L"\" from "+clientname+L". Errorcode: "+widen(fileclient->getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+			return false;
+		}
+
+		bool tries_once;
+		std::wstring ff_last;
+		bool hardlink_limit;
+		FileMetadata metadata(permissions, modified, created);
+		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
+			hash, filesize, std::string(), tries_once, ff_last, hardlink_limit, metadata))
+		{
+			//delete old file?
+			local_hash->addFileSQL(backupid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1), hash, filesize, 0);
+			local_hash->copyFromTmpTable(false);
+			return true;
+		}
+
+		std::auto_ptr<IFile> tmpf(BackupServerGet::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid));
+		if(!tmpf.get())
+		{
+			return false;
+		}
+
+		if(f->Size()==0 || !transfer_incr_blockdiff)
+		{
+			_u32 rc = fileclient->GetFile(change.fn1, tmpf.get(), hashed_transfer_full);
+
+			int hash_retries=5;
+			while(rc==ERR_HASH && hash_retries>0)
+			{
+				tmpf->Seek(0);
+				rc = fileclient->GetFile(change.fn1, tmpf.get(), hashed_transfer_full);
+				--hash_retries;
 			}
 
-			fileclient->GetFile()
+			bool hash_file = false;
+
+			if(rc!=ERR_SUCCESS)
+			{
+				ServerLogger::Log(clientid, L"Error getting file \""+Server->ConvertToUnicode(change.fn1)+L"\" from "+clientname+L". Errorcode: "+widen(fileclient->getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+
+				BackupServerGet::destroyTemporaryFile(tmpf.get());					
+				tmpf.release();
+
+				return false;
+			}
+			else
+			{
+				hashFile(getFullpath(change.fn1), getFullHashpath(change.fn1), tmpf.get(),
+					NULL, Server->ConvertToUTF8(getFullpath(change.fn1)), filesize, metadata );
+				tmpf.release();
+			}
+		}
+		else
+		{
+			if(!fileclient_chunked.get())
+			{
+				if(!server_get->getClientChunkedFilesrvConnection(fileclient_chunked))
+				{
+					ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
+					return false;
+				}
+				else
+				{
+					fileclient_chunked->setDestroyPipe(true);
+					if(fileclient_chunked->hasError())
+					{
+						ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked)", LL_ERROR);
+						return false;
+					}
+				}
+			}
+
+			_u32 rc = fileclient_chunked->GetFilePatch(change.fn1, )
 		}
 	}
 
@@ -617,6 +738,40 @@ private:
 	bool backupDir(const std::string& dir)
 	{
 
+	}
+
+	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize, const FileMetadata& metadata)
+	{
+		int l_backup_id=backupid;
+
+		CWData data;
+		data.addString(Server->ConvertToUTF8(fd->getFilenameW()));
+		data.addInt(l_backup_id);
+		data.addChar(1);
+		data.addString(Server->ConvertToUTF8(dstpath));
+		data.addString(Server->ConvertToUTF8(hashpath));
+		if(hashoutput!=NULL)
+		{
+			data.addString(Server->ConvertToUTF8(hashoutput->getFilenameW()));
+		}
+		else
+		{
+			data.addString("");
+		}
+
+		data.addString(old_file);
+		data.addChar(1);
+		data.addInt64(t_filesize);
+		metadata.serialize(data);
+
+		ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
+
+		Server->destroy(fd);
+		if(hashoutput!=NULL)
+		{
+			Server->destroy(hashoutput);
+		}
+		hashpipe_prepare->Write(data.getDataPtr(), data.getDataSize() );
 	}
 
 	std::vector<std::string> changes;
@@ -633,8 +788,26 @@ private:
 	std::wstring continuous_hash_path;
 	std::wstring continuous_backup_path;
 
+	std::wstring tmpfile_path;
+	bool use_tmpfiles;
+	int clientid;
+	bool use_snapshots;
+	bool use_reflink;
+
+	std::wstring clientname;
+
+	int backupid;
+
+	std::auto_ptr<BackupServerHash> local_hash;
+
 	std::auto_ptr<FileClientChunked> fileclient_chunked;
 	std::auto_ptr<FileClient> fileclient;
 
 	std::auto_ptr<ServerSettings> server_settings;
+
+	std::deque<SQueueItem> dl_queue;
+
+	bool hashed_transfer_full;
+	bool hashed_transfer_incr;
+	bool transfer_incr_blockdiff;
 };

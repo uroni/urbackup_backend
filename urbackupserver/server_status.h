@@ -17,7 +17,8 @@ enum SStatusAction
 	sa_incr_image=3,
 	sa_full_image=4,
 	sa_resume_incr_file=5,
-	sa_resume_full_file=6
+	sa_resume_full_file=6,
+	sa_cdp_sync=7
 };
 
 enum SStatusError

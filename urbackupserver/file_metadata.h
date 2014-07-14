@@ -18,6 +18,14 @@ public:
 
 	}
 
+	FileMetadata(std::string file_permission_bits, int64 last_modified,
+		int64 created)
+		: file_permission_bits(file_permission_bits),
+		last_modified(last_modified), created(created)
+	{
+
+	}
+
 	std::string file_permission_bits;
 	int64 last_modified;
 	int64 created;

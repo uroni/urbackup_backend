@@ -1336,6 +1336,7 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	send_data.addUShort(0);
 	send_data.addString(dig);
 	send_data.addString(FileServFactory::getPermissionCallback()->getPermissions(filename));
+	send_data.addInt64(tf->Size());
 
 	SFile file_metadata = getFileMetadata(filename);
 	if(file_metadata.name.empty())

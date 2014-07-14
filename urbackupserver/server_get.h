@@ -117,15 +117,17 @@ private:
 	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file);
 	
 	void notifyClientBackupSuccessfull(void);
-	bool request_filelist_construct(bool full, bool resume, bool with_token, bool& no_backup_dirs, bool& connect_fail);
+	bool request_filelist_construct(bool full, bool resume, int group, bool with_token, bool& no_backup_dirs, bool& connect_fail);
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata);
-	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
+	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool in_place, int group, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
 
 	void getTokenFile(FileClient &fc, bool hashed_transfer );
 
 	void calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked, int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size );
 
-	SBackup getLastIncremental(void);
+	std::string clientlistName(int group, bool new_list=false);
+
+	SBackup getLastIncremental(int group);
 	SBackup getLastFullDurations(void);
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	void updateLastBackup(void);
@@ -164,6 +166,7 @@ private:
 	
 	std::wstring constructImagePath(const std::wstring &letter, std::string image_file_format);
 	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
+	bool constructBackupPathCdp();
 	
 	static std::string remLeadingZeros(std::string t);
 	bool updateCapabilities(void);
@@ -196,6 +199,7 @@ private:
 	unsigned int exponentialBackoffTimeFile();
 	bool exponentialBackoffImage();
 	bool exponentialBackoffFile();
+	bool exponentialBackoffCdp();
 
 	bool authenticatePubKey();
 
@@ -280,6 +284,7 @@ private:
 	bool do_update_settings;
 	bool do_full_image_now;
 	bool do_incr_image_now;
+	bool cdp_needs_sync;
 
 	static int running_backups;
 	static int running_file_backups;
@@ -294,6 +299,7 @@ private:
 	int update_version;
 	std::string all_volumes;
 	int eta_version;
+	int cdp_version;
 
 	bool use_snapshots;
 	bool use_reflink;
@@ -316,6 +322,9 @@ private:
 
 	int64 last_file_backup_try;
 	size_t count_file_backup_try;
+
+	int64 last_cdp_backup_try;
+	size_t count_cdp_backup_try;
 
 	std::string session_identity;
 
