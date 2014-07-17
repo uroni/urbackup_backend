@@ -478,7 +478,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 						if(rc==-1)
 						{
 							Log("Error: Send failed in file loop -1", LL_DEBUG);
-							CloseThread(hFile);
+							CloseHandle(hFile);
+							hFile=NULL;
 						}
 						else if(rc==0)
 							SleepEx(1,true);
@@ -498,7 +499,8 @@ bool CClientThread::ProcessPacket(CRData *data)
 							if(rc==-1)
 							{
 								Log("Error: Send failed in file pause loop -2", LL_DEBUG);
-								CloseThread(hFile);
+								CloseHandle(hFile);
+								hFile=NULL;
 							}
 						}
 					}
