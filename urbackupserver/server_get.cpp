@@ -2770,7 +2770,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					if(copy_curr_file_entry_sparse)
 					{
 						std::string curr_file_path = Server->ConvertToUTF8(curr_path + L"/" + cf.name);
-						int crc32 = static_cast<int>(adler32(0, curr_file_path.c_str(), static_cast<unsigned int>(curr_file_path.size())));
+						int crc32 = static_cast<int>(urb_adler32(0, curr_file_path.c_str(), static_cast<unsigned int>(curr_file_path.size())));
 						if(crc32 % copy_file_entries_sparse_modulo == incremental_num )
 						{
 							if(trust_client_hashes && !curr_sha2.empty())

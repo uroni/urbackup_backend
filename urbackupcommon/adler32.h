@@ -1,3 +1,3 @@
 #pragma once
 
-unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
+unsigned int urb_adler32(unsigned int adler, const char *pbuf, unsigned int len);

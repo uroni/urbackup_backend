@@ -9,6 +9,7 @@
 #include <queue>
 #include <memory>
 #include <algorithm>
+#include "../../urbackupcommon/adler32.h"
 
 #define VLOG(x) x
 
@@ -16,7 +17,6 @@ const unsigned int chunkhash_file_off=sizeof(_i64);
 const unsigned int chunkhash_single_size=big_hash_size+small_hash_size*(c_checkpoint_dist/c_small_hash_dist);
 const unsigned int c_reconnection_tries=30;
 
-unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
 
 FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stack,
 	FileClientChunked::ReconnectionCallback *reconnection_callback, FileClientChunked::NoFreeSpaceCallback *nofreespace_callback
@@ -584,7 +584,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				state=CS_BLOCK;
 				md5_hash.init();
 				hash_for_whole_block=false;
-				adler_hash=adler32(0, NULL, 0);
+				adler_hash=urb_adler32(0, NULL, 0);
 				adler_remaining=c_chunk_size;
 				block_pos=0;
 
@@ -628,7 +628,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					+big_hash_size+chunknum*small_hash_size);
 
 				state=CS_CHUNK;
-				adler_hash=adler32(0, NULL, 0);
+				adler_hash=urb_adler32(0, NULL, 0);
 
 			}break;
 		case ID_NO_CHANGE:
@@ -804,6 +804,7 @@ void FileClientChunked::Hash_nochange(_i64 curr_pos)
 	std::map<_i64, SChunkHashes>::iterator it=pending_chunks.find(curr_pos);
 	if(it!=pending_chunks.end())
 	{
+		Server->Log("Block without change. currpos="+nconvert(curr_pos), LL_DEBUG);
 		addReceivedBlock(curr_pos);
 		m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
 		writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
@@ -844,7 +845,7 @@ void FileClientChunked::State_Block(void)
 	while(rbytes>0)
 	{
 		size_t adler_bytes=(std::min)((size_t)adler_remaining, rbytes);
-		adler_hash=adler32(adler_hash, alder_bufptr, (unsigned int)adler_bytes);
+		adler_hash=urb_adler32(adler_hash, alder_bufptr, (unsigned int)adler_bytes);
 		alder_bufptr+=adler_bytes;
 		rbytes-=adler_bytes;
 		adler_remaining-=(unsigned int)adler_bytes;
@@ -852,7 +853,7 @@ void FileClientChunked::State_Block(void)
 		{
 			_u32 endian_adler_hash = little_endian(adler_hash);
 			writeFileRepeat(m_hashoutput, (char*)&endian_adler_hash, small_hash_size);
-			adler_hash=adler32(0, NULL, 0);
+			adler_hash=urb_adler32(0, NULL, 0);
 			adler_remaining=c_chunk_size;
 		}
 
@@ -907,7 +908,7 @@ void FileClientChunked::State_Chunk(void)
 
 	if(rbytes>0)
 	{
-		adler_hash=adler32(adler_hash, bufptr, (unsigned int)rbytes);
+		adler_hash=urb_adler32(adler_hash, bufptr, (unsigned int)rbytes);
 		md5_hash.update((unsigned char*)bufptr, (unsigned int)rbytes);
 
 		if(!patch_mode)

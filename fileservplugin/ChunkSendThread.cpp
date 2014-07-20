@@ -9,8 +9,7 @@
 
 #include "../Interface/File.h"
 #include "../Interface/Server.h"
-
-unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
+#include "../urbackupcommon/adler32.h"
 
 
 ChunkSendThread::ChunkSendThread(CClientThread *parent)
@@ -163,7 +162,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	bool sent_update=false;
 	char* cptr=chunk_buf+c_chunk_padding;
 	_i64 curr_pos=chunk->startpos;
-	unsigned int c_adler=adler32(0, NULL, 0);
+	unsigned int c_adler=urb_adler32(0, NULL, 0);
 	md5_hash.init();
 	unsigned int small_hash_num=0;
 	do
@@ -186,13 +185,14 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		if(r>0)
 		{
 			md5_hash.update((unsigned char*)cptr, (unsigned int)r);
-			c_adler=adler32(c_adler, cptr, r);
+			c_adler=urb_adler32(c_adler, cptr, r);
 
 			read_total+=r;
 
 			if(read_total==next_smallhash || r!=c_chunk_size)
 			{
-				if(c_adler!=little_endian(*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]))
+				_u32 adler_other = little_endian(*((_u32*)&chunk->small_hash[small_hash_size*small_hash_num]));
+				if(c_adler!=adler_other
 					|| curr_pos+r>curr_hash_size)
 				{
 					sent_update=true;
@@ -218,7 +218,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 					memcpy(cptr-c_chunk_padding, tmp_backup, c_chunk_padding);
 				}
 
-				c_adler=adler32(0, NULL, 0);
+				c_adler=urb_adler32(0, NULL, 0);
 				++small_hash_num;
 				next_smallhash+=c_small_hash_dist;
 			}

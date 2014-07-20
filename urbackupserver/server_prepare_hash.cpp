@@ -28,6 +28,7 @@
 #include "../fileservplugin/chunk_settings.h"
 #include "../md5.h"
 #include <memory.h>
+#include "../urbackupcommon/adler32.h"
 
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid)
 {
@@ -198,8 +199,6 @@ bool BackupServerPrepareHash::isWorking(void)
 	return working;
 }
 
-unsigned int adler32(unsigned int adler, const char *buf, unsigned int len);
-
 std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace)
 {
 	f->Seek(0);
@@ -229,7 +228,7 @@ std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutp
 		for(;pos<epos && pos<fsize;pos+=c_small_hash_dist)
 		{
 			_u32 r=f->Read(buf, c_small_hash_dist);
-			_u32 small_hash=adler32(adler32(0, NULL, 0), buf, r);
+			_u32 small_hash=urb_adler32(urb_adler32(0, NULL, 0), buf, r);
 			big_hash.update((unsigned char*)buf, r);
 			if(!writeRepeatFreeSpace(hashoutput, (char*)&small_hash, small_hash_size, cb))
 				return "";
