@@ -99,7 +99,7 @@ void BackupServer::operator()(void)
 		if(!os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp"))
 		{
 			Server->wait(5000);
-			os_create_dir(tmpdir+os_file_sep()+L"urbackup_tmp");
+			os_create_dir(w_tmp+os_file_sep()+L"urbackup_tmp");
 		}
 		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
 	}

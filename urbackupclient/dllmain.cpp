@@ -137,6 +137,30 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	//writeZeroblockdata();
 
+#ifdef _WIN32
+	wchar_t tmpp[MAX_PATH];
+	DWORD l;
+	if((l=GetTempPathW(MAX_PATH, tmpp))==0 || l>MAX_PATH )
+	{
+		wcscpy_s(tmpp,L"C:\\");
+	}
+
+	std::wstring w_tmp=tmpp;
+
+	if(!w_tmp.empty() && w_tmp[w_tmp.size()-1]=='\\')
+	{
+		w_tmp.erase(w_tmp.size()-1, 1);
+	}
+
+	os_remove_nonempty_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp");
+	if(!os_create_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp"))
+	{
+		Server->wait(5000);
+		os_create_dir(w_tmp+os_file_sep()+L"urbackup_client_tmp");
+	}
+	Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_client_tmp");
+#endif
+
 	if(Server->getServerParameter("restore_mode")=="true")
 	{
 		Server->setServerParameter("max_worker_clients", "1");
