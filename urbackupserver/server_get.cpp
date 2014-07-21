@@ -31,7 +31,7 @@
 #include "InternetServiceConnector.h"
 #include "server_update_stats.h"
 #include "../urbackupcommon/escape.h"
-#include "../urbackupcommon/adler32.h"
+#include "../common/adler32.h"
 #include "server_running.h"
 #include "server_cleanup.h"
 #include "treediff/TreeDiff.h"

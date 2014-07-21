@@ -9,7 +9,7 @@
 
 #include "../Interface/File.h"
 #include "../Interface/Server.h"
-#include "../urbackupcommon/adler32.h"
+#include "../common/adler32.h"
 
 
 ChunkSendThread::ChunkSendThread(CClientThread *parent)

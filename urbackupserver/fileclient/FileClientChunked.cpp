@@ -9,7 +9,7 @@
 #include <queue>
 #include <memory>
 #include <algorithm>
-#include "../../urbackupcommon/adler32.h"
+#include "../../common/adler32.h"
 
 #define VLOG(x) x
 

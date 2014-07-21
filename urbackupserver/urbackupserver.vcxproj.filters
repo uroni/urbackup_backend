@@ -177,9 +177,6 @@
     <ClCompile Include="fileclient\FileClientChunked.cpp">
       <Filter>fileclient</Filter>
     </ClCompile>
-    <ClCompile Include="..\urbackupcommon\adler32.cpp">
-      <Filter>fileclient</Filter>
-    </ClCompile>
     <ClCompile Include="ChunkPatcher.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -263,6 +260,9 @@
     </ClCompile>
     <ClCompile Include="server_hash_existing.cpp">
       <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\adler32.cpp">
+      <Filter>fileclient</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -464,11 +464,11 @@
     <ClInclude Include="server_download.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="..\urbackupcommon\adler32.h">
-      <Filter>fileclient</Filter>
-    </ClInclude>
     <ClInclude Include="server_hash_existing.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\adler32.h">
+      <Filter>fileclient</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

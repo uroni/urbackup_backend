@@ -28,7 +28,7 @@
 #include "../fileservplugin/chunk_settings.h"
 #include "../md5.h"
 #include <memory.h>
-#include "../urbackupcommon/adler32.h"
+#include "../common/adler32.h"
 
 BackupServerPrepareHash::BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid)
 {
