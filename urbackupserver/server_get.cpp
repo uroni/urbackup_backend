@@ -613,7 +613,7 @@ void BackupServerGet::operator ()(void)
 			if( !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
 				( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindowFullFile())
 					&& exponentialBackoffFile() ) || do_full_backup_now )
-				&& isBackupsRunningOkay(true, true) )
+				&& isBackupsRunningOkay(true, true) && !do_full_image_now && !do_full_image_now && !do_incr_backup_now )
 			{
 				hbu=true;
 				ScopedActiveThread sat;
@@ -652,7 +652,7 @@ void BackupServerGet::operator ()(void)
 			else if( !server_settings->getSettings()->no_file_backups
 				&& ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindowIncrFile())
 					  && exponentialBackoffFile() ) || do_incr_backup_now )
-				&& isBackupsRunningOkay(true, true) )
+				&& isBackupsRunningOkay(true, true) && !do_full_image_now && !do_full_image_now)
 			{
 				hbu=true;
 				ScopedActiveThread sat;
@@ -704,7 +704,7 @@ void BackupServerGet::operator ()(void)
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
 				&& ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindowFullImage())
 					  && exponentialBackoffImage() ) || do_full_image_now)
-				&& isBackupsRunningOkay(true, false) )
+				&& isBackupsRunningOkay(true, false) && !do_incr_image_now)
 			{
 				ScopedActiveThread sat;
 
