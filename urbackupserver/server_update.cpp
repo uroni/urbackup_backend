@@ -25,6 +25,8 @@
 
 extern IUrlFactory *url_fak;
 
+const std::string urbackup_update_url = "http://update2.urbackup.org/";
+
 ServerUpdate::ServerUpdate(void)
 {
 }
@@ -42,10 +44,10 @@ void ServerUpdate::update_client()
 
 	std::string errmsg;
 	Server->Log("Downloading version file...", LL_INFO);
-	std::string version = url_fak->downloadString("http://update1.urbackup.org/version.txt", http_proxy, &errmsg);
+	std::string version = url_fak->downloadString(urbackup_update_url+"version.txt", http_proxy, &errmsg);
 	if(version.empty())
 	{
-		Server->Log("Error while downloading version info from http://update1.urbackup.org/version.txt: " + errmsg, LL_ERROR);
+		Server->Log("Error while downloading version info from "+urbackup_update_url+"version.txt: " + errmsg, LL_ERROR);
 		return;
 	}
 	std::string curr_version=getFile("urbackup/version.txt");
@@ -63,19 +65,19 @@ void ServerUpdate::update_client()
 		}
 		ObjectScope sig_file_scope(sig_file);
 
-		bool b = url_fak->downloadFile("http://update1.urbackup.org/UrBackupUpdate.sig", sig_file, http_proxy, &errmsg);
+		bool b = url_fak->downloadFile(urbackup_update_url+"UrBackupUpdate.sig", sig_file, http_proxy, &errmsg);
 
 		if(!b)
 		{
-			Server->Log("Error while downloading update signature from http://update1.urbackup.org/UrBackupUpdate.sig: " + errmsg, LL_ERROR);
+			Server->Log("Error while downloading update signature from "+urbackup_update_url+"UrBackupUpdate.sig: " + errmsg, LL_ERROR);
 		}
 
 		Server->Log("Getting update file URL...", LL_INFO);
-		std::string update_url = url_fak->downloadString("http://update1.urbackup.org/UrBackupUpdate.url", http_proxy, &errmsg);
+		std::string update_url = url_fak->downloadString(urbackup_update_url+"UrBackupUpdate.url", http_proxy, &errmsg);
 
 		if(update_url.empty())
 		{
-			Server->Log("Error while downloading update url from http://update1.urbackup.org/UrBackupUpdate.url: " + errmsg, LL_ERROR);
+			Server->Log("Error while downloading update url from "+urbackup_update_url+"UrBackupUpdate.url: " + errmsg, LL_ERROR);
 			return;
 		}
 
@@ -115,7 +117,7 @@ void ServerUpdate::update_server_version_info()
 	Server->Log("Downloading server version info...", LL_INFO);
 
 	std::auto_ptr<IFile> server_version_info(Server->openFile("urbackup/server_version_info.properties", MODE_WRITE));
-	if(!url_fak->downloadFile("http://update1.urbackup.org/server_version_info.properties", 
+	if(!url_fak->downloadFile(urbackup_update_url+"server_version_info.properties", 
 		server_version_info.get(), http_proxy, &errmsg) )
 	{
 		Server->Log("Error downloading server version information: " + errmsg, LL_ERROR);
