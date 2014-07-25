@@ -45,7 +45,11 @@ CompressedFile::CompressedFile( std::wstring pFilename, int pMode )
 		hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems));
 		compressedBuffer.resize(mz_compressBound(static_cast<mz_ulong>(blocksize)));
 	}
-	hotCache->setCacheEvictionCallback(this);
+
+	if(hotCache.get())
+	{
+		hotCache->setCacheEvictionCallback(this);
+	}
 }
 
 CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly)
@@ -104,7 +108,7 @@ void CompressedFile::readHeader()
 
 	if(!next(header, 0, headerMagic))
 	{
-		Server->Log("Magic in header not find for compressed file", LL_ERROR);
+		Server->Log("Magic in header not found for compressed file", LL_ERROR);
 		error=true;
 		noMagic=true;
 		return;
@@ -472,7 +476,11 @@ bool CompressedFile::finish()
 {
 	assert(!finished);
 
-	hotCache->clear();
+	if(hotCache.get())
+	{
+		hotCache->clear();
+	}
+
 	if(!readOnly)
 	{
 		writeIndex();
