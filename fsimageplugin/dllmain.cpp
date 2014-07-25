@@ -141,19 +141,12 @@ namespace
 
 		if(fn==output)
 		{
-			if(Server->deleteFile(fn))
-			{
+			out_file.clear();
 #ifdef _WIN32
-				return _wrename(tmp_output.c_str(), fn.c_str())==0;
+			return MoveFileExW(tmp_output.c_str(), fn.c_str(), MOVEFILE_REPLACE_EXISTING)==TRUE;
 #else
-				return rename(Server->ConvertToUTF8(tmp_output).c_str(), Server->ConvertToUTF8(fn).c_str())==0;
+			return rename(Server->ConvertToUTF8(tmp_output).c_str(), Server->ConvertToUTF8(fn).c_str())==0;
 #endif
-			}
-			else
-			{
-				Server->Log(L"Error deleting \""+fn+L"\"", LL_ERROR);
-				return false;
-			}
 		}
 		else
 		{
