@@ -1447,7 +1447,6 @@ function show_settings2(data)
 			data.settings.use_tmpfiles=getCheckboxValue(data.settings.use_tmpfiles);
 			data.settings.use_tmpfiles_images=getCheckboxValue(data.settings.use_tmpfiles_images);
 			data.settings.use_incremental_symlinks=getCheckboxValue(data.settings.use_incremental_symlinks);
-			data.settings.compress_images=getCheckboxValue(data.settings.compress_images);
 			
 			data.settings.allow_config_paths=getCheckboxValue(data.settings.allow_config_paths);
 			data.settings.allow_starting_full_file_backups=getCheckboxValue(data.settings.allow_starting_full_file_backups);
@@ -1482,6 +1481,9 @@ function show_settings2(data)
 			var filescache_type_params=["none", "lmdb", "sqlite"];
 			data.settings=addSelectSelected(filescache_type_params, "filescache_type", data.settings);
 			data.settings.filescache_size/=1024.0*1024.0;
+			
+			var image_file_format_params = ["vhdz", "vhd"];
+			data.settings=addSelectSelected(image_file_format_params, "image_file_format", data.settings);
 			
 			data.settings.update_freq_incr/=60.0*60.0;
 			data.settings.update_freq_full/=60.0*60.0*24.0;
@@ -1577,7 +1579,6 @@ function show_settings2(data)
 			data.settings.silent_update=getCheckboxValue(data.settings.silent_update);
 			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
-			data.settings.compress_images=getCheckboxValue(data.settings.compress_images);
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			
 			var transfer_mode_params1=["raw", "hashed"];
@@ -1589,6 +1590,9 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params2, "internet_incr_file_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
+			
+			var image_file_format_params = ["vhdz", "vhd"];
+			data.settings=addSelectSelected(image_file_format_params, "image_file_format", data.settings);
 			
 			data.settings.update_freq_incr/=60.0*60.0;
 			data.settings.update_freq_full/=60.0*60.0*24.0;
@@ -1857,7 +1861,7 @@ g.settings_list=[
 "file_hash_collect_timeout",
 "file_hash_collect_cachesize",
 "internet_calculate_filehashes_on_client",
-"compress_images",
+"image_file_format",
 "internet_connect_always"
 ];
 g.general_settings_list=[

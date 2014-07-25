@@ -7,11 +7,12 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # matsr <mostue@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-06-13 18:34+0000\n"
+"PO-Revision-Date: 2014-07-25 17:55+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Norwegian (Norway) (http://www.transifex.com/projects/p/urbackup/language/no_NO/)\n"
 "MIME-Version: 1.0\n"
@@ -992,8 +993,8 @@ msgstr "Global soft filsystem kvote"
 msgid "tDisable"
 msgstr "Deaktiver"
 
-msgid "tCompress image backups"
-msgstr "Komprimer image backuper"
+msgid "tImage backup file format"
+msgstr ""
 
 msgid "tAllow client-side starting of full file backups"
 msgstr "Tillat klient å starte fulle fil backuper"
@@ -1191,4 +1192,10 @@ msgid "Show/hide columns"
 msgstr "Vis/skjul kolonner"
 
 msgid "tShow when a new server version is available"
+msgstr ""
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr ""
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr ""

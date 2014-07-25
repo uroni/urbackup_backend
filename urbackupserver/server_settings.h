@@ -5,6 +5,12 @@
 #include "../Interface/Database.h"
 #include "../Interface/Mutex.h"
 
+namespace
+{
+	const char* image_file_format_vhd = "vhd";
+	const char* image_file_format_vhdz = "vhdz";
+}
+
 struct SSettings
 {
 	int clientid;
@@ -88,7 +94,7 @@ struct SSettings
 	bool end_to_end_file_backup_verification;
 	bool internet_calculate_filehashes_on_client;
 	bool use_incremental_symlinks;
-	bool compress_images;
+	std::string image_file_format;
 	bool trust_client_hashes;
 	bool internet_connect_always;
 	bool show_server_updates;

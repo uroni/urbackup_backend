@@ -315,7 +315,7 @@ void ServerSettings::readSettingsDefault(void)
 	}
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
-	settings->compress_images=(settings_default->getValue("compress_images", "true")=="true");
+	settings->image_file_format=settings_default->getValue("image_file_format", image_file_format_vhdz);
 	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
@@ -438,6 +438,10 @@ void ServerSettings::readSettingsClient(void)
 	if(!stmp.empty())
 		settings->client_quota=stmp;
 
+	stmp=settings_client->getValue("image_file_format", "");
+	if(!stmp.empty())
+		settings->image_file_format=stmp;
+
 	readStringClientSetting("local_full_file_transfer_mode", &settings->local_full_file_transfer_mode);
 	readStringClientSetting("internet_full_file_transfer_mode", &settings->internet_full_file_transfer_mode);
 	readStringClientSetting("internet_incr_file_transfer_mode", &settings->internet_incr_file_transfer_mode);
@@ -454,7 +458,6 @@ void ServerSettings::readSettingsClient(void)
 	}
 	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);	
 	readBoolClientSetting("silent_update", &settings->silent_update);
-	readBoolClientSetting("compress_images", &settings->compress_images);
 
 	readBoolClientSetting("allow_config_paths", &settings->allow_config_paths);
 	readBoolClientSetting("allow_starting_full_file_backups", &settings->allow_starting_full_file_backups);

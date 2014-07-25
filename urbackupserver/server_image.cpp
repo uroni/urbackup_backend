@@ -94,7 +94,7 @@ namespace
 	}
 }
 
-bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, bool compress)
+bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format)
 {
 	CTCPStack tcpstack(internet_connection);
 	IPipe *cc=getClientCommandConnection(10000);
@@ -154,7 +154,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 		Server->destroy(hashfile);
 	}
 
-	std::wstring imagefn=constructImagePath(widen(sletter), compress);
+	std::wstring imagefn=constructImagePath(widen(sletter), image_file_format);
 	
 	int64 free_space=os_free_space(os_file_prefix(ExtractFilePath(imagefn)));
 	if(free_space!=-1 && free_space<minfreespace_image)
@@ -447,16 +447,27 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					zeroblockdata=new unsigned char[blocksize];
 					memset(zeroblockdata, 0, blocksize);
 
+					IFSImageFactory::CompressionSetting compressionSetting;
+
+					if(image_file_format==image_file_format_vhd)
+					{
+						compressionSetting = IFSImageFactory::CompressionSetting_None;
+					}
+					else
+					{
+						compressionSetting = IFSImageFactory::CompressionSetting_Zlib;
+					}
+
 					if(!has_parent)
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+(int64)mbr_size,
 								(unsigned int)vhd_blocksize*blocksize, true,
-								compress?IFSImageFactory::CompressionSetting_Zlib:IFSImageFactory::CompressionSetting_None);
+								compressionSetting);
 					}
 					else
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), pParentvhd, false,
-							true, compress?IFSImageFactory::CompressionSetting_Zlib:IFSImageFactory::CompressionSetting_None);
+							true, compressionSetting);
 					}
 
 					if(r_vhdfile==NULL || !r_vhdfile->isOpen())

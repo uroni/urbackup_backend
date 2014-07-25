@@ -7,11 +7,12 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 # uroni <urpc@gmx.de>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-06-13 18:35+0000\n"
+"PO-Revision-Date: 2014-07-25 17:56+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: German (http://www.transifex.com/projects/p/urbackup/language/de/)\n"
 "MIME-Version: 1.0\n"
@@ -992,8 +993,8 @@ msgstr "Globale \"soft filesystem quota\""
 msgid "tDisable"
 msgstr "Deaktivieren"
 
-msgid "tCompress image backups"
-msgstr "Image-Backups komprimieren"
+msgid "tImage backup file format"
+msgstr "Image-Backup Dateiformat"
 
 msgid "tAllow client-side starting of full file backups"
 msgstr "Erlaube clientseitiges starten von vollen Datei-Backups"
@@ -1192,3 +1193,9 @@ msgstr "Spalten anzeigen/ausblenden"
 
 msgid "tShow when a new server version is available"
 msgstr "Zeige an wenn eine neue Serverversion verfügbar ist"
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr "VHD (Virtual HardDisk)"
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgstr "Komprimierte VHD (Komprimierte Virtual HardDisk in eigenem Format)"

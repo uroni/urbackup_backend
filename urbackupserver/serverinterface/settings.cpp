@@ -144,7 +144,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(file_hash_collect_cachesize);
 	SET_SETTING(end_to_end_file_backup_verification);
 	SET_SETTING(internet_calculate_filehashes_on_client);
-	SET_SETTING(compress_images);
+	SET_SETTING(image_file_format);
 	SET_SETTING(internet_connect_always);
 #undef SET_SETTING
 	return ret;

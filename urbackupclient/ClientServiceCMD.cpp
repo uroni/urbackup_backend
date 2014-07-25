@@ -807,7 +807,7 @@ void ClientConnector::CMD_GET_LOGDATA(const std::string &cmd, str_map &params)
 
 void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 {
-	if(ident_ok==true)
+	if(ident_ok)
 	{
 		lasttime=Server->getTimeMS();
 		std::string s_params=cmd.substr(11);
@@ -900,7 +900,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 
 void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 {
-	if(ident_ok==true)
+	if(ident_ok)
 	{
 		lasttime=Server->getTimeMS();
 		std::string s_params=cmd.substr(11);
@@ -1000,10 +1000,10 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			lasttime=Server->getTimeMS();
 			sendIncrImage();
 		}
-		else
-		{
-			ImageErr("Ident reset (2)");
-		}
+	}
+	else
+	{
+		ImageErr("Ident reset (2)");
 	}
 }
 

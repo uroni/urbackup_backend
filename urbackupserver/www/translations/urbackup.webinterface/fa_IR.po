@@ -7,10 +7,11 @@
 # Translators:
 # Translators:
 # Translators:
+# Translators:
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-06-13 18:34+0000\n"
+"PO-Revision-Date: 2014-07-25 17:55+0000\n"
 "Last-Translator: uroni <urpc@gmx.de>\n"
 "Language-Team: Persian (Iran) (http://www.transifex.com/projects/p/urbackup/language/fa_IR/)\n"
 "MIME-Version: 1.0\n"
@@ -991,7 +992,7 @@ msgstr ""
 msgid "tDisable"
 msgstr ""
 
-msgid "tCompress image backups"
+msgid "tImage backup file format"
 msgstr ""
 
 msgid "tAllow client-side starting of full file backups"
@@ -1190,4 +1191,10 @@ msgid "Show/hide columns"
 msgstr ""
 
 msgid "tShow when a new server version is available"
+msgstr ""
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr ""
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr ""
