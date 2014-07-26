@@ -244,7 +244,7 @@ namespace
 		bool ret = true;
 		if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
 		{
-			ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid);
+			ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid, false);
 			ret = ret && os_remove_dir(os_file_prefix(pool_path));
 		}
 		else
@@ -258,12 +258,12 @@ namespace
 	}
 }
 
-bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup_dao, int clientid)
+bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup_dao, int clientid, bool delete_root)
 {
 	IScopedLock lock(dir_link_mutex);
 
 	SSymlinkCallbackData userdata(&backup_dao, clientid);
-	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata);
+	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata, delete_root);
 }
 
 void init_dir_link_mutex()
