@@ -10,6 +10,9 @@ public:
 
 	void commit();
 	int64 getLastId();
+	void beginTransaction();
+	void endTransaction();
+
 
 	//@-SQLGenFunctionsBegin
 	struct CondString

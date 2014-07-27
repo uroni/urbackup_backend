@@ -738,3 +738,13 @@ int64 ServerBackupDao::getLastId()
 {
 	return db->getLastInsertID();
 }
+
+void ServerBackupDao::beginTransaction()
+{
+	db->BeginTransaction();
+}
+
+void ServerBackupDao::endTransaction()
+{
+	db->EndTransaction();
+}
