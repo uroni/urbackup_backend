@@ -69,7 +69,7 @@ private:
 	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath, bool& cache_hit);
 	std::wstring findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath);
 	bool copyFile(IFile *tf, const std::wstring &dest);
-	bool copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
+	bool copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const FileMetadata& metadata);
 	bool freeSpace(int64 fs, const std::wstring &fp);
 	
 	void addFileTmp(int backupid, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize);
@@ -78,14 +78,16 @@ private:
 	void copyFilesFromTmp(void);
 	int countFilesInTmp(void);
 	IFile* openFileRetry(const std::wstring &dest, int mode);
-	bool patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest);
+	bool patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest,
+		const FileMetadata& metadata);
 
 	bool createChunkHashes(IFile *tf, const std::wstring hash_fn);
 	
 	bool replaceFile(IFile *tf, const std::wstring &dest, const std::wstring &orig_fn);
-	bool replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn);
+	bool replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn,
+		const FileMetadata& metadata);
 
-	bool renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
+	bool renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const FileMetadata& metadata);
 	bool renameFile(IFile *tf, const std::wstring &dest);
 
 	bool correctPath(std::wstring& ff, std::wstring& f_hashpath);

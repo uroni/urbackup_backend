@@ -26,9 +26,11 @@ public:
 
 	}
 
+	char permissions_compressed;
 	std::string file_permission_bits;
 	int64 last_modified;
 	int64 created;
+	std::string shahash;
 
 	bool operator==(const FileMetadata& other)
 	{
@@ -44,9 +46,13 @@ public:
 	bool read(CRData& data);
 
 	bool read(str_map& extra_params);
+
+	void set_shahash(const std::string& the_shahash);
 };
 
 bool write_file_metadata(const std::wstring& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata);
+
+bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMetadata& metadata);
 
 bool is_metadata_only(IFile* hash_file);
 

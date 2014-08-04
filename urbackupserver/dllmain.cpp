@@ -1124,6 +1124,13 @@ void upgrade34_35()
 	db->Write("CREATE INDEX IF NOT EXISTS clients_hist_id_created_idx ON clients_hist_id (created)");
 }
 
+void upgrade35_36()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	db->Write("ALTER TABLE backups ADD group INTEGER");
+	db->Write("UPDATE backups SET group=0 WHERE group IS NULL");
+}
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1305,6 +1312,10 @@ void upgrade(void)
 				break;
 			case 34:
 				upgrade34_35();
+				++ver;
+				break;
+			case 35:
+				upgrade35_36();
 				++ver;
 				break;
 			default:

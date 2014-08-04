@@ -55,10 +55,11 @@ public:
 		}
 	};
 
-	BackupServerContinuous(BackupServerGet* server_get, const std::wstring& continuous_path, const std::wstring& continuous_hash_path, const std::wstring& continuous_backup_path,
+	BackupServerContinuous(BackupServerGet* server_get, const std::wstring& continuous_path, const std::wstring& continuous_hash_path, const std::wstring& continuous_path_backup,
 		const std::wstring& tmpfile_path, bool use_tmpfiles, int clientid, const std::wstring& clientname, int backupid, bool use_snapshots, bool use_reflink)
 		: server_get(server_get), collect_only(true), first_compaction(true), stop(false), continuous_path(continuous_path), continuous_hash_path(continuous_hash_path),
-		continuous_backup_path(continuous_backup_path), tmpfile_path(tmpfile_path), use_tmpfiles(use_tmpfiles), clientid(clientid), clientname(clientname), backupid(backupid),
+		continuous_path_backup(continuous_path_backup),
+		tmpfile_path(tmpfile_path), use_tmpfiles(use_tmpfiles), clientid(clientid), clientname(clientname), backupid(backupid),
 		use_snapshots(use_snapshots), use_reflink(use_reflink)
 	{
 		mutex = Server->createMutex();
@@ -540,7 +541,7 @@ private:
 
 	bool execDelFile(SChange& change)
 	{
-		if(!backupFile(change.fn1))
+		if(backupFile(change.fn1)==std::wstring())
 		{
 			return false;
 		}
@@ -610,7 +611,7 @@ private:
 		std::wstring fn2=getFullpath(change.fn2);
 		if(Server->fileExists(fn2))
 		{
-			if(!backupFile(change.fn2))
+			if(backupFile(change.fn2)==std::wstring())
 			{
 				return false;
 			}
@@ -664,7 +665,7 @@ private:
 		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
 			hash, filesize, std::string(), tries_once, ff_last, hardlink_limit, metadata))
 		{
-			//delete old file?
+			//TODO: delete old file first!
 			local_hash->addFileSQL(backupid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1), hash, filesize, 0);
 			local_hash->copyFromTmpTable(false);
 			return true;
@@ -730,9 +731,31 @@ private:
 		}
 	}
 
-	bool backupFile(const std::string& fn)
+	std::wstring backupFile(const std::wstring& fn)
 	{
+		std::wstring filePath = continuous_path + fn;
+		time_t tt=time(NULL);
+#ifdef _WIN32
+		tm lt;
+		tm *t=&lt;
+		localtime_s(t, &tt);
+#else
+		tm *t=localtime(&tt);
+#endif
+		char buffer[500];
+		strftime(buffer, 500, "%y-%m-%d %H.%M.%S", t);
+		std::wstring backupPath = continuous_path_backup + widen(buffer)+L"-"+convert(Server->getTimeSeconds())+os_file_sep()+fn;
+		if(!os_create_dir_recursive(os_file_prefix(ExtractFilePath(backupPath))))
+		{
+			return std::wstring();
+		}
+		
+		if(!os_rename_file(os_file_prefix(filePath), os_file_prefix(backupPath)))
+		{
+			return std::wstring();
+		}
 
+		return backupPath;
 	}
 
 	bool backupDir(const std::string& dir)
@@ -786,7 +809,7 @@ private:
 	bool stop;
 	std::wstring continuous_path;
 	std::wstring continuous_hash_path;
-	std::wstring continuous_backup_path;
+	std::wstring continuous_path_backup;
 
 	std::wstring tmpfile_path;
 	bool use_tmpfiles;

@@ -6,6 +6,14 @@
 #include "server_prepare_hash.h"
 #include "../common/data.h"
 #include "../fileservplugin/chunk_settings.h"
+extern "C"
+{
+#define MINIZ_NO_STDIO
+#define MINIZ_NO_TIME
+#define MINIZ_NO_ARCHIVE_APIS
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include "../common/miniz.c"
+};
 #include <assert.h>
 #include <algorithm>
 
@@ -109,16 +117,8 @@ namespace
 	
 }
 
-bool write_file_metadata(const std::wstring& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata)
+bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMetadata& metadata)
 {
-	std::auto_ptr<IFile> out(Server->openFile(os_file_prefix(out_fn), MODE_RW_CREATE));
-
-	if(!out.get())
-	{
-		Server->Log(L"Error writing file metadata to file \""+out_fn+L"\"", LL_ERROR);
-		return false;
-	}
-
 	int64 hashfilesize;
 
 	out->Seek(0);
@@ -142,13 +142,26 @@ bool write_file_metadata(const std::wstring& out_fn, INotEnoughSpaceCallback *cb
 		out->Seek(hashdata_size);
 	}
 
-	if(!BackupServerPrepareHash::writeRepeatFreeSpace(out.get(), reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize), cb))
+	if(!BackupServerPrepareHash::writeRepeatFreeSpace(out, reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize), cb))
+	{
+		Server->Log(L"Error writing file metadata to file \""+out->getFilenameW()+L"\"", LL_ERROR);
+		return false;
+	}
+
+	return write_metadata(out, cb, metadata);
+}
+
+bool write_file_metadata(const std::wstring& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata)
+{
+	std::auto_ptr<IFile> out(Server->openFile(os_file_prefix(out_fn), MODE_RW_CREATE));
+
+	if(!out.get())
 	{
 		Server->Log(L"Error writing file metadata to file \""+out_fn+L"\"", LL_ERROR);
 		return false;
 	}
 
-	return write_metadata(out.get(), cb, metadata);
+	return write_file_metadata(out.get(), cb, metadata);
 }
 
 bool is_metadata_only(IFile* hash_file)
@@ -248,17 +261,69 @@ std::wstring unescape_metadata_fn( const std::wstring& fn )
 
 void FileMetadata::serialize( CWData& data ) const
 {
-	data.addString(file_permission_bits);
+	char is_compressed=0;
+
+	if(file_permission_bits.size()>10)
+	{
+		std::string comp_out;
+		comp_out.resize(mz_compressBound(static_cast<mz_ulong>(file_permission_bits.size())));
+		mz_ulong dest_len = static_cast<mz_ulong>(comp_out.size());
+		int rc = mz_compress2(reinterpret_cast<unsigned char*>(&comp_out[0]),
+			&dest_len, reinterpret_cast<const unsigned char*>(file_permission_bits.c_str()),
+			static_cast<mz_ulong>(file_permission_bits.size()), MZ_BEST_COMPRESSION);
+		if(rc!=MZ_OK)
+		{
+			Server->Log("Error compressing metadata file permission bits: "+nconvert(rc), LL_WARNING);
+		}
+		else
+		{
+			comp_out.resize(dest_len);
+			is_compressed=1;
+			data.addChar(is_compressed);
+			data.addUInt(static_cast<unsigned int>(comp_out.size()));
+			data.addString(comp_out);
+		}
+	}
+
+	if(is_compressed==0)
+	{
+		data.addChar(is_compressed);
+		data.addString(file_permission_bits);
+	}
 	data.addInt64(last_modified);
 	data.addInt64(created);
+	data.addString(shahash);
 }
 
 bool FileMetadata::read( CRData& data )
 {
 	bool ok=true;
+	ok &= data.getChar(&permissions_compressed);
+	unsigned int uncomp_size;
+	if(permissions_compressed)
+	{
+		ok &= data.getUInt(&uncomp_size);
+	}
 	ok &= data.getStr(&file_permission_bits);
 	ok &= data.getInt64(&last_modified);
 	ok &= data.getInt64(&created);
+	ok &= data.getStr(&shahash);
+
+	if(ok && permissions_compressed)
+	{
+		std::string input_data = file_permission_bits;
+		file_permission_bits.resize(uncomp_size);
+		mz_ulong dest_len = static_cast<mz_ulong>(file_permission_bits.size());
+		int rc = mz_uncompress(reinterpret_cast<unsigned char*>(&file_permission_bits[0]),
+			&dest_len,
+			reinterpret_cast<const unsigned char*>(input_data.c_str()),
+			static_cast<mz_ulong>(input_data.size()));
+		if(rc!=MZ_OK)
+		{
+			Server->Log("Error decompressing file metadata permission bits: "+nconvert(rc), LL_ERROR);
+			ok=false;
+		}
+	}
 
 	return ok;
 }
@@ -285,4 +350,9 @@ bool FileMetadata::bitSet( size_t id ) const
 	unsigned char b=static_cast<unsigned char>(file_permission_bits[bitmap_byte]);
 
 	return (b & (1<<(7-bitmap_bit)))>0;
+}
+
+void FileMetadata::set_shahash( const std::string& the_shahash )
+{
+	shahash=the_shahash;
 }

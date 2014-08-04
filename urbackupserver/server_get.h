@@ -42,6 +42,20 @@ struct SBackup
 	int64 backup_time_ms;
 };
 
+struct SContinuousSequence
+{
+	SContinuousSequence(int64 id, int64 next)
+		: id(id), next(next)
+	{
+
+	}
+	int64 id;
+	int64 next;
+};
+
+const int c_group_default = 0;
+const int c_group_continuous = 1;
+
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback,
 	public FileClient::ReconnectionCallback, public INotEnoughSpaceCallback,
 	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback
@@ -112,14 +126,14 @@ private:
 	bool isUpdateIncrImage(void);
 	bool isUpdateFullImage(const std::string &letter);
 	bool isUpdateIncrImage(const std::string &letter);
-	bool doFullBackup(bool with_hashes, bool &disk_error, bool &log_backup);
-	int createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed, int64 indexing_time_ms);
+	bool doFullBackup(bool with_hashes, int group, bool &disk_error, bool &log_backup);
+	int createBackupSQL(int incremental, int clientid, std::wstring path, bool resumed, int64 indexing_time_ms, int group);
 	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file);
 	
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool resume, int group, bool with_token, bool& no_backup_dirs, bool& connect_fail);
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata);
-	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool in_place, int group, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
+	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, int group, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
 
 	void getTokenFile(FileClient &fc, bool hashed_transfer );
 
@@ -191,7 +205,9 @@ private:
 	void createHashThreads(bool use_reflink);
 	void destroyHashThreads();
 
-	void copyFile(const std::wstring& source, const std::wstring& dest);
+	void copyFile(const std::wstring& source, const std::wstring& dest,
+		const std::wstring& hash_src, const std::wstring& hash_dest,
+		const FileMetadata& metadata);
 
 	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
 	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);
@@ -316,6 +332,7 @@ private:
 	BackupServerPrepareHash *bsh_prepare;
 	THREADPOOL_TICKET bsh_prepare_ticket;
 	BackupServerHash *local_hash;
+	int hash_thread_refcount;
 
 	int64 last_image_backup_try;
 	size_t count_image_backup_try;
@@ -335,4 +352,6 @@ private:
 
 	IMutex* continuous_mutex;
 	std::auto_ptr<BackupServerContinuous> continuous_update;
+	THREADPOOL_TICKET continuous_thread_ticket;
+	std::map<std::wstring, SContinuousSequence> continuous_sequences;
 };
