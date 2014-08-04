@@ -124,6 +124,8 @@ bool UrlFactory::sendMail(const MailServer &server, const std::vector<std::strin
 
 	rd.text=header+message;
 	curl_easy_setopt(curl, CURLOPT_READDATA, &rd);
+	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+
 	std::string errbuf;
 	errbuf.resize(CURL_ERROR_SIZE*2);
 	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, (char*)errbuf.c_str());
