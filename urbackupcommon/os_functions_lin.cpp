@@ -305,7 +305,7 @@ bool os_directory_exists(const std::wstring &path)
 	return isDirectory(path);
 }
 
-bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata)
+bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
 	std::string upath=Server->ConvertToUTF8(path);
 	std::vector<SFile> tmp;
@@ -385,6 +385,13 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 				{
 					symlink_callback(Server->ConvertToUnicode(upath+"/"+(std::string)dirp->d_name), userdata);
 				}
+				else
+				{
+					if(unlink((upath+"/"+(std::string)dirp->d_name).c_str())!=0)
+					{
+						Server->Log("Error deleting symlink \""+upath+"/"+(std::string)dirp->d_name+"\"", LL_ERROR);
+					}
+				}
 			}
 			else
 			{
@@ -399,13 +406,16 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
     closedir(dp);
     for(size_t i=0;i<subdirs.size();++i)
     {
-		bool b=os_remove_nonempty_dir(path+L"/"+subdirs[i]);
+		bool b=os_remove_nonempty_dir(path+L"/"+subdirs[i], symlink_callback, userdata);
 		if(!b)
 		    ok=false;
     }
-    if(rmdir(upath.c_str())!=0)
+	if(delete_root)
 	{
-		Server->Log("Error deleting directory \""+upath+"\"", LL_ERROR);
+		if(rmdir(upath.c_str())!=0)
+		{
+			Server->Log("Error deleting directory \""+upath+"\"", LL_ERROR);
+		}
 	}
 	return ok;
 }

@@ -57,6 +57,7 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 
 	std::wstring link_src_dir;
 	std::wstring pool_name;
+	bool refcount_bigger_one=false;
 	if(os_is_symlink(os_file_prefix(src_dir)))
 	{
 		if(!os_get_symlink_target(os_file_prefix(src_dir), link_src_dir))
@@ -67,9 +68,16 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 
 		pool_name = ExtractFileName(link_src_dir);
 
+		if(pool_name.empty())
+		{
+			Server->Log(L"Error extracting pool name from link source \""+link_src_dir+L"\"", LL_ERROR);
+			return false;
+		}
+
 		backup_dao.addDirectoryLink(clientid, pool_name, target_dir);
 		reference_all_sublinks(backup_dao, clientid, src_dir, target_dir);
 		backup_dao.commit();
+		refcount_bigger_one=true;
 	}
 	else if(os_directory_exists(os_file_prefix(src_dir)))
 	{
@@ -126,7 +134,7 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 
 		if(!os_link_symbolic(os_file_prefix(link_src_dir), os_file_prefix(src_dir), transaction))
 		{
-			Server->Log(L"Could create a symbolic link at \""+src_dir+L"\" to \""+link_src_dir+L"\"", LL_ERROR);
+			Server->Log(L"Could not create a symbolic link at \""+src_dir+L"\" to \""+link_src_dir+L"\"", LL_ERROR);
 			os_rename_file(link_src_dir, src_dir, transaction);
 			os_finish_transaction(transaction);
 			backup_dao.removeDirectoryLink(clientid, src_dir);
@@ -156,7 +164,16 @@ bool link_directory_pool( ServerBackupDao& backup_dao, int clientid, const std::
 
 	if(!os_link_symbolic(os_file_prefix(link_src_dir), os_file_prefix(target_dir)))
 	{
+		Server->Log(L"Error creating symbolic link from \"" + link_src_dir +L"\" to \"" +
+			target_dir+L"\" -2", LL_ERROR);
+
 		backup_dao.removeDirectoryLink(clientid, target_dir);
+
+		if(refcount_bigger_one)
+		{
+			backup_dao.removeDirectoryLinkGlob(clientid, escape_glob_sql(target_dir)+os_file_sep()+L"*");
+		}
+
 		return false;
 	}
 
@@ -219,6 +236,7 @@ namespace
 		std::wstring pool_path;
 		if(!os_get_symlink_target(path, pool_path))
 		{
+			Server->Log(L"Error getting symlink path in pool of \""+path+L"\"", LL_ERROR);
 			return false;
 		}
 
@@ -226,6 +244,7 @@ namespace
 
 		if(pool_name.empty())
 		{
+			Server->Log(L"Error extracting pool name from pool path \""+pool_path+L"\"", LL_ERROR);
 			return false;
 		}
 
@@ -239,31 +258,43 @@ namespace
 			target_raw = path;
 		}
 
+		data->backup_dao->beginTransaction();
+
 		data->backup_dao->removeDirectoryLink(data->clientid, target_raw);
 
 		bool ret = true;
 		if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
 		{
-			ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid);
+			ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid, false);
 			ret = ret && os_remove_dir(os_file_prefix(pool_path));
+
+			if(!ret)
+			{
+				Server->Log(L"Error removing directory link \""+path+L"\" with pool path \""+pool_path+L"\"", LL_ERROR);
+			}
 		}
 		else
 		{
 			data->backup_dao->removeDirectoryLinkGlob(data->clientid, escape_glob_sql(target_raw)+os_file_sep()+L"*");
 		}
 
-		os_remove_symlink_dir(os_file_prefix(path));
+		if(!os_remove_symlink_dir(os_file_prefix(path)))
+		{
+			Server->Log(L"Error removing symlink dir \""+path+L"\"", LL_ERROR);
+		}
+
+		data->backup_dao->endTransaction();
 
 		return true;
 	}
 }
 
-bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup_dao, int clientid)
+bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup_dao, int clientid, bool delete_root)
 {
 	IScopedLock lock(dir_link_mutex);
 
 	SSymlinkCallbackData userdata(&backup_dao, clientid);
-	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata);
+	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata, delete_root);
 }
 
 void init_dir_link_mutex()
