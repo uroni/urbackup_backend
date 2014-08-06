@@ -251,7 +251,6 @@ void ServerSettings::readSettingsDefault(void)
 	settings->allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
 	settings->backupfolder=trim(settings_default->getValue(L"backupfolder", L"C:\\urbackup"));
 	settings->backupfolder_uncompr=trim(settings_default->getValue(L"backupfolder_uncompr", settings->backupfolder));
-	settings->client_overwrite=true;
 	settings->autoshutdown=(settings_default->getValue("autoshutdown", "false")=="true");;
 	settings->startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
 	settings->download_client=(settings_default->getValue("download_client", "true")=="true");
@@ -333,13 +332,6 @@ void ServerSettings::readSettingsClient(void)
 	{
 		settings->internet_authkey=generateRandomAuthKey();
 	}
-
-	stmp=settings_client->getValue("client_overwrite", "");
-	if(!stmp.empty())
-		settings->client_overwrite=(stmp=="true");
-
-	if(!settings->client_overwrite)
-		return;
 
 	readBoolClientSetting("overwrite", &settings->overwrite);
 
@@ -442,6 +434,7 @@ void ServerSettings::readSettingsClient(void)
 	if(!stmp.empty())
 		settings->image_file_format=stmp;
 
+	readStringClientSetting("local_incr_file_transfer_mode", &settings->local_incr_file_transfer_mode);
 	readStringClientSetting("local_full_file_transfer_mode", &settings->local_full_file_transfer_mode);
 	readStringClientSetting("internet_full_file_transfer_mode", &settings->internet_full_file_transfer_mode);
 	readStringClientSetting("internet_incr_file_transfer_mode", &settings->internet_incr_file_transfer_mode);

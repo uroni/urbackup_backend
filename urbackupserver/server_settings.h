@@ -32,7 +32,6 @@ struct SSettings
 	bool no_file_backups;
 	bool overwrite;
 	bool allow_overwrite;
-	bool client_overwrite;
 	bool autoshutdown;
 	int startup_backup_delay;
 	bool download_client;

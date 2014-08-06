@@ -3672,10 +3672,6 @@ bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 	}
 
 	Server->destroy(sr);
-
-	bool b=updateClientSetting(L"client_overwrite", L"true");
-	if(b)
-		mod=true;
 	
 	std::string tmp_fn=tmp->getFilename();
 	Server->destroy(tmp);
