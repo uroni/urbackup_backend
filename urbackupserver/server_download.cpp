@@ -60,6 +60,7 @@ void ServerDownloadThread::operator()( void )
 		else if(curr.action==EQueueAction_Skip)
 		{
 			skipping = true;
+			continue;
 		}
 
 		if(is_offline || skipping)
@@ -235,7 +236,6 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		download_nok_ids.push_back(todl.id);
 		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_ERROR)
@@ -252,6 +252,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		}
 		else
 		{
+			download_nok_ids.push_back(todl.id);
 			BackupServerGet::destroyTemporaryFile(fd);					
 		}
 
