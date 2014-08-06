@@ -52,6 +52,7 @@ public:
 
 	static void addOnetimeToken(const std::string &token);
 	static std::pair<unsigned int, std::string> getOnetimeToken(void);
+	static void clearOnetimeTokens();
 
 	static std::string getStatusMsg();
 
