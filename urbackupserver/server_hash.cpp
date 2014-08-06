@@ -257,7 +257,7 @@ void BackupServerHash::operator()(void)
 
 				if(tf==NULL)
 				{
-					ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading", LL_ERROR);
+					ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading ec="+nconvert(os_last_error()), LL_ERROR);
 					has_error=true;
 				}
 				else
@@ -283,7 +283,7 @@ void BackupServerHash::operator()(void)
 
 				if(tf==NULL)
 				{
-					ServerLogger::Log(clientid, "Error opening file \""+source+"\" from pipe for reading", LL_ERROR);
+					ServerLogger::Log(clientid, "Error opening file \""+source+"\" from pipe for reading ec="+nconvert(os_last_error()), LL_ERROR);
 					has_error=true;
 				}
 				else

@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 
 #if defined(__FreeBSD__)
 #define lstat64 lstat
@@ -564,4 +565,9 @@ void* os_start_transaction()
 
 bool os_finish_transaction(void* transaction)
 {
+}
+
+int64 os_last_error()
+{
+	return errno;
 }

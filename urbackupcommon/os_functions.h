@@ -85,4 +85,6 @@ void* os_start_transaction();
 
 bool os_finish_transaction(void* transaction);
 
+int64 os_last_error();
+
 #endif //OS_FUNCTIONS_H

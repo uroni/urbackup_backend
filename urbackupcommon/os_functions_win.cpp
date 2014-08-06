@@ -841,3 +841,8 @@ bool os_finish_transaction(void* transaction)
 	return true;
 #endif
 }
+
+int64 os_last_error()
+{
+	return GetLastError();
+}
