@@ -365,6 +365,16 @@ std::pair<unsigned int, std::string> InternetClient::getOnetimeToken(void)
 	}
 }
 
+
+void InternetClient::clearOnetimeTokens()
+{
+	IScopedLock lock(onetime_token_mutex);
+	while(!onetime_tokens.empty())
+	{
+		onetime_tokens.pop();
+	}
+}
+
 std::string InternetClient::getStatusMsg()
 {
 	IScopedLock lock(mutex);
@@ -558,8 +568,19 @@ void InternetClientThread::operator()(void)
 		{
 			std::string errmsg="None";
 			rd.getStr(&errmsg);
-			Server->Log("Internet server auth failed. Error: "+errmsg, LL_ERROR);
-			InternetClient::setStatusMsg("error:Authentication failure: "+errmsg);
+			int loglevel = LL_ERROR;
+			if(errmsg=="Token not found")
+			{
+				InternetClient::clearOnetimeTokens();
+				loglevel=LL_INFO;
+				InternetClient::setStatusMsg("error:Temporary authentication failure: "+errmsg);
+			}
+			else
+			{
+				InternetClient::setStatusMsg("error:Authentication failure: "+errmsg);
+			}
+			Server->Log("Internet server auth failed. Error: "+errmsg, loglevel);
+			
 			delete []buf;
 			goto cleanup;
 		}
