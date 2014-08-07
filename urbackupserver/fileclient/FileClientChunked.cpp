@@ -509,8 +509,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 
 					if(remote_filesize!=-1 && new_remote_filesize>remote_filesize)
 					{
-						Server->Log("Filesize increase from predicted filesize. Loading file out of band...", LL_WARNING);
-						assert(false);
+						Server->Log("Filesize increase from predicted filesize. Reconnecting...", LL_WARNING);
 						if(!Reconnect())
 						{
 							getfile_done=true;
@@ -545,12 +544,30 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 			{
 				getfile_done=true;
 				retval=ERR_BASE_DIR_LOST;
+				if(remote_filesize!=-1)
+				{
+					Server->Log("Did expect file to exist (1). Reconnecting...", LL_WARNING);
+					if(!Reconnect())
+					{
+						getfile_done=true;
+						retval=ERR_CONN_LOST;
+					}
+				}
 				return;
 			}
 		case ID_COULDNT_OPEN:
 			{
 				getfile_done=true;
 				retval=ERR_FILE_DOESNT_EXIST;
+				if(remote_filesize!=-1)
+				{
+					Server->Log("Did expect file to exist (2). Reconnecting...", LL_WARNING);
+					if(!Reconnect())
+					{
+						getfile_done=true;
+						retval=ERR_CONN_LOST;
+					}
+				}
 				return;
 			}
 		case ID_WHOLE_BLOCK:
@@ -563,7 +580,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 
 				if(pending_chunks.find(block_start)==pending_chunks.end())
 				{
-					Server->Log("Block not requested.", LL_ERROR);
+					Server->Log("Block not requested. ("+nconvert(block_start)+")", LL_ERROR);
 					logPendingChunks();
 					assert(false);
 					retval=ERR_ERROR;
@@ -608,7 +625,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				std::map<_i64, SChunkHashes>::iterator it=pending_chunks.find(block*c_checkpoint_dist);
 				if(it==pending_chunks.end())
 				{
-					Server->Log("Chunk not requested.", LL_ERROR);
+					Server->Log("Chunk not requested. ("+nconvert(block*c_checkpoint_dist)+")", LL_ERROR);
 					logPendingChunks();
 					assert(false);
 					retval=ERR_ERROR;
