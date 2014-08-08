@@ -308,22 +308,21 @@ int ServerChannelThread::constructCapabilities(void)
 
 void ServerChannelThread::LOGIN(str_map& params)
 {
+	str_nmap PARAMS;
+	str_map GET;
+
+	if(!session.empty())
+	{
+		GET[L"ses"]=session;
+	}
+
+	Helper helper(Server->getThreadID(), &GET, &PARAMS);
+
 	if(needs_login())
 	{
-		str_nmap PARAMS;
-		str_map GET;
-
-		if(!session.empty())
-		{
-			GET[L"ses"]=session;
-		}
-
-		Helper helper(Server->getThreadID(), &GET, &PARAMS);
-
 		if(session.empty())
 		{
 			session=helper.generateSession(L"anonymous");
-			logLogin(helper, PARAMS, L"anonymous", LoginMethod_RestoreCD);
 			GET[L"ses"]=session;
 			helper.update(Server->getThreadID(), &GET, &PARAMS);
 		}
@@ -346,6 +345,7 @@ void ServerChannelThread::LOGIN(str_map& params)
 	}
 	else
 	{
+		logLogin(helper, PARAMS, L"anonymous", LoginMethod_RestoreCD);
 		tcpstack.Send(input, "ok");
 	}
 }
