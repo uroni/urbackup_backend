@@ -1913,6 +1913,10 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 					line <= (std::max)(server_download->getMaxOkId(), max_ok_id) &&
 					server_download->isDownloadOk(line) )
 				{
+					if(server_download->isDownloadPartial(line))
+					{
+						cf.last_modified *= Server->getRandomNumber();
+					}
 					writeFileItem(clientlist, cf);
 				}				
 				++line;
@@ -2849,6 +2853,10 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				}
 				else if( server_download->isDownloadOk(line) )
 				{
+					if(server_download->isDownloadPartial(line))
+					{
+						cf.last_modified *= Server->getRandomNumber();
+					}
 					writeFileItem(clientlist, cf);
 				}
 				++line;

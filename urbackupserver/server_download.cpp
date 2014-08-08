@@ -121,6 +121,7 @@ void ServerDownloadThread::operator()( void )
 	}
 
 	std::sort(download_nok_ids.begin(), download_nok_ids.end());
+	std::sort(download_partial_ids.begin(), download_partial_ids.end());
 }
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, bool at_front )
@@ -249,6 +250,8 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			{
 				max_ok_id=todl.id;
 			}
+
+			download_partial_ids.push_back(todl.id);
 		}
 		else
 		{
@@ -559,6 +562,14 @@ bool ServerDownloadThread::isDownloadOk( size_t id )
 	return !std::binary_search(download_nok_ids.begin(), download_nok_ids.end(),
 		id);
 }
+
+
+bool ServerDownloadThread::isDownloadPartial( size_t id )
+{
+	return !download_partial_ids.empty() && 
+		!std::binary_search(download_partial_ids.begin(), download_partial_ids.end(), id);
+}
+
 
 size_t ServerDownloadThread::getMaxOkId()
 {
