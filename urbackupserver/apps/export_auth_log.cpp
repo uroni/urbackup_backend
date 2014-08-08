@@ -22,7 +22,7 @@ int export_auth_log()
 	std::fstream out("auth_log.csv", std::ios::out|std::ios::binary);
 	if(!out.is_open())
 	{
-		Server->Log("auth_log.csv for writing", LL_ERROR);
+		Server->Log("Error opening auth_log.csv for writing", LL_ERROR);
 		return 1;
 	}
 
