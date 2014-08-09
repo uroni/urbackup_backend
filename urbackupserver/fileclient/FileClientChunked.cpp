@@ -191,10 +191,9 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 					break;
 				}
 
-				if(next_chunk<num_chunks)
+				if(next_chunk<num_chunks
+					&& m_chunkhashes->Seek(chunkhash_file_off+next_chunk*chunkhash_single_size))
 				{
-					m_chunkhashes->Seek(chunkhash_file_off+next_chunk*chunkhash_single_size);
-
 					char buf[chunkhash_single_size+2*sizeof(char)+sizeof(_i64)];
 					buf[0]=ID_BLOCK_REQUEST;
 					*((_i64*)(buf+1))=little_endian(next_chunk*c_checkpoint_dist);
