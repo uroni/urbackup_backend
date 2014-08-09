@@ -37,7 +37,6 @@ void ServerDownloadThread::operator()( void )
 	if(fc_chunked!=NULL && filesrv_protocol_version>2)
 	{
 		fc_chunked->setQueueCallback(this);
-		fc_chunked->setProgressLogCallback(this);
 	}
 
 	while(true)
