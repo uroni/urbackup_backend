@@ -236,7 +236,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting complete file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_ERROR)
 			&& save_incomplete_file
@@ -454,9 +454,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		download_nok_ids.push_back(todl.id);
-
-		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting file patch for \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR)
 			&& dlfiles.patchfile->Size()>0
@@ -469,10 +467,13 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			{
 				max_ok_id=todl.id;
 			}
+
+			download_partial_ids.push_back(todl.id);
 		}
 		else
 		{
 			hash_file=false;
+			download_nok_ids.push_back(todl.id);
 		}
 	}
 	else
@@ -566,7 +567,7 @@ bool ServerDownloadThread::isDownloadOk( size_t id )
 bool ServerDownloadThread::isDownloadPartial( size_t id )
 {
 	return !download_partial_ids.empty() && 
-		!std::binary_search(download_partial_ids.begin(), download_partial_ids.end(), id);
+		std::binary_search(download_partial_ids.begin(), download_partial_ids.end(), id);
 }
 
 

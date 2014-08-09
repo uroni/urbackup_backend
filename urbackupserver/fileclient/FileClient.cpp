@@ -1096,13 +1096,12 @@ void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 re
 	if(filesize>0 && (last_progress_log==0 ||
 		ct-last_progress_log>60000) )
 	{
+		int64 new_transferred=getTransferredBytes();
 		if( last_transferred_bytes!=0 &&
 			last_progress_log!=0 )
 		{
-			int64 newTransferred=getTransferredBytes();
-			int64 tranferred = newTransferred - last_transferred_bytes;
-
-			int64 speed_bps = transferred_bytes*1000 / (ct-last_progress_log);
+			int64 tranferred = new_transferred - last_transferred_bytes;
+			int64 speed_bps = tranferred*1000 / (ct-last_progress_log);
 
 			if(tranferred>0)
 			{
@@ -1111,8 +1110,8 @@ void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 re
 			}
 		}
 
-		last_transferred_bytes = getTransferredBytes();
-		last_progress_log = Server->getTimeMS();
+		last_transferred_bytes = new_transferred;
+		last_progress_log = ct;
 	}	
 }
 

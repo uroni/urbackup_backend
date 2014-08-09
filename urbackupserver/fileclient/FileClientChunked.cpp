@@ -1498,13 +1498,13 @@ void FileClientChunked::logTransferProgress()
 	if(remote_filesize>0 && (last_progress_log==0 ||
 		ct-last_progress_log>60000) )
 	{
+		int64 newTransferred=getTransferredBytes();
+
 		if( last_transferred_bytes!=0 &&
 			last_progress_log!=0 )
-		{
-			int64 newTransferred=getTransferredBytes();
+		{			
 			int64 tranferred = newTransferred - last_transferred_bytes;
-
-			int64 speed_bps = transferred_bytes*1000 / (ct-last_progress_log);
+			int64 speed_bps = tranferred*1000 / (ct-last_progress_log);
 
 			if(tranferred>0)
 			{
@@ -1513,8 +1513,8 @@ void FileClientChunked::logTransferProgress()
 			}
 		}
 
-		last_transferred_bytes = getTransferredBytes();
-		last_progress_log = Server->getTimeMS();
+		last_transferred_bytes = newTransferred;
+		last_progress_log = ct;
 	}	
 }
 
