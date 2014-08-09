@@ -372,6 +372,8 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		{
 			starttime=ctime;
 		}
+
+		logTransferProgress();
 	}
 	while(true);
 
