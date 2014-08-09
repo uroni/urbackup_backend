@@ -177,7 +177,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		udpthread=new CUDPThread(udpport,pServername, use_fqdn);
 		if(!udpthread->hasError())
 		{
-			if(Server->getServerParameter("internet_test_mode")!="true")
+			if(Server->getServerParameter("internet_only_mode")!="true")
 			{
 				udpticket=Server->getThreadPool()->execute(udpthread);
 			}

@@ -59,7 +59,7 @@ private:
 	static IPipeThrottler *global_local_throttler;
 	static IMutex *throttle_mutex;
 
-	bool internet_test_mode;
+	bool internet_only_mode;
 
 	static bool snapshots_enabled;
 	static bool filesystem_transactions_enabled;

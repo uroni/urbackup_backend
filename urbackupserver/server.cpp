@@ -51,10 +51,10 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 	throttle_mutex=Server->createMutex();
 	exitpipe=pExitpipe;
 
-	if(Server->getServerParameter("internet_test_mode")=="true")
-		internet_test_mode=true;
+	if(Server->getServerParameter("internet_only_mode")=="true")
+		internet_only_mode=true;
 	else
-		internet_test_mode=false;
+		internet_only_mode=false;
 }
 
 BackupServer::~BackupServer()
@@ -208,7 +208,7 @@ void BackupServer::startClients(FileClient &fc)
 	std::vector<sockaddr_in> servers;
 	std::vector<std::string> endpoint_names;
 
-	if(!internet_test_mode)
+	if(!internet_only_mode)
 	{
 		names=fc.getServerNames();
 		servers=fc.getServers();

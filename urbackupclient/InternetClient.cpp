@@ -138,14 +138,15 @@ void InternetClient::operator()(void)
 {
 	Server->waitForStartupComplete();
 	setStatusMsg("wait_local");
-	if(Server->getServerParameter("internet_test_mode")!="true")
+	if(Server->getServerParameter("internet_only_mode")!="true")
 	{
-		Server->Log("Internet test mode not enabled. Waiting for local server...", LL_DEBUG);
-		Server->wait(180000);
+		const size_t wait_time_ms=180000;
+		Server->Log("Internet only mode not enabled. Waiting for local server for "+FormatTime(wait_time_ms/1000)+"...", LL_DEBUG);
+		Server->wait(wait_time_ms);
 	}
 	else
 	{
-		Server->wait(5000);
+		Server->wait(1000);
 	}
 	doUpdateSettings();
 	while(!do_exit)

@@ -60,7 +60,8 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	LOGFILE="urbackup_client.log"
 	LOGLEVEL="warn"
 	PIDFILE="/var/run/urbackup_client.pid"
-	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_client --long version,no_daemon,help,logfile:,loglevel:,pidfile:,run_in_gdb,run_in_valgrind -- "$@"`
+	INTERNETONLY=""
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_client --long version,no_daemon,help,logfile:,loglevel:,pidfile:,run_in_gdb,run_in_valgrind,internetonly -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -70,6 +71,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--no_daemon) S_DAEMON=""; shift ;;
 			--run_in_gdb) RUN_IN_GDB=1; shift ;;
 			--run_in_valgrind) RUN_IN_VALGRIND=1; shift ;;
+			--internetonly) INTERNETONLY="--internet_only_mode true"; shift ;;
 			--help) print_help ;;
 			--version) print_version ;;
 			--) shift; break ;;
@@ -87,7 +89,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		S_DAEMON=""
 	fi
 	
-	DAEMON_ARGS="--logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --pidfile $PIDFILE"
+	DAEMON_ARGS="--logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --pidfile $PIDFILE $INTERNETONLY"
 else
 	DAEMON_ARGS="$*"
 fi
