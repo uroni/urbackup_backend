@@ -57,6 +57,12 @@ public:
 			virtual void resetQueueFull() = 0;
 		};
 
+		class ProgressLogCallback
+		{
+		public:
+			virtual void log_progress(const std::string& fn, int64 total, int64 downloaded, int64 speed_bps) = 0;
+		};
+
 
 		FileClient(bool enable_find_servers, std::string identity, int protocol_version=0, bool internet_connection=false,
 			FileClient::ReconnectionCallback *reconnection_callback=NULL,
@@ -92,6 +98,8 @@ public:
 		void setReconnectionTimeout(unsigned int t);
 
 		void setQueueCallback(FileClient::QueueCallback* cb);
+
+		void setProgressLogCallback(FileClient::ProgressLogCallback* cb);
               
 private:
 		void bindToNewInterfaces();
@@ -99,6 +107,8 @@ private:
 		bool Reconnect(void);
 
 		void fillQueue();
+
+		void logProgress(const std::string& remotefn, _u64 filesize, _u64 received);
 
         std::vector<SOCKET> udpsocks;
 		std::vector<sockaddr_in> broadcast_addrs;
@@ -156,6 +166,10 @@ private:
 
 		char dl_buf[BUFFERSIZE];
 		size_t dl_off;
+
+		int64 last_transferred_bytes;
+		int64 last_progress_log;
+		FileClient::ProgressLogCallback* progress_log_callback;
 };
 
 const _u32 ERR_CONTINUE=0;

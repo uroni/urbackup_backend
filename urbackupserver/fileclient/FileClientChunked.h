@@ -80,6 +80,8 @@ public:
 
 	void setQueueCallback(FileClientChunked::QueueCallback* cb);
 
+	void setProgressLogCallback(FileClient::ProgressLogCallback* cb);
+
 private:
 	FileClientChunked(const FileClientChunked& other) {};
 	void operator=(const FileClientChunked& other) {}
@@ -135,6 +137,8 @@ private:
 	void setOfbPipe(IPipe* p);
 
 	void logPendingChunks();
+
+	void logTransferProgress();
 
 	std::string remote_filename;
 
@@ -219,6 +223,10 @@ private:
 	IPipe* ofb_pipe;
 
 	_i64 hashfilesize;
+
+	int64 last_transferred_bytes;
+	int64 last_progress_log;
+	FileClient::ProgressLogCallback* progress_log_callback;
 };
 
 #endif //FILECLIENTCHUNKED_H

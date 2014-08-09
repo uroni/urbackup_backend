@@ -66,7 +66,7 @@ struct SQueueItem
 	SPatchDownloadFiles patch_dl_files;
 };
 
-class ServerDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback
+class ServerDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback, public FileClient::ProgressLogCallback
 {
 public:
 	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, bool with_hashes, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
@@ -114,6 +114,8 @@ public:
 	virtual void unqueueFileChunked(const std::string& remotefn);
 
 	virtual void resetQueueChunked();
+
+	virtual void log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps );
 
 private:
 	void sleepQueue(IScopedLock& lock);
