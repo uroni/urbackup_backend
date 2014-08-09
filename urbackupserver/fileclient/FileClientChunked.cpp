@@ -125,16 +125,18 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 
 	hashfilesize = little_endian(hashfilesize);
 
-	if(patch_mode)
+	if(hashfilesize!=m_file->Size())
 	{
-		if(hashfilesize!=m_file->Size())
+		Server->Log("Hashfile size differs in FileClientChunked::GetFile "+nconvert(hashfilesize)+"!="+nconvert(m_file->Size()), LL_DEBUG);
+		if(m_file->Size()<hashfilesize)
 		{
-			Server->Log("Hashfile size wrong in FileClientChunked::GetFile "+nconvert(hashfilesize)+"!="+nconvert(m_file->Size()), LL_WARNING);
+			//partial file
+			hashfilesize=m_file->Size();
 		}
-		else
-		{
-			VLOG(Server->Log("Old filesize="+nconvert(hashfilesize), LL_DEBUG));
-		}
+	}
+	else
+	{
+		VLOG(Server->Log("Old filesize="+nconvert(hashfilesize), LL_DEBUG));
 	}
 
 	if(!was_prepared)
@@ -191,6 +193,8 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 					break;
 				}
 
+				bool get_whole_block = false;
+
 				if(next_chunk<num_chunks
 					&& m_chunkhashes->Seek(chunkhash_file_off+next_chunk*chunkhash_single_size))
 				{
@@ -199,23 +203,35 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 					*((_i64*)(buf+1))=little_endian(next_chunk*c_checkpoint_dist);
 					buf[1+sizeof(_i64)]=0;
 					_u32 r=m_chunkhashes->Read(&buf[2*sizeof(char)+sizeof(_i64)], chunkhash_single_size);
-					if(r<chunkhash_single_size)
+					if(r==0)
 					{
-						memset(&buf[2*sizeof(char)+sizeof(_i64)+r], 0, chunkhash_single_size-r);
+						get_whole_block=true;
 					}
-					const size_t send_size = chunkhash_single_size+2*sizeof(char)+sizeof(_i64);
-					if(stack->Send( pipe, buf, send_size) != send_size)
+					else
 					{
-						break;
-					}
+						if(r<chunkhash_single_size)
+						{
+							memset(&buf[2*sizeof(char)+sizeof(_i64)+r], 0, chunkhash_single_size-r);
+						}
+						const size_t send_size = chunkhash_single_size+2*sizeof(char)+sizeof(_i64);
+						if(stack->Send( pipe, buf, send_size) != send_size)
+						{
+							break;
+						}
 
-					char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
-					SChunkHashes chhash;
-					memcpy(chhash.big_hash, sptr, big_hash_size);
-					memcpy(chhash.small_hash, sptr+big_hash_size, chunkhash_single_size-big_hash_size);
-					pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, chhash));
+						char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
+						SChunkHashes chhash;
+						memcpy(chhash.big_hash, sptr, big_hash_size);
+						memcpy(chhash.small_hash, sptr+big_hash_size, chunkhash_single_size-big_hash_size);
+						pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, chhash));
+					}					
 				}
 				else
+				{
+					get_whole_block=true;
+				}
+				
+				if(get_whole_block)
 				{
 					CWData data;
 					data.addUChar(ID_BLOCK_REQUEST);
@@ -1114,6 +1130,13 @@ bool FileClientChunked::Reconnect(void)
 			m_chunkhashes->Seek(0);
 			if(m_chunkhashes->Read((char*)&hashfilesize, sizeof(_i64))!=sizeof(_i64) )
 				return false;
+
+			hashfilesize = little_endian(hashfilesize);
+
+			if(m_file->Size()<hashfilesize)
+			{
+				hashfilesize=m_file->Size();
+			}
 
 			CWData data;
 			data.addUChar( ID_GET_FILE_BLOCKDIFF );
