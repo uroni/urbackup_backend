@@ -4382,6 +4382,7 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms, std::string* c
 
 _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, int timeoutms)
 {
+	fc->setProgressLogCallback(this);
 	if(internet_connection)
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
@@ -4458,6 +4459,8 @@ bool BackupServerGet::getClientChunkedFilesrvConnection(std::auto_ptr<FileClient
 			return false;
 		}
 	}
+
+	fc_chunked->setProgressLogCallback(this);
 
 	if(fc_chunked->getPipe()!=NULL && server_settings!=NULL)
 	{
@@ -5057,4 +5060,10 @@ void BackupServerGet::run_script( std::wstring name, const std::wstring& params)
 	{
 		ServerLogger::Log(clientid, "Script output Line("+nconvert(i+1)+"): " + toks[i], rc!=0?LL_ERROR:LL_INFO);
 	}
+}
+
+void BackupServerGet::log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps )
+{
+	int pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f + 0.5f);
+	ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(speed_bps), LL_DEBUG);
 }

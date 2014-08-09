@@ -42,7 +42,8 @@ struct SBackup
 
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback,
 	public FileClient::ReconnectionCallback, public INotEnoughSpaceCallback,
-	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback
+	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback,
+	public FileClient::ProgressLogCallback
 {
 	friend class ServerHashExisting;
 public:
@@ -83,6 +84,8 @@ public:
 	static void destroyTemporaryFile(IFile *tmp);
 
 	static std::wstring convertToOSPathFromFileClient(std::wstring path);
+
+	virtual void log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps );
 
 private:
 	void unloadSQL(void);

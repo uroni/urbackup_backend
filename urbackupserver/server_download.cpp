@@ -34,8 +34,6 @@ ServerDownloadThread::~ServerDownloadThread()
 
 void ServerDownloadThread::operator()( void )
 {
-	fc.setQueueCallback(this);
-	fc.setProgressLogCallback(this);
 	if(fc_chunked!=NULL && filesrv_protocol_version>2)
 	{
 		fc_chunked->setQueueCallback(this);
@@ -857,10 +855,4 @@ bool ServerDownloadThread::touch_file( SQueueItem todl )
 		ServerLogger::Log(clientid, L"GT: Error creating file \""+dstpath+L"\"", LL_ERROR);
 		return false;
 	}
-}
-
-void ServerDownloadThread::log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps )
-{
-	int pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f + 0.5f);
-	ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(speed_bps), LL_DEBUG);
 }
