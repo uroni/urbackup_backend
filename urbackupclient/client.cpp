@@ -1517,7 +1517,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 		std::wstring errmsg;
 
 		retryable_error=false;
-		check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
+		check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
 	
 		bool b_ok=true;
 		int tries_snapshot_set=5;
@@ -1550,7 +1550,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 		wait_for(pb_result);
 
 		retryable_error=false;
-		check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
+		check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
 
 		CHECK_COM_RESULT_RELEASE(backupcom->DoSnapshotSet(&pb_result));
 		wait_for(pb_result);
@@ -1560,11 +1560,11 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 		bool snapshot_ok=false;
 		if(tries>1)
 		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, &retryable_error);
+			snapshot_ok = check_writer_status(backupcom, errmsg, LL_WARNING, &retryable_error);
 		}
 		else
 		{
-			snapshot_ok = check_writer_status(backupcom, errmsg, LL_ERROR, NULL);
+			snapshot_ok = check_writer_status(backupcom, errmsg, LL_WARNING, NULL);
 		}
 		--tries;
 		if(!snapshot_ok && !retryable_error)
@@ -1702,7 +1702,7 @@ bool IndexThread::release_shadowcopy(SCDirs *dir, bool for_imagebackup, int save
 			}
 
 			std::wstring errmsg;
-			check_writer_status(backupcom, errmsg, LL_ERROR, NULL);
+			check_writer_status(backupcom, errmsg, LL_WARNING, NULL);
 
 			VSSLog(L"Deleting shadowcopy for path \""+dir->target+L"\" -2", LL_DEBUG);
 			
