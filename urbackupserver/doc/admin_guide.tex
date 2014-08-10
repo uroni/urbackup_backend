@@ -40,19 +40,177 @@ another this new client is discovered and the server in the new subnet
 automatically takes over backing it up. If you want to implement something like
 this you should also read the section on security (see \ref{sec_security}) for
 details on when a client accepts a server.\\
-The interested administrator should read up on the general UrBackup architecture
+Installation instructions are in section \ref{installation}.
+The interested administrator should also read up on the general UrBackup architecture
 (section \ref{sec_architecture}), how the backups are stored and performed
 (section \ref{sec_backup_process}), proposals on which file systems are suited
 (section \ref{subsec_filesystems}) and take a look at some sample a setup with
-ZFS at section \ref{subsec_ZFS_setup}.\\
+the next generation file systems ZFS and btrfs at section \ref{sec_storage_proposals}.\\
 Since version 1.0 UrBackup can also handle clients over the Internet (see section
 \ref{sec:internet_clients}), and archive backups (see section \ref{subsec:archiving}).
 
+\section{Installation}
+\label{installation}
+
+This section will explain how to install the UrBackup server on various operating
+systems and how to distribute and install the UrBackup client.
+
+\subsection{Server installation}
+
+\subsubsection{Server installation on Windows}
+
+\begin{itemize}
+  \item Download the NSIS (.exe) or MSI installer. You can only use the MSI installer, if you have
+a 64-bit operating system and at least Windows Vista/2008.
+   \item Install the UrBackup Server.
+   \item Got to the web interface ( \url{http://localhost:55414} ) and then go to the settings and configure
+   the folder where UrBackup should store the backup. This folder should have following properties:
+   \begin{itemize}
+     \item It should be on a NTFS formatted volume (not ReFS or FAT).
+     \item There should be enough free space to accomodate the backups
+     \item Preferably the volume should be dedicated to UrBackup backups
+     \item The volume should be persistently online while the UrBackup Server instance is running. UrBackup does
+     not support different backup volumes/drives
+     \item While migration is possible it will be lengthy and difficult. So best plan ahead.
+     \item You can easily increase the size of the backup storage volume, if you use Windows dynamic
+     volumes or a hardware raid. If you are using a plain volume change it to a dynamic volume before the
+     first backup.
+     \item Turn on compression for the urbackup folder (in Explorer: Right click and properties). If you are not using a really old computer it should pay off without decreasing the backup speed. Possible exception: If you plan to backup files with more than 50GB or turn off the image compression and plan to backup volumes with more than 50GB you should not turn on compression. NTFS cannot compress files larger than about 50GB.
+   \end{itemize}
+   \item Continue with the operating system independent installation steps in section \ref{os_independent_installation_steps}. 
+\end{itemize}
+
+\subsubsection{Server installation on Ubuntu}
+
+Install the UrBackup Server via running following commands:
+\begin{verbatim}
+sudo add-apt-repository ppa:uroni/urbackup
+sudo apt-get update
+sudo apt-get install urbackup-server
+\end{verbatim}
+
+\noindent See section \ref{gnu_linux_installation_hints} for further installation hints and \ref{os_independent_installation_steps} for operating system independent installation steps.
+
+
+\subsubsection{Server installation on Debian}
+
+Follow the download link for Debian on \url{http://urbackup.org/download.html}. Packages are available for Debian stable, testing and unstable for the CPU architectures i686 and AMD64. For Debian stable there is also a ARM package (for e.g. Raspberry PI or Cubieboards).\\
+
+\noindent The Package can be installed via:
+\begin{verbatim}
+sudo apt-get update
+sudo dpkg -i urbackup-server*.deb
+sudo apt-get -f install
+\end{verbatim}
+
+\noindent The Debian stable package may also work on Ubuntu.
+
+\noindent See section \ref{gnu_linux_installation_hints} for further installation hints and \ref{os_independent_installation_steps} for operating system independent installation steps.
+
+\subsubsection{Server installation on other GNU/Linux distributions or FreeBSD}
+
+Baring details on \url{http://urbackup.org/download.html} you need to compile the server.
+
+\begin{itemize}
+  \item Download the urbackup server source tarball and extract it.
+  \item Install the dependencies. Those are gcc, g++, make, libcrypto++ and libcurl (as development versions).
+  \item Compile and install the server via \textsl{./configure}, \textsl{make} and \textsl{make install}.
+  \item Run the server with \textsl{start\_urbackup\_server}.
+  \item Add \textsl{/usr/sbin/start\_urbackup\_server} to your \textsl{/etc/rc.local} to start the UrBackup server on server startup.
+\end{itemize}
+
+\noindent See section \ref{gnu_linux_installation_hints} for further installation hints for GNU/Linux systems and \ref{os_independent_installation_steps} for operating system independent installation steps.
+
+\subsubsection{GNU/Linux server installation hints}
+\label{gnu_linux_installation_hints}
+
+Go to the webinterface (\url{http://localhost:55414}) and configure the backup storage path in the settings. A few hints for the backup storage:
+\begin{itemize}
+  \item It should be easily extendable, which can be done by using a hardware raid, the volume manager LVM or the next generation filesystems btrfs and ZFS.
+  \item You should compress the file backups. This can be done by using ZFS (\url{http://zfsonlinux.org/}) or btrfs.
+  \item Prefer btrfs, because UrBackup can put each file backup into a separate sub-volume and is able to do a cheap block based deduplication in incremental file backups. See section \ref{subsec_btrfs_setup} on how to setup a btrfs backup storage. You should set a generously low soft filesystem quota (see section \ref{global_soft_fs_quota})  if using btrfs, because btrfs currently still has issues in out-of-space situations and may require manual intervention.
+  \item If your priority is stability the currently best option is to use ZFS in connection with the FreeBSD operating system, instead of GNU/Linux and ZFS or btrfs. Look at FreeNAS, for a graphical user interface.
+\end{itemize}
+
+\subsubsection{Operating system independent server installation steps}
+\label{os_independent_installation_steps}
+
+After you have installed the UrBackup server you should perform following steps:
+
+\begin{itemize}
+  \item Go to the user settings and add an admin account. If you do not do this everybody who can access the server will be able to see all backups!
+  \item Setup the mail server by entering the appropriate mail server settings (See section \ref{mail_server_settings}).
+  \item If you want the clients to be able to backup via Internet and not only via local network, configure the public server name or IP of the server in the Internet settings (See section \ref{internet_settings}).
+  \item If you want to get logs of failed backups go the ``Logs'' screen and configure the reports for you email address.
+  \item Change any other setting according to your usage scenario. See section \ref{server_settings} for descriptions of all available settings.
+  \item Install the clients (see section \ref{client_installation}).
+\end{itemize}
+
+\subsection{Client installation}
+\label{client_installation}
+
+\subsubsection{Windows client installation}
+
+\noindent If you plan on using the client in the same local network as the server, or the client is in your local network during setup time:
+
+\begin{itemize}
+  \item Download the client from \url{http://www.urbackup.org}.
+  \item Run the installer.
+  \item Select the backup paths you want to backup on the client.
+  \item The server will automatically find the client and start backups.
+\end{itemize}
+
+\noindent If the client is only reachable via Internet:
+
+\begin{itemize}
+  \item Create a new Internet client on the status page.
+  \item Download the client installer on the status page for the Internet client and send it to the new client. Alternatively, create a user for the new client (in the settings) and send the user the username/password. The user can then download the client installer from the server on the status page and install it.
+  \item Select the backup paths you want to backup on the client or configure appropriate default directories to backup on the server (see section \ref{subsub_default_dirs}).
+  \item The server will automatically start backups once the client is connected.
+\end{itemize}
+
+\noindent This is the easiest method to add new internet clients. Other methods to add internet clients are descriped in section \ref{sec:internet_clients}.
+
+\subsubsection{Automatic rollout to multiple Windows computers}
+
+First configure the general default backup paths so that the correct folders get backed for each client (see section \ref{subsub_default_dirs}). Then install the clients using one of the following methods.\\ 
+
+\noindent \textbf{On local network:}\\
+
+\noindent Add the MSI client installer as group policy to the domain controller. Alternatively you can use the NSIS (.exe) installer with the switch ``/S'' to do a silent install and use something like ``psexec''. The server will automatically find and backup the new clients.\\
+
+\noindent \textbf{For internet clients:}\\
+
+\noindent Adapt the script at \url{https://urbackup.atlassian.net/wiki/display/US/Download+custom+client+installer+via+Python} to your server URL and create a python executable from the modified script via cx\_Freeze (\url{http://cx-freeze.sourceforge.net/}). Executing the python executable on the client automatically creates a new internet client on the server, downloads a custom client and runs the installer. You could also add the silent install switch (``/S'') when starting the downloaded installer such that it needs no user intervention.
+
+\subsection{Client installation on GNU/Linux}
+
+There are currently no client binaries for operating systems other than Windows. You have to compile the UrBackup client yourself:
+
+\begin{itemize}
+\item Download and install the urbackup client dependencies. Those are gcc, g++, make, libwxgtk (if you want the GUI) and libcrypto++ (or sometimes libcryptopp) as development packages.
+\item Download the client tarball and extract it.
+\item Run \textsl{./configure}, \textsl{make} and \textsl{make install}. If you do not need the GUI use \textsl{./configure $-$$-$enable-headless}.
+\item If you are configuring an Internet client and have no GUI you can configure the client via command line at this point: 
+\begin{verbatim}
+echo "internet_server=example.com
+internet_server_port=55415
+computername=hostname
+internet_authkey=foobar
+internet_mode_enabled=true" > /usr/local/var/urbackup/data/settings.cfg
+\end{verbatim}
+See section \ref{manual_internet_client} for how to manually add a Internet client and on how to get the authentication key.
+\item Start the client via \textsl{start\_urbackup\_client $-$$-$loglevel debug $-$$-$no\_daemon} to see if everything works. If using an Internet server, connecting may take a while, as it waits for a local backup server first. If you want to avoid the waiting period start the client with \textsl{start\_urbackup\_client $-$$-$loglevel debug $-$$-$no\_daemon $-$$-$internetonly}.
+\item If you use the GUI, start it via running \textsl{urbackup\_client\_gui} and configure the client via accessing the GUI via the tray icon. Note that there are issues with the tray icon not working correctly with the Ubuntu Unity window manager.
+\item Alternatively, and if you have no GUI, you can configure the client on the server. You can configure the paths by changing the default directories to backup.
+\item Preferably you would want to add scripts as \textsl{/etc/urbackup/prefilebackup} and \textsl{/etc/urbackup/ postfilebackup} to respectively create and destroy LVM, ZFS or btrfs snapshots of the folders you are backing up, such that the backups are consistent.
+\item Add \textsl{/usr/sbin/start\_urbackup\_client} to your \textsl{/etc/rc.local} to start the client on system startup.
+\end{itemize}
 
 \section{Architecture}
 \label{sec_architecture}
 
-As already mentioned UrBackup is divided into a server and a client software.
+UrBackup is divided into a server and a client software part.
 The server is responsible for discovering clients, backing them up, deleting
 backups if the storage is depleted or too many backups are present, generating
 statistics and managing client settings. The client is relatively dump. It
@@ -332,6 +490,7 @@ The installer includes the server IP/domain name, the port it is listening on, t
 This allows the installed client to automatically connect to the server the installer was downloaded from.
 
 \subsection{Manually add and configure clients}
+\label{manual_internet_client}
 
 UrBackup also allows manually adding clients and manually configuring the shared key. To
 add such a client following steps are necessary:
@@ -459,6 +618,7 @@ to remain under the configured speed limit. This is useful if you do not want
 the backup server to saturate your local network. 
 
 \subsubsection{Global soft filesystem quota}
+\label{global_soft_fs_quota}
 
 During cleanups UrBackup will look at the used space of the filesystem the backup folder is on. If the used space is higher than the global soft filesystem quota UrBackup will delete old backups, if possible, till the used space is below the quota. Be aware that not only UrBackup's files count against the quota, but other files as well. A quota that only takes into account UrBackup's files is plannned.
 You can sepecify the quota via a percentage of total space, or by a size. For example let the size of the Backup device be 1 Tera-byte:
@@ -467,6 +627,7 @@ If you set the global filesystem quota to "90\%", UrBackup will delete old backu
 \subsection{Mail settings}
 
 \subsubsection{Mail server settings}
+\label{mail_server_settings}
 
 If you want the UrBackup server to send mail reports a mail server should be configured in the 'Mail' settings page. The specific settings and their description are:
 
@@ -617,6 +778,7 @@ gives the "Users" directory the name "User files" and the "Program files" direct
 Those locations are only the default locations. Even if you check "Separate settings for this client" and disable "Allow client to change settings", once the client modified the paths, changes in this field are not used by the client any more.
 
 \subsection{Internet settings}
+\label{internet_settings}
 
 \begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|p{0.1\textwidth}|}
 \hline
@@ -792,8 +954,8 @@ You should test UrBackup clients before using them on the clients. This means
 UrBackup should not automatically download the newest client version from
 the Internet and install it. This means disabling the autoupdate described in
 Section \ref{subsubsec:autoupdate}. You can still centrally update the client
-from the server if you disabled autoupdate. Go to \url{http://update1.urbackup.org}
-and download all files to \textsl{/var/urbackup} on Linux and
+from the server if you disabled autoupdate. Go to \url{https://sourceforge.net/projects/urbackup/files/Client/}
+and download all files in the \textsl{update} folder of the current client to \textsl{/var/urbackup} on Linux and
 \textsl{C:\textbackslash\textbackslash Program Files\textbackslash UrBackupServer\textbackslash urbackup} per default on Windows. UrBackup
 will then push the new version to the clients once they reconnect. If you checked
 silent autoupdates, the new version will be installed silently on the clients, otherwise
@@ -830,11 +992,11 @@ setting in \textsl{/etc/default/urbackup\_srv}.
 \subsection{Used network ports}
 \label{sec:ports}
 
-The Server uses following default ports:
+The Server binds to following default ports:
 
 \begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|}
 \hline
-Port  & Usage \\
+\textbf{Port}  & \textbf{Usage} \\
 \hline
 55413 & FastCGI for web interface \\
 \hline
@@ -842,19 +1004,19 @@ Port  & Usage \\
 \hline
 55415 & Internet clients \\
 \hline
-35623 & UDP broadcasts (sending) \\
+35623 & UDP broadcasts (sending and receiving) \\
 \hline
 \end{tabular}\\\\
 
-\noindent The Client uses following default ports:
+\noindent The Client binds to following default ports:
 
 \begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|}
 \hline
-Port  & Usage \\
+\textbf{Port}  & \textbf{Usage} \\
+\hline
+35621 & Sending files during file backups (file server) \\
 \hline
 35622 & UDP broadcasts (receiving) \\
-\hline
-35621 & Sending files during file backups \\
 \hline
 35623 & Commands and image backups \\
 \hline
@@ -862,7 +1024,7 @@ Port  & Usage \\
 
 \subsection{Mounting (compressed) VHD files on GNU/Linux}
 
-If you compiled UrBackup with fuse support or installed the debian packages the UrBackup server can mount 
+If you compiled UrBackup with fuse support or installed the Debian/Ubuntu packages the UrBackup server can mount 
 VHD(Z) files directly. You compile UrBackup with fuse support by configuring:
 \begin{verbatim}
 ./configure --with-mountvhd
@@ -886,7 +1048,7 @@ If the image is incremental the parent-VHD is automatically decompressed as well
 still have the VHDZ extension, as otherwise it would have to change database entries, but the files will
 not be compressed anymore.
 
-On Linux the same thing can be done with \textsl{start\_urbackup\_server --decompress [filename]}
+\noindent On Linux the same thing can be done with \textsl{start\_urbackup\_server $-$$-$decompress [filename]}.
 
 \section{Storage}
 
@@ -896,12 +1058,16 @@ partition as possible. With that in mind it is best practice to use a separate
 file system for the backup storage or to set a quota for the 'urbackup' user.
 Some filesystems behave badly if they are next to fully occupied (fragmentation
 and bad performance). With such filesystems you should always limit the quota
-UrBackup can use up to say 95\% of all the available space.
+UrBackup can use up to say 95\% of all the available space. You can also setup
+a soft quota within UrBackup (see section \ref{global_soft_fs_quota}) which
+causes UrBackup to delete backups to stay within this quota, if possible.
 
 \subsection{Nightly backup deletion}
 
 UrBackup automatically deletes old file and image backups between 3am and 5am. Backups are deleted when a client has more incremental/full file/image backups then the configured maximum number of incremental/full file/image backups. Backups are deleted until the number of backups is within these limits again.\\
 If the administrator has turned automatic shut-down on, this clean up process is started on server start up instead (as the server is most likely off during the night). Deleting backups and the succeeding updating of statistics can have a huge impact on system performance.
+
+During nightly backup deletion UrBackup also tries to enforce the global and client specific soft quotas. It is only able to delete backups if a client has already more backups than the configured minimal number of incremental/full file/image backups.
 
 \subsection{Emergency cleanup}
 
@@ -925,7 +1091,7 @@ use ``0\%''.
 \subsection{Cleaning the storage folder of files not known by UrBackup}
 
 Sometimes, e.g., by using a database backup, there are backups in the storage directory which UrBackup does not know about, i.e., there are no entries for those backups in the database.
-In does cases the command
+In those cases the command
  \begin{verbatim}
  start_urbackup_server --remove_unknown
  \end{verbatim}
@@ -946,7 +1112,7 @@ the last file backup of the selected type will be archived for the selected amou
 After that time it will be automatically not archived any more. You can see the archived backups
 in the ``Backups'' section. If a backup is archived for only a limited amount of time there
 will be a time symbol next to the check mark. Hovering over that time symbol will tell you
-how long that file backup will remain to be archived.
+how long that file backup will remain archived.
 
 \subsubsection{Archival window}
 \label{subsub:archival_window}
@@ -1014,9 +1180,9 @@ NTFS is pretty much the only option you have if you run the UrBackup server unde
 
 \subsubsection{btrfs}
 
-Btrfs is a pretty new Linux file system and as such it is probably not suited for production use yet.
-It supports compression and supports block-level deduplication. UrBackup has a special snapshotting backup
-mode which is much faster with btrfs. See \ref{subsec_btrfs_setup} for details.
+Btrfs is a next generation Linux file system that is still under development and as such it is probably not suited for production use yet.
+It supports compression and offline block-level deduplication. UrBackup has a special snapshotting backup
+mode which makes incemental backups and deleting file backups much faster with btrfs. With btrfs UrBackup also does a cheap (in terms of CPU und memory requirements) block-level deduplication on incremental file backups. See \ref{subsec_btrfs_setup} for details.
 
 \subsubsection{ZFS}
 
@@ -1025,7 +1191,7 @@ It is available as a fuse module for Linux (zfs-fuse) and as a kernel module (ZF
 as of $0.6.2$ still has memory issues with UrBackup/rsync style workloads, so you should carefully evaluate
 if it is stable enough.
 There were licensing issues which prevented prior porting of ZFS to Linux.
-If you want the most performance and stability an option would be using a BSD or Debian/kFreeBSD.
+If you want the most performance and stability an option would be using a BSD (e.g. FreeBSD, FreeNAS) or Debian/kFreeBSD.
 The ZFS in the BSD kernels is stable. 
 The upstream Solaris ZFS has been available for some time and as such should be very stable as well.
 ZFS has some pretty neat features like compression, block-level de-duplication, snapshots and build
@@ -1110,7 +1276,8 @@ changed data in the file is stored. This greatly decreases the storage amount
 needed for backups, especially for large database files (such as e.g. the
 Outlook archive file). The ZFS deduplication in the previous section
 (\ref{subsec_ZFS_setup}) saves even more storage, but comes at a much greater
-cost in form of a massive decrease of read and write performance.\\
+cost in form of a massive decrease of read and write performance and high CPU and
+memory requirements.\\
 
 \noindent In order to create and remove btrfs snapshots UrBackup installs a setuid
 executable \textsl{urbackup\_ snapshot\_helper}. UrBackup also uses this tool to
@@ -1124,13 +1291,11 @@ the paths, following commands would properly create this file:
 mkdir /etc/urbackup
 echo "/media/backup/urbackup" > /etc/urbackup/backupfolder
 \end{verbatim}
-You can then test if UrBackup will use the btrfs features via
+You can then test if UrBackup will use the btrfs features via running
 \begin{verbatim}
 urbackup_snapshot_helper test
-echo $?
 \end{verbatim}
-If \textsl{urbackup\_snapshot\_helper} returns $0$ UrBackup will use the btrfs features
-after a server restart. If not, you need to check if the kernel is new enough and
+If the test fails, you need to check if the kernel is new enough and
 that the backup folder is on a btrfs volume.\\
 
 \noindent You should then be able to enjoy much faster incremental file backups which use less storage space.
