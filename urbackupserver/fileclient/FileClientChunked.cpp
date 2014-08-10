@@ -1531,7 +1531,7 @@ void FileClientChunked::logTransferProgress()
 			if(tranferred>0)
 			{
 				progress_log_callback->log_progress(remote_filename,
-					remote_filesize, next_chunk*c_checkpoint_dist, speed_bps);
+					remote_filesize, file_pos, speed_bps);
 			}
 		}
 
