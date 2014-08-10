@@ -52,7 +52,14 @@ std::string getSystemServerName(bool use_fqdn)
 	h = gethostbyname(hostname);
 	if(h!=NULL)
 	{
-		return h->h_name;
+		if(strlower(h->h_name)==strlower(hostname))
+		{
+			return hostname;
+		}
+		else
+		{
+			return h->h_name;
+		}
 	}
 	else
 	{
