@@ -10,7 +10,9 @@
 namespace
 {
 	const unsigned int shadow_copy_timeout=30*60*1000;
-	const size_t max_queue_size = 5000;
+	const size_t max_queue_size = 500;
+	const size_t queue_items_full = 1;
+	const size_t queue_items_chunked = 4;
 }
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, bool with_hashes, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
@@ -20,7 +22,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
-	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false)
+	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -50,6 +52,15 @@ void ServerDownloadThread::operator()( void )
 			}
 			curr = dl_queue.front();
 			dl_queue.pop_front();
+
+			if(curr.fileclient == EFileClient_Full)
+			{
+				queue_size-=queue_items_full;
+			}
+			else if(curr.fileclient== EFileClient_Chunked)
+			{
+				queue_size-=queue_items_chunked;
+			}
 		}
 
 		if(curr.action==EQueueAction_Quit)
@@ -148,6 +159,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	}
 	cond->notify_one();
 
+	queue_size+=queue_items_full;
 	if(!at_front)
 	{
 		sleepQueue(lock);
@@ -173,6 +185,7 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, 
 	dl_queue.push_back(ni);
 	cond->notify_one();
 
+	queue_size+=queue_items_chunked;
 	sleepQueue(lock);
 }
 
@@ -782,7 +795,7 @@ void ServerDownloadThread::stop_shadowcopy(const std::string &path)
 
 void ServerDownloadThread::sleepQueue(IScopedLock& lock)
 {
-	while(dl_queue.size()>max_queue_size)
+	while(queue_size>max_queue_size)
 	{
 		lock.relock(NULL);
 		Server->wait(1000);

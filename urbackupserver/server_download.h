@@ -153,6 +153,7 @@ private:
 	bool is_offline;
 
 	std::deque<SQueueItem> dl_queue;
+	size_t queue_size;
 
 	std::vector<size_t> download_nok_ids;
 	std::vector<size_t> download_partial_ids;
