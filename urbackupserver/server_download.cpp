@@ -53,14 +53,17 @@ void ServerDownloadThread::operator()( void )
 			curr = dl_queue.front();
 			dl_queue.pop_front();
 
-			if(curr.fileclient == EFileClient_Full)
+			if(curr.action == EQueueAction_Fileclient)
 			{
-				queue_size-=queue_items_full;
-			}
-			else if(curr.fileclient== EFileClient_Chunked)
-			{
-				queue_size-=queue_items_chunked;
-			}
+				if(curr.fileclient == EFileClient_Full)
+				{
+					queue_size-=queue_items_full;
+				}
+				else if(curr.fileclient== EFileClient_Chunked)
+				{
+					queue_size-=queue_items_chunked;
+				}
+			}			
 		}
 
 		if(curr.action==EQueueAction_Quit)
