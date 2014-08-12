@@ -289,6 +289,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 				}
 
 				next->setQueueCallback(queue_callback);
+				next->setProgressLogCallback(progress_log_callback);
 
 				next->setQueueOnly(true);
 				if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize)!=ERR_SUCCESS)
@@ -1528,7 +1529,7 @@ void FileClientChunked::logTransferProgress()
 			int64 tranferred = newTransferred - last_transferred_bytes;
 			int64 speed_bps = tranferred*1000 / (ct-last_progress_log);
 
-			if(tranferred>0)
+			if(tranferred>0 && progress_log_callback)
 			{
 				progress_log_callback->log_progress(remote_filename,
 					remote_filesize, file_pos, speed_bps);

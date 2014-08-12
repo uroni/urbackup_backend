@@ -5067,6 +5067,10 @@ void BackupServerGet::run_script( std::wstring name, const std::wstring& params)
 
 void BackupServerGet::log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps )
 {
-	int pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
+	int pc_complete = 0;
+	if(total>0)
+	{
+		pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
+	}
 	ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(speed_bps), LL_DEBUG);
 }

@@ -1103,7 +1103,7 @@ void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 re
 			int64 tranferred = new_transferred - last_transferred_bytes;
 			int64 speed_bps = tranferred*1000 / (ct-last_progress_log);
 
-			if(tranferred>0)
+			if(tranferred>0 && progress_log_callback)
 			{
 				progress_log_callback->log_progress(remotefn,
 					filesize, received, speed_bps);
