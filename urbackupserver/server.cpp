@@ -44,12 +44,15 @@ IMutex *BackupServer::throttle_mutex=NULL;
 bool BackupServer::snapshots_enabled=false;
 bool BackupServer::filesystem_transactions_enabled = false;
 volatile bool BackupServer::update_delete_pending_clients=true;
+IMutex* BackupServer::force_offline_mutex=NULL;
+std::vector<std::wstring> BackupServer::force_offline_clients;
 
 
 BackupServer::BackupServer(IPipe *pExitpipe)
 {
 	throttle_mutex=Server->createMutex();
 	exitpipe=pExitpipe;
+	force_offline_mutex=Server->createMutex();
 
 	if(Server->getServerParameter("internet_only_mode")=="true")
 		internet_only_mode=true;
@@ -60,6 +63,7 @@ BackupServer::BackupServer(IPipe *pExitpipe)
 BackupServer::~BackupServer()
 {
 	Server->destroy(throttle_mutex);
+	Server->destroy(force_offline_mutex);
 }
 
 void BackupServer::operator()(void)
@@ -252,9 +256,18 @@ void BackupServer::startClients(FileClient &fc)
 	delete_pending_curr.resize(names.size());
 	maybeUpdateDeletePendingClients();
 
+	std::vector<std::wstring> local_force_offline_clients;
+	{
+		IScopedLock lock(force_offline_mutex);
+		local_force_offline_clients = force_offline_clients;
+	}
+
 	for(size_t i=0;i<names.size();++i)
 	{
 		delete_pending_curr[i]=isDeletePendingClient(names[i]);
+		delete_pending_curr[i] = delete_pending_curr[i] ||
+			std::find(local_force_offline_clients.begin(), local_force_offline_clients.end(), names[i]) != local_force_offline_clients.end();
+
 		if(delete_pending_curr[i])
 			continue;
 
@@ -385,6 +398,17 @@ void BackupServer::startClients(FileClient &fc)
 							clients.erase(it);
 							maxi=i_c;
 							c=true;
+
+							IScopedLock lock(force_offline_mutex);
+							std::vector<std::wstring>::iterator off_iter = std::find(force_offline_clients.begin(),
+								force_offline_clients.end(),
+								it->first);
+							if(off_iter!= force_offline_clients.end())
+							{
+								Server->Log(L"Client was forced offline: "+it->first);
+								force_offline_clients.erase(off_iter);
+							}
+
 							break;
 						}
 					}
@@ -626,6 +650,15 @@ void BackupServer::maybeUpdateDeletePendingClients()
 		ServerBackupDao backupDao(db);
 		delete_pending_clients = backupDao.getDeletePendingClientNames();
 	}
+}
+
+void BackupServer::forceOfflineClient( const std::wstring& clientname )
+{
+	IScopedLock lock(force_offline_mutex);
+
+	Server->Log(L"Forcing offline client \""+clientname+L"\"", LL_DEBUG);
+
+	force_offline_clients.push_back(clientname);
 }
 
 #endif //CLIENT_ONLY
