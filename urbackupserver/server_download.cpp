@@ -665,6 +665,7 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 					full_dl)
 				{
 					it->fileclient=EFileClient_Full;
+					queue_size-=queue_items_chunked-queue_items_full;
 					continue;
 				}
 			}
