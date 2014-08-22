@@ -118,7 +118,9 @@ private:
 
 	_u32 loadChunkOutOfBand(_i64 chunk_pos);
 
-	bool Reconnect(void);
+	bool Reconnect(bool rerequest);
+
+	void setPipe(IPipe* p);
 
 	FileClientChunked* getNextFileClient();
 
