@@ -1779,7 +1779,7 @@ function show_settings2(data)
 		{
 			var obj=data.archive_settings[i];
 			addArchiveItemInt(getTimelengthUnit(obj.archive_every, obj.archive_every_unit), obj.archive_every_unit,
-					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_timeleft);
+					getTimelengthUnit(obj.archive_for, obj.archive_for_unit), obj.archive_for_unit, obj.archive_backup_type, obj.next_archival, obj.archive_window, obj.archive_timeleft, data.sa=="general");
 		}
 	}
 }
@@ -2958,9 +2958,13 @@ function archive_single(backupid, clientid)
 }
 function addArchiveItem(global)
 {
-	if(!validate_text_nonempty(["archive_every", "archive_for"])) return;
+	if(!validate_text_nonempty(["archive_every"])) return;
+	if(I('archive_for_unit').value!="i")
+	{
+		if(!validate_text_nonempty(["archive_for"])) return;
+	}
 	if(!validate_text_regex([{id: "archive_window", regexp: /^((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*);((([0-9]+,?)+)|\*)$/i } ]) ) return;
-	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, (global?"-":-1));
+	addArchiveItemInt(parseInt(I('archive_every').value), I('archive_every_unit').value, parseInt(I('archive_for').value), I('archive_for_unit').value, I('archive_backup_type').value, -1, I('archive_window').value, (global?"-":-1), global);
 }
 function getTimelengthSeconds(tl, unit)
 {
@@ -3044,7 +3048,7 @@ function getArchiveTable()
 	}
 	return archive_table;
 }
-function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival, archive_window, archive_timeleft)
+function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archive_for_unit, archive_backup_type, next_archival, archive_window, archive_timeleft, global)
 {
 	archive_every_i=getTimelengthSeconds(archive_every, archive_every_unit);
 	archive_for_i=getTimelengthSeconds(archive_for, archive_for_unit);
@@ -3060,10 +3064,8 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 	
 	var row_vals={ id: g.archive_item_id, archive_next: next_archival, archive_every_i: archive_every_i, archive_every: archive_every, archive_every_unit: archive_every_unit,
 			archive_for_i: archive_for_i, archive_for: archive_for, archive_for_unit: archive_for_unit,
-			archive_backup_type: archive_backup_type, archive_backup_type_str: backupTypeStr(archive_backup_type), archive_window: archive_window };
-			
-	row_vals.next_start="<!--";
-	row_vals.next_end="-->";
+			archive_backup_type: archive_backup_type, archive_backup_type_str: backupTypeStr(archive_backup_type), archive_window: archive_window,
+			show_archive_timeleft: !global};
 	
 	if(archive_timeleft!="-")
 	{
@@ -3076,8 +3078,6 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 			archive_timeleft=format_time_seconds(archive_timeleft, true);
 		}
 		
-		row_vals.next_start="";
-		row_vals.next_end="";
 		row_vals.archive_timeleft=archive_timeleft;
 	}
 	
