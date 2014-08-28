@@ -153,7 +153,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 			data.addInt64(remote_filesize);
 		}
 
-		if(stack->Send( pipe, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
 		{
 			Server->Log("Timout during file request (3)", LL_ERROR);
 			return ERR_TIMEOUT;
@@ -188,7 +188,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		{			
 			while(queuedChunks()<c_max_queued_chunks && next_chunk<num_total_chunks)
 			{
-				if(!pipe->isWritable())
+				if(!getPipe()->isWritable())
 				{
 					break;
 				}
@@ -214,7 +214,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 							memset(&buf[2*sizeof(char)+sizeof(_i64)+r], 0, chunkhash_single_size-r);
 						}
 						const size_t send_size = chunkhash_single_size+2*sizeof(char)+sizeof(_i64);
-						if(stack->Send( pipe, buf, send_size) != send_size)
+						if(stack->Send( getPipe(), buf, send_size) != send_size)
 						{
 							break;
 						}
@@ -237,7 +237,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 					data.addUChar(ID_BLOCK_REQUEST);
 					data.addInt64(next_chunk*c_checkpoint_dist);
 					data.addChar(1);
-					if(stack->Send( pipe, data.getDataPtr(), data.getDataSize()) != data.getDataSize() )
+					if(stack->Send( getPipe(), data.getDataPtr(), data.getDataSize()) != data.getDataSize() )
 					{
 						break;
 					}
@@ -254,7 +254,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 			{
 				if(!queue_only && (!was_prepared || !initial_read) )
 				{
-					pipe->isReadable(100);
+					getPipe()->isReadable(100);
 				}
 			}
 		}
@@ -271,12 +271,12 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 			_i64 predicted_filesize;
 
 			if(queue_callback && 
-				pipe->isWritable() &&
+				getPipe()->isWritable() &&
 				queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize))
 			{
 				did_queue_fc=true;
 
-				FileClientChunked* next = new FileClientChunked(pipe, false, stack, reconnection_callback,
+				FileClientChunked* next = new FileClientChunked(NULL, false, stack, reconnection_callback,
 					nofreespace_callback, identity, parent?parent:this);
 
 				if(parent)
@@ -289,6 +289,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 				}
 
 				next->setQueueCallback(queue_callback);
+				next->setProgressLogCallback(progress_log_callback);
 
 				next->setQueueOnly(true);
 				if(next->GetFilePatch(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize)!=ERR_SUCCESS)
@@ -337,7 +338,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		else
 		{
 			buf = stack_buf;
-			rc = pipe->Read(buf, BUFFERSIZE, 0);
+			rc = getPipe()->Read(buf, BUFFERSIZE, 0);
 		}
 
 		initial_read = false;
@@ -345,10 +346,10 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		
 		if(rc==0)
 		{
-			if(pipe->hasError())
+			if(getPipe()->hasError())
 			{
 				Server->Log("Pipe has error. Reconnecting...", LL_DEBUG);
-				if(!Reconnect())
+				if(!Reconnect(true))
 				{
 					return ERR_CONN_LOST;
 				}
@@ -374,7 +375,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn)
 		if(ctime>starttime && ctime-starttime>=SERVER_TIMEOUT)
 		{
 			Server->Log("Connection timeout. Reconnecting...", LL_DEBUG);
-			if(!Reconnect())
+			if(!Reconnect(true))
 			{
 				break;
 			}
@@ -531,7 +532,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					if(remote_filesize!=-1 && new_remote_filesize>remote_filesize)
 					{
 						Server->Log("Filesize increase from predicted filesize. Reconnecting...", LL_WARNING);
-						if(!Reconnect())
+						if(!Reconnect(true))
 						{
 							getfile_done=true;
 							retval=ERR_CONN_LOST;
@@ -568,7 +569,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				if(remote_filesize!=-1)
 				{
 					Server->Log("Did expect file to exist (1). Reconnecting...", LL_WARNING);
-					if(!Reconnect())
+					if(!Reconnect(false))
 					{
 						getfile_done=true;
 						retval=ERR_CONN_LOST;
@@ -583,7 +584,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				if(remote_filesize!=-1)
 				{
 					Server->Log("Did expect file to exist (2). Reconnecting...", LL_WARNING);
-					if(!Reconnect())
+					if(!Reconnect(false))
 					{
 						getfile_done=true;
 						retval=ERR_CONN_LOST;
@@ -806,7 +807,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 				data.addUChar(ID_BLOCK_REQUEST);
 				data.addInt64(curr_pos);
 				data.addChar(1);
-				stack->Send( pipe, data.getDataPtr(), data.getDataSize());
+				stack->Send( getPipe(), data.getDataPtr(), data.getDataSize());
 			}			
 		}
 		else
@@ -1078,15 +1079,15 @@ void FileClientChunked::setDestroyPipe(bool b)
 
 _i64 FileClientChunked::getTransferredBytes(void)
 {
-	if(pipe!=NULL)
+	if(getPipe()!=NULL)
 	{
-		transferred_bytes+=pipe->getTransferedBytes();
-		pipe->resetTransferedBytes();
+		transferred_bytes+=getPipe()->getTransferedBytes();
+		getPipe()->resetTransferedBytes();
 	}
 	return transferred_bytes;
 }
 
-bool FileClientChunked::Reconnect(void)
+bool FileClientChunked::Reconnect(bool rerequest)
 {
 	if(queue_callback!=NULL)
 	{
@@ -1104,14 +1105,15 @@ bool FileClientChunked::Reconnect(void)
 		IPipe *nc=reconnection_callback->new_fileclient_connection();
 		if(nc!=NULL)
 		{
-			if(pipe!=NULL && destroy_pipe)
+			if(getPipe()!=NULL &&
+				( destroy_pipe || (parent && parent->destroy_pipe) ) )
 			{
-				Server->destroy(pipe);
+				Server->destroy(getPipe());
 			}
-			pipe=nc;
+			setPipe(nc);
 			for(size_t i=0;i<throttlers.size();++i)
 			{
-				pipe->addThrottler(throttlers[i]);
+				getPipe()->addThrottler(throttlers[i]);
 			}
 			Server->Log("Reconnected successfully.", LL_DEBUG);
 			remote_filesize=-1;
@@ -1138,36 +1140,40 @@ bool FileClientChunked::Reconnect(void)
 				hashfilesize=m_file->Size();
 			}
 
-			CWData data;
-			data.addUChar( ID_GET_FILE_BLOCKDIFF );
-			data.addString( remote_filename );
-			data.addString( identity );
-			data.addInt64( fileoffset );
-			data.addInt64( hashfilesize );			
-
-			size_t rc=stack->Send( pipe, data.getDataPtr(), data.getDataSize() );
-			if(rc==0)
+			if(rerequest)
 			{
-				Server->Log("Failed anyways. has_error="+nconvert(pipe->hasError()), LL_DEBUG);
-				Server->wait(2000);
-				continue;
-			}
+				CWData data;
+				data.addUChar( ID_GET_FILE_BLOCKDIFF );
+				data.addString( remote_filename );
+				data.addString( identity );
+				data.addInt64( fileoffset );
+				data.addInt64( hashfilesize );			
 
-			Server->Log("pending_chunks="+nconvert(pending_chunks.size())+" next_chunk="+nconvert(next_chunk), LL_DEBUG);
-			for(std::map<_i64, SChunkHashes>::iterator it=pending_chunks.begin();it!=pending_chunks.end();++it)
-			{
-				if( it->first/c_checkpoint_dist<next_chunk)
+				size_t rc=stack->Send( getPipe(), data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
 				{
-					next_chunk=it->first/c_checkpoint_dist;
+					Server->Log("Failed anyways. has_error="+nconvert(getPipe()->hasError()), LL_DEBUG);
+					Server->wait(2000);
+					continue;
 				}
-			}
-			VLOG(Server->Log("next_chunk="+nconvert(next_chunk), LL_DEBUG));
 
-			if(patch_mode)
-			{
-				Server->Log("Invalidating "+nconvert(last_chunk_patches.size())+" chunks in patch file", LL_DEBUG);
+				Server->Log("pending_chunks="+nconvert(pending_chunks.size())+" next_chunk="+nconvert(next_chunk), LL_DEBUG);
+				for(std::map<_i64, SChunkHashes>::iterator it=pending_chunks.begin();it!=pending_chunks.end();++it)
+				{
+					if( it->first/c_checkpoint_dist<next_chunk)
+					{
+						next_chunk=it->first/c_checkpoint_dist;
+					}
+				}
+				VLOG(Server->Log("next_chunk="+nconvert(next_chunk), LL_DEBUG));
+
+				if(patch_mode)
+				{
+					Server->Log("Invalidating "+nconvert(last_chunk_patches.size())+" chunks in patch file", LL_DEBUG);
+				}
+				invalidateLastPatches();
 			}
-			invalidateLastPatches();
+			
 			pending_chunks.clear();
 
 			return true;
@@ -1183,15 +1189,22 @@ bool FileClientChunked::Reconnect(void)
 void FileClientChunked::addThrottler(IPipeThrottler *throttler)
 {
 	throttlers.push_back(throttler);
-	if(pipe!=NULL)
+	if(getPipe()!=NULL)
 	{
-		pipe->addThrottler(throttler);
+		getPipe()->addThrottler(throttler);
 	}
 }
 
 IPipe *FileClientChunked::getPipe()
 {
-	return pipe;
+	if(parent)
+	{
+		return parent->getPipe();
+	}
+	else
+	{
+		return pipe;
+	}
 }
 
 void FileClientChunked::setReconnectionTimeout(unsigned int t)
@@ -1528,7 +1541,7 @@ void FileClientChunked::logTransferProgress()
 			int64 tranferred = newTransferred - last_transferred_bytes;
 			int64 speed_bps = tranferred*1000 / (ct-last_progress_log);
 
-			if(tranferred>0)
+			if(tranferred>0 && progress_log_callback)
 			{
 				progress_log_callback->log_progress(remote_filename,
 					remote_filesize, file_pos, speed_bps);
@@ -1543,5 +1556,17 @@ void FileClientChunked::logTransferProgress()
 void FileClientChunked::setProgressLogCallback( FileClient::ProgressLogCallback* cb )
 {
 	progress_log_callback=cb;
+}
+
+void FileClientChunked::setPipe(IPipe* p)
+{
+	if(parent)
+	{
+		parent->setPipe(p);
+	}
+	else
+	{
+		pipe = p;
+	}
 }
 

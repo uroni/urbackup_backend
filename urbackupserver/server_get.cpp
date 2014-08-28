@@ -358,13 +358,14 @@ void BackupServerGet::operator ()(void)
 			{
 				ServerStatus::setStatusError(clientname, se_authentication_error);
 
+				Server->wait(5*60*1000); //5min
+
 				std::string msg;
 				pipe->Read(&msg, ident_err_retry_time);
 				if(msg=="exit" || msg=="exitnow")
 				{
-					pipe->Write("ok");
 					Server->Log(L"server_get Thread for client \""+clientname+L"\" finished and the authentification failed", LL_INFO);
-
+					pipe->Write("ok");
 					delete this;
 					return;
 				}
@@ -393,10 +394,13 @@ void BackupServerGet::operator ()(void)
 
 	if(clientid==-1)
 	{
-		pipe->Write("ok");
+		ServerStatus::setStatusError(clientname, se_too_many_clients);
 		Server->Log(L"server_get Thread for client "+clientname+L" finished, because there were too many clients", LL_INFO);
 
-		ServerStatus::setStatusError(clientname, se_too_many_clients);
+		Server->wait(10*60*1000); //10min
+
+		BackupServer::forceOfflineClient(clientname);
+		pipe->Write("ok");
 		ServerLogger::reset(clientid);
 		delete server_settings;
 		delete this;
@@ -411,6 +415,9 @@ void BackupServerGet::operator ()(void)
 
 	if(!createDirectoryForClient())
 	{
+		Server->wait(10*60*1000); //10min
+
+		BackupServer::forceOfflineClient(clientname);
 		pipe->Write("ok");
 		delete server_settings;
 		delete this;
@@ -429,7 +436,11 @@ void BackupServerGet::operator ()(void)
 	if(!updateCapabilities())
 	{
 		Server->Log(L"Could not get client capabilities", LL_ERROR);
+
+		Server->wait(5*60*1000); //5min
+
 		pipe->Write("ok");
+		BackupServer::forceOfflineClient(clientname);
 		delete server_settings;
 		delete this;
 		return;
@@ -3422,7 +3433,7 @@ void BackupServerGet::sendClientBackupIncrIntervall(void)
 
 bool BackupServerGet::updateCapabilities(void)
 {
-	std::string cap=sendClientMessage("CAPA", L"Querying client capabilities failed", 10000, false);
+	std::string cap=sendClientMessageRetry("CAPA", L"Querying client capabilities failed", 10000, 10, false);
 	if(cap!="ERR" && !cap.empty())
 	{
 		str_map params;
@@ -5067,6 +5078,10 @@ void BackupServerGet::run_script( std::wstring name, const std::wstring& params)
 
 void BackupServerGet::log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps )
 {
-	int pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
+	int pc_complete = 0;
+	if(total>0)
+	{
+		pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
+	}
 	ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(speed_bps), LL_DEBUG);
 }

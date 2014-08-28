@@ -40,6 +40,8 @@ public:
 
 	static void updateDeletePending();
 
+	static void forceOfflineClient(const std::wstring& clientname);
+
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);
@@ -66,6 +68,9 @@ private:
 
 	static volatile bool update_delete_pending_clients;
 	std::vector<std::wstring> delete_pending_clients;
+
+	static IMutex* force_offline_mutex;
+	static std::vector<std::wstring> force_offline_clients;
 };
 
 #endif //URB_SERVER_H
