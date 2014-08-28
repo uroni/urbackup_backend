@@ -22,11 +22,10 @@
 
 UrBackup is a client/server backup system. This means there exists a server
 which backups clients. Accordingly UrBackup is divided into a client and server
-software. The client software currently runs only on Windows while the server
-software runs on both Linux and Windows.\\
-UrBackup is able to backup files and images. The clients have to define the
-paths where the files to be backed up are. Images are automatically taken of the
-system drive (C:).\\
+software.
+The client software currently runs on Windows on GNU/Linux with only
+the Windows client being able to perform image backups. 
+The server part of UrBackup runs on Windows, GNU/Linux and FreeBSD.\\
 A lot of effort in UrBackup was made to make setup as easy as possible. If you
 are happy with the default settings (see section \ref{server_settings}) the only
 thing you need to define on the server side is where backups should be stored.
@@ -38,7 +37,7 @@ strategy very easy, as e.g. one backup server per subnet is responsible for
 backing up all clients in this subnet. If a computer is moved from one subnet to
 another this new client is discovered and the server in the new subnet
 automatically takes over backing it up. If you want to implement something like
-this you should also read the section on security (see \ref{sec_security}) for
+this, you should also read the section on security (see \ref{sec_security}) for
 details on when a client accepts a server.\\
 Installation instructions are in section \ref{installation}.
 The interested administrator should also read up on the general UrBackup architecture
@@ -46,7 +45,7 @@ The interested administrator should also read up on the general UrBackup archite
 (section \ref{sec_backup_process}), proposals on which file systems are suited
 (section \ref{subsec_filesystems}) and take a look at some sample a setup with
 the next generation file systems ZFS and btrfs at section \ref{sec_storage_proposals}.\\
-Since version 1.0 UrBackup can also handle clients over the Internet (see section
+Since version 1.0 UrBackup can also backup clients over the Internet without VPN (see section
 \ref{sec:internet_clients}), and archive backups (see section \ref{subsec:archiving}).
 
 \section{Installation}
@@ -183,7 +182,7 @@ First configure the general default backup paths so that the correct folders get
 
 \noindent Adapt the script at \url{https://urbackup.atlassian.net/wiki/display/US/Download+custom+client+installer+via+Python} to your server URL and create a python executable from the modified script via cx\_Freeze (\url{http://cx-freeze.sourceforge.net/}). Executing the python executable on the client automatically creates a new internet client on the server, downloads a custom client and runs the installer. You could also add the silent install switch (``/S'') when starting the downloaded installer such that it needs no user intervention.
 
-\subsection{Client installation on GNU/Linux}
+\subsubsection{Client installation on GNU/Linux}
 
 There are currently no client binaries for operating systems other than Windows. You have to compile the UrBackup client yourself:
 
@@ -394,9 +393,20 @@ key and ECDSA private/public key authentication is done.
 \section{Client discovery in local area networks}
 \label{client_discovery}
 
-UrBackup clients should be discovered automatically given that server and client reside in the same sub-network. The client discovery works as follows:\\
-The UrBackup server broadcasts a UDP message every 50 seconds on all adapters into the local subnet of this adapter. (On Linux you can configure which network adapters UrBackup should broadcast on.) On receiving such a broadcast message the client answers back with its fully qualified domain name. Thus it may take up to 50 seconds until a client is recognized as online.\\
-If the client you want to backup is not in the same subnet as the server you can add its IP or host name manually by clicking "show details" in the settings and then adding an "extra client". The server will then additionally send an UDP message directly to that entered IP or resolved host name allowing routers to forward the message across subnet boundaries. Be aware though that all connections are from server to client, e.g. if you use NAT you need to forward the client ports (35622 UDP, 35621 TCP, 35623 TCP) to the client. Currently there is no option to change these ports, so you would be limited to just one client if you have NAT. You should use VPN or the Internet mode described in section \ref{sec:internet_clients} in this case.
+UrBackup clients should be discovered automatically given that server and client reside
+in the same sub-network. The client discovery works as follows:\\
+The UrBackup server broadcasts a UDP message every 50 seconds on all adapters into the
+local subnet of this adapter. (On Linux you can configure which network adapters UrBackup should broadcast on.)
+On receiving such a broadcast message the client answers back with its fully qualified domain name.
+Thus it may take up to 50 seconds until a client is recognized as online.\\
+If the client you want to backup is not in the same subnet as the server and broadcast packages therefore
+do not reach the client you can add
+its IP or host name manually by clicking "show details" in the settings and then adding
+an "extra client". The server will then additionally send an UDP message directly to that
+entered IP or resolved host name allowing switches to forward the message across subnet boundaries.
+Be aware though that all connections are from server to client. If you have NAT between server and client,
+you should use ``Internet clients" (see section \ref{sec:internet_clients}). Using ``Internet clients'' all connections
+are from client to server.
 
 \section{Backup process}
 \label{sec_backup_process}
@@ -584,9 +594,8 @@ The installer is protected by a digital signature so malfeasance is not possible
 
 This option limits the number of file and image backups the server will start
 simultaneously. You can de- or increase this number to balance server load. A
-large number of simultaneous backups will of course increase the time the server
-needs for one backup, if many backups are run in parallel. The number of
-possible simultaneous backups is virtually unlimited. Default: 10.
+large number of simultaneous backups may increase the time needed for backups.
+The number of possible simultaneous backups is virtually unlimited. Default: 10.
 
 \subsubsection{Max number of recently active clients}
 
@@ -994,21 +1003,21 @@ setting in \textsl{/etc/default/urbackup\_srv}.
 
 The Server binds to following default ports:
 
-\begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|}
+\begin{tabular}{|p{0.2\textwidth}|p{0.5\textwidth}|p{0.3\textwidth}}
 \hline
-\textbf{Port}  & \textbf{Usage} \\
+\textbf{Port}  & \textbf{Usage} & \textbf{Incoming/Outgoing} \\
 \hline
-55413 & FastCGI for web interface \\
+55413 & FastCGI for web interface & Incoming\\
 \hline
-55414 & HTTP web interface \\
+55414 & HTTP web interface & Incoming\\
 \hline
-55415 & Internet clients \\
+55415 & Internet clients & Incoming \\
 \hline
-35623 & UDP broadcasts (sending and receiving) \\
+35623 & UDP broadcasts for discovery & Outgoing\\
 \hline
 \end{tabular}\\\\
 
-\noindent The Client binds to following default ports:
+\noindent The Client binds to following default ports (all incoming):
 
 \begin{tabular}{|p{0.2\textwidth}|p{0.6\textwidth}|}
 \hline
@@ -1016,7 +1025,7 @@ The Server binds to following default ports:
 \hline
 35621 & Sending files during file backups (file server) \\
 \hline
-35622 & UDP broadcasts (receiving) \\
+35622 & UDP broadcasts for discovery\\
 \hline
 35623 & Commands and image backups \\
 \hline
@@ -1024,7 +1033,8 @@ The Server binds to following default ports:
 
 \subsection{Mounting (compressed) VHD files on GNU/Linux}
 
-If you compiled UrBackup with fuse support or installed the Debian/Ubuntu packages the UrBackup server can mount 
+If you compiled UrBackup with fuse (filesystem in user space) support or
+installed the Debian/Ubuntu packages the UrBackup server can mount 
 VHD(Z) files directly. You compile UrBackup with fuse support by configuring:
 \begin{verbatim}
 ./configure --with-mountvhd
@@ -1037,7 +1047,16 @@ start_urbackup_server --mountvhd /media/backup/urbackup/testclient/\
 All files in the backed up ``C'' volume will then be available read-only in \textsl{/media/testclient\_C}.
 Unmount the mounts created by UrBackup (see output of \textsl{mount}), to stop the background process.
 
+\subsection{Mounting VHDs as a volume on Windows}
+
+Starting from Vista Windows can mount VHD files directly. If the VHD files are compressed, they need to be
+decompressed first (see next section \ref{decompress_vhd_files}). Then go to
+system settings->Manage->Computer management->Disk management->Other Actions->Add Virtual Hard Disk. Mount
+the VHD file read only. The image will appear as another drive in the explorer. It may not work if the VHD file
+is on a network drive.
+
 \subsection{Decompress VHD files}
+\label{decompress_vhd_files}
 
 If you want to mount the VHD files on Windows and they are compressed (file extension is VHDZ), you need
 to decompress them first. Use  \textsl{C:\textbackslash Program Files\textbackslash UrBackupServer\textbackslash uncompress\_image.bat} for that.
