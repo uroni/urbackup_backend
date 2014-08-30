@@ -24,7 +24,8 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
-	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false)
+	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false),
+	all_downloads_ok(true);
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -69,6 +70,11 @@ void ServerDownloadThread::operator()( void )
 		if(is_offline || skipping)
 		{
 			download_nok_ids.push_back(curr.id);
+
+			{
+				IScopedLock lock(mutex);
+				all_downloads_ok=false;
+			}
 
 			if(curr.patch_dl_files.prepared)
 			{
@@ -241,6 +247,10 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
+		{
+			IScopedLock lock(mutex);
+			all_downloads_ok=false;
+		}
 		download_nok_ids.push_back(todl.id);
 		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 
@@ -388,6 +398,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
+		{
+			IScopedLock lock(mutex);
+			all_downloads_ok=false;
+		}
+
 		download_nok_ids.push_back(todl.id);
 
 		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
@@ -793,8 +808,19 @@ bool ServerDownloadThread::touch_file( SQueueItem todl )
 	}
 	else
 	{
+		{
+			IScopedLock lock(mutex);
+			all_downloads_ok=false;
+		}
+
 		download_nok_ids.push_back(todl.id);
 		ServerLogger::Log(clientid, L"GT: Error creating file \""+dstpath+L"\"", LL_ERROR);
 		return false;
 	}
+}
+
+bool ServerDownloadThread::isAllDownloadsOk()
+{
+	IScopedLock lock(mutex);
+	return all_downloads_ok;
 }

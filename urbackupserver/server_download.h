@@ -98,6 +98,8 @@ public:
 
 	bool isDownloadOk(size_t id);
 
+	bool isAllDownloadsOk();
+
 	size_t getMaxOkId();
 
 	bool isOffline();
@@ -155,6 +157,7 @@ private:
 
 	std::deque<SQueueItem> dl_queue;
 
+	bool all_downloads_ok;
 	std::vector<size_t> download_nok_ids;
 	size_t max_ok_id;
 
