@@ -2467,7 +2467,10 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				backup_stopped=true;
 				ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
 				server_download->queueSkip();
-				server_hash_existing->queueStop(true);
+				if(server_hash_existing.get())
+				{
+					server_hash_existing->queueStop(true);
+				}
 			}
 		}
 
