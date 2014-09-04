@@ -645,6 +645,7 @@ DLLEXPORT void UnloadActions(void)
 		ServerSettings::destroy_mutex();
 		ServerStatus::destroy_mutex();
 		destroy_dir_link_mutex();
+		Server->wait(1000);
 	}
 
 	if(shutdown_ok)

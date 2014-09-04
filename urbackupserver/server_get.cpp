@@ -3531,9 +3531,9 @@ void BackupServerGet::sendSettings(void)
 		origSettings = Server->createMemorySettingsReader(Server->ConvertToUTF8(origSettingsData.value));
 	}
 
-	ISettingsReader* server_settings_reader =
+	std::auto_ptr<ISettingsReader> server_settings_reader(
 		Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER),
-		"settings_db.settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
+		"settings_db.settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0"));
 
 	for(size_t i=0;i<settings_names.size();++i)
 	{

@@ -281,9 +281,14 @@ namespace JSON
 		data=new double;
 		*((double*)data)=val;
 	}
-
-	Value::~Value()
+	
+	void Value::destroy()
 	{
+		if(data==NULL)
+		{
+			return;
+		}
+		
 		switch(data_type)
 		{
 			case str_type: delete ((std::string*)data); break;
@@ -298,7 +303,17 @@ namespace JSON
 			case double_type: delete ((double*)data); break;
 			case luint_type: delete ((long unsigned int*)data); break;
 		}
+		
+		data=NULL;
+		data_type=null_type;
 	}
+
+	Value::~Value()
+	{
+		destroy();
+	}
+	
+	
 
 	void Value::init(const Value &other)
 	{
@@ -327,6 +342,7 @@ namespace JSON
 
 	Value &  Value::operator=(const Value &other)
 	{
+		destroy();
 		init(other);
 		return *this;
 	}

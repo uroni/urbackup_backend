@@ -67,6 +67,7 @@ public:
 
 	static IPipe *getConnection(const std::string &clientname, char service, int timeoutms=-1);
 	static std::vector<std::pair<std::string, std::string> > getOnlineClients(void);
+	
 
 	void connectStart();
 	bool Connect(char service, int timems);

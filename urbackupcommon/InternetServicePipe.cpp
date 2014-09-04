@@ -34,6 +34,8 @@ void InternetServicePipe::init(IPipe *pcs, const std::string &key)
 {
 	cs=pcs;
 	destroy_cs=false;
+	if(enc!=NULL) enc->Remove();
+	if(dec!=NULL) dec->Remove();
 	enc=crypto_fak->createAESEncryption(key);
 	dec=crypto_fak->createAESDecryption(key);
 }
