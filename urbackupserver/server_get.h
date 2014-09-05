@@ -167,6 +167,7 @@ private:
 	bool verify_file_backup(IFile *fileentries);
 
 	std::string getSHA256(const std::wstring& fn);
+	std::string getSHA512(const std::wstring& fn);
 
 	void logVssLogdata(void);
 

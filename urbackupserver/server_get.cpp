@@ -1940,17 +1940,24 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	waitForFileThreads();
 
 	bool verification_ok = true;
+	if(server_settings->getSettings()->end_to_end_file_backup_verification
+		|| (internet_connection
+		&& server_settings->getSettings()->verify_using_client_hashes 
+		&& server_settings->getSettings()->internet_calculate_filehashes_on_client) )
+	{
+		if(!verify_file_backup(tmp))
+		{
+			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+			c_has_error=true;
+			verification_ok = false;
+		}
+		else
+		{
+			ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+		}
+	}
 
-	if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
-	{
-		ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
-		c_has_error=true;
-		verification_ok = false;
-	}
-	else if(server_settings->getSettings()->end_to_end_file_backup_verification)
-	{
-		ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
-	}
+	
 
 	if( bsh->hasError() || bsh_prepare->hasError() )
 	{
@@ -2905,14 +2912,20 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		
 	if(!r_offline && !c_has_error && !disk_error)
 	{
-		if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
+		if(server_settings->getSettings()->end_to_end_file_backup_verification
+			|| (internet_connection
+			    && server_settings->getSettings()->verify_using_client_hashes 
+			    && server_settings->getSettings()->internet_calculate_filehashes_on_client) )
 		{
-			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
-			c_has_error=true;
-		}
-		else if(server_settings->getSettings()->end_to_end_file_backup_verification)
-		{
-			ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+			if(!verify_file_backup(tmp))
+			{
+				ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+				c_has_error=true;
+			}
+			else
+			{
+				ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+			}
 		}
 
 		bool b=false;
@@ -4727,10 +4740,21 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 
 					if(sha256hex.empty())
 					{
-						std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
-						verify_ok=false;
-						ServerLogger::Log(clientid, msg, LL_ERROR);
-						log << msg << std::endl;
+						std::string sha512base64 = wnarrow(extras[L"sha256"]);
+						if(sha512base64.empty())
+						{
+							std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
+							verify_ok=false;
+							ServerLogger::Log(clientid, msg, LL_ERROR);
+							log << msg << std::endl;
+						}
+						else if(getSHA512(curr_path+os_file_sep()+cfn)!=base64_decode_dash(sha512base64))
+						{
+							std::string msg="Hashes for \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
+							verify_ok=false;
+							ServerLogger::Log(clientid, msg, LL_ERROR);
+							log << msg << std::endl;
+						}
 					}
 					else if(getSHA256(curr_path+os_file_sep()+cfn)!=sha256hex)
 					{
@@ -4783,9 +4807,9 @@ std::string BackupServerGet::getSHA256(const std::wstring& fn)
 		return std::string();
 	}
 
-	char buffer[4096];
+	char buffer[32768];
 	unsigned int r;
-	while( (r=f->Read(buffer, 4096))>0)
+	while( (r=f->Read(buffer, 32768))>0)
 	{
 		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
 	}
@@ -4796,6 +4820,34 @@ std::string BackupServerGet::getSHA256(const std::wstring& fn)
 	sha256_final(&ctx, dig);
 
 	return bytesToHex(dig, 32);
+}
+
+std::string BackupServerGet::getSHA512(const std::wstring& fn)
+{
+	sha512_ctx ctx;
+	sha512_init(&ctx);
+
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+
+	if(f==NULL)
+	{
+		return std::string();
+	}
+
+	char buffer[32768];
+	unsigned int r;
+	while( (r=f->Read(buffer, 32768))>0)
+	{
+		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+	}
+
+	Server->destroy(f);
+
+	std::string dig;
+	dig.resize(64);
+	sha512_final(&ctx, reinterpret_cast<unsigned char*>(&dig[0]));
+
+	return dig;
 }
 
 void BackupServerGet::logVssLogdata(void)

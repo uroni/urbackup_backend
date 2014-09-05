@@ -1469,6 +1469,7 @@ function show_settings2(data)
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
 			data.settings.trust_client_hashes=getCheckboxValue(data.settings.trust_client_hashes);
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
+			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1582,6 +1583,7 @@ function show_settings2(data)
 			data.settings.end_to_end_file_backup_verification=getCheckboxValue(data.settings.end_to_end_file_backup_verification);
 			data.settings.internet_calculate_filehashes_on_client=getCheckboxValue(data.settings.internet_calculate_filehashes_on_client);
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
+			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1864,7 +1866,8 @@ g.settings_list=[
 "file_hash_collect_cachesize",
 "internet_calculate_filehashes_on_client",
 "image_file_format",
-"internet_connect_always"
+"internet_connect_always",
+"verify_using_client_hashes"
 ];
 g.general_settings_list=[
 "backupfolder",

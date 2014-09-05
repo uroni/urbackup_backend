@@ -318,6 +318,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
+	settings->verify_using_client_hashes=(settings_default->getValue("verify_using_client_hashes", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -460,6 +461,7 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("allow_pause", &settings->allow_pause);
 	readBoolClientSetting("allow_log_view", &settings->allow_log_view);
 	readBoolClientSetting("allow_tray_exit", &settings->allow_tray_exit);
+	readBoolClientSetting("verify_using_client_hashes", &settings->verify_using_client_hashes);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)

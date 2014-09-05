@@ -97,6 +97,7 @@ struct SSettings
 	bool trust_client_hashes;
 	bool internet_connect_always;
 	bool show_server_updates;
+	bool verify_using_client_hashes;
 };
 
 struct STimeSpan
