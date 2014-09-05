@@ -21,6 +21,7 @@ public:
 	ChunkPatcher(void);
 
 	void setCallback(IChunkPatcherCallback *pCb);
+	void setRequireUnchanged(bool b);
 	bool ApplyPatch(IFile *file, IFile *patch);
 	_i64 getFilesize(void);
 
@@ -29,6 +30,7 @@ private:
 	_i64 filesize;
 
 	IChunkPatcherCallback *cb;
+	bool require_unchanged;
 };
 
 #endif //CHUNK_PATCHER_H

@@ -1003,6 +1003,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 		ObjectScope f_source_s(f_source);
 
 		chunk_patch_pos=0;
+		chunk_patcher.setRequireUnchanged(!has_reflink);
 		bool b=chunk_patcher.ApplyPatch(f_source, patch);
 
 		dstfsize=chunk_output_fn->Size();
