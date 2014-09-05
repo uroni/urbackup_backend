@@ -270,7 +270,7 @@ then
 elif [ "x$RUN_IN_VALGRIND" = "x1" ]
 then
 	cd $DAEMON_DIR
-	valgrind --leak-check=full --track-origins=yes $DAEMON $S_DAEMON $DAEMON_ARGS --allow_shutdown true --leak_check true
+	valgrind --tool=memcheck --leak-check=full --track-origins=yes --vgdb=yes --vgdb-error=0 $DAEMON $S_DAEMON $DAEMON_ARGS --allow_shutdown true --leak_check true
 elif [ "x$MOUNTVHD" != "x" ]
 then
 	echo "Starting VHD background process.."
