@@ -4740,7 +4740,7 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 
 					if(sha256hex.empty())
 					{
-						std::string sha512base64 = wnarrow(extras[L"sha256"]);
+						std::string sha512base64 = wnarrow(extras[L"sha512"]);
 						if(sha512base64.empty())
 						{
 							std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
