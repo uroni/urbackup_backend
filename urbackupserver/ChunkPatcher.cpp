@@ -65,12 +65,13 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 		{
 			while(tr>0 && file_pos<size && file_pos<filesize)
 			{
+				if(file_pos+tr>filesize)
+				{
+					tr=static_cast<unsigned int>(filesize-file_pos);
+				}
+
 				if(require_unchanged)
 				{
-					if(file_pos+tr>filesize)
-					{
-						tr=static_cast<unsigned int>(filesize-file_pos);
-					}
 					_u32 r=file->Read((char*)buf, tr);
 					file_pos+=r;
 					cb->next_chunk_patcher_bytes(buf, r, false);
@@ -78,11 +79,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 				}
 				else
 				{
-					if(file_pos+tr>filesize)
-					{
-						tr=static_cast<unsigned int>(filesize-file_pos);
-					}
 					file_pos+=tr;
+					cb->next_chunk_patcher_bytes(NULL, tr, false);
 					tr=0;
 				}				
 			}			
