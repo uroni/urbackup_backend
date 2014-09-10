@@ -175,7 +175,7 @@ private:
 	void CMD_NEW_SERVER(str_map &params);
 	void CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd);
 	void CMD_GET_VSSLOG(const std::string &cmd);
-
+	int getCapabilities();
 	IPipe *pipe;
 	IPipe *mempipe;
 	bool mempipe_owner;
