@@ -1006,6 +1006,18 @@ function show_status2(data)
 			datatable_config.oColVis.aiExclude.push(11);
 		}
 		
+		if(data.no_images)
+		{
+			datatable_config.oColVis.aiExclude.push(5);
+			datatable_config.oColVis.aiExclude.push(7);
+		}
+		
+		if(data.no_file_backups)
+		{
+			datatable_config.oColVis.aiExclude.push(4);
+			datatable_config.oColVis.aiExclude.push(6);
+		}
+		
 		var columns = [ 0 ];
 		
 		if(!data.no_file_backups)
