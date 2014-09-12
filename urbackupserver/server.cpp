@@ -49,6 +49,7 @@ std::vector<std::wstring> BackupServer::force_offline_clients;
 
 
 BackupServer::BackupServer(IPipe *pExitpipe)
+	: update_existing_client_names(true)
 {
 	throttle_mutex=Server->createMutex();
 	exitpipe=pExitpipe;
@@ -131,6 +132,7 @@ void BackupServer::operator()(void)
 
 	q_get_extra_hostnames=db->Prepare("SELECT id,hostname FROM settings_db.extra_clients");
 	q_update_extra_ip=db->Prepare("UPDATE settings_db.extra_clients SET lastip=? WHERE id=?");
+	q_get_clientnames=db->Prepare("SELECT name FROM clients");
 
 	FileClient fc(true, "");
 
@@ -220,9 +222,13 @@ void BackupServer::startClients(FileClient &fc)
 
 	endpoint_names.resize(servers.size());
 
+	maybeUpdateExistingClientsLower();
+
 	for(size_t i=0;i<names.size();++i)
 	{
 		names[i]=Server->ConvertToUnicode(conv_filename(Server->ConvertToUTF8(names[i])));
+
+		fixClientnameCase(names[i]);
 	}
 
 	std::vector<bool> inetclient;
@@ -244,6 +250,7 @@ void BackupServer::startClients(FileClient &fc)
 		if(skip)
 			continue;
 
+		fixClientnameCase(new_name);
 		names.push_back(new_name);
 		inetclient.push_back(true);
 		sockaddr_in n;
@@ -277,6 +284,8 @@ void BackupServer::startClients(FileClient &fc)
 			Server->Log(L"New Backupclient: "+names[i]);
 			ServerStatus::setOnline(names[i], true);
 			IPipe *np=Server->createMemoryPipe();
+
+			update_existing_client_names=true;
 
 			bool use_reflink=false;
 #ifndef _WIN32
@@ -398,6 +407,8 @@ void BackupServer::startClients(FileClient &fc)
 							clients.erase(it);
 							maxi=i_c;
 							c=true;
+
+							update_existing_client_names=true;
 
 							IScopedLock lock(force_offline_mutex);
 							std::vector<std::wstring>::iterator off_iter = std::find(force_offline_clients.begin(),
@@ -659,6 +670,37 @@ void BackupServer::forceOfflineClient( const std::wstring& clientname )
 	Server->Log(L"Forcing offline client \""+clientname+L"\"", LL_DEBUG);
 
 	force_offline_clients.push_back(clientname);
+}
+
+void BackupServer::maybeUpdateExistingClientsLower()
+{
+	if(update_existing_client_names)
+	{
+		db_results res = q_get_clientnames->Read();
+
+		existing_client_names.resize(res.size());
+		existing_client_names_lower.resize(res.size());
+		for(size_t i=0;i<res.size();++i)
+		{
+			existing_client_names[i]=res[i][L"name"];
+			existing_client_names_lower[i]=strlower(res[i][L"name"]);
+		}
+
+		update_existing_client_names=false;
+	}
+}
+
+void BackupServer::fixClientnameCase( std::wstring& clientname )
+{
+	std::wstring name_lower = strlower(clientname);
+	for(size_t j=0;j<existing_client_names_lower.size();++j)
+	{
+		if(existing_client_names_lower[j]==name_lower)
+		{
+			clientname=existing_client_names[j];
+			break;
+		}
+	}
 }
 
 #endif //CLIENT_ONLY

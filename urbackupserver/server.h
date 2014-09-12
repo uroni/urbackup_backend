@@ -48,12 +48,18 @@ private:
 	void removeAllClients(void);
 	void maybeUpdateDeletePendingClients();
 	bool isDeletePendingClient(const std::wstring& clientname);
-
+	void maybeUpdateExistingClientsLower();
+	void fixClientnameCase(std::wstring& clientname);
 
 	std::map<std::wstring, SClient> clients;
 
+	bool update_existing_client_names;
+	std::vector<std::wstring> existing_client_names;
+	std::vector<std::wstring> existing_client_names_lower;
+
 	IQuery *q_get_extra_hostnames;
 	IQuery *q_update_extra_ip;
+	IQuery *q_get_clientnames;
 
 	IPipe *exitpipe;
 
