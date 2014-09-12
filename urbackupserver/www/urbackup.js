@@ -295,9 +295,9 @@ function getPar(p)
 		return "&"+p+"="+(obj.checked?"true":"false");
 	}
 	var val=obj.value;
-	if(p=="update_freq_incr"){ val*=60.0*60.0; if(obj.disabled) val*=-1; }
+	if(p=="update_freq_incr"){ val*=60.0*60.0; if(obj.disabled && val>0) val*=-1; }
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
-		{ val*=60.0*60.0*24.0; if(obj.disabled) val*=-1; }
+		{ val*=60.0*60.0*24.0; if(obj.disabled && val>0) val*=-1; }
 	if(p=="startup_backup_delay") val*=60;
 	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
 	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
@@ -2040,7 +2040,8 @@ function updateUserOverwrite(clientid)
 	{
 		if( I(g.settings_list[i]) )
 		{
-			I(g.settings_list[i]).disabled=!checked;
+			if(!I(g.settings_list[i]).disabled)
+				I(g.settings_list[i]).disabled=!checked;
 		}
 	}
 	
@@ -2056,10 +2057,17 @@ function updateUserOverwrite(clientid)
 	I('archive_backup_type').disabled=!checked;
 	
 	//Disable checkboxes
-	I('update_freq_incr_disable').disabled=!checked;
-	I('update_freq_full_disable').disabled=!checked;
-	I('update_freq_image_incr_disable').disabled=!checked;
-	I('update_freq_image_full_disable').disabled=!checked;
+	if(!I('update_freq_incr_disable').disabled)
+		I('update_freq_incr_disable').disabled=!checked;
+		
+	if(!I('update_freq_full_disable').disabled)
+		I('update_freq_full_disable').disabled=!checked;
+		
+	if(!I('update_freq_image_incr_disable').disabled)
+		I('update_freq_image_incr_disable').disabled=!checked;
+		
+	if(!I('update_freq_image_full_disable').disabled)
+		I('update_freq_image_full_disable').disabled=!checked;
 	
 	I('backup_window').disabled=!checked;
 	
