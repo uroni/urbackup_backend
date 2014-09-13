@@ -26,6 +26,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0)
+	all_downloads_ok(true);
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -82,6 +83,11 @@ void ServerDownloadThread::operator()( void )
 		if(is_offline || skipping)
 		{
 			download_nok_ids.push_back(curr.id);
+
+			{
+				IScopedLock lock(mutex);
+				all_downloads_ok=false;
+			}
 
 			if(curr.patch_dl_files.prepared)
 			{
@@ -258,6 +264,10 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(clientid, L"Error getting complete file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		{
+			IScopedLock lock(mutex);
+			all_downloads_ok=false;
+		}
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_ERROR)
 			&& save_incomplete_file
@@ -407,6 +417,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(clientid, L"Error getting file patch for \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		{
+			IScopedLock lock(mutex);
+			all_downloads_ok=false;
+		}
+
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR)
 			&& dlfiles.patchfile->Size()>0
@@ -821,8 +836,19 @@ bool ServerDownloadThread::touch_file( SQueueItem todl )
 	}
 	else
 	{
+		{
+			IScopedLock lock(mutex);
+			all_downloads_ok=false;
+		}
+
 		download_nok_ids.push_back(todl.id);
 		ServerLogger::Log(clientid, L"GT: Error creating file \""+dstpath+L"\"", LL_ERROR);
 		return false;
 	}
+}
+
+bool ServerDownloadThread::isAllDownloadsOk()
+{
+	IScopedLock lock(mutex);
+	return all_downloads_ok;
 }

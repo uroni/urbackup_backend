@@ -99,6 +99,8 @@ public:
 	bool isDownloadOk(size_t id);
 
 	bool isDownloadPartial(size_t id);
+	
+	bool isAllDownloadsOk();
 
 	size_t getMaxOkId();
 
@@ -158,6 +160,7 @@ private:
 	std::deque<SQueueItem> dl_queue;
 	size_t queue_size;
 
+	bool all_downloads_ok;
 	std::vector<size_t> download_nok_ids;
 	std::vector<size_t> download_partial_ids;
 	size_t max_ok_id;

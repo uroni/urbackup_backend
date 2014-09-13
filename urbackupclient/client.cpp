@@ -3230,6 +3230,87 @@ void IndexThread::readPermissions( const std::wstring& path, std::string& permis
 	permissions = get_file_tokens(path, cd, token_cache);
 }
 
+void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions )
+{
+	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\""
+		"rpb=" << base64_encode_dash(permissions) <<
+		"&mod=" << nconvert(mod) <<
+		"&creat=" << nconvert(creat) << "\n";
+}
+
+void IndexThread::writeTokens()
+{
+	std::auto_ptr<ISettingsReader> access_keys(
+		Server->createFileSettingsReader("access_keys.properties"));
+
+	std::string access_keys_data;
+	std::vector<std::wstring> keys
+		= access_keys->getKeys();
+
+
+	bool has_server_key=false;
+	std::string curr_key;
+	for(size_t i=0;i<keys.size();++i)
+	{
+		if(keys[i]==L"key."+widen(starttoken))
+		{
+			has_server_key=true;
+			curr_key=wnarrow(access_keys->getValue(keys[i], std::wstring()));
+		}
+		access_keys_data+=wnarrow(keys[i])+"="+
+			wnarrow(access_keys->getValue(keys[i], std::wstring()))+"\n";
+	}
+
+	if(!has_server_key)
+	{
+		curr_key = Server->secureRandomString(30);	
+
+		access_keys_data+="key."+starttoken+"="+
+			curr_key+"\n";
+
+		write_file_only_admin(access_keys_data, "access_keys.properties");
+	}	
+
+	write_tokens();
+	std::vector<ClientDAO::SToken> tokens = cd->getFileAccessTokens();
+
+	std::string ids;
+	for(size_t i=0;i<tokens.size();++i)
+	{
+		if(!ids.empty())
+		{
+			ids+=",";
+		}
+		ids+=nconvert(tokens[i].id);
+	}
+
+	std::string data="ids="+ids+"\n";
+
+	data+="access_key="+curr_key+"\n";
+
+	for(size_t i=0;i<tokens.size();++i)
+	{
+		data+=nconvert(tokens[i].id)+".username="+base64_encode_dash(Server->ConvertToUTF8(tokens[i].username))+"\n";
+		data+=nconvert(tokens[i].id)+".token="+Server->ConvertToUTF8(tokens[i].token)+"\n";
+	}
+
+
+	write_file_only_admin(data, "urbackup"+os_file_sepn()+"data"+os_file_sepn()+"tokens_"+starttoken+".properties");
+}
+
+void IndexThread::readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files )
+{
+	for(size_t i=0;i<files.size();++i)
+	{
+		readPermissions(dir + os_file_sep() + files[i].name, files[i].file_permission_bits);
+	}
+}
+
+void IndexThread::readPermissions( const std::wstring& path, std::string& permissions )
+{
+	permissions = get_file_tokens(path, cd, token_cache);
+}
+
 void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra )
 {
 	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\""

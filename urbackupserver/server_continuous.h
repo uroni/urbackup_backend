@@ -15,7 +15,7 @@
 
 extern std::string server_identity;
 
-class BackupServerContinuous : public IThread
+class BackupServerContinuous : public IThread, public FileClient::QueueCallback
 {
 public:
 	struct SSequence
@@ -128,9 +128,21 @@ public:
 				{
 					queueChange(compacted_changes[i]);
 				}
+
+				while(!dl_queue.empty())
+				{
+					execChange(dl_queue.front().change);
+					dl_queue.pop_front();
+				}
 			}
 
 			compacted_changes.clear();
+		}
+
+		if(server_download.get())
+		{
+			server_download->queueStop(false);
+			Server->getThreadPool()->waitFor(server_download_ticket);
 		}
 	}
 
@@ -171,10 +183,7 @@ private:
 	struct SQueueItem
 	{
 		bool queued_metdata;
-		bool queued_dl;
 		SChange change;
-		std::string out_fn;
-		std::string out_hash_fn;
 	};
 
 	bool compactChanges()
@@ -524,18 +533,29 @@ private:
 	void queueChange(SChange& change)
 	{
 		SQueueItem new_item;
-		new_item.queued_dl=false;
 		new_item.queued_metdata=false;
 		new_item.change=change;
 		dl_queue.push_back(new_item);
 	}
-
+	
 	bool execChange(SChange& change)
 	{
 		switch(change.action)
 		{
+		case CHANGE_REN_FILE:
+		case CHANGE_REN_DIR:
+			return execRen(change);
 		case CHANGE_DEL_FILE:
 			return execDelFile(change);
+		case CHANGE_ADD_FILE:
+			return execAddFile(change);
+		case CHANGE_ADD_DIR:
+			return execAddDir(change);
+		case CHANGE_MOD:
+			return execMod(change);
+		case CHANGE_DEL_DIR:
+			return execDelDir(change);
+		default: return false;
 		}
 	}
 
@@ -629,20 +649,65 @@ private:
 		}
 	}
 
+	bool constructFileClient(std::auto_ptr<FileClient>& new_fc)
+	{		
+		new_fc.reset(new FileClient(false, server_identity, server_get->getFilesrvProtocolVersion(), server_get->isOnInternetConnection(), server_get, server_get));
+		_u32 rc = server_get->getClientFilesrvConnection(new_fc.get(), server_settings.get());
+		if(rc!=ERR_CONNECTED)
+		{
+			Server->Log("Could not connect to client in continous backup thread", LL_ERROR);
+			return false;
+		}
+		return true;
+	}
+
+	bool constructServerDownloadThread()
+	{
+		server_download.reset(new ServerDownloadThread(*fileclient.get(),
+			*fileclient_chunked.get(), true, continuous_path,
+			continuous_hash_path, continuous_path, std::string(), hashed_transfer_full,
+			false, clientid, clientname, use_tmpfiles, tmpfile_path, server_token,
+			use_reflink, backupid, true, hashpipe_prepare, server_get, server_get->getFilesrvProtocolVersion()));
+
+		server_download_ticket = Server->getThreadPool()->execute(server_download.get());
+	}
+
 	bool execMod(SChange& change)
 	{
 		std::auto_ptr<IFile> f(Server->openFile(getFullpath(change.fn1)));
 
-		if(fileclient.get()==NULL)
+		if(!fileclient.get())
 		{
-			FileClient* new_fc=new FileClient(false, server_identity, server_get->getFilesrvProtocolVersion(), server_get->isOnInternetConnection(), server_get, server_get);
-			fileclient.reset(new_fc);
-			_u32 rc = server_get->getClientFilesrvConnection(new_fc, server_settings.get());
-			if(rc!=ERR_CONNECTED)
+			if(!constructFileClient(fileclient))
 			{
-				Server->Log("Could not connect to client in continous backup thread", LL_ERROR);
 				return false;
-			}				
+			}
+		}
+
+		if(!fileclient_metadata.get())
+		{
+			if(!constructFileClient(fileclient_metadata))
+			{
+				return false;
+			}
+		}
+
+		if(!fileclient_chunked.get())
+		{
+			if(!server_get->getClientChunkedFilesrvConnection(fileclient_chunked))
+			{
+				ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
+				return false;
+			}
+			else
+			{
+				fileclient_chunked->setDestroyPipe(true);
+				if(fileclient_chunked->hasError())
+				{
+					ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked)", LL_ERROR);
+					return false;
+				}
+			}
 		}
 
 		std::string hash;
@@ -650,7 +715,7 @@ private:
 		int64 filesize;
 		int64 created;
 		int64 modified;
-		_u32 rc = fileclient->GetFileHashAndMetadata(change.fn1, hash, permissions, filesize, created, modified);
+		_u32 rc = fileclient_metadata->GetFileHashAndMetadata(change.fn1, hash, permissions, filesize, created, modified);
 
 		if(rc!=ERR_SUCCESS)
 		{
@@ -671,63 +736,23 @@ private:
 			return true;
 		}
 
-		std::auto_ptr<IFile> tmpf(BackupServerGet::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid));
-		if(!tmpf.get())
+		if(!server_download.get())
 		{
-			return false;
+			constructServerDownloadThread();
 		}
+
+		std::wstring fn = ExtractFileName(change.fn1);
+		std::wstring fpath = ExtractFilePath(change.fn1);
 
 		if(f->Size()==0 || !transfer_incr_blockdiff)
 		{
-			_u32 rc = fileclient->GetFile(change.fn1, tmpf.get(), hashed_transfer_full);
-
-			int hash_retries=5;
-			while(rc==ERR_HASH && hash_retries>0)
-			{
-				tmpf->Seek(0);
-				rc = fileclient->GetFile(change.fn1, tmpf.get(), hashed_transfer_full);
-				--hash_retries;
-			}
-
-			bool hash_file = false;
-
-			if(rc!=ERR_SUCCESS)
-			{
-				ServerLogger::Log(clientid, L"Error getting file \""+Server->ConvertToUnicode(change.fn1)+L"\" from "+clientname+L". Errorcode: "+widen(fileclient->getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
-
-				BackupServerGet::destroyTemporaryFile(tmpf.get());					
-				tmpf.release();
-
-				return false;
-			}
-			else
-			{
-				hashFile(getFullpath(change.fn1), getFullHashpath(change.fn1), tmpf.get(),
-					NULL, Server->ConvertToUTF8(getFullpath(change.fn1)), filesize, metadata );
-				tmpf.release();
-			}
+			server_download->addToQueueFull(0, fn, fn,
+				fpath, fpath, filesize, metadata);
 		}
 		else
 		{
-			if(!fileclient_chunked.get())
-			{
-				if(!server_get->getClientChunkedFilesrvConnection(fileclient_chunked))
-				{
-					ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
-					return false;
-				}
-				else
-				{
-					fileclient_chunked->setDestroyPipe(true);
-					if(fileclient_chunked->hasError())
-					{
-						ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked)", LL_ERROR);
-						return false;
-					}
-				}
-			}
-
-			_u32 rc = fileclient_chunked->GetFilePatch(change.fn1, )
+			server_download->addToQueueChunked(0, fn, fn,
+				fpath, fpath, filesize, metadata);
 		}
 	}
 
@@ -760,41 +785,45 @@ private:
 
 	bool backupDir(const std::string& dir)
 	{
-
+		return false;
 	}
 
-	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize, const FileMetadata& metadata)
+	virtual std::string getQueuedFileFull(bool& metadata)
 	{
-		int l_backup_id=backupid;
-
-		CWData data;
-		data.addString(Server->ConvertToUTF8(fd->getFilenameW()));
-		data.addInt(l_backup_id);
-		data.addChar(1);
-		data.addString(Server->ConvertToUTF8(dstpath));
-		data.addString(Server->ConvertToUTF8(hashpath));
-		if(hashoutput!=NULL)
+		for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
+			it!=dl_queue.end();++it)
 		{
-			data.addString(Server->ConvertToUTF8(hashoutput->getFilenameW()));
+			if(!it->queued_metdata &&
+				(it->change.action==CHANGE_ADD_FILE ||
+				 it->change.action==CHANGE_MOD) )
+			{
+				metadata=true;
+				it->queued_metdata=true;
+				return it->change.fn1;
+			}
 		}
-		else
+	}
+
+	virtual void unqueueFileFull(const std::string& fn)
+	{
+		for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
+			it!=dl_queue.end();++it)
 		{
-			data.addString("");
+			if(it->change.fn1==fn)
+			{
+				it->queued_metdata=false;
+				return;
+			}
 		}
+	}
 
-		data.addString(old_file);
-		data.addChar(1);
-		data.addInt64(t_filesize);
-		metadata.serialize(data);
-
-		ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
-
-		Server->destroy(fd);
-		if(hashoutput!=NULL)
+	virtual void resetQueueFull()
+	{
+		for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
+			it!=dl_queue.end();++it)
 		{
-			Server->destroy(hashoutput);
+			it->queued_metdata=false;
 		}
-		hashpipe_prepare->Write(data.getDataPtr(), data.getDataSize() );
 	}
 
 	std::vector<std::string> changes;
@@ -825,8 +854,12 @@ private:
 
 	std::auto_ptr<FileClientChunked> fileclient_chunked;
 	std::auto_ptr<FileClient> fileclient;
+	std::auto_ptr<FileClient> fileclient_metadata;
 
 	std::auto_ptr<ServerSettings> server_settings;
+
+	std::auto_ptr<ServerDownloadThread> server_download;
+	THREADPOOL_TICKET server_download_ticket;
 
 	std::deque<SQueueItem> dl_queue;
 

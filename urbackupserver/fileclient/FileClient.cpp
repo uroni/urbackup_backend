@@ -1066,7 +1066,8 @@ void FileClient::fillQueue()
 			return;
 		}
 
-		std::string queue_fn = queue_callback->getQueuedFileFull();
+		bool metadata=false;
+		std::string queue_fn = queue_callback->getQueuedFileFull(metadata);
 
 		if(queue_fn.empty())
 		{
@@ -1074,7 +1075,14 @@ void FileClient::fillQueue()
 		}
 
 		CWData data;
-		data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
+		if(!metadata)
+		{
+			data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
+		}
+		else
+		{
+			data.addUChar( ID_FILE_HASH_AND_METADATA );
+		}
 		data.addString( queue_fn );
 		data.addString( identity );
 
