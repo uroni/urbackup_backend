@@ -13,4 +13,4 @@ bool link_directory_pool(ServerBackupDao& backup_dao, int clientid, const std::w
 
 bool replay_directory_link_journal(ServerBackupDao& backup_dao);
 
-bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup_dao, int clientid);
+bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup_dao, int clientid, bool delete_root=true);

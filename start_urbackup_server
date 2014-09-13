@@ -74,7 +74,8 @@ then
 	HAS_MOUNTVHD=0
 fi	
 
-DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_httpserver.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --snapshot_helper $SNAPSHOT_HELPER"
+HTTP_PLUGIN="--plugin $DAEMON_LIBS/liburbackupserver_httpserver.so"
+DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --snapshot_helper $SNAPSHOT_HELPER"
 S_DAEMON="--daemon"
 
 print_help()
@@ -170,7 +171,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--run_in_valgrind) RUN_IN_VALGRIND=1; shift ;;
 			--user) URB_USER="$2"; shift 2;;
 			--defrag_database) CLEANUP="--app defrag_database"; shift ;;
-			--export_auth_log) CLEANUP="--app export_auth_log"; shift ;;
+			--export_auth_log) CLEANUP="--app export_auth_log"; URB_USER=""; shift ;;
 			--mountvhd) MOUNTVHD="$2"; shift 2 ;;
 			--mountpoint) MOUNTVHD_MOUNTPOINT="$2"; shift 2;;
 			--tempmount) MOUNTVHD_TMPDIR="$2"; shift 2;;
@@ -184,18 +185,21 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	then
 		LOGLEVEL="info"
 		S_DAEMON="--no-server"
+		HTTP_PLUGIN=""
 	fi
 	
 	if [ "x$RESET_PW" != "x" ]
 	then
 		LOGLEVEL="debug"
 		S_DAEMON="--no-server"
+		HTTP_PLUGIN=""
 	fi
 	
 	if [ "x$CLEANUP" != "x" ]
 	then
 		LOGLEVEL="debug"
 		S_DAEMON="--no-server"
+		HTTP_PLUGIN=""
 	fi
 	
 	if [ "x$RUN_IN_GDB" = "x1" ]
@@ -215,6 +219,11 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		fi
 	fi
 	
+	USER_ARG=""
+	if [ "x$URB_USER" != "x" ]; then
+		USER_ARG="--user $URB_USER"
+	fi
+	
 	if [ "x$MOUNTVHD" != "x" ]
 	then
 		if [ "x$MOUNTVHD_MOUNTPOINT" = "x" ]; then
@@ -232,7 +241,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --decompress $DECOMPRESS --loglevel debug"
 		S_DAEMON=""
 	else
-		DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE --user $URB_USER $SQLITE_TMPDIR $VERIFY_HASHES $DELETE_VERIFY_FAILED $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
+		DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $USER_ARG $SQLITE_TMPDIR $VERIFY_HASHES $DELETE_VERIFY_FAILED $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
 	fi
 else
 	DAEMON_ARGS="--user urbackup $*"
@@ -251,7 +260,7 @@ export MPLCONFIGDIR=$DAEMON_DIR/urbackup
 
 if [ "x$MOUNTVHD" = "x" ]
 then
-	DAEMON_ARGS="$DAEMON_PLUGINS $DAEMON_ARGS"
+	DAEMON_ARGS="$DAEMON_PLUGINS $HTTP_PLUGIN $DAEMON_ARGS"
 fi
 
 if [ "x$RUN_IN_GDB" = "x1" ]
@@ -261,7 +270,7 @@ then
 elif [ "x$RUN_IN_VALGRIND" = "x1" ]
 then
 	cd $DAEMON_DIR
-	valgrind --leak-check=full --track-origins=yes $DAEMON $S_DAEMON $DAEMON_ARGS --allow_shutdown true --leak_check true
+	valgrind --tool=memcheck --leak-check=full --track-origins=yes --vgdb=yes --vgdb-error=0 $DAEMON $S_DAEMON $DAEMON_ARGS --allow_shutdown true --leak_check true
 elif [ "x$MOUNTVHD" != "x" ]
 then
 	echo "Starting VHD background process.."

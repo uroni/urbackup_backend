@@ -146,6 +146,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(internet_calculate_filehashes_on_client);
 	SET_SETTING(image_file_format);
 	SET_SETTING(internet_connect_always);
+	SET_SETTING(verify_using_client_hashes);
 #undef SET_SETTING
 	return ret;
 }
@@ -418,7 +419,7 @@ void getArchiveSettings(JSON::Object &obj, IDatabase *db, int clientid)
 	if(res.empty() || res[0][L"value"]!=L"true")
 		clientid=0;
 
-	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types FROM settings_db.automatic_archival WHERE clientid=?");
+	IQuery *q=db->Prepare("SELECT next_archival, interval, interval_unit, length, length_unit, backup_types, archive_window FROM settings_db.automatic_archival WHERE clientid=?");
 	q->Bind(clientid);
 	res=q->Read();
 

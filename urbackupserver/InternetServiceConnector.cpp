@@ -48,6 +48,11 @@ InternetServiceConnector::InternetServiceConnector(void)
 
 InternetServiceConnector::~InternetServiceConnector(void)
 {
+	IScopedLock lock(mutex);
+	if(!connect_start)
+	{
+		cleanup_pipes(true);
+	}
 	Server->destroy(local_mutex);
 }
 
@@ -426,6 +431,7 @@ void InternetServiceConnector::init_mutex(void)
 void InternetServiceConnector::destroy_mutex(void)
 {
 	Server->destroy(mutex);
+	mutex=NULL;
 	Server->destroy(onetime_token_mutex);
 }
 
@@ -613,6 +619,7 @@ std::vector<std::pair<std::string, std::string> > InternetServiceConnector::getO
 
 	return ret;
 }
+
 
 std::string InternetServiceConnector::generateOnetimeToken(const std::string &clientname)
 {

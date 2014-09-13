@@ -13,8 +13,9 @@
 namespace
 {
 	const unsigned int shadow_copy_timeout=30*60*1000;
-	const size_t max_queue_size = 5000;
-	const size_t minfreespace_min=50*1024*1024;
+	const size_t max_queue_size = 500;
+	const size_t queue_items_full = 1;
+	const size_t queue_items_chunked = 4;
 }
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, bool with_hashes, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
@@ -24,7 +25,7 @@ ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* f
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
-	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false)
+	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -38,7 +39,6 @@ ServerDownloadThread::~ServerDownloadThread()
 
 void ServerDownloadThread::operator()( void )
 {
-	fc.setQueueCallback(this);
 	if(fc_chunked!=NULL && filesrv_protocol_version>2)
 	{
 		fc_chunked->setQueueCallback(this);
@@ -55,6 +55,18 @@ void ServerDownloadThread::operator()( void )
 			}
 			curr = dl_queue.front();
 			dl_queue.pop_front();
+
+			if(curr.action == EQueueAction_Fileclient)
+			{
+				if(curr.fileclient == EFileClient_Full)
+				{
+					queue_size-=queue_items_full;
+				}
+				else if(curr.fileclient== EFileClient_Chunked)
+				{
+					queue_size-=queue_items_chunked;
+				}
+			}			
 		}
 
 		if(curr.action==EQueueAction_Quit)
@@ -64,6 +76,7 @@ void ServerDownloadThread::operator()( void )
 		else if(curr.action==EQueueAction_Skip)
 		{
 			skipping = true;
+			continue;
 		}
 
 		if(is_offline || skipping)
@@ -124,6 +137,7 @@ void ServerDownloadThread::operator()( void )
 	}
 
 	std::sort(download_nok_ids.begin(), download_nok_ids.end());
+	std::sort(download_partial_ids.begin(), download_partial_ids.end());
 }
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool at_front )
@@ -152,6 +166,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	}
 	cond->notify_one();
 
+	queue_size+=queue_items_full;
 	if(!at_front)
 	{
 		sleepQueue(lock);
@@ -178,6 +193,7 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, 
 	dl_queue.push_back(ni);
 	cond->notify_one();
 
+	queue_size+=queue_items_chunked;
 	sleepQueue(lock);
 }
 
@@ -241,8 +257,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		download_nok_ids.push_back(todl.id);
-		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting complete file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_ERROR)
 			&& save_incomplete_file
@@ -255,9 +270,12 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			{
 				max_ok_id=todl.id;
 			}
+
+			download_partial_ids.push_back(todl.id);
 		}
 		else
 		{
+			download_nok_ids.push_back(todl.id);
 			BackupServerGet::destroyTemporaryFile(fd);					
 		}
 
@@ -388,9 +406,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		download_nok_ids.push_back(todl.id);
-
-		ServerLogger::Log(clientid, L"Error getting file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(clientid, L"Error getting file patch for \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR)
 			&& dlfiles.patchfile->Size()>0
@@ -403,10 +419,13 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			{
 				max_ok_id=todl.id;
 			}
+
+			download_partial_ids.push_back(todl.id);
 		}
 		else
 		{
 			hash_file=false;
+			download_nok_ids.push_back(todl.id);
 		}
 	}
 	else
@@ -498,6 +517,14 @@ bool ServerDownloadThread::isDownloadOk( size_t id )
 		id);
 }
 
+
+bool ServerDownloadThread::isDownloadPartial( size_t id )
+{
+	return !download_partial_ids.empty() && 
+		std::binary_search(download_partial_ids.begin(), download_partial_ids.end(), id);
+}
+
+
 size_t ServerDownloadThread::getMaxOkId()
 {
 	return max_ok_id;
@@ -576,6 +603,7 @@ bool ServerDownloadThread::getQueuedFileChunked( std::string& remotefn, IFile*& 
 					full_dl)
 				{
 					it->fileclient=EFileClient_Full;
+					queue_size-=queue_items_chunked-queue_items_full;
 					continue;
 				}
 			}
@@ -712,7 +740,7 @@ void ServerDownloadThread::stop_shadowcopy(const std::string &path)
 
 void ServerDownloadThread::sleepQueue(IScopedLock& lock)
 {
-	while(dl_queue.size()>max_queue_size)
+	while(queue_size>max_queue_size)
 	{
 		lock.relock(NULL);
 		Server->wait(1000);

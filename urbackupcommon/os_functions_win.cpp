@@ -363,7 +363,7 @@ bool os_directory_exists(const std::wstring &path)
 	return isDirectory(path, NULL);
 }
 
-bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata)
+bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback, void* userdata, bool delete_root)
 {
 	WIN32_FIND_DATAW wfd; 
 	HANDLE hf=FindFirstFileW((path+L"\\*").c_str(), &wfd);
@@ -421,7 +421,16 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 	}
 
 	FindClose(hf);
-	RemoveDirectoryW(path.c_str());
+
+	if(delete_root)
+	{
+		if(!RemoveDirectoryW(path.c_str()))
+		{
+#ifndef OS_FUNC_NO_SERVER
+			Server->Log(L"Error deleting directory \""+path+L"\"", LL_ERROR);
+#endif
+		}
+	}
 	return true;
 }
 
@@ -880,4 +889,9 @@ bool os_finish_transaction(void* transaction)
 #else
 	return true;
 #endif
+}
+
+int64 os_last_error()
+{
+	return GetLastError();
 }

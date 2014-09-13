@@ -2,6 +2,7 @@
 #include <fstream>
 #include "../serverinterface/login.h"
 #include "../../stringtools.h"
+#include "../../urbackupcommon/os_functions.h"
 
 int export_auth_log()
 {
@@ -18,11 +19,11 @@ int export_auth_log()
 
 	db_results res = db->Read("SELECT strftime('%Y-%m-%d %H:%M', logintime, 'localtime') AS iso_logintime, username, ip, method FROM settings_db.login_access_log ORDER BY logintime DESC");
 
-	Server->deleteFile("auth_log.csv");
-	std::fstream out("auth_log.csv", std::ios::out|std::ios::binary);
+	Server->deleteFile("urbackup/auth_log.csv");
+	std::fstream out("urbackup/auth_log.csv", std::ios::out|std::ios::binary);
 	if(!out.is_open())
 	{
-		Server->Log("auth_log.csv for writing", LL_ERROR);
+		Server->Log(L"Error opening \""+Server->getServerWorkingDir()+os_file_sep()+L"urbackup/auth_log.csv\" for writing", LL_ERROR);
 		return 1;
 	}
 
@@ -45,7 +46,7 @@ int export_auth_log()
 	}
 
 	out.close();
-	Server->Log("Auth log has been written to auth_log.csv", LL_INFO);
+	Server->Log(L"Auth log has been written to \""+Server->getServerWorkingDir()+os_file_sep()+L"urbackup/auth_log.csv\"", LL_INFO);
 
 
 	return 0;

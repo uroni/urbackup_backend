@@ -261,7 +261,7 @@ void BackupServerHash::operator()(void)
 
 				if(tf==NULL)
 				{
-					ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading", LL_ERROR);
+					ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading ec="+nconvert(os_last_error()), LL_ERROR);
 					has_error=true;
 				}
 				else
@@ -307,7 +307,7 @@ void BackupServerHash::operator()(void)
 
 				if(!tf.get())
 				{
-					ServerLogger::Log(clientid, "Error opening file \""+source+"\" from pipe for reading", LL_ERROR);
+					ServerLogger::Log(clientid, "Error opening file \""+source+"\" from pipe for reading ec="+nconvert(os_last_error()), LL_ERROR);
 					has_error=true;
 				}
 				else
@@ -1074,6 +1074,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 		ObjectScope f_source_s(f_source);
 
 		chunk_patch_pos=0;
+		chunk_patcher.setRequireUnchanged(!has_reflink);
 		bool b=chunk_patcher.ApplyPatch(f_source, patch);
 
 		dstfsize=chunk_output_fn->Size();

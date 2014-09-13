@@ -312,13 +312,14 @@ void BackupServerGet::operator ()(void)
 			{
 				ServerStatus::setStatusError(clientname, se_authentication_error);
 
+				Server->wait(5*60*1000); //5min
+
 				std::string msg;
 				pipe->Read(&msg, ident_err_retry_time);
 				if(msg=="exit" || msg=="exitnow")
 				{
-					pipe->Write("ok");
 					Server->Log(L"server_get Thread for client \""+clientname+L"\" finished and the authentification failed", LL_INFO);
-
+					pipe->Write("ok");
 					delete this;
 					return;
 				}
@@ -347,10 +348,13 @@ void BackupServerGet::operator ()(void)
 
 	if(clientid==-1)
 	{
-		pipe->Write("ok");
+		ServerStatus::setStatusError(clientname, se_too_many_clients);
 		Server->Log(L"server_get Thread for client "+clientname+L" finished, because there were too many clients", LL_INFO);
 
-		ServerStatus::setStatusError(clientname, se_too_many_clients);
+		Server->wait(10*60*1000); //10min
+
+		BackupServer::forceOfflineClient(clientname);
+		pipe->Write("ok");
 		ServerLogger::reset(clientid);
 		delete server_settings;
 		delete this;
@@ -365,6 +369,9 @@ void BackupServerGet::operator ()(void)
 
 	if(!createDirectoryForClient())
 	{
+		Server->wait(10*60*1000); //10min
+
+		BackupServer::forceOfflineClient(clientname);
 		pipe->Write("ok");
 		delete server_settings;
 		delete this;
@@ -383,7 +390,11 @@ void BackupServerGet::operator ()(void)
 	if(!updateCapabilities())
 	{
 		Server->Log(L"Could not get client capabilities", LL_ERROR);
+
+		Server->wait(5*60*1000); //5min
+
 		pipe->Write("ok");
+		BackupServer::forceOfflineClient(clientname);
 		delete server_settings;
 		delete this;
 		return;
@@ -1837,6 +1848,10 @@ bool BackupServerGet::doFullBackup(bool with_hashes, int group, bool &disk_error
 					line <= (std::max)(server_download->getMaxOkId(), max_ok_id) &&
 					server_download->isDownloadOk(line) )
 				{
+					if(server_download->isDownloadPartial(line))
+					{
+						cf.last_modified *= Server->getRandomNumber();
+					}
 					writeFileItem(clientlist, cf);
 				}				
 				++line;
@@ -1849,17 +1864,24 @@ bool BackupServerGet::doFullBackup(bool with_hashes, int group, bool &disk_error
 	waitForFileThreads();
 
 	bool verification_ok = true;
+	if(server_settings->getSettings()->end_to_end_file_backup_verification
+		|| (internet_connection
+		&& server_settings->getSettings()->verify_using_client_hashes 
+		&& server_settings->getSettings()->internet_calculate_filehashes_on_client) )
+	{
+		if(!verify_file_backup(tmp))
+		{
+			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+			c_has_error=true;
+			verification_ok = false;
+		}
+		else
+		{
+			ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+		}
+	}
 
-	if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
-	{
-		ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
-		c_has_error=true;
-		verification_ok = false;
-	}
-	else if(server_settings->getSettings()->end_to_end_file_backup_verification)
-	{
-		ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
-	}
+	
 
 	if( bsh->hasError() || bsh_prepare->hasError() )
 	{
@@ -2393,7 +2415,10 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				backup_stopped=true;
 				ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
 				server_download->queueSkip();
-				server_hash_existing->queueStop(true);
+				if(server_hash_existing.get())
+				{
+					server_hash_existing->queueStop(true);
+				}
 			}
 		}
 
@@ -2811,6 +2836,10 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 				}
 				else if( server_download->isDownloadOk(line) )
 				{
+					if(server_download->isDownloadPartial(line))
+					{
+						cf.last_modified *= Server->getRandomNumber();
+					}
 					writeFileItem(clientlist, cf);
 				}
 				++line;
@@ -2845,14 +2874,20 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		
 	if(!r_offline && !c_has_error && !disk_error)
 	{
-		if(server_settings->getSettings()->end_to_end_file_backup_verification && !verify_file_backup(tmp))
+		if(server_settings->getSettings()->end_to_end_file_backup_verification
+			|| (internet_connection
+			    && server_settings->getSettings()->verify_using_client_hashes 
+			    && server_settings->getSettings()->internet_calculate_filehashes_on_client) )
 		{
-			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
-			c_has_error=true;
-		}
-		else if(server_settings->getSettings()->end_to_end_file_backup_verification)
-		{
-			ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+			if(!verify_file_backup(tmp))
+			{
+				ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+				c_has_error=true;
+			}
+			else
+			{
+				ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+			}
 		}
 
 		bool b=false;
@@ -3414,7 +3449,7 @@ void BackupServerGet::sendClientBackupIncrIntervall(void)
 
 bool BackupServerGet::updateCapabilities(void)
 {
-	std::string cap=sendClientMessage("CAPA", L"Querying client capabilities failed", 10000, false);
+	std::string cap=sendClientMessageRetry("CAPA", L"Querying client capabilities failed", 10000, 10, false);
 	if(cap!="ERR" && !cap.empty())
 	{
 		str_map params;
@@ -3514,9 +3549,9 @@ void BackupServerGet::sendSettings(void)
 		origSettings = Server->createMemorySettingsReader(Server->ConvertToUTF8(origSettingsData.value));
 	}
 
-	ISettingsReader* server_settings_reader =
+	std::auto_ptr<ISettingsReader> server_settings_reader(
 		Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER),
-		"settings_db.settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
+		"settings_db.settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0"));
 
 	for(size_t i=0;i<settings_names.size();++i)
 	{
@@ -3677,10 +3712,6 @@ bool BackupServerGet::getClientSettings(bool& doesnt_exist)
 	}
 
 	Server->destroy(sr);
-
-	bool b=updateClientSetting(L"client_overwrite", L"true");
-	if(b)
-		mod=true;
 	
 	std::string tmp_fn=tmp->getFilename();
 	Server->destroy(tmp);
@@ -4385,6 +4416,7 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms, std::string* c
 
 _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, ServerSettings* server_settings, int timeoutms)
 {
+	fc->setProgressLogCallback(this);
 	if(internet_connection)
 	{
 		IPipe *cp=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_FILESRV, timeoutms);
@@ -4462,6 +4494,8 @@ bool BackupServerGet::getClientChunkedFilesrvConnection(std::auto_ptr<FileClient
 		}
 	}
 
+	fc_chunked->setProgressLogCallback(this);
+
 	if(fc_chunked->getPipe()!=NULL && server_settings!=NULL)
 	{
 		int speed;
@@ -4478,18 +4512,21 @@ bool BackupServerGet::getClientChunkedFilesrvConnection(std::auto_ptr<FileClient
 			fc_chunked->addThrottler(getThrottler(speed));
 		}
 
-		int global_speed;
 		if(internet_connection)
 		{
-			global_speed=server_settings->getSettings()->global_internet_speed;
+			int global_speed=server_settings->getSettings()->global_internet_speed;
+			if(global_speed>0)
+			{
+				fc_chunked->addThrottler(BackupServer::getGlobalInternetThrottler(global_speed));
+			}
 		}
 		else
 		{
-			global_speed=server_settings->getSettings()->global_local_speed;
-		}
-		if(global_speed>0)
-		{
-			fc_chunked->addThrottler(BackupServer::getGlobalLocalThrottler(global_speed));
+			int global_speed=server_settings->getSettings()->global_local_speed;
+			if(global_speed>0)
+			{
+				fc_chunked->addThrottler(BackupServer::getGlobalLocalThrottler(global_speed));
+			}
 		}
 	}
 
@@ -4722,10 +4759,21 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 
 					if(sha256hex.empty())
 					{
-						std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
-						verify_ok=false;
-						ServerLogger::Log(clientid, msg, LL_ERROR);
-						log << msg << std::endl;
+						std::string sha512base64 = wnarrow(extras[L"sha512"]);
+						if(sha512base64.empty())
+						{
+							std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
+							verify_ok=false;
+							ServerLogger::Log(clientid, msg, LL_ERROR);
+							log << msg << std::endl;
+						}
+						else if(getSHA512(curr_path+os_file_sep()+cfn)!=base64_decode_dash(sha512base64))
+						{
+							std::string msg="Hashes for \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
+							verify_ok=false;
+							ServerLogger::Log(clientid, msg, LL_ERROR);
+							log << msg << std::endl;
+						}
 					}
 					else if(getSHA256(curr_path+os_file_sep()+cfn)!=sha256hex)
 					{
@@ -4778,9 +4826,9 @@ std::string BackupServerGet::getSHA256(const std::wstring& fn)
 		return std::string();
 	}
 
-	char buffer[4096];
+	char buffer[32768];
 	unsigned int r;
-	while( (r=f->Read(buffer, 4096))>0)
+	while( (r=f->Read(buffer, 32768))>0)
 	{
 		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
 	}
@@ -4791,6 +4839,34 @@ std::string BackupServerGet::getSHA256(const std::wstring& fn)
 	sha256_final(&ctx, dig);
 
 	return bytesToHex(dig, 32);
+}
+
+std::string BackupServerGet::getSHA512(const std::wstring& fn)
+{
+	sha512_ctx ctx;
+	sha512_init(&ctx);
+
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+
+	if(f==NULL)
+	{
+		return std::string();
+	}
+
+	char buffer[32768];
+	unsigned int r;
+	while( (r=f->Read(buffer, 32768))>0)
+	{
+		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+	}
+
+	Server->destroy(f);
+
+	std::string dig;
+	dig.resize(64);
+	sha512_final(&ctx, reinterpret_cast<unsigned char*>(&dig[0]));
+
+	return dig;
 }
 
 void BackupServerGet::logVssLogdata(void)
@@ -5096,6 +5172,16 @@ void BackupServerGet::run_script( std::wstring name, const std::wstring& params)
 	{
 		ServerLogger::Log(clientid, "Script output Line("+nconvert(i+1)+"): " + toks[i], rc!=0?LL_ERROR:LL_INFO);
 	}
+}
+
+void BackupServerGet::log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps )
+{
+	int pc_complete = 0;
+	if(total>0)
+	{
+		pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
+	}
+	ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(speed_bps), LL_DEBUG);
 }
 
 void BackupServerGet::getTokenFile(FileClient &fc, bool hashed_transfer )

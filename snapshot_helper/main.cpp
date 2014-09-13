@@ -1,10 +1,15 @@
 #include <string>
 #include <iostream>
+#include <vector>
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include <stdlib.h>
 #ifndef _WIN32
 #include <unistd.h>
+#include <stdarg.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <pwd.h>
 #endif
 
 #define DEF_Server
@@ -76,13 +81,67 @@ std::string handleFilename(std::string fn)
 	return fn;
 }
 
+#ifndef _WIN32
+int exec_wait(const std::string& path, ...)
+{
+	va_list vl;
+	va_start(vl, path);
+	
+	std::vector<char*> args;
+	args.push_back(const_cast<char*>(path.c_str()));
+	
+	while(true)
+	{
+		const char* p = va_arg(vl, const char*);
+		if(p==NULL) break;
+		args.push_back(const_cast<char*>(p));
+	}
+	va_end(vl);
+	
+	args.push_back(NULL);
+	
+	pid_t child_pid = fork();
+	
+	if(child_pid==0)
+	{
+		int rc = execvpe(path.c_str(), args.data(), NULL);
+		exit(rc);
+	}
+	else
+	{
+		int status;
+		waitpid(child_pid, &status, 0);
+		if(WIFEXITED(status))
+		{
+			return WEXITSTATUS(status);
+		}
+		else
+		{
+			return -1;
+		}
+	}
+}
+
+bool chown_dir(const std::string& dir)
+{
+	passwd* user_info = getpwnam("urbackup");
+	if(user_info)
+	{
+		int rc = chown(dir.c_str(), user_info->pw_uid, user_info->pw_gid);
+		return rc!=-1;
+	}
+	return false;
+}
+#endif
+
+
 bool create_subvolume(std::string subvolume_folder)
 {
 #ifdef _WIN32
 	return os_create_dir(subvolume_folder);
 #else
-	int rc=system((btrfs_cmd+" subvolume create \""+subvolume_folder+"\"").c_str());
-	system(("chown urbackup:urbackup \""+subvolume_folder+"\"").c_str());
+	int rc=exec_wait(btrfs_cmd, "subvolume", "create", subvolume_folder.c_str(), NULL);
+	chown_dir(subvolume_folder);
 	return rc==0;
 #endif
 }
@@ -92,8 +151,8 @@ bool create_snapshot(std::string snapshot_src, std::string snapshot_dst)
 #ifdef _WIN32
 	return CopyFolder(widen(snapshot_src), widen(snapshot_dst));
 #else
-	int rc=system((btrfs_cmd+" subvolume snapshot \""+snapshot_src+"\" \""+snapshot_dst+"\"").c_str());
-	system(("chown urbackup:urbackup \""+snapshot_dst+"\"").c_str());
+	int rc=exec_wait(btrfs_cmd, "subvolume", "snapshot", snapshot_src.c_str(), snapshot_dst.c_str(), NULL);
+	chown_dir(snapshot_dst);
 	return rc==0;
 #endif
 }
@@ -103,7 +162,7 @@ bool remove_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return os_remove_nonempty_dir(widen(subvolume_folder));
 #else
-	int rc=system((btrfs_cmd+" subvolume delete \""+subvolume_folder+"\"").c_str());
+	int rc=exec_wait(btrfs_cmd, "subvolume", "delete", subvolume_folder.c_str(), NULL);
 	return rc==0;
 #endif
 }	
@@ -113,7 +172,7 @@ bool is_subvolume(std::string subvolume_folder)
 #ifdef _WIN32
 	return true;
 #else
-	int rc=system((btrfs_cmd+" subvolume list \""+subvolume_folder+"\" > /dev/null").c_str());
+	int rc=exec_wait(btrfs_cmd, "subvolume", "list", subvolume_folder.c_str(), NULL);
 	return rc==0;
 #endif
 }	

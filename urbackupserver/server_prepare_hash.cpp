@@ -107,7 +107,8 @@ void BackupServerPrepareHash::operator()(void)
 				old_file=Server->openFile(os_file_prefix(Server->ConvertToUnicode(old_file_fn)), MODE_READ);
 				if(old_file==NULL)
 				{
-					ServerLogger::Log(clientid, "Error opening file \""+old_file_fn+"\" from pipe for reading. File: old_file", LL_ERROR);
+					ServerLogger::Log(clientid, "Error opening file \""+old_file_fn+"\" from pipe for reading. File: old_file ec="+nconvert(os_last_error()), LL_ERROR);
+					has_error=true;
 					if(tf!=NULL) Server->destroy(tf);
 					continue;
 				}
@@ -115,7 +116,7 @@ void BackupServerPrepareHash::operator()(void)
 
 			if(tf==NULL)
 			{
-				ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading file. File: temp_fn", LL_ERROR);
+				ServerLogger::Log(clientid, "Error opening file \""+temp_fn+"\" from pipe for reading file. File: temp_fn ec="+nconvert(os_last_error()), LL_ERROR);
 				has_error=true;
 				if(old_file!=NULL)
 				{

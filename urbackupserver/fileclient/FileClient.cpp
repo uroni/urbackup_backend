@@ -85,7 +85,8 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	protocol_version(protocol_version), internet_connection(internet_connection),
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
-	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0)
+	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0),
+	last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
@@ -670,6 +671,7 @@ bool FileClient::Reconnect(void)
 	_u64 next_checkpoint=c_checkpoint_dist;
 	_u64 last_checkpoint=0;
 	bool firstpacket=true;
+	last_progress_log=0;
 
 	if(file==NULL)
 		return ERR_ERROR;
@@ -994,6 +996,8 @@ bool FileClient::Reconnect(void)
 				state=0;
 			}
 		}
+
+		logProgress(remotefn, filesize, received);
 	}
 }
         
@@ -1083,6 +1087,36 @@ void FileClient::fillQueue()
 
 		queued.push_back(queue_fn);
 	}
+}
+
+void FileClient::logProgress(const std::string& remotefn, _u64 filesize, _u64 received)
+{
+	int64 ct = Server->getTimeMS();
+	if(filesize>0 && (last_progress_log==0 ||
+		ct-last_progress_log>60000) )
+	{
+		int64 new_transferred=getTransferredBytes();
+		if( last_transferred_bytes!=0 &&
+			last_progress_log!=0 )
+		{
+			int64 tranferred = new_transferred - last_transferred_bytes;
+			int64 speed_bps = tranferred*1000 / (ct-last_progress_log);
+
+			if(tranferred>0 && progress_log_callback)
+			{
+				progress_log_callback->log_progress(remotefn,
+					filesize, received, speed_bps);
+			}
+		}
+
+		last_transferred_bytes = new_transferred;
+		last_progress_log = ct;
+	}	
+}
+
+void FileClient::setProgressLogCallback( ProgressLogCallback* cb )
+{
+	progress_log_callback = cb;
 }
 
 _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified )

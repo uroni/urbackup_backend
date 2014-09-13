@@ -820,3 +820,13 @@ void ServerBackupDao::updateOrInsertSetting( int clientid, const std::wstring& k
 		insertSetting(key, value, clientid);
 	}
 }
+
+void ServerBackupDao::beginTransaction()
+{
+	db->BeginTransaction();
+}
+
+void ServerBackupDao::endTransaction()
+{
+	db->EndTransaction();
+}

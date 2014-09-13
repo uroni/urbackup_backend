@@ -83,6 +83,7 @@ namespace JSON
 		Value(const char* val);
 		Value(const wchar_t* val);
 		Value(long unsigned int val);
+		void destroy();
 		~Value();
 
 		Value & operator=(const Value &other);

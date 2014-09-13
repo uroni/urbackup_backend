@@ -1198,3 +1198,6 @@ msgstr "VHD (Virtual HardDisk)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
 msgstr "Compressed VHD (Compressed non-standard Virtual HardDisk)"
+
+msgid "tVerify file backups using client side hashes"
+msgstr "Verify file backups using client side hashes"

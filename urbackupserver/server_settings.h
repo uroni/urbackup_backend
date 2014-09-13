@@ -32,7 +32,6 @@ struct SSettings
 	bool no_file_backups;
 	bool overwrite;
 	bool allow_overwrite;
-	bool client_overwrite;
 	bool autoshutdown;
 	int startup_backup_delay;
 	bool download_client;
@@ -99,6 +98,7 @@ struct SSettings
 	bool internet_connect_always;
 	bool show_server_updates;
 	std::string server_url;
+	bool verify_using_client_hashes;
 	std::string client_access_key;
 };
 

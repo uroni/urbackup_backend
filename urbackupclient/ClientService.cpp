@@ -35,12 +35,14 @@
 #include "ImageThread.h"
 #include "InternetClient.h"
 #include "../urbackupcommon/settingslist.h"
+#include "../urbackupcommon/capa_bits.h"
 
 #include <memory.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <memory>
 #include <algorithm>
+
 
 #ifndef _WIN32
 #define _atoi64 atoll
@@ -264,7 +266,7 @@ bool ClientConnector::Run(void)
 			std::string msg;
 			mempipe->Read(&msg, 0);
 			if(msg=="exit")
-			{
+			{
 				mempipe->Write("exit");
 				mempipe=Server->createMemoryPipe();
 				mempipe_owner=true;
@@ -2090,3 +2092,39 @@ bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_
 
 	return true;
 }
+
+
+int ClientConnector::getCapabilities()
+{
+	int capa=0;
+	if(channel_capa.size()==0)
+	{
+		capa=last_capa;
+		capa|=DONT_ALLOW_STARTING_FILE_BACKUPS;
+		capa|=DONT_ALLOW_STARTING_IMAGE_BACKUPS;
+	}
+	else
+	{
+		capa=INT_MAX;
+		for(size_t i=0;i<channel_capa.size();++i)
+		{
+			capa=capa & channel_capa[i];
+		}
+
+		if(capa!=last_capa)
+		{
+			IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'", false);
+			if(cq!=NULL)
+			{
+				cq->Bind(capa);
+				cq->Write();
+				cq->Reset();
+				last_capa=capa;
+				db->destroyQuery(cq);
+			}
+		}
+	}
+	return capa;
+}
+

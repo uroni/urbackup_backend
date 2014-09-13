@@ -251,7 +251,6 @@ void ServerSettings::readSettingsDefault(void)
 	settings->allow_overwrite=(settings_default->getValue("allow_overwrite", "true")=="true");
 	settings->backupfolder=trim(settings_default->getValue(L"backupfolder", L"C:\\urbackup"));
 	settings->backupfolder_uncompr=trim(settings_default->getValue(L"backupfolder_uncompr", settings->backupfolder));
-	settings->client_overwrite=true;
 	settings->autoshutdown=(settings_default->getValue("autoshutdown", "false")=="true");;
 	settings->startup_backup_delay=settings_default->getValue("startup_backup_delay", 0);
 	settings->download_client=(settings_default->getValue("download_client", "true")=="true");
@@ -320,6 +319,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
 	settings->server_url=settings_default->getValue("server_url", "");
+	settings->verify_using_client_hashes=(settings_default->getValue("verify_using_client_hashes", "false")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -336,13 +336,6 @@ void ServerSettings::readSettingsClient(void)
 	}
 
 	settings->client_access_key = settings_client->getValue("client_access_key", std::string());
-
-	stmp=settings_client->getValue("client_overwrite", "");
-	if(!stmp.empty())
-		settings->client_overwrite=(stmp=="true");
-
-	if(!settings->client_overwrite)
-		return;
 
 	readBoolClientSetting("overwrite", &settings->overwrite);
 
@@ -445,6 +438,7 @@ void ServerSettings::readSettingsClient(void)
 	if(!stmp.empty())
 		settings->image_file_format=stmp;
 
+	readStringClientSetting("local_incr_file_transfer_mode", &settings->local_incr_file_transfer_mode);
 	readStringClientSetting("local_full_file_transfer_mode", &settings->local_full_file_transfer_mode);
 	readStringClientSetting("internet_full_file_transfer_mode", &settings->internet_full_file_transfer_mode);
 	readStringClientSetting("internet_incr_file_transfer_mode", &settings->internet_incr_file_transfer_mode);
@@ -470,6 +464,7 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("allow_pause", &settings->allow_pause);
 	readBoolClientSetting("allow_log_view", &settings->allow_log_view);
 	readBoolClientSetting("allow_tray_exit", &settings->allow_tray_exit);
+	readBoolClientSetting("verify_using_client_hashes", &settings->verify_using_client_hashes);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)

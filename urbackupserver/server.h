@@ -40,18 +40,26 @@ public:
 
 	static void updateDeletePending();
 
+	static void forceOfflineClient(const std::wstring& clientname);
+
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);
 	void removeAllClients(void);
 	void maybeUpdateDeletePendingClients();
 	bool isDeletePendingClient(const std::wstring& clientname);
-
+	void maybeUpdateExistingClientsLower();
+	void fixClientnameCase(std::wstring& clientname);
 
 	std::map<std::wstring, SClient> clients;
 
+	bool update_existing_client_names;
+	std::vector<std::wstring> existing_client_names;
+	std::vector<std::wstring> existing_client_names_lower;
+
 	IQuery *q_get_extra_hostnames;
 	IQuery *q_update_extra_ip;
+	IQuery *q_get_clientnames;
 
 	IPipe *exitpipe;
 
@@ -59,13 +67,16 @@ private:
 	static IPipeThrottler *global_local_throttler;
 	static IMutex *throttle_mutex;
 
-	bool internet_test_mode;
+	bool internet_only_mode;
 
 	static bool snapshots_enabled;
 	static bool filesystem_transactions_enabled;
 
 	static volatile bool update_delete_pending_clients;
 	std::vector<std::wstring> delete_pending_clients;
+
+	static IMutex* force_offline_mutex;
+	static std::vector<std::wstring> force_offline_clients;
 };
 
 #endif //URB_SERVER_H

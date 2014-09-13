@@ -16,9 +16,9 @@
 <td class="tabFLeft">
 <input type="hidden" id="archive_backup_type_{id}" value="{archive_backup_type}" /><span id="archive_backup_type_str_{id}">{archive_backup_type_str}</span>
 </td>
-{next_start|s}
+{?show_archive_timeleft}
 <td class="tabFLeft">
 <input type="hidden" id="archive_timeleft_{id}" value="{archive_timeleft}" /> {archive_timeleft}
 </td>
-{next_end|s}
+{/show_archive_timeleft}
 <td class="tabFRight"><input type="button" value="{tDelete}" onclick="deleteArchiveItem({id})"/>

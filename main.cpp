@@ -493,6 +493,8 @@ int main_fkt(int argc, char *argv[])
 
 	Server->Log("Deleting server...");
 	delete Server;
+	
+	sqlite3_free(sqlite3_temp_directory);
 
 #endif
 	return 0;

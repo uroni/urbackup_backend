@@ -2,7 +2,7 @@
 #include "../stringtools.h"
 
 ChunkPatcher::ChunkPatcher(void)
-	: cb(NULL)
+	: cb(NULL), require_unchanged(true)
 {
 }
 
@@ -17,7 +17,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 	file->Seek(0);
 	_i64 patchf_pos=0;
 
-	char buf[4096];
+	const unsigned int buffer_size=32768;
+	char buf[buffer_size];
 
 	if(patch->Read((char*)&filesize, sizeof(_i64))!=sizeof(_i64))
 	{
@@ -38,7 +39,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 			has_header=readNextValidPatch(patch, patchf_pos, &next_header);
 		}
 
-		unsigned int tr=4096;
+		unsigned int tr=buffer_size;
 		if(next_header.patch_off!=-1)
 		{
 			_i64 hoff=next_header.patch_off-file_pos;
@@ -52,7 +53,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 
 			while(next_header.patch_size>0)
 			{
-				_u32 r=patch->Read((char*)buf, (std::min)((unsigned int)4096, next_header.patch_size));
+				_u32 r=patch->Read((char*)buf, (std::min)((unsigned int)buffer_size, next_header.patch_size));
 				patchf_pos+=r;
 				cb->next_chunk_patcher_bytes(buf, r, true);
 				next_header.patch_size-=r;
@@ -68,10 +69,20 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 				{
 					tr=static_cast<unsigned int>(filesize-file_pos);
 				}
-				_u32 r=file->Read((char*)buf, tr);
-				file_pos+=r;
-				cb->next_chunk_patcher_bytes(buf, r, false);
-				tr-=r;
+
+				if(require_unchanged)
+				{
+					_u32 r=file->Read((char*)buf, tr);
+					file_pos+=r;
+					cb->next_chunk_patcher_bytes(buf, r, false);
+					tr-=r;
+				}
+				else
+				{
+					file_pos+=tr;
+					cb->next_chunk_patcher_bytes(NULL, tr, false);
+					tr=0;
+				}				
 			}			
 		}
 	}
@@ -111,4 +122,9 @@ bool ChunkPatcher::readNextValidPatch(IFile *patchf, _i64 &patchf_pos, SPatchHea
 _i64 ChunkPatcher::getFilesize(void)
 {
 	return filesize;
+}
+
+void ChunkPatcher::setRequireUnchanged( bool b )
+{
+	require_unchanged=b;
 }

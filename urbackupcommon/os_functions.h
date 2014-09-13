@@ -48,7 +48,7 @@ int64 os_total_space(const std::wstring &path);
 
 typedef bool(*os_symlink_callback_t)(const std::wstring& linkname, void* userdata);
 
-bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback=NULL, void* userdata=NULL);
+bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t symlink_callback=NULL, void* userdata=NULL, bool delete_root=true);
 
 bool os_remove_dir(const std::string &path);
 
@@ -87,5 +87,7 @@ bool os_rename_file(std::wstring src, std::wstring dst, void* transaction=NULL);
 void* os_start_transaction();
 
 bool os_finish_transaction(void* transaction);
+
+int64 os_last_error();
 
 #endif //OS_FUNCTIONS_H

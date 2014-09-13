@@ -1043,6 +1043,8 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
 
+	state=CS_BLOCKHASH;
+
 	if(filename.empty())
 	{
 		queueChunk(SChunk(ID_BASE_DIR_LOST));
@@ -1118,8 +1120,6 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	next_checkpoint=start_offset+c_checkpoint_dist;
 	if(next_checkpoint>curr_filesize)
 		next_checkpoint=curr_filesize;
-
-	state=CS_BLOCKHASH;
 
 	IFile * tf=Server->openFileFromHandle((void*)hFile);
 	if(tf==NULL)

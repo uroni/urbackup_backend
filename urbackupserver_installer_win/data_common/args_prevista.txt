@@ -8,13 +8,14 @@ httpserver.dll
 cryptoplugin.dll
 --plugin
 urbackupserver_prevista.dll
---no-server
 --logfile
 urbackup.log
 --loglevel
 warn
 --server
 true
+--port
+55413
 --http_root
 urbackup\www
 --http_port

@@ -486,36 +486,7 @@ void ClientConnector::CMD_STATUS(const std::string &cmd)
 		ret+="#NP";
 	}
 
-	int capa=0;
-	if(channel_capa.size()==0)
-	{
-		capa=last_capa;
-		capa|=DONT_ALLOW_STARTING_FILE_BACKUPS;
-		capa|=DONT_ALLOW_STARTING_IMAGE_BACKUPS;
-	}
-	else
-	{
-		capa=INT_MAX;
-		for(size_t i=0;i<channel_capa.size();++i)
-		{
-			capa=capa & channel_capa[i];
-		}
-		
-		if(capa!=last_capa)
-		{
-			IQuery *cq=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='last_capa'", false);
-			if(cq!=NULL)
-			{
-				cq->Bind(capa);
-				cq->Write();
-				cq->Reset();
-				last_capa=capa;
-				db->destroyQuery(cq);
-			}
-		}
-	}
-
-	ret+="#capa="+nconvert(capa);
+	ret+="#capa="+nconvert(getCapabilities());
 
 	{
 		IScopedLock lock(ident_mutex);
@@ -577,6 +548,8 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 	ret.set("internet_connected", InternetClient::isConnected());
 
 	ret.set("internet_status", InternetClient::getStatusMsg());
+
+	ret.set("capability_bits", getCapabilities());
 
 	tcpstack.Send(pipe, ret.get(false));
 

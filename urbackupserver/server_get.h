@@ -58,7 +58,8 @@ const int c_group_continuous = 1;
 
 class BackupServerGet : public IThread, public FileClientChunked::ReconnectionCallback,
 	public FileClient::ReconnectionCallback, public INotEnoughSpaceCallback,
-	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback
+	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback,
+	public FileClient::ProgressLogCallback
 {
 	friend class ServerHashExisting;
 public:
@@ -101,6 +102,8 @@ public:
 	static std::wstring convertToOSPathFromFileClient(std::wstring path);
 
 	void addContinuousChanges(const std::string& data);
+	
+	virtual void log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps );
 
 	_u32 getClientFilesrvConnection(FileClient *fc, ServerSettings* server_settings, int timeoutms=10000);
 
@@ -197,6 +200,7 @@ private:
 	bool verify_file_backup(IFile *fileentries);
 
 	std::string getSHA256(const std::wstring& fn);
+	std::string getSHA512(const std::wstring& fn);
 
 	void logVssLogdata(void);
 
