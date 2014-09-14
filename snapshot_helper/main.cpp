@@ -12,6 +12,10 @@
 #include <pwd.h>
 #endif
 
+#ifdef __FreeBSD__
+#define execvpe exect
+#endif
+
 #define DEF_Server
 #include "../Server.h"
 
