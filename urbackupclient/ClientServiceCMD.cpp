@@ -182,6 +182,14 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	std::wstring resume = params[L"resume"];
 
+	int group=c_group_default;
+
+	str_map::iterator it_group = params.find(L"group");
+	if(it_group!=params.end())
+	{
+		group = watoi(it_group->second);
+	}
+
 	state=CCSTATE_START_FILEBACKUP;
 
 	IScopedLock lock(backup_mutex);
@@ -192,6 +200,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addString(server_token);
 	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
 	data.addInt(calculateFilehashesOnClient()?1:0);
+	data.addInt(group);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -217,8 +226,31 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 {
-	if(cmd=="2START FULL BACKUP") file_version=2;
-	if(next(cmd,0,"3START FULL BACKUP")) file_version=2;
+	std::string s_params;
+	if(cmd=="2START FULL BACKUP")
+	{
+		file_version=2;
+	}
+	else if(next(cmd,0,"3START FULL BACKUP"))
+	{
+		file_version=2;
+		if(cmd.size()>14)
+			s_params=cmd.substr(19);
+	}
+
+	str_map params;
+	if(!s_params.empty())
+	{
+		ParseParamStrHttp(s_params, &params);
+	}
+
+	int group=c_group_default;
+
+	str_map::iterator it_group = params.find(L"group");
+	if(it_group!=params.end())
+	{
+		group = watoi(it_group->second);
+	}
 
 	state=CCSTATE_START_FILEBACKUP;
 
@@ -230,6 +262,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addString(server_token);
 	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
 	data.addInt(calculateFilehashesOnClient()?1:0);
+	data.addInt(group);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 

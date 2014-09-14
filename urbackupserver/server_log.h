@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Interface/Server.h"
 #include "../Interface/Mutex.h"
 

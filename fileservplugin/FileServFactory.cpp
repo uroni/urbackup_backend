@@ -53,6 +53,9 @@ private:
 	bool use_fqdn;
 };
 
+
+IPermissionCallback* FileServFactory::permission_callback = NULL;
+
 IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name, bool use_fqdn_default)
 {
 	bool *dostop=new bool;

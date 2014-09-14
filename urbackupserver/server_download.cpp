@@ -18,15 +18,15 @@ namespace
 	const size_t queue_items_chunked = 4;
 }
 
-ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, bool with_hashes, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
+ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::wstring& clientname, bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, BackupServerGet* server_get,
 	int filesrv_protocol_version)
-	: fc(fc), fc_chunked(fc_chunked), with_hashes(with_hashes), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
+	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
-	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0)
-	all_downloads_ok(true);
+	is_offline(false), server_get(server_get), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
+	all_downloads_ok(true)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -146,7 +146,7 @@ void ServerDownloadThread::operator()( void )
 	std::sort(download_partial_ids.begin(), download_partial_ids.end());
 }
 
-void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool at_front )
+void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool at_front )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -160,6 +160,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	ni.action = EQueueAction_Fileclient;
 	ni.predicted_filesize = predicted_filesize;
 	ni.metadata = metadata;
+	ni.parent_metadata = parent_metadata;
 
 	IScopedLock lock(mutex);
 	if(!at_front)
@@ -180,7 +181,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 }
 
 
-void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata )
+void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -194,6 +195,7 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, 
 	ni.action = EQueueAction_Fileclient;
 	ni.predicted_filesize= predicted_filesize;
 	ni.metadata = metadata;
+	ni.parent_metadata = parent_metadata;
 
 	IScopedLock lock(mutex);
 	dl_queue.push_back(ni);
@@ -338,7 +340,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old), fd->Size(), todl.metadata);
+		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old), fd->Size(), todl.metadata, todl.parent_metadata);
 	}
 	return ret;
 }
@@ -357,7 +359,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
-			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, true);
+			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.parent_metadata, true);
 			return true;
 		}
 	}
@@ -459,8 +461,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		pfd_destroy.release();
 		hash_tmp_destroy.release();
-		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput, fc_chunked->getSize(),
-			Server->ConvertToUTF8(dlfiles.filepath_old), todl.metadata);
+		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
+			Server->ConvertToUTF8(dlfiles.filepath_old), fc_chunked->getSize(), todl.metadata, todl.parent_metadata);
 	}
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
@@ -470,7 +472,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		return true;
 }
 
-void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize, const FileMetadata& metadata)
+void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata)
 {
 	int l_backup_id=backupid;
 
@@ -492,6 +494,7 @@ void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath,
 	data.addString(old_file);
 	data.addInt64(t_filesize);
 	metadata.serialize(data);
+	parent_metadata.serialize(data);
 
 	ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
 
@@ -545,7 +548,7 @@ size_t ServerDownloadThread::getMaxOkId()
 	return max_ok_id;
 }
 
-std::string ServerDownloadThread::getQueuedFileFull()
+std::string ServerDownloadThread::getQueuedFileFull(bool& metadata)
 {
 	IScopedLock lock(mutex);
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
@@ -556,6 +559,7 @@ std::string ServerDownloadThread::getQueuedFileFull()
 			&& it->predicted_filesize>0)
 		{
 			it->queued=true;
+			metadata=false;
 			return Server->ConvertToUTF8(getDLPath(*it));
 		}
 	}

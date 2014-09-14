@@ -18,7 +18,6 @@
 #include "server_settings.h"
 
 #include <memory>
-#include "server_continuous.h"
 
 class ServerVHDWriter;
 class IFile;
@@ -44,6 +43,12 @@ struct SBackup
 
 struct SContinuousSequence
 {
+	SContinuousSequence()
+		: id(-1), next(-1)
+	{
+
+	}
+
 	SContinuousSequence(int64 id, int64 next)
 		: id(id), next(next)
 	{
@@ -135,7 +140,8 @@ private:
 	
 	void notifyClientBackupSuccessfull(void);
 	bool request_filelist_construct(bool full, bool resume, int group, bool with_token, bool& no_backup_dirs, bool& connect_fail);
-	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata);
+	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata,
+		const FileMetadata& parent_metadata);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, int group, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
 
 	void getTokenFile(FileClient &fc, bool hashed_transfer );

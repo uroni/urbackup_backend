@@ -67,8 +67,7 @@ const unsigned int shadowcopy_startnew_timeout=55*60*1000;
 const size_t max_modify_file_buffer_size=500*1024;
 const size_t max_modify_hash_buffer_size=500*1024;
 const int64 save_filehash_limit=20*4096;
-const int c_group_default = 0;
-const int c_group_continuous = 1;
+
 
 #ifndef SERVER_ONLY
 #define ENABLE_VSS
@@ -1029,7 +1028,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			has_include=true;
 			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].last_modified << "#";
 
-			outfile << "rpb=" << base64_encode_dash(files[i].file_permission_bits)
+			outfile << "dacl=" << base64_encode_dash(files[i].permissions)
 					<< "&mod=" << nconvert(files[i].last_modified_orig)
 					<< "&creat=" << nconvert(files[i].created);
 
@@ -1069,7 +1068,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			{
 				std::streampos pos=outfile.tellp();
 				
-				writeDir(outfile, files[i].name, files[i].created, files[i].last_modified_orig, files[i].file_permission_bits);
+				writeDir(outfile, files[i].name, files[i].created, files[i].last_modified_orig, files[i].permissions);
 
 				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);		
 
@@ -1111,7 +1110,7 @@ bool IndexThread::readBackupDirs(void)
 		Server->Log(L"Final path: "+backup_dirs[i].path, LL_INFO);
 #endif
 
-		if(!backup_dirs[i].group == index_group)
+		if(backup_dirs[i].group == index_group)
 		{
 			has_backup_dir=true;
 		}
@@ -1125,9 +1124,6 @@ bool IndexThread::readBackupDirs(void)
 
 namespace
 {
-	const int64 WINDOWS_TICK=10000000;
-	const int64 SEC_TO_UNIX_EPOCH=11644473600LL;
-
 	std::vector<SFileAndHash> convertToFileAndHash(const std::vector<SFile> files)
 	{
 		std::vector<SFileAndHash> ret;
@@ -1138,16 +1134,8 @@ namespace
 			ret[i].last_modified=files[i].last_modified;
 			ret[i].name=files[i].name;
 			ret[i].size=files[i].size;
-
-#ifdef _WIN32
-			ret[i].last_modified_orig=files[i].last_modified/WINDOWS_TICK-SEC_TO_UNIX_EPOCH;
-			ret[i].created=files[i].created/WINDOWS_TICK-SEC_TO_UNIX_EPOCH;
-#else
-			ret[i].last_modified_orig=files[i].last_modified;
+    		ret[i].last_modified_orig=files[i].last_modified;
 			ret[i].created=files[i].created;
-#endif
-
-
 		}
 		return ret;
 	}
@@ -3209,7 +3197,7 @@ void IndexThread::writeTokens()
 
 	for(size_t i=0;i<tokens.size();++i)
 	{
-		data+=nconvert(tokens[i].id)+".username="+base64_encode_dash(Server->ConvertToUTF8(tokens[i].username))+"\n";
+		data+=nconvert(tokens[i].id)+".accountname="+base64_encode_dash(Server->ConvertToUTF8(tokens[i].accountname))+"\n";
 		data+=nconvert(tokens[i].id)+".token="+Server->ConvertToUTF8(tokens[i].token)+"\n";
 	}
 
@@ -3221,88 +3209,7 @@ void IndexThread::readPermissions(const std::wstring& dir, std::vector<SFileAndH
 {
 	for(size_t i=0;i<files.size();++i)
 	{
-		readPermissions(dir + os_file_sep() + files[i].name, files[i].file_permission_bits);
-	}
-}
-
-void IndexThread::readPermissions( const std::wstring& path, std::string& permissions )
-{
-	permissions = get_file_tokens(path, cd, token_cache);
-}
-
-void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions )
-{
-	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\""
-		"rpb=" << base64_encode_dash(permissions) <<
-		"&mod=" << nconvert(mod) <<
-		"&creat=" << nconvert(creat) << "\n";
-}
-
-void IndexThread::writeTokens()
-{
-	std::auto_ptr<ISettingsReader> access_keys(
-		Server->createFileSettingsReader("access_keys.properties"));
-
-	std::string access_keys_data;
-	std::vector<std::wstring> keys
-		= access_keys->getKeys();
-
-
-	bool has_server_key=false;
-	std::string curr_key;
-	for(size_t i=0;i<keys.size();++i)
-	{
-		if(keys[i]==L"key."+widen(starttoken))
-		{
-			has_server_key=true;
-			curr_key=wnarrow(access_keys->getValue(keys[i], std::wstring()));
-		}
-		access_keys_data+=wnarrow(keys[i])+"="+
-			wnarrow(access_keys->getValue(keys[i], std::wstring()))+"\n";
-	}
-
-	if(!has_server_key)
-	{
-		curr_key = Server->secureRandomString(30);	
-
-		access_keys_data+="key."+starttoken+"="+
-			curr_key+"\n";
-
-		write_file_only_admin(access_keys_data, "access_keys.properties");
-	}	
-
-	write_tokens();
-	std::vector<ClientDAO::SToken> tokens = cd->getFileAccessTokens();
-
-	std::string ids;
-	for(size_t i=0;i<tokens.size();++i)
-	{
-		if(!ids.empty())
-		{
-			ids+=",";
-		}
-		ids+=nconvert(tokens[i].id);
-	}
-
-	std::string data="ids="+ids+"\n";
-
-	data+="access_key="+curr_key+"\n";
-
-	for(size_t i=0;i<tokens.size();++i)
-	{
-		data+=nconvert(tokens[i].id)+".username="+base64_encode_dash(Server->ConvertToUTF8(tokens[i].username))+"\n";
-		data+=nconvert(tokens[i].id)+".token="+Server->ConvertToUTF8(tokens[i].token)+"\n";
-	}
-
-
-	write_file_only_admin(data, "urbackup"+os_file_sepn()+"data"+os_file_sepn()+"tokens_"+starttoken+".properties");
-}
-
-void IndexThread::readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files )
-{
-	for(size_t i=0;i<files.size();++i)
-	{
-		readPermissions(dir + os_file_sep() + files[i].name, files[i].file_permission_bits);
+		readPermissions(dir + os_file_sep() + files[i].name, files[i].permissions);
 	}
 }
 
@@ -3314,7 +3221,7 @@ void IndexThread::readPermissions( const std::wstring& path, std::string& permis
 void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra )
 {
 	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\""
-		"rpb=" << base64_encode_dash(permissions) <<
+		"dacl=" << base64_encode_dash(permissions) <<
 		"&mod=" << nconvert(mod) <<
 		"&creat=" << nconvert(creat) <<
 		extra << "\n";

@@ -33,7 +33,8 @@ mz_bool my_mz_zip_get_file_modified_time(const wchar_t *pFilename, mz_uint16 *pD
 }
 
 
-mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_name, const wchar_t *pSrc_filename, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags)
+mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_name, const wchar_t *pSrc_filename, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags,
+	int64* last_modified)
 {
   mz_uint uncomp_crc32 = MZ_CRC32_INIT, level, num_alignment_padding_bytes;
   mz_uint16 method = 0, dos_time = 0, dos_date = 0, ext_attributes = 0;
@@ -63,8 +64,16 @@ mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_nam
   if ((pZip->m_total_files == 0xFFFF) || ((pZip->m_archive_size + num_alignment_padding_bytes + MZ_ZIP_LOCAL_DIR_HEADER_SIZE + MZ_ZIP_CENTRAL_DIR_HEADER_SIZE + comment_size + archive_name_size) > 0xFFFFFFFF))
     return MZ_FALSE;
 
-  if (!my_mz_zip_get_file_modified_time(pSrc_filename, &dos_time, &dos_date))
-    return MZ_FALSE;
+  if(last_modified!=NULL)
+  {
+	  mz_zip_time_to_dos_time(static_cast<time_t>(*last_modified), &dos_time, &dos_date);
+  }
+  else
+  {
+	  if (!my_mz_zip_get_file_modified_time(pSrc_filename, &dos_time, &dos_date))
+		  return MZ_FALSE;
+  }
+  
     
   pSrc_file = Server->openFile(os_file_prefix(pSrc_filename));
   if (!pSrc_file)
@@ -287,6 +296,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 			metadataname+=os_file_sep()+metadata_dir_fn;
 		}
 
+		bool has_metadata = false;
+
 		FileMetadata metadata;
 		if(token_authentication &&
 			( !read_metadata(metadataname, metadata) ||
@@ -294,15 +305,33 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 		{
 			continue;
 		}
+		else if(!token_authentication)
+		{
+			has_metadata = read_metadata(metadataname, metadata);
+		}
+		else
+		{
+			has_metadata = true;
+		}
+
+		int64* last_modified=NULL;
+		int64 last_modified_wt;
+		if(has_metadata)
+		{
+			last_modified_wt=os_to_windows_filetime(metadata.last_modified);
+			last_modified=&last_modified_wt;
+		}
 
 		mz_bool rc;
 		if(file.isdir)
 		{
-			rc = mz_zip_writer_add_mem(&zip_archive, Server->ConvertToUTF8(archivename + L"/").c_str(), NULL, 0, MZ_DEFAULT_LEVEL);
+			rc = mz_zip_writer_add_mem(&zip_archive, Server->ConvertToUTF8(archivename + L"/").c_str(), NULL, 0, MZ_DEFAULT_LEVEL,
+				last_modified);
 		}
 		else
-		{
-			rc = my_mz_zip_writer_add_file(&zip_archive, Server->ConvertToUTF8(archivename).c_str(), filename.c_str(), NULL, 0, MZ_DEFAULT_LEVEL);
+		{			
+			rc = my_mz_zip_writer_add_file(&zip_archive, Server->ConvertToUTF8(archivename).c_str(), filename.c_str(), NULL, 0, MZ_DEFAULT_LEVEL,
+				last_modified);
 		}
 
 		if(rc==MZ_FALSE)

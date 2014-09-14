@@ -13,33 +13,33 @@ class FileMetadata
 {
 public:
 	FileMetadata()
-		: last_modified(0), created(0)
+		: last_modified(0), created(0), exist(false)
 	{
 
 	}
 
-	FileMetadata(std::string file_permission_bits, int64 last_modified,
+	FileMetadata(std::string file_permissions, int64 last_modified,
 		int64 created)
-		: file_permission_bits(file_permission_bits),
+		: file_permissions(file_permissions),
 		last_modified(last_modified), created(created)
 	{
 
 	}
 
-	char permissions_compressed;
-	std::string file_permission_bits;
+	std::string file_permissions;
 	int64 last_modified;
 	int64 created;
 	std::string shahash;
+	bool exist;
 
 	bool operator==(const FileMetadata& other)
 	{
-		return file_permission_bits==other.file_permission_bits
+		return file_permissions==other.file_permissions
 			&& last_modified== other.last_modified
 			&& created == other.created;
 	}
 
-	bool bitSet(size_t id) const;
+	bool hasPermission(int id, bool& denied) const;
 
 	void serialize(CWData& data) const;
 

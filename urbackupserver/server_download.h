@@ -66,12 +66,13 @@ struct SQueueItem
 	EQueueAction action;
 	SPatchDownloadFiles patch_dl_files;
 	FileMetadata metadata;
+	FileMetadata parent_metadata;
 };
 
 class ServerDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback
 {
 public:
-	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, bool with_hashes, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
+	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 		const std::wstring& clientname,
 		bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, BackupServerGet* server_get,
 		int filesrv_protocol_version);
@@ -80,9 +81,9 @@ public:
 
 	void operator()(void);
 
-	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool at_front=false);
+	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool at_front=false);
 
-	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata);
+	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata);
 
 	void addToQueueStartShadowcopy(const std::wstring& fn);
 
@@ -106,13 +107,13 @@ public:
 
 	bool isOffline();
 
-	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize, const FileMetadata& metadata);
+	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize);
 
 	virtual void resetQueueFull();
 
-	virtual std::string getQueuedFileFull();
+	virtual std::string getQueuedFileFull(bool& metadata);
 
 	virtual void unqueueFileFull(const std::string& fn);
 
@@ -135,7 +136,6 @@ private:
 
 	FileClient& fc;
 	FileClientChunked* fc_chunked;
-	bool with_hashes;
 	const std::wstring& backuppath;
 	const std::wstring& backuppath_hashes;
 	const std::wstring& last_backuppath;

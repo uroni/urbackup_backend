@@ -7,6 +7,9 @@ bool write_tokens();
 
 struct TokenCacheInt;
 
+const char ID_GRANT_ACCESS=0;
+const char ID_DENY_ACCESS=1;
+
 class TokenCache
 {
 public:

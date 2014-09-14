@@ -436,7 +436,8 @@ void update_client12_13(IDatabase *db)
 
 void update_client13_14(IDatabase *db)
 {
-	db->Write("CREATE TABLE fileaccess_tokens (id INTEGER PRIMARY KEY, username TEXT UNIQUE, token TEXT)");
+	db->Write("CREATE TABLE fileaccess_tokens (id INTEGER PRIMARY KEY, accountname TEXT, token TEXT, is_user INTEGER)");
+	db->Write("CREATE UNIQUE INDEX fileaccess_tokens_unique ON fileaccess_tokens(accountname, is_user)");
 }
 
 void update_client14_15(IDatabase *db)
@@ -447,8 +448,8 @@ void update_client14_15(IDatabase *db)
 void update_client15_16(IDatabase *db)
 {
 	db->Write("CREATE TABLE continuous_watch_queue (id INTEGER PRIMARY KEY, data_size INTEGER, data BLOB)");
-	db->Write("ALTER TABLE backupdirs ADD group INTEGER");
-	db->Write("UPDATE backupdirs SET group=0 WHERE group IS NULL");
+	db->Write("ALTER TABLE backupdirs ADD tgroup INTEGER");
+	db->Write("UPDATE backupdirs SET tgroup=0 WHERE tgroup IS NULL");
 }
 
 bool upgrade_client(void)

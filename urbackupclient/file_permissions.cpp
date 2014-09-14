@@ -25,6 +25,9 @@ const TCHAR * szSD = TEXT("D:")       // Discretionary ACL
 
 bool change_file_permissions_admin_only(const std::string& filename)
 {
+#ifdef _DEBUG
+	return true;
+#else
 	PSECURITY_DESCRIPTOR pSDCNV = NULL;
 
      BOOL b=ConvertStringSecurityDescriptorToSecurityDescriptor(
@@ -86,10 +89,15 @@ bool change_file_permissions_admin_only(const std::string& filename)
 	 LocalFree(pSDCNV);
 
 	 return ret;
+#endif //_DEBUG
 }
 
 bool write_file_only_admin(const std::string& data, const std::string& fn)
 {
+#ifdef _DEBUG
+	writestring(data, fn);
+	return true;
+#else
 	SECURITY_ATTRIBUTES  sa;      
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
 	sa.bInheritHandle = FALSE;
@@ -133,6 +141,7 @@ bool write_file_only_admin(const std::string& data, const std::string& fn)
 	 CloseHandle(file);
 	 LocalFree(sa.lpSecurityDescriptor);
 	 return true;
+#endif //_DEBUG
 }
 
 #else

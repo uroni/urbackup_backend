@@ -1299,6 +1299,11 @@ std::string bytesToHex(const unsigned char *b, size_t bsize)
 	return r;
 }
 
+std::string bytesToHex( const std::string& data )
+{
+	return bytesToHex(reinterpret_cast<const unsigned char*>(data.data()), data.size());
+}
+
 std::string hexToBytes(const std::string& data)
 {
 	std::string ret;

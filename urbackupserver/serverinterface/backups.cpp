@@ -287,7 +287,7 @@ STokens readTokens(const std::wstring& backupfolder, const std::wstring& clientn
 	for(size_t i=0;i<ids.size();++i)
 	{
 		SToken token = { watoi64(widen(ids[i])),
-			backup_tokens->getValue(ids[i]+"."+"username", ""),
+			base64_decode_dash(backup_tokens->getValue(ids[i]+"."+"accountname", "")),
 			backup_tokens->getValue(ids[i]+"."+"token", "") };
 
 		ret.push_back(token);
@@ -300,6 +300,7 @@ STokens readTokens(const std::wstring& backupfolder, const std::wstring& clientn
 
 bool checkFileToken( const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, const FileMetadata &metadata )
 {
+	bool has_permission=false;
 	for(size_t i=0;i<backup_tokens.size();++i)
 	{
 		for(size_t j=0;j<tokens.size();++j)
@@ -307,15 +308,20 @@ bool checkFileToken( const std::vector<SToken> &backup_tokens, const std::vector
 			if(backup_tokens[i].token.empty())
 				continue;
 
+			bool denied = false;
 			if(backup_tokens[i].token==tokens[j] &&
-				metadata.bitSet(backup_tokens[i].id))
+				metadata.hasPermission(static_cast<int>(backup_tokens[i].id), denied))
 			{
-				return true;
+				has_permission=true;
+			}
+			else if(denied)
+			{
+				return false;
 			}
 		}
 	}
 
-	return false;
+	return has_permission;
 }
 
 ACTION_IMPL(backups)

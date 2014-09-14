@@ -90,4 +90,8 @@ bool os_finish_transaction(void* transaction);
 
 int64 os_last_error();
 
+int64 os_to_windows_filetime(int64 unix_time);
+
+bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified);
+
 #endif //OS_FUNCTIONS_H

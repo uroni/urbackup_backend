@@ -1128,8 +1128,8 @@ void upgrade34_35()
 void upgrade35_36()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	db->Write("ALTER TABLE backups ADD group INTEGER");
-	db->Write("UPDATE backups SET group=0 WHERE group IS NULL");
+	db->Write("ALTER TABLE backups ADD tgroup INTEGER");
+	db->Write("UPDATE backups SET tgroup=0 WHERE tgroup IS NULL");
 }
 
 void upgrade(void)

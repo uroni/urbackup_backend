@@ -31,10 +31,10 @@ void ClientDAO::prepareQueries(void)
 {
 	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=?", false);
 	q_add_files=db->Prepare("INSERT INTO files_tmp (name, num, data) VALUES (?,?,?)", false);
-	q_get_dirs=db->Prepare("SELECT name, path, id, optional, continuous FROM backupdirs", false);
+	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
-	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs GLOB ?", false);
+	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs WHERE name GLOB ?", false);
 	q_modify_files=db->Prepare("UPDATE files SET data=?, num=? WHERE name=?", false);
 	q_has_files=db->Prepare("SELECT count(*) AS num FROM files WHERE name=?", false);
 	q_insert_shadowcopy=db->Prepare("INSERT INTO shadowcopies (vssid, ssetid, target, path, tname, orig_target, filesrv, vol, starttime, refs, starttoken) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?)", false);
@@ -176,10 +176,10 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 		memcpy(&fpb_size, ptr, sizeof(unsigned short));
 		ptr+=sizeof(unsigned short);
 
-		f.file_permission_bits.resize(fpb_size);
+		f.permissions.resize(fpb_size);
 		if(fpb_size>0)
 		{
-			memcpy(&f.file_permission_bits[0], ptr, fpb_size);
+			memcpy(&f.permissions[0], ptr, fpb_size);
 		}
 
 		ptr+=fpb_size;
@@ -210,7 +210,7 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		datasize+=sizeof(unsigned short);
 		datasize+=data[i].hash.size();
 		datasize+=sizeof(unsigned short);
-		datasize+=data[i].file_permission_bits.size();
+		datasize+=data[i].permissions.size();
 		datasize+=sizeof(int64)*2;
 	}
 	char *buffer=new char[datasize];
@@ -236,10 +236,10 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		ptr+=sizeof(hashsize);
 		memcpy(ptr, data[i].hash.data(), hashsize);
 		ptr+=hashsize;
-		unsigned short fpb_size=static_cast<unsigned short>(data[i].file_permission_bits.size());
+		unsigned short fpb_size=static_cast<unsigned short>(data[i].permissions.size());
 		memcpy(ptr, &fpb_size, sizeof(fpb_size));
 		ptr+=sizeof(fpb_size);
-		memcpy(ptr, data[i].file_permission_bits.data(), fpb_size);
+		memcpy(ptr, data[i].permissions.data(), fpb_size);
 		ptr+=fpb_size;
 		memcpy(ptr, (char*)&data[i].last_modified_orig, sizeof(int64));
 		ptr+=sizeof(int64);
@@ -297,7 +297,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.tname=res[i][L"name"];
 		dir.path=res[i][L"path"];
 		dir.optional=(res[i][L"optional"]==L"1");
-		dir.group=watoi(res[i][L"group"]);
+		dir.group=watoi(res[i][L"tgroup"]);
 
 		if(dir.tname!=L"*")
 			ret.push_back(dir);
@@ -624,18 +624,19 @@ void ClientDAO::updateShadowCopyStarttime(int id)
 * @func void ClientDAO::updateFileAccessToken
 * @sql
 *    INSERT OR REPLACE INTO fileaccess_tokens
-*          (username, token)
+*          (accountname, token, is_user)
 *      VALUES
-*           (:username(string), :token(string))
+*           (:accountname(string), :token(string), :is_user(int))
 */
-void ClientDAO::updateFileAccessToken(const std::wstring& username, const std::wstring& token)
+void ClientDAO::updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user)
 {
 	if(q_updateFileAccessToken==NULL)
 	{
-		q_updateFileAccessToken=db->Prepare("INSERT OR REPLACE INTO fileaccess_tokens (username, token) VALUES (?, ?)", false);
+		q_updateFileAccessToken=db->Prepare("INSERT OR REPLACE INTO fileaccess_tokens (accountname, token, is_user) VALUES (?, ?, ?)", false);
 	}
-	q_updateFileAccessToken->Bind(username);
+	q_updateFileAccessToken->Bind(accountname);
 	q_updateFileAccessToken->Bind(token);
+	q_updateFileAccessToken->Bind(is_user);
 	q_updateFileAccessToken->Write();
 	q_updateFileAccessToken->Reset();
 }
@@ -643,16 +644,16 @@ void ClientDAO::updateFileAccessToken(const std::wstring& username, const std::w
 /**
 * @-SQLGenAccess
 * @func vector<SToken> ClientDAO::getFileAccessTokens
-* @return int64 id, string username, string token
+* @return int64 id, string accountname, string token, int is_user
 * @sql
-*    SELECT id, username, token
+*    SELECT id, accountname, token, is_user
 *    FROM fileaccess_tokens
 */
 std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 {
 	if(q_getFileAccessTokens==NULL)
 	{
-		q_getFileAccessTokens=db->Prepare("SELECT id, username, token FROM fileaccess_tokens", false);
+		q_getFileAccessTokens=db->Prepare("SELECT id, accountname, token, is_user FROM fileaccess_tokens", false);
 	}
 	db_results res=q_getFileAccessTokens->Read();
 	std::vector<ClientDAO::SToken> ret;
@@ -660,8 +661,9 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		ret[i].id=watoi64(res[i][L"id"]);
-		ret[i].username=res[i][L"username"];
+		ret[i].accountname=res[i][L"accountname"];
 		ret[i].token=res[i][L"token"];
+		ret[i].is_user=watoi(res[i][L"is_user"]);
 	}
 	return ret;
 }
@@ -672,15 +674,17 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 * @return int64 id
 * @sql
 *    SELECT id
-*    FROM fileaccess_tokens WHERE username = :username(string)
+*    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
+*								  is_user = :is_user(int)
 */
-ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& username)
+ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& accountname, int is_user)
 {
 	if(q_getFileAccessTokenId==NULL)
 	{
-		q_getFileAccessTokenId=db->Prepare("SELECT id FROM fileaccess_tokens WHERE username = ?", false);
+		q_getFileAccessTokenId=db->Prepare("SELECT id FROM fileaccess_tokens WHERE accountname = ? AND is_user = ?", false);
 	}
-	q_getFileAccessTokenId->Bind(username);
+	q_getFileAccessTokenId->Bind(accountname);
+	q_getFileAccessTokenId->Bind(is_user);
 	db_results res=q_getFileAccessTokenId->Read();
 	q_getFileAccessTokenId->Reset();
 	CondInt64 ret = { false, 0 };

@@ -71,7 +71,7 @@ struct SFileAndHash
 	int64 last_modified;
 	bool isdir;
 	std::string hash;
-	std::string file_permission_bits;
+	std::string permissions;
 	int64 last_modified_orig;
 	int64 created;
 
@@ -87,7 +87,7 @@ struct SFileAndHash
 			last_modified == other.last_modified &&
 			isdir == other.isdir &&
 			hash == other.hash &&
-			file_permission_bits == other.file_permission_bits &&
+			permissions == other.permissions &&
 			last_modified_orig == other.last_modified_orig &&
 			created == other.created;
 	}
@@ -160,15 +160,16 @@ public:
 	struct SToken
 	{
 		int64 id;
-		std::wstring username;
+		std::wstring accountname;
 		std::wstring token;
+		int is_user;
 	};
 
 
 	void updateShadowCopyStarttime(int id);
-	void updateFileAccessToken(const std::wstring& username, const std::wstring& token);
+	void updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user);
 	std::vector<SToken> getFileAccessTokens(void);
-	CondInt64 getFileAccessTokenId(const std::wstring& username);
+	CondInt64 getFileAccessTokenId(const std::wstring& accountname, int is_user);
 	//@-SQLGenFunctionsEnd
 
 private:

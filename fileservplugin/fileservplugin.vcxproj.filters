@@ -70,9 +70,12 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="..\common\adler32.cpp">
-    	<Filter>Quelldateien</Filter>
+      <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\os_functions_win.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

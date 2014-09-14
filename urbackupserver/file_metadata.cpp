@@ -6,19 +6,14 @@
 #include "server_prepare_hash.h"
 #include "../common/data.h"
 #include "../fileservplugin/chunk_settings.h"
-extern "C"
-{
-#define MINIZ_NO_STDIO
-#define MINIZ_NO_TIME
-#define MINIZ_NO_ARCHIVE_APIS
-#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "../common/miniz.c"
-};
 #include <assert.h>
 #include <algorithm>
 
 namespace
 {
+	const char ID_GRANT_ACCESS=0;
+	const char ID_DENY_ACCESS=1;
+
 	int64 get_hashdata_size(int64 hashfilesize)
 	{
 		int64 num_chunks = hashfilesize/c_checkpoint_dist+((hashfilesize%c_checkpoint_dist!=0)?1:0);
@@ -135,7 +130,7 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 
 		if(out->Size()!=hashdata_size)
 		{
-			Server->Log(L"File \""+out_fn+L"\" has wrong size. Should="+convert(hashdata_size)+L" is="+convert(out->Size()), LL_ERROR);
+			Server->Log(L"File \""+out->getFilenameW()+L"\" has wrong size. Should="+convert(hashdata_size)+L" is="+convert(out->Size()), LL_ERROR);
 			assert(false);
 		}
 
@@ -261,35 +256,7 @@ std::wstring unescape_metadata_fn( const std::wstring& fn )
 
 void FileMetadata::serialize( CWData& data ) const
 {
-	char is_compressed=0;
-
-	if(file_permission_bits.size()>10)
-	{
-		std::string comp_out;
-		comp_out.resize(mz_compressBound(static_cast<mz_ulong>(file_permission_bits.size())));
-		mz_ulong dest_len = static_cast<mz_ulong>(comp_out.size());
-		int rc = mz_compress2(reinterpret_cast<unsigned char*>(&comp_out[0]),
-			&dest_len, reinterpret_cast<const unsigned char*>(file_permission_bits.c_str()),
-			static_cast<mz_ulong>(file_permission_bits.size()), MZ_BEST_COMPRESSION);
-		if(rc!=MZ_OK)
-		{
-			Server->Log("Error compressing metadata file permission bits: "+nconvert(rc), LL_WARNING);
-		}
-		else
-		{
-			comp_out.resize(dest_len);
-			is_compressed=1;
-			data.addChar(is_compressed);
-			data.addUInt(static_cast<unsigned int>(comp_out.size()));
-			data.addString(comp_out);
-		}
-	}
-
-	if(is_compressed==0)
-	{
-		data.addChar(is_compressed);
-		data.addString(file_permission_bits);
-	}
+	data.addString(file_permissions);
 	data.addInt64(last_modified);
 	data.addInt64(created);
 	data.addString(shahash);
@@ -298,31 +265,14 @@ void FileMetadata::serialize( CWData& data ) const
 bool FileMetadata::read( CRData& data )
 {
 	bool ok=true;
-	ok &= data.getChar(&permissions_compressed);
-	unsigned int uncomp_size;
-	if(permissions_compressed)
-	{
-		ok &= data.getUInt(&uncomp_size);
-	}
-	ok &= data.getStr(&file_permission_bits);
+	ok &= data.getStr(&file_permissions);
 	ok &= data.getInt64(&last_modified);
 	ok &= data.getInt64(&created);
 	ok &= data.getStr(&shahash);
 
-	if(ok && permissions_compressed)
+	if(ok && last_modified>0 && created>0)
 	{
-		std::string input_data = file_permission_bits;
-		file_permission_bits.resize(uncomp_size);
-		mz_ulong dest_len = static_cast<mz_ulong>(file_permission_bits.size());
-		int rc = mz_uncompress(reinterpret_cast<unsigned char*>(&file_permission_bits[0]),
-			&dest_len,
-			reinterpret_cast<const unsigned char*>(input_data.c_str()),
-			static_cast<mz_ulong>(input_data.size()));
-		if(rc!=MZ_OK)
-		{
-			Server->Log("Error decompressing file metadata permission bits: "+nconvert(rc), LL_ERROR);
-			ok=false;
-		}
+		exist=true;
 	}
 
 	return ok;
@@ -330,26 +280,51 @@ bool FileMetadata::read( CRData& data )
 
 bool FileMetadata::read( str_map& extra_params )
 {
-	file_permission_bits = base64_decode_dash(wnarrow(extra_params[L"rpb"]));
+	file_permissions = base64_decode_dash(wnarrow(extra_params[L"dacl"]));
 	last_modified = watoi64(extra_params[L"mod"]);
 	created = watoi64(extra_params[L"creat"]);
+
+	if(last_modified>0 && created>0)
+	{
+		exist=true;
+	}
 
 	return true;
 }
 
-bool FileMetadata::bitSet( size_t id ) const
+bool FileMetadata::hasPermission(int id, bool& denied) const
 {
-	size_t bitmap_byte=(size_t)(id/8);
-	size_t bitmap_bit=id%8;
+	CRData perm(file_permissions.data(),
+		file_permissions.size());
 
-	if(file_permission_bits.size()<bitmap_byte)
+	char action;
+	while(perm.getChar(&action))
 	{
-		return false;
+		int pid;
+		if(!perm.getInt(&pid))
+		{
+			return false;
+		}
+
+		switch(action)
+		{
+		case ID_GRANT_ACCESS:
+			if(pid==-1 || pid==id)
+			{
+				return true;
+			}
+			break;
+		case ID_DENY_ACCESS:
+			if(pid==-1 || pid==id)
+			{
+				denied=true;
+				return false;
+			}
+			break;
+		}
 	}
 
-	unsigned char b=static_cast<unsigned char>(file_permission_bits[bitmap_byte]);
-
-	return (b & (1<<(7-bitmap_bit)))>0;
+	return false;
 }
 
 void FileMetadata::set_shahash( const std::string& the_shahash )

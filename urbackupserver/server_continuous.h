@@ -4,6 +4,7 @@
 #include "../Interface/Thread.h"
 #include <string>
 #include <vector>
+#include <time.h>
 #include "../Interface/Mutex.h"
 #include "../Interface/Server.h"
 #include "../Interface/Condition.h"
@@ -12,8 +13,12 @@
 #include <algorithm>
 #include "../stringtools.h"
 #include "server_settings.h"
+#include "database.h"
+#include "server_download.h"
+#include "server_log.h"
 
 extern std::string server_identity;
+extern std::string server_token;
 
 class BackupServerContinuous : public IThread, public FileClient::QueueCallback
 {
@@ -56,11 +61,12 @@ public:
 	};
 
 	BackupServerContinuous(BackupServerGet* server_get, const std::wstring& continuous_path, const std::wstring& continuous_hash_path, const std::wstring& continuous_path_backup,
-		const std::wstring& tmpfile_path, bool use_tmpfiles, int clientid, const std::wstring& clientname, int backupid, bool use_snapshots, bool use_reflink)
+		const std::wstring& tmpfile_path, bool use_tmpfiles, int clientid, const std::wstring& clientname, int backupid, bool use_snapshots, bool use_reflink,
+		IPipe* hashpipe_prepare)
 		: server_get(server_get), collect_only(true), first_compaction(true), stop(false), continuous_path(continuous_path), continuous_hash_path(continuous_hash_path),
 		continuous_path_backup(continuous_path_backup),
 		tmpfile_path(tmpfile_path), use_tmpfiles(use_tmpfiles), clientid(clientid), clientname(clientname), backupid(backupid),
-		use_snapshots(use_snapshots), use_reflink(use_reflink)
+		use_snapshots(use_snapshots), use_reflink(use_reflink), hashpipe_prepare(hashpipe_prepare)
 	{
 		mutex = Server->createMutex();
 		cond = Server->createCondition();
@@ -188,12 +194,15 @@ private:
 
 	bool compactChanges()
 	{
+		bool ret=true;
 		for(size_t i=0;i<changes.size();++i)
 		{
-			compactChanges(changes[i]);
+			ret &= compactChanges(changes[i]);
 		}
 
 		first_compaction=false;
+
+		return ret;
 	}
 
 	bool compactChanges(const std::string& changes)
@@ -271,6 +280,8 @@ private:
 				break;
 			}
 		}
+
+		return true;
 	}
 
 	void addChangeCheck(const SChange& change)
@@ -561,7 +572,7 @@ private:
 
 	bool execDelFile(SChange& change)
 	{
-		if(backupFile(change.fn1)==std::wstring())
+		if(backupFile(Server->ConvertToUnicode(change.fn1))==std::wstring())
 		{
 			return false;
 		}
@@ -631,7 +642,7 @@ private:
 		std::wstring fn2=getFullpath(change.fn2);
 		if(Server->fileExists(fn2))
 		{
-			if(backupFile(change.fn2)==std::wstring())
+			if(backupFile(Server->ConvertToUnicode(change.fn2))==std::wstring())
 			{
 				return false;
 			}
@@ -661,11 +672,11 @@ private:
 		return true;
 	}
 
-	bool constructServerDownloadThread()
+	void constructServerDownloadThread()
 	{
 		server_download.reset(new ServerDownloadThread(*fileclient.get(),
-			*fileclient_chunked.get(), true, continuous_path,
-			continuous_hash_path, continuous_path, std::string(), hashed_transfer_full,
+			fileclient_chunked.get(), continuous_path,
+			continuous_hash_path, continuous_path, std::wstring(), hashed_transfer_full,
 			false, clientid, clientname, use_tmpfiles, tmpfile_path, server_token,
 			use_reflink, backupid, true, hashpipe_prepare, server_get, server_get->getFilesrvProtocolVersion()));
 
@@ -694,7 +705,7 @@ private:
 
 		if(!fileclient_chunked.get())
 		{
-			if(!server_get->getClientChunkedFilesrvConnection(fileclient_chunked))
+			if(!server_get->getClientChunkedFilesrvConnection(fileclient_chunked, server_settings.get()))
 			{
 				ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
 				return false;
@@ -728,7 +739,7 @@ private:
 		bool hardlink_limit;
 		FileMetadata metadata(permissions, modified, created);
 		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
-			hash, filesize, std::string(), tries_once, ff_last, hardlink_limit, metadata))
+			hash, filesize, std::string(), tries_once, ff_last, hardlink_limit, metadata, FileMetadata()))
 		{
 			//TODO: delete old file first!
 			local_hash->addFileSQL(backupid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1), hash, filesize, 0);
@@ -741,18 +752,18 @@ private:
 			constructServerDownloadThread();
 		}
 
-		std::wstring fn = ExtractFileName(change.fn1);
-		std::wstring fpath = ExtractFilePath(change.fn1);
+		std::wstring fn = Server->ConvertToUnicode(ExtractFileName(change.fn1));
+		std::wstring fpath = Server->ConvertToUnicode(ExtractFilePath(change.fn1));
 
 		if(f->Size()==0 || !transfer_incr_blockdiff)
 		{
 			server_download->addToQueueFull(0, fn, fn,
-				fpath, fpath, filesize, metadata);
+				fpath, fpath, filesize, metadata, FileMetadata());
 		}
 		else
 		{
 			server_download->addToQueueChunked(0, fn, fn,
-				fpath, fpath, filesize, metadata);
+				fpath, fpath, filesize, metadata, FileMetadata());
 		}
 	}
 
@@ -849,6 +860,8 @@ private:
 	std::wstring clientname;
 
 	int backupid;
+
+	IPipe* hashpipe_prepare;
 
 	std::auto_ptr<BackupServerHash> local_hash;
 

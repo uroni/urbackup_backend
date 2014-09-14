@@ -257,6 +257,9 @@ void BackupServerHash::operator()(void)
 				metadata.read(rd);
 				metadata.set_shahash(sha2);
 
+				FileMetadata parent_metadata;
+				parent_metadata.read(rd);
+
 				IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ_SEQUENTIAL);
 
 				if(tf==NULL)
@@ -267,7 +270,7 @@ void BackupServerHash::operator()(void)
 				else
 				{
 					addFile(backupid, incremental, tf, Server->ConvertToUnicode(tfn), Server->ConvertToUnicode(hashpath), sha2,
-						diff_file, old_file_fn, hashoutput_fn, t_filesize, metadata);
+						old_file_fn, hashoutput_fn, t_filesize, metadata, parent_metadata);
 				}
 
 				if(!hashoutput_fn.empty())
@@ -425,7 +428,7 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 
 bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2,
 	_i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit,
-	const FileMetadata& metadata)
+	const FileMetadata& metadata, const FileMetadata& parent_metadata)
 {
 	hardlink_limit=false;
 
@@ -495,10 +498,16 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 		}
 		else
 		{
-			if(hash_fn.find(L"config.log")!=std::string::npos)
+			if(parent_metadata.exist)
 			{
-				int a4=4;
+				std::wstring parent_path = ExtractFilePath(tfn);
+				if(!os_set_file_time(os_file_prefix(parent_path),
+					parent_metadata.created, parent_metadata.last_modified))
+				{
+					ServerLogger::Log(clientid, L"HT: Error setting creation and last modified time of parent directory \""+parent_path+L"\"", LL_WARNING);
+				}
 			}
+
 			assert(!hash_fn.empty());
 			bool do_write_metadata=false;
 			if(!f_hashpath.empty() &&
@@ -584,14 +593,14 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 }
 
 void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
-	std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
-	const FileMetadata& metadata)
+	std::wstring hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
+	const FileMetadata& metadata, const FileMetadata& parent_metadata)
 {
 	bool copy=true;
 	bool tries_once;
 	std::wstring ff_last;
 	bool hardlink_limit;
-	if(findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize, hashoutput_fn, tries_once, ff_last, hardlink_limit, metadata))
+	if(findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize, hashoutput_fn, tries_once, ff_last, hardlink_limit, metadata, parent_metadata))
 	{
 		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 		copy=false;
@@ -688,15 +697,15 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				{
 					if(!use_reflink || orig_fn.empty())
 					{
-						if(!hash_fn.empty() && with_hashes)
+						if(!hash_fn.empty())
 						{
 							if(use_tmpfiles)
 							{
-								r=copyFileWithHashoutput(tf, tfn, hash_fn);
+								r=copyFileWithHashoutput(tf, tfn, hash_fn, metadata);
 							}
 							else
 							{
-								r=renameFileWithHashoutput(tf, tfn, hash_fn);
+								r=renameFileWithHashoutput(tf, tfn, hash_fn, metadata);
 								tf=NULL;
 							}
 						}
@@ -715,9 +724,9 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 					}
 					else
 					{
-						if(!hash_fn.empty() && with_hashes)
+						if(!hash_fn.empty())
 						{
-							r=replaceFileWithHashoutput(tf, tfn, hash_fn, Server->ConvertToUnicode(orig_fn));
+							r=replaceFileWithHashoutput(tf, tfn, hash_fn, Server->ConvertToUnicode(orig_fn), metadata);
 						}
 						else
 						{
@@ -727,13 +736,26 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				}
 				else
 				{
-					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn);
+					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn, metadata);
 				}
 				
 				if(!r)
 				{
 					has_error=true;
 					ServerLogger::Log(clientid, "Storing file failed -1", LL_ERROR);
+				}
+				else
+				{
+					if(!os_set_file_time(os_file_prefix(tfn), metadata.created, metadata.last_modified))
+					{
+						ServerLogger::Log(clientid, L"Error setting created and last modified time on file \""+tfn+L"\"", LL_WARNING);
+					}
+
+					std::wstring parent_fn = ExtractFilePath(tfn);
+					if(!os_set_file_time(os_file_prefix(parent_fn), parent_metadata.created, parent_metadata.last_modified))
+					{
+						ServerLogger::Log(clientid, L"Error setting created and last modified time on parent directory \""+parent_fn+L"\"", LL_WARNING);
+					}
 				}
 
 				if(tf!=NULL)
@@ -1189,7 +1211,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 	{
 		Server->Log(L"Reflinking file \""+dest+L"\" failed -3", LL_ERROR);
 
-		return copyFileWithHashoutput(tf, dest, hash_dest);
+		return copyFileWithHashoutput(tf, dest, hash_dest, metadata);
 	}
 
 	Server->Log(L"HT: Copying with hashoutput with reflink data from \""+orig_fn+L"\"", LL_DEBUG);
