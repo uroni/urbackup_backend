@@ -2379,6 +2379,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	bool copy_last_file_entries = resumed_backup;
 
+	size_t num_copied_file_entries = 0;
+
 	int copy_file_entries_sparse_modulo = server_settings->getSettings()->min_file_incr;
 
 	bool trust_client_hashes = server_settings->getSettings()->trust_client_hashes;
@@ -2638,6 +2640,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 											backup_dao->insertIntoTemporaryNewFilesTable(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
 												file_entries[i].shahash, file_entries[i].filesize);
+
+											++num_copied_file_entries;
 										}
 									}
 
@@ -2827,6 +2831,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						{
 							backup_dao->insertIntoTemporaryNewFilesTable(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
 								fileEntry.shahash, fileEntry.filesize);
+							++num_copied_file_entries;
 
 							copy_curr_file_entry_sparse=false;
 						}
@@ -2933,7 +2938,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 		if(num_readded_entries>0)
 		{
-			ServerLogger::Log(clientid, L"Number of readded file entries is "+convert(readd_file_entries_sparse), LL_DEBUG);
+			ServerLogger::Log(clientid, L"Number of readded file entries is "+convert(readd_file_entries_sparse), LL_INFO);
+		}
+
+		if(num_copied_file_entries>0)
+		{
+			ServerLogger::Log(clientid, L"Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
 		}
 
 		backup_dao->copyFromTemporaryNewFilesTable(backupid, clientid, incremental_num);
