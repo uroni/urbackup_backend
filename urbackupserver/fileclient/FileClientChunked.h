@@ -57,10 +57,8 @@ public:
 	FileClientChunked(void);
 	~FileClientChunked(void);
 
-	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64 predicted_filesize);
-	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64 predicted_filesize);
-
-	_i64 getSize(void);
+	_u32 GetFileChunked(std::string remotefn, IFile *file, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize);
+	_u32 GetFilePatch(std::string remotefn, IFile *orig_file, IFile *patchfile, IFile *chunkhashes, IFile *hashoutput, _i64& predicted_filesize);
 
 	bool hasError(void);
 
@@ -90,7 +88,7 @@ private:
 
 	void setInitialBytes(const char* buf, size_t bsize);
 
-	_u32 GetFile(std::string remotefn);
+	_u32 GetFile(std::string remotefn, _i64& filesize_out);
 
 	_u32 handle_data(char* buf, size_t bsize, bool ignore_filesize);
 

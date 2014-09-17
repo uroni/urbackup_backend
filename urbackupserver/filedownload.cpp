@@ -87,16 +87,17 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 		Server->Log("Downloading file...");
-		rc=fc.GetFileChunked(remotefn, dstfile, hashfile, hashfile_output, -1);
+		_int64 remote_filesize=-1;
+		rc=fc.GetFileChunked(remotefn, dstfile, hashfile, hashfile_output, remote_filesize);
 
 		cleanup_tmpfile(hashfile);
 		cleanup_tmpfile(hashfile_output);
 
 		_i64 fsize=dstfile->Size();
 		Server->destroy(dstfile);
-		if(rc==ERR_SUCCESS && fsize>fc.getSize())
+		if(rc==ERR_SUCCESS && fsize>remote_filesize)
 		{
-			os_file_truncate(widen(dest), fc.getSize());
+			os_file_truncate(widen(dest), remote_filesize);
 		}
 	}
 	else if(method==2)
@@ -113,7 +114,8 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 		Server->Log("Downloading file...");
-		rc=fc.GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, -1);
+		_int64 remote_filesize=-1;
+		rc=fc.GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, remote_filesize);
 
 		IFile *tmpfile=Server->openTemporaryFile();
 		Server->Log("Copying to temporary...");

@@ -443,6 +443,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	_u32 rc=fc_chunked->GetFilePatch(Server->ConvertToUTF8(cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize);
 
+	int64 download_filesize = todl.predicted_filesize;
+
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
@@ -462,9 +464,15 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		}
 		hash_tmp_destroy.reset(dlfiles.hashoutput);
 		dlfiles.chunkhashes->Seek(0);
-		rc=fc_chunked->GetFilePatch(Server->ConvertToUTF8(cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, todl.predicted_filesize);
+		download_filesize = todl.predicted_filesize;
+		rc=fc_chunked->GetFilePatch(Server->ConvertToUTF8(cfn), dlfiles.orig_file, dlfiles.patchfile, dlfiles.chunkhashes, dlfiles.hashoutput, download_filesize);
 		--hash_retries;
 	} 
+
+	if(download_filesize<0)
+	{
+		download_filesize=todl.predicted_filesize;
+	}
 
 	bool hash_file;
 
@@ -508,7 +516,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		pfd_destroy.release();
 		hash_tmp_destroy.release();
-		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput, Server->ConvertToUTF8(dlfiles.filepath_old), fc_chunked->getSize());
+		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput, Server->ConvertToUTF8(dlfiles.filepath_old), download_filesize);
 	}
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
