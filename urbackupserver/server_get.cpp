@@ -2715,7 +2715,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					
 					bool copy_curr_file_entry=false;
 					bool curr_has_hash = false;
-					bool copy_curr_file_entry_sparse=false;
+					bool readd_curr_file_entry_sparse=false;
 					std::string curr_sha2;
 					{
 						std::map<std::wstring, std::wstring>::iterator hash_it = 
@@ -2788,7 +2788,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								{
 									f_ok=true;
 									copy_curr_file_entry=copy_last_file_entries;						
-									copy_curr_file_entry_sparse = readd_file_entries_sparse;
+									readd_curr_file_entry_sparse = readd_file_entries_sparse;
 									linked_bytes+=cf.size;
 								}
 							}
@@ -2808,7 +2808,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						else //created hard link successfully
 						{
 							copy_curr_file_entry=copy_last_file_entries;						
-							copy_curr_file_entry_sparse = readd_file_entries_sparse;
+							readd_curr_file_entry_sparse = readd_file_entries_sparse;
 
 							if(with_hashes)
 							{
@@ -2819,7 +2819,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					else
 					{
 						copy_curr_file_entry=copy_last_file_entries;
-						copy_curr_file_entry_sparse = readd_file_entries_sparse;
+						readd_curr_file_entry_sparse = readd_file_entries_sparse;
 						curr_has_hash = with_hashes;
 					}
 
@@ -2833,11 +2833,11 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								fileEntry.shahash, fileEntry.filesize);
 							++num_copied_file_entries;
 
-							copy_curr_file_entry_sparse=false;
+							readd_curr_file_entry_sparse=false;
 						}
 					}
 
-					if(copy_curr_file_entry_sparse)
+					if(readd_curr_file_entry_sparse)
 					{
 						addSparseFileEntry(curr_path, cf, copy_file_entries_sparse_modulo, incremental_num,
 							trust_client_hashes, curr_sha2, local_curr_os_path, curr_has_hash, server_hash_existing,
