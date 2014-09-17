@@ -106,6 +106,10 @@ private:
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, bool with_hashes, const std::string& sha2, _i64 filesize, bool add_sql);
 	bool doIncrBackup(bool with_hashes, bool intra_file_diffs, bool on_snapshot, bool use_directory_links, bool &disk_error, bool &log_backup, bool& r_incremental, bool& r_resumed);
 
+	void addSparseFileEntry( std::wstring curr_path, SFile &cf, int copy_file_entries_sparse_modulo, int incremental_num,
+		bool trust_client_hashes, std::string &curr_sha2, std::wstring local_curr_os_path, bool curr_has_hash,
+		std::auto_ptr<ServerHashExisting> &server_hash_existing, size_t& num_readded_entries);
+
 	void calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked, int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size );
 
 	SBackup getLastIncremental(void);
