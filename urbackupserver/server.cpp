@@ -404,11 +404,6 @@ void BackupServer::startClients(FileClient &fc)
 							Server->Log(L"Client finished: "+it->first);
 							ServerStatus::setDone(it->first, true);
 							Server->destroy(it->second.pipe);
-							clients.erase(it);
-							maxi=i_c;
-							c=true;
-
-							update_existing_client_names=true;
 
 							IScopedLock lock(force_offline_mutex);
 							std::vector<std::wstring>::iterator off_iter = std::find(force_offline_clients.begin(),
@@ -419,6 +414,12 @@ void BackupServer::startClients(FileClient &fc)
 								Server->Log(L"Client was forced offline: "+it->first);
 								force_offline_clients.erase(off_iter);
 							}
+
+							clients.erase(it);
+							maxi=i_c;
+							c=true;
+
+							update_existing_client_names=true;
 
 							break;
 						}
