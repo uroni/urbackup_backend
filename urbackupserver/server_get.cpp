@@ -2963,13 +2963,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 		if(!r_offline && !c_has_error)
 		{
-			ServerLogger::Log(clientid, L"Copying to final file entry table, because the backup failed...", LL_DEBUG);
-			backup_dao->copyFromTemporaryNewFilesTableToFilesTable(backupid, clientid, incremental_num);
+			ServerLogger::Log(clientid, L"Copying to new file entry table, because the backup succeeded...", LL_DEBUG);
+			backup_dao->copyFromTemporaryNewFilesTableToFilesNewTable(backupid, clientid, incremental_num);
 		}
 		else
 		{
-			ServerLogger::Log(clientid, L"Copying to new file entry table, because the backup succeeded...", LL_DEBUG);
-			backup_dao->copyFromTemporaryNewFilesTableToFilesNewTable(backupid, clientid, incremental_num);
+			ServerLogger::Log(clientid, L"Copying to final file entry table, because the backup failed...", LL_DEBUG);
+			backup_dao->copyFromTemporaryNewFilesTableToFilesTable(backupid, clientid, incremental_num);
 		}
 
 		backup_dao->dropTemporaryNewFilesTable();
