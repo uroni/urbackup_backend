@@ -2035,11 +2035,13 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 	bool tries_once;
 	std::wstring ff_last;
 	bool hardlink_limit;
-	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), tries_once, ff_last, hardlink_limit);
+	bool copied_file;
+	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), true,
+		tries_once, ff_last, hardlink_limit, copied_file);
 
 	if(ok && add_sql)
 	{
-		local_hash->addFileSQL(backupid, 0, dstpath, hashpath, sha2, filesize, 0);
+		local_hash->addFileSQL(backupid, 0, dstpath, hashpath, sha2, filesize, copied_file?filesize:0);
 		local_hash->copyFromTmpTable(false);
 	}
 

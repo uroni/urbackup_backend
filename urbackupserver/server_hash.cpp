@@ -387,9 +387,11 @@ void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstrin
 }
 
 bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2,
-	bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit)
+	bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool copy_from_hardlink_if_failed,
+	bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file)
 {
 	hardlink_limit=false;
+	copied_file=false;
 
 	int f_backupid;
 	std::wstring ff;
@@ -449,8 +451,46 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 				}
 				else
 				{
-					Server->destroy(ctf);
 					ServerLogger::Log(clientid, L"HT: Hardlinking failed (unkown error): \""+ff+L"\"", LL_DEBUG);
+
+					if(copy_from_hardlink_if_failed)
+					{
+						ServerLogger::Log(clientid, L"HT: Copying from file \""+ff+L"\"", LL_DEBUG);
+
+						if(!copyFile(ctf, tfn))
+						{
+							ServerLogger::Log(clientid, "Error copying file to destination -3", LL_ERROR);
+							has_error=true;
+						}
+						else
+						{
+							copied_file=true;
+						}
+
+						if(!hash_fn.empty() && !f_hashpath.empty())
+						{
+							IFile *ctf_hash=Server->openFile(os_file_prefix(f_hashpath), MODE_READ);
+
+							if(ctf_hash)
+							{
+								if(!copyFile(ctf_hash, hash_fn))
+								{
+									ServerLogger::Log(clientid, "Error copying hashfile to destination -3", LL_ERROR);
+									has_error=true;
+									hash_fn.clear();
+								}
+								Server->destroy(ctf_hash);
+							}
+							else
+							{
+								ServerLogger::Log(clientid, "Error opening hash source file", LL_ERROR);
+							}
+						}
+
+						copy=false;
+					}
+
+					Server->destroy(ctf);
 					break;
 				}		
 			}
@@ -534,7 +574,9 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 	bool tries_once;
 	std::wstring ff_last;
 	bool hardlink_limit;
-	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn, tries_once, ff_last, hardlink_limit))
+	bool copied_file;
+	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn,
+		false, tries_once, ff_last, hardlink_limit, copied_file))
 	{
 		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 		copy=false;
