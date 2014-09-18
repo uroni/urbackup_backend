@@ -87,7 +87,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 		Server->Log("Downloading file...");
-		_int64 remote_filesize=-1;
+		int64 remote_filesize=-1;
 		rc=fc.GetFileChunked(remotefn, dstfile, hashfile, hashfile_output, remote_filesize);
 
 		cleanup_tmpfile(hashfile);
@@ -114,7 +114,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 		Server->Log("Downloading file...");
-		_int64 remote_filesize=-1;
+		int64 remote_filesize=-1;
 		rc=fc.GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, remote_filesize);
 
 		IFile *tmpfile=Server->openTemporaryFile();
