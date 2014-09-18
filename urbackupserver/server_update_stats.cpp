@@ -90,6 +90,14 @@ void ServerUpdateStats::destroyQueries(void)
 
 void ServerUpdateStats::operator()(void)
 {
+	if(interruptible)
+	{
+		if( BackupServerGet::getNumberOfRunningFileBackups()>0 )
+		{
+			return;
+		}
+	}
+
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	ServerSettings server_settings(db);
 	db_results cache_res;
@@ -105,11 +113,15 @@ void ServerUpdateStats::operator()(void)
 
 	bool indices_suspended=suspendFilesIndices(server_settings);
 
+	db->BeginTransaction();
+
 	db->Write("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) "
 			  "SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, 0 AS did_count, clientid, incremental FROM files_new");
 
 	Server->Log("Deleting contents of files_new table...", LL_DEBUG);
 	db->Write("DELETE FROM files_new");
+
+	db->EndTransaction();
 
 	if(indices_suspended)
 	{
