@@ -1667,6 +1667,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 		return false;
 	}
 
+	ServerLogger::Log(clientid, clientname+L": Loading file list...", LL_INFO);
+
 	int64 full_backup_starttime=Server->getTimeMS();
 
 	rc=fc.GetFile("urbackup/filelist.ub", tmp, hashed_transfer);
@@ -1715,6 +1717,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	ServerStatus::setServerStatus(status, true);
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
 	Server->getThreadPool()->execute(running_updater);
+
+	ServerLogger::Log(clientid, clientname+L": Started loading files...", LL_INFO);
 
 	std::wstring last_backuppath;
 	std::wstring last_backuppath_complete;
@@ -1814,7 +1818,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 						{
 							std::wstring t=curr_path;
 							t.erase(0,1);
-							ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_INFO);
+							ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_DEBUG);
 							server_download->addToQueueStartShadowcopy(t);
 							Server->wait(10000);
 						}
@@ -1826,7 +1830,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 						{
 							std::wstring t=curr_path;
 							t.erase(0,1);
-							ServerLogger::Log(clientid, L"Stoping shadowcopy \""+t+L"\".", LL_INFO);
+							ServerLogger::Log(clientid, L"Stoping shadowcopy \""+t+L"\".", LL_DEBUG);
 							server_download->addToQueueStopShadowcopy(t);
 						}
 						curr_path=ExtractFilePath(curr_path);
@@ -1864,6 +1868,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	}
 
 	server_download->queueStop(false);
+
+	ServerLogger::Log(clientid, L"Waiting for file transfers...", LL_INFO);
 
 	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
 	{
@@ -1906,6 +1912,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	running_updater->stop();
 	updateRunning(false);
 
+	ServerLogger::Log(clientid, L"Writing new file list...", LL_INFO);
+
 	tmp->Seek(0);
 	line = 0;
 	resetEntryState();
@@ -1936,6 +1944,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	}
 	
 	Server->destroy(clientlist);
+
+	ServerLogger::Log(clientid, L"Waiting for file hashing and copying threads...", LL_INFO);
 
 	waitForFileThreads();
 
@@ -2268,7 +2278,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		return false;
 	}
 	
-	ServerLogger::Log(clientid, clientname+L": Loading filelist...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Loading file list...", LL_INFO);
 	IFile *tmp=getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
 	if(tmp==NULL)
 	{
@@ -2300,7 +2310,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	std::wstring tmpfilename=tmp->getFilenameW();
 	Server->destroy(tmp);
 
-	ServerLogger::Log(clientid, clientname+L": Calculating file tree differences...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Calculating file tree differences...", LL_INFO);
 
 	bool error=false;
 	std::vector<size_t> deleted_ids;
@@ -2329,7 +2339,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(on_snapshot)
 	{
-		ServerLogger::Log(clientid, clientname+L": Creating snapshot...", LL_DEBUG);
+		ServerLogger::Log(clientid, clientname+L": Creating snapshot...", LL_INFO);
 		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single)
 			|| !SnapshotHelper::isSubvolume(clientname, backuppath_single) )
 		{
@@ -2356,7 +2366,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		
 		if(on_snapshot)
 		{
-			ServerLogger::Log(clientid, clientname+L": Deleting files in snapshot... ("+convert(deleted_ids.size())+L")", LL_DEBUG);
+			ServerLogger::Log(clientid, clientname+L": Deleting files in snapshot... ("+convert(deleted_ids.size())+L")", LL_INFO);
 			if(!deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath, false) )
 			{
 				ServerLogger::Log(clientid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
@@ -2366,7 +2376,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 			if(with_hashes)
 			{
-				ServerLogger::Log(clientid, clientname+L": Deleting files in hash snapshot...", LL_DEBUG);
+				ServerLogger::Log(clientid, clientname+L": Deleting files in hash snapshot...", LL_INFO);
 				deleteFilesInSnapshot("urbackup/clientlist_"+nconvert(clientid)+".ub", deleted_ids, backuppath_hashes, true);
 			}
 		}
@@ -2455,7 +2465,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		fc_chunked->resetReceivedDataBytes();
 	}
 	
-	ServerLogger::Log(clientid, clientname+L": Calculating tree difference size...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Calculating tree difference size...", LL_INFO);
 	_i64 files_size=getIncrementalSize(tmp, diffs);
 	tmp->Seek(0);
 	
@@ -2468,7 +2478,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	int64 linked_bytes = 0;
 	
-	ServerLogger::Log(clientid, clientname+L": Linking unchanged and loading new files...", LL_DEBUG);
+	ServerLogger::Log(clientid, clientname+L": Linking unchanged and loading new files...", LL_INFO);
 
 	resetEntryState();
 	
@@ -2861,7 +2871,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		server_hash_existing->queueStop(false);
 	}
 
-	ServerLogger::Log(clientid, L"Waiting for file transfers...", LL_DEBUG);
+	ServerLogger::Log(clientid, L"Waiting for file transfers...", LL_INFO);
 
 	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
 	{
@@ -2890,9 +2900,9 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		r_offline=true;
 	}
 
-	sendBackupOkay(r_offline==false && c_has_error==false);
+	sendBackupOkay(!r_offline && !c_has_error);
 
-	ServerLogger::Log(clientid, L"Writing new file list...", LL_DEBUG);
+	ServerLogger::Log(clientid, L"Writing new file list...", LL_INFO);
 
 	tmp->Seek(0);
 	line = 0;
@@ -2925,7 +2935,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(server_hash_existing_ticket!=ILLEGAL_THREADPOOL_TICKET)
 	{
-		ServerLogger::Log(clientid, L"Waiting for file entry hashing thread...", LL_DEBUG);
+		ServerLogger::Log(clientid, L"Waiting for file entry hashing thread...", LL_INFO);
 
 		Server->getThreadPool()->waitFor(server_hash_existing_ticket);
 	}
@@ -2934,7 +2944,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(copy_last_file_entries || readd_file_entries_sparse)
 	{
-		ServerLogger::Log(clientid, L"Copying readded file entries from temporary table...", LL_DEBUG);
+		ServerLogger::Log(clientid, L"Copying readded file entries from temporary table...", LL_INFO);
 
 		if(num_readded_entries>0)
 		{
@@ -2946,7 +2956,17 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			ServerLogger::Log(clientid, L"Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
 		}
 
-		backup_dao->copyFromTemporaryNewFilesTable(backupid, clientid, incremental_num);
+		if(!r_offline && !c_has_error)
+		{
+			ServerLogger::Log(clientid, L"Copying to final file entry table, because the backup failed...", LL_DEBUG);
+			backup_dao->copyFromTemporaryNewFilesTableToFilesTable(backupid, clientid, incremental_num);
+		}
+		else
+		{
+			ServerLogger::Log(clientid, L"Copying to new file entry table, because the backup succeeded...", LL_DEBUG);
+			backup_dao->copyFromTemporaryNewFilesTableToFilesNewTable(backupid, clientid, incremental_num);
+		}
+
 		backup_dao->dropTemporaryNewFilesTable();
 
 		if(copy_last_file_entries)
@@ -2958,7 +2978,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		ServerLogger::Log(clientid, L"Done copying readded file entries from temporary table.", LL_DEBUG);
 	}
 
-	ServerLogger::Log(clientid, L"Waiting for file hashing and copying threads...", LL_DEBUG);
+	ServerLogger::Log(clientid, L"Waiting for file hashing and copying threads...", LL_INFO);
 
 	waitForFileThreads();
 

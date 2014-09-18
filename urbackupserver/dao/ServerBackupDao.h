@@ -69,7 +69,8 @@ public:
 	bool createTemporaryNewFilesTable(void);
 	void dropTemporaryNewFilesTable(void);
 	void insertIntoTemporaryNewFilesTable(const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize);
-	void copyFromTemporaryNewFilesTable(int backupid, int clientid, int incremental);
+	void copyFromTemporaryNewFilesTableToFilesTable(int backupid, int clientid, int incremental);
+	void copyFromTemporaryNewFilesTableToFilesNewTable(int backupid, int clientid, int incremental);
 	void insertIntoOrigClientSettings(int clientid, std::string data);
 	CondString getOrigClientSettings(int clientid);
 	std::vector<SDuration> getLastIncrementalDurations(int clientid);
@@ -108,7 +109,8 @@ private:
 	IQuery* q_createTemporaryNewFilesTable;
 	IQuery* q_dropTemporaryNewFilesTable;
 	IQuery* q_insertIntoTemporaryNewFilesTable;
-	IQuery* q_copyFromTemporaryNewFilesTable;
+	IQuery* q_copyFromTemporaryNewFilesTableToFilesTable;
+	IQuery* q_copyFromTemporaryNewFilesTableToFilesNewTable;
 	IQuery* q_insertIntoOrigClientSettings;
 	IQuery* q_getOrigClientSettings;
 	IQuery* q_getLastIncrementalDurations;

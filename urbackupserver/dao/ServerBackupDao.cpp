@@ -539,24 +539,46 @@ void ServerBackupDao::insertIntoTemporaryNewFilesTable(const std::wstring& fullp
 
 /**
 * @-SQLGenAccess
-* @func void ServerBackupDao::copyFromTemporaryNewFilesTable
+* @func void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesTable
 * @sql
 *      INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental)
 *          SELECT :backupid(int) AS backupid, fullpath, hashpath,
 *                 shahash, filesize, created, 0 AS rsize, 0 AS did_count, :clientid(int) AS clientid,
 *                 :incremental(int) AS incremental FROM files_new_tmp
 */
-void ServerBackupDao::copyFromTemporaryNewFilesTable(int backupid, int clientid, int incremental)
+void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesTable(int backupid, int clientid, int incremental)
 {
-	if(q_copyFromTemporaryNewFilesTable==NULL)
+	if(q_copyFromTemporaryNewFilesTableToFilesTable==NULL)
 	{
-		q_copyFromTemporaryNewFilesTable=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, 0 AS did_count, ? AS clientid, ? AS incremental FROM files_new_tmp", false);
+		q_copyFromTemporaryNewFilesTableToFilesTable=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, 0 AS did_count, ? AS clientid, ? AS incremental FROM files_new_tmp", false);
 	}
-	q_copyFromTemporaryNewFilesTable->Bind(backupid);
-	q_copyFromTemporaryNewFilesTable->Bind(clientid);
-	q_copyFromTemporaryNewFilesTable->Bind(incremental);
-	q_copyFromTemporaryNewFilesTable->Write();
-	q_copyFromTemporaryNewFilesTable->Reset();
+	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(backupid);
+	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(clientid);
+	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(incremental);
+	q_copyFromTemporaryNewFilesTableToFilesTable->Write();
+	q_copyFromTemporaryNewFilesTableToFilesTable->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesNewTable
+* @sql
+*      INSERT INTO files_new (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental)
+*          SELECT :backupid(int) AS backupid, fullpath, hashpath,
+*                 shahash, filesize, created, 0 AS rsize, :clientid(int) AS clientid,
+*                 :incremental(int) AS incremental FROM files_new_tmp
+*/
+void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesNewTable(int backupid, int clientid, int incremental)
+{
+	if(q_copyFromTemporaryNewFilesTableToFilesNewTable==NULL)
+	{
+		q_copyFromTemporaryNewFilesTableToFilesNewTable=db->Prepare("INSERT INTO files_new (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, ? AS clientid, ? AS incremental FROM files_new_tmp", false);
+	}
+	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(backupid);
+	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(clientid);
+	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(incremental);
+	q_copyFromTemporaryNewFilesTableToFilesNewTable->Write();
+	q_copyFromTemporaryNewFilesTableToFilesNewTable->Reset();
 }
 
 /**
@@ -688,7 +710,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_createTemporaryNewFilesTable=NULL;
 	q_dropTemporaryNewFilesTable=NULL;
 	q_insertIntoTemporaryNewFilesTable=NULL;
-	q_copyFromTemporaryNewFilesTable=NULL;
+	q_copyFromTemporaryNewFilesTableToFilesTable=NULL;
+	q_copyFromTemporaryNewFilesTableToFilesNewTable=NULL;
 	q_insertIntoOrigClientSettings=NULL;
 	q_getOrigClientSettings=NULL;
 	q_getLastIncrementalDurations=NULL;
@@ -722,7 +745,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_createTemporaryNewFilesTable);
 	db->destroyQuery(q_dropTemporaryNewFilesTable);
 	db->destroyQuery(q_insertIntoTemporaryNewFilesTable);
-	db->destroyQuery(q_copyFromTemporaryNewFilesTable);
+	db->destroyQuery(q_copyFromTemporaryNewFilesTableToFilesTable);
+	db->destroyQuery(q_copyFromTemporaryNewFilesTableToFilesNewTable);
 	db->destroyQuery(q_insertIntoOrigClientSettings);
 	db->destroyQuery(q_getOrigClientSettings);
 	db->destroyQuery(q_getLastIncrementalDurations);
