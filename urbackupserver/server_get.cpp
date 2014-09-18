@@ -2522,9 +2522,12 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					{						
 						if(cf.name==L"..")
 						{
-							curr_os_path=ExtractFilePath(curr_os_path);
-							curr_path=ExtractFilePath(curr_path);
 							--skip_dir_completely;
+							if(skip_dir_completely>0)
+							{
+								curr_os_path=ExtractFilePath(curr_os_path);
+								curr_path=ExtractFilePath(curr_path);
+							}
 						}
 						else
 						{
@@ -2616,7 +2619,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					{
 						curr_path+=L"/"+cf.name;
 						curr_os_path+=L"/"+osspecific_name;
-						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+L"/"+osspecific_name);
+						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
 
 						bool dir_linked=false;
 						if(use_directory_links && hasChange(line, large_unchanged_subtrees) )
