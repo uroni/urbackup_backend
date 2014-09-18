@@ -2741,7 +2741,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						}
 					}
 					
-					if(indirchange==true || hasChange(line, diffs)) //is changed
+					if(indirchange || hasChange(line, diffs)) //is changed
 					{
 						bool f_ok=false;
 						if(!curr_sha2.empty())
@@ -2769,7 +2769,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 					{						
 						bool too_many_hardlinks;
 						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
-						bool f_ok;
+						bool f_ok = false;
 						if(b)
 						{
 							f_ok=true;
