@@ -277,7 +277,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 		mz_bool rc;
 		if(file.isdir)
 		{
-			rc = mz_zip_writer_add_mem(&zip_archive, Server->ConvertToUTF8(archivename + L"/").c_str(), NULL, 0, MZ_DEFAULT_LEVEL);
+			rc = mz_zip_writer_add_mem_ex(&zip_archive, Server->ConvertToUTF8(archivename + L"/").c_str(), NULL, 0, NULL, 0, MZ_DEFAULT_LEVEL, 0, 0, 2<<11);
 		}
 		else
 		{

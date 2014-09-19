@@ -642,7 +642,7 @@ mz_bool mz_zip_writer_init_from_reader(mz_zip_archive *pZip, const char *pFilena
 // To add a directory entry, call this method with an archive name ending in a forwardslash with empty buffer.
 // level_and_flags - compression level (0-10, see MZ_BEST_SPEED, MZ_BEST_COMPRESSION, etc.) logically OR'd with zero or more mz_zip_flags, or just set to MZ_DEFAULT_COMPRESSION.
 mz_bool mz_zip_writer_add_mem(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, mz_uint level_and_flags);
-mz_bool mz_zip_writer_add_mem_ex(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags, mz_uint64 uncomp_size, mz_uint32 uncomp_crc32);
+mz_bool mz_zip_writer_add_mem_ex(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags, mz_uint64 uncomp_size, mz_uint32 uncomp_crc32, mz_uint16 bit_flags);
 
 #ifndef MINIZ_NO_STDIO
 // Adds the contents of a disk file to an archive. This function also records the disk file's modified time into the archive.
@@ -4134,7 +4134,7 @@ mz_bool mz_zip_writer_init_from_reader(mz_zip_archive *pZip, const char *pFilena
 
 mz_bool mz_zip_writer_add_mem(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, mz_uint level_and_flags)
 {
-  return mz_zip_writer_add_mem_ex(pZip, pArchive_name, pBuf, buf_size, NULL, 0, level_and_flags, 0, 0);
+  return mz_zip_writer_add_mem_ex(pZip, pArchive_name, pBuf, buf_size, NULL, 0, level_and_flags, 0, 0, 0);
 }
 
 typedef struct
@@ -4258,7 +4258,8 @@ static mz_bool mz_zip_writer_write_zeros(mz_zip_archive *pZip, mz_uint64 cur_fil
   return MZ_TRUE;
 }
 
-mz_bool mz_zip_writer_add_mem_ex(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags, mz_uint64 uncomp_size, mz_uint32 uncomp_crc32)
+mz_bool mz_zip_writer_add_mem_ex(mz_zip_archive *pZip, const char *pArchive_name, const void *pBuf, size_t buf_size, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags, mz_uint64 uncomp_size, mz_uint32 uncomp_crc32,
+	mz_uint16 bit_flags)
 {
   mz_uint16 method = 0, dos_time = 0, dos_date = 0;
   mz_uint level, ext_attributes = 0, num_alignment_padding_bytes;
@@ -4425,7 +4426,7 @@ mz_bool mz_zip_writer_add_mem_ex(mz_zip_archive *pZip, const char *pArchive_name
 		return MZ_FALSE;
   }
 
-  if (!mz_zip_writer_add_to_central_dir(pZip, pArchive_name, (mz_uint16)archive_name_size, NULL, 0, pComment, comment_size, uncomp_size, comp_size, uncomp_crc32, method, 0, dos_time, dos_date, local_dir_header_ofs, ext_attributes))
+  if (!mz_zip_writer_add_to_central_dir(pZip, pArchive_name, (mz_uint16)archive_name_size, NULL, 0, pComment, comment_size, uncomp_size, comp_size, uncomp_crc32, method, bit_flags, dos_time, dos_date, local_dir_header_ofs, ext_attributes))
     return MZ_FALSE;
 
   pZip->m_total_files++;
@@ -4864,7 +4865,7 @@ mz_bool mz_zip_add_mem_to_archive_file_in_place(const char *pZip_filename, const
       return MZ_FALSE;
     }
   }
-  status = mz_zip_writer_add_mem_ex(&zip_archive, pArchive_name, pBuf, buf_size, pComment, comment_size, level_and_flags, 0, 0);
+  status = mz_zip_writer_add_mem_ex(&zip_archive, pArchive_name, pBuf, buf_size, pComment, comment_size, level_and_flags, 0, 0, 0);
   // Always finalize, even if adding failed for some reason, so we have a valid central directory. (This may not always succeed, but we can try.)
   if (!mz_zip_writer_finalize_archive(&zip_archive))
     status = MZ_FALSE;
