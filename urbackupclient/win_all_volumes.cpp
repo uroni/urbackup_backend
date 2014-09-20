@@ -2,6 +2,7 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include <Windows.h>
+#include "../Interface/File.h"
 
 namespace
 {
@@ -102,12 +103,40 @@ std::string get_all_volumes_list()
 
 		if(new_volume.size()==3 && new_volume[1]==':' && new_volume[2]=='\\')
 		{
-			if(!ret.empty())
-			{
-				ret+=";";
-			}
 
-			ret+=new_volume[0];
+			std::auto_ptr<IFile> dev(Server->openFile(std::string("\\\\.\\")
+				+std::string(1, new_volume[0])+":", MODE_READ_DEVICE));
+
+			if(!dev.get())
+			{
+				Server->Log("Opening device \"" + new_volume + "\" failed", LL_ERROR);
+			}
+			else
+			{
+				char buffer[1024];
+				_u32 rc=dev->Read(buffer, 1024);
+				if(rc!=1024)
+				{
+					Server->Log("Cannot read data from device ("+new_volume+")", LL_INFO);
+				}
+				else
+				{
+					bool is_ntfs = buffer[3]=='N' && buffer[4]=='T' && buffer[5]=='F' && buffer[6]=='S';
+
+					if(!is_ntfs)
+					{
+						Server->Log("Device "+new_volume+" isn't NTFS formatted", LL_INFO);
+					}
+					else
+					{
+						if(!ret.empty())
+						{
+							ret+=";";
+						}
+						ret+=new_volume[0];
+					}
+				}				
+			}
 		}
 
 		BOOL rc = FindNextVolumeW(hFind, vol_name, ARRAYSIZE(vol_name));
