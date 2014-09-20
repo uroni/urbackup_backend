@@ -356,38 +356,41 @@ void strupper(std::wstring *pStr)
 /**
 *	dateiname aus pfadangabe extrahieren
 */
-string ExtractFileName(string fulln)
+string ExtractFileName(string fulln, string separators)
 {
 	string filename;
 
 	s32 off=0;
 	for(s32 i=(s32)fulln.length()-1;i>-1;i--)
 	{
-		if(fulln[i]=='/'||fulln[i]=='\\')
+		bool separator = separators.find(fulln[i])!=string::npos;
+		if(separator)
 		{
 			if(i<(s32)fulln.length()-2)
 				break;
 		}
-		if(fulln[i]!=0&&fulln[i]!='/'&&fulln[i]!='\\')
+		if(fulln[i]!=0 && !separator)
 			filename=fulln[i]+filename;
 	}
 
 	return filename;
 }
 
-wstring ExtractFileName(wstring fulln)
+wstring ExtractFileName(wstring fulln, wstring separators)
 {
 	wstring filename;
 
 	s32 off=0;
 	for(s32 i=(s32)fulln.length()-1;i>-1;i--)
 	{
-		if(fulln[i]=='/'||fulln[i]=='\\')
+		bool separator = separators.find(fulln[i])!=string::npos;
+
+		if( separator )
 		{
 			if(i<(s32)fulln.length()-2)
 				break;
 		}
-		if(fulln[i]!=0&&fulln[i]!='/'&&fulln[i]!='\\')
+		if(fulln[i]!=0 && !separator)
 			filename=fulln[i]+filename;
 	}
 
@@ -398,13 +401,14 @@ wstring ExtractFileName(wstring fulln)
 /**
 *	pfad aus pfadangabe (inkl. dateiname) extrahieren
 */
-string ExtractFilePath(string fulln)
+string ExtractFilePath(string fulln, string separators)
 {
 	bool in=false;
 	string path;
 	for(s32 i=(s32)fulln.length()-2;i>=0;--i)
 	{
-		if((fulln[i]=='/'||fulln[i]=='\\')&&in==false)
+		if( separators.find(fulln[i])!=string::npos
+			&& in==false)
 		{
 			in=true;
 			continue;
@@ -424,13 +428,14 @@ string ExtractFilePath(string fulln)
 /**
 *	pfad aus pfadangabe (inkl. dateiname) extrahieren
 */
-wstring ExtractFilePath(wstring fulln)
+wstring ExtractFilePath(wstring fulln, wstring separators)
 {
 	bool in=false;
 	wstring path;
 	for(s32 i=(s32)fulln.length()-2;i>=0;--i)
 	{
-		if((fulln[i]=='/'||fulln[i]=='\\')&&in==false)
+		if( separators.find(fulln[i])!=string::npos
+			&& in==false)
 		{
 			in=true;
 			continue;

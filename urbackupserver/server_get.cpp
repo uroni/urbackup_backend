@@ -1793,7 +1793,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 				}
 
 				std::wstring osspecific_name=fixFilenameForOS(cf.name);
-				if(cf.isdir==true)
+				if(cf.isdir)
 				{
 					if(cf.name!=L"..")
 					{
@@ -1833,8 +1833,8 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 							ServerLogger::Log(clientid, L"Stoping shadowcopy \""+t+L"\".", LL_DEBUG);
 							server_download->addToQueueStopShadowcopy(t);
 						}
-						curr_path=ExtractFilePath(curr_path);
-						curr_os_path=ExtractFilePath(curr_os_path);
+						curr_path=ExtractFilePath(curr_path, L"/");
+						curr_os_path=ExtractFilePath(curr_os_path, L"/");
 					}
 				}
 				else
@@ -2525,8 +2525,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							--skip_dir_completely;
 							if(skip_dir_completely>0)
 							{
-								curr_os_path=ExtractFilePath(curr_os_path);
-								curr_path=ExtractFilePath(curr_path);
+								curr_os_path=ExtractFilePath(curr_os_path, L"/");
+								curr_path=ExtractFilePath(curr_path, L"/");
 							}
 						}
 						else
@@ -2718,8 +2718,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							t.erase(0,1);
 							server_download->addToQueueStopShadowcopy(t);
 						}
-						curr_path=ExtractFilePath(curr_path);
-						curr_os_path=ExtractFilePath(curr_os_path);
+						curr_path=ExtractFilePath(curr_path, L"/");
+						curr_os_path=ExtractFilePath(curr_os_path, L"/");
 					}
 				}
 				else //is file
@@ -3154,8 +3154,8 @@ bool BackupServerGet::deleteFilesInSnapshot(const std::string clientlist_fn, con
 				{
 					if(curr_file.name==L"..")
 					{
-						curr_path=ExtractFilePath(curr_path);
-						curr_os_path=ExtractFilePath(curr_os_path);
+						curr_path=ExtractFilePath(curr_path, L"/");
+						curr_os_path=ExtractFilePath(curr_os_path, L"/");
 						if(!curr_dir_exists)
 						{
 							curr_dir_exists=os_directory_exists(curr_path);
@@ -4854,7 +4854,7 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 				{
 					if(cf.name==L"..")
 					{
-						curr_path=ExtractFilePath(curr_path);
+						curr_path=ExtractFilePath(curr_path, os_file_sep());
 					}
 					else
 					{
