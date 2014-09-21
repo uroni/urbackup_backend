@@ -307,8 +307,8 @@ void BackupServerHash::copyFromTmpTable(bool force)
 {
 	if(tmp_count>copy_limit || force)
 	{
+		Server->Log("Copying "+nconvert(tmp_count)+" files from tmp table...",LL_DEBUG);
 		tmp_count=0;
-		Server->Log("Copying files from tmp table...",LL_DEBUG);
 		copyFilesFromTmp();
 		Server->Log("done.", LL_DEBUG);
 	}
@@ -330,6 +330,8 @@ void BackupServerHash::prepareSQL(void)
 
 void BackupServerHash::addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize)
 {
+	++tmp_count;
+
 	if(filecache==NULL)
 	{
 		addFileTmp(backupid, fp, hash_path, shahash, filesize);
@@ -585,7 +587,6 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 		tf=NULL;
 		Server->deleteFile(temp_fn);
 		addFileSQL(backupid, incremental, tfn, hash_fn, sha2, t_filesize, 0);
-		++tmp_count;
 	}
 
 	if(tries_once && copy && !hardlink_limit)
@@ -732,7 +733,6 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				if(r)
 				{
 					addFileSQL(backupid, incremental, tfn, hash_fn, sha2, t_filesize, t_filesize);
-					++tmp_count;
 				}
 			}
 		}
