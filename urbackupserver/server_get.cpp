@@ -2982,7 +2982,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		{
 			for(int64 i=1;i<=total_entries;i+=c_copy_size)
 			{
-				ServerLogger::Log(clientid, L"Copying to final file entry table, because the backup failed...", LL_DEBUG);
+				ServerLogger::Log(clientid, "Copying to final file entry table, because the backup failed... ("+nconvert(i)+" to "+nconvert(i+c_copy_size)+" of "+nconvert(total_entries)+")", LL_DEBUG);
 				backup_dao->copyFromTemporaryNewFilesTableToFilesTable(backupid, clientid, incremental_num, i, i+c_copy_size);
 				backup_dao->deleteFromTemporaryNewFilesTable(i, i+c_copy_size);
 			}
