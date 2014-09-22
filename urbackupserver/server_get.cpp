@@ -2953,7 +2953,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 		if(num_readded_entries>0)
 		{
-			ServerLogger::Log(clientid, L"Number of readded file entries is "+convert(readd_file_entries_sparse), LL_INFO);
+			ServerLogger::Log(clientid, L"Number of readded file entries is "+convert(num_readded_entries), LL_INFO);
 		}
 
 		if(num_copied_file_entries>0)
