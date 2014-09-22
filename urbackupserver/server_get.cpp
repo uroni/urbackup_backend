@@ -2961,15 +2961,38 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			ServerLogger::Log(clientid, L"Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
 		}
 
+		int64 total_entries = static_cast<int64>(num_readded_entries+num_copied_file_entries);
+
+		ServerBackupDao::CondInt64 numEntries = backup_dao->getCountEntriesTemporaryNewFilesTable();
+
+		ServerLogger::Log(clientid, "Total entries "+nconvert(total_entries)+" vs. in database "+nconvert(numEntries.value), LL_DEBUG);
+
+		const int64 c_copy_size=10000;
+
 		if(!r_offline && !c_has_error)
 		{
-			ServerLogger::Log(clientid, L"Copying to new file entry table, because the backup succeeded...", LL_DEBUG);
-			backup_dao->copyFromTemporaryNewFilesTableToFilesNewTable(backupid, clientid, incremental_num);
+			for(int64 i=1;i<=total_entries;i+=c_copy_size)
+			{
+				ServerLogger::Log(clientid, "Copying to new file entry table, because the backup succeeded... ("+nconvert(i)+" to "+nconvert(i+c_copy_size)+" of "+nconvert(total_entries)+")", LL_DEBUG);
+				backup_dao->copyFromTemporaryNewFilesTableToFilesNewTable(backupid, clientid, incremental_num, i, i+c_copy_size);
+				backup_dao->deleteFromTemporaryNewFilesTable(i, i+c_copy_size);
+			}			
 		}
 		else
 		{
-			ServerLogger::Log(clientid, L"Copying to final file entry table, because the backup failed...", LL_DEBUG);
-			backup_dao->copyFromTemporaryNewFilesTableToFilesTable(backupid, clientid, incremental_num);
+			for(int64 i=1;i<=total_entries;i+=c_copy_size)
+			{
+				ServerLogger::Log(clientid, L"Copying to final file entry table, because the backup failed...", LL_DEBUG);
+				backup_dao->copyFromTemporaryNewFilesTableToFilesTable(backupid, clientid, incremental_num, i, i+c_copy_size);
+				backup_dao->deleteFromTemporaryNewFilesTable(i, i+c_copy_size);
+			}
+		}
+
+		numEntries = backup_dao->getCountEntriesTemporaryNewFilesTable();
+
+		if(numEntries.value>0)
+		{
+			ServerLogger::Log(clientid, "Number of entries should be zero but is "+nconvert(numEntries.value), LL_WARNING);
 		}
 
 		backup_dao->dropTemporaryNewFilesTable();
@@ -5226,6 +5249,11 @@ void BackupServerGet::log_progress( const std::string& fn, int64 total, int64 do
 void BackupServerGet::addSparseFileEntry( std::wstring curr_path, SFile &cf, int copy_file_entries_sparse_modulo, int incremental_num, bool trust_client_hashes, std::string &curr_sha2,
 	std::wstring local_curr_os_path, bool curr_has_hash, std::auto_ptr<ServerHashExisting> &server_hash_existing, size_t& num_readded_entries )
 {
+	if(cf.size==0)
+	{
+		return;
+	}
+
 	std::string curr_file_path = Server->ConvertToUTF8(curr_path + L"/" + cf.name);
 	int crc32 = static_cast<int>(urb_adler32(0, curr_file_path.c_str(), static_cast<unsigned int>(curr_file_path.size())));
 	if(crc32 % copy_file_entries_sparse_modulo == incremental_num )

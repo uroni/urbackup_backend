@@ -544,19 +544,62 @@ void ServerBackupDao::insertIntoTemporaryNewFilesTable(const std::wstring& fullp
 *      INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental)
 *          SELECT :backupid(int) AS backupid, fullpath, hashpath,
 *                 shahash, filesize, created, 0 AS rsize, 0 AS did_count, :clientid(int) AS clientid,
-*                 :incremental(int) AS incremental FROM files_new_tmp
+*                 :incremental(int) AS incremental FROM files_new_tmp WHERE rowid>=:start_id(int64) AND rowid<:stop_id(int64)
 */
-void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesTable(int backupid, int clientid, int incremental)
+void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesTable(int backupid, int clientid, int incremental, int64 start_id, int64 stop_id)
 {
 	if(q_copyFromTemporaryNewFilesTableToFilesTable==NULL)
 	{
-		q_copyFromTemporaryNewFilesTableToFilesTable=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, 0 AS did_count, ? AS clientid, ? AS incremental FROM files_new_tmp", false);
+		q_copyFromTemporaryNewFilesTableToFilesTable=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, 0 AS did_count, ? AS clientid, ? AS incremental FROM files_new_tmp WHERE rowid>=? AND rowid<?", false);
 	}
 	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(backupid);
 	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(clientid);
 	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(incremental);
+	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(start_id);
+	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(stop_id);
 	q_copyFromTemporaryNewFilesTableToFilesTable->Write();
 	q_copyFromTemporaryNewFilesTableToFilesTable->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::deleteFromTemporaryNewFilesTable
+* @sql
+*      DELETE FROM files_new_tmp WHERE rowid>=:start_id(int64) AND rowid<:stop_id(int64)
+*/
+void ServerBackupDao::deleteFromTemporaryNewFilesTable(int64 start_id, int64 stop_id)
+{
+	if(q_deleteFromTemporaryNewFilesTable==NULL)
+	{
+		q_deleteFromTemporaryNewFilesTable=db->Prepare("DELETE FROM files_new_tmp WHERE rowid>=? AND rowid<?", false);
+	}
+	q_deleteFromTemporaryNewFilesTable->Bind(start_id);
+	q_deleteFromTemporaryNewFilesTable->Bind(stop_id);
+	q_deleteFromTemporaryNewFilesTable->Write();
+	q_deleteFromTemporaryNewFilesTable->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ServerBackupDao::getCountEntriesTemporaryNewFilesTable
+* @return int64 c
+* @sql
+*      SELECT COUNT(rowid) AS c FROM files_new_tmp
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::getCountEntriesTemporaryNewFilesTable(void)
+{
+	if(q_getCountEntriesTemporaryNewFilesTable==NULL)
+	{
+		q_getCountEntriesTemporaryNewFilesTable=db->Prepare("SELECT COUNT(rowid) AS c FROM files_new_tmp", false);
+	}
+	db_results res=q_getCountEntriesTemporaryNewFilesTable->Read();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"c"]);
+	}
+	return ret;
 }
 
 /**
@@ -566,17 +609,19 @@ void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesTable(int backupid, i
 *      INSERT INTO files_new (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental)
 *          SELECT :backupid(int) AS backupid, fullpath, hashpath,
 *                 shahash, filesize, created, 0 AS rsize, :clientid(int) AS clientid,
-*                 :incremental(int) AS incremental FROM files_new_tmp
+*                 :incremental(int) AS incremental FROM files_new_tmp WHERE rowid>=:start_id(int64) AND rowid<:stop_id(int64)
 */
-void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesNewTable(int backupid, int clientid, int incremental)
+void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesNewTable(int backupid, int clientid, int incremental, int64 start_id, int64 stop_id)
 {
 	if(q_copyFromTemporaryNewFilesTableToFilesNewTable==NULL)
 	{
-		q_copyFromTemporaryNewFilesTableToFilesNewTable=db->Prepare("INSERT INTO files_new (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, ? AS clientid, ? AS incremental FROM files_new_tmp", false);
+		q_copyFromTemporaryNewFilesTableToFilesNewTable=db->Prepare("INSERT INTO files_new (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, ? AS clientid, ? AS incremental FROM files_new_tmp WHERE rowid>=? AND rowid<?", false);
 	}
 	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(backupid);
 	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(clientid);
 	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(incremental);
+	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(start_id);
+	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(stop_id);
 	q_copyFromTemporaryNewFilesTableToFilesNewTable->Write();
 	q_copyFromTemporaryNewFilesTableToFilesNewTable->Reset();
 }
@@ -711,6 +756,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_dropTemporaryNewFilesTable=NULL;
 	q_insertIntoTemporaryNewFilesTable=NULL;
 	q_copyFromTemporaryNewFilesTableToFilesTable=NULL;
+	q_deleteFromTemporaryNewFilesTable=NULL;
+	q_getCountEntriesTemporaryNewFilesTable=NULL;
 	q_copyFromTemporaryNewFilesTableToFilesNewTable=NULL;
 	q_insertIntoOrigClientSettings=NULL;
 	q_getOrigClientSettings=NULL;
@@ -746,6 +793,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_dropTemporaryNewFilesTable);
 	db->destroyQuery(q_insertIntoTemporaryNewFilesTable);
 	db->destroyQuery(q_copyFromTemporaryNewFilesTableToFilesTable);
+	db->destroyQuery(q_deleteFromTemporaryNewFilesTable);
+	db->destroyQuery(q_getCountEntriesTemporaryNewFilesTable);
 	db->destroyQuery(q_copyFromTemporaryNewFilesTableToFilesNewTable);
 	db->destroyQuery(q_insertIntoOrigClientSettings);
 	db->destroyQuery(q_getOrigClientSettings);

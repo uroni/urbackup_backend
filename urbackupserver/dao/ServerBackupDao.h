@@ -15,6 +15,11 @@ public:
 
 
 	//@-SQLGenFunctionsBegin
+	struct CondInt64
+	{
+		bool exists;
+		int64 value;
+	};
 	struct CondString
 	{
 		bool exists;
@@ -69,8 +74,10 @@ public:
 	bool createTemporaryNewFilesTable(void);
 	void dropTemporaryNewFilesTable(void);
 	void insertIntoTemporaryNewFilesTable(const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize);
-	void copyFromTemporaryNewFilesTableToFilesTable(int backupid, int clientid, int incremental);
-	void copyFromTemporaryNewFilesTableToFilesNewTable(int backupid, int clientid, int incremental);
+	void copyFromTemporaryNewFilesTableToFilesTable(int backupid, int clientid, int incremental, int64 start_id, int64 stop_id);
+	void deleteFromTemporaryNewFilesTable(int64 start_id, int64 stop_id);
+	CondInt64 getCountEntriesTemporaryNewFilesTable(void);
+	void copyFromTemporaryNewFilesTableToFilesNewTable(int backupid, int clientid, int incremental, int64 start_id, int64 stop_id);
 	void insertIntoOrigClientSettings(int clientid, std::string data);
 	CondString getOrigClientSettings(int clientid);
 	std::vector<SDuration> getLastIncrementalDurations(int clientid);
@@ -110,6 +117,8 @@ private:
 	IQuery* q_dropTemporaryNewFilesTable;
 	IQuery* q_insertIntoTemporaryNewFilesTable;
 	IQuery* q_copyFromTemporaryNewFilesTableToFilesTable;
+	IQuery* q_deleteFromTemporaryNewFilesTable;
+	IQuery* q_getCountEntriesTemporaryNewFilesTable;
 	IQuery* q_copyFromTemporaryNewFilesTableToFilesNewTable;
 	IQuery* q_insertIntoOrigClientSettings;
 	IQuery* q_getOrigClientSettings;
