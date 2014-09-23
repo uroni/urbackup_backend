@@ -76,6 +76,7 @@ const unsigned int c_internet_fileclient_timeout=30*60*1000;
 const unsigned int c_sleeptime_failed_imagebackup=20*60;
 const unsigned int c_sleeptime_failed_filebackup=20*60;
 const unsigned int c_exponential_backoff_div=2;
+const int64 c_readd_size_limit=100*1024;
 
 
 int BackupServerGet::running_backups=0;
@@ -5249,7 +5250,7 @@ void BackupServerGet::log_progress( const std::string& fn, int64 total, int64 do
 void BackupServerGet::addSparseFileEntry( std::wstring curr_path, SFile &cf, int copy_file_entries_sparse_modulo, int incremental_num, bool trust_client_hashes, std::string &curr_sha2,
 	std::wstring local_curr_os_path, bool curr_has_hash, std::auto_ptr<ServerHashExisting> &server_hash_existing, size_t& num_readded_entries )
 {
-	if(cf.size==0)
+	if(cf.size<c_readd_size_limit)
 	{
 		return;
 	}
