@@ -4,17 +4,25 @@
 #include <string>
 #include <vector>
 
+#include "../../Interface/Types.h"
+
+const size_t c_treenode_data_size=2*sizeof(int64);
+
 class TreeNode
 {
 public:
-	TreeNode(const std::string &name, const std::string &data, TreeNode *parent);
+	TreeNode(const char* name, const char* data, TreeNode *parent);
 	TreeNode(void);
 
-	void setName(const std::string &pName);
-	void setData(const std::string &pData);
+	void setName(const char* pName);
+	void setData(const char* pData);
 
-	const std::string& getName();
-	const std::string& getData();
+	std::string getName();
+	std::string getData();
+
+	bool equals(const TreeNode& other);
+	bool nameEquals(const TreeNode& other);
+	bool dataEquals(const TreeNode& other);
 
 	size_t getNumChildren();
 	TreeNode* getFirstChild(void);
@@ -36,8 +44,8 @@ public:
 
 private:
 
-	std::string name;
-	std::string data;
+	const char* name;
+	const char* data;
 
 	TreeNode *nextSibling;
 	TreeNode *parent;

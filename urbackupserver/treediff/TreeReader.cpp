@@ -24,6 +24,7 @@
 #include "../../stringtools.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../../Interface/Server.h"
+#include <assert.h>
 
 const size_t buffer_size=4096;
 
@@ -38,6 +39,8 @@ bool TreeReader::readTree(const std::string &fn)
 	char buffer[buffer_size];
 	int state=0;
 	size_t lines=0;
+	size_t stringbuffer_size=0;
+	std::string name;
 	do
 	{
 		in.read(buffer, buffer_size);
@@ -48,87 +51,94 @@ bool TreeReader::readTree(const std::string &fn)
 			const char ch=buffer[i];
 			switch(state)
 			{
-				case 0:
+			case 0:
+				if(ch=='f')
+				{
+					stringbuffer_size+=2*sizeof(int64);
+				}
+				else if(ch=='d')
+				{
+				}
+				else
+				{
+					Log("Error parsing file readTree - 0");
+					return false;
+				}
+
+				state=1;
+				break;
+			case 1:
+				//"
+				state=2;
+				break;
+			case 2:
+				if(ch=='"')
+				{
+					state=3;
+				}
+				else if(ch=='\\')
+				{
+					state=5;
+				}
+				else
+				{
+					name+=ch;
+				}
+				break;
+			case 5:
+				if(ch!='\"' && ch!='\\')
+				{
+					name+='\\';
+				}
+				name+=ch;
+				state=2;
+				break;
+			case 3:
+				if(ch==' ')
+				{
+					state=4;
+					break;
+				}
+				else
+				{
+					state=10;
+				}
+			case 4:
+				if(state==4)
+				{
+					if(ch!='\n')
 					{
-						if(ch=='d')
-						{
-							state=3;
-						}
-						else
-						{
-							state=1;
-						}
-					}break;
-				case 1:
+						break;
+					}
+				}
+			case 10:
+				if(ch=='\n')
+				{
+					state=0;
+					if(name!="..")
 					{
-						if(ch!='\r')
-						{
-							state=2;
-						}
-					}break;
-				case 2:
-					{
-						if(ch=='\n')
-						{
-							++lines;
-							state=0;
-						}
-					}break;
-				case 3:
-					{
-						state=4;
-					}break;
-				case 4:
-					{
-						if(ch=='.')
-							state=5;
-						else
-							state=10;
-					}break;
-				case 5:
-					{
-						if(ch=='.')
-							state=6;
-						else
-							state=10;
-					}break;
-				case 6:
-					{
-						if(ch=='"')
-							state=7;
-						else
-							state=10;
-					}break;
-				case 7:
-					{
-						if(ch=='\n')
-						{
-							state=0;
-						}
-					}break;
-				case 10:
-					{
-						if(ch=='\n')
-						{
-							++lines;
-							state=0;
-						}
-					}break;
+						++lines;
+						stringbuffer_size+=name.size()+1;
+					}
+					name.clear();
+				}
 			}		
 		}
 	}
 	while(read>0);
 
 	in.clear();
+	name.clear();
 	in.seekg(0, std::ios::beg);
 
 
+	size_t stringbuffer_pos=0;
+	stringbuffer.resize(stringbuffer_size+5);
 	
 	
 	state=0;
 	bool isdir=false;
 	std::string data;
-	std::string name;
 	std::stack<TreeNode*> parents;
 	std::stack<TreeNode*> lastNodes;
 	bool firstChild=true;
@@ -136,8 +146,11 @@ bool TreeReader::readTree(const std::string &fn)
 	size_t idx=1;
 	nodes.resize(lines+1);
 
-	nodes[0].setName("root");
-	nodes[0].setData("d");
+	std::string root_str = "root";
+	memcpy(&stringbuffer[0], root_str.c_str(), root_str.size()+1);
+	stringbuffer_pos+=root_str.size()+1;
+
+	nodes[0].setName(&stringbuffer[0]);
 
 	parents.push(&nodes[0]);
 	lastNodes.push(&nodes[0]);
@@ -163,7 +176,6 @@ bool TreeReader::readTree(const std::string &fn)
 					else if(ch=='d')
 					{
 						data+='d';
-						isdir=true;
 					}
 					else
 					{
@@ -223,7 +235,9 @@ bool TreeReader::readTree(const std::string &fn)
 					{
 						if(name!="..")
 						{
-							nodes[idx].setName(name);
+							memcpy(&stringbuffer[stringbuffer_pos], name.c_str(), name.size()+1);
+							nodes[idx].setName(&stringbuffer[stringbuffer_pos]);
+							stringbuffer_pos+=name.size()+1;
 							nodes[idx].setId(lines);
 
 							char ch=data[0];
@@ -236,16 +250,13 @@ bool TreeReader::readTree(const std::string &fn)
 								_i64 ifilesize=os_atoi64(filesize);
 								_i64 ilast_mod=os_atoi64(last_mod);
 
-								std::string ndata;
-								ndata.resize(1+sizeof(_i64)*2);
-								ndata[0]=ch;
-								memcpy(&ndata[1], &ifilesize, sizeof(_i64));
-								memcpy(&ndata[1+sizeof(_i64)], &ilast_mod, sizeof(_i64));
+								char* ndata=&stringbuffer[stringbuffer_pos];
+								memcpy(&stringbuffer[stringbuffer_pos], &ifilesize, sizeof(_i64));
+								stringbuffer_pos+=sizeof(_i64);
+								memcpy(&stringbuffer[stringbuffer_pos], &ilast_mod, sizeof(_i64));
+								stringbuffer_pos+=sizeof(_i64);
+
 								nodes[idx].setData(ndata);
-							}
-							else
-							{
-								nodes[idx].setData(data);
 							}
 
 							if(firstChild)
@@ -266,7 +277,7 @@ bool TreeReader::readTree(const std::string &fn)
 								nodes[idx].setParent(parents.top());
 							}
 
-							if(isdir)
+							if(ch=='d')
 							{
 								parents.push(&nodes[idx]);
 								firstChild=true;
@@ -300,7 +311,6 @@ bool TreeReader::readTree(const std::string &fn)
 
 						name.clear();
 						data.clear();
-						isdir=false;
 						state=0;
 						++lines;
 					}
@@ -308,6 +318,9 @@ bool TreeReader::readTree(const std::string &fn)
 		}
 	}
 	while(read==buffer_size);
+
+	assert(idx == nodes.size());
+	assert(stringbuffer_pos == stringbuffer.size());
 
 	nodes[0].setNextSibling(NULL);
 

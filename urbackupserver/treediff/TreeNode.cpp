@@ -18,33 +18,51 @@
 
 #include "TreeNode.h"
 
-TreeNode::TreeNode(const std::string &name, const std::string &data, TreeNode *parent)
+#include <memory.h>
+#include <string.h>
+
+TreeNode::TreeNode(const char* name, const char* data, TreeNode *parent)
 	: name(name), data(data), parent(parent), num_children(0), nextSibling(NULL), mapped_node(NULL),
 	  subtree_changed(false)
 {
 }
 
 TreeNode::TreeNode(void)
-	: num_children(0), nextSibling(NULL), mapped_node(NULL), subtree_changed(false), parent(NULL)
+	: num_children(0), nextSibling(NULL), mapped_node(NULL), subtree_changed(false), parent(NULL),
+	name(NULL), data(NULL)
 {
 }
 
-const std::string& TreeNode::getName()
+std::string TreeNode::getName()
 {
-	return name;
+	if(name)
+	{
+		return name;
+	}
+	else
+	{
+		return std::string();
+	}
 }
 
-const std::string& TreeNode::getData()
+std::string TreeNode::getData()
 {
-	return data;
+	if(data!=NULL)
+	{
+		return std::string(data, data+c_treenode_data_size);
+	}
+	else
+	{
+		return std::string();
+	}
 }
 
-void TreeNode::setName(const std::string &pName)
+void TreeNode::setName(const char* pName)
 {
 	name=pName;
 }
 
-void TreeNode::setData(const std::string &pData)
+void TreeNode::setData(const char* pData)
 {
 	data=pData;
 }
@@ -138,4 +156,34 @@ void TreeNode::setSubtreeChanged( bool b )
 bool TreeNode::getSubtreeChanged()
 {
 	return subtree_changed;
+}
+
+bool TreeNode::nameEquals( const TreeNode& other )
+{
+	if(name!=NULL && other.name!=NULL)
+	{
+		return strcmp(name, other.name)==0;
+	}
+	else
+	{
+		return name==other.name;
+	}
+}
+
+bool TreeNode::dataEquals( const TreeNode& other )
+{
+	if(data!=NULL && other.data!=NULL)
+	{
+		return memcmp(data, other.data, c_treenode_data_size)==0;
+	}
+	else
+	{
+		return data==other.data;
+	}
+}
+
+bool TreeNode::equals( const TreeNode& other )
+{
+	return nameEquals(other) &&
+		dataEquals(other);
 }

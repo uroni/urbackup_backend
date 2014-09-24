@@ -68,7 +68,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 		TreeNode *c1=t1->getFirstChild();
 		while(c1!=NULL)
 		{
-			if(c1!=NULL && c1->getName()==c2->getName() && c1->getData()==c2->getData() )
+			if(c1->equals(*c2))
 			{
 				gatherDiffs(c1, c2, diffs);
 				c2->setMappedNode(c1);
