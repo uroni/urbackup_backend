@@ -1036,7 +1036,8 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 					&& it->name==fsfile.name
 					&& it->isdir==false
 					&& it->last_modified==fsfile.last_modified
-					&& it->size==fsfile.size )
+					&& it->size==fsfile.size
+					&& !it->hash.empty() )
 				{
 					fsfile.hash=it->hash;
 					needs_hashing=false;
