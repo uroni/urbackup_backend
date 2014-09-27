@@ -117,9 +117,17 @@ void ServerUpdate::update_server_version_info()
 	Server->Log("Downloading server version info...", LL_INFO);
 
 	std::auto_ptr<IFile> server_version_info(Server->openFile("urbackup/server_version_info.properties", MODE_WRITE));
-	if(!url_fak->downloadFile(urbackup_update_url+"server_version_info.properties", 
-		server_version_info.get(), http_proxy, &errmsg) )
+
+	if(!server_version_info.get())
 	{
-		Server->Log("Error downloading server version information: " + errmsg, LL_ERROR);
+		Server->Log("Error opening urbackup/server_version_info.properties for writing", LL_ERROR);
 	}
+	else
+	{
+		if(!url_fak->downloadFile(urbackup_update_url+"server_version_info.properties", 
+			server_version_info.get(), http_proxy, &errmsg) )
+		{
+			Server->Log("Error downloading server version information: " + errmsg, LL_ERROR);
+		}
+	}	
 }
