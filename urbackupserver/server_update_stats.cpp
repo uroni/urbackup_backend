@@ -113,6 +113,7 @@ void ServerUpdateStats::operator()(void)
 
 	bool indices_suspended=suspendFilesIndices(server_settings);
 
+	db->DetachDBs();
 	db->BeginTransaction();
 
 	db->Write("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) "
@@ -122,6 +123,7 @@ void ServerUpdateStats::operator()(void)
 	db->Write("DELETE FROM files_new");
 
 	db->EndTransaction();
+	db->AttachDBs();
 
 	if(indices_suspended)
 	{

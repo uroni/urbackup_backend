@@ -1640,6 +1640,7 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 		db->Write("PRAGMA foreign_keys = 0");
 	}
 
+	db->DetachDBs();
 	db->BeginTransaction();
 	Server->Log("Deleting history...", LL_DEBUG);
 	cleanupdao->deleteClientHistoryIds(back_start, back_stop);
@@ -1660,6 +1661,7 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 	}
 
 	db->EndTransaction();
+	db->AttachDBs();
 
 	if(db->getEngineName()=="sqlite" &&
 		!foreign_keys.empty() )

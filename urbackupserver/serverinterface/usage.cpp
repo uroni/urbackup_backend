@@ -34,11 +34,14 @@ namespace
 
 		void operator()(void)
 		{
+			db->DetachDBs();
 			db->BeginTransaction();
 			db->Write("UPDATE files SET did_count=0");
 			db->Write("UPDATE clients SET bytes_used_files=0");
 			db->Write("UPDATE backups SET size_bytes=0");
+			db->Write("UPDATE backups SET size_calculated=0");
 			db->EndTransaction();
+			db->AttachDBs();
 			ServerCleanupThread::updateStats(false);
 			delete this;
 		}
