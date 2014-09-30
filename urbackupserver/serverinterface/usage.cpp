@@ -21,6 +21,7 @@
 #include "action_header.h"
 #include "../server_cleanup.h"
 #include "../../Interface/ThreadPool.h"
+#include "../create_files_index.h"
 
 namespace 
 {
@@ -36,10 +37,50 @@ namespace
 		{
 			db->DetachDBs();
 			db->BeginTransaction();
-			db->Write("UPDATE files SET did_count=0");
 			db->Write("UPDATE clients SET bytes_used_files=0");
-			db->Write("UPDATE backups SET size_bytes=0");
-			db->Write("UPDATE backups SET size_calculated=0");
+
+			ServerBackupDao backupdao(db);
+			
+			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
+
+			fileindex->start_transaction();
+			fileindex->start_iteration();
+
+			std::map<int, int64> client_sizes;
+			std::map<int, int64> entries;
+			bool has_next=true;
+			do 
+			{
+				entries = fileindex->get_next_entries_iteration(has_next);
+
+				if(!entries.empty())
+				{
+					ServerBackupDao::SStatFileEntry fentry = backupdao.getStatFileEntry(entries.begin()->second);
+
+					if(fentry.exists)
+					{
+						int64 size_per_client = (fentry.rsize>0 && fentry.rsize!=fentry.filesize)?fentry.rsize:fentry.filesize;
+						size_per_client/=entries.size();
+
+
+						for(std::map<int, int64>::iterator it=entries.begin();it!=entries.end();++it)
+						{
+							client_sizes[it->first]+=size_per_client;
+						}
+					}
+				}
+
+			} while (has_next);
+
+			fileindex->stop_iteration();
+			fileindex->commit_transaction();
+
+			for(std::map<int, int64>::iterator it=client_sizes.begin();
+				it!=client_sizes.end();++it)
+			{
+				backupdao.setClientUsedFilebackupSize(it->second, it->first);
+			}
+
 			db->EndTransaction();
 			db->AttachDBs();
 			ServerCleanupThread::updateStats(false);

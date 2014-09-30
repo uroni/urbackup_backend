@@ -57,13 +57,13 @@ struct SStartupStatus
 {
 	SStartupStatus(void)
 		: upgrading_database(false),
-		  creating_filescache(false) {}
+		  creating_filesindex(false) {}
 
 	bool upgrading_database;
 	int curr_db_version;
 	int target_db_version;
 
-	bool creating_filescache;
+	bool creating_filesindex;
 	size_t processed_file_entries;
 
 	IMutex *mutex;

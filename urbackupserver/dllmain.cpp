@@ -64,10 +64,13 @@ SStartupStatus startup_status;
 #include "apps/cleanup_cmd.h"
 #include "apps/repair_cmd.h"
 #include "apps/export_auth_log.h"
-#include "create_files_cache.h"
+#include "create_files_index.h"
 #include "server_dir_links.h"
 
 #include <stdlib.h>
+#include "../Interface/DatabaseCursor.h"
+#include <set>
+#include "apps/check_files_index.h"
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
@@ -324,10 +327,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=export_auth_log();
 		}
+		else if(app=="check_fileindex")
+		{
+			rc=check_files_index();
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex");
 		}
 		exit(rc);
 	}
@@ -455,8 +462,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
-	ServerUpdateStats::createFilesIndices();
-	create_files_cache(startup_status);
+	if(!create_files_index(startup_status))
+	{
+		Server->Log(L"Could not create or open file entry index. Exiting.", LL_ERROR);
+		exit(1);
+	}
 
 	{
 		IScopedLock lock(startup_status.mutex);
@@ -1125,6 +1135,79 @@ void upgrade34_35()
 	db->Write("CREATE INDEX IF NOT EXISTS clients_hist_id_created_idx ON clients_hist_id (created)");
 }
 
+bool upgrade35_36()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	if(!db->Write("CREATE TEMPORARY TABLE files_bck ("
+		"id INTEGER PRIMARY KEY,"
+		"backupid INTEGER,"
+		"fullpath TEXT,"
+		"shahash BLOB,"
+		"filesize INTEGER,"
+		"created DATE DEFAULT CURRENT_TIMESTAMP"
+		", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT);"))
+	{
+		return false;
+	}
+
+	if(!db->Write("INSERT INTO files_bck SELECT rowid, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath FROM files"))
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP INDEX files_idx") ||
+		!db->Write("DROP INDEX files_did_count") ||
+		!db->Write("DROP INDEX files_backupid") ||
+		!db->Write("DROP TABLE files"))
+	{
+		return false;
+	}
+
+	if(!db->Write("CREATE TABLE files ("
+		"id INTEGER PRIMARY KEY,"
+		"backupid INTEGER,"
+		"fullpath TEXT,"
+		"shahash BLOB,"
+		"filesize INTEGER,"
+		"created DATE DEFAULT CURRENT_TIMESTAMP"
+		", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER);"))
+	{
+		return false;
+	}
+
+	if(!db->Write("INSERT INTO files SELECT id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, 0 AS next_entry, 0 AS prev_entry FROM files_bck"))
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP TABLE files_bck"))
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP TABLE files_del"))
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP TABLE files_new"))
+	{
+		return false;
+	}
+
+	if(!db->Write("CREATE INDEX files_backupid ON files (backupid)"))
+	{
+		return false;
+	}
+
+	if(!db->Write("CREATE TABLE files_incoming_stat (id INTEGER PRIMARY KEY, filesize INTEGER, clientid INTEGER, backupid INTEGER, existing_clients TEXT, direction INTEGER, incremental INTEGER)"))
+	{
+		return false;
+	}
+
+	return true;
+}
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1146,7 +1229,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=35;
+	int max_v=36;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1157,7 +1240,7 @@ void upgrade(void)
 	{
 		do_upgrade=true;
 		Server->Log("Upgrading...", LL_WARNING);
-		Server->Log("Converting database to journal mode...", LL_WARNING);
+		Server->Log("Converting database to delete journal mode...", LL_WARNING);
 		db->Write("PRAGMA journal_mode=DELETE");
 	}
 	
@@ -1170,6 +1253,7 @@ void upgrade(void)
 		}
 		db->BeginTransaction();
 		old_v=ver;
+		bool has_error=false;
 		switch(ver)
 		{
 			case 1:
@@ -1308,8 +1392,22 @@ void upgrade(void)
 				upgrade34_35();
 				++ver;
 				break;
+			case 35:
+				if(!upgrade35_36())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
 			default:
 				break;
+		}
+
+		if(has_error)
+		{
+			db->Write("ROLLBACK");
+			Server->Log("Upgrading database failed. Shutting down server.", LL_ERROR);
+			exit(5);
 		}
 		
 		if(ver!=old_v)

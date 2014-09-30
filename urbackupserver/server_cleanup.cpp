@@ -38,6 +38,7 @@
 #include "server_dir_links.h"
 #include <stdio.h>
 #include <algorithm>
+#include "create_files_index.h"
 
 IMutex *ServerCleanupThread::mutex=NULL;
 ICondition *ServerCleanupThread::cond=NULL;
@@ -79,6 +80,7 @@ void ServerCleanupThread::operator()(void)
 	{
 		cleanupdao=new ServerCleanupDao(db);
 		backupdao=new ServerBackupDao(db);
+		fileindex.reset(create_lmdb_files_index());
 
 		switch(cleanup_action.action)
 		{
@@ -128,6 +130,7 @@ void ServerCleanupThread::operator()(void)
 
 			cleanupdao=new ServerCleanupDao(db);
 			backupdao=new ServerBackupDao(db);
+			fileindex.reset(create_lmdb_files_index());
 
 			deletePendingClients();
 			do_cleanup();
@@ -136,6 +139,7 @@ void ServerCleanupThread::operator()(void)
 			delete backupdao;
 			cleanupdao=NULL;
 			backupdao=NULL;
+			fileindex.reset();
 
 			backup_database();
 		}
@@ -220,6 +224,7 @@ void ServerCleanupThread::operator()(void)
 
 				cleanupdao=new ServerCleanupDao(db);
 				backupdao=new ServerBackupDao(db);
+				fileindex.reset(create_lmdb_files_index());
 
 				deletePendingClients();
 				do_cleanup();
@@ -228,6 +233,7 @@ void ServerCleanupThread::operator()(void)
 
 				delete cleanupdao; cleanupdao=NULL;
 				delete backupdao; backupdao=NULL;
+				fileindex.reset();
 
 				backup_database();
 
@@ -317,6 +323,7 @@ bool ServerCleanupThread::do_cleanup(int64 minspace, bool switch_to_wal)
 	removeerr.clear();
 	cleanup_images(minspace);
 	cleanup_files(minspace);
+	cleanup_files();
 
 	if(switch_to_wal)
 	{
@@ -383,13 +390,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 			{
 				Server->Log(L"Path for file backup [id="+convert(res_file_backups[j].id)+L" path="+res_file_backups[j].path+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
 
-				db->DetachDBs();
-				db->BeginTransaction();
-				cleanupdao->moveFiles(backupid);
-				cleanupdao->deleteFiles(backupid);
-				cleanupdao->removeFileBackup(backupid);
-				db->EndTransaction();
-				db->AttachDBs();
+				removeFileBackupSql(backupid);
 			}
 		}
 
@@ -1060,13 +1061,8 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	}
 	if(del || force_remove)
 	{
-		db->DetachDBs();
-		db->BeginTransaction();
-		cleanupdao->moveFiles(backupid);
-		cleanupdao->deleteFiles(backupid);
-		cleanupdao->removeFileBackup(backupid);
-		db->EndTransaction();
-		db->AttachDBs();
+		removeFileBackupSql(backupid);
+
 	}
 
 	ServerStatus::updateActive();
@@ -1690,6 +1686,41 @@ void ServerCleanupThread::cleanup_other()
 	Server->Log("Cleaning history...", LL_INFO);
 	cleanup_client_hist();
 	Server->Log("Done cleaning history", LL_INFO);
+}
+
+void ServerCleanupThread::removeFileBackupSql( int backupid )
+{
+	db->DetachDBs();
+	db->BeginTransaction();
+
+	IQuery* q_iterate = db->Prepare("SELECT id, shahash, filesize, rsize, clientid, backupid, incremental, next_entry, prev_entry FROM files WHERE backupid=?", false);
+	q_iterate->Bind(backupid);
+	IDatabaseCursor* cursor = q_iterate->Cursor();
+
+	db_single_result res;
+	while(cursor->next(res))
+	{
+		int64 id = watoi64(res[L"id"]);
+		int64 filesize = watoi64(res[L"filesize"]);
+		int64 rsize = watoi64(res[L"rsize"]);
+		int clientid = watoi(res[L"clientid"]);
+		int backupid = watoi(res[L"backupid"]);
+		int incremental = watoi(res[L"incremental"]);
+		int64 next_entry = watoi64(res[L"next_entry"]);
+		int64 prev_entry = watoi64(res[L"prev_entry"]);
+
+		BackupServerHash::deleteFileSQL(*backupdao, *fileindex.get(), reinterpret_cast<const char*>(res[L"shahash"].c_str()),
+			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, false, false);
+	}
+
+
+	cleanupdao->deleteFiles(backupid);
+	cleanupdao->removeFileBackup(backupid);
+
+	db->EndTransaction();
+	db->AttachDBs();
+
+	db->destroyQuery(q_iterate);
 }
 
 

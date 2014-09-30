@@ -81,14 +81,8 @@ struct SSettings
 	std::string internet_incr_file_transfer_mode;
 	std::string local_image_transfer_mode;
 	std::string internet_image_transfer_mode;
-	size_t file_hash_collect_amount;
-	size_t file_hash_collect_timeout;
-	size_t file_hash_collect_cachesize;
 	size_t update_stats_cachesize;
 	std::string global_soft_fs_quota;
-	std::string filescache_type;
-	int64 filescache_size;
-	int suspend_index_limit;
 	std::string client_quota;
 	bool end_to_end_file_backup_verification;
 	bool internet_calculate_filehashes_on_client;

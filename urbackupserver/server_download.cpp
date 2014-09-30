@@ -533,7 +533,7 @@ void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath,
 	CWData data;
 	data.addString(Server->ConvertToUTF8(fd->getFilenameW()));
 	data.addInt(l_backup_id);
-	data.addChar(r_incremental==true?1:0);
+	data.addInt(r_incremental==true?1:0);
 	data.addString(Server->ConvertToUTF8(dstpath));
 	data.addString(Server->ConvertToUTF8(hashpath));
 	if(hashoutput!=NULL)

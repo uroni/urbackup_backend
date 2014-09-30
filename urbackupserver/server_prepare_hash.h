@@ -25,7 +25,7 @@ public:
 	
 	bool isWorking(void);
 
-	static std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace);
+	static std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written=NULL);
 	static bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb);
 	static bool writeFileRepeat(IFile *f, const char *buf, size_t bsize);
 

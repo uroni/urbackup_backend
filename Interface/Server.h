@@ -18,6 +18,7 @@ class IService;
 class IPluginMgr;
 class IPlugin;
 class IMutex;
+class ISharedMutex;
 class IThread;
 class ISettingsReader;
 class IPipe;
@@ -90,6 +91,7 @@ public:
 
 	virtual ITemplate* createTemplate(std::string pFile)=0;
 	virtual IMutex* createMutex(void)=0;
+	virtual ISharedMutex* createSharedMutex()=0;
 	virtual ICondition* createCondition(void)=0;
 	virtual void createThread(IThread *thread)=0;
 	virtual IPipe *createMemoryPipe(void)=0;

@@ -84,6 +84,7 @@ public:
 
 	virtual ITemplate* createTemplate(std::string pFile);
 	virtual IMutex* createMutex(void);
+	virtual ISharedMutex* createSharedMutex();
 	virtual ICondition* createCondition(void);
 	virtual IPipe *createMemoryPipe(void);
 	virtual void createThread(IThread *thread);

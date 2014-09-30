@@ -21,17 +21,15 @@
 #include <assert.h>
 #include <string.h>
 
-/**
-* @-SQLGenTempSetup
-* @sql
-*		CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER);
-*/
+const int ServerBackupDao::c_direction_incoming = 0;
+const int ServerBackupDao::c_direction_outgoing = 1;
 
 /**
 * @-SQLGenTempSetup
 * @sql
-*		CREATE TEMPORARY TABLE files_new_tmp ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP );
+*		CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, rsize INTEGER);
 */
+
 ServerBackupDao::ServerBackupDao( IDatabase *db )
 	: db(db)
 {
@@ -406,15 +404,15 @@ bool ServerBackupDao::dropTemporaryLastFilesTableIndex(void)
 * @-SQLGenAccess
 * @func bool ServerBackupDao::copyToTemporaryLastFilesTable
 * @sql
-*      INSERT INTO files_last (fullpath, hashpath, shahash, filesize)
-*			SELECT fullpath, hashpath, shahash, filesize FROM files
+*      INSERT INTO files_last (fullpath, hashpath, shahash, filesize, rsize)
+*			SELECT fullpath, hashpath, shahash, filesize, rsize FROM files
 *				WHERE backupid = :backupid(int)
 */
 bool ServerBackupDao::copyToTemporaryLastFilesTable(int backupid)
 {
 	if(q_copyToTemporaryLastFilesTable==NULL)
 	{
-		q_copyToTemporaryLastFilesTable=db->Prepare("INSERT INTO files_last (fullpath, hashpath, shahash, filesize) SELECT fullpath, hashpath, shahash, filesize FROM files WHERE backupid = ?", false);
+		q_copyToTemporaryLastFilesTable=db->Prepare("INSERT INTO files_last (fullpath, hashpath, shahash, filesize, rsize) SELECT fullpath, hashpath, shahash, filesize, rsize FROM files WHERE backupid = ?", false);
 	}
 	q_copyToTemporaryLastFilesTable->Bind(backupid);
 	bool ret = q_copyToTemporaryLastFilesTable->Write();
@@ -425,21 +423,21 @@ bool ServerBackupDao::copyToTemporaryLastFilesTable(int backupid)
 /**
 * @-SQLGenAccess
 * @func SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable
-* @return string fullpath, string hashpath, blob shahash, int64 filesize
+* @return string fullpath, string hashpath, blob shahash, int64 filesize, int64 rsize
 * @sql
-*      SELECT fullpath, hashpath, shahash, filesize
+*      SELECT fullpath, hashpath, shahash, filesize, rsize
 *       FROM files_last WHERE fullpath = :fullpath(string)
 */
 ServerBackupDao::SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable(const std::wstring& fullpath)
 {
 	if(q_getFileEntryFromTemporaryTable==NULL)
 	{
-		q_getFileEntryFromTemporaryTable=db->Prepare("SELECT fullpath, hashpath, shahash, filesize FROM files_last WHERE fullpath = ?", false);
+		q_getFileEntryFromTemporaryTable=db->Prepare("SELECT fullpath, hashpath, shahash, filesize, rsize FROM files_last WHERE fullpath = ?", false);
 	}
 	q_getFileEntryFromTemporaryTable->Bind(fullpath);
 	db_results res=q_getFileEntryFromTemporaryTable->Read();
 	q_getFileEntryFromTemporaryTable->Reset();
-	SFileEntry ret = { false, L"", L"", "", 0 };
+	SFileEntry ret = { false, L"", L"", "", 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
@@ -449,6 +447,7 @@ ServerBackupDao::SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable(cons
 		ret.shahash.resize(val1.size()*sizeof(wchar_t));
 		memcpy(&ret.shahash[0], val1.data(), val1.size()*sizeof(wchar_t));
 		ret.filesize=watoi64(res[0][L"filesize"]);
+		ret.rsize=watoi64(res[0][L"rsize"]);
 	}
 	return ret;
 }
@@ -458,14 +457,14 @@ ServerBackupDao::SFileEntry ServerBackupDao::getFileEntryFromTemporaryTable(cons
 * @func vector<SFileEntry> ServerBackupDao::getFileEntriesFromTemporaryTableGlob
 * @return string fullpath, string hashpath, blob shahash, int64 filesize
 * @sql
-*      SELECT fullpath, hashpath, shahash, filesize
+*      SELECT fullpath, hashpath, shahash, filesize, rsize
 *       FROM files_last WHERE fullpath GLOB :fullpath_glob(string)
 */
 std::vector<ServerBackupDao::SFileEntry> ServerBackupDao::getFileEntriesFromTemporaryTableGlob(const std::wstring& fullpath_glob)
 {
 	if(q_getFileEntriesFromTemporaryTableGlob==NULL)
 	{
-		q_getFileEntriesFromTemporaryTableGlob=db->Prepare("SELECT fullpath, hashpath, shahash, filesize FROM files_last WHERE fullpath GLOB ?", false);
+		q_getFileEntriesFromTemporaryTableGlob=db->Prepare("SELECT fullpath, hashpath, shahash, filesize, rsize FROM files_last WHERE fullpath GLOB ?", false);
 	}
 	q_getFileEntriesFromTemporaryTableGlob->Bind(fullpath_glob);
 	db_results res=q_getFileEntriesFromTemporaryTableGlob->Read();
@@ -485,101 +484,6 @@ std::vector<ServerBackupDao::SFileEntry> ServerBackupDao::getFileEntriesFromTemp
 	return ret;
 }
 
-/**
-* @-SQLGenAccessNoCheck
-* @func bool ServerBackupDao::createTemporaryNewFilesTable
-* @sql
-*      CREATE TEMPORARY TABLE files_new_tmp ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP );
-*/
-bool ServerBackupDao::createTemporaryNewFilesTable(void)
-{
-	if(q_createTemporaryNewFilesTable==NULL)
-	{
-		q_createTemporaryNewFilesTable=db->Prepare("CREATE TEMPORARY TABLE files_new_tmp ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP );", false);
-	}
-	bool ret = q_createTemporaryNewFilesTable->Write();
-	return ret;
-}
-
-/**
-* @-SQLGenAccessNoCheck
-* @func void ServerBackupDao::dropTemporaryNewFilesTable
-* @sql
-*      DROP TABLE files_new_tmp
-*/
-void ServerBackupDao::dropTemporaryNewFilesTable(void)
-{
-	if(q_dropTemporaryNewFilesTable==NULL)
-	{
-		q_dropTemporaryNewFilesTable=db->Prepare("DROP TABLE files_new_tmp", false);
-	}
-	q_dropTemporaryNewFilesTable->Write();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::insertIntoTemporaryNewFilesTable
-* @sql
-*      INSERT INTO files_new_tmp ( fullpath, hashpath, shahash, filesize)
-*         VALUES ( :fullpath(string), :hashpath(string), :shahash(blob), :filesize(int64) )
-*/
-void ServerBackupDao::insertIntoTemporaryNewFilesTable(const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize)
-{
-	if(q_insertIntoTemporaryNewFilesTable==NULL)
-	{
-		q_insertIntoTemporaryNewFilesTable=db->Prepare("INSERT INTO files_new_tmp ( fullpath, hashpath, shahash, filesize) VALUES ( ?, ?, ?, ? )", false);
-	}
-	q_insertIntoTemporaryNewFilesTable->Bind(fullpath);
-	q_insertIntoTemporaryNewFilesTable->Bind(hashpath);
-	q_insertIntoTemporaryNewFilesTable->Bind(shahash.c_str(), (_u32)shahash.size());
-	q_insertIntoTemporaryNewFilesTable->Bind(filesize);
-	q_insertIntoTemporaryNewFilesTable->Write();
-	q_insertIntoTemporaryNewFilesTable->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesTable
-* @sql
-*      INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental)
-*          SELECT :backupid(int) AS backupid, fullpath, hashpath,
-*                 shahash, filesize, created, 0 AS rsize, 0 AS did_count, :clientid(int) AS clientid,
-*                 :incremental(int) AS incremental FROM files_new_tmp
-*/
-void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesTable(int backupid, int clientid, int incremental)
-{
-	if(q_copyFromTemporaryNewFilesTableToFilesTable==NULL)
-	{
-		q_copyFromTemporaryNewFilesTableToFilesTable=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, 0 AS did_count, ? AS clientid, ? AS incremental FROM files_new_tmp", false);
-	}
-	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(backupid);
-	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(clientid);
-	q_copyFromTemporaryNewFilesTableToFilesTable->Bind(incremental);
-	q_copyFromTemporaryNewFilesTableToFilesTable->Write();
-	q_copyFromTemporaryNewFilesTableToFilesTable->Reset();
-}
-
-/**
-* @-SQLGenAccess
-* @func void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesNewTable
-* @sql
-*      INSERT INTO files_new (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental)
-*          SELECT :backupid(int) AS backupid, fullpath, hashpath,
-*                 shahash, filesize, created, 0 AS rsize, :clientid(int) AS clientid,
-*                 :incremental(int) AS incremental FROM files_new_tmp
-*/
-void ServerBackupDao::copyFromTemporaryNewFilesTableToFilesNewTable(int backupid, int clientid, int incremental)
-{
-	if(q_copyFromTemporaryNewFilesTableToFilesNewTable==NULL)
-	{
-		q_copyFromTemporaryNewFilesTableToFilesNewTable=db->Prepare("INSERT INTO files_new (backupid, fullpath, hashpath, shahash, filesize, created, rsize, clientid, incremental) SELECT ? AS backupid, fullpath, hashpath, shahash, filesize, created, 0 AS rsize, ? AS clientid, ? AS incremental FROM files_new_tmp", false);
-	}
-	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(backupid);
-	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(clientid);
-	q_copyFromTemporaryNewFilesTableToFilesNewTable->Bind(incremental);
-	q_copyFromTemporaryNewFilesTableToFilesNewTable->Write();
-	q_copyFromTemporaryNewFilesTableToFilesNewTable->Reset();
-}
 
 /**
 * @-SQLGenAccess
@@ -683,6 +587,330 @@ std::vector<ServerBackupDao::SDuration> ServerBackupDao::getLastFullDurations(in
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setNextEntry
+* @sql
+*      UPDATE files SET next_entry=:next_entry(int64) WHERE id=:id(int64)
+*/
+void ServerBackupDao::setNextEntry(int64 next_entry, int64 id)
+{
+	if(q_setNextEntry==NULL)
+	{
+		q_setNextEntry=db->Prepare("UPDATE files SET next_entry=? WHERE id=?", false);
+	}
+	q_setNextEntry->Bind(next_entry);
+	q_setNextEntry->Bind(id);
+	q_setNextEntry->Write();
+	q_setNextEntry->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setPrevEntry
+* @sql
+*      UPDATE files SET prev_entry=:prev_entry(int64) WHERE id=:id(int64)
+*/
+void ServerBackupDao::setPrevEntry(int64 prev_entry, int64 id)
+{
+	if(q_setPrevEntry==NULL)
+	{
+		q_setPrevEntry=db->Prepare("UPDATE files SET prev_entry=? WHERE id=?", false);
+	}
+	q_setPrevEntry->Bind(prev_entry);
+	q_setPrevEntry->Bind(id);
+	q_setPrevEntry->Write();
+	q_setPrevEntry->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addFileEntry
+* @sql
+*	   INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry)
+*      VALUES (:backupid(int), :fullpath(string), :hashpath(string), :shahash(blob),
+*				:filesize(int64), :rsize(int64), :clientid(int), :incremental(int), 0, :prev_entry(int64))
+*/
+void ServerBackupDao::addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 prev_entry)
+{
+	if(q_addFileEntry==NULL)
+	{
+		q_addFileEntry=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)", false);
+	}
+	q_addFileEntry->Bind(backupid);
+	q_addFileEntry->Bind(fullpath);
+	q_addFileEntry->Bind(hashpath);
+	q_addFileEntry->Bind(shahash.c_str(), (_u32)shahash.size());
+	q_addFileEntry->Bind(filesize);
+	q_addFileEntry->Bind(rsize);
+	q_addFileEntry->Bind(clientid);
+	q_addFileEntry->Bind(incremental);
+	q_addFileEntry->Bind(prev_entry);
+	q_addFileEntry->Write();
+	q_addFileEntry->Reset();
+}
+
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::delFileEntry
+* @sql
+*	   DELETE FROM files WHERE id=:id(int64)
+*/
+void ServerBackupDao::delFileEntry(int64 id)
+{
+	if(q_delFileEntry==NULL)
+	{
+		q_delFileEntry=db->Prepare("DELETE FROM files WHERE id=?", false);
+	}
+	q_delFileEntry->Bind(id);
+	q_delFileEntry->Write();
+	q_delFileEntry->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func SFindFileEntry ServerBackupDao::getFileEntry
+* @return int64 id, string shahash, int backupid, int clientid, string fullpath, string hashpath, int64 filesize, int64 next_entry, int64 prev_entry, int64 rsize, int incremental
+* @sql
+*	   SELECT id, shahash, backupid, clientid, fullpath, hashpath, filesize, next_entry, prev_entry, rsize, incremental
+*      FROM files WHERE id=:id(int64)
+*/
+ServerBackupDao::SFindFileEntry ServerBackupDao::getFileEntry(int64 id)
+{
+	if(q_getFileEntry==NULL)
+	{
+		q_getFileEntry=db->Prepare("SELECT id, shahash, backupid, clientid, fullpath, hashpath, filesize, next_entry, prev_entry, rsize, incremental FROM files WHERE id=?", false);
+	}
+	q_getFileEntry->Bind(id);
+	db_results res=q_getFileEntry->Read();
+	q_getFileEntry->Reset();
+	SFindFileEntry ret = { false, 0, L"", 0, 0, L"", L"", 0, 0, 0, 0, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi64(res[0][L"id"]);
+		ret.shahash=res[0][L"shahash"];
+		ret.backupid=watoi(res[0][L"backupid"]);
+		ret.clientid=watoi(res[0][L"clientid"]);
+		ret.fullpath=res[0][L"fullpath"];
+		ret.hashpath=res[0][L"hashpath"];
+		ret.filesize=watoi64(res[0][L"filesize"]);
+		ret.next_entry=watoi64(res[0][L"next_entry"]);
+		ret.prev_entry=watoi64(res[0][L"prev_entry"]);
+		ret.rsize=watoi64(res[0][L"rsize"]);
+		ret.incremental=watoi(res[0][L"incremental"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func SStatFileEntry ServerBackupDao::getStatFileEntry
+* @return int64 id, int backupid, int clientid, int64 filesize, int64 rsize, string shahash, int64 next_entry, int64 prev_entry
+* @sql
+*	   SELECT id, backupid, clientid, filesize, rsize, shahash, next_entry, prev_entry
+*      FROM files WHERE id=:id(int64)
+*/
+ServerBackupDao::SStatFileEntry ServerBackupDao::getStatFileEntry(int64 id)
+{
+	if(q_getStatFileEntry==NULL)
+	{
+		q_getStatFileEntry=db->Prepare("SELECT id, backupid, clientid, filesize, rsize, shahash, next_entry, prev_entry FROM files WHERE id=?", false);
+	}
+	q_getStatFileEntry->Bind(id);
+	db_results res=q_getStatFileEntry->Read();
+	q_getStatFileEntry->Reset();
+	SStatFileEntry ret = { false, 0, 0, 0, 0, 0, L"", 0, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi64(res[0][L"id"]);
+		ret.backupid=watoi(res[0][L"backupid"]);
+		ret.clientid=watoi(res[0][L"clientid"]);
+		ret.filesize=watoi64(res[0][L"filesize"]);
+		ret.rsize=watoi64(res[0][L"rsize"]);
+		ret.shahash=res[0][L"shahash"];
+		ret.next_entry=watoi64(res[0][L"next_entry"]);
+		ret.prev_entry=watoi64(res[0][L"prev_entry"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addIncomingFile
+* @sql
+*       INSERT INTO files_incoming_stat (filesize, clientid, backupid, existing_clients, direction, incremental)
+*       VALUES (:filesize(int64), :clientid(int), :backupid(int), :existing_clients(string), :direction(int), :incremental(int))
+*/
+void ServerBackupDao::addIncomingFile(int64 filesize, int clientid, int backupid, const std::wstring& existing_clients, int direction, int incremental)
+{
+	if(q_addIncomingFile==NULL)
+	{
+		q_addIncomingFile=db->Prepare("INSERT INTO files_incoming_stat (filesize, clientid, backupid, existing_clients, direction, incremental) VALUES (?, ?, ?, ?, ?, ?)", false);
+	}
+	q_addIncomingFile->Bind(filesize);
+	q_addIncomingFile->Bind(clientid);
+	q_addIncomingFile->Bind(backupid);
+	q_addIncomingFile->Bind(existing_clients);
+	q_addIncomingFile->Bind(direction);
+	q_addIncomingFile->Bind(incremental);
+	q_addIncomingFile->Write();
+	q_addIncomingFile->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<SIncomingStat> ServerBackupDao::getIncomingStats
+* @return int64 id, int64 filesize, int clientid, int backupid, string existing_clients, int direction, int incremental
+* @sql
+*       SELECT id, filesize, clientid, backupid, existing_clients, direction, incremental
+*       FROM files_incoming_stat LIMIT 10000
+*/
+std::vector<ServerBackupDao::SIncomingStat> ServerBackupDao::getIncomingStats(void)
+{
+	if(q_getIncomingStats==NULL)
+	{
+		q_getIncomingStats=db->Prepare("SELECT id, filesize, clientid, backupid, existing_clients, direction, incremental FROM files_incoming_stat LIMIT 10000", false);
+	}
+	db_results res=q_getIncomingStats->Read();
+	std::vector<ServerBackupDao::SIncomingStat> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i].id=watoi64(res[i][L"id"]);
+		ret[i].filesize=watoi64(res[i][L"filesize"]);
+		ret[i].clientid=watoi(res[i][L"clientid"]);
+		ret[i].backupid=watoi(res[i][L"backupid"]);
+		ret[i].existing_clients=res[i][L"existing_clients"];
+		ret[i].direction=watoi(res[i][L"direction"]);
+		ret[i].incremental=watoi(res[i][L"incremental"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ServerBackupDao::getIncomingStatsCount
+* @return int64 c
+* @sql
+*       SELECT COUNT(*) AS c
+*       FROM files_incoming_stat
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::getIncomingStatsCount(void)
+{
+	if(q_getIncomingStatsCount==NULL)
+	{
+		q_getIncomingStatsCount=db->Prepare("SELECT COUNT(*) AS c FROM files_incoming_stat", false);
+	}
+	db_results res=q_getIncomingStatsCount->Read();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"c"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::delIncomingStatEntry
+* @sql
+*       DELETE FROM files_incoming_stat WHERE id=:id(int64)
+*/
+void ServerBackupDao::delIncomingStatEntry(int64 id)
+{
+	if(q_delIncomingStatEntry==NULL)
+	{
+		q_delIncomingStatEntry=db->Prepare("DELETE FROM files_incoming_stat WHERE id=?", false);
+	}
+	q_delIncomingStatEntry->Bind(id);
+	q_delIncomingStatEntry->Write();
+	q_delIncomingStatEntry->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getMiscValue
+* @return string tvalue
+* @sql
+*       SELECT tvalue FROM misc WHERE tkey=:tkey(string)
+*/
+ServerBackupDao::CondString ServerBackupDao::getMiscValue(const std::wstring& tkey)
+{
+	if(q_getMiscValue==NULL)
+	{
+		q_getMiscValue=db->Prepare("SELECT tvalue FROM misc WHERE tkey=?", false);
+	}
+	q_getMiscValue->Bind(tkey);
+	db_results res=q_getMiscValue->Read();
+	q_getMiscValue->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"tvalue"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addMiscValue
+* @sql
+*       INSERT INTO misc (tkey, tvalue) VALUES (:tkey(string), :tvalue(string))
+*/
+void ServerBackupDao::addMiscValue(const std::wstring& tkey, const std::wstring& tvalue)
+{
+	if(q_addMiscValue==NULL)
+	{
+		q_addMiscValue=db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)", false);
+	}
+	q_addMiscValue->Bind(tkey);
+	q_addMiscValue->Bind(tvalue);
+	q_addMiscValue->Write();
+	q_addMiscValue->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::delMiscValue
+* @sql
+*       DELETE FROM misc WHERE tkey=:tkey(string)
+*/
+void ServerBackupDao::delMiscValue(const std::wstring& tkey)
+{
+	if(q_delMiscValue==NULL)
+	{
+		q_delMiscValue=db->Prepare("DELETE FROM misc WHERE tkey=?", false);
+	}
+	q_delMiscValue->Bind(tkey);
+	q_delMiscValue->Write();
+	q_delMiscValue->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setClientUsedFilebackupSize
+* @sql
+*       UPDATE clients SET bytes_used_files=:bytes_used_files(int64) WHERE id=:id(int)
+*/
+void ServerBackupDao::setClientUsedFilebackupSize(int64 bytes_used_files, int id)
+{
+	if(q_setClientUsedFilebackupSize==NULL)
+	{
+		q_setClientUsedFilebackupSize=db->Prepare("UPDATE clients SET bytes_used_files=? WHERE id=?", false);
+	}
+	q_setClientUsedFilebackupSize->Bind(bytes_used_files);
+	q_setClientUsedFilebackupSize->Bind(id);
+	q_setClientUsedFilebackupSize->Write();
+	q_setClientUsedFilebackupSize->Reset();
+}
+
+
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -707,15 +935,24 @@ void ServerBackupDao::prepareQueries( void )
 	q_copyToTemporaryLastFilesTable=NULL;
 	q_getFileEntryFromTemporaryTable=NULL;
 	q_getFileEntriesFromTemporaryTableGlob=NULL;
-	q_createTemporaryNewFilesTable=NULL;
-	q_dropTemporaryNewFilesTable=NULL;
-	q_insertIntoTemporaryNewFilesTable=NULL;
-	q_copyFromTemporaryNewFilesTableToFilesTable=NULL;
-	q_copyFromTemporaryNewFilesTableToFilesNewTable=NULL;
 	q_insertIntoOrigClientSettings=NULL;
 	q_getOrigClientSettings=NULL;
 	q_getLastIncrementalDurations=NULL;
 	q_getLastFullDurations=NULL;
+	q_setNextEntry=NULL;
+	q_setPrevEntry=NULL;
+	q_addFileEntry=NULL;
+	q_delFileEntry=NULL;
+	q_getFileEntry=NULL;
+	q_getStatFileEntry=NULL;
+	q_addIncomingFile=NULL;
+	q_getIncomingStats=NULL;
+	q_getIncomingStatsCount=NULL;
+	q_delIncomingStatEntry=NULL;
+	q_getMiscValue=NULL;
+	q_addMiscValue=NULL;
+	q_delMiscValue=NULL;
+	q_setClientUsedFilebackupSize=NULL;
 }
 
 //@-SQLGenDestruction
@@ -742,15 +979,24 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_copyToTemporaryLastFilesTable);
 	db->destroyQuery(q_getFileEntryFromTemporaryTable);
 	db->destroyQuery(q_getFileEntriesFromTemporaryTableGlob);
-	db->destroyQuery(q_createTemporaryNewFilesTable);
-	db->destroyQuery(q_dropTemporaryNewFilesTable);
-	db->destroyQuery(q_insertIntoTemporaryNewFilesTable);
-	db->destroyQuery(q_copyFromTemporaryNewFilesTableToFilesTable);
-	db->destroyQuery(q_copyFromTemporaryNewFilesTableToFilesNewTable);
 	db->destroyQuery(q_insertIntoOrigClientSettings);
 	db->destroyQuery(q_getOrigClientSettings);
 	db->destroyQuery(q_getLastIncrementalDurations);
 	db->destroyQuery(q_getLastFullDurations);
+	db->destroyQuery(q_setNextEntry);
+	db->destroyQuery(q_setPrevEntry);
+	db->destroyQuery(q_addFileEntry);
+	db->destroyQuery(q_delFileEntry);
+	db->destroyQuery(q_getFileEntry);
+	db->destroyQuery(q_getStatFileEntry);
+	db->destroyQuery(q_addIncomingFile);
+	db->destroyQuery(q_getIncomingStats);
+	db->destroyQuery(q_getIncomingStatsCount);
+	db->destroyQuery(q_delIncomingStatEntry);
+	db->destroyQuery(q_getMiscValue);
+	db->destroyQuery(q_addMiscValue);
+	db->destroyQuery(q_delMiscValue);
+	db->destroyQuery(q_setClientUsedFilebackupSize);
 }
 
 void ServerBackupDao::commit()
@@ -771,4 +1017,28 @@ void ServerBackupDao::beginTransaction()
 void ServerBackupDao::endTransaction()
 {
 	db->EndTransaction();
+}
+
+int64 ServerBackupDao::addFileEntryExternal( int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 prev_entry )
+{
+	addFileEntry(backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, prev_entry);
+
+	int64 id = db->getLastInsertID();
+
+	if(prev_entry!=0)
+	{
+		setNextEntry(id, prev_entry);
+	}
+
+	return id;
+}
+
+void ServerBackupDao::detachDbs()
+{
+	db->DetachDBs();
+}
+
+void ServerBackupDao::attachDbs()
+{
+	db->AttachDBs();
 }

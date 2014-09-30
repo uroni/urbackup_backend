@@ -10,11 +10,21 @@ public:
 
 	void commit();
 	int64 getLastId();
+	void detachDbs();
+	void attachDbs();
 	void beginTransaction();
 	void endTransaction();
 
+	static const int c_direction_outgoing;
+	static const int c_direction_incoming;
+
 
 	//@-SQLGenFunctionsBegin
+	struct CondInt64
+	{
+		bool exists;
+		int64 value;
+	};
 	struct CondString
 	{
 		bool exists;
@@ -42,6 +52,44 @@ public:
 		std::wstring hashpath;
 		std::string shahash;
 		int64 filesize;
+		int64 rsize;
+	};
+	struct SFindFileEntry
+	{
+		bool exists;
+		int64 id;
+		std::wstring shahash;
+		int backupid;
+		int clientid;
+		std::wstring fullpath;
+		std::wstring hashpath;
+		int64 filesize;
+		int64 next_entry;
+		int64 prev_entry;
+		int64 rsize;
+		int incremental;
+	};
+	struct SIncomingStat
+	{
+		int64 id;
+		int64 filesize;
+		int clientid;
+		int backupid;
+		std::wstring existing_clients;
+		int direction;
+		int incremental;
+	};
+	struct SStatFileEntry
+	{
+		bool exists;
+		int64 id;
+		int backupid;
+		int clientid;
+		int64 filesize;
+		int64 rsize;
+		std::wstring shahash;
+		int64 next_entry;
+		int64 prev_entry;
 	};
 
 
@@ -66,16 +114,27 @@ public:
 	bool copyToTemporaryLastFilesTable(int backupid);
 	SFileEntry getFileEntryFromTemporaryTable(const std::wstring& fullpath);
 	std::vector<SFileEntry> getFileEntriesFromTemporaryTableGlob(const std::wstring& fullpath_glob);
-	bool createTemporaryNewFilesTable(void);
-	void dropTemporaryNewFilesTable(void);
-	void insertIntoTemporaryNewFilesTable(const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize);
-	void copyFromTemporaryNewFilesTableToFilesTable(int backupid, int clientid, int incremental);
-	void copyFromTemporaryNewFilesTableToFilesNewTable(int backupid, int clientid, int incremental);
 	void insertIntoOrigClientSettings(int clientid, std::string data);
 	CondString getOrigClientSettings(int clientid);
 	std::vector<SDuration> getLastIncrementalDurations(int clientid);
 	std::vector<SDuration> getLastFullDurations(int clientid);
+	void setNextEntry(int64 next_entry, int64 id);
+	void setPrevEntry(int64 prev_entry, int64 id);
+	void addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 prev_entry);
+	void delFileEntry(int64 id);
+	SFindFileEntry getFileEntry(int64 id);
+	SStatFileEntry getStatFileEntry(int64 id);
+	void addIncomingFile(int64 filesize, int clientid, int backupid, const std::wstring& existing_clients, int direction, int incremental);
+	std::vector<SIncomingStat> getIncomingStats(void);
+	CondInt64 getIncomingStatsCount(void);
+	void delIncomingStatEntry(int64 id);
+	CondString getMiscValue(const std::wstring& tkey);
+	void addMiscValue(const std::wstring& tkey, const std::wstring& tvalue);
+	void delMiscValue(const std::wstring& tkey);
+	void setClientUsedFilebackupSize(int64 bytes_used_files, int id);
 	//@-SQLGenFunctionsEnd
+
+	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 prev_entry);
 
 private:
 	ServerBackupDao(ServerBackupDao& other) {}
@@ -106,15 +165,24 @@ private:
 	IQuery* q_copyToTemporaryLastFilesTable;
 	IQuery* q_getFileEntryFromTemporaryTable;
 	IQuery* q_getFileEntriesFromTemporaryTableGlob;
-	IQuery* q_createTemporaryNewFilesTable;
-	IQuery* q_dropTemporaryNewFilesTable;
-	IQuery* q_insertIntoTemporaryNewFilesTable;
-	IQuery* q_copyFromTemporaryNewFilesTableToFilesTable;
-	IQuery* q_copyFromTemporaryNewFilesTableToFilesNewTable;
 	IQuery* q_insertIntoOrigClientSettings;
 	IQuery* q_getOrigClientSettings;
 	IQuery* q_getLastIncrementalDurations;
 	IQuery* q_getLastFullDurations;
+	IQuery* q_setNextEntry;
+	IQuery* q_setPrevEntry;
+	IQuery* q_addFileEntry;
+	IQuery* q_delFileEntry;
+	IQuery* q_getFileEntry;
+	IQuery* q_getStatFileEntry;
+	IQuery* q_addIncomingFile;
+	IQuery* q_getIncomingStats;
+	IQuery* q_getIncomingStatsCount;
+	IQuery* q_delIncomingStatEntry;
+	IQuery* q_getMiscValue;
+	IQuery* q_addMiscValue;
+	IQuery* q_delMiscValue;
+	IQuery* q_setClientUsedFilebackupSize;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

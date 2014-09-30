@@ -408,25 +408,6 @@ ServerCleanupDao::SImageBackupInfo ServerCleanupDao::getImageBackupInfo(int back
 	return ret;
 }
 
-/**
-* @-SQLGenAccess
-* @func void ServerCleanupDao::moveFiles
-* @sql
-*	INSERT INTO files_del
-*		(backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del)
-*	SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 1 AS is_del
-*		FROM files WHERE backupid=:backupid(int)
-*/
-void ServerCleanupDao::moveFiles(int backupid)
-{
-	if(q_moveFiles==NULL)
-	{
-		q_moveFiles=db->Prepare("INSERT INTO files_del (backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, is_del) SELECT backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, 1 AS is_del FROM files WHERE backupid=?", false);
-	}
-	q_moveFiles->Bind(backupid);
-	q_moveFiles->Write();
-	q_moveFiles->Reset();
-}
 
 /**
 * @-SQLGenAccess
@@ -957,7 +938,6 @@ void ServerCleanupDao::createQueries(void)
 	q_removeFileBackup=NULL;
 	q_getFileBackupInfo=NULL;
 	q_getImageBackupInfo=NULL;
-	q_moveFiles=NULL;
 	q_removeImageSize=NULL;
 	q_addToImageStats=NULL;
 	q_updateDelImageStats=NULL;
@@ -1000,7 +980,6 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_removeFileBackup);
 	db->destroyQuery(q_getFileBackupInfo);
 	db->destroyQuery(q_getImageBackupInfo);
-	db->destroyQuery(q_moveFiles);
 	db->destroyQuery(q_removeImageSize);
 	db->destroyQuery(q_addToImageStats);
 	db->destroyQuery(q_updateDelImageStats);

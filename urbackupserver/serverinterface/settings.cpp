@@ -139,9 +139,6 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(internet_incr_file_transfer_mode);
 	SET_SETTING(local_image_transfer_mode);
 	SET_SETTING(internet_image_transfer_mode);
-	SET_SETTING(file_hash_collect_amount);
-	SET_SETTING(file_hash_collect_timeout);
-	SET_SETTING(file_hash_collect_cachesize);
 	SET_SETTING(end_to_end_file_backup_verification);
 	SET_SETTING(internet_calculate_filehashes_on_client);
 	SET_SETTING(image_file_format);
@@ -181,9 +178,6 @@ void getGeneralSettings(JSON::Object& obj, IDatabase *db, ServerSettings &settin
 	SET_SETTING(use_tmpfiles_images);
 	SET_SETTING(tmpdir);
 	SET_SETTING(update_stats_cachesize);
-	SET_SETTING(filescache_type);
-	SET_SETTING(filescache_size);
-	SET_SETTING(suspend_index_limit);
 	SET_SETTING(use_incremental_symlinks);
 	SET_SETTING(trust_client_hashes);
 	SET_SETTING(show_server_updates);

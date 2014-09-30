@@ -266,6 +266,7 @@ fi
 if [ "x$RUN_IN_GDB" = "x1" ]
 then
 	cd $DAEMON_DIR
+	export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
 	gdb --args $DAEMON $S_DAEMON $DAEMON_ARGS
 elif [ "x$RUN_IN_VALGRIND" = "x1" ]
 then
@@ -282,5 +283,7 @@ else
 	if [ "x$DECOMPRESS" = "x" ]; then
 		cd $DAEMON_DIR
 	fi
+	export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"
 	exec $DAEMON $S_DAEMON $DAEMON_ARGS
 fi
+

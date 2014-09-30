@@ -8,7 +8,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "ChunkPatcher.h"
 #include "server_prepare_hash.h"
-#include "FileCache.h"
+#include "FileIndex.h"
 #include "dao/ServerBackupDao.h"
 #include <vector>
 
@@ -52,26 +52,36 @@ public:
 	void deinitDatabase(void);
 
 	bool findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, 
-		bool copy_from_hardlink_if_failed, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file);
+		bool copy_from_hardlink_if_failed, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int64& entryclientid, int64& rsize);
 
-	void addFileSQL(int backupid, char incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize);
+	void addFileSQL(int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 next_entry, int64 next_entry_clientid);
 
-	void copyFromTmpTable(bool force);
+	static void addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 next_entry, int64 next_entry_clientid);
+
+	static void deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id,
+		bool use_transaction, bool del_entry);
 
 private:
-	void prepareSQL(void);
-	void addFile(int backupid, char incremental, IFile *tf, const std::wstring &tfn,
+	void addFile(int backupid, int incremental, IFile *tf, const std::wstring &tfn,
 			std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize);
-	std::wstring findFileHash(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath, bool& cache_hit);
-	std::wstring findFileHashTmp(const std::string &pHash, _i64 filesize, int &backupid, std::wstring &hashpath);
+
+	struct SFindState
+	{
+		SFindState()
+			: state(0) {}
+
+		int state;
+		ServerBackupDao::SFindFileEntry prev;
+		std::map<int, int64> entryids;
+		std::map<int, int64>::iterator client;
+	};
+
+	ServerBackupDao::SFindFileEntry findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state);
+
 	bool copyFile(IFile *tf, const std::wstring &dest);
 	bool copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
 	bool freeSpace(int64 fs, const std::wstring &fp);
 	
-	void addFileTmp(int backupid, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize);
-	void deleteFileSQL(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid);
-	void deleteFileTmp(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid);
-	void copyFilesFromTmp(void);
 	int countFilesInTmp(void);
 	IFile* openFileRetry(const std::wstring &dest, int mode);
 	bool patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest);
@@ -88,24 +98,12 @@ private:
 
 	std::map<std::pair<std::string, _i64>, std::vector<STmpFile> > files_tmp;
 
-	IQuery *q_find_file_hash;
-	IQuery *q_delete_files_tmp;
-	IQuery *q_add_file;
-	IQuery *q_del_file;
-	IQuery *q_move_del_file;
-	IQuery *q_del_file_tmp;
-	IQuery *q_copy_files;
-	IQuery *q_copy_files_to_new;
-	IQuery *q_delete_all_files_tmp;
-	IQuery *q_count_files_tmp;
-
 	ServerBackupDao* backupdao;
 
 	IPipe *pipe;
 
 	IDatabase *db;
 
-	int tmp_count;
 	int link_logcnt;
 	int space_logcnt;
 
@@ -123,9 +121,11 @@ private:
 	bool use_tmpfiles;
 	_i64 chunk_patch_pos;
 
+	_i64 cow_filesize;
+
 	int copy_limit;
 
-	FileCache *filecache;
+	FileIndex *fileindex;
 
 	std::wstring backupfolder;
 	bool old_backupfolders_loaded;
