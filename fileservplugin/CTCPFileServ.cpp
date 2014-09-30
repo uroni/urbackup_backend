@@ -111,7 +111,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 	if(rc == SOCKET_ERROR)	return false;
 #endif
 
-	//start tcpsock
+	if(tcpport!=0)
 	{
 		mSocket=socket(AF_INET,SOCK_STREAM,0);
 		if(mSocket<1) return false;
@@ -172,19 +172,12 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		delete udpthread;
 		udpthread=NULL;
 	}
-	if(udpthread==NULL)
+	if(udpthread==NULL && udpport!=0)
 	{
 		udpthread=new CUDPThread(udpport,pServername, use_fqdn);
 		if(!udpthread->hasError())
 		{
-			if(Server->getServerParameter("internet_only_mode")!="true")
-			{
-				udpticket=Server->getThreadPool()->execute(udpthread);
-			}
-			else
-			{
-				udpticket=ILLEGAL_THREADPOOL_TICKET;
-			}
+			udpticket=Server->getThreadPool()->execute(udpthread);
 		}
 		else
 		{
@@ -209,6 +202,12 @@ bool CTCPFileServ::Run(void)
 
 bool CTCPFileServ::TcpStep(void)
 {
+	if(m_tcpport==0)
+	{
+		Server->wait(REFRESH_SECONDS*1000);
+		return true;
+	}
+
 	socklen_t addrsize=sizeof(sockaddr_in);
 
 #ifdef _WIN32

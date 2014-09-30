@@ -153,6 +153,9 @@
     <ClCompile Include="DatabaseCursor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SharedMutex_boost.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcceptThread.h">
@@ -357,6 +360,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Interface\DatabaseCursor.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="SharedMutex_boost.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\SharedMutex.h">
       <Filter>Interface</Filter>
     </ClInclude>
   </ItemGroup>

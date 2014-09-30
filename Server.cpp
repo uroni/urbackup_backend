@@ -64,12 +64,14 @@
 #include <boost/bind.hpp>
 #include "Mutex_boost.h"
 #include "Condition_boost.h"
+#include "SharedMutex_boost.h"
 #else
 #ifdef _WIN32
 #else
 #include <pthread.h>
 #include "Mutex_lin.h"
 #include "Condition_lin.h"
+#include "SharedMutex_lin.h"
 #endif
 #endif
 
@@ -1861,4 +1863,9 @@ void CServer::clearFailBit(size_t failbit)
 size_t CServer::getFailBits(void)
 {
 	return failbits;
+}
+
+ISharedMutex* CServer::createSharedMutex()
+{
+	return new SharedMutex;
 }

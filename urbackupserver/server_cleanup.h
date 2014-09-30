@@ -7,6 +7,8 @@
 #include "dao/ServerCleanupDao.h"
 #include "dao/ServerBackupDao.h"
 #include <sstream>
+#include <memory>
+#include "FileIndex.h"
 
 class ServerSettings;
 
@@ -117,6 +119,8 @@ private:
 
 	bool deleteFileBackup(const std::wstring &backupfolder, int clientid, int backupid, bool force_remove=false);
 
+	void removeFileBackupSql( int backupid );
+
 	void deletePendingClients(void);
 
 	void backup_database(void);
@@ -153,4 +157,5 @@ private:
 
 	ServerCleanupDao* cleanupdao;
 	ServerBackupDao* backupdao;
+	std::auto_ptr<FileIndex> fileindex;
 };

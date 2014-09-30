@@ -209,3 +209,7 @@ urbackup/server_ident.priv
 urbackup/server_ident.pub
 urbackupserver/www/polib.pyc
 urbackup/server_version_info.properties
+tokens/*
+access_keys.properties
+urbackup/old_db/*
+urbackup/fileindex/*

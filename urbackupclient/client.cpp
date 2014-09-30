@@ -2536,6 +2536,12 @@ void IndexThread::start_filesrv(void)
 		}
 	}
 
+	if(Server->getServerParameter("internet_only_mode")=="true")
+	{
+		curr_tcpport=0;
+		curr_udpport=0;
+	}
+
 	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn);
 	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
 

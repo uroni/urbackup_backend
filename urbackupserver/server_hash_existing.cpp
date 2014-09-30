@@ -53,7 +53,7 @@ void ServerHashExisting::operator()()
 			int64 filesize = f->Size();
 			std::string sha2 = BackupServerPrepareHash::hash_sha512(f);
 
-			server_get->addExistingHash(item.fullpath, item.hashpath, sha2, filesize);
+			server_get->addExistingHash(item.fullpath, item.hashpath, sha2, filesize, -1);
 		}
 	}
 }

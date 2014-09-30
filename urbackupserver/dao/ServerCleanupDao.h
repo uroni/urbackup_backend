@@ -98,7 +98,6 @@ public:
 	void removeFileBackup(int backupid);
 	SFileBackupInfo getFileBackupInfo(int backupid);
 	SImageBackupInfo getImageBackupInfo(int backupid);
-	void moveFiles(int backupid);
 	void removeImageSize(int backupid);
 	void addToImageStats(int64 size_correction, int backupid);
 	void updateDelImageStats(int64 rowid);
@@ -145,7 +144,6 @@ private:
 	IQuery* q_removeFileBackup;
 	IQuery* q_getFileBackupInfo;
 	IQuery* q_getImageBackupInfo;
-	IQuery* q_moveFiles;
 	IQuery* q_removeImageSize;
 	IQuery* q_addToImageStats;
 	IQuery* q_updateDelImageStats;

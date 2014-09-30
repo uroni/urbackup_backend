@@ -4,6 +4,10 @@
 #include "../../stringtools.h"
 #include "../server_cleanup.h"
 #include "../server.h"
+#include "../serverinterface/helper.h"
+#include "../create_files_index.h"
+
+extern SStartupStatus startup_status;
 
 
 int64 cleanup_amount(std::string cleanup_pc, IDatabase *db)
@@ -68,6 +72,12 @@ int cleanup_cmd(void)
 	bool use_bdb;
 	open_server_database(use_bdb, true);
 	open_settings_database(use_bdb);
+
+	if(!create_files_index(startup_status))
+	{
+		Server->Log("Error opening files index...", LL_INFO);
+		return 2;
+	}
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	if(db==NULL)
@@ -149,7 +159,7 @@ int defrag_database(void)
 
 	Server->Log("Deleting file entry cache, if present...", LL_INFO);
 
-	delete_file_caches();
+	delete_file_index();
 
 	Server->Log("Done.");
 

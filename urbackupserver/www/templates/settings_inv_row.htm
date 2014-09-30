@@ -306,34 +306,10 @@
 <td>{tInternet image backup transfer mode}:</td>
 <td><select size="1" style="width: 150px;" id="internet_image_transfer_mode"><option value="raw" {internet_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_image_transfer_mode_1}>{tHashed}</option></select></td>
 </tr>
-<tr>
-<td>{tFile hash collection amount}:</td>
-<td><input type="text" size="10" id="file_hash_collect_amount" value="{file_hash_collect_amount}"/> </td>
-</tr>
-<tr>
-<td>{tFile hash collection timeout}:</td>
-<td><input type="text" size="10" id="file_hash_collect_timeout" value="{file_hash_collect_timeout}"/> </td>
-</tr>
-<tr>
-<td>{tFile hash collection database cachesize}:</td>
-<td><input type="text" size="10" id="file_hash_collect_cachesize" value="{file_hash_collect_cachesize}"/> {tMB}</td>
-</tr>
 {global_settings_start|s}
 <tr>
 <td>{tUpdate stats database cachesize}:</td>
 <td><input type="text" size="10" id="update_stats_cachesize" value="{update_stats_cachesize}"/> {tMB}</td>
-</tr>
-<tr>
-<td>{tCache database type for file entries}:</td>
-<td><select size="1" style="width: 150px;" id="filescache_type"><option value="none" {filescache_type_0}>{tNone}</option><option value="lmdb" {filescache_type_1}>LMDB</option><option value="sqlite" {filescache_type_2}>SQLite</option></select></td>
-</tr>
-<tr>
-<td>{tCache database size for file entries}:</td>
-<td><input type="text" size="10" id="filescache_size" value="{filescache_size}"/> {tMB}</td>
-</tr>
-<tr>
-<td>{tSuspend index limit}:</td>
-<td><input type="text" size="10" id="suspend_index_limit" value="{suspend_index_limit}"/></td>
 </tr>
 <tr>
 <td>{tUse symlinks during incremental file backups}:</td>

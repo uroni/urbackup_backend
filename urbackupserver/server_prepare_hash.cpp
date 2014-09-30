@@ -76,8 +76,8 @@ void BackupServerPrepareHash::operator()(void)
 			int backupid;
 			rd.getInt(&backupid);
 
-			char incremental;
-			rd.getChar(&incremental);
+			int incremental;
+			rd.getInt(&incremental);
 
 			std::string tfn;
 			rd.getStr(&tfn);
@@ -142,7 +142,7 @@ void BackupServerPrepareHash::operator()(void)
 				data.addInt(BackupServerHash::EAction_LinkOrCopy);
 				data.addString(temp_fn);
 				data.addInt(backupid);
-				data.addChar(incremental);
+				data.addInt(incremental);
 				data.addString(tfn);
 				data.addString(hashpath);
 				data.addString(h);
@@ -200,7 +200,7 @@ bool BackupServerPrepareHash::isWorking(void)
 	return working;
 }
 
-std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace)
+std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written)
 {
 	f->Seek(0);
 
@@ -251,6 +251,11 @@ std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutp
 						copy->Seek(copy_write_pos);
 						if(!writeRepeatFreeSpace(copy, buf, r, cb) )
 							return "";
+
+						if(inplace_written!=NULL)
+						{
+							*inplace_written+=r;
+						}
 					}
 
 					copy_write_pos+=r;

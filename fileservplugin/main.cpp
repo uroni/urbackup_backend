@@ -379,11 +379,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		return 99;
 	}
 
-#ifdef CAMPUS
-	ct=new CCampusThread(getServerName());
-	Server->createThread(ct);
-#endif
-	
+
 #ifndef AS_SERVICE
 	while(true)
 	{

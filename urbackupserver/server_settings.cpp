@@ -298,14 +298,8 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_incr_file_transfer_mode=settings_default->getValue("internet_incr_file_transfer_mode", "blockhash");
 	settings->local_image_transfer_mode=settings_default->getValue("local_image_transfer_mode", "hashed");
 	settings->internet_image_transfer_mode=settings_default->getValue("internet_image_transfer_mode", "hashed");
-	settings->file_hash_collect_amount=static_cast<size_t>(settings_default->getValue("file_hash_collect_amount", 1000));
-	settings->file_hash_collect_timeout=static_cast<size_t>(settings_default->getValue("file_hash_collect_timeout", 10000));
-	settings->file_hash_collect_cachesize=static_cast<size_t>(settings_default->getValue("file_hash_collect_cachesize", 40960));
 	settings->update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 409600));
 	settings->global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
-	settings->filescache_type=settings_default->getValue("filescache_type", "none");
-	settings->filescache_size=watoi64(settings_default->getValue(L"filescache_size", L"68719476736")); //64GB
-	settings->suspend_index_limit=settings_default->getValue("suspend_index_limit", 100000);
 	settings->client_quota=settings_default->getValue("client_quota", "100%");
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 	if(is_big_endian())
@@ -442,9 +436,6 @@ void ServerSettings::readSettingsClient(void)
 	readStringClientSetting("internet_incr_file_transfer_mode", &settings->internet_incr_file_transfer_mode);
 	readStringClientSetting("local_image_transfer_mode", &settings->local_image_transfer_mode);
 	readStringClientSetting("internet_image_transfer_mode", &settings->internet_image_transfer_mode);
-	readSizeClientSetting("file_hash_collect_amount", &settings->file_hash_collect_amount);
-	readSizeClientSetting("file_hash_collect_timeout", &settings->file_hash_collect_timeout);
-	readSizeClientSetting("file_hash_collect_cachesize", &settings->file_hash_collect_cachesize);
 
 	readBoolClientSetting("end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
 	if(is_big_endian())

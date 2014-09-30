@@ -2858,7 +2858,7 @@ mdb_env_open2(MDB_env *env)
 		/* Windows won't create mappings for zero length files.
 		 * Just allocate the maxsize right now.
 		 */
-		if (newenv) {
+		if (newenv || meta.mm_mapsize<env->me_mapsize) {
 			SetFilePointer(env->me_fd, sizelo, sizehi ? &sizehi : NULL, 0);
 			if (!SetEndOfFile(env->me_fd))
 				return ErrCode();

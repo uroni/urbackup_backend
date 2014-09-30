@@ -303,9 +303,7 @@ function getPar(p)
 	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
 	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
 	if(p=="global_internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
-	if(p=="file_hash_collect_cachesize") val=Math.round(val*1024);
 	if(p=="update_stats_cachesize") val=Math.round(val*1024);
-	if(p=="filescache_size") val*=1024*1024;
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
@@ -1494,10 +1492,6 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
-			var filescache_type_params=["none", "lmdb", "sqlite"];
-			data.settings=addSelectSelected(filescache_type_params, "filescache_type", data.settings);
-			data.settings.filescache_size/=1024.0*1024.0;
-			
 			var image_file_format_params = ["vhdz", "vhd"];
 			data.settings=addSelectSelected(image_file_format_params, "image_file_format", data.settings);
 			
@@ -1875,9 +1869,6 @@ g.settings_list=[
 "internet_incr_file_transfer_mode",
 "local_image_transfer_mode",
 "internet_image_transfer_mode",
-"file_hash_collect_amount",
-"file_hash_collect_timeout",
-"file_hash_collect_cachesize",
 "internet_calculate_filehashes_on_client",
 "image_file_format",
 "internet_connect_always",
@@ -1902,9 +1893,6 @@ g.general_settings_list=[
 "use_tmpfiles_images",
 "update_stats_cachesize",
 "global_soft_fs_quota",
-"filescache_type",
-"filescache_size",
-"suspend_index_limit",
 "use_incremental_symlinks",
 "trust_client_hashes",
 "show_server_updates"

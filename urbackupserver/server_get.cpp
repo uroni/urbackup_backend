@@ -53,6 +53,7 @@
 #include <math.h>
 #include <errno.h>
 #include <string.h>
+#include "create_files_index.h"
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
 #endif
@@ -472,11 +473,8 @@ void BackupServerGet::operator ()(void)
 	ServerChannelThread channel_thread(this, clientid, internet_connection, identity);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
-	if(internet_connection && server_settings->getSettings()->internet_calculate_filehashes_on_client)
-	{
-		local_hash=new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles);
-		local_hash->setupDatabase();
-	}
+	local_hash=new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles);
+	local_hash->setupDatabase();
 
 	bool received_client_settings=true;
 	ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
@@ -826,11 +824,6 @@ void BackupServerGet::operator ()(void)
 				do_incr_image_now=false;
 			}
 
-			if(local_hash!=NULL)
-			{
-				local_hash->copyFromTmpTable(true);
-			}
-
 			if(hbu)
 			{
 				if(disk_error)
@@ -947,7 +940,7 @@ void BackupServerGet::operator ()(void)
 			}
 			if(hbu)
 			{
-				ServerCleanupThread::updateStats(true);
+				ServerCleanupThread::updateStats(false);
 			}
 
 			if(pingthread!=NULL)
@@ -2037,13 +2030,16 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 	std::wstring ff_last;
 	bool hardlink_limit;
 	bool copied_file;
+	int64 entryid=0;
+	int64 entryclientid = 0;
+	int64 rsize = 0;
 	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), true,
-		tries_once, ff_last, hardlink_limit, copied_file);
+		tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize);
 
 	if(ok && add_sql)
 	{
-		local_hash->addFileSQL(backupid, 0, dstpath, hashpath, sha2, filesize, copied_file?filesize:0);
-		local_hash->copyFromTmpTable(false);
+		local_hash->addFileSQL(backupid, clientid, 0, dstpath, hashpath, sha2, filesize,
+			(rsize>0 && rsize!=filesize)?rsize:(copied_file?filesize:0), entryid, entryclientid);
 	}
 
 	if(ok)
@@ -2398,15 +2394,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	bool trust_client_hashes = server_settings->getSettings()->trust_client_hashes;
 
-	if( copy_last_file_entries || readd_file_entries_sparse )
-	{
-		if(!backup_dao->createTemporaryNewFilesTable())
-		{
-			copy_last_file_entries=false;
-			readd_file_entries_sparse=false;
-		}
-	}
-
 	if(copy_last_file_entries)
 	{
 		copy_last_file_entries = copy_last_file_entries && backup_dao->createTemporaryLastFilesTable();
@@ -2417,6 +2404,13 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		{
 			readd_file_entries_sparse=false;
 		}
+	}
+
+	std::auto_ptr<FileIndex> fileindex;
+
+	if(!fileindex.get())
+	{
+		fileindex.reset(create_lmdb_files_index());
 	}
 
 	IFile *clientlist=Server->openFile("urbackup/clientlist_"+nconvert(clientid)+"_new.ub", MODE_WRITE);
@@ -2654,8 +2648,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 												entry_hashpath = backuppath_hashes+local_curr_os_path + file_entries[i].hashpath.substr(src_hashpath.size());
 											}
 
-											backup_dao->insertIntoTemporaryNewFilesTable(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
-												file_entries[i].shahash, file_entries[i].filesize);
+											addFileEntrySQLWithExisting(backuppath + local_curr_os_path + file_entries[i].fullpath.substr(srcpath.size()), entry_hashpath,
+												file_entries[i].shahash, file_entries[i].filesize, 0, incremental_num);
 
 											++num_copied_file_entries;
 										}
@@ -2845,8 +2839,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 						if(fileEntry.exists)
 						{
-							backup_dao->insertIntoTemporaryNewFilesTable(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
-								fileEntry.shahash, fileEntry.filesize);
+							addFileEntrySQLWithExisting(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
+								fileEntry.shahash, fileEntry.filesize, fileEntry.rsize, incremental_num);
 							++num_copied_file_entries;
 
 							readd_curr_file_entry_sparse=false;
@@ -2946,7 +2940,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		Server->getThreadPool()->waitFor(server_hash_existing_ticket);
 	}
 
-	addExistingHashesToDb();
+	addExistingHashesToDb(incremental_num);
 
 	if(copy_last_file_entries || readd_file_entries_sparse)
 	{
@@ -2961,19 +2955,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		{
 			ServerLogger::Log(clientid, L"Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
 		}
-
-		if(!r_offline && !c_has_error)
-		{
-			ServerLogger::Log(clientid, L"Copying to new file entry table, because the backup succeeded...", LL_DEBUG);
-			backup_dao->copyFromTemporaryNewFilesTableToFilesNewTable(backupid, clientid, incremental_num);
-		}
-		else
-		{
-			ServerLogger::Log(clientid, L"Copying to final file entry table, because the backup failed...", LL_DEBUG);
-			backup_dao->copyFromTemporaryNewFilesTableToFilesTable(backupid, clientid, incremental_num);
-		}
-
-		backup_dao->dropTemporaryNewFilesTable();
 
 		if(copy_last_file_entries)
 		{
@@ -4838,6 +4819,10 @@ bool BackupServerGet::verify_file_backup(IFile *fileentries)
 							ServerLogger::Log(clientid, msg, LL_ERROR);
 							log << msg << std::endl;
 						}
+						else
+						{
+							++verified_files;
+						}
 					}
 					else if(getSHA256(curr_path+os_file_sep()+cfn)!=sha256hex)
 					{
@@ -5133,7 +5118,7 @@ void BackupServerGet::calculateEtaFileBackup( int64 &last_eta_update, int64 ctim
 	last_eta_received_bytes = received_data_bytes;
 }
 
-void BackupServerGet::addExistingHash( const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize )
+void BackupServerGet::addExistingHash( const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize , int64 rsize)
 {
 	ServerBackupDao::SFileEntry file_entry;
 	file_entry.exists = true;
@@ -5141,18 +5126,19 @@ void BackupServerGet::addExistingHash( const std::wstring& fullpath, const std::
 	file_entry.hashpath = hashpath;
 	file_entry.shahash = shahash;
 	file_entry.filesize = filesize;
+	file_entry.rsize = rsize;
 
 	IScopedLock lock(hash_existing_mutex);
 	hash_existing.push_back(file_entry);
 }
 
-void BackupServerGet::addExistingHashesToDb()
+void BackupServerGet::addExistingHashesToDb(int incremental)
 {
 	IScopedLock lock(hash_existing_mutex);
 	for(size_t i=0;i<hash_existing.size();++i)
 	{
-		backup_dao->insertIntoTemporaryNewFilesTable(hash_existing[i].fullpath, hash_existing[i].hashpath,
-			hash_existing[i].shahash, hash_existing[i].filesize);
+		addFileEntrySQLWithExisting(hash_existing[i].fullpath, hash_existing[i].hashpath,
+			hash_existing[i].shahash, hash_existing[i].filesize, hash_existing[i].rsize, incremental);
 	}
 	hash_existing.clear();
 }
@@ -5238,15 +5224,30 @@ void BackupServerGet::addSparseFileEntry( std::wstring curr_path, SFile &cf, int
 	{
 		if(trust_client_hashes && !curr_sha2.empty())
 		{
-			backup_dao->insertIntoTemporaryNewFilesTable(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(),
-				curr_sha2, cf.size);
+			addFileEntrySQLWithExisting(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring(), 
+				curr_sha2, cf.size, -1, incremental_num);
+
 			++num_readded_entries;
 		}							
 		else if(server_hash_existing.get())
 		{
-			addExistingHashesToDb();
+			addExistingHashesToDb(incremental_num);
 			server_hash_existing->queueFile(backuppath+local_curr_os_path, curr_has_hash?(backuppath_hashes+local_curr_os_path):std::wstring());
 			++num_readded_entries;
 		}
 	}
+}
+
+void BackupServerGet::addFileEntrySQLWithExisting( const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int incremental)
+{
+	int64 entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
+
+	if(entryid==0)
+	{
+		Server->Log(L"File entry with filesize "+convert(filesize)+L" to file with path \""+fp+L"\" should exist but does not.", LL_WARNING);
+		return;
+	}
+
+	BackupServerHash::addFileSQL(*backup_dao, *fileindex.get(), backupid, clientid, incremental, fp, hash_path,
+		shahash, filesize, rsize, entryid, clientid);
 }
