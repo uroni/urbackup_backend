@@ -1243,6 +1243,14 @@ void upgrade(void)
 		Server->Log("Converting database to delete journal mode...", LL_WARNING);
 		db->Write("PRAGMA journal_mode=DELETE");
 	}
+
+	db_results cache_res;
+	if(db->getEngineName()=="sqlite")
+	{
+		cache_res=db->Read("PRAGMA cache_size");
+		ServerSettings server_settings(db);
+		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+	}
 	
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
 	do
@@ -1429,6 +1437,12 @@ void upgrade(void)
 	if(do_upgrade)
 	{
 		Server->Log("Done.", LL_WARNING);
+	}
+
+	if(!cache_res.empty())
+	{
+		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
+		db->freeMemory();
 	}
 	
 	db->destroyAllQueries();
