@@ -92,8 +92,8 @@ bool setup_lmdb_file_index(SStartupStatus& status)
 
 void delete_file_index(void)
 {
-	Server->deleteFile("urbackup/index/backup_server_files_cache.lmdb");
-	Server->deleteFile("urbackup/index/backup_server_files_cache.lmdb-lock");
+	Server->deleteFile("urbackup/index/backup_server_files_index.lmdb");
+	Server->deleteFile("urbackup/index/backup_server_files_index.lmdb-lock");
 }
 
 bool create_files_index(SStartupStatus& status)

@@ -2406,8 +2406,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		}
 	}
 
-	std::auto_ptr<FileIndex> fileindex;
-
 	if(!fileindex.get())
 	{
 		fileindex.reset(create_lmdb_files_index());

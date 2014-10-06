@@ -22,19 +22,20 @@
 #include "../server_cleanup.h"
 #include "../../Interface/ThreadPool.h"
 #include "../create_files_index.h"
+#include "../database.h"
 
 namespace 
 {
 	class RecalculateStatistics : public IThread
 	{
 	public:
-		RecalculateStatistics(IDatabase *db)
-			: db(db)
+		RecalculateStatistics()
 		{
 		}
 
 		void operator()(void)
 		{
+			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			db->DetachDBs();
 			db->BeginTransaction();
 			db->Write("UPDATE clients SET bytes_used_files=0");
@@ -124,7 +125,7 @@ ACTION_IMPL(usage)
 
 			if(GET[L"recalculate"]==L"true")
 			{
-				Server->getThreadPool()->execute(new RecalculateStatistics(db));
+				Server->getThreadPool()->execute(new RecalculateStatistics);
 			}
 		}
 	}
