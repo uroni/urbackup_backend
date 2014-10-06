@@ -119,7 +119,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 
 			if(n_done % 10000 == 0 && n_done>0)
 			{
-				Server->Log("File entry cache contains "+nconvert(n_done)+" entries now.", LL_INFO);
+				Server->Log("File entry index contains "+nconvert(n_done)+" entries now.", LL_INFO);
 			}
 
 			if(n_done % c_create_commit_n == 0 && n_done>0)

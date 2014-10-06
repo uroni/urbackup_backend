@@ -157,7 +157,7 @@ int defrag_database(void)
 
 	Server->Log("Rebuilding Database successfull.", LL_INFO);
 
-	Server->Log("Deleting file entry cache, if present...", LL_INFO);
+	Server->Log("Deleting file entry index, if present...", LL_INFO);
 
 	delete_file_index();
 
