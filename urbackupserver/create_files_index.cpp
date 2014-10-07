@@ -46,10 +46,15 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 		cache_res=db->Read("PRAGMA cache_size");
 		ServerSettings server_settings(db);
 		db->Write("PRAGMA cache_size = -"+nconvert(server_settings.getSettings()->update_stats_cachesize));
+
+		Server->Log("Transitioning urbackup server database to different journaling mode...", LL_INFO);
+		db->Write("PRAGMA journal_mode = DELETE");
 	}
 
 	status.creating_filesindex=true;
 	Server->Log("Creating file entry index. This might take a while...", LL_WARNING);
+
+	db->BeginTransaction();
 
 	IQuery *q_read=db->Prepare("SELECT id, shahash, filesize, clientid, next_entry, prev_entry FROM files ORDER BY shahash ASC, filesize ASC, clientid ASC, created DESC");
 
@@ -60,10 +65,13 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	fileindex.create(create_callback, &data);
 
+	db->EndTransaction();
+
 	if(!cache_res.empty())
 	{
 		db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
 		db->Write("PRAGMA shrink_memory");
+		db->Write("PRAGMA journal_mode = WAL");
 	}
 
 	ServerBackupDao backupdao(db);
