@@ -36,7 +36,7 @@ db_results create_callback(size_t n_done, void *userdata)
 	return ret;
 }
 
-bool create_files_cache_common(FileIndex& fileindex, SStartupStatus& status)
+bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
@@ -66,6 +66,12 @@ bool create_files_cache_common(FileIndex& fileindex, SStartupStatus& status)
 		db->Write("PRAGMA shrink_memory");
 	}
 
+	ServerBackupDao backupdao(db);
+
+	Server->Log("Committing to database...", LL_INFO);
+	backupdao.commit();
+	Server->Log("Committing done.", LL_INFO);
+
 	status.creating_filesindex=false;
 
 	if(data.cur->has_error())
@@ -85,7 +91,7 @@ bool setup_lmdb_file_index(SStartupStatus& status)
 		return false;
 	}
 
-	return create_files_cache_common(fileindex, status);
+	return create_files_index_common(fileindex, status);
 }
 
 }
