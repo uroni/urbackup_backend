@@ -8,13 +8,13 @@
 #include "../server_settings.h"
 
 
-void open_settings_database_full(bool use_berkeleydb);
+void open_settings_database(bool use_berkeleydb);
 
 int check_files_index()
 {
 	bool use_berkeleydb;
 	open_server_database(use_berkeleydb, true);
-	open_settings_database_full(use_berkeleydb);
+	open_settings_database(use_berkeleydb);
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	if(db==NULL)
