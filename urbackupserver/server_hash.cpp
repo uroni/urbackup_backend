@@ -315,15 +315,24 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 		std::map<int, int64> all_clients = fileindex.get_all_clients_with_cache(FileIndex::SIndexKey(pHash, filesize));
 
 		std::wstring clients;
-		for(std::map<int, int64>::iterator it=all_clients.begin();it!=all_clients.end();++it)
-		{
-			if(!clients.empty())
+		if(!all_clients.empty())
+		{			
+			for(std::map<int, int64>::iterator it=all_clients.begin();it!=all_clients.end();++it)
 			{
-				clients+=L",";
-			}
+				if(!clients.empty())
+				{
+					clients+=L",";
+				}
 
-			clients+=convert(it->first);
+				clients+=convert(it->first);
+			}
 		}
+		else
+		{
+			Server->Log("File entry with id "+nconvert(id)+" with filesize "+nconvert(filesize)+" found in entry index while deleting, but should be there. The file entry index may be damaged.", LL_WARNING);
+			clients+=convert(clientid);
+		}
+		
 
 		backupdao.addIncomingFile((rsize>0 && rsize!=filesize)?rsize:filesize, clientid, backupid, clients, ServerBackupDao::c_direction_outgoing, incremental);
 
