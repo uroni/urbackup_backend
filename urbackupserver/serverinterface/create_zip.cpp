@@ -34,6 +34,7 @@ mz_bool my_mz_zip_get_file_modified_time(const wchar_t *pFilename, mz_uint16 *pD
 
 mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_name, const wchar_t *pSrc_filename, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags)
 {
+  mz_uint16 gen_flags = 1<<3 | 1<<11; 
   mz_uint uncomp_crc32 = MZ_CRC32_INIT, level, num_alignment_padding_bytes;
   mz_uint16 method = 0, dos_time = 0, dos_date = 0, ext_attributes = 0;
   mz_uint64 local_dir_header_ofs = pZip->m_archive_size, cur_archive_file_ofs = pZip->m_archive_size, uncomp_size = 0, comp_size = 0;
@@ -90,7 +91,7 @@ mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_nam
 	  method=MZ_DEFLATED;
   }
 
-  if (!mz_zip_writer_create_local_dir_header(pZip, local_dir_header, (mz_uint16)archive_name_size, 0, 0, 0, 0, method, 8, dos_time, dos_date))
+  if (!mz_zip_writer_create_local_dir_header(pZip, local_dir_header, (mz_uint16)archive_name_size, 0, 0, 0, 0, method, gen_flags, dos_time, dos_date))
     return MZ_FALSE;
 
   if (pZip->m_pWrite(pZip->m_pIO_opaque, local_dir_header_ofs, local_dir_header, sizeof(local_dir_header)) != sizeof(local_dir_header))
@@ -216,7 +217,7 @@ mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_nam
   cur_archive_file_ofs+=sizeof(local_dir_footer);
 
   if (!mz_zip_writer_add_to_central_dir(pZip, pArchive_name, (mz_uint16)archive_name_size, NULL, 0, pComment, comment_size,
-	               uncomp_size, comp_size, uncomp_crc32, method, 1<<3 | 1<<11, dos_time, dos_date, local_dir_header_ofs, ext_attributes))
+	               uncomp_size, comp_size, uncomp_crc32, method, gen_flags, dos_time, dos_date, local_dir_header_ofs, ext_attributes))
     return MZ_FALSE;
 
   pZip->m_total_files++;
