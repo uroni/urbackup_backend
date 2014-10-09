@@ -178,13 +178,19 @@ public:
 
 	void clearDatabases(THREAD_ID tid);
 
+	void setLogRotationFilesize(size_t filesize);
+
+	void setLogRotationNumFiles(size_t numfiles);
+
 private:
 
 	void logToCircularBuffer(const std::string& msg, int loglevel);
 
 	bool UnloadDLLs(void);
 	void UnloadDLLs2(void);
-	
+
+	void rotateLogfile();
+
 
 	int loglevel;
 	bool logfile_a;
@@ -264,6 +270,14 @@ private:
 	bool has_circular_log_buffer;
 
 	size_t failbits;
+
+	std::string logfile_fn;
+
+	std::string logfile_chown_user;
+
+	size_t log_rotation_size;
+
+	size_t log_rotation_files;
 };
 
 #ifndef DEF_SERVER

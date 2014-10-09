@@ -236,6 +236,16 @@ int main_fkt(int argc, char *argv[])
 			pidfile=narg;
 			++i;
 		}
+		else if( carg=="--rotate-filesize")
+		{
+			Server->setLogRotationFilesize(atoi(narg.c_str()));
+			++i;
+		}
+		else if( carg=="--rotate-numfiles")
+		{
+			Server->setLogRotationNumFiles(atoi(narg.c_str()));
+			++i;
+		}
 		else
 		{
 			if( carg.size()>1 && carg[0]=='-' )

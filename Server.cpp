@@ -141,8 +141,12 @@ CServer::CServer()
 	initRandom(static_cast<unsigned int>(time(0)));
 	initRandom(getSecureRandomNumber());
 
+	log_rotation_size = std::string::npos;
+	log_rotation_files = 10;
+
 #ifdef _WIN32
 	initialize_GetTickCount64();
+	log_rotation_size = 20*1024*1024; //20MB
 #endif
 }
 
@@ -376,7 +380,12 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 		}
 		
 		if(logfile_a)
+		{
 			logfile.flush();
+
+			rotateLogfile();
+
+		}
 
 		if(has_circular_log_buffer)
 		{
@@ -388,6 +397,26 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 		IScopedLock lock(log_mutex);
 
 		logToCircularBuffer(pStr, LogLevel);
+	}
+}
+
+void CServer::rotateLogfile()
+{
+	if(logfile.tellp()>log_rotation_size)
+	{
+		logfile.close();
+		logfile_a=false;
+
+		for(size_t i=1;i<log_rotation_files+1;++i)
+		{
+			rename((logfile_fn+"."+nconvert(i)).c_str(), (logfile_fn+"."+nconvert(i+1)).c_str());
+		}
+
+		deleteFile(logfile_fn+"."+nconvert(log_rotation_files+1));
+
+		rename(logfile_fn.c_str(), (logfile_fn+".1").c_str());
+
+		setLogFile(logfile_fn, logfile_chown_user);
 	}
 }
 
@@ -445,6 +474,9 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 
 		logToCircularBuffer(ConvertToUTF8(pStr), LogLevel);
 	}
+
+	void rotateLogfile();
+
 }
 
 void CServer::setLogFile(const std::string &plf, std::string chown_user)
@@ -455,7 +487,9 @@ void CServer::setLogFile(const std::string &plf, std::string chown_user)
 		logfile.close();
 		logfile_a=false;
 	}
-	logfile.open( plf.c_str(), std::ios::app | std::ios::out | std::ios::binary );
+	logfile_fn=plf;
+	logfile_chown_user=chown_user;
+	logfile.open( logfile_fn.c_str(), std::ios::app | std::ios::out | std::ios::binary );
 	if(logfile.is_open() )
 	{
 #ifndef _WIN32
@@ -1861,4 +1895,14 @@ void CServer::clearFailBit(size_t failbit)
 size_t CServer::getFailBits(void)
 {
 	return failbits;
+}
+
+void CServer::setLogRotationFilesize( size_t filesize )
+{
+	log_rotation_size=filesize;
+}
+
+void CServer::setLogRotationNumFiles( size_t numfiles )
+{
+	log_rotation_files=numfiles;
 }
