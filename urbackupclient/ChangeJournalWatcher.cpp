@@ -25,6 +25,7 @@
 const unsigned int usn_update_freq=10*60*1000;
 const DWORDLONG usn_reindex_num=1000000; // one million
 
+//#define MFT_ON_DEMAND_LOOKUP
 #define VLOG(x) 
 
 ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener)
@@ -199,7 +200,7 @@ _i64 ChangeJournalWatcher::addRoot(const std::wstring &root)
 	return db->getLastInsertID();
 }
 
-void ChangeJournalWatcher::addFrn(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid)
+int64 ChangeJournalWatcher::addFrn(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid)
 {
 	q_add_frn->Bind(name);
 	q_add_frn->Bind(parent_id);
@@ -207,6 +208,7 @@ void ChangeJournalWatcher::addFrn(const std::wstring &name, _i64 parent_id, _i64
 	q_add_frn->Bind(rid);
 	q_add_frn->Write();
 	q_add_frn->Reset();
+	return db->getLastInsertID();
 }
 
 void ChangeJournalWatcher::addFrnTmp(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid)
@@ -424,7 +426,6 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	cj.path.push_back(dir);
 	cj.hVolume=hVolume;
 	cj.rid=rid;
-	cj.last_record_update=false;
 	cj.vol_str=vol;
 
 	if(!info.has_info)
@@ -458,8 +459,10 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	resetRoot(rid);
 	Server->Log("Deleting saved journal data from database...", LL_DEBUG);
 	deleteJournalData(vol);
+#ifndef MFT_ON_DEMAND_LOOKUP
 	Server->Log("Starting indexing process..", LL_DEBUG);
 	indexRootDirs2(vol, sj);
+#endif
 	listener->On_ResetAll(vol);
 	indexing_in_progress=false;
 	indexing_volume.clear();
@@ -515,22 +518,9 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	db->Write("CREATE TEMPORARY TABLE map_frn_tmp (name TEXT, pid INTEGER, frn INTEGER, rid INTEGER)");
 	q_add_frn_tmp=db->Prepare("INSERT INTO map_frn_tmp (name, pid, frn, rid) VALUES (?, ?, ?, ?)", false);
 
-	HANDLE hDir = CreateFile((root+os_file_sep()).c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE,	NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+	int64 root_frn = getRootFRN(root);
 
-	if(hDir==INVALID_HANDLE_VALUE)
-	{
-		Server->Log("Could not open root HANDLE.", LL_ERROR);
-		return;
-	}
-
-	BY_HANDLE_FILE_INFORMATION fi;
-	GetFileInformationByHandle(hDir, &fi);
-	CloseHandle(hDir);
-	LARGE_INTEGER frn;
-	frn.LowPart=fi.nFileIndexLow;
-	frn.HighPart=fi.nFileIndexHigh;
-
-	addFrn(root, -1, frn.QuadPart, sj->rid);
+	addFrn(root, -1, root_frn, sj->rid);
 
 	MFT_ENUM_DATA med;
 	med.StartFileReferenceNumber = 0;
@@ -550,7 +540,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 			if(Server->getTimeMS()-last_index_update>10000)
 			{
 				Server->Log("Saving new journal data to database...", LL_DEBUG);
-				update(false, sj->vol_str);
+				update(sj->vol_str);
 				last_index_update=Server->getTimeMS();
 			}
 		}
@@ -590,7 +580,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	db->Write("DROP TABLE map_frn_tmp");
 
 	Server->Log("Saving new journal data to database. Forcing update...", LL_DEBUG);
-	update(true, sj->vol_str);
+	update(sj->vol_str);
 }
 
 SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
@@ -610,14 +600,14 @@ SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
 	return r;
 }
 
-std::wstring ChangeJournalWatcher::getFilename(_i64 frn, _i64 rid)
+std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, _i64 frn, bool fallback_to_mft, bool& filter_error)
 {
 	std::wstring path;
 	_i64 curr_id=frn;
 	while(true)
 	{
 		q_get_name->Bind(curr_id);
-		q_get_name->Bind(rid);
+		q_get_name->Bind(cj.rid);
 		db_results res=q_get_name->Read();
 		q_get_name->Reset();
 
@@ -639,9 +629,40 @@ std::wstring ChangeJournalWatcher::getFilename(_i64 frn, _i64 rid)
 		{
 			if(path!=L"$RmMetadata\\$TxfLog\\")
 			{
-				Server->Log(L"Couldn't follow up to root. Current path: "+path, LL_ERROR);
+				if(fallback_to_mft)
+				{
+					Server->Log(L"Couldn't follow up to root via Database. Falling back to MFT. Current path: "+path, LL_WARNING);
+
+					_i64 parent_frn;
+					std::wstring dirname = getNameFromMFTByFRN(cj, curr_id, parent_frn);
+					if(!dirname.empty())
+					{
+						path = dirname + os_file_sep() + path;
+						addFrn(dirname, parent_frn, curr_id, cj.rid);
+						curr_id = parent_frn;
+					}
+					else
+					{
+						Server->Log(L"Could not follow up to root. Current path: "+path+L". Lookup in MFT failed. Directory was probably deleted.", LL_WARNING);
+						return std::wstring();
+					}
+
+					if(curr_id==-1)
+					{
+						break;
+					}
+				}
+				else
+				{
+					Server->Log(L"Couldn't follow up to root. Current path: "+path, LL_ERROR);
+					return std::wstring();
+				}
 			}
-			return L"";
+			else
+			{
+				filter_error=true;
+				return std::wstring();
+			}
 		}
 	}
 	return path;
@@ -650,7 +671,7 @@ std::wstring ChangeJournalWatcher::getFilename(_i64 frn, _i64 rid)
 const int BUF_LEN=4096;
 
 
-void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
+void ChangeJournalWatcher::update(std::wstring vol_str)
 {
 	char buffer[BUF_LEN];
 
@@ -674,7 +695,7 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 				}
 				for(size_t i=0;i<jd.size();++i)
 				{
-					updateWithUsn(it->first, it->second, &jd[i]);
+					updateWithUsn(it->first, it->second, &jd[i], true);
 					it->second.last_record=jd[i].NextUsn;
 				}
 				Server->Log("Deleting saved journal data...", LL_DEBUG);
@@ -685,23 +706,7 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 			}
 		}
 
-		if(it->second.last_record_update)
-		{
-			if(started_transaction==false)
-			{
-				started_transaction=true;
-				db->BeginTransaction();
-			}
-
-			it->second.last_record_update=false;
-			q_update_lastusn->Bind(it->second.last_record);
-			q_update_lastusn->Bind(it->first);
-			q_update_lastusn->Write();
-			q_update_lastusn->Reset();
-		}
-
 		USN startUsn=it->second.last_record;
-		unsigned int update_bytes=0;
 
 		bool remove_it=false;
 		bool c=true;
@@ -710,7 +715,7 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 			c=false;
 			READ_USN_JOURNAL_DATA data;
 			data.StartUsn=it->second.last_record;
-			data.ReasonMask=0xFFFFFFFF;//USN_REASON_DATA_EXTEND|USN_REASON_BASIC_INFO_CHANGE|USN_REASON_DATA_OVERWRITE|USN_REASON_DATA_TRUNCATION|USN_REASON_EA_CHANGE|USN_REASON_FILE_CREATE|USN_REASON_FILE_DELETE|USN_REASON_HARD_LINK_CHANGE|USN_REASON_NAMED_DATA_EXTEND|USN_REASON_NAMED_DATA_OVERWRITE|USN_REASON_NAMED_DATA_TRUNCATION|USN_REASON_RENAME_NEW_NAME|USN_REASON_REPARSE_POINT_CHANGE|USN_REASON_SECURITY_CHANGE|USN_REASON_STREAM_CHANGE;
+			data.ReasonMask=0xFFFFFFFF;
 			data.ReturnOnlyOnClose=0;
 			data.Timeout=0;
 			data.BytesToWaitFor=0;
@@ -729,15 +734,6 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 				{
 					c=true;
 				}
-				else if(update_bytes>5000)
-				{
-					update_bytes=0;
-					/*q_update_lastusn->Bind(it->second.last_record);
-					q_update_lastusn->Bind(it->first);
-					q_update_lastusn->Write();
-					q_update_lastusn->Reset();
-					startUsn=it->second.last_record;*/
-				}
 
 				USN nextUsn=*(USN *)&buffer;
 
@@ -747,7 +743,6 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 					fn.resize(TUsnRecord->FileNameLength);
 					memcpy(&fn[0], (char*)TUsnRecord->FileName, TUsnRecord->FileNameLength);
 					dwRetBytes-=TUsnRecord->RecordLength;
-					update_bytes+=TUsnRecord->RecordLength;
 
 					if(!indexing_in_progress)
 					{
@@ -761,12 +756,12 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 
 						if(UsnRecord.Filename!=L"backup_client.db" && UsnRecord.Filename!=L"backup_client.db-journal")
 						{
-							if(started_transaction==false)
+							if(!started_transaction)
 							{
 								started_transaction=true;
 								db->BeginTransaction();
 							}
-							updateWithUsn(it->first, it->second, &UsnRecord);
+							updateWithUsn(it->first, it->second, &UsnRecord, true);
 						}
 					}
 					else
@@ -860,12 +855,8 @@ void ChangeJournalWatcher::update(bool force_write, std::wstring vol_str)
 			}
 		}
 
-		if(startUsn!=it->second.last_record)
-		{
-			it->second.last_record_update=true;
-		}
-
-		if(force_write)
+		if(startUsn!=it->second.last_record &&
+			started_transaction)
 		{
 			q_update_lastusn->Bind(it->second.last_record);
 			q_update_lastusn->Bind(it->first);
@@ -977,24 +968,60 @@ void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRe
 
 const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REASON_HARD_LINK_CHANGE | USN_REASON_NAMED_DATA_EXTEND | USN_REASON_NAMED_DATA_OVERWRITE| USN_REASON_NAMED_DATA_TRUNCATION| USN_REASON_REPARSE_POINT_CHANGE| USN_REASON_SECURITY_CHANGE| USN_REASON_STREAM_CHANGE| USN_REASON_DATA_TRUNCATION | USN_REASON_BASIC_INFO_CHANGE | USN_REASON_DATA_OVERWRITE | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME | USN_REASON_TRANSACTED_CHANGE;
 
-void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord)
+void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft)
 {
 	VLOG(logEntry(vol, UsnRecord));
 
+	bool curr_has_error = false;
+
 	_i64 dir_id=hasEntry(cj.rid, UsnRecord->FileReferenceNumber);
+
+	if(dir_id==-1 && (UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY) 
+		&& !(UsnRecord->Reason & USN_REASON_FILE_CREATE)
+		&& fallback_to_mft)
+	{
+		Server->Log(L"File with FRN "+convert(UsnRecord->FileReferenceNumber)+L" is a directory not being created, but not in database. Added it to database", LL_WARNING);
+		dir_id=addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
+	}
+	
 	if(dir_id!=-1) //Is a directory
 	{
 		_i64 parent_id=hasEntry(cj.rid, UsnRecord->ParentFileReferenceNumber);
 		if(parent_id==-1)
 		{
-			Server->Log(L"Error: Parent of "+UsnRecord->Filename+L" not found -1", LL_ERROR);
+			if(fallback_to_mft)
+			{
+				Server->Log("Parent of directory with FRN "+nconvert(UsnRecord->FileReferenceNumber)+" with FRN "+nconvert(UsnRecord->ParentFileReferenceNumber)+" not found. Searching via MFT as fallback.", LL_WARNING);
+				_i64 parent_parent_frn;
+				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn);
+				if(parent_name.empty())
+				{
+					Server->Log("Parent not found. Was probably deleted.", LL_WARNING);
+					curr_has_error = true;
+				}
+				else
+				{
+					addFrn(parent_name, parent_parent_frn, UsnRecord->ParentFileReferenceNumber, cj.rid);
+					updateWithUsn(vol, cj, UsnRecord, false);
+				}
+			}
+			else
+			{
+				Server->Log(L"Error: Parent of "+UsnRecord->Filename+L" not found -1", LL_ERROR);
+				curr_has_error=true;
+			}
 		}
 		else if(UsnRecord->Reason & (USN_REASON_CLOSE | watch_flags ) )
 		{
-			std::wstring dir_fn=getFilename(UsnRecord->ParentFileReferenceNumber, cj.rid);
+			bool filter_error = false;
+			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error);
 			if(dir_fn.empty())
 			{
-				Server->Log(L"Error: Path of "+UsnRecord->Filename+L" not found -2", LL_ERROR);
+				if(!filter_error)
+				{
+					Server->Log(L"Error: Path of "+UsnRecord->Filename+L" not found -2", LL_ERROR);
+					curr_has_error = true;
+				}
 			}
 			else
 			{
@@ -1019,10 +1046,15 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		}
 		else if(UsnRecord->Reason & USN_REASON_RENAME_OLD_NAME )
 		{
-			std::wstring dir_fn=getFilename(UsnRecord->ParentFileReferenceNumber, cj.rid);
+			bool filter_error = false;
+			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error);
 			if(dir_fn.empty())
 			{
-				Server->Log(L"Error: Path of "+UsnRecord->Filename+L" not found -3", LL_ERROR);
+				if(!filter_error)
+				{
+					Server->Log(L"Error: Path of "+UsnRecord->Filename+L" not found -3", LL_ERROR);
+					curr_has_error = true;
+				}
 			}
 			else
 			{
@@ -1039,69 +1071,167 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		_i64 parent_id=hasEntry(cj.rid, UsnRecord->ParentFileReferenceNumber);
 		if(parent_id==-1)
 		{
-			Server->Log(L"Error: Parent of file "+UsnRecord->Filename+L" not found -4", LL_ERROR);
-		}
-		else
-		{
-			std::wstring dir_fn=getFilename(UsnRecord->ParentFileReferenceNumber, cj.rid);
-			std::wstring real_fn=dir_fn+UsnRecord->Filename;
-			
-			if( UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
+			if(fallback_to_mft)
 			{
-				if((UsnRecord->Reason & USN_REASON_FILE_CREATE) && (UsnRecord->Reason & USN_REASON_CLOSE) )
+				Server->Log("Parent of file with FRN "+nconvert(UsnRecord->FileReferenceNumber)+" with FRN "+nconvert(UsnRecord->ParentFileReferenceNumber)+" not found. Searching via MFT as fallback.", LL_WARNING);
+				_i64 parent_parent_frn;
+				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn);
+				if(parent_name.empty())
 				{
-					addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
+					Server->Log("Parent directory not found in MFT. Was probably deleted.", LL_WARNING);
+				}
+				else
+				{
+					addFrn(parent_name, parent_parent_frn, UsnRecord->ParentFileReferenceNumber, cj.rid);
+					updateWithUsn(vol, cj, UsnRecord, false);
 				}
 			}
 			else
 			{
-				if(UsnRecord->Reason & USN_REASON_CLOSE)
+				Server->Log(L"Error: Parent of file "+UsnRecord->Filename+L" not found -4", LL_ERROR);
+				curr_has_error = true;
+			}
+		}
+		else
+		{
+			bool filter_error = false;
+			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error);
+
+			if(dir_fn.empty())
+			{
+				if(!filter_error)
 				{
-					std::map<std::wstring, bool>::iterator it=open_write_files.find(real_fn);
-					if(it!=open_write_files.end())
-					{
-						open_write_files.erase(it);
-					}
-				}
-				else if(UsnRecord->Reason & watch_flags)
-				{
-					open_write_files[real_fn]=true;
-					
-					if(freeze_open_write_files)
-					{
-						open_write_files_frozen[real_fn]=true;
-					}
+					Server->Log(L"Error: Path of file \""+UsnRecord->Filename+L"\" not found -3", LL_ERROR);
+					curr_has_error = true;
 				}
 			}
-
-			if( (UsnRecord->Reason & USN_REASON_RENAME_OLD_NAME)
-				|| (UsnRecord->Reason & watch_flags) )
+			else
 			{
-				bool save_fn=false;
-				if( ( UsnRecord->Reason & USN_REASON_DATA_OVERWRITE || UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME) &&
-					     !( (UsnRecord->Reason & USN_REASON_DATA_EXTEND) || (UsnRecord->Reason & USN_REASON_DATA_TRUNCATION) ) )
+				std::wstring real_fn=dir_fn+UsnRecord->Filename;
+			
+				if( UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
 				{
-					save_fn=true;
-				}
-
-				if(save_fn)
-				{
-					save_fn=false;
-
-					WIN32_FILE_ATTRIBUTE_DATA fad;
-					if(GetFileAttributesExW(os_file_prefix(real_fn).c_str(), GetFileExInfoStandard, &fad) )
+					if((UsnRecord->Reason & USN_REASON_FILE_CREATE) && (UsnRecord->Reason & USN_REASON_CLOSE) )
 					{
-						int64 last_mod_time = static_cast<__int64>(fad.ftLastWriteTime.dwHighDateTime) << 32 | fad.ftLastWriteTime.dwLowDateTime;
-						if(last_mod_time<=last_backup_time || last_backup_time==0)
+						addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
+					}
+				}
+				else
+				{
+					if(UsnRecord->Reason & USN_REASON_CLOSE)
+					{
+						std::map<std::wstring, bool>::iterator it=open_write_files.find(real_fn);
+						if(it!=open_write_files.end())
 						{
-							save_fn=true;
+							open_write_files.erase(it);
+						}
+					}
+					else if(UsnRecord->Reason & watch_flags)
+					{
+						open_write_files[real_fn]=true;
+					
+						if(freeze_open_write_files)
+						{
+							open_write_files_frozen[real_fn]=true;
 						}
 					}
 				}
+
+				if( (UsnRecord->Reason & USN_REASON_RENAME_OLD_NAME)
+					|| (UsnRecord->Reason & watch_flags) )
+				{
+					bool save_fn=false;
+					if( ( UsnRecord->Reason & USN_REASON_DATA_OVERWRITE || UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME) &&
+							 !( (UsnRecord->Reason & USN_REASON_DATA_EXTEND) || (UsnRecord->Reason & USN_REASON_DATA_TRUNCATION) ) )
+					{
+						save_fn=true;
+					}
+
+					if(save_fn)
+					{
+						save_fn=false;
+
+						WIN32_FILE_ATTRIBUTE_DATA fad;
+						if(GetFileAttributesExW(os_file_prefix(real_fn).c_str(), GetFileExInfoStandard, &fad) )
+						{
+							int64 last_mod_time = static_cast<__int64>(fad.ftLastWriteTime.dwHighDateTime) << 32 | fad.ftLastWriteTime.dwLowDateTime;
+							if(last_mod_time<=last_backup_time || last_backup_time==0)
+							{
+								save_fn=true;
+							}
+						}
+					}
 				
 
-				listener->On_FileModified(real_fn, save_fn);
+					listener->On_FileModified(real_fn, save_fn);
+				}
 			}
 		}
 	}
+
+	if(curr_has_error)
+	{
+		listener->On_ResetAll(cj.vol_str);
+	}
+}
+
+std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn)
+{
+	MFT_ENUM_DATA med;
+	med.StartFileReferenceNumber = frn;
+	med.LowUsn = 0;
+	med.HighUsn = MAXLONGLONG;
+
+	BYTE pData[16*1024];
+	DWORDLONG fnLast = 0;
+	DWORD cb;
+	size_t nDirFRNs=0;
+	size_t nFRNs=0;
+	if (DeviceIoControl(cj.hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med),pData, sizeof(pData), &cb, NULL) != FALSE)
+	{
+		PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
+
+		if(pRecord->FileReferenceNumber!=frn)
+		{
+			if(frn == getRootFRN(cj.vol_str))
+			{
+				parent_frn=-1;
+				return cj.vol_str;
+			}
+			
+			return std::wstring();
+		}
+		else
+		{
+			std::wstring filename;
+			filename.resize(pRecord->FileNameLength / sizeof(wchar_t) );
+			memcpy(&filename[0], (PBYTE) pRecord + pRecord->FileNameOffset, pRecord->FileNameLength);
+			parent_frn = pRecord->ParentFileReferenceNumber;
+			return filename;
+		}
+	}
+	else
+	{
+		return std::wstring();
+	}
+}
+
+int64 ChangeJournalWatcher::getRootFRN( const std::wstring & root )
+{
+	HANDLE hDir = CreateFile((root+os_file_sep()).c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE,	NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if(hDir==INVALID_HANDLE_VALUE)
+	{
+		Server->Log("Could not open root HANDLE.", LL_ERROR);
+		return -1;
+	}
+
+	BY_HANDLE_FILE_INFORMATION fi;
+	GetFileInformationByHandle(hDir, &fi);
+	CloseHandle(hDir);
+	LARGE_INTEGER frn;
+	frn.LowPart=fi.nFileIndexLow;
+	frn.HighPart=fi.nFileIndexHigh;
+
+	return frn.QuadPart;
 }

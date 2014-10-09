@@ -18,7 +18,6 @@ struct SChangeJournal
 	DWORDLONG journal_id;
 	HANDLE hVolume;
 	_i64 rid;
-	bool last_record_update;
 	std::wstring vol_str;
 };
 
@@ -51,7 +50,7 @@ public:
 
 	void watchDir(const std::wstring &dir);
 
-	void update(bool force_write=false, std::wstring vol_str=L"");
+	void update(std::wstring vol_str=L"");
 	void update_longliving(void);
 
 	void set_freeze_open_write_files(bool b);
@@ -65,7 +64,7 @@ private:
 	SDeviceInfo getDeviceInfo(const std::wstring &name);
 	_i64 hasRoot(const std::wstring &root);
 	_i64 addRoot(const std::wstring &root);
-	void addFrn(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid);
+	int64 addFrn(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid);
 	void addFrnTmp(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid);
 	void renameEntry(const std::wstring &name, _i64 id, _i64 pid);
 	void resetRoot(_i64 rid);
@@ -80,15 +79,19 @@ private:
 	void deleteJournalId(const std::wstring &vol);
 
 	void deleteWithChildren( _i64 frn, _i64 rid);
-	std::wstring getFilename(_i64 frn, _i64 rid);
+	std::wstring getFilename(const SChangeJournal &cj, _i64 frn, bool fallback_to_mft, bool& filter_error);
 
 	void indexRootDirs(_i64 rid, const std::wstring &root, _i64 parent);
 	void indexRootDirs2(const std::wstring &root, SChangeJournal *sj);
 
-	void updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord);
+	int64 getRootFRN( const std::wstring & root );
+
+	void updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft);
 
 	void reindex(_i64 rid, std::wstring vol, SChangeJournal *sj);
 	void logEntry(const std::wstring &vol, const UsnInt *UsnRecord);
+
+	std::wstring getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn);
 
 	IDatabase *db;
 
