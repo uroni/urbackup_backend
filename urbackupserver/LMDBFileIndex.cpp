@@ -12,7 +12,7 @@ ISharedMutex* LMDBFileIndex::mutex=NULL;
 
 
 const size_t c_initial_map_size=1*1024*1024;
-const size_t c_create_commit_n = 1000;
+const size_t c_create_commit_n = 10000;
 
 
 void LMDBFileIndex::initFileIndex()
@@ -133,7 +133,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 				return;
 			}
 
-			if(n_done % c_create_commit_n == 0 && n_done>0)
+			if(n_done % 1000 == 0 && n_done>0)
 			{
 				Server->Log("File entry index contains "+nconvert(n_done)+" entries now.", LL_INFO);
 			}
