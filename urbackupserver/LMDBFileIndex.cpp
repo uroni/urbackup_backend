@@ -93,7 +93,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 			int64 prev_entry = watoi64(res[i][L"prev_entry"]);
 			int pointed_to = watoi(res[i][L"pointed_to"]);
 
-			assert(last<key || key==last);
+			assert(memcmp(&last, &key, sizeof(SIndexKey))!=1);
 
 			if(key==last)
 			{
@@ -444,8 +444,7 @@ int64 LMDBFileIndex::get_any_client( const SIndexKey& key )
 
 	int64 ret = 0;
 	if(rc==MDB_NOTFOUND ||
-		memcmp(orig_key.hash, curr_key->hash, bytes_in_index)!=0 ||
-		orig_key.filesize!=curr_key->filesize)
+		!orig_key.isEqualWithoutClientid(orig_key) )
 	{
 
 	}
@@ -499,14 +498,13 @@ std::map<int, int64> LMDBFileIndex::get_all_clients( const SIndexKey& key )
 	SIndexKey* curr_key = reinterpret_cast<SIndexKey*>(mdb_tkey.mv_data);
 
 	while(rc==0 &&
-		memcmp(orig_key.hash, curr_key->hash, bytes_in_index)==0 &&
-		orig_key.filesize==curr_key->filesize)
+		orig_key.isEqualWithoutClientid(*curr_key))
 	{
 		CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
 		int64 entryid;
 		data.getInt64(&entryid);
 
-		ret[curr_key->clientid] = entryid;
+		ret[curr_key->getClientid()] = entryid;
 
 		rc=mdb_cursor_get(cursor, &mdb_tkey, &mdb_tvalue, MDB_NEXT);
 		curr_key = reinterpret_cast<SIndexKey*>(mdb_tkey.mv_data);
@@ -559,8 +557,7 @@ int64 LMDBFileIndex::get_prefer_client( const SIndexKey& key )
 			Server->Log("LMDB: Failed to read ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 			_has_error=true;
 		}
-		else if(memcmp(curr_key->hash, orig_key.hash, bytes_in_index)==0
-			&& curr_key->filesize==orig_key.filesize)
+		else if( curr_key->isEqualWithoutClientid(orig_key))
 		{
 			CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
 			data.getInt64(&ret);
@@ -653,7 +650,7 @@ std::map<int, int64> LMDBFileIndex::get_next_entries_iteration(bool& has_next)
 		CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
 		data.getInt64(&entryid);
 
-		ret[start_key->clientid]=entryid;
+		ret[start_key->getClientid()]=entryid;
 	}
 	
 
@@ -686,7 +683,7 @@ std::map<int, int64> LMDBFileIndex::get_next_entries_iteration(bool& has_next)
 		CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
 		data.getInt64(&entryid);
 
-		ret[key.clientid]=entryid;
+		ret[key.getClientid()]=entryid;
 
 	} while (true);
 }

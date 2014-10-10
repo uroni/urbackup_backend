@@ -193,9 +193,8 @@ bool FileIndex::get_from_cache( const FileIndex::SIndexKey &key, const std::map<
 {
 	std::map<FileIndex::SIndexKey, int64>::const_iterator it=cache.lower_bound(key);
 
-	if(it!=cache.end()
-		&& memcmp(it->first.hash, key.hash, bytes_in_index)==0
-		&& it->first.filesize==key.filesize)
+	if(it!=cache.end() &&
+		it->first.isEqualWithoutClientid(key))
 	{
 		res = it->second;
 		return true;
@@ -209,8 +208,7 @@ bool FileIndex::get_from_cache_prefer_client( const SIndexKey &key, const std::m
 	std::map<FileIndex::SIndexKey, int64>::const_iterator start_it=cache.lower_bound(key);
 
 	if(start_it!=cache.end()
-		&& memcmp(start_it->first.hash, key.hash, bytes_in_index)==0
-		&& start_it->first.filesize==key.filesize)
+		&& start_it->first.isEqualWithoutClientid(key) )
 	{
 		res=start_it->second;
 		return true;
@@ -221,8 +219,7 @@ bool FileIndex::get_from_cache_prefer_client( const SIndexKey &key, const std::m
 	{
 		--start_it;
 
-		if( memcmp(start_it->first.hash, key.hash, bytes_in_index)==0
-			&& start_it->first.filesize==key.filesize)
+		if( start_it->first.isEqualWithoutClientid(key) )
 		{
 			res=start_it->second;
 			return true;
@@ -237,10 +234,9 @@ void FileIndex::get_from_cache_all_clients( const SIndexKey &key, const std::map
 	std::map<FileIndex::SIndexKey, int64>::const_iterator it=cache.lower_bound(key);
 
 	for(;it!=cache.end()
-		&& memcmp(it->first.hash, key.hash, bytes_in_index)==0
-		&& it->first.filesize==key.filesize; ++it)
+		&& it->first.isEqualWithoutClientid(key); ++it)
 	{
-		ret[it->first.clientid]=it->second;
+		ret[it->first.getClientid()]=it->second;
 	}
 }
 

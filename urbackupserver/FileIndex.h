@@ -6,6 +6,8 @@
 #include "../Interface/Condition.h"
 #include "../Interface/Thread.h"
 #include <memory.h>
+#include "../stringtools.h"
+#include <assert.h>
 
 const size_t bytes_in_index = 16;
 
@@ -15,17 +17,21 @@ public:
 	typedef db_results(*get_data_callback_t)(size_t, void *userdata);
 
 #pragma pack(1)
-	struct SIndexKey
+	class SIndexKey
 	{
-		SIndexKey(const char thash[bytes_in_index], int64 filesize, int clientid)
-			: filesize(filesize), clientid(clientid)
+	public:
+		SIndexKey(const char thash[bytes_in_index], int64 pfilesize, int pclientid)
+			: filesize(big_endian(pfilesize)), clientid(big_endian(pclientid))
 		{
+			assert(pfilesize>=0);
+			assert(pclientid>=0);
 			memcpy(hash, thash, bytes_in_index);
 		}
 
-		SIndexKey(const char thash[bytes_in_index], int64 filesize)
-			: filesize(filesize), clientid(0)
+		SIndexKey(const char thash[bytes_in_index], int64 pfilesize)
+			: filesize(big_endian(pfilesize)), clientid(0)
 		{
+			assert(pfilesize>=0);
 			memcpy(hash, thash, bytes_in_index);
 		}
 
@@ -55,17 +61,31 @@ public:
 
 		bool operator<(const SIndexKey& other) const
 		{
-			int mres=memcmp(hash, other.hash, bytes_in_index);
-			return mres<0 ||
-				(mres==0 && filesize<other.filesize) ||
-				(mres==0 && filesize==other.filesize && clientid<other.clientid);
+			int mres=memcmp(this, &other, sizeof(SIndexKey));
+			return mres<0;
 		}
 
-		bool isEqualWithoutClientid(const SIndexKey& other)
+		bool isEqualWithoutClientid(const SIndexKey& other) const
 		{
 			return memcmp(hash, other.hash, bytes_in_index)==0 && filesize==other.filesize;
 		}
 
+		const char* getHash() const
+		{
+			return hash;
+		}
+
+		int64 getFilesize() const
+		{
+			return big_endian(filesize);
+		}
+
+		int getClientid() const
+		{
+			return big_endian(clientid);
+		}
+
+	private:
 		char hash[bytes_in_index];
 		int64 filesize;
 		int clientid;
