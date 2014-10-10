@@ -133,7 +133,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 				return;
 			}
 
-			if(n_done % 10000 == 0 && n_done>0)
+			if(n_done % c_create_commit_n == 0 && n_done>0)
 			{
 				Server->Log("File entry index contains "+nconvert(n_done)+" entries now.", LL_INFO);
 			}
@@ -228,6 +228,8 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 
 			map_size*=2;
 
+			Server->Log("Increased LMDB database size to "+PrettyPrintBytes(map_size)+" (on put)", LL_DEBUG);
+
 			if(!create_env())
 			{
 				_has_error=true;
@@ -239,7 +241,7 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 
 		replay_transaction_log();
 		
-		put_internal(key, value, 0, false, true);
+		put_internal(key, value, flags, false, true);
 	}
 	else if(rc)
 	{
@@ -289,6 +291,8 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 			destroy_env();
 
 			map_size*=2;
+
+			Server->Log("Increased LMDB database size to "+PrettyPrintBytes(map_size)+" (on delete)", LL_DEBUG);
 
 			if(!create_env())
 			{
@@ -343,6 +347,8 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 			destroy_env();
 
 			map_size*=2;
+
+			Server->Log("Increased LMDB database size to "+PrettyPrintBytes(map_size)+" (on commit)", LL_DEBUG);
 
 			if(!create_env())
 			{
