@@ -56,7 +56,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	db->BeginTransaction();
 
-	IQuery *q_read=db->Prepare("SELECT id, shahash, filesize, clientid, next_entry, prev_entry FROM files ORDER BY shahash ASC, filesize ASC, clientid ASC, created DESC");
+	IQuery *q_read=db->Prepare("SELECT id, shahash, filesize, clientid, next_entry, prev_entry, pointed_to FROM files ORDER BY shahash ASC, filesize ASC, clientid ASC, created DESC");
 
 	SCallbackData data;
 	data.cur=q_read->Cursor();
@@ -106,8 +106,8 @@ bool setup_lmdb_file_index(SStartupStatus& status)
 
 void delete_file_index(void)
 {
-	Server->deleteFile("urbackup/index/backup_server_files_index.lmdb");
-	Server->deleteFile("urbackup/index/backup_server_files_index.lmdb-lock");
+	Server->deleteFile("urbackup/fileindex/backup_server_files_index.lmdb");
+	Server->deleteFile("urbackup/fileindex/backup_server_files_index.lmdb-lock");
 }
 
 bool create_files_index(SStartupStatus& status)

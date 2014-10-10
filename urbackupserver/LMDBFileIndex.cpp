@@ -90,6 +90,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 
 			int64 next_entry = watoi64(res[i][L"next_entry"]);
 			int64 prev_entry = watoi64(res[i][L"prev_entry"]);
+			int pointed_to = watoi(res[i][L"pointed_to"]);
 
 			if(key==last)
 			{
@@ -103,11 +104,23 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 					backupdao.setNextEntry(last_id, id);
 				}
 
+				if(pointed_to)
+				{
+					backupdao.setPointedTo(0, id);
+				}
+
 				last=key;
 				last_id=id;
 				last_prev_entry=prev_entry;
 
 				continue;
+			}
+			else
+			{
+				if(!pointed_to)
+				{
+					backupdao.setPointedTo(1, id);
+				}
 			}
 			
 			put(key, id, 0);
@@ -137,13 +150,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 	}
 	while(!res.empty());
 
-	int rc = mdb_txn_commit(txn);
-	
-	if(rc)
-	{
-		Server->Log("LMDB: Failed to commit transaction ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
-		_has_error=true;
-	}
+	commit_transaction();
 }
 
 int64 LMDBFileIndex::get(const LMDBFileIndex::SIndexKey& key)
@@ -308,9 +315,46 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 
 void LMDBFileIndex::commit_transaction(void)
 {
+	commit_transaction_internal(true);
+}
+
+void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
+{
 	int rc = mdb_txn_commit(txn);
 	
-	if(rc)
+	
+	if(rc==MDB_MAP_FULL && handle_enosp)
+	{
+		mdb_txn_abort(txn);
+
+		if(_has_error)
+		{
+			return;
+		}
+
+		{
+			read_transaction_lock.reset();
+
+			IScopedWriteLock lock(mutex);
+
+			destroy_env();
+
+			map_size*=2;
+
+			if(!create_env())
+			{
+				_has_error=true;
+				return;
+			}
+		}
+
+		start_transaction();
+
+		replay_transaction_log();
+		
+		commit_transaction_internal(false);
+	}
+	else if(rc)
 	{
 		Server->Log("LMDB: Failed to commit transaction ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 		_has_error=true;

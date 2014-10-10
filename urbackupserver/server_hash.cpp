@@ -231,21 +231,25 @@ void BackupServerHash::operator()(void)
 	}
 }
 
-void BackupServerHash::addFileSQL(int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 next_entry_clientid)
+void BackupServerHash::addFileSQL(int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry)
 {
-	addFileSQL(*backupdao, *fileindex, backupid, clientid, incremental, fp, hash_path, shahash, filesize, rsize, prev_entry, next_entry_clientid);
+	addFileSQL(*backupdao, *fileindex, backupid, clientid, incremental, fp, hash_path, shahash, filesize, rsize, prev_entry, prev_entry_clientid, next_entry);
 }
 
-void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 next_entry_clientid)
+void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry)
 {
-	if(next_entry_clientid!=clientid || prev_entry==0)
+	bool new_for_client=false;
+
+	if(prev_entry_clientid!=clientid || prev_entry==0)
 	{
+		new_for_client=true;
+
 		//new file for this client
 		prev_entry=0;
 
 		std::wstring clients;
 
-		if(next_entry_clientid!=0)
+		if(prev_entry_clientid!=0)
 		{
 			//Other clients have this file
 
@@ -256,7 +260,6 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 				if(it->first==clientid && it->second!=0)
 				{
 					prev_entry=it->second;
-					break;
 				}
 
 				if(!clients.empty())
@@ -269,38 +272,19 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 		}
 		
 		assert(prev_entry==0);
-
-		if(prev_entry==0)
-		{
-			backupdao.addIncomingFile(filesize, clientid, backupid, clients, ServerBackupDao::c_direction_incoming, incremental);
-		}
+		
+		backupdao.addIncomingFile(filesize, clientid, backupid, clients, ServerBackupDao::c_direction_incoming, incremental);
 	}
 
-	if(rsize<0)
+	int64 entryid = backupdao.addFileEntryExternal(backupid, fp, hash_path, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, new_for_client?1:0);
+
+	if(new_for_client)
 	{
-		if(prev_entry==0)
-		{
-			rsize=0;
-		}
-		else
-		{
-			ServerBackupDao::SFindFileEntry fentry = backupdao.getFileEntry(prev_entry);
-			if(fentry.exists)
-			{
-				rsize=fentry.rsize;
-			}
-			else
-			{
-				rsize=0;
-			}
-		}
+		fileindex.put_delayed(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid), entryid);
 	}
-
-	int64 entryid = backupdao.addFileEntryExternal(backupid, fp, hash_path, shahash, filesize, rsize, clientid, incremental, prev_entry);
-	fileindex.put_delayed(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid), entryid);
 }
 
-void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id,
+void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
 	bool use_transaction, bool del_entry)
 {
 	if(use_transaction)
@@ -336,11 +320,21 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 
 		backupdao.addIncomingFile((rsize>0 && rsize!=filesize)?rsize:filesize, clientid, backupid, clients, ServerBackupDao::c_direction_outgoing, incremental);
 
-		fileindex.del_delayed(FileIndex::SIndexKey(pHash, filesize, clientid));
+		if(pointed_to)
+		{
+			fileindex.del_delayed(FileIndex::SIndexKey(pHash, filesize, clientid));
+		}
 	}
-	else if(next_id==0)
+	else if(pointed_to)
 	{
-		fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
+		if(next_id!=0)
+		{
+			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
+		}
+		else
+		{
+			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
+		}
 	}
 
 	if(next_id!=0)
@@ -368,7 +362,7 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2,
 	bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool copy_from_hardlink_if_failed,
 	bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int64& entryclientid
-	, int64& rsize)
+	, int64& rsize, int64& next_entry)
 {
 	hardlink_limit=false;
 	copied_file=false;
@@ -383,6 +377,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 
 	while(existing_file.exists)
 	{
+		ff_last=existing_file.fullpath;
 		tries_once=true;
 		bool too_many_hardlinks;
 		bool b=os_create_hardlink(os_file_prefix(tfn), os_file_prefix(existing_file.fullpath), use_snapshots, &too_many_hardlinks);
@@ -414,7 +409,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 					first_logmsg=true;
 
 					deleteFileSQL(*backupdao, *fileindex, sha2.c_str(), t_filesize, existing_file.rsize, clientid, existing_file.backupid, existing_file.incremental,
-						existing_file.id, existing_file.prev_entry, existing_file.next_entry, true, true);
+						existing_file.id, existing_file.prev_entry, existing_file.next_entry, existing_file.pointed_to, true, true);
 
 					existing_file = findFileHash(sha2, t_filesize, clientid, find_state);
 				}
@@ -468,6 +463,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 		{
 			entryid = existing_file.id;
 			entryclientid = existing_file.clientid;
+			next_entry=existing_file.next_entry;
 
 			if(existing_file.rsize!=0 &&
 				existing_file.rsize!=existing_file.filesize)
@@ -547,9 +543,10 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	bool copied_file;
 	int64 entryid = 0;
 	int64 entryclientid = 0;
+	int64 next_entryid = 0;
 	int64 rsize = 0;
 	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn,
-		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize))
+		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid))
 	{
 		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 		copy=false;
@@ -557,7 +554,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 		Server->destroy(tf);
 		tf=NULL;
 		Server->deleteFile(temp_fn);
-		addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, rsize, entryid, entryclientid);
+		addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, rsize, entryid, entryclientid, next_entryid);
 	}
 
 	if(tries_once && copy && !hardlink_limit)
@@ -704,7 +701,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 
 				if(r)
 				{
-					addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, cow_filesize>0?cow_filesize:t_filesize, 0, 0);
+					addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, cow_filesize>0?cow_filesize:t_filesize, 0, 0, 0);
 				}
 			}
 		}
@@ -746,10 +743,14 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 {
 	int64 entryid;
 	
+	bool save_orig=false;
+	bool switch_to_all_clients=false;
+	bool switch_to_next_client=true;
 	if(state.state==0)
 	{
 		entryid = fileindex->get_with_cache_prefer_client(FileIndex::SIndexKey(pHash.c_str(), filesize, clientid));
 		state.state=1;
+		save_orig=true;
 	}
 	else if(state.state==1)
 	{
@@ -759,36 +760,86 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 		}
 		else
 		{
-			state.state=2;
-			state.entryids = fileindex->get_all_clients_with_cache(FileIndex::SIndexKey(pHash.c_str(), filesize, 0));
-			state.client = state.entryids.begin();
-			if(state.client!=state.entryids.end())
+			if(state.orig_prev!=0)
 			{
-				entryid=state.client->second;
+				entryid = state.orig_prev;
+				state.state=2;
 			}
 			else
 			{
-				entryid=0;
+				switch_to_all_clients=true;
 			}
 		}
 	}
 	else if(state.state==2)
 	{
+		if(state.prev.prev_entry!=0)
+		{
+			entryid=state.prev.prev_entry;
+		}
+		else
+		{
+			switch_to_all_clients=true;
+		}
+	}
+	else if(state.state==3)
+	{
 		if(state.prev.next_entry==0)
 		{
-			++state.client;
-			if(state.client==state.entryids.end())
+			if(state.orig_prev!=0)
 			{
-				entryid=0;
+				entryid = state.orig_prev;
+				state.state=4;
 			}
 			else
 			{
-				entryid=state.client->second;
+				switch_to_next_client=true;
 			}
+			
 		}
 		else
 		{
 			entryid=state.prev.next_entry;
+		}
+	}
+	else if(state.state=4)
+	{
+		if(state.prev.prev_entry==0)
+		{
+			switch_to_next_client=true;
+		}
+		else
+		{
+			entryid=state.prev.prev_entry;
+		}
+	}
+
+	if(switch_to_all_clients)
+	{
+		state.state=3;
+		state.entryids = fileindex->get_all_clients_with_cache(FileIndex::SIndexKey(pHash.c_str(), filesize, 0));
+		state.client = state.entryids.begin();
+		if(state.client!=state.entryids.end())
+		{
+			entryid=state.client->second;
+			save_orig=true;
+		}
+		else
+		{
+			entryid=0;
+		}
+	}
+
+	if(switch_to_next_client)
+	{
+		++state.client;
+		if(state.client==state.entryids.end())
+		{
+			entryid=0;
+		}
+		else
+		{
+			entryid=state.client->second;
 		}
 	}
 
@@ -808,6 +859,11 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 		ServerBackupDao::SFindFileEntry ret;
 		ret.exists=false;
 		return ret;
+	}
+
+	if(save_orig && state.prev.exists)
+	{
+		state.orig_prev=state.prev.prev_entry;
 	}
 
 	return state.prev;

@@ -1693,7 +1693,7 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 	db->DetachDBs();
 	db->BeginTransaction();
 
-	IQuery* q_iterate = db->Prepare("SELECT id, shahash, filesize, rsize, clientid, backupid, incremental, next_entry, prev_entry FROM files WHERE backupid=?", false);
+	IQuery* q_iterate = db->Prepare("SELECT id, shahash, filesize, rsize, clientid, backupid, incremental, next_entry, prev_entry, pointed_to FROM files WHERE backupid=?", false);
 	q_iterate->Bind(backupid);
 	IDatabaseCursor* cursor = q_iterate->Cursor();
 
@@ -1708,9 +1708,10 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 		int incremental = watoi(res[L"incremental"]);
 		int64 next_entry = watoi64(res[L"next_entry"]);
 		int64 prev_entry = watoi64(res[L"prev_entry"]);
+		int pointed_to = watoi(res[L"pointed_to"]);
 
 		BackupServerHash::deleteFileSQL(*backupdao, *fileindex.get(), reinterpret_cast<const char*>(res[L"shahash"].c_str()),
-			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, false, false);
+			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false);
 	}
 
 

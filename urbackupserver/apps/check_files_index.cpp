@@ -30,7 +30,16 @@ int check_files_index()
 	}
 
 
-	IQuery* q_iterate = db->Prepare("SELECT id, shahash, filesize, clientid, fullpath FROM files");
+	IQuery* q_iterate;
+	
+	if(Server->getServerParameter("check_last").empty())
+	{
+		q_iterate = db->Prepare("SELECT id, shahash, filesize, clientid, fullpath FROM files");
+	}
+	else
+	{
+		q_iterate = db->Prepare("SELECT id, shahash, filesize, clientid, fullpath FROM files ORDER BY id DESC LIMIT "+Server->getServerParameter("check_last"));
+	}
 
 	IDatabaseCursor* cursor = q_iterate->Cursor();
 
@@ -68,10 +77,13 @@ int check_files_index()
 
 		bool first=true;
 
+		int64 backward_entryid=0;
 		int64 prev_entryid=0;
 		while(entryid!=0)
 		{
 			ServerBackupDao::SFindFileEntry fileentry = backupdao.getFileEntry(entryid);
+			
+			//Server->Log("Current entry id="+nconvert(fileentry.id));
 
 			if(fileentry.id == id)
 			{
@@ -80,10 +92,12 @@ int check_files_index()
 
 			if(first)
 			{
-				if(fileentry.next_entry!=0)
+				if(!fileentry.pointed_to)
 				{
-					Server->Log(L"First entry with id "+convert(entryid)+L" has next file entry "+convert(fileentry.next_entry)+L" but should be the head", LL_ERROR);
-				}				
+					Server->Log(L"First entry with id "+convert(entryid)+L" does not have pointed_to set to a value not equal 0", LL_ERROR);
+					has_error=true;
+				}	
+				backward_entryid=fileentry.prev_entry;
 				first=false;
 			}
 
@@ -115,11 +129,53 @@ int check_files_index()
 
 			if(entryid==0 || prev_entryid==id)
 			{
-				if(!found_entry)
-				{
-					int foo=4;
-				}
 				break;
+			}
+		}
+
+		if(!found_entry)
+		{
+			entryid = backward_entryid;
+			prev_entryid = 0;
+			while(entryid!=0)
+			{
+				ServerBackupDao::SFindFileEntry fileentry = backupdao.getFileEntry(entryid);
+
+				if(fileentry.id == id)
+				{
+					found_entry=true;
+				}
+
+				if(!fileentry.exists)
+				{
+					Server->Log(L"File entry for file with id "+convert(entryid)+L" in index does not exist in database", LL_ERROR);
+					has_error=true;
+					break;
+				}
+
+				if(prev_entryid!=0 &&
+					fileentry.prev_entry!=prev_entryid)
+				{
+					Server->Log(L"Previous entry for file with id "+convert(entryid)+L" is wrong. Assumed="+convert(prev_entryid)+L" Actual="+convert(fileentry.prev_entry)+L" Origin="+convert(id), LL_ERROR);
+					has_error=true;
+					break;
+				}
+
+				if(fileentry.shahash!=res[L"shahash"])
+				{
+					Server->Log(L"Shahash of entry with id "+convert(entryid)+L" differs from shahash of entry with id "+convert(id)+L". It should not differ. -2", LL_ERROR);
+					has_error=true;
+					break;
+				}
+
+				prev_entryid = entryid;
+
+				entryid = fileentry.next_entry;
+
+				if(entryid==0 || prev_entryid==id)
+				{
+					break;
+				}
 			}
 		}
 
@@ -131,7 +187,7 @@ int check_files_index()
 
 		++n_checked;
 
-		if(n_checked%1000==0)
+		if(n_checked%100==0)
 		{
 			Server->Log("Checked "+nconvert(n_checked)+" file entries", LL_INFO);
 		}

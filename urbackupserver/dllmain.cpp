@@ -1171,12 +1171,12 @@ bool upgrade35_36()
 		"shahash BLOB,"
 		"filesize INTEGER,"
 		"created DATE DEFAULT CURRENT_TIMESTAMP"
-		", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER);"))
+		", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER);"))
 	{
 		return false;
 	}
 
-	if(!db->Write("INSERT INTO files SELECT id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, 0 AS next_entry, 0 AS prev_entry FROM files_bck"))
+	if(!db->Write("INSERT INTO files SELECT id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, 0 AS next_entry, 0 AS prev_entry, 0 AS pointed_to FROM files_bck"))
 	{
 		return false;
 	}

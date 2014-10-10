@@ -2033,13 +2033,14 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 	int64 entryid=0;
 	int64 entryclientid = 0;
 	int64 rsize = 0;
+	int64 next_entryid = 0;
 	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), true,
-		tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize);
+		tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid);
 
 	if(ok && add_sql)
 	{
 		local_hash->addFileSQL(backupid, clientid, 0, dstpath, hashpath, sha2, filesize,
-			(rsize>0 && rsize!=filesize)?rsize:(copied_file?filesize:0), entryid, entryclientid);
+			(rsize>0 && rsize!=filesize)?rsize:(copied_file?filesize:0), entryid, entryclientid, next_entryid);
 	}
 
 	if(ok)
@@ -5246,6 +5247,18 @@ void BackupServerGet::addFileEntrySQLWithExisting( const std::wstring &fp, const
 		return;
 	}
 
+	ServerBackupDao::SFindFileEntry fentry = backup_dao->getFileEntry(entryid);
+	if(!fentry.exists)
+	{
+		Server->Log(L"File entry in database with id " +convert(entryid)+L" and filesize "+convert(filesize)+L" to file with path \""+fp+L"\" should exist but does not.", LL_WARNING);
+		return;
+	}
+
+	if(rsize<0)
+	{
+		rsize=fentry.rsize;
+	}
+
 	BackupServerHash::addFileSQL(*backup_dao, *fileindex.get(), backupid, clientid, incremental, fp, hash_path,
-		shahash, filesize, rsize, entryid, clientid);
+		shahash, filesize, rsize, entryid, clientid, fentry.next_entry);
 }

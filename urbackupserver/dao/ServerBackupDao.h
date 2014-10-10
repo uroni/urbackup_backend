@@ -68,6 +68,7 @@ public:
 		int64 prev_entry;
 		int64 rsize;
 		int incremental;
+		int pointed_to;
 	};
 	struct SIncomingStat
 	{
@@ -120,7 +121,8 @@ public:
 	std::vector<SDuration> getLastFullDurations(int clientid);
 	void setNextEntry(int64 next_entry, int64 id);
 	void setPrevEntry(int64 prev_entry, int64 id);
-	void addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 prev_entry);
+	void setPointedTo(int64 pointed_to, int64 id);
+	void addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
 	void delFileEntry(int64 id);
 	SFindFileEntry getFileEntry(int64 id);
 	SStatFileEntry getStatFileEntry(int64 id);
@@ -134,7 +136,7 @@ public:
 	void setClientUsedFilebackupSize(int64 bytes_used_files, int id);
 	//@-SQLGenFunctionsEnd
 
-	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 prev_entry);
+	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
 
 private:
 	ServerBackupDao(ServerBackupDao& other) {}
@@ -171,6 +173,7 @@ private:
 	IQuery* q_getLastFullDurations;
 	IQuery* q_setNextEntry;
 	IQuery* q_setPrevEntry;
+	IQuery* q_setPointedTo;
 	IQuery* q_addFileEntry;
 	IQuery* q_delFileEntry;
 	IQuery* q_getFileEntry;

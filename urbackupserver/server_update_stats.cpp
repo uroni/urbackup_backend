@@ -279,7 +279,12 @@ void ServerUpdateStats::update_files(void)
 			}
 			else if(entry.direction==ServerBackupDao::c_direction_outgoing)
 			{
-				int64 current_size_per_client = entry.filesize/clients.size();
+				int64 current_size_per_client = entry.filesize;
+				
+				if(!clients.empty())
+				{
+					current_size_per_client/=clients.size();
+				}
 
 				add(clients, -current_size_per_client, size_data_clients);
 

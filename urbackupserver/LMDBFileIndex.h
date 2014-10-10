@@ -63,6 +63,8 @@ private:
 	void del_internal(const SIndexKey& key, bool log, bool handle_enosp);
 
 	void replay_transaction_log();
+	
+	void commit_transaction_internal(bool handle_enosp);
 
 
 	MDB_txn *txn;
