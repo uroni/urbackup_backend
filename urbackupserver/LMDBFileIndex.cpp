@@ -5,6 +5,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "database.h"
 #include "dao/ServerBackupDao.h"
+#include <assert.h>
 
 MDB_env *LMDBFileIndex::env=NULL;
 ISharedMutex* LMDBFileIndex::mutex=NULL;
@@ -92,6 +93,8 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 			int64 prev_entry = watoi64(res[i][L"prev_entry"]);
 			int pointed_to = watoi(res[i][L"pointed_to"]);
 
+			assert(last<key || key==last);
+
 			if(key==last)
 			{
 				if(last_prev_entry==0)
@@ -123,7 +126,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 				}
 			}
 			
-			put(key, id, 0);
+			put(key, id, MDB_APPEND);
 
 			if(_has_error)
 			{
