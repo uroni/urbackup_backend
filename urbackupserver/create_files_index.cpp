@@ -65,7 +65,15 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	fileindex.create(create_callback, &data);
 
-	db->EndTransaction();
+	if(fileindex.has_error())
+	{
+		db->Write("ROLLBACK");
+		return false;
+	}
+	else
+	{
+		db->EndTransaction();
+	}
 
 	if(!cache_res.empty())
 	{
