@@ -33,6 +33,7 @@
 #include "create_files_index.h"
 #include <algorithm>
 #include <memory.h>
+#include "file_metadata.h"
 #include <assert.h>
 
 const size_t freespace_mod=50*1024*1024; //50 MB
@@ -175,13 +176,18 @@ void BackupServerHash::operator()(void)
 				std::string hashoutput_fn;
 				rd.getStr(&hashoutput_fn);
 
-				bool diff_file=!hashoutput_fn.empty();
-
 				std::string old_file_fn;
 				rd.getStr(&old_file_fn);
 
 				int64 t_filesize;
 				rd.getInt64(&t_filesize);
+
+				FileMetadata metadata;
+				metadata.read(rd);
+				metadata.set_shahash(sha2);
+
+				FileMetadata parent_metadata;
+				parent_metadata.read(rd);
 
 				IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ_SEQUENTIAL);
 
@@ -193,10 +199,10 @@ void BackupServerHash::operator()(void)
 				else
 				{
 					addFile(backupid, incremental, tf, Server->ConvertToUnicode(tfn), Server->ConvertToUnicode(hashpath), sha2,
-						diff_file, old_file_fn, hashoutput_fn, t_filesize);
+						old_file_fn, hashoutput_fn, t_filesize, metadata, parent_metadata);
 				}
 
-				if(diff_file)
+				if(!hashoutput_fn.empty())
 				{
 					Server->deleteFile(hashoutput_fn);
 				}
@@ -204,28 +210,61 @@ void BackupServerHash::operator()(void)
 			else if(action==EAction_Copy)
 			{
 				std::string source;
-				rd.getStr(&source);
+				bool b = rd.getStr(&source);
+				assert(b);
 				
 				std::string dest;
-				rd.getStr(&dest);
+				b = rd.getStr(&dest);
+				assert(b);
 
-				IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(source)), MODE_READ_SEQUENTIAL);
+				std::string hash_src;
+				b = rd.getStr(&hash_src);
+				assert(b);
 
-				if(tf==NULL)
+				std::string hash_dest;
+				b = rd.getStr(&hash_dest);
+				assert(b);
+
+				FileMetadata metadata;
+				metadata.read(rd);
+				
+				FileMetadata src_metadata;
+				if(read_metadata(os_file_prefix(Server->ConvertToUnicode(hash_src)),
+					src_metadata))
+				{
+					metadata.set_shahash(src_metadata.shahash);
+				}
+
+				std::auto_ptr<IFile> tf(Server->openFile(os_file_prefix(Server->ConvertToUnicode(source)), MODE_READ_SEQUENTIAL));
+
+				if(!tf.get())
 				{
 					ServerLogger::Log(clientid, "Error opening file \""+source+"\" from pipe for reading ec="+nconvert(os_last_error()), LL_ERROR);
 					has_error=true;
 				}
 				else
 				{
-					if(!copyFile(tf, Server->ConvertToUnicode(dest)))
+					if(!copyFile(tf.get(), Server->ConvertToUnicode(dest)))
 					{
 						ServerLogger::Log(clientid, "Error while copying file \""+source+"\" to \""+dest+"\"", LL_ERROR);
 						has_error=true;
 					}
-				}
 
-				Server->destroy(tf);
+					if(!hash_src.empty())
+					{
+						std::auto_ptr<IFile> hashf(Server->openFile(os_file_prefix(Server->ConvertToUnicode(hash_src)), MODE_READ_SEQUENTIAL));
+						if(hashf.get())
+						{
+							copyFile(hashf.get(), Server->ConvertToUnicode(hash_dest));
+						}
+
+						if(!write_file_metadata(os_file_prefix(Server->ConvertToUnicode(hash_dest)),
+							this, metadata))
+						{
+							ServerLogger::Log(clientid, "Error while writing metadata to \""+hash_dest+"\"", LL_ERROR);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -362,7 +401,7 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2,
 	bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool copy_from_hardlink_if_failed,
 	bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int64& entryclientid
-	, int64& rsize, int64& next_entry)
+	, int64& rsize, int64& next_entry, const FileMetadata& metadata, const FileMetadata& parent_metadata)
 {
 	hardlink_limit=false;
 	copied_file=false;
@@ -467,6 +506,21 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 
 			if(existing_file.rsize!=0 &&
 				existing_file.rsize!=existing_file.filesize)
+			if(parent_metadata.exist)
+			{
+				std::wstring parent_path = ExtractFilePath(tfn);
+				if(!os_set_file_time(os_file_prefix(parent_path),
+					parent_metadata.created, parent_metadata.last_modified))
+				{
+					ServerLogger::Log(clientid, L"HT: Error setting creation and last modified time of parent directory \""+parent_path+L"\"", LL_WARNING);
+				}
+			}
+
+			assert(!hash_fn.empty());
+			
+			if(existing_file.rsize!=0 &&
+				existing_file.rsize!=existing_file.filesize)
+			
 			{
 				rsize=existing_file.rsize;
 			}
@@ -475,7 +529,9 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 				rsize=0;
 			}
 
-			if(!hash_fn.empty() && !existing_file.hashpath.empty())
+			bool do_write_metadata=false;
+			if(!f_hashpath.empty() &&
+				has_metadata(f_hashpath, metadata) )
 			{
 				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(existing_file.hashpath), use_snapshots, NULL);
 				if(!b)
@@ -484,33 +540,30 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 					if(ctf==NULL)
 					{
 						ServerLogger::Log(clientid, "HT: Hardlinking hash file failed (File doesn't exist)", LL_DEBUG);
-						if(!diff_file)
+
+						if(!hashoutput_fn.empty())
 						{
-							if(tf!=NULL && !createChunkHashes(tf, hash_fn))
-								ServerLogger::Log(clientid, "HT: Creating chunk hash file failed", LL_ERROR);
-						}
-						else
-						{
-							if(!hashoutput_fn.empty())
+							IFile *src=openFileRetry(Server->ConvertToUnicode(hashoutput_fn), MODE_READ);
+							if(src!=NULL)
 							{
-								IFile *src=openFileRetry(Server->ConvertToUnicode(hashoutput_fn), MODE_READ);
-								if(src!=NULL)
+								if(!copyFile(src, hash_fn))
 								{
-									if(!copyFile(src, hash_fn))
-									{
-										ServerLogger::Log(clientid, "Error copying hashoutput to destination -1", LL_ERROR);
-										has_error=true;
-										hash_fn.clear();
-									}
-									Server->destroy(src);
-								}
-								else
-								{
-									ServerLogger::Log(clientid, "HT: Error opening hashoutput", LL_ERROR);
+									ServerLogger::Log(clientid, "Error copying hashoutput to destination -1", LL_ERROR);
 									has_error=true;
 									hash_fn.clear();
 								}
+								Server->destroy(src);
 							}
+							else
+							{
+								ServerLogger::Log(clientid, "HT: Error opening hashoutput", LL_ERROR);
+								has_error=true;
+								hash_fn.clear();
+							}
+						}
+						else
+						{
+							do_write_metadata=true;
 						}
 					}
 					else
@@ -525,6 +578,20 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 					}
 				}
 			}
+			else
+			{
+				do_write_metadata=true;
+			}
+
+			if(do_write_metadata)
+			{
+				if(!write_file_metadata(hash_fn, this, metadata))
+				{
+					ServerLogger::Log(clientid, "Error writing file metadata -1", LL_ERROR);
+					has_error=true;
+				}
+			}
+
 			copy=false;
 			break;
 		}
@@ -534,7 +601,8 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 }
 
 void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const std::wstring &tfn,
-	std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize)
+	std::wstring hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
+	const FileMetadata& metadata, const FileMetadata& parent_metadata)
 {
 	bool copy=true;
 	bool tries_once;
@@ -546,7 +614,8 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	int64 next_entryid = 0;
 	int64 rsize = 0;
 	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn,
-		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid))
+		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
+		metadata, parent_metadata))
 	{
 		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 		copy=false;
@@ -639,7 +708,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 			else
 			{
 				bool r;
-				if(!diff_file)
+				if(hashoutput_fn.empty())
 				{
 					if(!use_reflink || orig_fn.empty())
 					{
@@ -647,11 +716,11 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 						{
 							if(use_tmpfiles)
 							{
-								r=copyFileWithHashoutput(tf, tfn, hash_fn);
+								r=copyFileWithHashoutput(tf, tfn, hash_fn, metadata);
 							}
 							else
 							{
-								r=renameFileWithHashoutput(tf, tfn, hash_fn);
+								r=renameFileWithHashoutput(tf, tfn, hash_fn, metadata);
 								tf=NULL;
 							}
 						}
@@ -672,7 +741,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 					{
 						if(!hash_fn.empty())
 						{
-							r=replaceFileWithHashoutput(tf, tfn, hash_fn, Server->ConvertToUnicode(orig_fn));
+							r=replaceFileWithHashoutput(tf, tfn, hash_fn, Server->ConvertToUnicode(orig_fn), metadata);
 						}
 						else
 						{
@@ -682,13 +751,26 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 				}
 				else
 				{
-					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn);
+					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn, metadata);
 				}
 				
 				if(!r)
 				{
 					has_error=true;
 					ServerLogger::Log(clientid, "Storing file failed -1", LL_ERROR);
+				}
+				else
+				{
+					if(!os_set_file_time(os_file_prefix(tfn), metadata.created, metadata.last_modified))
+					{
+						ServerLogger::Log(clientid, L"Error setting created and last modified time on file \""+tfn+L"\"", LL_WARNING);
+					}
+
+					std::wstring parent_fn = ExtractFilePath(tfn);
+					if(!os_set_file_time(os_file_prefix(parent_fn), parent_metadata.created, parent_metadata.last_modified))
+					{
+						ServerLogger::Log(clientid, L"Error setting created and last modified time on parent directory \""+parent_fn+L"\"", LL_WARNING);
+					}
 				}
 
 				if(tf!=NULL)
@@ -918,7 +1000,8 @@ bool BackupServerHash::copyFile(IFile *tf, const std::wstring &dest)
 	return true;
 }
 
-bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest)
+bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest,
+	const FileMetadata& metadata)
 {
 	IFile *dst=openFileRetry(dest, MODE_WRITE);
 	if(dst==NULL) return false;
@@ -936,6 +1019,18 @@ bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::wstring &des
 		std::string r=BackupServerPrepareHash::build_chunk_hashs(tf, dst_hash, this, false, dst, false);
 		if(r=="")
 			return false;
+
+		if(!write_file_metadata(dst_hash, this, metadata))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
+		{
+			return false;
+		}
 	}
 	
 	return true;
@@ -1020,7 +1115,8 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 	}
 }
 
-bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest)
+bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest,
+	const FileMetadata& metadata)
 {
 	_i64 dstfsize;
 	{
@@ -1073,6 +1169,11 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 	if(!copyFile(f_hash_output, hash_dest))
 	{
 		Server->Log("Error copying hashoutput file to destination", LL_ERROR);
+		return false;
+	}
+
+	if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
+	{
 		return false;
 	}
 
@@ -1150,13 +1251,14 @@ bool BackupServerHash::replaceFile(IFile *tf, const std::wstring &dest, const st
 	return true;
 }
 
-bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn)
+bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn,
+	const FileMetadata& metadata)
 {
 	if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(orig_fn), true, NULL) )
 	{
 		Server->Log(L"Reflinking file \""+dest+L"\" failed -3", LL_ERROR);
 
-		return copyFileWithHashoutput(tf, dest, hash_dest);
+		return copyFileWithHashoutput(tf, dest, hash_dest, metadata);
 	}
 
 	Server->Log(L"HT: Copying with hashoutput with reflink data from \""+orig_fn+L"\"", LL_DEBUG);
@@ -1178,6 +1280,11 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 		if(r=="")
 			return false;
 
+		if(!write_file_metadata(dst_hash, this, metadata))
+		{
+			return false;
+		}
+
 		_i64 dst_size=dst->Size();
 
 		dst_s.clear();
@@ -1194,6 +1301,11 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 	else
 	{
 		dst_s.clear();
+
+		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
+		{
+			return false;
+		}
 		
 		if( !os_file_truncate(dest, 0) )
 		{
@@ -1205,7 +1317,8 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 	return true;
 }
 
-bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest)
+bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest,
+	const FileMetadata& metadata)
 {
 	if(tf->Size()>0)
 	{
@@ -1219,6 +1332,18 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &d
 		std::string r=BackupServerPrepareHash::build_chunk_hashs(tf, dst_hash, this, false, NULL, false);
 		if(r=="")
 			return false;
+
+		if(!write_file_metadata(dst_hash, this, metadata))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
+		{
+			return false;
+		}
 	}
 
 	std::wstring tf_fn=tf->getFilenameW();

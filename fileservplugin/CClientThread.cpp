@@ -31,9 +31,12 @@
 #include "CriticalSection.h"
 #include "FileServ.h"
 #include "ChunkSendThread.h"
+#include "../urbackupcommon/sha2/sha2.h"
 
 #include <algorithm>
 #include <memory.h>
+#include "FileServFactory.h"
+#include "../urbackupcommon/os_functions.h"
 
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
@@ -706,6 +709,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 					Handle_ID_BLOCK_REQUEST(data);
 				}
 			}break;
+		case ID_GET_FILE_HASH_AND_METADATA:
+			{
+				if(!GetFileHashAndMetadata(data))
+				{
+					return false;
+				}
+			}break;
 		}
 	}
 	if( stopped==true )
@@ -1205,4 +1215,149 @@ void CClientThread::queueChunk( SChunk chunk )
 		next_chunks.push(chunk);
 		cond->notify_all();
 	}
+}
+
+bool CClientThread::GetFileHashAndMetadata( CRData* data )
+{
+	std::string s_filename;
+	if(data->getStr(&s_filename)==false)
+		return false;
+
+#ifdef CHECK_IDENT
+	std::string ident;
+	data->getStr(&ident);
+	if(!FileServ::checkIdentity(ident))
+	{
+		Log("Identity check failed -hash", LL_DEBUG);
+		return false;
+	}
+#endif
+
+	std::wstring o_filename=Server->ConvertToUnicode(s_filename);
+
+	Log("Calculating hash of file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+
+	std::wstring filename=map_file(o_filename);
+
+	Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
+
+	if(filename.empty())
+	{
+		char ch=ID_BASE_DIR_LOST;
+		int rc=SendInt(&ch, 1);
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -hash2", LL_DEBUG);
+			return false;
+		}
+		Log("Info: Base dir lost -hash", LL_DEBUG);
+		return true;
+	}
+
+#ifdef _WIN32
+	if(filename.size()>=2 && filename[0]=='\\' && filename[1]=='\\' )
+	{
+		if(filename.size()<3 || filename[2]!='?')
+		{
+			filename=L"\\\\?\\UNC"+filename.substr(1);
+		}
+	}
+	else
+	{
+		filename = L"\\\\?\\"+filename;
+	}		
+#endif
+
+#ifdef _WIN32
+#ifndef BACKUP_SEM
+	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+#else
+	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+#endif
+#else //_WIN32
+	hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
+#endif //_WIN32
+
+	if(hFile == INVALID_HANDLE_VALUE)
+	{
+		hFile=NULL;
+#ifdef CHECK_BASE_PATH
+		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
+		if(!isDirectory(basePath))
+		{
+			char ch=ID_BASE_DIR_LOST;
+			int rc=SendInt(&ch, 1);
+			if(rc==SOCKET_ERROR)
+			{
+				Log("Error: Socket Error - DBG: Send BASE_DIR_LOST -hash", LL_DEBUG);
+				return false;
+			}
+			Log("Info: Base dir lost -hash", LL_DEBUG);
+			return false;
+		}
+#endif
+
+		char ch=ID_COULDNT_OPEN;
+		int rc=SendInt(&ch, 1);
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Error: Socket Error - DBG: Send COULDNT OPEN -hash", LL_DEBUG);
+			return false;
+		}
+		Log("Info: Couldn't open file -hash", LL_DEBUG);
+		return false;
+	}
+
+	std::auto_ptr<IFile> tf(Server->openFileFromHandle((void*)hFile));
+	if(tf.get()==NULL)
+	{
+		Log("Could not open file from handle -hash", LL_ERROR);
+		return false;
+	}
+
+	unsigned int read;
+	std::vector<char> buffer;
+	buffer.resize(32768);
+	
+	sha512_ctx ctx;
+	sha512_init(&ctx);
+
+	while( (read=tf->Read(&buffer[0], static_cast<_u32>(buffer.size())))>0 )
+	{
+		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(&buffer[0]), read);
+	}
+
+	std::string dig;
+	dig.resize(64);
+	sha512_final(&ctx, reinterpret_cast<unsigned char*>(&dig[0]));
+
+	CWData send_data;
+	send_data.addUChar(ID_FILE_HASH_AND_METADATA);
+	send_data.addUShort(0);
+	send_data.addString(dig);
+	send_data.addString(FileServFactory::getPermissionCallback()->getPermissions(filename));
+	send_data.addInt64(tf->Size());
+
+	SFile file_metadata = getFileMetadata(filename);
+	if(file_metadata.name.empty())
+	{
+		Log("Could not get metadata of file", LL_DEBUG);
+		return false;
+	}
+
+	send_data.addInt64(file_metadata.last_modified);
+	send_data.addInt64(file_metadata.created);
+
+	unsigned short send_data_size=static_cast<unsigned short>(send_data.getDataSize());
+
+	memcpy(send_data.getDataPtr()+1, &send_data_size, sizeof(send_data_size) );
+
+	int rc=SendInt(send_data.getDataPtr(), send_data.getDataSize());
+	if(rc==SOCKET_ERROR)
+	{
+		Log("Socket error while sending hash", LL_DEBUG);
+		return false;
+	}
+
+	return true;
 }

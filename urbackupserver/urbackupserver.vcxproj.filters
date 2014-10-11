@@ -246,14 +246,23 @@
     <ClCompile Include="server_hash_existing.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="filelist_utils.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
     <ClCompile Include="..\common\adler32.cpp">
       <Filter>fileclient</Filter>
     </ClCompile>
     <ClCompile Include="create_files_index.cpp">
       <Filter>filesindex</Filter>
     </ClCompile>
+    <ClCompile Include="file_metadata.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
     <ClCompile Include="LMDBFileIndex.cpp">
       <Filter>filesindex</Filter>
+    </ClCompile>
+    <ClCompile Include="server_continuous.cpp">
+      <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="FileIndex.cpp">
       <Filter>filesindex</Filter>
@@ -458,11 +467,23 @@
     <ClInclude Include="LMDBFileIndex.h">
       <Filter>filesindex</Filter>
     </ClInclude>
+    <ClInclude Include="filelist_utils.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
     <ClInclude Include="FileIndex.h">
       <Filter>filesindex</Filter>
     </ClInclude>
+    <ClInclude Include="file_metadata.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
     <ClInclude Include="apps\check_files_index.h">
       <Filter>apps</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\backups.h">
+      <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="server_continuous.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

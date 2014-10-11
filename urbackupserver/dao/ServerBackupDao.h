@@ -137,6 +137,7 @@ public:
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
+	void updateOrInsertSetting(int clientid, const std::wstring& key, const std::wstring& value);
 
 private:
 	ServerBackupDao(ServerBackupDao& other) {}

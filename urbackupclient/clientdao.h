@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"
 #include "../urbackupcommon/os_functions.h"
@@ -28,6 +30,7 @@ struct SBackupDir
 	std::wstring tname;
 	std::wstring path;
 	bool optional;
+	int group;
 };
 
 struct SShadowCopy
@@ -68,6 +71,9 @@ struct SFileAndHash
 	int64 last_modified;
 	bool isdir;
 	std::string hash;
+	std::string permissions;
+	int64 last_modified_orig;
+	int64 created;
 
 	bool operator<(const SFileAndHash &other) const
 	{
@@ -80,7 +86,10 @@ struct SFileAndHash
 			size == other.size &&
 			last_modified == other.last_modified &&
 			isdir == other.isdir &&
-			hash == other.hash;
+			hash == other.hash &&
+			permissions == other.permissions &&
+			last_modified_orig == other.last_modified_orig &&
+			created == other.created;
 	}
 };
 
@@ -107,9 +116,9 @@ public:
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
-	std::vector<SMDir> getChangedDirs(bool del=true);
+	std::vector<SMDir> getChangedDirs(const std::wstring& path, bool del=true);
 
-	void moveChangedFiles(bool del=true);
+	void moveChangedFiles(_i64 dir_id, bool del=true);
 
 	std::vector<std::wstring> getChangedFiles(_i64 dir_id);
 	bool hasFileChange(_i64 dir_id, std::wstring fn);
@@ -124,11 +133,11 @@ public:
 	void deleteSavedChangedDirs(void);
 
 	bool hasChangedGap(void);
-	void deleteChangedDirs(void);
+	void deleteChangedDirs(const std::wstring& path);
 
 	std::vector<std::wstring> getGapDirs(void);
 
-	std::vector<std::wstring> getDelDirs(bool del=true);
+	std::vector<std::wstring> getDelDirs(const std::wstring& path, bool del=true);
 	void deleteSavedDelDirs(void);
 
 	void removeDeletedDir(const std::wstring &dir);
@@ -143,9 +152,24 @@ public:
 	void updateMiscValue(const std::string& key, const std::wstring& value);
 
 	//@-SQLGenFunctionsBegin
+	struct CondInt64
+	{
+		bool exists;
+		int64 value;
+	};
+	struct SToken
+	{
+		int64 id;
+		std::wstring accountname;
+		std::wstring token;
+		int is_user;
+	};
 
 
 	void updateShadowCopyStarttime(int id);
+	void updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user);
+	std::vector<SToken> getFileAccessTokens(void);
+	CondInt64 getFileAccessTokenId(const std::wstring& accountname, int is_user);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -187,5 +211,8 @@ private:
 
 	//@-SQLGenVariablesBegin
 	IQuery* q_updateShadowCopyStarttime;
+	IQuery* q_updateFileAccessToken;
+	IQuery* q_getFileAccessTokens;
+	IQuery* q_getFileAccessTokenId;
 	//@-SQLGenVariablesEnd
 };

@@ -117,6 +117,8 @@ private:
 	bool GetFileBlockdiff(CRData *data);
 	bool Handle_ID_BLOCK_REQUEST(CRData *data);
 
+	bool GetFileHashAndMetadata(CRData* data);
+
 	void queueChunk(SChunk chunk);
 
 

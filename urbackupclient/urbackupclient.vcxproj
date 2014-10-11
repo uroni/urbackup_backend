@@ -77,11 +77,11 @@
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
-    <ClCompile Include="watchdir\CriticalSection.cpp" />
-    <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp" />
-    <ClCompile Include="watchdir\DirectoryChanges.cpp" />
+    <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp" />
+    <ClCompile Include="watchdir\JournalDAO.cpp" />
     <ClCompile Include="win_all_volumes.cpp" />
     <ClCompile Include="win_sysvol.cpp" />
+    <ClCompile Include="win_tokens.cpp" />
     <ClCompile Include="win_ver.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -90,6 +90,7 @@
     <ClInclude Include="..\stringtools.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
+    <ClInclude Include="..\urbackupcommon\change_ids.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
@@ -108,12 +109,11 @@
     <ClInclude Include="ImageThread.h" />
     <ClInclude Include="InternetClient.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
-    <ClInclude Include="watchdir\CriticalSection.h" />
-    <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h" />
-    <ClInclude Include="watchdir\DirectoryChanges.h" />
-    <ClInclude Include="watchdir\Event.h" />
+    <ClInclude Include="watchdir\ContinuousWatchEnqueue.h" />
+    <ClInclude Include="watchdir\JournalDAO.h" />
     <ClInclude Include="win_all_volumes.h" />
     <ClInclude Include="win_sysvol.h" />
+    <ClInclude Include="win_tokens.h" />
     <ClInclude Include="win_ver.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

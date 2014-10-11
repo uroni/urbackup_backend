@@ -9,6 +9,8 @@
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"
 
+#include "watchdir/JournalDAO.h"
+
 class DirectoryWatcherThread;
 
 struct SChangeJournal
@@ -45,7 +47,7 @@ class IChangeJournalListener;
 class ChangeJournalWatcher
 {
 public:
-	ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener);
+	ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB);
 	~ChangeJournalWatcher(void);
 
 	void watchDir(const std::wstring &dir);
@@ -56,11 +58,13 @@ public:
 	void set_freeze_open_write_files(bool b);
 
 	void set_last_backup_time(int64 t);
+
+	void add_listener(IChangeJournalListener *pListener);
+
 private:
-	IChangeJournalListener *listener;
+	std::vector<IChangeJournalListener*> listeners;
 	std::map<std::wstring, SChangeJournal> wdirs;
 
-	void createQueries(void);
 	SDeviceInfo getDeviceInfo(const std::wstring &name);
 	_i64 hasRoot(const std::wstring &root);
 	_i64 addRoot(const std::wstring &root);
@@ -93,29 +97,11 @@ private:
 
 	std::wstring getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn);
 
+	void resetAll(const std::wstring& vol);
+
 	IDatabase *db;
 
-	IQuery *q_get_dev_id;
-	IQuery *q_has_root;
-	IQuery *q_add_root;
-	IQuery *q_add_frn;
 	IQuery *q_add_frn_tmp;
-	IQuery *q_reset_root;
-	IQuery *q_get_entry;
-	IQuery *q_get_children;
-	IQuery *q_del_entry;
-	IQuery *q_get_name;
-	IQuery *q_update_lastusn;
-	IQuery *q_add_journal;
-	IQuery *q_update_journal_id;
-	IQuery *q_rename_entry;
-	IQuery *q_create_tmp_table;
-	IQuery *q_save_journal_data;
-	IQuery *q_get_journal_data;
-	IQuery *q_set_index_done;
-	IQuery *q_del_journal_data;
-	IQuery *q_del_entry_frn;
-	IQuery *q_del_journal_id;
 
 	int64 last_index_update;
 
@@ -133,17 +119,34 @@ private:
 	DirectoryWatcherThread * dwt;
 
 	int64 last_backup_time;
+
+	JournalDAO journal_dao;
+
+	std::wstring rename_old_name;
+
+	size_t num_changes;
 };
 
 class IChangeJournalListener
 {
 public:
-	virtual void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName)=0;
-    virtual void On_FileRemoved(const std::wstring & strFileName)=0;
-    virtual void On_FileAdded(const std::wstring & strFileName)=0;
-    virtual void On_FileModified(const std::wstring & strFileName, bool save_fn)=0;
+	virtual void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed)=0;
+	virtual void On_DirNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed)=0;
+    virtual void On_FileRemoved(const std::wstring & strFileName, bool closed)=0;
+    virtual void On_FileAdded(const std::wstring & strFileName, bool closed)=0;
+	virtual void On_DirAdded(const std::wstring & strFileName, bool closed)=0;
+    virtual void On_FileModified(const std::wstring & strFileName, bool save_fn, bool closed)=0;
 	virtual void On_ResetAll(const std::wstring & vol)=0;
-	virtual void On_DirRemoved(const std::wstring & strDirName)=0;
+	virtual void On_DirRemoved(const std::wstring & strDirName, bool closed)=0;
+	
+	struct SSequence
+	{
+		int64 id;
+		int64 start;
+		int64 stop;
+	};
+
+	virtual void Commit(const std::vector<SSequence>& sequences)=0;
 };
 
 #endif //CHANGEJOURNALWATCHER_H

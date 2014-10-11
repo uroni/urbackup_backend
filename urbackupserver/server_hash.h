@@ -12,6 +12,9 @@
 #include "dao/ServerBackupDao.h"
 #include <vector>
 
+
+class FileMetadata;
+
 struct STmpFile
 {
 	STmpFile(int backupid, std::wstring fp, std::wstring hashpath)
@@ -52,7 +55,8 @@ public:
 	void deinitDatabase(void);
 
 	bool findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2, bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, 
-		bool copy_from_hardlink_if_failed, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int64& entryclientid, int64& rsize, int64& next_entry);
+		bool copy_from_hardlink_if_failed, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int64& entryclientid, int64& rsize, int64& next_entry,
+		const FileMetadata& metadata, const FileMetadata& parent_metadata);
 
 	void addFileSQL(int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry);
 
@@ -63,8 +67,9 @@ public:
 
 private:
 	void addFile(int backupid, int incremental, IFile *tf, const std::wstring &tfn,
-			std::wstring hash_fn, const std::string &sha2, bool diff_file, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize);
-
+			std::wstring hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
+			const FileMetadata& metadata, const FileMetadata& parent_metadata);
+			
 	struct SFindState
 	{
 		SFindState()
@@ -80,19 +85,21 @@ private:
 	ServerBackupDao::SFindFileEntry findFileHash(const std::string &pHash, _i64 filesize, int clientid, SFindState& state);
 
 	bool copyFile(IFile *tf, const std::wstring &dest);
-	bool copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
+	bool copyFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const FileMetadata& metadata);
 	bool freeSpace(int64 fs, const std::wstring &fp);
 	
 	int countFilesInTmp(void);
 	IFile* openFileRetry(const std::wstring &dest, int mode);
-	bool patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest);
+	bool patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest,
+		const FileMetadata& metadata);
 
 	bool createChunkHashes(IFile *tf, const std::wstring hash_fn);
 	
 	bool replaceFile(IFile *tf, const std::wstring &dest, const std::wstring &orig_fn);
-	bool replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn);
+	bool replaceFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const std::wstring &orig_fn,
+		const FileMetadata& metadata);
 
-	bool renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest);
+	bool renameFileWithHashoutput(IFile *tf, const std::wstring &dest, const std::wstring hash_dest, const FileMetadata& metadata);
 	bool renameFile(IFile *tf, const std::wstring &dest);
 
 	bool correctPath(std::wstring& ff, std::wstring& f_hashpath);

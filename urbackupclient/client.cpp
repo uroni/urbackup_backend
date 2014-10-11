@@ -34,6 +34,8 @@
 #include <algorithm>
 #include <fstream>
 #include <stdlib.h>
+#include "win_tokens.h"
+#include "file_permissions.h"
 
 //For truncating files
 #ifdef _WIN32
@@ -65,6 +67,7 @@ const unsigned int shadowcopy_startnew_timeout=55*60*1000;
 const size_t max_modify_file_buffer_size=500*1024;
 const size_t max_modify_hash_buffer_size=500*1024;
 const int64 save_filehash_limit=20*4096;
+
 
 #ifndef SERVER_ONLY
 #define ENABLE_VSS
@@ -118,6 +121,55 @@ bool IdleCheckerThread::getPause(void)
 void IdleCheckerThread::setPause(bool b)
 {
 	pause=b;
+}
+
+namespace
+{
+#ifdef _WIN32
+	int64 getUsnNum( const std::wstring& dir, int64& sequence_id )
+	{
+		WCHAR volume_path[MAX_PATH]; 
+		BOOL ok = GetVolumePathNameW(dir.c_str(), volume_path, MAX_PATH);
+		if(!ok)
+		{
+			Server->Log("GetVolumePathName(dir, volume_path, MAX_PATH) failed in getUsnNum", LL_ERROR);
+			return -1;
+		}
+
+		std::wstring vol=volume_path;
+
+		if(vol.size()>0)
+		{
+			if(vol[vol.size()-1]=='\\')
+			{
+				vol.erase(vol.size()-1,1);
+			}
+		}
+
+		HANDLE hVolume=CreateFileW((L"\\\\.\\"+vol).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if(hVolume==INVALID_HANDLE_VALUE)
+		{
+			Server->Log(L"CreateFile of volume '"+vol+L"' failed. - getUsnNum", LL_ERROR);
+			return -1;
+		}
+
+		USN_JOURNAL_DATA data;
+		DWORD r_bytes;
+		BOOL b=DeviceIoControl(hVolume, FSCTL_QUERY_USN_JOURNAL, NULL, 0, &data, sizeof(USN_JOURNAL_DATA), &r_bytes, NULL);
+
+		CloseHandle(hVolume);
+
+		if(b)
+		{
+			sequence_id=data.UsnJournalID;
+			return data.NextUsn;
+		}
+		else
+		{
+			return -1;
+		}
+	}
+#endif
 }
 
 IMutex *IndexThread::filelist_mutex=NULL;
@@ -285,10 +337,10 @@ void IndexThread::operator()(void)
 			data.getStr(&starttoken);
 			data.getInt(&end_to_end_file_backup_verification_enabled);
 			data.getInt(&calculate_filehashes_on_client);
+			data.getInt(&index_group);
 
 			//incr backup
-			readBackupDirs();
-			if(backup_dirs.empty())
+			if(!readBackupDirs() )
 			{
 				contractor->Write("no backup dirs");
 				continue;
@@ -366,16 +418,16 @@ void IndexThread::operator()(void)
 			data.getStr(&starttoken);
 			data.getInt(&end_to_end_file_backup_verification_enabled);
 			data.getInt(&calculate_filehashes_on_client);
+			data.getInt(&index_group);
 
-			readBackupDirs();
-			if(backup_dirs.empty())
+			if(!readBackupDirs() )
 			{
 				contractor->Write("no backup dirs");
 				continue;
 			}
 			//full backup
 			{
-				cd->deleteChangedDirs();
+				cd->deleteChangedDirs(std::wstring());
 				cd->deleteSavedChangedDirs();
 
 				Server->Log("Deleting files... doing full index...", LL_INFO);
@@ -619,21 +671,63 @@ void IndexThread::indexDirs(void)
 	}
 
 	updateDirs();
+
+	writeTokens();
+
+	bool tokens_changed=false;
+	if(cd->getMiscValue("has_new_token")==L"true")
+	{
+		VSSLog("File access tokens changed (e.g. new user). Not using db...", LL_INFO);
+		tokens_changed=true;
+	}
+
+	token_cache.reset();
+
+	std::vector<std::wstring> selected_dirs;
+	for(size_t i=0;i<backup_dirs.size();++i)
+	{
+		if(backup_dirs[i].group==index_group)
+		{
+			selected_dirs.push_back(removeDirectorySeparatorAtEnd(backup_dirs[i].path));
+#ifdef _WIN32
+			selected_dirs[i]=strlower(selected_dirs[i]);
+#endif
+		}
+	}
+
 #ifdef _WIN32
 	//Invalidate cache
 	DirectoryWatcherThread::freeze();
 	Server->wait(10000);
 	DirectoryWatcherThread::update_and_wait();
-	changed_dirs=cd->getChangedDirs();
-	cd->moveChangedFiles();
+
+	//---TRANSACTION---
+	db->BeginTransaction();
+
+	for(size_t i=0;i<selected_dirs.size();++i)
+	{
+		std::vector<SMDir> acd=cd->getChangedDirs(selected_dirs[i]);
+		changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
+	}
+	
+	for(size_t i=0;i<changed_dirs.size();++i)
+	{
+		cd->moveChangedFiles(changed_dirs[i].id);
+	}
+
+	for(size_t i=0;i<selected_dirs.size();++i)
+	{
+		std::vector<std::wstring> deldirs=cd->getDelDirs(selected_dirs[i]);
+		for(size_t i=0;i<deldirs.size();++i)
+		{
+			cd->removeDeletedDir(deldirs[i]);
+		}
+	}
+
+	db->EndTransaction();
+	//---END TRANSACTION---
 
 	bool has_stale_shadowcopy=false;
-
-	std::vector<std::wstring> deldirs=cd->getDelDirs();
-	for(size_t i=0;i<deldirs.size();++i)
-	{
-		cd->removeDeletedDir(deldirs[i]);
-	}
 
 	std::wstring tmp = cd->getMiscValue("last_filebackup_filetime_lower");
 	if(!tmp.empty())
@@ -660,6 +754,11 @@ void IndexThread::indexDirs(void)
 		std::fstream outfile(filelist_fn, std::ios::out|std::ios::binary);
 		for(size_t i=0;i<backup_dirs.size();++i)
 		{
+			if(backup_dirs[i].group!=index_group)
+			{
+				continue;
+			}
+
 			SCDirs *scd=getSCDir(backup_dirs[i].tname);
 			if(!scd->running)
 			{
@@ -707,6 +806,7 @@ void IndexThread::indexDirs(void)
 				mod_path+=os_file_sep();
 			}
 #endif
+			std::string extra;
 
 #ifdef _WIN32
 			if(!b || !onlyref)
@@ -714,7 +814,7 @@ void IndexThread::indexDirs(void)
 				past_refs.push_back(scd->ref);
 				DirectoryWatcherThread::update_and_wait();
 				Server->wait(1000);
-				std::vector<SMDir> acd=cd->getChangedDirs(false);
+				std::vector<SMDir> acd=cd->getChangedDirs(strlower(backup_dirs[i].path), false);
 				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 				std::sort(changed_dirs.begin(), changed_dirs.end());
 
@@ -725,11 +825,19 @@ void IndexThread::indexDirs(void)
 				#endif
 				#endif
 
-				std::vector<std::wstring> deldirs=cd->getDelDirs(false);
+				std::vector<std::wstring> deldirs=cd->getDelDirs(strlower(backup_dirs[i].path), false);
 				for(size_t i=0;i<deldirs.size();++i)
 				{
 					cd->removeDeletedDir(deldirs[i]);
 				}
+			}
+
+			int64 sequence_id;
+			int64 sequence_next = getUsnNum(mod_path, sequence_id);
+			if(sequence_next!=-1)
+			{
+				extra = "&sequence_next="+nconvert(sequence_next) +
+					"&sequence_id="+nconvert(sequence_id);
 			}
 #endif
 
@@ -742,11 +850,15 @@ void IndexThread::indexDirs(void)
 			index_c_db=0;
 			index_c_fs=0;
 			index_c_db_update=0;
-			outfile << "d\"" << escapeListName(Server->ConvertToUTF8(backup_dirs[i].tname)) << "\"\n";
+			SFile dirInfo = getFileMetadata(os_file_prefix(mod_path));
+			std::string dir_permissions;
+			readPermissions(mod_path, dir_permissions);
+			writeDir(outfile, backup_dirs[i].tname, dirInfo.created, dirInfo.last_modified, dir_permissions, extra);
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
-			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true, backup_dirs[i].optional, !patterns_changed);
+			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
+				backup_dirs[i].optional, !(patterns_changed || tokens_changed) );
 
 			cd->copyFromTmpFiles();
 			commitModifyFilesBuffer();
@@ -799,10 +911,13 @@ void IndexThread::indexDirs(void)
 			cd->deleteSavedDelDirs();
 			cd->deleteSavedChangedFiles();
 
-			DirectoryWatcherThread::update_last_backup_time();
-			DirectoryWatcherThread::commit_last_backup_time();
+			if(index_group==c_group_default)
+			{
+				DirectoryWatcherThread::update_last_backup_time();
+				DirectoryWatcherThread::commit_last_backup_time();
 
-			cd->updateMiscValue("last_filebackup_filetime_lower", convert(last_filebackup_filetime_new));
+				cd->updateMiscValue("last_filebackup_filetime_lower", convert(last_filebackup_filetime_new));
+			}
 		}
 		else
 		{
@@ -829,6 +944,10 @@ void IndexThread::indexDirs(void)
 	{
 		readPatterns(patterns_changed, true);
 	}
+	if(tokens_changed)
+	{
+		cd->updateMiscValue("has_new_token", L"false");
+	}
 	share_dirs();
 }
 
@@ -843,11 +962,12 @@ void IndexThread::resetFileEntries(void)
 
 bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& namedpath)
 {
-	if( isExcluded(filepath) || isExcluded(namedpath) )
+	if( isExcluded(exlude_dirs, filepath) || isExcluded(exlude_dirs, namedpath) )
 	{
 		return true;
 	}
-	if( !isIncluded(filepath, NULL) && !isIncluded(namedpath, NULL) )
+	if( !isIncluded(include_dirs, include_depth, include_prefix, filepath, NULL)
+		&& !isIncluded(include_dirs, include_depth, include_prefix, namedpath, NULL) )
 	{
 		return true;
 	}
@@ -906,23 +1026,20 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				continue;
 			}
 			has_include=true;
-			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].last_modified;
+			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].last_modified << "#";
 
-			if(end_to_end_file_backup_verification_enabled || calculate_filehashes_on_client)
+			outfile << "dacl=" << base64_encode_dash(files[i].permissions)
+					<< "&mod=" << nconvert(files[i].last_modified_orig)
+					<< "&creat=" << nconvert(files[i].created);
+
+			if(calculate_filehashes_on_client)
 			{
-				outfile << "#";
-
-				if(calculate_filehashes_on_client)
-				{
-					outfile << "sha512=" << base64_encode_dash(files[i].hash);
-				}
+				outfile << "&sha512=" << base64_encode_dash(files[i].hash);
+			}
 				
-				if(end_to_end_file_backup_verification_enabled)
-				{
-					if(calculate_filehashes_on_client) outfile << "&";
-
-					outfile << "sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
-				}
+			if(end_to_end_file_backup_verification_enabled)
+			{
+				outfile << "&sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
 			}
 			
 			outfile << "\n";
@@ -933,13 +1050,15 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	{
 		if( files[i].isdir )
 		{
-			if( isExcluded(orig_dir+os_file_sep()+files[i].name) || isExcluded(named_path+os_file_sep()+files[i].name) )
+			if( isExcluded(exlude_dirs, orig_dir+os_file_sep()+files[i].name)
+				|| isExcluded(exlude_dirs, named_path+os_file_sep()+files[i].name) )
 			{
 				continue;
 			}
 			bool curr_included=false;
 			bool adding_worthless1, adding_worthless2;
-			if( isIncluded(orig_dir+os_file_sep()+files[i].name, &adding_worthless1) || isIncluded(named_path+os_file_sep()+files[i].name, &adding_worthless2) )
+			if( isIncluded(include_dirs, include_depth, include_prefix, orig_dir+os_file_sep()+files[i].name, &adding_worthless1)
+				|| isIncluded(include_dirs, include_depth, include_prefix, named_path+os_file_sep()+files[i].name, &adding_worthless2) )
 			{
 				has_include=true;
 				curr_included=true;
@@ -948,8 +1067,11 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
 				std::streampos pos=outfile.tellp();
-				outfile << "d\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\"\n";
-				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);			
+				
+				writeDir(outfile, files[i].name, files[i].created, files[i].last_modified_orig, files[i].permissions);
+
+				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);		
+
 				outfile << "d\"..\"\n";
 
 				if(!b)
@@ -975,10 +1097,12 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	return has_include;
 }
 
-void IndexThread::readBackupDirs(void)
+bool IndexThread::readBackupDirs(void)
 {
 	backup_dirs=cd->getBackupDirs();
 
+
+	bool has_backup_dir = false;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 #ifdef _WIN32
@@ -986,9 +1110,16 @@ void IndexThread::readBackupDirs(void)
 		Server->Log(L"Final path: "+backup_dirs[i].path, LL_INFO);
 #endif
 
+		if(backup_dirs[i].group == index_group)
+		{
+			has_backup_dir=true;
+		}
+
 		if(filesrv!=NULL)
 			shareDir(L"", backup_dirs[i].tname, backup_dirs[i].path);
 	}
+
+	return has_backup_dir;
 }
 
 namespace
@@ -1003,6 +1134,8 @@ namespace
 			ret[i].last_modified=files[i].last_modified;
 			ret[i].name=files[i].name;
 			ret[i].size=files[i].size;
+    		ret[i].last_modified_orig=files[i].last_modified;
+			ret[i].created=files[i].created;
 		}
 		return ret;
 	}
@@ -1099,7 +1232,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 #else
 	use_db=false;
 #endif
-	std::vector<SFileAndHash> tmp;
+	std::vector<SFileAndHash> fs_files;
 	if(use_db==false || it_dir!=changed_dirs.end())
 	{
 		++index_c_fs;
@@ -1107,7 +1240,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
-		tmp=convertToFileAndHash(getFiles(tpath, &has_error));
+		fs_files=convertToFileAndHash(getFiles(tpath, &has_error));
+		readPermissions(tpath, fs_files);
 
 		if(has_error)
 		{
@@ -1152,40 +1286,40 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 			if(!changed_files.empty())
 			{
-				for(size_t i=0;i<tmp.size();++i)
+				for(size_t i=0;i<fs_files.size();++i)
 				{
-					if(!tmp[i].isdir)
+					if(!fs_files[i].isdir)
 					{
-						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
+						if( std::binary_search(changed_files.begin(), changed_files.end(), fs_files[i].name) )
 						{
-							VSSLog(L"Found changed file: " + tmp[i].name, LL_DEBUG);
+							VSSLog(L"Found changed file: " + fs_files[i].name, LL_DEBUG);
 
-							tmp[i].last_modified*=Server->getRandomNumber();
-							if(tmp[i].last_modified>0)
-								tmp[i].last_modified*=-1;
-							else if(tmp[i].last_modified==0)
-								tmp[i].last_modified=-1;
+							fs_files[i].last_modified*=Server->getRandomNumber();
+							if(fs_files[i].last_modified>0)
+								fs_files[i].last_modified*=-1;
+							else if(fs_files[i].last_modified==0)
+								fs_files[i].last_modified=-1;
 						}
 						else
 						{
-							std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+							std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), fs_files[i]);
 							if( it_db_file!=db_files.end()
-									&& (*it_db_file).name==tmp[i].name
-									&& (*it_db_file).isdir==tmp[i].isdir
+									&& (*it_db_file).name==fs_files[i].name
+									&& (*it_db_file).isdir==fs_files[i].isdir
 									&& (*it_db_file).last_modified<0 )
 							{
-								VSSLog(L"File changed at last backup: "+ tmp[i].name, LL_DEBUG);
+								VSSLog(L"File changed at last backup: "+ fs_files[i].name, LL_DEBUG);
 
-								if( tmp[i].last_modified<last_filebackup_filetime)
+								if( fs_files[i].last_modified<last_filebackup_filetime)
 								{
-									tmp[i].last_modified=it_db_file->last_modified;
+									fs_files[i].last_modified=it_db_file->last_modified;
 								}
 								else
 								{
 									VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
-									tmp[i].last_modified*=Server->getRandomNumber();
-									if(tmp[i].last_modified>0)
-										tmp[i].last_modified*=-1;
+									fs_files[i].last_modified*=Server->getRandomNumber();
+									if(fs_files[i].last_modified>0)
+										fs_files[i].last_modified*=-1;
 								}
 							}
 						}
@@ -1198,15 +1332,15 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 		if(calculate_filehashes_on_client)
 		{
-			addMissingHashes(has_files ? &db_files : NULL, &tmp, orig_path, path, named_path);
+			addMissingHashes(has_files ? &db_files : NULL, &fs_files, orig_path, path, named_path);
 		}
 
 		if( has_files)
 		{
-			if(tmp!=db_files)
+			if(fs_files!=db_files)
 			{
 				++index_c_db_update;
-				modifyFilesInt(path_lower, tmp);
+				modifyFilesInt(path_lower, fs_files);
 			}
 		}
 		else
@@ -1215,31 +1349,31 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			if(calculate_filehashes_on_client)
 			{
 #endif
-				cd->addFiles(path_lower, tmp);
+				cd->addFiles(path_lower, fs_files);
 #ifndef _WIN32
 			}
 #endif
 		}
 
-		return tmp;
+		return fs_files;
 	}
 #ifdef _WIN32
 	else
 	{	
-		if( cd->getFiles(path_lower, tmp) )
+		if( cd->getFiles(path_lower, fs_files) )
 		{
 			++index_c_db;
 
 			if(calculate_filehashes_on_client)
 			{
-				if(addMissingHashes(&tmp, NULL, orig_path, path, named_path))
+				if(addMissingHashes(&fs_files, NULL, orig_path, path, named_path))
 				{
 					++index_c_db_update;
-					modifyFilesInt(path_lower, tmp);
+					modifyFilesInt(path_lower, fs_files);
 				}
 			}
 
-			return tmp;
+			return fs_files;
 		}
 		else
 		{
@@ -1248,7 +1382,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			std::wstring tpath=os_file_prefix(path);
 
 			bool has_error;
-			tmp=convertToFileAndHash(getFiles(tpath, &has_error));
+			fs_files=convertToFileAndHash(getFiles(tpath, &has_error));
+			readPermissions(tpath, fs_files);
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
@@ -1264,11 +1399,11 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 			if(calculate_filehashes_on_client)
 			{
-				addMissingHashes(NULL, &tmp, orig_path, path, named_path);
+				addMissingHashes(NULL, &fs_files, orig_path, path, named_path);
 			}
 
-			cd->addFiles(path_lower, tmp);
-			return tmp;
+			cd->addFiles(path_lower, fs_files);
+			return fs_files;
 		}
 	}
 #endif
@@ -2269,14 +2404,24 @@ std::wstring IndexThread::sanitizePattern(const std::wstring &p)
 
 void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns)
 {
+	std::wstring exclude_pattern_key = L"exclude_files";
+	std::wstring include_pattern_key = L"include_files";
+
+	if(index_group==c_group_continuous)
+	{
+		exclude_pattern_key=L"continuous_exclude_files";
+		include_pattern_key=L"continuous_include_files";
+	}
+
 	ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
 	exlude_dirs.clear();
 	if(curr_settings!=NULL)
 	{	
 		std::wstring val;
-		if(curr_settings->getValue(L"exclude_files", &val) || curr_settings->getValue(L"exclude_files_def", &val) )
+		if(curr_settings->getValue(exclude_pattern_key, &val) || curr_settings->getValue(exclude_pattern_key+L"_def", &val) )
 		{
-			if(val!=cd->getOldExcludePattern())
+			if(index_group==c_group_default
+				&& val!=cd->getOldExcludePattern())
 			{
 				pattern_changed=true;
 				if(update_saved_patterns)
@@ -2285,39 +2430,17 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 				}
 			}
 
-			std::vector<std::wstring> toks;
-			Tokenize(val, toks, L";");
-			exlude_dirs=toks;
-#ifdef _WIN32
-			for(size_t i=0;i<exlude_dirs.size();++i)
-			{
-				strupper(&exlude_dirs[i]);
-			}
-#endif
-			for(size_t i=0;i<exlude_dirs.size();++i)
-			{
-				if(exlude_dirs[i].find('\\')==std::wstring::npos
-					&& exlude_dirs[i].find('/')==std::wstring::npos
-					&& exlude_dirs[i].find('*')==std::wstring::npos )
-				{
-					exlude_dirs[i]=L"*/"+trim(exlude_dirs[i]);
-				}
-			}
-			for(size_t i=0;i<exlude_dirs.size();++i)
-			{
-				exlude_dirs[i]=sanitizePattern(exlude_dirs[i]);
-			}
-			
-			addFileExceptions();
+			exlude_dirs = parseExcludePatterns(val);
 		}
 		else
 		{
-			addFileExceptions();
+			exlude_dirs = parseExcludePatterns(std::wstring());
 		}
 
-		if(curr_settings->getValue(L"include_files", &val) || curr_settings->getValue(L"include_files_def", &val) )
+		if(curr_settings->getValue(include_pattern_key, &val) || curr_settings->getValue(include_pattern_key+L"_def", &val) )
 		{
-			if(val!=cd->getOldIncludePattern())
+			if(index_group==c_group_default
+				&& val!=cd->getOldIncludePattern())
 			{
 				pattern_changed=true;
 				if(update_saved_patterns)
@@ -2326,98 +2449,140 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 				}
 			}
 
-			std::vector<std::wstring> toks;
-			Tokenize(val, toks, L";");
-			include_dirs=toks;
-#ifdef _WIN32
-			for(size_t i=0;i<include_dirs.size();++i)
-			{
-				strupper(&include_dirs[i]);
-			}
-#endif
-			for(size_t i=0;i<include_dirs.size();++i)
-			{
-				include_dirs[i]=sanitizePattern(include_dirs[i]);
-			}
-			include_depth.resize(include_dirs.size());
-			for(size_t i=0;i<include_dirs.size();++i)
-			{
-				std::wstring ip=include_dirs[i];
-				if(ip.find(L"*")==ip.size()-1 || ip.find(L"*")==std::string::npos)
-				{
-					int depth=0;
-					for(size_t j=0;j<ip.size();++j)
-					{
-						if(ip[j]=='/')
-							++depth;
-						else if(ip[j]=='\\' && j+1<ip.size() && ip[j+1]=='\\')
-						{
-							++j;
-							++depth;
-						}
-					}
-					include_depth[i]=depth;
-				}
-				else
-				{
-					include_depth[i]=-1;
-				}
-			}
-			include_prefix.resize(include_dirs.size());
-			for(size_t i=0;i<include_dirs.size();++i)
-			{
-				size_t f1=include_dirs[i].find_first_of(L":");
-				size_t f2=include_dirs[i].find_first_of(L"[");
-				size_t f3=include_dirs[i].find_first_of(L"*");
-				while(f2>0 && f2!=std::string::npos && include_dirs[i][f2-1]=='\\')
-					f2=include_dirs[i].find_first_of(L"[", f2);
-
-				size_t f=(std::min)((std::min)(f1,f2), f3);
-
-				if(f!=std::string::npos)
-				{
-					if(f>0)
-					{
-						include_prefix[i]=include_dirs[i].substr(0, f);
-					}
-				}
-				else
-				{
-					include_prefix[i]=include_dirs[i];
-				}
-
-				std::wstring nep;
-				for(size_t j=0;j<include_prefix[i].size();++j)
-				{
-					wchar_t ch=include_prefix[i][j];
-					if(ch=='/')
-						nep+=os_file_sep();
-					else if(ch=='\\' && j+1<include_prefix[i].size() && include_prefix[i][j+1]=='\\')
-					{
-						nep+=os_file_sep();
-						++j;
-					}
-					else
-					{
-					        nep+=ch;
-					}
-				}			
-				
-				include_prefix[i]=nep;
-			}
-
+			include_dirs = parseIncludePatterns(val, include_depth, include_prefix);
 		}
 		Server->destroy(curr_settings);
 	}
 	else
 	{
-		addFileExceptions();
+		exlude_dirs = parseExcludePatterns(std::wstring());
 	}
+}
+
+std::vector<std::wstring> IndexThread::parseExcludePatterns(const std::wstring& val)
+{
+	std::vector<std::wstring> exlude_dirs;
+	if(!val.empty())
+	{
+		std::vector<std::wstring> toks;
+		Tokenize(val, toks, L";");
+		exlude_dirs=toks;
+#ifdef _WIN32
+		for(size_t i=0;i<exlude_dirs.size();++i)
+		{
+			strupper(&exlude_dirs[i]);
+		}
+#endif
+		for(size_t i=0;i<exlude_dirs.size();++i)
+		{
+			if(exlude_dirs[i].find('\\')==std::wstring::npos
+				&& exlude_dirs[i].find('/')==std::wstring::npos
+				&& exlude_dirs[i].find('*')==std::wstring::npos )
+			{
+				exlude_dirs[i]=L"*/"+trim(exlude_dirs[i]);
+			}
+		}
+		for(size_t i=0;i<exlude_dirs.size();++i)
+		{
+			exlude_dirs[i]=sanitizePattern(exlude_dirs[i]);
+		}
+	}	
+
+	addFileExceptions(exlude_dirs);
+
+	return exlude_dirs;
+}
+
+std::vector<std::wstring> IndexThread::parseIncludePatterns(const std::wstring& val, std::vector<int>& include_depth,
+	std::vector<std::wstring>& include_prefix)
+{
+	std::vector<std::wstring> toks;
+	Tokenize(val, toks, L";");
+	std::vector<std::wstring> include_dirs=toks;
+#ifdef _WIN32
+	for(size_t i=0;i<include_dirs.size();++i)
+	{
+		strupper(&include_dirs[i]);
+	}
+#endif
+	for(size_t i=0;i<include_dirs.size();++i)
+	{
+		include_dirs[i]=sanitizePattern(include_dirs[i]);
+	}
+
+	include_depth.resize(include_dirs.size());
+	for(size_t i=0;i<include_dirs.size();++i)
+	{
+		std::wstring ip=include_dirs[i];
+		if(ip.find(L"*")==ip.size()-1 || ip.find(L"*")==std::string::npos)
+		{
+			int depth=0;
+			for(size_t j=0;j<ip.size();++j)
+			{
+				if(ip[j]=='/')
+					++depth;
+				else if(ip[j]=='\\' && j+1<ip.size() && ip[j+1]=='\\')
+				{
+					++j;
+					++depth;
+				}
+			}
+			include_depth[i]=depth;
+		}
+		else
+		{
+			include_depth[i]=-1;
+		}
+	}
+	include_prefix.resize(include_dirs.size());
+	for(size_t i=0;i<include_dirs.size();++i)
+	{
+		size_t f1=include_dirs[i].find_first_of(L":");
+		size_t f2=include_dirs[i].find_first_of(L"[");
+		size_t f3=include_dirs[i].find_first_of(L"*");
+		while(f2>0 && f2!=std::string::npos && include_dirs[i][f2-1]=='\\')
+			f2=include_dirs[i].find_first_of(L"[", f2);
+
+		size_t f=(std::min)((std::min)(f1,f2), f3);
+
+		if(f!=std::string::npos)
+		{
+			if(f>0)
+			{
+				include_prefix[i]=include_dirs[i].substr(0, f);
+			}
+		}
+		else
+		{
+			include_prefix[i]=include_dirs[i];
+		}
+
+		std::wstring nep;
+		for(size_t j=0;j<include_prefix[i].size();++j)
+		{
+			wchar_t ch=include_prefix[i][j];
+			if(ch=='/')
+				nep+=os_file_sep();
+			else if(ch=='\\' && j+1<include_prefix[i].size() && include_prefix[i][j+1]=='\\')
+			{
+				nep+=os_file_sep();
+				++j;
+			}
+			else
+			{
+				nep+=ch;
+			}
+		}			
+
+		include_prefix[i]=nep;
+	}
+
+	return include_dirs;
 }
 
 bool amatch(const wchar_t *str, const wchar_t *p);
 
-bool IndexThread::isExcluded(const std::wstring &path)
+bool IndexThread::isExcluded(const std::vector<std::wstring>& exlude_dirs, const std::wstring &path)
 {
 	std::wstring wpath=path;
 #ifdef _WIN32
@@ -2437,7 +2602,8 @@ bool IndexThread::isExcluded(const std::wstring &path)
 	return false;
 }
 
-bool IndexThread::isIncluded(const std::wstring &path, bool *adding_worthless)
+bool IndexThread::isIncluded(const std::vector<std::wstring>& include_dirs, const std::vector<int>& include_depth,
+	const std::vector<std::wstring>& include_prefix, const std::wstring &path, bool *adding_worthless)
 {
 	std::wstring wpath=path;
 #ifdef _WIN32
@@ -2754,7 +2920,7 @@ namespace
 }
 #endif
 
-void IndexThread::addFileExceptions(void)
+void IndexThread::addFileExceptions(std::vector<std::wstring>& exlude_dirs)
 {
 #ifdef _WIN32
 	exlude_dirs.push_back(sanitizePattern(L"C:\\HIBERFIL.SYS"));
@@ -2985,3 +3151,87 @@ std::string IndexThread::escapeListName( const std::string& listname )
 	}
 	return ret;
 }
+
+void IndexThread::writeTokens()
+{
+	std::auto_ptr<ISettingsReader> access_keys(
+		Server->createFileSettingsReader("access_keys.properties"));
+
+	std::string access_keys_data;
+	std::vector<std::wstring> keys
+		= access_keys->getKeys();
+
+
+	bool has_server_key=false;
+	std::string curr_key;
+	for(size_t i=0;i<keys.size();++i)
+	{
+		if(keys[i]==L"key."+widen(starttoken))
+		{
+			has_server_key=true;
+			curr_key=wnarrow(access_keys->getValue(keys[i], std::wstring()));
+		}
+		access_keys_data+=wnarrow(keys[i])+"="+
+			wnarrow(access_keys->getValue(keys[i], std::wstring()))+"\n";
+	}
+
+	if(!has_server_key)
+	{
+		curr_key = Server->secureRandomString(30);	
+
+		access_keys_data+="key."+starttoken+"="+
+			curr_key+"\n";
+
+		write_file_only_admin(access_keys_data, "access_keys.properties");
+	}	
+
+	write_tokens();
+	std::vector<ClientDAO::SToken> tokens = cd->getFileAccessTokens();
+
+	std::string ids;
+	for(size_t i=0;i<tokens.size();++i)
+	{
+		if(!ids.empty())
+		{
+			ids+=",";
+		}
+		ids+=nconvert(tokens[i].id);
+	}
+
+	std::string data="ids="+ids+"\n";
+
+	data+="access_key="+curr_key+"\n";
+
+	for(size_t i=0;i<tokens.size();++i)
+	{
+		data+=nconvert(tokens[i].id)+".accountname="+base64_encode_dash(Server->ConvertToUTF8(tokens[i].accountname))+"\n";
+		data+=nconvert(tokens[i].id)+".token="+Server->ConvertToUTF8(tokens[i].token)+"\n";
+	}
+
+
+	write_file_only_admin(data, "urbackup"+os_file_sepn()+"data"+os_file_sepn()+"tokens_"+starttoken+".properties");
+}
+
+void IndexThread::readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files )
+{
+	for(size_t i=0;i<files.size();++i)
+	{
+		readPermissions(dir + os_file_sep() + files[i].name, files[i].permissions);
+	}
+}
+
+void IndexThread::readPermissions( const std::wstring& path, std::string& permissions )
+{
+	permissions = get_file_tokens(path, cd, token_cache);
+}
+
+void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra )
+{
+	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\""
+		"dacl=" << base64_encode_dash(permissions) <<
+		"&mod=" << nconvert(mod) <<
+		"&creat=" << nconvert(creat) <<
+		extra << "\n";
+}
+
+

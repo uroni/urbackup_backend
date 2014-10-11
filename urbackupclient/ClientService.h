@@ -101,6 +101,8 @@ public:
 
 	static bool isBackupRunning();
 
+	static bool tochannelSendChanges(const char* changes, size_t changes_size);
+
 private:
 	bool checkPassword(const std::wstring &cmd, bool& change_pw);
 	bool saveBackupDirs(str_map &args, bool server_default=false);
@@ -175,7 +177,9 @@ private:
 	void CMD_NEW_SERVER(str_map &params);
 	void CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd);
 	void CMD_GET_VSSLOG(const std::string &cmd);
+	void CMD_GET_ACCESS_PARAMS(str_map &params);
 	int getCapabilities();
+
 	IPipe *pipe;
 	IPipe *mempipe;
 	bool mempipe_owner;
@@ -212,6 +216,7 @@ private:
 	static std::vector<std::string> new_server_idents;
 	static bool end_to_end_file_backup_verification_enabled;
 	static std::map<std::string, std::string> challenges;
+	static bool has_file_changes;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;

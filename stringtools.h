@@ -82,6 +82,7 @@ bool IsHex(const std::string &str);
 unsigned long hexToULong(const std::string &data);
 std::string byteToHex(unsigned char ch);
 std::string bytesToHex(const unsigned char *b, size_t bsize);
+std::string bytesToHex(const std::string& data);
 std::string hexToBytes(const std::string& data);
 std::wstring htmldecode(std::string str, bool html=true, char xc='%');
 bool checkhtml(const std::string &str);

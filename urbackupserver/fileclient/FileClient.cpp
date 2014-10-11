@@ -20,6 +20,8 @@
 
 #include "FileClient.h"
 
+#include "../../fileservplugin/chunk_settings.h"
+
 #include "../../common/data.h"
 #include "../../stringtools.h"
 
@@ -37,7 +39,6 @@
 namespace
 {
 	const std::string str_tmpdir="C:\\Windows\\Temp";
-	const _u64 c_checkpoint_dist=512*1024;
 #ifndef _DEBUG
 	const unsigned int DISCOVERY_TIMEOUT=30000; //30sec
 #else
@@ -648,8 +649,6 @@ bool FileClient::Reconnect(void)
 
 	if(queued.empty())
 	{
-		assert(queued.empty());
-
 		CWData data;
 		data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
 		data.addString( remotefn );
@@ -1067,7 +1066,8 @@ void FileClient::fillQueue()
 			return;
 		}
 
-		std::string queue_fn = queue_callback->getQueuedFileFull();
+		bool metadata=false;
+		std::string queue_fn = queue_callback->getQueuedFileFull(metadata);
 
 		if(queue_fn.empty())
 		{
@@ -1075,7 +1075,14 @@ void FileClient::fillQueue()
 		}
 
 		CWData data;
-		data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
+		if(!metadata)
+		{
+			data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
+		}
+		else
+		{
+			data.addUChar( ID_FILE_HASH_AND_METADATA );
+		}
 		data.addString( queue_fn );
 		data.addString( identity );
 
@@ -1120,4 +1127,222 @@ void FileClient::setProgressLogCallback( ProgressLogCallback* cb )
 	progress_log_callback = cb;
 }
 
+_u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified )
+{
+	if(queued.empty())
+	{
+		CWData data;
+		data.addUChar( ID_GET_FILE_HASH_AND_METADATA );
+		data.addString( remotefn );
+		data.addString( identity );
+
+		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		{
+			Server->Log("Timeout during file hash request (1)", LL_ERROR);
+			return ERR_TIMEOUT;
+		}
+	}
+	else
+	{
+		assert(queued.front() == remotefn);
+		queued.pop_front();
+	}
+
+
+	bool firstpacket=true;
+	int tries=5000;
+	unsigned short metadata_size;
+	std::string metadata;
+	size_t metadata_pos=0;
+
+	while(true)
+	{        
+		fillQueue();
+
+		size_t rc;
+		if(tcpsock->isReadable() || dl_off==0 || 
+			(firstpacket && dl_buf[0]==ID_GET_FILE_HASH_AND_METADATA && dl_off<1+sizeof(unsigned short) ) )
+		{
+			rc = tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, 120000)+dl_off;
+		}
+		else
+		{
+			rc = dl_off;
+		}
+		dl_off=0;
+
+		if( rc==0 )
+		{
+			Server->Log("Server timeout (2) in FileClient while getting hash and metadata", LL_DEBUG);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( ID_GET_FILE_HASH_AND_METADATA );
+				data.addString( remotefn );
+				data.addString( identity );
+
+				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
+				{
+					Server->Log("FileClient: Error sending request for hash and metadata", LL_INFO);
+				}
+				starttime=Server->getTimeMS();
+
+				firstpacket=true;
+			}
+		}
+		else
+		{
+			starttime=Server->getTimeMS();
+
+			_u32 off=0;
+			uchar PID=dl_buf[0];
+
+			if( firstpacket==true)
+			{
+				firstpacket=false;
+				if(PID==ID_COULDNT_OPEN)
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_FILE_DOESNT_EXIST;
+				}
+				else if(PID==ID_BASE_DIR_LOST)
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_BASE_DIR_LOST;
+				}
+				else if(PID==ID_FILE_HASH_AND_METADATA)
+				{
+					if(rc >= 1+sizeof(unsigned short))
+					{
+						memcpy(&metadata_size, dl_buf+1, sizeof(metadata_size) );
+						off=1+sizeof(metadata_size);
+
+						metadata.resize(metadata_size);
+
+						if( metadata_size==0 )
+						{
+							if(rc>off)
+							{
+								memmove(dl_buf, dl_buf+off, rc-off);
+								dl_off = rc-off;
+							}
+							return ERR_ERROR;
+						}
+					}
+					else
+					{
+						dl_off=rc;
+						firstpacket=true;
+						continue;
+					}
+				}
+				else
+				{
+					if(rc>1)
+					{
+						memmove(dl_buf, dl_buf+1, rc-1);
+						dl_off = rc-1;
+					}
+					return ERR_ERROR;
+				}
+
+				if(rc>off)
+				{
+					size_t toread=rc-off;
+					if(toread>metadata_size)
+					{
+						toread=metadata_size;
+					}
+
+					memcpy(&metadata[metadata_pos], &dl_buf[off], toread);
+					metadata_pos+=toread;
+					
+					off+=static_cast<_u32>(toread);
+
+					if(rc>off)
+					{
+						memmove(dl_buf, dl_buf+off, rc-off);
+						dl_off = rc-off;
+					}
+
+					if(metadata_pos==metadata.size())
+					{
+						CRData data(&metadata);
+
+						if(!data.getStr(&metadata))
+						{
+							return ERR_ERROR;
+						}
+
+						if(!data.getStr(&permissions))
+						{
+							return ERR_ERROR;
+						}
+
+						if(!data.getInt64(&filesize))
+						{
+							return ERR_ERROR;
+						}
+
+						if(!data.getInt64(&modified))
+						{
+							return ERR_ERROR;
+						}
+
+						if(!data.getInt64(&created))
+						{
+							return ERR_ERROR;
+						}
+
+						return ERR_SUCCESS;
+					}
+				}
+			}
+		}
+
+		if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
+		{
+			Server->Log("Server timeout in FileClient while downloading hash and metadata. Trying to reconnect...", LL_INFO);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( ID_GET_FILE_HASH_AND_METADATA );
+				data.addString( remotefn );
+				data.addString( identity );
+
+				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
+				{
+					Server->Log("FileClient: Error sending request for hash and metadata", LL_INFO);
+				}
+				starttime=Server->getTimeMS();
+
+				firstpacket=true;
+			}
+		}
+	}
+}
 

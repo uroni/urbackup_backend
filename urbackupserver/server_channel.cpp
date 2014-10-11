@@ -229,14 +229,14 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		server_get->sendToPipe("START IMAGE INCR");
 	}
-	else if(msg.find("LOGIN ")==0 && !internet_mode)
+	else if(next(msg, 0, "LOGIN ") && !internet_mode)
 	{
 		std::string s_params=msg.substr(6);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 		LOGIN(params);
 	}
-	else if(msg.find("SALT ")==0 && !internet_mode)
+	else if(next(msg, 0, "SALT ") && !internet_mode)
 	{
 		std::string s_params=msg.substr(5);
 		str_map params;
@@ -252,13 +252,17 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		GET_BACKUPIMAGES(name);
 	}
-	else if(msg.find("DOWNLOAD IMAGE ")==0 && !internet_mode && hasDownloadImageRights())
+	else if(next(msg, 0, "DOWNLOAD IMAGE ") && !internet_mode && hasDownloadImageRights())
 	{
 		std::string s_params=msg.substr(15);
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 
 		DOWNLOAD_IMAGE(params);
+	}
+	else if(next(msg, 0, "CHANGES "))
+	{
+		server_get->addContinuousChanges(msg.substr(8));
 	}
 	else
 	{
@@ -302,6 +306,8 @@ int ServerChannelThread::constructCapabilities(void)
 		capa|=DONT_ALLOW_STARTING_INCR_IMAGE_BACKUPS;
 	if(!cs->allow_tray_exit)
 		capa|=DONT_ALLOW_EXIT_TRAY_ICON;
+	if(!cs->server_url.empty())
+		capa|=ALLOW_TOKEN_AUTHENTICATION;
 
 	return capa;
 }

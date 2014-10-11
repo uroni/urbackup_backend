@@ -53,6 +53,9 @@ private:
 	bool use_fqdn;
 };
 
+
+IPermissionCallback* FileServFactory::permission_callback = NULL;
+
 IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name, bool use_fqdn_default)
 {
 	bool *dostop=new bool;
@@ -66,4 +69,14 @@ IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned sho
 void FileServFactory::destroyFileServ(IFileServ *filesrv)
 {
 	delete ((FileServ*)filesrv);
+}
+
+void FileServFactory::setPermissionCallback( IPermissionCallback* new_permission_callback )
+{
+	permission_callback=new_permission_callback;
+}
+
+IPermissionCallback* FileServFactory::getPermissionCallback()
+{
+	return permission_callback;
 }

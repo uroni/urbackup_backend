@@ -257,9 +257,15 @@ void ServerAutomaticArchive::copyArchiveSettings(int clientid)
 		q_insert_all->Reset();
 	}	
 
+	IQuery *q_del_copied=db->Prepare("DELETE FROM settings_db.settings WHERE key='archive_settings_copied' AND clientid=?");
+	q_del_copied->Bind(clientid);
+	q_del_copied->Write();
+	q_del_copied->Reset();
+
 	IQuery *q_insert_copied=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('archive_settings_copied','true',?)");
 	q_insert_copied->Bind(clientid);
 	q_insert_copied->Write();
+	q_insert_copied->Reset();
 }
 
 bool ServerAutomaticArchive::isInArchiveWindow(const std::wstring &window_def)

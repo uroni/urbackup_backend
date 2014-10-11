@@ -13,10 +13,6 @@
 
 #define VLOG(x) x
 
-const unsigned int chunkhash_file_off=sizeof(_i64);
-const unsigned int chunkhash_single_size=big_hash_size+small_hash_size*(c_checkpoint_dist/c_small_hash_dist);
-const unsigned int c_reconnection_tries=30;
-
 
 FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stack,
 	FileClientChunked::ReconnectionCallback *reconnection_callback, FileClientChunked::NoFreeSpaceCallback *nofreespace_callback
@@ -124,6 +120,12 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 	}
 
 	hashfilesize = little_endian(hashfilesize);
+
+	if(hashfilesize<0)
+	{
+		Server->Log("Hashfile size wrong. Hashfile is damaged. Size is "+nconvert(hashfilesize), LL_ERROR);
+		return ERR_INT_ERROR;
+	}
 
 	if(hashfilesize!=m_file->Size())
 	{

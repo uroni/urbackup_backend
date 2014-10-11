@@ -72,6 +72,12 @@
     <ClCompile Include="..\common\adler32.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\os_functions_win.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
@@ -141,6 +147,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\common\adler32.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IPermissionCallback.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

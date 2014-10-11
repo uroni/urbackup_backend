@@ -85,6 +85,20 @@ void getMousePos(int &x, int &y)
 	y=mousepos.y;
 }
 
+const int64 WINDOWS_TICK=10000000;
+const int64 SEC_TO_UNIX_EPOCH=11644473600LL;
+
+int64 os_windows_to_unix_time(int64 windows_filetime)
+{	
+	return windows_filetime / WINDOWS_TICK - SEC_TO_UNIX_EPOCH;
+}
+
+int64 os_to_windows_filetime(int64 unix_time)
+{
+	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
+}
+
+
 std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks, bool exact_filesize)
 {
 	if(has_error!=NULL)
@@ -134,11 +148,15 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			LARGE_INTEGER lwt;
 			lwt.HighPart=wfd.ftLastWriteTime.dwHighDateTime;
 			lwt.LowPart=wfd.ftLastWriteTime.dwLowDateTime;
-			f.last_modified=lwt.QuadPart;
+			f.last_modified=os_windows_to_unix_time(lwt.QuadPart);
 			LARGE_INTEGER size;
 			size.HighPart=wfd.nFileSizeHigh;
 			size.LowPart=wfd.nFileSizeLow;
 			f.size=size.QuadPart;
+
+			lwt.HighPart=wfd.ftCreationTime.dwHighDateTime;
+			lwt.LowPart=wfd.ftCreationTime.dwLowDateTime;
+			f.created=os_windows_to_unix_time(lwt.QuadPart);
 
 			if(exact_filesize && !(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
 			{
@@ -159,7 +177,12 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 							lwt.HighPart = file_info.ftLastWriteTime.dwHighDateTime;
 							lwt.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
 
-							f.last_modified = lwt.QuadPart;
+							f.last_modified = os_windows_to_unix_time(lwt.QuadPart);
+
+							lwt.HighPart=file_info.ftCreationTime.dwHighDateTime;
+							lwt.LowPart=file_info.ftCreationTime.dwLowDateTime;
+
+							f.created=os_windows_to_unix_time(lwt.QuadPart);
 						}
 
 						CloseHandle(hFile);
@@ -177,7 +200,12 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 						lwt.HighPart = fad.ftLastWriteTime.dwHighDateTime;
 						lwt.LowPart = fad.ftLastWriteTime.dwLowDateTime;
 
-						f.last_modified = lwt.QuadPart;
+						f.last_modified = os_windows_to_unix_time(lwt.QuadPart);
+
+						lwt.HighPart=fad.ftCreationTime.dwHighDateTime;
+						lwt.LowPart=fad.ftCreationTime.dwLowDateTime;
+
+						f.created=os_windows_to_unix_time(lwt.QuadPart);
 					}
 				}				
 			}			
@@ -192,6 +220,41 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 	std::sort(tmp.begin(), tmp.end());
 
 	return tmp;
+}
+
+SFile getFileMetadata( const std::wstring &path )
+{
+	SFile ret;
+	ret.name=path;
+	WIN32_FILE_ATTRIBUTE_DATA fad;
+	if( GetFileAttributesExW(path.c_str(),  GetFileExInfoStandard, &fad) )
+	{
+		if (fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
+			ret.isdir=true;
+		}
+		LARGE_INTEGER size;
+		size.HighPart = fad.nFileSizeHigh;
+		size.LowPart = fad.nFileSizeLow;
+		ret.size = size.QuadPart;
+
+		LARGE_INTEGER lwt;
+		lwt.HighPart = fad.ftLastWriteTime.dwHighDateTime;
+		lwt.LowPart = fad.ftLastWriteTime.dwLowDateTime;
+
+		ret.last_modified = os_windows_to_unix_time(lwt.QuadPart);
+
+		lwt.HighPart=fad.ftCreationTime.dwHighDateTime;
+		lwt.LowPart=fad.ftCreationTime.dwLowDateTime;
+
+		ret.created=os_windows_to_unix_time(lwt.QuadPart);
+
+		return ret;
+	}
+	else
+	{
+		return SFile();
+	}
 }
 
 #ifndef OS_FUNC_NO_SERVER
@@ -845,4 +908,42 @@ bool os_finish_transaction(void* transaction)
 int64 os_last_error()
 {
 	return GetLastError();
+}
+
+bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified)
+{
+	HANDLE hFile = CreateFileW(fn.c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+	if(hFile!=INVALID_HANDLE_VALUE)
+	{
+		LARGE_INTEGER li;
+		li.QuadPart=os_to_windows_filetime(created);
+
+		FILETIME creation_time;
+		creation_time.dwHighDateTime=li.HighPart;
+		creation_time.dwLowDateTime=li.LowPart;
+
+
+		li.QuadPart=os_to_windows_filetime(last_modified);
+
+		FILETIME modified_time;
+		modified_time.dwHighDateTime=li.HighPart;
+		modified_time.dwLowDateTime=li.LowPart;
+
+		if(SetFileTime(hFile, &creation_time, NULL, &modified_time))
+		{
+			CloseHandle(hFile);
+			return true;
+		}
+		else
+		{
+			CloseHandle(hFile);
+			return false;
+		}
+	}
+	else
+	{
+		return false;
+	}
 }

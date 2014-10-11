@@ -7,11 +7,14 @@
 
 #include <string>
 
+#include "IPermissionCallback.h"
+
 class IFileServFactory : public IPlugin
 {
 public:
 	virtual IFileServ * createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name=L"", bool use_fqdn_default=false)=0;
 	virtual void destroyFileServ(IFileServ *filesrv)=0;
+	virtual void setPermissionCallback(IPermissionCallback* new_permission_callback)=0;
 };
 
 #endif //IFILESERVFACTORY_H

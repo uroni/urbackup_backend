@@ -91,8 +91,10 @@ struct SSettings
 	bool trust_client_hashes;
 	bool internet_connect_always;
 	bool show_server_updates;
+	std::string server_url;
 	bool verify_using_client_hashes;
 	bool internet_readd_file_entries;
+	std::string client_access_key;
 };
 
 struct STimeSpan

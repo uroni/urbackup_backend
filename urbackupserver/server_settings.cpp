@@ -312,6 +312,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
+	settings->server_url=settings_default->getValue("server_url", "");
 	settings->verify_using_client_hashes=(settings_default->getValue("verify_using_client_hashes", "false")=="true");
 	settings->internet_readd_file_entries=(settings_default->getValue("internet_readd_file_entries", "true")=="true");
 }
@@ -328,6 +329,8 @@ void ServerSettings::readSettingsClient(void)
 	{
 		settings->internet_authkey=generateRandomAuthKey();
 	}
+
+	settings->client_access_key = settings_client->getValue("client_access_key", std::string());
 
 	readBoolClientSetting("overwrite", &settings->overwrite);
 

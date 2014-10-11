@@ -24,15 +24,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="watchdir\CriticalSection.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
-    <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
-    <ClCompile Include="watchdir\DirectoryChanges.cpp">
-      <Filter>watchdir</Filter>
-    </ClCompile>
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
       <Filter>sha2</Filter>
     </ClCompile>
@@ -120,20 +111,17 @@
     <ClCompile Include="win_all_volumes.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="win_tokens.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="watchdir\JournalDAO.cpp">
+      <Filter>watchdir</Filter>
+    </ClCompile>
+    <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp">
+      <Filter>watchdir</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="watchdir\CriticalSection.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\DirectoryChanges.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
-    <ClInclude Include="watchdir\Event.h">
-      <Filter>watchdir</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
       <Filter>sha2</Filter>
     </ClInclude>
@@ -211,6 +199,18 @@
     </ClInclude>
     <ClInclude Include="win_all_volumes.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="win_tokens.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="watchdir\JournalDAO.h">
+      <Filter>watchdir</Filter>
+    </ClInclude>
+    <ClInclude Include="watchdir\ContinuousWatchEnqueue.h">
+      <Filter>watchdir</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\change_ids.h">
+      <Filter>watchdir</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -52,7 +52,7 @@ public:
 		class QueueCallback
 		{
 		public:
-			virtual std::string getQueuedFileFull() = 0;
+			virtual std::string getQueuedFileFull(bool& metadata) = 0;
 			virtual void unqueueFileFull(const std::string& fn) = 0;
 			virtual void resetQueueFull() = 0;
 		};
@@ -85,6 +85,8 @@ public:
 
         //---needs Connection
         _u32 GetFile(std::string remotefn, IFile *file, bool hashed);
+
+		_u32 GetFileHashAndMetadata(std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified);
 
 		void addThrottler(IPipeThrottler *throttler);
 

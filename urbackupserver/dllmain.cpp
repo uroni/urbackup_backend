@@ -1208,6 +1208,17 @@ bool upgrade35_36()
 
 	return true;
 }
+
+bool upgrade36_37()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	bool b = true;
+	b &= db->Write("ALTER TABLE backups ADD tgroup INTEGER");
+	b &= db->Write("UPDATE backups SET tgroup=0 WHERE tgroup IS NULL");
+	return b;
+}
+
+
 void upgrade(void)
 {
 	Server->destroyAllDatabases();
@@ -1398,6 +1409,10 @@ void upgrade(void)
 				break;
 			case 34:
 				upgrade34_35();
+				++ver;
+				break;
+			case 35:
+				upgrade35_36();
 				++ver;
 				break;
 			case 35:

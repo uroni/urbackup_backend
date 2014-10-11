@@ -40,7 +40,6 @@ typedef int s32;
 typedef unsigned int u32;
 typedef float f32;
 
-
 //--------------------------------------------------------------------
 /**
 *	liefert einen teil des strings nach dem gelieferten teilstring
@@ -1303,6 +1302,11 @@ std::string bytesToHex(const unsigned char *b, size_t bsize)
 		r+=byteToHex(b[i]);
 	}
 	return r;
+}
+
+std::string bytesToHex( const std::string& data )
+{
+	return bytesToHex(reinterpret_cast<const unsigned char*>(data.data()), data.size());
 }
 
 std::string hexToBytes(const std::string& data)

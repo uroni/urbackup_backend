@@ -21,4 +21,6 @@ public:
 	virtual bool verifyData(const std::string &pubkey, const std::string &data, const std::string &signature)=0;
 	virtual std::string generatePasswordHash(const std::string &password, const std::string &salt, size_t iterations=10000)=0;
 	virtual std::string generateBinaryPasswordHash(const std::string &password, const std::string &salt, size_t iterations=10000)=0;
+	virtual std::string encryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations=20000)=0;
+	virtual std::string decryptAuthenticatedAES(const std::string& data, const std::string &password, size_t iterations=20000)=0;
 };
