@@ -745,7 +745,7 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 	
 	bool save_orig=false;
 	bool switch_to_all_clients=false;
-	bool switch_to_next_client=true;
+	bool switch_to_next_client=false;
 	if(state.state==0)
 	{
 		entryid = fileindex->get_with_cache_prefer_client(FileIndex::SIndexKey(pHash.c_str(), filesize, clientid));
