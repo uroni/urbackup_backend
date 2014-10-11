@@ -399,8 +399,8 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 }
 
 bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring& hash_fn, const std::string &sha2,
-	bool diff_file, _i64 t_filesize, const std::string &hashoutput_fn, bool copy_from_hardlink_if_failed,
-	bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int64& entryclientid
+	_i64 t_filesize, const std::string &hashoutput_fn, bool copy_from_hardlink_if_failed,
+	bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid
 	, int64& rsize, int64& next_entry, const FileMetadata& metadata, const FileMetadata& parent_metadata)
 {
 	hardlink_limit=false;
@@ -530,8 +530,8 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 			}
 
 			bool do_write_metadata=false;
-			if(!f_hashpath.empty() &&
-				has_metadata(f_hashpath, metadata) )
+			if(!existing_file.hashpath.empty() &&
+				has_metadata(existing_file.hashpath, metadata) )
 			{
 				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(existing_file.hashpath), use_snapshots, NULL);
 				if(!b)
@@ -610,10 +610,10 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	bool hardlink_limit;
 	bool copied_file;
 	int64 entryid = 0;
-	int64 entryclientid = 0;
+	int entryclientid = 0;
 	int64 next_entryid = 0;
 	int64 rsize = 0;
-	if(findFileAndLink(tfn, tf, hash_fn, sha2, diff_file, t_filesize,hashoutput_fn,
+	if(findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
 		metadata, parent_metadata))
 	{

@@ -123,6 +123,9 @@ public:
 	void setPrevEntry(int64 prev_entry, int64 id);
 	void setPointedTo(int64 pointed_to, int64 id);
 	void addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
+	CondString getSetting(int clientid, const std::wstring& key);
+	void insertSetting(const std::wstring& key, const std::wstring& value, int clientid);
+	void updateSetting(const std::wstring& value, const std::wstring& key, int clientid);
 	void delFileEntry(int64 id);
 	SFindFileEntry getFileEntry(int64 id);
 	SStatFileEntry getStatFileEntry(int64 id);
@@ -134,6 +137,12 @@ public:
 	void addMiscValue(const std::wstring& tkey, const std::wstring& tvalue);
 	void delMiscValue(const std::wstring& tkey);
 	void setClientUsedFilebackupSize(int64 bytes_used_files, int id);
+	bool createTemporaryPathLookupTable(void);
+	void dropTemporaryPathLookupTable(void);
+	void dropTemporaryPathLookupÍndex(void);
+	void populateTemporaryPathLookupTable(int backupid);
+	bool createTemporaryPathLookupIndex(void);
+	CondInt64 lookupEntryIdByPath(const std::wstring& fullpath);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -176,6 +185,9 @@ private:
 	IQuery* q_setPrevEntry;
 	IQuery* q_setPointedTo;
 	IQuery* q_addFileEntry;
+	IQuery* q_getSetting;
+	IQuery* q_insertSetting;
+	IQuery* q_updateSetting;
 	IQuery* q_delFileEntry;
 	IQuery* q_getFileEntry;
 	IQuery* q_getStatFileEntry;
@@ -187,6 +199,12 @@ private:
 	IQuery* q_addMiscValue;
 	IQuery* q_delMiscValue;
 	IQuery* q_setClientUsedFilebackupSize;
+	IQuery* q_createTemporaryPathLookupTable;
+	IQuery* q_dropTemporaryPathLookupTable;
+	IQuery* q_dropTemporaryPathLookupÍndex;
+	IQuery* q_populateTemporaryPathLookupTable;
+	IQuery* q_createTemporaryPathLookupIndex;
+	IQuery* q_lookupEntryIdByPath;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

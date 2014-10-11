@@ -1240,7 +1240,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=36;
+	int max_v=37;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1412,11 +1412,14 @@ void upgrade(void)
 				++ver;
 				break;
 			case 35:
-				upgrade35_36();
+				if(!upgrade35_36())
+				{
+					has_error=true;
+				}
 				++ver;
 				break;
-			case 35:
-				if(!upgrade35_36())
+			case 36:
+				if(!upgrade36_37())
 				{
 					has_error=true;
 				}

@@ -825,6 +825,7 @@ void BackupServerGet::operator ()(void)
 
 					if(r_success)
 					{
+						continuous_update->updateSettings(backupid, backuppath, backuppath_hashes, backuppath);
 						continuous_update->startExecuting();
 					}
 					else
@@ -1986,10 +1987,10 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 	bool hardlink_limit;
 	bool copied_file;
 	int64 entryid=0;
-	int64 entryclientid = 0;
+	int entryclientid = 0;
 	int64 rsize = 0;
 	int64 next_entryid = 0;
-	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, true, filesize, std::string(), true,
+	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, filesize, std::string(), true,
 		tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
 		metadata, parent_metadata);
 
@@ -2957,8 +2958,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 
 	if(copy_last_file_entries || readd_file_entries_sparse)
 	{
-		ServerLogger::Log(clientid, L"Copying readded file entries from temporary table...", LL_INFO);
-
 		if(num_readded_entries>0)
 		{
 			ServerLogger::Log(clientid, L"Number of readded file entries is "+convert(num_readded_entries), LL_INFO);
@@ -2974,8 +2973,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			backup_dao->dropTemporaryLastFilesTableIndex();
 			backup_dao->dropTemporaryLastFilesTable();
 		}
-
-		ServerLogger::Log(clientid, L"Done copying readded file entries from temporary table.", LL_DEBUG);
 	}
 
 	ServerLogger::Log(clientid, L"Waiting for file hashing and copying threads...", LL_INFO);

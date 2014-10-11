@@ -30,6 +30,12 @@ const int ServerBackupDao::c_direction_outgoing = 1;
 *		CREATE TEMPORARY TABLE files_last ( fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, rsize INTEGER);
 */
 
+/**
+* @-SQLGenTempSetup
+* @sql
+*		CREATE TEMPORARY TABLE files_cont_path_lookup ( fullpath TEXT, entryid INTEGER);
+*/
+
 ServerBackupDao::ServerBackupDao( IDatabase *db )
 	: db(db)
 {
@@ -651,7 +657,27 @@ void ServerBackupDao::setPointedTo(int64 pointed_to, int64 id)
 */
 void ServerBackupDao::addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to)
 {
+	if(q_addFileEntry==NULL)
+	{
+		q_addFileEntry=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, pointed_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", false);
+	}
+	q_addFileEntry->Bind(backupid);
+	q_addFileEntry->Bind(fullpath);
+	q_addFileEntry->Bind(hashpath);
+	q_addFileEntry->Bind(shahash.c_str(), (_u32)shahash.size());
+	q_addFileEntry->Bind(filesize);
+	q_addFileEntry->Bind(rsize);
+	q_addFileEntry->Bind(clientid);
+	q_addFileEntry->Bind(incremental);
+	q_addFileEntry->Bind(next_entry);
+	q_addFileEntry->Bind(prev_entry);
+	q_addFileEntry->Bind(pointed_to);
+	q_addFileEntry->Write();
+	q_addFileEntry->Reset();
+}
 
+/**
+* @-SQLGenAccess
 * @func string ServerBackupDao::getSetting
 * @return string value
 * @sql
@@ -713,26 +739,6 @@ void ServerBackupDao::updateSetting(const std::wstring& value, const std::wstrin
 	q_updateSetting->Write();
 	q_updateSetting->Reset();
 }
-
-	if(q_addFileEntry==NULL)
-	{
-		q_addFileEntry=db->Prepare("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, pointed_to) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", false);
-	}
-	q_addFileEntry->Bind(backupid);
-	q_addFileEntry->Bind(fullpath);
-	q_addFileEntry->Bind(hashpath);
-	q_addFileEntry->Bind(shahash.c_str(), (_u32)shahash.size());
-	q_addFileEntry->Bind(filesize);
-	q_addFileEntry->Bind(rsize);
-	q_addFileEntry->Bind(clientid);
-	q_addFileEntry->Bind(incremental);
-	q_addFileEntry->Bind(next_entry);
-	q_addFileEntry->Bind(prev_entry);
-	q_addFileEntry->Bind(pointed_to);
-	q_addFileEntry->Write();
-	q_addFileEntry->Reset();
-}
-
 
 /**
 * @-SQLGenAccess
@@ -993,6 +999,110 @@ void ServerBackupDao::setClientUsedFilebackupSize(int64 bytes_used_files, int id
 	q_setClientUsedFilebackupSize->Reset();
 }
 
+/**
+* @-SQLGenAccessNoCheck
+* @func bool ServerBackupDao::createTemporaryPathLookupTable
+* @sql
+*      CREATE TEMPORARY TABLE files_cont_path_lookup ( fullpath TEXT, entryid INTEGER);
+*/
+bool ServerBackupDao::createTemporaryPathLookupTable(void)
+{
+	if(q_createTemporaryPathLookupTable==NULL)
+	{
+		q_createTemporaryPathLookupTable=db->Prepare("CREATE TEMPORARY TABLE files_cont_path_lookup ( fullpath TEXT, entryid INTEGER);", false);
+	}
+	bool ret = q_createTemporaryPathLookupTable->Write();
+	return ret;
+}
+
+/**
+* @-SQLGenAccessNoCheck
+* @func void ServerBackupDao::dropTemporaryPathLookupTable
+* @sql
+*      DROP TABLE files_cont_path_lookup
+*/
+void ServerBackupDao::dropTemporaryPathLookupTable(void)
+{
+	if(q_dropTemporaryPathLookupTable==NULL)
+	{
+		q_dropTemporaryPathLookupTable=db->Prepare("DROP TABLE files_cont_path_lookup", false);
+	}
+	q_dropTemporaryPathLookupTable->Write();
+}
+
+/**
+* @-SQLGenAccessNoCheck
+* @func void ServerBackupDao::dropTemporaryPathLookupÍndex
+* @sql
+*      DROP INDEX files_cont_path_lookup_idx
+*/
+void ServerBackupDao::dropTemporaryPathLookupÍndex(void)
+{
+	if(q_dropTemporaryPathLookupÍndex==NULL)
+	{
+		q_dropTemporaryPathLookupÍndex=db->Prepare("DROP INDEX files_cont_path_lookup_idx", false);
+	}
+	q_dropTemporaryPathLookupÍndex->Write();
+}
+
+/**
+* @-SQLGenAccessNoCheck
+* @func void ServerBackupDao::populateTemporaryPathLookupTable
+* @sql
+*      INSERT INTO files_cont_path_lookup (fullpath, entryid)
+*		 SELECT fullpath, id AS entryid FROM files WHERE backupid=:backupid(int)
+*/
+void ServerBackupDao::populateTemporaryPathLookupTable(int backupid)
+{
+	if(q_populateTemporaryPathLookupTable==NULL)
+	{
+		q_populateTemporaryPathLookupTable=db->Prepare("INSERT INTO files_cont_path_lookup (fullpath, entryid) SELECT fullpath, id AS entryid FROM files WHERE backupid=?", false);
+	}
+	q_populateTemporaryPathLookupTable->Bind(backupid);
+	q_populateTemporaryPathLookupTable->Write();
+	q_populateTemporaryPathLookupTable->Reset();
+}
+
+/**
+* @-SQLGenAccessNoCheck
+* @func bool ServerBackupDao::createTemporaryPathLookupIndex
+* @sql
+*      CREATE INDEX files_cont_path_lookup_idx ON files_cont_path_lookup ( fullpath );
+*/
+bool ServerBackupDao::createTemporaryPathLookupIndex(void)
+{
+	if(q_createTemporaryPathLookupIndex==NULL)
+	{
+		q_createTemporaryPathLookupIndex=db->Prepare("CREATE INDEX files_cont_path_lookup_idx ON files_cont_path_lookup ( fullpath );", false);
+	}
+	bool ret = q_createTemporaryPathLookupIndex->Write();
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ServerBackupDao::lookupEntryIdByPath
+* @return int64 entryid
+* @sql
+*       SELECT entryid FROM files_cont_path_lookup WHERE fullpath=:fullpath(string)
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::lookupEntryIdByPath(const std::wstring& fullpath)
+{
+	if(q_lookupEntryIdByPath==NULL)
+	{
+		q_lookupEntryIdByPath=db->Prepare("SELECT entryid FROM files_cont_path_lookup WHERE fullpath=?", false);
+	}
+	q_lookupEntryIdByPath->Bind(fullpath);
+	db_results res=q_lookupEntryIdByPath->Read();
+	q_lookupEntryIdByPath->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"entryid"]);
+	}
+	return ret;
+}
 
 
 //@-SQLGenSetup
@@ -1027,6 +1137,9 @@ void ServerBackupDao::prepareQueries( void )
 	q_setPrevEntry=NULL;
 	q_setPointedTo=NULL;
 	q_addFileEntry=NULL;
+	q_getSetting=NULL;
+	q_insertSetting=NULL;
+	q_updateSetting=NULL;
 	q_delFileEntry=NULL;
 	q_getFileEntry=NULL;
 	q_getStatFileEntry=NULL;
@@ -1038,6 +1151,12 @@ void ServerBackupDao::prepareQueries( void )
 	q_addMiscValue=NULL;
 	q_delMiscValue=NULL;
 	q_setClientUsedFilebackupSize=NULL;
+	q_createTemporaryPathLookupTable=NULL;
+	q_dropTemporaryPathLookupTable=NULL;
+	q_dropTemporaryPathLookupÍndex=NULL;
+	q_populateTemporaryPathLookupTable=NULL;
+	q_createTemporaryPathLookupIndex=NULL;
+	q_lookupEntryIdByPath=NULL;
 }
 
 //@-SQLGenDestruction
@@ -1072,6 +1191,9 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_setPrevEntry);
 	db->destroyQuery(q_setPointedTo);
 	db->destroyQuery(q_addFileEntry);
+	db->destroyQuery(q_getSetting);
+	db->destroyQuery(q_insertSetting);
+	db->destroyQuery(q_updateSetting);
 	db->destroyQuery(q_delFileEntry);
 	db->destroyQuery(q_getFileEntry);
 	db->destroyQuery(q_getStatFileEntry);
@@ -1083,6 +1205,12 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_addMiscValue);
 	db->destroyQuery(q_delMiscValue);
 	db->destroyQuery(q_setClientUsedFilebackupSize);
+	db->destroyQuery(q_createTemporaryPathLookupTable);
+	db->destroyQuery(q_dropTemporaryPathLookupTable);
+	db->destroyQuery(q_dropTemporaryPathLookupÍndex);
+	db->destroyQuery(q_populateTemporaryPathLookupTable);
+	db->destroyQuery(q_createTemporaryPathLookupIndex);
+	db->destroyQuery(q_lookupEntryIdByPath);
 }
 
 void ServerBackupDao::commit()

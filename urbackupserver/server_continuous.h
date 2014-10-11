@@ -16,6 +16,9 @@
 #include "database.h"
 #include "server_download.h"
 #include "server_log.h"
+#include "dao/ServerBackupDao.h"
+#include "FileIndex.h"
+#include "create_files_index.h"
 
 extern std::string server_identity;
 extern std::string server_token;
@@ -66,7 +69,7 @@ public:
 		: server_get(server_get), collect_only(true), first_compaction(true), stop(false), continuous_path(continuous_path), continuous_hash_path(continuous_hash_path),
 		continuous_path_backup(continuous_path_backup),
 		tmpfile_path(tmpfile_path), use_tmpfiles(use_tmpfiles), clientid(clientid), clientname(clientname), backupid(backupid),
-		use_snapshots(use_snapshots), use_reflink(use_reflink), hashpipe_prepare(hashpipe_prepare)
+		use_snapshots(use_snapshots), use_reflink(use_reflink), hashpipe_prepare(hashpipe_prepare), has_fullpath_entryid_mapping_table(false)
 	{
 		mutex = Server->createMutex();
 		cond = Server->createCondition();
@@ -82,6 +85,8 @@ public:
 	void operator()()
 	{
 		server_settings.reset(new ServerSettings(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)));
+		backupdao.reset(new ServerBackupDao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)));
+		fileindex.reset(create_lmdb_files_index());
 
 		hashed_transfer_full = true;
 		hashed_transfer_incr = true;
@@ -128,6 +133,15 @@ public:
 				}
 			}
 
+			if(!collect_only && !has_fullpath_entryid_mapping_table)
+			{
+				backupdao->createTemporaryPathLookupTable();
+				backupdao->populateTemporaryPathLookupTable(backupid);
+				backupdao->createTemporaryPathLookupIndex();
+
+				has_fullpath_entryid_mapping_table=true;
+			}
+
 			if(!compacted_changes.empty())
 			{
 				for(size_t i=0;i<compacted_changes.size();++i)
@@ -149,6 +163,11 @@ public:
 		{
 			server_download->queueStop(false);
 			Server->getThreadPool()->waitFor(server_download_ticket);
+		}
+
+		if(has_fullpath_entryid_mapping_table)
+		{
+			backupdao->dropTemporaryPathLookupTable();
 		}
 	}
 
@@ -182,6 +201,14 @@ public:
 		IScopedLock lock(mutex);
 		stop=true;
 		cond->notify_all();
+	}
+
+	void updateSettings(int tbackupid, const std::wstring& tcontinuous_path, const std::wstring& tcontinuous_hash_path, const std::wstring& tcontinuous_path_backup)
+	{
+		backupid = tbackupid;
+		continuous_path = tcontinuous_path;
+		continuous_hash_path = tcontinuous_hash_path;
+		continuous_path_backup = tcontinuous_path_backup;
 	}
 
 private:
@@ -450,7 +477,7 @@ private:
 				return false;
 			}
 			int64 seq_start;
-			if(!data.getInt64(&seq_id))
+			if(!data.getInt64(&seq_start))
 			{
 				return false;
 			}
@@ -734,16 +761,36 @@ private:
 			return false;
 		}
 
+		{
+			ServerBackupDao::CondInt64 entryid = backupdao->lookupEntryIdByPath(getFullpath(change.fn1));
+			if(entryid.exists)
+			{
+				ServerBackupDao::SFindFileEntry fentry = backupdao->getFileEntry(entryid.value);
+				if(fentry.exists)
+				{
+					local_hash->deleteFileSQL(*backupdao, *fileindex, reinterpret_cast<const char*>(fentry.shahash.c_str()),
+						fentry.filesize, fentry.rsize, fentry.clientid,
+						fentry.backupid, fentry.incremental, fentry.id, fentry.prev_entry, fentry.next_entry, fentry.pointed_to,
+						true, true);
+				}
+			}
+		}
+
 		bool tries_once;
 		std::wstring ff_last;
-		bool hardlink_limit;
+		bool hardlink_limit = false;
+		bool copied_file=false;
+		int64 entryid=0;
+		int entryclientid=0;
+		int64 next_entryid=0;
+		int64 rsize = -1;
 		FileMetadata metadata(permissions, modified, created);
 		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
-			hash, filesize, std::string(), tries_once, ff_last, hardlink_limit, metadata, FileMetadata()))
+			hash, filesize, std::string(), true, tries_once, ff_last, hardlink_limit, copied_file, entryid,
+			entryclientid, rsize, next_entryid, metadata, FileMetadata()))
 		{
-			//TODO: delete old file first!
-			local_hash->addFileSQL(backupid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1), hash, filesize, 0);
-			local_hash->copyFromTmpTable(false);
+			local_hash->addFileSQL(backupid, clientid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1),
+				hash, filesize, rsize, entryid, entryclientid, next_entryid);
 			return true;
 		}
 
@@ -765,6 +812,8 @@ private:
 			server_download->addToQueueChunked(0, fn, fn,
 				fpath, fpath, filesize, metadata, FileMetadata());
 		}
+
+		return true;
 	}
 
 	std::wstring backupFile(const std::wstring& fn)
@@ -813,6 +862,8 @@ private:
 				return it->change.fn1;
 			}
 		}
+
+		return std::string();
 	}
 
 	virtual void unqueueFileFull(const std::string& fn)
@@ -860,7 +911,6 @@ private:
 	std::wstring clientname;
 
 	int backupid;
-
 	IPipe* hashpipe_prepare;
 
 	std::auto_ptr<BackupServerHash> local_hash;
@@ -879,4 +929,8 @@ private:
 	bool hashed_transfer_full;
 	bool hashed_transfer_incr;
 	bool transfer_incr_blockdiff;
+
+	bool has_fullpath_entryid_mapping_table;
+	std::auto_ptr<ServerBackupDao> backupdao;
+	std::auto_ptr<FileIndex> fileindex;
 };
