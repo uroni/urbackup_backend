@@ -8,6 +8,7 @@
 #include "ChangeJournalWatcher.h"
 #include "watchdir/JournalDAO.h"
 #include <list>
+#include "watchdir/ContinuousWatchEnqueue.h"
 
 struct SLastEntries
 {
@@ -19,7 +20,8 @@ struct SLastEntries
 class DirectoryWatcherThread : public IThread, public IChangeJournalListener
 {
 public:
-	DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs);
+	DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs,
+		const std::vector<ContinuousWatchEnqueue::SWatchItem> &watchdirs_continuous);
 
 	static void init_mutex(void);
 
@@ -29,6 +31,7 @@ public:
 
 	void stop(void);
 
+	virtual int64 getStartUsn(int64 sequence_id);
 	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed);
 	void On_DirNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed );
     void On_FileRemoved(const std::wstring & strFileName, bool closed);
@@ -55,7 +58,10 @@ public:
 
 	static _i64 get_current_filetime();
 
-	
+	IDatabase* getDatabase()
+	{
+		return db;
+	}
 
 private:
 	static IPipe *pipe;
@@ -78,4 +84,6 @@ private:
 	static ICondition *update_cond;
 
 	int64 last_backup_filetime;
+
+	std::auto_ptr<ContinuousWatchEnqueue> continuous_watch;
 };

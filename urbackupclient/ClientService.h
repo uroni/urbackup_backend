@@ -178,6 +178,7 @@ private:
 	void CMD_ENABLE_END_TO_END_FILE_BACKUP_VERIFICATION(const std::string &cmd);
 	void CMD_GET_VSSLOG(const std::string &cmd);
 	void CMD_GET_ACCESS_PARAMS(str_map &params);
+	void CMD_CONTINUOUS_WATCH_START();
 	int getCapabilities();
 
 	IPipe *pipe;

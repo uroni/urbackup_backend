@@ -35,6 +35,9 @@
 #include <memory.h>
 #include "file_metadata.h"
 #include <assert.h>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 const size_t freespace_mod=50*1024*1024; //50 MB
 const size_t BUFFER_SIZE=64*1024; //64KB
@@ -258,11 +261,11 @@ void BackupServerHash::operator()(void)
 							copyFile(hashf.get(), Server->ConvertToUnicode(hash_dest));
 						}
 
-						if(!write_file_metadata(os_file_prefix(Server->ConvertToUnicode(hash_dest)),
+						/*if(!write_file_metadata(os_file_prefix(Server->ConvertToUnicode(hash_dest)),
 							this, metadata))
 						{
 							ServerLogger::Log(clientid, "Error while writing metadata to \""+hash_dest+"\"", LL_ERROR);
-						}
+						}*/
 					}
 				}
 			}
@@ -960,6 +963,9 @@ IFile* BackupServerHash::openFileRetry(const std::wstring &dest, int mode)
 		dst=Server->openFile(os_file_prefix(dest), mode);
 		if(dst==NULL)
 		{
+#ifdef _WIN32
+			DWORD lr = GetLastError();
+#endif
 			ServerLogger::Log(clientid, L"Error opening file... \""+dest+L"\" retrying...", LL_DEBUG);
 			Server->wait(500);
 			++count_t;

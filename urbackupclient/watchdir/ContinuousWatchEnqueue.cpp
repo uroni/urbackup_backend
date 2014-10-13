@@ -6,10 +6,11 @@
 #include <memory>
 #include "../../Interface/SettingsReader.h"
 #include "../client.h"
+#include "../../urbackupserver/database.h"
 
 
-ContinuousWatchEnqueue::ContinuousWatchEnqueue( IDatabase* db )
-	: journal_dao(db), update_patterns(true)
+ContinuousWatchEnqueue::ContinuousWatchEnqueue()
+	: update_patterns(true)
 {
 
 }
@@ -170,6 +171,9 @@ void ContinuousWatchEnqueue::On_DirRemoved( const std::wstring & strDirName, boo
 
 void ContinuousWatchEnqueue::Commit(const std::vector<IChangeJournalListener::SSequence>& sequences)
 {
+	if(queue.getDataSize()==0)
+		return;
+
 	std::string data(queue.getDataPtr(), queue.getDataPtr()+queue.getDataSize());
 	
 	CWData header;
@@ -178,13 +182,28 @@ void ContinuousWatchEnqueue::Commit(const std::vector<IChangeJournalListener::SS
 	for(size_t i=0;i<sequences.size();++i)
 	{
 		header.addInt64(sequences[i].id);
-		header.addInt64(sequences[i].start);
+
+		std::map<int64, int64>::iterator seq_start_it = sequences_start.find(sequences[i].id);
+		if(seq_start_it!=sequences_start.end())
+		{
+			header.addInt64(seq_start_it->second);
+		}
+		else
+		{
+			continue;
+		}
+
 		header.addInt64(sequences[i].stop);
+
+		sequences_start[sequences[i].id]=sequences[i].stop;
 	}
 	
 	data.insert(data.begin(), header.getDataPtr(), header.getDataPtr()+header.getDataSize());
 
-	ClientConnector::tochannelSendChanges(data.data(), data.size());
+	if(ClientConnector::tochannelSendChanges(data.data(), data.size()))
+	{
+		queue.clear();
+	}
 }
 
 void ContinuousWatchEnqueue::addWatchdir( SWatchItem item )
@@ -364,5 +383,23 @@ bool ContinuousWatchEnqueue::pathIncluded( const std::wstring& path, const std::
 	}
 
 	return true;
+}
+
+void ContinuousWatchEnqueue::setupDatabaseAccess()
+{
+	if(journal_dao.get()==NULL)
+	{
+		journal_dao.reset(new JournalDAO(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER)));
+	}
+}
+
+int64 ContinuousWatchEnqueue::getStartUsn( int64 sequence_id )
+{
+
+}
+
+void ContinuousWatchEnqueue::setStartUsn( int64 sequence_id, int64 seq_start )
+{
+	sequences_start[sequence_id]=seq_start;
 }
 

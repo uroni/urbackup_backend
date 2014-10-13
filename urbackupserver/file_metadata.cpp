@@ -174,15 +174,15 @@ bool is_metadata_only(IFile* hash_file)
 
 bool read_metadata(const std::wstring& in_fn, FileMetadata& metadata)
 {
-	IFile* in = Server->openFile(os_file_prefix(in_fn));
+	std::auto_ptr<IFile> in(Server->openFile(os_file_prefix(in_fn)));
 
-	if(!in)
+	if(!in.get())
 	{
 		Server->Log(L"Error reading file metadata from file \""+in_fn+L"\"", LL_DEBUG);
 		return false;
 	}
 
-	return read_metadata(in, metadata);
+	return read_metadata(in.get(), metadata);
 }
 
 bool has_metadata( const std::wstring& in_fn, const FileMetadata& metadata )

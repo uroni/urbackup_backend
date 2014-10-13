@@ -144,7 +144,7 @@ void ServerChannelThread::operator()(void)
 					char *pck=tcpstack.getPacket(&packetsize);
 					if(pck!=NULL && packetsize>0)
 					{
-						ret=pck;
+						ret.assign(pck, pck+packetsize);
 						delete [] pck;
 						lasttime=Server->getTimeMS();
 						std::string r=processMsg(ret);

@@ -54,6 +54,8 @@ std::map<std::wstring, std::wstring> IndexThread::filesrv_share_dirs;
 
 const char IndexThread::IndexThreadAction_GetLog=9;
 const char IndexThread::IndexThreadAction_PingShadowCopy=10;
+const char IndexThread::IndexThreadAction_AddWatchdir = 5;
+const char IndexThread::IndexThreadAction_RemoveWatchdir = 6;
 
 
 extern PLUGIN_ID filesrv_pluginid;
@@ -126,6 +128,15 @@ void IdleCheckerThread::setPause(bool b)
 namespace
 {
 #ifdef _WIN32
+
+	struct ON_DISK_USN_JOURNAL_DATA
+	{
+		uint64 MaximumSize; 
+		uint64 AllocationDelta;
+		uint64 UsnJournalID;
+		int64 LowestValidUsn;
+	};
+
 	int64 getUsnNum( const std::wstring& dir, int64& sequence_id )
 	{
 		WCHAR volume_path[MAX_PATH]; 
@@ -146,7 +157,12 @@ namespace
 			}
 		}
 
-		HANDLE hVolume=CreateFileW((L"\\\\.\\"+vol).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		if(!vol.empty() && vol[0]!='\\')
+		{
+			vol = L"\\\\.\\"+vol;
+		}
+
+		HANDLE hVolume=CreateFileW(vol.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if(hVolume==INVALID_HANDLE_VALUE)
 		{
 			Server->Log(L"CreateFile of volume '"+vol+L"' failed. - getUsnNum", LL_ERROR);
@@ -166,7 +182,23 @@ namespace
 		}
 		else
 		{
-			return -1;
+			std::auto_ptr<IFile> journal_info(Server->openFile(vol+L"\\$Extend\\$UsnJrnl:$Max", MODE_READ_SEQUENTIAL_BACKUP));
+
+			if(journal_info.get()==NULL) return -1;
+
+			ON_DISK_USN_JOURNAL_DATA journal_data = {};
+			if(journal_info->Read(reinterpret_cast<char*>(&journal_data), sizeof(journal_data))!=sizeof(journal_data))
+			{
+				return -1;
+			}
+
+			sequence_id = journal_data.UsnJournalID;
+
+			std::auto_ptr<IFile> journal(Server->openFile(vol+L"\\$Extend\\$UsnJrnl:$J", MODE_READ_SEQUENTIAL_BACKUP));
+
+			if(journal.get()==NULL) return -1;
+
+			return journal->Size();
 		}
 	}
 #endif
@@ -187,7 +219,7 @@ std::wstring add_trailing_slash(const std::wstring &strDirName)
 }
 
 IndexThread::IndexThread(void)
-	: index_error(false), last_filebackup_filetime(0)
+	: index_error(false), last_filebackup_filetime(0), index_group(-1)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -248,13 +280,21 @@ void IndexThread::updateDirs(void)
 
 #ifdef _WIN32
 	std::vector<std::wstring> watching;
+	std::vector<ContinuousWatchEnqueue::SWatchItem> continuous_watch;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 		watching.push_back(backup_dirs[i].path);
+
+		if(backup_dirs[i].group==c_group_continuous)
+		{
+			continuous_watch.push_back(
+				ContinuousWatchEnqueue::SWatchItem(backup_dirs[i].path, backup_dirs[i].tname));
+		}
 	}
+
 	if(dwt==NULL)
 	{
-		dwt=new DirectoryWatcherThread(watching);
+		dwt=new DirectoryWatcherThread(watching, continuous_watch);
 		dwt_ticket=Server->getThreadPool()->execute(dwt);
 	}
 	else
@@ -590,7 +630,7 @@ void IndexThread::operator()(void)
 			}
 		}
 #ifdef _WIN32
-		else if(action==5) //add watch directory
+		else if(action==IndexThreadAction_AddWatchdir)
 		{
 			std::string dir;
 			if(data.getStr(&dir))
@@ -598,15 +638,27 @@ void IndexThread::operator()(void)
 				std::wstring msg=L"A"+os_get_final_path(Server->ConvertToUnicode( dir ));
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
+			std::string name;
+			if(data.getStr(&name))
+			{
+				std::wstring msg=L"C"+os_get_final_path(Server->ConvertToUnicode( dir ))+L"|"+Server->ConvertToUnicode(name);
+				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+			}
 			contractor->Write("done");
 			stop_index=false;
 		}
-		else if(action==6) //remove watch directory
+		else if(action==IndexThreadAction_RemoveWatchdir)
 		{
 			std::string dir;
 			if(data.getStr(&dir))
 			{
 				std::wstring msg=L"D"+os_get_final_path(Server->ConvertToUnicode( dir ));
+				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+			}
+			std::string name;
+			if(data.getStr(&name))
+			{
+				std::wstring msg=L"X"+os_get_final_path(Server->ConvertToUnicode( dir ))+L"|"+Server->ConvertToUnicode(name);
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
 			contractor->Write("done");
@@ -690,7 +742,7 @@ void IndexThread::indexDirs(void)
 		{
 			selected_dirs.push_back(removeDirectorySeparatorAtEnd(backup_dirs[i].path));
 #ifdef _WIN32
-			selected_dirs[i]=strlower(selected_dirs[i]);
+			selected_dirs[selected_dirs.size()-1]=strlower(selected_dirs[selected_dirs.size()-1]);
 #endif
 		}
 	}
@@ -935,8 +987,16 @@ void IndexThread::indexDirs(void)
 
 	{
 		IScopedLock lock(filelist_mutex);
-		removeFile(L"urbackup/data/filelist.ub");
-		moveFile(L"urbackup/data/filelist_new.ub", L"urbackup/data/filelist.ub");
+		if(index_group==c_group_default)
+		{
+			removeFile(L"urbackup/data/filelist.ub");
+			moveFile(L"urbackup/data/filelist_new.ub", L"urbackup/data/filelist.ub");
+		}
+		else
+		{
+			removeFile(L"urbackup/data/filelist_"+convert(index_group)+L".ub");
+			moveFile(L"urbackup/data/filelist_new.ub", L"urbackup/data/filelist_"+convert(index_group)+L".ub");
+		}
 		Server->wait(1000);
 	}
 
@@ -1110,7 +1170,7 @@ bool IndexThread::readBackupDirs(void)
 		Server->Log(L"Final path: "+backup_dirs[i].path, LL_INFO);
 #endif
 
-		if(backup_dirs[i].group == index_group)
+		if(index_group!=-1 && backup_dirs[i].group == index_group)
 		{
 			has_backup_dir=true;
 		}
@@ -3228,10 +3288,12 @@ void IndexThread::readPermissions( const std::wstring& path, std::string& permis
 void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra )
 {
 	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\""
-		"dacl=" << base64_encode_dash(permissions) <<
+		"#dacl=" << base64_encode_dash(permissions) <<
 		"&mod=" << nconvert(mod) <<
 		"&creat=" << nconvert(creat) <<
 		extra << "\n";
 }
+
+
 
 

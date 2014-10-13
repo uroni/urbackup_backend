@@ -404,7 +404,7 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 
 void CServer::rotateLogfile()
 {
-	if(logfile.tellp()>log_rotation_size)
+	if(static_cast<size_t>(logfile.tellp())>log_rotation_size)
 	{
 		logfile.close();
 		logfile_a=false;

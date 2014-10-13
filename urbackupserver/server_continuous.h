@@ -105,8 +105,6 @@ public:
 			transfer_incr_blockdiff = server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash";
 		}
 
-		if(server_settings->getSettings()->internet_full_file_transfer_mode=="raw")
-
 		while(true)
 		{
 			{
@@ -117,7 +115,9 @@ public:
 					return;
 				}
 
-				while(changes.empty())
+				size_t n_changes=changes.size();
+				bool curr_collect_only=collect_only;
+				do
 				{
 					cond->wait(&lock);
 					if(stop)
@@ -125,6 +125,8 @@ public:
 						return;
 					}
 				}
+				while(n_changes==changes.size() &&
+					curr_collect_only==collect_only);
 
 				if(!collect_only && !compactChanges())
 				{
@@ -228,6 +230,8 @@ private:
 		}
 
 		first_compaction=false;
+
+		changes.clear();
 
 		return ret;
 	}
@@ -495,6 +499,7 @@ private:
 						&& seq_start<sequences[j].next)
 					{
 						skip=true;
+						sequences[j].next=seq_stop;
 						return true;
 					}
 					else if(seq_start!=sequences[j].next)
@@ -675,8 +680,8 @@ private:
 			}
 		}
 
-		if(!os_rename_file(getFullpath(change.fn1), getFullpath(change.fn2)) 
-			|| !os_rename_file(getFullHashpath(change.fn1), getFullpath(change.fn2)) )
+		if(!os_rename_file(os_file_prefix(getFullpath(change.fn1)), os_file_prefix(getFullpath(change.fn2))) 
+			|| !os_rename_file(os_file_prefix(getFullHashpath(change.fn1)), os_file_prefix(getFullHashpath(change.fn2))) )
 		{
 			Server->Log("Error renaming \""+change.fn1+"\" to \""+change.fn2+"\"", LL_ERROR);
 			return false;

@@ -35,7 +35,8 @@ namespace
 }
 
 
-DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs)
+DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::wstring> &watchdirs,
+	const std::vector<ContinuousWatchEnqueue::SWatchItem> &watchdirs_continuous)
 {
 	do_stop=false;
 	watching=watchdirs;
@@ -43,6 +44,16 @@ DirectoryWatcherThread::DirectoryWatcherThread(const std::vector<std::wstring> &
 	for(size_t i=0;i<watching.size();++i)
 	{
 		watching[i]=strlower(add_trailing_slash(watching[i]));
+	}
+
+	if(!watchdirs_continuous.empty())
+	{
+		continuous_watch.reset(new ContinuousWatchEnqueue);
+
+		for(size_t i=0;i<watchdirs_continuous.size();++i)
+		{
+			continuous_watch->addWatchdir(watchdirs_continuous[i]);
+		}
 	}
 }
 
@@ -72,6 +83,11 @@ void DirectoryWatcherThread::operator()(void)
 	for(size_t i=0;i<watching.size();++i)
 	{
 		dcw.watchDir(watching[i]);
+	}
+
+	if(continuous_watch.get())
+	{
+		dcw.add_listener(continuous_watch.get());
 	}
 
 	while(do_stop==false)
@@ -124,6 +140,26 @@ void DirectoryWatcherThread::operator()(void)
 						break;
 					}
 				}
+			}
+			else if( msg[0]=='C')
+			{
+				std::wstring dir=strlower(add_trailing_slash(getuntil(L"|", msg.substr(1))));
+				std::wstring name=getafter(L"|", msg.substr(1));
+
+				if(continuous_watch.get()==NULL)
+				{
+					continuous_watch.reset(new ContinuousWatchEnqueue);
+					dcw.add_listener(continuous_watch.get());
+				}
+
+				continuous_watch->addWatchdir(ContinuousWatchEnqueue::SWatchItem(dir, name));
+			}
+			else if( msg[0]=='X')
+			{
+				std::wstring dir=strlower(add_trailing_slash(getuntil(L"|", msg.substr(1))));
+				std::wstring name=getafter(L"|", msg.substr(1));
+
+				continuous_watch->removeWatchdir(ContinuousWatchEnqueue::SWatchItem(dir, name));
 			}
 			else if( msg[0]=='U' )
 			{
@@ -413,4 +449,7 @@ void DirectoryWatcherThread::Commit(const std::vector<IChangeJournalListener::SS
 
 }
 
-
+int64 DirectoryWatcherThread::getStartUsn( int64 sequence_id )
+{
+	return -1;
+}

@@ -9,7 +9,9 @@
 class ContinuousWatchEnqueue : public IChangeJournalListener
 {
 public:
-	ContinuousWatchEnqueue(IDatabase* db);
+	ContinuousWatchEnqueue();
+
+	virtual int64 getStartUsn(int64 sequence_id);
 
 	virtual void On_FileNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed );
 
@@ -29,6 +31,7 @@ public:
 
 	virtual void Commit(const std::vector<IChangeJournalListener::SSequence>& sequences);
 
+	void setStartUsn(int64 sequence_id, int64 seq_start);
 
 	struct SWatchItem
 	{
@@ -79,15 +82,19 @@ private:
 
 	void readIncludeExcludePatterns();
 
+	void setupDatabaseAccess();
+
 	volatile bool update_patterns;
 	std::vector<std::wstring> exlude_dirs;
 	std::vector<std::wstring> include_dirs;
 	std::vector<int> include_depth;
 	std::vector<std::wstring> include_prefix;
 
-	JournalDAO journal_dao;
+	std::auto_ptr<JournalDAO> journal_dao;
 
 	CWData queue;
 
+
+	std::map<int64, int64> sequences_start;
 	std::vector<SWatchItem> watchdirs;
 };

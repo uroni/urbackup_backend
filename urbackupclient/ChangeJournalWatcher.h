@@ -130,6 +130,7 @@ private:
 class IChangeJournalListener
 {
 public:
+	virtual int64 getStartUsn(int64 sequence_id)=0;
 	virtual void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed)=0;
 	virtual void On_DirNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed)=0;
     virtual void On_FileRemoved(const std::wstring & strFileName, bool closed)=0;

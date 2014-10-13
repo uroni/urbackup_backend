@@ -106,6 +106,8 @@ class IndexThread : public IThread
 public:
 	static const char IndexThreadAction_GetLog;
 	static const char IndexThreadAction_PingShadowCopy;
+	static const char IndexThreadAction_AddWatchdir;
+	static const char IndexThreadAction_RemoveWatchdir;
 
 	IndexThread(void);
 	~IndexThread();

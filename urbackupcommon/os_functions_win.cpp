@@ -850,8 +850,7 @@ bool os_rename_file(std::wstring src, std::wstring dst, void* transaction)
 	if(transaction==NULL)
 	{
 #endif
-		DeleteFileW(dst.c_str());
-		rc=MoveFileW(src.c_str(), dst.c_str());
+		rc=MoveFileExW(src.c_str(), dst.c_str(), MOVEFILE_REPLACE_EXISTING);
 #ifdef USE_NTFS_TXF
 	}
 	else

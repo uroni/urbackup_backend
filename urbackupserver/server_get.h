@@ -58,6 +58,7 @@ struct SContinuousSequence
 	int64 next;
 };
 
+const int c_group_all = -1;
 const int c_group_default = 0;
 const int c_group_continuous = 1;
 

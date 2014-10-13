@@ -123,6 +123,11 @@ void CWData::addBuffer(const char* buffer, size_t bsize)
 	memcpy(&data[cpos], buffer, bsize);
 }
 
+void CWData::clear()
+{
+	data.clear();
+}
+
 CRData::CRData(const char* c,size_t datalength, bool pCopy)
 {
 	data=NULL;

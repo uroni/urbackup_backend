@@ -820,12 +820,16 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_GET_VSSLOG(cmd); continue;
 			}
+			else if( cmd=="CONTINUOUS WATCH START")
+			{
+				CMD_CONTINUOUS_WATCH_START(); continue;
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{
 			if(pw_change_ok) //Administrator commands
 			{
-				if( cmd=="1GET BACKUP DIRS" || cmd=="GET BACKUP DIRS" )
+				if( cmd=="GET BACKUP DIRS" )
 				{
 					CMD_GET_BACKUPDIRS(cmd); continue;
 				}
@@ -975,7 +979,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 	db->BeginTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
 	db->Prepare("DELETE FROM backupdirs")->Write();
-	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional) VALUES (?, ? ,"+nconvert(server_default?1:0)+", ?)");
+	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+nconvert(server_default?1:0)+", ?, ?)");
 	/**
 	Use empty client settings
 	if(server_default==false)
@@ -988,7 +992,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 	IQuery *q2=db->Prepare("SELECT id FROM backupdirs WHERE name=?");
 	std::wstring dir;
 	size_t i=0;
-	std::vector<std::wstring> new_watchdirs;
+	std::vector<SBackupDir> new_watchdirs;
 	do
 	{
 		dir=args[L"dir_"+convert(i)];
@@ -1000,6 +1004,12 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 				name=name_arg->second;
 			else
 				name=ExtractFileName(dir);
+
+			int group = c_group_default;
+
+			str_map::iterator group_arg=args.find(L"dir_"+convert(i)+L"_group");
+			if(group_arg!=args.end() && !group_arg->second.empty())
+				group=watoi(group_arg->second);
 
 			bool optional = false;
 			size_t optional_off = name.find(L"/optional");
@@ -1037,6 +1047,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 				if(backupdirs[i][L"path"]==dir)
 				{
 					backupdirs[i][L"need"]=L"1";
+					backupdirs[i][L"group"] = convert(group);
 					found=true;
 					break;
 				}
@@ -1045,12 +1056,16 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			if(!found)
 			{
 				//It's not already watched. Add it
-				new_watchdirs.push_back(dir);
+				SBackupDir new_dir = {
+					0, name, dir, optional, group };
+
+				new_watchdirs.push_back(new_dir);
 			}
 			
 			q->Bind(name);
 			q->Bind(dir);
 			q->Bind(optional?1:0);
+			q->Bind(group);
 			q->Write();
 			q->Reset();
 		}
@@ -1065,9 +1080,13 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 		//Add watch
 		IPipe *contractor=Server->createMemoryPipe();
 		CWData data;
-		data.addChar(5);
+		data.addChar(IndexThread::IndexThreadAction_AddWatchdir);
 		data.addVoidPtr(contractor);
-		data.addString(Server->ConvertToUTF8(new_watchdirs[i]));
+		data.addString(Server->ConvertToUTF8(new_watchdirs[i].path));
+		if(new_watchdirs[i].group==c_group_continuous)
+		{
+			data.addString(Server->ConvertToUTF8(new_watchdirs[i].tname));
+		}
 		IndexThread::stopIndex();
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 		contractors.push_back(contractor);
@@ -1082,9 +1101,13 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			//Delete the watch
 			IPipe *contractor=Server->createMemoryPipe();
 			CWData data;
-			data.addChar(6);
+			data.addChar(IndexThread::IndexThreadAction_RemoveWatchdir);
 			data.addVoidPtr(contractor);
 			data.addString(Server->ConvertToUTF8(backupdirs[i][L"path"]));
+			if(watoi(backupdirs[i][L"group"])==c_group_continuous)
+			{
+				data.addString(Server->ConvertToUTF8(backupdirs[i][L"name"]));
+			}
 			IndexThread::stopIndex();
 			IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 			contractors.push_back(contractor);
@@ -1269,14 +1292,23 @@ void ClientConnector::updateSettings(const std::string &pData)
 			{
 				std::wstring path=trim(def_dirs_toks[i]);
 				std::wstring name;
+				int group = c_group_default;
 				if(path.find(L"|")!=std::string::npos)
 				{
-					name=trim(getafter(L"|", path));
-					path=trim(getuntil(L"|", path));
+					std::vector<std::wstring> toks;
+					Tokenize(default_dirs, toks, L"|");
+					name = toks[0];
+					path = toks[1];
+					if(toks.size()>2)
+					{
+						group = watoi(toks[2]);
+					}
 				}
 				args[L"dir_"+convert(i)]=path;
 				if(!name.empty())
 					args[L"dir_"+convert(i)+L"_name"]=name;
+
+				args[L"dir_"+convert(i)+L"_name"]=convert(group);
 			}
 
 			saveBackupDirs(args, true);
@@ -2070,11 +2102,6 @@ bool ClientConnector::tochannelSendChanges( const char* changes, size_t changes_
 {
 	IScopedLock lock(backup_mutex);
 
-	if(has_file_changes)
-	{
-		return false;
-	}
-
 	if(channel_pipe.pipe==NULL)
 	{
 		has_file_changes = true;
@@ -2118,9 +2145,11 @@ int ClientConnector::getCapabilities()
 			if(cq!=NULL)
 			{
 				cq->Bind(capa);
-				cq->Write();
-				cq->Reset();
-				last_capa=capa;
+				if(cq->Write(0))
+				{
+					last_capa=capa;
+				}
+				cq->Reset();				
 				db->destroyQuery(cq);
 			}
 		}

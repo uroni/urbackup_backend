@@ -782,6 +782,7 @@ void BackupServerGet::operator ()(void)
 			else if(cdp_version>0 && cdp_needs_sync)
 			{
 				ScopedActiveThread sat;
+				cdp_needs_sync=false;
 
 				status.statusaction=sa_cdp_sync;
 				ServerStatus::setServerStatus(status, true);
@@ -803,41 +804,67 @@ void BackupServerGet::operator ()(void)
 					pingthread=new ServerPingThread(this, eta_version>0);
 					pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-					createHashThreads(use_reflink);
-
-					bool intra_file_diffs;
-					if(internet_connection)
+					if(sendClientMessageRetry("CONTINUOUS WATCH START", "OK", L"Error sending command to continuously watch the backups from now on", 10000, 3))
 					{
-						intra_file_diffs=(server_settings->getSettings()->internet_incr_file_transfer_mode=="blockhash");
+						createHashThreads(use_reflink);
+
+						bool intra_file_diffs;
+						if(internet_connection)
+						{
+							intra_file_diffs=(server_settings->getSettings()->internet_incr_file_transfer_mode=="blockhash");
+						}
+						else
+						{
+							intra_file_diffs=(server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash");
+						}
+
+						{
+							IScopedLock lock(continuous_mutex);
+							continuous_update.reset(new BackupServerContinuous(this,
+								backuppath, backuppath_hashes, backuppath, tmpfile_path, use_tmpfiles,
+								clientid, clientname, backupid, use_snapshots, use_reflink, hashpipe_prepare));
+							continuous_thread_ticket = Server->getThreadPool()->execute(continuous_update.get());
+						}
+						
+
+						r_success=doIncrBackup(with_hashes, intra_file_diffs, use_snapshots, false, c_group_continuous,
+							disk_error, log_backup, r_incremental, r_resumed);
+
+						if(r_success)
+						{
+							std::vector<BackupServerContinuous::SSequence> new_sequences;
+							for(std::map<std::wstring, SContinuousSequence>::iterator it=continuous_sequences.begin();
+								it!=continuous_sequences.end();++it)
+							{
+								BackupServerContinuous::SSequence seq = {};
+								seq.id = it->second.id;
+								seq.next = it->second.next;
+								new_sequences.push_back(seq);
+							}
+
+							Server->wait(1000);
+
+							IScopedLock lock(continuous_mutex);
+
+							continuous_update->setSequences(new_sequences);
+
+							continuous_update->startExecuting();
+						}
+						else
+						{
+							continuous_update->doStop();
+							destroyHashThreads();
+						}
+
+						if(do_incr_backup_now)
+						{
+							log_backup=true;
+						}
 					}
 					else
 					{
-						intra_file_diffs=(server_settings->getSettings()->local_incr_file_transfer_mode=="blockhash");
-					}
-
-					continuous_update.reset(new BackupServerContinuous(this,
-						backuppath, backuppath_hashes, backuppath, tmpfile_path, use_tmpfiles,
-						clientid, clientname, backupid, use_snapshots, use_reflink, hashpipe_prepare));
-					continuous_thread_ticket = Server->getThreadPool()->execute(continuous_update.get());
-
-					r_success=doIncrBackup(with_hashes, intra_file_diffs, use_snapshots, false, c_group_continuous,
-						disk_error, log_backup, r_incremental, r_resumed);
-
-					if(r_success)
-					{
-						continuous_update->updateSettings(backupid, backuppath, backuppath_hashes, backuppath);
-						continuous_update->startExecuting();
-					}
-					else
-					{
-						continuous_update->doStop();
-						destroyHashThreads();
-					}
-
-					if(do_incr_backup_now)
-					{
-						log_backup=true;
-					}
+						r_success=false;
+					}					
 				}
 			}
 
@@ -2773,6 +2800,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 						bool too_many_hardlinks;
 						bool b=os_create_hardlink(os_file_prefix(backuppath+local_curr_os_path), os_file_prefix(srcpath), use_snapshots, &too_many_hardlinks);
 						bool f_ok = false;
+						bool copied_hashes = false;
 						if(b)
 						{
 							f_ok=true;
@@ -2785,6 +2813,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 								with_hashes?(backuppath_hashes+local_curr_os_path):std::wstring(),
 								metadata);
 							f_ok=true;
+							copied_hashes=true;
 						}
 
 						if(!f_ok) //creating hard link failed and not because of too many hard links per inode
@@ -2834,7 +2863,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 							copy_curr_file_entry=copy_last_file_entries;						
 							readd_curr_file_entry_sparse = readd_file_entries_sparse;
 
-							if(with_hashes)
+							if(with_hashes && !copied_hashes)
 							{
 								curr_has_hash = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, NULL);
 							}
@@ -5387,7 +5416,10 @@ void BackupServerGet::getTokenFile(FileClient &fc, bool hashed_transfer )
 void BackupServerGet::addContinuousChanges(const std::string& data)
 {
 	IScopedLock lock(continuous_mutex);
-	continuous_update->addChanges(data);
+	if(continuous_update.get()!=NULL)
+	{
+		continuous_update->addChanges(data);
+	}
 }
 
 std::string BackupServerGet::clientlistName( int group, bool new_list )

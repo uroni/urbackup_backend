@@ -23,6 +23,7 @@ std::wstring getSysVolume(std::wstring &mpath){ return L""; }
 
 #include <stdlib.h>
 #include <limits.h>
+#include "DirectoryWatcherThread.h"
 
 
 #ifndef _WIN32
@@ -341,31 +342,33 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 
 void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 {
-	int version=0;
-	if(!cmd.empty() && cmd[0]=='1')
-		version=1;
-
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id,name,path FROM backupdirs");
+	IQuery *q=db->Prepare("SELECT id,name,path,tgroup FROM backupdirs");
 	int timeoutms=300;
 	db_results res=q->Read(&timeoutms);
+
 	if(timeoutms==0)
 	{
-		std::string msg;
+		JSON::Object ret;
+
+		JSON::Array dirs;
 		for(size_t i=0;i<res.size();++i)
 		{
 			if(res[i][L"name"]==L"*") continue;
 
-			msg+=Server->ConvertToUTF8(res[i][L"id"])+"\n";
-			if(version!=0)
-			{
-				msg+=Server->ConvertToUTF8(res[i][L"name"])+"|";
-			}
-			msg+=Server->ConvertToUTF8(res[i][L"path"]);
-			if(i+1<res.size())
-				msg+="\n";
+			JSON::Object cdir;
+
+			cdir.set("id", watoi(res[i][L"id"]));
+			cdir.set("name", res[i][L"name"]);
+			cdir.set("path", res[i][L"path"]);
+			cdir.set("group", watoi(res[i][L"tgroup"]));
+
+			dirs.add(cdir);
 		}
-		tcpstack.Send(pipe, msg);
+
+		ret.set("dirs", dirs);
+
+		tcpstack.Send(pipe, ret.get(true));
 	}
 	else
 	{
@@ -1434,4 +1437,11 @@ void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 	}
 
 	tcpstack.Send(pipe, ret);
+}
+
+void ClientConnector::CMD_CONTINUOUS_WATCH_START()
+{
+	IScopedLock lock(backup_mutex);
+
+	tcpstack.Send(pipe, "OK");
 }

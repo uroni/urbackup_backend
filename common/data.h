@@ -24,6 +24,8 @@ public:
 	void addUChar(unsigned char ta);
 	void addVoidPtr(void *ptr);
 	void addBuffer(const char* buffer, size_t bsize);
+	
+	void clear();
 
 private:
 	std::vector<char> data;
