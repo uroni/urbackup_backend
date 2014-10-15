@@ -6,7 +6,7 @@ After=syslog.target network.target
 Type=forking
 NotifyAccess=all
 PIDFile=/run/urbackup_srv.pid
-ExecStart=/usr/local/sbin/start_urbackup_server
+ExecStart=/usr/sbin/start_urbackup_server
 
 [Install]
 WantedBy=multi-user.target
