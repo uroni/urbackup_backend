@@ -600,7 +600,7 @@ SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
 	return r;
 }
 
-std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, _i64 frn, bool fallback_to_mft, bool& filter_error)
+std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, _i64 frn, bool fallback_to_mft, bool& filter_error, bool& has_error)
 {
 	std::wstring path;
 	_i64 curr_id=frn;
@@ -634,16 +634,23 @@ std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, _i64 fr
 					Server->Log(L"Couldn't follow up to root via Database. Falling back to MFT. Current path: "+path, LL_WARNING);
 
 					_i64 parent_frn;
-					std::wstring dirname = getNameFromMFTByFRN(cj, curr_id, parent_frn);
+					bool has_error=false;
+					std::wstring dirname = getNameFromMFTByFRN(cj, curr_id, parent_frn, has_error);
 					if(!dirname.empty())
 					{
 						path = dirname + os_file_sep() + path;
 						addFrn(dirname, parent_frn, curr_id, cj.rid);
 						curr_id = parent_frn;
 					}
-					else
+					else if(!has_error)
 					{
 						Server->Log(L"Could not follow up to root. Current path: "+path+L". Lookup in MFT failed. Directory was probably deleted.", LL_WARNING);
+						return std::wstring();
+					}
+					else
+					{
+						Server->Log(L"Could not follow up to root. Current path: "+path+L". Lookup in MFT failed.", LL_ERROR);
+						has_error=true;
 						return std::wstring();
 					}
 
@@ -993,7 +1000,8 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			{
 				Server->Log("Parent of directory with FRN "+nconvert(UsnRecord->FileReferenceNumber)+" with FRN "+nconvert(UsnRecord->ParentFileReferenceNumber)+" not found. Searching via MFT as fallback.", LL_WARNING);
 				_i64 parent_parent_frn;
-				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn);
+				bool has_error=false;
+				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn, has_error);
 				if(parent_name.empty())
 				{
 					Server->Log("Parent not found. Was probably deleted.", LL_WARNING);
@@ -1014,10 +1022,11 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		else if(UsnRecord->Reason & (USN_REASON_CLOSE | watch_flags ) )
 		{
 			bool filter_error = false;
-			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error);
+			bool has_error = false;
+			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error, has_error);
 			if(dir_fn.empty())
 			{
-				if(!filter_error)
+				if(!filter_error || has_error)
 				{
 					Server->Log(L"Error: Path of "+UsnRecord->Filename+L" not found -2", LL_ERROR);
 					curr_has_error = true;
@@ -1047,10 +1056,11 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		else if(UsnRecord->Reason & USN_REASON_RENAME_OLD_NAME )
 		{
 			bool filter_error = false;
-			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error);
+			bool has_error = false;
+			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error, has_error);
 			if(dir_fn.empty())
 			{
-				if(!filter_error)
+				if(!filter_error || has_error)
 				{
 					Server->Log(L"Error: Path of "+UsnRecord->Filename+L" not found -3", LL_ERROR);
 					curr_has_error = true;
@@ -1075,10 +1085,18 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			{
 				Server->Log("Parent of file with FRN "+nconvert(UsnRecord->FileReferenceNumber)+" with FRN "+nconvert(UsnRecord->ParentFileReferenceNumber)+" not found. Searching via MFT as fallback.", LL_WARNING);
 				_i64 parent_parent_frn;
-				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn);
+				bool has_error=false;
+				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn, has_error);
 				if(parent_name.empty())
 				{
-					Server->Log("Parent directory not found in MFT. Was probably deleted.", LL_WARNING);
+					if(!has_error)
+					{
+						Server->Log("Parent directory not found in MFT. Was probably deleted.", LL_WARNING);
+					}
+					else
+					{
+						Server->Log("Parent directory not found in MFT.", LL_ERROR);
+					}
 				}
 				else
 				{
@@ -1095,11 +1113,12 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		else
 		{
 			bool filter_error = false;
-			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error);
+			bool has_error = false;
+			std::wstring dir_fn=getFilename(cj, UsnRecord->ParentFileReferenceNumber, true, filter_error, has_error);
 
 			if(dir_fn.empty())
 			{
-				if(!filter_error)
+				if(!filter_error || has_error)
 				{
 					Server->Log(L"Error: Path of file \""+UsnRecord->Filename+L"\" not found -3", LL_ERROR);
 					curr_has_error = true;
@@ -1175,7 +1194,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 	}
 }
 
-std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn)
+std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn, bool& has_error)
 {
 	MFT_ENUM_DATA med;
 	med.StartFileReferenceNumber = frn;
@@ -1212,6 +1231,8 @@ std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj,
 	}
 	else
 	{
+		Server->Log(L"Getting name by FRN from MFT failed for volume "+cj.vol_str+L" with error code "+convert((int)GetLastError()), LL_ERROR);
+		has_error=true;
 		return std::wstring();
 	}
 }

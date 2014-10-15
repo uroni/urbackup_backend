@@ -79,7 +79,7 @@ private:
 	void deleteJournalId(const std::wstring &vol);
 
 	void deleteWithChildren( _i64 frn, _i64 rid);
-	std::wstring getFilename(const SChangeJournal &cj, _i64 frn, bool fallback_to_mft, bool& filter_error);
+	std::wstring getFilename(const SChangeJournal &cj, _i64 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);
 
 	void indexRootDirs(_i64 rid, const std::wstring &root, _i64 parent);
 	void indexRootDirs2(const std::wstring &root, SChangeJournal *sj);
@@ -91,7 +91,7 @@ private:
 	void reindex(_i64 rid, std::wstring vol, SChangeJournal *sj);
 	void logEntry(const std::wstring &vol, const UsnInt *UsnRecord);
 
-	std::wstring getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn);
+	std::wstring getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn, bool& has_error);
 
 	IDatabase *db;
 
