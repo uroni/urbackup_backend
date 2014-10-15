@@ -634,7 +634,7 @@ std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, _i64 fr
 					Server->Log(L"Couldn't follow up to root via Database. Falling back to MFT. Current path: "+path, LL_WARNING);
 
 					_i64 parent_frn;
-					bool has_error=false;
+					has_error=false;
 					std::wstring dirname = getNameFromMFTByFRN(cj, curr_id, parent_frn, has_error);
 					if(!dirname.empty())
 					{
