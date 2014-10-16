@@ -116,7 +116,7 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 }
 
-bool File::OpenTemporaryFile(const std::wstring &tmpdir)
+bool File::OpenTemporaryFile(const std::wstring &tmpdir, bool first_try)
 {
 	std::wostringstream filename;
 
@@ -150,7 +150,32 @@ bool File::OpenTemporaryFile(const std::wstring &tmpdir)
 
 	filename << L".tmp";
 
-	return Open(filename.str(), MODE_TEMP);
+	if(!Open(filename.str(), MODE_TEMP))
+	{
+		if(first_try)
+		{
+			Server->Log(L"Creating temporary file at \"" + filename.str()+L"\" failed. Creating directory \""+tmpdir+L"\"...", LL_WARNING);
+			BOOL b = CreateDirectoryW(tmpdir.c_str(), NULL);
+
+			if(b)
+			{
+				return OpenTemporaryFile(tmpdir, false);
+			}
+			else
+			{
+				Server->Log(L"Creating directory \""+tmpdir+L"\" failed.", LL_WARNING);
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
+	{
+		return true;
+	}
 }
 
 bool File::Open(void *handle)

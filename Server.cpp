@@ -402,7 +402,7 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 
 void CServer::rotateLogfile()
 {
-	if(logfile.tellp()>log_rotation_size)
+	if(static_cast<size_t>(logfile.tellp())>log_rotation_size)
 	{
 		logfile.close();
 		logfile_a=false;
@@ -1414,7 +1414,7 @@ IFile* CServer::openTemporaryFile(void)
 	File *file=new File;
 	if(!file->OpenTemporaryFile(tmpdir) )
 	{
-		Server->Log("Error creating temporary file", LL_ERROR);
+		Server->Log("Error creating temporary file at \""+file->getFilename()+"\"", LL_ERROR);
 		delete file;
 		return NULL;
 	}
