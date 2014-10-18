@@ -12,8 +12,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-07-25 17:55+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2014-09-03 19:33+0000\n"
+"Last-Translator: Artur Corumba <artur@corumba.net>\n"
 "Language-Team: Portuguese (Brazil) (http://www.transifex.com/projects/p/urbackup/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -1096,7 +1096,7 @@ msgid "tEnd-to-end verification of all file backups"
 msgstr ""
 
 msgid "tServer admin mail address"
-msgstr ""
+msgstr "E-mail do administrador do servidor"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
@@ -1105,16 +1105,16 @@ msgid ""
 msgstr ""
 
 msgid "tClient download"
-msgstr ""
+msgstr "Download cliente"
 
 msgid "tDownload"
-msgstr ""
+msgstr "Download"
 
 msgid "tStatus"
-msgstr ""
+msgstr "Status"
 
 msgid "tIP"
-msgstr ""
+msgstr "IP"
 
 msgid "tClient version"
 msgstr "Versão do cliente"
@@ -1147,19 +1147,19 @@ msgid "Previous"
 msgstr "Anterior"
 
 msgid "No data available in table"
-msgstr ""
+msgstr "Nenhum dado disponível"
 
 msgid "Showing _START_ to _END_ of _TOTAL_ entries"
 msgstr ""
 
 msgid "Showing 0 to 0 of 0 entries"
-msgstr ""
+msgstr "Exibindo 0 a 0 de 0 entradas"
 
 msgid "(filtered from _MAX_ total entries)"
 msgstr ""
 
 msgid "sInfoThousands"
-msgstr ""
+msgstr ","
 
 msgid "Show _MENU_ entries"
 msgstr "Exibir entradas de _MENU_ "
@@ -1171,31 +1171,31 @@ msgid "Search:"
 msgstr "Busca:"
 
 msgid "No matching records found"
-msgstr ""
+msgstr "Nenhum registro encontrado"
 
 msgid "Restore to default"
-msgstr ""
+msgstr "Restaurar padrões"
 
 msgid "Save"
-msgstr ""
+msgstr "Salvar"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
 msgstr ""
 
 msgid "tAllow clients to quit the tray icon"
-msgstr ""
+msgstr "Permitir clientes fechar o ícone da bandeja"
 
 msgid "tYou need to create a user to be able to send reports"
-msgstr ""
+msgstr "Necessário criar um usuário para enviar os relatórios"
 
 msgid "Show/hide columns"
-msgstr ""
+msgstr "Exibir/Ocultar colunas"
 
 msgid "tShow when a new server version is available"
-msgstr ""
+msgstr "Notificar-me sobre novas versões disponíveis"
 
 msgid "tVHD (Virtual HardDisk)"
-msgstr ""
+msgstr "VHD (Virtual HardDisk)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr ""
+msgstr "VHD Compactado (Virtual HardDisk compactado)"

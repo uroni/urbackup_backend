@@ -214,3 +214,4 @@ access_keys.properties
 urbackup/fileindex/*
 urbackup/old_db/*
 debug.log.*
+urbackup/new_version_db/*
