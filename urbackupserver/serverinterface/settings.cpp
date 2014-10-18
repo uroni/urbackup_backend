@@ -284,7 +284,7 @@ void saveGeneralSettings(str_map &GET, IDatabase *db, ServerBackupDao& backupdao
 		str_map::iterator it=GET.find(settings[i]);
 		if(it!=GET.end())
 		{
-			std::wstring val = it->second;
+			std::wstring val = UnescapeSQLString(it->second);
 			if(settings[i]==L"backupfolder")
 			{
 				val = fixupBackupfolder(val, backupdao, server_settings);
@@ -315,7 +315,7 @@ void updateMailSettings(str_map &GET, IDatabase *db)
 		str_map::iterator it=GET.find(settings[i]);
 		if(it!=GET.end())
 		{
-			updateSetting(settings[i], it->second, q_get, q_update, q_insert);
+			updateSetting(settings[i], UnescapeSQLString(it->second), q_get, q_update, q_insert);
 		}
 	}
 }
@@ -342,7 +342,7 @@ void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 		str_map::iterator it=GET.find(sset[i]);
 		if(it!=GET.end())
 		{
-			updateSetting(sset[i], it->second, q_get, q_update, q_insert);
+			updateSetting(sset[i], UnescapeSQLString(it->second), q_get, q_update, q_insert);
 		}
 	}
 }
