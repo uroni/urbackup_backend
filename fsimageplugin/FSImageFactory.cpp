@@ -32,7 +32,6 @@
 #include <Windows.h>
 #else
 #include <errno.h>
-#include "cowfile.h"
 #endif
 
 
@@ -140,38 +139,15 @@ void FSImageFactory::destroyFilesystem(IFilesystem *fs)
 }
 
 IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize,
-	unsigned int pBlocksize, bool fast_mode, ImageFormat format)
+	unsigned int pBlocksize, bool fast_mode, CompressionSetting compress)
 {
-	switch(format)
-	{
-	case ImageFormat_VHD:
-	case ImageFormat_CompressedVHD:
-		return new VHDFile(fn, pRead_only, pDstsize, pBlocksize, fast_mode, format!=ImageFormat_VHD);
-	case ImageFormat_RawCowFile:
-#ifndef _WIN32
-		return new CowFile(fn, pRead_only, pDstsize);
-#else
-		return NULL;
-#endif
-	}
+	return new VHDFile(fn, pRead_only, pDstsize, pBlocksize, fast_mode, compress!=CompressionSetting_None);
 }
 
 IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, const std::wstring &parent_fn,
-	bool pRead_only, bool fast_mode, ImageFormat format)
+	bool pRead_only, bool fast_mode, CompressionSetting compress)
 {
-	switch(format)
-	{
-	case ImageFormat_VHD:
-	case ImageFormat_CompressedVHD:
-		return new VHDFile(fn, parent_fn, pRead_only, fast_mode, format!=ImageFormat_VHD);
-	case ImageFormat_RawCowFile:
-#ifndef _WIN32
-		return new CowFile(fn, parent_fn, pRead_only);
-#else
-		return NULL;
-#endif
-	}
-
+	return new VHDFile(fn, parent_fn, pRead_only, fast_mode, compress!=CompressionSetting_None);
 }
 
 void FSImageFactory::destroyVHDFile(IVHDFile *vhd)

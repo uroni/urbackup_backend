@@ -101,16 +101,6 @@ public:
 
 	bool isCompressed();
 
-	bool trimUnused(_i64 fs_offset)
-	{
-		return true;
-	}
-
-	bool syncBitmap(_i64 fs_offset)
-	{
-		return true;
-	}
-
 private:
 
 	bool check_if_compressed();

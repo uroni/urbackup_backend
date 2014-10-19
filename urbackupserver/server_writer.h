@@ -25,7 +25,7 @@ class ServerFileBufferWriter;
 class ServerVHDWriter : public IThread
 {
 public:
-	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles, int64 mbr_offset);
+	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles);
 	~ServerVHDWriter(void);
 
 	void operator()(void);
@@ -55,8 +55,6 @@ public:
 
 	void writeRetry(IFile *f, char *buf, unsigned int bsize);
 
-	void setDoTrim(bool b);
-
 private:
 	IVHDFile *vhd;
 
@@ -79,11 +77,8 @@ private:
 	volatile bool exit_now;
 	volatile bool has_error;
 	volatile bool finish;
-	volatile bool do_trim;
 
 	bool filebuffer;
-
-	int64 mbr_offset;
 };
 
 class ServerFileBufferWriter : public IThread

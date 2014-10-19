@@ -34,9 +34,7 @@ extern IFSImageFactory *image_fak;
 const size_t free_space_lim=1000*1024*1024; //1000MB
 const uint64 filebuf_lim=1000*1024*1024; //1000MB
 
-ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs,
-		int pClientid, bool use_tmpfiles, int64 mbr_offset)
- : mbr_offset(mbr_offset), do_trim(false)
+ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles)
 {
 	filebuffer=use_tmpfiles;
 
@@ -155,15 +153,6 @@ void ServerVHDWriter::operator()(void)
 			filebuf_writer->doExitNow();
 
 		Server->getThreadPool()->waitFor(filebuf_writer_ticket);
-	}
-
-	if(do_trim)
-	{
-		ServerLogger::Log(clientid, "Starting trimming image file (if possible)", LL_DEBUG);
-		if(!vhd->trimUnused(mbr_offset))
-		{
-			ServerLogger::Log(clientid, "Trimming file failed. Image backup may use too much storage.", LL_WARNING);
-		}
 	}
 
 	if(!vhd->finish())
@@ -386,11 +375,6 @@ void ServerVHDWriter::writeRetry(IFile *f, char *buf, unsigned int bsize)
 			Server->wait(10000);
 		}
 	}
-}
-
-void ServerVHDWriter::setDoTrim(bool b)
-{
-	do_trim = b;
 }
 
 //-------------FilebufferWriter-----------------
