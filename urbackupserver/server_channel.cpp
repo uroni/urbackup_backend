@@ -571,6 +571,11 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			if(img_version==0)
 				skip=512*512;
 
+			if(!vhdfile->syncBitmap(skip))
+			{
+				Server->Log("Synchonizing image file bitmap with NTFS bitmap failed. If you modified the file the restored image may be inconsistent.", LL_WARNING);
+			}
+
 			_i64 r=(_i64)vhdfile->getSize()-skip;
 			input->Write((char*)&r, sizeof(_i64));
 			unsigned int blocksize=vhdfile->getBlocksize();

@@ -1,4 +1,8 @@
+#pragma once
+
 #include "../Interface/Types.h"
+
+#include <string>
 
 class IVHDFile
 {
@@ -14,4 +18,6 @@ public:
 	virtual bool has_sector(void)=0;
 	virtual unsigned int getBlocksize()=0;
 	virtual bool finish() = 0;
+	virtual bool trimUnused(_i64 fs_offset)=0;
+	virtual bool syncBitmap(_i64 fs_offset)=0;
 };

@@ -9,6 +9,7 @@ namespace
 {
 	const char* image_file_format_vhd = "vhd";
 	const char* image_file_format_vhdz = "vhdz";
+	const char* image_file_format_cowraw = "cowraw";
 }
 
 struct SSettings

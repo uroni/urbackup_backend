@@ -447,27 +447,31 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					zeroblockdata=new unsigned char[blocksize];
 					memset(zeroblockdata, 0, blocksize);
 
-					IFSImageFactory::CompressionSetting compressionSetting;
+					IFSImageFactory::ImageFormat image_format;
 
 					if(image_file_format==image_file_format_vhd)
 					{
-						compressionSetting = IFSImageFactory::CompressionSetting_None;
+						image_format = IFSImageFactory::ImageFormat_VHD;
 					}
-					else
+					else if(image_file_format == image_file_format_cowraw)
 					{
-						compressionSetting = IFSImageFactory::CompressionSetting_Zlib;
+						image_format == IFSImageFactory::ImageFormat_RawCowFile;
+					}
+					else //default
+					{
+						image_format = IFSImageFactory::ImageFormat_CompressedVHD;
 					}
 
 					if(!has_parent)
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+(int64)mbr_size,
 								(unsigned int)vhd_blocksize*blocksize, true,
-								compressionSetting);
+								image_format);
 					}
 					else
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), pParentvhd, false,
-							true, compressionSetting);
+							true, image_format);
 					}
 
 					if(r_vhdfile==NULL || !r_vhdfile->isOpen())
@@ -476,7 +480,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						goto do_image_cleanup;
 					}
 
-					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images);
+					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images, mbr_offset);
 					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile);
 
 					blockdata=vhdfile->getBuffer();
@@ -920,8 +924,15 @@ do_image_cleanup:
 	if(cc!=NULL)
 		Server->destroy(cc);
 	
+	running_updater->stop();
+
 	if(vhdfile!=NULL)
 	{
+		if(!pParentvhd.empty() && image_file_format == image_file_format_cowraw)
+		{
+			vhdfile->setDoTrim(true);
+		}
+
 		if(blockdata!=NULL)
 			vhdfile->freeBuffer(blockdata);
 
@@ -932,7 +943,6 @@ do_image_cleanup:
 	}
 	if(hashfile!=NULL) Server->destroy(hashfile);
 	if(parenthashfile!=NULL) Server->destroy(parenthashfile);
-	running_updater->stop();
 	delete []zeroblockdata;
 	return false;
 }
