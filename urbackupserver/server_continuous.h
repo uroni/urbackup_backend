@@ -795,7 +795,7 @@ private:
 			entryclientid, rsize, next_entryid, metadata, FileMetadata()))
 		{
 			local_hash->addFileSQL(backupid, clientid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1),
-				hash, filesize, rsize, entryid, entryclientid, next_entryid);
+				hash, filesize, rsize, entryid, entryclientid, next_entryid, copied_file);
 			return true;
 		}
 

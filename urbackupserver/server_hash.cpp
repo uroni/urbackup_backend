@@ -83,16 +83,6 @@ BackupServerHash::~BackupServerHash(void)
 void BackupServerHash::setupDatabase(void)
 {
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	{
-	    bool r;
-	    do
-	    {
-		r=db->Write("CREATE TEMPORARY TABLE files_tmp ( backupid INTEGER, fullpath TEXT, hashpath TEXT, shahash BLOB, filesize INTEGER, created DATE DEFAULT CURRENT_TIMESTAMP, rsize INTEGER, clientid INTEGER, incremental INTEGER);");
-		if(!r)
-		    Server->wait(1000);
-		    
-	    }while(!r);
-	}
 
 	backupdao = new ServerBackupDao(db);
 
@@ -273,12 +263,13 @@ void BackupServerHash::operator()(void)
 	}
 }
 
-void BackupServerHash::addFileSQL(int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry)
+void BackupServerHash::addFileSQL(int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex)
 {
-	addFileSQL(*backupdao, *fileindex, backupid, clientid, incremental, fp, hash_path, shahash, filesize, rsize, prev_entry, prev_entry_clientid, next_entry);
+	addFileSQL(*backupdao, *fileindex, backupid, clientid, incremental, fp, hash_path, shahash, filesize, rsize, prev_entry, prev_entry_clientid, next_entry, update_fileindex);
 }
 
-void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry)
+void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::wstring &fp,
+	const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex)
 {
 	bool new_for_client=false;
 
@@ -318,9 +309,32 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 		backupdao.addIncomingFile(filesize, clientid, backupid, clients, ServerBackupDao::c_direction_incoming, incremental);
 	}
 
-	int64 entryid = backupdao.addFileEntryExternal(backupid, fp, hash_path, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, new_for_client?1:0);
+	if(update_fileindex)
+	{
+		//if prev_entry==0 the file is new for this client
+		//and pointed_to does not need to be updated
+		if(prev_entry!=0)
+		{
+			ServerBackupDao::CondInt64 fentry = backupdao.getPointedTo(prev_entry);
 
-	if(new_for_client)
+			if(fentry.exists && fentry.value!=0)
+			{
+				backupdao.setPointedTo(0, prev_entry);
+			}
+			else
+			{
+				int64 client_entryid = fileindex.get_with_cache_exact(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid));
+				if(client_entryid!=0)
+				{
+					backupdao.setPointedTo(0, client_entryid);
+				}
+			}
+		}
+	}
+
+	int64 entryid = backupdao.addFileEntryExternal(backupid, fp, hash_path, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, (new_for_client || update_fileindex)?1:0);
+
+	if(new_for_client || update_fileindex)
 	{
 		fileindex.put_delayed(FileIndex::SIndexKey(shahash.c_str(), filesize, clientid), entryid);
 	}
@@ -371,10 +385,12 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 	{
 		if(next_id!=0)
 		{
+			backupdao.setPointedTo(1, next_id);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), next_id);
 		}
 		else
 		{
+			backupdao.setPointedTo(1, prev_id);
 			fileindex.put_delayed(FileIndex::SIndexKey(pHash, filesize, clientid), prev_id);
 		}
 	}
@@ -626,7 +642,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 		Server->destroy(tf);
 		tf=NULL;
 		Server->deleteFile(temp_fn);
-		addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, rsize, entryid, entryclientid, next_entryid);
+		addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, rsize, entryid, entryclientid, next_entryid, copied_file);
 	}
 
 	if(tries_once && copy && !hardlink_limit)
@@ -786,7 +802,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 
 				if(r)
 				{
-					addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, cow_filesize>0?cow_filesize:t_filesize, 0, 0, 0);
+					addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, cow_filesize>0?cow_filesize:t_filesize, 0, 0, 0, false);
 				}
 			}
 		}

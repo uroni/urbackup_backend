@@ -395,7 +395,7 @@ void ContinuousWatchEnqueue::setupDatabaseAccess()
 
 int64 ContinuousWatchEnqueue::getStartUsn( int64 sequence_id )
 {
-
+	sequences_start[sequence_id];
 }
 
 void ContinuousWatchEnqueue::setStartUsn( int64 sequence_id, int64 seq_start )

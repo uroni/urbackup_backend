@@ -649,6 +649,31 @@ void ServerBackupDao::setPointedTo(int64 pointed_to, int64 id)
 
 /**
 * @-SQLGenAccess
+* @func int64 ServerBackupDao::getPointedTo
+* @return int64 pointed_to
+* @sql
+*      SELECT pointed_to FROM files WHERE id=:id(int64)
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::getPointedTo(int64 id)
+{
+	if(q_getPointedTo==NULL)
+	{
+		q_getPointedTo=db->Prepare("SELECT pointed_to FROM files WHERE id=?", false);
+	}
+	q_getPointedTo->Bind(id);
+	db_results res=q_getPointedTo->Read();
+	q_getPointedTo->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"pointed_to"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func void ServerBackupDao::addFileEntry
 * @sql
 *	   INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, rsize, clientid, incremental, next_entry, prev_entry, pointed_to)
@@ -1136,6 +1161,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_setNextEntry=NULL;
 	q_setPrevEntry=NULL;
 	q_setPointedTo=NULL;
+	q_getPointedTo=NULL;
 	q_addFileEntry=NULL;
 	q_getSetting=NULL;
 	q_insertSetting=NULL;
@@ -1190,6 +1216,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_setNextEntry);
 	db->destroyQuery(q_setPrevEntry);
 	db->destroyQuery(q_setPointedTo);
+	db->destroyQuery(q_getPointedTo);
 	db->destroyQuery(q_addFileEntry);
 	db->destroyQuery(q_getSetting);
 	db->destroyQuery(q_insertSetting);

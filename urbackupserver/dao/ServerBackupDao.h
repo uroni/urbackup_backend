@@ -122,6 +122,7 @@ public:
 	void setNextEntry(int64 next_entry, int64 id);
 	void setPrevEntry(int64 prev_entry, int64 id);
 	void setPointedTo(int64 pointed_to, int64 id);
+	CondInt64 getPointedTo(int64 id);
 	void addFileEntry(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
 	CondString getSetting(int clientid, const std::wstring& key);
 	void insertSetting(const std::wstring& key, const std::wstring& value, int clientid);
@@ -184,6 +185,7 @@ private:
 	IQuery* q_setNextEntry;
 	IQuery* q_setPrevEntry;
 	IQuery* q_setPointedTo;
+	IQuery* q_getPointedTo;
 	IQuery* q_addFileEntry;
 	IQuery* q_getSetting;
 	IQuery* q_insertSetting;

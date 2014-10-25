@@ -2024,7 +2024,8 @@ bool BackupServerGet::link_file(const std::wstring &fn, const std::wstring &shor
 	if(ok && add_sql)
 	{
 		local_hash->addFileSQL(backupid, clientid, 0, dstpath, hashpath, sha2, filesize,
-			(rsize>0 && rsize!=filesize)?rsize:(copied_file?filesize:0), entryid, entryclientid, next_entryid);
+			(rsize>0 && rsize!=filesize)?rsize:(copied_file?filesize:0), entryid, entryclientid, next_entryid,
+			copied_file);
 	}
 
 	if(ok)
@@ -5381,7 +5382,7 @@ void BackupServerGet::addFileEntrySQLWithExisting( const std::wstring &fp, const
 	}
 
 	BackupServerHash::addFileSQL(*backup_dao, *fileindex.get(), backupid, clientid, incremental, fp, hash_path,
-		shahash, filesize, rsize, entryid, clientid, fentry.next_entry);
+		shahash, filesize, rsize, entryid, clientid, fentry.next_entry, false);
 }
 
 void BackupServerGet::getTokenFile(FileClient &fc, bool hashed_transfer )

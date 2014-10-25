@@ -74,6 +74,8 @@ int check_files_index()
 			has_error=true;
 			continue;
 		}		
+		
+		int64 found_entryid=entryid;
 
 		bool first=true;
 
@@ -94,10 +96,10 @@ int check_files_index()
 			{
 				if(!fileentry.pointed_to)
 				{
-					Server->Log(L"First entry with id "+convert(entryid)+L" does not have pointed_to set to a value not equal 0", LL_ERROR);
+					Server->Log(L"First entry with id "+convert(entryid)+L" does not have pointed_to set to a value unequal 0 ("+convert(fileentry.pointed_to)+L")", LL_ERROR);
 					has_error=true;
 				}	
-				backward_entryid=fileentry.prev_entry;
+				backward_entryid=fileentry.next_entry;
 				first=false;
 			}
 
@@ -181,7 +183,7 @@ int check_files_index()
 
 		if(!found_entry)
 		{
-			Server->Log(L"Entry with id "+convert(id)+L" is not in the list and therefore not indexed by the file entry index.", LL_ERROR);
+			Server->Log(L"Entry with id "+convert(id)+L" is not in the list and therefore not indexed by the file entry index. Initial list id is "+convert(found_entryid), LL_ERROR);
 			has_error=true;
 		}
 
