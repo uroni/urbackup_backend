@@ -318,4 +318,6 @@ private:
 
 	IMutex* hash_existing_mutex;
 	std::vector<ServerBackupDao::SFileEntry> hash_existing;
+
+	int64 client_updated_time;
 };

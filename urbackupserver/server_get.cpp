@@ -90,7 +90,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
 	  use_snapshots(use_snapshots), use_reflink(use_reflink), local_hash(NULL), bsh(NULL),
 	  bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare(NULL), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET),
-	  backup_dao(NULL)
+	  backup_dao(NULL), client_updated_time(0)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -554,6 +554,12 @@ void BackupServerGet::operator ()(void)
 				{
 					sendSettings();
 				}
+			}
+
+			if(client_updated_time!=0 && Server->getTimeSeconds()-client_updated_time>5*60)
+			{
+				updateCapabilities();
+				client_updated_time=0;
 			}
 
 			update_sql_intervals(true);
@@ -4312,6 +4318,8 @@ void BackupServerGet::checkClientVersion(void)
 			}
 
 			Server->destroy(cc);
+
+			client_updated_time = Server->getTimeSeconds();
 
 			if(ok)
 			{
