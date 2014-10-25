@@ -120,6 +120,11 @@ namespace JSON
 		return r;
 	}
 
+	const std::map<std::string, Value>& Object::get_data()
+	{
+		return data;
+	}
+
 	//---------------Value-------------------
 	Value::Value(void)
 	{
@@ -401,6 +406,23 @@ namespace JSON
 			case double_type: return nconvert(*((double*)data));
 			case luint_type: return nconvert((size_t)*((long unsigned int*)data));
 			default: return "null";
+		}
+	}
+
+	std::wstring Value::toString() const
+	{
+		switch(data_type)
+		{
+		case str_type: return Server->ConvertToUnicode(*((std::string*)data));
+		case wstr_type: return *((std::wstring*)data);
+		case bool_type: return convert(*((bool*)data));
+		case int_type: return convert(*((int*)data));
+		case uint_type: return convert(*((unsigned int*)data));
+		case int64_type: return convert(*((_i64*)data));
+		case uint64_type: return convert(*((uint64*)data));
+		case double_type: return convert(*((double*)data));
+		case luint_type: return convert((size_t)*((long unsigned int*)data));
+		default: return L"null";
 		}
 	}
 

@@ -37,6 +37,8 @@ namespace JSON
 
 		std::string get(bool compressed);
 
+		const std::map<std::string, Value>& get_data();
+
 	private:
 		std::map<std::string, Value> data;
 	};
@@ -89,6 +91,8 @@ namespace JSON
 		Value & operator=(const Value &other);
 
 		std::string get(bool compressed);
+
+		std::wstring toString() const;
 
 		const std::string & getString(void) const;
 		const std::wstring & getWString(void) const;

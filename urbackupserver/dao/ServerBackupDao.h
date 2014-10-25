@@ -75,6 +75,8 @@ public:
 	CondString getOrigClientSettings(int clientid);
 	std::vector<SDuration> getLastIncrementalDurations(int clientid);
 	std::vector<SDuration> getLastFullDurations(int clientid);
+	CondString getClientSetting(const std::wstring& key, int clientid);
+	std::vector<int> getClientIds(void);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -115,6 +117,8 @@ private:
 	IQuery* q_getOrigClientSettings;
 	IQuery* q_getLastIncrementalDurations;
 	IQuery* q_getLastFullDurations;
+	IQuery* q_getClientSetting;
+	IQuery* q_getClientIds;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

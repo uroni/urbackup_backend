@@ -254,6 +254,30 @@ void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q
 
 namespace
 {
+	void updateSetting(const std::wstring &key, const std::wstring &value, IQuery *q_get, IQuery *q_update, IQuery *q_insert, int clientid)
+	{
+		q_get->Bind(key);
+		q_get->Bind(clientid);
+		db_results r_get=q_get->Read();
+		q_get->Reset();
+		if(r_get.empty())
+		{
+			q_insert->Bind(key);
+			q_insert->Bind(value);
+			q_insert->Bind(clientid);
+			q_insert->Write();
+			q_insert->Reset();
+		}
+		else if( r_get[0][L"value"]!=value )
+		{
+			q_update->Bind(value);
+			q_update->Bind(key);
+			q_update->Bind(clientid);
+			q_update->Write();
+			q_update->Reset();
+		}
+	}
+
 	std::wstring fixupBackupfolder(const std::wstring val, ServerBackupDao& backupdao, ServerSettings &server_settings)
 	{
 		if(val!=server_settings.getSettings()->backupfolder)
@@ -343,6 +367,63 @@ void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 		if(it!=GET.end())
 		{
 			updateSetting(sset[i], UnescapeSQLString(it->second), q_get, q_update, q_insert);
+		}
+	}
+}
+
+void propagateGlobalClientSettings(ServerBackupDao& backupdao, IDatabase *db, str_map &GET)
+{
+	std::vector<int> clientids = backupdao.getClientIds();
+
+	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid=?");
+	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?");
+	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)");
+
+	std::vector<std::wstring> sset=getSettingsList();
+	sset.push_back(L"allow_overwrite");
+
+	std::map<std::wstring, std::wstring> orig_settings;
+
+	{
+		ServerSettings server_settings(db);
+		JSON::Object settings_json = getJSONClientSettings(server_settings);
+
+		for(size_t i=0;i<sset.size();++i)
+		{
+			JSON::Value val = settings_json.get(wnarrow(sset[i]));
+			if(val.getType()!=JSON::null_type)
+			{
+				orig_settings[sset[i]]=val.toString();
+			}
+		}
+	}	
+
+	for(size_t i=0;i<clientids.size();++i)
+	{
+		int clientid = clientids[i];
+
+		ServerBackupDao::CondString server_overwrite = backupdao.getClientSetting(L"overwrite", clientid);
+
+		if(server_overwrite.exists &&
+			server_overwrite.value==L"true")
+		{
+			continue;
+		}
+
+		for(size_t i=0;i<sset.size();++i)
+		{
+			ServerBackupDao::CondString client_val = backupdao.getClientSetting(sset[i], clientid);
+
+			str_map::iterator it;
+			str_map::iterator orig_val;
+			if(client_val.exists &&
+				(orig_val=orig_settings.find(sset[i]))!=orig_settings.end() &&
+				orig_val->second==client_val.value &&
+				(it=GET.find(sset[i]))!=GET.end() &&
+				it->second!=client_val.value)
+			{
+				updateSetting(sset[i], it->second, q_get, q_update, q_insert, clientid);
+			}
 		}
 	}
 }
@@ -790,6 +871,7 @@ ACTION_IMPL(settings)
 			{
 				ServerSettings serv_settings(db);
 				db->BeginTransaction();
+				propagateGlobalClientSettings(backupdao, db, GET);
 				updateClientSettings(0, GET, db);
 				updateArchiveSettings(0, GET, db);
 				saveGeneralSettings(GET, db, backupdao, serv_settings);
