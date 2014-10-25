@@ -3613,9 +3613,14 @@ void BackupServerGet::sendSettings(void)
 		overwrite=(stmp=="true");
 
 	bool allow_overwrite=true;
-	stmp=settings_client->getValue("allow_overwrite", "");
+	if(overwrite)
+	{
+		stmp=settings_client->getValue("allow_overwrite", "");
+	}
+
 	if(stmp.empty())
 		stmp=settings->getValue("allow_overwrite", "");
+
 	if(!stmp.empty())
 		allow_overwrite=(stmp=="true");
 
