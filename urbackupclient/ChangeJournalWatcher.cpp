@@ -26,7 +26,7 @@ const unsigned int usn_update_freq=10*60*1000;
 const DWORDLONG usn_reindex_num=1000000; // one million
 
 //#define MFT_ON_DEMAND_LOOKUP
-#define VLOG(x) 
+#define VLOG(x) x
 
 ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener)
 	: dwt(dwt), listener(pListener), db(pDB), last_backup_time(0)
@@ -969,7 +969,8 @@ void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRe
 	ADD_ATTRIBUTE(FILE_ATTRIBUTE_ENCRYPTED);
 	ADD_ATTRIBUTE(FILE_ATTRIBUTE_VIRTUAL);
 	std::wstring lstr=L"Change: "+vol+L" [fn="+UsnRecord->Filename+L",reason="+reason+L",attributes="+
-						attributes+L",USN="+convert(UsnRecord->Usn)+L"]";
+						attributes+L",USN="+convert(UsnRecord->Usn)+L",FRN="+convert(UsnRecord->FileReferenceNumber)+
+						L",Parent FRN="+convert(UsnRecord->ParentFileReferenceNumber)+L"]";
 	Server->Log(lstr, LL_DEBUG);
 }
 
@@ -987,7 +988,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		&& !(UsnRecord->Reason & USN_REASON_FILE_CREATE)
 		&& fallback_to_mft)
 	{
-		Server->Log(L"File with FRN "+convert(UsnRecord->FileReferenceNumber)+L" is a directory not being created, but not in database. Added it to database", LL_WARNING);
+		Server->Log(L"File entry with FRN "+convert(UsnRecord->FileReferenceNumber)+L" (Name \""+UsnRecord->Filename+L"\") is a directory not being created, but not in database. Added it to database", LL_WARNING);
 		dir_id=addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
 	}
 	
@@ -998,7 +999,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		{
 			if(fallback_to_mft)
 			{
-				Server->Log("Parent of directory with FRN "+nconvert(UsnRecord->FileReferenceNumber)+" with FRN "+nconvert(UsnRecord->ParentFileReferenceNumber)+" not found. Searching via MFT as fallback.", LL_WARNING);
+				Server->Log(L"Parent of directory with FRN "+convert(UsnRecord->FileReferenceNumber)+L" (Name \""+UsnRecord->Filename+L"\") with FRN "+convert(UsnRecord->ParentFileReferenceNumber)+L" not found. Searching via MFT as fallback.", LL_WARNING);
 				_i64 parent_parent_frn;
 				bool has_error=false;
 				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn, has_error);
@@ -1015,7 +1016,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			}
 			else
 			{
-				Server->Log(L"Error: Parent of "+UsnRecord->Filename+L" not found -1", LL_ERROR);
+				Server->Log(L"Error: Parent of \""+UsnRecord->Filename+L"\" not found -1", LL_ERROR);
 				curr_has_error=true;
 			}
 		}
@@ -1083,7 +1084,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		{
 			if(fallback_to_mft)
 			{
-				Server->Log("Parent of file with FRN "+nconvert(UsnRecord->FileReferenceNumber)+" with FRN "+nconvert(UsnRecord->ParentFileReferenceNumber)+" not found. Searching via MFT as fallback.", LL_WARNING);
+				Server->Log(L"Parent of file with FRN "+convert(UsnRecord->FileReferenceNumber)+L" (Name \""+UsnRecord->FileName+"\") with FRN "+convert(UsnRecord->ParentFileReferenceNumber)+L" not found. Searching via MFT as fallback.", LL_WARNING);
 				_i64 parent_parent_frn;
 				bool has_error=false;
 				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn, has_error);
@@ -1096,6 +1097,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 					else
 					{
 						Server->Log("Parent directory not found in MFT.", LL_ERROR);
+						curr_has_error = true;
 					}
 				}
 				else
