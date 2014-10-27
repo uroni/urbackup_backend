@@ -1084,7 +1084,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		{
 			if(fallback_to_mft)
 			{
-				Server->Log(L"Parent of file with FRN "+convert(UsnRecord->FileReferenceNumber)+L" (Name \""+UsnRecord->FileName+"\") with FRN "+convert(UsnRecord->ParentFileReferenceNumber)+L" not found. Searching via MFT as fallback.", LL_WARNING);
+				Server->Log(L"Parent of file with FRN "+convert(UsnRecord->FileReferenceNumber)+L" (Name \""+UsnRecord->Filename+L"\") with FRN "+convert(UsnRecord->ParentFileReferenceNumber)+L" not found. Searching via MFT as fallback.", LL_WARNING);
 				_i64 parent_parent_frn;
 				bool has_error=false;
 				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn, has_error);
