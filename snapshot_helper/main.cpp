@@ -12,8 +12,10 @@
 #include <pwd.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__)
 #define execvpe exect
+#elif !defined(_GNU_SOURCE)
+#define execvpe(x, y, z) execvp(x, y)
 #endif
 
 #define DEF_Server
