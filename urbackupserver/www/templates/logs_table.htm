@@ -1,45 +1,73 @@
-﻿<h1>{tLogs}</h1>
+﻿<div class="panel panel-default">
+	<div class="panel-heading">{tLogs}</div>
+	<div class="panel-body">
 
-<table cellspacing="0" cellpadding="0">
-<tr>	
-	<th style="width: 25px" class="tabHeader">&nbsp;</th>
-	<th style="width: 130px" class="tabHeader">{tComputer name}</th>
-	<th style="width: 150px" class="tabHeader">{tBackup time}</th>
-	<th style="width: 70px" class="tabHeader">{tErrors}</th>
-	<th style="width: 70px" class="tabHeader">{tWarnings}</th>
-	<th style="width: 300px" class="tabHeaderRight">{tAction}</th>
-</tr>
-{rows|s}
-</table>
+		<table class="table table-striped">
+			<thead>
+				<tr>	
+					<th>&nbsp;</th>
+					<th>{tComputer name}</th>
+					<th>{tBackup time}</th>
+					<th>{tErrors}</th>
+					<th>{tWarnings}</th>
+					<th>{tAction}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{rows|s}
+			</tbody>
+		</table>
+	</div>
+</div>
 
-<h2>{tLive Log}</h2>
+<div class="panel panel-default">
+	<div class="panel-heading">{tLive Log}</div>
+	<div class="panel-body">
+		<form class="form form-inline">
+			<div class="form-group">
+				<select class="form-control" id="live_log_clientid">
+					{live_log_clients|s}
+				</select>
+			</div>
+			<button class="btn btn-default" onClick="show_live_log()">{tShow}</button>
+		</form>
+	</div>
+</div>
 
-<select size="1" style="width: 100px" id="live_log_clientid">
-{live_log_clients|s}
-</select>
-<input type="button" value="{tShow}" onClick="show_live_log()" />
-
-<h1>{tReports}</h1>
-{?has_user}
-{tSend reports to}&nbsp;
-<span id="s_report_mails">
-</span>
-<input type="hidden" id="report_mail" value="{report_mail}"/>
-<input type="text" size="20" id="report_new_mail" value=""/><a href="javascript: logs_add_mail()">[+]</a>. <br />
-{tSend}&nbsp;
-<select size="1" style="width: 150px" id="report_sendonly">
-<option value="0" {sel_all}>{tAll}</option>
-<option value="1" {sel_failed}>{tFailed}</option>
-<option value="2" {sel_succ}>{tSuccessfull}</option>
-</select>&nbsp;
-{tBackups with a log message of at least log level}&nbsp;
-<select size="1" style="width: 150px" id="report_loglevel">
-<option value="0" {sel_info}>{tInfo}</option>
-<option value="1" {sel_warn}>{tWarning}</option>
-<option value="2" {sel_error}>{tError}</option>
-</select>
-<br />
-<input type="button" value="{tSave}" onClick="saveReportSettings()" />
-{:else}
-{tYou need to create a user to be able to send reports}
-{/has_user}
+<div class="panel panel-default">
+	<div class="panel-heading">{tReports}</div>
+	<div class="panel-body">
+		{?has_user}
+		<form class="form-group">
+			<div class="form-group">
+				<label class="col-sm-2" for="s_report_mails">{tSend reports to}:</label>
+				<span id="s_report_mails"></span>
+				<input type="hidden" id="report_mail" value="{report_mail}"/>
+				<div class="col-sm-4">
+					<input type="text" class="form-control" id="report_new_mail" value=""/>
+				</div>
+				<a href="javascript: logs_add_mail()"><button class="btn btn-default">+</button></a>
+			</div>
+			<div class="form-group">
+				
+				{tSend}&nbsp;
+				<select size="1" style="width: 150px" id="report_sendonly">
+				<option value="0" {sel_all}>{tAll}</option>
+				<option value="1" {sel_failed}>{tFailed}</option>
+				<option value="2" {sel_succ}>{tSuccessfull}</option>
+				</select>&nbsp;
+				{tBackups with a log message of at least log level}&nbsp;
+				<select size="1" style="width: 150px" id="report_loglevel">
+				<option value="0" {sel_info}>{tInfo}</option>
+				<option value="1" {sel_warn}>{tWarning}</option>
+				<option value="2" {sel_error}>{tError}</option>
+				</select>
+				<br />
+				<input type="button" value="{tSave}" onClick="saveReportSettings()" />
+				{:else}
+				{tYou need to create a user to be able to send reports}
+				{/has_user}
+			</div>
+		</form>
+	</div>
+</div>

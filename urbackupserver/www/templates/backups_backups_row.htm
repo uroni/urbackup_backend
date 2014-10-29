@@ -1,7 +1,7 @@
-<tr onmouseover="tabMouseOver(this)" onmouseout="tabMouseOut(this)" onclick="tabMouseClickBackups({clientid}, {id})">
-	<td class="tabFLeftH">&nbsp;</td>
-	<td class="tabFLeftH">{backuptime}</td>
-	<td class="tabFLeftH">{incr}</td>
-	<td class="tabFLeftH">{size_bytes}</td>
-	<td onclick="g.no_tab_mouse_click=true; return false;" id="nomouseover" class="tabFRightH">{archived|s}</td>
+<tr onclick="tabMouseClickBackups({clientid}, {id})">
+	<td>&nbsp;</td>
+	<td>{backuptime}</td>
+	<td>{incr}</td>
+	<td>{size_bytes}</td>
+	<td onclick="g.no_tab_mouse_click=true; return false;">{archived|s}</td>
 </tr>
