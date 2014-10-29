@@ -58,6 +58,7 @@ namespace usn
 			memcpy(&filename[0], (PBYTE) usn_record + usn_record->FileNameOffset, usn_record->FileNameLength);
 
 			UsnInt ret = {
+				2,
 				uint128(usn_record->FileReferenceNumber),
 				uint128(usn_record->ParentFileReferenceNumber),
 				usn_record->Usn,
@@ -77,6 +78,7 @@ namespace usn
 			memcpy(&filename[0], (PBYTE) usn_record_v3 + usn_record_v3->FileNameOffset, usn_record_v3->FileNameLength);
 
 			UsnInt ret = {
+				3,
 				uint128(usn_record->FileReferenceNumber),
 				uint128(usn_record->ParentFileReferenceNumber),
 				usn_record->Usn,
@@ -1101,7 +1103,7 @@ void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRe
 	ADD_ATTRIBUTE(FILE_ATTRIBUTE_VIRTUAL);
 	std::wstring lstr=L"Change: "+vol+L" [fn="+UsnRecord->Filename+L",reason="+reason+L",attributes="+
 						attributes+L",USN="+convert(UsnRecord->Usn)+L",FRN="+convert(UsnRecord->FileReferenceNumber.lowPart)+
-						L",Parent FRN="+convert(UsnRecord->ParentFileReferenceNumber.lowPart)+L"]";
+						L",Parent FRN="+convert(UsnRecord->ParentFileReferenceNumber.lowPart)+L",Version="+convert((int)UsnRecord->version)+L"]";
 	Server->Log(lstr, LL_DEBUG);
 }
 

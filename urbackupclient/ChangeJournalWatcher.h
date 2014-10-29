@@ -84,6 +84,7 @@ public:
 
 struct UsnInt
 {
+	DWORD version;
 	uint128 FileReferenceNumber;
     uint128 ParentFileReferenceNumber;
 	USN Usn;
