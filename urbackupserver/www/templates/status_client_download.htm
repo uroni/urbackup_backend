@@ -1,7 +1,9 @@
 <div class="panel-heading">{tClient download}</div>
 <div class="panel-body">
-	<select size="1" style="width: 150px;" id="download_client">
-		{download_clients|s}
-	</select>
-	<input type="button" value="{tDownload}" onclick="downloadClient({clientid})" />
+	<div class="form-group">
+		<select class="form-control" id="download_client">
+			{download_clients|s}
+		</select>
+	</div>
+	<input type="button" class="btn btn-default" value="{tDownload}" onclick="downloadClient({clientid})" />
 </div>

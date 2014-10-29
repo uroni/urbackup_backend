@@ -1,4 +1,4 @@
-<div class="alert alert-info" id="new_version_available" style="visibility: hidden;"></div>
+<div class="alert alert-info" id="new_version_available" style="margin: 0; padding: 0; height: 0; visibility: hidden;"></div>
 
 <div class="panel panel-default">
 	<div class="panel-heading">{tBackup status}</div>
@@ -66,36 +66,40 @@
 	<div class="panel-heading">{tInternet clients}</div>
 	<div class="panel-body">
 		{internet_client_added|s}
-		{tAdd additional internet clients}:
-		<form action="#" onsubmit="addInternetClient(); return false;">
-			<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-				<tr>
-					<td>{tClient name}:</td>
-					<td><input type="text" size="40" id="clientname" value=""/> </td>
-					<td><input type="submit" value="{tAdd}"/></td>
-				</tr>
-			</table>
+		<form class="form" action="#" onsubmit="addInternetClient(); return false;" role="form">
+			<div class="form-group">
+				<label for="clientname">{tAdd additional internet clients}:</label>
+				<input type="text" class="form-control" id="clientname" placeholder="{tClient name}" value=""/>
+			</div>
+			<input type="submit" class="btn btn-default" value="{tAdd}"/>
 		</form>
+	</div>
+</div>
 
-		<p>{tExtra clients}</p>
-
-		<table cellspacing="0" cellpadding="0">
-			<tr>			
-				<th style="width: 150px" class="tabHeader">{tHostname/IP}</th>
-				<th style="width: 200px" class="tabHeader">{tOnline}</th>
-				<th style="width: 200px" class="tabHeaderRight">{tActions}</th>
-			</tr>
+<div class="panel panel-default">
+	<div class="panel-heading">
+		{tExtra clients}
+	</div>
+	<div class="panel-body">
+		<table class="table">
+			<thead>
+				<tr>			
+					<th style="width: 150px" class="tabHeader">{tHostname/IP}</th>
+					<th style="width: 200px" class="tabHeader">{tOnline}</th>
+					<th style="width: 200px" class="tabHeaderRight">{tActions}</th>
+				</tr>
+			</thead>
+			<tbody>
 			{extra_clients_rows|s}
+			</tbody>
 		</table>
 
-		<form action="#" onsubmit="addExtraClient(); return false;">
-			<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-				<tr>
-					<td>{tHostname/IP}:</td>
-					<td><input type="text" size="40" id="hostname" value=""/> </td>
-					<td><input type="submit" value="{tAdd}"/></td>
-				</tr>
-			</table>
+		<form class="form" action="#" onsubmit="addExtraClient(); return false;" role="form">
+			<div class="form-group">
+				<label for="hostname">{tAdd extra client}:</label>
+				<input type="text" class="form-control" id="hostname" value="" placeholder="{tHostname/IP}"/>
+			</div>
+			<input type="submit" class="btn btn-default" value="{tAdd}"/>
 		</form>
 	</div>
 </div>
