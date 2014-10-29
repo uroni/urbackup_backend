@@ -434,6 +434,21 @@ void update_client12_13(IDatabase *db)
 	db->Write("UPDATE backupdirs SET optional=0 WHERE optional IS NULL");
 }
 
+void update_client13_14(IDatabase *db)
+{
+	db->Write("ALTER TABLE journal_data ADD frn_high INTEGER");
+	db->Write("ALTER TABLE journal_data ADD parent_frn_high INTEGER");
+	db->Write("ALTER TABLE map_frn ADD frn_high INTEGER");
+	db->Write("ALTER TABLE map_frn ADD pid_high INTEGER");
+	db->Write("DELETE FROM journal_data");
+	db->Write("DELETE FROM map_frn");
+	db->Write("DELETE FROM journal_ids");
+	db->Write("DROP INDEX IF NOT EXISTS frn_index");
+	db->Write("DROP INDEX IF NOT EXISTS frn_pid_index");
+	db->Write("CREATE INDEX IF NOT EXISTS frn_index ON map_frn( frn ASC, frn_high ASC )");
+	db->Write("CREATE INDEX IF NOT EXISTS frn_pid_index ON map_frn( pid ASC, pid_high ASC )");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -501,6 +516,10 @@ bool upgrade_client(void)
 				break;
 			case 12:
 				update_client12_13(db);
+				++ver;
+				break;
+			case 13:
+				update_client13_14(db);
 				++ver;
 				break;
 			default:
