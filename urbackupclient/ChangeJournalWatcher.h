@@ -38,13 +38,13 @@ public:
 
 	}
 
-	uint128(char data[16])
+	explicit uint128(char data[16])
 	{
 		memcpy(&lowPart, data, sizeof(lowPart));
 		memcpy(&highPart, data+sizeof(lowPart), sizeof(highPart));
 	}
 
-	uint128(uint64 lowPart)
+	explicit uint128(uint64 lowPart)
 		: lowPart(lowPart) 
 	{
 
@@ -94,7 +94,7 @@ struct UsnInt
 	DWORD attributes;
 };
 
-const uint128 frn_root((uint64)-1, (uint64)-1);
+const uint128 c_frn_root((uint64)-1, (uint64)-1);
 
 class IChangeJournalListener;
 
@@ -136,10 +136,10 @@ private:
 	void deleteWithChildren( uint128 frn, _i64 rid);
 	std::wstring getFilename(const SChangeJournal &cj, uint128 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);
 
-	void indexRootDirs(_i64 rid, const std::wstring &root, _i64 parent);
-	void indexRootDirs2(const std::wstring &root, SChangeJournal *sj);
+	void indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent);
+	void indexRootDirs2(const std::wstring &root, SChangeJournal *sj, bool& not_supported);
 
-	int64 getRootFRN( const std::wstring & root );
+	uint128 getRootFRN( const std::wstring & root );
 
 	void updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft);
 

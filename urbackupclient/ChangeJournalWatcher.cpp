@@ -401,7 +401,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	{
 		listener->On_ResetAll(vol);
 		do_index=true;
-		rid=addFrn(vol, frn_root, frn_root, -1);
+		rid=addFrn(vol, c_frn_root, c_frn_root, -1);
 		setIndexDone(vol, 0);
 	}
 
@@ -581,7 +581,15 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	deleteJournalData(vol);
 #ifndef MFT_ON_DEMAND_LOOKUP
 	Server->Log("Starting indexing process..", LL_DEBUG);
-	indexRootDirs2(vol, sj);
+	bool not_supported=false;
+	indexRootDirs2(vol, sj, not_supported);
+
+	if(not_supported)
+	{
+		db->BeginTransaction();
+		indexRootDirs(sj->rid, vol, c_frn_root);
+		db->EndTransaction();
+	}
 #endif
 	listener->On_ResetAll(vol);
 	indexing_in_progress=false;
@@ -594,7 +602,7 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	}
 }
 
-void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, _i64 parent)
+void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent)
 {
 	if(indexing_in_progress)
 	{
@@ -621,26 +629,26 @@ void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, _i6
 	frn.LowPart=fi.nFileIndexLow;
 	frn.HighPart=fi.nFileIndexHigh;
 
-	addFrn(ExtractFileName(root)+os_file_sep(), parent, frn.QuadPart, rid);
+	addFrn(ExtractFileName(root)+os_file_sep(), parent, uint128(frn.QuadPart), rid);
 
 	std::vector<SFile> files=getFiles(root);
 	for(size_t i=0;i<files.size();++i)
 	{
 		if(files[i].isdir)
 		{
-			indexRootDirs(rid, dir+files[i].name, frn.QuadPart);
+			indexRootDirs(rid, dir+files[i].name, uint128(frn.QuadPart));
 		}
 	}
 }
 
-void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJournal *sj)
+void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJournal *sj, bool& not_supported)
 {
 	db->Write("CREATE TEMPORARY TABLE map_frn_tmp (name TEXT, pid INTEGER, pid_high INTEGER, frn INTEGER, frn_high INTEGER, rid INTEGER)");
 	q_add_frn_tmp=db->Prepare("INSERT INTO map_frn_tmp (name, pid, pid_high, frn, frn_high, rid) VALUES (?, ?, ?, ?, ?, ?)", false);
 
-	int64 root_frn = getRootFRN(root);
+	uint128 root_frn = getRootFRN(root);
 
-	addFrn(root, -1, root_frn, sj->rid);
+	addFrn(root, c_frn_root, root_frn, sj->rid);
 
 	USN StartFileReferenceNumber=0;
 	BYTE *pData=new BYTE[sizeof(DWORDLONG) + 0x10000];
@@ -690,6 +698,11 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 			}
 		}
 		StartFileReferenceNumber = * (DWORDLONG *) pData;
+	}
+
+	if(firstError==ERROR_INVALID_FUNCTION)
+	{
+		not_supported=true;
 	}
 
 	Server->Log("Added "+nconvert(nDirFRNs)+" directory FRNs to temporary database...", LL_DEBUG);
@@ -742,7 +755,7 @@ std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, uint128
 		{
 			uint128 pid(usn::atoiu64(res[0][L"pid"]),
 				usn::atoiu64(res[0][L"pid_high"]));
-			if(pid!=frn_root)
+			if(pid!=c_frn_root)
 			{
 				path=res[0][L"name"]+os_file_sep()+path;
 				curr_id=pid;
@@ -782,7 +795,7 @@ std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, uint128
 						return std::wstring();
 					}
 
-					if(curr_id==-1)
+					if(curr_id==c_frn_root)
 					{
 						break;
 					}
@@ -1350,7 +1363,7 @@ std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj,
 		if(pRecord->MajorVersion!=2 && pRecord->MajorVersion!=3)
 		{
 			Server->Log(L"Getting name by FRN from MFT for volume "+cj.vol_str+L" returned USN record with major version "+convert(pRecord->MajorVersion)+L". This version is not supported.", LL_ERROR);
-			parent_frn=-1;
+			parent_frn=c_frn_root;
 			return std::wstring();
 		}
 
@@ -1360,7 +1373,7 @@ std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj,
 		{
 			if(frn == getRootFRN(cj.vol_str))
 			{
-				parent_frn=-1;
+				parent_frn=c_frn_root;
 				return cj.vol_str;
 			}
 			
@@ -1380,14 +1393,14 @@ std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj,
 	}
 }
 
-int64 ChangeJournalWatcher::getRootFRN( const std::wstring & root )
+uint128 ChangeJournalWatcher::getRootFRN( const std::wstring & root )
 {
 	HANDLE hDir = CreateFile((root+os_file_sep()).c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE,	NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 	if(hDir==INVALID_HANDLE_VALUE)
 	{
 		Server->Log("Could not open root HANDLE.", LL_ERROR);
-		return -1;
+		return c_frn_root;
 	}
 
 	BY_HANDLE_FILE_INFORMATION fi;
@@ -1397,5 +1410,5 @@ int64 ChangeJournalWatcher::getRootFRN( const std::wstring & root )
 	frn.LowPart=fi.nFileIndexLow;
 	frn.HighPart=fi.nFileIndexHigh;
 
-	return frn.QuadPart;
+	return uint128(frn.QuadPart);
 }
