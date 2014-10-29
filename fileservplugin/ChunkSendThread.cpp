@@ -75,6 +75,11 @@ void ChunkSendThread::operator()(void)
 
 bool ChunkSendThread::sendChunk(SChunk *chunk)
 {
+	if(file==NULL)
+	{
+		return false;
+	}
+
 	file->Seek(chunk->startpos);
 
 	if(chunk->transfer_all)
