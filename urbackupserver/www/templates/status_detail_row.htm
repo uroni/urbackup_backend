@@ -1,16 +1,16 @@
 <tr>
-	<td class="tabF2">{name}</td>
-	<td class="tabF2">{online}</td>
-	<td class="tabF2">{status|s}</td>
-	<td class="tabF2">{lastseen}</td>
-	<td class="tabF2">{lastbackup}{start_file_backup|s}</td>
-	<td class="tabF2">{lastbackup_image}{start_image_backup|s}</td>
-	<td class="tabF2" style="{file_style}"><div style="background-color:white">{file_ok_t}</div></td>
-	<td class="tabF2" style="{image_style}"><div style="background-color:white">{image_ok_t}</div></td>
-	<td class="tabF2">{ip}</td>
-	<td class="tabF2">{client_version_string}</td>
-	<td class="tabF2">{os_version_string}</td>
+	<td>{name}</td>
+	<td>{online}</td>
+	<td>{status|s}</td>
+	<td>{lastseen}</td>
+	<td>{lastbackup}{start_file_backup|s}</td>
+	<td>{lastbackup_image}{start_image_backup|s}</td>
+	<td class="{file_style}">{file_ok_t}</td>
+	<td class="{image_style}">{image_ok_t}</td>
+	<td>{ip}</td>
+	<td>{client_version_string}</td>
+	<td>{os_version_string}</td>
 	{?show_select_box}
-	<td class="tabF2" style="text-align: center; border-right: 1px solid black;"><input type="checkbox" name="status_selected" value="{id}" /></td>
+	<td><input type="checkbox" name="status_selected" value="{id}" /></td>
 	{/show_select_box}
 </tr>

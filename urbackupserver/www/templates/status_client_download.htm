@@ -1,6 +1,7 @@
-<h3>{tClient download}</h3>
-
-<select size="1" style="width: 150px;" id="download_client">
-{download_clients|s}
-</select>
-<input type="button" value="{tDownload}" onclick="downloadClient({clientid})" />
+<div class="panel-heading">{tClient download}</div>
+<div class="panel-body">
+	<select size="1" style="width: 150px;" id="download_client">
+		{download_clients|s}
+	</select>
+	<input type="button" value="{tDownload}" onclick="downloadClient({clientid})" />
+</div>
