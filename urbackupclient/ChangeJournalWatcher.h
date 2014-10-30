@@ -38,7 +38,7 @@ public:
 
 	}
 
-	explicit uint128(char data[16])
+	explicit uint128(BYTE data[16])
 	{
 		memcpy(&lowPart, data, sizeof(lowPart));
 		memcpy(&highPart, data+sizeof(lowPart), sizeof(highPart));

@@ -79,13 +79,13 @@ namespace usn
 
 			UsnInt ret = {
 				3,
-				uint128(usn_record->FileReferenceNumber),
-				uint128(usn_record->ParentFileReferenceNumber),
-				usn_record->Usn,
-				usn_record->Reason,
+				uint128(usn_record_v3->FileReferenceNumber),
+				uint128(usn_record_v3->ParentFileReferenceNumber),
+				usn_record_v3->Usn,
+				usn_record_v3->Reason,
 				filename,
 				0,
-				usn_record->FileAttributes
+				usn_record_v3->FileAttributes
 			};
 
 			return ret;
@@ -680,11 +680,13 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 		PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
 		while ((PBYTE) pRecord < (pData + cb))
 		{
-			if(pRecord->MajorVersion!=2 && pRecord->MajorVersion!=3 && !has_warning)
+			if(pRecord->MajorVersion!=2 && pRecord->MajorVersion!=3)
 			{
-				Server->Log("Journal entry with major version "+nconvert(pRecord->MajorVersion)+" not supported.", LL_WARNING);
+				if(!has_warning)
+				{
+					Server->Log("Journal entry with major version "+nconvert(pRecord->MajorVersion)+" not supported.", LL_WARNING);
+				}
 				has_warning=true;
-				break;
 			}
 			else
 			{
