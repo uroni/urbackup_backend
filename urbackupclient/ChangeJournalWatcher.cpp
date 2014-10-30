@@ -587,9 +587,13 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 
 	if(not_supported)
 	{
+		Server->Log("Fast indexing method not supported. Falling back to slow one.", LL_WARNING);
 		db->BeginTransaction();
-		indexRootDirs(sj->rid, vol, c_frn_root);
+		size_t nDirFrns=0;
+		indexRootDirs(sj->rid, vol, c_frn_root, nDirFrns);
 		db->EndTransaction();
+
+		Server->Log("Added "+nconvert(nDirFrns)+" directory FRNs via slow indexing method", LL_DEBUG);
 	}
 #endif
 	listener->On_ResetAll(vol);
@@ -603,7 +607,7 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	}
 }
 
-void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent)
+void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent, size_t& nDirFrns)
 {
 	if(indexing_in_progress)
 	{
@@ -631,13 +635,14 @@ void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, uin
 	frn.HighPart=fi.nFileIndexHigh;
 
 	addFrn(ExtractFileName(root)+os_file_sep(), parent, uint128(frn.QuadPart), rid);
+	++nDirFrns;
 
 	std::vector<SFile> files=getFiles(root);
 	for(size_t i=0;i<files.size();++i)
 	{
 		if(files[i].isdir)
 		{
-			indexRootDirs(rid, dir+files[i].name, uint128(frn.QuadPart));
+			indexRootDirs(rid, dir+files[i].name, uint128(frn.QuadPart), nDirFrns);
 		}
 	}
 }

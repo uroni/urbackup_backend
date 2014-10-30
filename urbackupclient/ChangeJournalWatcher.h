@@ -136,7 +136,7 @@ private:
 	void deleteWithChildren( uint128 frn, _i64 rid);
 	std::wstring getFilename(const SChangeJournal &cj, uint128 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);
 
-	void indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent);
+	void indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent, size_t& nDirFrns);
 	void indexRootDirs2(const std::wstring &root, SChangeJournal *sj, bool& not_supported);
 
 	uint128 getRootFRN( const std::wstring & root );
