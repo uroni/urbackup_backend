@@ -443,8 +443,8 @@ void update_client13_14(IDatabase *db)
 	db->Write("DELETE FROM journal_data");
 	db->Write("DELETE FROM map_frn");
 	db->Write("DELETE FROM journal_ids");
-	db->Write("DROP INDEX IF NOT EXISTS frn_index");
-	db->Write("DROP INDEX IF NOT EXISTS frn_pid_index");
+	db->Write("DROP INDEX IF EXISTS frn_index");
+	db->Write("DROP INDEX IF EXISTS frn_pid_index");
 	db->Write("CREATE INDEX IF NOT EXISTS frn_index ON map_frn( frn ASC, frn_high ASC )");
 	db->Write("CREATE INDEX IF NOT EXISTS frn_pid_index ON map_frn( pid ASC, pid_high ASC )");
 }

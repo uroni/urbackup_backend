@@ -45,7 +45,7 @@ public:
 	}
 
 	explicit uint128(uint64 lowPart)
-		: lowPart(lowPart) 
+		: lowPart(lowPart), highPart(0)
 	{
 
 	}
@@ -189,6 +189,8 @@ private:
 	int64 last_backup_time;
 
 	bool unsupported_usn_version_err;
+
+	bool usn_logging_enabled;
 };
 
 class IChangeJournalListener

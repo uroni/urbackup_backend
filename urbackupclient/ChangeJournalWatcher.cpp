@@ -146,7 +146,6 @@ const unsigned int usn_update_freq=10*60*1000;
 const DWORDLONG usn_reindex_num=1000000; // one million
 
 //#define MFT_ON_DEMAND_LOOKUP
-#define VLOG(x) x
 
 ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB, IChangeJournalListener *pListener)
 	: dwt(dwt), listener(pListener), db(pDB), last_backup_time(0), unsupported_usn_version_err(false)
@@ -156,6 +155,8 @@ ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDataba
 	indexing_in_progress=false;
 	has_error=false;
 	last_index_update=0;
+
+	usn_logging_enabled = Server->getServerParameter("usn_logging_enabled")=="true";
 }
 
 ChangeJournalWatcher::~ChangeJournalWatcher(void)
@@ -170,7 +171,7 @@ void ChangeJournalWatcher::createQueries(void)
 {
 	q_get_dev_id=db->Prepare("SELECT journal_id, last_record, index_done FROM journal_ids WHERE device_name=?");
 	q_has_root=db->Prepare("SELECT id FROM map_frn WHERE rid=-1 AND name=?");
-	q_add_frn=db->Prepare("INSERT INTO map_frn (name, pid, pid_high, frn, frn_high, rid) VALUES (?, ?, ?, ?)");
+	q_add_frn=db->Prepare("INSERT INTO map_frn (name, pid, pid_high, frn, frn_high, rid) VALUES (?, ?, ?, ?, ?, ?)");
 	q_reset_root=db->Prepare("DELETE FROM map_frn WHERE rid=?");
 	q_get_entry=db->Prepare("SELECT id FROM map_frn WHERE frn=? AND frn_high=? AND rid=?");
 	q_get_children=db->Prepare("SELECT id, frn, frn_high FROM map_frn WHERE pid=? AND pid_high=? AND rid=?");
@@ -1124,7 +1125,10 @@ const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REAS
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft)
 {
-	VLOG(logEntry(vol, UsnRecord));
+	if(usn_logging_enabled)
+	{
+		logEntry(vol, UsnRecord);
+	}
 
 	bool curr_has_error = false;
 
