@@ -1,4 +1,4 @@
-﻿g.main_nav_pos=5;
+g.main_nav_pos=5;
 g.loading=false;
 g.lang="-";
 g.startup=true;
@@ -22,7 +22,9 @@ g.languages=[
 				{ l: "Português do Brasil", s: "pt_BR" },
 				{ l: "slovenský jazyk", s: "sk"},
 				{ l: "Nederlands", s: "nl" },
-				{ l: "norsk", s: "no_NO" }
+				{ l: "norsk", s: "no_NO" },
+				{ l: "Italiano", s: "it_IT" },
+				{ l: "České", s: "cs_CZ" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
@@ -77,6 +79,7 @@ function init_datatables()
 	};
 }
 
+
 function startup()
 {
 	clearTimeout(g.refresh_timeout);
@@ -97,6 +100,7 @@ function startup()
 	new getJSON("login", available_langs, try_anonymous_login);
 }
 
+
 function refresh_page()
 {
 	if(g.last_action=="status")
@@ -114,23 +118,17 @@ function refresh_page()
 	}
 }
 
+
 function change_lang_select()
 {
 	var selidx=I('change_lang_select').selectedIndex;
 	change_lang(g.languages[selidx].s, true);
 }
 
+
 function change_lang(l, refresh)
 {
 	g.lang=l;
-	if(l=="de")
-	{
-		I('load1').innerHTML="Lade...";
-	}
-	else
-	{
-		I('load1').innerHTML="Loading...";
-	}
 	
 	var c="<select id=\"change_lang_select\" onchange=\"change_lang_select()\">";
 	for(var i=0;i<g.languages.length;++i)
@@ -147,7 +145,6 @@ function change_lang(l, refresh)
 	c+="</select>";
 	
 	I('languages').innerHTML=c;
-	I('logo_img_link').href="javascript: startup()";
 	
 	window.curr_trans=window.translations[l];
 
@@ -157,21 +154,9 @@ function change_lang(l, refresh)
 	}
 	
 	init_datatables();
-	I('about_urbackup').innerHTML=trans("about_urbackup");
 }
-function aboutUrBackup()
-{
-	stopLoading();
-	clearTimeout(g.refresh_timeout);
-	
-	var ndata=dustRender("about_urbackup", {version: I('server_version_full').innerHTML.trim()});
-	if(g.data_f!=ndata)
-	{
-		I('data_f').innerHTML=ndata;
-		g.data_f=ndata;
-	}
-	I('nav_pos').innerHTML="";
-}
+
+
 function try_anonymous_login(data)
 {
 	stopLoading();
@@ -232,21 +217,24 @@ function try_anonymous_login(data)
 		I('username').focus();
 	}
 }
+
+
 function startLoading()
 {
 	if(g.loading)
 		return false;
 	
-	I('l_div').style.visibility="visible";
+	I('loading_div').style.visibility="visible";
 	g.loading=true;
 	return true;
 }
 
 function stopLoading()
 {
-	I('l_div').style.visibility="hidden";
+	I('loading_div').style.visibility="hidden";
 	g.loading=false;
 }
+
 
 function build_main_nav()
 {
@@ -286,6 +274,7 @@ function build_main_nav()
 	I('main_nav').innerHTML=ndata;
 }
 
+
 function getPar(p)
 {
 	var obj=I(p);
@@ -310,6 +299,7 @@ function getPar(p)
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
 
+
 function show_progress1(stop_backup)
 {
 	if(!stop_backup)
@@ -323,6 +313,8 @@ function show_progress1(stop_backup)
 	g.refresh_timeout=0;
 	show_progress11();
 }
+
+
 function show_progress11()
 {
 	if(g.refresh_timeout==-1) return;
@@ -344,6 +336,8 @@ function show_progress11()
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
+
+
 function show_progress2(data)
 {
 	if(g.refresh_timeout==-1)
@@ -445,9 +439,11 @@ function show_progress2(data)
 	g.refresh_timeout=setTimeout(show_progress11, 1000);
 }
 
+
 function show_settings1()
 {
 }
+
 
 function show_statistics1()
 {	
@@ -461,6 +457,8 @@ function show_statistics1()
 	g.settings_nav_pos=0;
 	build_main_nav();
 }
+
+
 function show_statistics2(data)
 {
 	stopLoading();
@@ -492,6 +490,8 @@ function show_statistics2(data)
 	}
 	I('nav_pos').innerHTML=ndata;
 }
+
+
 function render_useagegraph_single(selectedIdx, idx, key, params)
 {
 	var ret="";
@@ -706,6 +706,8 @@ function show_status1(hostname, action, remove_client, stop_client_remove)
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
+
+
 function build_client_download_select(client_downloads)
 {
 	var ret="";
@@ -715,6 +717,8 @@ function build_client_download_select(client_downloads)
 	}
 	return ret;
 }
+
+
 function show_status2(data)
 {
 	stopLoading();
@@ -728,23 +732,23 @@ function show_status2(data)
 		var obj=data.status[i];
 		if(obj.file_ok)
 		{
-			obj.file_style="background-color: green";
+			obj.file_style="success";
 			obj.file_ok_t=trans("ok");
 		}
 		else
 		{
-			obj.file_style="background-color: red";
+			obj.file_style="danger";
 			obj.file_ok_t=trans("no_recent_backup");
 		}
 		
 		if(obj.image_ok)
 		{
-			obj.image_style="background-color: green";
+			obj.image_style="success";
 			obj.image_ok_t=trans("ok");
 		}
 		else
 		{
-			obj.image_style="background-color: red";
+			obj.image_style="danger";
 			obj.image_ok_t=trans("no_recent_backup");
 		}
 		
@@ -759,7 +763,6 @@ function show_status2(data)
 		
 		if(data.remove_client)
 		{
-			obj.prev_tab_class="tabFLeft";
 			obj.Actions_start="";
 			obj.Actions_end="";
 			
@@ -771,7 +774,6 @@ function show_status2(data)
 		}
 		else
 		{
-			obj.prev_tab_class="tabFRight";
 			obj.Actions_start="<!--";
 			obj.Actions_end="-->";
 		}
@@ -913,6 +915,7 @@ function show_status2(data)
 		}
 		status_extra_clients=true;
 	}
+
 	var modify_clients="";
 	if(data.allow_modify_clients)
 	{
@@ -1047,13 +1050,18 @@ function show_status2(data)
 	
 	g.status_show_all=false;
 }
+
+
 g.checkForNewVersion = function(curr_version_num, curr_version_str)
 {
 	if(curr_version_num>g.current_version && I('new_version_available'))
 	{
 		I('new_version_available').innerHTML=dustRender("new_version_available", {new_version_number: curr_version_str} );
+		I('new_version_available').style="visibility: visible";
 	}
 }
+
+
 function downloadClient(clientid)
 {
 	var selidx=I('download_client').selectedIndex;
@@ -1062,6 +1070,8 @@ function downloadClient(clientid)
 		location.href=getURL("download_client", "clientid="+I('download_client').value);
 	}
 }
+
+
 function addExtraClient()
 {
 	if(I('hostname').value.length==0)
@@ -1073,6 +1083,8 @@ function addExtraClient()
 	
 	show_status1(I('hostname').value);
 }
+
+
 function addInternetClient()
 {
 	if(I('clientname').value.length==0)
@@ -1084,10 +1096,13 @@ function addInternetClient()
 	
 	show_status1(I('clientname').value, 2);
 }
+
+
 function removeExtraClient(id)
 {
 	show_status1(id+"", 1);
 }
+
 
 function show_backups1()
 {
@@ -1100,6 +1115,8 @@ function show_backups1()
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
+
+
 function show_backups2(data)
 {
 	stopLoading();
