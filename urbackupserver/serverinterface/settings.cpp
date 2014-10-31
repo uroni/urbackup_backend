@@ -312,6 +312,11 @@ void saveGeneralSettings(str_map &GET, IDatabase *db, ServerBackupDao& backupdao
 			if(settings[i]==L"backupfolder")
 			{
 				val = fixupBackupfolder(val, backupdao, server_settings);
+
+#ifndef _WIN32
+				os_create_dir("/etc/urbackup");
+				writestring(Server->ConvertToUTF8(val), "/etc/urbackup/backupfolder");
+#endif
 			}
 			updateSetting(settings[i], val, q_get, q_update, q_insert);
 		}

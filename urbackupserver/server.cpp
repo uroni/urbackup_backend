@@ -109,11 +109,11 @@ void BackupServer::operator()(void)
 		Server->setTemporaryDirectory(w_tmp+os_file_sep()+L"urbackup_tmp");
 	}
 #endif
-	if( settings->getValue("use_tmpfiles", "")!="true" )
+	std::wstring backupfolder;
+	if( settings->getValue(L"backupfolder", &backupfolder) )
 	{
-		std::wstring backupfolder;
-		if( settings->getValue(L"backupfolder", &backupfolder) )
-		{
+		if( settings->getValue("use_tmpfiles", "")!="true" )
+		{		
 			std::wstring tmpfile_path=backupfolder+os_file_sep()+L"urbackup_tmp_files";
 
 			Server->Log("Removing temporary files...");
@@ -125,6 +125,11 @@ void BackupServer::operator()(void)
 				os_create_dir(tmpfile_path);
 			}
 		}
+
+#ifndef _WIN32
+		os_create_dir("/etc/urbackup");
+		writestring(Server->ConvertToUTF8(backupfolder), "/etc/urbackup/backupfolder");
+#endif
 	}
 
 	testSnapshotAvailability(db);
