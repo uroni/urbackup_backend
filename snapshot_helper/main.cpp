@@ -12,12 +12,6 @@
 #include <pwd.h>
 #endif
 
-#if defined(__FreeBSD__)
-#define execvpe exect
-#elif !defined(_GNU_SOURCE)
-#define execvpe(x, y, z) execvp(x, y)
-#endif
-
 #define DEF_Server
 #include "../Server.h"
 
@@ -110,7 +104,9 @@ int exec_wait(const std::string& path, ...)
 	
 	if(child_pid==0)
 	{
-		int rc = execvpe(path.c_str(), args.data(), NULL);
+		environ = new char*[1];
+		*environ=NULL;
+		int rc = execvp(path.c_str(), args.data());
 		exit(rc);
 	}
 	else
