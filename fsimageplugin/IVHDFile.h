@@ -7,6 +7,7 @@
 class IVHDFile
 {
 public:
+	virtual ~IVHDFile() {}
 	virtual bool Seek(_i64 offset)=0;
 	virtual bool Read(char* buffer, size_t bsize, size_t &read)=0;
 	virtual _u32 Write(const char *buffer, _u32 bsize)=0;

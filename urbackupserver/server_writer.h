@@ -57,6 +57,7 @@ public:
 
 	void setDoTrim(bool b);
 
+	void setMbrOffset(int64 offset);
 private:
 	IVHDFile *vhd;
 

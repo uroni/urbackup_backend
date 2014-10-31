@@ -7,6 +7,7 @@
 
 namespace
 {
+	const char* image_file_format_default = "default";
 	const char* image_file_format_vhd = "vhd";
 	const char* image_file_format_vhdz = "vhdz";
 	const char* image_file_format_cowraw = "cowraw";
@@ -147,6 +148,8 @@ public:
 
 	std::vector<STimeSpan> getCleanupWindow(void);
 	std::vector<std::string> getBackupVolumes(const std::string& all_volumes);
+
+	std::string getImageFileFormat();
 
 	int getUpdateFreqImageIncr();
 	int getUpdateFreqFileIncr();

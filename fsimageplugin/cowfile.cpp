@@ -56,7 +56,7 @@ class FileWrapper : public IFile
 {
 public:
 	FileWrapper(CowFile* cowfile, int64 offset)
-		: cowfile(cowfile)
+		: cowfile(cowfile), offset(offset)
 	{
 
 	}
@@ -127,6 +127,7 @@ CowFile::CowFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize)
 {
 	filename = Server->ConvertToUTF8(fn);
 	read_only = pRead_only;
+	filesize = pDstsize;
 
 	if(FileExists(filename+".bitmap"))
 	{
@@ -134,14 +135,9 @@ CowFile::CowFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize)
 	}
 	else
 	{
-		if(read_only)
-		{
-			is_open=false;
-		}
+		is_open = !read_only;
 		setupBitmap();
 	}
-
-	filesize = pDstsize;
 
 	if(is_open)
 	{
@@ -191,6 +187,7 @@ CowFile::CowFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 	if(rc==0)
 	{
 		filesize = statbuf.st_size;
+		is_open=true;
 	}
 	else
 	{
@@ -288,6 +285,16 @@ bool CowFile::Seek(_i64 offset)
 	if(!is_open) return false;
 
 	curr_offset = offset;
+
+	off_t off = lseek64(fd, curr_offset, SEEK_SET);
+
+	if(off!=curr_offset)
+	{
+		Server->Log("Seeking in file failed. errno="+nconvert(errno), LL_ERROR);
+		return false;
+	}
+
+	return true;
 }
 
 bool CowFile::Read(char* buffer, size_t bsize, size_t& read_bytes)
@@ -462,6 +469,8 @@ bool CowFile::loadBitmap(const std::string& bitmap_fn)
 	{
 		return false;
 	}
+
+	return true;
 }
 
 void CowFile::setBitmapRange(uint64 offset_start, uint64 offset_end, bool v)
@@ -506,7 +515,10 @@ bool CowFile::trimUnused(_i64 fs_offset)
 	{
 		if(!ntfs.readBlock(ntfs_block, NULL))
 		{
-			unused_start_block=ntfs_block;
+			if(unused_start_block==-1)
+			{
+				unused_start_block=ntfs_block;
+			}
 		}
 		else if(unused_start_block!=-1)
 		{
@@ -518,6 +530,7 @@ bool CowFile::trimUnused(_i64 fs_offset)
 				Server->Log("Trimming syscall failed. Stopping trimming.", LL_WARNING);
 				return false;
 			}
+			unused_start_block=-1;
 		}
 	}
 

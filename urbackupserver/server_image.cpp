@@ -455,7 +455,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					}
 					else if(image_file_format == image_file_format_cowraw)
 					{
-						image_format == IFSImageFactory::ImageFormat_RawCowFile;
+						image_format = IFSImageFactory::ImageFormat_RawCowFile;
 					}
 					else //default
 					{
@@ -507,6 +507,10 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					{
 						ServerLogger::Log(clientid, L"Error writing image MBR", LL_ERROR);
 						goto do_image_cleanup;
+					}
+					else
+					{
+						vhdfile->setMbrOffset(mbr_offset);
 					}
 				}
 				else
@@ -729,6 +733,12 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 							if(vhdfile!=NULL)
 							{
+								if(!pParentvhd.empty() &&
+										image_file_format == image_file_format_cowraw)
+								{
+									vhdfile->setDoTrim(true);
+								}
+
 								vhdfile->doExit();
 								Server->getThreadPool()->waitFor(vhdfile_ticket);
 								vhdfile_err=vhdfile->hasError();
@@ -928,11 +938,6 @@ do_image_cleanup:
 
 	if(vhdfile!=NULL)
 	{
-		if(!pParentvhd.empty() && image_file_format == image_file_format_cowraw)
-		{
-			vhdfile->setDoTrim(true);
-		}
-
 		if(blockdata!=NULL)
 			vhdfile->freeBuffer(blockdata);
 

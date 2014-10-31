@@ -393,6 +393,11 @@ void ServerVHDWriter::setDoTrim(bool b)
 	do_trim = b;
 }
 
+void ServerVHDWriter::setMbrOffset(int64 offset)
+{
+	mbr_offset = offset;
+}
+
 //-------------FilebufferWriter-----------------
 
 ServerFileBufferWriter::ServerFileBufferWriter(ServerVHDWriter *pParent, unsigned int pBlocksize) : parent(pParent), blocksize(pBlocksize)

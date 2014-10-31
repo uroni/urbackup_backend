@@ -176,5 +176,5 @@ IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, const std::wstri
 
 void FSImageFactory::destroyVHDFile(IVHDFile *vhd)
 {
-	delete ((VHDFile*)vhd);
+	delete vhd;
 }
