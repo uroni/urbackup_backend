@@ -572,3 +572,16 @@ int64 os_last_error()
 {
 	return errno;
 }
+
+const int64 WINDOWS_TICK=10000000;
+const int64 SEC_TO_UNIX_EPOCH=11644473600LL;
+
+int64 os_windows_to_unix_time(int64 windows_filetime)
+{	
+	return windows_filetime / WINDOWS_TICK - SEC_TO_UNIX_EPOCH;
+}
+
+int64 os_to_windows_filetime(int64 unix_time)
+{
+	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
+}
