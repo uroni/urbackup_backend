@@ -34,7 +34,7 @@ mz_bool my_mz_zip_get_file_modified_time(const wchar_t *pFilename, mz_uint16 *pD
 
 
 mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_name, const wchar_t *pSrc_filename, const void *pComment, mz_uint16 comment_size, mz_uint level_and_flags,
-	int64* last_modified)
+	time_t* last_modified)
 {
   mz_uint16 gen_flags = 1<<3 | 1<<11; 
   mz_uint uncomp_crc32 = MZ_CRC32_INIT, level, num_alignment_padding_bytes;
@@ -67,7 +67,7 @@ mz_bool my_mz_zip_writer_add_file(mz_zip_archive *pZip, const char *pArchive_nam
 
   if(last_modified!=NULL)
   {
-	  mz_zip_time_to_dos_time(static_cast<time_t>(*last_modified), &dos_time, &dos_date);
+	  mz_zip_time_to_dos_time(*last_modified, &dos_time, &dos_date);
   }
   else
   {
@@ -316,11 +316,11 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 			has_metadata = true;
 		}
 
-		int64* last_modified=NULL;
-		int64 last_modified_wt;
+		time_t* last_modified=NULL;
+		time_t last_modified_wt;
 		if(has_metadata)
 		{
-			last_modified_wt=os_to_windows_filetime(metadata.last_modified);
+			last_modified_wt=static_cast<time_t>(os_to_windows_filetime(metadata.last_modified));
 			last_modified=&last_modified_wt;
 		}
 

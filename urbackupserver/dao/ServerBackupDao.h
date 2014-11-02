@@ -142,7 +142,7 @@ public:
 	void setClientUsedFilebackupSize(int64 bytes_used_files, int id);
 	bool createTemporaryPathLookupTable(void);
 	void dropTemporaryPathLookupTable(void);
-	void dropTemporaryPathLookupÍndex(void);
+	void dropTemporaryPathLookupIndex(void);
 	void populateTemporaryPathLookupTable(int backupid);
 	bool createTemporaryPathLookupIndex(void);
 	CondInt64 lookupEntryIdByPath(const std::wstring& fullpath);
@@ -207,7 +207,7 @@ private:
 	IQuery* q_setClientUsedFilebackupSize;
 	IQuery* q_createTemporaryPathLookupTable;
 	IQuery* q_dropTemporaryPathLookupTable;
-	IQuery* q_dropTemporaryPathLookupÍndex;
+	IQuery* q_dropTemporaryPathLookupIndex;
 	IQuery* q_populateTemporaryPathLookupTable;
 	IQuery* q_createTemporaryPathLookupIndex;
 	IQuery* q_lookupEntryIdByPath;

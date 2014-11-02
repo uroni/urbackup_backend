@@ -23,6 +23,7 @@
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server_settings.h"
 #include "backups.h"
+#include <memory>
 
 extern ICryptoFactory *crypto_fak;
 
