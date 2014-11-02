@@ -129,6 +129,9 @@
     <ClCompile Include="..\DatabaseCursor.cpp">
       <Filter>Server</Filter>
     </ClCompile>
+    <ClCompile Include="..\SharedMutex_boost.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Database.h">
@@ -222,6 +225,9 @@
       <Filter>Server</Filter>
     </ClInclude>
     <ClInclude Include="..\DatabaseCursor.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SharedMutex_boost.h">
       <Filter>Server</Filter>
     </ClInclude>
   </ItemGroup>

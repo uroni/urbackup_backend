@@ -409,12 +409,12 @@ void CServer::rotateLogfile()
 		logfile.close();
 		logfile_a=false;
 
-		for(size_t i=1;i<log_rotation_files+1;++i)
+		for(size_t i=log_rotation_files-1;i>0;--i)
 		{
 			rename((logfile_fn+"."+nconvert(i)).c_str(), (logfile_fn+"."+nconvert(i+1)).c_str());
 		}
 
-		deleteFile(logfile_fn+"."+nconvert(log_rotation_files+1));
+		deleteFile(logfile_fn+"."+nconvert(log_rotation_files));
 
 		rename(logfile_fn.c_str(), (logfile_fn+".1").c_str());
 
@@ -463,7 +463,11 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 		}
 
 		if(logfile_a)
+		{
 			logfile.flush();
+
+			rotateLogfile();
+		}
 
 		if(has_circular_log_buffer)
 		{
@@ -476,9 +480,6 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 
 		logToCircularBuffer(ConvertToUTF8(pStr), LogLevel);
 	}
-
-	void rotateLogfile();
-
 }
 
 void CServer::setLogFile(const std::string &plf, std::string chown_user)

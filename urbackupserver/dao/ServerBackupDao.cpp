@@ -647,6 +647,57 @@ void ServerBackupDao::setPointedTo(int64 pointed_to, int64 id)
 	q_setPointedTo->Reset();
 }
 
+
+/**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getClientSetting
+* @return string value
+* @sql
+*      SELECT value FROM settings_db.settings WHERE key=:key(string) AND clientid=:clientid(int)
+*/
+ServerBackupDao::CondString ServerBackupDao::getClientSetting(const std::wstring& key, int clientid)
+{
+	if(q_getClientSetting==NULL)
+	{
+		q_getClientSetting=db->Prepare("SELECT value FROM settings_db.settings WHERE key=? AND clientid=?", false);
+	}
+	q_getClientSetting->Bind(key);
+	q_getClientSetting->Bind(clientid);
+	db_results res=q_getClientSetting->Read();
+	q_getClientSetting->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"value"];
+	}
+	return ret;
+}
+
+
+/**
+* @-SQLGenAccess
+* @func vector<int> ServerBackupDao::getClientIds
+* @return int id
+* @sql
+*      SELECT id FROM clients
+*/
+std::vector<int> ServerBackupDao::getClientIds(void)
+{
+	if(q_getClientIds==NULL)
+	{
+		q_getClientIds=db->Prepare("SELECT id FROM clients", false);
+	}
+	db_results res=q_getClientIds->Read();
+	std::vector<int> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i]=watoi(res[i][L"id"]);
+	}
+	return ret;
+}
+
 /**
 * @-SQLGenAccess
 * @func int64 ServerBackupDao::getPointedTo
@@ -1161,6 +1212,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_setNextEntry=NULL;
 	q_setPrevEntry=NULL;
 	q_setPointedTo=NULL;
+	q_getClientSetting=NULL;
+	q_getClientIds=NULL;
 	q_getPointedTo=NULL;
 	q_addFileEntry=NULL;
 	q_getSetting=NULL;
@@ -1216,6 +1269,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_setNextEntry);
 	db->destroyQuery(q_setPrevEntry);
 	db->destroyQuery(q_setPointedTo);
+	db->destroyQuery(q_getClientSetting);
+	db->destroyQuery(q_getClientIds);
 	db->destroyQuery(q_getPointedTo);
 	db->destroyQuery(q_addFileEntry);
 	db->destroyQuery(q_getSetting);

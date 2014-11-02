@@ -23,17 +23,138 @@
 #include "DirectoryWatcherThread.h"
 #include <memory>
 
+namespace usn
+{
+	typedef struct {
+		DWORD         RecordLength;
+		WORD          MajorVersion;
+		WORD          MinorVersion;
+		BYTE          FileReferenceNumber[16];
+		BYTE          ParentFileReferenceNumber[16];
+		USN           Usn;
+		LARGE_INTEGER TimeStamp;
+		DWORD         Reason;
+		DWORD         SourceInfo;
+		DWORD         SecurityId;
+		DWORD         FileAttributes;
+		WORD          FileNameLength;
+		WORD          FileNameOffset;
+		WCHAR         FileName[1];
+	} USN_RECORD_V3, *PUSN_RECORD_V3;
+
+	typedef struct {
+		DWORDLONG StartFileReferenceNumber;
+		USN       LowUsn;
+		USN       HighUsn;
+		WORD      MinMajorVersion;
+		WORD      MaxMajorVersion;
+	} MFT_ENUM_DATA_V1, *PMFT_ENUM_DATA_V1;
+
+	UsnInt get_usn_record(PUSN_RECORD usn_record)
+	{
+		if(usn_record->MajorVersion==2)
+		{
+			std::wstring filename;
+			filename.resize(usn_record->FileNameLength / sizeof(wchar_t) );
+			memcpy(&filename[0], (PBYTE) usn_record + usn_record->FileNameOffset, usn_record->FileNameLength);
+
+			UsnInt ret = {
+				2,
+				uint128(usn_record->FileReferenceNumber),
+				uint128(usn_record->ParentFileReferenceNumber),
+				usn_record->Usn,
+				usn_record->Reason,
+				filename,
+				0,
+				usn_record->FileAttributes
+			};
+
+			return ret;
+		}
+		else if(usn_record->MajorVersion==3)
+		{
+			PUSN_RECORD_V3 usn_record_v3 = (PUSN_RECORD_V3)usn_record;
+			std::wstring filename;
+			filename.resize(usn_record_v3->FileNameLength / sizeof(wchar_t) );
+			memcpy(&filename[0], (PBYTE) usn_record_v3 + usn_record_v3->FileNameOffset, usn_record_v3->FileNameLength);
+
+			UsnInt ret = {
+				3,
+				uint128(usn_record_v3->FileReferenceNumber),
+				uint128(usn_record_v3->ParentFileReferenceNumber),
+				usn_record_v3->Usn,
+				usn_record_v3->Reason,
+				filename,
+				0,
+				usn_record_v3->FileAttributes
+			};
+
+			return ret;
+		}
+		else
+		{
+			assert("USN record does not have major version 2 or 3");
+		}
+
+		return UsnInt();
+	}
+
+	bool enum_usn_data(HANDLE hVolume, DWORDLONG StartFileReferenceNumber, BYTE* pData, DWORD dataSize, DWORD& firstError, DWORD& version, DWORD& cb)
+	{
+		if(version==0)
+		{
+			MFT_ENUM_DATA med;
+			med.StartFileReferenceNumber = StartFileReferenceNumber;
+			med.LowUsn = 0;
+			med.HighUsn = MAXLONGLONG;
+
+			BOOL b = DeviceIoControl(hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med), pData, dataSize, &cb, NULL);
+
+			if(b==FALSE)
+			{
+				firstError=GetLastError();
+				version=1;
+				return enum_usn_data(hVolume, StartFileReferenceNumber, pData, dataSize, firstError, version, cb);
+			}
+
+			return true;
+		}
+		else if(version==1)
+		{
+			usn::MFT_ENUM_DATA_V1 med_v1;
+			med_v1.StartFileReferenceNumber = StartFileReferenceNumber;
+			med_v1.LowUsn = 0;
+			med_v1.HighUsn = MAXLONGLONG;
+
+			BOOL b = DeviceIoControl(hVolume, FSCTL_ENUM_USN_DATA, &med_v1, sizeof(med_v1), pData, dataSize, &cb, NULL);
+
+			return b!=FALSE;
+		}
+		else
+		{
+			assert(false);
+			return FALSE;
+		}
+	}
+
+	uint64 atoiu64(const std::wstring& str)
+	{
+		return static_cast<uint64>(watoi64(str));
+	}
+}
+
 const DWORDLONG usn_reindex_num=1000000; // one million
 
 //#define MFT_ON_DEMAND_LOOKUP
-#define VLOG(x) 
 
 ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB)
-	: dwt(dwt), db(pDB), last_backup_time(0), journal_dao(pDB)
+	: dwt(dwt), db(pDB), last_backup_time(0), journal_dao(pDB), unsupported_usn_version_err(false)
 {
 	indexing_in_progress=false;
 	has_error=false;
 	last_index_update=0;
+
+	usn_logging_enabled = Server->getServerParameter("usn_logging_enabled")=="true";
 }
 
 ChangeJournalWatcher::~ChangeJournalWatcher(void)
@@ -59,13 +180,9 @@ void ChangeJournalWatcher::setIndexDone(const std::wstring &vol, int s)
 	journal_dao.updateSetJournalIndexDone(s, vol);
 }
 
-void ChangeJournalWatcher::saveJournalData(DWORDLONG journal_id, const std::wstring &vol, PUSN_RECORD rec, USN nextUsn)
-{
-	std::string t_fn;
-	t_fn.resize(rec->FileNameLength);
-	memcpy(&t_fn[0], rec->FileName, rec->FileNameLength);
-	std::wstring fn=Server->ConvertFromUTF16(t_fn);
-	if(fn==L"backup_client.db" || fn==L"backup_client.db-journal" )
+void ChangeJournalWatcher::saveJournalData(DWORDLONG journal_id, const std::wstring &vol, const UsnInt& rec, USN nextUsn)
+{	
+	if(rec.Filename==L"backup_client.db" || rec.Filename==L"backup_client.db-journal" )
 		return;
 
 	journal_dao.insertJournalData(vol, static_cast<int64>(journal_id), static_cast<int64>(rec->Usn),
@@ -90,16 +207,18 @@ std::vector<UsnInt> ChangeJournalWatcher::getJournalData(const std::wstring &vol
 		rec.ParentFileReferenceNumber=res[i].parent_frn;
 		rec.NextUsn=res[i].next_usn;
 		rec.attributes=static_cast<DWORD>(res[i].attributes);
+		rec.NextUsn=usn::atoiu64(res[i][L"next_usn"]);
+		rec.attributes=(DWORD)usn::atoiu64(res[i][L"attributes"]);
 	}
 	return ret;
 }
 
-void ChangeJournalWatcher::renameEntry(const std::wstring &name, _i64 id, _i64 pid)
+void ChangeJournalWatcher::renameEntry(const std::wstring &name, _i64 id, uint128 pid)
 {
 	journal_dao.updateFrnNameAndPid(name, pid, id);
 }
 
-std::vector<_i64 > ChangeJournalWatcher::getChildren(_i64 frn, _i64 rid)
+std::vector<uint128 > ChangeJournalWatcher::getChildren(uint128 frn, _i64 rid)
 {
 	return journal_dao.getFrnChildren(frn, rid);
 }
@@ -109,12 +228,12 @@ void ChangeJournalWatcher::deleteEntry(_i64 id)
 	journal_dao.delFrnEntry(id);
 }
 
-void ChangeJournalWatcher::deleteEntry(_i64 frn, _i64 rid)
+void ChangeJournalWatcher::deleteEntry(uint128 frn, _i64 rid)
 {
 	journal_dao.delFrnEntryViaFrn(frn, rid);
 }
 
-_i64 ChangeJournalWatcher::hasEntry( _i64 rid, _i64 frn)
+_i64 ChangeJournalWatcher::hasEntry( _i64 rid, uint128 frn)
 {
 	JournalDAO::CondInt64 res = journal_dao.getFrnEntryId(frn, rid);
 
@@ -133,23 +252,19 @@ void ChangeJournalWatcher::resetRoot(_i64 rid)
 	journal_dao.resetRoot(rid);
 }
 
-_i64 ChangeJournalWatcher::addRoot(const std::wstring &root)
-{
-	journal_dao.addRoot(root);
-	return db->getLastInsertID();
-}
-
-int64 ChangeJournalWatcher::addFrn(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid)
+int64 ChangeJournalWatcher::addFrn(const std::wstring &name, uint128 parent_id, uint128 frn, _i64 rid)
 {
 	journal_dao.addFrn(name, parent_id, frn, rid);
 	return db->getLastInsertID();
 }
 
-void ChangeJournalWatcher::addFrnTmp(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid)
+void ChangeJournalWatcher::addFrnTmp(const std::wstring &name, uint128 parent_id, uint128 frn, _i64 rid)
 {
 	q_add_frn_tmp->Bind(name);
-	q_add_frn_tmp->Bind(parent_id);
-	q_add_frn_tmp->Bind(frn);
+	q_add_frn_tmp->Bind(static_cast<_i64>(parent_id.lowPart));
+	q_add_frn_tmp->Bind(static_cast<_i64>(parent_id.highPart));
+	q_add_frn_tmp->Bind(static_cast<_i64>(frn.lowPart));
+	q_add_frn_tmp->Bind(static_cast<_i64>(frn.highPart));
 	q_add_frn_tmp->Bind(rid);
 	q_add_frn_tmp->Write();
 	q_add_frn_tmp->Reset();
@@ -169,9 +284,9 @@ _i64 ChangeJournalWatcher::hasRoot(const std::wstring &root)
 	}
 }
 
-void ChangeJournalWatcher::deleteWithChildren(_i64 frn, _i64 rid)
+void ChangeJournalWatcher::deleteWithChildren(uint128 frn, _i64 rid)
 {
-	std::vector<_i64> children=getChildren(frn, rid);
+	std::vector<uint128> children=getChildren(frn, rid);
 	deleteEntry(frn, rid);
 	for(size_t i=0;i<children.size();++i)
 	{
@@ -216,7 +331,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	{
 		resetAll(vol);
 		do_index=true;
-		rid=addRoot(vol);
+		rid=addFrn(vol, c_frn_root, c_frn_root, -1);
 		setIndexDone(vol, 0);
 	}
 
@@ -389,7 +504,19 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	deleteJournalData(vol);
 #ifndef MFT_ON_DEMAND_LOOKUP
 	Server->Log("Starting indexing process..", LL_DEBUG);
-	indexRootDirs2(vol, sj);
+	bool not_supported=false;
+	indexRootDirs2(vol, sj, not_supported);
+
+	if(not_supported)
+	{
+		Server->Log("Fast indexing method not supported. Falling back to slow one.", LL_WARNING);
+		db->BeginTransaction();
+		size_t nDirFrns=0;
+		indexRootDirs(sj->rid, vol, c_frn_root, nDirFrns);
+		db->EndTransaction();
+
+		Server->Log("Added "+nconvert(nDirFrns)+" directory FRNs via slow indexing method", LL_DEBUG);
+	}
 #endif
 	resetAll(vol);
 	indexing_in_progress=false;
@@ -402,7 +529,7 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	}
 }
 
-void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, _i64 parent)
+void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent, size_t& nDirFrns)
 {
 	if(indexing_in_progress)
 	{
@@ -429,42 +556,39 @@ void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, _i6
 	frn.LowPart=fi.nFileIndexLow;
 	frn.HighPart=fi.nFileIndexHigh;
 
-	addFrn(ExtractFileName(root)+os_file_sep(), parent, frn.QuadPart, rid);
+	addFrn(ExtractFileName(root)+os_file_sep(), parent, uint128(frn.QuadPart), rid);
+	++nDirFrns;
 
 	std::vector<SFile> files=getFiles(root);
 	for(size_t i=0;i<files.size();++i)
 	{
 		if(files[i].isdir)
 		{
-			indexRootDirs(rid, dir+files[i].name, frn.QuadPart);
+			indexRootDirs(rid, dir+files[i].name, uint128(frn.QuadPart), nDirFrns);
 		}
 	}
 }
 
-void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJournal *sj)
+void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJournal *sj, bool& not_supported)
 {
-	db->Write("CREATE TEMPORARY TABLE map_frn_tmp (name TEXT, pid INTEGER, frn INTEGER, rid INTEGER)");
-	q_add_frn_tmp=db->Prepare("INSERT INTO map_frn_tmp (name, pid, frn, rid) VALUES (?, ?, ?, ?)", false);
+	db->Write("CREATE TEMPORARY TABLE map_frn_tmp (name TEXT, pid INTEGER, pid_high INTEGER, frn INTEGER, frn_high INTEGER, rid INTEGER)");
+	q_add_frn_tmp=db->Prepare("INSERT INTO map_frn_tmp (name, pid, pid_high, frn, frn_high, rid) VALUES (?, ?, ?, ?, ?, ?)", false);
 
-	int64 root_frn = getRootFRN(root);
+	uint128 root_frn = getRootFRN(root);
 
-	addFrn(root, -1, root_frn, sj->rid);
+	addFrn(root, c_frn_root, root_frn, sj->rid);
 
-	MFT_ENUM_DATA med;
-	med.StartFileReferenceNumber = 0;
-	med.LowUsn = 0;
-	med.HighUsn = MAXLONGLONG; //sj->last_record;
-
-	// Process MFT in 64k chunks
+	USN StartFileReferenceNumber=0;
 	const size_t data_size = sizeof(DWORDLONG) + 0x10000;
 	std::vector<BYTE> data;
 	data.resize(data_size);
 	BYTE* pData=&data[0];
-	DWORDLONG fnLast = 0;
 	DWORD cb;
 	size_t nDirFRNs=0;
 	size_t nFRNs=0;
-	while (DeviceIoControl(sj->hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med), pData, data_size, &cb, NULL) != FALSE)
+	bool has_warning=false;
+	DWORD firstError;
+	while (usn::enum_usn_data(sj->hVolume, StartFileReferenceNumber, pData, sizeof(DWORDLONG) + 0x10000, firstError, version, cb))
 	{
 		if(indexing_in_progress)
 		{
@@ -485,18 +609,32 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 		PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
 		while ((PBYTE) pRecord < (pData + cb))
 		{
-			if((pRecord->FileAttributes & FILE_ATTRIBUTE_DIRECTORY)!=0)
+			if(pRecord->MajorVersion!=2 && pRecord->MajorVersion!=3)
 			{
-				std::wstring filename;
-				filename.resize(pRecord->FileNameLength / sizeof(wchar_t) );
-				memcpy(&filename[0], (PBYTE) pRecord + pRecord->FileNameOffset, pRecord->FileNameLength);
-				addFrnTmp(filename, pRecord->ParentFileReferenceNumber, pRecord->FileReferenceNumber, sj->rid);
-				++nDirFRNs;
+				if(!has_warning)
+				{
+					Server->Log("Journal entry with major version "+nconvert(pRecord->MajorVersion)+" not supported.", LL_WARNING);
+				}
+				has_warning=true;
 			}
-			++nFRNs;
-			pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
+			else
+			{
+				UsnInt usn_record = usn::get_usn_record(pRecord);
+				if((usn_record.attributes & FILE_ATTRIBUTE_DIRECTORY)!=0)
+				{
+					addFrnTmp(usn_record.Filename, usn_record.ParentFileReferenceNumber, usn_record.FileReferenceNumber, sj->rid);
+					++nDirFRNs;
+				}
+				++nFRNs;
+				pRecord = (PUSN_RECORD) ((PBYTE) pRecord + pRecord->RecordLength);
+			}
 		}
-		med.StartFileReferenceNumber = * (DWORDLONG *) pData;
+		StartFileReferenceNumber = * (DWORDLONG *) pData;
+	}
+
+	if(firstError==ERROR_INVALID_FUNCTION)
+	{
+		not_supported=true;
 	}
 
 	Server->Log("Added "+nconvert(nDirFRNs)+" directory FRNs to temporary database...", LL_DEBUG);
@@ -505,7 +643,8 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	db->destroyQuery(q_add_frn_tmp);
 	q_add_frn_tmp=NULL;
 	Server->Log("Copying directory FRNs to database...", LL_DEBUG);
-	db->Write("INSERT INTO map_frn (name, pid, frn, rid) SELECT name, pid, frn, rid FROM map_frn_tmp");
+	db->Write("INSERT INTO map_frn (name, pid, pid_high, frn, frn_high, rid) SELECT name, pid, pid_high, frn, frn_high, rid FROM map_frn_tmp");
+	
 	Server->Log("Dropping temporary database...", LL_DEBUG);
 	db->Write("DROP TABLE map_frn_tmp");
 
@@ -528,10 +667,11 @@ SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
 	return r;
 }
 
-std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, _i64 frn, bool fallback_to_mft, bool& filter_error, bool& has_error)
+std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, uint128 frn,
+	bool fallback_to_mft, bool& filter_error, bool& has_error)
 {
 	std::wstring path;
-	_i64 curr_id=frn;
+	uint128 curr_id=frn;
 	while(true)
 	{
 		JournalDAO::SNameAndPid res = 
@@ -559,7 +699,7 @@ std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, _i64 fr
 				{
 					Server->Log(L"Couldn't follow up to root via Database. Falling back to MFT. Current path: "+path, LL_WARNING);
 
-					_i64 parent_frn;
+					uint128 parent_frn;
 					has_error=false;
 					std::wstring dirname = getNameFromMFTByFRN(cj, curr_id, parent_frn, has_error);
 					if(!dirname.empty())
@@ -580,7 +720,7 @@ std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, _i64 fr
 						return std::wstring();
 					}
 
-					if(curr_id==-1)
+					if(curr_id==c_frn_root)
 					{
 						break;
 					}
@@ -676,43 +816,48 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 
 				while(dwRetBytes>0)
 				{
-					std::string fn;
-					fn.resize(TUsnRecord->FileNameLength);
-					memcpy(&fn[0], (char*)TUsnRecord->FileName, TUsnRecord->FileNameLength);
-					dwRetBytes-=TUsnRecord->RecordLength;
-
-					if(!indexing_in_progress)
+					if(TUsnRecord->MajorVersion!=2 && TUsnRecord->MajorVersion!=3)
 					{
-						UsnInt UsnRecord;
-						UsnRecord.Filename=Server->ConvertFromUTF16(fn);
-						UsnRecord.FileReferenceNumber=TUsnRecord->FileReferenceNumber;
-						UsnRecord.ParentFileReferenceNumber=TUsnRecord->ParentFileReferenceNumber;
-						UsnRecord.Reason=TUsnRecord->Reason;
-						UsnRecord.Usn=TUsnRecord->Usn;
-						UsnRecord.attributes=TUsnRecord->FileAttributes;
-
-						if(UsnRecord.Filename!=L"backup_client.db" && UsnRecord.Filename!=L"backup_client.db-journal")
+						if(!unsupported_usn_version_err)
 						{
-							if(!started_transaction)
-							{
-								started_transaction=true;
-								db->BeginTransaction();
-							}
-							updateWithUsn(it->first, it->second, &UsnRecord, true);
+							Server->Log("USN record with major version "+nconvert(TUsnRecord->MajorVersion)+" not supported", LL_ERROR);
+							listener->On_ResetAll(it->first);
+							unsupported_usn_version_err=true;
 						}
 					}
 					else
 					{
-						if(fn!="backup_client.db" && fn!="backup_client.db-journal")
+						UsnInt usn_record = usn::get_usn_record(TUsnRecord);
+
+						dwRetBytes-=TUsnRecord->RecordLength;
+
+						if(!indexing_in_progress)
 						{
-							if(!started_transaction)
+							if(usn_record.Filename!=L"backup_client.db" &&
+								usn_record.Filename!=L"backup_client.db-journal")
 							{
-								started_transaction=true;
-								db->BeginTransaction();
+								if(!started_transaction)
+								{
+									started_transaction=true;
+									db->BeginTransaction();
+								}
+								updateWithUsn(it->first, it->second, &usn_record, true);
 							}
-							saveJournalData(it->second.journal_id, it->first, TUsnRecord, nextUsn);	
 						}
-					}
+						else
+						{
+							if(usn_record.Filename!=L"backup_client.db" &&
+								usn_record.Filename!=L"backup_client.db-journal")
+							{
+							if(!started_transaction)
+								{
+									started_transaction=true;
+									db->BeginTransaction();
+								}
+								saveJournalData(it->second.journal_id, it->first, usn_record, nextUsn);	
+							}
+						}
+					}					
 
 					TUsnRecord = (PUSN_RECORD)(((PCHAR)TUsnRecord) + TUsnRecord->RecordLength);
 				}
@@ -914,7 +1059,8 @@ void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRe
 	ADD_ATTRIBUTE(FILE_ATTRIBUTE_ENCRYPTED);
 	ADD_ATTRIBUTE(FILE_ATTRIBUTE_VIRTUAL);
 	std::wstring lstr=L"Change: "+vol+L" [fn="+UsnRecord->Filename+L",reason="+reason+L",attributes="+
-						attributes+L",USN="+convert(UsnRecord->Usn)+L"]";
+						attributes+L",USN="+convert(UsnRecord->Usn)+L",FRN="+convert(UsnRecord->FileReferenceNumber.lowPart)+
+						L",Parent FRN="+convert(UsnRecord->ParentFileReferenceNumber.lowPart)+L",Version="+convert((int)UsnRecord->version)+L"]";
 	Server->Log(lstr, LL_DEBUG);
 }
 
@@ -922,7 +1068,10 @@ const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REAS
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft)
 {
-	VLOG(logEntry(vol, UsnRecord));
+	if(usn_logging_enabled)
+	{
+		logEntry(vol, UsnRecord);
+	}
 
 	if(UsnRecord->Filename.find(L"structure")!=std::string::npos)
 	{
@@ -938,7 +1087,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		&& !(UsnRecord->Reason & USN_REASON_FILE_CREATE)
 		&& fallback_to_mft)
 	{
-		Server->Log(L"File with FRN "+convert(UsnRecord->FileReferenceNumber)+L" is a directory not being created, but not in database. Added it to database", LL_WARNING);
+		Server->Log(L"File entry with FRN "+convert(UsnRecord->FileReferenceNumber.lowPart)+L" (Name \""+UsnRecord->Filename+L"\") is a directory not being created, but not in database. Added it to database", LL_WARNING);
 		dir_id=addFrn(UsnRecord->Filename, UsnRecord->ParentFileReferenceNumber, UsnRecord->FileReferenceNumber, cj.rid);
 	}
 
@@ -949,8 +1098,8 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		{
 			if(fallback_to_mft)
 			{
-				Server->Log("Parent of directory with FRN "+nconvert(UsnRecord->FileReferenceNumber)+" with FRN "+nconvert(UsnRecord->ParentFileReferenceNumber)+" not found. Searching via MFT as fallback.", LL_WARNING);
-				_i64 parent_parent_frn;
+				Server->Log(L"Parent of directory with FRN "+convert(UsnRecord->FileReferenceNumber.lowPart)+L" (Name \""+UsnRecord->Filename+L"\") with FRN "+convert(UsnRecord->ParentFileReferenceNumber.lowPart)+L" not found. Searching via MFT as fallback.", LL_WARNING);
+				uint128 parent_parent_frn;
 				bool has_error=false;
 				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn, has_error);
 				if(parent_name.empty())
@@ -966,7 +1115,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 			}
 			else
 			{
-				Server->Log(L"Error: Parent of "+UsnRecord->Filename+L" not found -1", LL_ERROR);
+				Server->Log(L"Error: Parent of \""+UsnRecord->Filename+L"\" not found -1", LL_ERROR);
 				curr_has_error=true;
 			}
 		}
@@ -1057,8 +1206,8 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 		{
 			if(fallback_to_mft)
 			{
-				Server->Log("Parent of file with FRN "+nconvert(UsnRecord->FileReferenceNumber)+" with FRN "+nconvert(UsnRecord->ParentFileReferenceNumber)+" not found. Searching via MFT as fallback.", LL_WARNING);
-				_i64 parent_parent_frn;
+				Server->Log(L"Parent of file with FRN "+convert(UsnRecord->FileReferenceNumber.lowPart)+L" (Name \""+UsnRecord->Filename+L"\") with FRN "+convert(UsnRecord->ParentFileReferenceNumber.lowPart)+L" not found. Searching via MFT as fallback.", LL_WARNING);
+				uint128 parent_parent_frn;
 				bool has_error=false;
 				std::wstring parent_name = getNameFromMFTByFRN(cj, UsnRecord->ParentFileReferenceNumber, parent_parent_frn, has_error);
 				if(parent_name.empty())
@@ -1070,6 +1219,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 					else
 					{
 						Server->Log("Parent directory not found in MFT.", LL_ERROR);
+						curr_has_error = true;
 					}
 				}
 				else
@@ -1225,27 +1375,38 @@ void ChangeJournalWatcher::resetAll( const std::wstring& vol )
 	}
 }
 
-std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn, bool& has_error)
+std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj, uint128 frn, uint128& parent_frn, bool& has_error)
 {
 	MFT_ENUM_DATA med;
-	med.StartFileReferenceNumber = frn;
+	med.StartFileReferenceNumber = frn.lowPart;
 	med.LowUsn = 0;
 	med.HighUsn = MAXLONGLONG;
 
 	BYTE pData[16*1024];
-	DWORDLONG fnLast = 0;
 	DWORD cb;
 	size_t nDirFRNs=0;
 	size_t nFRNs=0;
-	if (DeviceIoControl(cj.hVolume, FSCTL_ENUM_USN_DATA, &med, sizeof(med),pData, sizeof(pData), &cb, NULL) != FALSE)
+	DWORD firstError;
+	DWORD version = 0;
+
+	if(usn::enum_usn_data(cj.hVolume, frn.lowPart, pData, sizeof(pData), firstError, version, cb))
 	{
 		PUSN_RECORD pRecord = (PUSN_RECORD) &pData[sizeof(USN)];
 
-		if(pRecord->FileReferenceNumber!=frn)
+		if(pRecord->MajorVersion!=2 && pRecord->MajorVersion!=3)
+		{
+			Server->Log(L"Getting name by FRN from MFT for volume "+cj.vol_str+L" returned USN record with major version "+convert(pRecord->MajorVersion)+L". This version is not supported.", LL_ERROR);
+			parent_frn=c_frn_root;
+			return std::wstring();
+		}
+
+		UsnInt usn_record = usn::get_usn_record(pRecord);
+
+		if(usn_record.FileReferenceNumber!=frn)
 		{
 			if(frn == getRootFRN(cj.vol_str))
 			{
-				parent_frn=-1;
+				parent_frn=c_frn_root;
 				return cj.vol_str;
 			}
 			
@@ -1253,29 +1414,26 @@ std::wstring ChangeJournalWatcher::getNameFromMFTByFRN(const SChangeJournal &cj,
 		}
 		else
 		{
-			std::wstring filename;
-			filename.resize(pRecord->FileNameLength / sizeof(wchar_t) );
-			memcpy(&filename[0], (PBYTE) pRecord + pRecord->FileNameOffset, pRecord->FileNameLength);
-			parent_frn = pRecord->ParentFileReferenceNumber;
-			return filename;
+			parent_frn = usn_record.ParentFileReferenceNumber;
+			return usn_record.Filename;
 		}
 	}
 	else
 	{
-		Server->Log(L"Getting name by FRN from MFT failed for volume "+cj.vol_str+L" with error code "+convert((int)GetLastError()), LL_ERROR);
+		Server->Log(L"Getting name by FRN from MFT failed for volume "+cj.vol_str+L" with error code "+convert((int)GetLastError())+L" and first error "+convert((int)firstError), LL_ERROR);
 		has_error=true;
 		return std::wstring();
 	}
 }
 
-int64 ChangeJournalWatcher::getRootFRN( const std::wstring & root )
+uint128 ChangeJournalWatcher::getRootFRN( const std::wstring & root )
 {
 	HANDLE hDir = CreateFile((root+os_file_sep()).c_str(), 0, FILE_SHARE_READ | FILE_SHARE_WRITE,	NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
 	if(hDir==INVALID_HANDLE_VALUE)
 	{
 		Server->Log("Could not open root HANDLE.", LL_ERROR);
-		return -1;
+		return c_frn_root;
 	}
 
 	BY_HANDLE_FILE_INFORMATION fi;
@@ -1285,5 +1443,5 @@ int64 ChangeJournalWatcher::getRootFRN( const std::wstring & root )
 	frn.LowPart=fi.nFileIndexLow;
 	frn.HighPart=fi.nFileIndexHigh;
 
-	return frn.QuadPart;
+	return uint128(frn.QuadPart);
 }

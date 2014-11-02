@@ -106,6 +106,7 @@
     <ClCompile Include="..\ServiceWorker.cpp" />
     <ClCompile Include="..\SessionMgr.cpp" />
     <ClCompile Include="..\SettingsReader.cpp" />
+    <ClCompile Include="..\SharedMutex_boost.cpp" />
     <ClCompile Include="..\SQLiteFactory.cpp" />
     <ClCompile Include="..\sqlite\shell.c" />
     <ClCompile Include="..\sqlite\sqlite3.c" />
@@ -140,6 +141,7 @@
     <ClInclude Include="..\ServiceWorker.h" />
     <ClInclude Include="..\SessionMgr.h" />
     <ClInclude Include="..\SettingsReader.h" />
+    <ClInclude Include="..\SharedMutex_boost.h" />
     <ClInclude Include="..\socket_header.h" />
     <ClInclude Include="..\SQLiteFactory.h" />
     <ClInclude Include="..\StreamPipe.h" />

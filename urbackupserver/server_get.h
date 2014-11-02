@@ -367,6 +367,7 @@ private:
 	std::vector<ServerBackupDao::SFileEntry> hash_existing;
 
 	std::auto_ptr<FileIndex> fileindex;
+	int64 client_updated_time;
 	IMutex* continuous_mutex;
 	std::auto_ptr<BackupServerContinuous> continuous_update;
 	THREADPOOL_TICKET continuous_thread_ticket;

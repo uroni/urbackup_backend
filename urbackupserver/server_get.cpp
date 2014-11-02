@@ -94,7 +94,7 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 	: internet_connection(internet_connection), server_settings(NULL), client_throttler(NULL),
 	  use_snapshots(use_snapshots), use_reflink(use_reflink), local_hash(NULL), bsh(NULL),
 	  bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare(NULL), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET),
-	  backup_dao(NULL)
+	  backup_dao(NULL), client_updated_time(0)
 {
 	q_update_lastseen=NULL;
 	pipe=pPipe;
@@ -508,6 +508,12 @@ void BackupServerGet::operator ()(void)
 				{
 					sendSettings();
 				}
+			}
+
+			if(client_updated_time!=0 && Server->getTimeSeconds()-client_updated_time>5*60)
+			{
+				updateCapabilities();
+				client_updated_time=0;
 			}
 
 			update_sql_intervals(true);
@@ -1028,6 +1034,7 @@ void BackupServerGet::operator ()(void)
 			IScopedLock lock(clientaddr_mutex);
 			memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
 			internet_connection=(msg[7+sizeof(sockaddr_in)]==0)?false:true;
+			tcpstack.setAddChecksum(internet_connection);
 		}
 
 		if(!msg.empty())
@@ -3681,9 +3688,14 @@ void BackupServerGet::sendSettings(void)
 		overwrite=(stmp=="true");
 
 	bool allow_overwrite=true;
-	stmp=settings_client->getValue("allow_overwrite", "");
+	if(overwrite)
+	{
+		stmp=settings_client->getValue("allow_overwrite", "");
+	}
+
 	if(stmp.empty())
 		stmp=settings->getValue("allow_overwrite", "");
+
 	if(!stmp.empty())
 		allow_overwrite=(stmp=="true");
 
@@ -3694,10 +3706,6 @@ void BackupServerGet::sendSettings(void)
 	{
 		origSettings = Server->createMemorySettingsReader(Server->ConvertToUTF8(origSettingsData.value));
 	}
-
-	std::auto_ptr<ISettingsReader> server_settings_reader(
-		Server->createDBSettingsReader(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER),
-		"settings_db.settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0"));
 
 	for(size_t i=0;i<settings_names.size();++i)
 	{
@@ -3732,7 +3740,7 @@ void BackupServerGet::sendSettings(void)
 			if(!overwrite && 
 				std::find(only_server_settings_names.begin(), only_server_settings_names.end(), key)!=only_server_settings_names.end())
 			{
-				server_settings_reader->getValue(key, &value);
+				settings->getValue(key, &value);
 				key+=L"_def";
 				s_settings+=Server->ConvertToUTF8(key)+"="+Server->ConvertToUTF8(value)+"\n";				
 			}
@@ -4379,6 +4387,8 @@ void BackupServerGet::checkClientVersion(void)
 			}
 
 			Server->destroy(cc);
+
+			client_updated_time = Server->getTimeSeconds();
 
 			if(ok)
 			{

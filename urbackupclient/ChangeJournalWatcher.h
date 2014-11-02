@@ -31,16 +31,72 @@ struct SDeviceInfo
 	bool index_done;
 };
 
+class uint128
+{
+public:
+	uint128()
+		:lowPart(0), highPart(0) 
+	{
+
+	}
+
+	explicit uint128(BYTE data[16])
+	{
+		memcpy(&lowPart, data, sizeof(lowPart));
+		memcpy(&highPart, data+sizeof(lowPart), sizeof(highPart));
+	}
+
+	explicit uint128(uint64 lowPart)
+		: lowPart(lowPart), highPart(0)
+	{
+
+	}
+
+	uint128(uint64 lowPart, uint64 highPart)
+		: lowPart(lowPart), highPart(highPart)
+	{
+
+	}
+
+	bool hasHighPart()
+	{
+		return highPart!=0;
+	}
+
+	bool operator==(const uint128& other) 
+	{
+		return lowPart==other.lowPart &&
+			highPart==other.highPart;
+	}
+
+	bool operator!=(const uint128& other)
+	{
+		return !(*this==other);
+	}
+
+	void set(uint64 low, uint64 high)
+	{
+		lowPart = low;
+		highPart = high;
+	}
+
+	uint64 highPart;
+	uint64 lowPart;
+};
+
 struct UsnInt
 {
-	DWORDLONG FileReferenceNumber;
-    DWORDLONG ParentFileReferenceNumber;
+	DWORD version;
+	uint128 FileReferenceNumber;
+    uint128 ParentFileReferenceNumber;
 	USN Usn;
 	DWORD Reason;
 	std::wstring Filename;
 	USN NextUsn;
 	DWORD attributes;
 };
+
+const uint128 c_frn_root((uint64)-1, (uint64)-1);
 
 class IChangeJournalListener;
 
@@ -67,35 +123,34 @@ private:
 
 	SDeviceInfo getDeviceInfo(const std::wstring &name);
 	_i64 hasRoot(const std::wstring &root);
-	_i64 addRoot(const std::wstring &root);
-	int64 addFrn(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid);
-	void addFrnTmp(const std::wstring &name, _i64 parent_id, _i64 frn, _i64 rid);
-	void renameEntry(const std::wstring &name, _i64 id, _i64 pid);
+	int64 addFrn(const std::wstring &name, uint128 parent_id, uint128 frn, _i64 rid);
+	void addFrnTmp(const std::wstring &name, uint128 parent_id, uint128 frn, _i64 rid);
+	void renameEntry(const std::wstring &name, _i64 id, uint128 pid);
 	void resetRoot(_i64 rid);
-	_i64 hasEntry( _i64 rid, _i64 frn);
-	std::vector<_i64> getChildren(_i64 frn, _i64 rid);
+	_i64 hasEntry( _i64 rid, uint128 frn);
+	std::vector<uint128> getChildren(uint128 frn, _i64 rid);
 	void deleteEntry(_i64 id);
-	void deleteEntry(_i64 frn, _i64 rid);
-	void saveJournalData(DWORDLONG journal_id, const std::wstring &vol, PUSN_RECORD rec, USN nextUsn);
+	void deleteEntry(uint128 frn, _i64 rid);
+	void saveJournalData(DWORDLONG journal_id, const std::wstring &vol, const UsnInt& rec, USN nextUsn);
 	std::vector<UsnInt> getJournalData( const std::wstring &vol);
 	void setIndexDone(const std::wstring &vol, int s);
 	void deleteJournalData(const std::wstring &vol);
 	void deleteJournalId(const std::wstring &vol);
 
-	void deleteWithChildren( _i64 frn, _i64 rid);
-	std::wstring getFilename(const SChangeJournal &cj, _i64 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);
+	void deleteWithChildren( uint128 frn, _i64 rid);
+	std::wstring getFilename(const SChangeJournal &cj, uint128 frn, bool fallback_to_mft, bool& filter_error, bool& has_error);
 
-	void indexRootDirs(_i64 rid, const std::wstring &root, _i64 parent);
-	void indexRootDirs2(const std::wstring &root, SChangeJournal *sj);
+	void indexRootDirs(_i64 rid, const std::wstring &root, uint128 parent, size_t& nDirFrns);
+	void indexRootDirs2(const std::wstring &root, SChangeJournal *sj, bool& not_supported);
 
-	int64 getRootFRN( const std::wstring & root );
+	uint128 getRootFRN( const std::wstring & root );
 
 	void updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft);
 
 	void reindex(_i64 rid, std::wstring vol, SChangeJournal *sj);
 	void logEntry(const std::wstring &vol, const UsnInt *UsnRecord);
 
-	std::wstring getNameFromMFTByFRN(const SChangeJournal &cj, _i64 frn, _i64& parent_frn, bool& has_error);
+	std::wstring getNameFromMFTByFRN(const SChangeJournal &cj, uint128 frn, uint128& parent_frn, bool& has_error);
 
 	void resetAll(const std::wstring& vol);
 
@@ -121,8 +176,11 @@ private:
 	int64 last_backup_time;
 
 	JournalDAO journal_dao;
+	
+	bool unsupported_usn_version_err;
 
 	std::wstring rename_old_name;
+	bool usn_logging_enabled;
 
 	size_t num_changes;
 };
