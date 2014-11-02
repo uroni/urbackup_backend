@@ -1108,17 +1108,17 @@ void ServerBackupDao::dropTemporaryPathLookupTable(void)
 
 /**
 * @-SQLGenAccessNoCheck
-* @func void ServerBackupDao::dropTemporaryPathLookupÍndex
+* @func void ServerBackupDao::dropTemporaryPathLookupIndex
 * @sql
 *      DROP INDEX files_cont_path_lookup_idx
 */
-void ServerBackupDao::dropTemporaryPathLookupÍndex(void)
+void ServerBackupDao::dropTemporaryPathLookupIndex(void)
 {
-	if(q_dropTemporaryPathLookupÍndex==NULL)
+	if(q_dropTemporaryPathLookupIndex==NULL)
 	{
-		q_dropTemporaryPathLookupÍndex=db->Prepare("DROP INDEX files_cont_path_lookup_idx", false);
+		q_dropTemporaryPathLookupIndex=db->Prepare("DROP INDEX files_cont_path_lookup_idx", false);
 	}
-	q_dropTemporaryPathLookupÍndex->Write();
+	q_dropTemporaryPathLookupIndex->Write();
 }
 
 /**
@@ -1232,7 +1232,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_setClientUsedFilebackupSize=NULL;
 	q_createTemporaryPathLookupTable=NULL;
 	q_dropTemporaryPathLookupTable=NULL;
-	q_dropTemporaryPathLookupÍndex=NULL;
+	q_dropTemporaryPathLookupIndex=NULL;
 	q_populateTemporaryPathLookupTable=NULL;
 	q_createTemporaryPathLookupIndex=NULL;
 	q_lookupEntryIdByPath=NULL;
@@ -1289,7 +1289,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_setClientUsedFilebackupSize);
 	db->destroyQuery(q_createTemporaryPathLookupTable);
 	db->destroyQuery(q_dropTemporaryPathLookupTable);
-	db->destroyQuery(q_dropTemporaryPathLookupÍndex);
+	db->destroyQuery(q_dropTemporaryPathLookupIndex);
 	db->destroyQuery(q_populateTemporaryPathLookupTable);
 	db->destroyQuery(q_createTemporaryPathLookupIndex);
 	db->destroyQuery(q_lookupEntryIdByPath);
