@@ -997,6 +997,7 @@ void BackupServerGet::operator ()(void)
 			IScopedLock lock(clientaddr_mutex);
 			memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
 			internet_connection=(msg[7+sizeof(sockaddr_in)]==0)?false:true;
+			tcpstack.setAddChecksum(internet_connection);
 		}
 
 		if(!msg.empty())

@@ -359,6 +359,11 @@ void BackupServer::startClients(FileClient &fc)
 
 					it->second.offlinecount=0;
 				}
+				/*else if(found_lan)
+				{
+					force_offline_clients.push_back(names[i]);
+					it->second.offlinecount=max_offline;
+				}*/
 			}
 		}
 	}
