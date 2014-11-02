@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <utime.h>
 
 #if defined(__FreeBSD__)
 #define lstat64 lstat
@@ -584,4 +585,13 @@ int64 os_windows_to_unix_time(int64 windows_filetime)
 int64 os_to_windows_filetime(int64 unix_time)
 {
 	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
+}
+
+bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified)
+{
+	struct utimbuf times;
+	times.actime = static_cast<time_t>(last_modified);
+	times.modtime = static_cast<time_t>(last_modified);
+	int rc = utime(Server->ConvertToUTF8(fn), &times);
+	return rc==0;
 }
