@@ -12,8 +12,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-07-25 17:55+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2014-10-04 14:22+0000\n"
+"Last-Translator: janda <jan.vojtek@gmail.com>\n"
 "Language-Team: Slovak (http://www.transifex.com/projects/p/urbackup/language/sk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -49,7 +49,7 @@ msgid "nav_item_6"
 msgstr "Stav"
 
 msgid "nav_item_5"
-msgstr ""
+msgstr "Aktivity"
 
 msgid "nav_item_4"
 msgstr "Zálohy"
@@ -292,7 +292,7 @@ msgid "storage_usage_pie_graph_colname2"
 msgstr "Využitie ukladacieho priestoru"
 
 msgid "storage_usage_bar_graph_title"
-msgstr ""
+msgstr "Využitie ukladacieho priestoru"
 
 msgid "storage_usage_bar_graph_colname1"
 msgstr "Dátum"
@@ -319,7 +319,7 @@ msgid "upgrade_error_text"
 msgstr ""
 
 msgid "tActivities"
-msgstr ""
+msgstr "Aktivity"
 
 msgid "tAction"
 msgstr ""
@@ -331,7 +331,7 @@ msgid "tFiles in queue"
 msgstr ""
 
 msgid "tLast activities"
-msgstr ""
+msgstr "Posledné aktivity"
 
 msgid "tStarting time"
 msgstr ""
@@ -370,10 +370,10 @@ msgid "tWarnings"
 msgstr "Upozornenia"
 
 msgid "tStorage allocation"
-msgstr ""
+msgstr "Pridelenie ukladacieho priestoru"
 
 msgid "tStorage usage"
-msgstr ""
+msgstr "Využitie ukladacieho priestoru"
 
 msgid "tAll"
 msgstr ""
@@ -615,7 +615,7 @@ msgid "tMax backup speed for local network"
 msgstr ""
 
 msgid "tNo activities"
-msgstr ""
+msgstr "Žiadne aktivity"
 
 msgid "tSelect all"
 msgstr ""
@@ -1135,16 +1135,16 @@ msgid "tRecalculate statistics"
 msgstr "Prepočítať štatistiky"
 
 msgid "First"
-msgstr "Prvý"
+msgstr "Prvá"
 
 msgid "Last"
-msgstr "Posledný"
+msgstr "Posledná"
 
 msgid "Next"
-msgstr ""
+msgstr "Ďalšia"
 
 msgid "Previous"
-msgstr ""
+msgstr "Predchádzajúca"
 
 msgid "No data available in table"
 msgstr ""

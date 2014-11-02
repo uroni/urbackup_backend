@@ -25,6 +25,7 @@
 
 #include "server_settings.h"
 #include "../Interface/Server.h"
+#include "server.h"
 
 std::map<ServerSettings*, bool> ServerSettings::g_settings;
 IMutex *ServerSettings::g_mutex=NULL;
@@ -308,7 +309,7 @@ void ServerSettings::readSettingsDefault(void)
 	}
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
-	settings->image_file_format=settings_default->getValue("image_file_format", image_file_format_vhdz);
+	settings->image_file_format=settings_default->getValue("image_file_format", image_file_format_default);
 	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
@@ -725,6 +726,27 @@ int ServerSettings::getUpdateFreqFileFull()
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
 	return settings_cache->settings->update_freq_full;
+}
+
+std::string ServerSettings::getImageFileFormat()
+{
+	std::string image_file_format = getSettings()->image_file_format;
+
+	if(image_file_format == image_file_format_default)
+	{
+		if(BackupServer::isSnapshotsEnabled())
+		{
+			return image_file_format_cowraw;
+		}
+		else
+		{
+			return image_file_format_default;
+		}
+	}
+	else
+	{
+		return image_file_format;
+	}
 }
 
 #endif //CLIENT_ONLY

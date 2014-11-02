@@ -112,7 +112,7 @@ bool File::Open(std::wstring pfn, int mode)
 		return false;
 }
 
-bool File::OpenTemporaryFile(const std::wstring &dir)
+bool File::OpenTemporaryFile(const std::wstring &dir, bool first_try)
 {
 	char *tmpdir=getenv("TMPDIR");
 	std::string stmpdir;

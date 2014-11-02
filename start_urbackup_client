@@ -20,6 +20,14 @@ then
 fi
 
 DAEMON_LIBS="$PREFIX/lib"
+if ! test -e $DAEMON_LIBS/liburbackupclient_fileservplugin.so
+then
+	DAEMON_LIBS="$PREFIX/lib64"
+	if ! test -e $DAEMON_LIBS/liburbackupclient_fileservplugin.so
+	then
+		DAEMON_LIBS="/lib"
+	fi
+fi
 
 DAEMON_PLUGINS="--plugin $DAEMON_LIBS/liburbackupclient_fileservplugin.so --plugin $DAEMON_LIBS/liburbackupclient_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupclient_cryptoplugin.so --plugin $DAEMON_LIBS/liburbackupclient.so --workingdir $DAEMON_DIR --server false --no-server"
 S_DAEMON="--daemon"

@@ -141,7 +141,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(internet_image_transfer_mode);
 	SET_SETTING(end_to_end_file_backup_verification);
 	SET_SETTING(internet_calculate_filehashes_on_client);
-	SET_SETTING(image_file_format);
+	ret.set("image_file_format", settings.getImageFileFormat());
 	SET_SETTING(internet_connect_always);
 	SET_SETTING(verify_using_client_hashes);
 	SET_SETTING(internet_readd_file_entries);
@@ -279,7 +279,7 @@ void saveGeneralSettings(str_map &GET, IDatabase *db, ServerBackupDao& backupdao
 		str_map::iterator it=GET.find(settings[i]);
 		if(it!=GET.end())
 		{
-			std::wstring val = it->second;
+			std::wstring val = UnescapeSQLString(it->second);
 			if(settings[i]==L"backupfolder")
 			{
 				val = fixupBackupfolder(val, backupdao, server_settings);
@@ -310,7 +310,7 @@ void updateMailSettings(str_map &GET, IDatabase *db)
 		str_map::iterator it=GET.find(settings[i]);
 		if(it!=GET.end())
 		{
-			updateSetting(settings[i], it->second, q_get, q_update, q_insert);
+			updateSetting(settings[i], UnescapeSQLString(it->second), q_get, q_update, q_insert);
 		}
 	}
 }
@@ -337,7 +337,7 @@ void updateClientSettings(int t_clientid, str_map &GET, IDatabase *db)
 		str_map::iterator it=GET.find(sset[i]);
 		if(it!=GET.end())
 		{
-			updateSetting(sset[i], it->second, q_get, q_update, q_insert);
+			updateSetting(sset[i], UnescapeSQLString(it->second), q_get, q_update, q_insert);
 		}
 	}
 }

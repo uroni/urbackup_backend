@@ -215,3 +215,4 @@ urbackup/fileindex/*
 urbackup/old_db/*
 debug.log.*
 urbackup/old_version_db/*
+urbackup/new_version_db/*

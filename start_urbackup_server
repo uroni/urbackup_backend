@@ -44,6 +44,15 @@ fi
 
 
 DAEMON_LIBS="$PREFIX/lib"
+if ! test -e $DAEMON_LIBS/liburbackupserver.so
+then
+	DAEMON_LIBS="$PREFIX/lib64"
+	if ! test -e $DAEMON_LIBS/liburbackupserver.so
+	then
+		DAEMON_LIBS="/lib"
+	fi
+fi
+
 PLUGIN_URL="--plugin $DAEMON_LIBS/liburbackupserver_urlplugin.so"
 if ! test -e $DAEMON_LIBS/liburbackupserver_urlplugin.so
 then

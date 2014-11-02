@@ -565,6 +565,7 @@ void* os_start_transaction()
 
 bool os_finish_transaction(void* transaction)
 {
+	return false;
 }
 
 int64 os_last_error()

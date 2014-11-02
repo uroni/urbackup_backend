@@ -5,6 +5,7 @@ AC_PREREQ(2.61)
 AC_INIT([urbackupclient_fileservplugin], [0.1], [urpc@gmx.de])
 AC_CONFIG_SRCDIR([dllmain.cpp])
 AC_CONFIG_HEADER([config.h])
+AC_DISABLE_STATIC
 
 AM_INIT_AUTOMAKE
 

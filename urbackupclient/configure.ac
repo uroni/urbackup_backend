@@ -5,6 +5,7 @@ AC_PREREQ(2.61)
 AC_INIT([urbackupclient], [0.1], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([dllmain.cpp])
 AC_CONFIG_HEADER([config.h])
+AC_DISABLE_STATIC
 AM_INIT_AUTOMAKE
 
 AC_ARG_ENABLE([fortify],

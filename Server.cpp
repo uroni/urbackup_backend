@@ -1421,7 +1421,7 @@ IFile* CServer::openTemporaryFile(void)
 	File *file=new File;
 	if(!file->OpenTemporaryFile(tmpdir) )
 	{
-		Server->Log("Error creating temporary file", LL_ERROR);
+		Server->Log("Error creating temporary file at \""+file->getFilename()+"\"", LL_ERROR);
 		delete file;
 		return NULL;
 	}

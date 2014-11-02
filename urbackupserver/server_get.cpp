@@ -697,13 +697,13 @@ void BackupServerGet::operator ()(void)
 						{
 							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
 				
-							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0, server_settings->getSettings()->image_file_format))
+							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0, server_settings->getImageFileFormat()))
 							{
 								sysvol_id=backupid;
 							}
 							ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
 						}
-						bool b=doImage(vols[i]+":", L"", 0, 0, image_protocol_version>0, server_settings->getSettings()->image_file_format);
+						bool b=doImage(vols[i]+":", L"", 0, 0, image_protocol_version>0, server_settings->getImageFileFormat());
 						if(!b)
 						{
 							r_success=false;
@@ -748,7 +748,7 @@ void BackupServerGet::operator ()(void)
 						if(strlower(letter)=="c:")
 						{
 							ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
-							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0, server_settings->getSettings()->image_file_format))
+							if(doImage("SYSVOL", L"", 0, 0, image_protocol_version>0, server_settings->getImageFileFormat()))
 							{
 								sysvol_id=backupid;
 							}
@@ -764,7 +764,7 @@ void BackupServerGet::operator ()(void)
 						else
 						{
 							r_success=doImage(letter, last.path, last.incremental+1,
-								last.incremental_ref, image_hashed_transfer, server_settings->getSettings()->image_file_format);
+								last.incremental_ref, image_hashed_transfer, server_settings->getImageFileFormat());
 						}
 
 						if(r_success && sysvol_id!=-1)
@@ -3344,6 +3344,10 @@ std::wstring BackupServerGet::constructImagePath(const std::wstring &letter, std
 	if(image_file_format==image_file_format_vhd)
 	{
 		imgpath+=L".vhd";
+	}
+	else if(image_file_format==image_file_format_cowraw)
+	{
+		imgpath+=L".raw";
 	}
 	else
 	{

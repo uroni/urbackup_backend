@@ -58,7 +58,7 @@ bool File::Open(void *handle)
 	return false;
 }
 
-bool File::OpenTemporaryFile(const std::wstring &dir)
+bool File::OpenTemporaryFile(const std::wstring &dir, bool first_try)
 {
 	return Open(tmpnam(NULL), MODE_TEMP);
 } 

@@ -1813,8 +1813,15 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 		}
 	}
 
-	VSS_SNAPSHOT_PROP snap_props; 
+	VSS_SNAPSHOT_PROP snap_props = {}; 
     CHECK_COM_RESULT_RELEASE(backupcom->GetSnapshotProperties(dir->ref->ssetid, &snap_props));
+
+	if(snap_props.m_pwszSnapshotDeviceObject==NULL)
+	{
+		VSSLog("GetSnapshotProperties did not return a volume path", LL_ERROR);
+		if(backupcom!=NULL){backupcom->AbortBackup();backupcom->Release();}
+		return false;
+	}
 
 	dir->target.erase(0,wpath.size());
 	dir->ref->volpath=(std::wstring)snap_props.m_pwszSnapshotDeviceObject;
@@ -2314,7 +2321,7 @@ std::string IndexThread::lookup_shadowcopy(int sid)
 			CHECK_COM_RESULT_RELEASE_S(CreateVssBackupComponents(&backupcom));
 			CHECK_COM_RESULT_RELEASE_S(backupcom->InitializeForBackup());
 			CHECK_COM_RESULT_RELEASE_S(backupcom->SetContext(VSS_CTX_APP_ROLLBACK) );
-			VSS_SNAPSHOT_PROP snap_props; 
+			VSS_SNAPSHOT_PROP snap_props={}; 
 			CHECK_COM_RESULT_RELEASE_S(backupcom->GetSnapshotProperties(scs[i].vssid, &snap_props));
 			std::string ret=Server->ConvertToUTF8(snap_props.m_pwszSnapshotDeviceObject);
 			VssFreeSnapshotProperties(&snap_props);

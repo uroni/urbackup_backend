@@ -6,6 +6,7 @@ AC_INIT([urbackupserver_fuseplugin], [0.1], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([dllmain.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
+AC_DISABLE_STATIC
 AM_INIT_AUTOMAKE
 
 AC_ARG_ENABLE([fortify],

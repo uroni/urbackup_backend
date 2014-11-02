@@ -22,7 +22,9 @@ g.languages=[
 				{ l: "Português do Brasil", s: "pt_BR" },
 				{ l: "slovenský jazyk", s: "sk"},
 				{ l: "Nederlands", s: "nl" },
-				{ l: "norsk", s: "no_NO" }
+				{ l: "norsk", s: "no_NO" },
+				{ l: "Italiano", s: "it_IT" },
+				{ l: "České", s: "cs_CZ" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	

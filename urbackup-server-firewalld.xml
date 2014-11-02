@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>UrBackup</short>
+  <description>UrBackup is a Client/Server Network Backup System. Enable this option if you use UrBackup with the default ports.</description>
+  <port protocol="tcp" port="55413"/>
+  <port protocol="tcp" port="55414"/>
+  <port protocol="tcp" port="55415"/>
+  <port protocol="udp" port="35623"/>
+</service>

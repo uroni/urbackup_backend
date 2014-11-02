@@ -131,5 +131,6 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"trust_client_hashes");
 	ret.push_back(L"show_server_updates");
 	ret.push_back(L"server_url");
+	ret.push_back(L"use_incremental_symlinks");
 	return ret;
 }
