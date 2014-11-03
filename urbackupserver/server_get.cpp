@@ -5405,10 +5405,10 @@ std::string BackupServerGet::clientlistName( int group, bool new_list )
 
 	if(group!=0)
 	{
-		ret+=nconvert(group);
+		ret+=nconvert(group)+"_";
 	}
 
-	ret+="_"+nconvert(clientid);
+	ret+=nconvert(clientid);
 	if(new_list)
 	{
 		ret+="_new";

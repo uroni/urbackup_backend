@@ -660,7 +660,16 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				else if(new_block)
 				{
 					m_hashoutput->Seek(chunkhash_file_off+(chunk_start/c_checkpoint_dist)*chunkhash_single_size);
-					writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
+					_i64 block_start = block*c_checkpoint_dist;
+					if(block_start+c_checkpoint_dist>remote_filesize)
+					{
+						size_t missing_chunks = (block_start + c_checkpoint_dist - remote_filesize)/c_chunk_size;
+						writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size - missing_chunks*small_hash_size);
+					}
+					else
+					{
+						writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
+					}
 				}
 
 				m_file->Seek(chunk_start);
@@ -849,7 +858,15 @@ void FileClientChunked::Hash_nochange(_i64 curr_pos)
 		Server->Log("Block without change. currpos="+nconvert(curr_pos), LL_DEBUG);
 		addReceivedBlock(curr_pos);
 		m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
-		writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
+		if(curr_pos+c_checkpoint_dist<=remote_filesize)
+		{
+			writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
+		}
+		else
+		{
+			size_t missing_chunks = (curr_pos + c_checkpoint_dist - remote_filesize)/c_chunk_size;
+			writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size-missing_chunks*small_hash_size);
+		}
 		pending_chunks.erase(it);
 		decrQueuedChunks();
 	}

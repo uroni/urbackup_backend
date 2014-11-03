@@ -8,21 +8,31 @@
 #include "../fileservplugin/chunk_settings.h"
 #include <assert.h>
 #include <algorithm>
+#include <memory>
 
 namespace
 {
 	const char ID_GRANT_ACCESS=0;
 	const char ID_DENY_ACCESS=1;
+	
+	const unsigned int METADATA_MAGIC=0xA4F04E41;
 
 	int64 get_hashdata_size(int64 hashfilesize)
 	{
-		int64 num_chunks = hashfilesize/c_checkpoint_dist+((hashfilesize%c_checkpoint_dist!=0)?1:0);
-		return chunkhash_file_off+num_chunks*chunkhash_single_size;
+		int64 num_chunks = hashfilesize/c_checkpoint_dist;
+		int64 size = chunkhash_file_off+num_chunks*chunkhash_single_size;
+		if(hashfilesize%c_checkpoint_dist!=0)
+		{
+			size+=big_hash_size + ((hashfilesize%c_checkpoint_dist)/c_chunk_size)*small_hash_size
+					+ ((((hashfilesize%c_checkpoint_dist)%c_chunk_size)!=0)?small_hash_size:0);
+		}
+		return size;
 	}
 
 	bool write_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMetadata& metadata)
 	{
 		CWData data;
+		data.addUInt(METADATA_MAGIC);
 		data.addChar(0);
 		metadata.serialize(data);
 
@@ -56,6 +66,19 @@ namespace
 		}
 
 		metadata_size = little_endian(metadata_size);
+		
+		_u32 metadata_magic;
+		if(in->Read(reinterpret_cast<char*>(&metadata_magic), sizeof(metadata_magic))!=sizeof(metadata_magic))
+		{
+			Server->Log(L"Error reading file metadata magic from \""+in->getFilenameW()+L"\" -2", LL_DEBUG);
+			return false;
+		}
+		
+		if(little_endian(metadata_magic)!=METADATA_MAGIC)
+		{
+			Server->Log(L"Metadata magic wrong in file \""+in->getFilenameW(), LL_DEBUG);
+			return false;
+		}		
 
 		std::vector<char> buffer;
 		buffer.resize(metadata_size);
@@ -130,8 +153,8 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 
 		if(out->Size()!=hashdata_size)
 		{
-			Server->Log(L"File \""+out->getFilenameW()+L"\" has wrong size. Should="+convert(hashdata_size)+L" is="+convert(out->Size()), LL_ERROR);
-			assert(false);
+			Server->Log(L"File \""+out->getFilenameW()+L"\" has wrong size. Should="+convert(hashdata_size)+L" is="+convert(out->Size())+L". Error writing metadata to file.", LL_WARNING);
+			return false;
 		}
 
 		out->Seek(hashdata_size);

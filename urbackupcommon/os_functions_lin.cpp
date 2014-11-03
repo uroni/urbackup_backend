@@ -592,6 +592,6 @@ bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified
 	struct utimbuf times;
 	times.actime = static_cast<time_t>(last_modified);
 	times.modtime = static_cast<time_t>(last_modified);
-	int rc = utime(Server->ConvertToUTF8(fn), &times);
+	int rc = utime(Server->ConvertToUTF8(fn).c_str(), &times);
 	return rc==0;
 }
