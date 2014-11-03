@@ -2,7 +2,7 @@
 	<div class="panel-heading">{tLogs}</div>
 	<div class="panel-body">
 
-		<table class="table table-striped">
+		<table class="table table-hover">
 			<thead>
 				<tr>	
 					<th>&nbsp;</th>
@@ -38,36 +38,45 @@
 	<div class="panel-heading">{tReports}</div>
 	<div class="panel-body">
 		{?has_user}
-		<form class="form-group">
+		<form class="form-horizontal">
 			<div class="form-group">
-				<label class="col-sm-2" for="s_report_mails">{tSend reports to}:</label>
-				<span id="s_report_mails"></span>
+				<label class="col-sm-2 control-label">{tSend reports to}:</label>
+				<p class="form-control-static" id="s_report_mails"></p>
+			</div>
+			<div class="form-group">
+				<div class="col-sm-2">&nbsp;</div>
 				<input type="hidden" id="report_mail" value="{report_mail}"/>
 				<div class="col-sm-4">
-					<input type="text" class="form-control" id="report_new_mail" value=""/>
+					<input type="text" class="form-control" id="report_new_mail" value="" placeholder="{tAdd Email Address}"/>
 				</div>
-				<a href="javascript: logs_add_mail()"><button class="btn btn-default">+</button></a>
+				<a href="javascript: logs_add_mail()" class="btn btn-default">+</a>
 			</div>
 			<div class="form-group">
-				
-				{tSend}&nbsp;
-				<select size="1" style="width: 150px" id="report_sendonly">
-				<option value="0" {sel_all}>{tAll}</option>
-				<option value="1" {sel_failed}>{tFailed}</option>
-				<option value="2" {sel_succ}>{tSuccessfull}</option>
-				</select>&nbsp;
-				{tBackups with a log message of at least log level}&nbsp;
-				<select size="1" style="width: 150px" id="report_loglevel">
-				<option value="0" {sel_info}>{tInfo}</option>
-				<option value="1" {sel_warn}>{tWarning}</option>
-				<option value="2" {sel_error}>{tError}</option>
-				</select>
-				<br />
-				<input type="button" value="{tSave}" onClick="saveReportSettings()" />
-				{:else}
-				{tYou need to create a user to be able to send reports}
-				{/has_user}
+				<label class="col-sm-2 control-label">{tSend}</label>
+				<div class="col-sm-4">
+					<select class="form-control" id="report_sendonly">
+						<option value="0" {sel_all}>{tAll}</option>
+						<option value="1" {sel_failed}>{tFailed}</option>
+						<option value="2" {sel_succ}>{tSuccessfull}</option>
+					</select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-2 control-label">{tMinimum log level}</label>
+				<div class="col-sm-4">
+					<select class="form-control" id="report_loglevel">
+						<option value="0" {sel_info}>{tInfo}</option>
+						<option value="1" {sel_warn}>{tWarning}</option>
+						<option value="2" {sel_error}>{tError}</option>
+					</select>
+				</div>
+			</div>
+			<div class="col-sm-offset-2">
+				<input type="button" class="btn btn-default" value="{tSave}" onClick="saveReportSettings()" />
 			</div>
 		</form>
+		{:else}
+			{tYou need to create a user to be able to send reports}
+			{/has_user}
 	</div>
 </div>

@@ -2610,8 +2610,14 @@ function show_logs2(data)
 	var live_log_clients="";
 	if(data.clients && !data.log)
 	{
-		var np=trans("filter")+": ";
-		np+="<select size=\"1\" onchange=\"logClientChange()\" id=\"logclients\">";
+		var np="";
+		np+="<form class=\"form-horizontal\" role=\"form\">";
+		np+="<div class=\"form-group\">";
+		np+="<label class=\"col-sm-1 control-label\">";
+		np+=trans("filter")+": ";
+		np+="</label>";
+		np+="<div class=\"col-sm-2\">";
+		np+="<select class=\"form-control\" onchange=\"logClientChange()\" id=\"logclients\">";
 		np+="<option value=\"-1\">"+trans("all")+"</option>";
 		for(var i=0;i<data.clients.length;++i)
 		{
@@ -2626,7 +2632,10 @@ function show_logs2(data)
 			np+="</option>";
 		}
 		np+="</select> ";
+		np+="</div>";
 		np+=dustRender("logs_filter");
+		np+="</div>";
+		np+="</form>";
 		
 		
 		I('nav_pos').innerHTML=np;
@@ -2658,10 +2667,10 @@ function show_logs2(data)
 			var obj=data.logs[i];
 			
 			if(obj.errors>0)
-				obj.estyle="background-color: red";
+				obj.eclass="danger";
 			
 			if(obj.warnings>0)
-				obj.wstyle="background-color: yellow";
+				obj.wclass="warning";
 				
 			var action=0;
 			if(obj.image==0)
