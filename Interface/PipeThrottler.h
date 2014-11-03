@@ -4,6 +4,12 @@
 #include "Object.h"
 #include <string>
 
+class IPipeThrottlerUpdater : public IObject
+{
+public:
+	virtual size_t getThrottleLimit(void* userdata)=0;
+};
+
 class IPipeThrottler : public IObject
 {
 public:

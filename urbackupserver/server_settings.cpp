@@ -234,10 +234,10 @@ void ServerSettings::readSettingsDefault(void)
 {
 	SSettings* settings=settings_cache->settings;
 	settings->clientid=clientid;
-	settings->update_freq_incr=settings_default->getValue("update_freq_incr", 5*60*60);
-	settings->update_freq_full=settings_default->getValue("update_freq_full", 30*24*60*60);
-	settings->update_freq_image_incr=settings_default->getValue("update_freq_image_incr", 7*24*60*60);
-	settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", 60*24*60*60);
+	settings->update_freq_incr=settings_default->getValue("update_freq_incr", nconvert(5*60*60) );
+	settings->update_freq_full=settings_default->getValue("update_freq_full", nconvert(30*24*60*60) );
+	settings->update_freq_image_incr=settings_default->getValue("update_freq_image_incr", nconvert( 7*24*60*60) );
+	settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", nconvert( 60*24*60*60) );
 	settings->max_file_incr=settings_default->getValue("max_file_incr", 100);
 	settings->min_file_incr=settings_default->getValue("min_file_incr", 40);
 	settings->max_file_full=settings_default->getValue("max_file_full", 10);
@@ -284,10 +284,10 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_encrypt=(settings_default->getValue("internet_encrypt", "true")=="true");
 	settings->internet_compress=(settings_default->getValue("internet_compress", "true")=="true");
 	settings->internet_compression_level=atoi(settings_default->getValue("internet_compress", "6").c_str());
-	settings->internet_speed=atoi(settings_default->getValue("internet_speed", "-1").c_str());
-	settings->local_speed=atoi(settings_default->getValue("local_speed", "-1").c_str());
-	settings->global_internet_speed=atoi(settings_default->getValue("global_internet_speed", "-1").c_str());
-	settings->global_local_speed=atoi(settings_default->getValue("global_local_speed", "-1").c_str());
+	settings->internet_speed=settings_default->getValue("internet_speed", "-1");
+	settings->local_speed=settings_default->getValue("local_speed", "-1");
+	settings->global_internet_speed=settings_default->getValue("global_internet_speed", "-1");
+	settings->global_local_speed=settings_default->getValue("global_local_speed", "-1");
 	settings->internet_mode_enabled=(settings_default->getValue("internet_mode_enabled", "false")=="true");
 	settings->silent_update=(settings_default->getValue("silent_update", "false")=="true");
 	settings->use_tmpfiles=(settings_default->getValue("use_tmpfiles", "false")=="true");
@@ -343,19 +343,19 @@ void ServerSettings::readSettingsClient(void)
 	if(!settings->overwrite && !settings->allow_overwrite)
 		return;
 
-	int tmp=settings_client->getValue("update_freq_incr", -1);
-	if(tmp!=-1)
-		settings->update_freq_incr=tmp;
-	tmp=settings_client->getValue("update_freq_full", -1);
-	if(tmp!=-1)
-		settings->update_freq_full=tmp;
-	tmp=settings_client->getValue("update_freq_image_incr", -1);
-	if(tmp!=-1)
-		settings->update_freq_image_incr=tmp;
-	tmp=settings_client->getValue("update_freq_image_full", -1);
-	if(tmp!=-1)
-		settings->update_freq_image_full=tmp;
-	tmp=settings_client->getValue("max_file_incr", -1);
+	stmp=settings_client->getValue("update_freq_incr", std::string());
+	if(!stmp.empty())
+		settings->update_freq_incr=stmp;
+	stmp=settings_client->getValue("update_freq_full", std::string());
+	if(!stmp.empty())
+		settings->update_freq_full=stmp;
+	stmp=settings_client->getValue("update_freq_image_incr", std::string());
+	if(!stmp.empty())
+		settings->update_freq_image_incr=stmp;
+	stmp=settings_client->getValue("update_freq_image_full", std::string());
+	if(!stmp.empty())
+		settings->update_freq_image_full=stmp;
+	int tmp=settings_client->getValue("max_file_incr", -1);
 	if(tmp!=-1)
 		settings->max_file_incr=tmp;
 	tmp=settings_client->getValue("min_file_incr", -1);
@@ -397,10 +397,10 @@ void ServerSettings::readSettingsClient(void)
 		settings->image_letters=stmp;
 	stmp=settings_client->getValue("internet_speed", "");
 	if(!stmp.empty())
-		settings->internet_speed=atoi(stmp.c_str());
+		settings->internet_speed=stmp;
 	stmp=settings_client->getValue("local_speed", "");
 	if(!stmp.empty())
-		settings->local_speed=atoi(stmp.c_str());
+		settings->local_speed=stmp;
 
 	readBoolClientSetting("client_set_settings", &settings->client_set_settings);
 	readBoolClientSetting("internet_mode_enabled", &settings->internet_mode_enabled);
@@ -555,76 +555,8 @@ std::vector<STimeSpan> ServerSettings::getWindow(std::string window)
 
 	for(size_t i=0;i<toks.size();++i)
 	{
-		std::string c_tok=trim(toks[i]);
-		std::string f_o=getuntil("/", c_tok);
-		std::string b_o=getafter("/", c_tok);
-
-		std::vector<std::string> dow_toks;
-		Tokenize(f_o, dow_toks, ",");
-
-		std::vector<std::string> time_toks;
-		Tokenize(b_o, time_toks, ",");
-
-		for(size_t l=0;l<dow_toks.size();++l)
-		{
-			f_o=trim(dow_toks[l]);
-			if(f_o.find("-")!=std::string::npos)
-			{
-				std::string f1=trim(getuntil("-", f_o));
-				std::string b2=trim(getafter("-", f_o));
-
-				int start=parseDayOfWeek(f1);
-				int stop=parseDayOfWeek(b2);
-
-				if(stop<start) { int t=start; start=stop; stop=t; }
-
-				if(start<1 || start>7 || stop<1 || stop>7)
-				{
-					ret.clear();
-					return ret;
-				}
-				
-				for(size_t o=0;o<time_toks.size();++o)
-				{
-					b_o=trim(time_toks[o]);
-
-					STimeSpan ts=parseTime(b_o);
-					if(ts.dayofweek==-1)
-					{
-						ret.clear();
-						return ret;
-					}				
-			
-					for(int j=start;j<=stop;++j)
-					{				
-						ts.dayofweek=j;
-						ret.push_back(ts);
-					}
-				}
-			}
-			else
-			{
-				int j=parseDayOfWeek(f_o);
-				if(j<1 || j>7)
-				{
-					ret.clear();
-					return ret;
-				}
-
-				for(size_t o=0;o<time_toks.size();++o)
-				{
-					b_o=trim(time_toks[o]);
-					STimeSpan ts=parseTime(b_o);
-					if(ts.dayofweek==-1)
-					{
-						ret.clear();
-						return ret;
-					}
-					ts.dayofweek=j;
-					ret.push_back(ts);
-				}
-			}
-		}
+		std::vector<STimeSpan> add = parseTimeSpan(toks[i]);
+		ret.insert(ret.end(), add.begin(), add.end());
 	}
 
 	return ret;
@@ -704,28 +636,28 @@ int ServerSettings::getUpdateFreqImageIncr()
 {
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
-	return settings_cache->settings->update_freq_image_incr;
+	return static_cast<int>(currentTimeSpanValue(settings_cache->settings->update_freq_image_incr)+1);
 }
 
 int ServerSettings::getUpdateFreqFileIncr()
 {
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
-	return settings_cache->settings->update_freq_incr;
+	return static_cast<int>(currentTimeSpanValue(settings_cache->settings->update_freq_incr)+1);
 }
 
 int ServerSettings::getUpdateFreqImageFull()
 {
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
-	return settings_cache->settings->update_freq_image_full;
+	return static_cast<int>(currentTimeSpanValue(settings_cache->settings->update_freq_image_full)+1);
 }
 
 int ServerSettings::getUpdateFreqFileFull()
 {
 	updateInternal(NULL);
 	IScopedLock lock(g_mutex);
-	return settings_cache->settings->update_freq_full;
+	return static_cast<int>(currentTimeSpanValue(settings_cache->settings->update_freq_full)+1);
 }
 
 std::string ServerSettings::getImageFileFormat()
@@ -747,6 +679,199 @@ std::string ServerSettings::getImageFileFormat()
 	{
 		return image_file_format;
 	}
+}
+
+std::vector<STimeSpan> ServerSettings::parseTimeSpan(std::string time_span)
+{
+	std::vector<STimeSpan> ret;
+
+	std::string c_tok=trim(time_span);
+	std::string f_o=getuntil("/", c_tok);
+	std::string b_o=getafter("/", c_tok);
+
+	std::vector<std::string> dow_toks;
+	Tokenize(f_o, dow_toks, ",");
+
+	std::vector<std::string> time_toks;
+	Tokenize(b_o, time_toks, ",");
+
+	for(size_t l=0;l<dow_toks.size();++l)
+	{
+		f_o=trim(dow_toks[l]);
+		if(f_o.find("-")!=std::string::npos)
+		{
+			std::string f1=trim(getuntil("-", f_o));
+			std::string b2=trim(getafter("-", f_o));
+
+			int start=parseDayOfWeek(f1);
+			int stop=parseDayOfWeek(b2);
+
+			if(stop<start) { int t=start; start=stop; stop=t; }
+
+			if(start<1 || start>7 || stop<1 || stop>7)
+			{
+				ret.clear();
+				return ret;
+			}
+
+			for(size_t o=0;o<time_toks.size();++o)
+			{
+				b_o=trim(time_toks[o]);
+
+				STimeSpan ts=parseTime(b_o);
+				if(ts.dayofweek==-1)
+				{
+					ret.clear();
+					return ret;
+				}				
+
+				for(int j=start;j<=stop;++j)
+				{				
+					ts.dayofweek=j;
+					ret.push_back(ts);
+				}
+			}
+		}
+		else
+		{
+			int j=parseDayOfWeek(f_o);
+			if(j<1 || j>7)
+			{
+				ret.clear();
+				return ret;
+			}
+
+			for(size_t o=0;o<time_toks.size();++o)
+			{
+				b_o=trim(time_toks[o]);
+				STimeSpan ts=parseTime(b_o);
+				if(ts.dayofweek==-1)
+				{
+					ret.clear();
+					return ret;
+				}
+				ts.dayofweek=j;
+				ret.push_back(ts);
+			}
+		}
+	}
+
+	return ret;
+}
+
+std::vector<std::pair<double, STimeSpan > > ServerSettings::parseTimeSpanValue(std::string time_span_value)
+{
+	std::vector<std::string> toks;
+
+	Tokenize(time_span_value, toks, ";");
+
+	std::vector<std::pair<double, STimeSpan > > ret;
+
+
+	for(size_t i=0;i<toks.size();++i)
+	{
+		if(toks[i].find("@")==std::string::npos)
+		{
+			ret.push_back(std::make_pair(atof(toks[i].c_str()), STimeSpan()));
+		}
+		else
+		{
+			double val = atof(getuntil("@", toks[i]).c_str());
+			
+			std::vector<STimeSpan> timespans = parseTimeSpan(getafter("@", toks[i]));
+
+			for(size_t i=0;i<timespans.size();++i)
+			{
+				ret.push_back(std::make_pair(val, timespans[i]));
+			}
+		}
+	}
+
+	return ret;
+}
+
+int ServerSettings::getLocalSpeed()
+{
+	return static_cast<int>(currentTimeSpanValue(getSettings()->local_speed)+0.5);
+}
+
+int ServerSettings::getGlobalLocalSpeed()
+{
+	return static_cast<int>(currentTimeSpanValue(getSettings()->global_local_speed)+0.5);
+}
+
+int ServerSettings::getInternetSpeed()
+{
+	return static_cast<int>(currentTimeSpanValue(getSettings()->internet_speed)+0.5);
+}
+
+int ServerSettings::getGlobalInternetSpeed()
+{
+	return static_cast<int>(currentTimeSpanValue(getSettings()->global_internet_speed)+0.5);
+}
+
+double ServerSettings::currentTimeSpanValue(std::string time_span_value)
+{
+	std::vector<std::pair<double, STimeSpan > > time_span_values = parseTimeSpanValue(time_span_value);
+
+	double val = -1;
+	double selected_time_span_duration=25.f;
+
+	for(size_t i=0;i<time_span_values.size();++i)
+	{
+		std::vector<STimeSpan> single_time_span;
+		single_time_span.push_back(time_span_values[i].second);
+		if(time_span_values[i].second.duration()<selected_time_span_duration
+			&& ( time_span_values[i].second.dayofweek==-1 
+			     || isInTimeSpan(single_time_span) ) )
+		{
+			val = time_span_values[i].first;
+		}
+	}
+
+	return val;
+}
+
+namespace
+{
+	std::string remLeadingZeros(std::string t)
+	{
+		std::string r;
+		bool in=false;
+		for(size_t i=0;i<t.size();++i)
+		{
+			if(!in && t[i]!='0' )
+				in=true;
+
+			if(in)
+			{
+				r+=t[i];
+			}
+		}
+		return r;
+	}
+}
+
+bool ServerSettings::isInTimeSpan(std::vector<STimeSpan> bw)
+{
+	if(bw.empty()) return true;
+	int dow=atoi(os_strftime("%w").c_str());
+	if(dow==0) dow=7;
+
+	float hm=(float)atoi(remLeadingZeros(os_strftime("%H")).c_str())+(float)atoi(remLeadingZeros(os_strftime("%M")).c_str())*(1.f/60.f);
+	for(size_t i=0;i<bw.size();++i)
+	{
+		if(bw[i].dayofweek==dow)
+		{
+			if( (bw[i].start_hour<=bw[i].stop_hour && hm>=bw[i].start_hour && hm<=bw[i].stop_hour)
+				|| (bw[i].start_hour>bw[i].stop_hour && (hm>=bw[i].start_hour || hm<=bw[i].stop_hour) ) )
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 #endif //CLIENT_ONLY

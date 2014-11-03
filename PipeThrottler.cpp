@@ -5,10 +5,13 @@
 
 #define DLOG(x) //x
 
-PipeThrottler::PipeThrottler(size_t bps)
-	: throttle_bps(bps), curr_bytes(0), lastresettime(0)
+PipeThrottler::PipeThrottler(size_t bps, int64 update_time_interval,
+	IPipeThrottlerUpdater* updater, void* userdata)
+	: throttle_bps(bps), update_time_interval(update_time_interval), curr_bytes(0),
+	  lastresettime(0), updater(updater), userdata(userdata)
 {
 	mutex=Server->createMutex();
+	lastupdatetime=Server->getTimeMS();
 }
 
 PipeThrottler::~PipeThrottler(void)
@@ -23,6 +26,13 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 	if(throttle_bps==0) return true;
 
 	int64 ctime=Server->getTimeMS();
+
+	if(updater && ctime-lastupdatetime>update_time_interval)
+	{
+		throttle_bps = updater->getThrottleLimit(userdata);
+		lastupdatetime = ctime;
+		if(throttle_bps==0) return true;
+	}
 
 	if(ctime-lastresettime>1000)
 	{

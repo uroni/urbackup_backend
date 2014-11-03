@@ -1710,9 +1710,10 @@ void CServer::startupComplete(void)
 	startup_complete_cond->notify_all();
 }
 
-IPipeThrottler* CServer::createPipeThrottler(size_t bps)
+IPipeThrottler* CServer::createPipeThrottler(size_t bps, int64 update_interval,
+	IPipeThrottlerUpdater* updater, void* userdata)
 {
-	return new PipeThrottler(bps);
+	return new PipeThrottler(bps, update_interval, updater, userdata);
 }
 
 

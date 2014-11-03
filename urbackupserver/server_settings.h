@@ -18,10 +18,10 @@ struct SSettings
 	int clientid;
 	std::wstring backupfolder;
 	std::wstring backupfolder_uncompr;
-	int update_freq_incr;
-	int update_freq_full;
-	int update_freq_image_full;
-	int update_freq_image_incr;
+	std::string update_freq_incr;
+	std::string update_freq_full;
+	std::string update_freq_image_full;
+	std::string update_freq_image_incr;
 	int max_file_incr;
 	int min_file_incr;
 	int max_file_full;
@@ -68,10 +68,10 @@ struct SSettings
 	bool internet_encrypt;
 	bool internet_compress;
 	int internet_compression_level;
-	int local_speed;
-	int internet_speed;
-	int global_internet_speed;
-	int global_local_speed;
+	std::string local_speed;
+	std::string internet_speed;
+	std::string global_internet_speed;
+	std::string global_local_speed;
 	bool internet_mode_enabled;
 	bool silent_update;
 	bool use_tmpfiles;
@@ -104,9 +104,22 @@ struct STimeSpan
 	STimeSpan(void): dayofweek(-1) {}
 	STimeSpan(int dayofweek, float start_hour, float stop_hour):dayofweek(dayofweek), start_hour(start_hour), stop_hour(stop_hour) {}
 	STimeSpan(float start_hour, float stop_hour):dayofweek(0), start_hour(start_hour), stop_hour(stop_hour) {}
+
 	int dayofweek;
 	float start_hour;
 	float stop_hour;
+
+	float duration()
+	{
+		if(dayofweek==-1)
+		{
+			return 24.f;
+		}
+		else
+		{
+			return stop_hour-start_hour;
+		}
+	}
 };
 
 class ServerSettings;
@@ -152,11 +165,26 @@ public:
 	int getUpdateFreqImageFull();
 	int getUpdateFreqFileFull();
 
+	int getLocalSpeed();
+	int getGlobalLocalSpeed();
+	int getInternetSpeed();
+	int getGlobalInternetSpeed();
+
+	static bool isInTimeSpan(std::vector<STimeSpan> bw);
+
 private:
 	void operator=(const ServerSettings& other){};
 	ServerSettings(const ServerSettings& other){};
 
 	std::vector<STimeSpan> getWindow(std::string window);
+
+	std::vector<STimeSpan> parseTimeSpan(std::string time_span);
+
+	std::vector<std::pair<double, STimeSpan > > parseTimeSpanValue(std::string time_span_value);
+
+	double currentTimeSpanValue(std::string time_span_value);
+
+
 	float parseTimeDet(std::string t);
 	STimeSpan parseTime(std::string t);
 	int parseDayOfWeek(std::string dow);

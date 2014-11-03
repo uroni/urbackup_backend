@@ -4416,44 +4416,6 @@ sockaddr_in BackupServerGet::getClientaddr(void)
 	return clientaddr;
 }
 
-std::string BackupServerGet::remLeadingZeros(std::string t)
-{
-	std::string r;
-	bool in=false;
-	for(size_t i=0;i<t.size();++i)
-	{
-		if(!in && t[i]!='0' )
-			in=true;
-
-		if(in)
-		{
-			r+=t[i];
-		}
-	}
-	return r;
-}
-
-bool BackupServerGet::isInBackupWindow(std::vector<STimeSpan> bw)
-{
-	if(bw.empty()) return true;
-	int dow=atoi(os_strftime("%w").c_str());
-	if(dow==0) dow=7;
-	
-	float hm=(float)atoi(remLeadingZeros(os_strftime("%H")).c_str())+(float)atoi(remLeadingZeros(os_strftime("%M")).c_str())*(1.f/60.f);
-	for(size_t i=0;i<bw.size();++i)
-	{
-		if(bw[i].dayofweek==dow)
-		{
-			if( (bw[i].start_hour<=bw[i].stop_hour && hm>=bw[i].start_hour && hm<=bw[i].stop_hour)
-				|| (bw[i].start_hour>bw[i].stop_hour && (hm>=bw[i].start_hour || hm<=bw[i].stop_hour) ) )
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
 
 bool BackupServerGet::isBackupsRunningOkay(bool incr, bool file)
 {

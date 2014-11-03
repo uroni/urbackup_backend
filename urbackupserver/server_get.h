@@ -87,7 +87,6 @@ public:
 	static void init_mutex(void);
 	static void destroy_mutex(void);
 
-	static bool isInBackupWindow(std::vector<STimeSpan> bw);
 	static MailServer getMailServerSettings(void);
 	static bool sendMailToAdmins(const std::string& subj, const std::string& message);
 
@@ -195,7 +194,6 @@ private:
 	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
 	bool constructBackupPathCdp();
 	
-	static std::string remLeadingZeros(std::string t);
 	bool updateCapabilities(void);
 
 

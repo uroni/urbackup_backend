@@ -29,6 +29,7 @@ class ICondition;
 class IScopedLock;
 class IDatabaseFactory;
 class IPipeThrottler;
+class IPipeThrottlerUpdater;
 
 struct SPostfile
 {
@@ -101,7 +102,7 @@ public:
 	virtual ISettingsReader* createDBSettingsReader(THREAD_ID tid, DATABASE_ID pIdentifier, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createDBSettingsReader(IDatabase *db, const std::string &pTable, const std::string &pSQL="")=0;
 	virtual ISettingsReader* createMemorySettingsReader(const std::string &pData)=0;
-	virtual IPipeThrottler* createPipeThrottler(size_t bps)=0;
+	virtual IPipeThrottler* createPipeThrottler(size_t bps, int64 update_interval=0, IPipeThrottlerUpdater* updater=NULL, void* userdata=NULL)=0;
 
 	virtual bool openDatabase(std::string pFile, DATABASE_ID pIdentifier, std::string pEngine="sqlite")=0;
 	virtual IDatabase* getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)=0;
