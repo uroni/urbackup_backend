@@ -449,6 +449,13 @@ void update_client13_14(IDatabase *db)
 	db->Write("CREATE INDEX IF NOT EXISTS frn_pid_index ON map_frn( pid ASC, pid_high ASC )");
 }
 
+void update_client14_15(IDatabase *db)
+{
+	db->Write("DELETE FROM journal_data");
+	db->Write("DELETE FROM map_frn");
+	db->Write("DELETE FROM journal_ids");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -520,6 +527,10 @@ bool upgrade_client(void)
 				break;
 			case 13:
 				update_client13_14(db);
+				++ver;
+				break;
+			case 14:
+				update_client14_15(db);
 				++ver;
 				break;
 			default:
