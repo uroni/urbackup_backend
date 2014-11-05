@@ -38,11 +38,11 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 		if(has_header && next_header.patch_off==-1)
 		{
 			has_header=readNextValidPatch(patch, patchf_pos, &next_header);
+		}
 
-			if(!has_header && file_pos>=filesize)
-			{
-				break;
-			}
+		if(!has_header && file_pos>=filesize)
+		{
+			break;
 		}
 
 		unsigned int tr=buffer_size;
