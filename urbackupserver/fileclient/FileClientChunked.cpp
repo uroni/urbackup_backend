@@ -794,22 +794,12 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			Server->Log("Block hash wrong. Getting whole block. currpos="+nconvert(curr_pos), LL_DEBUG);
 			//system("pause");
 			invalidateLastPatches();
-			if(getNextFileClient())
-			{
-				size_t backup_remaining_bufptr_bytes=remaining_bufptr_bytes;
-				char* backup_bufptr = bufptr;
-				loadChunkOutOfBand(curr_pos);
-				remaining_bufptr_bytes = backup_remaining_bufptr_bytes;
-				bufptr = backup_bufptr;
-			}
-			else
-			{
-				CWData data;
-				data.addUChar(ID_BLOCK_REQUEST);
-				data.addInt64(curr_pos);
-				data.addChar(1);
-				stack->Send( getPipe(), data.getDataPtr(), data.getDataSize());
-			}			
+
+			size_t backup_remaining_bufptr_bytes=remaining_bufptr_bytes;
+			char* backup_bufptr = bufptr;
+			loadChunkOutOfBand(curr_pos);
+			remaining_bufptr_bytes = backup_remaining_bufptr_bytes;
+			bufptr = backup_bufptr;
 		}
 		else
 		{
