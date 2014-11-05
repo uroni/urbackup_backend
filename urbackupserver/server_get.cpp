@@ -583,7 +583,7 @@ void BackupServerGet::operator ()(void)
 				with_hashes=true;
 
 			if( !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
-				( (isUpdateFull() && isInBackupWindow(server_settings->getBackupWindowFullFile())
+				( (isUpdateFull() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
 					&& exponentialBackoffFile() ) || do_full_backup_now )
 				&& isBackupsRunningOkay(true, true) && !do_full_image_now && !do_full_image_now && !do_incr_backup_now )
 			{
@@ -622,7 +622,7 @@ void BackupServerGet::operator ()(void)
 				do_full_backup_now=false;
 			}
 			else if( !server_settings->getSettings()->no_file_backups
-				&& ( (isUpdateIncr() && isInBackupWindow(server_settings->getBackupWindowIncrFile())
+				&& ( (isUpdateIncr() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
 					  && exponentialBackoffFile() ) || do_incr_backup_now )
 				&& isBackupsRunningOkay(true, true) && !do_full_image_now && !do_full_image_now)
 			{
@@ -674,7 +674,7 @@ void BackupServerGet::operator ()(void)
 				do_incr_backup_now=false;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
-				&& ( (isUpdateFullImage() && isInBackupWindow(server_settings->getBackupWindowFullImage())
+				&& ( (isUpdateFullImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullImage())
 					  && exponentialBackoffImage() ) || do_full_image_now)
 				&& isBackupsRunningOkay(true, false) && !do_incr_image_now)
 			{
@@ -725,7 +725,7 @@ void BackupServerGet::operator ()(void)
 				do_full_image_now=false;
 			}
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
-				&& ((isUpdateIncrImage() && isInBackupWindow(server_settings->getBackupWindowIncrImage()) 
+				&& ((isUpdateIncrImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrImage()) 
 					 && exponentialBackoffImage() ) || do_incr_image_now)
 				&& isBackupsRunningOkay(true, false) )
 			{
@@ -1069,8 +1069,8 @@ void BackupServerGet::prepareSQL(void)
 {
 	SSettings *s=server_settings->getSettings();
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=CURRENT_TIMESTAMP WHERE id=?", false);
-	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1 AND tgroup=0", false);
-	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(s->update_freq_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=0", false);
+	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqFileFull())+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1 AND tgroup=0", false);
+	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqFileIncr())+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=0", false);
 	q_create_backup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?, ?)", false);
 	q_get_last_incremental=db->Prepare("SELECT incremental,path,resumed,complete,id FROM backups WHERE clientid=? AND tgroup=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
 	q_get_last_incremental_complete=db->Prepare("SELECT incremental,path FROM backups WHERE clientid=? AND tgroup=? AND done=1 AND complete=1 ORDER BY backuptime DESC LIMIT 1", false);
@@ -1078,8 +1078,8 @@ void BackupServerGet::prepareSQL(void)
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
 	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
 	q_set_complete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
-	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_full)+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false);
-	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(s->update_freq_image_incr)+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false); 
+	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqImageFull())+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false);
+	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqImageIncr())+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false); 
 	q_create_backup_image=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, "+nconvert(curr_image_version)+",?)", false);
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
@@ -1301,7 +1301,7 @@ void BackupServerGet::updateLastseen(void)
 
 bool BackupServerGet::isUpdateFull(void)
 {
-	if( server_settings->getSettings()->update_freq_full<0 )
+	if( server_settings->getUpdateFreqFileFull()<0 )
 		return false;
 
 	q_update_full->Bind(clientid);
@@ -1312,7 +1312,7 @@ bool BackupServerGet::isUpdateFull(void)
 
 bool BackupServerGet::isUpdateIncr(void)
 {
-	if( server_settings->getSettings()->update_freq_incr<0 )
+	if( server_settings->getUpdateFreqFileIncr()<0 )
 		return false;
 
 	q_update_incr->Bind(clientid);
@@ -1323,7 +1323,7 @@ bool BackupServerGet::isUpdateIncr(void)
 
 bool BackupServerGet::isUpdateFullImage(const std::string &letter)
 {
-	if( server_settings->getSettings()->update_freq_image_full<0 )
+	if( server_settings->getUpdateFreqImageFull()<0 )
 		return false;
 
 	q_update_image_full->Bind(clientid);
@@ -1361,7 +1361,7 @@ bool BackupServerGet::isUpdateIncrImage(void)
 
 bool BackupServerGet::isUpdateIncrImage(const std::string &letter)
 {
-	if( server_settings->getSettings()->update_freq_image_full<0 || server_settings->getSettings()->update_freq_image_incr<0 )
+	if( server_settings->getUpdateFreqImageFull()<0 || server_settings->getUpdateFreqImageIncr()<0 )
 		return false;
 
 	q_update_image_incr->Bind(clientid);
@@ -3597,7 +3597,7 @@ void BackupServerGet::notifyClientBackupSuccessfull(void)
 
 void BackupServerGet::sendClientBackupIncrIntervall(void)
 {
-	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getSettings()->update_freq_incr)+"\"", "OK", L"Sending incremental file backup interval to client failed", 10000);
+	sendClientMessage("INCRINTERVALL \""+nconvert(server_settings->getUpdateFreqFileIncr())+"\"", "OK", L"Sending incremental file backup interval to client failed", 10000);
 }
 
 bool BackupServerGet::updateCapabilities(void)
@@ -4499,12 +4499,12 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms, std::string* c
 		IPipe *ret=InternetServiceConnector::getConnection(Server->ConvertToUTF8(clientname), SERVICE_COMMANDS, timeoutms);
 		if(server_settings!=NULL && ret!=NULL)
 		{
-			int internet_speed=server_settings->getSettings()->internet_speed;
+			int internet_speed=server_settings->getInternetSpeed();
 			if(internet_speed>0)
 			{
 				ret->addThrottler(getThrottler(internet_speed));
 			}
-			int global_internet_speed=server_settings->getSettings()->global_internet_speed;
+			int global_internet_speed=server_settings->getGlobalInternetSpeed();
 			if(global_internet_speed>0)
 			{
 				ret->addThrottler(BackupServer::getGlobalInternetThrottler(global_internet_speed));
@@ -4517,12 +4517,12 @@ IPipe *BackupServerGet::getClientCommandConnection(int timeoutms, std::string* c
 		IPipe *ret=Server->ConnectStream(inet_ntoa(getClientaddr().sin_addr), serviceport, timeoutms);
 		if(server_settings!=NULL && ret!=NULL)
 		{
-			int local_speed=server_settings->getSettings()->local_speed;
+			int local_speed=server_settings->getLocalSpeed();
 			if(local_speed>0)
 			{
 				ret->addThrottler(getThrottler(local_speed));
 			}
-			int global_local_speed=server_settings->getSettings()->global_local_speed;
+			int global_local_speed=server_settings->getGlobalLocalSpeed();
 			if(global_local_speed>0)
 			{
 				ret->addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
@@ -4543,12 +4543,12 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, ServerSettings*
 
 		if(server_settings!=NULL)
 		{
-			int internet_speed=server_settings->getSettings()->internet_speed;
+			int internet_speed=server_settings->getInternetSpeed();
 			if(internet_speed>0)
 			{
 				fc->addThrottler(getThrottler(internet_speed));
 			}
-			int global_internet_speed=server_settings->getSettings()->global_internet_speed;
+			int global_internet_speed=server_settings->getGlobalInternetSpeed();
 			if(global_internet_speed>0)
 			{
 				fc->addThrottler(BackupServer::getGlobalInternetThrottler(global_internet_speed));
@@ -4566,12 +4566,12 @@ _u32 BackupServerGet::getClientFilesrvConnection(FileClient *fc, ServerSettings*
 
 		if(server_settings!=NULL)
 		{
-			int local_speed=server_settings->getSettings()->local_speed;
+			int local_speed=server_settings->getLocalSpeed();
 			if(local_speed>0)
 			{
 				fc->addThrottler(getThrottler(local_speed));
 			}
-			int global_local_speed=server_settings->getSettings()->global_local_speed;
+			int global_local_speed=server_settings->getGlobalLocalSpeed();
 			if(global_local_speed>0)
 			{
 				fc->addThrottler(BackupServer::getGlobalLocalThrottler(global_local_speed));
@@ -4619,11 +4619,11 @@ bool BackupServerGet::getClientChunkedFilesrvConnection(std::auto_ptr<FileClient
 		int speed;
 		if(internet_connection)
 		{
-			speed=server_settings->getSettings()->internet_speed;
+			speed=server_settings->getInternetSpeed();
 		}
 		else
 		{
-			speed=server_settings->getSettings()->local_speed;
+			speed=server_settings->getLocalSpeed();
 		}
 		if(speed>0)
 		{
@@ -4632,7 +4632,7 @@ bool BackupServerGet::getClientChunkedFilesrvConnection(std::auto_ptr<FileClient
 
 		if(internet_connection)
 		{
-			int global_speed=server_settings->getSettings()->global_internet_speed;
+			int global_speed=server_settings->getGlobalInternetSpeed();
 			if(global_speed>0)
 			{
 				fc_chunked->addThrottler(BackupServer::getGlobalInternetThrottler(global_speed));
@@ -4640,7 +4640,7 @@ bool BackupServerGet::getClientChunkedFilesrvConnection(std::auto_ptr<FileClient
 		}
 		else
 		{
-			int global_speed=server_settings->getSettings()->global_local_speed;
+			int global_speed=server_settings->getGlobalLocalSpeed();
 			if(global_speed>0)
 			{
 				fc_chunked->addThrottler(BackupServer::getGlobalLocalThrottler(global_speed));

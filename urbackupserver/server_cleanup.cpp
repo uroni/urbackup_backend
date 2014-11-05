@@ -200,7 +200,7 @@ void ServerCleanupThread::operator()(void)
 			int chour=watoi(res[0][L"time"]);
 			ServerSettings settings(db);
 			std::vector<STimeSpan> tw=settings.getCleanupWindow();
-			if( ( (!tw.empty() && BackupServerGet::isInBackupWindow(tw)) || ( tw.empty() && (chour==3 || chour==4) ) )
+			if( ( (!tw.empty() && ServerSettings::isInTimeSpan(tw)) || ( tw.empty() && (chour==3 || chour==4) ) )
 				&& Server->getTimeSeconds()-last_cleanup>min_cleanup_interval)
 			{
 				IScopedLock lock(a_mutex);
