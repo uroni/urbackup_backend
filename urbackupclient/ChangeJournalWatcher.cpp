@@ -156,7 +156,8 @@ ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDataba
 	has_error=false;
 	last_index_update=0;
 
-	usn_logging_enabled = Server->getServerParameter("usn_logging_enabled")=="true";
+	usn_logging_enabled = Server->getServerParameter("usn_logging_enabled")=="true" ||
+		FileExists("usn_logging_enabled");
 }
 
 ChangeJournalWatcher::~ChangeJournalWatcher(void)
