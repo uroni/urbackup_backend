@@ -184,6 +184,7 @@ bool verify_hashes(std::string arg)
 
 		if(!backupname.empty())
 		{
+			std::string backupid_filter;
 			if(backupname=="last")
 			{
 				q=db->Prepare("SELECT id,path FROM backups WHERE clientid=? ORDER BY backuptime DESC LIMIT 1");
@@ -191,7 +192,7 @@ bool verify_hashes(std::string arg)
 				res=q->Read();
 				if(!res.empty())
 				{
-					backupid=watoi(res[0][L"id"]);
+					backupid_filter="= "+wnarrow(res[0][L"id"]);
 					Server->Log(L"Last backup: "+res[0][L"path"], LL_INFO);
 				}
 				else
@@ -199,6 +200,10 @@ bool verify_hashes(std::string arg)
 					Server->Log("Last backup not found", LL_ERROR);
 					return false;
 				}
+			}
+			else if(backupname=="*")
+			{
+				backupid_filter=" IN (SELECT id FROM backups WHERE clientid="+nconvert(cid)+")";
 			}
 			else
 			{		
@@ -208,7 +213,7 @@ bool verify_hashes(std::string arg)
 				res=q->Read();
 				if(!res.empty())
 				{
-					backupid=watoi(res[0][L"id"]);
+					backupid_filter="= "+wnarrow(res[0][L"id"]);
 				}
 				else
 				{
@@ -218,7 +223,7 @@ bool verify_hashes(std::string arg)
 				}
 			}
 
-			filter+=" AND backupid="+nconvert(backupid);
+			filter+=" AND backupid "+backupid_filter;
 		}
 	}
 
