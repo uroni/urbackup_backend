@@ -463,6 +463,13 @@ void update_client15_16(IDatabase *db)
 	db->Write("UPDATE backupdirs SET tgroup=0 WHERE tgroup IS NULL");
 }
 
+void update_client14_15(IDatabase *db)
+{
+	db->Write("DELETE FROM journal_data");
+	db->Write("DELETE FROM map_frn");
+	db->Write("DELETE FROM journal_ids");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -534,6 +541,10 @@ bool upgrade_client(void)
 				break;
 			case 13:
 				update_client13_14(db);
+				++ver;
+				break;
+			case 14:
+				update_client14_15(db);
 				++ver;
 				break;
 			case 14:

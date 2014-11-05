@@ -556,7 +556,7 @@ void ChangeJournalWatcher::indexRootDirs(_i64 rid, const std::wstring &root, uin
 	frn.LowPart=fi.nFileIndexLow;
 	frn.HighPart=fi.nFileIndexHigh;
 
-	addFrn(ExtractFileName(root)+os_file_sep(), parent, uint128(frn.QuadPart), rid);
+	addFrn(ExtractFileName(root), parent, uint128(frn.QuadPart), rid);
 	++nDirFrns;
 
 	std::vector<SFile> files=getFiles(root);

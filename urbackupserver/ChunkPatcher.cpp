@@ -1,5 +1,6 @@
 #include "ChunkPatcher.h"
 #include "../stringtools.h"
+#include <assert.h>
 
 ChunkPatcher::ChunkPatcher(void)
 	: cb(NULL), require_unchanged(true)
@@ -45,10 +46,16 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 			_i64 hoff=next_header.patch_off-file_pos;
 			if(hoff>=0 && hoff<tr)
 				tr=(unsigned int)hoff;
+
+			assert(hoff>=0);
 		}
 
-		if(file_pos>=size || file_pos>=filesize || tr==0)
+		assert(file_pos<filesize);
+
+		if(tr==0)
 		{
+			assert(file_pos==next_header.patch_off);
+
 			file_pos+=next_header.patch_size;
 
 			while(next_header.patch_size>0)
@@ -58,7 +65,10 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 				cb->next_chunk_patcher_bytes(buf, r, true);
 				next_header.patch_size-=r;
 			}
-			file->Seek(file_pos);
+			if(require_unchanged)
+			{
+				file->Seek(file_pos);
+			}
 			next_header.patch_off=-1;
 		}
 		else if(file_pos<size && file_pos<filesize)
@@ -79,11 +89,22 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 				}
 				else
 				{
+					if(file_pos+tr>size)
+					{
+						tr=static_cast<unsigned int>(size-file_pos);
+					}
+
 					file_pos+=tr;
 					cb->next_chunk_patcher_bytes(NULL, tr, false);
 					tr=0;
 				}				
 			}			
+		}
+		else
+		{
+			Server->Log("Patch corrupt. file_pos="+nconvert(file_pos)+" next_header.patch_off="+nconvert(next_header.patch_off)+" next_header.patch_size="+nconvert(next_header.patch_size)+" tr="+nconvert(tr)+" size="+nconvert(size)+" filesize="+nconvert(filesize), LL_ERROR);
+			assert(false);
+			return false;
 		}
 	}
 	return true;
