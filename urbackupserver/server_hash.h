@@ -64,6 +64,9 @@ public:
 	static void addFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int backupid, int clientid, int incremental, const std::wstring &fp,
 		const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid,
 		int64 next_entry, bool update_fileindex);
+		
+		
+	static void deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int64 id);
 
 	static void deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
 		bool use_transaction, bool del_entry);

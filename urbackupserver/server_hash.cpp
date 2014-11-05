@@ -340,6 +340,18 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 	}
 }
 
+void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, int64 id)
+{
+	ServerBackupDao::SFindFileEntry entry = backupdao.getFileEntry(id);
+	
+	if(entry.exists)
+	{
+		deleteFileSQL(backupdao, fileindex, reinterpret_cast<const char*>(entry.shahash.c_str()),
+				entry.filesize, entry.rsize, entry.clientid, entry.backupid, entry.incremental,
+				id, entry.prev_entry, entry.next_entry, entry.pointed_to, true, true);
+	}
+}
+
 void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
 	bool use_transaction, bool del_entry)
 {

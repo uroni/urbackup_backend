@@ -25,12 +25,19 @@ void FileIndex::operator()(void)
 	mutex=Server->createMutex();
 	cond=Server->createCondition();
 
-	while(!do_shutdown)
+	while(true)
 	{
 		std::map<FileIndex::SIndexKey, int64>* local_buf;
 
 		{
 			IScopedLock lock(mutex);
+
+			if(do_shutdown &&
+				cache_buffer_1.empty() &&
+				cache_buffer_2.empty() )
+			{
+				break;
+			}
 
 			while(active_cache_buffer->empty())
 			{

@@ -1,14 +1,18 @@
 #include "LMDBFileIndex.h"
 #include "../Interface/Server.h"
+#include "../Interface/ThreadPool.h"
 #include "../stringtools.h"
 #include "../common/data.h"
 #include "../urbackupcommon/os_functions.h"
 #include "database.h"
 #include "dao/ServerBackupDao.h"
 #include <assert.h>
+#include "../Interface/Types.h"
 
 MDB_env *LMDBFileIndex::env=NULL;
 ISharedMutex* LMDBFileIndex::mutex=NULL;
+LMDBFileIndex* LMDBFileIndex::fileindex=NULL;
+THREADPOOL_TICKET LMDBFileIndex::fileindex_ticket = ILLEGAL_THREADPOOL_TICKET;
 
 
 const size_t c_initial_map_size=1*1024*1024;
@@ -19,9 +23,17 @@ void LMDBFileIndex::initFileIndex()
 {
 	mutex = Server->createSharedMutex();
 
-	LMDBFileIndex* filecache=new LMDBFileIndex;
-	Server->createThread(filecache);
+	fileindex=new LMDBFileIndex;
+	fileindex_ticket = Server->getThreadPool()->execute(fileindex);
 }
+
+
+void LMDBFileIndex::shutdownFileIndex()
+{
+	fileindex->shutdown();
+	Server->getThreadPool()->waitFor(fileindex_ticket);
+}
+
 
 LMDBFileIndex::LMDBFileIndex()
 	: _has_error(false), txn(NULL), map_size(c_initial_map_size), it_cursor(NULL)

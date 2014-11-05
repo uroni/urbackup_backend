@@ -9,6 +9,12 @@
 #include "../urbackupcommon/sha2/sha2.h"
 #include "../urbackupcommon/os_functions.h"
 #include <memory.h>
+#include <memory>
+#include "dao/ServerBackupDao.h"
+#include "FileIndex.h"
+#include "create_files_index.h"
+#include "server_hash.h"
+#include "serverinterface/helper.h"
 
 const _u32 c_read_blocksize=4096;
 const size_t draw_segments=30;
@@ -232,7 +238,7 @@ bool verify_hashes(std::string arg)
 
 	_i64 crowid=0;
 
-	IQuery *q_get_files=db->Prepare("SELECT rowid, fullpath, shahash, filesize FROM files"+filter);
+	IQuery *q_get_files=db->Prepare("SELECT id, fullpath, shahash, filesize FROM files"+filter);
 
 	bool is_okay=true;
 
@@ -250,7 +256,7 @@ bool verify_hashes(std::string arg)
 
 			if(delete_failed)
 			{
-				todelete.push_back(watoi64(res_single[L"rowid"]));
+				todelete.push_back(watoi64(res_single[L"id"]));
 			}
 		}
 	}
@@ -267,15 +273,31 @@ bool verify_hashes(std::string arg)
 	{
 		std::cout << "Deleting " << todelete.size() << " file entries with failed verification from database..." << std::endl;
 
-		IQuery* q_del=db->Prepare("DELETE FROM files WHERE rowid=?");
-		for(size_t i=0;i<todelete.size();++i)
+		SStartupStatus status;
+		if(!create_files_index(status))
 		{
-			q_del->Bind(todelete[i]);
-			q_del->Write();
-			q_del->Reset();
+			std::cout << "Error opening file index -1" << std::endl;
 		}
+		else
+		{
+			ServerBackupDao backupdao(db);
+			std::auto_ptr<FileIndex> fileindex(create_lmdb_files_index());
 
-		std::cout << "done." << std::endl;
+			if(fileindex.get()==NULL)
+			{
+				std::cout << "Error opening file index -2" << std::endl;
+			}
+			else
+			{
+
+				for(size_t i=0;i<todelete.size();++i)
+				{
+					BackupServerHash::deleteFileSQL(backupdao, *fileindex, todelete[i]);
+				}
+
+				std::cout << "done." << std::endl;
+			}
+		}		
 	}
 	
 

@@ -9,6 +9,7 @@ class LMDBFileIndex : public FileIndex
 {
 public:
 	static void initFileIndex();
+	static void shutdownFileIndex();
 
 	LMDBFileIndex();
 
@@ -82,4 +83,6 @@ private:
 	std::vector<STransactionLogItem> transaction_log;
 
 	static ISharedMutex* mutex;
+	static LMDBFileIndex* fileindex;
+	static THREADPOOL_TICKET fileindex_ticket;
 };
