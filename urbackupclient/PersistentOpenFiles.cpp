@@ -1,6 +1,7 @@
 #include "PersistentOpenFiles.h"
 #include "../urbackupcommon/os_functions.h"
 #include "../stringtools.h"
+#include "file_permissions.h"
 
 const char* persistent_open_files_fn = "urbackup\\open_files.dat";
 const char* persistent_open_files_new_fn = "urbackup\\open_files.dat.new";
