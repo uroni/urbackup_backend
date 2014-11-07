@@ -1150,43 +1150,40 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
 			std::sort(changed_files.begin(), changed_files.end());
 
-			if(!changed_files.empty())
+			for(size_t i=0;i<tmp.size();++i)
 			{
-				for(size_t i=0;i<tmp.size();++i)
+				if(!tmp[i].isdir)
 				{
-					if(!tmp[i].isdir)
+					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
 					{
-						if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
-						{
-							VSSLog(L"Found changed file: " + tmp[i].name, LL_DEBUG);
+						VSSLog(L"Found changed file: " + tmp[i].name, LL_DEBUG);
 
-							tmp[i].last_modified*=Server->getRandomNumber();
-							if(tmp[i].last_modified>0)
-								tmp[i].last_modified*=-1;
-							else if(tmp[i].last_modified==0)
-								tmp[i].last_modified=-1;
-						}
-						else
+						tmp[i].last_modified*=Server->getRandomNumber();
+						if(tmp[i].last_modified>0)
+							tmp[i].last_modified*=-1;
+						else if(tmp[i].last_modified==0)
+							tmp[i].last_modified=-1;
+					}
+					else
+					{
+						std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
+						if( it_db_file!=db_files.end()
+							&& (*it_db_file).name==tmp[i].name
+							&& (*it_db_file).isdir==tmp[i].isdir
+							&& (*it_db_file).last_modified<0 )
 						{
-							std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), tmp[i]);
-							if( it_db_file!=db_files.end()
-									&& (*it_db_file).name==tmp[i].name
-									&& (*it_db_file).isdir==tmp[i].isdir
-									&& (*it_db_file).last_modified<0 )
+							VSSLog(L"File changed at last backup: "+ tmp[i].name, LL_DEBUG);
+
+							if( tmp[i].last_modified<last_filebackup_filetime)
 							{
-								VSSLog(L"File changed at last backup: "+ tmp[i].name, LL_DEBUG);
-
-								if( tmp[i].last_modified<last_filebackup_filetime)
-								{
-									tmp[i].last_modified=it_db_file->last_modified;
-								}
-								else
-								{
-									VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
-									tmp[i].last_modified*=Server->getRandomNumber();
-									if(tmp[i].last_modified>0)
-										tmp[i].last_modified*=-1;
-								}
+								tmp[i].last_modified=it_db_file->last_modified;
+							}
+							else
+							{
+								VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
+								tmp[i].last_modified*=Server->getRandomNumber();
+								if(tmp[i].last_modified>0)
+									tmp[i].last_modified*=-1;
 							}
 						}
 					}
