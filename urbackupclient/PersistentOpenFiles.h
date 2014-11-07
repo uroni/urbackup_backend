@@ -27,6 +27,8 @@ public:
 
 private:
 
+	bool flushf_int(bool allow_cycle);
+
 	bool load();
 
 	void addf(const std::wstring& fn, unsigned int id);

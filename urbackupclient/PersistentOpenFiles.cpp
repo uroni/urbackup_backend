@@ -3,12 +3,17 @@
 #include "../stringtools.h"
 
 const char* persistent_open_files_fn = "urbackup\\open_files.dat";
+const char* persistent_open_files_new_fn = "urbackup\\open_files.dat.new";
 
 bool PersistentOpenFiles::cycle()
 {
 	Server->destroy(persistf);
 
-	persistf = Server->openFile(widen(persistent_open_files_fn), MODE_WRITE);
+	persistf = Server->openFile(persistent_open_files_new_fn, MODE_WRITE);
+
+#ifndef _DEBUG
+	change_file_permissions_admin_only(persistent_open_files_new_fn);
+#endif
 
 	if(!persistf) return false;
 
@@ -20,30 +25,29 @@ bool PersistentOpenFiles::cycle()
 		addf(it->first, it->second);
 	}
 
+	flushf_int(false);
+
 	Server->destroy(persistf);
 
-	if(!os_rename_file(widen(persistent_open_files_fn)+L".new", widen(persistent_open_files_fn)))
+	if(!os_rename_file(widen(persistent_open_files_new_fn), widen(persistent_open_files_fn)))
 	{
 		return false;
 	}
 
-	persistf = Server->openFile(widen(persistent_open_files_fn), MODE_WRITE);
-#ifndef _DEBUG
-	change_file_permissions_admin_only(persistent_open_files_fn);
-#endif
+	persistf = Server->openFile(widen(persistent_open_files_fn), MODE_RW);
 
 	if(!persistf) return false;
 
 	return true;
 }
 
-bool PersistentOpenFiles::flushf()
+bool PersistentOpenFiles::flushf_int(bool allow_cycle)
 {
 	if(!persistf) return false;
 
 	if(wdata.getDataSize()==0) return true;
 
-	if(bytes_deleted>bytes_written*2)
+	if(bytes_deleted>bytes_written && allow_cycle)
 	{
 		wdata.clear();
 		return cycle();
@@ -60,12 +64,17 @@ bool PersistentOpenFiles::flushf()
 	}
 	wdata.clear();
 
-	if(persistf->Size()>20*1024*1024)
+	if(persistf->Size()>1024 && allow_cycle)
 	{
 		return cycle();
 	}
 
 	return true;
+}
+
+bool PersistentOpenFiles::flushf()
+{
+	return flushf_int(true);
 }
 
 void PersistentOpenFiles::removef( unsigned int id, size_t fn_size )
