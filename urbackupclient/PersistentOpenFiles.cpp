@@ -262,6 +262,15 @@ PersistentOpenFiles::PersistentOpenFiles() : curr_id(0), bytes_written(0), bytes
 	change_file_permissions_admin_only(persistent_open_files_fn);
 #endif
 
-	load();
+	if(!load())
+	{
+		Server->destroy(persistf);
+
+		persistf = Server->openFile(persistent_open_files_fn, MODE_WRITE);
+
+#ifndef _DEBUG
+		change_file_permissions_admin_only(persistent_open_files_fn);
+#endif
+	}
 }
 
