@@ -281,6 +281,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string download_file=Server->getServerParameter("download_file");
 	if(!download_file.empty())
 	{
+		/* For attaching debugger
+		std::cout << "Process id: " << GetCurrentProcessId() << std::endl;
+		system("pause");*/
 		FileDownload dl;
 		unsigned int tcpport=43001;
 		std::string s_tcpport=Server->getServerParameter("tcpport");

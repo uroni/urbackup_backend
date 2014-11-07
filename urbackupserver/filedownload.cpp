@@ -125,6 +125,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		m_chunkpatchfile=tmpfile;
 		ChunkPatcher patcher;
 		patcher.setCallback(this);
+		chunk_patch_pos=0;
 		Server->Log("Patching temporary...");
 		patcher.ApplyPatch(dstfile, patchfile);
 
@@ -181,12 +182,17 @@ IPipe * FileDownload::new_fileclient_connection(void)
 
 void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
-	m_chunkpatchfile->Write(buf, (_u32)bsize);
+	if(changed)
+	{
+		m_chunkpatchfile->Seek(chunk_patch_pos);
+		m_chunkpatchfile->Write(buf, (_u32)bsize);
+	}
+	chunk_patch_pos+=bsize;
 }
 
 void FileDownload::cleanup_tmpfile(IFile *tmpfile)
 {
 	std::string fn=tmpfile->getFilename();
-	Server->deleteFile(fn);
 	Server->destroy(tmpfile);
+	Server->deleteFile(fn);
 }

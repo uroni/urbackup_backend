@@ -974,6 +974,8 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 		return ret;
 	}
 
+	assert(state.prev.filesize == filesize);
+
 	if(save_orig && state.prev.exists)
 	{
 		state.orig_prev=state.prev.prev_entry;

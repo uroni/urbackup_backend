@@ -19,4 +19,5 @@ private:
 	std::string m_servername;
 	unsigned int m_tcpport;
 	IFile *m_chunkpatchfile;
+	int64 chunk_patch_pos;
 };
