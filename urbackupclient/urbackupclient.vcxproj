@@ -76,6 +76,7 @@
     <ClCompile Include="glob\glob.cpp" />
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
+    <ClCompile Include="PersistentOpenFiles.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
     <ClCompile Include="watchdir\CriticalSection.cpp" />
     <ClCompile Include="watchdir\DelayedDirectoryChangeHandler.cpp" />
@@ -107,6 +108,7 @@
     <ClInclude Include="file_permissions.h" />
     <ClInclude Include="ImageThread.h" />
     <ClInclude Include="InternetClient.h" />
+    <ClInclude Include="PersistentOpenFiles.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
     <ClInclude Include="watchdir\CriticalSection.h" />
     <ClInclude Include="watchdir\DelayedDirectoryChangeHandler.h" />

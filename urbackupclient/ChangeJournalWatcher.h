@@ -8,6 +8,7 @@
 
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"
+#include "PersistentOpenFiles.h"
 
 class DirectoryWatcherThread;
 
@@ -141,7 +142,7 @@ private:
 
 	uint128 getRootFRN( const std::wstring & root );
 
-	void updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft);
+	void updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft, std::map<std::wstring, bool>& local_open_write_files);
 
 	void reindex(_i64 rid, std::wstring vol, SChangeJournal *sj);
 	void logEntry(const std::wstring &vol, const UsnInt *UsnRecord);
@@ -179,7 +180,6 @@ private:
 
 	bool freeze_open_write_files;
 
-	std::map<std::wstring, bool> open_write_files;
 	std::map<std::wstring, bool> open_write_files_frozen;
 
 	std::vector<std::wstring> error_dirs;
@@ -191,6 +191,8 @@ private:
 	bool unsupported_usn_version_err;
 
 	bool usn_logging_enabled;
+
+	PersistentOpenFiles open_write_files;
 };
 
 class IChangeJournalListener

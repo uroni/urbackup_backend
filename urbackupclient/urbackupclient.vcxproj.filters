@@ -120,6 +120,9 @@
     <ClCompile Include="win_all_volumes.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="PersistentOpenFiles.cpp">
+      <Filter>watchdir</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="watchdir\CriticalSection.h">
@@ -211,6 +214,9 @@
     </ClInclude>
     <ClInclude Include="win_all_volumes.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PersistentOpenFiles.h">
+      <Filter>watchdir</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
