@@ -240,6 +240,14 @@ bool os_create_reflink(const std::wstring &linkname, const std::wstring &fname)
 	close(src_desc);
 	close(dst_desc);
 	
+	if(rc)
+	{
+		if(unlink(Server->ConvertToUTF8(linkname).c_str())
+		{
+			Server->Log("Removing destination file failed. errno="+nconvert(errno));
+		}
+	}
+	
 	return rc==0;
 #else
 	return false;

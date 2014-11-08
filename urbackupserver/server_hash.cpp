@@ -610,6 +610,10 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 	{
 		ServerLogger::Log(clientid, L"HT: Copying file: \""+tfn+L"\"", LL_DEBUG);
 		int64 fs=tf->Size();
+		if(!use_reflink)
+		{
+			fs=t_filesize;
+		}
 		int64 available_space=0;
 		if(fs>0)
 		{
@@ -1006,7 +1010,7 @@ bool BackupServerHash::handle_not_enough_space(const std::wstring &path)
 
 void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
-	if(!use_reflink || changed )
+	if(!has_reflink || changed )
 	{
 		chunk_output_fn->Seek(chunk_patch_pos);
 		bool b=BackupServerPrepareHash::writeRepeatFreeSpace(chunk_output_fn, buf, bsize, this);
@@ -1023,12 +1027,12 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 {
 	_i64 dstfsize;
 	{
-		bool has_reflink=false;
+		has_reflink=false;
 		if( use_reflink )
 		{
 			if(! os_create_hardlink(os_file_prefix(dest), os_file_prefix(source), true, NULL) )
 			{
-				Server->Log(L"Reflinking file \""+dest+L"\" failed", LL_ERROR);
+				Server->Log(L"Reflinking file \""+dest+L"\" failed", LL_WARNING);
 			}
 			else
 			{
