@@ -222,7 +222,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 						char *sptr=&buf[2*sizeof(char)+sizeof(_i64)];
 						SChunkHashes chhash;
 						memcpy(chhash.big_hash, sptr, big_hash_size);
-						memcpy(chhash.small_hash, sptr+big_hash_size, chunkhash_single_size-big_hash_size);
+						memcpy(chhash.small_hash, sptr+big_hash_size, chunkhash_single_size-big_hash_size);					
 						pending_chunks.insert(std::pair<_i64, SChunkHashes>(next_chunk*c_checkpoint_dist, chhash));
 					}					
 				}
@@ -519,7 +519,6 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				}
 				if(!ignore_filesize)
 				{
-					VLOG(Server->Log("Receiving filesize...", LL_DEBUG));
 					_i64 new_remote_filesize;
 					msg.getInt64(&new_remote_filesize);
 
@@ -530,9 +529,11 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 						int a4=4;
 					}
 
-					if(remote_filesize!=-1 && new_remote_filesize>remote_filesize)
+					VLOG(Server->Log("Receiving filesize... Filesize="+nconvert(new_remote_filesize)+" Predicted="+nconvert(remote_filesize), LL_DEBUG));
+
+					if(remote_filesize!=-1 && new_remote_filesize>remote_filesize && getNextFileClient())
 					{
-						Server->Log("Filesize increase from predicted filesize. Reconnecting...", LL_WARNING);
+						Server->Log("Filesize increase from predicted filesize and next file is queued. Reconnecting...", LL_WARNING);
 						if(!Reconnect(true))
 						{
 							getfile_done=true;

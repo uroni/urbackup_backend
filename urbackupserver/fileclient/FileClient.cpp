@@ -776,6 +776,7 @@ bool FileClient::Reconnect(void)
 					if(rc >= 1+sizeof(_u64))
 					{
 						memcpy(&filesize, buf+1, sizeof(_u64) );
+						filesize=little_endian(filesize);
 						off=1+sizeof(_u64);
 
 						if( filesize==0 )

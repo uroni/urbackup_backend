@@ -632,6 +632,7 @@ std::string InternetServiceConnector::generateOnetimeToken(const std::string &cl
 	}
 	std::string ret;
 	ret.resize(sizeof(unsigned int)+token.token.size());
+	token_id=little_endian(token_id);
 	memcpy((char*)ret.data(), &token_id, sizeof(unsigned int));
 	memcpy((char*)ret.data()+sizeof(unsigned int), token.token.data(), token.token.size());
 	return ret;
