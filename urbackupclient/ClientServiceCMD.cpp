@@ -220,6 +220,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	{
 		backup_running=RUNNING_RESUME_INCR_FILE;
 	}
+
+	end_to_end_file_backup_verification_enabled=false;
 	
 	last_pingtime=Server->getTimeMS();
 	pcdone=-1;
@@ -245,6 +247,8 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	mempipe_owner=false;
 
 	lasttime=Server->getTimeMS();
+
+	end_to_end_file_backup_verification_enabled=false;
 
 	backup_running=RUNNING_FULL_FILE;
 	last_pingtime=Server->getTimeMS();
