@@ -189,7 +189,7 @@ int check_files_index()
 
 		++n_checked;
 
-		if(n_checked%100==0)
+		if(n_checked%10000==0)
 		{
 			Server->Log("Checked "+nconvert(n_checked)+" file entries", LL_INFO);
 		}

@@ -97,7 +97,7 @@ private:
 	int countFilesInTmp(void);
 	IFile* openFileRetry(const std::wstring &dest, int mode);
 	bool patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest,
-		const FileMetadata& metadata);
+		const FileMetadata& metadata, _i64 tfilesize);
 
 	bool createChunkHashes(IFile *tf, const std::wstring hash_fn);
 	

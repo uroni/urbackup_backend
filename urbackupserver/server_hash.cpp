@@ -786,7 +786,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 				}
 				else
 				{
-					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn, metadata);
+					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn, metadata, t_filesize);
 				}
 				
 				if(!r)
@@ -796,13 +796,13 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 				}
 				else
 				{
-					if(!os_set_file_time(os_file_prefix(tfn), metadata.created, metadata.last_modified))
+					if(metadata.exist && !os_set_file_time(os_file_prefix(tfn), metadata.created, metadata.last_modified))
 					{
 						ServerLogger::Log(clientid, L"Error setting created and last modified time on file \""+tfn+L"\"", LL_WARNING);
 					}
 
 					std::wstring parent_fn = ExtractFilePath(tfn);
-					if(!os_set_file_time(os_file_prefix(parent_fn), parent_metadata.created, parent_metadata.last_modified))
+					if(parent_metadata.exist && !os_set_file_time(os_file_prefix(parent_fn), parent_metadata.created, parent_metadata.last_modified))
 					{
 						ServerLogger::Log(clientid, L"Error setting created and last modified time on parent directory \""+parent_fn+L"\"", LL_WARNING);
 					}
@@ -1156,7 +1156,7 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 }
 
 bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest,
-	const FileMetadata& metadata)
+	const FileMetadata& metadata, _i64 tfilesize)
 {
 	_i64 dstfsize;
 	{
@@ -1192,10 +1192,16 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 			return false;
 		}
 	}
+	
+	assert(chunk_patcher.getFilesize() == tfilesize);
 
 	if( dstfsize > chunk_patcher.getFilesize() )
 	{
 		os_file_truncate(dest, chunk_patcher.getFilesize());
+	}
+	else
+	{
+		assert(dstfsize==tfilesize);
 	}
 
 	IFile *f_hash_output=openFileRetry(hash_output, MODE_READ);
