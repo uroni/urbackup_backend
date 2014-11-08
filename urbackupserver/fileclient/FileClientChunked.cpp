@@ -522,8 +522,6 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					_i64 new_remote_filesize;
 					msg.getInt64(&new_remote_filesize);
 
-					new_remote_filesize = little_endian(new_remote_filesize);
-
 					if(new_remote_filesize!=remote_filesize)
 					{
 						int a4=4;
