@@ -391,6 +391,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	bool use_berkeleydb;
 	open_server_database(use_berkeleydb, true);
 
+	
+
+	ServerStatus::init_mutex();
+	ServerSettings::init_mutex();
+	BackupServerGet::init_mutex();
+
+	open_settings_database(use_berkeleydb);
+	open_settings_database_full(use_berkeleydb);
+	
 	std::string arg_verify_hashes=Server->getServerParameter("verify_hashes");
 	if(!arg_verify_hashes.empty())
 	{
@@ -406,13 +415,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			exit(0);
 		}
 	}
-
-	ServerStatus::init_mutex();
-	ServerSettings::init_mutex();
-	BackupServerGet::init_mutex();
-
-	open_settings_database(use_berkeleydb);
-	open_settings_database_full(use_berkeleydb);
 
 	Server->destroyAllDatabases();
 

@@ -33,6 +33,7 @@
 #include "create_files_cache.h"
 #include <algorithm>
 #include <memory.h>
+#include <assert.h>
 
 const size_t freespace_mod=50*1024*1024; //50 MB
 const size_t BUFFER_SIZE=64*1024; //64KB
@@ -717,7 +718,7 @@ void BackupServerHash::addFile(int backupid, char incremental, IFile *tf, const 
 				}
 				else
 				{
-					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn);
+					r=patchFile(tf, Server->ConvertToUnicode(orig_fn), tfn, Server->ConvertToUnicode(hashoutput_fn), hash_fn, t_filesize);
 				}
 				
 				if(!r)
@@ -1023,7 +1024,7 @@ void BackupServerHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, b
 	chunk_patch_pos+=bsize;
 }
 
-bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest)
+bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const std::wstring &dest, const std::wstring hash_output, const std::wstring hash_dest, _i64 tfilesize)
 {
 	_i64 dstfsize;
 	{
@@ -1059,10 +1060,16 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 			return false;
 		}
 	}
+	
+	assert(chunk_patcher.getFilesize() == tfilesize);
 
 	if( dstfsize > chunk_patcher.getFilesize() )
 	{
 		os_file_truncate(dest, chunk_patcher.getFilesize());
+	}
+	else
+	{
+		assert(dstfsize==tfilesize);
 	}
 
 	IFile *f_hash_output=openFileRetry(hash_output, MODE_READ);

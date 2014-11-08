@@ -526,6 +526,11 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					{
 						int a4=4;
 					}
+					
+					if(remote_filesize!=-1 && new_remote_filesize!=remote_filesize)
+					{
+						Server->Log("Filesize change from expected filesize. Expected="+nconvert(remote_filesize)+" Got="+nconvert(new_remote_filesize), LL_WARNING);
+					}
 
 					VLOG(Server->Log("Receiving filesize... Filesize="+nconvert(new_remote_filesize)+" Predicted="+nconvert(remote_filesize), LL_DEBUG));
 
