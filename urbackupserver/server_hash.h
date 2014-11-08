@@ -133,6 +133,7 @@ private:
 	bool use_snapshots;
 	bool use_reflink;
 	bool use_tmpfiles;
+	bool has_reflink;
 	_i64 chunk_patch_pos;
 
 	_i64 cow_filesize;
