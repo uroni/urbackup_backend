@@ -515,12 +515,12 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			IFile *f=Server->openFile(os_file_prefix(res[0][L"path"]+L".mbr"), MODE_READ);
 			if(f==NULL)
 			{
-				_i64 r=-1;
+				_i64 r=little_endian(-1);
 				input->Write((char*)&r, sizeof(_i64));
 			}
 			else
 			{
-				_i64 r=f->Size();
+				_i64 r=little_endian(f->Size());
 				input->Write((char*)&r, sizeof(_i64));
 				char buf[4096];
 				_u32 rc;
@@ -571,7 +571,7 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			if(img_version==0)
 				skip=512*512;
 
-			_i64 r=(_i64)vhdfile->getSize()-skip;
+			_i64 r=little_endian((_i64)vhdfile->getSize()-skip);
 			input->Write((char*)&r, sizeof(_i64));
 			unsigned int blocksize=vhdfile->getBlocksize();
 			char buffer[4096];
@@ -606,7 +606,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 						read=4096;
 					}
 						
-					input->Write((char*)&currpos, sizeof(uint64));
+					uint64 currpos_endian = little_endian(currpos);
+					input->Write((char*)&currpos_endian, sizeof(uint64));
 					bool b=input->Write(buffer, (_u32)read);
 					if(!b)
 					{
@@ -623,7 +624,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 				{
 					if(Server->getTimeMS()-lasttime>30000)
 					{
-						input->Write((char*)&currpos, sizeof(uint64));
+						uint64 currpos_endian = little_endian(currpos);
+						input->Write((char*)&currpos_endian, sizeof(uint64));
 						memset(buffer, 0, 4096);
 						input->Write(buffer, (_u32)4096);
 						lasttime=Server->getTimeMS();
@@ -642,7 +644,8 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 			while( is_ok && (_i64)currpos<r );
 			if((_i64)currpos>=r)
 			{
-				input->Write((char*)&currpos, sizeof(uint64));
+				uint64 currpos_endian = little_endian(currpos);
+				input->Write((char*)&currpos_endian, sizeof(uint64));
 			}
 		}
 		image_fak->destroyVHDFile(vhdfile);
