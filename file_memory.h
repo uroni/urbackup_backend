@@ -12,6 +12,7 @@ public:
 	virtual _u32 Write(const char* buffer, _u32 bsize);
 	virtual bool Seek(_i64 spos);
 	virtual _i64 Size(void);
+	virtual _i64 RealSize();
 	
 	virtual std::string getFilename(void);
 

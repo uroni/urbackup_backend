@@ -103,6 +103,11 @@ public:
 		return static_cast<_i64>(cowfile->getSize());
 	}
 
+	virtual _i64 RealSize()
+	{
+		return static_cast<_i64>(cowfile->usedSize());
+	}
+
 	virtual std::string getFilename(void)
 	{
 		return cowfile->getFilename();
@@ -163,13 +168,30 @@ CowFile::CowFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize)
 		{
 			is_open=true;
 
-			int rc = ftruncate64(fd, filesize);
-
-			if(rc!=0)
+			if(!read_only)
 			{
-				Server->Log("Truncating cow file to size "+nconvert(filesize)+" failed", LL_ERROR);
-				is_open=false;
-				close(fd);
+				int rc = ftruncate64(fd, filesize);
+
+				if(rc!=0)
+				{
+					Server->Log("Truncating cow file to size "+nconvert(filesize)+" failed", LL_ERROR);
+					is_open=false;
+					close(fd);
+				}
+			}
+			else
+			{
+				struct stat64 statbuf;
+				int rc = stat64(filename.c_str(), &statbuf);
+				if(rc==0)
+				{
+					filesize = statbuf.st_size;
+					is_open=true;
+				}
+				else
+				{
+					is_open=false;
+				}
 			}
 		}
 	}
@@ -377,9 +399,29 @@ std::wstring CowFile::getFilenameW(void)
 	return Server->ConvertToUnicode(filename);
 }
 
-bool CowFile::has_sector(void)
+bool CowFile::has_sector(_i64 sector_size)
 {
-	return isBitmapSet(curr_offset);
+	if(sector_size<0)
+	{
+		return isBitmapSet(curr_offset);
+	}
+	else
+	{
+		for(_i64 off=curr_offset;off<curr_offset+sector_size;off+=blocksize)
+		{
+			if(isBitmapSet(off))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
+
+bool CowFile::this_has_sector(_i64 sector_size)
+{
+	return has_sector(sector_size);
 }
 
 unsigned int CowFile::getBlocksize()
@@ -477,7 +519,7 @@ void CowFile::setBitmapRange(uint64 offset_start, uint64 offset_end, bool v)
 {
 	uint64 block_start = offset_start/blocksize;
 	uint64 block_end = offset_end/blocksize;
-	for(;block_start<=block_end;++block_start)
+	for(;block_start<block_end;++block_start)
 	{
 		setBitmapBit(block_start*blocksize, v);
 	}
@@ -497,7 +539,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 	}
 }
 
-bool CowFile::trimUnused(_i64 fs_offset)
+bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 {
 	FileWrapper devfile(this, fs_offset);
 	FSNTFS ntfs(&devfile);
@@ -523,12 +565,16 @@ bool CowFile::trimUnused(_i64 fs_offset)
 		else if(unused_start_block!=-1)
 		{
 			int64 unused_start = fs_offset + unused_start_block*ntfs.getBlocksize();
-			int64 unused_end = fs_offset + ntfs_block*ntfs.getBlocksize() - 1;
+			int64 unused_end = fs_offset + ntfs_block*ntfs.getBlocksize();
 			setBitmapRange(unused_start, unused_end, false);
 			if(!setUnused(unused_start, unused_end))
 			{
 				Server->Log("Trimming syscall failed. Stopping trimming.", LL_WARNING);
 				return false;
+			}
+			if(trim_callback!=NULL)
+			{
+				trim_callback->trimmed(unused_start - fs_offset, unused_end - fs_offset);
 			}
 			unused_start_block=-1;
 		}
@@ -560,7 +606,7 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 		else if(used_start_block!=-1)
 		{
 			int64 used_start = fs_offset + used_start_block*ntfs.getBlocksize();
-			int64 used_end = fs_offset + ntfs_block*ntfs.getBlocksize() - 1;
+			int64 used_end = fs_offset + ntfs_block*ntfs.getBlocksize();
 			setBitmapRange(used_start, used_end, true);
 		}
 	}

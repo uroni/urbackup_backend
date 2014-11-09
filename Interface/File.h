@@ -28,6 +28,7 @@ public:
 	virtual _u32 Write(const char* buffer, _u32 bsize)=0;
 	virtual bool Seek(_i64 spos)=0;
 	virtual _i64 Size(void)=0;
+	virtual _i64 RealSize()=0;
 	
 	virtual std::string getFilename(void)=0;
 	virtual std::wstring getFilenameW(void)=0;

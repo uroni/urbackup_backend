@@ -40,6 +40,7 @@ IServer *Server;
 #include <stdlib.h>
 
 #include "vhdfile.h"
+#include "cowfile.h"
 #include "fs/ntfs.h"
 
 #include "pluginmgr.h"
@@ -443,13 +444,28 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(3);
 	}
 
-	std::string vhd_verify=Server->getServerParameter("vhd_verify");
-	if(!vhd_verify.empty())
+	std::string image_verify=Server->getServerParameter("image_verify");
+	if(!image_verify.empty())
 	{
-		VHDFile in(Server->ConvertToUnicode(vhd_verify), true,0);
-		if(in.isOpen()==false)
+		std::auto_ptr<IVHDFile> in;
+		std::string ext = strlower(findextension(image_verify));
+		if(ext=="vhd" || ext=="vhdz")
 		{
-			Server->Log("Error opening VHD-File \""+vhdcopy_in+"\"", LL_ERROR);
+			in.reset(new VHDFile(Server->ConvertToUnicode(image_verify), true,0));
+		}
+		else if(ext=="raw")
+		{
+			in.reset(new CowFile(Server->ConvertToUnicode(image_verify), true,0));
+		}
+		else
+		{
+			Server->Log("Unknown image file extension \""+ext+"\"", LL_ERROR);
+			exit(3);
+		}
+
+		if(in->isOpen()==false)
+		{
+			Server->Log("Error opening Image-File \""+image_verify+"\"", LL_ERROR);
 			exit(4);
 		}
 
@@ -458,10 +474,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		if(s_hashfile.empty())
 		{
 			has_hashfile=false;
-			s_hashfile=vhd_verify+".hash";
+			s_hashfile=image_verify+".hash";
 		}
-
-		std::string s_hashfile2=Server->getServerParameter("hashfile_2");
 
 		IFile *hashfile=Server->openFile(s_hashfile, MODE_READ);
 		if(hashfile==NULL)
@@ -470,41 +484,35 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			exit(5);
 		}
 
-		IFile *hashfile2=NULL;
-		if(!s_hashfile2.empty())
-		{
-			hashfile2=Server->openFile(s_hashfile, MODE_READ);
-			if(hashfile2==NULL)
-			{
-				Server->Log("Error opening hashfile");
-				exit(5);
-			}
-		}
-
-		unsigned int blocksize=in.getBlocksize();
+		const int64 vhd_blocksize=(1024*1024)/2;
 		int skip=1024*512;
-		in.Seek(skip);
+		in->Seek(skip);
 		uint64 currpos=skip;
-		uint64 size=in.getSize();
+		uint64 size=in->getSize();
 		sha256_ctx ctx;
 		sha256_init(&ctx);
 		char buf[512];
 		int diff=0;
 		int diff_w=0;
+		size_t ok_blocks=0;
 		int last_pc=0;
 		unsigned char dig_z[32];
 		bool has_dig_z=false;
-		for(;currpos<size;currpos+=blocksize)
+		for(;currpos<size;currpos+=vhd_blocksize)
 		{
-			in.Seek(currpos);
-			bool has_sector=in.this_has_sector();
+			if(currpos==8912896)
+			{
+				int a4=4;
+			}
+			in->Seek(currpos);
+			bool has_sector=in->this_has_sector(vhd_blocksize);
 
 			if(!has_sector && !has_dig_z)
 			{
-				for(unsigned int i=0;i<blocksize;i+=512)
+				for(unsigned int i=0;i<vhd_blocksize;i+=512)
 				{
 					size_t read;
-					in.Read(buf, 512, read);
+					in->Read(buf, 512, read);
 					sha256_update(&ctx, (unsigned char*)buf, 512);
 				}
 				sha256_final(&ctx, dig_z);
@@ -516,10 +524,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 			if(has_sector)
 			{
-				for(unsigned int i=0;i<blocksize;i+=512)
+				for(unsigned int i=0;i<vhd_blocksize && currpos+i<size;i+=512)
 				{
 					size_t read;
-					in.Read(buf, 512, read);
+					in->Read(buf, 512, read);
 					sha256_update(&ctx, (unsigned char*)buf, 512);
 				}
 				
@@ -540,12 +548,16 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			if(memcmp(dig_r, dig_f, 32)!=0)
 			{
 				++diff;
-				Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos));
+				Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos)+" has_sector="+nconvert(has_sector));
 			}
 			else if(has_sector && has_hashfile)
 			{
 				++diff_w;
 				Server->Log("Wrong difference: "+nconvert(diff_w)+" at pos "+nconvert(currpos));
+			}
+			else
+			{
+				++ok_blocks;
 			}
 		
 			int pc=(int)((float)((float)currpos/(float)size)*100.f+0.5f);
@@ -560,9 +572,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			Server->Log("Hashfile does match");
 		}
+		Server->Log("Blocks with correct hash: "+nconvert(ok_blocks));
 		Server->Log("Different blocks: "+nconvert(diff));
 		Server->Log("Wrong differences: "+nconvert(diff_w));
-		exit(7);
+		exit(diff==0?0:7);
 	}
 
 	std::string device_verify=Server->getServerParameter("device_verify");

@@ -73,6 +73,7 @@ public:
 	virtual _u32 Write(const std::string &tw);
 	virtual _u32 Write(const char* buffer, _u32 bsize);
 	virtual _i64 Size(void);
+	virtual _i64 RealSize(void);
 	
 	bool Seek(_i64 offset);
 	bool Read(char* buffer, size_t bsize, size_t &read);
@@ -84,8 +85,8 @@ public:
 	std::string getFilename(void);
 	std::wstring getFilenameW(void);
 
-	bool has_sector(void);
-	bool this_has_sector(void);
+	bool has_sector(_i64 sector_size=-1);
+	bool this_has_sector(_i64 sector_size=-1);
 
 	bool has_block(void);
 
@@ -101,7 +102,7 @@ public:
 
 	bool isCompressed();
 
-	bool trimUnused(_i64 fs_offset)
+	bool trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 	{
 		return true;
 	}

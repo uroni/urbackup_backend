@@ -108,6 +108,11 @@ _i64 File::Size(void)
 	return fsize;	
 }
 
+_i64 File::RealSize(void)
+{
+	return Size();
+}
+
 void File::Close()
 {
 	fi.close();

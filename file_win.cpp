@@ -254,6 +254,11 @@ _i64 File::Size(void)
 	return fs.QuadPart;
 }
 
+_i64 File::RealSize()
+{
+	return Size();
+}
+
 void File::Close()
 {
 	if( hfile!=NULL )

@@ -1054,7 +1054,7 @@ uint64 VHDFile::usedSize(void)
 	return used_size;
 }
 
-bool VHDFile::has_sector(void)
+bool VHDFile::has_sector(_i64 sector_size)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
 	unsigned int bat_ref=big_endian(bat[block]);
@@ -1074,7 +1074,7 @@ bool VHDFile::has_sector(void)
 	}
 }
 
-bool VHDFile::this_has_sector(void)
+bool VHDFile::this_has_sector(_i64 sector_size)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
 	unsigned int bat_ref=big_endian(bat[block]);
@@ -1156,6 +1156,11 @@ _u32 VHDFile::Write(const std::string &tw)
 _i64 VHDFile::Size(void)
 {
 	return (_i64)getSize();
+}
+
+_i64 VHDFile::RealSize(void)
+{
+	return (_i64)usedSize();
 }
 
 void VHDFile::addVolumeOffset(_i64 offset)

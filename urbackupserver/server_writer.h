@@ -2,6 +2,7 @@
 #include "../Interface/ThreadPool.h"
 
 #include "../urbackupcommon/bufmgr.h"
+#include "../fsimageplugin/IVHDFile.h"
 
 #include <queue>
 
@@ -22,10 +23,10 @@ struct FileBufferVHDItem
 
 class ServerFileBufferWriter;
 
-class ServerVHDWriter : public IThread
+class ServerVHDWriter : public IThread, public ITrimCallback
 {
 public:
-	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles, int64 mbr_offset);
+	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize);
 	~ServerVHDWriter(void);
 
 	void operator()(void);
@@ -58,6 +59,9 @@ public:
 	void setDoTrim(bool b);
 
 	void setMbrOffset(int64 offset);
+
+	virtual void trimmed(_i64 trim_start, _i64 trim_stop);
+
 private:
 	IVHDFile *vhd;
 
@@ -85,6 +89,12 @@ private:
 	bool filebuffer;
 
 	int64 mbr_offset;
+
+	IFile* hashfile;
+
+	int64 vhd_blocksize;
+
+	int64 trimmed_bytes;
 };
 
 class ServerFileBufferWriter : public IThread

@@ -480,17 +480,17 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						goto do_image_cleanup;
 					}
 
-					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images, mbr_offset);
-					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile);
-
-					blockdata=vhdfile->getBuffer();
-
 					hashfile=Server->openFile(os_file_prefix(imagefn+L".hash"), MODE_WRITE);
 					if(hashfile==NULL)
 					{
 						ServerLogger::Log(clientid, L"Error opening Hashfile \""+imagefn+L".hash\"", LL_ERROR);
 						goto do_image_cleanup;
 					}
+
+					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images, mbr_offset, hashfile, vhd_blocksize*blocksize);
+					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile);
+
+					blockdata=vhdfile->getBuffer();
 
 					if(has_parent)
 					{
@@ -719,7 +719,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 							transferred_bytes+=cc->getTransferedBytes();
 							Server->destroy(cc);
-							if(hashfile!=NULL) Server->destroy(hashfile);
+
 							if(vhdfile!=NULL)
 							{
 								vhdfile->freeBuffer(blockdata);
@@ -745,6 +745,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								delete vhdfile;
 								vhdfile=NULL;
 							}
+
+							if(hashfile!=NULL) Server->destroy(hashfile);
 
 							IFile *t_file=Server->openFile(os_file_prefix(imagefn), MODE_READ);
 							if(t_file!=NULL)

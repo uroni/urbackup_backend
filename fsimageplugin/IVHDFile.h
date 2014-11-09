@@ -4,6 +4,12 @@
 
 #include <string>
 
+class ITrimCallback
+{
+public:
+	virtual void trimmed(_i64 trim_start, _i64 trim_stop) = 0;
+};
+
 class IVHDFile
 {
 public:
@@ -16,9 +22,10 @@ public:
 	virtual uint64 usedSize(void)=0;
 	virtual std::string getFilename(void)=0;
 	virtual std::wstring getFilenameW(void)=0;
-	virtual bool has_sector(void)=0;
+	virtual bool has_sector(_i64 sector_size=-1)=0;
+	virtual bool this_has_sector(_i64 sector_size=-1)=0;
 	virtual unsigned int getBlocksize()=0;
 	virtual bool finish() = 0;
-	virtual bool trimUnused(_i64 fs_offset)=0;
+	virtual bool trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)=0;
 	virtual bool syncBitmap(_i64 fs_offset)=0;
 };
