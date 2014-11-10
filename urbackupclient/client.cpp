@@ -46,6 +46,7 @@
 #include <sys/wait.h>
 #endif
 volatile bool IdleCheckerThread::idle=false;
+#include <set>
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
 std::map<std::wstring, std::wstring> IndexThread::filesrv_share_dirs;
@@ -1147,7 +1148,19 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		{
 			VSSLog(L"Indexing changed dir: " + path, LL_DEBUG);
 
-			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
+			std::vector<std::wstring> changed_files;
+			std::set<_i64> changed_files_dir_ids;
+			do 
+			{
+				if(changed_files_dir_ids.find((*it_dir).id)==changed_files_dir_ids.end())
+				{
+					std::vector<std::wstring> new_changed_files = cd->getChangedFiles((*it_dir).id);
+					changed_files.insert(changed_files.end(), new_changed_files.begin(), new_changed_files.end());
+					changed_files_dir_ids.insert((*it_dir).id);
+				}				
+
+			} while (it_dir!=changed_dirs.end() && it_dir->name==path_lower);
+			
 			std::sort(changed_files.begin(), changed_files.end());
 
 			for(size_t i=0;i<tmp.size();++i)
@@ -1158,7 +1171,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 					{
 						VSSLog(L"Found changed file: " + tmp[i].name, LL_DEBUG);
 
-						tmp[i].last_modified*=Server->getRandomNumber();
+						tmp[i].last_modified*=(std::max)((unsigned int)2, Server->getRandomNumber());
 						if(tmp[i].last_modified>0)
 							tmp[i].last_modified*=-1;
 						else if(tmp[i].last_modified==0)
@@ -1181,7 +1194,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 							else
 							{
 								VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
-								tmp[i].last_modified*=Server->getRandomNumber();
+								tmp[i].last_modified*=(std::max)((unsigned int)2, Server->getRandomNumber());
 								if(tmp[i].last_modified>0)
 									tmp[i].last_modified*=-1;
 							}

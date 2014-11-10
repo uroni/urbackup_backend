@@ -1347,15 +1347,13 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 
 					if(save_fn)
 					{
-						save_fn=false;
-
 						WIN32_FILE_ATTRIBUTE_DATA fad;
 						if(GetFileAttributesExW(os_file_prefix(real_fn).c_str(), GetFileExInfoStandard, &fad) )
 						{
-							int64 last_mod_time = static_cast<__int64>(fad.ftLastWriteTime.dwHighDateTime) << 32 | fad.ftLastWriteTime.dwLowDateTime;
-							if(last_mod_time<=last_backup_time || last_backup_time==0)
+							uint64 last_mod_time = static_cast<uint64>(fad.ftLastWriteTime.dwHighDateTime) << 32 | fad.ftLastWriteTime.dwLowDateTime;
+							if(last_mod_time>static_cast<uint64>(last_backup_time) && last_backup_time!=0)
 							{
-								save_fn=true;
+								save_fn=false;
 							}
 						}
 					}
