@@ -1157,7 +1157,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 					std::vector<std::wstring> new_changed_files = cd->getChangedFiles((*it_dir).id);
 					changed_files.insert(changed_files.end(), new_changed_files.begin(), new_changed_files.end());
 					changed_files_dir_ids.insert((*it_dir).id);
-				}				
+				}
+				++it_dir;
 
 			} while (it_dir!=changed_dirs.end() && it_dir->name==path_lower);
 			
