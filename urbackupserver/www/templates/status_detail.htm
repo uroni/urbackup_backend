@@ -3,58 +3,65 @@
 <div class="panel panel-default">
 	<div class="panel-heading">{tBackup status}</div>
 	<div class="panel-body">
-	{nospc_fatal|s}
-	{nospc_stalled|s}
-	{dir_error|s}
-	{tmpdir_error|s}
-	{database_error|s}
-	{endian_info|s}
+		{nospc_fatal|s}
+		{nospc_stalled|s}
+		{dir_error|s}
+		{tmpdir_error|s}
+		{database_error|s}
+		{endian_info|s}
+
+		<table id="status_table" class="table table-striped">
+			<thead>
+				<tr>			
+					<th>{tComputer name}</th>
+					<th>{tOnline}</th>
+					<th>{tStatus}</th>
+					<th>{tLast seen}</th>
+					<th>{tLast file backup}</th>
+					<th>{tLast image backup}</th>
+					<th>{tFile backup status}</th>
+					<th>{tImage backup status}</th>
+					<th>{tIP}</th>
+					<th>{tClient version}</th>
+					<th>{tOperating System}</th>
+					{?show_select_box}
+					<th>&nbsp;</td>
+					{/show_select_box}
+				</tr>
+			</thead>
+			<tbody>
+				{rows|s}
+			</tbody>
+		</table>
+		
+		<div class="btn-toolbar">
+			{?status_can_show_all}
+			<div class="btn-group">
+				<a class="btn btn-sm btn-default" href="javascript: g.status_show_all=true; show_status1();">{tShow all clients}</a>
+			</div>
+			{/status_can_show_all}
+			{modify_clients|s}
+		</div>
+		
+		{?removed_clients_table}
+		<table id="status_table" class="table table-striped">
+			<thead>
+				<tr>
+					<th>{tComputer name}</th>
+					<th>&nbsp;</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#removed_clients}
+				<tr>
+					<td>{name}</td>
+					<td>{tThis client is going to be removed. }&#32;{?remove_client}<a href="javascript: stopRemove({id})">{tStop removing client}</a>.&#32;{/remove_client}{tClients are removed during the cleanup in the cleanup time window. }</td>
+				</tr>
+				{/removed_clients}
+			</tbody>
+		</table>
+		{/removed_clients_table}
 	</div>
-
-	<table cellspacing="0" cellpadding="0" id="status_table" class="table table-striped">
-		<thead>
-			<tr>			
-				<th>{tComputer name}</th>
-				<th>{tOnline}</th>
-				<th>{tStatus}</th>
-				<th>{tLast seen}</th>
-				<th>{tLast file backup}</th>
-				<th>{tLast image backup}</th>
-				<th>{tFile backup status}</th>
-				<th>{tImage backup status}</th>
-				<th>{tIP}</th>
-				<th>{tClient version}</th>
-				<th>{tOperating System}</th>
-				{?show_select_box}
-				<th>&nbsp;</td>
-				{/show_select_box}
-			</tr>
-		</thead>
-		<tbody>
-			{rows|s}
-		</tbody>
-	</table>
-
-	{modify_clients|s}
-	{?status_can_show_all}
-	&#32;| <a href="javascript: g.status_show_all=true; show_status1();">{tShow all clients}</a><br /><br />
-	{/status_can_show_all}
-	{?removed_clients_table}
-	<table cellspacing="0" cellpadding="0" id="status_table">
-		<thead>
-			<th style="width: 150px" class="tabHeader">{tComputer name}</th>
-			<th style="width: 400px"  class="tabHeaderRight">&nbsp;</th>
-		</thead>
-		<tbody>
-			{#removed_clients}
-			<tr>
-				<td class="tabFLeft">{name}</td>
-				<td class="tabFRight">{tThis client is going to be removed. }&#32;{?remove_client}<a href="javascript: stopRemove({id})">{tStop removing client}</a>.&#32;{/remove_client}{tClients are removed during the cleanup in the cleanup time window. }</td>
-			</tr>
-			{/removed_clients}
-		</tbody>
-	</table>
-	{/removed_clients_table}
 </div>
 
 <div class="panel panel-default">

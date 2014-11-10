@@ -55,7 +55,7 @@ function init_datatables()
 					"sSwfPath": "copy_csv_xls_pdf.swf"
 				},
 				"sPaginationType": "full_numbers",
-				"sScrollX": "100%",
+				//"sScrollX": "100%",
 				"bScrollCollapse": true,
 				"bStateSave": true,
 				"iCookieDuration": 365*60*60*24,
@@ -130,7 +130,7 @@ function change_lang(l, refresh)
 {
 	g.lang=l;
 	
-	var c="<select id=\"change_lang_select\" onchange=\"change_lang_select()\">";
+	var c="<select id=\"change_lang_select\" class=\"form-control\" onchange=\"change_lang_select()\">";
 	for(var i=0;i<g.languages.length;++i)
 	{
 		if(g.languages[i].s==l)
@@ -955,7 +955,7 @@ function show_status2(data)
 	var internet_client_added="";
 	if(data.added_new_client)
 	{
-		internet_client_added="<strong>"+trans("internet_client_added")+"</strong><br />";
+		internet_client_added="<strong>"+trans("internet_client_added")+"</strong>";
 	}
 	
 	var status_client_download="";
