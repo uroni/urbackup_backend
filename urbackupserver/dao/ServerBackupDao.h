@@ -10,6 +10,7 @@ public:
 
 	void commit();
 	int64 getLastId();
+	int getLastChanges();
 	void beginTransaction();
 	void endTransaction();
 

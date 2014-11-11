@@ -34,6 +34,8 @@ public:
 	virtual bool Backup(const std::string &pFile)=0;
 
 	virtual void freeMemory()=0;
+
+	virtual int getLastChanges()=0;
 };
 
 class DBScopedFreeMemory

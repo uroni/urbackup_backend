@@ -826,3 +826,8 @@ void ServerBackupDao::endTransaction()
 {
 	db->EndTransaction();
 }
+
+int ServerBackupDao::getLastChanges()
+{
+	return db->getLastChanges();
+}
