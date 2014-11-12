@@ -729,23 +729,30 @@ void FileClientChunked::Hash_upto(_i64 new_chunk_start, bool &new_block)
 	
 	if(chunk_start!=new_chunk_start)
 	{
-		m_file->Seek(chunk_start);
-		char buf2[BUFFERSIZE];
-		do
+		if(m_file->Seek(chunk_start))
 		{
-			_u32 toread=(std::min)((_u32)BUFFERSIZE, (_u32)(new_chunk_start-chunk_start));
-			size_t r=m_file->Read(buf2,  toread);
-			VLOG(Server->Log("Read for hash at chunk_start="+nconvert(chunk_start)+" toread="+nconvert(toread)+" n="+nconvert(r), LL_DEBUG));
-			if(r<toread)
+			char buf2[BUFFERSIZE];
+			do
 			{
-				retval=ERR_INT_ERROR;
-				getfile_done=true;
-				Server->Log("Read error in File chunked - 1", LL_ERROR);
-				break;
-			}
-			chunk_start+=r;
-			md5_hash.update((unsigned char*)buf2, (unsigned int)r);
-		}while(chunk_start<new_chunk_start);
+				_u32 toread=(std::min)((_u32)BUFFERSIZE, (_u32)(new_chunk_start-chunk_start));
+				size_t r=m_file->Read(buf2,  toread);
+				VLOG(Server->Log("Read for hash at chunk_start="+nconvert(chunk_start)+" toread="+nconvert(toread)+" n="+nconvert(r), LL_DEBUG));
+				if(r<toread)
+				{
+					Server->Log("Read error in hash calculation at position "+nconvert(chunk_start)+" toread="+nconvert(toread)+" read="+nconvert(r)+". This will cause the whole block to be loaded.", LL_WARNING);
+					chunk_start=new_chunk_start;
+					break;
+				}
+				chunk_start+=r;
+				md5_hash.update((unsigned char*)buf2, (unsigned int)r);
+			}while(chunk_start<new_chunk_start);
+		}
+		else
+		{
+			Server->Log("Error seeking in base file (to position "+nconvert(chunk_start)+"). Whole block will be loaded. (1)", LL_WARNING);
+			chunk_start=new_chunk_start;
+		}
+		
 		file_pos=new_chunk_start;
 	}
 }
@@ -765,21 +772,30 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			VLOG(Server->Log("dest_pos="+nconvert(dest_pos)+" chunk_start="+nconvert(chunk_start), LL_DEBUG));
 		
 			char buf2[BUFFERSIZE];
-			m_file->Seek(chunk_start);
-			while(chunk_start<dest_pos)
+			if(m_file->Seek(chunk_start))
 			{
-				size_t r=m_file->Read(buf2, (std::min)((_u32)BUFFERSIZE, (_u32)(dest_pos-chunk_start)) );
-				VLOG(Server->Log("Read for hash finalize at block_start="+nconvert(chunk_start)+" n="+nconvert(r), LL_DEBUG));
-				if(r==0)
+				while(chunk_start<dest_pos)
 				{
-					Server->Log("Read err in Hash_finalize", LL_WARNING);
-					retval=ERR_INT_ERROR;
-					getfile_done=true;
-					break;
+					_u32 toread = (std::min)((_u32)BUFFERSIZE, (_u32)(dest_pos-chunk_start));
+					size_t r=m_file->Read(buf2, toread);
+					VLOG(Server->Log("Read for hash finalize at block_start="+nconvert(chunk_start)+" n="+nconvert(r), LL_DEBUG));
+					if(r==0)
+					{
+						Server->Log("Read error in hash finalization at position "+nconvert(chunk_start)+" toread="+nconvert(toread)+" read="+nconvert(r)+". This will cause the whole block to be loaded.", LL_WARNING);
+						file_pos+=dest_pos-chunk_start;
+						chunk_start=dest_pos;
+						break;
+					}
+					file_pos+=r;
+					chunk_start+=r;
+					md5_hash.update((unsigned char*)buf2, (unsigned int)r);
 				}
-				file_pos+=r;
-				chunk_start+=r;
-				md5_hash.update((unsigned char*)buf2, (unsigned int)r);
+			}
+			else
+			{
+				Server->Log("Error seeking in base file (to position "+nconvert(chunk_start)+"). Whole block will be loaded. (2)", LL_WARNING);
+				file_pos+=dest_pos-chunk_start;
+				chunk_start=dest_pos;
 			}
 		}
 
@@ -795,7 +811,7 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 	{
 		if(!hash_for_whole_block)
 		{
-			Server->Log("Block hash wrong. Getting whole block. currpos="+nconvert(curr_pos), LL_DEBUG);
+			Server->Log("Block hash wrong. Getting whole block. currpos="+nconvert(curr_pos), LL_WARNING);
 			//system("pause");
 			invalidateLastPatches();
 

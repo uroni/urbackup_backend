@@ -54,7 +54,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	}
 	else
 	{
-		dstfile=Server->openFile(dest, MODE_RW);
+		dstfile=Server->openFile(dest, MODE_RW_CREATE);
 	}
 
 	if(dstfile==NULL)
@@ -112,6 +112,14 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 
 		Server->Log("Building hashes...");
 		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
+
+		/*int64 dstf_size = dstfile->Size();
+		if(dstf_size>0)
+		{
+			dstfile->Remove();
+			os_file_truncate(widen(dest), (dstf_size/(512*1024)) * 512*1024 + 1);
+			dstfile=Server->openFile(dest, MODE_RW);
+		}*/		
 
 		Server->Log("Downloading file...");
 		int64 remote_filesize=-1;
