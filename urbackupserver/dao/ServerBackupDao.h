@@ -11,6 +11,7 @@ public:
 	void commit();
 	int64 getLastId();
 	void detachDbs();
+	int getLastChanges();
 	void attachDbs();
 	void beginTransaction();
 	void endTransaction();

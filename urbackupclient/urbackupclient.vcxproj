@@ -76,6 +76,7 @@
     <ClCompile Include="glob\glob.cpp" />
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
+    <ClCompile Include="PersistentOpenFiles.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
     <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp" />
     <ClCompile Include="watchdir\JournalDAO.cpp" />
@@ -108,6 +109,7 @@
     <ClInclude Include="file_permissions.h" />
     <ClInclude Include="ImageThread.h" />
     <ClInclude Include="InternetClient.h" />
+    <ClInclude Include="PersistentOpenFiles.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
     <ClInclude Include="watchdir\ContinuousWatchEnqueue.h" />
     <ClInclude Include="watchdir\JournalDAO.h" />

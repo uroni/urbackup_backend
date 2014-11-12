@@ -262,21 +262,29 @@ namespace
 
 		data->backup_dao->removeDirectoryLink(data->clientid, target_raw);
 
-		bool ret = true;
-		if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
+		if(data->backup_dao->getLastChanges()>0)
 		{
-			ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid, false);
-			ret = ret && os_remove_dir(os_file_prefix(pool_path));
-
-			if(!ret)
+			bool ret = true;
+			if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
 			{
-				Server->Log(L"Error removing directory link \""+path+L"\" with pool path \""+pool_path+L"\"", LL_ERROR);
+				ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid, false);
+				ret = ret && os_remove_dir(os_file_prefix(pool_path));
+
+				if(!ret)
+				{
+					Server->Log(L"Error removing directory link \""+path+L"\" with pool path \""+pool_path+L"\"", LL_ERROR);
+				}
+			}
+			else
+			{
+				data->backup_dao->removeDirectoryLinkGlob(data->clientid, escape_glob_sql(target_raw)+os_file_sep()+L"*");
 			}
 		}
 		else
 		{
-			data->backup_dao->removeDirectoryLinkGlob(data->clientid, escape_glob_sql(target_raw)+os_file_sep()+L"*");
+			Server->Log(L"Directory link \""+path+L"\" with pool path \""+pool_path+L"\" not found in database. Deleting symlink only.", LL_WARNING);
 		}
+		
 
 		if(!os_remove_symlink_dir(os_file_prefix(path)))
 		{

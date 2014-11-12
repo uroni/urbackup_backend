@@ -54,7 +54,7 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 	}
 	else
 	{
-		dstfile=Server->openFile(dest, MODE_RW);
+		dstfile=Server->openFile(dest, MODE_RW_CREATE);
 	}
 
 	if(dstfile==NULL)
@@ -113,6 +113,14 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 		Server->Log("Building hashes...");
 		BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
+		/*int64 dstf_size = dstfile->Size();
+		if(dstf_size>0)
+		{
+			dstfile->Remove();
+			os_file_truncate(widen(dest), (dstf_size/(512*1024)) * 512*1024 + 1);
+			dstfile=Server->openFile(dest, MODE_RW);
+		}*/		
+
 		Server->Log("Downloading file...");
 		int64 remote_filesize=-1;
 		rc=fc.GetFilePatch(remotefn, dstfile, patchfile, hashfile, hashfile_output, remote_filesize);
@@ -135,14 +143,22 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 
 		cleanup_tmpfile(hashfile);
 		cleanup_tmpfile(hashfile_output);
-		cleanup_tmpfile(patchfile);
 		cleanup_tmpfile(tmpfile);
 
 		_i64 fsize=dstfile->Size();
 		Server->destroy(dstfile);
-		if(rc==ERR_SUCCESS && fsize>patcher.getFilesize())
+		if(remote_filesize==patcher.getFilesize() && fsize>=patcher.getFilesize())
 		{
-			os_file_truncate(widen(dest), patcher.getFilesize());
+			if(rc==ERR_SUCCESS && fsize>patcher.getFilesize())
+			{
+				os_file_truncate(widen(dest), patcher.getFilesize());
+			}
+			cleanup_tmpfile(patchfile);
+		}
+		else
+		{
+			Server->Log("Filesize is wrong...", LL_ERROR);
+			Server->Log("Patchfile: "+patchfile->getFilename(), LL_ERROR);
 		}
 	}
 	else
@@ -184,8 +200,11 @@ void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool 
 {
 	if(changed)
 	{
-		m_chunkpatchfile->Seek(chunk_patch_pos);
-		m_chunkpatchfile->Write(buf, (_u32)bsize);
+		if(!m_chunkpatchfile->Seek(chunk_patch_pos) || m_chunkpatchfile->Write(buf, (_u32)bsize)!=bsize)
+		{
+			Server->Log("Writing to file failed", LL_ERROR);
+			exit(3);
+		}
 	}
 	chunk_patch_pos+=bsize;
 }

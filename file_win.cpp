@@ -77,7 +77,7 @@ bool File::Open(std::wstring pfn, int mode)
 		}
 		else
 		{
-			dwCreationDisposition=CREATE_NEW;
+			dwCreationDisposition=OPEN_ALWAYS;
 		}
 		dwDesiredAccess=GENERIC_WRITE | GENERIC_READ;
 	}
@@ -111,6 +111,7 @@ bool File::Open(std::wstring pfn, int mode)
 	}
 	else
 	{
+		DWORD err = GetLastError();
 		hfile=NULL;
 		return false;
 	}

@@ -535,4 +535,9 @@ void CDatabase::freeMemory()
 	sqlite3_db_release_memory(db);
 }
 
+int CDatabase::getLastChanges()
+{
+	return sqlite3_changes(db);
+}
+
 #endif //NO_SQLITE

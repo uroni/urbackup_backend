@@ -1372,7 +1372,8 @@ bool ServerCleanupThread::enforce_quota(int clientid, std::ostringstream& log)
 			if(state==0)
 			{
 				std::vector<int> imageids;
-				if(cleanup_images_client(clientid, target_space, imageids))
+				cleanup_images_client(clientid, target_space, imageids);
+				if(!imageids.empty())
 				{
 					log << "Removed " << imageids.size() << " images with ids ";
 					for(size_t i=0;i<imageids.size();++i) log << imageids[i];

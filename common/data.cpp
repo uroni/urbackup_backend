@@ -86,7 +86,7 @@ void CWData::addString(std::string ta)
 {
 	size_t cpos=data.size();
 	data.resize(cpos+sizeof(unsigned int)+ta.size() );
-	unsigned int len=(unsigned int)ta.size();
+	unsigned int len=little_endian((unsigned int)ta.size());
 	memcpy(&data[cpos], &len, sizeof(unsigned int) );
 	cpos+=sizeof(unsigned int);
 	if(!ta.empty())
@@ -245,6 +245,8 @@ bool CRData::getStr(std::string *ret)
 	unsigned int strlen;
 	memcpy(&strlen,&data[streampos], sizeof(unsigned int) );
 	streampos+=sizeof(unsigned int);
+
+	strlen = little_endian(strlen);
 
 	if(streampos+strlen>datalen )
 	{

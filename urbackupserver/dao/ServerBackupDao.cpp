@@ -1355,3 +1355,8 @@ void ServerBackupDao::attachDbs()
 {
 	db->AttachDBs();
 }
+
+int ServerBackupDao::getLastChanges()
+{
+	return db->getLastChanges();
+}

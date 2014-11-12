@@ -404,6 +404,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				if(r>=csize)
 				{
 					memcpy(&blocksize, buffer, sizeof(unsigned int) );
+					blocksize = little_endian(blocksize);
 					off+=sizeof(unsigned int);
 					vhd_blocksize/=blocksize;
 				}
@@ -435,6 +436,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				if(r>=csize)
 				{
 					memcpy(&drivesize, &buffer[off], sizeof(int64) );
+					drivesize=little_endian(drivesize);
 					off+=sizeof(int64);
 
 					blockcnt=drivesize/blocksize;
@@ -521,6 +523,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				if(r>=csize)
 				{
 					memcpy(&blockcnt, &buffer[off], sizeof(int64) );
+					blockcnt=little_endian(blockcnt);
 					off+=sizeof(int64);
 				}
 				else
@@ -545,6 +548,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				if(r>=csize)
 				{
 					memcpy(&shadowdrive_size, &buffer[off], sizeof(unsigned int));
+					shadowdrive_size = little_endian(shadowdrive_size);
 					off+=sizeof(unsigned int);
 					if(shadowdrive_size>0)
 					{
@@ -570,6 +574,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 				if(r>=csize)
 				{
 					memcpy(&shadow_id, &buffer[off], sizeof(int));
+					shadow_id = little_endian(shadow_id);
 					off+=sizeof(int);
 				}
 				else
@@ -701,6 +706,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					if(r-off>=sizeof(int64) )
 					{
 						memcpy(&currblock, &buffer[off], sizeof(int64) );
+						currblock = little_endian(currblock);
 						if(currblock==-123)
 						{
 							if(nextblock<=totalblocks)
@@ -825,6 +831,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								int64 hblock;
 								unsigned char dig[sha_size];
 								memcpy(&hblock, &buffer[off+sizeof(int64)], sizeof(int64));
+								hblock = little_endian(hblock);
 								memcpy(&dig, &buffer[off+2*sizeof(int64)], sha_size);
 
 
@@ -985,7 +992,7 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 	partition[11]=0x00;
 
 	unsigned int sectors=(unsigned int)(volsize/((uint64)sector_size));
-
+	sectors = little_endian(sectors);
 	memcpy(&partition[12], &sectors, sizeof(unsigned int) );
 
 	memcpy(mptr, partition, 16);

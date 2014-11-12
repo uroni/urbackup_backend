@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <memory.h>
 #include <string.h>
+#include "../stringtools.h"
 
 extern ICryptoFactory *crypto_fak;
 const size_t max_send_size=20000;
@@ -132,6 +133,7 @@ void CompressedPipe::Process(const char *buffer, size_t bsize)
 
 			if(message_len_byte==sizeof(_u16))
 			{
+				message_len = little_endian(message_len);
 				if(message_len>0)
 				{
 					recv_state=RS_CONTENT;
@@ -186,7 +188,7 @@ bool CompressedPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 		cbsize=(std::min)(max_send_size, bsize);
 
 		_u16 rc=(_u16)comp->compress(ptr, cbsize, &comp_buffer, true, sizeof(_u16));
-		*((_u16*)&comp_buffer[0])=rc;
+		*((_u16*)&comp_buffer[0])=little_endian(rc);
 		bool b=cs->Write(&comp_buffer[0], rc+sizeof(_u16), timeoutms);
 		if(!b)
 			return false;

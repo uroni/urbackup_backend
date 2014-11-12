@@ -48,6 +48,7 @@
 #include <sys/wait.h>
 #endif
 volatile bool IdleCheckerThread::idle=false;
+#include <set>
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
 std::map<std::wstring, std::wstring> IndexThread::filesrv_share_dirs;
@@ -1341,46 +1342,56 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		{
 			VSSLog(L"Indexing changed dir: " + path, LL_DEBUG);
 
-			std::vector<std::wstring> changed_files=cd->getChangedFiles((*it_dir).id);
+			std::vector<std::wstring> changed_files;
+			std::set<_i64> changed_files_dir_ids;
+			do 
+			{
+				if(changed_files_dir_ids.find((*it_dir).id)==changed_files_dir_ids.end())
+				{
+					std::vector<std::wstring> new_changed_files = cd->getChangedFiles((*it_dir).id);
+					changed_files.insert(changed_files.end(), new_changed_files.begin(), new_changed_files.end());
+					changed_files_dir_ids.insert((*it_dir).id);
+				}
+				++it_dir;
+
+			} while (it_dir!=changed_dirs.end() && it_dir->name==path_lower);
+			
 			std::sort(changed_files.begin(), changed_files.end());
 
-			if(!changed_files.empty())
+			for(size_t i=0;i<fs_files.size();++i)
 			{
-				for(size_t i=0;i<fs_files.size();++i)
+				if(!fs_files[i].isdir)
 				{
-					if(!fs_files[i].isdir)
+					if( std::binary_search(changed_files.begin(), changed_files.end(), fs_files[i].name) )
 					{
-						if( std::binary_search(changed_files.begin(), changed_files.end(), fs_files[i].name) )
-						{
-							VSSLog(L"Found changed file: " + fs_files[i].name, LL_DEBUG);
+						VSSLog(L"Found changed file: " + fs_files[i].name, LL_DEBUG);
 
-							fs_files[i].last_modified*=Server->getRandomNumber();
-							if(fs_files[i].last_modified>0)
-								fs_files[i].last_modified*=-1;
-							else if(fs_files[i].last_modified==0)
-								fs_files[i].last_modified=-1;
-						}
-						else
+						fs_files[i].last_modified*=(std::max)((unsigned int)2, Server->getRandomNumber());
+						if(fs_files[i].last_modified>0)
+							fs_files[i].last_modified*=-1;
+						else if(fs_files[i].last_modified==0)
+							fs_files[i].last_modified=-1;
+					}
+					else
+					{
+						std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), fs_files[i]);
+						if( it_db_file!=db_files.end()
+							&& (*it_db_file).name==fs_files[i].name
+							&& (*it_db_file).isdir==fs_files[i].isdir
+							&& (*it_db_file).last_modified<0 )
 						{
-							std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), fs_files[i]);
-							if( it_db_file!=db_files.end()
-									&& (*it_db_file).name==fs_files[i].name
-									&& (*it_db_file).isdir==fs_files[i].isdir
-									&& (*it_db_file).last_modified<0 )
+							VSSLog(L"File changed at last backup: "+ fs_files[i].name, LL_DEBUG);
+
+							if( fs_files[i].last_modified<last_filebackup_filetime)
 							{
-								VSSLog(L"File changed at last backup: "+ fs_files[i].name, LL_DEBUG);
-
-								if( fs_files[i].last_modified<last_filebackup_filetime)
-								{
-									fs_files[i].last_modified=it_db_file->last_modified;
-								}
-								else
-								{
-									VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
-									fs_files[i].last_modified*=Server->getRandomNumber();
-									if(fs_files[i].last_modified>0)
-										fs_files[i].last_modified*=-1;
-								}
+								fs_files[i].last_modified=it_db_file->last_modified;
+							}
+							else
+							{
+								VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
+								fs_files[i].last_modified*=(std::max)((unsigned int)2, Server->getRandomNumber());
+								if(fs_files[i].last_modified>0)
+									fs_files[i].last_modified*=-1;
 							}
 						}
 					}

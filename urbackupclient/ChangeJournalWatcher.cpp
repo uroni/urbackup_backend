@@ -22,6 +22,8 @@
 #include "../stringtools.h"
 #include "DirectoryWatcherThread.h"
 #include <memory>
+#include <assert.h>
+
 
 namespace usn
 {
@@ -154,7 +156,8 @@ ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDataba
 	has_error=false;
 	last_index_update=0;
 
-	usn_logging_enabled = Server->getServerParameter("usn_logging_enabled")=="true";
+	usn_logging_enabled = Server->getServerParameter("usn_logging_enabled")=="true" ||
+		FileExists("usn_logging_enabled");
 }
 
 ChangeJournalWatcher::~ChangeJournalWatcher(void)
@@ -185,9 +188,9 @@ void ChangeJournalWatcher::saveJournalData(DWORDLONG journal_id, const std::wstr
 	if(rec.Filename==L"backup_client.db" || rec.Filename==L"backup_client.db-journal" )
 		return;
 
-	journal_dao.insertJournalData(vol, static_cast<int64>(journal_id), static_cast<int64>(rec->Usn),
-		static_cast<int64>(rec->Reason), fn, static_cast<int64>(rec->FileReferenceNumber),
-		static_cast<int64>(rec->ParentFileReferenceNumber), nextUsn, static_cast<int64>(rec->FileAttributes));
+	journal_dao.insertJournalData(vol, static_cast<int64>(journal_id), static_cast<int64>(rec.Usn),
+		static_cast<int64>(rec.Reason), rec.Filename, static_cast<int64>(rec.FileReferenceNumber),
+		static_cast<int64>(rec.ParentFileReferenceNumber), nextUsn, static_cast<int64>(rec.FileAttributes));
 }
 
 std::vector<UsnInt> ChangeJournalWatcher::getJournalData(const std::wstring &vol)
@@ -751,6 +754,8 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 	bool started_transaction=false;
 
 	num_changes=0;
+	
+	std::map<std::wstring, bool> local_open_write_files;
 
 	std::vector<IChangeJournalListener::SSequence> usn_sequences;
 
@@ -772,7 +777,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 				}
 				for(size_t i=0;i<jd.size();++i)
 				{
-					updateWithUsn(it->first, it->second, &jd[i], true);
+					updateWithUsn(it->first, it->second, &jd[i], true, local_open_write_files);
 					it->second.last_record=jd[i].NextUsn;
 				}
 				Server->Log("Deleting saved journal data...", LL_DEBUG);
@@ -841,7 +846,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 									started_transaction=true;
 									db->BeginTransaction();
 								}
-								updateWithUsn(it->first, it->second, &usn_record, true);
+								updateWithUsn(it->first, it->second, &usn_record, true, local_open_write_files);
 							}
 						}
 						else
@@ -968,6 +973,11 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 
 	if(started_transaction)
 	{
+		for(std::map<std::wstring, bool>::iterator it=local_open_write_files.begin();it!=local_open_write_files.end();++it)
+		{
+			open_write_files.add(it->first);
+		}
+		open_write_files.flushf();
 		db->EndTransaction();
 	}
 }
@@ -976,10 +986,11 @@ void ChangeJournalWatcher::update_longliving(void)
 {
 	if(!freeze_open_write_files)
 	{
-		for(std::map<std::wstring, bool>::iterator it=open_write_files.begin();it!=open_write_files.end();++it)
+		std::vector<std::wstring> files = open_write_files.get();
+		for(size_t i=0;i<files.size();++i)
 		{
 			for(size_t i=0;i<listeners.size();++i)
-				listeners[i]->On_FileModified(it->first, true, false);
+				listeners[i]->On_FileModified(files[i], true, false);
 		}
 	}
 	else
@@ -1002,7 +1013,12 @@ void ChangeJournalWatcher::set_freeze_open_write_files(bool b)
 
 	if(b)
 	{
-		open_write_files_frozen=open_write_files;
+		open_write_files_frozen.clear();
+		std::vector<std::wstring> files = open_write_files.get();
+		for(size_t i=0;i<files.size();++i)
+		{
+			open_write_files_frozen[files[i]]=true;
+		}
 	}
 	else
 	{
@@ -1066,7 +1082,7 @@ void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRe
 
 const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REASON_HARD_LINK_CHANGE | USN_REASON_NAMED_DATA_EXTEND | USN_REASON_NAMED_DATA_OVERWRITE| USN_REASON_NAMED_DATA_TRUNCATION| USN_REASON_REPARSE_POINT_CHANGE| USN_REASON_SECURITY_CHANGE| USN_REASON_STREAM_CHANGE| USN_REASON_DATA_TRUNCATION | USN_REASON_BASIC_INFO_CHANGE | USN_REASON_DATA_OVERWRITE | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME | USN_REASON_TRANSACTED_CHANGE;
 
-void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft)
+void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft, std::map<std::wstring, bool>& local_open_write_files)
 {
 	if(usn_logging_enabled)
 	{
@@ -1110,7 +1126,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				else
 				{
 					addFrn(parent_name, parent_parent_frn, UsnRecord->ParentFileReferenceNumber, cj.rid);
-					updateWithUsn(vol, cj, UsnRecord, false);
+					updateWithUsn(vol, cj, UsnRecord, false, local_open_write_files);
 				}
 			}
 			else
@@ -1225,7 +1241,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				else
 				{
 					addFrn(parent_name, parent_parent_frn, UsnRecord->ParentFileReferenceNumber, cj.rid);
-					updateWithUsn(vol, cj, UsnRecord, false);
+					updateWithUsn(vol, cj, UsnRecord, false, local_open_write_files);
 				}
 			}
 			else
@@ -1273,15 +1289,20 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				{
 					if(UsnRecord->Reason & USN_REASON_CLOSE)
 					{
-						std::map<std::wstring, bool>::iterator it=open_write_files.find(real_fn);
-						if(it!=open_write_files.end())
+						std::map<std::wstring, bool>::iterator it_rf=local_open_write_files.find(real_fn);
+
+						if(it_rf!=local_open_write_files.end())
 						{
-							open_write_files.erase(it);
+							local_open_write_files.erase(it_rf);
+						}
+						else
+						{
+							open_write_files.remove(real_fn);
 						}
 					}
 					else if(UsnRecord->Reason & watch_flags)
 					{
-						open_write_files[real_fn]=true;
+						local_open_write_files[real_fn]=true;
 
 						if(freeze_open_write_files)
 						{
@@ -1305,15 +1326,13 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 
 					if(save_fn)
 					{
-						save_fn=false;
-
 						WIN32_FILE_ATTRIBUTE_DATA fad;
 						if(GetFileAttributesExW(os_file_prefix(real_fn).c_str(), GetFileExInfoStandard, &fad) )
 						{
-							int64 last_mod_time = static_cast<__int64>(fad.ftLastWriteTime.dwHighDateTime) << 32 | fad.ftLastWriteTime.dwLowDateTime;
-							if(last_mod_time<=last_backup_time || last_backup_time==0)
+							uint64 last_mod_time = static_cast<uint64>(fad.ftLastWriteTime.dwHighDateTime) << 32 | fad.ftLastWriteTime.dwLowDateTime;
+							if(last_mod_time>static_cast<uint64>(last_backup_time) && last_backup_time!=0)
 							{
-								save_fn=true;
+								save_fn=false;
 							}
 						}
 					}

@@ -2,6 +2,8 @@
 #include "../stringtools.h"
 #include <assert.h>
 
+#define VLOG(x)
+
 ChunkPatcher::ChunkPatcher(void)
 	: cb(NULL), require_unchanged(true)
 {
@@ -65,6 +67,8 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 		if(tr==0)
 		{
 			assert(file_pos==next_header.patch_off);
+
+			VLOG(Server->Log("Applying patch at "+nconvert(file_pos)+" length="+nconvert(next_header.patch_size), LL_DEBUG));
 
 			file_pos+=next_header.patch_size;
 

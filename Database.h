@@ -54,6 +54,8 @@ public:
 	virtual bool Backup(const std::string &pFile);
 
 	virtual void freeMemory();
+
+	virtual int getLastChanges();
 private:
 	
 	bool backup_db(const std::string &pFile, const std::string &pDB);

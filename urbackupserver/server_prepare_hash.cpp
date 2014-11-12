@@ -215,7 +215,8 @@ std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutp
 
 	hashoutput->Seek(0);
 	_i64 fsize=f->Size();
-	if(!writeRepeatFreeSpace(hashoutput, (char*)&fsize, sizeof(_i64), cb))
+	_i64 fsize_endian = little_endian(fsize);
+	if(!writeRepeatFreeSpace(hashoutput, (char*)&fsize_endian, sizeof(_i64), cb))
 		return "";
 
 	sha512_ctx ctx;
@@ -240,6 +241,7 @@ std::string BackupServerPrepareHash::build_chunk_hashs(IFile *f, IFile *hashoutp
 			_u32 r=f->Read(buf, c_small_hash_dist);
 			_u32 small_hash=urb_adler32(urb_adler32(0, NULL, 0), buf, r);
 			big_hash.update((unsigned char*)buf, r);
+			small_hash = little_endian(small_hash);
 			if(!writeRepeatFreeSpace(hashoutput, (char*)&small_hash, small_hash_size, cb))
 				return "";
 

@@ -114,6 +114,9 @@
     <ClCompile Include="win_tokens.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="PersistentOpenFiles.cpp">
+      <Filter>watchdir</Filter>
+    </ClCompile>
     <ClCompile Include="watchdir\JournalDAO.cpp">
       <Filter>watchdir</Filter>
     </ClCompile>
@@ -202,6 +205,9 @@
     </ClInclude>
     <ClInclude Include="win_tokens.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PersistentOpenFiles.h">
+      <Filter>watchdir</Filter>
     </ClInclude>
     <ClInclude Include="watchdir\JournalDAO.h">
       <Filter>watchdir</Filter>
