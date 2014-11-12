@@ -1,17 +1,18 @@
 <br />
-<div style="height:20px">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tSeparate settings for this client}</td>
-<td><input type="checkbox" onclick="updateUserOverwrite({clientid})" id="overwrite" {overwrite} /></td>
-</tr>
-</table>
+<div class="panel panel-default">
+	<div class="panel-body">
+		<form class="form form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="overwrite">{tSeparate settings for this client}</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" onclick="updateUserOverwrite({clientid})" id="overwrite" {overwrite} />
+				</div>
+			</div>
+			{settings_inv|s}
+			{overwrite_warning_start|s}
+			<div class="alert alert-warning">{tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings.}</div>
+			{overwrite_warning_end|s}
+			<input type="button" class="btn btn-primary" value="{tSave}" onClick="saveClientSettings({clientid})" id="user_submit"/>
+		</form>
+	</div>
 </div>
-<br />
-<div class="tabber" id="settings_tabber">{settings_inv|s}</div>
-<br />
-<br />
-{overwrite_warning_start|s}
-<div style="color: red">{tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings. }</div><br /><br />
-{overwrite_warning_end|s}
-<input type="button" value="{tSave}" onClick="saveClientSettings({clientid})" id="user_submit" />

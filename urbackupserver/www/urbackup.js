@@ -464,15 +464,14 @@ function show_statistics2(data)
 	stopLoading();
 	if(g.main_nav_pos!=2) return;
 	
-	var ndata="<a href=\"javascript: show_statistics1()\">"+trans("overview")+"</a>";
-	if(g.settings_nav_pos==0)
-	{
-		ndata="<strong>"+trans("overview")+"</strong>";
-	}
+	var ndata="<div class=\"row\">";
+	ndata+="<div class=\"col-sm-1\">";
+	ndata+="<a class=\"btn btn-default\" href=\"javascript: show_statistics1()\">"+trans("overview")+"</a>";
+	ndata+="</div>";
 	if(data.users.length>0)
-	{		
-		ndata+="&nbsp;| &nbsp;";
-		ndata+="<select size=\"1\" style=\"width: 150px\" onchange=\"stat_client()\" id=\"statclient\">";
+	{
+		ndata+="<div class=\"col-sm-2\">";
+		ndata+="<select class=\"form-control\" onchange=\"stat_client()\" id=\"statclient\">";
 		if(g.settings_nav_pos<1)
 		{
 			ndata+="<option value=\"n\">"+trans("clients")+"</option>";
@@ -486,8 +485,11 @@ function show_statistics2(data)
 			}
 			ndata+="<option value=\""+i+"\""+s+">"+data.users[i].name+"</option>";					
 		}
+		ndata+="</select>";
 		g.stat_data=data;
 	}
+	ndata+="</div>";
+	ndata+="<br/>&nbsp<br/>";
 	I('nav_pos').innerHTML=ndata;
 }
 
@@ -549,9 +551,12 @@ function createUsageGraph(selectedIdx, params)
 		params= "&" + params;
 	}
 	
-	new loadGraph("usagegraph", "scale="+scale+params, "usagegraph", {pie: false, width: 800, height: 500, 
-			title: trans("storage_usage_bar_graph_title"), colname1: trans(transKey), colname2: trans("storage_usage_bar_graph_colname2"), dateFormat: dateFormat },
-			addUsagegraph);
+	new loadGraph("usagegraph", "scale="+scale+params, "usagegraph", {pie: false, width: 640, height: 480, 
+			title: trans("storage_usage_bar_graph_title"),
+			colname1: trans(transKey),
+			colname2: trans("storage_usage_bar_graph_colname2"),
+			dateFormat: dateFormat },
+		addUsagegraph);
 }
 function set_button_filename(buttons, text)
 {
@@ -594,7 +599,7 @@ function show_statistics3(data)
 	if(g.data_f!=ndata)
 	{	
 		I('data_f').innerHTML=ndata;
-		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 700, height: 700, 
+		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 640, height: 480, 
 			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") }, "" );
 		
 		createUsageGraph(0, "");
@@ -1367,16 +1372,18 @@ function show_settings2(data)
 		var idx=0;
 		g.user_nav_pos_offset=0;
 		g.mail_nav_pos_offset=0;
+		n+="<ul class=\"nav nav-tabs\" role=\"tablist\">";
 		if(nav.general)
 		{
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans("general_settings")+"</strong>";
+				n+="<li class=\"active\"><a href=\"javascript: generalSettings()\">"+trans("general_settings")+"</a></li>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: generalSettings()\">"+trans("general_settings")+"</a>";
+				n+="<li><a href=\"javascript: generalSettings()\">"+trans("general_settings")+"</a></li>";
 			}
+			
 			++idx;
 			++g.user_nav_pos_offset;
 			++g.mail_nav_pos_offset;
@@ -1384,32 +1391,30 @@ function show_settings2(data)
 		}
 		if(nav.mail)
 		{
-			if(n!="" ) n+=" | ";
-			
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans("mail_settings")+"</strong>";
+				n+="<li class=\"active\"><a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a></li>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a>";
+				n+="<li><a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a></li>";
 			}
+
 			++idx;
 			++g.user_nav_pos_offset;
 			++g.internet_nav_pos_offset;
 		}
 		if(nav.users)
-		{	
-			if(n!="" ) n+=" | ";
-			
+		{
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans("users")+"</strong>";
+				n+="<li class=\"active\"><a href=\"javascript: userSettings()\">"+trans("users")+"</a></li>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: userSettings()\">"+trans("users")+"</a>";
-			}			
+				n+="<li><a href=\"javascript: userSettings()\">"+trans("users")+"</a></li>";
+			}
+
 			++idx;
 			++g.user_nav_pos_offset;
 		}
@@ -1420,17 +1425,8 @@ function show_settings2(data)
 				++g.settings_nav_pos;
 			}
 			
-			if(n!="" ) n+=" | ";
-			
-			if(g.settings_nav_pos==idx)
-			{
-				n+="<strong>"+trans("change_pw")+"</strong>";
-				data.sa="change_pw_int";
-			}
-			else
-			{
-				n+="<span id=\"change_pw_el\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></span>";
-			}			
+			n+="<a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+
 			++idx;
 			++g.user_nav_pos_offset;
 		}
@@ -1439,21 +1435,13 @@ function show_settings2(data)
 			g.settings_clients=nav.clients;
 			
 			if(nav.clients.length>0)
-			{			
-				if(n!="") n+=" | ";
-				n+="<select size=\"1\" style=\"width: 150px\" onchange=\"clientSettings()\" id=\"settingsclient\">";
-				if(g.settings_nav_pos<idx)
-				{
-					n+="<option value=\"n\">"+trans("clients")+"</option>"
-				}
+			{
+				n+="<li role=\"presentation\" class=\"dropdown\">";
+				n+="<a class=\"dropdown-toggle\" data-toggle=\"dropdown\" href=\"#\">Client <span class=\"caret\"></span></a>";
+				n+="<ul class=\"dropdown-menu\" role=\"menu\">";
 				for(var i=0;i<nav.clients.length;++i)
 				{		
-					s="";
-					if(g.settings_nav_pos==idx)
-					{
-						s=" selected=\"selected\"";
-					}
-					n+="<option value=\""+nav.clients[i].id+"-"+idx+"\""+s+">"+nav.clients[i].name+"</option>";					
+					n+="<li><a href=\"javascript: clientSettings(" + nav.clients[i].id + "-" + idx + ")\">" + nav.clients[i].name + "</a></li>";
 					++idx;
 				}
 			}

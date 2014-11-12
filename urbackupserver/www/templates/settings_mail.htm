@@ -1,41 +1,63 @@
-﻿<br />
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tMail server name}:</td>
-<td><input type="text" size="40" id="mail_servername" value="{mail_servername|s}"/> </td>
-</tr>
-<tr>
-<td>{tMail server port}:</td>
-<td><input type="text" size="40" id="mail_serverport" value="{mail_serverport}"/> </td>
-</tr>
-<tr>
-<td>{tMail server username (empty for none)}:</td>
-<td><input type="text" size="40" id="mail_username" value="{mail_username|s}"/> </td>
-</tr>
-<tr>
-<td>{tMail server password}:</td>
-<td><input type="text" size="40" id="mail_password" value="{mail_password|s}"/> </td>
-</tr>
-<tr>
-<td>{tSender E-Mail Address}:</td>
-<td><input type="text" id="mail_from" value="{mail_from|s}" /></td>
-</tr>
-<tr>
-<td>{tSend mails only with SSL/TLS}:</td>
-<td><input type="checkbox" id="mail_ssl_only" value="false" {mail_ssl_only}/></td>
-</tr>
-<tr>
-<td>{tCheck SSL/TLS certificate}:</td>
-<td><input type="checkbox" id="mail_check_certificate" value="false" {mail_check_certificate}/></td>
-</tr>
-<tr>
-<td>{tServer admin mail address}:</td>
-<td><input type="text" size="40" id="mail_admin_addrs" value="{mail_admin_addrs|s}"/> </td>
-</tr>
-</table>
-<br />
-<br />
-<input type="button" value="{tSave}" onClick="saveMailSettings()" />
-<br />
-{tSend test mail to this email address after saving the settings (leave empty to not send a test mail)}:<br />
-<input type="text" size="40" id="testmailaddr" value=""/>
+﻿<br/>
+<div class="panel panel-default">
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="mail_servername">{tMail server name}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="mail_servername" value="{mail_servername|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="mail_serverport">{tMail server port}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="mail_serverport" value="{mail_serverport}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="mail_username">{tMail server username (empty for none)}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="mail_username" value="{mail_username|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="mail_password">{tMail server password}:</label>
+				<div class="col-sm-6">
+					<input type="password" class="form-control" id="mail_password" value="{mail_password|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="mail_from">{tSender E-Mail Address}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="mail_from" value="{mail_from|s}" />
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="mail_ssl_only">{tSend mails only with SSL/TLS}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="mail_ssl_only" value="false" {mail_ssl_only}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="mail_check_certificate">{tCheck SSL/TLS certificate}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="mail_check_certificate" value="false" {mail_check_certificate}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="mail_admin_addrs">{tServer admin mail address}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="mail_admin_addrs" value="{mail_admin_addrs|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="testmailaddr">{tSend test mail to this email address after saving the settings (leave empty to not send a test mail)}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="testmailaddr" value=""/>
+				</div>
+			</div>
+			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveMailSettings()" />
+		</form>
+	</div>
+</div>
+

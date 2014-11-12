@@ -1,360 +1,609 @@
-﻿<div class="tabbertab" title="{tFile backups}">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tInterval for incremental file backups}:</td>
-<td><input type="text" id="update_freq_incr" value="{update_freq_incr}"/> {thours}&nbsp;&nbsp;</td>
-<td><input type="checkbox" id="update_freq_incr_disable" onchange="settingsCheckboxChange()"/> {tDisable}</td>
-</tr>
-<tr>
-<td>{tInterval for full file backups}:</td>
-<td><input type="text" id="update_freq_full" value="{update_freq_full}"/> {tdays}&nbsp;&nbsp;</td>
-<td><input type="checkbox" id="update_freq_full_disable" onchange="settingsCheckboxChange()"/> {tDisable}</td>
-</tr>
-<tr>
-<td>{tMaximal number of incremental file backups}:</td>
-<td><input type="text" id="max_file_incr" value="{max_file_incr}"/></td>
-</tr>
-<tr>
-<td>{tMinimal number of incremental file backups}:</td>
-<td><input type="text" id="min_file_incr" value="{min_file_incr}"/></td>
-</tr>
-<td>{tMaximal number of full file backups}:</td>
-<td><input type="text" id="max_file_full" value="{max_file_full}"/></td>
-</tr>
-<tr>
-<td>{tMinimal number of full file backups}:</td>
-<td><input type="text" id="min_file_full" value="{min_file_full}"/></td>
-</tr>
-<tr>
-<td>{tExcluded files (with wildcards)}:</td>
-<td><input type="text" id="exclude_files" value="{exclude_files|s}"/> <a href="http://www.urbackup.org/FAQ.php#exclude_files" target="_blank">?</a></td>
-</tr>
-<tr>
-<td>{tIncluded files (with wildcards)}:</td>
-<td><input type="text" id="include_files" value="{include_files|s}"/> <a href="http://www.urbackup.org/FAQ.php#include_files" target="_blank">?</a></td>
-</tr>
-<tr>
-<td>{tDefault directories to backup}:</td>
-<td><input type="text" id="default_dirs" value="{default_dirs|s}"/> <a href="http://www.urbackup.org/FAQ.php#default_dirs" target="_blank">?</a></td>
-</tr>
-<tr>
-</table>
+﻿<div class="panel panel-default" id="file_backups">
+	<div class="panel-heading">{tFile Backups}</div>
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="update_freq_incr">{tInterval for incremental file backups}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="update_freq_incr" value="{update_freq_incr}"/>
+						<div class="input-group-addon">{thours}</div>
+					</div>
+				</div>
+				<div class="checkbox"><label><input type="checkbox" id="update_freq_incr_disable" onchange="settingsCheckboxChange()"/>{tDisable}</label></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="update_freq_full">{tInterval for full file backups}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="update_freq_full" value="{update_freq_full}"/>
+						<div class="input-group-addon">{tdays}</div>
+					</div>
+				</div>
+				<div class="checkbox"><label><input type="checkbox" id="update_freq_full_disable" onchange="settingsCheckboxChange()"/>{tDisable}</label></div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="max_file_incr">{tMaximal number of incremental file backups}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="max_file_incr" value="{max_file_incr}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="min_file_incr">{tMinimal number of incremental file backups}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="min_file_incr" value="{min_file_incr}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="max_file_full">{tMaximal number of full file backups}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="max_file_full" value="{max_file_full}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="min_file_full">{tMinimal number of full file backups}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="min_file_full" value="{min_file_full}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="exclude_files">{tExcluded files (with wildcards)}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="exclude_files" value="{exclude_files|s}"/>
+						<div class="input-group-addon"><a href="http://www.urbackup.org/FAQ.php#exclude_files" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="include_files">{tIncluded files (with wildcards)}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="include_files" value="{include_files|s}"/>
+						<div class="input-group-addon"><a href="http://www.urbackup.org/FAQ.php#include_files" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="default_dirs">{tDefault directories to backup}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="default_dirs" value="{default_dirs|s}"/>
+						<div class="input-group-addon"><a href="http://www.urbackup.org/FAQ.php#default_dirs" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
+		</form>
+	</div>
 </div>
 
-<div class="tabbertab" title="{tImage backups}">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tInterval for incremental image backups}:</td>
-<td><input type="text" id="update_freq_image_incr" value="{update_freq_image_incr}"/> {tdays}&nbsp;&nbsp;</td>
-<td><input type="checkbox" id="update_freq_image_incr_disable" onchange="settingsCheckboxChange()"/> {tDisable}</td>
-</tr>
-<tr>
-<td>{tInterval for full image backups}:</td>
-<td><input type="text" id="update_freq_image_full" value="{update_freq_image_full}"/> {tdays}&nbsp;&nbsp;</td>
-<td><input type="checkbox" id="update_freq_image_full_disable" onchange="settingsCheckboxChange()"/> {tDisable}</td>
-</tr>
-<td>{tMaximal number of incremental image backups}:</td>
-<td><input type="text" id="max_image_incr" value="{max_image_incr}"/></td>
-</tr>
-<tr>
-<td>{tMinimal number of incremental image backups}:</td>
-<td><input type="text" id="min_image_incr" value="{min_image_incr}"/></td>
-</tr>
-<td>{tMaximal number of full image backups}:</td>
-<td><input type="text" id="max_image_full" value="{max_image_full}"/></td>
-</tr>
-<tr>
-<td>{tMinimal number of full image backups}:</td>
-<td><input type="text" id="min_image_full" value="{min_image_full}"/></td>
-</tr>
-<tr>
-<td>{tVolumes to backup}:</td>
-<td><input type="text" id="image_letters" value="{image_letters|s|h}"/> <a href="http://www.urbackup.org/FAQ.php#image_letters" target="_blank">?</a></td>
-</tr>
-<tr>
-<td>{tImage backup file format}:</td>
-<td><select size="1" style="width: 150px;" id="image_file_format"><option value="vhdz" {image_file_format_0}>{tCompressed VHD (Compressed non-standard Virtual HardDisk)}</option><option value="vhd" {image_file_format_1}>{tVHD (Virtual HardDisk)}</option></select></td>
-</tr>
-</table>
+<div class="panel panel-default" id="image_backups">
+	<div class="panel-heading">{tImage backups}</div>
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="update_freq_image_incr">{tInterval for incremental image backups}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="update_freq_image_incr" value="{update_freq_image_incr}"/>
+						<div class="input-group-addon">{tdays}</div>
+					</div>
+				</div>
+				<div class="checkbox">
+					<label><input type="checkbox" id="update_freq_image_incr_disable" onchange="settingsCheckboxChange()"/>{tDisable}</label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="update_freq_image_full">{tInterval for full image backups}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="update_freq_image_full" value="{update_freq_image_full}"/>
+						<div class="input-group-addon">{tDays}</div>
+					</div>
+				</div>
+				<div class="checkbox">
+					<label><input type="checkbox" id="update_freq_image_full_disable" onchange="settingsCheckboxChange()"/>{tDisable}</label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="max_image_incr">{tMaximal number of incremental image backups}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="max_image_incr" value="{max_image_incr}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="min_image_incr">{tMinimal number of incremental image backups}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="min_image_incr" value="{min_image_incr}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="max_image_full">{tMaximal number of full image backups}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="max_image_full" value="{max_image_full}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="min_image_full">{tMinimal number of full image backups}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="min_image_full" value="{min_image_full}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="image_letters">"{tVolumes to backup}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="image_letters" value="{image_letters|s|h}"/>
+						<div class="input-group-addon"><a href="http://www.urbackup.org/FAQ.php#image_letters" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="image_file_format">{tImage backup file format}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="image_file_format">
+						<option value="vhdz" {image_file_format_0}>{tCompressed VHD (Compressed non-standard Virtual HardDisk)}</option>
+						<option value="vhd" {image_file_format_1}>{tVHD (Virtual HardDisk)}</option>
+					</select>
+				</div>
+			</div>
+
+			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
+		</form>
+	</div>
 </div>
 
-<div class="tabbertab" title="{tPermissions}">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tAllow client-side changing of the directories to backup}:</td>
-<td><input type="checkbox" id="allow_config_paths" {allow_config_paths}/></td>
-</tr>
-<tr>
-<td>{tAllow client-side starting of full file backups}:</td>
-<td><input type="checkbox" id="allow_starting_full_file_backups" {allow_starting_full_file_backups}/></td>
-</tr>
-<tr>
-<td>{tAllow client-side starting of incremental file backups}:</td>
-<td><input type="checkbox" id="allow_starting_incr_file_backups" {allow_starting_incr_file_backups}/></td>
-</tr>
-<tr>
-<td>{tAllow client-side starting of full image backups}:</td>
-<td><input type="checkbox" id="allow_starting_full_image_backups" {allow_starting_full_image_backups}/></td>
-</tr>
-<tr>
-<td>{tAllow client-side starting of incremental image backups}:</td>
-<td><input type="checkbox" id="allow_starting_incr_image_backups" {allow_starting_incr_image_backups}/></td>
-</tr>
-<tr>
-<td>{tAllow client-side viewing of backup logs}:</td>
-<td><input type="checkbox" id="allow_log_view" {allow_log_view}/></td>
-</tr>
-<tr>
-<td>{tAllow client-side pausing of backups}:</td>
-<td><input type="checkbox" id="allow_pause" {allow_pause}/></td>
-</tr>
-<tr>
-<td>{tAllow client-side changing of settings}:</td>
-<td><input type="checkbox" id="allow_overwrite" {allow_overwrite}/></td>
-</tr>
-<tr>
-<td>{tAllow clients to quit the tray icon}:</td>
-<td><input type="checkbox" id="allow_tray_exit" {allow_tray_exit}/></td>
-</tr>
-</table>
+<div class="panel panel-default">
+	<div class="panel-heading" id="permissions">Permissions</div>
+	<div class="panel-body">
+		<form class="form-horizontal">
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_config_paths">{tAllow client-side changing of the directories to backup}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="allow_config_paths" {allow_config_paths}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_starting_full_file_backups">{tAllow client-side starting of full file backups}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="allow_starting_full_file_backups" {allow_starting_full_file_backups}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_starting_incr_file_backups">{tAllow client-side starting of incremental file backups}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="allow_starting_incr_file_backups" {allow_starting_incr_file_backups}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_starting_full_image_backups">{tAllow client-side starting of full image backups}:</label>
+				<div class="col-sm-6">
+					<input type="checkbox" id="allow_starting_full_image_backups" {allow_starting_full_image_backups}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_starting_incr_image_backups">{tAllow client-side starting of incremental image backups}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="allow_starting_incr_image_backups" {allow_starting_incr_image_backups}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_log_view">{tAllow client-side viewing of backup logs}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="allow_log_view" {allow_log_view}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_pause">{tAllow client-side pausing of backups}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="allow_pause" {allow_pause}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_verwrite">{tAllow client-side changing of settings}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="allow_overwrite" {allow_overwrite}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="allow_tray_exit">{tAllow clients to quit the tray icon}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="allow_tray_exit" {allow_tray_exit}/></label>
+				</div>
+			</div>
+			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
+		</form>
+	</div>
 </div>
 
-<div class="tabbertab" title="{tClient}">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tDelay after system startup}:</td>
-<td><input type="text" id="startup_backup_delay" value="{startup_backup_delay}"/> {tmin}</td>
-</tr>
-<tr id="backup_window_row">
-<td>{tBackup window}</td>
-<td><input type="text" id="backup_window" value="{backup_window|s}" onchange="backupWindowChange()"/>&nbsp;<a href="javascript: showBackupWindowDetails()">{tShow details}</a>&nbsp;&nbsp;<a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
-</tr>
-<tr id="backup_window_incr_file_row">
-<td>{tBackup window for incremental file backups}</td>
-<td><input type="text" id="backup_window_incr_file" value="{backup_window_incr_file|s}"/><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
-</tr>
-<tr id="backup_window_full_file_row">
-<td>{tBackup window for full file backups}</td>
-<td><input type="text" id="backup_window_full_file" value="{backup_window_full_file|s}"/><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
-</tr>
-<tr id="backup_window_incr_image_row">
-<td>{tBackup window for incremental image backups}</td>
-<td><input type="text" id="backup_window_incr_image" value="{backup_window_incr_image|s}"/><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
-</tr>
-<tr id="backup_window_full_image_row">
-<td>{tBackup window for full image backups}</td>
-<td><input type="text" id="backup_window_full_image" value="{backup_window_full_image|s}"/><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></td>
-</tr>
-{no_compname_start|s}
-<tr>
-<td>{tComputer name}</td>
-<td><input type="text" id="computername" value="{computername|s}"/></td>
-</tr>
-{no_compname_end|s}
-<tr>
-<td>{tMax backup speed for local network}:</td>
-<td><input type="text" id="local_speed" value="{local_speed}"/> MBit/s</td>
-</tr>
-<tr>
-<td>{tPerform autoupdates silently}:</td>
-<td><input type="checkbox" id="silent_update" {silent_update}/></td>
-</tr>
-<tr>
-<td>{tSoft client quota}:</td>
-<td><input type="text" id="client_quota" value="{client_quota}"/></td>
-</tr>
-</table>
+<div class="panel panel-default">
+	<div class="panel-heading" id="client">Client</div>
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="startup_backup_delay">{tDelay after system startup}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="startup_backup_delay" value="{startup_backup_delay}"/>
+						<div class="input-group-addon">{tMin}</div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label">{tBackup window}</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="backup_window" value="{backup_window|s}" onchange="backupWindowChange()"/>
+						<div class="input-group-addon"><a href="javascript: showBackupWindowDetails()">{tShow details}</a>&nbsp;&nbsp;<a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label">{tBackup window for incremental file backups}</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="backup_window_incr_file" value="{backup_window_incr_file|s}"/>
+						<div class="input-group-addon"><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="backup_window_full_file">{tBackup window for full file backups}</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="backup_window_full_file" value="{backup_window_full_file|s}"/>
+						<div class="input-group-addon"><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="backup_window_incr_image">{tBackup window for incremental image backups}</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="backup_window_incr_image" value="{backup_window_incr_image|s}"/>
+						<div class="input-group-addon"><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="backup_window_full_image">{tBackup window for full image backups}</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="backup_window_full_image" value="{backup_window_full_image|s}"/>
+						<div class="input-group-addon"><a href="http://www.urbackup.org/FAQ.php#backup_window" target="_blank">?</a></div>
+					</div>
+				</div>
+			</div>
+			{no_compname_start|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="computername">{tComputer name}</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="computername" value="{computername|s}"/>
+				</div>
+			</div>
+			{no_compname_end|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="local_speed">{tMax backup speed for local network}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="local_speed" value="{local_speed}"/>
+						<div class="input-group-addon">MBit/s</div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="silent_update">{tPerform autoupdates silently}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="silent_update" {silent_update}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="client_quota">{tSoft client quota}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="client_quota" value="{client_quota}"/>
+				</div>
+			</div>
+			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
+		</form>
+	</div>
 </div>
 
-<div class="tabbertab" title="{tArchival}">
-<table cellspacing="0" cellpadding="0" id="archive_table">
-<tr>
-	<th style="width: 200px" class="tabHeader">{tArchive every}</th>
-	<th style="width: 200px" class="tabHeader">{tArchive for}</th>
-	<th style="width: 80px" class="tabHeader">{tArchive window}<a href="http://www.urbackup.org/FAQ.php#archive_window" target="_blank" title="h;dom;mon;dow">?</a></th>
-	<th style="width: 150px" class="tabHeader">{tBackup type}</th>
-	{no_compname_start|s}
-	<th style="width: 100px" class="tabHeader">{tNext archival}</th>
-	{no_compname_end|s}
-	<th style="width: 100px" class="tabHeaderRight">&nbsp;</th>
-</tr>
-<tr>
-	{global_settings_start|s}
-	<td class="tabFRight" colspan="5" style="height:1px"></td>
-	{global_settings_end|s}
-	{no_compname_start|s}
-	<td class="tabFRight" colspan="6" style="height:1px"></td>
-	{no_compname_end|s}
-</tr>
-<tr>
-	<td class="tabFLeft"><input type="text" style="width: 50px" id="archive_every"> <select size="1" style="width: 80px;" id="archive_every_unit"><option value="h">{thours}</option><option value="d" selected="selected">{tdays}</option><option value="w">{tweeks}</option><option value="m">{tmonth}</option><option value="y">{tyears}</option></select></td>
-	<td class="tabFLeft"><input type="text" style="width: 50px" id="archive_for"> <select size="1" style="width: 80px;" onchange="changeArchiveForUnit()" id="archive_for_unit"><option value="h">{thours}</option><option value="d" selected="selected">{tdays}</option><option value="w">{tweeks}</option><option value="m">{tmonth}</option><option value="y">{tyears}</option><option value="i">{tforever}</option></select></td>
-	<td class="tabFLeft"><input type="text" style="width:70px" id="archive_window" value="*;*;*;*"></td>
-	<td class="tabFLeft"><select size="1" style="width: 150px;" id="archive_backup_type"><option value="file">{tFile backup}</option><option value="incr_file">{tIncremental file backup}</option><option value="full_file">{tFull file backup}</option></select></td>
-	{no_compname_start|s}
-	<td class="tabFLeft">&nbsp;</td>
-	{no_compname_end|s}
-	<td class="tabFRight">
-		{global_settings_start|s}
-		<input type="button" value="{tAdd}" id="archive_add" onclick="addArchiveItem(true)" />
-		{global_settings_end|s}
-		{no_compname_start|s}
-		<input type="button" value="{tAdd}" id="archive_add" onclick="addArchiveItem(false)" />
-		{no_compname_end|s}		
-	</td>
-</tr>
-</table>
+<div class="panel panel-default">
+	<div class="panel-heading" id="archive">{tArchive}</div>
+	<div class="panel-body">
+		<table class="table" id="archive_table">
+			<thead>
+				<tr>
+					<th>{tArchive every}</th>
+					<th>{tArchive for}</th>
+					<th>{tArchive window} <a class="btn btn-xs btn-default" href="http://www.urbackup.org/FAQ.php#archive_window" target="_blank" title="h;dom;mon;dow">?</a></th>
+					<th>{tBackup type}</th>
+					{no_compname_start|s}
+					<th>{tNext archival}</th>
+					{no_compname_end|s}
+					<th>&nbsp;</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					{global_settings_start|s}
+					{global_settings_end|s}
+					{no_compname_start|s}
+					<td colspan="6" style="height: 1px"></td>
+					{no_compname_end|s}
+				</tr>
+				<tr>
+					<td>
+						<div style="float: left; width: 60%">
+							<input class="form-control" type="text" id="archive_every">
+						</div>
+						<select class="form-control" style="width: 40%" id="archive_every_unit"><option value="h">{thours}</option><option value="d" selected="selected">{tdays}</option><option value="w">{tweeks}</option><option value="m">{tmonth}</option><option value="y">{tyears}</option></select>
+					</td>
+					<td>
+						<div style="float: left; width: 60%">
+							<input class="form-control" type="text" id="archive_for">
+						</div>
+						<select class="form-control" style="width: 40%" onchange="changeArchiveForUnit()" id="archive_for_unit"><option value="h">{thours}</option><option value="d" selected="selected">{tdays}</option><option value="w">{tweeks}</option><option value="m">{tmonth}</option><option value="y">{tyears}</option><option value="i">{tforever}</option></select>
+					</td>
+					<td><input class="form-control" type="text" id="archive_window" value="*;*;*;*"></td>
+					<td><select class="form-control" id="archive_backup_type"><option value="file">{tFile backup}</option><option value="incr_file">{tIncremental file backup}</option><option value="full_file">{tFull file backup}</option></select></td>
+					{no_compname_start|s}
+					<td>&nbsp;</td>
+					{no_compname_end|s}
+					<td>
+						{global_settings_start|s}
+						<input type="button" class="btn btn-sm btn-default" value="{tAdd}" id="archive_add" onclick="addArchiveItem(true)" />
+						{global_settings_end|s}
+						{no_compname_start|s}
+						<input type="button" class="btn btn-sm btn-default" value="{tAdd}" id="archive_add" onclick="addArchiveItem(false)" />
+						{no_compname_end|s}		
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
 </div>
 
-{internet_settings_start|s}
-<div class="tabbertab" title="{tInternet}">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-{global_settings_start_inet|s}
-<tr>
-<td>{tEnable internet mode (requires server restart)}:</td>
-<td><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></td>
-</tr>
-<tr>
-<td>{tInternet server name/IP}:</td>
-<td><input type="text" size="40" id="internet_server" value="{internet_server|s}"/> </td>
-</tr>
-<tr>
-<td>{tInternet server port}:</td>
-<td><input type="text" size="40" id="internet_server_port" value="{internet_server_port}"/> </td>
-</tr>
-{global_settings_end_inet|s}
-{no_compname_start_inet|s}
-<tr>
-<td>{tEnable internet mode}:</td>
-<td><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></td>
-</tr>
-<tr>
-<td>{tInternet auth key}</td>
-<td><input type="text" id="internet_authkey" value="{internet_authkey|s}"/></td>
-</tr>
-{no_compname_end_inet|s}
-<tr>
-<td>{tDo image backups over internet}:</td>
-<td><input type="checkbox" id="internet_image_backups" value="false" {internet_image_backups}/></td>
-</tr>
-<tr>
-<td>{tDo full file backups over internet}:</td>
-<td><input type="checkbox" id="internet_full_file_backups" value="false" {internet_full_file_backups}/></td>
-</tr>
-<tr>
-<td>{tMax backup speed for internet connection}:</td>
-<td><input type="text" id="internet_speed" value="{internet_speed}"/> KBit/s</td>
-</tr>
-{global_settings_start_inet|s}
-<tr>
-<td>{tTotal max backup speed for internet connection}:</td>
-<td><input type="text" id="global_internet_speed" value="{global_internet_speed}"/> KBit/s</td>
-</tr>
-{global_settings_end_inet|s}
-<tr>
-<td>{tEncrypted transfer}:</td>
-<td><input type="checkbox" id="internet_encrypt" value="false" {internet_encrypt}/></td>
-</tr>
-<tr>
-<td>{tCompressed transfer}:</td>
-<td><input type="checkbox" id="internet_compress" value="false" {internet_compress}/></td>
-</tr>
-<tr>
-<td>{tCalculate file-hashes on the client}:</td>
-<td><input type="checkbox" id="internet_calculate_filehashes_on_client" value="false" {internet_calculate_filehashes_on_client}/></td>
-</tr>
-<tr>
-<td>{tConnect to Internet backup server if connected to local backup server}:</td>
-<td><input type="checkbox" id="internet_connect_always" value="false" {internet_connect_always}/></td>
-</tr>
-</table>
+<div class="panel panel-default">
+	<div class="panel-heading" id="internet">{tInternet}</div>
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			{global_settings_start_inet|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_mode_enabled">{tEnable internet mode (requires server restart)}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_server">{tInternet server name/IP}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="internet_server" value="{internet_server|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_server_port">{tInternet server port}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="internet_server_port" value="{internet_server_port}"/>
+				</div>
+			</div>
+			{global_settings_end_inet|s}
+			{no_compname_start_inet|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_mode_enabled">{tEnable internet mode}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_mode_enabled" value="false" {internet_mode_enabled}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_authkey">{tInternet auth key}</label>
+				<div class="col-sm-6">
+					<label><input type="text" class="form-control" id="internet_authkey" value="{internet_authkey|s}"/></label>
+				</div>
+			</div>
+			{no_compname_end_inet|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_image_backups">{tDo image backups over internet}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_image_backups" value="false" {internet_image_backups}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_full_file_backups">{tDo full file backups over internet}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_full_file_backups" value="false" {internet_full_file_backups}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_speed">{tMax backup speed for internet connection}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="internet_speed" value="{internet_speed}"/>
+						<div class="input-group-addon">KBit/s</div>
+					</div>
+				</div>
+			</div>
+			{global_settings_start_inet|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="global_internet_speed">{tTotal max backup speed for internet connection}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="global_internet_speed" value="{global_internet_speed}"/>
+						<div class="input-group-addon">KBit/s</div>
+					</div>
+				</div>
+			</div>
+			{global_settings_end_inet|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_encrypt">{tEncrypted transfer}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_encrypt" value="false" {internet_encrypt}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_compress">{tCompressed transfer}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_compress" value="false" {internet_compress}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_calculate_filehashes_on_client">{tCalculate file-hashes on the client}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_calculate_filehashes_on_client" value="false" {internet_calculate_filehashes_on_client}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_connect_always">{tConnect to Internet backup server if connected to local backup server}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_connect_always" value="false" {internet_connect_always}/></label>
+				</div>
+			</div>
+			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
+		</form>
+	</div>
 </div>
 {internet_settings_end|s}
-<div class="tabbertab" title="{tAdvanced}">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-{global_settings_start|s}
-<tr>
-<td>{tTemporary files as file backup buffer}:</td>
-<td><input type="checkbox" id="use_tmpfiles" value="false" {use_tmpfiles}/></td>
-</tr>
-<tr>
-<td>{tTemporary files as image backup buffer}:</td>
-<td><input type="checkbox" id="use_tmpfiles_images" value="false" {use_tmpfiles_images}/></td>
-</tr>
-{global_settings_end|s}
-<tr>
-<td>{tLocal full file backup transfer mode}:</td>
-<td><select size="1" style="width: 150px;" id="local_full_file_transfer_mode"><option value="raw" {local_full_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_full_file_transfer_mode_1}>{tHashed}</option></select></td>
-</tr>
-<tr>
-<td>{tInternet full file backup transfer mode}:</td>
-<td><select size="1" style="width: 150px;" id="internet_full_file_transfer_mode"><option value="raw" {internet_full_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_full_file_transfer_mode_1}>{tHashed}</option></select></td>
-</tr>
-<tr>
-<td>{tLocal incremental file backup transfer mode}:</td>
-<td><select size="1" style="width: 150px;" id="local_incr_file_transfer_mode"><option value="raw" {local_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {local_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select></td>
-</tr>
-<tr>
-<td>{tInternet incremental file backup transfer mode}:</td>
-<td><select size="1" style="width: 150px;" id="internet_incr_file_transfer_mode"><option value="raw" {internet_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {internet_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select></td>
-</tr>
-<tr>
-<td>{tLocal image backup transfer mode}:</td>
-<td><select size="1" style="width: 150px;" id="local_image_transfer_mode"><option value="raw" {local_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_image_transfer_mode_1}>{tHashed}</option></select></td>
-</tr>
-<tr>
-<td>{tInternet image backup transfer mode}:</td>
-<td><select size="1" style="width: 150px;" id="internet_image_transfer_mode"><option value="raw" {internet_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_image_transfer_mode_1}>{tHashed}</option></select></td>
-</tr>
-<tr>
-<td>{tFile hash collection amount}:</td>
-<td><input type="text" size="10" id="file_hash_collect_amount" value="{file_hash_collect_amount}"/> </td>
-</tr>
-<tr>
-<td>{tFile hash collection timeout}:</td>
-<td><input type="text" size="10" id="file_hash_collect_timeout" value="{file_hash_collect_timeout}"/> </td>
-</tr>
-<tr>
-<td>{tFile hash collection database cachesize}:</td>
-<td><input type="text" size="10" id="file_hash_collect_cachesize" value="{file_hash_collect_cachesize}"/> {tMB}</td>
-</tr>
-{global_settings_start|s}
-<tr>
-<td>{tUpdate stats database cachesize}:</td>
-<td><input type="text" size="10" id="update_stats_cachesize" value="{update_stats_cachesize}"/> {tMB}</td>
-</tr>
-<tr>
-<td>{tCache database type for file entries}:</td>
-<td><select size="1" style="width: 150px;" id="filescache_type"><option value="none" {filescache_type_0}>{tNone}</option><option value="lmdb" {filescache_type_1}>LMDB</option><option value="sqlite" {filescache_type_2}>SQLite</option></select></td>
-</tr>
-<tr>
-<td>{tCache database size for file entries}:</td>
-<td><input type="text" size="10" id="filescache_size" value="{filescache_size}"/> {tMB}</td>
-</tr>
-<tr>
-<td>{tSuspend index limit}:</td>
-<td><input type="text" size="10" id="suspend_index_limit" value="{suspend_index_limit}"/></td>
-</tr>
-<tr>
-<td>{tUse symlinks during incremental file backups}:</td>
-<td><input type="checkbox" id="use_incremental_symlinks" value="false" {use_incremental_symlinks}/></td>
-</tr>
-<tr>
-<td>{tTrust client hashes during incremental file backups}:</td>
-<td><input type="checkbox" id="trust_client_hashes" value="false" {trust_client_hashes}/></td>
-</tr>
-{global_settings_end|s}
-<tr>
-<td>{tEnd-to-end verification of all file backups}:</td>
-<td><input type="checkbox" id="end_to_end_file_backup_verification" value="false" {end_to_end_file_backup_verification}/></td>
-</tr>
-<tr>
-<td>{tVerify file backups using client side hashes}:</td>
-<td><input type="checkbox" id="verify_using_client_hashes" value="false" {verify_using_client_hashes}/></td>
-</tr>
-<tr>
-<td>{tPeriodically readd file entries of internet clients to database (disable only if you do not run fulls)}:</td>
-<td><input type="checkbox" id="internet_readd_file_entries" value="true" {internet_readd_file_entries}/></td>
-</tr>
-</table>
+		
+		
+<div class="panel panel-default">
+	<div class="panel-heading" id="advanced">{tAdvanced}</div>
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			{global_settings_start|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="use_tmpfiles">{tTemporary files as file backup buffer}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="use_tmpfiles" value="false" {use_tmpfiles}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="use_tmpfiles_images">{tTemporary files as image backup buffer}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="use_tmpfiles_images" value="false" {use_tmpfiles_images}/></label>
+				</div>
+			</div>
+			{global_settings_end|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="local_full_file_transfer_mode">{tLocal full file backup transfer mode}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="local_full_file_transfer_mode"><option value="raw" {local_full_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_full_file_transfer_mode_1}>{tHashed}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_full_file_transfer_mode">{tInternet full file backup transfer mode}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="internet_full_file_transfer_mode"><option value="raw" {internet_full_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_full_file_transfer_mode_1}>{tHashed}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="local_incr_file_transfer_mode">{tLocal incremental file backup transfer mode}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="local_incr_file_transfer_mode"><option value="raw" {local_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {local_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_incr_file_transfer_mode">"{tInternet incremental file backup transfer mode}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="internet_incr_file_transfer_mode"><option value="raw" {internet_incr_file_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_incr_file_transfer_mode_1}>{tHashed}</option><option value="blockhash" {internet_incr_file_transfer_mode_2}>{tBlock differences - hashed}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="local_image_transfer_mode">{tLocal image backup transfer mode}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="local_image_transfer_mode"><option value="raw" {local_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {local_image_transfer_mode_1}>{tHashed}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_image_transfer_mode">{tInternet image backup transfer mode}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="internet_image_transfer_mode"><option value="raw" {internet_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_image_transfer_mode_1}>{tHashed}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="file_hash_collect_amount">{tFile hash collection amount}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="file_hash_collect_amount" value="{file_hash_collect_amount}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="file_hash_collect_timeout">{tFile hash collection timeout}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="file_hash_collect_timeout" value="{file_hash_collect_timeout}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="file_hash_collect_cachesize">{tFile hash collection database cachesize}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="file_hash_collect_cachesize" value="{file_hash_collect_cachesize}"/>
+						<div class="input-group-addon">{tMB}</div>
+					</div>
+				</div>
+			</div>
+			{global_settings_start|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="update_stats_cachesize">{tUpdate stats database cachesize}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="update_stats_cachesize" value="{update_stats_cachesize}"/>
+						<div class="input-group-addon">{tMB}</div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="filescache_type">{tCache database type for file entries}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="filescache_type"><option value="none" {filescache_type_0}>{tNone}</option><option value="lmdb" {filescache_type_1}>LMDB</option><option value="sqlite" {filescache_type_2}>SQLite</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="filescache_size">{tCache database size for file entries}:</label>
+				<div class="col-sm-6">
+					<div class="input-group">
+						<input type="text" class="form-control" id="filescache_size" value="{filescache_size}"/>
+						<div class="input-group-addon">{tMB}</div>
+					</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="suspend_index_limit">{tSuspend index limit}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="suspend_index_limit" value="{suspend_index_limit}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="use_incremental_symlinks">{tUse symlinks during incremental file backups}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="use_incremental_symlinks" value="false" {use_incremental_symlinks}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="trust_client_hashes">{tTrust client hashes during incremental file backups}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="trust_client_hashes" value="false" {trust_client_hashes}/></label>
+				</div>
+			</div>
+			{global_settings_end|s}
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="end_to_end_file_backup_verification">{tEnd-to-end verification of all file backups}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="end_to_end_file_backup_verification" value="false" {end_to_end_file_backup_verification}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="verify_using_client_hashes">{tVerify file backups using client side hashes}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="verify_using_client_hashes" value="false" {verify_using_client_hashes}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="internet_readd_file_entries">{tPeriodically readd file entries of internet clients to database (disable only if you do not run fulls)}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="internet_readd_file_entries" value="true" {internet_readd_file_entries}/></label>
+				</div>
+			</div>
+			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
+		</form>
+	</div>
 </div>
