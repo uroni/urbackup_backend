@@ -142,14 +142,22 @@ void FileDownload::filedownload(std::string remotefn, std::string servername, st
 
 		cleanup_tmpfile(hashfile);
 		cleanup_tmpfile(hashfile_output);
-		cleanup_tmpfile(patchfile);
 		cleanup_tmpfile(tmpfile);
 
 		_i64 fsize=dstfile->Size();
 		Server->destroy(dstfile);
-		if(rc==ERR_SUCCESS && fsize>patcher.getFilesize())
+		if(remote_filesize==patcher.getFilesize() && fsize>=patcher.getFilesize())
 		{
-			os_file_truncate(widen(dest), patcher.getFilesize());
+			if(rc==ERR_SUCCESS && fsize>patcher.getFilesize())
+			{
+				os_file_truncate(widen(dest), patcher.getFilesize());
+			}
+			cleanup_tmpfile(patchfile);
+		}
+		else
+		{
+			Server->Log("Filesize is wrong...", LL_ERROR);
+			Server->Log("Patchfile: "+patchfile->getFilename(), LL_ERROR);
 		}
 	}
 	else
@@ -189,12 +197,16 @@ IPipe * FileDownload::new_fileclient_connection(void)
 
 void FileDownload::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
-	m_chunkpatchfile->Write(buf, (_u32)bsize);
+	if(m_chunkpatchfile->Write(buf, (_u32)bsize)!=bsize)
+	{
+		Server->Log("Writing to file failed", LL_ERROR);
+		exit(3);
+	}
 }
 
 void FileDownload::cleanup_tmpfile(IFile *tmpfile)
 {
 	std::string fn=tmpfile->getFilename();
-	Server->deleteFile(fn);
 	Server->destroy(tmpfile);
+	Server->deleteFile(fn);
 }
