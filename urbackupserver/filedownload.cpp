@@ -12,6 +12,8 @@
 #include "../urbackupcommon/os_functions.h"
 #include "../stringtools.h"
 
+#include <stdlib.h>
+
 extern std::string server_identity;
 
 bool FileDownload::copy_file_fd(IFile *fsrc, IFile *fdst)
