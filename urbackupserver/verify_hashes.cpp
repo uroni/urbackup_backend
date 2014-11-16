@@ -186,7 +186,7 @@ bool verify_hashes(std::string arg)
 		}
 		else
 		{
-			filter+="WHERE 1=1";
+			filter+=" WHERE 1=1";
 		}
 		
 
