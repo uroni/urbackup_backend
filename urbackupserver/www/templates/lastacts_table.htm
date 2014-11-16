@@ -1,15 +1,21 @@
-﻿<h1>{tLast activities}</h1>
-
-<table cellspacing="0" cellpadding="0">
-<tr>			
-	<th style="width: 50px" class="tabHeader">{tID}</th>
-	<th style="width: 150px" class="tabHeader">{tComputer name}</th>
-	<th style="width: 200px" class="tabHeader">{tAction}</th>
-	<th style="width: 200px" class="tabHeader">{tStarting time}</th>
-	<th style="width: 150px" class="tabHeader">{tRequired time}</th>
-	<th style="width: 200px" class="tabHeaderRight">{tUsed Storage}</th>
-</tr>
-{rows|s}
-</table>
-
-<span id="lastacts_visible" style="display: none" />
+﻿<div class="panel panel-default">
+	<div class="panel-heading">{tLast activities}</div>
+	<div class="panel-body">
+		<table class="table table-striped">
+			<thead>
+				<tr>			
+					<th style="width: 50px" class="tabHeader">{tID}</th>
+					<th style="width: 150px" class="tabHeader">{tComputer name}</th>
+					<th style="width: 200px" class="tabHeader">{tAction}</th>
+					<th style="width: 200px" class="tabHeader">{tStarting time}</th>
+					<th style="width: 150px" class="tabHeader">{tRequired time}</th>
+					<th style="width: 200px" class="tabHeaderRight">{tUsed Storage}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{rows|s}
+			</tbody>
+		</table>
+	</div>
+	<span id="lastacts_visible" style="display: none" />
+</div>

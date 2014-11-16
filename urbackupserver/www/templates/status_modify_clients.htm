@@ -1,16 +1,22 @@
-<a href="javascript: selectAllClients()">{tSelect all}</a> | 
-<a href="javascript: selectNoClients()">{tSelect none}</a> | 
-{rem_start|s}
-<a href="javascript: removeClients()">{tRemove selected}</a> | 
-{rem_stop|s}
-<select size="1" style="width: 150px;" id="backup_type{backup_type_num}">
-{no_file_backups_start|s}
-	<option value="incr_file">{tIncremental file backup}</option>
-	<option value="full_file">{tFull file backup}</option>
-{no_file_backups_stop|s}
-{no_images_start|s}
-	<option value="incr_image">{tIncremental image backup}</option>
-	<option value="full_image">{tFull image backup}</option>
-{no_images_stop|s}
-</select>
-	&ensp;<a href="javascript: startBackups({backup_type_num})">{tStart for selected}</a>
+<div class="btn-group">
+	<a class="btn btn-sm btn-default" href="javascript: selectAllClients()">{tSelect all}</a>
+	<a class="btn btn-sm btn-default" href="javascript: selectNoClients()">{tSelect none}</a>
+	{rem_start|s}
+	<a class="btn btn-sm btn-default" href="javascript: removeClients()">{tRemove selected}</a>
+	{rem_stop|s}
+	<div class="btn-group">
+		<button type="button" class="btn btn-sm btn-default dropdown-toggle" data-toggle="dropdown">
+			With Selected <span class="caret"></span>
+		</button>
+		<ul class="dropdown-menu" role="menu">
+			{no_file_backups_start|s}
+			<li><a href="#">{tIncremental file backup}</a></li>
+			<li><a href="#">{tFull file backup}</a></li>
+			{no_file_backups_stop|s}
+			{no_images_start|s}
+			<li><a href="#">{tIncremental image backup}</a></li>
+			<li><a href="#">{tFull image backup}</a></li>
+			{no_images_stop|s}
+		</ul>
+	</div>
+</div>

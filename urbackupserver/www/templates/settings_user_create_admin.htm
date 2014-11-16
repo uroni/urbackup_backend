@@ -1,24 +1,28 @@
 ﻿<br />
-<form action="#" onsubmit="createUser2(); return false;">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tUsername}:</td>
-<td><input type="text" size="40" id="username" value="admin" disabled="disabled"/> </td>
-</tr>
-<tr>
-<td>{tPassword}:</td>
-<td><input type="password" id="password1" value="" size="40"/></td>
-</tr>
-<tr>
-<td>{tRepeat password}:</td>
-<td><input type="password" id="password2" value="" size="40"/></td>
-</tr>
-<tr>
-<td>{tRights for}</td>
-<td>{rights|s}</td>
-</tr>
-</table>
-<br />
-<br />
-<input type="button" value="{tAbort}" onclick="userSettings()"> <input type="submit" value="{tCreate}" />
-</form>
+<div class="panel panel-default">
+	<div class="panel-body">
+		<form class="form-horizontal" onsubmit="createUser2(); return false;">
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="username">{tUsername}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="username" value="admin" disabled="disabled"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="password1">{tPassword}:</label>
+				<div class="col-sm-6">
+					<input type="password" class="form-control" id="password1" value=""/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="password2">{tRepeat password}:</label>
+				<div class="col-sm-6">
+					<input type="password" class="form-control" id="password2" value=""/>
+				</div>
+			</div>
+			{tRights for}
+			{rights|s}
+			<input type="button" class="btn btn-default" value="{tAbort}" onclick="userSettings()"> <input type="submit" class="btn btn-default" value="{tCreate}" />
+		</form>
+	</div>
+</div>

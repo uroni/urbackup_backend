@@ -1,12 +1,19 @@
-﻿{?show_client_breadcrumb}<a href="javascript: show_backups1()">{tClients}</a> > {/show_client_breadcrumb}<strong>{clientname}</strong><br /><br />
+﻿<div class="panel panel-default">
+	<div class="panel-heading">
+		<a href="javascript: show_backups1()">{tClients}</a> > <strong>{clientname}</strong>
+	</div>
+	<div class="panel-body">
 
-<table cellspacing="0" cellpadding="0">
-<tr>
-	<th style="width: 25px" class="tabHeader">&nbsp;</th>
-	<th style="width: 150px" class="tabHeader">{tBackup time}</th>
-	<th style="width: 150px" class="tabHeader">{tIncremental}</th>
-	<th style="width: 200px" class="tabHeader">{tSize}</th>
-	<th style="width: 100px" class="tabHeaderRight">{tArchived}<a href="http://www.urbackup.org/FAQ.php#archived" target="_blank">?</a></th>
-</tr>
-{rows|s}
-</table>
+		<table class="table table-hover">
+		<tr>
+			<th>&nbsp;</th>
+			<th>{tBackup time}</th>
+			<th>{tIncremental}</th>
+			<th>{tSize}</th>
+			<th>{tArchived}<a href="http://www.urbackup.org/FAQ.php#archived" target="_blank">?</a></th>
+		</tr>
+		{rows|s}
+		</table>
+	
+	</div>
+</div>

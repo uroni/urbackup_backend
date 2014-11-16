@@ -1,16 +1,23 @@
-<br />
-<form name="login1" action="#" onsubmit="return g.login1()">
-<table cellspacing="0" cellpadding="0" border="0" class="formtable">
-<tr>
-<td>{tUsername}:</td>
-<td><input type="text" size="40" id="username" value="" name="username"/> </td>
-</tr>
-<tr>
-<td>{tPassword}:</td>
-<td><input type="password" id="password" value="" size="40" name="password"/></td>
-</tr>
-</table>
-<br />
-<br />
-<input type="submit" value="{tLogin}"/>
-</form>
+
+
+			<div class="row">
+				<div class="col-sm-3"></div>
+				<div class="col-sm-6 panel panel-default">
+					<div class="panel-body">
+						<form class="form-horizontal" role="form" name="login1" action="#" onsubmit="return g.login1()">
+							<div class="form-group">
+								<label for="username">{tUsername}:</label>
+								<input class="form-control" id="username" name="username">
+							</div>
+							<div class="form-group">
+								<label for="password">{tPassword}:</label>
+								<input type="password" class="form-control" id="password" name="password">
+							</div>
+							<div class="form-group">
+								<button type="submit" class="btn btn-default">{tLogin}</button>
+							</div>
+						</form>
+					</div>
+				</div>
+				<div class="col-sm-3"></div>
+			</div>

@@ -1,4 +1,4 @@
-﻿g.main_nav_pos=5;
+g.main_nav_pos=5;
 g.loading=false;
 g.lang="-";
 g.startup=true;
@@ -12,19 +12,20 @@ g.datatable_default_config={};
 g.languages=[ 
 				{ l: "Deutsch", s: "de" },
 				{ l: "English", s: "en" }, 
-				{ l: "Español", s: "es" },
-				{ l: "Français", s: "fr" },
-				{ l: "Россия", s: "ru"},
-				{ l: "简体中文", s: "zh_CN" },
-				{ l: "繁体中文", s: "zh_TW" },
-				{ l: "فارسی", s: "fa" },
-				{ l: "українська мова", s: "uk" },
-				{ l: "Português do Brasil", s: "pt_BR" },
-				{ l: "slovenský jazyk", s: "sk"},
+				{ l: "Espa�ol", s: "es" },
+				{ l: "Fran�ais", s: "fr" },
+				{ l: "??????", s: "ru"},
+				{ l: "????", s: "zh_CN" },
+				{ l: "????", s: "zh_TW" },
+				{ l: "?????", s: "fa" },
+				{ l: "?????????? ????", s: "uk" },
+				{ l: "Portugu�s do Brasil", s: "pt_BR" },
+				{ l: "slovensk� jazyk", s: "sk"},
 				{ l: "Nederlands", s: "nl" },
 				{ l: "norsk", s: "no_NO" },
 				{ l: "Italiano", s: "it_IT" },
-				{ l: "České", s: "cs_CZ" }
+				{ l: "Cesk�", s: "cs_CZ" }
+
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
@@ -55,7 +56,7 @@ function init_datatables()
 					"sSwfPath": "copy_csv_xls_pdf.swf"
 				},
 				"sPaginationType": "full_numbers",
-				"sScrollX": "100%",
+				//"sScrollX": "100%",
 				"bScrollCollapse": true,
 				"bStateSave": true,
 				"iCookieDuration": 365*60*60*24,
@@ -79,6 +80,7 @@ function init_datatables()
 	};
 }
 
+
 function startup()
 {
 	clearTimeout(g.refresh_timeout);
@@ -100,6 +102,7 @@ function startup()
 	new getJSON("login", available_langs, try_anonymous_login);
 }
 
+
 function refresh_page()
 {
 	if(g.last_action=="status")
@@ -117,25 +120,19 @@ function refresh_page()
 	}
 }
 
+
 function change_lang_select()
 {
 	var selidx=I('change_lang_select').selectedIndex;
 	change_lang(g.languages[selidx].s, true);
 }
 
+
 function change_lang(l, refresh)
 {
 	g.lang=l;
-	if(l=="de")
-	{
-		I('load1').innerHTML="Lade...";
-	}
-	else
-	{
-		I('load1').innerHTML="Loading...";
-	}
 	
-	var c="<select id=\"change_lang_select\" onchange=\"change_lang_select()\">";
+	var c="<select id=\"change_lang_select\" class=\"form-control\" onchange=\"change_lang_select()\">";
 	for(var i=0;i<g.languages.length;++i)
 	{
 		if(g.languages[i].s==l)
@@ -150,7 +147,6 @@ function change_lang(l, refresh)
 	c+="</select>";
 	
 	I('languages').innerHTML=c;
-	I('logo_img_link').href="javascript: startup()";
 	
 	window.curr_trans=window.translations[l];
 
@@ -160,21 +156,9 @@ function change_lang(l, refresh)
 	}
 	
 	init_datatables();
-	I('about_urbackup').innerHTML=trans("about_urbackup");
 }
-function aboutUrBackup()
-{
-	stopLoading();
-	clearTimeout(g.refresh_timeout);
-	
-	var ndata=dustRender("about_urbackup", {version: I('server_version_full').innerHTML.trim()});
-	if(g.data_f!=ndata)
-	{
-		I('data_f').innerHTML=ndata;
-		g.data_f=ndata;
-	}
-	I('nav_pos').innerHTML="";
-}
+
+
 function try_anonymous_login(data)
 {
 	stopLoading();
@@ -272,16 +256,17 @@ function startLoading()
 	if(g.loading)
 		return false;
 	
-	I('l_div').style.visibility="visible";
+	I('loading_div').style.visibility="visible";
 	g.loading=true;
 	return true;
 }
 
 function stopLoading()
 {
-	I('l_div').style.visibility="hidden";
+	I('loading_div').style.visibility="hidden";
 	g.loading=false;
 }
+
 
 function build_main_nav()
 {
@@ -321,6 +306,7 @@ function build_main_nav()
 	I('main_nav').innerHTML=ndata;
 }
 
+
 function getPar(p)
 {
 	var obj=I(p);
@@ -343,6 +329,7 @@ function getPar(p)
 	return "&"+p+"="+encodeURIComponent(val+"");
 }
 
+
 function show_progress1(stop_backup)
 {
 	if(!stop_backup)
@@ -356,6 +343,8 @@ function show_progress1(stop_backup)
 	g.refresh_timeout=0;
 	show_progress11();
 }
+
+
 function show_progress11()
 {
 	if(g.refresh_timeout==-1) return;
@@ -377,6 +366,8 @@ function show_progress11()
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
+
+
 function show_progress2(data)
 {
 	if(g.refresh_timeout==-1)
@@ -478,9 +469,11 @@ function show_progress2(data)
 	g.refresh_timeout=setTimeout(show_progress11, 1000);
 }
 
+
 function show_settings1()
 {
 }
+
 
 function show_statistics1()
 {	
@@ -494,20 +487,21 @@ function show_statistics1()
 	g.settings_nav_pos=0;
 	build_main_nav();
 }
+
+
 function show_statistics2(data)
 {
 	stopLoading();
 	if(g.main_nav_pos!=2) return;
 	
-	var ndata="<a href=\"javascript: show_statistics1()\">"+trans("overview")+"</a>";
-	if(g.settings_nav_pos==0)
-	{
-		ndata="<strong>"+trans("overview")+"</strong>";
-	}
+	var ndata="<div class=\"row\">";
+	ndata+="<div class=\"col-sm-1\">";
+	ndata+="<a class=\"btn btn-default\" href=\"javascript: show_statistics1()\">"+trans("overview")+"</a>";
+	ndata+="</div>";
 	if(data.users.length>0)
-	{		
-		ndata+="&nbsp;| &nbsp;";
-		ndata+="<select size=\"1\" style=\"width: 150px\" onchange=\"stat_client()\" id=\"statclient\">";
+	{
+		ndata+="<div class=\"col-sm-2\">";
+		ndata+="<select class=\"form-control\" onchange=\"stat_client()\" id=\"statclient\">";
 		if(g.settings_nav_pos<1)
 		{
 			ndata+="<option value=\"n\">"+trans("clients")+"</option>";
@@ -521,10 +515,15 @@ function show_statistics2(data)
 			}
 			ndata+="<option value=\""+i+"\""+s+">"+data.users[i].name+"</option>";					
 		}
+		ndata+="</select>";
 		g.stat_data=data;
 	}
+	ndata+="</div>";
+	ndata+="<br/>&nbsp<br/>";
 	I('nav_pos').innerHTML=ndata;
 }
+
+
 function render_useagegraph_single(selectedIdx, idx, key, params)
 {
 	var ret="";
@@ -582,9 +581,12 @@ function createUsageGraph(selectedIdx, params)
 		params= "&" + params;
 	}
 	
-	new loadGraph("usagegraph", "scale="+scale+params, "usagegraph", {pie: false, width: 800, height: 500, 
-			title: trans("storage_usage_bar_graph_title"), colname1: trans(transKey), colname2: trans("storage_usage_bar_graph_colname2"), dateFormat: dateFormat },
-			addUsagegraph);
+	new loadGraph("usagegraph", "scale="+scale+params, "usagegraph", {pie: false, width: 640, height: 480, 
+			title: trans("storage_usage_bar_graph_title"),
+			colname1: trans(transKey),
+			colname2: trans("storage_usage_bar_graph_colname2"),
+			dateFormat: dateFormat },
+		addUsagegraph);
 }
 function set_button_filename(buttons, text)
 {
@@ -627,7 +629,7 @@ function show_statistics3(data)
 	if(g.data_f!=ndata)
 	{	
 		I('data_f').innerHTML=ndata;
-		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 700, height: 700, 
+		new loadGraph("piegraph", "", "piegraph", {pie: true, width: 640, height: 480, 
 			title: trans("storage_usage_pie_graph_title"), colname1: trans("storage_usage_pie_graph_colname1"), colname2: trans("storage_usage_pie_graph_colname2") }, "" );
 		
 		createUsageGraph(0, "");
@@ -739,6 +741,8 @@ function show_status1(hostname, action, remove_client, stop_client_remove)
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
+
+
 function build_client_download_select(client_downloads)
 {
 	var ret="";
@@ -748,6 +752,8 @@ function build_client_download_select(client_downloads)
 	}
 	return ret;
 }
+
+
 function show_status2(data)
 {
 	stopLoading();
@@ -761,23 +767,23 @@ function show_status2(data)
 		var obj=data.status[i];
 		if(obj.file_ok)
 		{
-			obj.file_style="background-color: green";
+			obj.file_style="success";
 			obj.file_ok_t=trans("ok");
 		}
 		else
 		{
-			obj.file_style="background-color: red";
+			obj.file_style="danger";
 			obj.file_ok_t=trans("no_recent_backup");
 		}
 		
 		if(obj.image_ok)
 		{
-			obj.image_style="background-color: green";
+			obj.image_style="success";
 			obj.image_ok_t=trans("ok");
 		}
 		else
 		{
-			obj.image_style="background-color: red";
+			obj.image_style="danger";
 			obj.image_ok_t=trans("no_recent_backup");
 		}
 		
@@ -792,7 +798,6 @@ function show_status2(data)
 		
 		if(data.remove_client)
 		{
-			obj.prev_tab_class="tabFLeft";
 			obj.Actions_start="";
 			obj.Actions_end="";
 			
@@ -804,7 +809,6 @@ function show_status2(data)
 		}
 		else
 		{
-			obj.prev_tab_class="tabFRight";
 			obj.Actions_start="<!--";
 			obj.Actions_end="-->";
 		}
@@ -946,6 +950,7 @@ function show_status2(data)
 		}
 		status_extra_clients=true;
 	}
+
 	var modify_clients="";
 	if(data.allow_modify_clients)
 	{
@@ -985,7 +990,7 @@ function show_status2(data)
 	var internet_client_added="";
 	if(data.added_new_client)
 	{
-		internet_client_added="<strong>"+trans("internet_client_added")+"</strong><br />";
+		internet_client_added="<strong>"+trans("internet_client_added")+"</strong>";
 	}
 	
 	var status_client_download="";
@@ -1080,13 +1085,18 @@ function show_status2(data)
 	
 	g.status_show_all=false;
 }
+
+
 g.checkForNewVersion = function(curr_version_num, curr_version_str)
 {
 	if(curr_version_num>g.current_version && I('new_version_available'))
 	{
 		I('new_version_available').innerHTML=dustRender("new_version_available", {new_version_number: curr_version_str} );
+		I('new_version_available').style="visibility: visible";
 	}
 }
+
+
 function downloadClient(clientid)
 {
 	var selidx=I('download_client').selectedIndex;
@@ -1095,6 +1105,8 @@ function downloadClient(clientid)
 		location.href=getURL("download_client", "clientid="+I('download_client').value);
 	}
 }
+
+
 function addExtraClient()
 {
 	if(I('hostname').value.length==0)
@@ -1106,6 +1118,8 @@ function addExtraClient()
 	
 	show_status1(I('hostname').value);
 }
+
+
 function addInternetClient()
 {
 	if(I('clientname').value.length==0)
@@ -1117,10 +1131,13 @@ function addInternetClient()
 	
 	show_status1(I('clientname').value, 2);
 }
+
+
 function removeExtraClient(id)
 {
 	show_status1(id+"", 1);
 }
+
 
 function show_backups1()
 {
@@ -1133,6 +1150,8 @@ function show_backups1()
 	build_main_nav();
 	I('nav_pos').innerHTML="";
 }
+
+
 function show_backups2(data)
 {
 	stopLoading();
@@ -1399,16 +1418,18 @@ function show_settings2(data)
 		var idx=0;
 		g.user_nav_pos_offset=0;
 		g.mail_nav_pos_offset=0;
+		n+="<ul class=\"nav nav-tabs\" role=\"tablist\">";
 		if(nav.general)
 		{
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans("general_settings")+"</strong>";
+				n+="<li class=\"active\"><a href=\"javascript: generalSettings()\">"+trans("general_settings")+"</a></li>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: generalSettings()\">"+trans("general_settings")+"</a>";
+				n+="<li><a href=\"javascript: generalSettings()\">"+trans("general_settings")+"</a></li>";
 			}
+			
 			++idx;
 			++g.user_nav_pos_offset;
 			++g.mail_nav_pos_offset;
@@ -1416,32 +1437,30 @@ function show_settings2(data)
 		}
 		if(nav.mail)
 		{
-			if(n!="" ) n+=" | ";
-			
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans("mail_settings")+"</strong>";
+				n+="<li class=\"active\"><a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a></li>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a>";
+				n+="<li><a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a></li>";
 			}
+
 			++idx;
 			++g.user_nav_pos_offset;
 			++g.internet_nav_pos_offset;
 		}
 		if(nav.users)
-		{	
-			if(n!="" ) n+=" | ";
-			
+		{
 			if(g.settings_nav_pos==idx)
 			{
-				n+="<strong>"+trans("users")+"</strong>";
+				n+="<li class=\"active\"><a href=\"javascript: userSettings()\">"+trans("users")+"</a></li>";
 			}
 			else
 			{
-				n+="<a href=\"javascript: userSettings()\">"+trans("users")+"</a>";
-			}			
+				n+="<li><a href=\"javascript: userSettings()\">"+trans("users")+"</a></li>";
+			}
+
 			++idx;
 			++g.user_nav_pos_offset;
 		}
@@ -1452,17 +1471,8 @@ function show_settings2(data)
 				++g.settings_nav_pos;
 			}
 			
-			if(n!="" ) n+=" | ";
-			
-			if(g.settings_nav_pos==idx)
-			{
-				n+="<strong>"+trans("change_pw")+"</strong>";
-				data.sa="change_pw_int";
-			}
-			else
-			{
-				n+="<span id=\"change_pw_el\"><a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></span>";
-			}			
+			n+="<a href=\"javascript: changePW(this)\">"+trans("change_pw")+"</a></li>";
+
 			++idx;
 			++g.user_nav_pos_offset;
 		}
@@ -1471,21 +1481,13 @@ function show_settings2(data)
 			g.settings_clients=nav.clients;
 			
 			if(nav.clients.length>0)
-			{			
-				if(n!="") n+=" | ";
-				n+="<select size=\"1\" style=\"width: 150px\" onchange=\"clientSettings()\" id=\"settingsclient\">";
-				if(g.settings_nav_pos<idx)
-				{
-					n+="<option value=\"n\">"+trans("clients")+"</option>"
-				}
+			{
+				n+="<li role=\"presentation\" class=\"dropdown\">";
+				n+="<a class=\"dropdown-toggle\" data-toggle=\"dropdown\" href=\"#\">Client <span class=\"caret\"></span></a>";
+				n+="<ul class=\"dropdown-menu\" role=\"menu\">";
 				for(var i=0;i<nav.clients.length;++i)
 				{		
-					s="";
-					if(g.settings_nav_pos==idx)
-					{
-						s=" selected=\"selected\"";
-					}
-					n+="<option value=\""+nav.clients[i].id+"-"+idx+"\""+s+">"+nav.clients[i].name+"</option>";					
+					n+="<li><a href=\"javascript: clientSettings(" + nav.clients[i].id + "-" + idx + ")\">" + nav.clients[i].name + "</a></li>";
 					++idx;
 				}
 			}
@@ -2633,8 +2635,14 @@ function show_logs2(data)
 	var live_log_clients="";
 	if(data.clients && !data.log)
 	{
-		var np=trans("filter")+": ";
-		np+="<select size=\"1\" onchange=\"logClientChange()\" id=\"logclients\">";
+		var np="";
+		np+="<form class=\"form-horizontal\" role=\"form\">";
+		np+="<div class=\"form-group\">";
+		np+="<label class=\"col-sm-1 control-label\">";
+		np+=trans("filter")+": ";
+		np+="</label>";
+		np+="<div class=\"col-sm-2\">";
+		np+="<select class=\"form-control\" onchange=\"logClientChange()\" id=\"logclients\">";
 		np+="<option value=\"-1\">"+trans("all")+"</option>";
 		for(var i=0;i<data.clients.length;++i)
 		{
@@ -2649,7 +2657,10 @@ function show_logs2(data)
 			np+="</option>";
 		}
 		np+="</select> ";
+		np+="</div>";
 		np+=dustRender("logs_filter");
+		np+="</div>";
+		np+="</form>";
 		
 		
 		I('nav_pos').innerHTML=np;
@@ -2681,10 +2692,10 @@ function show_logs2(data)
 			var obj=data.logs[i];
 			
 			if(obj.errors>0)
-				obj.estyle="background-color: red";
+				obj.eclass="danger";
 			
 			if(obj.warnings>0)
-				obj.wstyle="background-color: yellow";
+				obj.wclass="warning";
 				
 			var action=0;
 			if(obj.image==0)
