@@ -213,7 +213,7 @@ bool verify_hashes(std::string arg)
 				}
 				else
 				{
-					backupid_filter=" IN (SELECT id, path FROM backups b WHERE NOT EXISTS (SELECT id FROM backups c WHERE c.backuptime > b.backuptime AND b.clientid=c.clientid))";
+					backupid_filter=" IN (SELECT id FROM backups b WHERE NOT EXISTS (SELECT id FROM backups c WHERE c.backuptime > b.backuptime AND b.clientid=c.clientid))";
 				}
 				
 			}
