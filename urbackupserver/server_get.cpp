@@ -3595,6 +3595,11 @@ bool BackupServerGet::updateCapabilities(void)
 		{
 			all_volumes=Server->ConvertToUTF8(it->second);
 		}
+		it=params.find(L"ALL_NONUSB_VOLUMES");
+		if(it!=params.end())
+		{
+			all_nonusb_volumes=Server->ConvertToUTF8(it->second);
+		}
 		it=params.find(L"ETA");
 		if(it!=params.end())
 		{
