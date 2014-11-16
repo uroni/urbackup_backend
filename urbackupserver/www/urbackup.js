@@ -10,7 +10,7 @@ g.status_show_all=false;
 g.datatable_default_config={};
 
 g.languages=[ 
-				{ l: "Deutsch", s: "de" },
+			{ l: "Deutsch", s: "de" },
 				{ l: "English", s: "en" }, 
 				{ l: "Español", s: "es" },
 				{ l: "Français", s: "fr" },
@@ -22,9 +22,9 @@ g.languages=[
 				{ l: "Português do Brasil", s: "pt_BR" },
 				{ l: "slovenský jazyk", s: "sk"},
 				{ l: "Nederlands", s: "nl" },
-				{ l: "norsk", s: "no_NO" },
-				{ l: "Italiano", s: "it_IT" },
-				{ l: "Ceské", s: "cs_CZ" }
+				{ l: "norsk", s: "no_NO" }
+
+			
 
 			];
 
