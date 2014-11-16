@@ -167,39 +167,55 @@ bool verify_hashes(std::string arg)
 
 	if(!clientname.empty())
 	{
-		IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?");
-		q->Bind(clientname);
-		db_results res=q->Read();
-		if(!res.empty())
+		if(clientname!="*")
 		{
-			cid=watoi(res[0][L"id"]);
+			IQuery *q=db->Prepare("SELECT id FROM clients WHERE name=?");
+			q->Bind(clientname);
+			db_results res=q->Read();
+			if(!res.empty())
+			{
+				cid=watoi(res[0][L"id"]);
+			}
+			else
+			{
+				Server->Log("Client \""+clientname+"\" not found", LL_ERROR);
+				return false;
+			}
+
+			filter=" WHERE clientid="+nconvert(cid);
 		}
 		else
 		{
-			Server->Log("Client \""+clientname+"\" not found", LL_ERROR);
-			return false;
+			filter+="WHERE 1=1";
 		}
 		
-		filter=" WHERE clientid="+nconvert(cid);
 
 		if(!backupname.empty())
 		{
 			std::string backupid_filter;
 			if(backupname=="last")
 			{
-				q=db->Prepare("SELECT id,path FROM backups WHERE clientid=? ORDER BY backuptime DESC LIMIT 1");
-				q->Bind(cid);
-				res=q->Read();
-				if(!res.empty())
+				if(clientname!="*")
 				{
-					backupid_filter="= "+wnarrow(res[0][L"id"]);
-					Server->Log(L"Last backup: "+res[0][L"path"], LL_INFO);
+					IQuery* q=db->Prepare("SELECT id,path FROM backups WHERE clientid=? ORDER BY backuptime DESC LIMIT 1");
+					q->Bind(cid);
+					db_results res=q->Read();
+					if(!res.empty())
+					{
+						backupid_filter="= "+wnarrow(res[0][L"id"]);
+						Server->Log(L"Last backup: "+res[0][L"path"], LL_INFO);
+					}
+					else
+					{
+						Server->Log("Last backup not found", LL_ERROR);
+						return false;
+					}
 				}
 				else
 				{
-					Server->Log("Last backup not found", LL_ERROR);
-					return false;
+					backupid_filter=" IN (SELECT id, path FROM backups b WHERE NOT EXISTS (SELECT id FROM backups c WHERE c.backuptime > b.backuptime AND b.clientid=c.clientid))";
 				}
+				
 			}
 			else if(backupname=="*")
 			{
@@ -207,10 +223,10 @@ bool verify_hashes(std::string arg)
 			}
 			else
 			{		
-				q=db->Prepare("SELECT id FROM backups WHERE path=? AND clientid=?");
+				IQuery* q=db->Prepare("SELECT id FROM backups WHERE path=? AND clientid=?");
 				q->Bind(backupname);
 				q->Bind(cid);
-				res=q->Read();
+				db_results res=q->Read();
 				if(!res.empty())
 				{
 					backupid_filter="= "+wnarrow(res[0][L"id"]);
@@ -223,7 +239,10 @@ bool verify_hashes(std::string arg)
 				}
 			}
 
-			filter+=" AND backupid "+backupid_filter;
+			if(backupname!="*" || clientname!="*")
+			{
+				filter+=" AND backupid "+backupid_filter;
+			}
 		}
 	}
 
