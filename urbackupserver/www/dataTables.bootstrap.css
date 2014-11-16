@@ -4,6 +4,10 @@ div.dataTables_length label {
 	white-space: nowrap;
 }
 
+div.dataTables_length  {
+	float: left;
+}
+
 div.dataTables_length select {
 	width: 75px;
 	display: inline-block;
@@ -11,6 +15,7 @@ div.dataTables_length select {
 
 div.dataTables_filter {
 	text-align: right;
+	float: right;
 }
 
 div.dataTables_filter label {

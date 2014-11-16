@@ -1,31 +1,30 @@
-g.main_nav_pos=5;
+﻿g.main_nav_pos=5;
 g.loading=false;
 g.lang="-";
 g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=1004004000;
+g.current_version=1005000000;
 g.status_show_all=false;
 g.datatable_default_config={};
 
 g.languages=[ 
-			{ l: "Deutsch", s: "de" },
+			    { l: "Deutsch", s: "de" },
 				{ l: "English", s: "en" }, 
-				{ l: "Espa�ol", s: "es" },
-				{ l: "Fran�ais", s: "fr" },
-				{ l: "??????", s: "ru"},
-				{ l: "????", s: "zh_CN" },
-				{ l: "????", s: "zh_TW" },
-				{ l: "?????", s: "fa" },
-				{ l: "?????????? ????", s: "uk" },
-				{ l: "Portugu�s do Brasil", s: "pt_BR" },
-				{ l: "slovensk� jazyk", s: "sk"},
+				{ l: "Español", s: "es" },
+				{ l: "Français", s: "fr" },
+				{ l: "Россия", s: "ru"},
+				{ l: "简体中文", s: "zh_CN" },
+				{ l: "繁体中文", s: "zh_TW" },
+				{ l: "فارسی", s: "fa" },
+				{ l: "українська мова", s: "uk" },
+				{ l: "Português do Brasil", s: "pt_BR" },
+				{ l: "slovenský jazyk", s: "sk"},
 				{ l: "Nederlands", s: "nl" },
-				{ l: "norsk", s: "no_NO" }
-
-			
-
+				{ l: "norsk", s: "no_NO" },
+				{ l: "Italiano", s: "it_IT" },
+				{ l: "České", s: "cs_CZ" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
@@ -295,11 +294,11 @@ function build_main_nav()
 				p=g.nav_params[i+1];
 			if(i+1==g.main_nav_pos)
 			{
-				ndata+=dustRender("main_nav_sel", {func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
+				ndata=dustRender("main_nav_sel", {func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p})+ndata;
 			}
 			else
 			{
-				ndata+=dustRender("main_nav", {func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p});
+				ndata=dustRender("main_nav", {func: nav_items[i], name: trans("nav_item_"+(i+1)), params: p})+ndata;
 			}
 		}
 	}
