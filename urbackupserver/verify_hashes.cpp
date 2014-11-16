@@ -95,6 +95,7 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size)
 
 	_u32 r;
 	char buf[c_read_blocksize];
+	int64 curr_verified_start=curr_verified;
 	do
 	{
 		r=f->Read(buf, c_read_blocksize);
@@ -109,6 +110,12 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size)
 	while(r>0);
 	
 	Server->destroy(f);
+
+	if(curr_verified-curr_verified_start!=watoi64(res[L"filesize"]))
+	{
+		Server->Log(L"Could not read all bytes of file \""+fp+L"\"", LL_ERROR);
+		return false;
+	}
 
 	const unsigned char * db_sha=(unsigned char*)res[L"shahash"].c_str();
 	unsigned char calc_dig[64];
@@ -180,7 +187,7 @@ bool verify_hashes(std::string arg)
 		{
 			if(backupname=="last")
 			{
-				q=db->Prepare("SELECT id,path FROM backups WHERE clientid=? ORDER BY backuptime DESC LIMIT 1");
+				q=db->Prepare("SELECT id,path FROM backups WHERE clientid=? AND complete=1 ORDER BY backuptime DESC LIMIT 1");
 				q->Bind(cid);
 				res=q->Read();
 				if(!res.empty())
