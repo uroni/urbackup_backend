@@ -71,6 +71,8 @@ struct SChannel
 	std::string endpoint_name;
 };
 
+struct SVolumesCache;
+
 const unsigned int x_pingtimeout=180000;
 
 class ClientConnector : public ICustomClient
@@ -229,4 +231,8 @@ private:
 	bool internet_conn;
 
 	std::string endpoint_name;
+
+#ifdef _WIN32
+	static SVolumesCache* volumes_cache;
+#endif
 };

@@ -535,12 +535,16 @@ std::vector<STimeSpan> ServerSettings::getBackupWindowFullImage(void)
 	return getWindow(window);
 }
 
-std::vector<std::string> ServerSettings::getBackupVolumes(const std::string& all_volumes)
+std::vector<std::string> ServerSettings::getBackupVolumes(const std::string& all_volumes, const std::string& all_nonusb_volumes)
 {
 	std::string vols=getSettings()->image_letters;
-	if(vols=="ALL")
+	if(strlower(vols)=="all")
 	{
 		vols=all_volumes;
+	}
+	else if(strlower(vols)=="all_nonusb")
+	{
+		vols=all_nonusb_volumes;
 	}
 	std::vector<std::string> ret;
 	Tokenize(vols, ret, ";,");

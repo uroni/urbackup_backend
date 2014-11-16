@@ -739,7 +739,7 @@ void BackupServerGet::operator ()(void)
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 				r_success=true;
-				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes);
+				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
 				{
 					if(isUpdateFullImage(vols[i]+":") || do_full_image_now)
@@ -790,7 +790,7 @@ void BackupServerGet::operator ()(void)
 				pingthread=new ServerPingThread(this, eta_version>0);
 				pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
-				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes);
+				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
 				{
 					std::string letter=vols[i]+":";
@@ -1295,7 +1295,7 @@ bool BackupServerGet::isUpdateFullImage(const std::string &letter)
 
 bool BackupServerGet::isUpdateFullImage(void)
 {
-	std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes);
+	std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 	for(size_t i=0;i<vols.size();++i)
 	{
 		if( isUpdateFullImage(vols[i]+":") )
@@ -1308,7 +1308,7 @@ bool BackupServerGet::isUpdateFullImage(void)
 
 bool BackupServerGet::isUpdateIncrImage(void)
 {
-	std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes);
+	std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 	for(size_t i=0;i<vols.size();++i)
 	{
 		if( isUpdateIncrImage(vols[i]+":") )
