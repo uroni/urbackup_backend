@@ -144,6 +144,11 @@ CServer::CServer()
 	log_rotation_size = std::string::npos;
 	log_rotation_files = 10;
 
+	if(FileExists("large_log_rotation"))
+	{
+		log_rotation_files = 100;
+	}
+
 #ifdef _WIN32
 	initialize_GetTickCount64();
 	log_rotation_size = 20*1024*1024; //20MB
