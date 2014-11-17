@@ -253,7 +253,17 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 						}
 					}
 
+#ifdef _WIN32
+					if(GetLastError()==ERROR_FILE_SYSTEM_LIMITATION)
+					{
+						ServerLogger::Log(clientid, "FATAL: The filesystem is returning the error code ERROR_FILE_SYSTEM_LIMITATION."
+							" This may be caused by the file being too fragmented (try defragmenting or freeing space). This can also be caused by the file being compressed and too large. In this case you have to disable NTFS compression."
+							" See https://support.microsoft.com/kb/2891967 for details.", LL_ERROR);
+					}
+#endif
+
 					ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
+					
 					BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 					has_error=true;
 				}
