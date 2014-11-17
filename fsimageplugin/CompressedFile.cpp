@@ -505,6 +505,11 @@ _i64 CompressedFile::Size( void )
 	return filesize;
 }
 
+_i64 CompressedFile::RealSize()
+{
+	return uncompressedFile->Size();
+}
+
 std::string CompressedFile::getFilename( void )
 {
 	return uncompressedFile->getFilename();

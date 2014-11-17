@@ -47,6 +47,7 @@ public:
 	_u32 Write(const char* buffer, _u32 bsize);
 	bool Seek(_i64 spos);
 	_i64 Size(void);
+	_i64 RealSize();
 	void Close();
 
 #ifdef _WIN32

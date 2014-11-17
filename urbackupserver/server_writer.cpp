@@ -29,14 +29,16 @@
 #include "server_log.h"
 #include "server_cleanup.h"
 #include "server_get.h"
+#include "zero_hash.h"
 
 extern IFSImageFactory *image_fak;
 const size_t free_space_lim=1000*1024*1024; //1000MB
 const uint64 filebuf_lim=1000*1024*1024; //1000MB
+const unsigned int sha_size=32;
 
 ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs,
-		int pClientid, bool use_tmpfiles, int64 mbr_offset)
- : mbr_offset(mbr_offset), do_trim(false)
+		int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize)
+ : mbr_offset(mbr_offset), do_trim(false), hashfile(hashfile), vhd_blocksize(vhd_blocksize)
 {
 	filebuffer=use_tmpfiles;
 
@@ -160,9 +162,13 @@ void ServerVHDWriter::operator()(void)
 	if(do_trim)
 	{
 		ServerLogger::Log(clientid, "Starting trimming image file (if possible)", LL_DEBUG);
-		if(!vhd->trimUnused(mbr_offset))
+		if(!vhd->trimUnused(mbr_offset, this))
 		{
 			ServerLogger::Log(clientid, "Trimming file failed. Image backup may use too much storage.", LL_WARNING);
+		}
+		else
+		{
+			ServerLogger::Log(clientid, "Trimmed "+PrettyPrintBytes(trimmed_bytes), LL_DEBUG);
 		}
 	}
 
@@ -396,6 +402,34 @@ void ServerVHDWriter::setDoTrim(bool b)
 void ServerVHDWriter::setMbrOffset(int64 offset)
 {
 	mbr_offset = offset;
+}
+
+void ServerVHDWriter::trimmed(_i64 trim_start, _i64 trim_stop)
+{
+	_i64 block_start = trim_start/vhd_blocksize;
+	if(trim_start%vhd_blocksize!=0)
+	{
+		++block_start;
+	}
+
+	_i64 block_end = trim_stop/vhd_blocksize;
+
+	for(;block_start<block_end;++block_start)
+	{
+		if(hashfile->Seek(block_start*sha_size) )
+		{
+			if(hashfile->Write(reinterpret_cast<const char*>(zero_hash), sha_size)!=sha_size)
+			{
+				Server->Log("Error writing to hashfile while trimming.", LL_WARNING);
+			}
+		}
+		else
+		{
+			Server->Log("Error seeking in hashfile while trimming.", LL_WARNING);
+		}
+	}
+
+	trimmed_bytes+=trim_stop-trim_start;
 }
 
 //-------------FilebufferWriter-----------------

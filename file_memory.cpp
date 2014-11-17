@@ -92,6 +92,11 @@ _i64 CMemoryFile::Size(void)
 	return data.size();
 }
 
+_i64 CMemoryFile::RealSize()
+{
+	return Size();
+}
+
 std::string CMemoryFile::getFilename(void)
 {
 	return "_MEMORY__";

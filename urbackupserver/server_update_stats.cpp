@@ -157,11 +157,11 @@ void ServerUpdateStats::update_images(void)
 		std::map<int, _i64>::iterator it=clients_used.find(cid);
 		if(it==clients_used.end())
 		{
-			clients_used.insert(std::pair<int, _i64>(cid, file->Size()));
+			clients_used.insert(std::pair<int, _i64>(cid, file->RealSize()));
 		}
 		else
 		{
-			it->second+=file->Size();
+			it->second+=file->RealSize();
 		}
 		Server->destroy(file);
 	}
@@ -478,3 +478,4 @@ bool ServerUpdateStats::repairImagePath(str_map img)
 	}
 	return false;
 }
+

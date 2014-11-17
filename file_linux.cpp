@@ -197,6 +197,14 @@ _i64 File::Size(void)
 	return stat_buf.st_size;
 }
 
+_i64 File::RealSize(void)
+{
+	struct stat64 stat_buf;
+	fstat64(fd, &stat_buf);
+
+	return stat_buf.st_blocks*512;
+}
+
 void File::Close()
 {
 	if( fd!=-1 )
