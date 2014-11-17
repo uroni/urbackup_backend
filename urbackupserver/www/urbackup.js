@@ -201,14 +201,15 @@ function try_anonymous_login(data)
 		return;
 	}
 	
+	var params;
 	if(window.location.hash.length>0)
 	{
-		params = $.deparam(window.location.hash.substr(1));
-		if(params && params.tokens0 && params.computername)
-		{
-			file_access(params);
-		}
+		params = deparam(window.location.hash.substr(1));
+	}
+	if(params && params.tokens0 && params.computername)
+	{
 		window.location.hash="";
+		file_access(params);
 	}
 	else
 	{		
@@ -1545,6 +1546,11 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
 			var image_file_format_params = ["vhdz", "vhd"];
+			if(data.cowraw_available)
+			{
+				data.settings.cowraw_available=true;
+				image_file_format_params.push("cowraw");
+			}
 			data.settings=addSelectSelected(image_file_format_params, "image_file_format", data.settings);
 			
 			data.settings.update_freq_incr/=60.0*60.0;
@@ -1656,6 +1662,11 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
 			var image_file_format_params = ["vhdz", "vhd"];
+			if(data.cowraw_available)
+			{
+				data.settings.cowraw_available=true;
+				image_file_format_params.push("cowraw");
+			}
 			data.settings=addSelectSelected(image_file_format_params, "image_file_format", data.settings);
 			
 			data.settings.update_freq_incr/=60.0*60.0;

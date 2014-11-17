@@ -72,7 +72,6 @@ const unsigned int check_time_intervall=5*60*1000;
 const unsigned int status_update_intervall=1000;
 const unsigned int eta_update_intervall=60000;
 const size_t minfreespace_min=50*1024*1024;
-const unsigned int curr_image_version=1;
 const unsigned int ident_err_retry_time=1*60*1000;
 const unsigned int ident_err_retry_time_retok=10*60*1000;
 const unsigned int c_filesrv_connect_timeout=10000;
@@ -81,6 +80,7 @@ const unsigned int c_sleeptime_failed_imagebackup=20*60;
 const unsigned int c_sleeptime_failed_filebackup=20*60;
 const unsigned int c_exponential_backoff_div=2;
 const int64 c_readd_size_limit=100*1024;
+const unsigned int c_image_cowraw_bit=1024;
 
 
 int BackupServerGet::running_backups=0;
@@ -146,6 +146,8 @@ BackupServerGet::BackupServerGet(IPipe *pPipe, sockaddr_in pAddr, const std::wst
 
 	continuous_thread_ticket=ILLEGAL_THREADPOOL_TICKET;
 	hash_thread_refcount=0;
+
+	curr_image_version=1;
 }
 
 BackupServerGet::~BackupServerGet(void)
@@ -216,7 +218,8 @@ void BackupServerGet::unloadSQL(void)
 	db->destroyQuery(q_create_backup_image);
 	db->destroyQuery(q_set_image_complete);
 	db->destroyQuery(q_set_last_image_backup);
-	db->destroyQuery(q_get_last_incremental_image);
+	db->destroyQuery(q_get_last_full_image);
+	db->destroyQuery(q_get_last_incr_image);
 	db->destroyQuery(q_set_image_size);
 	db->destroyQuery(q_update_running_file);
 	db->destroyQuery(q_update_running_image);
@@ -760,12 +763,12 @@ void BackupServerGet::operator ()(void)
 							}
 							ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
 						}
-						SBackup last=getLastIncrementalImage(letter);
+						bool incremental = server_settings->getImageFileFormat()==image_file_format_cowraw;
+						SBackup last=getLastImage(letter, incremental);
 						if(last.incremental==-2)
 						{
-							ServerLogger::Log(clientid, "Error retrieving last backup.", LL_ERROR);
-							r_success=false;
-							break;
+							ServerLogger::Log(clientid, "Error retrieving last image backup. Doing full image backup instead.", LL_WARNING);
+							r_success=doImage(letter, L"", 0, 0, image_protocol_version>0, server_settings->getImageFileFormat());;
 						}
 						else
 						{
@@ -1068,6 +1071,16 @@ void BackupServerGet::operator ()(void)
 void BackupServerGet::prepareSQL(void)
 {
 	SSettings *s=server_settings->getSettings();
+
+	if(server_settings->getImageFileFormat()==image_file_format_cowraw)
+	{
+		curr_image_version = curr_image_version & c_image_cowraw_bit;
+	}
+	else
+	{
+		curr_image_version = curr_image_version & ~c_image_cowraw_bit;
+	}
+
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqFileFull())+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1 AND tgroup=0", false);
 	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqFileIncr())+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=0", false);
@@ -1084,7 +1097,8 @@ void BackupServerGet::prepareSQL(void)
 	q_set_image_size=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
 	q_set_image_complete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
 	q_set_last_image_backup=db->Prepare("UPDATE clients SET lastbackup_image=(SELECT b.backuptime FROM backup_images b WHERE b.id=?) WHERE id=?", false);
-	q_get_last_incremental_image=db->Prepare("SELECT id,incremental,path,(strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_full_image=db->Prepare("SELECT id,incremental,path,(strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
+	q_get_last_incr_image=db->Prepare("SELECT id,incremental,path,(strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images WHERE clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
 	q_update_running_file=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_running_image=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
 	q_update_images_size=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
@@ -1226,12 +1240,17 @@ SBackup BackupServerGet::getLastIncremental( int group )
 	}
 }
 
-SBackup BackupServerGet::getLastIncrementalImage(const std::string &letter)
+SBackup BackupServerGet::getLastImage(const std::string &letter, bool incr)
 {
-	q_get_last_incremental_image->Bind(clientid);
-	q_get_last_incremental_image->Bind(letter);
-	db_results res=q_get_last_incremental_image->Read();
-	q_get_last_incremental_image->Reset();
+	IQuery *q = q_get_last_full_image;
+	if(incr)
+	{
+		q = q_get_last_incr_image;
+	}
+	q->Bind(clientid);
+	q->Bind(letter);
+	db_results res=q->Read();
+	q->Reset();
 	if(res.size()>0)
 	{
 		SBackup b;
@@ -1249,7 +1268,6 @@ SBackup BackupServerGet::getLastIncrementalImage(const std::string &letter)
 		return b;
 	}
 }
-
 
 SBackup BackupServerGet::getLastFullDurations( void )
 {

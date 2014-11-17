@@ -234,10 +234,18 @@ void ServerSettings::readSettingsDefault(void)
 {
 	SSettings* settings=settings_cache->settings;
 	settings->clientid=clientid;
+	settings->image_file_format=settings_default->getValue("image_file_format", image_file_format_default);
 	settings->update_freq_incr=settings_default->getValue("update_freq_incr", nconvert(5*60*60) );
 	settings->update_freq_full=settings_default->getValue("update_freq_full", nconvert(30*24*60*60) );
 	settings->update_freq_image_incr=settings_default->getValue("update_freq_image_incr", nconvert( 7*24*60*60) );
-	settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", nconvert( 60*24*60*60) );
+	if(getImageFileFormatInt(settings->image_file_format)==image_file_format_cowraw)
+	{
+		settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", nconvert( 60*24*60*60) );
+	}
+	else
+	{
+		settings->update_freq_image_full=settings_default->getValue("update_freq_image_full", nconvert( -60*24*60*60) );
+	}	
 	settings->max_file_incr=settings_default->getValue("max_file_incr", 100);
 	settings->min_file_incr=settings_default->getValue("min_file_incr", 40);
 	settings->max_file_full=settings_default->getValue("max_file_full", 10);
@@ -305,7 +313,6 @@ void ServerSettings::readSettingsDefault(void)
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
-	settings->image_file_format=settings_default->getValue("image_file_format", image_file_format_default);
 	settings->trust_client_hashes=(settings_default->getValue("trust_client_hashes", "true")=="true");
 	settings->internet_connect_always=(settings_default->getValue("internet_connect_always", "false")=="true");
 	settings->show_server_updates=(settings_default->getValue("show_server_updates", "true")=="true");
@@ -660,6 +667,12 @@ std::string ServerSettings::getImageFileFormat()
 {
 	std::string image_file_format = getSettings()->image_file_format;
 
+	return getImageFileFormatInt(image_file_format);
+}
+
+
+std::string ServerSettings::getImageFileFormatInt( const std::string& image_file_format )
+{
 	if(image_file_format == image_file_format_default)
 	{
 		if(BackupServer::isSnapshotsEnabled())
@@ -676,6 +689,7 @@ std::string ServerSettings::getImageFileFormat()
 		return image_file_format;
 	}
 }
+
 
 std::vector<STimeSpan> ServerSettings::parseTimeSpan(std::string time_span)
 {

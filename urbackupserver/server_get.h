@@ -173,7 +173,7 @@ private:
 	std::string getMBR(const std::wstring &dl);
 	unsigned int writeMBR(ServerVHDWriter *vhdfile, uint64 volsize);
 	int createBackupImageSQL(int incremental, int incremental_ref, int clientid, std::wstring path, std::string letter);
-	SBackup getLastIncrementalImage(const std::string &letter);
+	SBackup getLastImage(const std::string &letter, bool incr);
 	void updateRunning(bool image);
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
@@ -278,7 +278,8 @@ private:
 	IQuery *q_create_backup_image;
 	IQuery *q_set_image_complete;
 	IQuery *q_set_last_image_backup;
-	IQuery *q_get_last_incremental_image;
+	IQuery *q_get_last_full_image;
+	IQuery *q_get_last_incr_image;
 	IQuery *q_set_image_size;
 	IQuery *q_update_running_file;
 	IQuery *q_update_running_image;
@@ -371,4 +372,6 @@ private:
 	std::auto_ptr<BackupServerContinuous> continuous_update;
 	THREADPOOL_TICKET continuous_thread_ticket;
 	std::map<std::wstring, SContinuousSequence> continuous_sequences;
+
+	unsigned int curr_image_version;
 };

@@ -145,6 +145,9 @@
 					<select class="form-control" id="image_file_format">
 						<option value="vhdz" {image_file_format_0}>{tCompressed VHD (Compressed non-standard Virtual HardDisk)}</option>
 						<option value="vhd" {image_file_format_1}>{tVHD (Virtual HardDisk)}</option>
+						{?cowraw_available}
+						<option value="cowraw" {image_file_format_2}>{tRaw copy-on-write file}</option>
+						{/cowraw_available}
 					</select>
 				</div>
 			</div>

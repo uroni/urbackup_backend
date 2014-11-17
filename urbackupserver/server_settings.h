@@ -176,6 +176,8 @@ private:
 	void operator=(const ServerSettings& other){};
 	ServerSettings(const ServerSettings& other){};
 
+	std::string getImageFileFormatInt(const std::string& image_file_format);
+
 	std::vector<STimeSpan> getWindow(std::string window);
 
 	std::vector<STimeSpan> parseTimeSpan(std::string time_span);

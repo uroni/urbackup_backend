@@ -28,6 +28,7 @@
 #include "../server_get.h"
 #include "../server_archive.h"
 #include "../dao/ServerBackupDao.h"
+#include "../server.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -726,6 +727,8 @@ ACTION_IMPL(settings)
 				s=getClientSettings(db, t_clientid);
 				obj.set("overwrite", s.overwrite);
 				obj.set("clientid", t_clientid);
+
+				ret.set("cowraw_available", BackupServer::isSnapshotsEnabled());
 				ret.set("settings",  obj);
 
 				getArchiveSettings(ret, db, t_clientid);
@@ -900,6 +903,7 @@ ACTION_IMPL(settings)
 				obj.set("ONLY_WIN32_END","-->");
 				#endif //_WIN32
 
+				ret.set("cowraw_available", BackupServer::isSnapshotsEnabled());
 				ret.set("settings", obj);
 
 				getArchiveSettings(ret, db, t_clientid);
