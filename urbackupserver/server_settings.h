@@ -156,7 +156,7 @@ public:
 	std::vector<STimeSpan> getBackupWindowFullImage(void);
 
 	std::vector<STimeSpan> getCleanupWindow(void);
-	std::vector<std::string> getBackupVolumes(const std::string& all_volumes);
+	std::vector<std::string> getBackupVolumes(const std::string& all_volumes, const std::string& all_nonusb_volumes);
 
 	std::string getImageFileFormat();
 

@@ -328,6 +328,7 @@ private:
 	int image_protocol_version;
 	int update_version;
 	std::string all_volumes;
+	std::string all_nonusb_volumes;
 	int eta_version;
 	int cdp_version;
 

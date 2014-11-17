@@ -303,10 +303,6 @@ void ServerSettings::readSettingsDefault(void)
 	settings->global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
 	settings->client_quota=settings_default->getValue("client_quota", "100%");
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
-	if(is_big_endian())
-	{
-		settings->end_to_end_file_backup_verification=true;
-	}
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
 	settings->image_file_format=settings_default->getValue("image_file_format", image_file_format_default);
@@ -442,10 +438,6 @@ void ServerSettings::readSettingsClient(void)
 	readStringClientSetting("internet_image_transfer_mode", &settings->internet_image_transfer_mode);
 
 	readBoolClientSetting("end_to_end_file_backup_verification", &settings->end_to_end_file_backup_verification);
-	if(is_big_endian())
-	{
-		settings->end_to_end_file_backup_verification=true;
-	}
 	readBoolClientSetting("internet_calculate_filehashes_on_client", &settings->internet_calculate_filehashes_on_client);	
 	readBoolClientSetting("silent_update", &settings->silent_update);
 
@@ -530,12 +522,16 @@ std::vector<STimeSpan> ServerSettings::getBackupWindowFullImage(void)
 	return getWindow(window);
 }
 
-std::vector<std::string> ServerSettings::getBackupVolumes(const std::string& all_volumes)
+std::vector<std::string> ServerSettings::getBackupVolumes(const std::string& all_volumes, const std::string& all_nonusb_volumes)
 {
 	std::string vols=getSettings()->image_letters;
-	if(vols=="ALL")
+	if(strlower(vols)=="all")
 	{
 		vols=all_volumes;
+	}
+	else if(strlower(vols)=="all_nonusb")
+	{
+		vols=all_nonusb_volumes;
 	}
 	std::vector<std::string> ret;
 	Tokenize(vols, ret, ";,");

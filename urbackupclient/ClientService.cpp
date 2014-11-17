@@ -86,6 +86,10 @@ bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::string, std::string> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
 
+#ifdef _WIN32
+SVolumesCache* ClientConnector::volumes_cache;
+#endif
+
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";

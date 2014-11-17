@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <pwd.h>
+extern char **environ;
 #endif
 
 #define DEF_Server
