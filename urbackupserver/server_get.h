@@ -240,6 +240,7 @@ private:
 	void addFileEntrySQLWithExisting(const std::wstring &fp, const std::wstring &hash_path, const std::string &shahash, _i64 filesize, _i64 rsize, int incremental);
 
 	SSettings curr_intervals;
+	std::string curr_image_format;
 
 	IPipe *pipe;
 	IDatabase *db;

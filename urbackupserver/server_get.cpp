@@ -4859,7 +4859,8 @@ void BackupServerGet::update_sql_intervals(bool update_sql)
 	if(settings->update_freq_full != curr_intervals.update_freq_full ||
 		settings->update_freq_image_full != curr_intervals.update_freq_image_full ||
 		settings->update_freq_image_incr != curr_intervals.update_freq_image_incr ||
-		settings->update_freq_incr != curr_intervals.update_freq_incr )
+		settings->update_freq_incr != curr_intervals.update_freq_incr ||
+		server_settings->getImageFileFormat() != curr_image_format )
 	{
 		if(update_sql)
 		{
@@ -4868,6 +4869,7 @@ void BackupServerGet::update_sql_intervals(bool update_sql)
 		}
 	}
 	curr_intervals=*settings;
+	curr_image_format = server_settings->getImageFileFormat();
 }
 
 bool BackupServerGet::verify_file_backup(IFile *fileentries)
