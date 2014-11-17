@@ -1487,7 +1487,7 @@ function show_settings2(data)
 				n+="<ul class=\"dropdown-menu\" role=\"menu\">";
 				for(var i=0;i<nav.clients.length;++i)
 				{		
-					n+="<li><a href=\"javascript: clientSettings(" + nav.clients[i].id + "-" + idx + ")\">" + nav.clients[i].name + "</a></li>";
+					n+="<li><a href=\"javascript: clientSettings(" + nav.clients[i].id + ", " + idx + ")\">" + nav.clients[i].name + "</a></li>";
 					++idx;
 				}
 			}
@@ -2057,17 +2057,11 @@ function getInternetSettings()
 	}
 	return pars;
 }
-function clientSettings()
+function clientSettings(clientid, idx)
 {
-	var selidx=I('settingsclient').selectedIndex;
-	if(selidx!=-1 && I('settingsclient').value!="n")
-	{
-		if(!startLoading()) return;
-		clientid=I('settingsclient').value.split("-")[0];
-		idx=I('settingsclient').value.split("-")[1];
-		g.settings_nav_pos=idx*1;
-		new getJSON("settings", "sa=clientsettings&t_clientid="+clientid, show_settings2);
-	}
+	if(!startLoading()) return;
+	g.settings_nav_pos=idx*1;
+	new getJSON("settings", "sa=clientsettings&t_clientid="+clientid, show_settings2);
 }
 function generalSettings()
 {
