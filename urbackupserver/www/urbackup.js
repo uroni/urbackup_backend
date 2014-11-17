@@ -3236,7 +3236,7 @@ function changeArchiveForUnit()
 		I('archive_for').type="text";
 	}
 }
-function startBackups(backup_type_num)
+function startBackups(start_type)
 {
 	var cbs=document.getElementsByName("status_selected");
 	var ids=[];
@@ -3250,7 +3250,7 @@ function startBackups(backup_type_num)
 	if(ids.length>0)
 	{	
 		startLoading();
-		new getJSON("start_backup", "start_type="+I('backup_type'+backup_type_num).value+"&start_client="+ids.join(","), backups_started);
+		new getJSON("start_backup", "start_type="+start_type+"&start_client="+ids.join(","), backups_started);
 	}
 	else
 	{
