@@ -40,7 +40,9 @@ IServer *Server;
 #include <stdlib.h>
 
 #include "vhdfile.h"
+#ifndef _WIN32
 #include "cowfile.h"
+#endif
 #include "fs/ntfs.h"
 
 #include "pluginmgr.h"
@@ -453,10 +455,12 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			in.reset(new VHDFile(Server->ConvertToUnicode(image_verify), true,0));
 		}
+#ifndef _WIN32
 		else if(ext=="raw")
 		{
 			in.reset(new CowFile(Server->ConvertToUnicode(image_verify), true,0));
 		}
+#endif
 		else
 		{
 			Server->Log("Unknown image file extension \""+ext+"\"", LL_ERROR);

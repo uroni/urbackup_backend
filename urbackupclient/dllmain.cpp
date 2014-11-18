@@ -447,20 +447,6 @@ void update_client13_14(IDatabase *db)
 	db->Write("DROP INDEX IF EXISTS frn_pid_index");
 	db->Write("CREATE INDEX IF NOT EXISTS frn_index ON map_frn( frn ASC, frn_high ASC )");
 	db->Write("CREATE INDEX IF NOT EXISTS frn_pid_index ON map_frn( pid ASC, pid_high ASC )");
-	db->Write("CREATE TABLE fileaccess_tokens (id INTEGER PRIMARY KEY, accountname TEXT, token TEXT, is_user INTEGER)");
-	db->Write("CREATE UNIQUE INDEX fileaccess_tokens_unique ON fileaccess_tokens(accountname, is_user)");
-}
-
-void update_client14_15(IDatabase *db)
-{
-	db->Write("DELETE FROM files");
-}
-
-void update_client15_16(IDatabase *db)
-{
-	db->Write("CREATE TABLE continuous_watch_queue (id INTEGER PRIMARY KEY, data_size INTEGER, data BLOB)");
-	db->Write("ALTER TABLE backupdirs ADD tgroup INTEGER");
-	db->Write("UPDATE backupdirs SET tgroup=0 WHERE tgroup IS NULL");
 }
 
 void update_client14_15(IDatabase *db)
@@ -468,6 +454,20 @@ void update_client14_15(IDatabase *db)
 	db->Write("DELETE FROM journal_data");
 	db->Write("DELETE FROM map_frn");
 	db->Write("DELETE FROM journal_ids");
+}
+
+void update_client15_16(IDatabase *db)
+{
+	db->Write("DELETE FROM files");
+}
+
+void update_client16_17(IDatabase *db)
+{
+	db->Write("CREATE TABLE continuous_watch_queue (id INTEGER PRIMARY KEY, data_size INTEGER, data BLOB)");
+	db->Write("ALTER TABLE backupdirs ADD tgroup INTEGER");
+	db->Write("UPDATE backupdirs SET tgroup=0 WHERE tgroup IS NULL");
+	db->Write("CREATE TABLE fileaccess_tokens (id INTEGER PRIMARY KEY, accountname TEXT, token TEXT, is_user INTEGER)");
+	db->Write("CREATE UNIQUE INDEX fileaccess_tokens_unique ON fileaccess_tokens(accountname, is_user)");
 }
 
 bool upgrade_client(void)
@@ -547,12 +547,12 @@ bool upgrade_client(void)
 				update_client14_15(db);
 				++ver;
 				break;
-			case 14:
-				update_client14_15(db);
-				++ver;
-				break;
 			case 15:
 				update_client15_16(db);
+				++ver;
+				break;
+			case 16:
+				update_client16_17(db);
 				++ver;
 				break;
 			default:

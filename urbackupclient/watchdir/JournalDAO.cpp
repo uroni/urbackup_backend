@@ -21,7 +21,6 @@ void JournalDAO::prepareQueries()
 {
 	q_getDeviceInfo=NULL;
 	q_getRootId=NULL;
-	q_addRoot=NULL;
 	q_addFrn=NULL;
 	q_resetRoot=NULL;
 	q_getFrnEntryId=NULL;
@@ -45,7 +44,6 @@ void JournalDAO::destroyQueries()
 {
 	db->destroyQuery(q_getDeviceInfo);
 	db->destroyQuery(q_getRootId);
-	db->destroyQuery(q_addRoot);
 	db->destroyQuery(q_addFrn);
 	db->destroyQuery(q_resetRoot);
 	db->destroyQuery(q_getFrnEntryId);
@@ -119,36 +117,23 @@ JournalDAO::CondInt64 JournalDAO::getRootId(const std::wstring& name)
 
 /**
 * @-SQLGenAccess
-* @func void JournalDAO::addRoot
-* @sql
-*    INSERT INTO map_frn (name, pid, frn, rid) VALUES (:root_name(string), -1, -1, -1)
-*/
-void JournalDAO::addRoot(const std::wstring& root_name)
-{
-	if(q_addRoot==NULL)
-	{
-		q_addRoot=db->Prepare("INSERT INTO map_frn (name, pid, frn, rid) VALUES (?, -1, -1, -1)", false);
-	}
-	q_addRoot->Bind(root_name);
-	q_addRoot->Write();
-	q_addRoot->Reset();
-}
-
-/**
-* @-SQLGenAccess
 * @func void JournalDAO::addFrn
 * @sql
-*    INSERT INTO map_frn (name, pid, frn, rid) VALUES (:name(string), :pid(int64), :frn(int64), :rid(int64) )
+*    INSERT INTO map_frn (name, pid, pid_high, frn, frn_high, rid)
+*    VALUES (:name(string), :pid(int64), :pid_high(int64), :frn(int64), :frn_high(int64),
+*            :rid(int64) )
 */
-void JournalDAO::addFrn(const std::wstring& name, int64 pid, int64 frn, int64 rid)
+void JournalDAO::addFrn(const std::wstring& name, int64 pid, int64 pid_high, int64 frn, int64 frn_high, int64 rid)
 {
 	if(q_addFrn==NULL)
 	{
-		q_addFrn=db->Prepare("INSERT INTO map_frn (name, pid, frn, rid) VALUES (?, ?, ?, ? )", false);
+		q_addFrn=db->Prepare("INSERT INTO map_frn (name, pid, pid_high, frn, frn_high, rid) VALUES (?, ?, ?, ?, ?, ? )", false);
 	}
 	q_addFrn->Bind(name);
 	q_addFrn->Bind(pid);
+	q_addFrn->Bind(pid_high);
 	q_addFrn->Bind(frn);
+	q_addFrn->Bind(frn_high);
 	q_addFrn->Bind(rid);
 	q_addFrn->Write();
 	q_addFrn->Reset();
@@ -176,15 +161,16 @@ void JournalDAO::resetRoot(int64 rid)
 * @func int64 JournalDAO::getFrnEntryId
 * @return int64 id
 * @sql
-*    SELECT id FROM map_frn WHERE frn=:frn(int64) AND rid=:rid(int64)
+*    SELECT id FROM map_frn WHERE frn=:frn(int64) AND frn_high=:frn_high(int64) AND rid=:rid(int64)
 */
-JournalDAO::CondInt64 JournalDAO::getFrnEntryId(int64 frn, int64 rid)
+JournalDAO::CondInt64 JournalDAO::getFrnEntryId(int64 frn, int64 frn_high, int64 rid)
 {
 	if(q_getFrnEntryId==NULL)
 	{
-		q_getFrnEntryId=db->Prepare("SELECT id FROM map_frn WHERE frn=? AND rid=?", false);
+		q_getFrnEntryId=db->Prepare("SELECT id FROM map_frn WHERE frn=? AND frn_high=? AND rid=?", false);
 	}
 	q_getFrnEntryId->Bind(frn);
+	q_getFrnEntryId->Bind(frn_high);
 	q_getFrnEntryId->Bind(rid);
 	db_results res=q_getFrnEntryId->Read();
 	q_getFrnEntryId->Reset();
@@ -199,26 +185,28 @@ JournalDAO::CondInt64 JournalDAO::getFrnEntryId(int64 frn, int64 rid)
 
 /**
 * @-SQLGenAccess
-* @func vector<int64> JournalDAO::getFrnChildren
-* @return int64 frn
+* @func vector<SFrn> JournalDAO::getFrnChildren
+* @return int64 frn, int64 frn_high
 * @sql
-*    SELECT frn FROM map_frn WHERE pid=:pid(int64) AND rid=:rid(int64)
+*    SELECT frn, frn_high FROM map_frn WHERE pid=:pid(int64) AND pid_high=:pid_high(int64) AND rid=:rid(int64)
 */
-std::vector<int64> JournalDAO::getFrnChildren(int64 pid, int64 rid)
+std::vector<JournalDAO::SFrn> JournalDAO::getFrnChildren(int64 pid, int64 pid_high, int64 rid)
 {
 	if(q_getFrnChildren==NULL)
 	{
-		q_getFrnChildren=db->Prepare("SELECT frn FROM map_frn WHERE pid=? AND rid=?", false);
+		q_getFrnChildren=db->Prepare("SELECT frn, frn_high FROM map_frn WHERE pid=? AND pid_high=? AND rid=?", false);
 	}
 	q_getFrnChildren->Bind(pid);
+	q_getFrnChildren->Bind(pid_high);
 	q_getFrnChildren->Bind(rid);
 	db_results res=q_getFrnChildren->Read();
 	q_getFrnChildren->Reset();
-	std::vector<int64> ret;
+	std::vector<JournalDAO::SFrn> ret;
 	ret.resize(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret[i]=watoi64(res[i][L"frn"]);
+		ret[i].frn=watoi64(res[i][L"frn"]);
+		ret[i].frn_high=watoi64(res[i][L"frn_high"]);
 	}
 	return ret;
 }
@@ -243,26 +231,28 @@ void JournalDAO::delFrnEntry(int64 id)
 /**
 * @-SQLGenAccess
 * @func SNameAndPid JournalDAO::getNameAndPid
-* @return string name, int64 pid
+* @return string name, int64 pid, int64 pid_high
 * @sql
-*    SELECT name, pid FROM map_frn WHERE frn=:frn(int64) AND rid=:rid(int64)
+*    SELECT name, pid, pid_high FROM map_frn WHERE frn=:frn(int64) AND frn_high=:frn_high(int64) AND rid=:rid(int64)
 */
-JournalDAO::SNameAndPid JournalDAO::getNameAndPid(int64 frn, int64 rid)
+JournalDAO::SNameAndPid JournalDAO::getNameAndPid(int64 frn, int64 frn_high, int64 rid)
 {
 	if(q_getNameAndPid==NULL)
 	{
-		q_getNameAndPid=db->Prepare("SELECT name, pid FROM map_frn WHERE frn=? AND rid=?", false);
+		q_getNameAndPid=db->Prepare("SELECT name, pid, pid_high FROM map_frn WHERE frn=? AND frn_high=? AND rid=?", false);
 	}
 	q_getNameAndPid->Bind(frn);
+	q_getNameAndPid->Bind(frn_high);
 	q_getNameAndPid->Bind(rid);
 	db_results res=q_getNameAndPid->Read();
 	q_getNameAndPid->Reset();
-	SNameAndPid ret = { false, L"", 0 };
+	SNameAndPid ret = { false, L"", 0, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
 		ret.name=res[0][L"name"];
 		ret.pid=watoi64(res[0][L"pid"]);
+		ret.pid_high=watoi64(res[0][L"pid_high"]);
 	}
 	return ret;
 }
@@ -327,16 +317,17 @@ void JournalDAO::updateJournalLastUsn(int64 last_record, const std::wstring& dev
 * @-SQLGenAccess
 * @func void JournalDAO::updateFrnNameAndPid
 * @sql
-*    UPDATE map_frn SET name=:name(string), pid=:pid(int64) WHERE id=:id(int64)
+*    UPDATE map_frn SET name=:name(string), pid=:pid(int64), pid_high=:pid_high(int64) WHERE id=:id(int64)
 */
-void JournalDAO::updateFrnNameAndPid(const std::wstring& name, int64 pid, int64 id)
+void JournalDAO::updateFrnNameAndPid(const std::wstring& name, int64 pid, int64 pid_high, int64 id)
 {
 	if(q_updateFrnNameAndPid==NULL)
 	{
-		q_updateFrnNameAndPid=db->Prepare("UPDATE map_frn SET name=?, pid=? WHERE id=?", false);
+		q_updateFrnNameAndPid=db->Prepare("UPDATE map_frn SET name=?, pid=?, pid_high=? WHERE id=?", false);
 	}
 	q_updateFrnNameAndPid->Bind(name);
 	q_updateFrnNameAndPid->Bind(pid);
+	q_updateFrnNameAndPid->Bind(pid_high);
 	q_updateFrnNameAndPid->Bind(id);
 	q_updateFrnNameAndPid->Write();
 	q_updateFrnNameAndPid->Reset();
@@ -346,15 +337,15 @@ void JournalDAO::updateFrnNameAndPid(const std::wstring& name, int64 pid, int64 
 * @-SQLGenAccess
 * @func void JournalDAO::insertJournalData
 * @sql
-*    INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, parent_frn, next_usn, attributes)
-*      VALUES (:device_name(string), :journal_id(int64), :usn(int64), :reason(int64), :filename(string), :frn(int64),
-*			   :parent_frn(int64), :next_usn(int64), :attributes(int64) )
+*    INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, frn_high, parent_frn, parent_frn_high, next_usn, attributes)
+*      VALUES (:device_name(string), :journal_id(int64), :usn(int64), :reason(int64), :filename(string), :frn(int64), :frn_high(int64),
+*			   :parent_frn(int64), :parent_frn_high(int64), :next_usn(int64), :attributes(int64) )
 */
-void JournalDAO::insertJournalData(const std::wstring& device_name, int64 journal_id, int64 usn, int64 reason, const std::wstring& filename, int64 frn, int64 parent_frn, int64 next_usn, int64 attributes)
+void JournalDAO::insertJournalData(const std::wstring& device_name, int64 journal_id, int64 usn, int64 reason, const std::wstring& filename, int64 frn, int64 frn_high, int64 parent_frn, int64 parent_frn_high, int64 next_usn, int64 attributes)
 {
 	if(q_insertJournalData==NULL)
 	{
-		q_insertJournalData=db->Prepare("INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, parent_frn, next_usn, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ? )", false);
+		q_insertJournalData=db->Prepare("INSERT INTO journal_data (device_name, journal_id, usn, reason, filename, frn, frn_high, parent_frn, parent_frn_high, next_usn, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )", false);
 	}
 	q_insertJournalData->Bind(device_name);
 	q_insertJournalData->Bind(journal_id);
@@ -362,7 +353,9 @@ void JournalDAO::insertJournalData(const std::wstring& device_name, int64 journa
 	q_insertJournalData->Bind(reason);
 	q_insertJournalData->Bind(filename);
 	q_insertJournalData->Bind(frn);
+	q_insertJournalData->Bind(frn_high);
 	q_insertJournalData->Bind(parent_frn);
+	q_insertJournalData->Bind(parent_frn_high);
 	q_insertJournalData->Bind(next_usn);
 	q_insertJournalData->Bind(attributes);
 	q_insertJournalData->Write();
@@ -372,7 +365,7 @@ void JournalDAO::insertJournalData(const std::wstring& device_name, int64 journa
 /**
 * @-SQLGenAccess
 * @func vector<SJournalData> JournalDAO::getJournalData
-* @return int64 usn, int64 reason, string filename, int64 frn, int64 parent_frn, int64 next_usn, int64 attributes
+* @return int64 usn, int64 reason, string filename, int64 frn, int64 frn_high, int64 parent_frn, int64 parent_frn_high, int64 next_usn, int64 attributes
 * @sql
 *    SELECT usn, reason, filename, frn, parent_frn, next_usn FROM journal_data
 *		WHERE device_name=:device_name(string) ORDER BY usn ASC
@@ -394,7 +387,9 @@ std::vector<JournalDAO::SJournalData> JournalDAO::getJournalData(const std::wstr
 		ret[i].reason=watoi64(res[i][L"reason"]);
 		ret[i].filename=res[i][L"filename"];
 		ret[i].frn=watoi64(res[i][L"frn"]);
+		ret[i].frn_high=watoi64(res[i][L"frn_high"]);
 		ret[i].parent_frn=watoi64(res[i][L"parent_frn"]);
+		ret[i].parent_frn_high=watoi64(res[i][L"parent_frn_high"]);
 		ret[i].next_usn=watoi64(res[i][L"next_usn"]);
 		ret[i].attributes=watoi64(res[i][L"attributes"]);
 	}
@@ -440,15 +435,16 @@ void JournalDAO::delJournalData(const std::wstring& device_name)
 * @-SQLGenAccess
 * @func void JournalDAO::delFrnEntryViaFrn
 * @sql
-*    DELETE FROM map_frn WHERE frn=:frn(int64) AND rid=:rid(int64)
+*    DELETE FROM map_frn WHERE frn=:frn(int64) AND frn_high=:frn_high(int64) AND rid=:rid(int64)
 */
-void JournalDAO::delFrnEntryViaFrn(int64 frn, int64 rid)
+void JournalDAO::delFrnEntryViaFrn(int64 frn, int64 frn_high, int64 rid)
 {
 	if(q_delFrnEntryViaFrn==NULL)
 	{
-		q_delFrnEntryViaFrn=db->Prepare("DELETE FROM map_frn WHERE frn=? AND rid=?", false);
+		q_delFrnEntryViaFrn=db->Prepare("DELETE FROM map_frn WHERE frn=? AND frn_high=? AND rid=?", false);
 	}
 	q_delFrnEntryViaFrn->Bind(frn);
+	q_delFrnEntryViaFrn->Bind(frn_high);
 	q_delFrnEntryViaFrn->Bind(rid);
 	q_delFrnEntryViaFrn->Write();
 	q_delFrnEntryViaFrn->Reset();

@@ -189,8 +189,9 @@ void ChangeJournalWatcher::saveJournalData(DWORDLONG journal_id, const std::wstr
 		return;
 
 	journal_dao.insertJournalData(vol, static_cast<int64>(journal_id), static_cast<int64>(rec.Usn),
-		static_cast<int64>(rec.Reason), rec.Filename, static_cast<int64>(rec.FileReferenceNumber),
-		static_cast<int64>(rec.ParentFileReferenceNumber), nextUsn, static_cast<int64>(rec.FileAttributes));
+		static_cast<int64>(rec.Reason), rec.Filename, static_cast<int64>(rec.FileReferenceNumber.lowPart), static_cast<int64>(rec.FileReferenceNumber.highPart),
+		static_cast<int64>(rec.ParentFileReferenceNumber.lowPart), static_cast<int64>(rec.ParentFileReferenceNumber.highPart),
+		nextUsn, static_cast<int64>(rec.attributes));
 }
 
 std::vector<UsnInt> ChangeJournalWatcher::getJournalData(const std::wstring &vol)
@@ -206,24 +207,31 @@ std::vector<UsnInt> ChangeJournalWatcher::getJournalData(const std::wstring &vol
 		rec.Usn=res[i].usn;
 		rec.Reason=static_cast<DWORD>(res[i].reason);
 		rec.Filename=res[i].filename;
-		rec.FileReferenceNumber=res[i].frn;
-		rec.ParentFileReferenceNumber=res[i].parent_frn;
+		rec.FileReferenceNumber=uint128(res[i].frn, res[i].frn_high);
+		rec.ParentFileReferenceNumber=uint128(res[i].parent_frn, res[i].parent_frn_high);
 		rec.NextUsn=res[i].next_usn;
 		rec.attributes=static_cast<DWORD>(res[i].attributes);
-		rec.NextUsn=usn::atoiu64(res[i][L"next_usn"]);
-		rec.attributes=(DWORD)usn::atoiu64(res[i][L"attributes"]);
+		rec.NextUsn=res[i].next_usn;
+		rec.attributes=static_cast<DWORD>(res[i].attributes);
 	}
 	return ret;
 }
 
 void ChangeJournalWatcher::renameEntry(const std::wstring &name, _i64 id, uint128 pid)
 {
-	journal_dao.updateFrnNameAndPid(name, pid, id);
+	journal_dao.updateFrnNameAndPid(name, pid.lowPart, pid.highPart, id);
 }
 
 std::vector<uint128 > ChangeJournalWatcher::getChildren(uint128 frn, _i64 rid)
 {
-	return journal_dao.getFrnChildren(frn, rid);
+	std::vector<JournalDAO::SFrn> tmp = journal_dao.getFrnChildren(frn.lowPart, frn.highPart, rid);
+	std::vector<uint128> ret;
+	ret.resize(tmp.size());
+	for(size_t i=0;i<tmp.size();++i)
+	{
+		ret[i]=uint128(tmp[i].frn, tmp[i].frn_high);
+	}
+	return ret;
 }
 
 void ChangeJournalWatcher::deleteEntry(_i64 id)
@@ -233,12 +241,12 @@ void ChangeJournalWatcher::deleteEntry(_i64 id)
 
 void ChangeJournalWatcher::deleteEntry(uint128 frn, _i64 rid)
 {
-	journal_dao.delFrnEntryViaFrn(frn, rid);
+	journal_dao.delFrnEntryViaFrn(frn.lowPart, frn.highPart, rid);
 }
 
 _i64 ChangeJournalWatcher::hasEntry( _i64 rid, uint128 frn)
 {
-	JournalDAO::CondInt64 res = journal_dao.getFrnEntryId(frn, rid);
+	JournalDAO::CondInt64 res = journal_dao.getFrnEntryId(frn.lowPart, frn.highPart, rid);
 
 	if(res.exists)
 	{
@@ -257,7 +265,7 @@ void ChangeJournalWatcher::resetRoot(_i64 rid)
 
 int64 ChangeJournalWatcher::addFrn(const std::wstring &name, uint128 parent_id, uint128 frn, _i64 rid)
 {
-	journal_dao.addFrn(name, parent_id, frn, rid);
+	journal_dao.addFrn(name, parent_id.lowPart, parent_id.highPart, frn.lowPart, frn.highPart, rid);
 	return db->getLastInsertID();
 }
 
@@ -587,6 +595,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	data.resize(data_size);
 	BYTE* pData=&data[0];
 	DWORD cb;
+	DWORD version;
 	size_t nDirFRNs=0;
 	size_t nFRNs=0;
 	bool has_warning=false;
@@ -678,12 +687,12 @@ std::wstring ChangeJournalWatcher::getFilename(const SChangeJournal &cj, uint128
 	while(true)
 	{
 		JournalDAO::SNameAndPid res = 
-			journal_dao.getNameAndPid(curr_id, cj.rid);
+			journal_dao.getNameAndPid(curr_id.lowPart, curr_id.highPart, cj.rid);
 
 		if(res.exists)
 		{
-			_i64 pid=res.pid;
-			if(pid!=-1)
+			uint128 pid(res.pid, res.pid_high);
+			if(pid!=c_frn_root)
 			{
 				path=res.name+os_file_sep()+path;
 				curr_id=pid;
@@ -826,7 +835,10 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 						if(!unsupported_usn_version_err)
 						{
 							Server->Log("USN record with major version "+nconvert(TUsnRecord->MajorVersion)+" not supported", LL_ERROR);
-							listener->On_ResetAll(it->first);
+							for(size_t j=0;j<listeners.size();++j)
+							{
+								listeners[j]->On_ResetAll(it->first);
+							}
 							unsupported_usn_version_err=true;
 						}
 					}
