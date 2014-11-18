@@ -154,6 +154,8 @@ IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, bool pRead_only,
 		return NULL;
 #endif
 	}
+
+	return NULL;
 }
 
 IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, const std::wstring &parent_fn,
@@ -172,6 +174,7 @@ IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, const std::wstri
 #endif
 	}
 
+	return NULL;
 }
 
 void FSImageFactory::destroyVHDFile(IVHDFile *vhd)

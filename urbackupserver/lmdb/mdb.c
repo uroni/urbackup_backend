@@ -188,6 +188,8 @@ typedef SSIZE_T ssize_t;
 
 #if defined(_WIN32) && !defined(_WIN64)
 #define THREAD_CCONV __stdcall
+#else
+#define THREAD_CCONV
 #endif
 
 /** @defgroup internal	LMDB Internals
