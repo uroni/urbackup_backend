@@ -5329,7 +5329,7 @@ void BackupServerGet::log_progress( const std::string& fn, int64 total, int64 do
 	{
 		pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
 	}
-	ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(speed_bps), LL_DEBUG);
+	ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
 }
 
 void BackupServerGet::addSparseFileEntry( std::wstring curr_path, SFile &cf, int copy_file_entries_sparse_modulo, int incremental_num, bool trust_client_hashes, std::string &curr_sha2,

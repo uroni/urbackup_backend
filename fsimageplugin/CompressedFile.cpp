@@ -136,7 +136,7 @@ void CompressedFile::readIndex()
 		return;
 	}
 
-	size_t nOffsetItems = filesize/blocksize + ((filesize%blocksize!=0)?1:0);
+	size_t nOffsetItems = static_cast<size_t>(filesize/blocksize + ((filesize%blocksize!=0)?1:0));
 
 	blockOffsets.resize(nOffsetItems);
 
@@ -413,7 +413,7 @@ void CompressedFile::evictFromLruCache( const SCacheItem& item )
 		return;
 	}
 
-	size_t blockIdx = item.offset/blocksize;
+	size_t blockIdx = static_cast<size_t>(item.offset/blocksize);
 
 	const size_t numBlockOffsets = blockOffsets.size();
 	if(blockOffsets.size()<=blockIdx)

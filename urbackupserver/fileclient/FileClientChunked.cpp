@@ -671,7 +671,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					_i64 block_start = block*c_checkpoint_dist;
 					if(block_start+c_checkpoint_dist>remote_filesize)
 					{
-						size_t missing_chunks = (block_start + c_checkpoint_dist - remote_filesize)/c_chunk_size;
+						size_t missing_chunks = static_cast<size_t>((block_start + c_checkpoint_dist - remote_filesize)/c_chunk_size);
 						writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size - missing_chunks*small_hash_size);
 					}
 					else
@@ -878,7 +878,7 @@ void FileClientChunked::Hash_nochange(_i64 curr_pos)
 		}
 		else
 		{
-			size_t missing_chunks = (curr_pos + c_checkpoint_dist - remote_filesize)/c_chunk_size;
+			size_t missing_chunks = static_cast<size_t>((curr_pos + c_checkpoint_dist - remote_filesize)/c_chunk_size);
 			writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size-missing_chunks*small_hash_size);
 		}
 		pending_chunks.erase(it);
