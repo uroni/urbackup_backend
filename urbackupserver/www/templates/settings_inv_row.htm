@@ -523,27 +523,6 @@
 					<select class="form-control" id="internet_image_transfer_mode"><option value="raw" {internet_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_image_transfer_mode_1}>{tHashed}</option></select>
 				</div>
 			</div>
-			<div class="form-group">
-				<label class="col-sm-3 control-label" for="file_hash_collect_amount">{tFile hash collection amount}:</label>
-				<div class="col-sm-6">
-					<input type="text" class="form-control" id="file_hash_collect_amount" value="{file_hash_collect_amount}"/>
-				</div>
-			</div>
-			<div class="form-group">
-				<label class="col-sm-3 control-label" for="file_hash_collect_timeout">{tFile hash collection timeout}:</label>
-				<div class="col-sm-6">
-					<input type="text" class="form-control" id="file_hash_collect_timeout" value="{file_hash_collect_timeout}"/>
-				</div>
-			</div>
-			<div class="form-group">
-				<label class="col-sm-3 control-label" for="file_hash_collect_cachesize">{tFile hash collection database cachesize}:</label>
-				<div class="col-sm-6">
-					<div class="input-group">
-						<input type="text" class="form-control" id="file_hash_collect_cachesize" value="{file_hash_collect_cachesize}"/>
-						<div class="input-group-addon">{tMB}</div>
-					</div>
-				</div>
-			</div>
 			{global_settings_start|s}
 			<div class="form-group">
 				<label class="col-sm-3 control-label" for="update_stats_cachesize">{tUpdate stats database cachesize}:</label>
@@ -552,27 +531,6 @@
 						<input type="text" class="form-control" id="update_stats_cachesize" value="{update_stats_cachesize}"/>
 						<div class="input-group-addon">{tMB}</div>
 					</div>
-				</div>
-			</div>
-			<div class="form-group">
-				<label class="col-sm-3 control-label" for="filescache_type">{tCache database type for file entries}:</label>
-				<div class="col-sm-6">
-					<select class="form-control" id="filescache_type"><option value="none" {filescache_type_0}>{tNone}</option><option value="lmdb" {filescache_type_1}>LMDB</option><option value="sqlite" {filescache_type_2}>SQLite</option></select>
-				</div>
-			</div>
-			<div class="form-group">
-				<label class="col-sm-3 control-label" for="filescache_size">{tCache database size for file entries}:</label>
-				<div class="col-sm-6">
-					<div class="input-group">
-						<input type="text" class="form-control" id="filescache_size" value="{filescache_size}"/>
-						<div class="input-group-addon">{tMB}</div>
-					</div>
-				</div>
-			</div>
-			<div class="form-group">
-				<label class="col-sm-3 control-label" for="suspend_index_limit">{tSuspend index limit}:</label>
-				<div class="col-sm-6">
-					<input type="text" class="form-control" id="suspend_index_limit" value="{suspend_index_limit}"/>
 				</div>
 			</div>
 			<div class="form-group">

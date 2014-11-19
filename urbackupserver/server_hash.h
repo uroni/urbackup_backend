@@ -138,8 +138,6 @@ private:
 
 	_i64 cow_filesize;
 
-	int copy_limit;
-
 	FileIndex *fileindex;
 
 	std::wstring backupfolder;

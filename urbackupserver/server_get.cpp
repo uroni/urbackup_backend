@@ -2312,8 +2312,6 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		has_error=true;
 		return false;
 	}
-
-	getTokenFile(fc, hashed_transfer);
 	
 	ServerLogger::Log(clientid, clientname+L" Starting incremental backup...", LL_DEBUG);
 
@@ -2382,6 +2380,8 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 			on_snapshot=false;
 		}
 	}
+
+	getTokenFile(fc, hashed_transfer);
 
 	if(on_snapshot)
 	{
