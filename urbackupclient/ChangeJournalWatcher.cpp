@@ -595,7 +595,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	data.resize(data_size);
 	BYTE* pData=&data[0];
 	DWORD cb;
-	DWORD version;
+	DWORD version=0;
 	size_t nDirFRNs=0;
 	size_t nFRNs=0;
 	bool has_warning=false;

@@ -248,6 +248,7 @@ function file_access(params)
 		}
 	}
 
+	if(!startLoading()) return;
 	new getJSON("backups", p, show_backups2);
 }
 

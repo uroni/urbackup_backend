@@ -90,7 +90,6 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::wstring, std
 				}
 				else
 				{
-					t_name+=ch;
 					state=ParseState_ExtraParams;
 					return false;
 				}

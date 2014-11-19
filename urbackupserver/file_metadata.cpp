@@ -57,33 +57,24 @@ namespace
 
 	bool read_metadata_values(IFile* in, FileMetadata& metadata)
 	{
-		_u32 metadata_size;
-		if(in->Read(reinterpret_cast<char*>(&metadata_size), sizeof(metadata_size))!=sizeof(metadata_size) ||
-			metadata_size==0)
+		_u32 metadata_size_and_magic[2];
+		if(in->Read(reinterpret_cast<char*>(&metadata_size_and_magic), sizeof(metadata_size_and_magic))!=sizeof(metadata_size_and_magic) ||
+			metadata_size_and_magic[0]==0)
 		{
 			Server->Log(L"Error reading file metadata hashfilesize from \""+in->getFilenameW()+L"\" -2", LL_DEBUG);
 			return false;
 		}
-
-		metadata_size = little_endian(metadata_size);
 		
-		_u32 metadata_magic;
-		if(in->Read(reinterpret_cast<char*>(&metadata_magic), sizeof(metadata_magic))!=sizeof(metadata_magic))
-		{
-			Server->Log(L"Error reading file metadata magic from \""+in->getFilenameW()+L"\" -2", LL_DEBUG);
-			return false;
-		}
-		
-		if(little_endian(metadata_magic)!=METADATA_MAGIC)
+		if(metadata_size_and_magic[1]!=METADATA_MAGIC)
 		{
 			Server->Log(L"Metadata magic wrong in file \""+in->getFilenameW(), LL_DEBUG);
 			return false;
 		}		
 
 		std::vector<char> buffer;
-		buffer.resize(metadata_size);
+		buffer.resize(metadata_size_and_magic[0]);
 
-		if(in->Read(&buffer[0], metadata_size)!=metadata_size)
+		if(in->Read(&buffer[0], metadata_size_and_magic[0]-sizeof(unsigned int))!=metadata_size_and_magic[0]-sizeof(unsigned int))
 		{
 			Server->Log(L"Error reading file metadata hashfilesize from \""+in->getFilenameW()+L"\" -3", LL_ERROR);
 			return false;
