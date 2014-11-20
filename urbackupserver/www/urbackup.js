@@ -1940,7 +1940,7 @@ function validateCommonSettings()
 							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_incr_image", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ]) ) return false;
-	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
+	if(!validate_text_regex([{ id: "image_letters", regexp: /^(ALL)|(ALL_NONUSB)|(all)|(all_nonusb)|([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
 }
 function getArchivePars()
