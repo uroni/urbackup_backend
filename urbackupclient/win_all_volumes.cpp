@@ -201,6 +201,7 @@ std::string get_all_volumes_list(bool filter_usb, SVolumesCache*& cache)
 					if(rc!=1024)
 					{
 						Server->Log("Cannot read data from device ("+new_volume+")", LL_INFO);
+						cache->is_ntfs_info[new_volume] = false;
 					}
 					else
 					{
