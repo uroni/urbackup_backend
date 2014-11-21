@@ -15,7 +15,7 @@ ContinuousWatchEnqueue::ContinuousWatchEnqueue()
 
 }
 
-void ContinuousWatchEnqueue::On_FileNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed )
+void ContinuousWatchEnqueue::On_FileNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed )
 {
 	if(!closed)
 		return;
@@ -130,7 +130,7 @@ void ContinuousWatchEnqueue::On_DirAdded( const std::wstring & strFileName, bool
 }
 
 
-void ContinuousWatchEnqueue::On_FileModified( const std::wstring & strFileName, bool save_fn, bool closed )
+void ContinuousWatchEnqueue::On_FileModified( const std::wstring & strFileName, bool closed )
 {
 	if(!closed)
 		return;
@@ -401,5 +401,10 @@ int64 ContinuousWatchEnqueue::getStartUsn( int64 sequence_id )
 void ContinuousWatchEnqueue::setStartUsn( int64 sequence_id, int64 seq_start )
 {
 	sequences_start[sequence_id]=seq_start;
+}
+
+void ContinuousWatchEnqueue::On_FileOpen( const std::wstring & strFileName )
+{
+
 }
 

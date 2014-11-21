@@ -13,7 +13,7 @@ public:
 
 	virtual int64 getStartUsn(int64 sequence_id);
 
-	virtual void On_FileNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed );
+	virtual void On_FileNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed );
 
 	virtual void On_DirNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed );
 
@@ -23,7 +23,9 @@ public:
 
 	virtual void On_DirAdded( const std::wstring & strFileName, bool closed );
 
-	virtual void On_FileModified( const std::wstring & strFileName, bool save_fn, bool closed );
+	virtual void On_FileModified( const std::wstring & strFileName, bool closed );
+
+	virtual void On_FileOpen(const std::wstring & strFileName);
 
 	virtual void On_ResetAll( const std::wstring & vol );
 

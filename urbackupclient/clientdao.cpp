@@ -52,11 +52,6 @@ void ClientDAO::prepareQueries(void)
 	q_remove_del_dir=db->Prepare("DELETE FROM files WHERE name GLOB ?", false);
 	q_get_shadowcopy_refcount=db->Prepare("SELECT refs FROM shadowcopies WHERE id=?", false);
 	q_set_shadowcopy_refcount=db->Prepare("UPDATE shadowcopies SET refs=? WHERE id=?", false);
-	q_save_changed_files=db->Prepare("INSERT OR REPLACE INTO mfiles_backup SELECT dir_id,name FROM mfiles WHERE dir_id=?", false);
-	q_remove_changed_files=db->Prepare("DELETE FROM mfiles WHERE dir_id=?", false);
-	q_delete_saved_changed_files=db->Prepare("DELETE FROM mfiles_backup", false);
-	q_has_changed_file=db->Prepare("SELECT dir_id FROM mfiles_backup WHERE dir_id=? AND name=? UNION SELECT dir_id FROM mfiles WHERE dir_id=? AND name=?", false);
-	q_get_changed_files=db->Prepare("SELECT name FROM mfiles_backup WHERE dir_id=? UNION SELECT name FROM mfiles WHERE dir_id=?", false);
 	q_get_pattern=db->Prepare("SELECT tvalue FROM misc WHERE tkey=?", false);
 	q_insert_pattern=db->Prepare("INSERT INTO misc (tkey, tvalue) VALUES (?, ?)", false);
 	q_update_pattern=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey=?", false);
@@ -88,11 +83,6 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_remove_del_dir);
 	db->destroyQuery(q_get_shadowcopy_refcount);
 	db->destroyQuery(q_set_shadowcopy_refcount);
-	db->destroyQuery(q_save_changed_files);
-	db->destroyQuery(q_remove_changed_files);
-	db->destroyQuery(q_delete_saved_changed_files);
-	db->destroyQuery(q_has_changed_file);
-	db->destroyQuery(q_get_changed_files);
 	db->destroyQuery(q_get_pattern);
 	db->destroyQuery(q_insert_pattern);
 	db->destroyQuery(q_update_pattern);
@@ -151,7 +141,7 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 		ptr+=ss;
 		memcpy(&f.size, ptr, sizeof(int64));
 		ptr+=sizeof(int64);
-		memcpy(&f.last_modified, ptr, sizeof(int64));
+		memcpy(&f.change_indicator, ptr, sizeof(int64));
 		ptr+=sizeof(int64);
 		char isdir=*ptr;
 		++ptr;
@@ -224,7 +214,7 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		ptr+=ss;
 		memcpy(ptr, (char*)&data[i].size, sizeof(int64));
 		ptr+=sizeof(int64);
-		memcpy(ptr, (char*)&data[i].last_modified, sizeof(int64));
+		memcpy(ptr, (char*)&data[i].change_indicator, sizeof(int64));
 		ptr+=sizeof(int64);
 		char isdir=1;
 		if(!data[i].isdir)
@@ -310,9 +300,9 @@ void ClientDAO::removeAllFiles(void)
 	q_remove_all->Write();
 }
 
-std::vector<SMDir> ClientDAO::getChangedDirs(const std::wstring& path, bool del)
+std::vector<std::wstring> ClientDAO::getChangedDirs(const std::wstring& path, bool del)
 {
-	std::vector<SMDir> ret;
+	std::vector<std::wstring> ret;
 
 	if(del)
 	{
@@ -329,24 +319,12 @@ std::vector<SMDir> ClientDAO::getChangedDirs(const std::wstring& path, bool del)
 	db_results res=q_get_changed_dirs->Read();
 	q_get_changed_dirs->Reset();
 
+	ret.reserve(res.size());
 	for(size_t i=0;i<res.size();++i)
 	{
-		ret.push_back(SMDir(watoi64(res[i][L"id"]), res[i][L"name"] ) );
+		ret.push_back(res[i][L"name"] );
 	}
 	return ret;
-}
-
-void ClientDAO::moveChangedFiles(_i64 dir_id, bool del)
-{
-	if(del)
-	{
-		q_save_changed_files->Bind(dir_id);
-		q_save_changed_files->Write();
-		q_save_changed_files->Reset();
-		q_remove_changed_files->Bind(dir_id);
-		q_remove_changed_files->Write();
-		q_remove_changed_files->Reset();
-	}	
 }
 
 std::vector<SShadowCopy> ClientDAO::getShadowcopies(void)
@@ -421,12 +399,6 @@ void ClientDAO::deleteSavedChangedDirs(void)
 {
 	q_delete_saved_changed_dirs->Write();
 	q_delete_saved_changed_dirs->Reset();
-}
-
-void ClientDAO::deleteSavedChangedFiles(void)
-{
-	q_delete_saved_changed_files->Write();
-	q_delete_saved_changed_files->Reset();
 }
 
 void ClientDAO::copyFromTmpFiles(void)
@@ -509,35 +481,6 @@ void ClientDAO::removeDeletedDir(const std::wstring &dir)
 	q_remove_del_dir->Bind(dir+L"*");
 	q_remove_del_dir->Write();
 	q_remove_del_dir->Reset();
-}
-
-bool ClientDAO::hasFileChange(_i64 dir_id, std::wstring fn)
-{
-	q_has_changed_file->Bind(dir_id);
-	q_has_changed_file->Bind(fn);
-	q_has_changed_file->Bind(dir_id);
-	q_has_changed_file->Bind(fn);
-	db_results res=q_has_changed_file->Read();
-	q_has_changed_file->Reset();
-
-	return !res.empty();
-}
-
-std::vector<std::wstring> ClientDAO::getChangedFiles(_i64 dir_id)
-{
-	q_get_changed_files->Bind(dir_id);
-	q_get_changed_files->Bind(dir_id);
-	db_results res=q_get_changed_files->Read();
-	q_get_changed_files->Reset();
-
-	std::vector<std::wstring> ret;
-	ret.resize(res.size());
-	for(size_t i=0;i<res.size();++i)
-	{
-		ret[i]=res[i][L"name"];
-	}
-
-	return ret;
 }
 
 const std::string exclude_pattern_key="exclude_pattern";

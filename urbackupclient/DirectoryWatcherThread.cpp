@@ -28,6 +28,8 @@
 IPipe *DirectoryWatcherThread::pipe=NULL;
 IMutex *DirectoryWatcherThread::update_mutex=NULL;
 ICondition *DirectoryWatcherThread::update_cond=NULL;
+std::vector<std::wstring> DirectoryWatcherThread::open_files;
+
 
 namespace
 {
@@ -66,7 +68,6 @@ void DirectoryWatcherThread::operator()(void)
 	q_add_dir=db->Prepare("INSERT INTO mdirs (name) VALUES (?)");
 	q_add_dir_with_id=db->Prepare("INSERT INTO mdirs (id, name) VALUES (?, ?)");
 	q_add_del_dir=db->Prepare("INSERT INTO del_dirs SELECT ? AS NAME WHERE NOT EXISTS (SELECT * FROM del_dirs WHERE name=?)");
-	q_add_file=db->Prepare("INSERT INTO mfiles SELECT ? AS dir_id, ? AS name WHERE NOT EXISTS (SELECT * FROM mfiles WHERE dir_id=? AND name=?)");
 	q_update_last_backup_time=db->Prepare("INSERT OR REPLACE INTO misc (tkey, tvalue) VALUES ('last_backup_filetime', ?)");
 
 	ChangeJournalWatcher dcw(this, db);
@@ -164,10 +165,11 @@ void DirectoryWatcherThread::operator()(void)
 			else if( msg[0]=='U' )
 			{
 				lastentries.clear();
-				dcw.update_longliving();
 				dcw.update();
 
 				IScopedLock lock(update_mutex);
+				open_files.clear();
+				dcw.update_longliving();
 				update_cond->notify_all();
 			}
 			else if( msg[0]=='Q' )
@@ -225,12 +227,14 @@ void DirectoryWatcherThread::init_mutex(void)
 	update_cond=Server->createCondition();
 }
 
-void DirectoryWatcherThread::update_and_wait(void)
+void DirectoryWatcherThread::update_and_wait(std::vector<std::wstring>& r_open_files)
 {
 	IScopedLock lock(update_mutex);
 	std::wstring msg=L"U";
 	pipe->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 	update_cond->wait(&lock);
+
+	r_open_files.insert(r_open_files.end(), open_files.begin(), open_files.end());
 }
 
 void DirectoryWatcherThread::freeze(void)
@@ -265,7 +269,7 @@ void DirectoryWatcherThread::commit_last_backup_time(void)
 	update_cond->wait(&lock);
 }
 
-void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstring &fn)
+void DirectoryWatcherThread::OnDirMod(const std::wstring &dir)
 {
 	bool found=false;
 	int64 currtime=Server->getTimeMS();
@@ -277,7 +281,7 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstrin
 			lastentries.erase(it++);
 			continue;
 		}
-		else if( (*it).dir==dir && (*it).fn==fn)
+		else if( (*it).dir==dir )
 		{
 			(*it).time=currtime;
 			found=true;
@@ -314,31 +318,10 @@ void DirectoryWatcherThread::OnDirMod(const std::wstring &dir, const std::wstrin
 				q_add_dir_with_id->Write();
 				q_add_dir_with_id->Reset();
 			}
-
-			if(!fn.empty())
-			{
-				q_add_file->Bind(dir_id);
-				q_add_file->Bind(fn);
-				q_add_file->Bind(dir_id);
-				q_add_file->Bind(fn);
-				q_add_file->Write();
-				q_add_file->Reset();
-			}
-		}
-		else if(!fn.empty())
-		{
-			_i64 dir_id=watoi64(res[0][L"id"]);
-			q_add_file->Bind(dir_id);
-			q_add_file->Bind(fn);
-			q_add_file->Bind(dir_id);
-			q_add_file->Bind(fn);
-			q_add_file->Write();
-			q_add_file->Reset();
-		}			
+		}		
 
 		SLastEntries e;
 		e.dir=dir;
-		e.fn=fn;
 		e.time=currtime;
 		lastentries.push_back(e);
 	}
@@ -364,46 +347,41 @@ IPipe *DirectoryWatcherThread::getPipe(void)
 	return pipe;
 }
 
-void DirectoryWatcherThread::On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed)
+void DirectoryWatcherThread::On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed)
 {
-	On_FileModified(strOldFileName, false, closed);
-	On_FileModified(strNewFileName, save_fn, closed);
+	On_FileModified(strOldFileName, closed);
+	On_FileModified(strNewFileName, closed);
 }
 
 void DirectoryWatcherThread::On_DirNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed )
 {
-	On_FileNameChanged(strOldFileName, strNewFileName, false, closed);
+	On_FileNameChanged(strOldFileName, strNewFileName, closed);
 }
 
 void DirectoryWatcherThread::On_FileRemoved(const std::wstring & strFileName, bool closed)
 {
-	On_FileModified(strFileName, false, closed);
+	On_FileModified(strFileName, closed);
 }
 
 void DirectoryWatcherThread::On_FileAdded(const std::wstring & strFileName, bool closed)
 {
-	On_FileModified(strFileName, false, closed);
+	On_FileModified(strFileName, closed);
 }
 
 void DirectoryWatcherThread::On_DirAdded( const std::wstring & strFileName, bool closed )
 {
-	On_FileModified(strFileName, false, closed);
+	On_FileModified(strFileName, closed);
 }
 
-void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName, bool save_fn, bool closed)
+void DirectoryWatcherThread::On_FileModified(const std::wstring & strFileName, bool closed)
 {
 	bool ok=false;
 	std::wstring dir=strlower(ExtractFilePath(strFileName))+os_file_sep();
-	std::wstring fn;
-	if(save_fn)
-	{
-		fn=ExtractFileName(strFileName);
-	}
 	for(size_t i=0;i<watching.size();++i)
 	{
 		if(dir.find(watching[i])==0)
 		{
-			OnDirMod(dir, fn);
+			OnDirMod(dir);
 			return;
 		}
 	}	
@@ -422,7 +400,7 @@ void DirectoryWatcherThread::On_DirRemoved(const std::wstring & strDirName, bool
 		}
 	}
 
-	On_FileModified(strDirName, false, closed);
+	On_FileModified(strDirName, closed);
 }
 
 bool DirectoryWatcherThread::is_stopped(void)
@@ -432,7 +410,7 @@ bool DirectoryWatcherThread::is_stopped(void)
 
 void DirectoryWatcherThread::On_ResetAll(const std::wstring & vol)
 {
-	OnDirMod(L"##-GAP-##"+strlower(vol), L"");
+	OnDirMod(L"##-GAP-##"+strlower(vol));
 }
 
 _i64 DirectoryWatcherThread::get_current_filetime()
@@ -452,4 +430,9 @@ void DirectoryWatcherThread::Commit(const std::vector<IChangeJournalListener::SS
 int64 DirectoryWatcherThread::getStartUsn( int64 sequence_id )
 {
 	return -1;
+}
+
+void DirectoryWatcherThread::On_FileOpen( const std::wstring & strFileName )
+{
+	open_files.push_back(strlower(strFileName));
 }

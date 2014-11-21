@@ -752,22 +752,18 @@ void IndexThread::indexDirs(void)
 	//Invalidate cache
 	DirectoryWatcherThread::freeze();
 	Server->wait(10000);
-	DirectoryWatcherThread::update_and_wait();
+	DirectoryWatcherThread::update_and_wait(open_files);
 
 	//---TRANSACTION---
 	db->BeginTransaction();
 
+	changed_dirs.clear();
 	for(size_t i=0;i<selected_dirs.size();++i)
 	{
-		std::vector<SMDir> acd=cd->getChangedDirs(selected_dirs[i]);
+		std::vector<std::wstring> acd=cd->getChangedDirs(selected_dirs[i]);
 		changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 	}
 	
-	for(size_t i=0;i<changed_dirs.size();++i)
-	{
-		cd->moveChangedFiles(changed_dirs[i].id);
-	}
-
 	for(size_t i=0;i<selected_dirs.size();++i)
 	{
 		std::vector<std::wstring> deldirs=cd->getDelDirs(selected_dirs[i]);
@@ -865,10 +861,17 @@ void IndexThread::indexDirs(void)
 			if(!b || !onlyref)
 			{
 				past_refs.push_back(scd->ref);
-				DirectoryWatcherThread::update_and_wait();
+				DirectoryWatcherThread::update_and_wait(open_files);
+				std::sort(open_files.begin(), open_files.end());
 				Server->wait(1000);
-				std::vector<SMDir> acd=cd->getChangedDirs(strlower(backup_dirs[i].path), false);
-				changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
+				std::vector<std::wstring> acd=cd->getChangedDirs(strlower(backup_dirs[i].path), false);
+				for(size_t j=0;j<acd.size();++j)
+				{
+					if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[i]))
+					{
+						changed_dirs.push_back(acd[i]);
+					}
+				}
 				std::sort(changed_dirs.begin(), changed_dirs.end());
 
 				#ifndef VSS_XP
@@ -896,7 +899,7 @@ void IndexThread::indexDirs(void)
 
 			for(size_t k=0;k<changed_dirs.size();++k)
 			{
-				VSSLog(L"Changed dir: " + changed_dirs[k].name, LL_DEBUG);
+				VSSLog(L"Changed dir: " + changed_dirs[k], LL_DEBUG);
 			}
 
 			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
@@ -962,7 +965,6 @@ void IndexThread::indexDirs(void)
 			VSSLog("Deleting backup of changed dirs...", LL_DEBUG);
 			cd->deleteSavedChangedDirs();
 			cd->deleteSavedDelDirs();
-			cd->deleteSavedChangedFiles();
 
 			if(index_group==c_group_default)
 			{
@@ -983,6 +985,8 @@ void IndexThread::indexDirs(void)
 	}
 
 	DirectoryWatcherThread::unfreeze();
+	open_files.clear();
+	changed_dirs.clear();
 	
 #endif
 
@@ -1017,8 +1021,6 @@ void IndexThread::resetFileEntries(void)
 	db->Write("DELETE FROM files");
 	db->Write("DELETE FROM mdirs");
 	db->Write("DELETE FROM mdirs_backup");
-	db->Write("DELETE FROM mfiles");
-	db->Write("DELETE FROM mfiles_backup");
 }
 
 bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& namedpath)
@@ -1087,7 +1089,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				continue;
 			}
 			has_include=true;
-			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].last_modified << "#";
+			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].change_indicator << "#";
 
 			outfile << "dacl=" << base64_encode_dash(files[i].permissions)
 					<< "&mod=" << nconvert(files[i].last_modified_orig)
@@ -1192,7 +1194,14 @@ namespace
 		for(size_t i=0;i<files.size();++i)
 		{
 			ret[i].isdir=files[i].isdir;
-			ret[i].last_modified=files[i].last_modified;
+			if(files[i].usn==0)
+			{
+				ret[i].change_indicator=files[i].last_modified;
+			}
+			else
+			{
+				ret[i].change_indicator=files[i].usn;
+			}
 			ret[i].name=files[i].name;
 			ret[i].size=files[i].size;
     		ret[i].last_modified_orig=files[i].last_modified;
@@ -1229,7 +1238,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 				if( it!=dbfiles->end()
 					&& it->name==fsfile.name
 					&& it->isdir==false
-					&& it->last_modified==fsfile.last_modified
+					&& it->change_indicator==fsfile.change_indicator
 					&& it->size==fsfile.size
 					&& !it->hash.empty() )
 				{
@@ -1279,12 +1288,10 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 	std::wstring path_lower=strlower(orig_path+os_file_sep());
 #endif
 
-	std::vector<SMDir>::iterator it_dir=changed_dirs.end();
+	std::vector<std::wstring>::iterator it_dir=changed_dirs.end();
 #ifdef _WIN32
 
-	it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, path_lower) );
-	if(it_dir!=changed_dirs.end() && (*it_dir).name!=path_lower)
-		it_dir=changed_dirs.end();
+	bool dir_changed=std::binary_search(changed_dirs.begin(), changed_dirs.end(), path_lower);
 	
 	if(path_lower==strlower(Server->getServerWorkingDir())+os_file_sep()+L"urbackup"+os_file_sep())
 	{
@@ -1294,14 +1301,14 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 	use_db=false;
 #endif
 	std::vector<SFileAndHash> fs_files;
-	if(use_db==false || it_dir!=changed_dirs.end())
+	if(!use_db || dir_changed )
 	{
 		++index_c_fs;
 
 		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
-		fs_files=convertToFileAndHash(getFiles(tpath, &has_error));
+		fs_files=convertToFileAndHash(getFilesWin(tpath, &has_error, false, true, true));
 		readPermissions(tpath, fs_files);
 
 		if(has_error)
@@ -1338,62 +1345,23 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 #endif
 
 #ifdef _WIN32
-		if(it_dir!=changed_dirs.end())
+		if(dir_changed)
 		{
 			VSSLog(L"Indexing changed dir: " + path, LL_DEBUG);
-
-			std::vector<std::wstring> changed_files;
-			std::set<_i64> changed_files_dir_ids;
-			do 
-			{
-				if(changed_files_dir_ids.find((*it_dir).id)==changed_files_dir_ids.end())
-				{
-					std::vector<std::wstring> new_changed_files = cd->getChangedFiles((*it_dir).id);
-					changed_files.insert(changed_files.end(), new_changed_files.begin(), new_changed_files.end());
-					changed_files_dir_ids.insert((*it_dir).id);
-				}
-				++it_dir;
-
-			} while (it_dir!=changed_dirs.end() && it_dir->name==path_lower);
-			
-			std::sort(changed_files.begin(), changed_files.end());
 
 			for(size_t i=0;i<fs_files.size();++i)
 			{
 				if(!fs_files[i].isdir)
 				{
-					if( std::binary_search(changed_files.begin(), changed_files.end(), fs_files[i].name) )
+					if( std::binary_search(open_files.begin(), open_files.end(), path_lower+os_file_sep()+strlower(fs_files[i].name) ) )
 					{
-						VSSLog(L"Found changed file: " + fs_files[i].name, LL_DEBUG);
+						VSSLog(L"File is open: " + fs_files[i].name, LL_DEBUG);
 
-						fs_files[i].last_modified*=(std::max)((unsigned int)2, Server->getRandomNumber());
-						if(fs_files[i].last_modified>0)
-							fs_files[i].last_modified*=-1;
-						else if(fs_files[i].last_modified==0)
-							fs_files[i].last_modified=-1;
-					}
-					else
-					{
-						std::vector<SFileAndHash>::const_iterator it_db_file=std::lower_bound(db_files.begin(), db_files.end(), fs_files[i]);
-						if( it_db_file!=db_files.end()
-							&& (*it_db_file).name==fs_files[i].name
-							&& (*it_db_file).isdir==fs_files[i].isdir
-							&& (*it_db_file).last_modified<0 )
-						{
-							VSSLog(L"File changed at last backup: "+ fs_files[i].name, LL_DEBUG);
-
-							if( fs_files[i].last_modified<last_filebackup_filetime)
-							{
-								fs_files[i].last_modified=it_db_file->last_modified;
-							}
-							else
-							{
-								VSSLog("Modification time indicates the file may have another change", LL_DEBUG);
-								fs_files[i].last_modified*=(std::max)((unsigned int)2, Server->getRandomNumber());
-								if(fs_files[i].last_modified>0)
-									fs_files[i].last_modified*=-1;
-							}
-						}
+						fs_files[i].change_indicator*=(std::max)((unsigned int)2, Server->getRandomNumber());
+						if(fs_files[i].change_indicator>0)
+							fs_files[i].change_indicator*=-1;
+						else if(fs_files[i].change_indicator==0)
+							fs_files[i].change_indicator=-1;
 					}
 				}
 			}
@@ -3070,7 +3038,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 	if(volume.find(L"\\\\?\\")==0)
 		volume.erase(0, 4);
 
-	std::vector<SMDir> additional_changed_dirs;
+	std::vector<std::wstring> additional_changed_dirs;
 
 	std::wstring prev_path;
 
@@ -3078,7 +3046,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 	{
 		std::wstring vsstpath;
 		{
-			std::wstring tpath=changed_dirs[i].name;
+			std::wstring tpath=changed_dirs[i];
 
 			if(tpath.find(volume)!=0)
 			{
@@ -3097,7 +3065,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 		}
 
 		bool has_error;
-		std::vector<SFile> files = getFiles(os_file_prefix(vsstpath), &has_error, false, false);
+		std::vector<SFile> files = getFilesWin(os_file_prefix(vsstpath), &has_error, false, false);
 
 		if(has_error)
 		{
@@ -3155,10 +3123,10 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 						else
 							ndir=volume+ndir;
 
-						std::vector<SMDir>::iterator it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, ndir));
-						if(it_dir==changed_dirs.end() || (*it_dir).name!=ndir)
+						
+						if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir) )
 						{
-							additional_changed_dirs.push_back(SMDir(0, ndir));
+							additional_changed_dirs.push_back(ndir);
 						}
 
 						do
@@ -3183,10 +3151,9 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 								else
 									ndir=volume+ndir;
 						
-								std::vector<SMDir>::iterator it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, ndir));
-								if(it_dir==changed_dirs.end() || (*it_dir).name!=ndir)
+								if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir))
 								{
-									additional_changed_dirs.push_back(SMDir(0, ndir));
+									additional_changed_dirs.push_back(ndir);
 								}
 							}
 						}

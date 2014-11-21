@@ -13,6 +13,7 @@ struct SFile
 	std::wstring name;
 	int64 size;
 	int64 last_modified;
+	int64 usn;
 	int64 created;
 	bool isdir;
 
@@ -22,7 +23,9 @@ struct SFile
 	}
 };
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false, bool exact_filesize=true);
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false, bool exact_filesize=true, bool with_usn=false);
+
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false);
 
 SFile getFileMetadata(const std::wstring &path);
 

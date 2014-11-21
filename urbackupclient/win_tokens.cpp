@@ -247,7 +247,7 @@ bool write_tokens()
 
 	os_create_dir("tokens");
 
-	std::vector<SFile> files = getFiles(L"tokens", NULL, false, false);
+	std::vector<SFile> files = getFilesWin(L"tokens", NULL, false, false);
 
 	for(size_t i=0;i<users.size();++i)
 	{

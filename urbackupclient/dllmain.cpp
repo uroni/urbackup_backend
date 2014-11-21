@@ -470,6 +470,12 @@ void update_client16_17(IDatabase *db)
 	db->Write("CREATE UNIQUE INDEX fileaccess_tokens_unique ON fileaccess_tokens(accountname, is_user)");
 }
 
+void update_client17_18(IDatabase* db)
+{
+	db->Write("DROP TABLE mfiles");
+	db->Write("DROP TABLE mfiles_backup");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -553,6 +559,10 @@ bool upgrade_client(void)
 				break;
 			case 16:
 				update_client16_17(db);
+				++ver;
+				break;
+			case 17:
+				update_client17_18(db);
 				++ver;
 				break;
 			default:

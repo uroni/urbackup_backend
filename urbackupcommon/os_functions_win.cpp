@@ -98,8 +98,13 @@ int64 os_to_windows_filetime(int64 unix_time)
 	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
 }
 
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks)
+{
+	return getFilesWin(path, has_error, follow_symlinks);
+}
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks, bool exact_filesize)
+
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool follow_symlinks, bool exact_filesize, bool with_usn)
 {
 	if(has_error!=NULL)
 	{
@@ -144,6 +149,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			if(f.name==L"." || f.name==L".." )
 				continue;
 
+			f.usn=0;
 			f.isdir=(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)>0;			
 			LARGE_INTEGER lwt;
 			lwt.HighPart=wfd.ftLastWriteTime.dwHighDateTime;
@@ -160,7 +166,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 
 			if(exact_filesize && !(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
 			{
-				if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT)
+				if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT || with_usn)
 				{
 					HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
 						OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
@@ -183,6 +189,19 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 							lwt.LowPart=file_info.ftCreationTime.dwLowDateTime;
 
 							f.created=os_windows_to_unix_time(lwt.QuadPart);
+						}
+
+						if(!(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT))
+						{
+							USN_RECORD usn;
+							DWORD ret_bytes;
+							BOOL b = DeviceIoControl(hFile, FSCTL_READ_FILE_USN_DATA, NULL, 0,
+								&usn, sizeof(usn), &ret_bytes, NULL);
+
+							if(b)
+							{
+								f.usn = usn.Usn;
+							}
 						}
 
 						CloseHandle(hFile);

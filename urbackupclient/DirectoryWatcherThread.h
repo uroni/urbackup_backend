@@ -13,7 +13,6 @@
 struct SLastEntries
 {
 	std::wstring dir;
-	std::wstring fn;
 	int64 time;
 };
 
@@ -32,21 +31,22 @@ public:
 	void stop(void);
 
 	virtual int64 getStartUsn(int64 sequence_id);
-	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool save_fn, bool closed);
+	void On_FileNameChanged(const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed);
 	void On_DirNameChanged( const std::wstring & strOldFileName, const std::wstring & strNewFileName, bool closed );
     void On_FileRemoved(const std::wstring & strFileName, bool closed);
     void On_FileAdded(const std::wstring & strFileName, bool closed);
 	void On_DirAdded( const std::wstring & strFileName, bool closed );
-    void On_FileModified(const std::wstring & strFileName, bool save_fn, bool closed);
+    void On_FileModified(const std::wstring & strFileName, bool closed);
+	void On_FileOpen(const std::wstring & strFileName);
 	void On_ResetAll(const std::wstring &vol);
 	void On_DirRemoved(const std::wstring & strDirName, bool closed);
 	void Commit(const std::vector<IChangeJournalListener::SSequence>& sequences);
 
-	void OnDirMod(const std::wstring &dir, const std::wstring &fn);
+	void OnDirMod(const std::wstring &dir);
 	void OnDirRm(const std::wstring &dir);
 
 	static void update(void);
-	static void update_and_wait(void);
+	static void update_and_wait(std::vector<std::wstring>& r_open_files);
 
 	static void freeze(void);
 	static void unfreeze(void);
@@ -73,7 +73,6 @@ private:
 	IQuery* q_add_dir;
 	IQuery* q_add_dir_with_id;
 	IQuery* q_add_del_dir;
-	IQuery* q_add_file;
 	IQuery* q_get_dir_backup;
 	IQuery* q_update_last_backup_time;
 
@@ -86,4 +85,6 @@ private:
 	int64 last_backup_filetime;
 
 	std::auto_ptr<ContinuousWatchEnqueue> continuous_watch;
+
+	static std::vector<std::wstring> open_files;
 };

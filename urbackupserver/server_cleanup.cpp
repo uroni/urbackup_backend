@@ -412,7 +412,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 			}
 		}
 
-		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname, NULL, true, false);
+		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname, NULL, true);
 
 		std::vector<ServerCleanupDao::SImageBackupInfo> res_images=cleanupdao->getClientImages(clientid);
 
@@ -1238,7 +1238,7 @@ void ServerCleanupThread::doQuit(void)
 
 bool ServerCleanupThread::truncate_files_recurisve(std::wstring path)
 {
-	std::vector<SFile> files=getFiles(path, NULL, false, false);
+	std::vector<SFile> files=getFiles(path, NULL, false);
 
 	for(size_t i=0;i<files.size();++i)
 	{
@@ -1544,14 +1544,14 @@ void ServerCleanupThread::check_symlinks( const ServerCleanupDao::SClientInfo& c
 
 	if(os_directory_exists(pool_root))
 	{
-		std::vector<SFile> first_files = getFiles(pool_root, NULL, false, false);
+		std::vector<SFile> first_files = getFiles(pool_root, NULL, false);
 		for(size_t i=0;i<first_files.size();++i)
 		{
 			if(!first_files[i].isdir)
 				continue;
 
 			std::wstring curr_path = pool_root + os_file_sep() + first_files[i].name;
-			std::vector<SFile> pool_files = getFiles(curr_path, NULL, false, false);
+			std::vector<SFile> pool_files = getFiles(curr_path, NULL, false);
 
 			for(size_t j=0;i<pool_files.size();++i)
 			{

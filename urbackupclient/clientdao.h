@@ -50,25 +50,11 @@ struct SShadowCopy
 	int passedtime;
 };
 
-struct SMDir
-{
-	SMDir(_i64 id, std::wstring name)
-		: id(id), name(name) {}
-
-	_i64 id;
-	std::wstring name;
-
-	bool operator<(const SMDir &other) const
-	{
-		return name<other.name;
-	}
-};
-
 struct SFileAndHash
 {
 	std::wstring name;
 	int64 size;
-	int64 last_modified;
+	int64 change_indicator;
 	bool isdir;
 	std::string hash;
 	std::string permissions;
@@ -84,7 +70,7 @@ struct SFileAndHash
 	{
 		return name == other.name &&
 			size == other.size &&
-			last_modified == other.last_modified &&
+			change_indicator == other.change_indicator &&
 			isdir == other.isdir &&
 			hash == other.hash &&
 			permissions == other.permissions &&
@@ -116,12 +102,7 @@ public:
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
-	std::vector<SMDir> getChangedDirs(const std::wstring& path, bool del=true);
-
-	void moveChangedFiles(_i64 dir_id, bool del=true);
-
-	std::vector<std::wstring> getChangedFiles(_i64 dir_id);
-	bool hasFileChange(_i64 dir_id, std::wstring fn);
+	std::vector<std::wstring> getChangedDirs(const std::wstring& path, bool del=true);
 
 	std::vector<SShadowCopy> getShadowcopies(void);
 	int addShadowcopy(const SShadowCopy &sc);
@@ -129,7 +110,6 @@ public:
 	int modShadowcopyRefCount(int id, int m);
 
 
-	void deleteSavedChangedFiles(void);
 	void deleteSavedChangedDirs(void);
 
 	bool hasChangedGap(void);
@@ -200,11 +180,6 @@ private:
 	IQuery *q_remove_del_dir;
 	IQuery *q_get_shadowcopy_refcount;
 	IQuery *q_set_shadowcopy_refcount;
-	IQuery *q_save_changed_files;
-	IQuery *q_remove_changed_files;
-	IQuery *q_delete_saved_changed_files;
-	IQuery *q_has_changed_file;
-	IQuery *q_get_changed_files;
 	IQuery *q_get_pattern;
 	IQuery *q_insert_pattern;
 	IQuery *q_update_pattern;

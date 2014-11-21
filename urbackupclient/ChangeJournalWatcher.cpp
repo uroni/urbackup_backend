@@ -1002,7 +1002,10 @@ void ChangeJournalWatcher::update_longliving(void)
 		for(size_t i=0;i<files.size();++i)
 		{
 			for(size_t i=0;i<listeners.size();++i)
-				listeners[i]->On_FileModified(files[i], true, false);
+			{
+				listeners[i]->On_FileModified(files[i], false);
+				listeners[i]->On_FileOpen(files[i]);
+			}
 		}
 	}
 	else
@@ -1010,7 +1013,10 @@ void ChangeJournalWatcher::update_longliving(void)
 		for(std::map<std::wstring, bool>::iterator it=open_write_files_frozen.begin();it!=open_write_files_frozen.end();++it)
 		{
 			for(size_t i=0;i<listeners.size();++i)
-				listeners[i]->On_FileModified(it->first, true, false);
+			{
+				listeners[i]->On_FileModified(it->first, false);
+				listeners[i]->On_FileOpen(it->first);
+			}
 		}
 	}
 	for(size_t i=0;i<error_dirs.size();++i)
@@ -1178,7 +1184,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 						++num_changes;
 
 						for(size_t i=0;i<listeners.size();++i)
-							listeners[i]->On_FileNameChanged(rename_old_name, dir_fn+UsnRecord->Filename, false, closed);
+							listeners[i]->On_FileNameChanged(rename_old_name, dir_fn+UsnRecord->Filename, closed);
 					}
 				}
 				else if(UsnRecord->Reason & USN_REASON_FILE_DELETE)
@@ -1204,7 +1210,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 					++num_changes;
 
 					for(size_t i=0;i<listeners.size();++i)
-						listeners[i]->On_FileModified(dir_fn+UsnRecord->Filename, false, closed );
+						listeners[i]->On_FileModified(dir_fn+UsnRecord->Filename, closed );
 				}
 			}
 		}
@@ -1329,27 +1335,6 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				}
 				else if( UsnRecord->Reason & watch_flags )
 				{
-					bool save_fn=false;
-					if( ( UsnRecord->Reason & USN_REASON_DATA_OVERWRITE || UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME) &&
-						!( (UsnRecord->Reason & USN_REASON_DATA_EXTEND) || (UsnRecord->Reason & USN_REASON_DATA_TRUNCATION) ) )
-					{
-						save_fn=true;
-					}
-
-					if(save_fn)
-					{
-						WIN32_FILE_ATTRIBUTE_DATA fad;
-						if(GetFileAttributesExW(os_file_prefix(real_fn).c_str(), GetFileExInfoStandard, &fad) )
-						{
-							uint64 last_mod_time = static_cast<uint64>(fad.ftLastWriteTime.dwHighDateTime) << 32 | fad.ftLastWriteTime.dwLowDateTime;
-							if(last_mod_time>static_cast<uint64>(last_backup_time) && last_backup_time!=0)
-							{
-								save_fn=false;
-							}
-						}
-					}
-
-
 					if(UsnRecord->Reason & USN_REASON_RENAME_NEW_NAME)
 					{
 						if( UsnRecord->attributes & FILE_ATTRIBUTE_DIRECTORY )
@@ -1367,7 +1352,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 
 							for(size_t i=0;i<listeners.size();++i)
 							{
-								listeners[i]->On_FileNameChanged(rename_old_name, real_fn, save_fn, closed);
+								listeners[i]->On_FileNameChanged(rename_old_name, real_fn, closed);
 							}
 						}
 					}
@@ -1377,7 +1362,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 
 						for(size_t i=0;i<listeners.size();++i)
 						{
-							listeners[i]->On_FileModified(real_fn, save_fn, closed);
+							listeners[i]->On_FileModified(real_fn, closed);
 						}
 					}
 				}
