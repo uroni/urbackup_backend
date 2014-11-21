@@ -59,10 +59,40 @@ namespace
 			return false;
 		}
 	}
+
+
+	class SessionKeepaliveThread : public IThread
+	{
+	public:
+		SessionKeepaliveThread(std::wstring session)
+			: do_quit(false), session(session)
+		{
+
+		}
+
+		void operator()()
+		{
+			while(!do_quit)
+			{
+				Server->getSessionMgr()->getUser(session, std::wstring());
+				Server->wait(10000);
+			}
+
+			delete this;
+		}
+
+		void doQuit() {
+			do_quit=true;
+		}
+
+	private:
+		volatile bool do_quit;
+		std::wstring session;
+	};
 }
 
 ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode, const std::string& identity) :
-server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity)
+server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -186,6 +216,11 @@ void ServerChannelThread::operator()(void)
 	if(input!=NULL)
 	{
 		Server->destroy(input);
+	}
+
+	if(keepalive_thread!=NULL)
+	{
+		keepalive_thread->doQuit();
 	}
 }
 
@@ -331,6 +366,9 @@ void ServerChannelThread::LOGIN(str_map& params)
 			session=helper.generateSession(L"anonymous");
 			GET[L"ses"]=session;
 			helper.update(Server->getThreadID(), &GET, &PARAMS);
+
+			keepalive_thread = new SessionKeepaliveThread(session);
+			Server->getThreadPool()->execute(keepalive_thread);
 		}
 
 		helper.getSession()->mStr[L"rnd"]=widen(salt);
@@ -409,6 +447,12 @@ bool ServerChannelThread::hasDownloadImageRights()
 	str_nmap PARAMS;
 	GET[L"ses"]=session;
 	Helper helper(Server->getThreadID(), &GET, &PARAMS);
+
+	if(helper.getSession()==NULL)
+	{
+		Server->Log("Channel session timeout", LL_ERROR);
+		return false;
+	}
 
 	if(helper.getSession()->id==-1)
 	{

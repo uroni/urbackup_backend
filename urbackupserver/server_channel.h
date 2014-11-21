@@ -7,6 +7,9 @@
 class BackupServerGet;
 
 class ServerSettings;
+namespace {
+class SessionKeepaliveThread;
+}
 
 class ServerChannelThread : public IThread
 {
@@ -57,4 +60,6 @@ private:
 
 	std::string identity;
 	std::string client_addr;
+
+	SessionKeepaliveThread* keepalive_thread;
 };
