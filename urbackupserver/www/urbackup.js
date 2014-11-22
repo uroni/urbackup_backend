@@ -1224,10 +1224,12 @@ function show_backups2(data)
 		
 		ndata=dustRender("backups_backups", {rows: rows, ses: g.session, clientname: data.clientname, clientid: data.clientid, show_client_breadcrumb: show_client_breadcrumb});
 	}
-	else if(data.files)
+	else if(data.files && !data.single_item)
 	{
 		var rows="";		
 		var path=unescapeHTML(data.path);
+		g.last_browse_backupid = data.backupid;
+		g.last_browse_backuptime = data.backuptime;
 		var els=path.split("/");
 		var cp="";
 		var curr_path="";
@@ -1267,6 +1269,7 @@ function show_backups2(data)
 			obj.clientid=data.clientid;
 			obj.backupid=data.backupid;
 			obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
+			obj.list_items=true;
 				
 			rows+=dustRender("backups_files_row", obj);
 		}
@@ -1307,6 +1310,89 @@ function show_backups2(data)
 		}
 		
 		ndata=dustRender("backups_files", obj);
+	}
+	else if(data.files && data.single_item)
+	{
+		var path=unescapeHTML(data.path);
+		
+		var cp="";
+		if(g.last_browse_backupid)
+		{
+			var els=path.split("/");
+			var curr_path="";
+			
+			var last_path="";
+			for(var i=0;i<els.length-1;++i)
+			{
+				if(els[i].length>0)
+				{
+					last_path+="/"+els[i];
+				}
+			}
+			
+			if(els.length>1 && (els[1].length>0 || els.length>2))
+			{
+				cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+g.last_browse_backupid+")\">"+g.last_browse_backuptime+"</a> > ";
+			}
+			else
+			{
+				cp+="<strong>"+g.last_browse_backuptime+"</strong>"
+			}
+			
+			for(var i=0;i<els.length;++i)
+			{
+				if(els[i].length>0)
+				{
+					curr_path+="/"+els[i];
+					if(i+1<els.length)
+					{
+						cp+="<a href=\"javascript: tabMouseClickFiles("+data.clientid+","+g.last_browse_backupid+",'"+(curr_path==""?"/":curr_path)+"')\">"+els[i]+"</a>";
+						if(i!=0)
+						{
+							cp+=" > ";
+						}
+					}
+					else
+					{
+						cp+="<strong>"+els[i]+"</strong>";
+					}
+				}
+			}
+		}
+		
+		var items = [];
+		
+		for(var i=0;i<data.files.length;++i)
+		{
+			var obj=data.files[i];
+			if(obj.dir)
+			{
+				obj.size="&nbsp;";
+				obj.proc="Files";
+				obj.path=encodeURIComponent(path).replace(/'/g,"%27");
+			}
+			else
+			{
+				obj.size=format_size(obj.size);				
+				obj.proc="FilesDL";
+				obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
+			}
+			obj.clientid=data.clientid;
+			
+				
+			items.push(obj);
+		}
+			
+		var obj = {items: items,
+			ses: g.session, clientname: data.clientname,
+			clientid: data.clientid, cpath: cp, path: encodeURIComponent(path).replace(/'/g,"%27") };
+			
+		if(!data.token_authentication)
+		{
+			obj.show_client_breadcrumb=true;
+		}
+		
+		ndata=dustRender("backup_item", obj);
 	}
 	
 	if(g.data_f!=ndata)
@@ -1391,6 +1477,16 @@ function tabMouseClickFiles(clientid, backupid, path)
 function tabMouseClickFilesDL(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=filesdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
+}
+function tabMouseClickFilesAccess(clientid, backupid, path)
+{
+	if(!startLoading()) return;
+	new getJSON("backups", "sa=files&clientid="+clientid+"&path="+path.replace(/\//g,"%2F")+"&is_file=false", show_backups2);
+}
+function tabMouseClickFilesDLAccess(clientid, backupid, path)
+{
+	if(!startLoading()) return;
+	new getJSON("backups", "sa=files&clientid="+clientid+"&path="+path.replace(/\//g,"%2F")+"&is_file=true", show_backups2);
 }
 function downloadZIP(clientid, backupid, path)
 {

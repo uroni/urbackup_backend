@@ -191,6 +191,12 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		group = watoi(it_group->second);
 	}
 
+	int with_permissions=0;
+	if(params.find(L"with_permissions")!=params.end())
+	{
+		with_permissions=1;
+	}
+
 	state=CCSTATE_START_FILEBACKUP;
 
 	IScopedLock lock(backup_mutex);
@@ -202,6 +208,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
 	data.addInt(calculateFilehashesOnClient()?1:0);
 	data.addInt(group);
+	data.addInt(with_permissions);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -255,6 +262,12 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		group = watoi(it_group->second);
 	}
 
+	int with_permissions=0;
+	if(params.find(L"with_permissions")!=params.end())
+	{
+		with_permissions=1;
+	}
+
 	state=CCSTATE_START_FILEBACKUP;
 
 	IScopedLock lock(backup_mutex);
@@ -266,6 +279,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addInt(end_to_end_file_backup_verification_enabled?1:0);
 	data.addInt(calculateFilehashesOnClient()?1:0);
 	data.addInt(group);
+	data.addInt(with_permissions);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 

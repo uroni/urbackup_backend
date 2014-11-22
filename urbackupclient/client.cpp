@@ -220,7 +220,7 @@ std::wstring add_trailing_slash(const std::wstring &strDirName)
 }
 
 IndexThread::IndexThread(void)
-	: index_error(false), last_filebackup_filetime(0), index_group(-1)
+	: index_error(false), last_filebackup_filetime(0), index_group(-1), with_permissions(0)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -379,6 +379,7 @@ void IndexThread::operator()(void)
 			data.getInt(&end_to_end_file_backup_verification_enabled);
 			data.getInt(&calculate_filehashes_on_client);
 			data.getInt(&index_group);
+			data.getInt(&with_permissions);
 
 			//incr backup
 			if(!readBackupDirs() )
@@ -460,6 +461,7 @@ void IndexThread::operator()(void)
 			data.getInt(&end_to_end_file_backup_verification_enabled);
 			data.getInt(&calculate_filehashes_on_client);
 			data.getInt(&index_group);
+			data.getInt(&with_permissions);
 
 			if(!readBackupDirs() )
 			{
@@ -1091,9 +1093,13 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			has_include=true;
 			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].change_indicator << "#";
 
-			outfile << "dacl=" << base64_encode_dash(files[i].permissions)
+			if(with_permissions)
+			{
+				outfile << "dacl=" << base64_encode_dash(files[i].permissions)
 					<< "&mod=" << nconvert(files[i].last_modified_orig)
 					<< "&creat=" << nconvert(files[i].created);
+			}
+			
 
 			if(calculate_filehashes_on_client)
 			{
@@ -3272,11 +3278,15 @@ void IndexThread::readPermissions( const std::wstring& path, std::string& permis
 
 void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra )
 {
-	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\""
-		"#dacl=" << base64_encode_dash(permissions) <<
-		"&mod=" << nconvert(mod) <<
-		"&creat=" << nconvert(creat) <<
-		extra << "\n";
+	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\"";
+
+	if(with_permissions)
+	{
+		out << "#dacl=" << base64_encode_dash(permissions) <<
+			"&mod=" << nconvert(mod) <<
+			"&creat=" << nconvert(creat) <<
+			extra << "\n";
+	}
 }
 
 

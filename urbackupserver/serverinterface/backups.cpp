@@ -118,6 +118,31 @@ namespace
 		return ret;
 	}
 
+	FileMetadata getMetaData(std::wstring path, bool is_file)
+	{
+		if(path.empty() || (!is_file && path[path.size()-1]!=os_file_sep()[0]) )
+		{
+			path+=os_file_sep();
+		}
+
+		std::wstring metadata_fn;
+		if(is_file)
+		{
+			metadata_fn = ExtractFilePath(path)+escape_metadata_fn(ExtractFileName(path));
+		}
+		else
+		{
+			metadata_fn = ExtractFilePath(path)+escape_metadata_fn(ExtractFileName(path))+os_file_sep()+metadata_dir_fn;
+		}
+
+		FileMetadata ret;
+		if(!read_metadata(metadata_fn, ret) )
+		{
+			Server->Log(L"Error reading metadata of path "+path, LL_ERROR);
+		}
+		return ret;
+	}
+
 	int getClientid(IDatabase* db, const std::wstring& clientname)
 	{
 		IQuery* q=db->Prepare("SELECT id FROM clients WHERE name=?");
@@ -500,131 +525,208 @@ ACTION_IMPL(backups)
 		else if(sa==L"files" || sa==L"filesdl" || sa==L"zipdl" )
 		{
 			int t_clientid=watoi(GET[L"clientid"]);
+			bool is_file=GET[L"is_file"]==L"true";
 			bool r_ok = token_authentication ? true : 
 				helper.hasRights(t_clientid, rights, clientid);
 
 			if(r_ok)
 			{
-				int backupid=watoi(GET[L"backupid"]);
+				bool has_backupid=GET.find(L"backupid")!=GET.end();
+				int backupid=0;
+				if(has_backupid)
+				{
+					backupid=watoi(GET[L"backupid"]);
+				}
 				std::wstring u_path=UnescapeHTML(GET[L"path"]);
 				std::wstring path;
 				std::vector<std::wstring> t_path;
 				Tokenize(u_path, t_path, L"/");
-				for(size_t i=0;i<t_path.size();++i)
-				{
-					if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".."
-						&& t_path[i].find(L"/")==std::string::npos
-						&& t_path[i].find(L"\\")==std::string::npos )
-					{
-						path+=UnescapeSQLString(t_path[i])+os_file_sep();
-					}
-				}
-
-				if( (sa==L"filesdl" || sa==L"zipdl")
-					&& !path.empty())
-				{
-					path.erase(path.size()-1, 1);
-				}
 
 				std::wstring clientname=getClientname(helper.getDatabase(), t_clientid);
-				
 				std::wstring backupfolder=getBackupFolder(db);
+
 				if(!clientname.empty() && !backupfolder.empty() )
 				{
-					ret.set("clientname", clientname);
-					ret.set("clientid", t_clientid);
-					ret.set("backupid", backupid);
-					ret.set("path", u_path);
-
-					IQuery* q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=?");
-					q->Bind(backupid);
-					db_results res=q->Read();
-					q->Reset();
-
-					if(!res.empty() &&
-						(!token_authentication || checkBackupTokens(fileaccesstokens, backupfolder, clientname, res[0][L"path"])) )
+					db_results res;
+					if(has_backupid)
 					{
-						std::wstring backuppath=res[0][L"path"];
+						IQuery* q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=? AND clientid=?");
+						q->Bind(backupid);
+						q->Bind(t_clientid);
+						res=q->Read();
+						q->Reset();
 
-						ret.set("backuptime", res[0][L"backuptime"]);
-
-						std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(path.empty()?L"":(os_file_sep()+path));
-						std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(path.empty()?L"":(os_file_sep()+path));
-
-
-						if(sa==L"filesdl")
+						if(!res.empty())
 						{
-							if(!token_authentication || checkFileToken(fileaccesstokens, backupfolder, clientname, backuppath, curr_metadata_dir))
+							ret.set("backuptime", res[0][L"backuptime"]);
+							ret.set("backupid", backupid);
+						}
+					}
+					else
+					{
+						IQuery* q=db->Prepare("SELECT id, path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE clientid=? ORDER BY backuptime DESC");
+						q->Bind(t_clientid);
+						res=q->Read();
+						q->Reset();
+					}
+					
+					JSON::Array ret_files;
+					for(size_t k=0;k<res.size();++k)
+					{
+						std::wstring backuppath=res[k][L"path"];
+
+						if( !token_authentication || checkBackupTokens(fileaccesstokens, backupfolder, clientname, backuppath) )
+						{
+							path.clear();
+							for(size_t i=0;i<t_path.size();++i)
 							{
-								sendFile(helper, currdir);
+								if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".."
+									&& t_path[i].find(L"/")==std::string::npos
+									&& t_path[i].find(L"\\")==std::string::npos )
+								{
+									path+=UnescapeSQLString(t_path[i])+os_file_sep();
+
+									if(token_authentication)
+									{
+										std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(path.empty()?L"":(os_file_sep()+path));
+										if(!checkBackupTokens(fileaccesstokens, backupfolder, clientname, curr_metadata_dir))
+										{
+											return;
+										}
+									}
+								}
 							}
-							return;
-						}
+
+							if( ((sa==L"filesdl" || sa==L"zipdl") || (!has_backupid && is_file) )
+								&& !path.empty())
+							{
+								path.erase(path.size()-1, 1);
+							}				
+
+							ret.set("clientname", clientname);
+							ret.set("clientid", t_clientid);							
+							ret.set("path", u_path);
+
+							std::wstring curr_path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(path.empty()?L"":(os_file_sep()+path));
+							std::wstring curr_metadata_path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(path.empty()?L"":(os_file_sep()+path));
+
+							if(sa==L"filesdl")
+							{
+								if(!token_authentication || checkFileToken(fileaccesstokens, backupfolder, clientname, backuppath, curr_metadata_path))
+								{
+									sendFile(helper, curr_path);
+								}
+								return;
+							}
 						
-						STokens backup_tokens;
-						std::vector<std::string> tokens;
-						if(token_authentication)
-						{
-							backup_tokens = readTokens(backupfolder, clientname, backuppath);							
-							Tokenize(fileaccesstokens, tokens, ";");
-						}
+							STokens backup_tokens;
+							std::vector<std::string> tokens;
+							if(token_authentication)
+							{
+								backup_tokens = readTokens(backupfolder, clientname, backuppath);							
+								Tokenize(fileaccesstokens, tokens, ";");
+							}
 												
-						if(sa==L"zipdl")
-						{
-							sendZip(helper, currdir, curr_metadata_dir, GET[L"filter"], token_authentication, backup_tokens.tokens, tokens, path.empty());
-							return;
-						}
-
-						std::vector<SFile> tfiles=getFiles(os_file_prefix(currdir), NULL, true);
-						std::vector<FileMetadata> tmetadata=getMetadata(curr_metadata_dir, tfiles, path.empty());
-						
-
-						JSON::Array files;
-						for(size_t i=0;i<tfiles.size();++i)
-						{
-							if(tfiles[i].isdir)
+							if(sa==L"zipdl")
 							{
-								if(path.empty() && tfiles[i].name==L".hashes")
-									continue;
+								sendZip(helper, curr_path, curr_metadata_path, GET[L"filter"], token_authentication, backup_tokens.tokens, tokens, path.empty());
+								return;
+							}
 
-								if(token_authentication && 
-									!checkFileToken(backup_tokens.tokens, tokens, tmetadata[i]))
+							if(has_backupid)
+							{
+								std::vector<SFile> tfiles=getFiles(os_file_prefix(curr_path), NULL, true);
+								std::vector<FileMetadata> tmetadata=getMetadata(curr_metadata_path, tfiles, path.empty());
+
+
+								JSON::Array files;
+								for(size_t i=0;i<tfiles.size();++i)
 								{
-									continue;
+									if(tfiles[i].isdir)
+									{
+										if(path.empty() && tfiles[i].name==L".hashes")
+											continue;
+
+										if(token_authentication && 
+											!checkFileToken(backup_tokens.tokens, tokens, tmetadata[i]))
+										{
+											continue;
+										}
+
+										JSON::Object obj;
+										obj.set("name", tfiles[i].name);
+										obj.set("dir", tfiles[i].isdir);
+										obj.set("size", tfiles[i].size);
+										obj.set("mod", tmetadata[i].last_modified);
+										obj.set("creat", tmetadata[i].created);
+										files.add(obj);
+									}
+								}
+								for(size_t i=0;i<tfiles.size();++i)
+								{
+									if(!tfiles[i].isdir)
+									{
+										if(path.empty() && tfiles[i].name==L".urbackup_tokens.properties")
+											continue;
+
+										if(token_authentication && 
+											!checkFileToken(backup_tokens.tokens, tokens, tmetadata[i]))
+										{
+											continue;
+										}
+
+										JSON::Object obj;
+										obj.set("name", tfiles[i].name);
+										obj.set("dir", tfiles[i].isdir);
+										obj.set("size", tfiles[i].size);
+										obj.set("mod", tmetadata[i].last_modified);
+										obj.set("creat", tmetadata[i].created);
+										files.add(obj);
+									}
 								}
 
-								JSON::Object obj;
-								obj.set("name", tfiles[i].name);
-								obj.set("dir", tfiles[i].isdir);
-								obj.set("size", tfiles[i].size);
-								obj.set("mod", tmetadata[i].last_modified);
-								obj.set("creat", tmetadata[i].created);
-								files.add(obj);
+								ret.set("files", files);
 							}
-						}
-						for(size_t i=0;i<tfiles.size();++i)
-						{
-							if(!tfiles[i].isdir)
+							else
 							{
-								if(path.empty() && tfiles[i].name==L".urbackup_tokens.properties")
-									continue;
+								std::auto_ptr<IFile> f;
 
-								if(token_authentication && 
-									!checkFileToken(backup_tokens.tokens, tokens, tmetadata[i]))
+								if(is_file)
 								{
-									continue;
+									f.reset(Server->openFile(os_file_prefix(curr_path), MODE_READ));
 								}
+								
+								if( (is_file && f.get()) || os_directory_exists(os_file_prefix(curr_path)) )
+								{
+									FileMetadata metadata = getMetaData(curr_path, is_file);
 
-								JSON::Object obj;
-								obj.set("name", tfiles[i].name);
-								obj.set("dir", tfiles[i].isdir);
-								obj.set("size", tfiles[i].size);
-								obj.set("mod", tmetadata[i].last_modified);
-								obj.set("creat", tmetadata[i].created);
-								files.add(obj);
+									JSON::Object obj;
+									obj.set("name", ExtractFileName(curr_path));
+									if(is_file)
+									{
+										obj.set("size", f->Size());
+										obj.set("dir", false);
+									}
+									else
+									{
+										obj.set("size", 0);
+										obj.set("dir", true);
+									}
+									obj.set("mod", metadata.last_modified);
+									obj.set("creat", metadata.created);
+									obj.set("backupid", res[k][L"id"]);
+									obj.set("backuptime", res[k][L"backuptime"]);
+									ret_files.add(obj);
+								}								
 							}
 						}
-						ret.set("files", files);
+					}
+
+					if(!has_backupid)
+					{
+						ret.set("single_item", true);
+						ret.set("is_file", is_file);
+						ret.set("files", ret_files);
 					}
 				}
 			}

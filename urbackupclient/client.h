@@ -250,6 +250,7 @@ private:
 	int end_to_end_file_backup_verification_enabled;
 	int calculate_filehashes_on_client;
 	int index_group;
+	int with_permissions;
 
 	int64 last_tmp_update_time;
 

@@ -833,11 +833,7 @@ void ClientConnector::ReceivePackets(void)
 		{
 			if(pw_change_ok) //Administrator commands
 			{
-				if( cmd=="GET BACKUP DIRS" )
-				{
-					CMD_GET_BACKUPDIRS(cmd); continue;
-				}
-				else if(cmd=="SAVE BACKUP DIRS" )
+				if(cmd=="SAVE BACKUP DIRS" )
 				{
 					CMD_SAVE_BACKUPDIRS(cmd, params); continue;
 				}
@@ -859,7 +855,11 @@ void ClientConnector::ReceivePackets(void)
 				}
 			}
 			
-			if(cmd=="GET INCRINTERVALL" )
+			if( cmd=="GET BACKUP DIRS" )
+			{
+				CMD_GET_BACKUPDIRS(cmd); continue;
+			}
+			else if(cmd=="GET INCRINTERVALL" )
 			{
 				CMD_GET_INCRINTERVAL(cmd); continue;
 			}

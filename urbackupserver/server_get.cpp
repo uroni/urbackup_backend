@@ -1476,6 +1476,8 @@ bool BackupServerGet::request_filelist_construct(bool full, bool resume, int gro
 			start_backup_cmd+="incr";
 	}
 
+	start_backup_cmd+="&with_permissions=1";
+
 	if(with_token)
 	{
 		start_backup_cmd+="#token="+server_token;
