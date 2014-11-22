@@ -39,43 +39,68 @@
 #include <KtmW32.h>
 #endif
 
+namespace
+{
+
 #define REPARSE_MOUNTPOINT_HEADER_SIZE   8
 
-typedef struct {
-  DWORD ReparseTag;
-  DWORD ReparseDataLength;
-  WORD Reserved;
-  WORD ReparseTargetLength;
-  WORD ReparseTargetMaximumLength;
-  WORD Reserved1;
-  WCHAR ReparseTarget[1];
-} REPARSE_MOUNTPOINT_DATA_BUFFER, *PREPARSE_MOUNTPOINT_DATA_BUFFER;
+	typedef struct {
+		DWORD ReparseTag;
+		DWORD ReparseDataLength;
+		WORD Reserved;
+		WORD ReparseTargetLength;
+		WORD ReparseTargetMaximumLength;
+		WORD Reserved1;
+		WCHAR ReparseTarget[1];
+	} REPARSE_MOUNTPOINT_DATA_BUFFER, *PREPARSE_MOUNTPOINT_DATA_BUFFER;
 
-typedef struct _REPARSE_DATA_BUFFER {
-	ULONG  ReparseTag;
-	USHORT ReparseDataLength;
-	USHORT Reserved;
-	union {
-		struct {
-			USHORT SubstituteNameOffset;
-			USHORT SubstituteNameLength;
-			USHORT PrintNameOffset;
-			USHORT PrintNameLength;
-			ULONG  Flags;
-			WCHAR  PathBuffer[1];
-		} SymbolicLinkReparseBuffer;
-		struct {
-			USHORT SubstituteNameOffset;
-			USHORT SubstituteNameLength;
-			USHORT PrintNameOffset;
-			USHORT PrintNameLength;
-			WCHAR  PathBuffer[1];
-		} MountPointReparseBuffer;
-		struct {
-			UCHAR DataBuffer[1];
-		} GenericReparseBuffer;
-	};
-} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+	typedef struct _REPARSE_DATA_BUFFER {
+		ULONG  ReparseTag;
+		USHORT ReparseDataLength;
+		USHORT Reserved;
+		union {
+			struct {
+				USHORT SubstituteNameOffset;
+				USHORT SubstituteNameLength;
+				USHORT PrintNameOffset;
+				USHORT PrintNameLength;
+				ULONG  Flags;
+				WCHAR  PathBuffer[1];
+			} SymbolicLinkReparseBuffer;
+			struct {
+				USHORT SubstituteNameOffset;
+				USHORT SubstituteNameLength;
+				USHORT PrintNameOffset;
+				USHORT PrintNameLength;
+				WCHAR  PathBuffer[1];
+			} MountPointReparseBuffer;
+			struct {
+				UCHAR DataBuffer[1];
+			} GenericReparseBuffer;
+		};
+	} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+
+	typedef struct {
+		DWORD         RecordLength;
+		WORD          MajorVersion;
+		WORD          MinorVersion;
+		BYTE          FileReferenceNumber[16];
+		BYTE          ParentFileReferenceNumber[16];
+		USN           Usn;
+		LARGE_INTEGER TimeStamp;
+		DWORD         Reason;
+		DWORD         SourceInfo;
+		DWORD         SecurityId;
+		DWORD         FileAttributes;
+		WORD          FileNameLength;
+		WORD          FileNameOffset;
+		WCHAR         FileName[1];
+	} USN_RECORD_V3, *PUSN_RECORD_V3;
+
+}
+
+
+
 
 void getMousePos(int &x, int &y)
 {
@@ -193,15 +218,44 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool f
 
 						if(!(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT))
 						{
-							USN_RECORD usn;
-							DWORD ret_bytes;
-							BOOL b = DeviceIoControl(hFile, FSCTL_READ_FILE_USN_DATA, NULL, 0,
-								&usn, sizeof(usn), &ret_bytes, NULL);
-
-							if(b)
+							std::vector<char> buffer;
+							buffer.resize(1024);
+							DWORD last_err=0;
+							do 
 							{
-								f.usn = usn.Usn;
-							}
+								DWORD ret_bytes = 0;
+								BOOL b = DeviceIoControl(hFile, FSCTL_READ_FILE_USN_DATA, NULL, 0,
+									buffer.data(), static_cast<DWORD>(buffer.size()), &ret_bytes, NULL);
+
+								if(b)
+								{
+									USN_RECORD* usnv2=reinterpret_cast<USN_RECORD*>(buffer.data());
+									if(usnv2->MajorVersion==2)
+									{
+										f.usn = usnv2->Usn;
+									}
+									else if(usnv2->MajorVersion==3)
+									{
+										USN_RECORD_V3* usnv3=reinterpret_cast<USN_RECORD_V3*>(buffer.data());
+										f.usn = usnv3->Usn;
+									}
+									else
+									{
+										Server->Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+tpath+L"\\"+f.name+L"\" not supported", LL_ERROR);
+									}
+								}
+								else
+								{
+									last_err=GetLastError();
+								}
+
+								if(last_err==ERROR_INSUFFICIENT_BUFFER)
+								{
+									buffer.resize(buffer.size()*2);
+								}
+
+							} while (last_err==ERROR_INSUFFICIENT_BUFFER);
+							
 						}
 
 						CloseHandle(hFile);
