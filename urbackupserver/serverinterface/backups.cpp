@@ -226,8 +226,9 @@ ACTION_IMPL(backups)
 					ret.set("backupid", backupid);
 					ret.set("path", u_path);
 
-					q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=?");
+					q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=? AND clientid=?");
 					q->Bind(backupid);
+					q->Bind(t_clientid);
 					res=q->Read();
 					q->Reset();
 
