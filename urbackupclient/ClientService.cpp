@@ -1030,7 +1030,19 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			name=removeChars(name);
 
 			if(dir[dir.size()-1]=='\\' || dir[dir.size()-1]=='/' )
+			{
 				dir.erase(dir.size()-1,1);
+#ifndef _WIN32
+				if(dir.empty())
+				{
+					dir=L"/";
+					if(name.empty())
+					{
+						name=L"root";
+					}
+				}
+#endif
+			}
 
 			q2->Bind(name);
 			if(q2->Read().empty()==false)
