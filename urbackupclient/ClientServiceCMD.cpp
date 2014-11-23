@@ -244,7 +244,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	else if(next(cmd,0,"3START FULL BACKUP"))
 	{
 		file_version=2;
-		if(cmd.size()>14)
+		if(cmd.size()>19)
 			s_params=cmd.substr(19);
 	}
 
