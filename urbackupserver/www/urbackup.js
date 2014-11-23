@@ -247,6 +247,13 @@ function file_access(params)
 			break;
 		}
 	}
+	
+	if(params["path"])
+	{
+		p+="&path="+encodeURIComponent(base64_decode_dash(params["path"])).replace(/\//g,"%2F");
+		p+="&is_file="+params["is_file"];
+		p+="&sa=files";
+	}
 
 	if(!startLoading()) return;
 	new getJSON("backups", p, show_backups2);
@@ -1313,48 +1320,51 @@ function show_backups2(data)
 	}
 	else if(data.files && data.single_item)
 	{
-		var path=unescapeHTML(data.path);
-		
-		var cp="";
-		if(g.last_browse_backupid)
+		if(data.path)
 		{
-			var els=path.split("/");
-			var curr_path="";
+			var path=unescapeHTML(data.path);
 			
-			var last_path="";
-			for(var i=0;i<els.length-1;++i)
+			var cp="";
+			if(g.last_browse_backupid)
 			{
-				if(els[i].length>0)
+				var els=path.split("/");
+				var curr_path="";
+				
+				var last_path="";
+				for(var i=0;i<els.length-1;++i)
 				{
-					last_path+="/"+els[i];
-				}
-			}
-			
-			if(els.length>1 && (els[1].length>0 || els.length>2))
-			{
-				cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+g.last_browse_backupid+")\">"+g.last_browse_backuptime+"</a> > ";
-			}
-			else
-			{
-				cp+="<strong>"+g.last_browse_backuptime+"</strong>"
-			}
-			
-			for(var i=0;i<els.length;++i)
-			{
-				if(els[i].length>0)
-				{
-					curr_path+="/"+els[i];
-					if(i+1<els.length)
+					if(els[i].length>0)
 					{
-						cp+="<a href=\"javascript: tabMouseClickFiles("+data.clientid+","+g.last_browse_backupid+",'"+(curr_path==""?"/":curr_path)+"')\">"+els[i]+"</a>";
-						if(i!=0)
-						{
-							cp+=" > ";
-						}
+						last_path+="/"+els[i];
 					}
-					else
+				}
+				
+				if(els.length>1 && (els[1].length>0 || els.length>2))
+				{
+					cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+g.last_browse_backupid+")\">"+g.last_browse_backuptime+"</a> > ";
+				}
+				else
+				{
+					cp+="<strong>"+g.last_browse_backuptime+"</strong>"
+				}
+				
+				for(var i=0;i<els.length;++i)
+				{
+					if(els[i].length>0)
 					{
-						cp+="<strong>"+els[i]+"</strong>";
+						curr_path+="/"+els[i];
+						if(i+1<els.length)
+						{
+							cp+="<a href=\"javascript: tabMouseClickFiles("+data.clientid+","+g.last_browse_backupid+",'"+(curr_path==""?"/":curr_path)+"')\">"+els[i]+"</a>";
+							if(i!=0)
+							{
+								cp+=" > ";
+							}
+						}
+						else
+						{
+							cp+="<strong>"+els[i]+"</strong>";
+						}
 					}
 				}
 			}

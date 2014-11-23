@@ -524,7 +524,24 @@ ACTION_IMPL(backups)
 		}
 		else if(sa==L"files" || sa==L"filesdl" || sa==L"zipdl" )
 		{
-			int t_clientid=watoi(GET[L"clientid"]);
+			int t_clientid;
+			std::wstring clientname;
+			if(token_authentication && GET.find(L"clientid")==GET.end())
+			{
+				clientname=GET[L"clientname"];
+				t_clientid = getClientid(helper.getDatabase(), clientname);
+				if(t_clientid==-1)
+				{
+					ret.set("error", "2");
+					helper.Write(ret.get(false));
+					return;
+				}
+			}
+			else
+			{
+				t_clientid = watoi(GET[L"clientid"]);
+				clientname = getClientname(helper.getDatabase(), t_clientid);
+			}
 			bool is_file=GET[L"is_file"]==L"true";
 			bool r_ok = token_authentication ? true : 
 				helper.hasRights(t_clientid, rights, clientid);
@@ -542,7 +559,6 @@ ACTION_IMPL(backups)
 				std::vector<std::wstring> t_path;
 				Tokenize(u_path, t_path, L"/");
 
-				std::wstring clientname=getClientname(helper.getDatabase(), t_clientid);
 				std::wstring backupfolder=getBackupFolder(db);
 
 				if(!clientname.empty() && !backupfolder.empty() )
@@ -577,7 +593,17 @@ ACTION_IMPL(backups)
 
 						if( !token_authentication || checkBackupTokens(fileaccesstokens, backupfolder, clientname, backuppath) )
 						{
+							STokens backup_tokens;
+							std::vector<std::string> tokens;
+							if(token_authentication)
+							{
+								backup_tokens = readTokens(backupfolder, clientname, backuppath);							
+								Tokenize(fileaccesstokens, tokens, ";");
+							}
+
 							path.clear();
+							std::wstring metadata_path;
+							bool cannot_access_path=false;
 							for(size_t i=0;i<t_path.size();++i)
 							{
 								if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".."
@@ -585,16 +611,39 @@ ACTION_IMPL(backups)
 									&& t_path[i].find(L"\\")==std::string::npos )
 								{
 									path+=UnescapeSQLString(t_path[i])+os_file_sep();
+									metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]))+os_file_sep();
 
 									if(token_authentication)
 									{
-										std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(path.empty()?L"":(os_file_sep()+path));
-										if(!checkBackupTokens(fileaccesstokens, backupfolder, clientname, curr_metadata_dir))
+										std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(metadata_path.empty()?L"":(os_file_sep()+metadata_path));
+
+										if(!has_backupid && is_file && i==t_path.size()-1)
 										{
-											return;
+											curr_metadata_dir.erase(curr_metadata_dir.size()-1, 1);
+										}
+										else
+										{
+											curr_metadata_dir+=metadata_dir_fn;
+										}
+
+										FileMetadata dir_metadata;
+										if(!read_metadata(curr_metadata_dir, dir_metadata))
+										{
+											cannot_access_path=true;
+											break;
+										}
+										if(!checkFileToken(backup_tokens.tokens, tokens, dir_metadata))
+										{
+											cannot_access_path=true;
+											break;
 										}
 									}
 								}
+							}
+
+							if(cannot_access_path)
+							{
+								continue;
 							}
 
 							if( ((sa==L"filesdl" || sa==L"zipdl") || (!has_backupid && is_file) )
@@ -608,7 +657,7 @@ ACTION_IMPL(backups)
 							ret.set("path", u_path);
 
 							std::wstring curr_path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(path.empty()?L"":(os_file_sep()+path));
-							std::wstring curr_metadata_path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(path.empty()?L"":(os_file_sep()+path));
+							std::wstring curr_metadata_path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(metadata_path.empty()?L"":(os_file_sep()+metadata_path));
 
 							if(sa==L"filesdl")
 							{
@@ -617,14 +666,6 @@ ACTION_IMPL(backups)
 									sendFile(helper, curr_path);
 								}
 								return;
-							}
-						
-							STokens backup_tokens;
-							std::vector<std::string> tokens;
-							if(token_authentication)
-							{
-								backup_tokens = readTokens(backupfolder, clientname, backuppath);							
-								Tokenize(fileaccesstokens, tokens, ";");
 							}
 												
 							if(sa==L"zipdl")

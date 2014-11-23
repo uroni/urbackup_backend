@@ -997,11 +997,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 	std::wstring dir;
 	size_t i=0;
 	std::vector<SBackupDir> new_watchdirs;
+	std::vector<std::wstring> all_backupdirs;
 	do
 	{
 		dir=args[L"dir_"+convert(i)];
 		if(!dir.empty())
 		{
+			all_backupdirs.push_back(dir);
+
 			std::wstring name;
 			str_map::iterator name_arg=args.find(L"dir_"+convert(i)+L"_name");
 			if(name_arg!=args.end() && !name_arg->second.empty())
@@ -1117,6 +1120,69 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			contractors.push_back(contractor);
 			state=CCSTATE_WAIT_FOR_CONTRACTORS;
 			want_receive=false;
+		}
+	}
+
+	{
+		bool deleted_key;
+		size_t i=0;
+		do 
+		{
+			deleted_key=false;
+			if(RegDeleteKeyW(HKEY_CLASSES_ROOT, (L"AllFilesystemObjects\\shell\\urbackup.access."+convert(i)).c_str())==ERROR_SUCCESS)
+			{
+				deleted_key=true;
+			}
+			++i;
+		} while (deleted_key);
+	}
+	
+
+
+	std::wstring mui_text=L"&Access backups";
+	std::string read_mui_text=getFile("access_backups_shell_mui.txt");
+	if(	!read_mui_text.empty() && read_mui_text.find("@")==std::string::npos)
+	{
+		mui_text=Server->ConvertToUnicode(read_mui_text);
+	}
+
+	/**
+	* The Advanced Query Syntax (AQL) in appliesTo seems to have a length restriction. 
+	* That's why each entry for each folder is added separately instead of using "OR".
+	*/
+	for(size_t i=0;i<all_backupdirs.size();++i)
+	{
+		HKEY urbackup_access;
+		if(RegCreateKeyExW(HKEY_CLASSES_ROOT, (L"AllFilesystemObjects\\shell\\urbackup.access."+convert(i)).c_str(), 0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_access, NULL)==ERROR_SUCCESS)
+		{
+			HKEY urbackup_access_command;
+			if(RegCreateKeyExW(HKEY_CLASSES_ROOT, (L"AllFilesystemObjects\\shell\\urbackup.access."+convert(i)+L"\\Command").c_str(), 0, NULL, 0, KEY_ALL_ACCESS, NULL, &urbackup_access_command, NULL)!=ERROR_SUCCESS)
+			{
+				Server->Log("Error creating command registry sub-key", LL_ERROR);
+			}
+			else
+			{
+				std::wstring cmd=L"\""+Server->getServerWorkingDir()+L"\\UrBackupClient.exe\" access \"%1\"";
+				//cmd = greplace(L"\\", L"\\\\", cmd);
+				if(RegSetValueExW(urbackup_access_command, NULL, 0, REG_SZ, reinterpret_cast<const BYTE*>(cmd.c_str()), static_cast<DWORD>(cmd.size()*sizeof(wchar_t)))!=ERROR_SUCCESS)
+				{
+					Server->Log("Error setting command in registry", LL_ERROR);
+				}
+			}
+
+			if(RegSetValueExW(urbackup_access, L"MUIVerb", 0, REG_SZ, reinterpret_cast<const BYTE*>(mui_text.c_str()), static_cast<DWORD>(mui_text.size()*sizeof(wchar_t)))!=ERROR_SUCCESS)
+			{
+				Server->Log("Error setting MUIVerb in registry", LL_ERROR);
+			}
+
+			std::wstring path = greplace(L"/", L"\\", all_backupdirs[i]);
+
+			std::wstring applies_to=L"System.ParsingPath:~<\""+path+L"\"";
+
+			if(RegSetValueExW(urbackup_access, L"AppliesTo", 0, REG_SZ, reinterpret_cast<const BYTE*>(applies_to.c_str()), static_cast<DWORD>(applies_to.size()*sizeof(wchar_t)))!=ERROR_SUCCESS)
+			{
+				Server->Log("Error setting AppliesTo in registry", LL_ERROR);
+			}
 		}
 	}
 #endif
