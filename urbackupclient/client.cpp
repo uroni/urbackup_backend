@@ -3287,6 +3287,10 @@ void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 cr
 			"&creat=" << nconvert(creat) <<
 			extra << "\n";
 	}
+	else
+	{
+		out << "\n";
+	}
 }
 
 
