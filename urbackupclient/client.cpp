@@ -132,6 +132,10 @@ std::wstring add_trailing_slash(const std::wstring &strDirName)
 	{
 		return strDirName+os_file_sep();
 	}
+	else
+	{
+		return os_file_sep();
+	}
 	return strDirName;
 }
 
@@ -747,7 +751,15 @@ void IndexThread::indexDirs(void)
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
+			
+#ifndef _WIN32
+			if(index_root_path.empty())
+			{
+				index_root_path=os_file_sep();
+			}
+#endif
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true, backup_dirs[i].optional, !patterns_changed);
+
 
 			cd->copyFromTmpFiles();
 			commitModifyFilesBuffer();
