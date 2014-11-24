@@ -79,7 +79,11 @@ namespace
 		{
 			while(!do_quit)
 			{
-				Server->getSessionMgr()->getUser(session, std::wstring());
+				SUser* user=Server->getSessionMgr()->getUser(session, std::wstring());
+				if(user!=NULL)
+				{
+					Server->getSessionMgr()->releaseUser(user);
+				}
 				Server->wait(10000);
 			}
 
