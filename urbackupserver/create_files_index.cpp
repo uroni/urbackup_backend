@@ -100,7 +100,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 bool setup_lmdb_file_index(SStartupStatus& status)
 {
-	LMDBFileIndex fileindex;
+	LMDBFileIndex fileindex(true);;
 	if(fileindex.has_error())
 	{
 		Server->Log("Error creating file index", LL_ERROR);

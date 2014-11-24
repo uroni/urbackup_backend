@@ -11,9 +11,9 @@ public:
 	static void initFileIndex();
 	static void shutdownFileIndex();
 
-	LMDBFileIndex();
+	LMDBFileIndex(bool no_sync=false);
 
-	bool create_env( );
+	bool create_env();
 
 	void destroy_env();
 
@@ -85,4 +85,6 @@ private:
 	static ISharedMutex* mutex;
 	static LMDBFileIndex* fileindex;
 	static THREADPOOL_TICKET fileindex_ticket;
+
+	bool no_sync;
 };

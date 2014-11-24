@@ -35,8 +35,8 @@ void LMDBFileIndex::shutdownFileIndex()
 }
 
 
-LMDBFileIndex::LMDBFileIndex()
-	: _has_error(false), txn(NULL), map_size(c_initial_map_size), it_cursor(NULL)
+LMDBFileIndex::LMDBFileIndex(bool no_sync)
+	: _has_error(false), txn(NULL), map_size(c_initial_map_size), it_cursor(NULL), no_sync(no_sync)
 {
 	if(!create_env())
 	{
@@ -407,7 +407,12 @@ bool LMDBFileIndex::create_env()
 
 		os_create_dir(L"urbackup/fileindex");
 
-		rc = mdb_env_open(env, "urbackup/fileindex/backup_server_files_index.lmdb", MDB_NOSUBDIR|MDB_NOMETASYNC, 0664);
+		unsigned int flags = MDB_NOSUBDIR|MDB_NOMETASYNC;
+		if(no_sync)
+		{
+			flags|=MDB_NOSYNC;
+		}
+		rc = mdb_env_open(env, "urbackup/fileindex/backup_server_files_index.lmdb", flags, 0664);
 
 		if(rc)
 		{
