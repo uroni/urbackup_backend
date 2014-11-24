@@ -65,11 +65,6 @@ int check_files_index()
 		int clientid = watoi(res[L"clientid"]);
 		bool found_entry=false;
 
-		if(id!=37217641)
-		{
-			continue;
-		}
-
 		int64 entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(reinterpret_cast<const char*>(res[L"shahash"].data()),
 			filesize, clientid));
 
