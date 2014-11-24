@@ -65,6 +65,11 @@ int check_files_index()
 		int clientid = watoi(res[L"clientid"]);
 		bool found_entry=false;
 
+		if(id!=37217641)
+		{
+			continue;
+		}
+
 		int64 entryid = fileindex->get_with_cache_exact(FileIndex::SIndexKey(reinterpret_cast<const char*>(res[L"shahash"].data()),
 			filesize, clientid));
 
@@ -90,6 +95,12 @@ int check_files_index()
 			if(fileentry.id == id)
 			{
 				found_entry=true;
+			}
+
+			if(clientid!=fileentry.clientid)
+			{
+				Server->Log(L"First entry with id "+convert(entryid)+L" has wrong clientid (expected: "+convert(clientid)+L" has: "+convert(fileentry.clientid)+L")", LL_ERROR);
+				has_error=true;
 			}
 
 			if(first)
