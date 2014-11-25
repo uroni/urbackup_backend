@@ -98,7 +98,16 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 	if(!file->Seek(chunk->startpos))
 	{
-		sendError(ERR_SEEKING_FAILED, getSystemErrorCode());
+		_i64 nsize = file->Size();
+		if(nsize==curr_file_size)
+		{
+			sendError(ERR_SEEKING_FAILED, getSystemErrorCode());
+			return false;
+		}
+		else
+		{
+			file->Seek(nsize);
+		}
 	}
 
 	if(chunk->transfer_all)
