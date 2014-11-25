@@ -14,6 +14,14 @@
 #define VLOG(x) x
 
 
+namespace
+{
+	const char* fc_err_strs[] = {
+		"Seeking in file failed",
+		"Reading from file failed"
+	};
+}
+
 FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stack,
 	FileClientChunked::ReconnectionCallback *reconnection_callback, FileClientChunked::NoFreeSpaceCallback *nofreespace_callback
 	, std::string identity, FileClientChunked* prev)
@@ -481,6 +489,7 @@ void FileClientChunked::State_First(void)
 	case ID_UPDATE_CHUNK: need_bytes=sizeof(_i64)+sizeof(_u32); break;
 	case ID_NO_CHANGE: need_bytes=sizeof(_i64); break;
 	case ID_BLOCK_HASH: need_bytes=sizeof(_i64)+big_hash_size; break;
+	case ID_BLOCK_ERROR: need_bytes=sizeof(_u32)*2;
 	default:
 		Server->Log("Unknown Packet ID in State_First", LL_ERROR);
 		need_bytes = 0;
@@ -705,6 +714,15 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 				Hash_finalize(block_start, blockhash);
 				state=CS_ID_FIRST;
 			}break;
+		case ID_BLOCK_ERROR:
+			{
+				msg.getUInt(&errorcode1);
+				msg.getUInt(&errorcode1);
+
+				retval=ERR_ERRORCODES;
+				getfile_done=true;
+				return;
+			} break;
 		}
 	}
 	else
@@ -1599,5 +1617,32 @@ void FileClientChunked::setPipe(IPipe* p)
 	{
 		pipe = p;
 	}
+}
+
+_u32 FileClientChunked::getErrorcode1()
+{
+	return errorcode1;
+}
+
+_u32 FileClientChunked::getErrorcode2()
+{
+	return errorcode2;
+}
+
+std::string FileClientChunked::getErrorcodeString()
+{
+	std::string err;
+	if(errorcode1<sizeof(fc_err_strs))
+	{
+		err=fc_err_strs[errorcode1];
+	}
+	else
+	{
+		err="Errorcode: "+ nconvert(errorcode1);
+	}
+
+	err+=" System error code: "+nconvert(errorcode2);
+
+	return err;
 }
 

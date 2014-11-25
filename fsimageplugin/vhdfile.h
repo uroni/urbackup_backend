@@ -68,10 +68,10 @@ public:
 	VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode=false, bool compress=false);
 	~VHDFile();
 
-	virtual std::string Read(_u32 tr);
-	virtual _u32 Read(char* buffer, _u32 bsize);
-	virtual _u32 Write(const std::string &tw);
-	virtual _u32 Write(const char* buffer, _u32 bsize);
+	virtual std::string Read(_u32 tr, bool *has_error=NULL);
+	virtual _u32 Read(char* buffer, _u32 bsize, bool *has_error=NULL);
+	virtual _u32 Write(const std::string &tw, bool *has_error=NULL);
+	virtual _u32 Write(const char* buffer, _u32 bsize, bool *has_error=NULL);
 	virtual _i64 Size(void);
 	virtual _i64 RealSize(void);
 	

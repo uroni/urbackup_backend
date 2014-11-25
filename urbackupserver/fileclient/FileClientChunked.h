@@ -80,6 +80,12 @@ public:
 
 	void setProgressLogCallback(FileClient::ProgressLogCallback* cb);
 
+	_u32 getErrorcode1();
+
+	_u32 getErrorcode2();
+
+	std::string getErrorcodeString();
+
 private:
 	FileClientChunked(const FileClientChunked& other) {};
 	void operator=(const FileClientChunked& other) {}
@@ -227,6 +233,9 @@ private:
 	int64 last_transferred_bytes;
 	int64 last_progress_log;
 	FileClient::ProgressLogCallback* progress_log_callback;
+
+	_u32 errorcode1;
+	_u32 errorcode2;
 };
 
 #endif //FILECLIENTCHUNKED_H

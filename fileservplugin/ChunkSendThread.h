@@ -18,6 +18,8 @@ public:
 
 private:
 
+	bool sendError(_u32 errorcode1, _u32 errorcode2);
+
 	CClientThread *parent;
 	IFile *file;
 	_i64 curr_hash_size;

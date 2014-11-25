@@ -71,11 +71,14 @@ struct SLPData
 {
 	std::deque<SSendData*> *t_send;
 	std::vector<SLPData*> *t_unsend;
+	unsigned int *errorcode;
 	char* buffer;
 	bool last;
 
 	int filepart;
 	int *sendfilepart;
+
+	bool has_error;
 
 	unsigned int bsize;
 };
@@ -106,7 +109,7 @@ private:
 
 	bool RecvMessage(void);
 	bool ProcessPacket(CRData *data);
-	void ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last);
+	bool ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last);
 	int SendData(void);
 	void ReleaseMemory(void);
 	void CloseThread(HANDLE hFile);
@@ -134,6 +137,7 @@ private:
 
 	std::deque<SSendData*> t_send;
 	std::vector<SLPData*> t_unsend;
+	unsigned int errorcode;
 
 	HANDLE hFile;
 

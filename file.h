@@ -41,10 +41,10 @@ public:
 	bool Open(std::wstring pfn, int mode=MODE_READ);
 	bool Open(void *handle);
 	bool OpenTemporaryFile(const std::wstring &tmpdir=L"", bool first_try=true);
-	std::string Read(_u32 tr);
-	_u32 Read(char* buffer, _u32 bsize);
-	_u32 Write(const std::string &tw);
-	_u32 Write(const char* buffer, _u32 bsize);
+	std::string Read(_u32 tr, bool *has_error=NULL);
+	_u32 Read(char* buffer, _u32 bsize, bool *has_error=NULL);
+	_u32 Write(const std::string &tw, bool *has_error=NULL);
+	_u32 Write(const char* buffer, _u32 bsize, bool *has_error=NULL);
 	bool Seek(_i64 spos);
 	_i64 Size(void);
 	_i64 RealSize();

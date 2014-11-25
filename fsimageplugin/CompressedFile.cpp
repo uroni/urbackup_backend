@@ -35,7 +35,7 @@ CompressedFile::CompressedFile( std::wstring pFilename, int pMode )
 		pMode == MODE_RW )
 	{
 		readOnly=true;
-		readHeader();
+		readHeader(&error);
 	}
 	else
 	{
@@ -59,7 +59,7 @@ CompressedFile::CompressedFile(IFile* file, bool openExisting, bool readOnly)
 {
 	if(openExisting)
 	{
-		readHeader();
+		readHeader(&error);
 	}
 	else
 	{
@@ -89,7 +89,7 @@ bool CompressedFile::hasError()
 	return error;
 }
 
-void CompressedFile::readHeader()
+void CompressedFile::readHeader(bool *has_error)
 {	
 	if(!uncompressedFile->Seek(0))
 	{
@@ -99,7 +99,7 @@ void CompressedFile::readHeader()
 	}
 	std::string header;
 	header.resize(c_header_size);
-	if(readFromFile(&header[0], c_header_size)!=c_header_size)
+	if(readFromFile(&header[0], c_header_size, has_error)!=c_header_size)
 	{
 		Server->Log("Error while reading compressed file header", LL_ERROR);
 		error=true;
@@ -124,10 +124,10 @@ void CompressedFile::readHeader()
 
 	hotCache.reset(new LRUMemCache(blocksize, c_ncacheItems));
 
-	readIndex();
+	readIndex(has_error);
 }
 
-void CompressedFile::readIndex()
+void CompressedFile::readIndex(bool *has_error)
 {
 	if(!uncompressedFile->Seek(index_offset))
 	{
@@ -140,7 +140,7 @@ void CompressedFile::readIndex()
 
 	blockOffsets.resize(nOffsetItems);
 
-	if(readFromFile(reinterpret_cast<char*>(&blockOffsets[0]), static_cast<_u32>(sizeof(__int64)*nOffsetItems))
+	if(readFromFile(reinterpret_cast<char*>(&blockOffsets[0]), static_cast<_u32>(sizeof(__int64)*nOffsetItems), has_error)
 		!=sizeof(__int64)*nOffsetItems)
 	{
 		Server->Log("Error while reading block offsets", LL_ERROR);
@@ -164,7 +164,7 @@ bool CompressedFile::Seek( _i64 spos )
 	return true;
 }
 
-_u32 CompressedFile::Read( char* buffer, _u32 bsize )
+_u32 CompressedFile::Read( char* buffer, _u32 bsize, bool *has_error)
 {
 	assert(!finished);
 
@@ -173,7 +173,7 @@ _u32 CompressedFile::Read( char* buffer, _u32 bsize )
 
 	if(cachePtr == NULL)
 	{
-		if(!fillCache(currentPosition, !readOnly))
+		if(!fillCache(currentPosition, !readOnly, has_error))
 		{
 			return 0;
 		}
@@ -202,7 +202,7 @@ _u32 CompressedFile::Read( char* buffer, _u32 bsize )
 	return static_cast<_u32>(canRead);
 }
 
-std::string CompressedFile::Read( _u32 tr )
+std::string CompressedFile::Read( _u32 tr, bool *has_error)
 {
 	assert(!finished);
 
@@ -212,7 +212,7 @@ std::string CompressedFile::Read( _u32 tr )
 	std::string ret;
 	ret.resize(tr);
 
-	if(Read(&ret[0], static_cast<_u32>(ret.size()))!=tr)
+	if(Read(&ret[0], static_cast<_u32>(ret.size()), has_error)!=tr)
 	{
 		return std::string();
 	}
@@ -220,7 +220,7 @@ std::string CompressedFile::Read( _u32 tr )
 	return ret;
 }
 
-bool CompressedFile::fillCache( __int64 offset, bool errorMsg)
+bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 {
 	size_t block = static_cast<size_t>(offset/blocksize);
 
@@ -245,11 +245,12 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg)
 	if(!uncompressedFile->Seek(blockDataOffset))
 	{
 		Server->Log("Error while seeking to offset "+nconvert(blockDataOffset)+" to read compressed data", LL_ERROR);
+		if(has_error) *has_error=true;
 		return false;
 	}
 
 	char blockheaderBuf[2*sizeof(_u32)];
-	if(readFromFile(blockheaderBuf, sizeof(blockheaderBuf))!=sizeof(blockheaderBuf))
+	if(readFromFile(blockheaderBuf, sizeof(blockheaderBuf), has_error)!=sizeof(blockheaderBuf))
 	{
 		Server->Log("Error while reading block header", LL_ERROR);
 		return false;
@@ -269,7 +270,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg)
 			return false;
 		}
 
-		if(readFromFile(buf, compressedSize)!=compressedSize)
+		if(readFromFile(buf, compressedSize, has_error)!=compressedSize)
 		{
 			Server->Log("Error while reading uncompressed data from "+nconvert(blockDataOffset)+" ("+nconvert(compressedSize)+" bytes)", LL_ERROR);
 			return false;
@@ -284,7 +285,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg)
 			compressedBuffer.resize(compressedSize);
 		}	
 
-		if(readFromFile(&compressedBuffer[0], compressedSize)!=compressedSize)
+		if(readFromFile(&compressedBuffer[0], compressedSize, has_error)!=compressedSize)
 		{
 			Server->Log("Error while reading compressed data from "+nconvert(blockDataOffset)+" ("+nconvert(compressedSize)+" bytes)", LL_ERROR);
 			return false;
@@ -315,7 +316,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg)
 	return true;
 }
 
-_u32 CompressedFile::Write( const char* buffer, _u32 bsize )
+_u32 CompressedFile::Write( const char* buffer, _u32 bsize, bool *has_error)
 {
 	assert(!finished);
 
@@ -331,7 +332,7 @@ _u32 CompressedFile::Write( const char* buffer, _u32 bsize )
 
 	if(cachePtr==NULL)
 	{
-		fillCache(currentPosition, false);
+		fillCache(currentPosition, false, has_error);
 	}
 
 	if(error)
@@ -362,9 +363,9 @@ _u32 CompressedFile::Write( const char* buffer, _u32 bsize )
 	return write;
 }
 
-_u32 CompressedFile::Write( const std::string &tw )
+_u32 CompressedFile::Write( const std::string &tw, bool *has_error)
 {
-	return Write(tw.data(), static_cast<_u32>(tw.size()));
+	return Write(tw.data(), static_cast<_u32>(tw.size()), has_error);
 }
 
 void CompressedFile::evictFromLruCache( const SCacheItem& item )
@@ -520,12 +521,12 @@ std::wstring CompressedFile::getFilenameW( void )
 	return uncompressedFile->getFilenameW();
 }
 
-_u32 CompressedFile::readFromFile(char* buffer, _u32 bsize)
+_u32 CompressedFile::readFromFile(char* buffer, _u32 bsize, bool *has_error)
 {
 	_u32 read = 0;
 	do 
 	{
-		_u32 rc = uncompressedFile->Read(buffer+read, bsize-read);
+		_u32 rc = uncompressedFile->Read(buffer+read, bsize-read, has_error);
 		if(rc<=0)
 		{
 			return read;

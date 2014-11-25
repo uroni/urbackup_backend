@@ -795,16 +795,18 @@ bool VHDFile::Read(char* buffer, size_t bsize, size_t &read)
 	return true;
 }
 
-_u32 VHDFile::Write(const char *buffer, _u32 bsize)
+_u32 VHDFile::Write(const char *buffer, _u32 bsize, bool *has_error)
 {
 	if(read_only)
 	{
 		Server->Log("VHD file is read only", LL_ERROR);
+		if(has_error) *has_error=true;
 		return 0;
 	}
 	if(bsize+curr_offset>dstsize)
 	{
 		Server->Log("VHD file is not large enough. Want to write till "+nconvert(bsize+curr_offset)+" but size is "+nconvert(dstsize), LL_ERROR);
+		if(has_error) *has_error=true;
 		return 0;
 	}
 
@@ -853,6 +855,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 				{
 					Server->Log("Writing bitmap failed", LL_ERROR);
 					print_last_error();
+					if(has_error) *has_error=true;
 					return 0;
 				}
 			}
@@ -863,6 +866,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 		if(!b)
 		{
 			Server->Log("Seeking in file failed", LL_ERROR);
+			if(has_error) *has_error=true;
 			return 0;
 		}
 
@@ -887,6 +891,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 			if(rc!=wantwrite)
 			{
 				Server->Log("Writing to file failed", LL_ERROR);
+				if(has_error) *has_error=true;
 				print_last_error();
 				return 0;
 			}
@@ -913,6 +918,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 			{
 				Server->Log("Writing bitmap failed", LL_ERROR);
 				print_last_error();
+				if(has_error) *has_error=true;
 				return 0;
 			}
 		}
@@ -930,11 +936,13 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize)
 		if(!write_footer())
 		{
 			Server->Log("Error writing footer", LL_ERROR);
+			if(has_error) *has_error=true;
 			return 0;
 		}
 		if(!write_bat())
 		{
 			Server->Log("Error writing BAT", LL_ERROR);
+			if(has_error) *has_error=true;
 			return 0;
 		}
 	}
@@ -1118,7 +1126,7 @@ std::wstring VHDFile::getFilenameW(void)
 	return file->getFilenameW();
 }
 
-std::string VHDFile::Read(_u32 tr)
+std::string VHDFile::Read(_u32 tr, bool *has_error)
 {
 	std::string ret;
 	ret.resize(4096);
@@ -1126,6 +1134,7 @@ std::string VHDFile::Read(_u32 tr)
 	bool b=Read((char*)ret.c_str(), 4096, read);
 	if(!b)
 	{
+		if(has_error) *has_error=true;
 		ret.clear();
 		return ret;
 	}
@@ -1134,12 +1143,13 @@ std::string VHDFile::Read(_u32 tr)
 	return ret;
 }
 
-_u32 VHDFile::Read(char* buffer, _u32 bsize)
+_u32 VHDFile::Read(char* buffer, _u32 bsize, bool *has_error)
 {
 	size_t read;
 	bool b=Read(buffer, bsize, read);
 	if(!b)
 	{
+		if(has_error) *has_error=true;
 		return 0;
 	}
 	else
@@ -1148,9 +1158,9 @@ _u32 VHDFile::Read(char* buffer, _u32 bsize)
 	}
 }
 
-_u32 VHDFile::Write(const std::string &tw)
+_u32 VHDFile::Write(const std::string &tw, bool *has_error)
 {
-	return Write(tw.c_str(), (_u32)tw.size());
+	return Write(tw.c_str(), (_u32)tw.size(), has_error);
 }
 
 _i64 VHDFile::Size(void)

@@ -1028,6 +1028,7 @@ std::string FileClient::getErrorString(_u32 ec)
 	DEFEC(HASH);
 	DEFEC(INT_ERROR);
 	DEFEC(CONN_LOST);
+	DEFEC(ERRORCODES);
 	}
 #undef DEFEC
 	return "";

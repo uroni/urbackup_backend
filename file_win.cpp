@@ -192,18 +192,18 @@ bool File::Open(void *handle)
 	}
 }
 
-std::string File::Read(_u32 tr)
+std::string File::Read(_u32 tr, bool *has_error)
 {
 	std::string ret;
 	ret.resize(tr);
-	_u32 gc=Read((char*)ret.c_str(), tr);
+	_u32 gc=Read((char*)ret.c_str(), tr, has_error);
 	if( gc<tr )
 		ret.resize( gc );
 	
 	return ret;
 }
 
-_u32 File::Read(char* buffer, _u32 bsize)
+_u32 File::Read(char* buffer, _u32 bsize, bool *has_error)
 {
 	DWORD read;
 	BOOL b=ReadFile(hfile, buffer, bsize, &read, NULL );
@@ -212,25 +212,30 @@ _u32 File::Read(char* buffer, _u32 bsize)
 	{
 		int err=GetLastError();
 		Server->Log("Read error: "+nconvert(err));
+		if(has_error)
+		{
+			*has_error=true;
+		}
 	}
-	/*if(read!=bsize)
-	{
-		int err=GetLastError();
-		Server->Log("Read error: "+nconvert(err));
-	}*/
 #endif
 	return (_u32)read;
 }
 
-_u32 File::Write(const std::string &tw)
+_u32 File::Write(const std::string &tw, bool *has_error)
 {
-	return Write( tw.c_str(), (_u32)tw.size() );
+	return Write( tw.c_str(), (_u32)tw.size(), has_error );
 }
 
-_u32 File::Write(const char* buffer, _u32 bsize)
+_u32 File::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
 	DWORD written;
-	WriteFile(hfile, buffer, bsize, &written, NULL);
+	if(WriteFile(hfile, buffer, bsize, &written, NULL)==FALSE)
+	{
+		if(has_error)
+		{
+			*has_error=true;
+		}
+	}
 	return written;
 }
 

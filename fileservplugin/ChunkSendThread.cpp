@@ -11,6 +11,22 @@
 #include "../Interface/Server.h"
 #include "../common/adler32.h"
 
+#ifndef _WIN32
+#include <errno.h>
+#endif
+
+namespace
+{
+	unsigned int getSystemErrorCode()
+	{
+#ifdef _WIN32
+		return GetLastError();
+#else
+		return errno;
+#endif
+	}
+}
+
 
 ChunkSendThread::ChunkSendThread(CClientThread *parent)
 	: parent(parent), file(NULL), has_error(false)
@@ -80,7 +96,10 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		return false;
 	}
 
-	file->Seek(chunk->startpos);
+	if(!file->Seek(chunk->startpos))
+	{
+		sendError(ERR_SEEKING_FAILED, getSystemErrorCode());
+	}
 
 	if(chunk->transfer_all)
 	{
@@ -116,7 +135,23 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			r=0;
 			if(blockleft>0)
 			{
-				r=file->Read(chunk_buf+off, (std::min)(blockleft, c_chunk_size) );
+				_u32 toread = (std::min)(blockleft, c_chunk_size);
+				bool readerr=false;
+				r=file->Read(chunk_buf+off,  toread, &readerr);
+
+				if(r<toread)
+				{
+					if(!readerr)
+					{
+						memset(chunk_buf+off+r, 0, toread-r);
+						r=toread;
+					}
+					else
+					{
+						sendError(ERR_READING_FAILED, getSystemErrorCode());
+					}
+				}
+				
 			}
 
 			if(r>0)
@@ -185,7 +220,21 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 			to_read = static_cast<_u32>(curr_file_size-curr_pos);
 		}
 
-		r=file->Read(cptr, to_read);
+		bool readerr=false;
+		r=file->Read(cptr, to_read, &readerr);
+
+		if(r<to_read)
+		{
+			if(readerr)
+			{
+				sendError(ERR_READING_FAILED, getSystemErrorCode());
+			}
+			else
+			{
+				memset(cptr+r, 0, to_read-r);
+				r=to_read;
+			}
+		}
 
 		if(r>0)
 		{
@@ -290,4 +339,22 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	}
 
 	return true;
+}
+
+bool ChunkSendThread::sendError( _u32 errorcode1, _u32 errorcode2 )
+{
+	char buffer[1+sizeof(_u32)*2];
+	*buffer = ID_BLOCK_ERROR;
+	memcpy(buffer+1, &errorcode1, sizeof(_u32));
+	memcpy(buffer+1+sizeof(_u32), &errorcode2, sizeof(_u32));
+
+	if(parent->SendInt(buffer, 1+sizeof(_u32)*2)==SOCKET_ERROR)
+	{
+		Log("Error sending error paket");
+		return false;
+	}
+	else
+	{
+		return true;
+	}
 }

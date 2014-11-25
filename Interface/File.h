@@ -22,10 +22,10 @@ const int MODE_RW_READNONE=10;
 class IFile : public IObject
 {
 public:
-	virtual std::string Read(_u32 tr)=0;
-	virtual _u32 Read(char* buffer, _u32 bsize)=0;
-	virtual _u32 Write(const std::string &tw)=0;
-	virtual _u32 Write(const char* buffer, _u32 bsize)=0;
+	virtual std::string Read(_u32 tr, bool *has_error=NULL)=0;
+	virtual _u32 Read(char* buffer, _u32 bsize, bool *has_error=NULL)=0;
+	virtual _u32 Write(const std::string &tw, bool *has_error=NULL)=0;
+	virtual _u32 Write(const char* buffer, _u32 bsiz, bool *has_error=NULL)=0;
 	virtual bool Seek(_i64 spos)=0;
 	virtual _i64 Size(void)=0;
 	virtual _i64 RealSize()=0;

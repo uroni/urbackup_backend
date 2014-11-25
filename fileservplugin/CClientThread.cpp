@@ -324,6 +324,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 		case ID_GET_FILE:
 		case ID_GET_FILE_RESUME_HASH:
 			{
+				errorcode = 0;
 				std::string s_filename;
 				if(data->getStr(&s_filename)==false)
 					break;
@@ -398,7 +399,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
-					hFile=NULL;
 #ifdef CHECK_BASE_PATH
 					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
 					if(!isDirectory(basePath))
@@ -450,7 +450,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
 						CloseHandle(hFile);
-						hFile=NULL;
+						hFile=INVALID_HANDLE_VALUE;
 						return false;
 					}
 				}
@@ -458,7 +458,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(filesize.QuadPart==0)
 				{
 					CloseHandle(hFile);
-					hFile=NULL;
+					hFile=INVALID_HANDLE_VALUE;
 					break;
 				}
 
@@ -482,14 +482,34 @@ bool CClientThread::ProcessPacket(CRData *data)
 						{
 							Log("Error: Send failed in file loop -1", LL_DEBUG);
 							CloseHandle(hFile);
-							hFile=NULL;
+							hFile=INVALID_HANDLE_VALUE;
 						}
 						else if(rc==0)
 							SleepEx(1,true);
 					}
 
-					if( stopped==false )
-						ReadFilePart(hFile, i, last);
+					if(errorcode!=0)
+					{
+						Log("Error occurred while reading from file. Errorcode is "+nconvert(errorcode), LL_ERROR);
+						if(hFile!=INVALID_HANDLE_VALUE)
+						{
+							CloseHandle(hFile);
+							hFile=INVALID_HANDLE_VALUE;
+						}						
+					}
+
+					if( stopped==false && hFile!=INVALID_HANDLE_VALUE)
+					{
+						if(!ReadFilePart(hFile, i, last))
+						{
+							Log("Reading from file failed. Last error is "+nconvert((unsigned int)GetLastError()), LL_ERROR);
+							if(hFile!=INVALID_HANDLE_VALUE)
+							{
+								CloseHandle(hFile);
+								hFile=INVALID_HANDLE_VALUE;
+							}
+						}
+					}
 
 					if(FileServ::isPause() )
 					{
@@ -502,8 +522,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 							if(rc==-1)
 							{
 								Log("Error: Send failed in file pause loop -2", LL_DEBUG);
-								CloseHandle(hFile);
-								hFile=NULL;
+								if(hFile!=INVALID_HANDLE_VALUE)
+								{
+									CloseHandle(hFile);
+									hFile=INVALID_HANDLE_VALUE;
+								}
 							}
 						}
 					}
@@ -523,8 +546,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if(rc==-1)
 					{
 						Log("Error: Send failed in off file loop -3", LL_DEBUG);
-						CloseHandle(hFile);
-						hFile=NULL;
+						if(hFile!=INVALID_HANDLE_VALUE)
+						{
+							CloseHandle(hFile);
+							hFile=INVALID_HANDLE_VALUE;
+						}
 						break;
 					}
 					else if(rc==0)
@@ -534,8 +560,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if( stopped==false )
 				{
 					Log("Closed file.", LL_DEBUG);
-					CloseHandle(hFile);
-					hFile=NULL;
+					if(hFile!=INVALID_HANDLE_VALUE)
+					{
+						CloseHandle(hFile);
+						hFile=INVALID_HANDLE_VALUE;
+					}
 				}
 #else //LINUX
 				hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
@@ -637,41 +666,60 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if( clientpipe==NULL && ( id==ID_GET_FILE || id==ID_GET_FILE_RESUME ) )
 					{
 						ssize_t rc=sendfile64(int_socket, hFile, &foffset, count);
-						if(rc<=0)
+						if(rc<0)
 						{
-							Log("Error: Reading and sending from file failed", LL_DEBUG);
+							Log("Error: Reading and sending from file failed. Errno: "+nconvert(errno), LL_DEBUG);
 							CloseHandle(hFile);
 							delete []buf;
 							return false;
+						}
+						else if(rc<count && foffset<filesize)
+						{
+							memset(buf, 0, s_bsize);
+							while(foffset<filesize)
+							{
+								rc=SendInt(buf, (std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
+								if(rc==SOCKET_ERROR)
+								{
+									Log("Error: Sending data failed");
+									CloseHandle(hFile);
+									delete []buf;
+									return false;
+								}
+							}
 						}
 					}
 					else
 					{
 						ssize_t rc=read(hFile, buf, count);
-						if(rc>0)
+
+						if(rc>=0 && rc<count)
 						{
-							rc=SendInt(buf, rc);
-							if(rc==SOCKET_ERROR)
-							{
-								Log("Error: Sending data failed");
-								CloseHandle(hFile);
-								delete []buf;
-								return false;
-							}
-							else if(id==ID_GET_FILE_RESUME_HASH)
-							{
-								hash_func.update((unsigned char*)buf, rc);
-							}
-							
-							foffset+=rc;
+							memset(buf+rc, 0, count-rc);
+							rc=count;
 						}
-						else
+						else if(rc<0)
 						{
-							Log("Error: Reading from file failed", LL_DEBUG);
+							Log("Error: Reading from file failed. Errno: "+nconvert(errno), LL_DEBUG);
 							CloseHandle(hFile);
 							delete []buf;
 							return false;
 						}
+
+						rc=SendInt(buf, rc);
+						if(rc==SOCKET_ERROR)
+						{
+							Log("Error: Sending data failed");
+							CloseHandle(hFile);
+							delete []buf;
+							return false;
+						}
+						else if(id==ID_GET_FILE_RESUME_HASH)
+						{
+							hash_func.update((unsigned char*)buf, rc);
+						}
+
+						foffset+=rc;
 						
 						if(id==ID_GET_FILE_RESUME_HASH && foffset==next_checkpoint)
 						{
@@ -756,6 +804,11 @@ void CALLBACK FileIOCompletionRoutine(DWORD dwErrorCode,DWORD dwNumberOfBytesTra
 {
 	SLPData *ldata=(SLPData*)lpOverlapped->hEvent;
 
+	if(dwErrorCode!=ERROR_SUCCESS)
+	{
+		*ldata->errorcode = dwErrorCode;
+	}
+
 	if( dwNumberOfBytesTransfered > 0)
 	{
 		ldata->bsize=dwNumberOfBytesTransfered;
@@ -807,7 +860,7 @@ void CALLBACK FileIOCompletionRoutine(DWORD dwErrorCode,DWORD dwNumberOfBytesTra
 #endif
 
 #ifndef LINUX
-void CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last)
+bool CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last)
 {
 	LPOVERLAPPED overlap=new OVERLAPPED;
 	//memset(overlap, 0, sizeof(OVERLAPPED) );
@@ -822,7 +875,8 @@ void CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 	{
 		Log("Error: No Free Buffer", LL_DEBUG);
 		Log("Info: Free Buffers="+nconvert(bufmgr->nfreeBufffer()), LL_DEBUG );
-		return;
+		delete ldata;
+		return true;
 	}
 
 	ldata->t_send=&t_send;
@@ -836,10 +890,14 @@ void CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 
 	++currfilepart;
 
-	if( /*GetLastError() != ERROR_SUCCESS ||*/ b==false)
+	if( b==FALSE)
 	{
 		Log("Error: Can't start reading from File", LL_DEBUG);
-		return;
+		return false;
+	}
+	else
+	{
+		return true;
 	}
 }
 #else

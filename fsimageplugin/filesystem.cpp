@@ -27,6 +27,20 @@
 #include <errno.h>
 #endif
 
+namespace
+{
+	unsigned int getLastSystemError()
+	{
+		unsigned int last_error;
+#ifdef _WIN32
+		last_error=GetLastError();
+#else
+		last_error=errno;
+#endif
+		return last_error;
+	}
+}
+
 Filesystem::Filesystem(const std::wstring &pDev)
 {
 	has_error=false;
@@ -34,13 +48,7 @@ Filesystem::Filesystem(const std::wstring &pDev)
 	dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
 	{
-		int last_error;
-#ifdef _WIN32
-		last_error=GetLastError();
-#else
-		last_error=errno;
-#endif
-		Server->Log("Error opening device file. Errorcode: "+nconvert(last_error), LL_ERROR);
+		Server->Log("Error opening device file. Errorcode: "+nconvert(getLastSystemError()), LL_ERROR);
 		has_error=true;
 	}
 	tmp_buf=NULL;
@@ -175,12 +183,12 @@ bool Filesystem::readFromDev(char *buf, _u32 bsize)
 	while(rc<bsize)
 	{
 		Server->wait(200);
-		Server->Log("Reading from device failed. Retrying.", LL_WARNING);
+		Server->Log("Reading from device failed. Retrying. Errorcode: "+nconvert(getLastSystemError()), LL_WARNING);
 		rc+=dev->Read(buf+rc, bsize-rc);
 		--tries;
 		if(tries<0)
 		{
-			Server->Log("Reading from device failed.", LL_ERROR);
+			Server->Log("Reading from device failed. Errorcode: "+nconvert(getLastSystemError()), LL_ERROR);
 			return false;
 		}
 	}
