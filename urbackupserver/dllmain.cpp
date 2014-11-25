@@ -284,15 +284,34 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		/* For attaching debugger
 		std::cout << "Process id: " << GetCurrentProcessId() << std::endl;
 		system("pause");*/
-		FileDownload dl;
 		unsigned int tcpport=43001;
 		std::string s_tcpport=Server->getServerParameter("tcpport");
 		if(!s_tcpport.empty()) tcpport=atoi(s_tcpport.c_str());
 		int method=0;
 		std::string s_method=Server->getServerParameter("method");
 		if(!s_method.empty()) method=atoi(s_method.c_str());
-		Server->Log("Starting file download...");
-		dl.filedownload(download_file, Server->getServerParameter("servername"), Server->getServerParameter("dstfn"), tcpport, method);
+
+		FileDownload dl(Server->getServerParameter("servername"), tcpport);
+
+		int predicted_filesize = atoi(Server->getServerParameter("predicted_filesize", "-1").c_str());
+		Server->Log("Starting file download... (predicted_filesize="+nconvert(predicted_filesize)+")");
+		dl.filedownload(download_file, Server->getServerParameter("dstfn"), method, predicted_filesize, SQueueStatus_NoQueue);
+		exit(1);
+	}
+
+	std::string download_file_csv=Server->getServerParameter("download_file_csv");
+	if(!download_file_csv.empty())
+	{
+		/* For attaching debugger
+		std::cout << "Process id: " << GetCurrentProcessId() << std::endl;
+		system("pause");*/
+		unsigned int tcpport=43001;
+		std::string s_tcpport=Server->getServerParameter("tcpport");
+		if(!s_tcpport.empty()) tcpport=atoi(s_tcpport.c_str());
+
+		FileDownload dl(Server->getServerParameter("servername"), tcpport);
+
+		dl.filedownload(download_file_csv);
 		exit(1);
 	}
 

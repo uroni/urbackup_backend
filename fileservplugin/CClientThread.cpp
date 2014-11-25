@@ -1170,11 +1170,6 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	curr_filesize=stat_buf.st_size;
 #endif
 
-	if(requested_filesize!=-1 && curr_filesize>requested_filesize)
-	{
-		curr_filesize = requested_filesize;
-	}
-
 	next_checkpoint=start_offset+c_checkpoint_dist;
 	if(next_checkpoint>curr_filesize)
 		next_checkpoint=curr_filesize;

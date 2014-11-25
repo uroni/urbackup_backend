@@ -543,10 +543,6 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 						Server->Log("Filesize change from expected filesize. Expected="+nconvert(remote_filesize)+" Got="+nconvert(new_remote_filesize), LL_WARNING);
 					}
 
-					{
-						Server->Log("Filesize change from expected filesize. Expected="+nconvert(remote_filesize)+" Got="+nconvert(new_remote_filesize), LL_WARNING);
-					}
-
 					VLOG(Server->Log("Receiving filesize... Filesize="+nconvert(new_remote_filesize)+" Predicted="+nconvert(remote_filesize), LL_DEBUG));
 
 					if(remote_filesize!=-1 && new_remote_filesize>remote_filesize && getNextFileClient())
@@ -559,9 +555,35 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 						}
 						return;
 					}
-					else if(remote_filesize==-1)
+					else
 					{
-						remote_filesize = new_remote_filesize;
+						if(remote_filesize!=-1 && new_remote_filesize<remote_filesize)
+						{
+							remote_filesize = new_remote_filesize;
+
+							_i64 old_num_total_chunks = num_total_chunks;
+
+							calcTotalChunks();
+
+							if(next_chunk>=num_total_chunks)
+							{
+								Server->Log("Filesize decrease from predicted filesize and problematic chunks are already queued (old_num_total_chunks="+nconvert(old_num_total_chunks)+
+									" num_total_chunks="+nconvert(num_total_chunks)+" next_chunk="+nconvert(next_chunk)+"). Reconnecting...", LL_WARNING);
+
+								if(!Reconnect(true))
+								{
+									getfile_done=true;
+									retval=ERR_CONN_LOST;
+								}
+								return;
+							}
+						}
+						else
+						{
+							remote_filesize = new_remote_filesize;
+
+							calcTotalChunks();
+						}
 					}
 
 					state=CS_ID_FIRST;
