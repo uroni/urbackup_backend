@@ -61,36 +61,37 @@ public:
 
 	}
 
-	virtual std::string Read(_u32 tr)
+	virtual std::string Read(_u32 tr, bool *has_error)
 	{
 		std::string ret;
 		ret.resize(tr);
-		_u32 gc=Read((char*)ret.c_str(), tr);
+		_u32 gc=Read((char*)ret.c_str(), tr, has_error);
 		if( gc<tr )
 			ret.resize( gc );
 
 		return ret;
 	}
 
-	virtual _u32 Read(char* buffer, _u32 bsize)
+	virtual _u32 Read(char* buffer, _u32 bsize, bool *has_error)
 	{
 		size_t read;
 		bool rc = cowfile->Read(buffer, bsize, read);
 		if(!rc)
 		{
+			if(has_error) *has_error=true;
 			read=0;
 		}
 		return static_cast<_u32>(read);
 	}
 
-	virtual _u32 Write(const std::string &tw)
+	virtual _u32 Write(const std::string &tw, bool *has_error)
 	{
-		return Write( tw.c_str(), (_u32)tw.size() );
+		return Write( tw.c_str(), (_u32)tw.size(), has_error);
 	}
 
-	virtual _u32 Write(const char* buffer, _u32 bsize)
+	virtual _u32 Write(const char* buffer, _u32 bsize, bool *has_error)
 	{
-		return cowfile->Write(buffer, bsize);
+		return cowfile->Write(buffer, bsize, has_error);
 	}
 
 	virtual bool Seek(_i64 spos)
@@ -337,13 +338,14 @@ bool CowFile::Read(char* buffer, size_t bsize, size_t& read_bytes)
 	}
 }
 
-_u32 CowFile::Write(const char* buffer, _u32 bsize)
+_u32 CowFile::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
 	if(!is_open) return 0;
 
 	ssize_t w=write(fd, buffer, bsize);
 	if( w<0 )
 	{
+		if(has_error) *has_error=true;
 		Server->Log("Write to CowFile failed. errno="+nconvert(errno), LL_DEBUG);
 		return 0;
 	}

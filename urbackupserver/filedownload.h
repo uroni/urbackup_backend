@@ -1,6 +1,7 @@
 #include "fileclient/FileClientChunked.h"
 #include "ChunkPatcher.h"
 #include <string>
+#include <memory>
 
 class IFile;
 

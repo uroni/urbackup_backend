@@ -170,7 +170,7 @@ _u32 File::Write(const std::string &tw, bool *has_error)
 
 _u32 File::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
-	ssize_t w=write(fd, buffer, bsize, has_error);
+	ssize_t w=write(fd, buffer, bsize);
 	if( w<0 )
 	{
 		Server->Log("Write failed. errno="+nconvert(errno), LL_DEBUG);

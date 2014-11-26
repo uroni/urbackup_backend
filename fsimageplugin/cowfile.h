@@ -12,7 +12,7 @@ public:
 
 	virtual bool Seek(_i64 offset);
 	virtual bool Read(char* buffer, size_t bsize, size_t &read_bytes);
-	virtual _u32 Write(const char *buffer, _u32 bsize);
+	virtual _u32 Write(const char *buffer, _u32 bsize, bool *has_error);
 	virtual bool isOpen(void);
 	virtual uint64 getSize(void);
 	virtual uint64 usedSize(void);
