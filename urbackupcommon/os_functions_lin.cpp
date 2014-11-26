@@ -19,6 +19,7 @@
 #include "os_functions.h"
 #include "../stringtools.h"
 #include "../Interface/Server.h"
+#include "../Interface/File.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>

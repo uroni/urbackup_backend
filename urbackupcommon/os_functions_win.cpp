@@ -20,6 +20,7 @@
 #include "../stringtools.h"
 #ifndef OS_FUNC_NO_SERVER
 #include "../Interface/Server.h"
+#include "../Interface/File.h"
 #endif
 #ifdef _WIN_PRE_VISTA
 #define _WIN32_WINNT 0x0500
@@ -38,7 +39,6 @@
 #ifdef USE_NTFS_TXF
 #include <KtmW32.h>
 #endif
-#include "..\Interface\File.h"
 
 namespace
 {
