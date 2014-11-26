@@ -1368,7 +1368,65 @@ void restore_wizard(void)
 					break;
 				}
 				dev->Seek(0);
-				dev->Write(mbrdata.mbr_data);
+				if(dev->Write(mbrdata.mbr_data)!=mbrdata.mbr_data.size())
+				{
+					err="error_writing_mbr";
+					state=101;
+					break;
+				}
+
+				if(mbrdata.gpt_style)
+				{
+					unsigned int physical_block_size = atoi(getFile("/sys/block/"+seldrive+"/queue/physical_block_size").c_str());
+
+					if(physical_block_size!=mbrdata.gpt_header_pos)
+					{
+						err="gpt_physical_blocksize_change";
+						state=101;
+						break;						
+					}
+
+					system("cat urbackup/restore/writing_gpt_header");
+					system("echo");
+
+					if(!dev->Seek(mbrdata.gpt_header_pos) || dev->Write(mbrdata.gpt_header)!=mbrdata.gpt_header.size())
+					{
+						err="error_writing_gpt";
+						state=101;
+						break;
+					}
+
+					system("cat urbackup/restore/writing_gpt_table");
+					system("echo");
+
+					if(!dev->Seek(mbrdata.gpt_table_pos) || dev->Write(mbrdata.gpt_table)!=mbrdata.gpt_table.size())
+					{
+						err="error_writing_gpt";
+						state=101;
+						break;
+					}
+
+					system("cat urbackup/restore/writing_backup_gpt_header");
+					system("echo");
+
+					if(!dev->Seek(mbrdata.backup_gpt_header_pos) || dev->Write(mbrdata.backup_gpt_header)!=mbrdata.backup_gpt_header.size())
+					{
+						err="error_writing_gpt";
+						state=101;
+						break;
+					}
+
+					system("cat urbackup/restore/writing_backup_gpt_table");
+					system("echo");
+
+					if(!dev->Seek(mbrdata.backup_gpt_table_pos) || dev->Write(mbrdata.backup_gpt_table)!=mbrdata.backup_gpt_table.size())
+					{
+						err="error_writing_gpt";
+						state=101;
+						break;
+					}
+				}				
+
 				Server->destroy(dev);
 
 				system("cat urbackup/restore/reading_partition_table");

@@ -1652,6 +1652,29 @@ bool ClientConnector::waitForThread(void)
 bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 {
 #ifdef _WIN32
+#pragma pack(push)
+#pragma pack(1)
+	struct EfiHeader
+	{
+		uint64 signature;
+		_u32 revision;
+		_u32 header_size;
+		_u32 header_crc;
+		_u32 reserved;
+		int64 current_lba;
+		int64 backup_lba;
+		int64 first_lba;
+		int64 last_lba;
+		char disk_guid[16];
+		int64 partition_table_lba;
+		_u32 num_parition_entries;
+		_u32 partition_entry_size;
+		_u32 partition_table_crc;
+	};
+#pragma pack(pop)
+
+	const uint64 gpt_magic = 0x5452415020494645ULL;
+
 	std::wstring vpath=dl;
 	if(!vpath.empty() && vpath[0]!='\\')
 	{
@@ -1667,31 +1690,36 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		return false;
 	}
 
+	bool gpt_style=false;
+	unsigned int physical_sector_size=512;
+
 	STORAGE_DEVICE_NUMBER dev_num;
 	DWORD ret_bytes;
 	BOOL b=DeviceIoControl(hVolume, IOCTL_STORAGE_GET_DEVICE_NUMBER, NULL, 0, &dev_num, sizeof(STORAGE_DEVICE_NUMBER), &ret_bytes, NULL);
 	
-	if(b==0)
+	bool dynamic_volume=false;
+	if(b==FALSE)
 	{
 		errmsg=L"DeviceIoControl IOCTL_STORAGE_GET_DEVICE_NUMBER failed. Volume: '"+dl+L"'";
 		Server->Log(errmsg, LL_WARNING);
+		dynamic_volume=true;
+	}
 
-		VOLUME_DISK_EXTENTS *vde=(VOLUME_DISK_EXTENTS*)new char[sizeof(VOLUME_DISK_EXTENTS)];
-		b=DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, vde, sizeof(VOLUME_DISK_EXTENTS), &ret_bytes, NULL);
+	{
+		std::auto_ptr<VOLUME_DISK_EXTENTS> vde((VOLUME_DISK_EXTENTS*)new char[sizeof(VOLUME_DISK_EXTENTS)]);
+		b=DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, vde.get(), sizeof(VOLUME_DISK_EXTENTS), &ret_bytes, NULL);
 		if(b==0 && GetLastError()==ERROR_MORE_DATA)
 		{
 			DWORD ext_num=vde->NumberOfDiskExtents;
 			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed. Extends: "+convert((int)ext_num);
 			Server->Log(errmsg, LL_WARNING);
-			delete []vde;
 			DWORD vde_size=sizeof(VOLUME_DISK_EXTENTS)+sizeof(DISK_EXTENT)*(ext_num-1);
-			vde=(VOLUME_DISK_EXTENTS*)new char[vde_size];
-			b=DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, vde, vde_size, &ret_bytes, NULL);
+			vde.reset((VOLUME_DISK_EXTENTS*)new char[vde_size]);
+			b=DeviceIoControl(hVolume, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, NULL, 0, vde.get(), vde_size, &ret_bytes, NULL);
 			if(b==0)
 			{
 				errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed twice. Volume: '"+dl+L"'";
 				Server->Log(errmsg, LL_ERROR);
-				delete []vde;
 				CloseHandle(hVolume);
 				return false;
 			}
@@ -1700,7 +1728,6 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		{
 			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS failed. Volume: '"+dl+L"' Error: "+convert((int)GetLastError());
 			Server->Log(errmsg, LL_ERROR);
-			delete []vde;
 			CloseHandle(hVolume);
 			return false;
 		}
@@ -1712,7 +1739,6 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 			{
 				errmsg=L"CreateFile of device '"+dl+L"' failed. - sendMBR";
 				Server->Log(errmsg, LL_ERROR);
-				delete []vde;
 				CloseHandle(hVolume);
 				return false;
 			}
@@ -1720,65 +1746,102 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 			DWORD numPartitions=10;
 			DWORD inf_size=sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1);
 
-			DRIVE_LAYOUT_INFORMATION_EX *inf=(DRIVE_LAYOUT_INFORMATION_EX*)new char[sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1)];
+			std::auto_ptr<DRIVE_LAYOUT_INFORMATION_EX> inf((DRIVE_LAYOUT_INFORMATION_EX*)new char[sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1)]);
 
-			b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf, inf_size, &ret_bytes, NULL);
+			b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf.get(), inf_size, &ret_bytes, NULL);
 			while(b==0 && GetLastError()==ERROR_INSUFFICIENT_BUFFER && numPartitions<1000)
 			{
 				numPartitions*=2;
-				delete []inf;			
 				inf_size=sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1);
-				inf=(DRIVE_LAYOUT_INFORMATION_EX*)new char[inf_size];
-				b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf, inf_size, &ret_bytes, NULL);
+				inf.reset((DRIVE_LAYOUT_INFORMATION_EX*)new char[inf_size]);
+				b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf.get(), inf_size, &ret_bytes, NULL);
 			}
 			if(b==0)
 			{
 				errmsg=L"DeviceIoControl IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed. Volume: '"+dl+L"' Error: "+convert((int)GetLastError());
 				Server->Log(errmsg, LL_ERROR);
-				delete []vde;
-				delete []inf;
+				CloseHandle(hDevice);
+				CloseHandle(hVolume);
+				return false;
+			}
+			
+			if(inf->PartitionStyle==PARTITION_STYLE_GPT)
+			{
+				gpt_style=true;
+			}
+			else if(inf->PartitionStyle!=PARTITION_STYLE_MBR)
+			{
+				errmsg=L"Partition style "+convert((unsigned int)inf->PartitionStyle)+L" not supported. Volume: '"+dl;
+				Server->Log(errmsg, LL_ERROR);
 				CloseHandle(hDevice);
 				CloseHandle(hVolume);
 				return false;
 			}
 
-			bool found=false;
-			for(DWORD j=0;j<vde->NumberOfDiskExtents;++j)
+			if(gpt_style)
 			{
-				for(DWORD i=0;i<inf->PartitionCount;++i)
-				{				
-					if(inf->PartitionEntry[i].StartingOffset.QuadPart==vde->Extents[j].StartingOffset.QuadPart)
+				STORAGE_PROPERTY_QUERY query = {};
+				query.PropertyId = StorageAccessAlignmentProperty;
+				query.QueryType = PropertyStandardQuery;
+
+				STORAGE_ACCESS_ALIGNMENT_DESCRIPTOR alignment_descriptor;
+				
+				b=DeviceIoControl( hVolume, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), 
+					&alignment_descriptor, sizeof(alignment_descriptor), 
+					&ret_bytes,	NULL);
+
+				if(b==FALSE)
+				{
+					Server->Log(L"Cannot get physical sector size of volume: '"+dl+L". Assuming 512 bytes.", LL_WARNING);
+				}
+				else
+				{
+					physical_sector_size = alignment_descriptor.BytesPerPhysicalSector;
+
+					if( !((physical_sector_size & (physical_sector_size-1))==0) || 
+						physical_sector_size==0 )
 					{
-						dev_num.PartitionNumber=inf->PartitionEntry[i].PartitionNumber;
-						dev_num.DeviceNumber=vde->Extents[j].DiskNumber;
-						found=true;
+						physical_sector_size = alignment_descriptor.BytesPerLogicalSector;
+					}
+				}				
+			}
+
+			if(dynamic_volume)
+			{
+				bool found=false;
+				for(DWORD j=0;j<vde->NumberOfDiskExtents;++j)
+				{
+					for(DWORD i=0;i<inf->PartitionCount;++i)
+					{				
+						if(inf->PartitionEntry[i].StartingOffset.QuadPart==vde->Extents[j].StartingOffset.QuadPart)
+						{
+							dev_num.PartitionNumber=inf->PartitionEntry[i].PartitionNumber;
+							dev_num.DeviceNumber=vde->Extents[j].DiskNumber;
+							found=true;
+						}
 					}
 				}
-			}		
 
-			delete []vde;
-			delete []inf;
-
-			CloseHandle(hDevice);
-
-			if(found)
-			{
-				errmsg=L"Dynamic volumes are not supported. It may work with mirrored whole disk volumes though. Volume: '"+dl+L"'";
-				Server->Log(errmsg, LL_WARNING);
+				if(found)
+				{
+					errmsg=L"Dynamic volumes are not supported. It may work with mirrored whole disk volumes though. Volume: '"+dl+L"'";
+					Server->Log(errmsg, LL_WARNING);
+				}
+				else
+				{
+					errmsg=L"Did not find PartitionNumber of dynamic volume. Volume: '"+dl+L"'";
+					Server->Log(errmsg, LL_ERROR);
+					CloseHandle(hVolume);
+					return false;
+				}
 			}
-			else
-			{
-				errmsg=L"Did not find PartitionNumber of dynamic volume. Volume: '"+dl+L"'";
-				Server->Log(errmsg, LL_ERROR);
-				CloseHandle(hVolume);
-				return false;
-			}
+
+			CloseHandle(hDevice);						
 		}
 		else
 		{
 			errmsg=L"DeviceIoControl IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS returned no extends. Volume: '"+dl+L"'";
 			Server->Log(errmsg, LL_ERROR);
-			delete []vde;
 			CloseHandle(hVolume);
 			return false;
 		}
@@ -1801,7 +1864,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 	CWData mbr;
 	mbr.addChar(1);
-	mbr.addChar(0);
+	mbr.addChar(gpt_style?1:0);
 	mbr.addInt(dev_num.DeviceNumber);
 	mbr.addInt(dev_num.PartitionNumber);
 	mbr.addString(nconvert((_i64)voln_sern));
@@ -1821,6 +1884,123 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 	mbr.addString(mbr_bytes);
 
+	if(gpt_style)
+	{
+		if(!dev->Seek(physical_sector_size))
+		{
+			errmsg=L"Error seeking in device to GPT header "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		std::string gpt_header = dev->Read(physical_sector_size);
+
+		if(gpt_header.size()!=physical_sector_size)
+		{
+			errmsg=L"Error reading GPT header "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		if(gpt_header.size()<sizeof(EfiHeader))
+		{
+			errmsg=L"GPT header too small "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		const EfiHeader* gpt_header_s = reinterpret_cast<const EfiHeader*>(gpt_header.data());
+
+		if(gpt_header_s->signature!=gpt_magic)
+		{
+			errmsg=L"GPT magic wrong "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		mbr.addInt64(physical_sector_size);
+		mbr.addString(gpt_header);
+
+		int64 paritition_table_pos = gpt_header_s->partition_table_lba*physical_sector_size;
+		if(!dev->Seek(paritition_table_pos))
+		{
+			errmsg=L"Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		_u32 toread = gpt_header_s->num_parition_entries*gpt_header_s->partition_entry_size;
+		std::string gpt_table = dev->Read(toread);
+
+		if(gpt_table.size()!=toread)
+		{
+			errmsg=L"Error reading GPT partition table "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		mbr.addInt64(paritition_table_pos);
+		mbr.addString(gpt_table);
+
+		// BACKUP HEADER
+		int64 backup_gpt_location = gpt_header_s->backup_lba*physical_sector_size;
+		if(!dev->Seek(backup_gpt_location))
+		{
+			errmsg=L"Error seeking in device to backup GPT header "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		gpt_header = dev->Read(physical_sector_size);
+
+		if(gpt_header.size()!=physical_sector_size)
+		{
+			errmsg=L"Error reading backup GPT header "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		if(gpt_header.size()<sizeof(EfiHeader))
+		{
+			errmsg=L"Backup GPT header too small "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		const EfiHeader* backup_gpt_header_s = reinterpret_cast<const EfiHeader*>(gpt_header.data());
+
+		if(backup_gpt_header_s->signature!=gpt_magic)
+		{
+			errmsg=L"Backup GPT magic wrong "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		mbr.addInt64(backup_gpt_location);
+		mbr.addString(gpt_header);
+
+		paritition_table_pos = backup_gpt_header_s->partition_table_lba*physical_sector_size;
+		if(!dev->Seek(paritition_table_pos))
+		{
+			errmsg=L"Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		toread = backup_gpt_header_s->num_parition_entries*backup_gpt_header_s->partition_entry_size;
+		gpt_table = dev->Read(toread);
+
+		if(gpt_table.size()!=toread)
+		{
+			errmsg=L"Error reading GPT partition table "+convert((int)dev_num.DeviceNumber);
+			Server->Log(errmsg, LL_ERROR);
+			return false;
+		}
+
+		mbr.addInt64(paritition_table_pos);
+		mbr.addString(gpt_table);
+	}
+	
 	mbr.addString(Server->ConvertToUTF8(errmsg));
 
 	tcpstack.Send(pipe, mbr);

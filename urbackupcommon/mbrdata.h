@@ -17,9 +17,9 @@ public:
 			Server->Log("Cannot read version", LL_ERROR);
 			has_error=true;return;
 		}
-		if(version!=0)
+		if(version!=0 && version!=1)
 		{
-			Server->Log("Version is wrong", LL_ERROR);
+			Server->Log("MBR data version not supported: "+nconvert(version), LL_ERROR);
 			has_error=true;return;
 		}
 		if(!data.getInt(&device_number))
@@ -55,6 +55,57 @@ public:
 			Server->Log("Cannot get mbr data", LL_ERROR);
 			has_error=true;return;
 		}
+		if(version==1)
+		{
+			gpt_style=true;
+
+			if(!data.getInt64(&gpt_header_pos))
+			{
+				Server->Log("Cannot get GPT header pos", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getStr(&gpt_header))
+			{
+				Server->Log("Cannot get GPT header", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getInt64(&gpt_table_pos))
+			{
+				Server->Log("Cannot get GPT table pos", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getStr(&gpt_table))
+			{
+				Server->Log("Cannot get GPT table", LL_ERROR);
+				has_error=true;return;
+			}
+
+			if(!data.getInt64(&backup_gpt_header_pos))
+			{
+				Server->Log("Cannot get backup GPT header pos", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getStr(&backup_gpt_header))
+			{
+				Server->Log("Cannot get backup GPT header", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getInt64(&backup_gpt_table_pos))
+			{
+				Server->Log("Cannot get backup GPT table pos", LL_ERROR);
+				has_error=true;return;
+			}
+			if(!data.getStr(&backup_gpt_table))
+			{
+				Server->Log("Cannot get backup GPT table", LL_ERROR);
+				has_error=true;return;
+			}
+		}
+		else
+		{
+			gpt_style=false;
+		}
+
 		has_error=false;
 		data.getStr(&errmsg);
 	}
@@ -92,6 +143,20 @@ public:
 	std::wstring fsn;
 	std::string mbr_data;
 	std::string errmsg;
+
+	bool gpt_style;
+
+	int64 gpt_header_pos;
+	std::string gpt_header;
+
+	int64 gpt_table_pos;
+	std::string gpt_table;
+
+	int64 backup_gpt_header_pos;
+	std::string backup_gpt_header;
+
+	int64 backup_gpt_table_pos;
+	std::string backup_gpt_table;
 
 private:
 	bool has_error;

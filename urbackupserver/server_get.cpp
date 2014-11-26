@@ -4245,9 +4245,9 @@ std::string BackupServerGet::getMBR(const std::wstring &dl)
 		char ver;
 		if(r.getChar(&ver) )
 		{
-			if(ver!=0)
+			if(ver!=0 && ver!=1)
 			{
-				ServerLogger::Log(clientid, L"Server version does not fit", LL_ERROR);
+				ServerLogger::Log(clientid, L"MBR version "+convert((int)ver)+L" is not supported by this server", LL_ERROR);
 			}
 			else
 			{

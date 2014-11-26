@@ -35,7 +35,6 @@
 #include <memory.h>
 #include <algorithm>
 
-const unsigned int waittime=50*1000; //1 min
 const int max_offline=5;
 
 IPipeThrottler *BackupServer::global_internet_throttler=NULL;
@@ -157,7 +156,12 @@ void BackupServer::operator()(void)
 		}
 
 		std::string r;
-		exitpipe->Read(&r, 20000);
+#ifndef _DEBUG
+		int exitpipetimeout = 20000;
+#else
+		int exitpipetimeout = 0;
+#endif
+		exitpipe->Read(&r, exitpipetimeout);
 		if(r=="exit")
 		{
 			removeAllClients();
