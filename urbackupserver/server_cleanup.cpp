@@ -209,7 +209,7 @@ void ServerCleanupThread::operator()(void)
 
 				ScopedActiveThread sat;
 
-				if( settings->getValue("autoupdate_clients", "true")=="true" )
+				if( settings->getValue("download_client", "true")=="true" )
 				{
 					ServerUpdate upd;
 					upd.update_client();
