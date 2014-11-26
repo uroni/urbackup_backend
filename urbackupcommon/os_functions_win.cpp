@@ -38,6 +38,7 @@
 #ifdef USE_NTFS_TXF
 #include <KtmW32.h>
 #endif
+#include "..\Interface\File.h"
 
 namespace
 {
@@ -1017,5 +1018,44 @@ bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified
 	else
 	{
 		return false;
+	}
+}
+
+bool copy_file(const std::wstring &src, const std::wstring &dst)
+{
+	IFile *fsrc=Server->openFile(src, MODE_READ);
+	if(fsrc==NULL) return false;
+	IFile *fdst=Server->openFile(dst, MODE_WRITE);
+	if(fdst==NULL)
+	{
+		Server->destroy(fsrc);
+		return false;
+	}
+	char buf[4096];
+	size_t rc;
+	bool has_error=false;
+	while( (rc=(_u32)fsrc->Read(buf, 4096, &has_error))>0)
+	{
+		if(rc>0)
+		{
+			fdst->Write(buf, (_u32)rc, &has_error);
+
+			if(has_error)
+			{
+				break;
+			}
+		}
+	}
+
+	Server->destroy(fsrc);
+	Server->destroy(fdst);
+
+	if(has_error)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
 	}
 }

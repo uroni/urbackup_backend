@@ -86,32 +86,6 @@ const std::string new_file="urbackup/new.txt";
 THREADPOOL_TICKET indexthread_ticket;
 THREADPOOL_TICKET internetclient_ticket;
 
-namespace
-{
-
-bool copy_file(const std::wstring &src, const std::wstring &dst)
-{
-	IFile *fsrc=Server->openFile(src, MODE_READ);
-	if(fsrc==NULL) return false;
-	IFile *fdst=Server->openFile(dst, MODE_WRITE);
-	if(fdst==NULL)
-	{
-		Server->destroy(fsrc);
-		return false;
-	}
-	char buf[4096];
-	size_t rc;
-	while( (rc=(_u32)fsrc->Read(buf, 4096))>0)
-	{
-		fdst->Write(buf, (_u32)rc);
-	}
-	
-	Server->destroy(fsrc);
-	Server->destroy(fdst);
-	return true;
-}
-
-}
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {

@@ -97,4 +97,6 @@ int64 os_to_windows_filetime(int64 unix_time);
 
 bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified);
 
+bool copy_file(const std::wstring &src, const std::wstring &dst);
+
 #endif //OS_FUNCTIONS_H

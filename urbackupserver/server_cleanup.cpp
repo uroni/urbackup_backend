@@ -142,6 +142,13 @@ void ServerCleanupThread::operator()(void)
 			fileindex.reset();
 
 			backup_database();
+
+			ren_files_backupfolder();
+
+			if(	backup_clientlists() && backup_ident() )
+			{
+				clear_backupfolder();
+			}
 		}
 
 		if( settings->getValue("download_client", "true")=="true" )
@@ -236,6 +243,13 @@ void ServerCleanupThread::operator()(void)
 				fileindex.reset();
 
 				backup_database();
+
+				ren_files_backupfolder();
+
+				if(	backup_clientlists() && backup_ident() )
+				{
+					clear_backupfolder();
+				}
 
 				Server->destroy(settings);
 
@@ -1723,6 +1737,112 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 	db->AttachDBs();
 
 	db->destroyQuery(q_iterate);
+}
+
+bool ServerCleanupThread::backup_clientlists()
+{
+	ServerSettings settings(db);
+
+	if(settings.getSettings()->backup_database)
+	{
+		std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
+
+		std::wstring srcfolder = Server->getServerWorkingDir()+os_file_sep()+L"urbackup";
+		std::vector<SFile> files = getFiles(srcfolder);
+
+		bool has_error=false;
+		for(size_t i=0;i<files.size();++i)
+		{
+			if(files[i].name.find(L"clientlist")==0)
+			{
+				if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + files[i].name), os_file_prefix(bfolder + os_file_sep() + files[i].name)))
+				{
+					Server->Log(L"Error backing up "+files[i].name, LL_ERROR);
+					has_error=true;
+				}
+			}
+		}
+
+		return !has_error;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+void ServerCleanupThread::ren_files_backupfolder()
+{
+	ServerSettings settings(db);
+
+	std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
+
+	if(!os_directory_exists(bfolder) )
+	{
+		os_create_dir(bfolder);
+		return;
+	}
+
+	std::vector<SFile> files = getFiles(bfolder);
+
+	for(size_t i=0;i<files.size();++i)
+	{
+		if(!files[i].isdir && files[i].name!=L"backup_server.db" &&
+			files[i].name!=L"backup_server_settings.db" &&
+			!files[i].name.empty() &&
+			files[i].name[files[i].name.size()-1]!='~')
+		{
+			os_rename_file(os_file_prefix(bfolder+os_file_sep()+files[i].name), os_file_prefix(bfolder+os_file_sep()+files[i].name+L"~"));
+		}
+	}
+}
+
+void ServerCleanupThread::clear_backupfolder()
+{
+	ServerSettings settings(db);
+
+	std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
+
+	std::vector<SFile> files = getFiles(bfolder);
+
+	for(size_t i=0;i<files.size();++i)
+	{
+		if(!files[i].isdir && files[i].name!=L"backup_server.db" &&
+			files[i].name!=L"backup_server_settings.db" &&
+			!files[i].name.empty() &&
+			files[i].name[files[i].name.size()-1]=='~')
+		{
+			Server->deleteFile(bfolder+os_file_sep()+files[i].name);
+		}
+	}
+}
+
+bool ServerCleanupThread::backup_ident()
+{
+	ServerSettings settings(db);
+
+	std::wstring bfolder=settings.getSettings()->backupfolder+os_file_sep()+L"urbackup";
+
+	std::wstring srcfolder = Server->getServerWorkingDir()+os_file_sep()+L"urbackup";
+	std::vector<SFile> files = getFiles(srcfolder);
+
+	std::vector<std::wstring> filelist;
+
+	filelist.push_back(L"server_ident.key");
+	filelist.push_back(L"server_ident.priv");
+	filelist.push_back(L"server_ident.pub");
+
+	bool has_error=false;
+	for(size_t i=0;i<filelist.size();++i)
+	{
+		if(!copy_file(os_file_prefix(srcfolder + os_file_sep() + filelist[i]), os_file_prefix(bfolder + os_file_sep() + filelist[i])))
+		{
+			Server->Log(L"Error backing up "+filelist[i], LL_ERROR);
+			has_error=true;
+		}
+	}
+
+	return !has_error;
 }
 
 

@@ -138,7 +138,10 @@ private:
 	bool enforce_quota(int clientid, std::ostringstream& log);
 
 	void delete_incomplete_file_backups(void);
-
+	bool backup_clientlists();
+	bool backup_ident();
+	void ren_files_backupfolder();
+	void clear_backupfolder();
 	IDatabase *db;
 
 	static IMutex *mutex;
