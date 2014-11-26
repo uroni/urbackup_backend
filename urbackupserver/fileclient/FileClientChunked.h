@@ -236,6 +236,8 @@ private:
 
 	_u32 errorcode1;
 	_u32 errorcode2;
+	
+	bool reconnected;
 };
 
 #endif //FILECLIENTCHUNKED_H

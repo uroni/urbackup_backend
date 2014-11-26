@@ -28,7 +28,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 	: pipe(pipe), destroy_pipe(del_pipe), stack(stack), transferred_bytes(0), reconnection_callback(reconnection_callback),
 	  nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), identity(identity), received_data_bytes(0),
 	  parent(prev), queue_only(false), queue_callback(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0),
-	  last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL)
+	  last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), reconnected(false)
 {
 	has_error=false;
 	if(parent==NULL)
@@ -44,7 +44,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 FileClientChunked::FileClientChunked(void)
 	: pipe(NULL), stack(NULL), destroy_pipe(false), transferred_bytes(0), reconnection_callback(NULL), reconnection_timeout(300000), received_data_bytes(0),
 	  parent(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0), last_transferred_bytes(0), last_progress_log(0),
-	  progress_log_callback(NULL)
+	  progress_log_callback(NULL), reconnected(false)
 {
 	has_error=true;
 	mutex=NULL;
@@ -410,6 +410,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 
 _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesize )
 {
+	reconnected=false;
 	bufptr=buf;
 	remaining_bufptr_bytes=bsize;
 	while(bufptr<buf+bsize)
@@ -467,6 +468,11 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 		if(getfile_done)
 		{
 			return retval;				
+		}
+		
+		if(reconnected)
+		{
+			continue;
 		}
 	}
 
@@ -1194,6 +1200,7 @@ bool FileClientChunked::Reconnect(bool rerequest)
 			patch_buf_pos=0;
 			did_queue_fc=false;
 			md5_hash.init();
+			reconnected=true;
 
 			_i64 fileoffset=0;
 
