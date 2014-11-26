@@ -72,6 +72,8 @@ void DirectoryWatcherThread::operator()(void)
 
 	ChangeJournalWatcher dcw(this, db);
 
+	dcw.add_listener(this);
+
 	{
 		db_results res = db->Read("SELECT tvalue FROM misc WHERE tkey='last_backup_filetime'");
 		if(!res.empty())

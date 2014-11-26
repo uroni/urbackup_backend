@@ -150,7 +150,7 @@ const DWORDLONG usn_reindex_num=1000000; // one million
 //#define MFT_ON_DEMAND_LOOKUP
 
 ChangeJournalWatcher::ChangeJournalWatcher(DirectoryWatcherThread * dwt, IDatabase *pDB)
-	: dwt(dwt), db(pDB), last_backup_time(0), journal_dao(pDB), unsupported_usn_version_err(false)
+	: dwt(dwt), db(pDB), last_backup_time(0), journal_dao(pDB), unsupported_usn_version_err(false), freeze_open_write_files(false)
 {
 	indexing_in_progress=false;
 	has_error=false;
