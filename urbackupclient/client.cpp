@@ -873,9 +873,9 @@ void IndexThread::indexDirs(void)
 				std::vector<std::wstring> acd=cd->getChangedDirs(strlower(backup_dirs[i].path), false);
 				for(size_t j=0;j<acd.size();++j)
 				{
-					if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[i]))
+					if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), acd[j]))
 					{
-						changed_dirs.push_back(acd[i]);
+						changed_dirs.push_back(acd[j]);
 					}
 				}
 				std::sort(changed_dirs.begin(), changed_dirs.end());

@@ -518,7 +518,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 							}
 							else
 							{
-								ServerLogger::Log(clientid, "Error opening hash source file", LL_ERROR);
+								ServerLogger::Log(clientid, L"Error opening hash source file \""+existing_file.hashpath+L"\"", LL_ERROR);
 							}
 						}
 
