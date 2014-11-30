@@ -15,9 +15,6 @@
 *    You should have received a copy of the GNU General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
-#ifndef CLIENT_ONLY
-
 #include "server_hash.h"
 #include "server_prepare_hash.h"
 #include "server_settings.h"
@@ -1486,5 +1483,3 @@ bool BackupServerHash::correctPath( std::wstring& ff, std::wstring& f_hashpath )
 	return false;
 }
 
-
-#endif //CLIENT_ONLY

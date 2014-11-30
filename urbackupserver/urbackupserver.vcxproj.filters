@@ -54,13 +54,7 @@
     <ClCompile Include="server_cleanup.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="server_get.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="server_hash.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="server_image.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="server_log.cpp">
@@ -240,9 +234,6 @@
     <ClCompile Include="apps\export_auth_log.cpp">
       <Filter>apps</Filter>
     </ClCompile>
-    <ClCompile Include="server_download.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="server_hash_existing.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -270,6 +261,30 @@
     <ClCompile Include="apps\check_files_index.cpp">
       <Filter>apps</Filter>
     </ClCompile>
+    <ClCompile Include="FullFileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="IncrFileBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="Backup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ContinuousBackup.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ServerDownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="ClientMain.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -288,9 +303,6 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="server_cleanup.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="server_get.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="server_hash.h">
@@ -455,9 +467,6 @@
     <ClInclude Include="apps\export_auth_log.h">
       <Filter>apps</Filter>
     </ClInclude>
-    <ClInclude Include="server_download.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="server_hash_existing.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -483,6 +492,30 @@
       <Filter>serverinterface</Filter>
     </ClInclude>
     <ClInclude Include="server_continuous.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FullFileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="IncrFileBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="Backup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ContinuousBackup.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerDownloadThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientMain.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

@@ -25,7 +25,7 @@
 #include "../../urbackupcommon/os_functions.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../../urbackupcommon/settingslist.h"
-#include "../server_get.h"
+#include "../ClientMain.h"
 #include "../server_archive.h"
 #include "../dao/ServerBackupDao.h"
 #include "../server.h"
@@ -916,7 +916,7 @@ ACTION_IMPL(settings)
 			std::wstring testmailaddr=GET[L"testmailaddr"];
 			if(!testmailaddr.empty())
 			{
-				MailServer mail_server=BackupServerGet::getMailServerSettings();
+				MailServer mail_server=ClientMain::getMailServerSettings();
 				if(url_fak!=NULL)
 				{
 					std::vector<std::string> to;

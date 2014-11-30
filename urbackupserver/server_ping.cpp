@@ -19,15 +19,15 @@
 #ifndef CLIENT_ONLY
 
 #include "server_ping.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 
 const int64 ping_intervall=10000;
 extern std::string server_token;
 
-ServerPingThread::ServerPingThread(BackupServerGet *pServer_get, bool with_eta)
-	: server_get(pServer_get), with_eta(with_eta)
+ServerPingThread::ServerPingThread(ClientMain *client_main, bool with_eta)
+	: client_main(client_main), with_eta(with_eta)
 {
 	stop=false;
 	is_timeout=false;
@@ -40,17 +40,17 @@ void ServerPingThread::operator()(void)
 	{
 		//Server->Log("Sending ping running...", LL_DEBUG);
 		std::string pcdone;
-		int i_pcdone = server_get->getPCDone();
+		int i_pcdone = client_main->getPCDone();
 		if(i_pcdone>=0)
 		{
 			pcdone=nconvert(i_pcdone);
 		}
 
-		int64 etams = server_get->getETAms();
+		int64 etams = client_main->getETAms();
 
 		if(!with_eta || etams<0)
 		{
-			if(server_get->sendClientMessage("PING RUNNING -"+pcdone+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false, LL_DEBUG))
+			if(client_main->sendClientMessage("PING RUNNING -"+pcdone+"-#token="+server_token, "OK", L"Error sending 'running' ping to client", 30000, false, LL_DEBUG))
 			{
 				last_ping_ok=Server->getTimeMS();
 			}
@@ -61,7 +61,7 @@ void ServerPingThread::operator()(void)
 			{
 				etams=61*1000;
 			}
-			if(server_get->sendClientMessage("2PING RUNNING pc_done="+pcdone+"&eta_ms="+nconvert(etams)+"#token="+server_token, "OK", L"Error sending 'running' (2) ping to client", 30000, false, LL_DEBUG))
+			if(client_main->sendClientMessage("2PING RUNNING pc_done="+pcdone+"&eta_ms="+nconvert(etams)+"#token="+server_token, "OK", L"Error sending 'running' (2) ping to client", 30000, false, LL_DEBUG))
 			{
 				last_ping_ok=Server->getTimeMS();
 			}

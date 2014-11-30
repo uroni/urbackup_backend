@@ -97,6 +97,7 @@ struct SSettings
 	bool verify_using_client_hashes;
 	bool internet_readd_file_entries;
 	std::string client_access_key;
+	int max_running_jobs_per_client;
 };
 
 struct STimeSpan

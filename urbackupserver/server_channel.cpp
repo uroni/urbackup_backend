@@ -22,7 +22,7 @@
 #include "../Interface/Database.h"
 #include "../Interface/Query.h"
 #include "database.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include "../fsimageplugin/IFSImageFactory.h"
@@ -91,8 +91,8 @@ namespace
 	};
 }
 
-ServerChannelThread::ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode, const std::string& identity) :
-server_get(pServer_get), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
+ServerChannelThread::ServerChannelThread(ClientMain *client_main, int clientid, bool internet_mode, const std::string& identity) :
+	client_main(client_main), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -127,7 +127,7 @@ void ServerChannelThread::operator()(void)
 	{
 		if(input==NULL)
 		{
-			IPipe *np=server_get->getClientCommandConnection(10000, &client_addr);
+			IPipe *np=client_main->getClientCommandConnection(10000, &client_addr);
 			if(np==NULL)
 			{
 				Server->Log("Connecting Channel to ClientService failed - CONNECT error -55", LL_DEBUG);
@@ -242,11 +242,11 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	}
 	else if(msg=="START BACKUP INCR")
 	{
-		server_get->sendToPipe("START BACKUP INCR");
+		client_main->sendToPipe("START BACKUP INCR");
 	}
 	else if(msg=="START BACKUP FULL")
 	{
-		server_get->sendToPipe("START BACKUP FULL");
+		client_main->sendToPipe("START BACKUP FULL");
 	}
 	else if(msg=="PING")
 	{
@@ -254,15 +254,15 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	}
 	else if(msg=="UPDATE SETTINGS")
 	{
-		server_get->sendToPipe("UPDATE SETTINGS");
+		client_main->sendToPipe("UPDATE SETTINGS");
 	}
 	else if(msg=="START IMAGE FULL")
 	{
-		server_get->sendToPipe("START IMAGE FULL");
+		client_main->sendToPipe("START IMAGE FULL");
 	}
 	else if(msg=="START IMAGE INCR")
 	{
-		server_get->sendToPipe("START IMAGE INCR");
+		client_main->sendToPipe("START IMAGE INCR");
 	}
 	else if(next(msg, 0, "LOGIN ") && !internet_mode)
 	{
@@ -297,7 +297,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	}
 	else if(next(msg, 0, "CHANGES "))
 	{
-		server_get->addContinuousChanges(msg.substr(8));
+		client_main->addContinuousChanges(msg.substr(8));
 	}
 	else
 	{

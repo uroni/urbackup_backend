@@ -1,3 +1,21 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2014 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "server_update_stats.h"
 #include "database.h"
 #include "../Interface/Server.h"
@@ -8,7 +26,7 @@
 #include "../stringtools.h"
 #include "server_settings.h"
 #include "server_status.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "../Interface/DatabaseCursor.h"
 #include "create_files_index.h"
 #include <algorithm>
@@ -56,7 +74,7 @@ void ServerUpdateStats::operator()(void)
 {
 	if(interruptible)
 	{
-		if( BackupServerGet::getNumberOfRunningFileBackups()>0 )
+		if( ClientMain::getNumberOfRunningFileBackups()>0 )
 		{
 			return;
 		}
@@ -210,7 +228,7 @@ void ServerUpdateStats::update_files(void)
 	{
 		if(interruptible)
 		{
-			if( BackupServerGet::getNumberOfRunningFileBackups()>0 )
+			if( ClientMain::getNumberOfRunningFileBackups()>0 )
 			{
 				interrupted=true;
 				break;

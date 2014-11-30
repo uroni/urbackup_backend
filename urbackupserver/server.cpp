@@ -22,7 +22,7 @@
 #include "../Interface/Server.h"
 #include "../Interface/Database.h"
 #include "../Interface/ThreadPool.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "database.h"
 #include "../Interface/SettingsReader.h"
 #include "server_status.h"
@@ -301,7 +301,7 @@ void BackupServer::startClients(FileClient &fc)
 			if(snapshots_enabled)
 				use_reflink=true;
 #endif
-			BackupServerGet *client=new BackupServerGet(np, servers[i], names[i], inetclient[i], snapshots_enabled, use_reflink);
+			ClientMain *client=new ClientMain(np, servers[i], names[i], inetclient[i], snapshots_enabled, use_reflink);
 			Server->getThreadPool()->execute(client);
 
 			SClient c;

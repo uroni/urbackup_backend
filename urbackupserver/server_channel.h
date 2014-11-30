@@ -4,7 +4,7 @@
 #include "fileclient/socket_header.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 
-class BackupServerGet;
+class ClientMain;
 
 class ServerSettings;
 namespace {
@@ -14,7 +14,7 @@ class SessionKeepaliveThread;
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(BackupServerGet *pServer_get, int clientid, bool internet_mode, const std::string& identiy);
+	ServerChannelThread(ClientMain *client_main, int clientid, bool internet_mode, const std::string& identiy);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -38,7 +38,7 @@ private:
 	void GET_BACKUPIMAGES(const std::wstring& clientname);
 	void DOWNLOAD_IMAGE(str_map& params);
 
-	BackupServerGet *server_get;
+	ClientMain *client_main;
 	IPipe *exitpipe;
 	IPipe *input;
 	CTCPStack tcpstack;

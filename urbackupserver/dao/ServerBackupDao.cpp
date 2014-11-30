@@ -1180,6 +1180,477 @@ ServerBackupDao::CondInt64 ServerBackupDao::lookupEntryIdByPath(const std::wstri
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::newFileBackup
+* @sql
+*       INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup)
+*		VALUES (:incremental(int), :clientid(int), :path(string), 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, :resumed(int), :indexing_time_ms(int64), :tgroup(int) )
+*/
+void ServerBackupDao::newFileBackup(int incremental, int clientid, const std::wstring& path, int resumed, int64 indexing_time_ms, int tgroup)
+{
+	if(q_newFileBackup==NULL)
+	{
+		q_newFileBackup=db->Prepare("INSERT INTO backups (incremental, clientid, path, complete, running, size_bytes, done, archived, size_calculated, resumed, indexing_time_ms, tgroup) VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP, -1, 0, 0, 0, ?, ?, ? )", false);
+	}
+	q_newFileBackup->Bind(incremental);
+	q_newFileBackup->Bind(clientid);
+	q_newFileBackup->Bind(path);
+	q_newFileBackup->Bind(resumed);
+	q_newFileBackup->Bind(indexing_time_ms);
+	q_newFileBackup->Bind(tgroup);
+	q_newFileBackup->Write();
+	q_newFileBackup->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateFileBackupRunning
+* @sql
+*       UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=:backupid(int)
+*/
+void ServerBackupDao::updateFileBackupRunning(int backupid)
+{
+	if(q_updateFileBackupRunning==NULL)
+	{
+		q_updateFileBackupRunning=db->Prepare("UPDATE backups SET running=CURRENT_TIMESTAMP WHERE id=?", false);
+	}
+	q_updateFileBackupRunning->Bind(backupid);
+	q_updateFileBackupRunning->Write();
+	q_updateFileBackupRunning->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setFileBackupDone
+* @sql
+*       UPDATE backups SET done=1 WHERE id=:backupid(int)
+*/
+void ServerBackupDao::setFileBackupDone(int backupid)
+{
+	if(q_setFileBackupDone==NULL)
+	{
+		q_setFileBackupDone=db->Prepare("UPDATE backups SET done=1 WHERE id=?", false);
+	}
+	q_setFileBackupDone->Bind(backupid);
+	q_setFileBackupDone->Write();
+	q_setFileBackupDone->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func SLastIncremental ServerBackupDao::getLastIncrementalFileBackup
+* @return int incremental, string path, int resumed, int complete, int id
+* @sql
+*       SELECT incremental, path, resumed, complete, id FROM backups WHERE clientid=:clientid(int) AND tgroup=:tgroup(int) AND done=1 ORDER BY backuptime DESC LIMIT 1
+*/
+ServerBackupDao::SLastIncremental ServerBackupDao::getLastIncrementalFileBackup(int clientid, int tgroup)
+{
+	if(q_getLastIncrementalFileBackup==NULL)
+	{
+		q_getLastIncrementalFileBackup=db->Prepare("SELECT incremental, path, resumed, complete, id FROM backups WHERE clientid=? AND tgroup=? AND done=1 ORDER BY backuptime DESC LIMIT 1", false);
+	}
+	q_getLastIncrementalFileBackup->Bind(clientid);
+	q_getLastIncrementalFileBackup->Bind(tgroup);
+	db_results res=q_getLastIncrementalFileBackup->Read();
+	q_getLastIncrementalFileBackup->Reset();
+	SLastIncremental ret = { false, 0, L"", 0, 0, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.incremental=watoi(res[0][L"incremental"]);
+		ret.path=res[0][L"path"];
+		ret.resumed=watoi(res[0][L"resumed"]);
+		ret.complete=watoi(res[0][L"complete"]);
+		ret.id=watoi(res[0][L"id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func SLastIncremental ServerBackupDao::getLastIncrementalCompleteFileBackup
+* @return int incremental, string path, int resumed, int complete, int id
+* @sql
+*       SELECT incremental, path, resumed, complete, id FROM backups WHERE clientid=:clientid(int) AND tgroup=:tgroup(int) AND done=1 AND complete=1 
+*                ORDER BY backuptime DESC LIMIT 1
+*/
+ServerBackupDao::SLastIncremental ServerBackupDao::getLastIncrementalCompleteFileBackup(int clientid, int tgroup)
+{
+	if(q_getLastIncrementalCompleteFileBackup==NULL)
+	{
+		q_getLastIncrementalCompleteFileBackup=db->Prepare("SELECT incremental, path, resumed, complete, id FROM backups WHERE clientid=? AND tgroup=? AND done=1 AND complete=1  ORDER BY backuptime DESC LIMIT 1", false);
+	}
+	q_getLastIncrementalCompleteFileBackup->Bind(clientid);
+	q_getLastIncrementalCompleteFileBackup->Bind(tgroup);
+	db_results res=q_getLastIncrementalCompleteFileBackup->Read();
+	q_getLastIncrementalCompleteFileBackup->Reset();
+	SLastIncremental ret = { false, 0, L"", 0, 0, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.incremental=watoi(res[0][L"incremental"]);
+		ret.path=res[0][L"path"];
+		ret.resumed=watoi(res[0][L"resumed"]);
+		ret.complete=watoi(res[0][L"complete"]);
+		ret.id=watoi(res[0][L"id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateFileBackupSetComplete
+* @sql
+*       UPDATE backups SET complete=1 WHERE id=:backupid(int)
+*/
+void ServerBackupDao::updateFileBackupSetComplete(int backupid)
+{
+	if(q_updateFileBackupSetComplete==NULL)
+	{
+		q_updateFileBackupSetComplete=db->Prepare("UPDATE backups SET complete=1 WHERE id=?", false);
+	}
+	q_updateFileBackupSetComplete->Bind(backupid);
+	q_updateFileBackupSetComplete->Write();
+	q_updateFileBackupSetComplete->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::saveBackupLogdata
+* @sql
+*       INSERT INTO logs (clientid, logdata, errors, warnings, infos, image, incremental, resumed)
+*               VALUES (:clientid(int), :logdata(string), :errors(int), :warnings(int), :infos(int), :image(int), :incremental(int), :resumed(int) )
+*/
+void ServerBackupDao::saveBackupLogdata(int clientid, const std::wstring& logdata, int errors, int warnings, int infos, int image, int incremental, int resumed)
+{
+	if(q_saveBackupLogdata==NULL)
+	{
+		q_saveBackupLogdata=db->Prepare("INSERT INTO logs (clientid, logdata, errors, warnings, infos, image, incremental, resumed) VALUES (?, ?, ?, ?, ?, ?, ?, ? )", false);
+	}
+	q_saveBackupLogdata->Bind(clientid);
+	q_saveBackupLogdata->Bind(logdata);
+	q_saveBackupLogdata->Bind(errors);
+	q_saveBackupLogdata->Bind(warnings);
+	q_saveBackupLogdata->Bind(infos);
+	q_saveBackupLogdata->Bind(image);
+	q_saveBackupLogdata->Bind(incremental);
+	q_saveBackupLogdata->Bind(resumed);
+	q_saveBackupLogdata->Write();
+	q_saveBackupLogdata->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<int> ServerBackupDao::getMailableUserIds
+* @return int id
+* @sql
+*       SELECT id FROM settings_db.si_users WHERE report_mail IS NOT NULL AND report_mail<>''
+*/
+std::vector<int> ServerBackupDao::getMailableUserIds(void)
+{
+	if(q_getMailableUserIds==NULL)
+	{
+		q_getMailableUserIds=db->Prepare("SELECT id FROM settings_db.si_users WHERE report_mail IS NOT NULL AND report_mail<>''", false);
+	}
+	db_results res=q_getMailableUserIds->Read();
+	std::vector<int> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i]=watoi(res[i][L"id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getUserRight
+* @return string t_right
+* @sql
+*       SELECT t_right FROM settings_db.si_permissions WHERE clientid=:clientid(int) AND t_domain=:t_domain(string)
+*/
+ServerBackupDao::CondString ServerBackupDao::getUserRight(int clientid, const std::wstring& t_domain)
+{
+	if(q_getUserRight==NULL)
+	{
+		q_getUserRight=db->Prepare("SELECT t_right FROM settings_db.si_permissions WHERE clientid=? AND t_domain=?", false);
+	}
+	q_getUserRight->Bind(clientid);
+	q_getUserRight->Bind(t_domain);
+	db_results res=q_getUserRight->Read();
+	q_getUserRight->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"t_right"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func SReportSettings ServerBackupDao::getUserReportSettings
+* @return string report_mail, int report_loglevel, int report_sendonly
+* @sql
+*       SELECT report_mail, report_loglevel, report_sendonly FROM settings_db.si_users WHERE id=:userid(int)
+*/
+ServerBackupDao::SReportSettings ServerBackupDao::getUserReportSettings(int userid)
+{
+	if(q_getUserReportSettings==NULL)
+	{
+		q_getUserReportSettings=db->Prepare("SELECT report_mail, report_loglevel, report_sendonly FROM settings_db.si_users WHERE id=?", false);
+	}
+	q_getUserReportSettings->Bind(userid);
+	db_results res=q_getUserReportSettings->Read();
+	q_getUserReportSettings->Reset();
+	SReportSettings ret = { false, L"", 0, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.report_mail=res[0][L"report_mail"];
+		ret.report_loglevel=watoi(res[0][L"report_loglevel"]);
+		ret.report_sendonly=watoi(res[0][L"report_sendonly"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func string ServerBackupDao::formatUnixtime
+* @return string time
+* @sql
+*       SELECT datetime(:unixtime(int64), 'unixepoch', 'localtime') AS time
+*/
+ServerBackupDao::CondString ServerBackupDao::formatUnixtime(int64 unixtime)
+{
+	if(q_formatUnixtime==NULL)
+	{
+		q_formatUnixtime=db->Prepare("SELECT datetime(?, 'unixepoch', 'localtime') AS time", false);
+	}
+	q_formatUnixtime->Bind(unixtime);
+	db_results res=q_formatUnixtime->Read();
+	q_formatUnixtime->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"time"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func SImageBackup ServerBackupDao::getLastFullImage
+* @return int64 id, int incremental, string path, int64 duration
+* @sql
+*       SELECT id, incremental, path, (strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images
+*         WHERE clientid=:clientid(int) AND incremental=0 AND complete=1 AND version=:image_version(int) AND letter=:letter(string) ORDER BY backuptime DESC LIMIT 1
+*/
+ServerBackupDao::SImageBackup ServerBackupDao::getLastFullImage(int clientid, int image_version, const std::wstring& letter)
+{
+	if(q_getLastFullImage==NULL)
+	{
+		q_getLastFullImage=db->Prepare("SELECT id, incremental, path, (strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images WHERE clientid=? AND incremental=0 AND complete=1 AND version=? AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
+	}
+	q_getLastFullImage->Bind(clientid);
+	q_getLastFullImage->Bind(image_version);
+	q_getLastFullImage->Bind(letter);
+	db_results res=q_getLastFullImage->Read();
+	q_getLastFullImage->Reset();
+	SImageBackup ret = { false, 0, 0, L"", 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi64(res[0][L"id"]);
+		ret.incremental=watoi(res[0][L"incremental"]);
+		ret.path=res[0][L"path"];
+		ret.duration=watoi64(res[0][L"duration"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func SImageBackup ServerBackupDao::getLastImage
+* @return int64 id, int incremental, string path, int64 duration
+* @sql
+*       SELECT id, incremental, path, (strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images
+*         WHERE clientid=:clientid(int) AND complete=1 AND version=:image_version(int) AND letter=:letter(string) ORDER BY backuptime DESC LIMIT 1
+*/
+ServerBackupDao::SImageBackup ServerBackupDao::getLastImage(int clientid, int image_version, const std::wstring& letter)
+{
+	if(q_getLastImage==NULL)
+	{
+		q_getLastImage=db->Prepare("SELECT id, incremental, path, (strftime('%s',running)-strftime('%s',backuptime)) AS duration FROM backup_images WHERE clientid=? AND complete=1 AND version=? AND letter=? ORDER BY backuptime DESC LIMIT 1", false);
+	}
+	q_getLastImage->Bind(clientid);
+	q_getLastImage->Bind(image_version);
+	q_getLastImage->Bind(letter);
+	db_results res=q_getLastImage->Read();
+	q_getLastImage->Reset();
+	SImageBackup ret = { false, 0, 0, L"", 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi64(res[0][L"id"]);
+		ret.incremental=watoi(res[0][L"incremental"]);
+		ret.path=res[0][L"path"];
+		ret.duration=watoi64(res[0][L"duration"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::newImageBackup
+* @sql
+*       INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter)
+*			VALUES (:clientid(int), :path(string), :incremental(int), :incremental_ref(int), 0, CURRENT_TIMESTAMP, 0, :image_version(int), :letter(string) )
+*/
+void ServerBackupDao::newImageBackup(int clientid, const std::wstring& path, int incremental, int incremental_ref, int image_version, const std::wstring& letter)
+{
+	if(q_newImageBackup==NULL)
+	{
+		q_newImageBackup=db->Prepare("INSERT INTO backup_images (clientid, path, incremental, incremental_ref, complete, running, size_bytes, version, letter) VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP, 0, ?, ? )", false);
+	}
+	q_newImageBackup->Bind(clientid);
+	q_newImageBackup->Bind(path);
+	q_newImageBackup->Bind(incremental);
+	q_newImageBackup->Bind(incremental_ref);
+	q_newImageBackup->Bind(image_version);
+	q_newImageBackup->Bind(letter);
+	q_newImageBackup->Write();
+	q_newImageBackup->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setImageSize
+* @sql
+*       UPDATE backup_images SET size_bytes=:size_bytes(int64) WHERE id=:backupid(int)
+*/
+void ServerBackupDao::setImageSize(int64 size_bytes, int backupid)
+{
+	if(q_setImageSize==NULL)
+	{
+		q_setImageSize=db->Prepare("UPDATE backup_images SET size_bytes=? WHERE id=?", false);
+	}
+	q_setImageSize->Bind(size_bytes);
+	q_setImageSize->Bind(backupid);
+	q_setImageSize->Write();
+	q_setImageSize->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addImageSizeToClient
+* @sql
+*       UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=:clientid(int))+:add_size(int64) WHERE id=:clientid(int)
+*/
+void ServerBackupDao::addImageSizeToClient(int clientid, int64 add_size)
+{
+	if(q_addImageSizeToClient==NULL)
+	{
+		q_addImageSizeToClient=db->Prepare("UPDATE clients SET bytes_used_images=(SELECT bytes_used_images FROM clients WHERE id=?)+? WHERE id=?", false);
+	}
+	q_addImageSizeToClient->Bind(clientid);
+	q_addImageSizeToClient->Bind(add_size);
+	q_addImageSizeToClient->Bind(clientid);
+	q_addImageSizeToClient->Write();
+	q_addImageSizeToClient->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setImageBackupComplete
+* @sql
+*       UPDATE backup_images SET complete=1 WHERE id=:backupid(int)
+*/
+void ServerBackupDao::setImageBackupComplete(int backupid)
+{
+	if(q_setImageBackupComplete==NULL)
+	{
+		q_setImageBackupComplete=db->Prepare("UPDATE backup_images SET complete=1 WHERE id=?", false);
+	}
+	q_setImageBackupComplete->Bind(backupid);
+	q_setImageBackupComplete->Write();
+	q_setImageBackupComplete->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateImageBackupRunning
+* @sql
+*       UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=:backupid(int)
+*/
+void ServerBackupDao::updateImageBackupRunning(int backupid)
+{
+	if(q_updateImageBackupRunning==NULL)
+	{
+		q_updateImageBackupRunning=db->Prepare("UPDATE backup_images SET running=CURRENT_TIMESTAMP WHERE id=?", false);
+	}
+	q_updateImageBackupRunning->Bind(backupid);
+	q_updateImageBackupRunning->Write();
+	q_updateImageBackupRunning->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::saveImageAssociation
+* @sql
+*       INSERT INTO assoc_images (img_id, assoc_id) VALUES (:img_id(int), :assoc_id(int) )
+*/
+void ServerBackupDao::saveImageAssociation(int img_id, int assoc_id)
+{
+	if(q_saveImageAssociation==NULL)
+	{
+		q_saveImageAssociation=db->Prepare("INSERT INTO assoc_images (img_id, assoc_id) VALUES (?, ? )", false);
+	}
+	q_saveImageAssociation->Bind(img_id);
+	q_saveImageAssociation->Bind(assoc_id);
+	q_saveImageAssociation->Write();
+	q_saveImageAssociation->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateClientLastImageBackup
+* @sql
+*       UPDATE clients SET lastbackup_image=(SELECT b.backuptime FROM backup_images b WHERE b.id=:backupid(int)) WHERE id=:clientid(int)
+*/
+void ServerBackupDao::updateClientLastImageBackup(int backupid, int clientid)
+{
+	if(q_updateClientLastImageBackup==NULL)
+	{
+		q_updateClientLastImageBackup=db->Prepare("UPDATE clients SET lastbackup_image=(SELECT b.backuptime FROM backup_images b WHERE b.id=?) WHERE id=?", false);
+	}
+	q_updateClientLastImageBackup->Bind(backupid);
+	q_updateClientLastImageBackup->Bind(clientid);
+	q_updateClientLastImageBackup->Write();
+	q_updateClientLastImageBackup->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::updateClientLastFileBackup
+* @sql
+*       UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=:backupid(int)) WHERE id=:clientid(int)
+*/
+void ServerBackupDao::updateClientLastFileBackup(int backupid, int clientid)
+{
+	if(q_updateClientLastFileBackup==NULL)
+	{
+		q_updateClientLastFileBackup=db->Prepare("UPDATE clients SET lastbackup=(SELECT b.backuptime FROM backups b WHERE b.id=?) WHERE id=?", false);
+	}
+	q_updateClientLastFileBackup->Bind(backupid);
+	q_updateClientLastFileBackup->Bind(clientid);
+	q_updateClientLastFileBackup->Write();
+	q_updateClientLastFileBackup->Reset();
+}
+
 
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
@@ -1236,6 +1707,27 @@ void ServerBackupDao::prepareQueries( void )
 	q_populateTemporaryPathLookupTable=NULL;
 	q_createTemporaryPathLookupIndex=NULL;
 	q_lookupEntryIdByPath=NULL;
+	q_newFileBackup=NULL;
+	q_updateFileBackupRunning=NULL;
+	q_setFileBackupDone=NULL;
+	q_getLastIncrementalFileBackup=NULL;
+	q_getLastIncrementalCompleteFileBackup=NULL;
+	q_updateFileBackupSetComplete=NULL;
+	q_saveBackupLogdata=NULL;
+	q_getMailableUserIds=NULL;
+	q_getUserRight=NULL;
+	q_getUserReportSettings=NULL;
+	q_formatUnixtime=NULL;
+	q_getLastFullImage=NULL;
+	q_getLastImage=NULL;
+	q_newImageBackup=NULL;
+	q_setImageSize=NULL;
+	q_addImageSizeToClient=NULL;
+	q_setImageBackupComplete=NULL;
+	q_updateImageBackupRunning=NULL;
+	q_saveImageAssociation=NULL;
+	q_updateClientLastImageBackup=NULL;
+	q_updateClientLastFileBackup=NULL;
 }
 
 //@-SQLGenDestruction
@@ -1293,6 +1785,27 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_populateTemporaryPathLookupTable);
 	db->destroyQuery(q_createTemporaryPathLookupIndex);
 	db->destroyQuery(q_lookupEntryIdByPath);
+	db->destroyQuery(q_newFileBackup);
+	db->destroyQuery(q_updateFileBackupRunning);
+	db->destroyQuery(q_setFileBackupDone);
+	db->destroyQuery(q_getLastIncrementalFileBackup);
+	db->destroyQuery(q_getLastIncrementalCompleteFileBackup);
+	db->destroyQuery(q_updateFileBackupSetComplete);
+	db->destroyQuery(q_saveBackupLogdata);
+	db->destroyQuery(q_getMailableUserIds);
+	db->destroyQuery(q_getUserRight);
+	db->destroyQuery(q_getUserReportSettings);
+	db->destroyQuery(q_formatUnixtime);
+	db->destroyQuery(q_getLastFullImage);
+	db->destroyQuery(q_getLastImage);
+	db->destroyQuery(q_newImageBackup);
+	db->destroyQuery(q_setImageSize);
+	db->destroyQuery(q_addImageSizeToClient);
+	db->destroyQuery(q_setImageBackupComplete);
+	db->destroyQuery(q_updateImageBackupRunning);
+	db->destroyQuery(q_saveImageAssociation);
+	db->destroyQuery(q_updateClientLastImageBackup);
+	db->destroyQuery(q_updateClientLastFileBackup);
 }
 
 void ServerBackupDao::commit()

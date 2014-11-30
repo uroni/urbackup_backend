@@ -2,7 +2,7 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 
-class BackupServerGet;
+class ClientMain;
 
 class ServerRunningUpdater : public IThread
 {

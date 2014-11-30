@@ -71,6 +71,14 @@ public:
 		int incremental;
 		int pointed_to;
 	};
+	struct SImageBackup
+	{
+		bool exists;
+		int64 id;
+		int incremental;
+		std::wstring path;
+		int64 duration;
+	};
 	struct SIncomingStat
 	{
 		int64 id;
@@ -80,6 +88,22 @@ public:
 		std::wstring existing_clients;
 		int direction;
 		int incremental;
+	};
+	struct SLastIncremental
+	{
+		bool exists;
+		int incremental;
+		std::wstring path;
+		int resumed;
+		int complete;
+		int id;
+	};
+	struct SReportSettings
+	{
+		bool exists;
+		std::wstring report_mail;
+		int report_loglevel;
+		int report_sendonly;
 	};
 	struct SStatFileEntry
 	{
@@ -147,6 +171,27 @@ public:
 	void populateTemporaryPathLookupTable(int backupid);
 	bool createTemporaryPathLookupIndex(void);
 	CondInt64 lookupEntryIdByPath(const std::wstring& fullpath);
+	void newFileBackup(int incremental, int clientid, const std::wstring& path, int resumed, int64 indexing_time_ms, int tgroup);
+	void updateFileBackupRunning(int backupid);
+	void setFileBackupDone(int backupid);
+	SLastIncremental getLastIncrementalFileBackup(int clientid, int tgroup);
+	SLastIncremental getLastIncrementalCompleteFileBackup(int clientid, int tgroup);
+	void updateFileBackupSetComplete(int backupid);
+	void saveBackupLogdata(int clientid, const std::wstring& logdata, int errors, int warnings, int infos, int image, int incremental, int resumed);
+	std::vector<int> getMailableUserIds(void);
+	CondString getUserRight(int clientid, const std::wstring& t_domain);
+	SReportSettings getUserReportSettings(int userid);
+	CondString formatUnixtime(int64 unixtime);
+	SImageBackup getLastFullImage(int clientid, int image_version, const std::wstring& letter);
+	SImageBackup getLastImage(int clientid, int image_version, const std::wstring& letter);
+	void newImageBackup(int clientid, const std::wstring& path, int incremental, int incremental_ref, int image_version, const std::wstring& letter);
+	void setImageSize(int64 size_bytes, int backupid);
+	void addImageSizeToClient(int clientid, int64 add_size);
+	void setImageBackupComplete(int backupid);
+	void updateImageBackupRunning(int backupid);
+	void saveImageAssociation(int img_id, int assoc_id);
+	void updateClientLastImageBackup(int backupid, int clientid);
+	void updateClientLastFileBackup(int backupid, int clientid);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -212,6 +257,27 @@ private:
 	IQuery* q_populateTemporaryPathLookupTable;
 	IQuery* q_createTemporaryPathLookupIndex;
 	IQuery* q_lookupEntryIdByPath;
+	IQuery* q_newFileBackup;
+	IQuery* q_updateFileBackupRunning;
+	IQuery* q_setFileBackupDone;
+	IQuery* q_getLastIncrementalFileBackup;
+	IQuery* q_getLastIncrementalCompleteFileBackup;
+	IQuery* q_updateFileBackupSetComplete;
+	IQuery* q_saveBackupLogdata;
+	IQuery* q_getMailableUserIds;
+	IQuery* q_getUserRight;
+	IQuery* q_getUserReportSettings;
+	IQuery* q_formatUnixtime;
+	IQuery* q_getLastFullImage;
+	IQuery* q_getLastImage;
+	IQuery* q_newImageBackup;
+	IQuery* q_setImageSize;
+	IQuery* q_addImageSizeToClient;
+	IQuery* q_setImageBackupComplete;
+	IQuery* q_updateImageBackupRunning;
+	IQuery* q_saveImageAssociation;
+	IQuery* q_updateClientLastImageBackup;
+	IQuery* q_updateClientLastFileBackup;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

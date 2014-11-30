@@ -30,7 +30,7 @@
 #include "server_update_stats.h"
 #include "server_update.h"
 #include "server_status.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "server.h"
 #include "snapshot_helper.h"
 #include "apps/cleanup_cmd.h"
@@ -1239,7 +1239,7 @@ void ServerCleanupThread::backup_database(void)
 		{
 			Server->Log("Database integrity check failed. Skipping Database backup.", LL_ERROR);
 			Server->setFailBit(IServer::FAIL_DATABASE_CORRUPTED);
-			BackupServerGet::sendMailToAdmins("Database integrity check failed", "Database integrity check failed before database backup. You should restore the UrBackup database from a backup or try to repair it.");
+			ClientMain::sendMailToAdmins("Database integrity check failed", "Database integrity check failed before database backup. You should restore the UrBackup database from a backup or try to repair it.");
 		}
 	}
 }
@@ -1309,7 +1309,7 @@ void ServerCleanupThread::enforce_quotas(void)
 
 		if(!enforce_quota(clients[i].id, log))
 		{
-			BackupServerGet::sendMailToAdmins("Quota enforcement failed", log.str());
+			ClientMain::sendMailToAdmins("Quota enforcement failed", log.str());
 			Server->Log(log.str(), LL_ERROR);
 		}
 		else

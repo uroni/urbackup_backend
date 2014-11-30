@@ -54,7 +54,7 @@ SStartupStatus startup_status;
 #include "server_status.h"
 #include "server_log.h"
 #include "server_cleanup.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "server_archive.h"
 #include "server_settings.h"
 #include "server_update_stats.h"
@@ -402,7 +402,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	ServerStatus::init_mutex();
 	ServerSettings::init_mutex();
-	BackupServerGet::init_mutex();
+	ClientMain::init_mutex();
 
 	open_settings_database(use_berkeleydb);
 	open_settings_database_full(use_berkeleydb);
@@ -662,7 +662,7 @@ DLLEXPORT void UnloadActions(void)
 
 	if(shutdown_ok)
 	{
-		BackupServerGet::destroy_mutex();
+		ClientMain::destroy_mutex();
 	}
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);

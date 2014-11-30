@@ -28,7 +28,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "server_log.h"
 #include "server_cleanup.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "zero_hash.h"
 
 extern IFSImageFactory *image_fak;
@@ -264,7 +264,7 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 
 					ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
 					
-					BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+					ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 					has_error=true;
 				}
 			}
@@ -272,14 +272,14 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			{
 				has_error=true;
 				Server->Log("FATAL: NOT ENOUGH free space. Cleanup failed.", LL_ERROR);
-				BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+				ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 			}
 		}
 		else
 		{			
 			has_error=true;
 			ServerLogger::Log(clientid, "FATAL: Error writing to VHD-File.", LL_ERROR);
-			BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+			ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 		}
 	}
 }

@@ -22,7 +22,7 @@
 #include "../server_settings.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../server_status.h"
-#include "../server_get.h"
+#include "../ClientMain.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server.h"
 
@@ -197,7 +197,7 @@ ACTION_IMPL(status)
 		if(GET.find(L"clientname")!=GET.end() && helper.getRights("add_client")=="all" )
 		{
 			bool new_client=false;
-			int id=BackupServerGet::getClientID(db, GET[L"clientname"], NULL, &new_client);
+			int id=ClientMain::getClientID(db, GET[L"clientname"], NULL, &new_client);
 			if(new_client)
 			{
 				ret.set("added_new_client", true);

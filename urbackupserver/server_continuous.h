@@ -1,6 +1,6 @@
 #pragma once
 
-#include "server_get.h"
+#include "ClientMain.h"
 #include "../Interface/Thread.h"
 #include <string>
 #include <vector>
@@ -14,7 +14,7 @@
 #include "../stringtools.h"
 #include "server_settings.h"
 #include "database.h"
-#include "server_download.h"
+#include "ServerDownloadThread.h"
 #include "server_log.h"
 #include "dao/ServerBackupDao.h"
 #include "FileIndex.h"
@@ -63,10 +63,10 @@ public:
 		}
 	};
 
-	BackupServerContinuous(BackupServerGet* server_get, const std::wstring& continuous_path, const std::wstring& continuous_hash_path, const std::wstring& continuous_path_backup,
+	BackupServerContinuous(ClientMain* client_main, const std::wstring& continuous_path, const std::wstring& continuous_hash_path, const std::wstring& continuous_path_backup,
 		const std::wstring& tmpfile_path, bool use_tmpfiles, int clientid, const std::wstring& clientname, int backupid, bool use_snapshots, bool use_reflink,
 		IPipe* hashpipe_prepare)
-		: server_get(server_get), collect_only(true), first_compaction(true), stop(false), continuous_path(continuous_path), continuous_hash_path(continuous_hash_path),
+		: client_main(client_main), collect_only(true), first_compaction(true), stop(false), continuous_path(continuous_path), continuous_hash_path(continuous_hash_path),
 		continuous_path_backup(continuous_path_backup),
 		tmpfile_path(tmpfile_path), use_tmpfiles(use_tmpfiles), clientid(clientid), clientname(clientname), backupid(backupid),
 		use_snapshots(use_snapshots), use_reflink(use_reflink), hashpipe_prepare(hashpipe_prepare), has_fullpath_entryid_mapping_table(false)
@@ -92,7 +92,7 @@ public:
 		hashed_transfer_incr = true;
 		transfer_incr_blockdiff = true;
 
-		if(server_get->isOnInternetConnection())
+		if(client_main->isOnInternetConnection())
 		{
 			hashed_transfer_full = server_settings->getSettings()->internet_full_file_transfer_mode!="raw";
 			hashed_transfer_incr = server_settings->getSettings()->internet_incr_file_transfer_mode!="raw";
@@ -130,7 +130,7 @@ public:
 
 				if(!collect_only && !compactChanges())
 				{
-					server_get->sendToPipe("RESYNC");
+					client_main->sendToPipe("RESYNC");
 					return;
 				}
 			}
@@ -171,6 +171,8 @@ public:
 		{
 			backupdao->dropTemporaryPathLookupTable();
 		}
+
+		delete this;
 	}
 
 	void addChanges(const std::string& change_data)
@@ -694,8 +696,8 @@ private:
 
 	bool constructFileClient(std::auto_ptr<FileClient>& new_fc)
 	{		
-		new_fc.reset(new FileClient(false, server_identity, server_get->getFilesrvProtocolVersion(), server_get->isOnInternetConnection(), server_get, server_get));
-		_u32 rc = server_get->getClientFilesrvConnection(new_fc.get(), server_settings.get());
+		new_fc.reset(new FileClient(false, server_identity, client_main->getProtocolVersions().file_protocol_version, client_main->isOnInternetConnection(), client_main, client_main));
+		_u32 rc = client_main->getClientFilesrvConnection(new_fc.get(), server_settings.get());
 		if(rc!=ERR_CONNECTED)
 		{
 			Server->Log("Could not connect to client in continous backup thread", LL_ERROR);
@@ -710,7 +712,7 @@ private:
 			fileclient_chunked.get(), continuous_path,
 			continuous_hash_path, continuous_path, std::wstring(), hashed_transfer_full,
 			false, clientid, clientname, use_tmpfiles, tmpfile_path, server_token,
-			use_reflink, backupid, true, hashpipe_prepare, server_get, server_get->getFilesrvProtocolVersion()));
+			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version));
 
 		server_download_ticket = Server->getThreadPool()->execute(server_download.get());
 	}
@@ -737,7 +739,7 @@ private:
 
 		if(!fileclient_chunked.get())
 		{
-			if(!server_get->getClientChunkedFilesrvConnection(fileclient_chunked, server_settings.get()))
+			if(!client_main->getClientChunkedFilesrvConnection(fileclient_chunked, server_settings.get()))
 			{
 				ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
 				return false;
@@ -899,7 +901,7 @@ private:
 
 	IMutex* mutex;
 	ICondition* cond;
-	BackupServerGet* server_get;
+	ClientMain* client_main;
 	bool collect_only;
 	bool first_compaction;
 	bool stop;

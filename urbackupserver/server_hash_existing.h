@@ -2,13 +2,14 @@
 
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
-#include "server_get.h"
+#include "IncrFileBackup.h"
 #include <deque>
+
 
 class ServerHashExisting : public IThread
 {
 public:
-	ServerHashExisting(int clientid, BackupServerGet* server_get);
+	ServerHashExisting(int clientid, IncrFileBackup* incr_backup);
 	~ServerHashExisting();
 
 	void queueStop(bool front);
@@ -35,5 +36,5 @@ private:
 	std::deque<SHashItem> queue;
 	bool has_error;
 	int clientid;
-	BackupServerGet* server_get;
+	IncrFileBackup* incr_backup;
 };

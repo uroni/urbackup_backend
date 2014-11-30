@@ -1,10 +1,28 @@
+/*************************************************************************
+*    UrBackup - Client/Server backup system
+*    Copyright (C) 2011-2014 Martin Raiber
+*
+*    This program is free software: you can redistribute it and/or modify
+*    it under the terms of the GNU General Public License as published by
+*    the Free Software Foundation, either version 3 of the License, or
+*    (at your option) any later version.
+*
+*    This program is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU General Public License for more details.
+*
+*    You should have received a copy of the GNU General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+**************************************************************************/
+
 #include "server_hash_existing.h"
 #include "server_prepare_hash.h"
 #include "../Interface/Server.h"
 #include "server_log.h"
 
-ServerHashExisting::ServerHashExisting( int clientid, BackupServerGet* server_get )
-	: has_error(false), clientid(clientid), server_get(server_get)
+ServerHashExisting::ServerHashExisting( int clientid, IncrFileBackup* incr_backup )
+	: has_error(false), clientid(clientid), incr_backup(incr_backup)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -53,7 +71,7 @@ void ServerHashExisting::operator()()
 			int64 filesize = f->Size();
 			std::string sha2 = BackupServerPrepareHash::hash_sha512(f);
 
-			server_get->addExistingHash(item.fullpath, item.hashpath, sha2, filesize, -1);
+			incr_backup->addExistingHash(item.fullpath, item.hashpath, sha2, filesize, -1);
 		}
 	}
 }

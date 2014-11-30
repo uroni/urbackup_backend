@@ -10,7 +10,7 @@
 #include "../Interface/Thread.h"
 #include "fileclient/FileClient.h"
 #include "fileclient/FileClientChunked.h"
-#include "server_get.h"
+#include "ClientMain.h"
 #include "file_metadata.h"
 
 
@@ -74,7 +74,7 @@ class ServerDownloadThread : public IThread, public FileClient::QueueCallback, p
 public:
 	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 		const std::wstring& clientname,
-		bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, BackupServerGet* server_get,
+		bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
 		int filesrv_protocol_version);
 
 	~ServerDownloadThread();
@@ -151,7 +151,7 @@ private:
 	int backupid;
 	bool r_incremental;
 	IPipe* hashpipe_prepare;
-	BackupServerGet* server_get;
+	ClientMain* client_main;
 	int filesrv_protocol_version;
 	bool skipping;
 

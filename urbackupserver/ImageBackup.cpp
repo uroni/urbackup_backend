@@ -15,9 +15,7 @@
 *    You should have received a copy of the GNU General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
-#include "server_get.h"
-
+#include "ImageBackup.h"
 #include "../Interface/Server.h"
 #include "mbr_code.h"
 #include "server_log.h"
@@ -30,9 +28,16 @@
 #include "zero_hash.h"
 #include "server_running.h"
 #include "../md5.h"
-
+#include "ClientMain.h"
+#include <time.h>
 #include <memory.h>
 #include <stdlib.h>
+#include "../Interface/Types.h"
+#include "../urbackupcommon/sha2/sha2.h"
+#include "../Interface/Pipe.h"
+#include "../urbackupcommon/fileclient/tcpstack.h"
+#include "../urbackupcommon/mbrdata.h"
+#include "server_ping.h"
 
 const unsigned int status_update_intervall=1000;
 const unsigned int eta_update_intervall=60000;
@@ -47,7 +52,6 @@ const unsigned int mbr_size=(1024*1024)/2;
 extern std::string server_identity;
 extern std::string server_token;
 extern IFSImageFactory *image_fak;
-
 
 namespace
 {
@@ -94,10 +98,90 @@ namespace
 	}
 }
 
-bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format)
+ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool incremental, std::string letter)
+	: Backup(client_main, clientid, clientname, log_action, false, incremental), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter)
 {
-	CTCPStack tcpstack(internet_connection);
-	IPipe *cc=getClientCommandConnection(10000);
+	status=ServerStatus::getStatus(clientname);
+}
+
+bool ImageBackup::doBackup()
+{
+	if(r_incremental)
+	{
+		ServerLogger::Log(clientid, "Starting incremental image backup...", LL_INFO);
+	}
+	else
+	{
+		ServerLogger::Log(clientid, "Starting full image backup...", LL_INFO);
+	}
+
+	pingthread.reset(new ServerPingThread(client_main, client_main->getProtocolVersions().eta_version>0));
+	pingthread_ticket=Server->getThreadPool()->execute(pingthread.get());
+
+	bool image_hashed_transfer;
+	if(client_main->isOnInternetConnection())
+	{
+		image_hashed_transfer= (server_settings->getSettings()->internet_image_transfer_mode=="hashed") && client_main->getProtocolVersions().image_protocol_version>0;
+	}
+	else
+	{
+		image_hashed_transfer= (server_settings->getSettings()->local_image_transfer_mode=="hashed") && client_main->getProtocolVersions().image_protocol_version>0;
+	}
+
+	int sysvol_id=-1;
+	if(strlower(letter)=="c:")
+	{
+		ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
+		ImageBackup sysvol_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "SYSVOL");
+		sysvol_backup();
+
+		if(sysvol_backup.getResult())
+		{
+			sysvol_id = sysvol_backup.getBackupId();
+		}
+		
+		ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+	}
+
+	bool ret = false;
+	std::string parent_image;
+	if(r_incremental)
+	{
+		bool real_incremental = server_settings->getImageFileFormat()==image_file_format_cowraw;
+		SBackup last=getLastImage(letter, real_incremental);
+		if(last.incremental==-2)
+		{
+			ServerLogger::Log(clientid, "Error retrieving last image backup. Doing full image backup instead.", LL_WARNING);
+			ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat());
+		}
+		else
+		{
+			ret = doImage(letter, last.path, last.incremental+1,
+				last.incremental_ref, image_hashed_transfer, server_settings->getImageFileFormat());
+		}
+	}
+	else
+	{
+		ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat());
+	}
+
+	if(ret && sysvol_id!=-1)
+	{
+		backup_dao->saveImageAssociation(backupid, sysvol_id);
+	}
+
+	if(ret)
+	{
+		backup_dao->updateClientLastImageBackup(backupid, clientid);
+	}
+
+	return ret;
+}
+
+bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format)
+{
+	CTCPStack tcpstack(client_main->isOnInternetConnection());
+	IPipe *cc=client_main->getClientCommandConnection(10000);
 	if(cc==NULL)
 	{
 		ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
@@ -112,13 +196,13 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 
 	bool with_checksum=false;
 	std::string chksum_str="";
-	if(transfer_checksum && image_protocol_version>0)
+	if(transfer_checksum && client_main->getProtocolVersions().image_protocol_version>0)
 	{
 		chksum_str="&checksum=1";
 		with_checksum=true;
 	}
 
-	std::string identity= session_identity.empty()?server_identity:session_identity;
+	std::string identity= client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
 
 	if(pParentvhd.empty())
 	{
@@ -155,7 +239,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	}
 
 	std::wstring imagefn=constructImagePath(widen(sletter), image_file_format);
-	
+
 	int64 free_space=os_free_space(os_file_prefix(ExtractFilePath(imagefn)));
 	if(free_space!=-1 && free_space<minfreespace_image)
 	{
@@ -202,9 +286,14 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 	}
 
 	if(pParentvhd.empty())
-		backupid=createBackupImageSQL(0,0, clientid, imagefn, pLetter);
+	{
+		backup_dao->newImageBackup(clientid, imagefn, 0, 0, client_main->getCurrImageVersion(), widen(pLetter));
+	}
 	else
-		backupid=createBackupImageSQL(incremental, incremental_ref, clientid, imagefn, pLetter);
+	{
+		backup_dao->newImageBackup(clientid, imagefn, incremental, incremental_ref, client_main->getCurrImageVersion(), widen(pLetter));
+	}
+	backupid=static_cast<int>(db->getLastInsertID());
 
 	std::string ret;
 	int64 starttime=Server->getTimeMS();
@@ -299,20 +388,18 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						Server->destroy(cc);
 					}
 					Server->Log("Trying to reconnect in doImage", LL_DEBUG);
-					cc=getClientCommandConnection(10000);
+					cc=client_main->getClientCommandConnection(10000);
 					if(cc==NULL)
 					{
 						std::string msg;
 						std::vector<std::string> msgs;
-						while(pipe->Read(&msg, 0)>0)
+						while(client_main->getInternalCommandPipe()->Read(&msg, 0)>0)
 						{
 							if(msg.find("address")==0)
 							{
-								IScopedLock lock(clientaddr_mutex);
-								memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
-								internet_connection=(msg[7+sizeof(sockaddr_in)]==0)?false:true;
-
-								if(internet_connection && server_settings->getSettings()->internet_image_backups )
+								bool switch_to_internet_connection=false;
+								client_main->updateClientAddress(msg.substr(7), switch_to_internet_connection);
+								if(switch_to_internet_connection)
 								{
 									ServerLogger::Log(clientid, L"Stopped image backup because client is connected via Internet now", LL_WARNING);
 									goto do_image_cleanup;
@@ -324,7 +411,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							}
 						}
 						for(size_t i=0;i<msgs.size();++i)
-							pipe->Write(msgs[i]);
+							client_main->getInternalCommandPipe()->Write(msgs[i]);
 
 						Server->wait(60000);
 					}
@@ -467,8 +554,8 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 					if(!has_parent)
 					{
 						r_vhdfile=image_fak->createVHDFile(os_file_prefix(imagefn), false, drivesize+(int64)mbr_size,
-								(unsigned int)vhd_blocksize*blocksize, true,
-								image_format);
+							(unsigned int)vhd_blocksize*blocksize, true,
+							image_format);
 					}
 					else
 					{
@@ -660,7 +747,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 										status.eta_set_time = Server->getTimeMS();
 
 										double speed_bpms = static_cast<double>(new_blocks) / passed_time;
-										
+
 										if(eta_estimated_speed==0)
 										{
 											eta_estimated_speed = speed_bpms;
@@ -695,7 +782,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							if(vhdfile->hasError())
 							{
 								ServerLogger::Log(clientid, "FATAL ERROR: Could not write to VHD-File", LL_ERROR);
-								BackupServerGet::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+								ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 								goto do_image_cleanup;
 							}
 						}
@@ -712,7 +799,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							if(nextblock<=totalblocks)
 							{
 								nextblock=updateNextblock(nextblock, totalblocks, &shactx, zeroblockdata, has_parent, vhdfile,
-												hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error);
+									hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error);
 
 								if(nextblock!=0)
 								{
@@ -740,7 +827,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							if(vhdfile!=NULL)
 							{
 								if(!pParentvhd.empty() &&
-										image_file_format == image_file_format_cowraw)
+									image_file_format == image_file_format_cowraw)
 								{
 									vhdfile->setDoTrim(true);
 								}
@@ -759,25 +846,18 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							{
 								int64 image_size = t_file->RealSize();
 								db->BeginTransaction();
-								q_set_image_size->Bind(image_size);
-								q_set_image_size->Bind(backupid);
-								q_set_image_size->Write();
-								q_set_image_size->Reset();
-								q_update_images_size->Bind(clientid);
-								q_update_images_size->Bind(image_size);
-								q_update_images_size->Bind(clientid);
-								q_update_images_size->Write();
-								q_update_images_size->Reset();
+								backup_dao->setImageSize(image_size, backupid);
+								backup_dao->addImageSizeToClient(clientid, image_size);
 								if(vhdfile_err==false)
 								{
-									setBackupImageComplete();
+									backup_dao->setImageBackupComplete(backupid);
 								}
 								db->EndTransaction();
 								Server->destroy(t_file);
 							}
 
 							running_updater->stop();
-							updateRunning(true);
+							backup_dao->updateImageBackupRunning(backupid);
 
 							int64 passed_time=Server->getTimeMS()-image_backup_starttime;
 							if(passed_time==0) passed_time=1;
@@ -788,9 +868,9 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 						}
 						else if(currblock==-124 ||
 #ifndef _WIN32 
-								currblock==0xFFFFFFFFFFFFFFFFLLU)
+							currblock==0xFFFFFFFFFFFFFFFFLLU)
 #else
-								currblock==0xFFFFFFFFFFFFFFFF)
+							currblock==0xFFFFFFFFFFFFFFFF)
 #endif
 						{
 							if(r-off>sizeof(int64))
@@ -843,7 +923,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 									if(nextblock<hblock)
 									{
 										nextblock=updateNextblock(nextblock, hblock-1, &shactx, zeroblockdata, has_parent,
-														vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error);
+											vhdfile, hashfile, parenthashfile, blocksize, mbr_offset, vhd_blocksize, warned_about_parenthashfile_error);
 										sha256_update(&shactx, (unsigned char *)zeroblockdata, blocksize);						
 									}
 									if( (nextblock%vhd_blocksize==0 || hblock==blocks) && nextblock!=0)
@@ -943,7 +1023,7 @@ do_image_cleanup:
 	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time) )), LL_INFO );
 	if(cc!=NULL)
 		Server->destroy(cc);
-	
+
 	running_updater->stop();
 
 	if(vhdfile!=NULL)
@@ -962,7 +1042,7 @@ do_image_cleanup:
 	return false;
 }
 
-unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
+unsigned int ImageBackup::writeMBR(ServerVHDWriter* vhdfile, uint64 volsize)
 {
 	unsigned char *mbr=(unsigned char *)vhdfile->getBuffer();
 	if(mbr==NULL)
@@ -1023,7 +1103,7 @@ unsigned int BackupServerGet::writeMBR(ServerVHDWriter *vhdfile, uint64 volsize)
 	return 1024*512;
 }
 
-int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn,
+int64 ImageBackup::updateNextblock(int64 nextblock, int64 currblock, sha256_ctx *shactx, unsigned char *zeroblockdata, bool parent_fn,
 	ServerVHDWriter *parentfile, IFile *hashfile, IFile *parenthashfile, unsigned int blocksize,
 	int64 mbr_offset, int64 vhd_blocksize, bool& warned_about_parenthashfile_error)
 {
@@ -1107,3 +1187,106 @@ int64 BackupServerGet::updateNextblock(int64 nextblock, int64 currblock, sha256_
 	}
 	return nextblock+1;
 }
+
+std::wstring ImageBackup::constructImagePath(const std::wstring &letter, std::string image_file_format)
+{
+	time_t tt=time(NULL);
+#ifdef _WIN32
+	tm lt;
+	tm *t=&lt;
+	localtime_s(t, &tt);
+#else
+	tm *t=localtime(&tt);
+#endif
+	char buffer[500];
+	strftime(buffer, 500, "%y%m%d-%H%M", t);
+	std::wstring backupfolder_uncompr=server_settings->getSettings()->backupfolder_uncompr;
+	std::wstring imgpath = backupfolder_uncompr+os_file_sep()+clientname+os_file_sep()+L"Image_"+letter+L"_"+widen((std::string)buffer);
+	if(image_file_format==image_file_format_vhd)
+	{
+		imgpath+=L".vhd";
+	}
+	else if(image_file_format==image_file_format_cowraw)
+	{
+		imgpath+=L".raw";
+	}
+	else
+	{
+		imgpath+=L".vhdz";
+	}
+	return imgpath;
+}
+
+SBackup ImageBackup::getLastImage(const std::string &letter, bool incr)
+{
+	ServerBackupDao::SImageBackup image_backup;
+	if(incr)
+	{
+		image_backup = backup_dao->getLastImage(clientid, client_main->getCurrImageVersion(), widen(letter));
+	}
+	else
+	{
+		image_backup = backup_dao->getLastFullImage(clientid, client_main->getCurrImageVersion(), widen(letter));
+	}
+
+	if(image_backup.exists)
+	{
+		SBackup b;
+		b.incremental=image_backup.incremental;
+		b.path=image_backup.path;
+		b.incremental_ref=static_cast<int>(image_backup.id);
+		b.backup_time_ms=image_backup.duration;
+		return b;
+	}
+	else
+	{
+		SBackup b;
+		b.incremental=-2;
+		b.incremental_ref=0;
+		return b;
+	}
+}
+
+std::string ImageBackup::getMBR(const std::wstring &dl)
+{
+	std::string ret=client_main->sendClientMessage("MBR driveletter="+wnarrow(dl), L"Getting MBR for drive "+dl+L" failed", 10000);
+	CRData r(&ret);
+	char b;
+	if(r.getChar(&b) && b==1 )
+	{
+		char ver;
+		if(r.getChar(&ver) )
+		{
+			if(ver!=0 && ver!=1)
+			{
+				ServerLogger::Log(clientid, L"MBR version "+convert((int)ver)+L" is not supported by this server", LL_ERROR);
+			}
+			else
+			{
+				CRData r2(&ret);
+				SMBRData mbrdata(r2);
+				if(!mbrdata.errmsg.empty())
+				{
+					ServerLogger::Log(clientid, "During getting MBR: "+mbrdata.errmsg, LL_WARNING);
+				}
+				return ret;
+			}
+		}
+		else
+		{
+			ServerLogger::Log(clientid, L"Could not read version information in MBR", LL_ERROR);
+		}
+	}
+	else if(dl!=L"SYSVOL")
+	{
+		std::string errmsg;
+		if( r.getStr(&errmsg) && !errmsg.empty())
+		{
+			errmsg=". Error message: "+errmsg;
+		}
+		ServerLogger::Log(clientid, "Could not read MBR"+errmsg, LL_ERROR);
+	}
+
+	return "";
+}
+
