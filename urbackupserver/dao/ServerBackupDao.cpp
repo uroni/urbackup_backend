@@ -1317,27 +1317,45 @@ void ServerBackupDao::updateFileBackupSetComplete(int backupid)
 
 /**
 * @-SQLGenAccess
-* @func void ServerBackupDao::saveBackupLogdata
+* @func void ServerBackupDao::saveBackupLog
 * @sql
-*       INSERT INTO logs (clientid, logdata, errors, warnings, infos, image, incremental, resumed)
-*               VALUES (:clientid(int), :logdata(string), :errors(int), :warnings(int), :infos(int), :image(int), :incremental(int), :resumed(int) )
+*       INSERT INTO logs (clientid, errors, warnings, infos, image, incremental, resumed)
+*               VALUES (:clientid(int), :errors(int), :warnings(int), :infos(int), :image(int), :incremental(int), :resumed(int) )
 */
-void ServerBackupDao::saveBackupLogdata(int clientid, const std::wstring& logdata, int errors, int warnings, int infos, int image, int incremental, int resumed)
+void ServerBackupDao::saveBackupLog(int clientid, int errors, int warnings, int infos, int image, int incremental, int resumed)
 {
-	if(q_saveBackupLogdata==NULL)
+	if(q_saveBackupLog==NULL)
 	{
-		q_saveBackupLogdata=db->Prepare("INSERT INTO logs (clientid, logdata, errors, warnings, infos, image, incremental, resumed) VALUES (?, ?, ?, ?, ?, ?, ?, ? )", false);
+		q_saveBackupLog=db->Prepare("INSERT INTO logs (clientid, errors, warnings, infos, image, incremental, resumed) VALUES (?, ?, ?, ?, ?, ?, ? )", false);
 	}
-	q_saveBackupLogdata->Bind(clientid);
-	q_saveBackupLogdata->Bind(logdata);
-	q_saveBackupLogdata->Bind(errors);
-	q_saveBackupLogdata->Bind(warnings);
-	q_saveBackupLogdata->Bind(infos);
-	q_saveBackupLogdata->Bind(image);
-	q_saveBackupLogdata->Bind(incremental);
-	q_saveBackupLogdata->Bind(resumed);
-	q_saveBackupLogdata->Write();
-	q_saveBackupLogdata->Reset();
+	q_saveBackupLog->Bind(clientid);
+	q_saveBackupLog->Bind(errors);
+	q_saveBackupLog->Bind(warnings);
+	q_saveBackupLog->Bind(infos);
+	q_saveBackupLog->Bind(image);
+	q_saveBackupLog->Bind(incremental);
+	q_saveBackupLog->Bind(resumed);
+	q_saveBackupLog->Write();
+	q_saveBackupLog->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::saveBackupLogData
+* @sql
+*       INSERT INTO log_data (logid, data)
+*               VALUES (:logid(int64), :data(string) )
+*/
+void ServerBackupDao::saveBackupLogData(int64 logid, const std::wstring& data)
+{
+	if(q_saveBackupLogData==NULL)
+	{
+		q_saveBackupLogData=db->Prepare("INSERT INTO log_data (logid, data) VALUES (?, ? )", false);
+	}
+	q_saveBackupLogData->Bind(logid);
+	q_saveBackupLogData->Bind(data);
+	q_saveBackupLogData->Write();
+	q_saveBackupLogData->Reset();
 }
 
 /**
@@ -1713,7 +1731,8 @@ void ServerBackupDao::prepareQueries( void )
 	q_getLastIncrementalFileBackup=NULL;
 	q_getLastIncrementalCompleteFileBackup=NULL;
 	q_updateFileBackupSetComplete=NULL;
-	q_saveBackupLogdata=NULL;
+	q_saveBackupLog=NULL;
+	q_saveBackupLogData=NULL;
 	q_getMailableUserIds=NULL;
 	q_getUserRight=NULL;
 	q_getUserReportSettings=NULL;
@@ -1791,7 +1810,8 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getLastIncrementalFileBackup);
 	db->destroyQuery(q_getLastIncrementalCompleteFileBackup);
 	db->destroyQuery(q_updateFileBackupSetComplete);
-	db->destroyQuery(q_saveBackupLogdata);
+	db->destroyQuery(q_saveBackupLog);
+	db->destroyQuery(q_saveBackupLogData);
 	db->destroyQuery(q_getMailableUserIds);
 	db->destroyQuery(q_getUserRight);
 	db->destroyQuery(q_getUserReportSettings);

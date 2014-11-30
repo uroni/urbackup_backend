@@ -92,8 +92,10 @@ void Backup::saveClientLogdata(int image, int incremental, bool r_success, bool 
 	int infos=0;
 	std::wstring logdata=ServerLogger::getLogdata(clientid, errors, warnings, infos);
 
-	backup_dao->saveBackupLogdata(clientid, logdata, errors, warnings, infos, is_file_backup?0:1,
+	backup_dao->saveBackupLog(clientid, errors, warnings, infos, is_file_backup?0:1,
 		r_incremental?1:0, r_resumed?1:0);
+
+	backup_dao->saveBackupLogData(db->getLastInsertID(), logdata);
 
 	sendLogdataMail(r_success, image, incremental, resumed, errors, warnings, infos, logdata);
 

@@ -1220,6 +1220,35 @@ bool upgrade36_37()
 	return b;
 }
 
+bool update37_38()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("CREATE TABLE log_data (id INTEGER PRIMARY KEY, logid INTEGER REFERENCES logs(id) ON DELETE CASCADE, data TEXT)");
+	b &= db->Write("CREATE INDEX log_data_idx ON log_data (logid)");
+
+	IQuery* q_ins=db->Prepare("INSERT INTO log_data (logid, data) VALUES (?, ?)");
+
+	db_results res;
+	do 
+	{
+		res=db->Read("SELECT l.id AS id, l.logdata AS logdata FROM logs l WHERE NOT EXISTS (SELECT id FROM log_data WHERE logid = l.id) LIMIT 100");
+		for(size_t i=0;i<res.size();++i)
+		{
+			q_ins->Bind(res[i][L"id"]);
+			q_ins->Bind(res[i][L"logdata"]);
+			q_ins->Write();
+			q_ins->Reset();
+		}
+	} while (!res.empty());
+
+	b &= db->Write("UPDATE logs SET logdata = NULL");
+
+	return b;
+}
+
 
 void upgrade(void)
 {
@@ -1422,6 +1451,13 @@ void upgrade(void)
 				break;
 			case 36:
 				if(!upgrade36_37())
+				{
+					has_error=true;
+				}
+				++ver;
+				break;
+			case 37:
+				if(!update37_38())
 				{
 					has_error=true;
 				}

@@ -209,7 +209,8 @@ ACTION_IMPL(logs)
 		}
 		else
 		{
-			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, l.logdata AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created, 'localtime') AS time, c.name AS name FROM logs l INNER JOIN clients c ON l.clientid=c.id WHERE l.id=?");
+			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, ld.data AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created, 'localtime') AS time, c.name AS name "
+				"FROM ((logs l INNER JOIN log_data ld ON l.id=ld.logid) INNER JOIN clients c ON l.clientid=c.id) WHERE l.id=?");
 			q->Bind(logid);
 			db_results res=q->Read();
 			q->Reset();

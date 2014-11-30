@@ -758,7 +758,7 @@ void ClientMain::prepareSQL(void)
 	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
 	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqImageFull())+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false);
 	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqImageIncr())+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false); 
-	q_get_unsent_logdata=db->Prepare("SELECT id, strftime('%s', created) AS created, logdata FROM logs WHERE sent=0 AND clientid=?", false);
+	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
 
