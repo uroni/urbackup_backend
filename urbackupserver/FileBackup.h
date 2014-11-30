@@ -4,7 +4,6 @@
 #include "dao/ServerBackupDao.h"
 #include <string>
 #include "server_settings.h"
-#include "server_status.h"
 #include "fileclient/FileClient.h"
 #include "fileclient/FileClientChunked.h"
 #include <map>
@@ -103,8 +102,6 @@ protected:
 	std::wstring dir_pool_path;
 	std::wstring backuppath_hashes;
 	std::wstring backuppath_single;
-
-	SStatus status;
 
 	IPipe *hashpipe;
 	IPipe *hashpipe_prepare;

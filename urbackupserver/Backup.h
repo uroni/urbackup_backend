@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include "../Interface/Types.h"
+#include "server_status.h"
 
 class IDatabase;
 class ServerSettings;
@@ -70,6 +71,7 @@ protected:
 	std::wstring clientname;
 	LogAction log_action;
 
+	SStatus status;
 	IDatabase* db;
 	std::auto_ptr<ServerSettings> server_settings;
 	std::auto_ptr<ServerBackupDao> backup_dao;

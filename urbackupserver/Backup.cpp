@@ -31,9 +31,9 @@ extern IUrlFactory *url_fak;
 Backup::Backup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool is_file_backup, bool is_incremental)
 	: client_main(client_main), clientid(clientid), clientname(clientname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
-	log_backup(true), has_early_error(false), should_backoff(true)
+	log_backup(true), has_early_error(false), should_backoff(true), db(NULL)
 {
-
+	status = ServerStatus::getStatus(clientname);
 }
 
 void Backup::operator()()
@@ -42,7 +42,54 @@ void Backup::operator()()
 	server_settings.reset(new ServerSettings(db));
 	backup_dao.reset(new ServerBackupDao(db));
 
+	if(log_action!=LogAction_NoLogging)
+	{
+		ServerLogger::reset(clientid);
+	}
+
 	ScopedActiveThread sat;
+
+	if(is_file_backup)
+	{
+		if(r_incremental)
+		{
+			if(r_resumed)
+			{
+				status.statusaction=sa_resume_incr_file;
+			}
+			else
+			{
+				status.statusaction=sa_incr_file;
+			}
+		}
+		else
+		{
+			if(r_resumed)
+			{
+				status.statusaction=sa_resume_full_file;
+			}
+			else
+			{
+				status.statusaction=sa_full_file;
+			}
+		}
+		status.pcdone=-1;
+	}
+	else
+	{
+		if(r_incremental)
+		{
+			status.statusaction=sa_incr_image;
+		}
+		else
+		{
+			status.statusaction=sa_full_image;
+		}
+		status.pcdone=0;
+	}
+
+	ServerStatus::setServerStatus(status);
+	ServerStatus::stopBackup(clientname, false);
 
 	createDirectoryForClient();
 
@@ -72,6 +119,18 @@ void Backup::operator()()
 	{
 		saveClientLogdata(is_file_backup?0:1, r_incremental?1:0, backup_result && !has_early_error, r_resumed); 
 	}
+
+	status.pcdone=-1;
+	status.hashqueuesize=0;
+	status.prepare_hashqueuesize=0;
+	status.statusaction=sa_none;
+	ServerStatus::setServerStatus(status);
+
+	server_settings.reset();
+	backup_dao.reset();
+	db=NULL;
+
+	client_main->getInternalCommandPipe()->Write("WAKEUP");
 }
 
 bool Backup::createDirectoryForClient(void)

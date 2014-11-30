@@ -175,7 +175,7 @@ private:
 	bool isRunningFileBackup(int group);	
 	void checkClientVersion(void);
 	bool sendFile(IPipe *cc, IFile *f, int timeout);
-	bool isBackupsRunningOkay(bool incr, bool file);	
+	bool isBackupsRunningOkay(bool file);	
 	bool updateCapabilities(void);
 	IPipeThrottler *getThrottler(size_t speed_bps);
 	void update_sql_intervals(bool update_sql);
@@ -206,7 +206,6 @@ private:
 	static IMutex *tmpfile_mutex;
 
 	int clientid;
-	int backupid;
 
 	ISettingsReader *settings;
 	ISettingsReader *settings_client;

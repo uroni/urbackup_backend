@@ -36,6 +36,6 @@ protected:
 	int backupid;
 	SStatus status;
 
-	std::auto_ptr<ServerPingThread> pingthread;
+	ServerPingThread* pingthread;
 	THREADPOOL_TICKET pingthread_ticket;
 };

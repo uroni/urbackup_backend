@@ -1281,7 +1281,7 @@ bool IncrFileBackup::doFullBackup()
 {
 	client_main->stopBackupRunning(true);
 
-	FullFileBackup full_backup(client_main, clientid, clientname, log_action, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
+	FullFileBackup full_backup(client_main, clientid, clientname, LogAction_NoLogging, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
 	full_backup();
 
 	disk_error = full_backup.hasDiskError();

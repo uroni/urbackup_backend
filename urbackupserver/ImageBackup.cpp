@@ -115,9 +115,6 @@ bool ImageBackup::doBackup()
 		ServerLogger::Log(clientid, "Starting full image backup...", LL_INFO);
 	}
 
-	pingthread.reset(new ServerPingThread(client_main, client_main->getProtocolVersions().eta_version>0));
-	pingthread_ticket=Server->getThreadPool()->execute(pingthread.get());
-
 	bool image_hashed_transfer;
 	if(client_main->isOnInternetConnection())
 	{
@@ -132,6 +129,7 @@ bool ImageBackup::doBackup()
 	if(strlower(letter)=="c:")
 	{
 		ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
+		client_main->stopBackupRunning(false);
 		ImageBackup sysvol_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "SYSVOL");
 		sysvol_backup();
 
@@ -139,9 +137,17 @@ bool ImageBackup::doBackup()
 		{
 			sysvol_id = sysvol_backup.getBackupId();
 		}
+
+		client_main->startBackupRunning(false);
 		
 		ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
 	}
+
+	status.pcdone=0;
+	ServerStatus::setServerStatus(status);
+
+	pingthread = new ServerPingThread(client_main, client_main->getProtocolVersions().eta_version>0);
+	pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 	bool ret = false;
 	std::string parent_image;
@@ -173,6 +179,11 @@ bool ImageBackup::doBackup()
 	if(ret)
 	{
 		backup_dao->updateClientLastImageBackup(backupid, clientid);
+	}
+
+	if(pingthread!=NULL)
+	{
+		pingthread->setStop(true);
 	}
 
 	return ret;

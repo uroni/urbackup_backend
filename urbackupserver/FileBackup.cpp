@@ -45,8 +45,6 @@ FileBackup::FileBackup( ClientMain* client_main, int clientid, std::wstring clie
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false)
 {
-	status = ServerStatus::getStatus(clientname);
-
 	createHashThreads(use_reflink);
 }
 

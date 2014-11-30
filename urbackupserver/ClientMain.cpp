@@ -465,11 +465,6 @@ void ClientMain::operator ()(void)
 
 			update_sql_intervals(true);
 
-			status.pcdone=-1;
-			status.hashqueuesize=0;
-			status.prepare_hashqueuesize=0;
-			backupid=-1;
-			ServerStatus::setServerStatus(status);
 
 			bool internet_no_full_file=(internet_connection && !server_settings->getSettings()->internet_full_file_backups );
 			bool internet_no_images=(internet_connection && !server_settings->getSettings()->internet_image_backups );
@@ -480,7 +475,7 @@ void ClientMain::operator ()(void)
 					ServerLogger::Log(clientid, "Cannot do image backup because can_backup_images=false", LL_DEBUG);
 				if(server_settings->getSettings()->no_images)
 					ServerLogger::Log(clientid, "Cannot do image backup because no_images=true", LL_DEBUG);
-				if(!isBackupsRunningOkay(false, false))
+				if(!isBackupsRunningOkay(false))
 					ServerLogger::Log(clientid, "Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
 				if(!internet_no_images )
 					ServerLogger::Log(clientid, "Cannot do image backup because internet_no_images=true", LL_DEBUG);
@@ -490,7 +485,7 @@ void ClientMain::operator ()(void)
 			{
 				if(server_settings->getSettings()->no_file_backups)
 					ServerLogger::Log(clientid, "Cannot do incremental file backup because no_file_backups=true", LL_DEBUG);
-				if(!isBackupsRunningOkay(false, true))
+				if(!isBackupsRunningOkay(true))
 					ServerLogger::Log(clientid, "Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
 			}
 
@@ -498,7 +493,7 @@ void ClientMain::operator ()(void)
 			if( !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
 				( (isUpdateFull() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
 				&& exponentialBackoffFile() ) || do_full_backup_now )
-				&& isBackupsRunningOkay(true, true) && !do_full_image_now && !do_full_image_now && !do_incr_backup_now
+				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now && !do_incr_backup_now
 				&& (!isRunningFileBackup(c_group_default) || do_full_backup_now) )
 			{
 				SRunningBackup backup;
@@ -514,11 +509,11 @@ void ClientMain::operator ()(void)
 			else if( !server_settings->getSettings()->no_file_backups
 				&& ( (isUpdateIncr() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
 				&& exponentialBackoffFile() ) || do_incr_backup_now )
-				&& isBackupsRunningOkay(true, true) && !do_full_image_now && !do_full_image_now
+				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now
 				&& (!isRunningFileBackup(c_group_default) || do_incr_backup_now) )
 			{
 				SRunningBackup backup;
-				backup.backup = new FullFileBackup(this, clientid, clientname,
+				backup.backup = new IncrFileBackup(this, clientid, clientname,
 					do_full_backup_now?LogAction_AlwaysLog:LogAction_LogIfNotDisabled, c_group_default, use_tmpfiles,
 					tmpfile_path, use_reflink, use_snapshots);
 				backup.group=c_group_default;
@@ -530,7 +525,7 @@ void ClientMain::operator ()(void)
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
 				&& ( (isUpdateFullImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullImage())
 				&& exponentialBackoffImage() ) || do_full_image_now)
-				&& isBackupsRunningOkay(true, false) && !do_incr_image_now)
+				&& isBackupsRunningOkay(false) && !do_incr_image_now)
 			{
 
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
@@ -553,7 +548,7 @@ void ClientMain::operator ()(void)
 			else if(can_backup_images && !server_settings->getSettings()->no_images && !internet_no_images
 				&& ((isUpdateIncrImage() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrImage()) 
 				&& exponentialBackoffImage() ) || do_incr_image_now)
-				&& isBackupsRunningOkay(true, false) )
+				&& isBackupsRunningOkay(false) )
 			{
 				std::vector<std::string> vols=server_settings->getBackupVolumes(all_volumes, all_nonusb_volumes);
 				for(size_t i=0;i<vols.size();++i)
@@ -583,43 +578,6 @@ void ClientMain::operator ()(void)
 				backup.group=c_group_continuous;
 
 				backup_queue.push_back(backup);
-			}
-
-			bool can_start=false;
-			size_t running_jobs=0;
-			for(size_t i=0;i<backup_queue.size();++i)
-			{
-				if(backup_queue[i].ticket!=ILLEGAL_THREADPOOL_TICKET)
-				{
-					++running_jobs;
-				}
-				else
-				{
-					can_start=true;
-				}
-			}
-
-			if(can_start)
-			{
-				while(running_jobs<server_settings->getSettings()->max_running_jobs_per_client)
-				{
-					bool started_job=false;
-					for(size_t i=0;i<backup_queue.size();++i)
-					{
-						if(backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET)
-						{
-							backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup);
-							++running_jobs;
-							started_job=true;
-							break;
-						}
-					}
-
-					if(!started_job)
-					{
-						break;
-					}
-				}
 			}
 
 			bool send_logdata=false;
@@ -667,10 +625,47 @@ void ClientMain::operator ()(void)
 
 				++i;
 			}
-			
+
 			if(send_logdata)
 			{
 				sendClientLogdata();
+			}
+
+			bool can_start=false;
+			size_t running_jobs=0;
+			for(size_t i=0;i<backup_queue.size();++i)
+			{
+				if(backup_queue[i].ticket!=ILLEGAL_THREADPOOL_TICKET)
+				{
+					++running_jobs;
+				}
+				else
+				{
+					can_start=true;
+				}
+			}
+
+			if(can_start)
+			{
+				while(running_jobs<server_settings->getSettings()->max_running_jobs_per_client)
+				{
+					bool started_job=false;
+					for(size_t i=0;i<backup_queue.size();++i)
+					{
+						if(backup_queue[i].ticket==ILLEGAL_THREADPOOL_TICKET)
+						{
+							backup_queue[i].ticket=Server->getThreadPool()->execute(backup_queue[i].backup);
+							++running_jobs;
+							started_job=true;
+							break;
+						}
+					}
+
+					if(!started_job)
+					{
+						break;
+					}
+				}
 			}
 		}
 
@@ -696,6 +691,10 @@ void ClientMain::operator ()(void)
 			memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
 			internet_connection=(msg[7+sizeof(sockaddr_in)]==0)?false:true;
 			tcpstack.setAddChecksum(internet_connection);
+		}
+		else if(msg=="WAKEUP")
+		{
+
 		}
 
 		if(!msg.empty())
@@ -1458,10 +1457,12 @@ void ClientMain::sendClientLogdata(void)
 	{
 		std::string logdata=Server->ConvertToUTF8(res[i][L"logdata"]);
 		escapeClientMessage(logdata);
-		sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false, LL_WARNING);
-		q_set_logdata_sent->Bind(res[i][L"id"]);
-		q_set_logdata_sent->Write();
-		q_set_logdata_sent->Reset();
+		if(sendClientMessage("2LOGDATA "+wnarrow(res[i][L"created"])+" "+logdata, "OK", L"Sending logdata to client failed", 10000, false, LL_WARNING))
+		{
+			q_set_logdata_sent->Bind(res[i][L"id"]);
+			q_set_logdata_sent->Write();
+			q_set_logdata_sent->Reset();
+		}
 	}
 }
 
@@ -1679,19 +1680,11 @@ sockaddr_in ClientMain::getClientaddr(void)
 }
 
 
-bool ClientMain::isBackupsRunningOkay(bool incr, bool file)
+bool ClientMain::isBackupsRunningOkay(bool file)
 {
 	IScopedLock lock(running_backup_mutex);
 	if(running_backups<server_settings->getSettings()->max_sim_backups)
 	{
-		if(incr)
-		{
-			++running_backups;
-			if(file)
-			{
-				++running_file_backups;
-			}
-		}
 		return true;
 	}
 	else
