@@ -98,6 +98,7 @@ struct SSettings
 	bool internet_readd_file_entries;
 	std::string client_access_key;
 	int max_running_jobs_per_client;
+	bool create_linked_user_views;
 };
 
 struct STimeSpan

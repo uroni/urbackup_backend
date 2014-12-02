@@ -76,8 +76,8 @@ std::vector<std::wstring> get_users()
 		 {
 			 for(DWORD i=0;i<entriesread;++i)
 			 {
-				 USER_INFO_0 user_info = *(buf+i);
-				 ret.push_back(user_info.usri0_name);
+				 LPUSER_INFO_0 user_info = (buf+i);
+				 ret.push_back(user_info->usri0_name);
 			 }
 		 }
 		 else
@@ -95,15 +95,51 @@ std::vector<std::wstring> get_users()
 	return ret;
 }
 
+std::vector<std::wstring> get_user_groups(const std::wstring& username)
+{
+	LPLOCALGROUP_USERS_INFO_0 buf;
+	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
+	DWORD entriesread = 0;
+	DWORD totalentries = 0;
+	DWORD resume_handle = 0;
+	NET_API_STATUS status;
+	std::vector<std::wstring> ret;
+
+	status = NetUserGetLocalGroups(NULL, username.c_str(), 0, LG_INCLUDE_INDIRECT,
+		(LPBYTE*)&buf, prefmaxlen, &entriesread,
+		&totalentries);
+
+	if (status == NERR_Success)
+	{
+		for(DWORD i=0;i<entriesread;++i)
+		{
+			LPLOCALGROUP_USERS_INFO_0 user_info = (buf+i);
+			ret.push_back(user_info->lgrui0_name);
+		}
+	}
+	else
+	{
+		Server->Log("Error while enumerating users: "+ nconvert((int)status), LL_ERROR);
+	}
+
+	if(buf!=NULL)
+	{
+		NetApiBufferFree(buf);
+	}
+
+	return ret;
+	
+}
+
 std::vector<std::wstring> get_groups()
 {
 	LPLOCALGROUP_INFO_0 buf;
 	DWORD prefmaxlen = MAX_PREFERRED_LENGTH;
 	DWORD entriesread = 0;
 	DWORD totalentries = 0;
-	DWORD_PTR resume_handle = 0;
 	NET_API_STATUS status;
 	std::vector<std::wstring> ret;
+	DWORD_PTR resume_handle = 0;
 	do 
 	{
 		status = NetLocalGroupEnum(NULL, 0,
@@ -114,8 +150,8 @@ std::vector<std::wstring> get_groups()
 		{
 			for(DWORD i=0;i<entriesread;++i)
 			{
-				LOCALGROUP_INFO_0 group_info = *(buf+i);
-				ret.push_back(group_info.lgrpi0_name);
+				LPLOCALGROUP_INFO_0 group_info = (buf+i);
+				ret.push_back(group_info->lgrpi0_name);
 			}
 		}
 		else
@@ -299,6 +335,24 @@ bool write_tokens()
 	if(has_new_token)
 	{
 		dao.updateMiscValue("has_new_token", L"true");
+
+		if(has_new_token)
+		{
+			for(size_t i=0;i<users.size();++i)
+			{
+				std::vector<std::wstring> user_groups = get_user_groups(users[i]);
+
+				ClientDAO::CondInt uid = dao.getFileAccessTokenId(users[i], 1);
+				if(uid.exists)
+				{
+					for(size_t j=0;j<user_groups.size();++j)
+					{
+						dao.updateGroupMembership(uid.value, user_groups[j]);
+					}
+				}
+				
+			}
+		}
 	}
 
 	db->EndTransaction();
@@ -363,7 +417,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(users[i], 1);
+		ClientDAO::CondInt token_id = dao->getFileAccessTokenId(users[i], 1);
 
 		if(!token_id.exists)
 		{
@@ -371,7 +425,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		new_token.id=static_cast<int>(token_id.value);
+		new_token.id=token_id.value;
 		new_token.is_user=true;
 
 		cache->tokens[sid]=new_token;
@@ -390,7 +444,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(groups[i], 0);
+		ClientDAO::CondInt token_id = dao->getFileAccessTokenId(groups[i], 0);
 
 		if(!token_id.exists)
 		{
@@ -398,7 +452,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		new_token.id=static_cast<int>(token_id.value);
+		new_token.id=token_id.value;
 		new_token.is_user=false;
 
 		cache->tokens[sid]=new_token;

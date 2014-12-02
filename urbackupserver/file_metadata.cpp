@@ -326,8 +326,13 @@ bool FileMetadata::read( str_map& extra_params )
 
 bool FileMetadata::hasPermission(int id, bool& denied) const
 {
-	CRData perm(file_permissions.data(),
-		file_permissions.size());
+	return hasPermission(file_permissions, id, denied);
+}
+
+bool FileMetadata::hasPermission( const std::string& permissions, int id, bool& denied )
+{
+	CRData perm(permissions.data(),
+		permissions.size());
 
 	char action;
 	while(perm.getChar(&action))

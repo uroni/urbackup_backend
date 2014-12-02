@@ -39,6 +39,8 @@ public:
 			&& created == other.created;
 	}
 
+	static bool hasPermission(const std::string& permissions, int id, bool& denied);
+
 	bool hasPermission(int id, bool& denied) const;
 
 	void serialize(CWData& data) const;

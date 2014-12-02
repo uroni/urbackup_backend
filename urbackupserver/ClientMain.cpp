@@ -175,7 +175,6 @@ void ClientMain::unloadSQL(void)
 	db->destroyQuery(q_update_incr);
 	db->destroyQuery(q_update_setting);
 	db->destroyQuery(q_insert_setting);
-	db->destroyQuery(q_set_complete);
 	db->destroyQuery(q_update_image_full);
 	db->destroyQuery(q_update_image_incr);
 	db->destroyQuery(q_get_unsent_logdata);

@@ -508,6 +508,13 @@ bool FullFileBackup::doFileBackup()
 			currdir+=os_file_sep()+clientname;
 			os_remove_symlink_dir(os_file_prefix(currdir));
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
+
+			if(server_settings->getSettings()->create_linked_user_views)
+			{
+				ServerLogger::Log(clientid, "Creating user views...", LL_INFO);
+
+				createUserViews(tmp);
+			}
 		}
 	}
 

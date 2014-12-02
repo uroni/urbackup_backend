@@ -96,6 +96,8 @@ void ClientDAO::prepareQueriesGen(void)
 	q_updateFileAccessToken=NULL;
 	q_getFileAccessTokens=NULL;
 	q_getFileAccessTokenId=NULL;
+	q_updateGroupMembership=NULL;
+	q_getGroupMembership=NULL;
 }
 
 //@-SQLGenDestruction
@@ -105,6 +107,8 @@ void ClientDAO::destroyQueriesGen(void)
 	db->destroyQuery(q_updateFileAccessToken);
 	db->destroyQuery(q_getFileAccessTokens);
 	db->destroyQuery(q_getFileAccessTokenId);
+	db->destroyQuery(q_updateGroupMembership);
+	db->destroyQuery(q_getGroupMembership);
 }
 
 void ClientDAO::restartQueries(void)
@@ -613,14 +617,14 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 
 /**
 * @-SQLGenAccess
-* @func int64 ClientDAO::getFileAccessTokenId
-* @return int64 id
+* @func int ClientDAO::getFileAccessTokenId
+* @return int id
 * @sql
 *    SELECT id
 *    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
 *								  is_user = :is_user(int)
 */
-ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& accountname, int is_user)
+ClientDAO::CondInt ClientDAO::getFileAccessTokenId(const std::wstring& accountname, int is_user)
 {
 	if(q_getFileAccessTokenId==NULL)
 	{
@@ -630,12 +634,59 @@ ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& account
 	q_getFileAccessTokenId->Bind(is_user);
 	db_results res=q_getFileAccessTokenId->Read();
 	q_getFileAccessTokenId->Reset();
-	CondInt64 ret = { false, 0 };
+	CondInt ret = { false, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi64(res[0][L"id"]);
+		ret.value=watoi(res[0][L"id"]);
 	}
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::updateGroupMembership
+* @sql
+*    INSERT OR REPLACE INTO token_group_memberships
+*          (uid, gid)
+*      VALUES
+*           (:uid(int), (SELECT id FROM fileaccess_tokens WHERE accountname = :accountname(string) AND is_user=0) )
+*/
+void ClientDAO::updateGroupMembership(int uid, const std::wstring& accountname)
+{
+	if(q_updateGroupMembership==NULL)
+	{
+		q_updateGroupMembership=db->Prepare("INSERT OR REPLACE INTO token_group_memberships (uid, gid) VALUES (?, (SELECT id FROM fileaccess_tokens WHERE accountname = ? AND is_user=0) )", false);
+	}
+	q_updateGroupMembership->Bind(uid);
+	q_updateGroupMembership->Bind(accountname);
+	q_updateGroupMembership->Write();
+	q_updateGroupMembership->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func vector<int> ClientDAO::getGroupMembership
+* @return int gid
+* @sql
+*    SELECT gid
+*    FROM token_group_memberships
+*			WHERE uid = :uid(int)
+*/
+std::vector<int> ClientDAO::getGroupMembership(int uid)
+{
+	if(q_getGroupMembership==NULL)
+	{
+		q_getGroupMembership=db->Prepare("SELECT gid FROM token_group_memberships WHERE uid = ?", false);
+	}
+	q_getGroupMembership->Bind(uid);
+	db_results res=q_getGroupMembership->Read();
+	q_getGroupMembership->Reset();
+	std::vector<int> ret;
+	ret.resize(res.size());
+	for(size_t i=0;i<res.size();++i)
+	{
+		ret[i]=watoi(res[i][L"gid"]);
+	}
+	return ret;
+}

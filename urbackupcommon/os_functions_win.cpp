@@ -673,7 +673,7 @@ bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, voi
 {
 	if(transaction==NULL)
 	{
-		if(!os_link_symbolic_junctions(target, lname) )
+		if(!isDirectory(target, NULL) || !os_link_symbolic_junctions(target, lname) )
 			return os_link_symbolic_symlink(target, lname, NULL);
 	}
 	else

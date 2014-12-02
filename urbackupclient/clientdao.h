@@ -132,10 +132,10 @@ public:
 	void updateMiscValue(const std::string& key, const std::wstring& value);
 
 	//@-SQLGenFunctionsBegin
-	struct CondInt64
+	struct CondInt
 	{
 		bool exists;
-		int64 value;
+		int value;
 	};
 	struct SToken
 	{
@@ -149,7 +149,9 @@ public:
 	void updateShadowCopyStarttime(int id);
 	void updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user);
 	std::vector<SToken> getFileAccessTokens(void);
-	CondInt64 getFileAccessTokenId(const std::wstring& accountname, int is_user);
+	CondInt getFileAccessTokenId(const std::wstring& accountname, int is_user);
+	void updateGroupMembership(int uid, const std::wstring& accountname);
+	std::vector<int> getGroupMembership(int uid);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -189,5 +191,7 @@ private:
 	IQuery* q_updateFileAccessToken;
 	IQuery* q_getFileAccessTokens;
 	IQuery* q_getFileAccessTokenId;
+	IQuery* q_updateGroupMembership;
+	IQuery* q_getGroupMembership;
 	//@-SQLGenVariablesEnd
 };

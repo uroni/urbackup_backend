@@ -33,6 +33,7 @@
 #include "snapshot_helper.h"
 #include "server_dir_links.h"
 #include "server_cleanup.h"
+#include <stack>
 
 const unsigned int full_backup_construct_timeout=4*60*60*1000;
 extern std::string server_identity;
@@ -934,4 +935,298 @@ bool FileBackup::constructBackupPathCdp()
 	}
 
 	return os_create_dir(os_file_prefix(backuppath)) && os_create_dir(os_file_prefix(backuppath_hashes));	
+}
+
+void FileBackup::createUserViews(IFile* file_list_f)
+{
+	std::auto_ptr<ISettingsReader> urbackup_tokens(
+		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties")));
+
+	if(urbackup_tokens.get()==NULL)
+	{
+		ServerLogger::Log(clientid, "Cannot create user view. Token file not present.", LL_WARNING);
+		return;
+	}
+
+	std::string s_uids = urbackup_tokens->getValue("uids", "");
+	std::vector<std::string> uids;
+	Tokenize(s_uids, uids, ",");
+
+	for(size_t i=0;i<uids.size();++i)
+	{
+		int uid = atoi(uids[i].c_str());
+		std::string s_gids = urbackup_tokens->getValue(uids[i]+".gids", "");
+		std::vector<std::string> gids;
+		Tokenize(s_gids, gids, ",");
+		std::vector<int> ids;
+		ids.push_back(uid);
+		for(size_t j=0;j<gids.size();++j)
+		{
+			ids.push_back(atoi(gids[j].c_str()));
+		}
+
+		std::string accountname = base64_decode_dash(urbackup_tokens->getValue(uids[i]+".accountname", std::string()));
+		accountname = greplace("/", "_", accountname);
+		accountname = greplace("\\", "_", accountname);
+		std::vector<size_t> identical_permission_roots = findIdenticalPermissionRoots(file_list_f, ids);
+		if(!createUserView(file_list_f, ids, accountname, identical_permission_roots))
+		{
+			ServerLogger::Log(clientid, "Error creating user view for user with id "+nconvert(uid), LL_WARNING);
+		}
+	}
+}
+
+namespace
+{
+	struct SDirStatItem
+	{
+		bool has_perm;
+		size_t id;
+		size_t nodecount;
+		size_t identicalcount;
+	};
+}
+
+std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f, const std::vector<int>& ids)
+{
+	file_list_f->Seek(0);
+
+	char buffer[4096];
+	_u32 bread;
+	FileListParser file_list_parser;
+	std::stack<SDirStatItem> dir_permissions;
+	size_t curr_id = 0;
+	std::vector<size_t> identical_permission_roots;
+	SFile data;
+
+	while((bread=file_list_f->Read(buffer, 4096))>0)
+	{
+		for(_u32 i=0;i<bread;++i)
+		{
+			std::map<std::wstring, std::wstring> extra;
+			if(file_list_parser.nextEntry(buffer[i], data, &extra))
+			{
+				std::string permissions = base64_decode_dash(wnarrow(extra[L"dacl"]));
+
+				bool has_perm=false;
+				for(size_t j=0;j<ids.size();++j)
+				{
+					bool denied=false;
+					if(FileMetadata::hasPermission(permissions, ids[j], denied))
+					{
+						has_perm=true;
+						break;
+					}
+				}
+
+				if(data.isdir)
+				{
+					if(data.name==L"..")
+					{
+						SDirStatItem last_dir = {};
+
+						if(!dir_permissions.empty())
+						{
+							if(dir_permissions.top().nodecount==
+								dir_permissions.top().identicalcount)
+							{
+								identical_permission_roots.push_back(dir_permissions.top().id);
+							}
+
+							last_dir = dir_permissions.top();
+						}
+
+						dir_permissions.pop();
+
+						if(!dir_permissions.empty())
+						{
+							dir_permissions.top().nodecount+=last_dir.nodecount+1;
+							dir_permissions.top().identicalcount+=last_dir.identicalcount;
+
+							if(last_dir.has_perm==dir_permissions.top().has_perm)
+							{
+								++dir_permissions.top().identicalcount;
+							}
+						}
+					}
+					else
+					{
+						SDirStatItem nsi = {
+							has_perm,
+							curr_id,
+							0,
+							0
+						};
+
+						dir_permissions.push(nsi);
+					}
+				}
+				else
+				{
+					if(!dir_permissions.empty())
+					{
+						++dir_permissions.top().nodecount;
+						if(has_perm==dir_permissions.top().has_perm)
+						{
+							++dir_permissions.top().identicalcount;
+						}
+					}
+				}
+
+				++curr_id;
+			}
+		}
+	}
+
+	std::sort(identical_permission_roots.begin(), identical_permission_roots.end());
+	return identical_permission_roots;
+}
+
+bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots)
+{
+	std::wstring user_view_home_path = backuppath + os_file_sep() + L"user_views" + os_file_sep() + Server->ConvertToUnicode(accoutname);
+
+	if(!os_create_dir_recursive(os_file_prefix(user_view_home_path)))
+	{
+		ServerLogger::Log(clientid, "Error creating folder for user at user_views in backup storage of current backup", LL_WARNING);
+		return false;
+	}
+
+	file_list_f->Seek(0);
+
+	char buffer[4096];
+	_u32 bread;
+	FileListParser file_list_parser;
+	std::wstring curr_path;
+	size_t skip = 0;
+	size_t id = 0;
+	SFile data;
+	
+	while((bread=file_list_f->Read(buffer, 4096))>0)
+	{
+		for(_u32 i=0;i<bread;++i)
+		{
+			std::map<std::wstring, std::wstring> extra;
+			if(file_list_parser.nextEntry(buffer[i], data, &extra))
+			{
+				if(skip>0)
+				{
+					if(data.isdir)
+					{
+						if(data.name==L"..")
+						{
+							--skip;
+
+							if(skip==0)
+							{
+								curr_path = ExtractFilePath(curr_path, os_file_sep());
+							}
+						}
+						else
+						{
+							++skip;
+						}
+					}
+					++id;
+					continue;
+				}
+
+				std::string permissions = base64_decode_dash(wnarrow(extra[L"dacl"]));
+				if(data.isdir)
+				{
+					if(data.name==L"..")
+					{
+						curr_path = ExtractFilePath(curr_path, os_file_sep());
+					}
+					else
+					{
+						curr_path += os_file_sep() + fixFilenameForOS(data.name);
+
+						bool has_perm = false;
+						for(size_t j=0;j<ids.size();++j)
+						{
+							bool denied=false;
+							if(FileMetadata::hasPermission(permissions, ids[j], denied))
+							{
+								if(std::binary_search(identical_permission_roots.begin(),
+									identical_permission_roots.end(), id))
+								{
+									if(!os_link_symbolic(os_file_prefix(backuppath + curr_path),
+										os_file_prefix(user_view_home_path + curr_path)))
+									{
+										ServerLogger::Log(clientid, "Error creating symbolic link for user view (directory)", LL_WARNING);
+										return false;
+									}
+									skip=1;
+								}
+								else
+								{
+									if(!os_create_dir(os_file_prefix(user_view_home_path + curr_path)))
+									{
+										ServerLogger::Log(clientid, "Error creating directory for user view", LL_WARNING);
+										return false;
+									}
+								}
+								has_perm=true;
+								break;
+							}
+						}
+						
+						if(!has_perm)
+						{
+							skip=1;
+						}
+					}
+				}
+				else
+				{
+					for(size_t j=0;j<ids.size();++j)
+					{
+						bool denied=false;
+						if(FileMetadata::hasPermission(permissions, ids[j], denied))
+						{
+							std::wstring filename = curr_path + os_file_sep() + fixFilenameForOS(data.name);
+
+							if(!os_link_symbolic(os_file_prefix(backuppath + filename),
+								os_file_prefix(user_view_home_path + filename)))
+							{
+								ServerLogger::Log(clientid, "Error creating symbolic link for user view (file)", LL_WARNING);
+								return false;
+							}
+							break;
+						}
+					}
+				}
+
+				++id;
+			}
+		}
+	}
+
+	std::wstring backupfolder = server_settings->getSettings()->backupfolder;
+	std::wstring o_user_view_folder = backupfolder+os_file_sep()+L"user_views" + os_file_sep()+clientname+ os_file_sep()+Server->ConvertToUnicode(accoutname);
+
+	if(!os_directory_exists(os_file_prefix(o_user_view_folder)) &&
+		!os_create_dir_recursive(o_user_view_folder))
+	{
+		ServerLogger::Log(clientid, "Error creating folder for user at user_views in backup storage", LL_WARNING);
+		return false;
+	}
+
+	if(!os_link_symbolic(os_file_prefix(user_view_home_path),
+		os_file_prefix(o_user_view_folder + os_file_sep() + backuppath_single)))
+	{
+		ServerLogger::Log(clientid, L"Error creating user view link at user_views in backup storage", LL_WARNING);
+		return false;
+	}
+
+	os_remove_symlink_dir(os_file_prefix(o_user_view_folder + os_file_sep() + L"current"));
+	if(!os_link_symbolic(os_file_prefix(user_view_home_path),
+		os_file_prefix(o_user_view_folder + os_file_sep() + L"current")))
+	{
+		ServerLogger::Log(clientid, L"Error creating current user view link at user_views in backup storage", LL_WARNING);
+		return false;
+	}
+
+	return true;
 }

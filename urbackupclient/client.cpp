@@ -3250,6 +3250,7 @@ void IndexThread::writeTokens()
 	std::vector<ClientDAO::SToken> tokens = cd->getFileAccessTokens();
 
 	std::string ids;
+	std::string uids;
 	for(size_t i=0;i<tokens.size();++i)
 	{
 		if(!ids.empty())
@@ -3257,16 +3258,43 @@ void IndexThread::writeTokens()
 			ids+=",";
 		}
 		ids+=nconvert(tokens[i].id);
+
+		if(tokens[i].is_user)
+		{
+			if(!uids.empty())
+			{
+				uids+=",";
+			}
+			uids+=nconvert(tokens[i].id);
+		}
 	}
 
 	std::string data="ids="+ids+"\n";
-
 	data+="access_key="+curr_key+"\n";
+	data+="uids="+uids+"\n";
 
 	for(size_t i=0;i<tokens.size();++i)
 	{
 		data+=nconvert(tokens[i].id)+".accountname="+base64_encode_dash(Server->ConvertToUTF8(tokens[i].accountname))+"\n";
 		data+=nconvert(tokens[i].id)+".token="+Server->ConvertToUTF8(tokens[i].token)+"\n";
+
+		if(tokens[i].is_user)
+		{
+			std::vector<int> groups = cd->getGroupMembership(tokens[i].id);
+
+			std::string gids;
+
+			for(size_t j=0;j<groups.size();++j)
+			{
+				if(!gids.empty())
+				{
+					gids+=",";
+				}
+				gids+=nconvert(groups[j]);
+			}
+
+			data+=nconvert(tokens[i].id)+".gids="+gids+"\n";
+		}
 	}
 
 

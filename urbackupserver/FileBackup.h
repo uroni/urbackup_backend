@@ -87,8 +87,10 @@ protected:
 	std::string getSHA512(const std::wstring& fn);
 	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);
 	bool constructBackupPathCdp();
-
 	std::string systemErrorInfo();
+	void createUserViews(IFile* file_list_f);
+	bool createUserView(IFile* file_list_f, const std::vector<int>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots);
+	std::vector<size_t> findIdenticalPermissionRoots(IFile* file_list_f, const std::vector<int>& ids);
 
 	int group;
 	bool use_tmpfiles;

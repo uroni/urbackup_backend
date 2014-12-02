@@ -450,6 +450,12 @@ void update_client17_18(IDatabase* db)
 	db->Write("DROP TABLE mfiles_backup");
 }
 
+void update_client18_19(IDatabase* db)
+{
+	db->Write("CREATE TABLE token_group_memberships (uid INTEGER REFERENCES fileaccess_tokens(id) ON DELETE CASCADE, gid INTEGER REFERENCES fileaccess_tokens(id) ON DELETE CASCADE)");
+	db->Write("CREATE UNIQUE INDEX token_group_memberships_unique ON token_group_memberships(uid, gid)");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);

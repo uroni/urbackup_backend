@@ -997,6 +997,13 @@ bool IncrFileBackup::doFileBackup()
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
 			ServerLogger::Log(clientid, "Symbolic links created.", LL_DEBUG);
+
+			if(server_settings->getSettings()->create_linked_user_views)
+			{
+				ServerLogger::Log(clientid, "Creating user views...", LL_INFO);
+
+				createUserViews(tmp);
+			}
 		}
 		else if(!b && !c_has_error)
 		{
@@ -1087,6 +1094,11 @@ SBackup IncrFileBackup::getLastIncremental( int group )
 
 bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, const std::vector<size_t> &deleted_ids, std::wstring snapshot_path, bool no_error)
 {
+	if(os_directory_exists(os_file_prefix(backuppath + os_file_sep() + L"user_views")))
+	{
+		os_remove_nonempty_dir(os_file_prefix(backuppath + os_file_sep() + L"user_views"));
+	}
+
 	FileListParser list_parser;
 
 	IFile *tmp=Server->openFile(clientlist_fn, MODE_READ);

@@ -216,7 +216,6 @@ private:
 	IQuery *q_update_incr;
 	IQuery *q_update_setting;
 	IQuery *q_insert_setting;
-	IQuery *q_set_complete;
 	IQuery *q_update_image_full;
 	IQuery *q_update_image_incr;
 	IQuery *q_get_unsent_logdata;
