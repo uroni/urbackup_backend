@@ -25,7 +25,7 @@
 #include "database.h"
 #include "filelist_utils.h"
 #include <algorithm>
-#include "..\urbackupcommon\os_functions.h"
+#include "../urbackupcommon/os_functions.h"
 #include "file_metadata.h"
 #include <sstream>
 #include "create_files_index.h"
@@ -34,6 +34,11 @@
 #include "server_dir_links.h"
 #include "server_cleanup.h"
 #include <stack>
+#include <limits.h>
+
+#ifndef NAME_MAX
+#define NAME_MAX _POSIX_NAME_MAX
+#endif
 
 const unsigned int full_backup_construct_timeout=4*60*60*1000;
 extern std::string server_identity;
@@ -42,7 +47,7 @@ extern std::string server_token;
 FileBackup::FileBackup( ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool is_incremental, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots)
 	:  Backup(client_main, clientid, clientname, log_action, true, is_incremental), group(group), use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), use_reflink(use_reflink), use_snapshots(use_snapshots),
 	disk_error(false), with_hashes(false),
-	backupid(0), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),
+	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
 	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false)
 {
@@ -460,7 +465,7 @@ bool FileBackup::doBackup()
 
 	if(!cdp_path)
 	{
-		if(!constructBackupPath(with_hashes, use_snapshots, true))
+		if(!constructBackupPath(with_hashes, use_snapshots, !r_incremental))
 		{
 			ServerLogger::Log(clientid, "Cannot create Directory for backup (Server error)", LL_ERROR);
 			return false;

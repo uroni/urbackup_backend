@@ -60,9 +60,6 @@
 #include "FullFileBackup.h"
 #include "ImageBackup.h"
 #include "ContinuousBackup.h"
-#ifndef NAME_MAX
-#define NAME_MAX _POSIX_NAME_MAX
-#endif
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;

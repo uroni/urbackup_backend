@@ -11,5 +11,5 @@ protected:
 	virtual bool doFileBackup();
 
 
-	SBackup FullFileBackup::getLastFullDurations();
+	SBackup getLastFullDurations();
 };
