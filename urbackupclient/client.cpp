@@ -216,11 +216,14 @@ std::wstring add_trailing_slash(const std::wstring &strDirName)
 	{
 		return strDirName+os_file_sep();
 	}
-	else
+	else if(strDirName.empty())
 	{
 		return os_file_sep();
 	}
-	return strDirName;
+	else
+	{
+		return strDirName;
+	}
 }
 
 IndexThread::IndexThread(void)
