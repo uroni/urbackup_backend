@@ -1691,7 +1691,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	}
 
 	bool gpt_style=false;
-	unsigned int physical_sector_size=512;
+	unsigned int logical_sector_size=512;
 
 	STORAGE_DEVICE_NUMBER dev_num;
 	DWORD ret_bytes;
@@ -1796,12 +1796,12 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 				}
 				else
 				{
-					physical_sector_size = alignment_descriptor.BytesPerPhysicalSector;
+					unsigned int r_logical_sector_size = alignment_descriptor.BytesPerLogicalSector;
 
-					if( !((physical_sector_size & (physical_sector_size-1))==0) || 
-						physical_sector_size==0 )
+					if( (r_logical_sector_size & (r_logical_sector_size-1))==0 &&
+						r_logical_sector_size!=0 )
 					{
-						physical_sector_size = alignment_descriptor.BytesPerLogicalSector;
+						logical_sector_size = r_logical_sector_size;
 					}
 				}				
 			}
@@ -1886,16 +1886,16 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 	if(gpt_style)
 	{
-		if(!dev->Seek(physical_sector_size))
+		if(!dev->Seek(logical_sector_size))
 		{
 			errmsg=L"Error seeking in device to GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
 			return false;
 		}
 
-		std::string gpt_header = dev->Read(physical_sector_size);
+		std::string gpt_header = dev->Read(logical_sector_size);
 
-		if(gpt_header.size()!=physical_sector_size)
+		if(gpt_header.size()!=logical_sector_size)
 		{
 			errmsg=L"Error reading GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
@@ -1918,10 +1918,10 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 			return false;
 		}
 
-		mbr.addInt64(physical_sector_size);
+		mbr.addInt64(logical_sector_size);
 		mbr.addString(gpt_header);
 
-		int64 paritition_table_pos = gpt_header_s->partition_table_lba*physical_sector_size;
+		int64 paritition_table_pos = gpt_header_s->partition_table_lba*logical_sector_size;
 		if(!dev->Seek(paritition_table_pos))
 		{
 			errmsg=L"Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber);
@@ -1943,7 +1943,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		mbr.addString(gpt_table);
 
 		// BACKUP HEADER
-		int64 backup_gpt_location = gpt_header_s->backup_lba*physical_sector_size;
+		int64 backup_gpt_location = gpt_header_s->backup_lba*logical_sector_size;
 		if(!dev->Seek(backup_gpt_location))
 		{
 			errmsg=L"Error seeking in device to backup GPT header "+convert((int)dev_num.DeviceNumber);
@@ -1951,9 +1951,9 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 			return false;
 		}
 
-		gpt_header = dev->Read(physical_sector_size);
+		gpt_header = dev->Read(logical_sector_size);
 
-		if(gpt_header.size()!=physical_sector_size)
+		if(gpt_header.size()!=logical_sector_size)
 		{
 			errmsg=L"Error reading backup GPT header "+convert((int)dev_num.DeviceNumber);
 			Server->Log(errmsg, LL_ERROR);
@@ -1979,7 +1979,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 		mbr.addInt64(backup_gpt_location);
 		mbr.addString(gpt_header);
 
-		paritition_table_pos = backup_gpt_header_s->partition_table_lba*physical_sector_size;
+		paritition_table_pos = backup_gpt_header_s->partition_table_lba*logical_sector_size;
 		if(!dev->Seek(paritition_table_pos))
 		{
 			errmsg=L"Error seeking in device to GPT partition table "+convert((int)dev_num.DeviceNumber);
