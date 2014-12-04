@@ -545,6 +545,10 @@ bool upgrade_client(void)
 				update_client17_18(db);
 				++ver;
 				break;
+			case 18:
+				update_client18_19(db);
+				++ver;
+				break;
 			default:
 				break;
 		}
