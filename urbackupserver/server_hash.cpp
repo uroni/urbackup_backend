@@ -276,6 +276,7 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 
 		//new file for this client
 		prev_entry=0;
+		next_entry=0;
 
 		std::wstring clients;
 
