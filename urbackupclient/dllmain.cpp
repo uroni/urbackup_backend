@@ -456,6 +456,11 @@ void update_client14_15(IDatabase *db)
 	db->Write("DELETE FROM journal_ids");
 }
 
+void update_client15_16(IDatabase *db)
+{
+	db->Write("DELETE FROM files");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -531,6 +536,10 @@ bool upgrade_client(void)
 				break;
 			case 14:
 				update_client14_15(db);
+				++ver;
+				break;
+			case 15:
+				update_client15_16(db);
 				++ver;
 				break;
 			default:
