@@ -24,6 +24,7 @@
 #include "../server_settings.h"
 #include "backups.h"
 #include <memory>
+#include <algorithm>
 
 extern ICryptoFactory *crypto_fak;
 
@@ -360,7 +361,7 @@ ACTION_IMPL(backups)
 
 	bool token_authentication=false;
 	std::string fileaccesstokens;
-	if( (session==NULL || session->id==-1) && has_tokens)
+	if( (session==NULL || session->id==-2) && has_tokens)
 	{
 		token_authentication=true;
 		fileaccesstokens = decryptTokens(helper.getDatabase(), GET);
@@ -381,7 +382,7 @@ ACTION_IMPL(backups)
 			}
 		}
 	}
-	else if(session!=NULL && session->id==-1)
+	else if(session!=NULL && session->id==-2)
 	{
 		fileaccesstokens = wnarrow(session->mStr[L"fileaccesstokens"]);
 		if(!fileaccesstokens.empty())
@@ -402,41 +403,82 @@ ACTION_IMPL(backups)
 	std::wstring sa=GET[L"sa"];
 	std::string rights=helper.getRights("browse_backups");
 	std::string archive_rights=helper.getRights("manual_archive");
-	std::vector<int> clientid=helper.getRightIDs(rights);
+	std::vector<int> clientid;
+	if(rights!="tokens")
+	{
+		clientid = helper.getRightIDs(rights);
+	}
 	std::vector<int> clientid_archive=helper.getRightIDs(archive_rights);
 	if(clientid.size()==1 && sa.empty() )
 	{
 		sa=L"backups";
 		GET[L"clientid"]=convert(clientid[0]);
 	}
-	if(token_authentication && sa.empty())
-	{
-		sa=L"backups";
-	}
 	if( (session!=NULL && rights!="none" ) || token_authentication)
 	{
 		IDatabase *db=helper.getDatabase();
-		if(sa.empty() && !token_authentication)
+		if(sa.empty())
 		{
-			std::string qstr="SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup FROM clients";
-			if(!clientid.empty()) qstr+=" WHERE "+constructFilter(clientid, "id");
+			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup FROM clients";
+			if(token_authentication)
+			{
+				std::vector<std::string> tokens;
+				Tokenize(fileaccesstokens, tokens, ";");
+				IQuery* q_clients = db->Prepare("SELECT clientid FROM tokens_on_client WHERE token=?");
+				for(size_t i=0;i<tokens.size();++i)
+				{
+					q_clients->Bind(tokens[i]);
+					db_results res = q_clients->Read();
+					q_clients->Reset();
+
+					if(!res.empty())
+					{
+						int n_clientid = watoi(res[0][L"clientid"]);
+						if(std::find(clientid.begin(), clientid.end(), n_clientid)==
+							clientid.end())
+						{
+							clientid.push_back(n_clientid);
+						}
+					}
+				}
+
+				if(!clientid.empty())
+				{
+					qstr+=" WHERE "+constructFilter(clientid, "id");
+				}
+				else
+				{
+					sa=L"backups";
+				}
+			}
+			else
+			{
+				if(!clientid.empty())
+				{
+					qstr+=" WHERE "+constructFilter(clientid, "id");
+				}
+			}
+
 			qstr+=" ORDER BY name";
 
-			IQuery *q=db->Prepare(qstr);
-			db_results res=q->Read();
-			q->Reset();
-			JSON::Array clients;
-			for(size_t i=0;i<res.size();++i)
+			if(sa!=L"backups")
 			{
-				JSON::Object obj;
-				obj.set("name", res[i][L"name"]);
-				obj.set("id", watoi(res[i][L"id"]));
-				obj.set("lastbackup", res[i][L"lastbackup"]);
-				clients.add(obj);
-			}
-			ret.set("clients", clients);
+				IQuery *q=db->Prepare(qstr);
+				db_results res=q->Read();
+				q->Reset();
+				JSON::Array clients;
+				for(size_t i=0;i<res.size();++i)
+				{
+					JSON::Object obj;
+					obj.set("name", res[i][L"name"]);
+					obj.set("id", watoi(res[i][L"id"]));
+					obj.set("lastbackup", res[i][L"lastbackup"]);
+					clients.add(obj);
+				}
+				ret.set("clients", clients);
+			}			
 		}
-		else if(sa==L"backups")
+		if(sa==L"backups")
 		{
 			int t_clientid;
 			std::wstring clientname;

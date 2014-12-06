@@ -22,8 +22,11 @@
 
 #include <stdlib.h>
 #include <algorithm>
+#include "../server_settings.h"
+#include "../../urlplugin/IUrlFactory.h"
 
 extern std::string server_identity;
+extern IUrlFactory *url_fak;
 
 Helper::Helper(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 {
@@ -45,6 +48,15 @@ void Helper::update(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 	if( session==NULL )
 	{	
 		session=Server->getSessionMgr()->getUser( (*GET)[L"ses"], widen((*PARAMS)["REMOTE_ADDR"]+(*PARAMS)["HTTP_USER_AGENT"]) );
+
+		if(session!=NULL)
+		{
+			str_map::iterator it = session->mStr.find(L"ldap_rights");
+			if(it!=session->mStr.end())
+			{
+				ldap_rights = parseRightsString(wnarrow(it->second));
+			}
+		}
 	}
 
 	//Get language from ACCEPT_LANGUAGE
@@ -195,6 +207,12 @@ std::string Helper::getRightsInt(const std::string &domain)
 {
 	if(session==NULL) return "none";
 
+	std::map<std::string, std::string>::iterator it=ldap_rights.find(domain);
+	if(it!=ldap_rights.end())
+	{
+		return it->second;
+	}
+
 	IQuery *q=getDatabase()->Prepare("SELECT t_right FROM settings_db.si_permissions WHERE clientid=? AND t_domain=?");
 	q->Bind(session->id);
 	q->Bind(domain);
@@ -265,28 +283,47 @@ bool Helper::hasRights(int clientid, std::string rights, std::vector<int> right_
 	return r_ok;
 }
 
-bool Helper::checkPassword(const std::wstring &username, const std::wstring &password, int *user_id)
+bool Helper::checkPassword(const std::wstring &username, const std::wstring &password, int *user_id, bool plainpw)
 {
 	IDatabase *db=getDatabase();
-	IQuery *q=db->Prepare("SELECT id, name, password_md5 FROM settings_db.si_users WHERE name=?");
+	IQuery *q=db->Prepare("SELECT id, name, password_md5, salt FROM settings_db.si_users WHERE name=?");
 	q->Bind(username);
 	db_results res=q->Read();
 	if(!res.empty())
 	{
 		std::wstring password_md5=res[0][L"password_md5"];
-		std::string ui_password=wnarrow(password);
-		std::string r_password=Server->GenerateHexMD5(Server->ConvertToUTF8(session->mStr[L"rnd"]+password_md5));
-		if(r_password!=ui_password)
+		if(!plainpw)
 		{
-			return false;
+			std::string ui_password=wnarrow(password);
+			std::string r_password=Server->GenerateHexMD5(Server->ConvertToUTF8(session->mStr[L"rnd"]+password_md5));
+			if(r_password!=ui_password)
+			{
+				return false;
+			}
+			else
+			{
+				if(user_id!=NULL)
+				{
+					*user_id=watoi(res[0][L"id"]);
+				}
+				return true;
+			}
 		}
 		else
 		{
-			if(user_id!=NULL)
+			std::string db_password = Server->GenerateHexMD5(Server->ConvertToUTF8(res[0][L"salt"]+password));
+			if(db_password!=wnarrow(password_md5))
 			{
-				*user_id=watoi(res[0][L"id"]);
+				return false;
 			}
-			return true;
+			else
+			{
+				if(user_id!=NULL)
+				{
+					*user_id=watoi(res[0][L"id"]);
+				}
+				return true;
+			}
 		}
 	}
 
@@ -350,4 +387,155 @@ void Helper::sleep(unsigned int ms)
 	{
 		Server->getSessionMgr()->lockUser(session);
 	}
+}
+
+bool Helper::ldapEnabled()
+{
+	IDatabase *db=getDatabase();
+	IQuery *q=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key='ldap_login_enabled'");
+	if(q!=NULL)
+	{
+		db_results res = q->Read();
+		if(!res.empty())
+		{
+			return res[0][L"value"]==L"true";
+		}
+	}
+	return false;
+}
+
+bool Helper::ldapLogin( const std::wstring &username, const std::wstring &password )
+{
+	if(url_fak==NULL)
+	{
+		return false;
+	}
+
+	ServerSettings settings(getDatabase());
+	SLDAPSettings ldap_settings = settings.getLDAPSettings();
+
+	std::wstring sanitized_username = username;
+	std::wstring to_sanitize = L"\"[]:;|=+*?<>/\\,";
+	for(size_t i=0;i<sanitized_username.size();++i)
+	{
+		if(std::find(to_sanitize.begin(), to_sanitize.end(), sanitized_username[i])!=to_sanitize.end())
+		{
+			sanitized_username[i]='_';
+		}
+	}
+
+	std::wstring group_class_query = greplace(L"{USERNAME}", sanitized_username, Server->ConvertToUnicode(ldap_settings.group_class_query));
+
+	std::string ldap_query = "ldap://" + ldap_settings.server_name +
+		(ldap_settings.server_port>0?(":" + nconvert(ldap_settings.server_port)):"") +
+		"/" + Server->ConvertToUTF8(group_class_query);
+
+	std::string errmsg;
+	std::vector<std::multimap<std::string, std::string> > data = url_fak->queryLDAP(ldap_query, ldap_settings.username_prefix+Server->ConvertToUTF8(username)+ldap_settings.username_suffix,
+		Server->ConvertToUTF8(password), &errmsg);
+
+	if(data.empty())
+	{
+		if(!errmsg.empty())
+		{
+			Server->Log("Login via LDAP failed: "+errmsg, LL_ERROR);
+		}
+		return false;
+	}
+	else
+	{
+		if(data.size()!=1)
+		{
+			Server->Log("LDAP query returned "+nconvert(data.size())+" items, but should return only one. Login failed.", LL_ERROR);
+			return false;
+		}
+
+		IQuery* q = getDatabase()->Prepare("SELECT clientid FROM users_on_client WHERE username=?");
+		q->Bind(username);
+		db_results db_res = q->Read();
+		q->Reset();
+
+		std::string autoclients;
+		for(size_t i=0;i<db_res.size();++i)
+		{
+			if(!autoclients.empty()) autoclients+=",";
+			autoclients+=wnarrow(db_res[i][L"clientid"]);
+		}
+
+		std::multimap<std::string, std::string> sdata = data[0];
+
+		std::string str_ldap_rights;
+
+		std::multimap<std::string, std::string>::iterator it = sdata.find(ldap_settings.group_key_name);
+		while(it!=sdata.end() && it->first == ldap_settings.group_key_name)
+		{
+			std::map<std::wstring, std::wstring>::iterator it_rights
+				= ldap_settings.group_rights_map.find(Server->ConvertToUnicode(it->second));
+			if(it_rights!=ldap_settings.group_rights_map.end())
+			{
+				str_ldap_rights = greplace("{AUTOCLIENTS}", autoclients, Server->ConvertToUTF8(it_rights->second));
+				break;
+			}
+			++it;
+		}
+
+		if(str_ldap_rights.empty())
+		{
+			std::multimap<std::string, std::string>::iterator it = sdata.find(ldap_settings.class_key_name);
+			while(it!=sdata.end() && it->first == ldap_settings.class_key_name)
+			{
+				std::map<std::wstring, std::wstring>::iterator it_rights
+					= ldap_settings.class_rights_map.find(Server->ConvertToUnicode(it->second));
+				if(it_rights!=ldap_settings.class_rights_map.end())
+				{
+					str_ldap_rights = greplace("{AUTOCLIENTS}", autoclients, Server->ConvertToUTF8(it_rights->second));
+					break;
+				}
+				++it;
+			}
+		}
+
+		if(!str_ldap_rights.empty())
+		{
+			ldap_rights = parseRightsString(str_ldap_rights);
+		}
+
+		if(!str_ldap_rights.empty() && session!=NULL)
+		{
+			session->mStr[L"ldap_rights"] = widen(str_ldap_rights);
+		}
+
+		q= getDatabase()->Prepare("SELECT token FROM user_tokens WHERE username = ?");
+		q->Bind(username);
+		db_res = q->Read();
+		q->Reset();
+
+		std::wstring fileaccesstokens;
+		for(size_t i=0;i<db_res.size();++i)
+		{
+			if(!fileaccesstokens.empty()) fileaccesstokens+=L";";
+			fileaccesstokens+=db_res[i][L"token"];
+		}
+
+		if(!fileaccesstokens.empty())
+		{
+			session->mStr[L"fileaccesstokens"]=fileaccesstokens;
+		}
+
+		return !str_ldap_rights.empty();
+	}
+}
+
+std::map<std::string, std::string> Helper::parseRightsString( const std::string& rights )
+{
+	std::vector<std::string> toks;
+	Tokenize(rights, toks, ",");
+	std::map<std::string, std::string> ret;
+	for(size_t i=0;i<toks.size();++i)
+	{
+		std::string domain = getuntil("=", toks[i]);
+		std::string right = getafter("=", toks[i]);
+		ret[domain]=right;
+	}
+	return ret;
 }

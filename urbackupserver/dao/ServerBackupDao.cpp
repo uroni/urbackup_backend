@@ -1669,6 +1669,76 @@ void ServerBackupDao::updateClientLastFileBackup(int backupid, int clientid)
 	q_updateClientLastFileBackup->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::deleteAllUsersOnClient
+* @sql
+*       DELETE FROM users_on_client WHERE clientid=:clientid(int)
+*/
+void ServerBackupDao::deleteAllUsersOnClient(int clientid)
+{
+	if(q_deleteAllUsersOnClient==NULL)
+	{
+		q_deleteAllUsersOnClient=db->Prepare("DELETE FROM users_on_client WHERE clientid=?", false);
+	}
+	q_deleteAllUsersOnClient->Bind(clientid);
+	q_deleteAllUsersOnClient->Write();
+	q_deleteAllUsersOnClient->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addUserOnClient
+* @sql
+*       INSERT INTO users_on_client (clientid, username) VALUES (:clientid(int), :username(string))
+*/
+void ServerBackupDao::addUserOnClient(int clientid, const std::wstring& username)
+{
+	if(q_addUserOnClient==NULL)
+	{
+		q_addUserOnClient=db->Prepare("INSERT INTO users_on_client (clientid, username) VALUES (?, ?)", false);
+	}
+	q_addUserOnClient->Bind(clientid);
+	q_addUserOnClient->Bind(username);
+	q_addUserOnClient->Write();
+	q_addUserOnClient->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addClientToken
+* @sql
+*       INSERT INTO tokens_on_client (clientid, token) VALUES (:clientid(int), :token(string))
+*/
+void ServerBackupDao::addClientToken(int clientid, const std::wstring& token)
+{
+	if(q_addClientToken==NULL)
+	{
+		q_addClientToken=db->Prepare("INSERT INTO tokens_on_client (clientid, token) VALUES (?, ?)", false);
+	}
+	q_addClientToken->Bind(clientid);
+	q_addClientToken->Bind(token);
+	q_addClientToken->Write();
+	q_addClientToken->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addUserToken
+* @sql
+*       INSERT INTO user_tokens (username, token) VALUES (:username(string), :token(string))
+*/
+void ServerBackupDao::addUserToken(const std::wstring& username, const std::wstring& token)
+{
+	if(q_addUserToken==NULL)
+	{
+		q_addUserToken=db->Prepare("INSERT INTO user_tokens (username, token) VALUES (?, ?)", false);
+	}
+	q_addUserToken->Bind(username);
+	q_addUserToken->Bind(token);
+	q_addUserToken->Write();
+	q_addUserToken->Reset();
+}
 
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
@@ -1747,6 +1817,10 @@ void ServerBackupDao::prepareQueries( void )
 	q_saveImageAssociation=NULL;
 	q_updateClientLastImageBackup=NULL;
 	q_updateClientLastFileBackup=NULL;
+	q_deleteAllUsersOnClient=NULL;
+	q_addUserOnClient=NULL;
+	q_addClientToken=NULL;
+	q_addUserToken=NULL;
 }
 
 //@-SQLGenDestruction
@@ -1826,6 +1900,10 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_saveImageAssociation);
 	db->destroyQuery(q_updateClientLastImageBackup);
 	db->destroyQuery(q_updateClientLastFileBackup);
+	db->destroyQuery(q_deleteAllUsersOnClient);
+	db->destroyQuery(q_addUserOnClient);
+	db->destroyQuery(q_addClientToken);
+	db->destroyQuery(q_addUserToken);
 }
 
 void ServerBackupDao::commit()

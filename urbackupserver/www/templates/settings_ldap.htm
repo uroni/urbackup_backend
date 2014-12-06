@@ -1,0 +1,70 @@
+﻿<br/>
+<div class="panel panel-default">
+	<div class="panel-body">
+		<form class="form-horizontal" role="form">
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_login_enabled">{tEnable logins via LDAP/AD}:</label>
+				<div class="col-sm-6">
+					<label><input type="checkbox" id="ldap_login_enabled" value="false" {ldap_login_enabled}/></label>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_server_name">{tLDAP/AD server name}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_server_name" value="{ldap_server_name|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_server_port">{tLDAP/AD server port}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_server_port" value="{ldap_server_port}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_username_prefix">{tLDAP/AD user name prefix}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_username_prefix" value="{ldap_username_prefix|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_username_suffix">{tLDAP/AD user name suffix}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_username_suffix" value="{ldap_username_suffix|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_group_class_query">{tLDAP/AD group and class query}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_group_class_query" value="{ldap_group_class_query|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_group_key_name">{tLDAP/AD group key name in query}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_group_key_name" value="{ldap_group_key_name|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_class_key_name">{tLDAP/AD class key name in query}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_class_key_name" value="{ldap_class_key_name|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_group_rights_map">{tLDAP/AD group rights map}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_group_rights_map" value="{ldap_group_rights_map|s}"/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="ldap_class_rights_map">{tLDAP/AD class rights map}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="ldap_class_rights_map" value="{ldap_class_rights_map|s}"/>
+				</div>
+			</div>
+			
+			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveLdapSettings()" />
+		</form>
+	</div>
+</div>
+

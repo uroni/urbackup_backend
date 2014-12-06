@@ -1249,6 +1249,24 @@ bool update37_38()
 	return b;
 }
 
+bool update38_39()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("CREATE TABLE users_on_client (id INTEGER PRIMARY KEY, clientid INTEGER REFERENCES clients(id) ON DELETE CASCADE, username TEXT)");
+	b &= db->Write("CREATE UNIQUE INDEX users_on_client_unique ON users_on_client(clientid, username)");
+
+	b &= db->Write("CREATE TABLE tokens_on_client (id INTEGER PRIMARY KEY, clientid INTEGER REFERENCES clients(id) ON DELETE CASCADE, token TEXT)");
+	b &= db->Write("CREATE UNIQUE INDEX tokens_on_client_unique ON tokens_on_client(clientid, token)");
+
+	b &= db->Write("CREATE TABLE user_tokens (id INTEGER PRIMARY KEY, username TEXT, token TEXT)");
+	b &= db->Write("CREATE UNIQUE INDEX user_tokens_unique ON user_tokens(username, token)");
+
+	return b;
+}
+
 
 void upgrade(void)
 {
@@ -1271,7 +1289,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=37;
+	int max_v=39;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1463,6 +1481,12 @@ void upgrade(void)
 				}
 				++ver;
 				break;
+			case 38:
+				if(!update38_39())
+				{
+					has_error=true;
+				}
+				++ver;
 			default:
 				break;
 		}

@@ -193,6 +193,10 @@ public:
 	void saveImageAssociation(int img_id, int assoc_id);
 	void updateClientLastImageBackup(int backupid, int clientid);
 	void updateClientLastFileBackup(int backupid, int clientid);
+	void deleteAllUsersOnClient(int clientid);
+	void addUserOnClient(int clientid, const std::wstring& username);
+	void addClientToken(int clientid, const std::wstring& token);
+	void addUserToken(const std::wstring& username, const std::wstring& token);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -280,6 +284,10 @@ private:
 	IQuery* q_saveImageAssociation;
 	IQuery* q_updateClientLastImageBackup;
 	IQuery* q_updateClientLastFileBackup;
+	IQuery* q_deleteAllUsersOnClient;
+	IQuery* q_addUserOnClient;
+	IQuery* q_addClientToken;
+	IQuery* q_addUserToken;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

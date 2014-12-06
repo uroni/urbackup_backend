@@ -515,6 +515,8 @@ bool FullFileBackup::doFileBackup()
 
 				createUserViews(tmp);
 			}
+
+			saveUsersOnClient();
 		}
 	}
 

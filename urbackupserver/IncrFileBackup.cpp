@@ -1004,6 +1004,8 @@ bool IncrFileBackup::doFileBackup()
 
 				createUserViews(tmp);
 			}
+
+			saveUsersOnClient();
 		}
 		else if(!b && !c_has_error)
 		{

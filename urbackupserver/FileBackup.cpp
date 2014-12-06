@@ -1235,3 +1235,47 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int>& ids,
 
 	return true;
 }
+
+void FileBackup::saveUsersOnClient()
+{
+	std::auto_ptr<ISettingsReader> urbackup_tokens(
+		Server->createFileSettingsReader(os_file_prefix(backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties")));
+
+	if(urbackup_tokens.get()==NULL)
+	{
+		ServerLogger::Log(clientid, "Cannot determine users on client. Token file not present.", LL_WARNING);
+		return;
+	}
+
+	std::string s_uids = urbackup_tokens->getValue("uids", "");
+	std::vector<std::string> uids;
+	Tokenize(s_uids, uids, ",");
+
+	backup_dao->deleteAllUsersOnClient(clientid);
+
+	for(size_t i=0;i<uids.size();++i)
+	{
+		std::wstring accountname = Server->ConvertToUnicode(base64_decode_dash(urbackup_tokens->getValue(uids[i]+".accountname", std::string())));
+		backup_dao->addUserOnClient(clientid, accountname);
+
+		backup_dao->addUserToken(accountname, widen(urbackup_tokens->getValue(uids[i]+".token", std::string())));
+
+		std::string s_gids = urbackup_tokens->getValue(uids[i]+".gids", "");
+		std::vector<std::string> gids;
+		Tokenize(s_gids, gids, ",");
+
+		for(size_t j=0;j<gids.size();++j)
+		{
+			backup_dao->addUserToken(accountname, widen(urbackup_tokens->getValue(gids[j]+".token", std::string())));
+		}
+	}
+
+	std::vector<std::wstring> keys = urbackup_tokens->getKeys();
+	for(size_t i=0;i<keys.size();++i)
+	{
+		if(keys[i].find(L".token")==keys[i].size()-6)
+		{
+			backup_dao->addClientToken(clientid, urbackup_tokens->getValue(keys[i], std::wstring()));
+		}
+	}
+}

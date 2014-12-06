@@ -147,3 +147,19 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"use_incremental_symlinks");
 	return ret;
 }
+
+std::vector<std::wstring> getLdapSettingsList(void)
+{
+	std::vector<std::wstring> ret;
+	ret.push_back(L"ldap_login_enabled");
+	ret.push_back(L"ldap_server_name");
+	ret.push_back(L"ldap_server_port");
+	ret.push_back(L"ldap_username_prefix");
+	ret.push_back(L"ldap_username_suffix");
+	ret.push_back(L"ldap_group_class_query");
+	ret.push_back(L"ldap_group_key_name");
+	ret.push_back(L"ldap_class_key_name");
+	ret.push_back(L"ldap_group_rights_map");
+	ret.push_back(L"ldap_class_rights_map");
+	return ret;
+}

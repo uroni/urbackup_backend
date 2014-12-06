@@ -101,6 +101,26 @@ struct SSettings
 	bool create_linked_user_views;
 };
 
+struct SLDAPSettings
+{
+	SLDAPSettings()
+		: server_port(0)
+	{
+
+	}
+
+	bool login_enabled;
+	std::string server_name;
+	int server_port;
+	std::string username_prefix;
+	std::string username_suffix;
+	std::string group_class_query;
+	std::string group_key_name;
+	std::string class_key_name;
+	std::map<std::wstring, std::wstring> group_rights_map;
+	std::map<std::wstring, std::wstring> class_rights_map;
+};
+
 struct STimeSpan
 {
 	STimeSpan(void): dayofweek(-1) {}
@@ -174,6 +194,10 @@ public:
 
 	static bool isInTimeSpan(std::vector<STimeSpan> bw);
 
+	SLDAPSettings getLDAPSettings();
+
+	std::wstring ldapMapToString(const std::map<std::wstring, std::wstring>& ldap_map);
+
 private:
 	void operator=(const ServerSettings& other){};
 	ServerSettings(const ServerSettings& other){};
@@ -200,6 +224,7 @@ private:
 	void readSizeClientSetting(const std::string &name, size_t *output);
 	void createSettingsReaders();
 	void updateInternal(bool* was_updated);
+	std::map<std::wstring, std::wstring> parseLdapMap(const std::wstring& data);
 
 	SSettingsCacheItem* settings_cache;
 	SSettings* local_settings;

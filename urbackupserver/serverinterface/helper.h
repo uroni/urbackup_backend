@@ -31,15 +31,20 @@ public:
 	std::vector<int> getRightIDs(std::string rights);
 	bool hasRights(int clientid, std::string rights, std::vector<int> right_ids);
 
-	bool checkPassword(const std::wstring &username, const std::wstring &password, int *user_id);
+	bool checkPassword(const std::wstring &username, const std::wstring &password, int *user_id, bool plainpw);
+	bool ldapLogin(const std::wstring &username, const std::wstring &password);
 
 	std::vector<int> clientRights(const std::string& right_name, bool& all_client_rights);
 
 	std::string getStrippedServerIdentity(void);
 
 	void sleep(unsigned int ms);
+
+	bool ldapEnabled();
 private:
 	std::string getRightsInt(const std::string &domain);
+	std::map<std::string, std::string> parseRightsString(const std::string& rights);
+
 
 	SUser* session;
 	std::vector<ITemplate*> templates;
@@ -49,6 +54,8 @@ private:
 
 	str_map *GET;
 	str_nmap *PARAMS;
+
+	std::map<std::string, std::string> ldap_rights;
 
 	THREAD_ID tid;
 };

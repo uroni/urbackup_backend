@@ -374,7 +374,7 @@ void ServerChannelThread::LOGIN(str_map& params)
 		helper.getSession()->mStr[L"rnd"]=widen(salt);
 
 		int user_id;
-		if(helper.checkPassword(params[L"username"], params[L"password"], &user_id))
+		if(helper.checkPassword(params[L"username"], params[L"password"], &user_id, false))
 		{
 			helper.getSession()->id=user_id;
 			PARAMS["REMOTE_ADDR"]=client_addr;

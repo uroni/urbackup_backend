@@ -6,3 +6,4 @@ std::vector<std::wstring> getOnlyServerClientSettingsList(void);
 std::vector<std::wstring> getGlobalizedSettingsList(void);
 std::vector<std::wstring> getLocalizedSettingsList(void);
 std::vector<std::wstring> getGlobalSettingsList(void);
+std::vector<std::wstring> getLdapSettingsList(void);

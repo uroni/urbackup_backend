@@ -7,6 +7,7 @@ g.tabberidx=-1;
 g.progress_stop_id=-1;
 g.current_version=1005000000;
 g.status_show_all=false;
+g.ldap_login=false;
 g.datatable_default_config={};
 
 g.languages=[ 
@@ -221,6 +222,11 @@ function try_anonymous_login(data)
 		}
 		else
 		{
+			if(data.ldap_enabled)
+			{
+				g.ldap_enabled=true;
+			}
+			
 			var ndata=dustRender("login");
 			if(g.data_f!=ndata)
 			{
@@ -1525,6 +1531,7 @@ function show_settings2(data)
 		var idx=0;
 		g.user_nav_pos_offset=0;
 		g.mail_nav_pos_offset=0;
+		g.ldap_nav_pos_offset=0;
 		n+="<ul class=\"nav nav-tabs\" role=\"tablist\">";
 		if(nav.general)
 		{
@@ -1540,6 +1547,7 @@ function show_settings2(data)
 			++idx;
 			++g.user_nav_pos_offset;
 			++g.mail_nav_pos_offset;
+			++g.ldap_nav_pos_offset;
 			++g.internet_nav_pos_offset;
 		}
 		if(nav.mail)
@@ -1551,6 +1559,22 @@ function show_settings2(data)
 			else
 			{
 				n+="<li><a href=\"javascript: mailSettings()\">"+trans("mail_settings")+"</a></li>";
+			}
+
+			++idx;
+			++g.user_nav_pos_offset;
+			++g.ldap_nav_pos_offset;
+			++g.internet_nav_pos_offset;
+		}
+		if(nav.ldap)
+		{
+			if(g.settings_nav_pos==idx)
+			{
+				n+="<li class=\"active\"><a href=\"javascript: ldapSettings()\">"+trans("ldap_settings")+"</a></li>";
+			}
+			else
+			{
+				n+="<li><a href=\"javascript: ldapSettings()\">"+trans("ldap_settings")+"</a></li>";
 			}
 
 			++idx;
@@ -1851,6 +1875,17 @@ function show_settings2(data)
 				}
 			}
 		}
+		else if(data.sa=="ldap")
+		{
+			data.settings.ldap_login_enabled = getCheckboxValue(data.settings.ldap_login_enabled);
+			
+			ndata+=dustRender("settings_ldap", data.settings);
+			
+			if(data.saved_ok)
+			{
+				ndata+=dustRender("settings_save_ok");
+			}
+		}
 		else if(data.sa=="listusers")
 		{
 			if(data.add_ok)
@@ -2082,6 +2117,18 @@ g.internet_settings_list=[
 "internet_server",
 "internet_server_port"
 ];
+g.ldap_settings_list=[
+"ldap_login_enabled",
+"ldap_server_name",
+"ldap_server_port",
+"ldap_username_prefix",
+"ldap_username_suffix",
+"ldap_group_class_query",
+"ldap_group_key_name",
+"ldap_class_key_name",
+"ldap_group_rights_map",
+"ldap_class_rights_map"
+];
 
 function validateCommonSettings()
 {
@@ -2153,6 +2200,16 @@ function saveMailSettings()
 	pars+=getPar("testmailaddr");
 	new getJSON("settings", "sa=mail_save"+pars, show_settings2);
 }
+function saveLdapSettings()
+{	
+	if(!startLoading()) return;
+	var pars="";
+	for(var i=0;i<g.ldap_settings_list.length;++i)
+	{
+		pars+=getPar(g.ldap_settings_list[i]);
+	}
+	new getJSON("settings", "sa=ldap_save"+pars, show_settings2);
+}
 function getInternetSettings()
 {	
 	if(!I('internet_server_port')) return "";
@@ -2181,6 +2238,12 @@ function mailSettings()
 	if(!startLoading()) return;
 	g.settings_nav_pos=g.mail_nav_pos_offset;
 	new getJSON("settings", "sa=mail", show_settings2);
+}
+function ldapSettings()
+{
+	if(!startLoading()) return;
+	g.settings_nav_pos=g.ldap_nav_pos_offset;
+	new getJSON("settings", "sa=ldap", show_settings2);
 }
 function internetSettings()
 {
@@ -2391,7 +2454,14 @@ g.login1=function ()
 	
 	if(!startLoading()) return false;
 	
-	new getJSON("salt", "username="+username, login2);
+	if(!g.ldap_enabled)
+	{
+		new getJSON("salt", "username="+username, login2);
+	}
+	else
+	{
+		new getJSON("login", "username="+username+"&password="+password+"&plainpw=1", login3);
+	}
 	
 	return false;
 }
@@ -2411,7 +2481,7 @@ function login2(data)
 	var username=I('username').value;
 	var password=I('password').value;
 	
-	var pwmd5=calcMD5(data.rnd+calcMD5(data.salt+password));
+	var pwmd5 = calcMD5(data.rnd+calcMD5(data.salt+password));
 	
 	new getJSON("login", "username="+username+"&password="+pwmd5, login3);
 }
@@ -2424,6 +2494,9 @@ function login3(data)
 		I('password').focus();
 		return;
 	}
+	
+	if(data.session)
+		g.session=data.session;
 	
 	g.allowed_nav_items = [];
 	if(data.status!="none")

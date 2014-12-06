@@ -76,18 +76,21 @@ ACTION_IMPL(login)
 	std::wstring username=GET[L"username"];
 	if(!username.empty())
 	{
-		/*if(has_session==false)
+		bool plainpw=GET[L"plainpw"]==L"1";
+		if(!has_session && plainpw)
 		{
 			ses=helper.generateSession(L"anonymous");
 			GET[L"ses"]=ses;
 			ret.set("session", JSON::Value(ses));
 			helper.update(tid, &GET, &PARAMS);
-		}*/
+		}
 		SUser *session=helper.getSession();
 		if(session!=NULL)
 		{
-			int user_id;
-			if(helper.checkPassword(username, GET[L"password"], &user_id) )
+			int user_id = -2;
+			
+			if(helper.checkPassword(username, GET[L"password"], &user_id, plainpw) ||
+				(plainpw && helper.ldapLogin(username, GET[L"password"])) )
 			{
 				ret.set("success", JSON::Value(true));
 				logLogin(helper, PARAMS, username, LoginMethod_Webinterface);
@@ -116,10 +119,15 @@ ACTION_IMPL(login)
 	else
 	{
 		ret.set("lang", helper.getLanguage());
+		bool ldap_enabled = helper.ldapEnabled();
 		db_results res=db->Read("SELECT count(*) AS c FROM settings_db.si_users");
-		if(!res.empty() && watoi(res[0][L"c"])>0)
+		if( (!res.empty() && watoi(res[0][L"c"])>0) || ldap_enabled)
 		{
 			ret.set("success", JSON::Value(false) );
+			if(ldap_enabled)
+			{
+				ret.set("ldap_enabled", true);
+			}
 		}
 		else
 		{

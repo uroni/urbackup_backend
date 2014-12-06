@@ -210,6 +210,24 @@ void getMailSettings(JSON::Object &obj, IDatabase *db)
 	}
 }
 
+void getLdapSettings(JSON::Object &obj, IDatabase *db, ServerSettings &settings)
+{
+	SLDAPSettings ldap_settings = settings.getLDAPSettings();
+#define SET_SETTING(x) obj.set("ldap_" #x, ldap_settings.x);
+
+	SET_SETTING(login_enabled);
+	SET_SETTING(server_name);
+	SET_SETTING(server_port);
+	SET_SETTING(username_prefix);
+	SET_SETTING(username_suffix);
+	SET_SETTING(group_class_query);
+	SET_SETTING(group_key_name);
+	SET_SETTING(class_key_name);
+	obj.set("ldap_group_rights_map", settings.ldapMapToString(ldap_settings.group_rights_map));
+	obj.set("ldap_class_rights_map", settings.ldapMapToString(ldap_settings.class_rights_map));
+#undef SET_SETTING
+}
+
 SClientSettings getClientSettings(IDatabase *db, int clientid)
 {
 	IQuery *q=db->Prepare("SELECT key, value FROM settings_db.settings WHERE clientid=?");
@@ -328,19 +346,18 @@ void saveGeneralSettings(str_map &GET, IDatabase *db, ServerBackupDao& backupdao
 #endif
 }
 
-void updateMailSettings(str_map &GET, IDatabase *db)
+void updateSettingsWithList(str_map &GET, IDatabase *db, const std::vector<std::wstring>& settingsList)
 {
 	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid=0 AND key=?");
 	IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=0");
 	IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,0)");
 
-	std::vector<std::wstring> settings=getMailSettingsList();
-	for(size_t i=0;i<settings.size();++i)
+	for(size_t i=0;i<settingsList.size();++i)
 	{
-		str_map::iterator it=GET.find(settings[i]);
+		str_map::iterator it=GET.find(settingsList[i]);
 		if(it!=GET.end())
 		{
-			updateSetting(settings[i], UnescapeSQLString(it->second), q_get, q_update, q_insert);
+			updateSetting(settingsList[i], UnescapeSQLString(it->second), q_get, q_update, q_insert);
 		}
 	}
 }
@@ -623,6 +640,10 @@ ACTION_IMPL(settings)
 			{
 				navitems.set("mail", true);
 			}
+			if(helper.getRights("ldap_settings")=="all" && url_fak!=NULL )
+			{
+				navitems.set("ldap", true);
+			}
 			if(crypto_fak!=NULL)
 			{
 				navitems.set("internet", true);
@@ -778,7 +799,7 @@ ACTION_IMPL(settings)
 			bool ok=true;
 			if(GET[L"userid"]==L"own")
 			{
-				if(!helper.checkPassword(session->mStr[L"username"], GET[L"old_pw"], NULL) )
+				if(!helper.checkPassword(session->mStr[L"username"], GET[L"old_pw"], NULL, false) )
 				{
 					ok=false;
 				}
@@ -911,7 +932,7 @@ ACTION_IMPL(settings)
 		}
 		if(sa==L"mail_save" && helper.getRights("mail_settings")=="all")
 		{
-			updateMailSettings(GET, db);
+			updateSettingsWithList(GET, db, getMailSettingsList());
 			ret.set("saved_ok", true);
 			std::wstring testmailaddr=GET[L"testmailaddr"];
 			if(!testmailaddr.empty())
@@ -943,6 +964,20 @@ ACTION_IMPL(settings)
 		{
 			JSON::Object obj;
 			getMailSettings(obj, db);
+			ret.set("settings", obj);
+			ret.set("sa", sa);
+		}
+		if(sa==L"ldap_save" && helper.getRights("ldap_settings")=="all")
+		{
+			updateSettingsWithList(GET, db, getLdapSettingsList());
+			ret.set("saved_ok", true);
+			sa=L"ldap";
+		}
+		if( sa==L"ldap" && helper.getRights("ldap_settings")=="all")
+		{
+			JSON::Object obj;
+			ServerSettings serv_settings(db);
+			getLdapSettings(obj, db, serv_settings);
 			ret.set("settings", obj);
 			ret.set("sa", sa);
 		}
