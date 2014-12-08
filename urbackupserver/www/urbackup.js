@@ -131,7 +131,7 @@ function change_lang(l, refresh)
 {
 	g.lang=l;
 	
-	var c="<select id=\"change_lang_select\" class=\"form-control\" onchange=\"change_lang_select()\">";
+	var c="<select id=\"change_lang_select\" class=\"form-control input-sm\" onchange=\"change_lang_select()\">";
 	for(var i=0;i<g.languages.length;++i)
 	{
 		if(g.languages[i].s==l)
