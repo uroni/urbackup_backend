@@ -1,4 +1,5 @@
 #ifdef _WIN32
+#	include <ws2tcpip.h>
 #	include <windows.h>
 #	define MSG_NOSIGNAL 0
 #	define socklen_t _i32

@@ -18,6 +18,9 @@
 
 #include "vld.h"
 #define DEF_SERVER
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#endif
 #include "Server.h"
 #include "AcceptThread.h"
 #include "SessionMgr.h"

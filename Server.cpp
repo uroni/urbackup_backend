@@ -19,6 +19,7 @@
 #include "vld.h"
 #ifdef _WIN32
 #define _CRT_RAND_S
+#include <ws2tcpip.h>
 #endif
 
 #include <iostream>

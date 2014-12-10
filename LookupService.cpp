@@ -32,10 +32,17 @@ bool LookupBlocking(std::string pServer, in_addr *dest)
     }
 	else
 	{
-		hostent* hp = gethostbyname(host);
-        if (hp != 0)
+		addrinfo hints;
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_protocol = IPPROTO_TCP;
+		hints.ai_socktype = SOCK_STREAM;
+
+		addrinfo* hp;
+		if(getaddrinfo(host, NULL, &hints, &hp)==0 && hp!=NULL)
 		{
-			memcpy(dest, hp->h_addr, hp->h_length);
+			memcpy(dest, hp->ai_addr, hp->ai_addrlen);
+			freeaddrinfo(hp);
 		}
 		else
 		{

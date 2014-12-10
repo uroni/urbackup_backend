@@ -16,36 +16,11 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
 
+#include "socket_header.h"
 #include "LoadbalancerClient.h"
 #include "Server.h"
-#include "socket_header.h"
 #include <memory.h>
-
-in_addr getIP(std::string ip)
-{
-	const char* host=ip.c_str();
-	in_addr dest;
-	unsigned int addr = inet_addr(host);
-	if (addr != INADDR_NONE)
-	{
-		dest.s_addr = addr;
-		return dest;
-	}
-	else
-	{
-		hostent* hp = gethostbyname(host);
-		if (hp != 0)
-		{
-			memcpy(&(dest), hp->h_addr, hp->h_length);
-		}
-		else
-		{
-			memset(&dest,0,sizeof(in_addr) );
-			return dest;
-		}
-	}
-	return dest;
-}
+#include "LookupService.h"
 
 CLoadbalancerClient::CLoadbalancerClient(std::string pLB, unsigned short pLBPort, int pWeight, unsigned short pServerport)
 {
@@ -60,7 +35,7 @@ void CLoadbalancerClient::operator ()(void)
 	int rc;
 #ifdef _WIN32
 	WSADATA wsadata;
-	rc = WSAStartup(MAKEWORD(2,0), &wsadata);
+	rc = WSAStartup(MAKEWORD(2,2), &wsadata);
 	if(rc == SOCKET_ERROR)	return;
 #endif
 	SOCKET s=socket(AF_INET,SOCK_STREAM,0);
@@ -75,8 +50,12 @@ void CLoadbalancerClient::operator ()(void)
 	memset(&addr, 0, sizeof(sockaddr_in));
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(lbport);
-	addr.sin_addr=getIP(lb);
-	
+	if(!LookupBlocking(lb, &addr.sin_addr))
+	{
+		Server->Log("Cannot resolve \""+lb+"\"",LL_ERROR);
+		return;
+	}
+
 	int err=connect(s, (sockaddr*)&addr, sizeof( sockaddr_in ) );
 	
 	if( err==-1 )

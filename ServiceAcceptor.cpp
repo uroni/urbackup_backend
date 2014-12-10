@@ -45,7 +45,7 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	int rc;
 #ifdef _WIN32
 	WSADATA wsadata;
-	rc = WSAStartup(MAKEWORD(2,0), &wsadata);
+	rc = WSAStartup(MAKEWORD(2,2), &wsadata);
 	if(rc == SOCKET_ERROR)	return;
 #endif
 

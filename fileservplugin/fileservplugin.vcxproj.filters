@@ -18,9 +18,6 @@
     <ClCompile Include="bufmgr.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="CampusThread.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="CClientThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -81,9 +78,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="CampusThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="CClientThread.h">

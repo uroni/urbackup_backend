@@ -9,8 +9,8 @@ AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werro
 endif
 
 AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
-AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY
-AM_LDFLAGS = 
+AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY $(SUID_CFLAGS)
+AM_LDFLAGS = $(SUID_LDFLAGS)
 SUBDIRS=. $(P_SUBDIRS)
 install-exec-local: defaults_server init.d_server logrotate_urbackup_srv
 if INSTALL_INITD

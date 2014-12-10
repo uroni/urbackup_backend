@@ -179,7 +179,6 @@
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="bufmgr.cpp" />
-    <ClCompile Include="CampusThread.cpp" />
     <ClCompile Include="CClientThread.cpp" />
     <ClCompile Include="ChunkSendThread.cpp" />
     <ClCompile Include="CriticalSection.cpp" />
@@ -200,7 +199,6 @@
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
     <ClInclude Include="bufmgr.h" />
-    <ClInclude Include="CampusThread.h" />
     <ClInclude Include="CClientThread.h" />
     <ClInclude Include="ChunkSendThread.h" />
     <ClInclude Include="chunk_settings.h" />

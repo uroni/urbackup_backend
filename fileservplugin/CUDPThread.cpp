@@ -32,6 +32,9 @@
 #include "FileServ.h"
 #include "../stringtools.h"
 #include <memory.h>
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#endif
 
 std::string getSystemServerName(bool use_fqdn)
 {
@@ -48,23 +51,31 @@ std::string getSystemServerName(bool use_fqdn)
 		return hostname;
 	}
 
-	struct hostent* h;
-	h = gethostbyname(hostname);
-	if(h!=NULL)
+	std::string ret;
+
+	addrinfo* h;
+	addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_FQDN;
+	if(getaddrinfo(hostname, NULL, NULL, &h)==0)
 	{
-		if(strlower(h->h_name)==strlower(hostname))
+		if(strlower(h->ai_canonname)==strlower(hostname))
 		{
-			return hostname;
+			ret = hostname;
 		}
 		else
 		{
-			return h->h_name;
+			ret = h->ai_canonname;
 		}
+
+		freeaddrinfo(h);
 	}
 	else
 	{
-		return hostname;
+		ret = hostname;
 	}
+
+	return ret;
 }
 
 bool CUDPThread::hasError(void)

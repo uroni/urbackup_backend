@@ -35,6 +35,7 @@
 #include <sys\stat.h>
 #include <time.h>
 #include <assert.h>
+#include <ws2tcpip.h>
 
 #ifdef USE_NTFS_TXF
 #include <KtmW32.h>
@@ -653,12 +654,27 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
     }
 	else
 	{
-		hostent* hp = gethostbyname(host);
-        if (hp != 0)
+		addrinfo hints;
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
+
+		addrinfo* h;
+		if(getaddrinfo(pServer.c_str(), NULL, &hints, &h)==0)
 		{
-			in_addr tmp;
-			memcpy(&tmp, hp->h_addr,  hp->h_length );
-			*dest=tmp.s_addr;
+			if(h!=NULL)
+			{
+				in_addr tmp;
+				memcpy(&tmp, h->ai_addr,  h->ai_addrlen );
+				*dest=tmp.s_addr;
+			}
+			else
+			{
+				return false;
+			}
+			
+			freeaddrinfo(h);
 		}
 		else
 		{

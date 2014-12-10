@@ -21,12 +21,12 @@
 #include <iostream>
 #ifdef _WIN32
 #	include <conio.h>
+#	include <ws2tcpip.h>
 #endif
 #include "../Interface/Server.h"
 #include "CTCPFileServ.h"
 #include "settings.h"
 #include "../stringtools.h"
-#include "CampusThread.h"
 #include "log.h"
 
 std::fstream logfile;
@@ -46,6 +46,7 @@ CTCPFileServ *TCPServer=NULL;
 #include <syslog.h>
 #include <string.h>
 #endif
+#include <algorithm>
 
 #ifdef DLL_EXPORT
 #	define EXPORT_METHOD_INT 5
@@ -78,10 +79,8 @@ void RestartServer()
 
 bool EnumerateInterfaces()
 {
-	static std::vector<_u32> ips;
+	static std::vector<std::vector<char> > ips;
 	char hostname[MAX_PATH];
-    struct    hostent* h;
-    _u32     address;
 
     _i32 rc=gethostname(hostname, MAX_PATH);
      if(rc==SOCKET_ERROR)
@@ -89,50 +88,34 @@ bool EnumerateInterfaces()
 
 	 bool new_ifs=false;
 
-	 std::vector<_u32> new_ips;
+	 std::vector<std::vector<char> > new_ips;
 
-	 if(NULL != (h = gethostbyname(hostname)))
+	 struct addrinfo* h;
+	 if(getaddrinfo(hostname, NULL, NULL, &h)==0)
      {
-		for(_u32 x = 0; (h->h_addr_list[x]); x++)
-        {
-               
-			((char*)(&address))[0] = h->h_addr_list[x][0];
-			((char*)(&address))[1] = h->h_addr_list[x][1];
-            ((char*)(&address))[2] = h->h_addr_list[x][2];
-            ((char*)(&address))[3] = h->h_addr_list[x][3];
-			
-			bool found=false;
-			for(size_t i=0;i<ips.size();++i)
-			{
-				if(ips[i]==address )
-				{
-					found=true;
-					break;
-				}
-			}
+		 for(addrinfo* ptr = h;ptr!=NULL;ptr=ptr->ai_next)
+		 {
+			 if(ptr->ai_family==AF_INET || ptr->ai_family==AF_INET6)
+			 {
+				 std::vector<char> address;
+				 address.resize(ptr->ai_addrlen);
+				 memcpy(&address[0], ptr->ai_addr, ptr->ai_addrlen);
 
-			if( found==false )
-			{
-				new_ifs=true;
-			}
+				 if(std::find(ips.begin(), ips.end(), address)==ips.end())
+				 {
+					 new_ifs=true;
+				 }
 
-			new_ips.push_back(address);
-        }
+				 new_ips.push_back(address);
+			 }
+		 }
+
+		 freeaddrinfo(h);
      }
 
 	 for(size_t i=0;i<ips.size();++i)
 	 {
-		 bool found=false;
-		 for(size_t j=0;j<new_ips.size();++j)
-		 {
-			 if(ips[i]==new_ips[j])
-			 {
-				 found=true;
-				 break;
-			 }
-		 }
-
-		 if(!found)
+		 if(std::find(new_ips.begin(), new_ips.end(), ips[i])==new_ips.end())
 		 {
 			 new_ifs=true;
 		 }

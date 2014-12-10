@@ -15,6 +15,8 @@
 #ifndef _WIN32
 #include <net/if.h>
 #include <sys/ioctl.h>
+#else
+#include <ws2tcpip.h>
 #endif
 #include "../urbackupcommon/mbrdata.h"
 #include "../fileservplugin/settings.h"
@@ -567,10 +569,17 @@ namespace
 		}
 		else
 		{
-			hostent* hp = gethostbyname(host);
-			if (hp != 0)
+			addrinfo hints;
+			memset(&hints, 0, sizeof(hints));
+			hints.ai_family = AF_INET;
+			hints.ai_protocol = IPPROTO_TCP;
+			hints.ai_socktype = SOCK_STREAM;
+
+			addrinfo* hp;
+			if(getaddrinfo(host, NULL, &hints, &hp)==0 && hp!=NULL)
 			{
-				memcpy(dest, hp->h_addr, hp->h_length);
+				memcpy(dest, hp->ai_addr, hp->ai_addrlen);
+				freeaddrinfo(hp);
 			}
 			else
 			{
