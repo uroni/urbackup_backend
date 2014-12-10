@@ -56,10 +56,11 @@ std::string getSystemServerName(bool use_fqdn)
 	addrinfo* h;
 	addrinfo hints;
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_flags = AI_FQDN;
+	hints.ai_flags = AI_CANONNAME;
 	if(getaddrinfo(hostname, NULL, NULL, &h)==0)
 	{
-		if(strlower(h->ai_canonname)==strlower(hostname))
+		if(h->ai_canonname==NULL ||
+			strlower(h->ai_canonname)==strlower(hostname))
 		{
 			ret = hostname;
 		}
