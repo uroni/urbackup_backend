@@ -167,6 +167,7 @@ private:
 	_i64 num_chunks;
 	_i64 remote_filesize;
 	_i64 num_total_chunks;
+	_i64 curr_output_fsize;
 	int64 starttime;
 	unsigned int queued_chunks;
 

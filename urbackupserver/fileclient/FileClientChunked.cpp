@@ -74,6 +74,7 @@ _u32 FileClientChunked::GetFilePatch(std::string remotefn, IFile *orig_file, IFi
 	patch_buf_pos=0;
 	remote_filesize = predicted_filesize;
 	last_transferred_bytes=0;
+	curr_output_fsize=0;
 
 	return GetFile(remotefn, predicted_filesize);
 }
@@ -86,6 +87,7 @@ _u32 FileClientChunked::GetFileChunked(std::string remotefn, IFile *file, IFile 
 	m_hashoutput=hashoutput;
 	remote_filesize = predicted_filesize;
 	last_transferred_bytes=0;
+	curr_output_fsize=0;
 	
 	return GetFile(remotefn, predicted_filesize);
 }
@@ -377,7 +379,18 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 
 			if(err!=ERR_CONTINUE)
 			{
-				filesize_out=remote_filesize;
+				if(err==ERR_SUCCESS)
+				{
+					filesize_out=remote_filesize;
+				}
+				else
+				{
+					if(patch_mode)
+					{
+						writePatchSize(curr_output_fsize);
+					}
+					filesize_out = curr_output_fsize;
+				}
 				return err;
 			}
 		}
@@ -893,6 +906,8 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 		m_hashoutput->Seek(chunkhash_file_off+(curr_pos/c_checkpoint_dist)*chunkhash_single_size);
 		writeFileRepeat(m_hashoutput, hash_from_client, big_hash_size);
 
+		curr_output_fsize = (std::max)(curr_output_fsize, curr_pos+c_checkpoint_dist);
+
 		std::map<_i64, SChunkHashes>::iterator it=pending_chunks.find(curr_pos);
 		if(it!=pending_chunks.end())
 		{
@@ -921,11 +936,13 @@ void FileClientChunked::Hash_nochange(_i64 curr_pos)
 		if(curr_pos+c_checkpoint_dist<=remote_filesize)
 		{
 			writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size);
+			curr_output_fsize = (std::max)(curr_output_fsize, curr_pos+c_checkpoint_dist);
 		}
 		else
 		{
 			size_t missing_chunks = static_cast<size_t>((curr_pos + c_checkpoint_dist - remote_filesize)/c_chunk_size);
 			writeFileRepeat(m_hashoutput, it->second.big_hash, chunkhash_single_size-missing_chunks*small_hash_size);
+			curr_output_fsize = (std::max)(curr_output_fsize, remote_filesize);
 		}
 		pending_chunks.erase(it);
 		decrQueuedChunks();
@@ -959,6 +976,8 @@ void FileClientChunked::State_Block(void)
 	}
 	
 	chunk_start+=(unsigned int)rbytes;
+
+	curr_output_fsize = (std::max)(curr_output_fsize, file_pos);
 
 	char *alder_bufptr=bufptr;
 	while(rbytes>0)
@@ -1040,6 +1059,8 @@ void FileClientChunked::State_Chunk(void)
 			writePatch(file_pos, (unsigned int)rbytes, bufptr, adler_remaining==0);
 			file_pos+=rbytes;
 		}
+
+		curr_output_fsize = (std::max)(curr_output_fsize, file_pos);
 
 		remaining_bufptr_bytes-=rbytes;
 		bufptr_bytes_done+=rbytes;
