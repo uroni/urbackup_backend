@@ -249,9 +249,11 @@ std::string findGptUuid(int device_num, GUID uuid)
 	for(DWORD i=0;i<inf->PartitionCount;++i)
 	{
 		LPOLESTR uuid_str;
-		StringFromCLSID(inf->PartitionEntry[i].Gpt.PartitionType, &uuid_str);
-		LOG(L"EFI partition with type UUID "+std::wstring(uuid_str), LL_DEBUG);
-		CoTaskMemFree(uuid_str);
+		if(StringFromCLSID(inf->PartitionEntry[i].Gpt.PartitionType, &uuid_str)==NOERROR)
+		{
+			LOG(L"EFI partition with type UUID "+std::wstring(uuid_str), LL_DEBUG);
+			CoTaskMemFree(uuid_str);
+		}
 
 		if(memcmp(&inf->PartitionEntry[i].Gpt.PartitionType, &uuid, sizeof(uuid))==0)
 		{
