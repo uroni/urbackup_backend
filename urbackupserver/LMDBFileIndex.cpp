@@ -8,6 +8,9 @@
 #include "dao/ServerBackupDao.h"
 #include <assert.h>
 #include "../Interface/Types.h"
+#include "../Interface/File.h"
+#include <memory>
+#include "../Interface/Server.h"
 
 MDB_env *LMDBFileIndex::env=NULL;
 ISharedMutex* LMDBFileIndex::mutex=NULL;
@@ -478,6 +481,18 @@ bool LMDBFileIndex::create_env()
 			Server->Log("LMDB: Failed to create LMDB env ("+(std::string)mdb_strerror(rc)+")", LL_ERROR);
 			return false;
 		}
+
+		{
+			std::auto_ptr<IFile> lmdb_f(Server->openFile("urbackup/fileindex/backup_server_files_index.lmdb", MODE_READ));
+			if(lmdb_f.get()!=NULL)
+			{
+				while(lmdb_f->Size()>static_cast<_i64>(map_size))
+				{
+					map_size*=2;
+				}
+			}
+		}
+		
 
 		rc = mdb_env_set_mapsize(env, map_size);
 
