@@ -113,6 +113,8 @@ void Backup::operator()()
 		{
 			ServerLogger::Log(clientid, "Backup succeeded", LL_INFO);
 		}
+
+		ServerCleanupThread::updateStats(false);
 	}
 
 	if( (log_backup || log_action == LogAction_AlwaysLog) && log_action!=LogAction_NoLogging)
