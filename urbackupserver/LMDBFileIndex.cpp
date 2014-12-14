@@ -13,6 +13,7 @@ MDB_env *LMDBFileIndex::env=NULL;
 ISharedMutex* LMDBFileIndex::mutex=NULL;
 LMDBFileIndex* LMDBFileIndex::fileindex=NULL;
 THREADPOOL_TICKET LMDBFileIndex::fileindex_ticket = ILLEGAL_THREADPOOL_TICKET;
+size_t LMDBFileIndex::reset_env = 0;
 
 
 const size_t c_initial_map_size=1*1024*1024;
@@ -38,8 +39,13 @@ void LMDBFileIndex::shutdownFileIndex()
 LMDBFileIndex::LMDBFileIndex(bool no_sync)
 	: _has_error(false), txn(NULL), map_size(c_initial_map_size), it_cursor(NULL), no_sync(no_sync)
 {
+	IScopedReadLock lock(mutex);
+	
+	local_reset_env = reset_env;
+
 	if(!create_env())
 	{
+		Server->Log("LMDB error creating env", LL_ERROR);
 		_has_error=true;
 	}
 }
@@ -57,6 +63,18 @@ bool LMDBFileIndex::has_error(void)
 void LMDBFileIndex::begin_txn(unsigned int flags)
 {
 	read_transaction_lock.reset(new IScopedReadLock(mutex));
+	
+	if(reset_env!=local_reset_env)
+	{
+		destroy_env();
+	
+		if(!create_env())
+		{
+			Server->Log("LMDB error resetting env", LL_ERROR);
+			_has_error=true;
+		}
+		local_reset_env = reset_env;
+	}
 
 	int rc = mdb_txn_begin(env, NULL, flags, &txn);
 
@@ -142,6 +160,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 
 			if(_has_error)
 			{
+				Server->Log("LMDB error after putting element. Error state interrupting..", LL_ERROR);
 				return;
 			}
 
@@ -228,6 +247,7 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 
 		if(_has_error)
 		{
+			Server->Log("LMDB had error during increase (on put). Aborting...", LL_ERROR);
 			return;
 		}
 
@@ -244,9 +264,13 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 
 			if(!create_env())
 			{
+				Server->Log("Error creating env after database file size increase", LL_ERROR);
 				_has_error=true;
 				return;
 			}
+			
+			++reset_env;
+			local_reset_env=reset_env;
 		}
 
 		start_transaction();
@@ -254,6 +278,22 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 		replay_transaction_log();
 		
 		put_internal(key, value, flags, false, true);
+	}
+	else if(rc==MDB_BAD_TXN && handle_enosp)
+	{
+		mdb_txn_abort(txn);
+		
+		if(_has_error)
+		{
+			Server->Log("LMDB had error on BAD_TXN (on put). Aborting...", LL_ERROR);
+			return;
+		}
+		
+		start_transaction();
+		
+		replay_transaction_log();
+		
+		put_internal(key, value, flags, false, false);
 	}
 	else if(rc)
 	{
@@ -292,6 +332,7 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 
 		if(_has_error)
 		{
+			Server->Log("LMDB had error during increase (on del). Aborting...", LL_ERROR);
 			return;
 		}
 
@@ -308,9 +349,13 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 
 			if(!create_env())
 			{
+				Server->Log("Error creating env after database file size increase", LL_ERROR);
 				_has_error=true;
 				return;
 			}
+			
+			++reset_env;
+			local_reset_env=reset_env;
 		}
 
 		start_transaction();
@@ -318,6 +363,22 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 		replay_transaction_log();
 
 		del(key);
+	}
+	else if(rc==MDB_BAD_TXN && handle_enosp)
+	{
+		mdb_txn_abort(txn);
+		
+		if(_has_error)
+		{
+			Server->Log("LMDB had error on BAD_TXN (on del). Aborting...", LL_ERROR);
+			return;
+		}
+		
+		start_transaction();
+		
+		replay_transaction_log();
+		
+		del_internal(key, true, false);
 	}
 	else if(rc)
 	{
@@ -348,6 +409,7 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 
 		if(_has_error)
 		{
+			Server->Log("LMDB had error during increase (on commit). Aborting...", LL_ERROR);
 			return;
 		}
 
@@ -364,13 +426,33 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 
 			if(!create_env())
 			{
+				Server->Log("Error creating env after database file size increase", LL_ERROR);
 				_has_error=true;
 				return;
 			}
+			
+			++reset_env;
+			local_reset_env=reset_env;
 		}
 
 		start_transaction();
 
+		replay_transaction_log();
+		
+		commit_transaction_internal(false);
+	}
+	else if(rc==MDB_BAD_TXN && handle_enosp)
+	{
+		mdb_txn_abort(txn);
+		
+		if(_has_error)
+		{
+			Server->Log("LMDB had error on BAD_TXN (on commit). Aborting...", LL_ERROR);
+			return;
+		}
+		
+		start_transaction();
+		
 		replay_transaction_log();
 		
 		commit_transaction_internal(false);

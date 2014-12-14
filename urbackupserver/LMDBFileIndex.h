@@ -85,6 +85,9 @@ private:
 	static ISharedMutex* mutex;
 	static LMDBFileIndex* fileindex;
 	static THREADPOOL_TICKET fileindex_ticket;
+	static size_t reset_env;
+	
+	size_t local_reset_env;
 
 	bool no_sync;
 };
