@@ -14,75 +14,75 @@
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="backupfolder">{tBackup storage path}:</label>
+				<label class="col-sm-4 control-label" for="backupfolder">{tBackup storage path}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="backupfolder" value="{backupfolder|s}"/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="backupfolder">{tServer URL}:</label>
+				<label class="col-sm-4 control-label" for="backupfolder">{tServer URL}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="server_url" value="{server_url|s}"/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="no_images">{tDo not do image backups}:</label>
+				<label class="col-sm-4 control-label" for="no_images">{tDo not do image backups}:</label>
 				<div class="col-sm-6">
 					<input type="checkbox" id="no_images" value="true" {no_images}/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="no_file_backups">{tDo not do file backups}:</label>
+				<label class="col-sm-4 control-label" for="no_file_backups">{tDo not do file backups}:</label>
 				<div class="col-sm-6">
 					<input type="checkbox" id="no_file_backups" value="true" {no_file_backups}/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="autoshutdown">{tAutomatically shut down server}:</label>
+				<label class="col-sm-4 control-label" for="autoshutdown">{tAutomatically shut down server}:</label>
 				<div class="col-sm-6">
 					<input type="checkbox" id="autoshutdown" value="true" {autoshutdown}/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="download_client">{tDownload client from update server}:</label>
+				<label class="col-sm-4 control-label" for="download_client">{tDownload client from update server}:</label>
 				<div class="col-sm-6">
 					<input type="checkbox" id="download_client" value="true" {download_client}/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="show_server_updates">{tShow when a new server version is available}:</label>
+				<label class="col-sm-4 control-label" for="show_server_updates">{tShow when a new server version is available}:</label>
 				<div class="col-sm-6">
 					<input type="checkbox" id="show_server_updates" value="true" {show_server_updates}/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label">{tAutoupdate clients}:</label>
+				<label class="col-sm-4 control-label">{tAutoupdate clients}:</label>
 				<div class="col-sm-6">
 					<input type="checkbox" id="autoupdate_clients" value="true" {autoupdate_clients}/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="max_sim_backups">{tMax simultaneous backups}:</label>
+				<label class="col-sm-4 control-label" for="max_sim_backups">{tMax simultaneous backups}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="max_sim_backups" value="{max_sim_backups}" />
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="max_active_clients">{tMax recently active clients}:</label>
+				<label class="col-sm-4 control-label" for="max_active_clients">{tMax recently active clients}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="max_active_clients" value="{max_active_clients}" />
 				</div>
 			</div>
 			{ONLY_WIN32_BEGIN|s}
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="tmpdir">{tNondefault temporary file directory}:</label>
+				<label class="col-sm-4 control-label" for="tmpdir">{tNondefault temporary file directory}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="tmpdir" value="{tmpdir|s}" />
 				</div>
 			</div>
 			{ONLY_WIN32_END|s}
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="cleanup_window">{tCleanup time window}:</label>
+				<label class="col-sm-4 control-label" for="cleanup_window">{tCleanup time window}:</label>
 				<div class="col-sm-6">
 					<div class="input-group">
 						<input type="text" class="form-control" id="cleanup_window" value="{cleanup_window|s}" />
@@ -91,13 +91,13 @@
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="backup_database">{tAutomatically backup UrBackup database}:</label>
+				<label class="col-sm-4 control-label" for="backup_database">{tAutomatically backup UrBackup database}:</label>
 				<div class="col-sm-6">
 					<input type="checkbox" id="backup_database" {backup_database}/>
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="global_local_speed">{tTotal max backup speed for local network}:</label>
+				<label class="col-sm-4 control-label" for="global_local_speed">{tTotal max backup speed for local network}:</label>
 				<div class="col-sm-6">
 					<div class="input-group">
 						<input type="text" class="form-control" id="global_local_speed" value="{global_local_speed}"/>
@@ -106,7 +106,7 @@
 				</div>
 			</div>
 			<div class="form-group">
-				<label class="col-sm-3 control-label" for="global_soft_fs_quota">{tGlobal soft filesystem quota}:</label>
+				<label class="col-sm-4 control-label" for="global_soft_fs_quota">{tGlobal soft filesystem quota}:</label>
 				<div class="col-sm-6">
 					<div class="input-group">
 						<input type="text" class="form-control" id="global_soft_fs_quota" value="{global_soft_fs_quota}"/>
