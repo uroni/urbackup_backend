@@ -18,6 +18,7 @@
 #else
 #include "lin_ver.h"
 std::wstring getSysVolume(std::wstring &mpath){ return L""; }
+std::wstring getEspVolume(std::wstring &mpath){ return L""; }
 #endif
 #include "../client_version.h"
 

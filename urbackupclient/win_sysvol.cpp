@@ -257,7 +257,7 @@ std::string findGptUuid(int device_num, GUID uuid)
 
 		if(memcmp(&inf->PartitionEntry[i].Gpt.PartitionType, &uuid, sizeof(uuid))==0)
 		{
-			return "\\\\?\\GLOBALROOT\\Device\\Harddisk"+nconvert(device_num)+"\\Partition"+nconvert((int)i);
+			return "\\\\?\\GLOBALROOT\\Device\\Harddisk"+nconvert(device_num)+"\\Partition"+nconvert((int)i+1);
 		}
 	}
 
