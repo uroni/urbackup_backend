@@ -1886,6 +1886,8 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 	if(gpt_style)
 	{
+		Server->Log("GUID partition table found", LL_DEBUG);
+
 		if(!dev->Seek(logical_sector_size))
 		{
 			errmsg=L"Error seeking in device to GPT header "+convert((int)dev_num.DeviceNumber);
@@ -1931,6 +1933,8 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 		_u32 toread = gpt_header_s->num_parition_entries*gpt_header_s->partition_entry_size;
 		std::string gpt_table = dev->Read(toread);
+
+		Server->Log("GUID partition table size is "+PrettyPrintBytes(toread), LL_DEBUG);
 
 		if(gpt_table.size()!=toread)
 		{
