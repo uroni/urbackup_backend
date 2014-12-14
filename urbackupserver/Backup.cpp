@@ -39,7 +39,7 @@ Backup::Backup(ClientMain* client_main, int clientid, std::wstring clientname, L
 void Backup::operator()()
 {
 	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	server_settings.reset(new ServerSettings(db));
+	server_settings.reset(new ServerSettings(db, clientid));
 	backup_dao.reset(new ServerBackupDao(db));
 
 	if(log_action!=LogAction_NoLogging)
