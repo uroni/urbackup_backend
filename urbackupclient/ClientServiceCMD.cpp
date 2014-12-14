@@ -858,10 +858,20 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 
 		image_inf.no_shadowcopy=false;
 
-		if(image_inf.image_letter=="SYSVOL")
+		if(image_inf.image_letter=="SYSVOL"
+			|| image_inf.image_letter=="ESP")
 		{
 			std::wstring mpath;
-			std::wstring sysvol=getSysVolume(mpath);
+			std::wstring sysvol;
+			if(image_inf.image_letter=="SYSVOL")
+			{
+				sysvol=getSysVolume(mpath);
+			}
+			else
+			{
+				sysvol=getEspVolume(mpath);
+			}
+			
 			if(!mpath.empty())
 			{
 				image_inf.image_letter=Server->ConvertToUTF8(mpath);
@@ -1036,6 +1046,11 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	{
 		std::wstring mpath;
 		dl=getSysVolume(mpath);
+	}
+	else if(dl==L"ESP")
+	{
+		std::wstring mpath;
+		dl=getEspVolume(mpath);
 	}
 
 	bool b=false;

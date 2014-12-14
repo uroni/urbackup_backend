@@ -126,6 +126,7 @@ bool ImageBackup::doBackup()
 	}
 
 	int sysvol_id=-1;
+	int esp_id=-1;
 	if(strlower(letter)=="c:")
 	{
 		ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
@@ -141,6 +142,20 @@ bool ImageBackup::doBackup()
 		client_main->startBackupRunning(false);
 		
 		ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
+
+		ServerLogger::Log(clientid, "Backing up EFI System Partition...", LL_DEBUG);
+		client_main->stopBackupRunning(false);
+		ImageBackup esp_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "ESP");
+		esp_backup();
+
+		if(esp_backup.getResult())
+		{
+			esp_id = esp_backup.getBackupId();
+		}
+
+		client_main->startBackupRunning(false);
+
+		ServerLogger::Log(clientid, "Backing up EFI System Partition done.", LL_DEBUG);
 	}
 
 	status.pcdone=0;
@@ -171,9 +186,17 @@ bool ImageBackup::doBackup()
 		ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat());
 	}
 
-	if(ret && sysvol_id!=-1)
+	if(ret)
 	{
-		backup_dao->saveImageAssociation(backupid, sysvol_id);
+		if(sysvol_id!=-1)
+		{
+			backup_dao->saveImageAssociation(backupid, sysvol_id);
+		}
+
+		if(esp_id!=-1)
+		{
+			backup_dao->saveImageAssociation(backupid, esp_id);
+		}
 	}
 
 	if(ret)
@@ -200,7 +223,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	}
 
 	std::string sletter=pLetter;
-	if(pLetter!="SYSVOL")
+	if(pLetter!="SYSVOL" && pLetter!="ESP")
 	{
 		sletter=pLetter[0];
 	}
@@ -267,7 +290,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 		std::string mbrd=getMBR(widen(sletter));
 		if(mbrd.empty())
 		{
-			if(pLetter!="SYSVOL")
+			if(pLetter!="SYSVOL" && pLetter!="ESP")
 			{
 				ServerLogger::Log(clientid, "Error getting MBR data", LL_ERROR);
 			}
@@ -514,13 +537,16 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 						std::string err;
 						err.resize(r-sizeof(uint64) );
 						memcpy(&err[0], &buffer[off], r-off);
-						if(pLetter!="SYSVOL")
+						if(pLetter!="SYSVOL" && pLetter!="ESP")
 						{
 							ServerLogger::Log(clientid, "Request of image backup failed. Reason: "+err, LL_ERROR);
 						}
 						else
 						{
-							ServerLogger::Log(clientid, "Request of SYSVOL failed. Reason: "+err+". This probably just means the Computer does not have a \"System restore\" volume which UrBackup can backup.", LL_INFO);
+							if(pLetter=="SYSVOL")
+								ServerLogger::Log(clientid, "Request of SYSVOL failed. Reason: "+err+". This probably just means the Computer does not have a \"System restore\" volume which UrBackup can backup.", LL_INFO);
+							else
+								ServerLogger::Log(clientid, "Request of EFI System Partition failed. Reason: "+err+". This probably just means the Computer does not have a EFI System Partition which UrBackup can backup.", LL_INFO);
 						}
 					}
 					else
@@ -1288,7 +1314,7 @@ std::string ImageBackup::getMBR(const std::wstring &dl)
 			ServerLogger::Log(clientid, L"Could not read version information in MBR", LL_ERROR);
 		}
 	}
-	else if(dl!=L"SYSVOL")
+	else if(dl!=L"SYSVOL" && dl!=L"ESP")
 	{
 		std::string errmsg;
 		if( r.getStr(&errmsg) && !errmsg.empty())

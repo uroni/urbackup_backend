@@ -38,11 +38,12 @@ std::wstring getFilesystem(PWCHAR VolumeName)
 	return fsn;
 }
 
-DWORD getDevNum(const PWCHAR VolumeName, DWORD& device_type)
+DWORD getDevNum(std::wstring VolumeName, DWORD& device_type)
 {
-	HANDLE hVolume=CreateFileW(VolumeName, GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hVolume=CreateFileW(VolumeName.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if(hVolume==INVALID_HANDLE_VALUE)
 	{
+		LOG("Cannot open volume", LL_DEBUG);
 		return -1;
 	}
 
@@ -52,6 +53,7 @@ DWORD getDevNum(const PWCHAR VolumeName, DWORD& device_type)
 	CloseHandle(hVolume);
 	if(b==0)
 	{
+		LOG("Cannot get storage device number", LL_DEBUG);
 		return -1;
 	}
 
@@ -165,13 +167,39 @@ bool isBootable(const PWCHAR VolumeName)
 	{
 		if(partition_information.PartitionStyle==PARTITION_STYLE_GPT)
 		{
-			LOG(L"GPT formated hard disk encountered. UrBackup does not support GPT formated hard disks! (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
+			LOG(L"GPT formated hard disk encountered. No bootable flag. Attributes = "+convert((int64)partition_information.Gpt.Attributes), LL_DEBUG);
 
-			return false;
+			if(partition_information.Gpt.Attributes & (DWORD64)1<<63)
+			{
+				LOG("Do not automount is set", LL_DEBUG);
+			}
+
+			if(partition_information.Gpt.Attributes & (DWORD64)1<<62)
+			{
+				LOG("Hidden is set", LL_DEBUG);
+			}
+
+			if(partition_information.Gpt.Attributes & (DWORD64)1<<1)
+			{
+				LOG("EFI firmware ignore is set", LL_DEBUG);
+			}
+
+			if(partition_information.Gpt.Attributes & (DWORD64)1<<2)
+			{
+				LOG("Legacy bios bootable is set", LL_DEBUG);
+			}
+
+			if(partition_information.Gpt.Attributes & (DWORD64)1<<0)
+			{
+				LOG("System partition is set", LL_DEBUG);
+			}
+
+			return (partition_information.Gpt.Attributes & (DWORD64)1<<0) &&
+				(partition_information.Gpt.Attributes & (DWORD64)1<<63);
 		}
 		else
 		{
-			LOG(L"Unknown partition style encountered (Volume="+std::wstring(VolumeName)+L")", LL_INFO);
+			LOG(L"Unknown partition style encountered (Volume="+std::wstring(VolumeName)+L")", LL_ERROR);
 
 			return false;
 		}
@@ -180,6 +208,58 @@ bool isBootable(const PWCHAR VolumeName)
 	{
 		return partition_information.Mbr.BootIndicator==TRUE;
 	}
+}
+
+std::string findGptUuid(int device_num, GUID uuid)
+{
+	HANDLE hDevice=CreateFileW((L"\\\\.\\PhysicalDrive"+convert(device_num)).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if(hDevice==INVALID_HANDLE_VALUE)
+	{
+		LOG(L"CreateFile of device '"+convert(device_num)+L"' failed.", LL_ERROR);
+		return std::string();
+	}
+
+	DWORD numPartitions=10;
+	DWORD inf_size=sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1);
+
+	std::auto_ptr<DRIVE_LAYOUT_INFORMATION_EX> inf((DRIVE_LAYOUT_INFORMATION_EX*)new char[sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1)]);
+
+	DWORD ret_bytes;
+	BOOL b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf.get(), inf_size, &ret_bytes, NULL);
+	while(b==0 && GetLastError()==ERROR_INSUFFICIENT_BUFFER && numPartitions<1000)
+	{
+		numPartitions*=2;
+		inf_size=sizeof(DRIVE_LAYOUT_INFORMATION_EX)+sizeof(PARTITION_INFORMATION_EX)*(numPartitions-1);
+		inf.reset((DRIVE_LAYOUT_INFORMATION_EX*)new char[inf_size]);
+		b=DeviceIoControl(hDevice, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, inf.get(), inf_size, &ret_bytes, NULL);
+	}
+	CloseHandle(hDevice);
+	if(b==0)
+	{
+		LOG(L"DeviceIoControl IOCTL_DISK_GET_DRIVE_LAYOUT_EX failed. Device: '"+convert(device_num)+L"' Error: "+convert((int)GetLastError()), LL_ERROR);		
+		return std::string();
+	}
+
+	if(inf->PartitionStyle!=PARTITION_STYLE_GPT)
+	{
+		LOG(L"Device is not GPT formatted ("+convert(device_num)+L")", LL_DEBUG);
+		return std::string();
+	}
+
+	for(DWORD i=0;i<inf->PartitionCount;++i)
+	{
+		LPOLESTR uuid_str;
+		StringFromCLSID(inf->PartitionEntry[i].Gpt.PartitionType, &uuid_str);
+		LOG(L"EFI partition with type UUID "+std::wstring(uuid_str), LL_DEBUG);
+		CoTaskMemFree(uuid_str);
+
+		if(memcmp(&inf->PartitionEntry[i].Gpt.PartitionType, &uuid, sizeof(uuid))==0)
+		{
+			return "\\\\?\\GLOBALROOT\\Device\\Harddisk"+nconvert(device_num)+"\\Partition"+nconvert((int)i);
+		}
+	}
+
+	return std::string();
 }
 
 namespace
@@ -382,4 +462,54 @@ std::wstring getSysVolume(std::wstring &mpath)
 	LOG("Found no SYSVOL on the same physical device as 'C'.", LL_INFO);
 
     return L"";
+}
+
+std::wstring getEspVolume( std::wstring &mpath )
+{
+	//GPT partition with UUID esp_uuid
+	GUID esp_uuid;
+	if(CLSIDFromString(L"{C12A7328-F81F-11D2-BA4B-00A0C93EC93B}", &esp_uuid)!=NOERROR)
+	{
+		LOG("Error converting ESP uuid", LL_ERROR);
+		return std::wstring();
+	}
+
+	WCHAR sysdir[MAX_PATH];
+	if(GetWindowsDirectoryW(sysdir, MAX_PATH)==0)
+	{
+		LOG("Error getting system dir: "+nconvert((int)GetLastError()), LL_ERROR);
+		return std::wstring();
+	}
+
+	LOG(L"System dir: "+std::wstring(sysdir), LL_DEBUG);
+
+	std::wstring volpath;
+	if(sysdir[0]!=0)
+	{
+		volpath = std::wstring(L"\\\\.\\")+sysdir[0]+L":";
+	}
+
+	LOG(L"Volpath: "+volpath, LL_DEBUG);
+
+	DWORD device_type;
+	DWORD dev_num = getDevNum(volpath.c_str(), device_type);
+
+	if(dev_num==-1)
+	{
+		LOG("Error getting device number of system directory", LL_ERROR);
+		return std::wstring();
+	}
+
+	std::string found_part = findGptUuid(dev_num, esp_uuid);
+	
+	if(found_part.empty())
+	{
+		LOG("Found no EFI System Partition", LL_INFO);
+	}
+	else
+	{
+		LOG("EFI System Partition is at "+found_part, LL_INFO);
+	}
+
+	return widen(found_part);
 }
