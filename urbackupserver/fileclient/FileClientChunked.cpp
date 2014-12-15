@@ -371,6 +371,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 			{
 				if(err==ERR_SUCCESS)
 				{
+					Server->Log("Successfull. Returning filesize "+nconvert(remote_filesize), LL_DEBUG);
 					filesize_out=remote_filesize;
 				}
 				else
@@ -380,6 +381,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 						writePatchSize(curr_output_fsize);
 					}
 					filesize_out = curr_output_fsize;
+					Server->Log("Not successfull. Returning filesize "+nconvert(filesize_out), LL_DEBUG);
 				}
 				return err;
 			}
@@ -391,6 +393,12 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 			Server->Log("Connection timeout. Reconnecting...", LL_DEBUG);
 			if(!Reconnect(true))
 			{
+				if(patch_mode)
+				{
+					writePatchSize(curr_output_fsize);
+				}
+				filesize_out = curr_output_fsize;
+				Server->Log("Not successfull (timeout). Returning filesize "+nconvert(filesize_out), LL_DEBUG);
 				break;
 			}
 			else
@@ -829,10 +837,18 @@ void FileClientChunked::Hash_finalize(_i64 curr_pos, const char *hash_from_clien
 			invalidateLastPatches();
 
 			size_t backup_remaining_bufptr_bytes=remaining_bufptr_bytes;
+			Server->Log("remaining_bufptr_bytes="+nconvert(remaining_bufptr_bytes), LL_DEBUG);
+			remaining_bufptr_bytes = 0;
 			char* backup_bufptr = bufptr;
+			size_t backup_packet_buf_off = packet_buf_off;
+			packet_buf_off = 0;
+			char backup_packet_buf[24];
+			memcpy(backup_packet_buf, packet_buf, sizeof(backup_packet_buf));
 			loadChunkOutOfBand(curr_pos);
 			remaining_bufptr_bytes = backup_remaining_bufptr_bytes;
 			bufptr = backup_bufptr;
+			packet_buf_off = backup_packet_buf_off;
+			memcpy(packet_buf, backup_packet_buf, sizeof(backup_packet_buf));
 		}
 		else
 		{
