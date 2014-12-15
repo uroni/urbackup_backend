@@ -282,6 +282,8 @@ then
 	valgrind --tool=memcheck --leak-check=full --track-origins=yes --vgdb=yes $DAEMON $S_DAEMON $DAEMON_ARGS --allow_shutdown true --leak_check true
 elif [ "x$MOUNTVHD" != "x" ]
 then
+	echo "Loading FUSE kernel module..."
+	modprobe fuse
 	echo "Starting VHD background process.."
 	$DAEMON $S_DAEMON $DAEMON_ARGS
 	sleep 3
