@@ -25,6 +25,7 @@
 #include "ClientMain.h"
 #include "../urlplugin/IUrlFactory.h"
 #include "server_status.h"
+#include "server_cleanup.h"
 
 extern IUrlFactory *url_fak;
 

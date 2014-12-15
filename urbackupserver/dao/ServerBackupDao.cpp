@@ -1708,13 +1708,13 @@ void ServerBackupDao::addUserOnClient(int clientid, const std::wstring& username
 * @-SQLGenAccess
 * @func void ServerBackupDao::addClientToken
 * @sql
-*       INSERT INTO tokens_on_client (clientid, token) VALUES (:clientid(int), :token(string))
+*       INSERT OR IGNORE INTO tokens_on_client (clientid, token) VALUES (:clientid(int), :token(string))
 */
 void ServerBackupDao::addClientToken(int clientid, const std::wstring& token)
 {
 	if(q_addClientToken==NULL)
 	{
-		q_addClientToken=db->Prepare("INSERT INTO tokens_on_client (clientid, token) VALUES (?, ?)", false);
+		q_addClientToken=db->Prepare("INSERT OR IGNORE INTO tokens_on_client (clientid, token) VALUES (?, ?)", false);
 	}
 	q_addClientToken->Bind(clientid);
 	q_addClientToken->Bind(token);
@@ -1726,13 +1726,13 @@ void ServerBackupDao::addClientToken(int clientid, const std::wstring& token)
 * @-SQLGenAccess
 * @func void ServerBackupDao::addUserToken
 * @sql
-*       INSERT INTO user_tokens (username, token) VALUES (:username(string), :token(string))
+*       INSERT OR IGNORE INTO user_tokens (username, token) VALUES (:username(string), :token(string))
 */
 void ServerBackupDao::addUserToken(const std::wstring& username, const std::wstring& token)
 {
 	if(q_addUserToken==NULL)
 	{
-		q_addUserToken=db->Prepare("INSERT INTO user_tokens (username, token) VALUES (?, ?)", false);
+		q_addUserToken=db->Prepare("INSERT OR IGNORE INTO user_tokens (username, token) VALUES (?, ?)", false);
 	}
 	q_addUserToken->Bind(username);
 	q_addUserToken->Bind(token);
