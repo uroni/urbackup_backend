@@ -16,7 +16,6 @@ MDB_env *LMDBFileIndex::env=NULL;
 ISharedMutex* LMDBFileIndex::mutex=NULL;
 LMDBFileIndex* LMDBFileIndex::fileindex=NULL;
 THREADPOOL_TICKET LMDBFileIndex::fileindex_ticket = ILLEGAL_THREADPOOL_TICKET;
-size_t LMDBFileIndex::reset_env = 0;
 
 
 const size_t c_initial_map_size=1*1024*1024;
@@ -42,9 +41,7 @@ void LMDBFileIndex::shutdownFileIndex()
 LMDBFileIndex::LMDBFileIndex(bool no_sync)
 	: _has_error(false), txn(NULL), map_size(c_initial_map_size), it_cursor(NULL), no_sync(no_sync)
 {
-	IScopedReadLock lock(mutex);
-	
-	local_reset_env = reset_env;
+	IScopedWriteLock lock(mutex);
 
 	if(!create_env())
 	{
@@ -66,18 +63,6 @@ bool LMDBFileIndex::has_error(void)
 void LMDBFileIndex::begin_txn(unsigned int flags)
 {
 	read_transaction_lock.reset(new IScopedReadLock(mutex));
-	
-	if(reset_env!=local_reset_env)
-	{
-		destroy_env();
-	
-		if(!create_env())
-		{
-			Server->Log("LMDB error resetting env", LL_ERROR);
-			_has_error=true;
-		}
-		local_reset_env = reset_env;
-	}
 
 	int rc = mdb_txn_begin(env, NULL, flags, &txn);
 
@@ -272,8 +257,6 @@ void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, b
 				return;
 			}
 			
-			++reset_env;
-			local_reset_env=reset_env;
 		}
 
 		start_transaction();
@@ -357,8 +340,6 @@ void LMDBFileIndex::del_internal(const SIndexKey& key, bool log, bool handle_eno
 				return;
 			}
 			
-			++reset_env;
-			local_reset_env=reset_env;
 		}
 
 		start_transaction();
@@ -434,8 +415,6 @@ void LMDBFileIndex::commit_transaction_internal(bool handle_enosp)
 				return;
 			}
 			
-			++reset_env;
-			local_reset_env=reset_env;
 		}
 
 		start_transaction();
