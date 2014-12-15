@@ -17,6 +17,8 @@ public:
 	
 	PersistentOpenFiles();
 
+	~PersistentOpenFiles();
+
 	void add(const std::wstring& fn);
 
 	void remove(const std::wstring& fn);
