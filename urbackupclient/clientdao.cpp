@@ -308,18 +308,24 @@ std::vector<std::wstring> ClientDAO::getChangedDirs(const std::wstring& path, bo
 {
 	std::vector<std::wstring> ret;
 
+	std::wstring sep = os_file_sep();
+	if(path == L"##-GAP-##")
+	{
+		sep = L"";
+	}
+
 	if(del)
 	{
-		q_save_changed_dirs->Bind(path+os_file_sep()+L"*");
+		q_save_changed_dirs->Bind(path+sep+L"*");
 		q_save_changed_dirs->Write();
 		q_save_changed_dirs->Reset();
-		q_remove_changed_dirs->Bind(path+os_file_sep()+L"*");
+		q_remove_changed_dirs->Bind(path+sep+L"*");
 		q_remove_changed_dirs->Write();
 		q_remove_changed_dirs->Reset();
 	}
 
-	q_get_changed_dirs->Bind(path+os_file_sep()+L"*");
-	q_get_changed_dirs->Bind(path+os_file_sep()+L"*");
+	q_get_changed_dirs->Bind(path+sep+L"*");
+	q_get_changed_dirs->Bind(path+sep+L"*");
 	db_results res=q_get_changed_dirs->Read();
 	q_get_changed_dirs->Reset();
 

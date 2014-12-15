@@ -772,6 +772,9 @@ void IndexThread::indexDirs(void)
 		std::vector<std::wstring> acd=cd->getChangedDirs(selected_dirs[i]);
 		changed_dirs.insert(changed_dirs.end(), acd.begin(), acd.end() );
 	}
+
+	//move GAP dirs to backup table
+	cd->getChangedDirs(L"##-GAP-##");
 	
 	for(size_t i=0;i<selected_dirs.size();++i)
 	{

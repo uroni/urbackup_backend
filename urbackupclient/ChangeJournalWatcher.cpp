@@ -311,7 +311,7 @@ void ChangeJournalWatcher::watchDir(const std::wstring &dir)
 	BOOL ok = GetVolumePathNameW(dir.c_str(), volume_path, MAX_PATH);
 	if(!ok)
 	{
-		Server->Log("GetVolumePathName(dir, volume_path, MAX_PATH) failed in ChangeJournalWatcher::watchDir", LL_ERROR);
+		Server->Log(L"GetVolumePathName(dir, volume_path, MAX_PATH) failed in ChangeJournalWatcher::watchDir for dir "+dir, LL_ERROR);
 		resetAll(dir);
 		has_error=true;
 		error_dirs.push_back(dir);
