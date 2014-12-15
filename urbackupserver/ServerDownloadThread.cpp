@@ -439,6 +439,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(download_filesize<0)
 	{
+		Server->Log("download_filesize is smaller than zero", LL_DEBUG);
 		download_filesize=todl.predicted_filesize;
 	}
 
