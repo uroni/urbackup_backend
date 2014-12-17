@@ -477,13 +477,32 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 		++i;
 	}
 
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
 	if(clientid!=0)
 	{		
+		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
 		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+nconvert(clientid));
 		IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+nconvert(clientid)+")");
 
-		updateSetting(L"overwrite_archive_settings", L"true", q_get, q_update, q_insert);
+		IQuery *q_identical_config = db->Prepare("SELECT COUNT(clientid) AS c, MAX(clientid) AS max_clientid, MIN(clientid) AS min_clientid, interval, interval_unit, length, length_unit, backup_types, archive_window "
+			"FROM settings_db.automatic_archival WHERE (clientid=? OR clientid=0)"
+			"GROUP BY interval, interval_unit, length, length_unit, backup_types, archive_window");
+		q_identical_config->Bind(clientid);
+		db_results res = q_identical_config->Read();
+		q_identical_config->Reset();
+
+		std::wstring overwrite_archive_settings = L"false";
+		for(size_t i=0;i<res.size();++i)
+		{
+			if(res[i][L"min_clientid"]!=L"0" ||
+				res[i][L"max_clientid"]!=convert(clientid) ||
+				watoi(res[i][L"c"])%2!=0)
+			{
+				overwrite_archive_settings=L"true";
+				break;
+			}
+		}
+
+		updateSetting(L"overwrite_archive_settings", overwrite_archive_settings, q_get, q_update, q_insert);
 	}
 	else
 	{
