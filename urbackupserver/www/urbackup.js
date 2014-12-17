@@ -1750,8 +1750,6 @@ function show_settings2(data)
 		}
 	}
 	
-	g.archive_item_id=0;
-	
 	var update_tabber=false;
 	if(g.data_f!=ndata)
 	{
@@ -1793,6 +1791,8 @@ function show_settings2(data)
 	
 	if(update_tabber && data.sa && (data.sa=="clientsettings" || data.sa=="general") )
 	{
+		g.archive_item_id=0;
+		
 		for(var i=0;i<data.archive_settings.length;++i)
 		{
 			var obj=data.archive_settings[i];
@@ -3133,11 +3133,16 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 }
 function replaceArchiveId(old_id, new_id)
 {
+	var archive_timeleft;
+	if(I('archive_timeleft_'+old_id))
+	{
+		archive_timeleft = I('archive_timeleft_'+old_id).value;
+	}
 	var item=I('archive_'+old_id);
 	item.innerHTML=dustRender("settings_archive_row",  { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
 			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
 			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value,
-			archive_timeleft: I('archive_timeleft_'+old_id).value } );
+			archive_timeleft: archive_timeleft } );
 }
 function deleteArchiveItem(id)
 {
