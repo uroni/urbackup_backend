@@ -96,13 +96,14 @@ void draw_progress(std::wstring curr_fn, _i64 curr_verified, _i64 verify_size)
 	}
 }
 
-bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size)
+bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, bool& missing)
 {
 	std::wstring fp=res[L"fullpath"];
 	IFile *f=Server->openFile(os_file_prefix(fp), MODE_READ);
 	if( f==NULL )
 	{
 		Server->Log(L"Error opening file \""+fp+L"\"", LL_ERROR);
+		missing = true;
 		return false;
 	}
 
@@ -287,26 +288,35 @@ bool verify_hashes(std::string arg)
 
 	_i64 crowid=0;
 
-	IQuery *q_get_files=db->Prepare("SELECT id, fullpath, shahash, filesize FROM files"+filter);
+	IQuery *q_get_files=db->Prepare("SELECT id, fullpath, shahash, filesize FROM files"+filter, false);
 
 	bool is_okay=true;
 
 	IDatabaseCursor* cursor = q_get_files->Cursor();
 
 	std::vector<int64> todelete;
+	std::vector<int64> missing_files;
 
 	db_single_result res_single;
 	while(cursor->next(res_single))
 	{
-		if(! verify_file( res_single, curr_verified, verify_size) )
+		bool is_missing=false;
+		if(! verify_file( res_single, curr_verified, verify_size, is_missing) )
 		{
-			v_failure << "Verification of \"" << Server->ConvertToUTF8(res_single[L"fullpath"]) << "\" failed\r\n";
-			is_okay=false;
-
-			if(delete_failed)
+			if(!is_missing)
 			{
-				todelete.push_back(watoi64(res_single[L"id"]));
+				v_failure << "Verification of \"" << Server->ConvertToUTF8(res_single[L"fullpath"]) << "\" failed\r\n";
+				is_okay=false;
+
+				if(delete_failed)
+				{
+					todelete.push_back(watoi64(res_single[L"id"]));
+				}
 			}
+			else
+			{
+				missing_files.push_back(watoi64(res_single[L"id"]));
+			}			
 		}
 	}
 	
@@ -314,6 +324,32 @@ bool verify_hashes(std::string arg)
 	{
 		v_failure.close();
 		Server->deleteFile(v_output_fn);
+	}
+
+	db->destroyQuery(q_get_files);
+
+	IQuery* q_get_file = db->Prepare("SELECT id, fullpath, shahash, filesize FROM files WHERE id=?");
+
+	std::cout << missing_files.size() << " could not be opened during verification. Checking now if they have been deleted from the database..." << std::endl;
+
+	for(size_t i=0;missing_files.size();++i)
+	{
+		q_get_file->Bind(missing_files[i]);
+		db_results res = q_get_file->Read();
+		if(!res.empty())
+		{
+			bool is_missing=false;
+			if(!verify_file(res[0], curr_verified, verify_size, is_missing))
+			{
+				v_failure << "Verification of file \"" << Server->ConvertToUTF8(res_single[L"fullpath"]) << "\" failed (during rechecking previously missing files)\r\n";
+				is_okay=false;
+
+				if(delete_failed)
+				{
+					todelete.push_back(watoi64(res_single[L"id"]));
+				}
+			}
+		}
 	}
 	
 	std::cout << std::endl;
