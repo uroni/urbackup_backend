@@ -16,6 +16,7 @@ struct SCallbackData
 {
 	IDatabaseCursor* cur;
 	int64 pos;
+	int64 max_pos;
 	SStartupStatus* status;
 };
 
@@ -24,6 +25,17 @@ db_results create_callback(size_t n_done, void *userdata)
 	SCallbackData *data=(SCallbackData*)userdata;
 
 	data->status->processed_file_entries=n_done;
+	
+	int last_pc = static_cast<int>(data->status->pc_done*1000 + 0.5);
+	
+	data->status->pc_done = data->max_pos/n_done;
+	
+	int curr_pc = static_cast<int>(data->status->pc_done*1000 + 0.5);
+	
+	if(curr_pc!=last_pc)
+	{
+		Server->Log("Creating files index: "+nconvert((double)curr_pc/10)+"% finished", LL_INFO);
+	}
 	
 	db_results ret;
 	db_single_result res;
@@ -53,14 +65,27 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 
 	status.creating_filesindex=true;
 	Server->Log("Creating file entry index. This might take a while...", LL_WARNING);
+	
+	Server->Log("Getting number of files...", LL_INFO);
+	
+	db_results res = db->Read("SELECT COUNT(*) AS c FROM files");
+	
+	int64 n_files = 0;
+	if(!res.empty())
+	{
+		n_files=watoi64(res[0][L"c"]);
+	}
 
 	db->BeginTransaction();
+	
+	Server->Log("Starting creating files index...", LL_INFO);
 
 	IQuery *q_read=db->Prepare("SELECT id, shahash, filesize, clientid, next_entry, prev_entry, pointed_to FROM files ORDER BY shahash ASC, filesize ASC, clientid ASC, created DESC");
 
 	SCallbackData data;
 	data.cur=q_read->Cursor();
 	data.pos=0;
+	data.max_pos=n_files;
 	data.status=&status;
 
 	fileindex.create(create_callback, &data);

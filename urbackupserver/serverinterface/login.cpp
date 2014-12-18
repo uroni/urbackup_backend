@@ -47,6 +47,7 @@ ACTION_IMPL(login)
 			ret.set("lang", helper.getLanguage());
 			ret.set("creating_filescache", startup_status.creating_filesindex);
 			ret.set("processed_file_entries", startup_status.processed_file_entries);
+			ret.set("percent_finished", startup_status.pc_done*100.0);
 			Server->Write( tid, ret.get(false) );
 			return;
 		}

@@ -64,7 +64,8 @@ struct SStartupStatus
 {
 	SStartupStatus(void)
 		: upgrading_database(false),
-		  creating_filesindex(false) {}
+		  creating_filesindex(false),
+		  pc_done(-1.0) {}
 
 	bool upgrading_database;
 	int curr_db_version;
@@ -72,6 +73,8 @@ struct SStartupStatus
 
 	bool creating_filesindex;
 	size_t processed_file_entries;
+	
+	double pc_done;
 
 	IMutex *mutex;
 };
