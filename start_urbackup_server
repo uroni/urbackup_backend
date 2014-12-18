@@ -100,6 +100,7 @@ print_help()
 	echo "--sqlite_tmpdir {tmpdir}	Specifies the directory sqlite uses to store temporary tables"
 	echo "--verify_hashes		Verifies a file backup"
 	echo "--delete_verify_failed		Delete file entries of files with failed verification"
+	echo "--supress_missing		Supress verification errors about missing files"
 	echo "--remove_unknown		Remove unknown backups from storage and internal database"
 	echo "--reset_pw {pw}		Resets the pw"
 	echo "--cleanup {X}			Cleans up X %|M|G|T from backup storage"
@@ -146,7 +147,8 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	HTTP_PORT=55414
 	LOGFILE="urbackup.log"
 	LOGLEVEL="warn"
-	PIDFILE="/var/run/urbackup_srv.pid"
+	PIDFILE_DEF="/var/run/urbackup_srv.pid"
+	PIDFILE=""
 	SQLITE_TMPDIR=""
 	VERIFY_HASHES=""
 	DELETE_VERIFY_FAILED=""
@@ -190,11 +192,13 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		esac
 	done
 	
+	
 	if [ "x$VERIFY_HASHES" != "x" ]
 	then
 		LOGLEVEL="info"
 		S_DAEMON="--no-server"
 		HTTP_PLUGIN=""
+		PIDFILE_DEF="/var/run/urbackup_verify_hashes.pid"
 	fi
 	
 	if [ "x$RESET_PW" != "x" ]
@@ -202,6 +206,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		LOGLEVEL="debug"
 		S_DAEMON="--no-server"
 		HTTP_PLUGIN=""
+		PIDFILE_DEF="/var/run/urbackup_reset_pw.pid"
 	fi
 	
 	if [ "x$CLEANUP" != "x" ]
@@ -209,6 +214,12 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		LOGLEVEL="debug"
 		S_DAEMON="--no-server"
 		HTTP_PLUGIN=""
+		PIDFILE_DEF="/var/run/urbackup_cleanup.pid"
+	fi
+	
+	if [ "x$PIDFILE" == "x" ]
+	then
+		PIDFILE="$PIDFILE_DEF"
 	fi
 	
 	if [ "x$RUN_IN_GDB" = "x1" ]
