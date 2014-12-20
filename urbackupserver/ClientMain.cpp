@@ -1178,6 +1178,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.cdp_version=watoi(it->second);
 		}
+		it=params.find(L"EFI");
+		if(it!=params.end())
+		{
+			protocol_versions.efi_version=watoi(it->second);
+		}
 	}
 
 	return !cap.empty();

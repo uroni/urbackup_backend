@@ -522,6 +522,30 @@
 				<div class="col-sm-6">
 					<select class="form-control" id="internet_image_transfer_mode"><option value="raw" {internet_image_transfer_mode_0}>{tRaw}</option><option value="hashed" {internet_image_transfer_mode_1}>{tHashed}</option></select>
 				</div>
+			</div>			
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="local_incr_image_style">{tLocal incremental image style}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="local_incr_image_style"><option value="to-full" {local_incr_image_style_0}>{tBased on last full image backup}</option><option value="to-last" {local_incr_image_style_1}>{tBased on last image backup}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="internet_incr_image_style">{tInternet incremental image style}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="internet_incr_image_style"><option value="to-full" {internet_incr_image_style_0}>{tBased on last full image backup}</option><option value="to-last" {internet_incr_image_style_1}>{tBased on last image backup}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="local_full_image_style">{tLocal full image style}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="local_full_image_style"><option value="full" {local_full_image_style_0}>{tFull image backup}</option><option value="synthetic" {local_full_image_style_1}>{tSynthetic full image backup}</option></select>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="internet_full_image_style">{tInternet full image style}:</label>
+				<div class="col-sm-6">
+					<select class="form-control" id="internet_full_image_style"><option value="full" {internet_full_image_style_0}>{tFull image backup}</option><option value="synthetic" {internet_full_image_style_1}>{tSynthetic full image backup}</option></select>
+				</div>
 			</div>
 			{global_settings_start|s}
 			<div class="form-group">

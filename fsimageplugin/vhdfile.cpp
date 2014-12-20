@@ -23,12 +23,14 @@
 #include "CompressedFile.h"
 #include <memory.h>
 #include <stdlib.h>
+#include "FileWrapper.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <errno.h>
 #endif
+#include "fs/ntfs.h"
 
 const uint64 def_header_offset=0;
 const uint64 def_dynamic_header_offset=512;
@@ -952,7 +954,7 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize, bool *has_error)
 	return bsize;
 }
 
-bool VHDFile::has_block(void)
+bool VHDFile::has_block(bool use_parent)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
 	size_t blockoffset=curr_offset%blocksize;
@@ -965,7 +967,7 @@ bool VHDFile::has_block(void)
 	unsigned int bat_off=big_endian(bat[block]);
 	if(bat_off==0xFFFFFFFF)
 	{
-		if(parent==NULL)
+		if(parent==NULL || !use_parent)
 		{
 			return false;
 		}
@@ -1003,7 +1005,7 @@ bool VHDFile::has_block(void)
 	}
 	else
 	{
-		if(parent!=NULL)
+		if(parent!=NULL && use_parent)
 		{
 			parent->Seek(curr_offset);
 			return parent->has_block();
@@ -1240,4 +1242,65 @@ VHDFile* VHDFile::getParent()
 bool VHDFile::isCompressed()
 {
 	return compressed_file!=NULL;
+}
+
+bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
+{
+	FileWrapper devfile(this, fs_offset);
+	FSNTFS ntfs(&devfile);
+
+	if(ntfs.hasError())
+	{
+		Server->Log("Error opening NTFS bitmap. Cannot convert incremental to full image.", LL_WARNING);
+		return false;
+	}
+
+	unsigned int ntfs_blocksize = static_cast<unsigned int>(ntfs.getBlocksize());
+
+	std::vector<char> buffer;
+	buffer.resize(sector_size);
+
+	for(int64 ntfs_block=0, n_ntfs_blocks = ntfs.getSize()/ntfs_blocksize;
+		ntfs_block<n_ntfs_blocks; ++ntfs_block)
+	{
+		if(ntfs.readBlock(ntfs_block, NULL))
+		{
+			int64 block_pos = fs_offset + ntfs_block*ntfs_blocksize;
+			for(unsigned int i=0;i<ntfs_blocksize;i+=sector_size)
+			{
+				Seek(block_pos + i);
+
+				if(!has_block(false))
+				{
+					bool has_error = false;
+					if(Read(buffer.data(), sector_size)!=sector_size)
+					{
+						Server->Log("Error converting incremental to full image. Cannot read from parent VHD file at position "+nconvert(block_pos + i), LL_WARNING);
+						return false;
+					}
+					
+					if(!write_callback->writeVHD(block_pos + i, buffer.data(), sector_size))
+					{
+						Server->Log("Error converting incremental to full image. Cannot write to VHD file at position "+nconvert(block_pos + i), LL_WARNING);
+						return false;
+					}
+				}
+			}
+		}
+	}
+
+	delete parent;
+	parent = NULL;
+
+	Server->Log("Writing new headers...", LL_INFO);
+
+	if(!write_header(false) ||
+		!write_dynamicheader(NULL, 0, L"") ||
+		!write_footer() )
+	{
+		Server->Log("Error writing new headers", LL_WARNING);
+		return false;
+	}
+
+	return true;
 }

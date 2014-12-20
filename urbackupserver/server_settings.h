@@ -11,6 +11,12 @@ namespace
 	const char* image_file_format_vhd = "vhd";
 	const char* image_file_format_vhdz = "vhdz";
 	const char* image_file_format_cowraw = "cowraw";
+
+	const char* full_image_style_full = "full";
+	const char* full_image_style_synthetic = "synthetic";
+
+	const char* incr_image_style_to_full = "to-full";
+	const char* incr_image_style_to_last = "to-last";
 }
 
 struct SSettings
@@ -99,6 +105,10 @@ struct SSettings
 	std::string client_access_key;
 	int max_running_jobs_per_client;
 	bool create_linked_user_views;
+	std::string local_incr_image_style;
+	std::string local_full_image_style;
+	std::string internet_incr_image_style;
+	std::string internet_full_image_style;
 };
 
 struct SLDAPSettings

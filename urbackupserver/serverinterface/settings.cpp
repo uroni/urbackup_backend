@@ -146,6 +146,10 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(internet_connect_always);
 	SET_SETTING(verify_using_client_hashes);
 	SET_SETTING(internet_readd_file_entries);
+	SET_SETTING(local_incr_image_style);
+	SET_SETTING(local_full_image_style);
+	SET_SETTING(internet_incr_image_style);
+	SET_SETTING(internet_full_image_style);
 #undef SET_SETTING
 	return ret;
 }

@@ -15,9 +15,6 @@
 *    You should have received a copy of the GNU General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **************************************************************************/
-
-#ifndef CLIENT_ONLY
-
 #include "server_writer.h"
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
@@ -172,6 +169,16 @@ void ServerVHDWriter::operator()(void)
 		}
 	}
 
+	if(do_make_full)
+	{
+		ServerLogger::Log(clientid, "Converting incremental image file to full image file...", LL_DEBUG);
+
+		if(!vhd->makeFull(mbr_offset, this))
+		{
+			ServerLogger::Log(clientid, "Covnerting incremental image to full image failed", LL_ERROR);
+		}
+	}
+
 	if(!vhd->finish())
 	{
 		checkFreeSpaceAndCleanup();
@@ -203,7 +210,7 @@ void ServerVHDWriter::checkFreeSpaceAndCleanup(void)
 	}
 }
 
-void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
+bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 {
 	IScopedLock lock(vhd_mutex);
 	vhd->Seek(pos);
@@ -223,7 +230,7 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			}
 			else
 			{
-				return;
+				return true;
 			}
 		}
 
@@ -249,7 +256,7 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 						}
 						else
 						{
-							return;
+							return true;
 						}
 					}
 
@@ -282,6 +289,8 @@ void ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
 		}
 	}
+
+	return !has_error;
 }
 
 char *ServerVHDWriter::getBuffer(void)
@@ -440,6 +449,11 @@ void ServerVHDWriter::trimmed(_i64 trim_start, _i64 trim_stop)
 	}
 
 	trimmed_bytes+=trim_stop-trim_start;
+}
+
+void ServerVHDWriter::setDoMakeFull( bool b )
+{
+	do_make_full=b;
 }
 
 //-------------FilebufferWriter-----------------
@@ -603,5 +617,3 @@ void ServerFileBufferWriter::writeBuffer(IFile *buf)
 	fb_queue.push(buf);
 	cond->notify_all();
 }
-
-#endif //CLIENT_ONLY

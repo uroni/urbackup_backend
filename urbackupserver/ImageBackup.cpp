@@ -99,7 +99,7 @@ namespace
 }
 
 ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool incremental, std::string letter)
-	: Backup(client_main, clientid, clientname, log_action, false, incremental), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter)
+	: Backup(client_main, clientid, clientname, log_action, false, incremental), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
 {
 	status=ServerStatus::getStatus(clientname);
 }
@@ -113,6 +113,25 @@ bool ImageBackup::doBackup()
 	else
 	{
 		ServerLogger::Log(clientid, "Starting full image backup...", LL_INFO);
+
+		if(server_settings->getImageFileFormat()==image_file_format_cowraw)
+		{
+			synthetic_full=true;
+		}
+		else if(client_main->isOnInternetConnection())
+		{
+			if(server_settings->getSettings()->internet_full_image_style==full_image_style_synthetic)
+			{
+				synthetic_full=true;
+			}
+		}
+		else
+		{
+			if(server_settings->getSettings()->local_full_image_style==full_image_style_synthetic)
+			{
+				synthetic_full=true;
+			}
+		}
 	}
 
 	bool image_hashed_transfer;
@@ -129,6 +148,8 @@ bool ImageBackup::doBackup()
 	int esp_id=-1;
 	if(strlower(letter)=="c:")
 	{
+		SStatusAction orig_action = status.statusaction;
+
 		ServerLogger::Log(clientid, "Backing up SYSVOL...", LL_DEBUG);
 		client_main->stopBackupRunning(false);
 		ImageBackup sysvol_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "SYSVOL");
@@ -143,19 +164,24 @@ bool ImageBackup::doBackup()
 		
 		ServerLogger::Log(clientid, "Backing up SYSVOL done.", LL_DEBUG);
 
-		ServerLogger::Log(clientid, "Backing up EFI System Partition...", LL_DEBUG);
-		client_main->stopBackupRunning(false);
-		ImageBackup esp_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "ESP");
-		esp_backup();
-
-		if(esp_backup.getResult())
+		if(client_main->getProtocolVersions().efi_version>0)
 		{
-			esp_id = esp_backup.getBackupId();
+			ServerLogger::Log(clientid, "Backing up EFI System Partition...", LL_DEBUG);
+			client_main->stopBackupRunning(false);
+			ImageBackup esp_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "ESP");
+			esp_backup();
+
+			if(esp_backup.getResult())
+			{
+				esp_id = esp_backup.getBackupId();
+			}
+
+			client_main->startBackupRunning(false);
+
+			ServerLogger::Log(clientid, "Backing up EFI System Partition done.", LL_DEBUG);
 		}
 
-		client_main->startBackupRunning(false);
-
-		ServerLogger::Log(clientid, "Backing up EFI System Partition done.", LL_DEBUG);
+		status.statusaction = orig_action;
 	}
 
 	status.pcdone=0;
@@ -166,12 +192,41 @@ bool ImageBackup::doBackup()
 
 	bool ret = false;
 	std::string parent_image;
-	if(r_incremental)
+	if(r_incremental || synthetic_full)
 	{
-		bool real_incremental = server_settings->getImageFileFormat()==image_file_format_cowraw;
-		SBackup last=getLastImage(letter, real_incremental);
+		bool incremental_to_last = synthetic_full || server_settings->getImageFileFormat()==image_file_format_cowraw;
+
+		if(!incremental_to_last)
+		{
+			if(client_main->isOnInternetConnection())
+			{
+				if(server_settings->getSettings()->internet_incr_image_style==incr_image_style_to_last)
+				{
+					incremental_to_last=true;
+				}
+			}
+			else
+			{
+				if(server_settings->getSettings()->local_incr_image_style==incr_image_style_to_last)
+				{
+					incremental_to_last=true;
+				}
+			}
+		}
+		
+		if(incremental_to_last)
+		{
+			ServerLogger::Log(clientid, "Basing image backup on last incremental or full image backup", LL_INFO);
+		}
+		else
+		{
+			ServerLogger::Log(clientid, "Basing image backup on last full image backup", LL_INFO);
+		}
+		
+		SBackup last=getLastImage(letter, incremental_to_last);
 		if(last.incremental==-2)
 		{
+			synthetic_full=false;
 			ServerLogger::Log(clientid, "Error retrieving last image backup. Doing full image backup instead.", LL_WARNING);
 			ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat());
 		}
@@ -325,7 +380,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	}
 	else
 	{
-		backup_dao->newImageBackup(clientid, imagefn, incremental, incremental_ref, client_main->getCurrImageVersion(), widen(pLetter));
+		backup_dao->newImageBackup(clientid, imagefn, synthetic_full?0:incremental, incremental_ref, client_main->getCurrImageVersion(), widen(pLetter));
 	}
 	backupid=static_cast<int>(db->getLastInsertID());
 
@@ -867,6 +922,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 									image_file_format == image_file_format_cowraw)
 								{
 									vhdfile->setDoTrim(true);
+								}
+
+								if(synthetic_full && image_file_format!=image_file_format_cowraw)
+								{
+									vhdfile->setDoMakeFull(true);
 								}
 
 								vhdfile->doExit();

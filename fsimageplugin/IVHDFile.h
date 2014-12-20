@@ -10,6 +10,12 @@ public:
 	virtual void trimmed(_i64 trim_start, _i64 trim_stop) = 0;
 };
 
+class IVHDWriteCallback
+{
+public:
+	virtual bool writeVHD(uint64 pos, char *buf, unsigned int bsize) = 0;
+};
+
 class IVHDFile
 {
 public:
@@ -28,4 +34,5 @@ public:
 	virtual bool finish() = 0;
 	virtual bool trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)=0;
 	virtual bool syncBitmap(_i64 fs_offset)=0;
+	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback)=0;
 };

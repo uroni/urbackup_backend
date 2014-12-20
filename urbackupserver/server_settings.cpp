@@ -321,6 +321,10 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_readd_file_entries=(settings_default->getValue("internet_readd_file_entries", "true")=="true");
 	settings->max_running_jobs_per_client=atoi(settings_default->getValue("max_running_jobs_per_client", "1").c_str());
 	settings->create_linked_user_views=(settings_default->getValue("create_linked_user_views", "true")=="true");
+	settings->local_incr_image_style=settings_default->getValue("local_incr_image_style", incr_image_style_to_full);
+	settings->local_full_image_style=settings_default->getValue("local_full_image_style", full_image_style_full);
+	settings->internet_incr_image_style=settings_default->getValue("internet_incr_image_style", incr_image_style_to_last);
+	settings->internet_full_image_style=settings_default->getValue("internet_full_image_style", full_image_style_synthetic);
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -463,6 +467,11 @@ void ServerSettings::readSettingsClient(void)
 
 	readIntClientSetting("max_running_jobs_per_client", &settings->max_running_jobs_per_client);
 	readBoolClientSetting("create_linked_user_views", &settings->create_linked_user_views);
+
+	readStringClientSetting("local_incr_image_style", &settings->local_incr_image_style);
+	readStringClientSetting("local_full_image_style", &settings->local_full_image_style);
+	readStringClientSetting("internet_incr_image_style", &settings->internet_incr_image_style);
+	readStringClientSetting("internet_full_image_style", &settings->internet_full_image_style);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)
@@ -894,18 +903,17 @@ SLDAPSettings ServerSettings::getLDAPSettings()
 	createSettingsReaders();
 	SLDAPSettings ldap_settings;
 	ldap_settings.login_enabled = settings_default->getValue("ldap_login_enabled", "true")=="true";
-	if(ldap_settings.login_enabled)
-	{
-		ldap_settings.server_name = settings_default->getValue("ldap_server_name", "example.com");
-		ldap_settings.server_port = settings_default->getValue("ldap_server_port", 3268);
-		ldap_settings.username_prefix = settings_default->getValue("ldap_username_prefix", "example\\");
-		ldap_settings.username_suffix = settings_default->getValue("ldap_username_suffix", "");
-		ldap_settings.group_class_query = settings_default->getValue("ldap_group_class_query", "DC=example,DC=com?memberOf,objectClass?sub?(sAMAccountName={USERNAME})");
-		ldap_settings.group_key_name = settings_default->getValue("ldap_group_key_name", "memberOf");
-		ldap_settings.class_key_name = settings_default->getValue("ldap_class_key_name", "objectClass");
-		ldap_settings.group_rights_map = parseLdapMap(settings_default->getValue(L"ldap_group_rights_map", L"CN=Domain Admins,CN=Users,DC=example,DC=com==>all=all"));
-		ldap_settings.class_rights_map = parseLdapMap(settings_default->getValue(L"ldap_class_rights_map", L"user==>lastacts={AUTOCLIENTS},progress={AUTOCLIENTS},status={AUTOCLIENTS},stop_backup={AUTOCLIENTS},start_backup=all,browse_backups=tokens"));
-	}
+	
+	ldap_settings.server_name = settings_default->getValue("ldap_server_name", "example.com");
+	ldap_settings.server_port = settings_default->getValue("ldap_server_port", 3268);
+	ldap_settings.username_prefix = settings_default->getValue("ldap_username_prefix", "example\\");
+	ldap_settings.username_suffix = settings_default->getValue("ldap_username_suffix", "");
+	ldap_settings.group_class_query = settings_default->getValue("ldap_group_class_query", "DC=example,DC=com?memberOf,objectClass?sub?(sAMAccountName={USERNAME})");
+	ldap_settings.group_key_name = settings_default->getValue("ldap_group_key_name", "memberOf");
+	ldap_settings.class_key_name = settings_default->getValue("ldap_class_key_name", "objectClass");
+	ldap_settings.group_rights_map = parseLdapMap(settings_default->getValue(L"ldap_group_rights_map", L"CN=Domain Admins,CN=Users,DC=example,DC=com==>all=all"));
+	ldap_settings.class_rights_map = parseLdapMap(settings_default->getValue(L"ldap_class_rights_map", L"user==>lastacts={AUTOCLIENTS},progress={AUTOCLIENTS},status={AUTOCLIENTS},stop_backup={AUTOCLIENTS},start_backup=all,browse_backups=tokens"));
+
 	return ldap_settings;
 }
 

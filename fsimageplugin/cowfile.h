@@ -24,6 +24,7 @@ public:
 	virtual bool finish();
 	virtual bool trimUnused(_i64 fs_offset, ITrimCallback* trim_callback);
 	virtual bool syncBitmap(_i64 fs_offset);
+	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback) { return true; }
 
 
 private:

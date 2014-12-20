@@ -172,6 +172,7 @@
     <ClCompile Include="CompressedFile.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="filesystem.cpp" />
+    <ClCompile Include="FileWrapper.cpp" />
     <ClCompile Include="FSImageFactory.cpp" />
     <ClCompile Include="fs\ntfs_win.cpp" />
     <ClCompile Include="LRUMemCache.cpp" />
@@ -185,6 +186,7 @@
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="CompressedFile.h" />
     <ClInclude Include="filesystem.h" />
+    <ClInclude Include="FileWrapper.h" />
     <ClInclude Include="FSImageFactory.h" />
     <ClInclude Include="fs\ntfs_win.h" />
     <ClInclude Include="IFilesystem.h" />

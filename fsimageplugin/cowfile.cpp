@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <memory>
+#include "FileWrapper.h"
 
 const unsigned int blocksize = 4096;
 
@@ -50,79 +51,6 @@ bool create_reflink(const std::string &linkname, const std::string &fname)
 
 	return rc==0;
 }
-
-
-class FileWrapper : public IFile
-{
-public:
-	FileWrapper(CowFile* cowfile, int64 offset)
-		: cowfile(cowfile), offset(offset)
-	{
-
-	}
-
-	virtual std::string Read(_u32 tr, bool *has_error)
-	{
-		std::string ret;
-		ret.resize(tr);
-		_u32 gc=Read((char*)ret.c_str(), tr, has_error);
-		if( gc<tr )
-			ret.resize( gc );
-
-		return ret;
-	}
-
-	virtual _u32 Read(char* buffer, _u32 bsize, bool *has_error)
-	{
-		size_t read;
-		bool rc = cowfile->Read(buffer, bsize, read);
-		if(!rc)
-		{
-			if(has_error) *has_error=true;
-			read=0;
-		}
-		return static_cast<_u32>(read);
-	}
-
-	virtual _u32 Write(const std::string &tw, bool *has_error)
-	{
-		return Write( tw.c_str(), (_u32)tw.size(), has_error);
-	}
-
-	virtual _u32 Write(const char* buffer, _u32 bsize, bool *has_error)
-	{
-		return cowfile->Write(buffer, bsize, has_error);
-	}
-
-	virtual bool Seek(_i64 spos)
-	{
-		return cowfile->Seek(offset+spos);
-	}
-
-	virtual _i64 Size(void)
-	{
-		return static_cast<_i64>(cowfile->getSize());
-	}
-
-	virtual _i64 RealSize()
-	{
-		return static_cast<_i64>(cowfile->usedSize());
-	}
-
-	virtual std::string getFilename(void)
-	{
-		return cowfile->getFilename();
-	}
-
-	virtual std::wstring getFilenameW(void)
-	{
-		return cowfile->getFilenameW();
-	}
-
-private:
-	int64 offset;
-	CowFile* cowfile;
-};
 
 
 }

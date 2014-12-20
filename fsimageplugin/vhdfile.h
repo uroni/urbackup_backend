@@ -88,7 +88,7 @@ public:
 	bool has_sector(_i64 sector_size=-1);
 	bool this_has_sector(_i64 sector_size=-1);
 
-	bool has_block(void);
+	bool has_block(bool use_parent=true);
 
 	unsigned int getBlocksize();
 
@@ -111,6 +111,8 @@ public:
 	{
 		return true;
 	}
+
+	virtual bool makeFull(_i64 fs_offset, IVHDWriteCallback* write_callback);
 
 private:
 

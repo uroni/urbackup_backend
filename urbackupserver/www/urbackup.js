@@ -1676,6 +1676,14 @@ function show_settings2(data)
 			data.settings=addSelectSelected(transfer_mode_params1, "local_image_transfer_mode", data.settings);
 			data.settings=addSelectSelected(transfer_mode_params1, "internet_image_transfer_mode", data.settings);
 			
+			var incr_image_style_params=["to-full", "to-last"];
+			data.settings=addSelectSelected(incr_image_style_params, "local_incr_image_style", data.settings);
+			data.settings=addSelectSelected(incr_image_style_params, "internet_incr_image_style", data.settings);
+			
+			var full_image_style_params=["full", "synthetic"];
+			data.settings=addSelectSelected(full_image_style_params, "local_full_image_style", data.settings);
+			data.settings=addSelectSelected(full_image_style_params, "internet_full_image_style", data.settings);
+			
 			var image_file_format_params = ["vhdz", "vhd"];
 			if(data.cowraw_available)
 			{
@@ -2078,7 +2086,11 @@ g.settings_list=[
 "image_file_format",
 "internet_connect_always",
 "verify_using_client_hashes",
-"internet_readd_file_entries"
+"internet_readd_file_entries",
+"local_incr_image_style",
+"local_full_image_style",
+"internet_incr_image_style",
+"internet_full_image_style"
 ];
 g.general_settings_list=[
 "backupfolder",

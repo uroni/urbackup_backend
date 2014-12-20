@@ -23,7 +23,7 @@ struct FileBufferVHDItem
 
 class ServerFileBufferWriter;
 
-class ServerVHDWriter : public IThread, public ITrimCallback
+class ServerVHDWriter : public IThread, public ITrimCallback, public IVHDWriteCallback
 {
 public:
 	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize);
@@ -51,12 +51,13 @@ public:
 
 	size_t getQueueSize(void);
 
-	void writeVHD(uint64 pos, char *buf, unsigned int bsize);
+	bool writeVHD(uint64 pos, char *buf, unsigned int bsize);
 	void freeFile(IFile *buf);
 
 	void writeRetry(IFile *f, char *buf, unsigned int bsize);
 
 	void setDoTrim(bool b);
+	void setDoMakeFull(bool b);
 
 	void setMbrOffset(int64 offset);
 
@@ -85,6 +86,7 @@ private:
 	volatile bool has_error;
 	volatile bool finish;
 	volatile bool do_trim;
+	volatile bool do_make_full;
 
 	bool filebuffer;
 

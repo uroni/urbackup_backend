@@ -33,8 +33,9 @@ protected:
 
 	std::string letter;
 
+	bool synthetic_full;
+
 	int backupid;
-	SStatus status;
 
 	ServerPingThread* pingthread;
 	THREADPOOL_TICKET pingthread_ticket;
