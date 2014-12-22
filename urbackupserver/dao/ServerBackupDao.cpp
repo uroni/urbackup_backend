@@ -1740,6 +1740,126 @@ void ServerBackupDao::addUserToken(const std::wstring& username, const std::wstr
 	q_addUserToken->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func int64 ServerBackupDao::hasRecentFullFileBackup
+* @return int64 id
+* @sql
+*       SELECT id FROM backups
+*		WHERE datetime('now', :backup_interval(string))<backuptime
+*			AND clientid=:clientid(int) AND incremental=0 AND done=1 AND tgroup=0
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullFileBackup(const std::wstring& backup_interval, int clientid)
+{
+	if(q_hasRecentFullFileBackup==NULL)
+	{
+		q_hasRecentFullFileBackup=db->Prepare("SELECT id FROM backups WHERE datetime('now', ?)<backuptime AND clientid=? AND incremental=0 AND done=1 AND tgroup=0", false);
+	}
+	q_hasRecentFullFileBackup->Bind(backup_interval);
+	q_hasRecentFullFileBackup->Bind(clientid);
+	db_results res=q_hasRecentFullFileBackup->Read();
+	q_hasRecentFullFileBackup->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ServerBackupDao::hasRecentIncrFileBackup
+* @return int64 id
+* @sql
+*       SELECT id FROM backups
+*		WHERE datetime('now', :backup_interval(string))<backuptime
+*			AND clientid=:clientid(int) AND complete=1 AND done=1 AND tgroup=0
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid)
+{
+	if(q_hasRecentIncrFileBackup==NULL)
+	{
+		q_hasRecentIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE datetime('now', ?)<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=0", false);
+	}
+	q_hasRecentIncrFileBackup->Bind(backup_interval);
+	q_hasRecentIncrFileBackup->Bind(clientid);
+	db_results res=q_hasRecentIncrFileBackup->Read();
+	q_hasRecentIncrFileBackup->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ServerBackupDao::hasRecentFullImageBackup
+* @return int64 id
+* @sql
+*       SELECT id FROM backup_images
+*		WHERE datetime('now', :backup_interval(string) )<backuptime
+*			AND clientid=:clientid(int) AND incremental=0 AND complete=1
+*           AND version=:image_version(int) AND letter=:letter(string)
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter)
+{
+	if(q_hasRecentFullImageBackup==NULL)
+	{
+		q_hasRecentFullImageBackup=db->Prepare("SELECT id FROM backup_images WHERE datetime('now', ? )<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version=? AND letter=?", false);
+	}
+	q_hasRecentFullImageBackup->Bind(backup_interval);
+	q_hasRecentFullImageBackup->Bind(clientid);
+	q_hasRecentFullImageBackup->Bind(image_version);
+	q_hasRecentFullImageBackup->Bind(letter);
+	db_results res=q_hasRecentFullImageBackup->Read();
+	q_hasRecentFullImageBackup->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int64 ServerBackupDao::hasRecentIncrImageBackup
+* @return int64 id
+* @sql
+*       SELECT id FROM backup_images
+*		WHERE datetime('now', :backup_interval(string) )<backuptime
+*			AND clientid=:clientid(int) AND complete=1
+*           AND version=:image_version(int) AND letter=:letter(string)
+*/
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter)
+{
+	if(q_hasRecentIncrImageBackup==NULL)
+	{
+		q_hasRecentIncrImageBackup=db->Prepare("SELECT id FROM backup_images WHERE datetime('now', ? )<backuptime AND clientid=? AND complete=1 AND version=? AND letter=?", false);
+	}
+	q_hasRecentIncrImageBackup->Bind(backup_interval);
+	q_hasRecentIncrImageBackup->Bind(clientid);
+	q_hasRecentIncrImageBackup->Bind(image_version);
+	q_hasRecentIncrImageBackup->Bind(letter);
+	db_results res=q_hasRecentIncrImageBackup->Read();
+	q_hasRecentIncrImageBackup->Reset();
+	CondInt64 ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi64(res[0][L"id"]);
+	}
+	return ret;
+}
+
+
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -1821,6 +1941,10 @@ void ServerBackupDao::prepareQueries( void )
 	q_addUserOnClient=NULL;
 	q_addClientToken=NULL;
 	q_addUserToken=NULL;
+	q_hasRecentFullFileBackup=NULL;
+	q_hasRecentIncrFileBackup=NULL;
+	q_hasRecentFullImageBackup=NULL;
+	q_hasRecentIncrImageBackup=NULL;
 }
 
 //@-SQLGenDestruction
@@ -1904,6 +2028,10 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_addUserOnClient);
 	db->destroyQuery(q_addClientToken);
 	db->destroyQuery(q_addUserToken);
+	db->destroyQuery(q_hasRecentFullFileBackup);
+	db->destroyQuery(q_hasRecentIncrFileBackup);
+	db->destroyQuery(q_hasRecentFullImageBackup);
+	db->destroyQuery(q_hasRecentIncrImageBackup);
 }
 
 void ServerBackupDao::commit()

@@ -116,8 +116,6 @@ ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pNam
 
 	settings=NULL;
 	settings_client=NULL;
-	SSettings tmp = {};
-	curr_intervals = tmp;
 
 	last_image_backup_try=0;
 	count_image_backup_try=0;
@@ -168,12 +166,8 @@ void ClientMain::destroy_mutex(void)
 void ClientMain::unloadSQL(void)
 {
 	db->destroyQuery(q_update_lastseen);
-	db->destroyQuery(q_update_full);
-	db->destroyQuery(q_update_incr);
 	db->destroyQuery(q_update_setting);
 	db->destroyQuery(q_insert_setting);
-	db->destroyQuery(q_update_image_full);
-	db->destroyQuery(q_update_image_incr);
 	db->destroyQuery(q_get_unsent_logdata);
 	db->destroyQuery(q_set_logdata_sent);
 }
@@ -332,6 +326,14 @@ void ClientMain::operator ()(void)
 	{
 		server_settings->getSettings()->computername=clientname;
 	}
+	if(server_settings->getImageFileFormat()==image_file_format_cowraw)
+	{
+		curr_image_version = curr_image_version & c_image_cowraw_bit;
+	}
+	else
+	{
+		curr_image_version = curr_image_version & ~c_image_cowraw_bit;
+	}
 
 	prepareSQL();
 
@@ -411,7 +413,7 @@ void ClientMain::operator ()(void)
 
 	sendClientLogdata();
 
-	update_sql_intervals(false);
+	curr_image_format = server_settings->getImageFileFormat();
 
 	ServerStatus::setCommPipe(clientname, pipe);
 
@@ -459,7 +461,7 @@ void ClientMain::operator ()(void)
 				client_updated_time=0;
 			}
 
-			update_sql_intervals(true);
+			curr_image_format = server_settings->getImageFileFormat();
 
 
 			bool internet_no_full_file=(internet_connection && !server_settings->getSettings()->internet_full_file_backups );
@@ -735,24 +737,9 @@ void ClientMain::operator ()(void)
 
 void ClientMain::prepareSQL(void)
 {
-	SSettings *s=server_settings->getSettings();
-
-	if(server_settings->getImageFileFormat()==image_file_format_cowraw)
-	{
-		curr_image_version = curr_image_version & c_image_cowraw_bit;
-	}
-	else
-	{
-		curr_image_version = curr_image_version & ~c_image_cowraw_bit;
-	}
-
 	q_update_lastseen=db->Prepare("UPDATE clients SET lastseen=CURRENT_TIMESTAMP WHERE id=?", false);
-	q_update_full=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqFileFull())+" seconds')<backuptime AND clientid=? AND incremental=0 AND done=1 AND tgroup=0", false);
-	q_update_incr=db->Prepare("SELECT id FROM backups WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqFileIncr())+" seconds')<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=0", false);
 	q_update_setting=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid=?", false);
 	q_insert_setting=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,?)", false);
-	q_update_image_full=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqImageFull())+" seconds')<backuptime AND clientid=? AND incremental=0 AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false);
-	q_update_image_incr=db->Prepare("SELECT id FROM backup_images WHERE datetime('now','-"+nconvert(server_settings->getUpdateFreqImageIncr())+" seconds')<backuptime AND clientid=? AND complete=1 AND version="+nconvert(curr_image_version)+" AND letter=?", false); 
 	q_get_unsent_logdata=db->Prepare("SELECT l.id AS id, strftime('%s', l.created) AS created, log_data.data AS logdata FROM (logs l INNER JOIN log_data ON l.id=log_data.logid) WHERE sent=0 AND clientid=?", false);
 	q_set_logdata_sent=db->Prepare("UPDATE logs SET sent=1 WHERE id=?", false);
 }
@@ -819,36 +806,32 @@ void ClientMain::updateLastseen(void)
 
 bool ClientMain::isUpdateFull(void)
 {
-	if( server_settings->getUpdateFreqFileFull()<0 )
+	int update_freq = server_settings->getUpdateFreqFileFull();
+	if( update_freq<0 )
 		return false;
 
-	q_update_full->Bind(clientid);
-	db_results res=q_update_full->Read();
-	q_update_full->Reset();
-	return res.empty();
+	return backup_dao->hasRecentFullFileBackup(convert(-1*update_freq)+L" seconds",
+		clientid).exists;
 }
 
 bool ClientMain::isUpdateIncr(void)
 {
-	if( server_settings->getUpdateFreqFileIncr()<0 )
+	int update_freq = server_settings->getUpdateFreqFileIncr();
+	if( update_freq<0 )
 		return false;
 
-	q_update_incr->Bind(clientid);
-	db_results res=q_update_incr->Read();
-	q_update_incr->Reset();
-	return res.empty();
+	return backup_dao->hasRecentIncrFileBackup(convert(-1*update_freq)+L" seconds",
+		clientid).exists;
 }
 
 bool ClientMain::isUpdateFullImage(const std::string &letter)
 {
-	if( server_settings->getUpdateFreqImageFull()<0 )
+	int update_freq = server_settings->getUpdateFreqImageFull();
+	if( update_freq<0 )
 		return false;
 
-	q_update_image_full->Bind(clientid);
-	q_update_image_full->Bind(letter);
-	db_results res=q_update_image_full->Read();
-	q_update_image_full->Reset();
-	return res.empty();
+	return backup_dao->hasRecentFullImageBackup(convert(-1*update_freq)+L" seconds",
+		clientid, curr_image_version, widen(letter)).exists;
 }
 
 bool ClientMain::isUpdateFullImage(void)
@@ -879,14 +862,12 @@ bool ClientMain::isUpdateIncrImage(void)
 
 bool ClientMain::isUpdateIncrImage(const std::string &letter)
 {
-	if( server_settings->getUpdateFreqImageFull()<0 || server_settings->getUpdateFreqImageIncr()<0 )
+	int update_freq = server_settings->getUpdateFreqImageIncr();
+	if( server_settings->getUpdateFreqImageFull()<0 || update_freq<0 )
 		return false;
 
-	q_update_image_incr->Bind(clientid);
-	q_update_image_incr->Bind(letter);
-	db_results res=q_update_image_incr->Read();
-	q_update_image_incr->Reset();
-	return res.empty();
+	return backup_dao->hasRecentIncrImageBackup(convert(-1*update_freq)+L" seconds",
+		clientid, curr_image_version, widen(letter)).exists;
 }
 
 std::string ClientMain::sendClientMessageRetry(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, size_t retry, bool logerr, int max_loglevel)
@@ -1389,8 +1370,15 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	if(mod)
 	{
 		server_settings->update(true);
-		unloadSQL();
-		prepareSQL();
+		
+		if(server_settings->getImageFileFormat()==image_file_format_cowraw)
+		{
+			curr_image_version = curr_image_version & c_image_cowraw_bit;
+		}
+		else
+		{
+			curr_image_version = curr_image_version & ~c_image_cowraw_bit;
+		}
 	}
 
 	return true;
@@ -1993,30 +1981,10 @@ bool ClientMain::handle_not_enough_space(const std::wstring &path)
 	return true;
 }
 
-void ClientMain::update_sql_intervals(bool update_sql)
-{
-	SSettings *settings=server_settings->getSettings();
-	if(settings->update_freq_full != curr_intervals.update_freq_full ||
-		settings->update_freq_image_full != curr_intervals.update_freq_image_full ||
-		settings->update_freq_image_incr != curr_intervals.update_freq_image_incr ||
-		settings->update_freq_incr != curr_intervals.update_freq_incr ||
-		server_settings->getImageFileFormat() != curr_image_format )
-	{
-		if(update_sql)
-		{
-			unloadSQL();
-			prepareSQL();
-		}
-	}
-	curr_intervals=*settings;
-	curr_image_format = server_settings->getImageFileFormat();
-}
-
 unsigned int ClientMain::exponentialBackoffTime( size_t count, unsigned int sleeptime, unsigned div )
 {
 	return static_cast<unsigned int>((std::max)(static_cast<double>(sleeptime), static_cast<double>(sleeptime)*pow(static_cast<double>(div), static_cast<double>(count))));
 }
-
 
 bool ClientMain::exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div)
 {

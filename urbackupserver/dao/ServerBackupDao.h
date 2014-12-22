@@ -197,6 +197,10 @@ public:
 	void addUserOnClient(int clientid, const std::wstring& username);
 	void addClientToken(int clientid, const std::wstring& token);
 	void addUserToken(const std::wstring& username, const std::wstring& token);
+	CondInt64 hasRecentFullFileBackup(const std::wstring& backup_interval, int clientid);
+	CondInt64 hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid);
+	CondInt64 hasRecentFullImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter);
+	CondInt64 hasRecentIncrImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -288,6 +292,10 @@ private:
 	IQuery* q_addUserOnClient;
 	IQuery* q_addClientToken;
 	IQuery* q_addUserToken;
+	IQuery* q_hasRecentFullFileBackup;
+	IQuery* q_hasRecentIncrFileBackup;
+	IQuery* q_hasRecentFullImageBackup;
+	IQuery* q_hasRecentIncrImageBackup;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

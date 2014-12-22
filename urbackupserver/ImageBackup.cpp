@@ -106,6 +106,8 @@ ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::wstring cli
 
 bool ImageBackup::doBackup()
 {
+	bool cowraw_format = server_settings->getImageFileFormat()==image_file_format_cowraw;
+
 	if(r_incremental)
 	{
 		ServerLogger::Log(clientid, "Starting incremental image backup...", LL_INFO);
@@ -114,7 +116,7 @@ bool ImageBackup::doBackup()
 	{
 		ServerLogger::Log(clientid, "Starting full image backup...", LL_INFO);
 
-		if(server_settings->getImageFileFormat()==image_file_format_cowraw)
+		if(cowraw_format)
 		{
 			synthetic_full=true;
 		}
@@ -194,7 +196,7 @@ bool ImageBackup::doBackup()
 	std::string parent_image;
 	if(r_incremental || synthetic_full)
 	{
-		bool incremental_to_last = synthetic_full || server_settings->getImageFileFormat()==image_file_format_cowraw;
+		bool incremental_to_last = synthetic_full || cowraw_format;
 
 		if(!incremental_to_last)
 		{
@@ -233,7 +235,7 @@ bool ImageBackup::doBackup()
 		else
 		{
 			ret = doImage(letter, last.path, last.incremental+1,
-				last.incremental_ref, image_hashed_transfer, server_settings->getImageFileFormat());
+				cowraw_format?0:last.incremental_ref, image_hashed_transfer, server_settings->getImageFileFormat());
 		}
 	}
 	else

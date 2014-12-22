@@ -180,7 +180,6 @@ private:
 	bool isBackupsRunningOkay(bool file);	
 	bool updateCapabilities(void);
 	IPipeThrottler *getThrottler(size_t speed_bps);
-	void update_sql_intervals(bool update_sql);
 
 	unsigned int exponentialBackoffTime(size_t count, unsigned int sleeptime, unsigned div);
 	bool exponentialBackoff(size_t count, int64 lasttime, unsigned int sleeptime, unsigned div);
@@ -192,8 +191,6 @@ private:
 
 	bool authenticatePubKey();
 
-	
-	SSettings curr_intervals;
 	std::string curr_image_format;
 
 	IPipe *pipe;
@@ -214,12 +211,8 @@ private:
 	ServerSettings *server_settings;
 
 	IQuery *q_update_lastseen;
-	IQuery *q_update_full;
-	IQuery *q_update_incr;
 	IQuery *q_update_setting;
 	IQuery *q_insert_setting;
-	IQuery *q_update_image_full;
-	IQuery *q_update_image_incr;
 	IQuery *q_get_unsent_logdata;
 	IQuery *q_set_logdata_sent;
 

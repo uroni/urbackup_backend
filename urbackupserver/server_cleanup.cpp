@@ -729,6 +729,8 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 	ServerCleanupDao::CondString res=cleanupdao->getImagePath(backupid);
 	if(res.exists)
 	{
+		Server->Log(L"Deleting image backup ( id="+convert(backupid)+L", path="+res.value+L" ) ...", LL_INFO);
+
 		_i64 stat_id;
 		if(update_stat)
 		{

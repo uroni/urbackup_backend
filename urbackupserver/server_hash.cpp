@@ -305,7 +305,7 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 		//TODO: Assertion can be hit by racing condition. Remove before release
 		assert(prev_entry==0);
 		
-		backupdao.addIncomingFile(filesize, clientid, backupid, clients, ServerBackupDao::c_direction_incoming, incremental);
+		backupdao.addIncomingFile(rsize>0?rsize:filesize, clientid, backupid, clients, ServerBackupDao::c_direction_incoming, incremental);
 	}
 
 	if(update_fileindex)
