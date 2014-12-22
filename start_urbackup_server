@@ -217,7 +217,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		PIDFILE_DEF="/var/run/urbackup_cleanup.pid"
 	fi
 	
-	if [ "x$PIDFILE" == "x" ]
+	if [ "x$PIDFILE" = "x" ]
 	then
 		PIDFILE="$PIDFILE_DEF"
 	fi
