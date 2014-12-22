@@ -1319,6 +1319,13 @@ void upgrade(void)
 		{
 		    Server->Log("Upgrading database to version "+nconvert(ver+1), LL_WARNING);
 		}
+		if(ver>max_v)
+		{
+			Server->Log("Current UrBackup database version is "+nconvert(ver)+". This UrBackup"
+				" server version only supports databases up to version "+nconvert(max_v)+"."
+				" You need a newer UrBackup server version to work with this database.", LL_ERROR);
+			exit(4);
+		}
 		db->BeginTransaction();
 		old_v=ver;
 		bool has_error=false;
