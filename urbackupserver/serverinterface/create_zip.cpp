@@ -320,7 +320,11 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 		time_t last_modified_wt;
 		if(has_metadata)
 		{
+#ifdef _WIN32
 			last_modified_wt=static_cast<time_t>(os_to_windows_filetime(metadata.last_modified));
+#else
+			last_modified_wt=static_cast<time_t>(metadata.last_modified);
+#endif
 			last_modified=&last_modified_wt;
 		}
 
