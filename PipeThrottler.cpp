@@ -5,13 +5,21 @@
 
 #define DLOG(x) //x
 
-PipeThrottler::PipeThrottler(size_t bps, int64 update_time_interval,
-	IPipeThrottlerUpdater* updater, void* userdata)
-	: throttle_bps(bps), update_time_interval(update_time_interval), curr_bytes(0),
-	  lastresettime(0), updater(updater), userdata(userdata)
+PipeThrottler::PipeThrottler(size_t bps,
+	IPipeThrottlerUpdater* updater)
+	: throttle_bps(bps), curr_bytes(0),
+	  lastresettime(0), updater(updater)
 {
 	mutex=Server->createMutex();
 	lastupdatetime=Server->getTimeMS();
+	if(updater!=NULL)
+	{
+		update_time_interval = updater->getUpdateIntervalMs();
+	}
+	else
+	{
+		update_time_interval = -1;
+	}
 }
 
 PipeThrottler::~PipeThrottler(void)
@@ -27,9 +35,10 @@ bool PipeThrottler::addBytes(size_t new_bytes, bool wait)
 
 	int64 ctime=Server->getTimeMS();
 
-	if(updater && ctime-lastupdatetime>update_time_interval)
+	if(updater.get() && update_time_interval>=0 &&
+		ctime-lastupdatetime>update_time_interval)
 	{
-		throttle_bps = updater->getThrottleLimit(userdata);
+		throttle_bps = updater->getThrottleLimit();
 		lastupdatetime = ctime;
 		if(throttle_bps==0) return true;
 	}
@@ -90,4 +99,11 @@ void PipeThrottler::changeThrottleLimit(size_t bps)
 	IScopedLock lock(mutex);
 
 	throttle_bps=bps;
+}
+
+void PipeThrottler::changeThrottleUpdater(IPipeThrottlerUpdater* new_updater)
+{
+	IScopedLock lock(mutex);
+
+	updater.reset(new_updater);
 }

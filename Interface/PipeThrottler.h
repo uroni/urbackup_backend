@@ -7,7 +7,9 @@
 class IPipeThrottlerUpdater : public IObject
 {
 public:
-	virtual size_t getThrottleLimit(void* userdata)=0;
+	virtual int64 getUpdateIntervalMs()=0;
+
+	virtual size_t getThrottleLimit()=0;
 };
 
 class IPipeThrottler : public IObject
@@ -15,6 +17,7 @@ class IPipeThrottler : public IObject
 public:
 	virtual bool addBytes(size_t n_bytes, bool wait)=0;
 	virtual void changeThrottleLimit(size_t bps)=0;
+	virtual void changeThrottleUpdater(IPipeThrottlerUpdater* new_updater)=0;
 };
 
 

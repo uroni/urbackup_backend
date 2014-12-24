@@ -34,6 +34,7 @@
 #include "dao/ServerBackupDao.h"
 #include <memory.h>
 #include <algorithm>
+#include "ThrottleUpdater.h"
 
 const int max_offline=5;
 
@@ -490,7 +491,8 @@ IPipeThrottler *BackupServer::getGlobalInternetThrottler(size_t speed_bps)
 
 	if(global_internet_throttler==NULL)
 	{
-		global_internet_throttler=Server->createPipeThrottler(speed_bps);
+		global_internet_throttler=Server->createPipeThrottler(speed_bps,
+			new ThrottleUpdater(-1, ThrottleScope_GlobalInternet));
 	}
 	else
 	{
@@ -508,7 +510,8 @@ IPipeThrottler *BackupServer::getGlobalLocalThrottler(size_t speed_bps)
 
 	if(global_local_throttler==NULL)
 	{
-		global_local_throttler=Server->createPipeThrottler(speed_bps);
+		global_local_throttler=Server->createPipeThrottler(speed_bps,
+			new ThrottleUpdater(-1, ThrottleScope_GlobalLocal));
 	}
 	else
 	{

@@ -60,6 +60,7 @@
 #include "FullFileBackup.h"
 #include "ImageBackup.h"
 #include "ContinuousBackup.h"
+#include "ThrottleUpdater.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
@@ -687,7 +688,18 @@ void ClientMain::operator ()(void)
 		{
 			IScopedLock lock(clientaddr_mutex);
 			memcpy(&clientaddr, &msg[7], sizeof(sockaddr_in) );
+			bool prev_internet_connection = internet_connection;
 			internet_connection=(msg[7+sizeof(sockaddr_in)]==0)?false:true;
+
+			if(prev_internet_connection!=internet_connection)
+			{
+				IScopedLock lock(throttle_mutex);
+
+				client_throttler->changeThrottleUpdater(new
+					ThrottleUpdater(clientid, internet_connection?
+						ThrottleScope_Internet:ThrottleScope_Local));
+			}
+
 			tcpstack.setAddChecksum(internet_connection);
 		}
 		else if(msg=="WAKEUP")
@@ -1728,7 +1740,9 @@ IPipeThrottler *ClientMain::getThrottler(size_t speed_bps)
 
 	if(client_throttler==NULL)
 	{
-		client_throttler=Server->createPipeThrottler(speed_bps);
+		client_throttler=Server->createPipeThrottler(speed_bps,
+			new ThrottleUpdater(clientid,
+			internet_connection?ThrottleScope_Internet:ThrottleScope_Local));
 	}
 	else
 	{
@@ -2171,7 +2185,17 @@ void ClientMain::updateClientAddress(const std::string& address_data, bool& swit
 {
 	IScopedLock lock(clientaddr_mutex);
 	memcpy(&clientaddr, &address_data[0], sizeof(sockaddr_in) );
+	bool prev_internet_connection = internet_connection;
 	internet_connection=(address_data[sizeof(sockaddr_in)]==0)?false:true;
+
+	if(prev_internet_connection!=internet_connection)
+	{
+		IScopedLock lock(throttle_mutex);
+
+		client_throttler->changeThrottleUpdater(new
+			ThrottleUpdater(clientid, internet_connection?
+				ThrottleScope_Internet:ThrottleScope_Local));
+	}
 
 	if(internet_connection && server_settings->getSettings()->internet_image_backups )
 	{
