@@ -197,9 +197,9 @@ public:
 	void addUserOnClient(int clientid, const std::wstring& username);
 	void addClientToken(int clientid, const std::wstring& token);
 	void addUserToken(const std::wstring& username, const std::wstring& token);
-	CondInt64 hasRecentFullFileBackup(const std::wstring& backup_interval, int clientid);
+	CondInt64 hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr);
 	CondInt64 hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid);
-	CondInt64 hasRecentFullImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter);
+	CondInt64 hasRecentFullOrIncrImageBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int image_version, const std::wstring& letter);
 	CondInt64 hasRecentIncrImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter);
 	//@-SQLGenFunctionsEnd
 
@@ -292,9 +292,9 @@ private:
 	IQuery* q_addUserOnClient;
 	IQuery* q_addClientToken;
 	IQuery* q_addUserToken;
-	IQuery* q_hasRecentFullFileBackup;
+	IQuery* q_hasRecentFullOrIncrFileBackup;
 	IQuery* q_hasRecentIncrFileBackup;
-	IQuery* q_hasRecentFullImageBackup;
+	IQuery* q_hasRecentFullOrIncrImageBackup;
 	IQuery* q_hasRecentIncrImageBackup;
 	//@-SQLGenVariablesEnd
 

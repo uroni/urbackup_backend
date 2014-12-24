@@ -806,12 +806,16 @@ void ClientMain::updateLastseen(void)
 
 bool ClientMain::isUpdateFull(void)
 {
-	int update_freq = server_settings->getUpdateFreqFileFull();
-	if( update_freq<0 )
+	int update_freq_full = server_settings->getUpdateFreqFileFull();
+	if( update_freq_full<0 )
 		return false;
 
-	return backup_dao->hasRecentFullFileBackup(convert(-1*update_freq)+L" seconds",
-		clientid).exists;
+	int update_freq_incr = server_settings->getUpdateFreqFileIncr();
+	if(update_freq_incr<0)
+		update_freq_incr=0;
+
+	return !backup_dao->hasRecentFullOrIncrFileBackup(convert(-1*update_freq_full)+L" seconds",
+		clientid, convert(-1*update_freq_incr)+L" seconds").exists;
 }
 
 bool ClientMain::isUpdateIncr(void)
@@ -820,18 +824,22 @@ bool ClientMain::isUpdateIncr(void)
 	if( update_freq<0 )
 		return false;
 
-	return backup_dao->hasRecentIncrFileBackup(convert(-1*update_freq)+L" seconds",
+	return !backup_dao->hasRecentIncrFileBackup(convert(-1*update_freq)+L" seconds",
 		clientid).exists;
 }
 
 bool ClientMain::isUpdateFullImage(const std::string &letter)
 {
-	int update_freq = server_settings->getUpdateFreqImageFull();
-	if( update_freq<0 )
+	int update_freq_full = server_settings->getUpdateFreqImageFull();
+	if( update_freq_full<0 )
 		return false;
 
-	return backup_dao->hasRecentFullImageBackup(convert(-1*update_freq)+L" seconds",
-		clientid, curr_image_version, widen(letter)).exists;
+	int update_freq_incr = server_settings->getUpdateFreqImageIncr();
+	if(update_freq_incr<0)
+		update_freq_incr=0;
+
+	return !backup_dao->hasRecentFullOrIncrImageBackup(convert(-1*update_freq_full)+L" seconds",
+		clientid, convert(-1*update_freq_incr)+L" seconds", curr_image_version, widen(letter)).exists;
 }
 
 bool ClientMain::isUpdateFullImage(void)
@@ -866,7 +874,7 @@ bool ClientMain::isUpdateIncrImage(const std::string &letter)
 	if( server_settings->getUpdateFreqImageFull()<0 || update_freq<0 )
 		return false;
 
-	return backup_dao->hasRecentIncrImageBackup(convert(-1*update_freq)+L" seconds",
+	return !backup_dao->hasRecentIncrImageBackup(convert(-1*update_freq)+L" seconds",
 		clientid, curr_image_version, widen(letter)).exists;
 }
 
