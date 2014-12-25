@@ -233,6 +233,18 @@ bool CThreadPool::waitFor(std::vector<THREADPOOL_TICKET> tickets, int timems)
 			}
 		}
 	}
+
+	for( size_t i=0;i<tickets.size();++i)
+	{
+		std::map<THREADPOOL_TICKET, ICondition*>::iterator it=running.find(tickets[i]);
+		if( it!=running.end() )
+		{
+			if(it->second==cond)
+			{
+				it->second=NULL;
+			}
+		}
+	}
 	
 	Server->destroy(cond);
 
