@@ -3095,15 +3095,14 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 			VSSLog(L"Cannot open directory "+vsstpath+L" to handle hard links", LL_DEBUG);
 		}
 
+		const size_t& cdir_idx = i;
+
 		for(size_t i=0;i<files.size();++i)
 		{
 			if(files[i].isdir)
 			{
 				continue;
 			}
-
-			bool file_is_open = std::binary_search(open_files.begin(),
-				open_files.end(), changed_dirs[i]+os_file_sep()+strlower(files[i].name));
 
 			std::wstring fn=vsstpath+files[i].name;
 			HANDLE hFile = CreateFileW(os_file_prefix(fn).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
@@ -3125,6 +3124,9 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 				else if(fileInformation.nNumberOfLinks>1)
 				{
 					CloseHandle(hFile);
+
+					bool file_is_open = std::binary_search(open_files.begin(),
+						open_files.end(), changed_dirs[cdir_idx]+os_file_sep()+strlower(files[i].name));
 
 					std::wstring outBuf;
 					DWORD stringLength=4096;
@@ -3310,7 +3312,7 @@ void IndexThread::writeTokens()
 
 		if(tokens[i].is_user)
 		{
-			std::vector<int> groups = cd->getGroupMembership(tokens[i].id);
+			std::vector<int> groups = cd->getGroupMembership(static_cast<int>(tokens[i].id));
 
 			std::string gids;
 
