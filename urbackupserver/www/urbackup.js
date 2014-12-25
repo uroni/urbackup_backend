@@ -320,6 +320,67 @@ function build_main_nav()
 	I('main_nav').innerHTML=ndata;
 }
 
+function multiplyTimeSpan(ts, m)
+{
+	ts = unescapeHTML(ts);
+	var timespans = ts.split(";");
+	
+	var ret = "";
+	for(var i=0;i<timespans.length;++i)
+	{
+		if(ret.length!=0)
+		{
+			ret+=";"
+		}
+		var idx = timespans[i].indexOf("@");
+		if(idx!=-1)
+		{
+			var d=parseFloat(timespans[i].substr(0, idx));
+			ret+=d*m + timespans[i].substr(idx, timespans[i].length - idx);
+		}
+		else
+		{
+			d=parseFloat(timespans[i]);
+			ret+=d*m;
+		}
+	}
+	
+	return ret;
+}
+
+function makeTimeSpanNegative(ts)
+{
+	ts = unescapeHTML(ts);
+	var timespans = ts.split(";");
+	
+	var ret = "";
+	for(var i=0;i<timespans.length;++i)
+	{
+		if(ret.length!=0)
+		{
+			ret+=";"
+		}
+		var idx = timespans[i].indexOf("@");
+		if(idx!=-1)
+		{
+			var d=parseFloat(timespans[i].substr(0, idx));
+			if(d>0)
+				d*=-1;
+				
+			ret+=d + timespans[i].substr(idx, timespans[i].length - idx);
+		}
+		else
+		{
+			d=parseFloat(timespans[i]);
+			if(d>0)
+				d*=-1;
+				
+			ret+=d;
+		}
+	}
+	
+	return ret;
+}
 
 function getPar(p)
 {
@@ -330,14 +391,14 @@ function getPar(p)
 		return "&"+p+"="+(obj.checked?"true":"false");
 	}
 	var val=obj.value;
-	if(p=="update_freq_incr"){ val*=60.0*60.0; if(obj.disabled && val>0) val*=-1; }
+	if(p=="update_freq_incr"){ val=multiplyTimeSpan(val, 60.0*60.0); if(obj.disabled) val=makeTimeSpanNegative(val); }
 	if(p=="update_freq_full" || p=="update_freq_image_full" || p=="update_freq_image_incr")
-		{ val*=60.0*60.0*24.0; if(obj.disabled && val>0) val*=-1; }
+		{ val=multiplyTimeSpan(val, 60.0*60.0*24.0); if(obj.disabled) val=makeTimeSpanNegative(val); }
 	if(p=="startup_backup_delay") val*=60;
-	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
-	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
-	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val*=(1024*1024)/8; }
-	if(p=="global_internet_speed") { if(val=="-" || val=="") val=-1; else val*=1024/8; }
+	if(p=="local_speed") { if(val=="-" || val=="") val=-1; else val=multiplyTimeSpan(val, (1024*1024)/8); }
+	if(p=="internet_speed") { if(val=="-" || val=="") val=-1; else val=multiplyTimeSpan(val, 1024/8); }
+	if(p=="global_local_speed") { if(val=="-" || val=="") val=-1; else val=multiplyTimeSpan(val, (1024*1024)/8); }
+	if(p=="global_internet_speed") { if(val=="-" || val=="") val=-1; else val=multiplyTimeSpan(val, 1024/8); }
 	if(p=="update_stats_cachesize") val=Math.round(val*1024);
 		
 	return "&"+p+"="+encodeURIComponent(val+"");
@@ -1692,21 +1753,21 @@ function show_settings2(data)
 			}
 			data.settings=addSelectSelected(image_file_format_params, "image_file_format", data.settings);
 			
-			data.settings.update_freq_incr/=60.0*60.0;
-			data.settings.update_freq_full/=60.0*60.0*24.0;
-			data.settings.update_freq_image_incr/=60.0*60.0*24.0;
-			data.settings.update_freq_image_full/=60.0*60.0*24.0;
+			data.settings.update_freq_incr=multiplyTimeSpan(data.settings.update_freq_incr, 1/(60.0*60.0));
+			data.settings.update_freq_full=multiplyTimeSpan(data.settings.update_freq_full, 1/(60.0*60.0*24.0));
+			data.settings.update_freq_image_incr=multiplyTimeSpan(data.settings.update_freq_image_incr, 1/(60.0*60.0*24.0));
+			data.settings.update_freq_image_full=multiplyTimeSpan(data.settings.update_freq_image_full, 1/(60.0*60.0*24.0));
 			data.settings.startup_backup_delay/=60;
 			
-			if(data.settings.local_speed==-1) data.settings.local_speed="-";
-			else data.settings.local_speed/=(1024*1024)/8;
-			if(data.settings.internet_speed==-1) data.settings.internet_speed="-";
-			else data.settings.internet_speed/=1024/8;
+			if(data.settings.local_speed=="-1") data.settings.local_speed="-";
+			else data.settings.local_speed=multiplyTimeSpan(data.settings.local_speed, 1/((1024*1024)/8));
+			if(data.settings.internet_speed=="-1") data.settings.internet_speed="-";
+			else data.settings.internet_speed=multiplyTimeSpan(data.settings.internet_speed, 1/(1024/8));
 			
-			if(data.settings.global_local_speed==-1) data.settings.global_local_speed="-";
-			else data.settings.global_local_speed/=(1024*1024)/8;
-			if(data.settings.global_internet_speed==-1) data.settings.global_internet_speed="-";
-			else data.settings.global_internet_speed/=1024/8;
+			if(data.settings.global_local_speed=="-1") data.settings.global_local_speed="-";
+			else data.settings.global_local_speed=multiplyTimeSpan(data.settings.global_local_speed, 1/((1024*1024)/8));
+			if(data.settings.global_internet_speed=="-1") data.settings.global_internet_speed="-";
+			else data.settings.global_internet_speed=multiplyTimeSpan(data.settings.global_internet_speed, 1/(1024/8));
 			
 			data.settings.file_hash_collect_cachesize/=1024;
 			data.settings.update_stats_cachesize/=1024;
@@ -1808,16 +1869,16 @@ function show_settings2(data)
 			}
 			data.settings=addSelectSelected(image_file_format_params, "image_file_format", data.settings);
 			
-			data.settings.update_freq_incr/=60.0*60.0;
-			data.settings.update_freq_full/=60.0*60.0*24.0;
-			data.settings.update_freq_image_incr/=60.0*60.0*24.0;
-			data.settings.update_freq_image_full/=60.0*60.0*24.0;
+			data.settings.update_freq_incr=multiplyTimeSpan(data.settings.update_freq_incr, 1/(60.0*60.0));
+			data.settings.update_freq_full=multiplyTimeSpan(data.settings.update_freq_full, 1/(60.0*60.0*24.0));
+			data.settings.update_freq_image_incr=multiplyTimeSpan(data.settings.update_freq_image_incr, 1/(60.0*60.0*24.0));
+			data.settings.update_freq_image_full=multiplyTimeSpan(data.settings.update_freq_image_full, 1/(60.0*60.0*24.0));
 			data.settings.startup_backup_delay/=60;
 			
-			if(data.settings.local_speed==-1) data.settings.local_speed="-";
-			else data.settings.local_speed/=(1024*1024)/8;
-			if(data.settings.internet_speed==-1) data.settings.internet_speed="-";
-			else data.settings.internet_speed/=1024/8;
+			if(data.settings.local_speed=="-1") data.settings.local_speed="-";
+			else data.settings.local_speed=multiplyTimeSpan(data.settings.local_speed, 1/((1024*1024)/8));
+			if(data.settings.internet_speed=="-1") data.settings.internet_speed="-";
+			else data.settings.internet_speed=multiplyTimeSpan(data.settings.internet_speed, 1/(1024/8));
 			
 			data.settings.file_hash_collect_cachesize/=1024;
 			
@@ -2142,15 +2203,19 @@ g.ldap_settings_list=[
 "ldap_class_rights_map"
 ];
 
+var time_span_regex = /^([\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
+
 function validateCommonSettings()
 {
-	if(!validate_text_float(["update_freq_incr", "update_freq_full", "update_freq_image_incr", 
-							"update_freq_image_full"]) ) return false;
+	if(!validate_text_regex([{ id: "update_freq_incr", regexp: time_span_regex },
+							 { id: "update_freq_full", regexp: time_span_regex },
+							 { id: "update_freq_image_incr", regexp: time_span_regex },
+							 { id: "update_freq_image_full", regexp: time_span_regex } ]) ) return false;
 	if(!validate_text_int(["max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
-	if(!validate_text_int_or_empty(["local_speed"])) return false;
-	if(I('internet_speed') && !validate_text_int_or_empty(["internet_speed"])) return false;
+	if(!validate_text_regex({ id: "local_speed", regexp: time_span_regex})) return false;
+	if(I('internet_speed') && !validate_text_regex({id: "internet_speed", regex: time_span_regex })) return false;
 	var backup_window_regex = /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
 	if(!validate_text_regex([{ id: "backup_window_incr_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
@@ -2179,8 +2244,8 @@ function saveGeneralSettings()
 	backupWindowChange();
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
-	if(!validate_text_int_or_empty(["global_local_speed"])) return;
-	if(I('global_internet_speed') && !validate_text_int_or_empty(["global_internet_speed"])) return;
+	if(!validate_text_regex([{id: "global_local_speed", regex: time_span_regex}])) return;
+	if(I('global_internet_speed') && !validate_text_regex([{id: "global_internet_speed", regex: time_span_regex}])) return;
 	if(!validateCommonSettings() ) return;
 	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;	
 	
