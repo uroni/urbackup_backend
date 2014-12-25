@@ -850,6 +850,7 @@ double ServerSettings::currentTimeSpanValue(std::string time_span_value)
 			     || isInTimeSpan(single_time_span) ) )
 		{
 			val = time_span_values[i].first;
+			selected_time_span_duration = time_span_values[i].second.duration();
 		}
 	}
 
