@@ -3061,6 +3061,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 		volume.erase(0, 4);
 
 	std::vector<std::wstring> additional_changed_dirs;
+	std::vector<std::wstring> additional_open_files;
 
 	std::wstring prev_path;
 
@@ -3101,6 +3102,9 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 				continue;
 			}
 
+			bool file_is_open = std::binary_search(open_files.begin(),
+				open_files.end(), changed_dirs[i]+os_file_sep()+strlower(files[i].name));
+
 			std::wstring fn=vsstpath+files[i].name;
 			HANDLE hFile = CreateFileW(os_file_prefix(fn).c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
@@ -3139,16 +3143,24 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 					}
 					else
 					{
-						std::wstring ndir=strlower(ExtractFilePath(std::wstring(outBuf.begin(), outBuf.begin()+stringLength)))+os_file_sep();
-						if(ndir[0]=='\\')
-							ndir=volume+ndir.substr(1);
+						std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength));
+						if(nfn[0]=='\\')
+							nfn=volume+nfn.substr(1);
 						else
-							ndir=volume+ndir;
+							nfn=volume+nfn;
 
+						std::wstring ndir= ExtractFilePath(nfn)+os_file_sep();
 						
 						if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir) )
 						{
 							additional_changed_dirs.push_back(ndir);
+						}
+
+						if(file_is_open &&
+							std::find(additional_open_files.begin(), additional_open_files.end(), nfn)==
+								additional_open_files.end())
+						{
+							additional_open_files.push_back(nfn);
 						}
 
 						do
@@ -3165,17 +3177,26 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 							{
 								VSSLog(L"Error reading (2) hard link names of "+fn, LL_INFO);
 							}
-							else
+							else if(b)
 							{
-								std::wstring ndir=strlower(ExtractFilePath(std::wstring(outBuf.begin(), outBuf.begin()+stringLength)))+os_file_sep();
-								if(ndir[0]=='\\')
-									ndir=volume+ndir.substr(1);
+								std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength));
+								if(nfn[0]=='\\')
+									nfn=volume+nfn.substr(1);
 								else
-									ndir=volume+ndir;
-						
+									nfn=volume+nfn;
+
+								std::wstring ndir=ExtractFilePath(nfn)+os_file_sep();
+														
 								if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir))
 								{
 									additional_changed_dirs.push_back(ndir);
+								}
+
+								if(file_is_open &&
+									std::find(additional_open_files.begin(), additional_open_files.end(), nfn)==
+									additional_open_files.end())
+								{
+									additional_open_files.push_back(nfn);
 								}
 							}
 						}
@@ -3194,6 +3215,9 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 	changed_dirs.insert(changed_dirs.end(), additional_changed_dirs.begin(), additional_changed_dirs.end());
 	std::sort(changed_dirs.begin(), changed_dirs.end());
+
+	open_files.insert(open_files.end(), additional_open_files.begin(), additional_open_files.end());
+	std::sort(open_files.begin(), open_files.end());
 #endif
 }
 
