@@ -634,6 +634,7 @@ void IndexThread::indexDirs(void)
 	DirectoryWatcherThread::update_and_wait();
 	changed_dirs=cd->getChangedDirs();
 	cd->moveChangedFiles();
+	hardlinked_changed_files.clear();
 
 	bool has_stale_shadowcopy=false;
 
@@ -846,6 +847,9 @@ void IndexThread::indexDirs(void)
 		readPatterns(patterns_changed, true);
 	}
 	share_dirs();
+
+	changed_dirs.clear();
+	hardlinked_changed_files.clear();
 }
 
 void IndexThread::resetFileEntries(void)
@@ -1183,7 +1187,9 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			{
 				if(!tmp[i].isdir)
 				{
-					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) )
+					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) ||
+						std::binary_search(hardlinked_changed_files.begin(), hardlinked_changed_files.end(),
+							strlower(path_lower + os_file_sep() + tmp[i].name)))
 					{
 						VSSLog(L"Found changed file: " + tmp[i].name, LL_DEBUG);
 
@@ -2881,10 +2887,29 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 		bool has_error;
 		std::vector<SFile> files = getFiles(os_file_prefix(vsstpath), &has_error, false, false);
+		std::vector<std::wstring> changed_files;
 
 		if(has_error)
 		{
 			VSSLog(L"Cannot open directory "+vsstpath+L" to handle hard links", LL_DEBUG);
+		}
+		else
+		{
+			std::set<_i64> changed_files_dir_ids;
+			size_t diridx=i;
+			do 
+			{
+				if(changed_files_dir_ids.find(changed_dirs[diridx].id)==changed_files_dir_ids.end())
+				{
+					std::vector<std::wstring> new_changed_files = cd->getChangedFiles(changed_dirs[diridx].id);
+					changed_files.insert(changed_files.end(), new_changed_files.begin(), new_changed_files.end());
+					changed_files_dir_ids.insert(changed_dirs[diridx].id);
+				}
+				++diridx;
+
+			} while (diridx<changed_dirs.size() && changed_dirs[diridx].name==changed_dirs[i].name);
+
+			std::sort(changed_files.begin(), changed_files.end());
 		}
 
 		for(size_t i=0;i<files.size();++i)
@@ -2960,17 +2985,30 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 							}
 							else
 							{
-								std::wstring ndir=strlower(ExtractFilePath(std::wstring(outBuf.begin(), outBuf.begin()+stringLength)))+os_file_sep();
-								if(ndir[0]=='\\')
-									ndir=volume+ndir.substr(1);
+								std::wstring nfn = std::wstring(outBuf.begin(), outBuf.begin()+stringLength);
+								if(nfn[0]=='\\')
+									nfn=volume+nfn.substr(1);
 								else
-									ndir=volume+ndir;
-						
+									nfn=volume+nfn;
+
+								std::wstring ndir=strlower(ExtractFilePath(nfn))+os_file_sep();
+								
 								std::vector<SMDir>::iterator it_dir=std::lower_bound(changed_dirs.begin(), changed_dirs.end(), SMDir(0, ndir));
 								if(it_dir==changed_dirs.end() || (*it_dir).name!=ndir)
 								{
 									additional_changed_dirs.push_back(SMDir(0, ndir));
 								}
+
+								if(std::binary_search(changed_files.begin(), changed_files.end(), files[i].name))
+								{
+									nfn = strlower(nfn);
+
+									if(std::find(hardlinked_changed_files.begin(), hardlinked_changed_files.end(), nfn)==
+										hardlinked_changed_files.end())
+									{
+										hardlinked_changed_files.push_back(nfn);
+									}
+								}								
 							}
 						}
 						while(b);
@@ -2988,6 +3026,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 	changed_dirs.insert(changed_dirs.end(), additional_changed_dirs.begin(), additional_changed_dirs.end());
 	std::sort(changed_dirs.begin(), changed_dirs.end());
+	std::sort(hardlinked_changed_files.begin(), hardlinked_changed_files.end());
 #endif
 }
 

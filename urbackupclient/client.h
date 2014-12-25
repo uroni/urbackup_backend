@@ -186,6 +186,7 @@ private:
 	std::vector<SBackupDir> backup_dirs;
 
 	std::vector<SMDir> changed_dirs;
+	std::vector<std::wstring> hardlinked_changed_files;
 
 	static IMutex *filelist_mutex;
 	static IMutex *filesrv_mutex;
