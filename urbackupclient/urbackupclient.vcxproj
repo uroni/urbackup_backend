@@ -58,6 +58,7 @@
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\glob.cpp" />
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
     <ClCompile Include="..\urbackupcommon\json.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
@@ -73,7 +74,6 @@
     <ClCompile Include="DirectoryWatcherThread.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="file_permissions.cpp" />
-    <ClCompile Include="glob\glob.cpp" />
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
     <ClCompile Include="PersistentOpenFiles.cpp" />
@@ -95,6 +95,7 @@
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
+    <ClInclude Include="..\urbackupcommon\glob.h" />
     <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
     <ClInclude Include="..\urbackupcommon\mbrdata.h" />
     <ClInclude Include="..\urbackupcommon\os_functions.h" />

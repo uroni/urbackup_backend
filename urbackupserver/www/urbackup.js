@@ -1948,6 +1948,25 @@ function show_settings2(data)
 		{
 			data.settings.ldap_login_enabled = getCheckboxValue(data.settings.ldap_login_enabled);
 			
+			if(data.ldap_test)
+			{	
+				data.settings.test_login=true;
+				if(data.ldap_test=="ok")
+				{
+					data.settings.test_login_ok=true;
+					data.settings.ldap_rights = data.ldap_rights;
+				}
+				else
+				{
+					data.settings.test_login_ok=false;
+					data.settings.ldap_err = data.ldap_test;
+				}				
+			}
+			else
+			{
+				data.settings.test_login=false;
+			}
+			
 			ndata+=dustRender("settings_ldap", data.settings);
 			
 			if(data.saved_ok)
@@ -2200,7 +2219,9 @@ g.ldap_settings_list=[
 "ldap_group_key_name",
 "ldap_class_key_name",
 "ldap_group_rights_map",
-"ldap_class_rights_map"
+"ldap_class_rights_map",
+"testusername",
+"testpassword"
 ];
 
 var time_span_regex = /^([\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;

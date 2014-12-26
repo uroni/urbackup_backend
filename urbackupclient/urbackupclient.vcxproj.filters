@@ -15,9 +15,6 @@
     <Filter Include="sha2">
       <UniqueIdentifier>{d7a7cd78-b293-49b5-bb87-4e3461a306af}</UniqueIdentifier>
     </Filter>
-    <Filter Include="glob">
-      <UniqueIdentifier>{8d6f30f4-00a8-4748-aea5-692bd3875606}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Headerdateien">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
@@ -69,9 +66,6 @@
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="glob\glob.cpp">
-      <Filter>glob</Filter>
-    </ClCompile>
     <ClCompile Include="..\urbackupcommon\escape.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -122,6 +116,9 @@
     </ClCompile>
     <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp">
       <Filter>watchdir</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\glob.cpp">
+      <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -217,6 +214,9 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\change_ids.h">
       <Filter>watchdir</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\glob.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -288,6 +288,9 @@
     <ClCompile Include="ThrottleUpdater.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\glob.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -523,6 +526,9 @@
     </ClInclude>
     <ClInclude Include="ThrottleUpdater.h">
       <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\glob.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

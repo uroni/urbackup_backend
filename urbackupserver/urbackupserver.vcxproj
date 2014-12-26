@@ -261,6 +261,7 @@
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\glob.cpp" />
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
     <ClCompile Include="..\urbackupcommon\json.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
@@ -346,6 +347,7 @@
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
+    <ClInclude Include="..\urbackupcommon\glob.h" />
     <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h" />
     <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
     <ClInclude Include="..\urbackupcommon\internet_pipe_capabilities.h" />

@@ -976,6 +976,33 @@ ACTION_IMPL(settings)
 			updateSettingsWithList(GET, db, getLdapSettingsList());
 			ret.set("saved_ok", true);
 			sa=L"ldap";
+
+			std::wstring testusername = GET[L"testusername"];
+
+			if(!testusername.empty() && helper.ldapEnabled())
+			{
+				std::wstring testpassword = GET[L"testpassword"];
+
+				std::string errmsg;
+				std::string rights;
+				if(!helper.ldapLogin(testusername, testpassword, &errmsg, &rights, true))
+				{
+					if(errmsg.empty())
+					{
+						errmsg="unknown";
+					}
+					ret.set("ldap_test", errmsg);
+				}
+				else
+				{
+					ret.set("ldap_test", "ok");
+					ret.set("ldap_rights", rights);
+				}
+			}
+			else if(!helper.ldapEnabled())
+			{
+				ret.set("ldap_test", "Login via LDAP not enabled");
+			}
 		}
 		if( sa==L"ldap" && helper.getRights("ldap_settings")=="all")
 		{

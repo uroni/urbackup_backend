@@ -63,7 +63,27 @@
 				</div>
 			</div>
 			
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="testusername">{tTest login with this user}:</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="testusername" value=""/>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-3 control-label" for="testpassword">{tPassword for test user}:</label>
+				<div class="col-sm-6">
+					<input type="password" class="form-control" id="testpassword" value=""/>
+				</div>
+			</div>
 			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveLdapSettings()" />
+			
+			{?test_login}
+				{?test_login_ok}
+					<div class="alert alert-success"><strong>{tTest login succeeded. Rights of user:} {ldap_rights}</strong></div>
+				{:else}
+					<div class="alert alert-danger"><strong>{tTest login failed. Error:}</strong> {ldap_err}</div>
+				{/test_login_ok}
+			{/test_login}
 		</form>
 	</div>
 </div>

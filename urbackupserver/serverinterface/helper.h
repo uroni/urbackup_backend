@@ -32,7 +32,8 @@ public:
 	bool hasRights(int clientid, std::string rights, std::vector<int> right_ids);
 
 	bool checkPassword(const std::wstring &username, const std::wstring &password, int *user_id, bool plainpw);
-	bool ldapLogin(const std::wstring &username, const std::wstring &password);
+	bool ldapLogin(const std::wstring &username, const std::wstring &password,
+		std::string* ret_errmsg=NULL, std::string* rights=NULL, bool dry_login=false);
 
 	std::vector<int> clientRights(const std::string& right_name, bool& all_client_rights);
 

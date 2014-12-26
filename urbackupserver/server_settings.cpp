@@ -912,7 +912,7 @@ SLDAPSettings ServerSettings::getLDAPSettings()
 	ldap_settings.group_class_query = settings_default->getValue("ldap_group_class_query", "DC=example,DC=com?memberOf,objectClass?sub?(sAMAccountName={USERNAME})");
 	ldap_settings.group_key_name = settings_default->getValue("ldap_group_key_name", "memberOf");
 	ldap_settings.class_key_name = settings_default->getValue("ldap_class_key_name", "objectClass");
-	ldap_settings.group_rights_map = parseLdapMap(settings_default->getValue(L"ldap_group_rights_map", L"CN=Domain Admins,CN=Users,DC=example,DC=com==>all=all"));
+	ldap_settings.group_rights_map = parseLdapMap(settings_default->getValue(L"ldap_group_rights_map", L"CN=Domain Admins,*==>all=all"));
 	ldap_settings.class_rights_map = parseLdapMap(settings_default->getValue(L"ldap_class_rights_map", L"user==>lastacts={AUTOCLIENTS},progress={AUTOCLIENTS},status={AUTOCLIENTS},stop_backup={AUTOCLIENTS},start_backup=all,browse_backups=tokens"));
 
 	return ldap_settings;

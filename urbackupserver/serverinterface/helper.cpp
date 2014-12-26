@@ -24,6 +24,7 @@
 #include <algorithm>
 #include "../server_settings.h"
 #include "../../urlplugin/IUrlFactory.h"
+#include "../../urbackupcommon/glob.h"
 
 extern std::string server_identity;
 extern IUrlFactory *url_fak;
@@ -404,7 +405,8 @@ bool Helper::ldapEnabled()
 	return false;
 }
 
-bool Helper::ldapLogin( const std::wstring &username, const std::wstring &password )
+bool Helper::ldapLogin( const std::wstring &username, const std::wstring &password,
+	std::string* ret_errmsg, std::string* rights, bool dry_login)
 {
 	if(url_fak==NULL)
 	{
@@ -439,6 +441,11 @@ bool Helper::ldapLogin( const std::wstring &username, const std::wstring &passwo
 		if(!errmsg.empty())
 		{
 			Server->Log("Login via LDAP failed: "+errmsg, LL_ERROR);
+
+			if(ret_errmsg)
+			{
+				*ret_errmsg = errmsg;
+			}
 		}
 		return false;
 	}
@@ -447,6 +454,10 @@ bool Helper::ldapLogin( const std::wstring &username, const std::wstring &passwo
 		if(data.size()!=1)
 		{
 			Server->Log("LDAP query returned "+nconvert(data.size())+" items, but should return only one. Login failed.", LL_ERROR);
+			if(ret_errmsg)
+			{
+				*ret_errmsg="LDAP query returned more than one result";
+			}
 			return false;
 		}
 
@@ -469,13 +480,18 @@ bool Helper::ldapLogin( const std::wstring &username, const std::wstring &passwo
 		std::multimap<std::string, std::string>::iterator it = sdata.find(ldap_settings.group_key_name);
 		while(it!=sdata.end() && it->first == ldap_settings.group_key_name)
 		{
-			std::map<std::wstring, std::wstring>::iterator it_rights
-				= ldap_settings.group_rights_map.find(Server->ConvertToUnicode(it->second));
-			if(it_rights!=ldap_settings.group_rights_map.end())
+			for(std::map<std::wstring, std::wstring>::iterator it_rights=
+				ldap_settings.group_rights_map.begin();it_rights!=ldap_settings.group_rights_map.end();
+				++it_rights)
 			{
-				str_ldap_rights = greplace("{AUTOCLIENTS}", autoclients, Server->ConvertToUTF8(it_rights->second));
-				break;
+				if(amatch(Server->ConvertToUnicode(it->second).c_str(),
+					it_rights->first.c_str()))
+				{
+					str_ldap_rights = greplace("{AUTOCLIENTS}", autoclients, Server->ConvertToUTF8(it_rights->second));
+					break;
+				}
 			}
+			
 			++it;
 		}
 
@@ -484,23 +500,28 @@ bool Helper::ldapLogin( const std::wstring &username, const std::wstring &passwo
 			std::multimap<std::string, std::string>::iterator it = sdata.find(ldap_settings.class_key_name);
 			while(it!=sdata.end() && it->first == ldap_settings.class_key_name)
 			{
-				std::map<std::wstring, std::wstring>::iterator it_rights
-					= ldap_settings.class_rights_map.find(Server->ConvertToUnicode(it->second));
-				if(it_rights!=ldap_settings.class_rights_map.end())
+				for(std::map<std::wstring, std::wstring>::iterator it_rights=
+					ldap_settings.class_rights_map.begin();it_rights!=ldap_settings.class_rights_map.end();
+					++it_rights)
 				{
-					str_ldap_rights = greplace("{AUTOCLIENTS}", autoclients, Server->ConvertToUTF8(it_rights->second));
-					break;
+					if(amatch(Server->ConvertToUnicode(it->second).c_str(),
+						it_rights->first.c_str()))
+					{
+						str_ldap_rights = greplace("{AUTOCLIENTS}", autoclients, Server->ConvertToUTF8(it_rights->second));
+						break;
+					}
 				}
+
 				++it;
 			}
 		}
 
-		if(!str_ldap_rights.empty())
+		if(!str_ldap_rights.empty() && !dry_login)
 		{
 			ldap_rights = parseRightsString(str_ldap_rights);
 		}
 
-		if(!str_ldap_rights.empty() && session!=NULL)
+		if(!str_ldap_rights.empty() && session!=NULL && !dry_login)
 		{
 			session->mStr[L"ldap_rights"] = widen(str_ldap_rights);
 		}
@@ -517,9 +538,14 @@ bool Helper::ldapLogin( const std::wstring &username, const std::wstring &passwo
 			fileaccesstokens+=db_res[i][L"token"];
 		}
 
-		if(!fileaccesstokens.empty())
+		if(!fileaccesstokens.empty() && !dry_login)
 		{
 			session->mStr[L"fileaccesstokens"]=fileaccesstokens;
+		}
+
+		if(rights)
+		{
+			*rights = str_ldap_rights;
 		}
 
 		return !str_ldap_rights.empty();
