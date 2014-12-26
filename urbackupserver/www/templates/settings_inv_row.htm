@@ -1,5 +1,9 @@
-﻿<div class="panel panel-default" id="file_backups">
-	<div class="panel-heading">{tFile Backups}</div>
+﻿{?client_settings}
+<div class="tab-pane active" id="file_backups">
+{:else}
+<div class="tab-pane" id="file_backups">
+{/client_settings}
+	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
 			<div class="form-group">
@@ -73,13 +77,13 @@
 					</div>
 				</div>
 			</div>
-			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
 		</form>
+	</div>
 	</div>
 </div>
 
-<div class="panel panel-default" id="image_backups">
-	<div class="panel-heading">{tImage backups}</div>
+<div class="tab-pane" id="image_backups">
+	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
 			<div class="form-group">
@@ -155,10 +159,11 @@
 			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
 		</form>
 	</div>
+	</div>
 </div>
 
-<div class="panel panel-default">
-	<div class="panel-heading" id="permissions">Permissions</div>
+<div class="tab-pane" id="permissions">
+	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal">
 			<div class="form-group">
@@ -215,13 +220,13 @@
 					<label><input type="checkbox" id="allow_tray_exit" {allow_tray_exit}/></label>
 				</div>
 			</div>
-			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
 		</form>
+	</div>
 	</div>
 </div>
 
-<div class="panel panel-default">
-	<div class="panel-heading" id="client">Client</div>
+<div class="tab-pane" id="client">
+	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
 			<div class="form-group">
@@ -307,13 +312,13 @@
 					<input type="text" class="form-control" id="client_quota" value="{client_quota}"/>
 				</div>
 			</div>
-			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
 		</form>
+	</div>
 	</div>
 </div>
 
-<div class="panel panel-default">
-	<div class="panel-heading" id="archive">{tArchive}</div>
+<div class="tab-pane" id="archive">
+	<div class="panel panel-default">
 	<div class="panel-body">
 		<table class="table" id="archive_table">
 			<thead>
@@ -366,10 +371,12 @@
 			</tbody>
 		</table>
 	</div>
+	</div>
 </div>
 
-<div class="panel panel-default">
-	<div class="panel-heading" id="internet">{tInternet}</div>
+{internet_settings_start|s}
+<div class="tab-pane" id="internet">
+	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
 			{global_settings_start_inet|s}
@@ -462,15 +469,15 @@
 					<label><input type="checkbox" id="internet_connect_always" value="false" {internet_connect_always}/></label>
 				</div>
 			</div>
-			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
 		</form>
+	</div>
 	</div>
 </div>
 {internet_settings_end|s}
 		
 		
-<div class="panel panel-default">
-	<div class="panel-heading" id="advanced">{tAdvanced}</div>
+<div class="tab-pane" id="advanced">
+	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
 			{global_settings_start|s}
@@ -588,7 +595,11 @@
 					<label><input type="checkbox" id="internet_readd_file_entries" value="true" {internet_readd_file_entries}/></label>
 				</div>
 			</div>
-			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
 		</form>
 	</div>
+	</div>
 </div>
+
+{?client_settings}
+</div>
+{/client_settings}

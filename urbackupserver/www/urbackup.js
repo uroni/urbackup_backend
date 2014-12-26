@@ -1803,6 +1803,8 @@ function show_settings2(data)
 				data.settings.no_compname_end_inet="";
 			}
 			
+			data.settings.client_settings=false;
+			
 			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
 			ndata+=dustRender("settings_general", data.settings);
 			
@@ -1905,6 +1907,8 @@ function show_settings2(data)
 				data.settings.no_compname_start_inet="";
 				data.settings.no_compname_end_inet="";
 			}
+			
+			data.settings.client_settings=true;
 						
 			data.settings.settings_inv=dustRender("settings_inv_row", data.settings);
 			ndata+=dustRender("settings_user", data.settings);
@@ -2224,19 +2228,19 @@ g.ldap_settings_list=[
 "testpassword"
 ];
 
-var time_span_regex = /^([\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
+g.time_span_regex = /^([\d.]*(@([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*)?[;]?)*$/i;
 
 function validateCommonSettings()
 {
-	if(!validate_text_regex([{ id: "update_freq_incr", regexp: time_span_regex },
-							 { id: "update_freq_full", regexp: time_span_regex },
-							 { id: "update_freq_image_incr", regexp: time_span_regex },
-							 { id: "update_freq_image_full", regexp: time_span_regex } ]) ) return false;
+	if(!validate_text_regex([{ id: "update_freq_incr", regexp: g.time_span_regex },
+							 { id: "update_freq_full", regexp: g.time_span_regex },
+							 { id: "update_freq_image_incr", regexp: g.time_span_regex },
+							 { id: "update_freq_image_full", regexp: g.time_span_regex } ]) ) return false;
 	if(!validate_text_int(["max_file_incr", "min_file_incr", "max_file_full", 
 							"min_file_full", "max_image_incr", "min_image_incr", "max_image_full", "min_image_full",
 							"startup_backup_delay"] ) ) return false;
-	if(!validate_text_regex({ id: "local_speed", regexp: time_span_regex})) return false;
-	if(I('internet_speed') && !validate_text_regex({id: "internet_speed", regex: time_span_regex })) return false;
+	if(I('local_speed').value!="-" && !validate_text_regex({ id: "local_speed", regexp: g.time_span_regex})) return false;
+	if(I('internet_speed') && !validate_text_regex({id: "internet_speed", regex: g.time_span_regex })) return false;
 	var backup_window_regex = /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i;
 	if(!validate_text_regex([{ id: "backup_window_incr_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
@@ -2265,8 +2269,8 @@ function saveGeneralSettings()
 	backupWindowChange();
 	if(!validate_text_nonempty(["backupfolder"]) ) return;
 	if(!validate_text_int(["max_sim_backups", "max_active_clients"]) ) return;
-	if(!validate_text_regex([{id: "global_local_speed", regex: time_span_regex}])) return;
-	if(I('global_internet_speed') && !validate_text_regex([{id: "global_internet_speed", regex: time_span_regex}])) return;
+	if(I('global_local_speed').value!="-" && !validate_text_regex([{id: "global_local_speed", regexp: g.time_span_regex}])) return;
+	if(I('global_internet_speed') && I('global_internet_speed').value!="-" && !validate_text_regex([{id: "global_internet_speed", regexp: g.time_span_regex}])) return;
 	if(!validateCommonSettings() ) return;
 	if(!validate_text_regex([{ id: "cleanup_window", regexp: /^(([mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]\-?[mon|mo|tu|tue|tues|di|wed|mi|th|thu|thur|thurs|do|fri|fr|sat|sa|sun|so|1-7]?\s*[,]?\s*)+\/([0-9][0-9]?:?[0-9]?[0-9]?\-[0-9][0-9]?:?[0-9]?[0-9]?\s*[,]?\s*)+\s*[;]?\s*)*$/i }]) ) return;	
 	

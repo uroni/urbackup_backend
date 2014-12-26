@@ -8,11 +8,28 @@
 					<label><input type="checkbox" onclick="updateUserOverwrite({clientid})" id="overwrite" {overwrite} />
 				</div>
 			</div>
-			{settings_inv|s}
+			<ul class="nav nav-pills" id="settings_tabber" data-tabs="tabs">
+				<li class="active"><a href="#file_backups" data-toggle="tab">{tFile Backups}</a></li>
+				<li><a href="#image_backups" data-toggle="tab">{tImage Backups}</a></li>
+				<li><a href="#permissions" data-toggle="tab">{tPermissions}</a></li>
+				<li><a href="#client" data-toggle="tab">{tClient}</a></li>
+				<li><a href="#archive" data-toggle="tab">{tArchive}</a></li>
+				{internet_settings_start|s}
+				<li><a href="#internet" data-toggle="tab">{tInternet}</a></li>
+				{internet_settings_end|s}
+				<li><a href="#advanced" data-toggle="tab">{tAdvanced}</a></li>
+			</ul>
+			<div class="tab-content">
+				{settings_inv|s}
+			</div>
 			{overwrite_warning_start|s}
 			<div class="alert alert-warning">{tWarning: The settings configured on the client will overwrite the settings configured here. If you want to change this behaviour do not allow the client to change settings.}</div>
 			{overwrite_warning_end|s}
-			<input type="button" class="btn btn-primary" value="{tSave}" onClick="saveClientSettings({clientid})" id="user_submit"/>
+			<div style="text-align: right">
+				<input type="button" class="btn btn-primary pull-right clearfix" value="{tSave}" onClick="saveClientSettings({clientid})" id="user_submit"/>
+				<br />
+				&nbsp;
+			</div>
 		</form>
 	</div>
 </div>

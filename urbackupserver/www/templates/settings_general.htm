@@ -1,16 +1,19 @@
-﻿<ul class="nav nav-pills" id="settings_tabber" role="tablist">
-	<li><a href="#server_settings">{tServer}</a></li>
-	<li><a href="#file_backups">{tFile Backups}</a></li>
-	<li><a href="#image_backups">{tImage Backups}</a></li>
-	<li><a href="#permissions">{tPermissions}</a></li>
-	<li><a href="#client">{tClient}</a></li>
-	<li><a href="#archive">{tArchive}</a></li>
-	<li><a href="#internet">{tInternet}</a></li>
-	<li><a href="#advanced">{tAdvanced}</a></li>
+﻿<ul class="nav nav-pills" id="settings_tabber">
+	<li class="active"><a href="#server_settings" data-toggle="pill">{tServer}</a></li>
+	<li><a href="#file_backups" data-toggle="pill">{tFile Backups}</a></li>
+	<li><a href="#image_backups" data-toggle="pill">{tImage Backups}</a></li>
+	<li><a href="#permissions" data-toggle="pill">{tPermissions}</a></li>
+	<li><a href="#client" data-toggle="pill">{tClient}</a></li>
+	<li><a href="#archive" data-toggle="pill">{tArchive}</a></li>
+	{internet_settings_start|s}
+	<li><a href="#internet" data-toggle="pill">{tInternet}</a></li>
+	{internet_settings_end|s}
+	<li><a href="#advanced" data-toggle="pill">{tAdvanced}</a></li>
 </ul>
 
-<div class="panel panel-default" id="server_settings">
-	<div class="panel-heading">{tServer}</div>
+<div class="tab-content">
+	<div class="tab-pane active" id="server_settings">
+	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
 			<div class="form-group">
@@ -114,10 +117,16 @@
 					</div>
 				</div>
 			</div>
-			<input type="button" class="btn btn-default" value="{tSave}" onClick="saveGeneralSettings()" />
 		</form>
 	&nbsp;
 	</div>
-</div>
+	</div>
+	</div>
 
-{settings_inv|s}
+	{settings_inv|s}
+</div>
+<div style="text-align: right">
+	<input type="button" class="btn btn-primary" value="{tSave}" onClick="saveGeneralSettings()" />
+	<br />
+	&nbsp;
+</div>
