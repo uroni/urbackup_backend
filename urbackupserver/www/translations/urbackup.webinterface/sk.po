@@ -12,7 +12,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-10-04 14:22+0000\n"
+"PO-Revision-Date: 2014-11-08 20:48+0000\n"
 "Last-Translator: janda <jan.vojtek@gmail.com>\n"
 "Language-Team: Slovak (http://www.transifex.com/projects/p/urbackup/language/sk/)\n"
 "MIME-Version: 1.0\n"
@@ -49,13 +49,13 @@ msgid "nav_item_6"
 msgstr "Stav"
 
 msgid "nav_item_5"
-msgstr "Aktivity"
+msgstr "Činnosti"
 
 msgid "nav_item_4"
 msgstr "Zálohy"
 
 msgid "nav_item_3"
-msgstr ""
+msgstr "Záznamy"
 
 msgid "nav_item_2"
 msgstr "Štatistika"
@@ -64,16 +64,16 @@ msgid "nav_item_1"
 msgstr "Nastavenia"
 
 msgid "unknown"
-msgstr ""
+msgstr "Neznámy"
 
 msgid "overview"
-msgstr ""
+msgstr "Prehľad"
 
 msgid "ok"
 msgstr "Ok"
 
 msgid "no_recent_backup"
-msgstr ""
+msgstr "Žiadna nový záloha"
 
 msgid "backup_never"
 msgstr "Nikdy"
@@ -94,16 +94,16 @@ msgid "tLast seen"
 msgstr "Naposledy videný"
 
 msgid "tLast file backup"
-msgstr ""
+msgstr "Posledná záloha súborov"
 
 msgid "tLast image backup"
-msgstr ""
+msgstr "Posledná záloha disku"
 
 msgid "tFile backup status"
-msgstr ""
+msgstr "Stav zálohy súborov"
 
 msgid "tImage backup status"
-msgstr ""
+msgstr "Stav zálohy disku"
 
 msgid "tShow details"
 msgstr "Zobraziť detaily"
@@ -115,7 +115,7 @@ msgid "tNo extra clients"
 msgstr ""
 
 msgid "tActions"
-msgstr ""
+msgstr "Akcie"
 
 msgid "tOnline"
 msgstr ""
@@ -187,7 +187,7 @@ msgid "all"
 msgstr "Všetko"
 
 msgid "loglevel_0"
-msgstr ""
+msgstr "Informácie"
 
 msgid "loglevel_1"
 msgstr "Upozornenia"
@@ -208,7 +208,7 @@ msgid "ident_err"
 msgstr ""
 
 msgid "enter_hostname"
-msgstr ""
+msgstr "Zadajte názov hostiteľa alebo IP adresu"
 
 msgid "clients"
 msgstr "Klienti"
@@ -319,25 +319,25 @@ msgid "upgrade_error_text"
 msgstr ""
 
 msgid "tActivities"
-msgstr "Aktivity"
+msgstr "Činnosti"
 
 msgid "tAction"
-msgstr ""
+msgstr "Akcia"
 
 msgid "tProgress"
-msgstr ""
+msgstr "Priebeh"
 
 msgid "tFiles in queue"
 msgstr ""
 
 msgid "tLast activities"
-msgstr "Posledné aktivity"
+msgstr "Posledné činnosti"
 
 msgid "tStarting time"
 msgstr ""
 
 msgid "tRequired time"
-msgstr ""
+msgstr "Potrebný čas"
 
 msgid "tUsed Storage"
 msgstr ""
@@ -346,7 +346,7 @@ msgid "tClients"
 msgstr "Klienti"
 
 msgid "tLogs"
-msgstr ""
+msgstr "Záznamy"
 
 msgid "tReports"
 msgstr "Správy"
@@ -361,7 +361,7 @@ msgid "tBackups with a log message of at least log level"
 msgstr ""
 
 msgid "tBackup time"
-msgstr ""
+msgstr "Doba zálohovania"
 
 msgid "tErrors"
 msgstr "Chyby"
@@ -442,7 +442,7 @@ msgid "tMinimal number of full image backups"
 msgstr ""
 
 msgid "tDelay after system startup"
-msgstr ""
+msgstr "Oneskorenie po štarte systému"
 
 msgid "tBackup window"
 msgstr ""
@@ -457,7 +457,7 @@ msgid "tDefault directories to backup"
 msgstr ""
 
 msgid "tVolumes to backup"
-msgstr ""
+msgstr "Zväzky pre zálohovanie:"
 
 msgid "tAllow client-side changing of the directories to backup"
 msgstr ""
@@ -519,7 +519,7 @@ msgid "tSending test mail failed. Error:"
 msgstr ""
 
 msgid "tFilter"
-msgstr ""
+msgstr "Filter"
 
 msgid "tBack"
 msgstr ""
@@ -543,7 +543,7 @@ msgid "tMessage"
 msgstr "Správa"
 
 msgid "tLog"
-msgstr ""
+msgstr "Záznam"
 
 msgid "tUsername"
 msgstr "Užívateľské meno"
@@ -597,7 +597,7 @@ msgid "tImage backups"
 msgstr ""
 
 msgid "tPermissions"
-msgstr ""
+msgstr "Povolenia"
 
 msgid "tClient"
 msgstr "Klient"
@@ -615,7 +615,7 @@ msgid "tMax backup speed for local network"
 msgstr ""
 
 msgid "tNo activities"
-msgstr "Žiadne aktivity"
+msgstr "Žiadne činnosti"
 
 msgid "tSelect all"
 msgstr ""
@@ -663,10 +663,10 @@ msgid "tEnable internet mode (requires server restart)"
 msgstr ""
 
 msgid "tInternet server name/IP"
-msgstr ""
+msgstr "Názov internetového servera / IP"
 
 msgid "tInternet server port"
-msgstr ""
+msgstr "Port internetového servera"
 
 msgid "tDo image backups over internet"
 msgstr ""
@@ -681,10 +681,10 @@ msgid "tTotal max backup speed for internet connection"
 msgstr ""
 
 msgid "tEncrypted transfer"
-msgstr ""
+msgstr "Šifrovaný prenos"
 
 msgid "tCompressed transfer"
-msgstr ""
+msgstr "Komprimovaný prenos"
 
 msgid "file_backup"
 msgstr ""
@@ -919,7 +919,7 @@ msgid "tClients are removed during the cleanup in the cleanup time window."
 msgstr ""
 
 msgid "about_urbackup"
-msgstr ""
+msgstr "O UrBackup"
 
 msgid "loading"
 msgstr ""
@@ -967,10 +967,10 @@ msgid "tNumber of file entries processed"
 msgstr ""
 
 msgid "tUrBackup live log"
-msgstr ""
+msgstr "UrBackup živý záznam"
 
 msgid "tLive Log"
-msgstr ""
+msgstr "Živý záznam"
 
 msgid "tShow"
 msgstr "Zobraziť"
@@ -1186,16 +1186,16 @@ msgid "tAllow clients to quit the tray icon"
 msgstr ""
 
 msgid "tYou need to create a user to be able to send reports"
-msgstr ""
+msgstr "Aby ste mohli posielať správy, musíte vytvoriť užívateľa"
 
 msgid "Show/hide columns"
-msgstr ""
+msgstr "Zobraziť / skryť stĺpce"
 
 msgid "tShow when a new server version is available"
-msgstr ""
+msgstr "Zobraziť, ak je k dispozícii nová verzia servera"
 
 msgid "tVHD (Virtual HardDisk)"
-msgstr ""
+msgstr "VHD (virtuálny pevný disk)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr ""
+msgstr "Komprimovaný VHD (komprimovaný neštandardný virtuálny pevný disk)"

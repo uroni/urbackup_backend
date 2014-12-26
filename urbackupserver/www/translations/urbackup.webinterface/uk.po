@@ -13,8 +13,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-07-25 17:55+0000\n"
-"Last-Translator: uroni <urpc@gmx.de>\n"
+"PO-Revision-Date: 2014-12-07 13:38+0000\n"
+"Last-Translator: Ihor Maydanovich <tenorioua@gmail.com>\n"
 "Language-Team: Ukrainian (http://www.transifex.com/projects/p/urbackup/language/uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -965,7 +965,7 @@ msgid "tChanged password successfully"
 msgstr "Пароль успішно змінено"
 
 msgid "tNumber of file entries processed"
-msgstr ""
+msgstr "Кількість не оброблених файлів"
 
 msgid "tUrBackup live log"
 msgstr "UrBackup живий журнал"
@@ -989,13 +989,13 @@ msgid "tDownload client from update server"
 msgstr "Завантажити клієнт з сервера оновлень"
 
 msgid "tGlobal soft filesystem quota"
-msgstr ""
+msgstr "Глобальна дискова квота "
 
 msgid "tDisable"
 msgstr "Вимкнути"
 
 msgid "tImage backup file format"
-msgstr ""
+msgstr "Формат образу"
 
 msgid "tAllow client-side starting of full file backups"
 msgstr "Дозволити клієнту ініціювати повні файлові бекапи"
@@ -1022,7 +1022,7 @@ msgid "tBackup window for full image backups"
 msgstr "Вікно повного файлового бекапу"
 
 msgid "tSoft client quota"
-msgstr ""
+msgstr "Квота клієнта"
 
 msgid "tCalculate file-hashes on the client"
 msgstr "Розраховувати хеші файлів на стороні клієнта"
@@ -1040,10 +1040,10 @@ msgid "tLocal full file backup transfer mode"
 msgstr "Режим локальної передачі повного файлового бекапу"
 
 msgid "tRaw"
-msgstr ""
+msgstr "Raw"
 
 msgid "tHashed"
-msgstr ""
+msgstr "Хешовано"
 
 msgid "tInternet full file backup transfer mode"
 msgstr "Режим передачі повного файлового бекапу через інтернет"
@@ -1076,25 +1076,25 @@ msgid "tMB"
 msgstr "Мб"
 
 msgid "tUpdate stats database cachesize"
-msgstr ""
+msgstr "Перерахувати кеш файлів"
 
 msgid "tCache database type for file entries"
-msgstr ""
+msgstr "Тип БД для кешу файлів"
 
 msgid "tNone"
 msgstr ""
 
 msgid "tCache database size for file entries"
-msgstr ""
+msgstr "Розмір БД для кешу файлів"
 
 msgid "tSuspend index limit"
-msgstr ""
+msgstr "Ліміт призупинення індексування"
 
 msgid "tUse symlinks during incremental file backups"
-msgstr ""
+msgstr "Використовувати symlink для інкрементного файлового бекапу"
 
 msgid "tEnd-to-end verification of all file backups"
-msgstr ""
+msgstr "Повна перевірка файлового бекапу"
 
 msgid "tServer admin mail address"
 msgstr "E-mail адміністратора"
@@ -1163,7 +1163,7 @@ msgid "sInfoThousands"
 msgstr ","
 
 msgid "Show _MENU_ entries"
-msgstr ""
+msgstr "Show _MENU_ entries"
 
 msgid "Processing..."
 msgstr "Обробка ..."
@@ -1193,10 +1193,10 @@ msgid "Show/hide columns"
 msgstr "Показати/сховати стовпці"
 
 msgid "tShow when a new server version is available"
-msgstr ""
+msgstr "Сповіщати коли доступна оновлена версія серверу"
 
 msgid "tVHD (Virtual HardDisk)"
-msgstr ""
+msgstr "VHD (Virtual HardDisk)"
 
 msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
-msgstr ""
+msgstr "Зтиснений VHD (Compressed non-standard Virtual HardDisk)"

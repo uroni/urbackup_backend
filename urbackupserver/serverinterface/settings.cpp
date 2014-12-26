@@ -999,7 +999,7 @@ ACTION_IMPL(settings)
 					ret.set("ldap_rights", rights);
 				}
 			}
-			else if(!helper.ldapEnabled())
+			else if(!testusername.empty() && !helper.ldapEnabled())
 			{
 				ret.set("ldap_test", "Login via LDAP not enabled");
 			}

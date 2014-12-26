@@ -8,692 +8,691 @@
 # Translators:
 # Translators:
 # Translators:
-# Yuri Romanchack <nryurik@gmail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2014-12-08 22:14+0000\n"
-"Last-Translator: Yuri Romanchack <nryurik@gmail.com>\n"
-"Language-Team: Russian (http://www.transifex.com/projects/p/urbackup/language/ru/)\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
+"Last-Translator: uroni <urpc@gmx.de>\n"
+"Language-Team: Arabic (Saudi Arabia) (http://www.transifex.com/projects/p/urbackup/language/ar_SA/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: ru\n"
-"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"Language: ar_SA\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "action_1"
-msgstr "Добавочный файловый бэкап"
+msgstr ""
 
 msgid "action_2"
-msgstr "Полный файловый бэкап"
+msgstr ""
 
 msgid "action_3"
-msgstr "Добавочный образ"
+msgstr ""
 
 msgid "action_4"
-msgstr "Полный образ"
+msgstr ""
 
 msgid "action_1_d"
-msgstr "Удалить добавочный файловый бэкап"
+msgstr ""
 
 msgid "action_2_d"
-msgstr "Удалить полный файловый бэкап"
+msgstr ""
 
 msgid "action_3_d"
-msgstr "Удалить добавочный образ"
+msgstr ""
 
 msgid "action_4_d"
-msgstr "Удалить образ"
+msgstr ""
 
 msgid "nav_item_6"
-msgstr "Статус"
+msgstr ""
 
 msgid "nav_item_5"
-msgstr "В работе"
+msgstr ""
 
 msgid "nav_item_4"
-msgstr "Бэкапы"
+msgstr ""
 
 msgid "nav_item_3"
-msgstr "Логи"
+msgstr ""
 
 msgid "nav_item_2"
-msgstr "Статистика"
+msgstr ""
 
 msgid "nav_item_1"
-msgstr "Настройки"
+msgstr ""
 
 msgid "unknown"
-msgstr "Неизвестный"
+msgstr ""
 
 msgid "overview"
-msgstr "Обзор"
+msgstr ""
 
 msgid "ok"
-msgstr "Ok"
+msgstr ""
 
 msgid "no_recent_backup"
-msgstr "Нет резервной копии"
+msgstr ""
 
 msgid "backup_never"
-msgstr "Никогда"
+msgstr ""
 
 msgid "yes"
-msgstr "Да"
+msgstr ""
 
 msgid "no"
-msgstr "Нет"
+msgstr ""
 
 msgid "tBackup status"
-msgstr "Статус бэкапов"
+msgstr ""
 
 msgid "tComputer name"
-msgstr "Имя компьютера"
+msgstr ""
 
 msgid "tLast seen"
-msgstr "Последняя активность"
+msgstr ""
 
 msgid "tLast file backup"
-msgstr "Последний файловый бэкап"
+msgstr ""
 
 msgid "tLast image backup"
-msgstr "Последний образ"
+msgstr ""
 
 msgid "tFile backup status"
-msgstr "Файловый бэкап"
+msgstr ""
 
 msgid "tImage backup status"
-msgstr "Образ"
+msgstr ""
 
 msgid "tShow details"
-msgstr "Подробнее"
+msgstr ""
 
 msgid "tExtra clients"
-msgstr "Дополнительные клиенты"
+msgstr ""
 
 msgid "tNo extra clients"
-msgstr "Нет дополнительных клиентов"
+msgstr ""
 
 msgid "tActions"
-msgstr "Действия"
+msgstr ""
 
 msgid "tOnline"
-msgstr "Онлайн"
+msgstr ""
 
 msgid "tHostname/IP"
-msgstr "Имя/IP"
+msgstr ""
 
 msgid "tServer identity"
-msgstr "Идентификация сервера"
+msgstr ""
 
 msgid "users"
-msgstr "Пользователи"
+msgstr ""
 
 msgid "general_settings"
-msgstr "Главные"
+msgstr ""
 
 msgid "admin"
-msgstr "Administrator"
+msgstr ""
 
 msgid "user"
-msgstr "User"
+msgstr ""
 
 msgid "username_empty"
-msgstr "Пожалуйста введите имя"
+msgstr ""
 
 msgid "password_empty"
-msgstr "Пожалуйста введите пароль"
+msgstr ""
 
 msgid "password_differ"
-msgstr "Пароли не совпадают"
+msgstr ""
 
 msgid "user_n_exist"
-msgstr "Пользователя не существует"
+msgstr ""
 
 msgid "password_wrong"
-msgstr "Неправильный пароль"
+msgstr ""
 
 msgid "user_exists"
-msgstr "Пользователь с этим именем уже существует"
+msgstr ""
 
 msgid "session_timeout"
-msgstr "Сессия устарела. Пожалуйста войтиде снова."
+msgstr ""
 
 msgid "really_del_user"
-msgstr "Действительно удалить пользователя?"
+msgstr ""
 
 msgid "user_add_done"
-msgstr "Новый пользователь успешно добавлен."
+msgstr ""
 
 msgid "user_remove_done"
-msgstr "Пользователь успешно удален."
+msgstr ""
 
 msgid "user_update_right_done"
-msgstr "Права пользователя успешно изменены."
+msgstr ""
 
 msgid "user_pw_change_ok"
-msgstr "Пароль пользователя успешно изменен."
+msgstr ""
 
 msgid "right_all"
-msgstr "Все права"
+msgstr ""
 
 msgid "right_none"
-msgstr "Без прав"
+msgstr ""
 
 msgid "filter"
-msgstr "Фильтр"
+msgstr ""
 
 msgid "all"
-msgstr "Все"
+msgstr ""
 
 msgid "loglevel_0"
-msgstr "Инфо"
+msgstr ""
 
 msgid "loglevel_1"
-msgstr "Предупреждения"
+msgstr ""
 
 msgid "loglevel_2"
-msgstr "Ошибки"
+msgstr ""
 
 msgid "dir_error_text"
-msgstr "Каталог, где UrBackup будет сохранять резервные копии недоступен. Пожалуйста исправьте это изменив путь в 'Настройках', либо путем придания UrBackup прав на доступ к этой папке."
+msgstr ""
 
 msgid "tmpdir_error_text"
-msgstr "Каталог, где UrBackup будет сохранять временные файлы недоступен. Пожалуйста исправьте это изменив путь в 'Настройках', либо путем придания UrBackup прав на доступ к этой папке."
+msgstr ""
 
 msgid "starting"
-msgstr "Запуск"
+msgstr ""
 
 msgid "ident_err"
-msgstr "Отклонено сервером"
+msgstr ""
 
 msgid "enter_hostname"
-msgstr "Пожалуйста введите Имя компьютера или IP адрес"
+msgstr ""
 
 msgid "clients"
-msgstr "Клиенты"
+msgstr ""
 
 msgid "validate_text_empty"
-msgstr "Пожалуйста введите значение для {name}"
+msgstr ""
 
 msgid "validate_text_notint"
-msgstr "Пожалуйста введите цифру для {name}"
+msgstr ""
 
 msgid "validate_name_update_freq_incr"
-msgstr "интервала добавочных файловых бэкапов"
+msgstr ""
 
 msgid "validate_name_update_freq_full"
-msgstr "интервала полных файловых бэкапов"
+msgstr ""
 
 msgid "validate_name_update_freq_image_full"
-msgstr "интервала создания добавочных образов"
+msgstr ""
 
 msgid "validate_name_update_freq_image_incr"
-msgstr "интервала создания полных образов"
+msgstr ""
 
 msgid "validate_name_max_file_incr"
-msgstr "максимального количества добавочных файловых бэкапов"
+msgstr ""
 
 msgid "validate_name_min_file_incr"
-msgstr "минимального количества добавочных файловых бэкапов"
+msgstr ""
 
 msgid "validate_name_max_file_full"
-msgstr "максимального количества полных файловых бэкапов"
+msgstr ""
 
 msgid "validate_name_min_file_full"
-msgstr "минимального количества полных файловых бэкапов"
+msgstr ""
 
 msgid "validate_name_min_image_incr"
-msgstr "минимального количества добавочных образов"
+msgstr ""
 
 msgid "validate_name_max_image_incr"
-msgstr "максимального количества добавочных образов"
+msgstr ""
 
 msgid "validate_name_min_image_full"
-msgstr "минимального количества полных образов"
+msgstr ""
 
 msgid "validate_name_max_image_full"
-msgstr "максимального количества полных образов"
+msgstr ""
 
 msgid "validate_name_startup_backup_delay"
-msgstr "задержки после старта системы"
+msgstr ""
 
 msgid "validate_err_notregexp_backup_window"
-msgstr "Формат для расписания неверный"
+msgstr ""
 
 msgid "validate_name_max_active_clients"
-msgstr "максимального количества активных клиентов"
+msgstr ""
 
 msgid "validate_name_max_sim_backups"
-msgstr "максимального количества резервных копий"
+msgstr ""
 
 msgid "validate_name_backupfolder"
-msgstr "путь к хранилищу бэкапов"
+msgstr ""
 
 msgid "validate_name_computername"
-msgstr "имя компьютера"
+msgstr ""
 
 msgid "too_many_clients_err"
-msgstr "Слишком много клиентов"
+msgstr ""
 
 msgid "really_remove_client"
-msgstr "Вы действительно хотите удалить этого клиента? Это означает, что все его резервные копии будут удалены!"
+msgstr ""
 
 msgid "computername"
-msgstr "Имя компьютера"
+msgstr ""
 
 msgid "storage_usage_pie_graph_title"
-msgstr "Использование памяти"
+msgstr ""
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr "Имя компьютера"
+msgstr ""
 
 msgid "storage_usage_pie_graph_colname2"
-msgstr "Использование памяти"
+msgstr ""
 
 msgid "storage_usage_bar_graph_title"
-msgstr "Использование памяти"
+msgstr ""
 
 msgid "storage_usage_bar_graph_colname1"
-msgstr "Дата"
+msgstr ""
 
 msgid "storage_usage_bar_graph_colname2"
-msgstr "Использование памяти"
+msgstr ""
 
 msgid "tImages"
-msgstr "Образы"
+msgstr ""
 
 msgid "tFiles"
-msgstr "Файлы"
+msgstr ""
 
 msgid "tSum"
-msgstr "Итого"
+msgstr ""
 
 msgid "validate_err_notregexp_cleanup_window"
-msgstr "Формат расписания очистки неверен"
+msgstr ""
 
 msgid "mail_settings"
-msgstr "Почта"
+msgstr ""
 
 msgid "upgrade_error_text"
-msgstr "UrBackup обновляет свою базу данных. Это может занять некоторое время. Сервер недоступен и не будет делать никаких резервных копий во время обновления."
+msgstr ""
 
 msgid "tActivities"
-msgstr "В работе"
+msgstr ""
 
 msgid "tAction"
-msgstr "Действие"
+msgstr ""
 
 msgid "tProgress"
-msgstr "Прогресс"
+msgstr ""
 
 msgid "tFiles in queue"
-msgstr "Файлов в очереди"
+msgstr ""
 
 msgid "tLast activities"
-msgstr "Последняя активность"
+msgstr ""
 
 msgid "tStarting time"
-msgstr "Время начала"
+msgstr ""
 
 msgid "tRequired time"
-msgstr "Продолжительность"
+msgstr ""
 
 msgid "tUsed Storage"
-msgstr "Использовано памяти"
+msgstr ""
 
 msgid "tClients"
-msgstr "Клиенты"
+msgstr ""
 
 msgid "tLogs"
-msgstr "Логи"
+msgstr ""
 
 msgid "tReports"
-msgstr "Отчеты"
+msgstr ""
 
 msgid "tSend reports to"
-msgstr "Отправить отчеты"
+msgstr ""
 
 msgid "tSend"
-msgstr "Отправить"
+msgstr ""
 
 msgid "tBackups with a log message of at least log level"
-msgstr "Логи уровня"
+msgstr ""
 
 msgid "tBackup time"
-msgstr "Время бэкапа"
+msgstr ""
 
 msgid "tErrors"
-msgstr "Ошибки"
+msgstr ""
 
 msgid "tWarnings"
-msgstr "Предупреждения"
+msgstr ""
 
 msgid "tStorage allocation"
-msgstr "Выделенная память"
+msgstr ""
 
 msgid "tStorage usage"
-msgstr "Использование памяти"
+msgstr ""
 
 msgid "tAll"
-msgstr "Все"
+msgstr ""
 
 msgid "tBackup storage path"
-msgstr "Путь для хранения бэкапов"
+msgstr ""
 
 msgid "tDo not do image backups"
-msgstr "Не делать бэкап образа"
+msgstr ""
 
 msgid "tDo not do file backups"
-msgstr "Не делать файловый бэкап"
+msgstr ""
 
 msgid "tAutomatically shut down server"
-msgstr "Автоматически выключать сервер"
+msgstr ""
 
 msgid "tAutoupdate clients"
-msgstr "Автоматическое обновление клиентов"
+msgstr ""
 
 msgid "tMax number of simultaneous backups"
-msgstr "Максимум одновременно выполняющихся бэкапов"
+msgstr ""
 
 msgid "tMax number of recently active clients"
-msgstr "Максимальное количество активных клиентов"
+msgstr ""
 
 msgid "tCleanup time window"
-msgstr "Расписание очистки бэкапов"
+msgstr ""
 
 msgid "tAutomatically backup UrBackup database"
-msgstr "Автоматически бэкапить базу данных UrBackup"
+msgstr ""
 
 msgid "tInterval for incremental file backups"
-msgstr "Интервал создания добавочных файловых бэкапов"
+msgstr ""
 
 msgid "tInterval for full file backups"
-msgstr "Интервал создания полных бэкапов файлов"
+msgstr ""
 
 msgid "tInterval for incremental image backups"
-msgstr "Интервал создания добавочных образов"
+msgstr ""
 
 msgid "tInterval for full image backups"
-msgstr "Интервал создания полных образов"
+msgstr ""
 
 msgid "tMaximal number of incremental file backups"
-msgstr "Максимальное количество добавочных бэкапов файлов"
+msgstr ""
 
 msgid "tMinimal number of incremental file backups"
-msgstr "Минимальное количество добавочных бэкапов файлов"
+msgstr ""
 
 msgid "tMaximal number of full file backups"
-msgstr "Максимальное количество полных бэкапов файлов"
+msgstr ""
 
 msgid "tMinimal number of full file backups"
-msgstr "Минимальное количество полных бэкапов файлов"
+msgstr ""
 
 msgid "tMaximal number of incremental image backups"
-msgstr "Максимальное количество добавочных образов"
+msgstr ""
 
 msgid "tMinimal number of incremental image backups"
-msgstr "Минимальное количество добавочных образов"
+msgstr ""
 
 msgid "tMaximal number of full image backups"
-msgstr "Максимальное количество полных образов"
+msgstr ""
 
 msgid "tMinimal number of full image backups"
-msgstr "Минимальное количество полных образов"
+msgstr ""
 
 msgid "tDelay after system startup"
-msgstr "Задержка после старта системы"
+msgstr ""
 
 msgid "tBackup window"
-msgstr "Расписание"
+msgstr ""
 
 msgid "tExcluded files (with wildcards)"
-msgstr "Исключить из бэкапа (по маске)"
+msgstr ""
 
 msgid "tIncluded files (with wildcards)"
-msgstr "Включить в бэкап (по маске)"
+msgstr ""
 
 msgid "tDefault directories to backup"
-msgstr "Каталоги по умолчанию для бэкапа"
+msgstr ""
 
 msgid "tVolumes to backup"
-msgstr "Разделы для бэкапа"
+msgstr ""
 
 msgid "tAllow client-side changing of the directories to backup"
-msgstr "Разрешить клиенту менять каталоги для бэкапа"
+msgstr ""
 
 msgid "tAllow client-side starting of file backups"
-msgstr "Разрешить клиенту запускать файловый бэкап"
+msgstr ""
 
 msgid "tAllow client-side starting of image backups"
-msgstr "Разрешить клиенту запускать создание образа"
+msgstr ""
 
 msgid "tAllow client-side viewing of backup logs"
-msgstr "Разрешить клиенту просматриват логи"
+msgstr ""
 
 msgid "tAllow client-side pausing of backups"
-msgstr "Разрешить клиенту приостанавливать бэкап"
+msgstr ""
 
 msgid "tAllow client-side changing of settings"
-msgstr "Разрешить клиенту менять настройки"
+msgstr ""
 
 msgid "tdays"
-msgstr "дней"
+msgstr ""
 
 msgid "thours"
-msgstr "часов"
+msgstr ""
 
 msgid "tmin"
-msgstr "минут"
+msgstr ""
 
 msgid "tMail server name"
-msgstr "Имя почтового сервера"
+msgstr ""
 
 msgid "tMail server port"
-msgstr "Порт сервера"
+msgstr ""
 
 msgid "tMail server username (empty for none)"
-msgstr "Учетная запись (если нет - оставить пустым)"
+msgstr ""
 
 msgid "tMail server password"
-msgstr "Пароль"
+msgstr ""
 
 msgid "tSender E-Mail Address"
-msgstr "Адрес отправителя"
+msgstr ""
 
 msgid "tSend mails only with SSL/TLS"
-msgstr "Отправить письмо только с использованием SSL/TLS"
+msgstr ""
 
 msgid "tCheck SSL/TLS certificate"
-msgstr "Проверить SSL/TLS сертификат"
+msgstr ""
 
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
 " to not send a test mail)"
-msgstr "Отправить тестовое письмо после сохранения настроек (оставить пустым, чтобы не отправлять)"
+msgstr ""
 
 msgid "tTest Mail sent successfully"
-msgstr "Тестовое сообщение отправлено"
+msgstr ""
 
 msgid "tSending test mail failed. Error:"
-msgstr "Тестовое сообщение не отправлено. Ошибка: "
+msgstr ""
 
 msgid "tFilter"
-msgstr "Фильтр"
+msgstr ""
 
 msgid "tBack"
-msgstr "Назад"
+msgstr ""
 
 msgid "tAdd"
-msgstr "Добавить"
+msgstr ""
 
 msgid "tRemove"
-msgstr "Удалить"
+msgstr ""
 
 msgid "tSave"
-msgstr "Сохранить"
+msgstr ""
 
 msgid "tLevel"
-msgstr "Уровень"
+msgstr ""
 
 msgid "tTime"
-msgstr "Время"
+msgstr ""
 
 msgid "tMessage"
-msgstr "Сообщение"
+msgstr ""
 
 msgid "tLog"
-msgstr "Лог"
+msgstr ""
 
 msgid "tUsername"
-msgstr "Имя"
+msgstr ""
 
 msgid "tRights"
-msgstr "Права"
+msgstr ""
 
 msgid "tNo Users"
-msgstr "Нет пользователей"
+msgstr ""
 
 msgid "tCreate user"
-msgstr "Добавить пользователя"
+msgstr ""
 
 msgid "tPassword"
-msgstr "Пароль"
+msgstr ""
 
 msgid "tRepeat password"
-msgstr "Повторить пароль"
+msgstr ""
 
 msgid "tRights for"
-msgstr "Права"
+msgstr ""
 
 msgid "tAbort"
-msgstr "Отмена"
+msgstr ""
 
 msgid "tCreate"
-msgstr "Добавить"
+msgstr ""
 
 msgid "tChange rights"
-msgstr "Изменить права"
+msgstr ""
 
 msgid "tChange password"
-msgstr "Изменить пароль"
+msgstr ""
 
 msgid "tLogin"
-msgstr "Войти"
+msgstr ""
 
 msgid "tInfos"
-msgstr "Инфо"
+msgstr ""
 
 msgid "tSeparate settings for this client"
-msgstr "Отдельные настройки для данного клиента"
+msgstr ""
 
 msgid "tServer"
-msgstr "Сервер"
+msgstr ""
 
 msgid "tFile backups"
-msgstr "Файловый бэкап"
+msgstr ""
 
 msgid "tImage backups"
-msgstr "Образы"
+msgstr ""
 
 msgid "tPermissions"
-msgstr "Права доступа"
+msgstr ""
 
 msgid "tClient"
-msgstr "Клиент"
+msgstr ""
 
 msgid "tArchival"
-msgstr "Архивация"
+msgstr ""
 
 msgid "tInternet"
-msgstr "Интернет"
+msgstr ""
 
 msgid "tPerform autoupdates silently"
-msgstr "Тихое автообновление"
+msgstr ""
 
 msgid "tMax backup speed for local network"
-msgstr "Максимальная скорость для локальной сети"
+msgstr ""
 
 msgid "tNo activities"
-msgstr "Нет активности"
+msgstr ""
 
 msgid "tSelect all"
-msgstr "Отметить все"
+msgstr ""
 
 msgid "tSelect none"
-msgstr "Снять отметки"
+msgstr ""
 
 msgid "tRemove selected"
-msgstr "Удалить отмеченных"
+msgstr ""
 
 msgid "tStart for selected"
-msgstr "Начать бэкап выделенных"
+msgstr ""
 
 msgid "tInternet clients"
-msgstr "Интернет клиенты"
+msgstr ""
 
 msgid "tAdd additional internet clients"
-msgstr "Добавить интернет клиентов"
+msgstr ""
 
 msgid "tClient name"
-msgstr "Имя клиента"
+msgstr ""
 
 msgid "tNo entries for this filter"
-msgstr "Нет записей для этого фильтра"
+msgstr ""
 
 msgid "tNo data"
-msgstr "Нет данных"
+msgstr ""
 
 msgid "tTotal max backup speed for local network"
-msgstr "Общая максимальная скорость для локальной сети"
+msgstr ""
 
 msgid "tArchive every"
-msgstr "Архивировать каждые"
+msgstr ""
 
 msgid "tArchive for"
-msgstr "Архивировать за"
+msgstr ""
 
 msgid "tArchive window"
-msgstr "Расписание архивации"
+msgstr ""
 
 msgid "tBackup type"
-msgstr "Тип бэкапа"
+msgstr ""
 
 msgid "tEnable internet mode (requires server restart)"
-msgstr "Активировать интернет режим (потребуется перезагрузка сервера)"
+msgstr ""
 
 msgid "tInternet server name/IP"
-msgstr "Имя сервера/IP"
+msgstr ""
 
 msgid "tInternet server port"
-msgstr "Порт"
+msgstr ""
 
 msgid "tDo image backups over internet"
-msgstr "Разрешить создавать образы"
+msgstr ""
 
 msgid "tDo full file backups over internet"
-msgstr "Разрешить создавать полный файловый бэкап"
+msgstr ""
 
 msgid "tMax backup speed for internet connection"
-msgstr "Максимальная скорость для интернет бэкапа"
+msgstr ""
 
 msgid "tTotal max backup speed for internet connection"
-msgstr "Общая максимальная скорость для интернет бэкапа"
+msgstr ""
 
 msgid "tEncrypted transfer"
-msgstr "Шифрованная передача"
+msgstr ""
 
 msgid "tCompressed transfer"
-msgstr "Сжатие"
+msgstr ""
 
 msgid "file_backup"
-msgstr "Резервная копия файла"
+msgstr ""
 
 msgid "hours"
-msgstr "Часов"
+msgstr ""
 
 msgid "days"
-msgstr "Дней"
+msgstr ""
 
 msgid "weeks"
 msgstr ""
