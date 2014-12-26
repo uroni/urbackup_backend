@@ -307,7 +307,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_incr_file_transfer_mode=settings_default->getValue("internet_incr_file_transfer_mode", "blockhash");
 	settings->local_image_transfer_mode=settings_default->getValue("local_image_transfer_mode", "hashed");
 	settings->internet_image_transfer_mode=settings_default->getValue("internet_image_transfer_mode", "hashed");
-	settings->update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 409600));
+	settings->update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 200*1024));
 	settings->global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
 	settings->client_quota=settings_default->getValue("client_quota", "100%");
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
