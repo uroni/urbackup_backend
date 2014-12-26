@@ -241,8 +241,25 @@ void InternetClient::doUpdateSettings(void)
 		if(!settings->getValue("internet_server_port", &server_port) )
 			settings->getValue("internet_server_port_def", &server_port);
 
-		server_settings.name=server_name;
-		server_settings.port=(unsigned short)atoi(server_port.c_str());
+		std::vector<std::string> server_names;
+		Tokenize(server_name, server_names, ";");
+
+		std::vector<std::string> server_ports;
+		Tokenize(server_port, server_ports, ";");
+
+		for(size_t i=0;i<server_names.size();++i)
+		{
+			if(i<server_ports.size())
+			{
+				server_settings.servers.push_back(std::make_pair(server_names[i],
+					server_ports[i]));
+			}
+			else
+			{
+				server_settings.servers.push_back(std::make_pair(server_names[i],
+					server_ports[server_ports.size()-1]));
+			}
+		}
 		server_settings.clientname=computername;
 		server_settings.authkey=authkey;
 	}
@@ -276,31 +293,35 @@ void InternetClient::doUpdateSettings(void)
 
 bool InternetClient::tryToConnect(IScopedLock *lock)
 {
-	std::string name=server_settings.name;
-	if(name.empty())
+	if(server_settings.servers.empty())
 	{
 		setStatusMsg("no_server");
 		return false;
 	}
 
-	unsigned short port=server_settings.port;
-	lock->relock(NULL);
-	Server->Log("Trying to connect to internet server \""+name+"\" at port "+nconvert(port), LL_DEBUG);
-	IPipe *cs=Server->ConnectStream(name, port, 10000);
-	lock->relock(mutex);
-	if(cs!=NULL)
+	for(size_t i=0;server_settings.servers.size();++i)
 	{
-		Server->Log("Successfully connected.", LL_DEBUG);
-		setStatusMsg("connected");
-		Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
-		newConnection();
-		return true;
+		std::string name=server_settings.servers[i].first;
+
+		unsigned short port=server_settings.servers[i].second;
+
+		lock->relock(NULL);
+		Server->Log("Trying to connect to internet server \""+name+"\" at port "+nconvert(port), LL_DEBUG);
+		IPipe *cs=Server->ConnectStream(name, port, 10000);
+		lock->relock(mutex);
+		if(cs!=NULL)
+		{
+			server_settings.selected_server=i;
+			Server->Log("Successfully connected.", LL_DEBUG);
+			setStatusMsg("connected");
+			Server->getThreadPool()->execute(new InternetClientThread(cs, server_settings));
+			newConnection();
+			return true;
+		}
 	}
-	else
-	{
-		setStatusMsg("connecting_failed");
-		Server->Log("Connecting failed.", LL_DEBUG);
-	}
+
+	setStatusMsg("connecting_failed");
+	Server->Log("Connecting failed.", LL_DEBUG);
 	return false;
 }
 
@@ -424,18 +445,21 @@ void InternetClientThread::operator()(void)
 		int tries=10;
 		while(tries>0 && cs==NULL)
 		{
-			cs=Server->ConnectStream(server_settings.name, server_settings.port, 10000);
+			cs=Server->ConnectStream(server_settings.servers[server_settings.selected_server].first,
+				server_settings.servers[server_settings.selected_server].second, 10000);
 			--tries;
 			InternetClient::setStatusMsg("connecting_failed");
 			if(cs==NULL && tries>0)
 			{
-				Server->Log("Connecting to server "+server_settings.name+" failed. Retrying in 30s...", LL_INFO);
+				Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].first
+					+ " failed. Retrying in 30s...", LL_INFO);
 				Server->wait(30000);
 			}
 		}
 		if(cs==NULL)
 		{
-			Server->Log("Connecting to server "+server_settings.name+" failed", LL_INFO);
+			Server->Log("Connecting to server "+server_settings.servers[server_settings.selected_server].first
+				+ " failed", LL_INFO);
 			InternetClient::rmConnection();
 			InternetClient::setHasConnection(false);
 			InternetClient::setStatusMsg("connecting_failed");
