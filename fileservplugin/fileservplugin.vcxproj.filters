@@ -75,6 +75,12 @@
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="PipeFile.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="PipeSessions.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
@@ -145,6 +151,12 @@
     </ClInclude>
     <ClInclude Include="IPermissionCallback.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeFile.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeSessions.h">
+      <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

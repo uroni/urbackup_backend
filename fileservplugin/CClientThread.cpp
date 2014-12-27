@@ -37,6 +37,7 @@
 #include <memory.h>
 #include "FileServFactory.h"
 #include "../urbackupcommon/os_functions.h"
+#include "PipeSessions.h"
 
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
@@ -269,7 +270,7 @@ bool CClientThread::RecvMessage(void)
 		}
 	}
 	
-	if( rc<1)
+	if(rc<1)
 	{
 		Log("Select Error/Timeout in RecvMessage", LL_DEBUG);
 
@@ -339,12 +340,27 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 #endif
 
+				bool is_script = false;
+				if(next(s_filename, 0, "SCRIPT|"))
+				{
+					s_filename = s_filename.substr(7);
+					is_script=true;
+				}
+
 				std::wstring o_filename=Server->ConvertToUnicode(s_filename);
 
 				_i64 start_offset=0;
 				bool offset_set=data->getInt64(&start_offset);
 
-				Log("Sending file (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+				if(!is_script)
+				{
+					Log("Sending file (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+				}
+				else
+				{
+					Log("Sending script output (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+				}
+				
 
 				std::wstring filename=map_file(o_filename);
 
@@ -372,24 +388,53 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 
 #ifdef _WIN32
-				if(filename.size()>=2 && filename[0]=='\\' && filename[1]=='\\' )
+				if(!is_script)
 				{
-					if(filename.size()<3 || filename[2]!='?')
+					if(filename.size()>=2 && filename[0]=='\\' && filename[1]=='\\' )
 					{
-						filename=L"\\\\?\\UNC"+filename.substr(1);
+						if(filename.size()<3 || filename[2]!='?')
+						{
+							filename=L"\\\\?\\UNC"+filename.substr(1);
+						}
 					}
-				}
-				else
-				{
-					filename = L"\\\\?\\"+filename;
-				}
+					else
+					{
+						filename = L"\\\\?\\"+filename;
+					}
+				}				
 
-				if(bufmgr==NULL)
+				if(bufmgr==NULL && !is_script)
 				{
 					bufmgr=new CBufMgr(NBUFFERS,READSIZE);
 				}
 #endif
 				
+				if(is_script)
+				{
+					IFile* file = PipeSessions::getFile(filename);
+
+					if(!file)
+					{
+						char ch=ID_COULDNT_OPEN;
+						int rc=SendInt(&ch, 1);
+						if(rc==SOCKET_ERROR)
+						{
+							Log("Error: Socket Error - DBG: Send COULDNT OPEN", LL_DEBUG);
+							return false;
+						}
+						Log("Info: Couldn't open script", LL_DEBUG);
+						break;
+					}
+					else
+					{
+						if(sendFullFile(file, start_offset, id==ID_GET_FILE_RESUME_HASH))
+						{
+							PipeSessions::removeFile(filename);
+						}
+						break;
+					}
+				}
+
 #ifndef LINUX
 #ifndef BACKUP_SEM
 				hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
@@ -1410,6 +1455,108 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	{
 		Log("Socket error while sending hash", LL_DEBUG);
 		return false;
+	}
+
+	return true;
+}
+
+bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashes)
+{
+	CWData data;
+	data.addUChar(ID_FILESIZE);
+	data.addUInt64(little_endian(static_cast<uint64>(file->Size())));
+
+	int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
+	if(rc==SOCKET_ERROR)
+	{
+		return false;
+	}
+
+	if(file->Size()==0)
+	{
+		return true;
+	}
+
+	unsigned int s_bsize=8192;
+
+	if(!with_hashes)
+	{
+		s_bsize=32768;
+		next_checkpoint=curr_filesize;
+	}
+	else
+	{
+		next_checkpoint=start_offset+c_checkpoint_dist;
+		if(next_checkpoint>curr_filesize)
+			next_checkpoint=curr_filesize;
+	}
+
+	if(!file->Seek(start_offset))
+	{
+		Log("Error: Seeking in file failed (5044)", LL_ERROR);
+		return false;
+	}
+
+	std::vector<char> buf;
+	buf.resize(s_bsize);
+
+	bool has_error=false;
+
+	int64 foffset = start_offset;
+	int64 filesize = file->Size();
+	bool is_eof=false;
+
+	while( foffset < filesize || (filesize==-1 && !is_eof) )
+	{
+		size_t count=(std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
+			
+		bool has_error = false;
+			_u32 rc = file->Read(&buf[0], static_cast<_u32>(count), &has_error);
+
+		if(rc<count && filesize==-1)
+		{
+			is_eof=true;
+		}
+			
+		if(rc>=0 && rc<count && filesize!=-1)
+		{
+			memset(&buf[rc], 0, count-rc);
+			rc=static_cast<_u32>(count);
+		}
+		else if(has_error)
+		{
+			Log("Error: Reading from file failed.", LL_DEBUG);
+			return false;
+		}
+
+		rc=SendInt(buf.data(), rc);
+		if(rc==SOCKET_ERROR)
+		{
+			Log("Error: Sending data failed");
+			return false;
+		}
+		else if(with_hashes)
+		{
+			hash_func.update((unsigned char*)buf.data(), rc);
+		}
+
+		foffset+=rc;
+
+		if(with_hashes && foffset==next_checkpoint)
+		{
+			hash_func.finalize();
+			SendInt((char*)hash_func.raw_digest_int(), 16);
+			next_checkpoint+=c_checkpoint_dist;
+			if(next_checkpoint>curr_filesize)
+				next_checkpoint=curr_filesize;
+
+			hash_func.init();
+		}
+
+		if(FileServ::isPause() )
+		{
+			Sleep(500);
+		}
 	}
 
 	return true;

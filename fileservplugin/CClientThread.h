@@ -107,6 +107,8 @@ public:
 	bool getNextChunk(SChunk *chunk, bool has_error);
 private:
 
+	bool sendFullFile(IFile* file, _i64 start_offset, bool with_hashes);
+
 	bool RecvMessage(void);
 	bool ProcessPacket(CRData *data);
 	bool ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last);
