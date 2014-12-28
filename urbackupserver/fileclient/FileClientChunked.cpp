@@ -273,7 +273,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 		}
 
 		if( ( ( parent==NULL && queued_fcs.empty() ) || !did_queue_fc )
-			&& queuedChunks()<c_max_queued_chunks && next_chunk==num_total_chunks
+			&& queuedChunks()<c_max_queued_chunks && next_chunk>=num_total_chunks
 			&& remote_filesize!=-1)
 		{
 			std::string remotefn;
@@ -462,7 +462,7 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 		bufptr+=bufptr_bytes_done;
 
 		if( (remote_filesize!=-1 && 
-			next_chunk==num_total_chunks
+			next_chunk>=num_total_chunks
 			&& pending_chunks.empty() )
 			|| getfile_done  )
 		{

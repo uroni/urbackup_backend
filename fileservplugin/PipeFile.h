@@ -57,7 +57,7 @@ private:
 	std::auto_ptr<IMutex> buffer_mutex;
 	size_t threadidx;
 	bool has_eof;
-	bool has_read_eof;
+	int64 stream_size;
 
 	HANDLE hFile;
 	HANDLE hStdout;

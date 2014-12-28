@@ -14,6 +14,7 @@
 #ifndef _WIN32
 #include <errno.h>
 #endif
+#include "PipeSessions.h"
 
 namespace
 {
@@ -81,8 +82,9 @@ void ChunkSendThread::operator()(void)
 			}
 		}
 	}
-	if(file!=NULL)
+	if(file!=NULL && curr_file_size!=-1)
 	{
+		PipeSessions::removeFile(file->getFilenameW());
 		Server->destroy(file);
 		file=NULL;
 	}
@@ -118,11 +120,11 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		memcpy(chunk_buf+1, &chunk_startpos, sizeof(_i64));
 
 		unsigned int blockleft;
-		if(curr_file_size<=chunk->startpos)
+		if(curr_file_size<=chunk->startpos && curr_file_size>0)
 		{
 			blockleft=0;
 		}
-		else if(curr_file_size-chunk->startpos<c_checkpoint_dist)
+		else if(curr_file_size-chunk->startpos<c_checkpoint_dist && curr_file_size>0)
 		{
 			blockleft=static_cast<unsigned int>(curr_file_size-chunk->startpos);
 		}
@@ -154,8 +156,12 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 				{
 					if(curr_file_size==-1)
 					{
-						Log("Script output eof", LL_DEBUG);
-						script_eof=true;
+						if(!script_eof)
+						{
+							Log("Script output eof", LL_DEBUG);
+							script_eof=true;
+						}
+						
 						memset(chunk_buf+off+r, 0, toread-r);
 						r=toread;
 					}
@@ -214,6 +220,7 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		if(script_eof)
 		{
 			parent->SendInt(NULL, 0);
+			return false;
 		}
 
 		return true;
@@ -228,17 +235,19 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 	unsigned int c_adler=urb_adler32(0, NULL, 0);
 	md5_hash.init();
 	unsigned int small_hash_num=0;
+	bool script_eof=false;
+
 	do
 	{
 		cptr+=r;
 
 		_u32 to_read = c_chunk_size;
 
-		if(curr_file_size<=curr_pos)
+		if(curr_file_size<=curr_pos && curr_file_size>0)
 		{
 			to_read = 0;
 		}
-		else if(curr_file_size-curr_pos<to_read)
+		else if(curr_file_size-curr_pos<to_read && curr_file_size>0)
 		{
 			to_read = static_cast<_u32>(curr_file_size-curr_pos);
 		}
@@ -248,7 +257,18 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 		if(r<to_read)
 		{
-			if(readerr)
+			if(curr_file_size==-1)
+			{
+				if(!script_eof)
+				{
+					Log("Script output eof -2", LL_DEBUG);
+					script_eof=true;
+				}
+
+				memset(cptr+r, 0, to_read-r);
+				r=to_read;
+			}
+			else if(readerr)
 			{
 				sendError(ERR_READING_FAILED, getSystemErrorCode());
 			}
@@ -359,6 +379,12 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		}
 
 		if( FileServ::isPause() ) Sleep(500);
+	}
+
+	if(script_eof)
+	{
+		parent->SendInt(NULL, 0);
+		return false;
 	}
 
 	return true;

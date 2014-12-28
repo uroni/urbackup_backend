@@ -75,7 +75,13 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 			assert(hoff>=0);
 		}
 
-		if(file_pos>=filesize)
+		bool patching_finished=false;
+		if(tr==0 && file_pos+next_header.patch_size>filesize)
+		{
+			next_header.patch_size = filesize - file_pos;
+			patching_finished=true;
+		}
+		else if(file_pos>=filesize)
 		{
 			Server->Log("Patch corrupt file_pos>=filesize. file_pos="+nconvert(file_pos)+" next_header.patch_off="+nconvert(next_header.patch_off)+" next_header.patch_size="+nconvert(next_header.patch_size)+" tr="+nconvert(tr)+" size="+nconvert(size)+" filesize="+nconvert(filesize)+" has_header="+nconvert(has_header), LL_ERROR);
 			assert(file_pos<filesize);
@@ -137,6 +143,11 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 			Server->Log("Patch corrupt. file_pos="+nconvert(file_pos)+" next_header.patch_off="+nconvert(next_header.patch_off)+" next_header.patch_size="+nconvert(next_header.patch_size)+" tr="+nconvert(tr)+" size="+nconvert(size)+" filesize="+nconvert(filesize), LL_ERROR);
 			assert(false);
 			return false;
+		}
+
+		if(patching_finished)
+		{
+			return true;
 		}
 	}
 	return true;

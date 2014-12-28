@@ -10,7 +10,7 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 	: curr_pos(0), has_error(false), cmd(pCmd),
 	hStderr(INVALID_HANDLE_VALUE),
 	hStdout(INVALID_HANDLE_VALUE), buf_w_pos(0), buf_r_pos(0), buf_w_reserved_pos(0),
-	threadidx(0), has_eof(false), has_read_eof(false),
+	threadidx(0), has_eof(false), stream_size(-1),
 	buf_circle(false)
 {
 	last_read = Server->getTimeMS();
@@ -111,7 +111,7 @@ std::string PipeFile::Read(_u32 tr, bool *has_error/*=NULL*/)
 		}		
 		if(getReadAvail()==0)
 		{
-			has_read_eof=true;
+			stream_size=curr_pos;
 		}
 		return ret;
 	}
@@ -142,7 +142,7 @@ _u32 PipeFile::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 		read(buffer, tr);
 		if(getReadAvail()==0)
 		{
-			has_read_eof=true;
+			stream_size=curr_pos;
 		}
 		return static_cast<_u32>(tr);
 	}
@@ -219,14 +219,7 @@ bool PipeFile::Seek(_i64 spos)
 _i64 PipeFile::Size(void)
 {
 	IScopedLock lock(buffer_mutex.get());
-	if(!has_read_eof)
-	{
-		return -1;
-	}
-	else
-	{
-		return curr_pos;
-	}
+	return stream_size;
 }
 
 _i64 PipeFile::RealSize()
