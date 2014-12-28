@@ -174,7 +174,7 @@ bool PipeFile::Seek(_i64 spos)
 	if(buf_r_pos<=buf_w_pos)
 	{
 		if(seeked_r_pos>=0
-			&& static_cast<size_t>(seeked_r_pos)<buf_w_pos)
+			&& static_cast<size_t>(seeked_r_pos)<=buf_w_pos)
 		{
 			curr_pos = spos;
 			buf_r_pos=static_cast<size_t>(seeked_r_pos);
@@ -195,8 +195,8 @@ bool PipeFile::Seek(_i64 spos)
 	}
 	else
 	{
-		if(seeked_r_pos>static_cast<_i64>(buf_w_reserved_pos) &&
-			seeked_r_pos<static_cast<_i64>(buffer_size))
+		if(seeked_r_pos >= static_cast<_i64>(buf_w_reserved_pos) &&
+			seeked_r_pos < static_cast<_i64>(buffer_size))
 		{
 			buf_r_pos=static_cast<size_t>(seeked_r_pos);
 			curr_pos = spos;
@@ -298,6 +298,13 @@ bool PipeFile::fillBuffer()
 
 	if(bsize_free==0 && buf_w_pos>buf_r_pos)
 	{
+		if(buf_r_pos<buffer_keep_free)
+		{
+			lock.relock(NULL);
+			Sleep(10);
+			return true;
+		}
+
 		buf_circle=true;
 		buf_w_pos = 0;
 		buf_w_reserved_pos=0;
@@ -390,7 +397,10 @@ void PipeFile::read(char* buf, size_t toread)
 		else
 		{
 			size_t cread = buffer_size - buf_r_pos;
-			memcpy(buf, &buffer[buf_r_pos], cread);
+			if(cread>0)
+			{
+				memcpy(buf, &buffer[buf_r_pos], cread);
+			}			
 			buf_r_pos = 0;
 			curr_pos+=cread;
 

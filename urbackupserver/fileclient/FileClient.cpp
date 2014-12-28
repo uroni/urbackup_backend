@@ -791,6 +791,16 @@ bool FileClient::Reconnect(void)
 						{
 							filesize = LLONG_MAX;
 						}
+						else if(filesize==received)
+						{
+							if(rc>0)
+							{
+								memmove(dl_buf, dl_buf+off, rc-off);
+								dl_off = rc-off;
+							}
+							return ERR_SUCCESS;
+						}
+						
 
 						if(protocol_version>1)
 						{
