@@ -3,6 +3,11 @@
 #include "PipeFile.h"
 #include <map>
 
+struct SPipeSession
+{
+	PipeFile* file;
+};
+
 class PipeSessions
 {
 public:
@@ -17,5 +22,5 @@ public:
 private:
 	static IMutex* mutex;
 	static volatile bool do_stop;
-	static std::map<std::wstring, PipeFile*> pipe_files;
+	static std::map<std::wstring, SPipeSession> pipe_files;
 };

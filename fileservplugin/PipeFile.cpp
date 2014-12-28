@@ -10,7 +10,7 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 	: curr_pos(0), has_error(false), cmd(pCmd),
 	hStderr(INVALID_HANDLE_VALUE),
 	hStdout(INVALID_HANDLE_VALUE), buf_w_pos(0), buf_r_pos(0), buf_w_reserved_pos(0),
-	threadidx(0), has_eof(false),
+	threadidx(0), has_eof(false), has_read_eof(false),
 	buf_circle(false)
 {
 	last_read = Server->getTimeMS();
@@ -76,6 +76,7 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 
 	if(!has_error)
 	{
+		buffer.resize(buffer_size);
 		Server->getThreadPool()->execute(this);
 		Server->getThreadPool()->execute(this);
 	}
@@ -108,6 +109,10 @@ std::string PipeFile::Read(_u32 tr, bool *has_error/*=NULL*/)
 			ret.resize(tr);
 			read(&ret[0], tr);
 		}		
+		if(getReadAvail()==0)
+		{
+			has_read_eof=true;
+		}
 		return ret;
 	}
 	else
@@ -135,6 +140,10 @@ _u32 PipeFile::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 	{
 		size_t tr = (std::min)(getReadAvail(), static_cast<size_t>(bsize));
 		read(buffer, tr);
+		if(getReadAvail()==0)
+		{
+			has_read_eof=true;
+		}
 		return static_cast<_u32>(tr);
 	}
 	else
@@ -167,6 +176,7 @@ bool PipeFile::Seek(_i64 spos)
 		if(seeked_r_pos>=0
 			&& static_cast<size_t>(seeked_r_pos)<buf_w_pos)
 		{
+			curr_pos = spos;
 			buf_r_pos=static_cast<size_t>(seeked_r_pos);
 			return true;
 		}
@@ -175,6 +185,7 @@ bool PipeFile::Seek(_i64 spos)
 			buf_circle)
 		{
 			buf_r_pos = buffer_size + seeked_r_pos;
+			curr_pos = spos;
 			return true;
 		}
 		else
@@ -188,12 +199,14 @@ bool PipeFile::Seek(_i64 spos)
 			seeked_r_pos<static_cast<_i64>(buffer_size))
 		{
 			buf_r_pos=static_cast<size_t>(seeked_r_pos);
+			curr_pos = spos;
 			return true;
 		}
 		else if(seeked_r_pos>=buffer_size &&
 			seeked_r_pos-buffer_size<=buf_w_pos)
 		{
 			buf_r_pos=static_cast<size_t>(seeked_r_pos - buffer_size);
+			curr_pos = spos;
 			return true;
 		}
 		else
@@ -205,12 +218,20 @@ bool PipeFile::Seek(_i64 spos)
 
 _i64 PipeFile::Size(void)
 {
-	return -1;
+	IScopedLock lock(buffer_mutex.get());
+	if(!has_read_eof)
+	{
+		return -1;
+	}
+	else
+	{
+		return curr_pos;
+	}
 }
 
 _i64 PipeFile::RealSize()
 {
-	return -1;
+	return Size();
 }
 
 std::string PipeFile::getFilename(void)
@@ -235,6 +256,7 @@ void PipeFile::operator()()
 
 	if(threadidx==0)
 	{
+		++threadidx;
 		lock.relock(NULL);
 
 		while(fillBuffer())
@@ -295,9 +317,13 @@ bool PipeFile::fillBuffer()
 	DWORD read = 0;
 
 	lock.relock(NULL);
+
 	BOOL b = ReadFile(hStdout, &buffer[buf_w_pos], static_cast<DWORD>(bsize_free), &read, NULL);
 
 	lock.relock(buffer_mutex.get());
+
+	buf_w_pos+=read;
+	buf_w_reserved_pos=buf_w_pos;
 
 	if(!b)
 	{
@@ -306,8 +332,6 @@ bool PipeFile::fillBuffer()
 	}
 	else
 	{
-		buf_w_pos+=read;
-		buf_w_reserved_pos=buf_w_pos;
 		return true;
 	}
 }
@@ -350,6 +374,7 @@ void PipeFile::read(char* buf, size_t toread)
 	if(buf_w_pos>=buf_r_pos)
 	{
 		assert(buf_w_pos - buf_r_pos >= toread);
+		char* ptr_str = buffer.data();
 		memcpy(buf, &buffer[buf_r_pos], toread);
 		buf_r_pos+=toread;
 		curr_pos+=toread;

@@ -311,7 +311,15 @@ bool CClientThread::RecvMessage(void)
 
 int CClientThread::SendInt(const char *buf, size_t bsize)
 {
-	return (int)(clientpipe->Write(buf, bsize, SEND_TIMEOUT)?bsize:SOCKET_ERROR);
+	if(bsize==0)
+	{
+		clientpipe->shutdown();
+		return 0;
+	}
+	else
+	{
+		return (int)(clientpipe->Write(buf, bsize, SEND_TIMEOUT)?bsize:SOCKET_ERROR);
+	}
 }
 
 bool CClientThread::ProcessPacket(CRData *data)
@@ -1129,6 +1137,14 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	}
 #endif
 
+	bool is_script=false;
+
+	if(next(s_filename, 0, "SCRIPT|"))
+	{
+		is_script=true;
+		s_filename = s_filename.substr(7);
+	}
+
 	std::wstring o_filename=Server->ConvertToUnicode(s_filename);
 
 	_i64 start_offset=0;
@@ -1158,76 +1174,107 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	hash_func.init();
 
 #ifdef _WIN32
-	if(filename.size()>=2 && filename[0]=='\\' && filename[1]=='\\' )
+	if(!is_script)
 	{
-		if(filename.size()<3 || filename[2]!='?')
+		if(filename.size()>=2 && filename[0]=='\\' && filename[1]=='\\' )
 		{
-			filename=L"\\\\?\\UNC"+filename.substr(1);
+			if(filename.size()<3 || filename[2]!='?')
+			{
+				filename=L"\\\\?\\UNC"+filename.substr(1);
+			}
+		}
+		else
+		{
+			filename = L"\\\\?\\"+filename;
+		}
+	}
+#endif
+
+	IFile* srv_file = NULL;
+	if(is_script)
+	{
+		srv_file = PipeSessions::getFile(filename);
+
+		if(srv_file==NULL)
+		{
+			queueChunk(SChunk(ID_COULDNT_OPEN));
+			Log("Info: Couldn't open script", LL_DEBUG);
+			return true;
 		}
 	}
 	else
-	{
-		filename = L"\\\\?\\"+filename;
-	}		
-#endif
-				
+	{			
 #ifdef _WIN32
 #ifndef BACKUP_SEM
-	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #else
-	hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+		hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 #endif
 #else //_WIN32
-	hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
+		hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
 #endif //_WIN32
 
-	if(hFile == INVALID_HANDLE_VALUE)
-	{
-		hFile=(HANDLE)NULL;
-#ifdef CHECK_BASE_PATH
-		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
-		if(!isDirectory(basePath))
+		if(hFile == INVALID_HANDLE_VALUE)
 		{
-			queueChunk(SChunk(ID_BASE_DIR_LOST));
-			Log("Info: Base dir lost", LL_DEBUG);
+			hFile=(HANDLE)NULL;
+	#ifdef CHECK_BASE_PATH
+			std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
+			if(!isDirectory(basePath))
+			{
+				queueChunk(SChunk(ID_BASE_DIR_LOST));
+				Log("Info: Base dir lost", LL_DEBUG);
+				return true;
+			}
+	#endif
+					
+			queueChunk(SChunk(ID_COULDNT_OPEN));
+			Log("Info: Couldn't open file", LL_DEBUG);
 			return true;
 		}
-#endif
-					
-		queueChunk(SChunk(ID_COULDNT_OPEN));
-		Log("Info: Couldn't open file", LL_DEBUG);
-		return true;
 	}
 
 	currfilepart=0;
 	sendfilepart=0;
 	sent_bytes=0;
 
+	if(!is_script)
+	{
 #ifdef _WIN32
-	LARGE_INTEGER filesize;
-	GetFileSizeEx(hFile, &filesize);
+		LARGE_INTEGER filesize;
+		GetFileSizeEx(hFile, &filesize);
 
-	curr_filesize=filesize.QuadPart;
+		curr_filesize=filesize.QuadPart;
 #else
-	struct stat64 stat_buf;
-	fstat64(hFile, &stat_buf);
-	
-	curr_filesize=stat_buf.st_size;
+		struct stat64 stat_buf;
+		fstat64(hFile, &stat_buf);
+
+		curr_filesize=stat_buf.st_size;
 #endif
+	}
+	else
+	{
+		curr_filesize = srv_file->Size();
+	}
 
 	next_checkpoint=start_offset+c_checkpoint_dist;
-	if(next_checkpoint>curr_filesize)
+	if(next_checkpoint>curr_filesize && curr_filesize>0)
 		next_checkpoint=curr_filesize;
 
-	IFile * tf=Server->openFileFromHandle((void*)hFile);
-	if(tf==NULL)
+	if(!is_script)
 	{
-		Log("Could not open file from handle", LL_ERROR);
-		return false;
+		srv_file = Server->openFileFromHandle((void*)hFile);
+
+		if(srv_file==NULL)
+		{
+			CloseHandle(hFile);
+			queueChunk(SChunk(ID_COULDNT_OPEN));
+			Log("Info: Couldn't open file from handle", LL_ERROR);
+			return true;
+		}
 	}
 
 	SChunk chunk;
-	chunk.update_file = tf;
+	chunk.update_file = srv_file;
 	chunk.startpos = curr_filesize;
 	chunk.hashsize = curr_hash_size;
 
@@ -1462,9 +1509,11 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 
 bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashes)
 {
+	curr_filesize = file->Size();
+
 	CWData data;
 	data.addUChar(ID_FILESIZE);
-	data.addUInt64(little_endian(static_cast<uint64>(file->Size())));
+	data.addUInt64(little_endian(static_cast<uint64>(curr_filesize)));
 
 	int rc=SendInt(data.getDataPtr(), data.getDataSize() );	
 	if(rc==SOCKET_ERROR)
@@ -1472,7 +1521,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 		return false;
 	}
 
-	if(file->Size()==0)
+	if(curr_filesize==0)
 	{
 		return true;
 	}
@@ -1482,12 +1531,19 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 	if(!with_hashes)
 	{
 		s_bsize=32768;
-		next_checkpoint=curr_filesize;
+		if(curr_filesize>0)
+		{
+			next_checkpoint=curr_filesize;
+		}
+		else
+		{
+			next_checkpoint = LLONG_MAX;
+		}		
 	}
 	else
 	{
 		next_checkpoint=start_offset+c_checkpoint_dist;
-		if(next_checkpoint>curr_filesize)
+		if(next_checkpoint>curr_filesize && curr_filesize>0)
 			next_checkpoint=curr_filesize;
 	}
 
@@ -1503,22 +1559,21 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 	bool has_error=false;
 
 	int64 foffset = start_offset;
-	int64 filesize = file->Size();
 	bool is_eof=false;
 
-	while( foffset < filesize || (filesize==-1 && !is_eof) )
+	while( foffset < curr_filesize || (curr_filesize==-1 && !is_eof) )
 	{
 		size_t count=(std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
 			
 		bool has_error = false;
 			_u32 rc = file->Read(&buf[0], static_cast<_u32>(count), &has_error);
 
-		if(rc<count && filesize==-1)
+		if(rc<count && curr_filesize==-1)
 		{
 			is_eof=true;
 		}
 			
-		if(rc>=0 && rc<count && filesize!=-1)
+		if(rc>=0 && rc<count && curr_filesize!=-1)
 		{
 			memset(&buf[rc], 0, count-rc);
 			rc=static_cast<_u32>(count);
@@ -1547,7 +1602,7 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 			hash_func.finalize();
 			SendInt((char*)hash_func.raw_digest_int(), 16);
 			next_checkpoint+=c_checkpoint_dist;
-			if(next_checkpoint>curr_filesize)
+			if(next_checkpoint>curr_filesize && curr_filesize>0)
 				next_checkpoint=curr_filesize;
 
 			hash_func.init();
@@ -1559,5 +1614,11 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 		}
 	}
 
-	return true;
+	if(curr_filesize==-1)
+	{
+		//script needs one reconnect
+		clientpipe->shutdown();
+	}
+
+	return curr_filesize!=-1;
 }

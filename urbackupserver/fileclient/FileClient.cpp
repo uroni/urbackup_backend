@@ -787,6 +787,10 @@ bool FileClient::Reconnect(void)
 							}
 							return ERR_SUCCESS;
 						}
+						else if(filesize<0)
+						{
+							filesize = LLONG_MAX;
+						}
 
 						if(protocol_version>1)
 						{

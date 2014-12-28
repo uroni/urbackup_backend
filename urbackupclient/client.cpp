@@ -47,8 +47,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #endif
-volatile bool IdleCheckerThread::idle=false;
 #include <set>
+#include "../urbackupcommon/glob.h"
+
+volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
 std::map<std::wstring, std::wstring> IndexThread::filesrv_share_dirs;
@@ -389,7 +391,7 @@ void IndexThread::operator()(void)
 			data.getInt(&with_permissions);
 
 			//incr backup
-			if(!readBackupDirs() )
+			if(!readBackupDirs() && !readBackupScripts())
 			{
 				contractor->Write("no backup dirs");
 				continue;
@@ -470,7 +472,7 @@ void IndexThread::operator()(void)
 			data.getInt(&index_group);
 			data.getInt(&with_permissions);
 
-			if(!readBackupDirs() )
+			if(!readBackupDirs() && !readBackupScripts())
 			{
 				contractor->Write("no backup dirs");
 				continue;
@@ -969,7 +971,22 @@ void IndexThread::indexDirs(void)
 			{
 				VSSLog("Error changing filelist size", LL_ERROR);
 			}
+
+			outfile.open(filelist_fn, std::ios::in|std::ios::out|std::ios::binary);
+			if(outfile.is_open())
+			{
+				outfile.seekp(0, std::ios::end);
+			}
+			else
+			{
+				VSSLog("Error reopening filelist", LL_ERROR);
+			}
 		}
+
+		if(outfile.is_open())
+		{
+			addBackupScripts(outfile);
+		}		
 	}
 
 	cd->copyFromTmpFiles();
@@ -1203,8 +1220,47 @@ bool IndexThread::readBackupDirs(void)
 		if(filesrv!=NULL)
 			shareDir(L"", backup_dirs[i].tname, backup_dirs[i].path);
 	}
-
 	return has_backup_dir;
+}
+
+bool IndexThread::readBackupScripts()
+{
+	scripts.clear();
+	
+	std::wstring script_path;
+	std::wstring script_cmd;
+#ifdef _WIN32
+	script_path = Server->getServerWorkingDir() + os_file_sep() + L"backup_scripts";
+	script_cmd = script_path + os_file_sep() + L"list.bat";
+#else
+	script_path = L"/etc/urbackup/scripts";
+	script_path = script_path + os_file_sep() + "list";
+#endif
+
+	std::string output = execute_script(script_cmd);
+
+	std::vector<std::string> lines;
+	Tokenize(output, lines, "\n");
+
+	if(!lines.empty())
+	{
+
+		for(size_t i=0;i<lines.size();++i)
+		{
+			std::string line = trim(lines[i]);
+			if(!line.empty())
+			{
+				scripts.push_back(line);
+			}
+		}
+
+		if(filesrv!=NULL)
+		{
+			shareDir(L"", L"urbackup_backup_scripts", script_path);
+		}
+	}
+	
+	return !scripts.empty();	
 }
 
 namespace
@@ -2648,8 +2704,6 @@ std::vector<std::wstring> IndexThread::parseIncludePatterns(const std::wstring& 
 	return include_dirs;
 }
 
-bool amatch(const wchar_t *str, const wchar_t *p);
-
 bool IndexThread::isExcluded(const std::vector<std::wstring>& exlude_dirs, const std::wstring &path)
 {
 	std::wstring wpath=path;
@@ -3360,6 +3414,65 @@ void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 cr
 	else
 	{
 		out << "\n";
+	}
+}
+
+std::string IndexThread::execute_script(const std::wstring& cmd)
+{
+#ifdef _WIN32
+	FILE* fp = _wpopen(cmd.c_str(), L"rb");
+#else
+	FILE* fp = popen(Server->ConvertToUTF8(name).c_str(), "r");
+#endif
+
+	if(!fp)
+	{
+		Server->Log(L"Could not open pipe for command "+cmd, LL_DEBUG);
+		return std::string();
+	}
+
+	std::string output;
+	while(!feof(fp) && !ferror(fp))
+	{
+		char buf[4097];
+		size_t r = fread(buf, 1, 4096, fp);
+		buf[r]=0;
+		output+=buf;
+	}
+
+#ifdef _WIN32
+	int rc = _pclose(fp);
+#else
+	int rc = pclose(fp);
+#endif
+
+	if(rc!=0)
+	{
+		Server->Log(L"Script "+cmd+L" had error (code "+convert(rc)+L"). Not using script list.", LL_ERROR);
+		return std::string();
+	}
+
+	return output;
+}
+
+bool IndexThread::addBackupScripts(std::fstream& outfile)
+{
+	if(!scripts.empty())
+	{
+		outfile << "d\"urbackup_backup_scripts\"\n";
+
+		for(size_t i=0;i<scripts.size();++i)
+		{
+			outfile << "f\"" << scripts[i] << "\" -1 " << Server->getRandomNumber() << "\n";
+		}
+
+		outfile << "d\"..\"\n";
+
+		return true;
+	}
+	else
+	{
+		return false;
 	}
 }
 

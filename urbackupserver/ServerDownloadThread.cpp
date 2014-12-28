@@ -166,7 +166,9 @@ void ServerDownloadThread::operator()( void )
 	std::sort(download_partial_ids.begin(), download_partial_ids.end());
 }
 
-void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool at_front )
+void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
+	const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
+	const FileMetadata& parent_metadata, bool is_script, bool at_front )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -181,6 +183,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	ni.predicted_filesize = predicted_filesize;
 	ni.metadata = metadata;
 	ni.parent_metadata = parent_metadata;
+	ni.is_script = is_script;
 
 	IScopedLock lock(mutex);
 	if(!at_front)
@@ -201,7 +204,9 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 }
 
 
-void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata )
+void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn,
+	const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
+	const FileMetadata& parent_metadata, bool is_script)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -216,6 +221,7 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, 
 	ni.predicted_filesize= predicted_filesize;
 	ni.metadata = metadata;
 	ni.parent_metadata = parent_metadata;
+	ni.is_script = is_script;
 
 	IScopedLock lock(mutex);
 	dl_queue.push_back(ni);
@@ -371,6 +377,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	if(cfn[0]=='/')
 		cfn.erase(0,1);
 
+	if(todl.is_script)
+	{
+		cfn = L"SCRIPT|" + cfn + L"|" + convert(Server->getRandomNumber());
+	}
+
 	bool full_dl=false;
 	SPatchDownloadFiles dlfiles = todl.patch_dl_files;
 	if(!dlfiles.prepared && !dlfiles.prepare_error)
@@ -404,7 +415,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		hashfile_old_delete.release();
 	}
 
-	if(!server_token.empty())
+	if(!server_token.empty() && !todl.is_script)
 	{
 		cfn=widen(server_token)+L"|"+cfn;
 	}
@@ -608,7 +619,11 @@ std::wstring ServerDownloadThread::getDLPath( SQueueItem todl )
 	if(cfn[0]=='/')
 		cfn.erase(0,1);
 
-	if(!server_token.empty())
+	if(todl.is_script)
+	{
+		cfn = L"SCRIPT|" + cfn + L"|" + convert(Server->getRandomNumber());
+	}
+	else if(!server_token.empty())
 	{
 		cfn=widen(server_token)+L"|"+cfn;
 	}

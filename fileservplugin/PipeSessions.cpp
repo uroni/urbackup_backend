@@ -3,16 +3,16 @@
 
 volatile bool PipeSessions::do_stop = false;
 IMutex* PipeSessions::mutex = NULL;
-std::map<std::wstring, PipeFile*> PipeSessions::pipe_files;
+std::map<std::wstring, SPipeSession> PipeSessions::pipe_files;
 
 IFile* PipeSessions::getFile(const std::wstring& cmd)
 {
 	IScopedLock lock(mutex);
 
-	std::map<std::wstring, PipeFile*>::iterator it = pipe_files.find(cmd);
+	std::map<std::wstring, SPipeSession>::iterator it = pipe_files.find(cmd);
 	if(it != pipe_files.end())
 	{
-		return it->second;
+		return it->second.file;
 	}
 	else
 	{
@@ -23,7 +23,12 @@ IFile* PipeSessions::getFile(const std::wstring& cmd)
 			return NULL;
 		}
 
-		pipe_files[cmd] = nf;
+		SPipeSession new_session = {
+			nf
+		};
+		pipe_files[cmd] = new_session;
+
+		return nf;
 	}
 }
 
@@ -41,10 +46,10 @@ void PipeSessions::removeFile(const std::wstring& cmd)
 {
 	IScopedLock lock(mutex);
 
-	std::map<std::wstring, PipeFile*>::iterator it = pipe_files.find(cmd);
+	std::map<std::wstring, SPipeSession>::iterator it = pipe_files.find(cmd);
 	if(it != pipe_files.end())
 	{
-		delete it->second;
+		delete it->second.file;
 		pipe_files.erase(it);
 	}
 }

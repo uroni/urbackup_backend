@@ -9,6 +9,7 @@
 #include <queue>
 #include <memory>
 #include <algorithm>
+#include <limits.h>
 #include "../../common/adler32.h"
 
 #define VLOG(x) x
@@ -516,7 +517,7 @@ void FileClientChunked::State_First(void)
 	case ID_UPDATE_CHUNK: need_bytes=sizeof(_i64)+sizeof(_u32); break;
 	case ID_NO_CHANGE: need_bytes=sizeof(_i64); break;
 	case ID_BLOCK_HASH: need_bytes=sizeof(_i64)+big_hash_size; break;
-	case ID_BLOCK_ERROR: need_bytes=sizeof(_u32)*2;
+	case ID_BLOCK_ERROR: need_bytes=sizeof(_u32)*2; break;
 	default:
 		Server->Log("Unknown Packet ID in State_First", LL_ERROR);
 		need_bytes = 0;
@@ -551,67 +552,69 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 		{
 		case ID_FILESIZE:
 			{
-				if(!pending_chunks.empty())
-				{
-					int a4=4;
-				}
 				if(!ignore_filesize)
 				{
 					_i64 new_remote_filesize;
 					msg.getInt64(&new_remote_filesize);
-
-					if(new_remote_filesize!=remote_filesize)
-					{
-						int a4=4;
-					}
 					
-					if(remote_filesize!=-1 && new_remote_filesize!=remote_filesize)
+					if(new_remote_filesize>0)
 					{
-						Server->Log("Filesize change from expected filesize. Expected="+nconvert(remote_filesize)+" Got="+nconvert(new_remote_filesize), LL_WARNING);
-					}
-
-					VLOG(Server->Log("Receiving filesize... Filesize="+nconvert(new_remote_filesize)+" Predicted="+nconvert(remote_filesize), LL_DEBUG));
-
-					if(remote_filesize!=-1 && new_remote_filesize>remote_filesize && getNextFileClient())
-					{
-						Server->Log("Filesize increase from predicted filesize and next file is queued. Reconnecting...", LL_WARNING);
-						if(!Reconnect(true))
+						if(remote_filesize!=-1 && new_remote_filesize!=remote_filesize)
 						{
-							getfile_done=true;
-							retval=ERR_CONN_LOST;
+							Server->Log("Filesize change from expected filesize. Expected="+nconvert(remote_filesize)+" Got="+nconvert(new_remote_filesize), LL_WARNING);
 						}
-						return;
-					}
-					else
-					{
-						if(remote_filesize!=-1 && new_remote_filesize<remote_filesize)
+
+						VLOG(Server->Log("Receiving filesize... Filesize="+nconvert(new_remote_filesize)+" Predicted="+nconvert(remote_filesize), LL_DEBUG));
+
+						if(remote_filesize!=-1 && new_remote_filesize>remote_filesize && getNextFileClient())
 						{
-							remote_filesize = new_remote_filesize;
-
-							_i64 old_num_total_chunks = num_total_chunks;
-
-							calcTotalChunks();
-
-							if(next_chunk>=num_total_chunks)
+							Server->Log("Filesize increase from predicted filesize and next file is queued. Reconnecting...", LL_WARNING);
+							if(!Reconnect(true))
 							{
-								Server->Log("Filesize decrease from predicted filesize and problematic chunks are already queued (old_num_total_chunks="+nconvert(old_num_total_chunks)+
-									" num_total_chunks="+nconvert(num_total_chunks)+" next_chunk="+nconvert(next_chunk)+"). Reconnecting...", LL_WARNING);
-
-								if(!Reconnect(true))
-								{
-									getfile_done=true;
-									retval=ERR_CONN_LOST;
-								}
-								return;
+								getfile_done=true;
+								retval=ERR_CONN_LOST;
 							}
+							return;
 						}
 						else
 						{
-							remote_filesize = new_remote_filesize;
+							if(remote_filesize!=-1 && new_remote_filesize<remote_filesize)
+							{
+								remote_filesize = new_remote_filesize;
 
-							calcTotalChunks();
+								_i64 old_num_total_chunks = num_total_chunks;
+
+								calcTotalChunks();
+
+								if(next_chunk>=num_total_chunks)
+								{
+									Server->Log("Filesize decrease from predicted filesize and problematic chunks are already queued (old_num_total_chunks="+nconvert(old_num_total_chunks)+
+										" num_total_chunks="+nconvert(num_total_chunks)+" next_chunk="+nconvert(next_chunk)+"). Reconnecting...", LL_WARNING);
+
+									if(!Reconnect(true))
+									{
+										getfile_done=true;
+										retval=ERR_CONN_LOST;
+									}
+									return;
+								}
+							}
+							else
+							{
+								remote_filesize = new_remote_filesize;
+
+								calcTotalChunks();
+							}
 						}
 					}
+					else
+					{
+						Server->Log("Script output download. Filesize unknown.", LL_INFO);
+						remote_filesize = LLONG_MAX;
+
+						calcTotalChunks();
+					}
+					
 
 					state=CS_ID_FIRST;
 					calcTotalChunks();

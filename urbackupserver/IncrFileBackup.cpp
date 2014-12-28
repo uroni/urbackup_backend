@@ -396,6 +396,7 @@ bool IncrFileBackup::doFileBackup()
 	bool backup_stopped=false;
 	size_t skip_dir_completely=0;
 	bool skip_dir_copy_sparse=false;
+	bool script_dir=false;
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -640,10 +641,17 @@ bool IncrFileBackup::doFileBackup()
 						{
 							std::wstring t=curr_path;
 							t.erase(0,1);
-							server_download->addToQueueStartShadowcopy(t);
+							if(t==L"urbackup_backup_scripts")
+							{
+								script_dir=true;
+							}
+							else
+							{
+								server_download->addToQueueStartShadowcopy(t);
 
-							continuous_sequences[cf.name]=SContinuousSequence(
-								watoi64(extra_params[L"sequence_id"]), watoi64(extra_params[L"sequence_next"]));
+								continuous_sequences[cf.name]=SContinuousSequence(
+									watoi64(extra_params[L"sequence_id"]), watoi64(extra_params[L"sequence_next"]));
+							}							
 						}
 					}
 					else //cf.name==".."
@@ -662,7 +670,14 @@ bool IncrFileBackup::doFileBackup()
 						{
 							std::wstring t=curr_path;
 							t.erase(0,1);
-							server_download->addToQueueStopShadowcopy(t);
+							if(t==L"urbackup_backup_scripts")
+							{
+								script_dir=false;
+							}
+							else
+							{
+								server_download->addToQueueStopShadowcopy(t);
+							}							
 						}
 						curr_path=ExtractFilePath(curr_path, L"/");
 						curr_os_path=ExtractFilePath(curr_os_path, L"/");
@@ -706,12 +721,12 @@ bool IncrFileBackup::doFileBackup()
 							if(intra_file_diffs)
 							{
 								server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-									metadata, parent_metadata);
+									metadata, parent_metadata, script_dir);
 							}
 							else
 							{
 								server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-									metadata, parent_metadata);
+									metadata, parent_metadata, script_dir);
 							}							
 						}
 					}
@@ -769,12 +784,12 @@ bool IncrFileBackup::doFileBackup()
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, parent_metadata);
+										metadata, parent_metadata, script_dir);
 								}
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, parent_metadata);
+										metadata, parent_metadata, script_dir);
 								}
 							}
 						}

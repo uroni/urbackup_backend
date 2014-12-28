@@ -1625,8 +1625,8 @@ _i64 watoi64(std::wstring str)
 
 std::string trim(const std::string &str)
 {
-	size_t startpos = str.find_first_not_of(" \t");
-	size_t endpos = str.find_last_not_of(" \t");
+	size_t startpos = str.find_first_not_of(" \r\n\t");
+	size_t endpos = str.find_last_not_of(" \r\n\t");
 	if(( string::npos == startpos ) || ( string::npos == endpos))  
 	{
 		return "";
@@ -1639,8 +1639,8 @@ std::string trim(const std::string &str)
 
 std::wstring trim(const std::wstring &str)
 {
-	size_t startpos = str.find_first_not_of(L" \t");
-	size_t endpos = str.find_last_not_of(L" \t");
+	size_t startpos = str.find_first_not_of(L" \r\n\t");
+	size_t endpos = str.find_last_not_of(L" \r\n\t");
 	if(( wstring::npos == startpos ) || ( wstring::npos == endpos))  
 	{
 		return L"";

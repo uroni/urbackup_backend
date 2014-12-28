@@ -200,7 +200,7 @@ void InternetClient::operator()(void)
 
 void InternetClient::doUpdateSettings(void)
 {
-	server_settings.name.clear();
+	server_settings.servers.clear();
 
 	ISettingsReader *settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
 	if(settings==NULL)
@@ -252,12 +252,12 @@ void InternetClient::doUpdateSettings(void)
 			if(i<server_ports.size())
 			{
 				server_settings.servers.push_back(std::make_pair(server_names[i],
-					server_ports[i]));
+					static_cast<unsigned short>(atoi(server_ports[i].c_str()))));
 			}
 			else
 			{
 				server_settings.servers.push_back(std::make_pair(server_names[i],
-					server_ports[server_ports.size()-1]));
+					static_cast<unsigned short>(atoi(server_ports[server_ports.size()-1].c_str()))));
 			}
 		}
 		server_settings.clientname=computername;
@@ -769,7 +769,7 @@ cleanup:
 
 void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 {
-	client->Init(Server->getThreadID(), pipe, server_settings.name);
+	client->Init(Server->getThreadID(), pipe, server_settings.servers[server_settings.selected_server].first);
 	ClientConnector * cc=dynamic_cast<ClientConnector*>(client);
 	if(cc!=NULL)
 	{

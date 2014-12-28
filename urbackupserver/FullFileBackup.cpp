@@ -212,6 +212,7 @@ bool FullFileBackup::doFileBackup()
 
 	bool c_has_error=false;
 	bool is_offline=false;
+	bool script_dir=false;
 
 	std::stack<FileMetadata> dir_metadata;
 
@@ -306,11 +307,18 @@ bool FullFileBackup::doFileBackup()
 						{
 							std::wstring t=curr_path;
 							t.erase(0,1);
-							ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_DEBUG);
-							server_download->addToQueueStartShadowcopy(t);
+							if(t==L"urbackup_backup_scripts")
+							{
+								script_dir=true;
+							}
+							else
+							{
+								ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_DEBUG);
+								server_download->addToQueueStartShadowcopy(t);
 
-							continuous_sequences[cf.name]=SContinuousSequence(
-								watoi64(extra_params[L"sequence_id"]), watoi64(extra_params[L"sequence_next"]));
+								continuous_sequences[cf.name]=SContinuousSequence(
+									watoi64(extra_params[L"sequence_id"]), watoi64(extra_params[L"sequence_next"]));
+							}							
 						}
 					}
 					else
@@ -325,8 +333,15 @@ bool FullFileBackup::doFileBackup()
 						{
 							std::wstring t=curr_path;
 							t.erase(0,1);
-							ServerLogger::Log(clientid, L"Stoping shadowcopy \""+t+L"\".", LL_DEBUG);
-							server_download->addToQueueStopShadowcopy(t);
+							if(t==L"urbackup_backup_scripts")
+							{
+								script_dir=false;
+							}
+							else
+							{
+								ServerLogger::Log(clientid, L"Stoping shadowcopy \""+t+L"\".", LL_DEBUG);
+								server_download->addToQueueStopShadowcopy(t);
+							}							
 						}
 						curr_path=ExtractFilePath(curr_path, L"/");
 						curr_os_path=ExtractFilePath(curr_os_path, L"/");
@@ -354,7 +369,7 @@ bool FullFileBackup::doFileBackup()
 					if(!file_ok)
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-							metadata, parent_metadata);
+							metadata, parent_metadata, script_dir);
 					}
 				}
 

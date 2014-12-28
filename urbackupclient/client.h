@@ -141,6 +141,7 @@ public:
 private:
 
 	bool readBackupDirs(void);
+	bool readBackupScripts();
 	bool initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db);
 
 	void indexDirs(void);
@@ -170,6 +171,7 @@ private:
 
 	void execute_prebackup_hook(void);
 	void execute_postindex_hook(void);
+	std::string execute_script(const std::wstring& cmd);
 
 	void start_filesrv(void);
 
@@ -200,7 +202,7 @@ private:
 	void readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files);
 
 	void writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra=std::string());
-
+	bool addBackupScripts(std::fstream& outfile);
 	std::string starttoken;
 
 	std::vector<SBackupDir> backup_dirs;
@@ -258,6 +260,8 @@ private:
 	bool index_error;
 
 	std::vector<std::pair<std::string, int> > vsslog;
+
+	std::vector<std::string> scripts;
 
 	_i64 last_filebackup_filetime;
 

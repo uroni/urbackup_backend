@@ -139,6 +139,8 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		Log("Sending whole block start="+nconvert(chunk->startpos)+" size="+nconvert(blockleft), LL_DEBUG);
 		_u32 r;
 
+		bool script_eof=false;
+
 		do
 		{
 			r=0;
@@ -150,7 +152,14 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 
 				if(r<toread)
 				{
-					if(!readerr)
+					if(curr_file_size==-1)
+					{
+						Log("Script output eof", LL_DEBUG);
+						script_eof=true;
+						memset(chunk_buf+off+r, 0, toread-r);
+						r=toread;
+					}
+					else if(!readerr)
 					{
 						memset(chunk_buf+off+r, 0, toread-r);
 						r=toread;
@@ -201,6 +210,11 @@ bool ChunkSendThread::sendChunk(SChunk *chunk)
 		}
 
 		if( FileServ::isPause() ) Sleep(500);
+
+		if(script_eof)
+		{
+			parent->SendInt(NULL, 0);
+		}
 
 		return true;
 	}
