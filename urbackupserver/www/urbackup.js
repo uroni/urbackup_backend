@@ -318,6 +318,10 @@ function build_main_nav()
 		}
 	}
 	I('main_nav').innerHTML=ndata;
+
+	$('.nav li a').on('click',function(){
+		$('.navbar-collapse.in').collapse('hide');
+	})
 }
 
 function multiplyTimeSpan(ts, m)
