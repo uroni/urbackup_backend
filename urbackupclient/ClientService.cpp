@@ -828,6 +828,10 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_CONTINUOUS_WATCH_START(); continue;
 			}
+			else if( next(cmd, 0, "SCRIPT STDERR ") )
+			{
+				CMD_SCRIPT_STDERR(cmd); continue;
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{

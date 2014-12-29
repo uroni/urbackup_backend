@@ -288,6 +288,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	bool ret = true;
 	bool hash_file = false;
+	bool script_ok = true;
 
 	if(rc!=ERR_SUCCESS)
 	{
@@ -324,6 +325,11 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	}
 	else
 	{
+		if(todl.is_script)
+		{
+			script_ok = logScriptOutput(cfn, todl);
+		}
+
 		if(todl.id>max_ok_id)
 		{
 			max_ok_id=todl.id;
@@ -368,6 +374,12 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old), fd->Size(), todl.metadata, todl.parent_metadata);
 	}
+
+	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
+	{
+		return false;
+	}
+
 	return ret;
 }
 
@@ -456,6 +468,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	bool hash_file;
 
+	bool script_ok = true;
+
 	if(rc!=ERR_SUCCESS)
 	{
 		ServerLogger::Log(clientid, L"Error getting file patch for \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
@@ -493,6 +507,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	}
 	else
 	{
+		if(todl.is_script)
+		{
+			script_ok = logScriptOutput(cfn, todl);
+		}
+
 		if(todl.id>max_ok_id)
 		{
 			max_ok_id=todl.id;
@@ -509,6 +528,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		hash_tmp_destroy.release();
 		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
 			Server->ConvertToUTF8(dlfiles.filepath_old), download_filesize, todl.metadata, todl.parent_metadata);
+	}
+
+	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
+	{
+		return false;
 	}
 
 	if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_SOCKET_ERROR
@@ -905,4 +929,41 @@ bool ServerDownloadThread::isAllDownloadsOk()
 {
 	IScopedLock lock(mutex);
 	return all_downloads_ok;
+}
+
+bool ServerDownloadThread::logScriptOutput(std::wstring cfn, const SQueueItem &todl)
+{
+	std::string script_output = client_main->sendClientMessageRetry("SCRIPT STDERR "+Server->ConvertToUTF8(cfn),
+		L"Error getting script output for command \""+todl.fn+L"\"", 10000, 10, true);
+
+	if(script_output=="err")
+	{
+		ServerLogger::Log(clientid, L"Error getting script output for command \""+todl.fn+L"\" (err response)", LL_ERROR);
+		return false;
+	}
+
+	if(!script_output.empty())
+	{
+		int retval = atoi(getuntil(" ", script_output).c_str());
+
+		std::vector<std::string> lines;
+		Tokenize(getafter(" ", script_output), lines, "\n");
+
+		for(size_t k=0;k<lines.size();++k)
+		{
+			ServerLogger::Log(clientid, Server->ConvertToUTF8(todl.fn) + ": " + trim(lines[k]), retval!=0?LL_ERROR:LL_INFO);
+		}
+
+		if(retval!=0)
+		{
+			ServerLogger::Log(clientid, L"Script \""+todl.fn+L"\" return a nun-null value "+convert(retval)+L". Failing backup.", LL_ERROR);
+			return false;
+		}
+	}
+	else
+	{
+		return false;
+	}
+	
+	return true;
 }

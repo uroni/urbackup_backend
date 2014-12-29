@@ -1486,3 +1486,24 @@ void ClientConnector::CMD_CONTINUOUS_WATCH_START()
 
 	tcpstack.Send(pipe, "OK");
 }
+
+void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
+{
+	std::wstring script_cmd = Server->ConvertToUnicode(cmd.substr(14));
+
+	if(next(script_cmd, 0, L"SCRIPT|"))
+	{
+		script_cmd = script_cmd.substr(7);
+	}
+
+	std::string stderr_out;
+	int exit_code;
+	if(IndexThread::getFileSrv()->getExitInformation(script_cmd, stderr_out, exit_code))
+	{
+		tcpstack.Send(pipe, nconvert(exit_code)+" "+stderr_out);
+	}
+	else
+	{
+		tcpstack.Send(pipe, "err");
+	}
+}

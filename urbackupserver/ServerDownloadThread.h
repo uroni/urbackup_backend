@@ -99,6 +99,8 @@ public:
 		
 	bool load_file_patch(SQueueItem todl);
 
+	bool logScriptOutput(std::wstring cfn, const SQueueItem &todl);
+
 	bool isDownloadOk(size_t id);
 
 	bool isDownloadPartial(size_t id);

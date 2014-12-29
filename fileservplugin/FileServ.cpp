@@ -24,6 +24,7 @@
 #include "../Interface/ThreadPool.h"
 #include <algorithm>
 #include "CUDPThread.h"
+#include "PipeSessions.h"
 
 IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
@@ -138,3 +139,21 @@ bool FileServ::removeIdentity( const std::string &pIdentity )
 		return false;
 	}
 }
+
+bool FileServ::getExitInformation(const std::wstring& cmd, std::string& stderr_data, int& exit_code)
+{
+	SExitInformation exit_info = PipeSessions::getExitInformation(map_file(cmd));
+
+	if(exit_info.created==0)
+	{
+		return false;
+	}
+	else
+	{
+		stderr_data = exit_info.outdata;
+		exit_code = exit_info.rc;
+
+		return true;
+	}
+}
+

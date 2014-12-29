@@ -2171,12 +2171,19 @@ void ClientMain::run_script( std::wstring name, const std::wstring& params, int 
 
 void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloaded, int64 speed_bps )
 {
-	int pc_complete = 0;
-	if(total>0)
+	if(total>0 && total!=LLONG_MAX)
 	{
-		pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
+		int pc_complete = 0;
+		if(total>0)
+		{
+			pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
+		}
+		ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
 	}
-	ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+	else
+	{
+		ServerLogger::Log(clientid, "Loading \""+fn+"\". Loaded "+PrettyPrintBytes(downloaded)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+	}
 }
 
 

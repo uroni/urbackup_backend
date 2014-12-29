@@ -36,6 +36,10 @@ public:
 
 	bool getHasError();
 
+	bool getExitCode(int& exit_code);
+
+	std::string getStdErr();
+
 private:
 
 	bool fillBuffer();

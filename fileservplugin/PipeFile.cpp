@@ -241,6 +241,8 @@ PipeFile::~PipeFile()
 {
 	CloseHandle(hStdout);
 	CloseHandle(hStderr);
+
+	TerminateProcess(proc_info.hProcess, 0);
 }
 
 void PipeFile::operator()()
@@ -349,6 +351,8 @@ bool PipeFile::readStderr()
 	}
 	else if(read>0)
 	{
+		IScopedLock lock(buffer_mutex.get());
+
 		size_t stderr_pos = stderr_ret.size();
 		stderr_ret.resize(stderr_pos + read);
 		memcpy(&stderr_ret[stderr_pos], buf, read);
@@ -412,4 +416,34 @@ bool PipeFile::getHasError()
 	return has_error;
 }
 
+bool PipeFile::getExitCode(int& exit_code)
+{
+	DWORD dwExitCode;
+	BOOL b = GetExitCodeProcess(proc_info.hProcess, &dwExitCode);
+
+	if(!b)
+	{
+		Server->Log("Error getting exit code of process", LL_ERROR);
+
+		return false;
+	}
+	else
+	{
+		if( dwExitCode == STILL_ACTIVE )
+		{
+			Server->Log("Process is still active", LL_ERROR);
+			return false;
+		}
+
+		exit_code = static_cast<int>(dwExitCode);
+
+		return true;
+	}
+}
+
+std::string PipeFile::getStdErr()
+{
+	IScopedLock lock(buffer_mutex.get());
+	return stderr_ret;
+}
 

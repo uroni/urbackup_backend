@@ -17,6 +17,7 @@ public:
 	bool removeIdentity(const std::string &pIdentity);
 	void setPause(bool b);
 	bool getPause(void);
+	bool getExitInformation(const std::wstring& cmd, std::string& stderr_data, int& exit_code);
 
 	virtual void runClient(IPipe *cp);
 

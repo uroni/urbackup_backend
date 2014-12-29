@@ -181,6 +181,8 @@ private:
 	void CMD_GET_VSSLOG(const std::string &cmd);
 	void CMD_GET_ACCESS_PARAMS(str_map &params);
 	void CMD_CONTINUOUS_WATCH_START();
+	void CMD_SCRIPT_STDERR(const std::string& cmd);
+
 	int getCapabilities();
 
 	IPipe *pipe;
