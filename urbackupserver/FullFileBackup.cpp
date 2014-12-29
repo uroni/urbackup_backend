@@ -193,7 +193,7 @@ bool FullFileBackup::doFileBackup()
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, save_incomplete_files, clientid, clientname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
-		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version));
+		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version, 0));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 

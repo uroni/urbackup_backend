@@ -77,7 +77,7 @@ public:
 	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 		const std::wstring& clientname,
 		bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-		int filesrv_protocol_version);
+		int filesrv_protocol_version, int incremental_num);
 
 	~ServerDownloadThread();
 
@@ -158,6 +158,7 @@ private:
 	ClientMain* client_main;
 	int filesrv_protocol_version;
 	bool skipping;
+	int incremental_num;
 
 	bool is_offline;
 

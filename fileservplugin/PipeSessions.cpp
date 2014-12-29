@@ -2,6 +2,7 @@
 #include "../stringtools.h"
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
+#include "FileServ.h"
 
 volatile bool PipeSessions::do_stop = false;
 IMutex* PipeSessions::mutex = NULL;
@@ -22,7 +23,19 @@ IFile* PipeSessions::getFile(const std::wstring& cmd)
 	}
 	else
 	{
-		PipeFile* nf = new PipeFile(getuntil(L"|", cmd));
+		std::wstring script_cmd = getuntil(L"|", cmd);
+		int backupnum = watoi(getuntil(L"|", getafter(L"|", cmd)));
+
+		std::wstring output_filename = ExtractFileName(script_cmd);
+
+		script_cmd.erase(script_cmd.size()-output_filename.size(), output_filename.size());
+
+		std::wstring script_filename = FileServ::mapScriptOutputNameToScript(output_filename);
+
+		script_cmd = L"\"" + script_cmd + script_filename +
+			L"\" \"" + output_filename + L"\" "+convert(backupnum);
+
+		PipeFile* nf = new PipeFile(script_cmd);
 		if(nf->getHasError())
 		{
 			delete nf;

@@ -138,6 +138,8 @@ public:
 	static bool isIncluded(const std::vector<std::wstring>& include_dirs, const std::vector<int>& include_depth,
 		const std::vector<std::wstring>& include_prefix, const std::wstring &path, bool *adding_worthless);
 
+	static std::wstring mapScriptOutputName(const std::wstring& fn);
+
 private:
 
 	bool readBackupDirs(void);
@@ -261,7 +263,7 @@ private:
 
 	std::vector<std::pair<std::string, int> > vsslog;
 
-	std::vector<std::string> scripts;
+	std::vector<std::pair<std::string, std::string> > scripts;
 
 	_i64 last_filebackup_filetime;
 

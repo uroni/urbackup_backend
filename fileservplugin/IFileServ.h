@@ -21,6 +21,7 @@ public:
 	virtual bool getPause(void)=0;
 	virtual void runClient(IPipe *cp)=0;
 	virtual bool getExitInformation(const std::wstring& cmd, std::string& stderr_data, int& exit_code) = 0;
+	virtual void addScriptOutputFilenameMapping(const std::wstring& script_output_fn, const std::wstring& script_fn) = 0;
 };
 
 #endif //IFILESERV_H

@@ -1242,15 +1242,32 @@ bool IndexThread::readBackupScripts()
 	std::vector<std::string> lines;
 	Tokenize(output, lines, "\n");
 
+	IScopedLock lock(filesrv_mutex);
+
 	if(!lines.empty())
 	{
-
 		for(size_t i=0;i<lines.size();++i)
 		{
 			std::string line = trim(lines[i]);
 			if(!line.empty())
 			{
-				scripts.push_back(line);
+				std::string script = getuntil(" ", line);
+				std::string outputfn;
+				if(!script.empty())
+				{
+					outputfn = getafter(" ", line);
+				}
+				else
+				{
+					script = line;
+				}
+				scripts.push_back(std::make_pair(script, outputfn));
+				
+				if(filesrv!=NULL && !outputfn.empty())
+				{
+					filesrv->addScriptOutputFilenameMapping(Server->ConvertToUnicode(outputfn),
+						Server->ConvertToUnicode(script));
+				}
 			}
 		}
 
@@ -3463,7 +3480,14 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 
 		for(size_t i=0;i<scripts.size();++i)
 		{
-			outfile << "f\"" << scripts[i] << "\" -1 " << Server->getRandomNumber() << "\n";
+			if(!scripts[i].second.empty())
+			{
+				outfile << "f\"" << scripts[i].second << "\" -1 " << Server->getRandomNumber() << "\n";
+			}
+			else
+			{
+				outfile << "f\"" << scripts[i].first << "\" -1 " << Server->getRandomNumber() << "\n";
+			}			
 		}
 
 		outfile << "d\"..\"\n";

@@ -712,7 +712,7 @@ private:
 			fileclient_chunked.get(), continuous_path,
 			continuous_hash_path, continuous_path, std::wstring(), hashed_transfer_full,
 			false, clientid, clientname, use_tmpfiles, tmpfile_path, server_token,
-			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version));
+			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version, 0));
 
 		server_download_ticket = Server->getThreadPool()->execute(server_download.get());
 	}

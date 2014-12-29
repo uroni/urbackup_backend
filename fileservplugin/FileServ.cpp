@@ -29,6 +29,8 @@
 IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
 bool FileServ::pause=false;
+std::map<std::wstring, std::wstring> FileServ::script_output_names;
+
 
 FileServ::FileServ(bool *pDostop, const std::wstring &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
 	: servername(pServername), serverticket(serverticket)
@@ -154,6 +156,28 @@ bool FileServ::getExitInformation(const std::wstring& cmd, std::string& stderr_d
 		exit_code = exit_info.rc;
 
 		return true;
+	}
+}
+
+void FileServ::addScriptOutputFilenameMapping(const std::wstring& script_output_fn, const std::wstring& script_fn)
+{
+	IScopedLock lock(mutex);
+
+	script_output_names[script_output_fn] = script_fn;
+}
+
+std::wstring FileServ::mapScriptOutputNameToScript(const std::wstring& script_fn)
+{
+	IScopedLock lock(mutex);
+
+	std::map<std::wstring, std::wstring>::iterator it = script_output_names.find(script_fn);
+	if(it!=script_output_names.end())
+	{
+		return it->second;
+	}
+	else
+	{
+		return script_fn;
 	}
 }
 

@@ -18,6 +18,7 @@ public:
 	void setPause(bool b);
 	bool getPause(void);
 	bool getExitInformation(const std::wstring& cmd, std::string& stderr_data, int& exit_code);
+	void addScriptOutputFilenameMapping(const std::wstring& script_output_fn, const std::wstring& script_fn);
 
 	virtual void runClient(IPipe *cp);
 
@@ -28,6 +29,8 @@ public:
 
 	static bool checkIdentity(const std::string &pIdentity);
 
+	static std::wstring mapScriptOutputNameToScript(const std::wstring& script_fn);
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;
@@ -35,6 +38,7 @@ private:
 
 	static std::vector<std::string> identities;
 	static bool pause;
+	static std::map<std::wstring, std::wstring> script_output_names;
 	
 	static IMutex *mutex;
 };

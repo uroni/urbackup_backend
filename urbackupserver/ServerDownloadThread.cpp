@@ -40,13 +40,13 @@ namespace
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::wstring& clientname, bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-	int filesrv_protocol_version)
+	int filesrv_protocol_version, int incremental_num)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
-	all_downloads_ok(true)
+	all_downloads_ok(true), incremental_num(incremental_num)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -391,7 +391,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(todl.is_script)
 	{
-		cfn = L"SCRIPT|" + cfn + L"|" + convert(Server->getRandomNumber());
+		cfn = L"SCRIPT|" + cfn + L"|" + convert(incremental_num) + L"|" + convert(Server->getRandomNumber());
 	}
 
 	bool full_dl=false;
@@ -402,7 +402,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
-			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.parent_metadata, true);
+			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.parent_metadata, todl.is_script, true);
 			return true;
 		}
 	}
@@ -645,7 +645,7 @@ std::wstring ServerDownloadThread::getDLPath( SQueueItem todl )
 
 	if(todl.is_script)
 	{
-		cfn = L"SCRIPT|" + cfn + L"|" + convert(Server->getRandomNumber());
+		cfn = L"SCRIPT|" + cfn + L"|" + convert(incremental_num) + L"|" + convert(Server->getRandomNumber());
 	}
 	else if(!server_token.empty())
 	{

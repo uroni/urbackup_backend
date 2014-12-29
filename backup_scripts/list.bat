@@ -1,3 +1,5 @@
+@echo off
+
 REM Copyright (c) 2014 Martin Raiber 
 REM
 REM Permission is hereby granted, free of charge, to any person obtaining a 
@@ -19,8 +21,6 @@ REM CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 REM TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 REM SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
 
-@echo off
-
 call %~dp0\mariadb.conf.bat
 
-IF NOT %MARIADB_ENABLED%==0 echo mariadb.bat
+IF NOT %MARIADB_ENABLED%==0 echo mariadb.bat mariadb_dump.sql
