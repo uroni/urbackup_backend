@@ -391,7 +391,9 @@ void IndexThread::operator()(void)
 			data.getInt(&with_permissions);
 
 			//incr backup
-			if(!readBackupDirs() && !readBackupScripts())
+			bool has_dirs = readBackupDirs();
+			bool has_scripts = readBackupScripts();
+			if( !has_dirs && !has_scripts )
 			{
 				contractor->Write("no backup dirs");
 				continue;
@@ -472,7 +474,9 @@ void IndexThread::operator()(void)
 			data.getInt(&index_group);
 			data.getInt(&with_permissions);
 
-			if(!readBackupDirs() && !readBackupScripts())
+			bool has_dirs = readBackupDirs();
+			bool has_scripts = readBackupScripts();
+			if(!has_dirs && !has_scripts)
 			{
 				contractor->Write("no backup dirs");
 				continue;
@@ -1234,7 +1238,7 @@ bool IndexThread::readBackupScripts()
 	script_cmd = script_path + os_file_sep() + L"list.bat";
 #else
 	script_path = L"/etc/urbackup/scripts";
-	script_path = script_path + os_file_sep() + L"list";
+	script_cmd = script_path + os_file_sep() + L"list";
 #endif
 
 	std::string output = execute_script(script_cmd);
