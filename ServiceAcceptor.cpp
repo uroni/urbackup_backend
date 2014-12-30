@@ -76,7 +76,7 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)
 	{
-		Server->Log(name+": Failed binding SOCKET to Port "+nconvert(port),LL_ERROR);
+		Server->Log(name+": Failed binding socket to port "+nconvert(port)+". Another instance of this application may already be active and bound to this port.",LL_ERROR);
 		has_error=true;
 		return;
 	}
