@@ -817,7 +817,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 
 				if(r)
 				{
-					addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, cow_filesize>0?cow_filesize:t_filesize, 0, 0, 0, false);
+					addFileSQL(backupid, clientid, incremental, tfn, hash_fn, sha2, t_filesize, cow_filesize>0?cow_filesize:t_filesize, 0, 0, 0, tries_once || hardlink_limit);
 				}
 			}
 		}
