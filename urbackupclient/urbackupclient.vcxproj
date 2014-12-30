@@ -112,11 +112,11 @@
     <ClInclude Include="InternetClient.h" />
     <ClInclude Include="PersistentOpenFiles.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
+    <ClInclude Include="tokens.h" />
     <ClInclude Include="watchdir\ContinuousWatchEnqueue.h" />
     <ClInclude Include="watchdir\JournalDAO.h" />
     <ClInclude Include="win_all_volumes.h" />
     <ClInclude Include="win_sysvol.h" />
-    <ClInclude Include="win_tokens.h" />
     <ClInclude Include="win_ver.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
