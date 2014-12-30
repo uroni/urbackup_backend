@@ -181,7 +181,7 @@ bool os_remove_dir(const std::wstring &path)
 	return rmdir(Server->ConvertToUTF8(path).c_str())==0;
 }
 
-bool isDirectory(const std::wstring &path)
+bool isDirectory(const std::wstring &path, void* transaction)
 {
         struct stat64 f_info;
 		int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
