@@ -31,6 +31,7 @@
 #include <memory.h>
 #include <algorithm>
 #include <assert.h>
+#include <limits.h>
 
 #ifndef _WIN32
 #include <errno.h>
