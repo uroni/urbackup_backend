@@ -1141,27 +1141,24 @@ bool upgrade35_36()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
-	if(!db->Write("CREATE TEMPORARY TABLE files_bck ("
-		"id INTEGER PRIMARY KEY,"
-		"backupid INTEGER,"
-		"fullpath TEXT,"
-		"shahash BLOB,"
-		"filesize INTEGER,"
-		"created DATE DEFAULT CURRENT_TIMESTAMP"
-		", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT);"))
-	{
-		return false;
-	}
-
-	if(!db->Write("INSERT INTO files_bck SELECT rowid, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath FROM files"))
+	if(!db->Write("ALTER TABLE files RENAME TO files_bck"))
 	{
 		return false;
 	}
 
 	if(!db->Write("DROP INDEX files_idx") ||
 		!db->Write("DROP INDEX files_did_count") ||
-		!db->Write("DROP INDEX files_backupid") ||
-		!db->Write("DROP TABLE files"))
+		!db->Write("DROP INDEX files_backupid") )
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP TABLE files_del"))
+	{
+		return false;
+	}
+
+	if(!db->Write("DROP TABLE files_new"))
 	{
 		return false;
 	}
@@ -1173,27 +1170,17 @@ bool upgrade35_36()
 		"shahash BLOB,"
 		"filesize INTEGER,"
 		"created DATE DEFAULT CURRENT_TIMESTAMP"
-		", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER);"))
+		", rsize INTEGER, clientid INTEGER, incremental INTEGER, hashpath TEXT, next_entry INTEGER, prev_entry INTEGER, pointed_to INTEGER)"))
 	{
 		return false;
 	}
 
-	if(!db->Write("INSERT INTO files SELECT id, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, 0 AS next_entry, 0 AS prev_entry, 0 AS pointed_to FROM files_bck"))
+	if(!db->Write("INSERT INTO files SELECT rowid, backupid, fullpath, shahash, filesize, created, rsize, clientid, incremental, hashpath, 0 AS next_entry, 0 AS prev_entry, 0 AS pointed_to FROM files_bck"))
 	{
 		return false;
 	}
 
 	if(!db->Write("DROP TABLE files_bck"))
-	{
-		return false;
-	}
-
-	if(!db->Write("DROP TABLE files_del"))
-	{
-		return false;
-	}
-
-	if(!db->Write("DROP TABLE files_new"))
 	{
 		return false;
 	}
