@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+CDIR=`dirname $0`
+
+. $CDIR/mariadb.conf
+
+alias errcho='>&2 echo'
+
+TIME=`date`
+errcho "Starting backup of MariaDB at $TIME..."
+
+$MARIADB_DUMP --user=$MARIADB_BACKUP_USER --password=$MARIADB_BACKUP_PASSWORD --all-databases
+
+TIME=`date`
+errcho "Backup of MariaDB finished at $TIME."
+
+exit 0
