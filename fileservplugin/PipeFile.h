@@ -1,9 +1,12 @@
 #pragma once
 #include "../Interface/File.h"
 #include "../Interface/Thread.h"
-#include <Windows.h>
 #include "../Interface/Mutex.h"
 #include <memory>
+
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 
 class PipeFile : public IFile, public IThread
@@ -11,6 +14,8 @@ class PipeFile : public IFile, public IThread
 public:
 	PipeFile(const std::wstring& pCmd);
 	~PipeFile();
+
+	void init();
 
 	virtual void operator()();
 
@@ -42,6 +47,12 @@ public:
 
 private:
 
+	bool readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read);
+	bool readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read);
+#ifdef _WIN32
+	bool readIntoBuffer(HANDLE hStd, char* buf, size_t buf_avail, size_t& read);
+#endif
+
 	bool fillBuffer();
 	bool readStderr();
 
@@ -63,10 +74,12 @@ private:
 	bool has_eof;
 	int64 stream_size;
 
+#ifdef _WIN32
 	HANDLE hFile;
 	HANDLE hStdout;
 	HANDLE hStderr;
 	PROCESS_INFORMATION proc_info;
+#endif
 
 	int64 last_read;
 };

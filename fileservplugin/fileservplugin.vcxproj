@@ -191,6 +191,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="map_buffer.cpp" />
     <ClCompile Include="PipeFile.cpp" />
+    <ClCompile Include="PipeFileWin.cpp" />
     <ClCompile Include="PipeSessions.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
     <ClCompile Include="..\stringtools.cpp" />

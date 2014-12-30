@@ -6,73 +6,11 @@
 const size_t buffer_size = 5*1024*1024;
 const _u32 buffer_keep_free = 1*1024*1024;
 
-PipeFile::PipeFile(const std::wstring& pCmd)
-	: curr_pos(0), has_error(false), cmd(pCmd),
-	hStderr(INVALID_HANDLE_VALUE),
-	hStdout(INVALID_HANDLE_VALUE), buf_w_pos(0), buf_r_pos(0), buf_w_reserved_pos(0),
-	threadidx(0), has_eof(false), stream_size(-1),
-	buf_circle(false)
+void PipeFile::init()
 {
 	last_read = Server->getTimeMS();
 
 	buffer_mutex.reset(Server->createMutex());
-
-	SECURITY_ATTRIBUTES saAttr = {}; 
-	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
-	saAttr.bInheritHandle = TRUE; 
-	saAttr.lpSecurityDescriptor = NULL; 
-
-	HANDLE hStdoutW;
-	HANDLE hStderrW;
-
-	if(!CreatePipe(&hStdout, &hStdoutW, &saAttr, 0))
-	{
-		Server->Log("Error creating stdout pipe", LL_ERROR);
-		has_error=true;
-		return;
-	}
-
-	if(!SetHandleInformation(hStdout, HANDLE_FLAG_INHERIT, 0))
-	{
-		Server->Log("Error setting handle information on stdout pipe", LL_ERROR);
-		has_error=true;
-		return;
-	}
-
-	if(!CreatePipe(&hStderr, &hStderrW, &saAttr, 0))
-	{
-		Server->Log("Error creating stderr pipe", LL_ERROR);
-		has_error=true;
-		return;
-	}
-
-	if(!SetHandleInformation(hStderr, HANDLE_FLAG_INHERIT, 0))
-	{
-		Server->Log("Error setting handle information on stderr pipe", LL_ERROR);
-		has_error=true;
-		return;
-	}
-
-	ZeroMemory( &proc_info, sizeof(PROCESS_INFORMATION) );
-
-	STARTUPINFOW start_info = {};
-	start_info.cb = sizeof(STARTUPINFOW); 
-	start_info.hStdError = hStderrW;
-	start_info.hStdOutput = hStdoutW;
-	start_info.dwFlags |= STARTF_USESTDHANDLES;
-
-	BOOL b = CreateProcessW(NULL, const_cast<LPWSTR>(cmd.c_str()),
-		&saAttr, NULL, TRUE, 0, NULL, NULL, &start_info,
-		&proc_info);
-
-	if(!b)
-	{
-		Server->Log(L"Error starting script \"" + cmd + L"\"", LL_ERROR);
-		has_error=true;
-	}
-
-	CloseHandle(hStderrW);
-	CloseHandle(hStdoutW);
 
 	if(!has_error)
 	{
@@ -81,6 +19,7 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 		Server->getThreadPool()->execute(this);
 	}
 }
+
 
 std::string PipeFile::Read(_u32 tr, bool *has_error/*=NULL*/)
 {
@@ -237,14 +176,6 @@ std::wstring PipeFile::getFilenameW(void)
 	return cmd;
 }
 
-PipeFile::~PipeFile()
-{
-	CloseHandle(hStdout);
-	CloseHandle(hStderr);
-
-	TerminateProcess(proc_info.hProcess, 0);
-}
-
 void PipeFile::operator()()
 {
 	IScopedLock lock(buffer_mutex.get());
@@ -316,11 +247,11 @@ bool PipeFile::fillBuffer()
 
 	buf_w_reserved_pos = buf_w_pos + bsize_free;
 
-	DWORD read = 0;
+	size_t read = 0;
 
 	lock.relock(NULL);
 
-	BOOL b = ReadFile(hStdout, &buffer[buf_w_pos], static_cast<DWORD>(bsize_free), &read, NULL);
+	bool b = readStderrIntoBuffer(&buffer[buf_w_pos], bsize_free, read);
 
 	lock.relock(buffer_mutex.get());
 
@@ -342,8 +273,8 @@ bool PipeFile::readStderr()
 {
 	char buf[4096];
 
-	DWORD read = 0;
-	BOOL b = ReadFile(hStderr, buf, 4096, &read, NULL);
+	size_t read = 0;
+	bool b = readStdoutIntoBuffer(buf, 4096, read);
 
 	if(!b)
 	{
@@ -416,34 +347,8 @@ bool PipeFile::getHasError()
 	return has_error;
 }
 
-bool PipeFile::getExitCode(int& exit_code)
-{
-	DWORD dwExitCode;
-	BOOL b = GetExitCodeProcess(proc_info.hProcess, &dwExitCode);
-
-	if(!b)
-	{
-		Server->Log("Error getting exit code of process", LL_ERROR);
-
-		return false;
-	}
-	else
-	{
-		if( dwExitCode == STILL_ACTIVE )
-		{
-			Server->Log("Process is still active", LL_ERROR);
-			return false;
-		}
-
-		exit_code = static_cast<int>(dwExitCode);
-
-		return true;
-	}
-}
-
 std::string PipeFile::getStdErr()
 {
 	IScopedLock lock(buffer_mutex.get());
 	return stderr_ret;
 }
-
