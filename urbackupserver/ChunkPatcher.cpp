@@ -78,7 +78,7 @@ bool ChunkPatcher::ApplyPatch(IFile *file, IFile *patch)
 		bool patching_finished=false;
 		if(tr==0 && file_pos+next_header.patch_size>filesize)
 		{
-			next_header.patch_size = filesize - file_pos;
+			next_header.patch_size = static_cast<unsigned int>(filesize - file_pos);
 			patching_finished=true;
 		}
 		else if(file_pos>=filesize)

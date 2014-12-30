@@ -200,9 +200,6 @@
     <ClInclude Include="win_all_volumes.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="win_tokens.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="PersistentOpenFiles.h">
       <Filter>watchdir</Filter>
     </ClInclude>
@@ -216,6 +213,9 @@
       <Filter>watchdir</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\glob.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="tokens.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

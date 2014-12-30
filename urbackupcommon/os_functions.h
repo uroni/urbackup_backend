@@ -33,7 +33,7 @@ void removeFile(const std::wstring &path);
 
 void moveFile(const std::wstring &src, const std::wstring &dst);
 
-bool isDirectory(const std::wstring &path);
+bool isDirectory(const std::wstring &path, void* transaction=NULL);
 
 int64 os_atoi64(const std::string &str);
 
