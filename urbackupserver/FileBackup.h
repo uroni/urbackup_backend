@@ -62,6 +62,7 @@ public:
 
 protected:
 	virtual bool doBackup();
+
 	virtual bool doFileBackup() = 0;
 
 	ServerBackupDao::SDuration interpolateDurations(const std::vector<ServerBackupDao::SDuration>& durations);
@@ -92,6 +93,7 @@ protected:
 	void createUserViews(IFile* file_list_f);
 	bool createUserView(IFile* file_list_f, const std::vector<int>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots);
 	std::vector<size_t> findIdenticalPermissionRoots(IFile* file_list_f, const std::vector<int>& ids);
+	void deleteBackup();
 
 	int group;
 	bool use_tmpfiles;

@@ -154,7 +154,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group, b
 			start_backup_cmd+="incr";
 	}
 
-	start_backup_cmd+="&with_permissions=1";
+	start_backup_cmd+="&with_permissions=1&with_scripts=1";
 
 	if(with_token)
 	{
@@ -492,6 +492,7 @@ bool FileBackup::doBackup()
 	{
 		pingthread->setStop(true);
 		Server->getThreadPool()->waitFor(pingthread_ticket);
+		pingthread=NULL;
 	}	
 
 	local_hash->deinitDatabase();
@@ -510,24 +511,8 @@ bool FileBackup::doBackup()
 	{
 		ServerLogger::Log(clientid, "Backup had an early error. Deleting partial backup.", LL_ERROR);
 
-		if(backupid==-1)
-		{
-			if(use_snapshots)
-			{
-				if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
-				{
-					remove_directory_link_dir(backuppath, *backup_dao, clientid);
-				}
-			}
-			else
-			{
-				remove_directory_link_dir(backuppath, *backup_dao, clientid);
-			}	
-		}
-		else
-		{				
-			Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true) ) );
-		}
+		deleteBackup();
+
 	}
 	else
 	{
@@ -1277,5 +1262,27 @@ void FileBackup::saveUsersOnClient()
 		{
 			backup_dao->addClientToken(clientid, urbackup_tokens->getValue(keys[i], std::wstring()));
 		}
+	}
+}
+
+void FileBackup::deleteBackup()
+{
+	if(backupid==-1)
+	{
+		if(use_snapshots)
+		{
+			if(!SnapshotHelper::removeFilesystem(clientname, backuppath_single) )
+			{
+				remove_directory_link_dir(backuppath, *backup_dao, clientid);
+			}
+		}
+		else
+		{
+			remove_directory_link_dir(backuppath, *backup_dao, clientid);
+		}	
+	}
+	else
+	{				
+		Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true) ) );
 	}
 }
