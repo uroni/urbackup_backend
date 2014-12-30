@@ -78,6 +78,8 @@ bool IncrFileBackup::doFileBackup()
 	{
 		ServerLogger::Log(clientid, "Cannot retrieve last file backup when doing incremental backup. Doing full backup now...", LL_WARNING);
 
+		deleteBackup();
+
 		if(use_snapshots)
 		{
 			bool b=SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)  && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));
