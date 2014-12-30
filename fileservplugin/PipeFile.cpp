@@ -253,7 +253,7 @@ bool PipeFile::fillBuffer()
 
 	lock.relock(NULL);
 
-	bool b = readStderrIntoBuffer(&buffer[buf_w_pos], bsize_free, read);
+	bool b = readStdoutIntoBuffer(&buffer[buf_w_pos], bsize_free, read);
 
 	lock.relock(buffer_mutex.get());
 
@@ -276,7 +276,7 @@ bool PipeFile::readStderr()
 	char buf[4096];
 
 	size_t read = 0;
-	bool b = readStdoutIntoBuffer(buf, 4096, read);
+	bool b = readStderrIntoBuffer(buf, 4096, read);
 
 	if(!b)
 	{

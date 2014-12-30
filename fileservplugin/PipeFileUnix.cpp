@@ -9,6 +9,11 @@
 #include <stdlib.h>
 
 PipeFile::PipeFile(const std::wstring& pCmd)
+	: curr_pos(0), has_error(false), cmd(pCmd),
+		hStderr(0),
+		hStdout(0), buf_w_pos(0), buf_r_pos(0), buf_w_reserved_pos(0),
+		threadidx(0), has_eof(false), stream_size(-1),
+		buf_circle(false)
 {
 	int stdout_pipe[2];
 
@@ -56,6 +61,8 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 
 		hStdout = stdout_pipe[0];
 		hStderr = stderr_pipe[0];
+
+		init();
 	}
 }
 

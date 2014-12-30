@@ -1284,7 +1284,7 @@ bool IndexThread::readBackupScripts()
 
 		if(filesrv!=NULL)
 		{
-			shareDir(L"", L"urbackup_backup_scripts", script_path);
+			filesrv->shareDir(L"urbackup_backup_scripts", script_path);
 		}
 	}
 	

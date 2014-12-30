@@ -299,7 +299,7 @@ bool InternetClient::tryToConnect(IScopedLock *lock)
 		return false;
 	}
 
-	for(size_t i=0;server_settings.servers.size();++i)
+	for(size_t i=0;i<server_settings.servers.size();++i)
 	{
 		std::string name=server_settings.servers[i].first;
 

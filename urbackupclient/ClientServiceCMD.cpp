@@ -201,7 +201,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	if(params.find(L"with_scripts")!=params.end())
 	{
-		flags |= flag_with_permissions;
+		flags |= flag_with_scripts;
 	}
 
 	if(end_to_end_file_backup_verification_enabled)
@@ -286,7 +286,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 	if(params.find(L"with_scripts")!=params.end())
 	{
-		flags |= flag_with_permissions;
+		flags |= flag_with_scripts;
 	}
 
 	if(end_to_end_file_backup_verification_enabled)
