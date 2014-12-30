@@ -100,22 +100,22 @@ bool PipeFile::getExitCode(int& exit_code)
 	}
 }
 
-bool PipeFile::readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read)
+bool PipeFile::readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes)
 {
-	return readIntoBuffer(hStdout, buf, buf_avail, read);
+	return readIntoBuffer(hStdout, buf, buf_avail, read_bytes);
 }
 
-bool PipeFile::readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read)
+bool PipeFile::readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes)
 {
-	return readIntoBuffer(hStderr, buf, buf_avail, read);
+	return readIntoBuffer(hStderr, buf, buf_avail, read_bytes);
 }
 
-bool PipeFile::readIntoBuffer(HANDLE hStd, char* buf, size_t buf_avail, size_t& read)
+bool PipeFile::readIntoBuffer(HANDLE hStd, char* buf, size_t buf_avail, size_t& read_bytes)
 {
 	DWORD dwread = 0;
 	BOOL b = ReadFile(hStd, buf, static_cast<DWORD>(buf_avail), &dwread, NULL);
 
-	read = static_cast<size_t>(dwread);
+	read_bytes = static_cast<size_t>(dwread);
 
 	if(b)
 	{

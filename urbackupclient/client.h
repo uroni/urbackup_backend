@@ -6,7 +6,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "clientdao.h"
 #include <map>
-#include "win_tokens.h"
+#include "tokens.h"
 
 #ifdef _WIN32
 #ifndef VSS_XP

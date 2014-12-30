@@ -663,3 +663,30 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 		return true;
 	}
 }
+
+SFile getFileMetadata( const std::wstring &path )
+{
+	SFile ret = {};
+	ret.name=path;
+
+	struct stat64 f_info;
+	int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+
+	if(rc==0)
+	{
+		if(S_ISDIR(f_info.st_mode) )
+		{
+			ret.isdir = true;
+		}
+
+		ret.size = f_info.st_size;
+		ret.last_modified = f_info.st_mtime;
+		ret.created = f_info.st_ctime;
+
+		return ret;
+	}
+	else
+	{
+		return SFile();
+	}
+}

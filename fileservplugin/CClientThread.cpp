@@ -34,52 +34,22 @@
 #include "../urbackupcommon/sha2/sha2.h"
 
 #include <algorithm>
+#include <limits.h>
 #include <memory.h>
 #include "FileServFactory.h"
 #include "../urbackupcommon/os_functions.h"
 #include "PipeSessions.h"
 
+#ifndef _WIN32
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
 #define SEND_TIMEOUT 300000
 
-#ifdef _WIN32
-bool isDirectory(const std::wstring &path)
-{
-        DWORD attrib = GetFileAttributesW(path.c_str());
-
-        if ( attrib == 0xFFFFFFFF || !(attrib & FILE_ATTRIBUTE_DIRECTORY) )
-        {
-                return false;
-        }
-        else
-        {
-                return true;
-        }
-}
-#else
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-bool isDirectory(const std::wstring &path)
-{
-        struct stat64 f_info;
-		int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
-		if(rc!=0)
-		{
-			return false;
-		}
-
-        if ( S_ISDIR(f_info.st_mode) )
-        {
-                return true;
-        }
-        else
-        {
-                return false;
-        }
-}
-#endif
 
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 {
@@ -731,7 +701,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 							memset(buf, 0, s_bsize);
 							while(foffset<filesize)
 							{
-								rc=SendInt(buf, (std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
+								rc=SendInt(buf, (std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset)));
 								if(rc==SOCKET_ERROR)
 								{
 									Log("Error: Sending data failed");
@@ -954,9 +924,9 @@ bool CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 	}
 }
 #else
-void CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last)
+bool CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last)
 {
-
+	return false;
 }
 #endif
 

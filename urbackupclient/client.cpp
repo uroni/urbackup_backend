@@ -34,7 +34,7 @@
 #include <algorithm>
 #include <fstream>
 #include <stdlib.h>
-#include "win_tokens.h"
+#include "tokens.h"
 #include "file_permissions.h"
 
 //For truncating files
@@ -1234,7 +1234,7 @@ bool IndexThread::readBackupScripts()
 	script_cmd = script_path + os_file_sep() + L"list.bat";
 #else
 	script_path = L"/etc/urbackup/scripts";
-	script_path = script_path + os_file_sep() + "list";
+	script_path = script_path + os_file_sep() + L"list";
 #endif
 
 	std::string output = execute_script(script_cmd);
@@ -1394,6 +1394,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 	}
 #else
 	use_db=false;
+	bool dir_changed=true;
 #endif
 	std::vector<SFileAndHash> fs_files;
 	if(!use_db || dir_changed )
@@ -3439,7 +3440,7 @@ std::string IndexThread::execute_script(const std::wstring& cmd)
 #ifdef _WIN32
 	FILE* fp = _wpopen(cmd.c_str(), L"rb");
 #else
-	FILE* fp = popen(Server->ConvertToUTF8(name).c_str(), "r");
+	FILE* fp = popen(Server->ConvertToUTF8(cmd).c_str(), "r");
 #endif
 
 	if(!fp)

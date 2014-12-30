@@ -15,6 +15,7 @@
 #include "win_sysvol.h"
 #include "win_ver.h"
 #include "win_all_volumes.h"
+#include "DirectoryWatcherThread.h"
 #else
 #include "lin_ver.h"
 std::wstring getSysVolume(std::wstring &mpath){ return L""; }
@@ -24,7 +25,6 @@ std::wstring getEspVolume(std::wstring &mpath){ return L""; }
 
 #include <stdlib.h>
 #include <limits.h>
-#include "DirectoryWatcherThread.h"
 
 
 #ifndef _WIN32

@@ -1,5 +1,7 @@
 #include "PipeFile.h"
 #include <assert.h>
+#include <stdexcept>
+#include <memory.h>
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
 
@@ -46,7 +48,7 @@ std::string PipeFile::Read(_u32 tr, bool *has_error/*=NULL*/)
 		if(tr>0)
 		{
 			ret.resize(tr);
-			read(&ret[0], tr);
+			readBuf(&ret[0], tr);
 		}		
 		if(getReadAvail()==0)
 		{
@@ -57,7 +59,7 @@ std::string PipeFile::Read(_u32 tr, bool *has_error/*=NULL*/)
 	else
 	{
 		std::string ret;
-		read(&ret[0], tr);
+		readBuf(&ret[0], tr);
 		return ret;
 	}
 }
@@ -78,7 +80,7 @@ _u32 PipeFile::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 	if(has_eof)
 	{
 		size_t tr = (std::min)(getReadAvail(), static_cast<size_t>(bsize));
-		read(buffer, tr);
+		readBuf(buffer, tr);
 		if(getReadAvail()==0)
 		{
 			stream_size=curr_pos;
@@ -87,7 +89,7 @@ _u32 PipeFile::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 	}
 	else
 	{
-		read(buffer, bsize);
+		readBuf(buffer, bsize);
 		return bsize;
 	}
 }
@@ -212,7 +214,7 @@ bool PipeFile::fillBuffer()
 		if(buf_r_pos-buf_w_pos<buffer_keep_free)
 		{
 			lock.relock(NULL);
-			Sleep(10);
+			Server->wait(10);
 			return true;
 		}
 
@@ -227,7 +229,7 @@ bool PipeFile::fillBuffer()
 		if(buf_r_pos<buffer_keep_free)
 		{
 			lock.relock(NULL);
-			Sleep(10);
+			Server->wait(10);
 			return true;
 		}
 
@@ -241,7 +243,7 @@ bool PipeFile::fillBuffer()
 	if(bsize_free==0)
 	{
 		lock.relock(NULL);
-		Sleep(10);
+		Server->wait(10);
 		return true;
 	}
 
@@ -304,7 +306,7 @@ size_t PipeFile::getReadAvail()
 	}
 }
 
-void PipeFile::read(char* buf, size_t toread)
+void PipeFile::readBuf(char* buf, size_t toread)
 {
 	if(buf_w_pos>=buf_r_pos)
 	{
@@ -332,7 +334,7 @@ void PipeFile::read(char* buf, size_t toread)
 			buf_r_pos = 0;
 			curr_pos+=cread;
 
-			read(buf + cread, toread - cread);
+			readBuf(buf + cread, toread - cread);
 		}		
 	}
 }

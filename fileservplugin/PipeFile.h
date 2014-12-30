@@ -47,17 +47,19 @@ public:
 
 private:
 
-	bool readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read);
-	bool readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read);
+	bool readStdoutIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes);
+	bool readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes);
 #ifdef _WIN32
-	bool readIntoBuffer(HANDLE hStd, char* buf, size_t buf_avail, size_t& read);
+	bool readIntoBuffer(HANDLE hStd, char* buf, size_t buf_avail, size_t& read_bytes);
+#else
+	bool readIntoBuffer(int hStd, char* buf, size_t buf_avail, size_t& read_bytes);
 #endif
 
 	bool fillBuffer();
 	bool readStderr();
 
 	size_t getReadAvail();
-	void read(char* buf, size_t toread);
+	void readBuf(char* buf, size_t toread);
 
 	bool has_error;
 	std::wstring cmd;
@@ -75,10 +77,13 @@ private:
 	int64 stream_size;
 
 #ifdef _WIN32
-	HANDLE hFile;
 	HANDLE hStdout;
 	HANDLE hStderr;
 	PROCESS_INFORMATION proc_info;
+#else
+	int hStdout;
+	int hStderr;
+	pid_t child_pid;
 #endif
 
 	int64 last_read;
