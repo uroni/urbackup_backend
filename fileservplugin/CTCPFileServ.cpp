@@ -157,7 +157,7 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 		if(rc==SOCKET_ERROR)
 		{
 #ifdef LOG_SERVER
-			Server->Log("Binding tcp socket to port "+nconvert(tcpport)+" failed", LL_ERROR);
+			Server->Log("Binding tcp socket to port "+nconvert(tcpport)+" failed. Another instance of this application may already be active and bound to this port.", LL_ERROR);
 #else
 			Log("Failed. Binding tcp socket.", LL_ERROR);
 #endif

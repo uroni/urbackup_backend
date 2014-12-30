@@ -299,7 +299,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool f
 
 SFile getFileMetadata( const std::wstring &path )
 {
-	SFile ret;
+	SFile ret = {};
 	ret.name=path;
 	WIN32_FILE_ATTRIBUTE_DATA fad;
 	if( GetFileAttributesExW(path.c_str(),  GetFileExInfoStandard, &fad) )

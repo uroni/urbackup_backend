@@ -73,6 +73,9 @@ PipeFile::~PipeFile()
 	CloseHandle(hStderr);
 
 	TerminateProcess(proc_info.hProcess, 0);
+
+	CloseHandle(proc_info.hProcess);
+	CloseHandle(proc_info.hThread);
 }
 
 bool PipeFile::getExitCode(int& exit_code)
