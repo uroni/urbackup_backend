@@ -57,7 +57,7 @@ void getMousePos(int &x, int &y)
 
 std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool follow_symlinks, bool exact_filesize, bool with_usn)
 {
-	return std::vector<SFile>();
+	return getFiles(path, has_error, follow_symlinks);
 }
 
 std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks)

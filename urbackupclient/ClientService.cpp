@@ -1394,7 +1394,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 				if(!name.empty())
 					args[L"dir_"+convert(i)+L"_name"]=name;
 
-				args[L"dir_"+convert(i)+L"_name"]=convert(group);
+				args[L"dir_"+convert(i)+L"_group"]=convert(group);
 			}
 
 			saveBackupDirs(args, true);
