@@ -958,28 +958,32 @@ bool ClientConnector::checkPassword(const std::wstring &pw, bool& change_pw)
 	return false;
 }
 
-std::wstring removeChars(std::wstring in)
+namespace
 {
-	wchar_t illegalchars[] = {'*', ':', '/' , '\\'};
-	std::wstring ret;
-	for(size_t i=0;i<in.size();++i)
+	std::wstring removeChars(std::wstring in)
 	{
-		bool found=false;
-		for(size_t j=0;j<sizeof(illegalchars)/sizeof(illegalchars[0]);++j)
+		wchar_t illegalchars[] = {'*', ':', '/' , '\\'};
+		std::wstring ret;
+		for(size_t i=0;i<in.size();++i)
 		{
-			if(illegalchars[j]==in[i])
+			bool found=false;
+			for(size_t j=0;j<sizeof(illegalchars)/sizeof(illegalchars[0]);++j)
 			{
-				found=true;
-				break;
+				if(illegalchars[j]==in[i])
+				{
+					found=true;
+					break;
+				}
+			}
+			if(!found)
+			{
+				ret+=in[i];
 			}
 		}
-		if(!found)
-		{
-			ret+=in[i];
-		}
+		return ret;
 	}
-	return ret;
 }
+
 
 bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 {
