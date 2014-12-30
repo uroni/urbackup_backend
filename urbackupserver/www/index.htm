@@ -16,7 +16,7 @@
 	<script language="javascript" src="bootstrap/js/bootstrap.min.js"></script>
 	<script language="javascript" src="jquery.dataTables.min.js"></script>
 	<script language="javascript" src="jquery.base64.min.js"></script>
-	<script language="javascript" src="dataTables.bootstrap.js"></script>
+	<script language="javascript" src="dataTables.bootstrap.min.js"></script>
 	<script language="JavaScript" src="dataTables.colVis.min.js"></script>
 	<script language="JavaScript" src="dataTables.tableTools.min.js"></script>
 	<script language="JavaScript" src="dust-full.min.js"></script>
@@ -55,7 +55,7 @@
 			</div>
 		</div>
 	</nav>
-	<div class="container">		
+	<div class="container" id="boostrap_container">		
 		<div class="progress" id="loading_div" style="visibility: hidden;">
 			<div class="progress-bar progress-bar-striped active" style="width: 100%" aria-valuemax="100" aria-valuemin="0" aria-valuenow="100" role="progressbar">
 				<span class="sr-only"></span>
@@ -80,7 +80,7 @@
 					</div>
 					<label class="col-sm-9 control-label">
 						<span class="pull-right">
-							UrBackup 1.5 | <a href="#">About</a> | <a href="http://www.urbackup.org" target="_new">www.urbackup.org</a>
+							UrBackup 1.5 | <a href="#">About</a> | <a id="maximize" href="#" onClick="g.maximize_or_minimize(); return false;">Maximize</a> | <a href="http://www.urbackup.org" target="_new">www.urbackup.org</a>
 						</span>
 					</label>
 				</div>

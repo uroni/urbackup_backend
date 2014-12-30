@@ -34,6 +34,7 @@ g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; r
 function init_datatables()
 {		
 	g.datatable_default_config = {
+				"scrollX": true,
 				"iDisplayLength" : 25,
 				"sDom" : 'CT<"clear">lfrtip',
 				"oColVis": {
@@ -3642,5 +3643,29 @@ function backupWindowChange()
 		I('backup_window_full_file').value=val;
 		I('backup_window_incr_image').value=val;
 		I('backup_window_full_image').value=val;
+	}
+}
+
+g.maximize_or_minimize = function()
+{
+	if(I('boostrap_container').className==="container")
+	{
+		I('boostrap_container').className='container-fluid';
+		I('maximize').innerHTML=trans('Minimize'); 
+	}
+	else
+	{
+		I('boostrap_container').className='container';
+		I('maximize').innerHTML=trans('Maximize'); 
+	}
+	
+	if($("#status_table"))
+	{
+		$("#status_table").DataTable().columns.adjust().draw();
+	}
+	
+	if($("#statistics_table"))
+	{
+		$("#statistics_table").DataTable().columns.adjust().draw();
 	}
 }

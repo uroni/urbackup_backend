@@ -4,10 +4,6 @@ div.dataTables_length label {
 	white-space: nowrap;
 }
 
-div.dataTables_length  {
-	float: left;
-}
-
 div.dataTables_length select {
 	width: 75px;
 	display: inline-block;
@@ -15,7 +11,6 @@ div.dataTables_length select {
 
 div.dataTables_filter {
 	text-align: right;
-	float: right;
 }
 
 div.dataTables_filter label {
@@ -177,11 +172,6 @@ div.dataTables_scrollHead table.table-bordered {
 
 table.DTTT_selectable tbody tr {
 	cursor: pointer;
-}
-
-div.DTTT .btn {
-	color: #333 !important;
-	font-size: 12px;
 }
 
 div.DTTT .btn:hover {
