@@ -229,7 +229,7 @@ std::wstring add_trailing_slash(const std::wstring &strDirName)
 }
 
 IndexThread::IndexThread(void)
-	: index_error(false), last_filebackup_filetime(0), index_group(-1), with_permissions(0)
+	: index_error(false), last_filebackup_filetime(0), index_group(-1), with_permissions(false), with_scripts(false)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -253,8 +253,8 @@ IndexThread::IndexThread(void)
 	}
 
 	modify_file_buffer_size=0;
-	end_to_end_file_backup_verification_enabled=0;
-	calculate_filehashes_on_client=0;
+	end_to_end_file_backup_verification=false;
+	calculate_filehashes_on_client=false;
 	last_tmp_update_time=0;
 }
 
@@ -385,10 +385,11 @@ void IndexThread::operator()(void)
 			vsslog.clear();
 
 			data.getStr(&starttoken);
-			data.getInt(&end_to_end_file_backup_verification_enabled);
-			data.getInt(&calculate_filehashes_on_client);
 			data.getInt(&index_group);
-			data.getInt(&with_permissions);
+			unsigned int flags;
+			data.getUInt(&flags);
+
+			setFlags(flags);
 
 			//incr backup
 			if(!readBackupDirs() && !readBackupScripts())
@@ -467,10 +468,11 @@ void IndexThread::operator()(void)
 			vsslog.clear();
 
 			data.getStr(&starttoken);
-			data.getInt(&end_to_end_file_backup_verification_enabled);
-			data.getInt(&calculate_filehashes_on_client);
 			data.getInt(&index_group);
-			data.getInt(&with_permissions);
+			unsigned int flags;
+			data.getUInt(&flags);
+
+			setFlags(flags);
 
 			if(!readBackupDirs() && !readBackupScripts())
 			{
@@ -1139,7 +1141,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				outfile << "&sha512=" << base64_encode_dash(files[i].hash);
 			}
 				
-			if(end_to_end_file_backup_verification_enabled)
+			if(end_to_end_file_backup_verification)
 			{
 				outfile << "&sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
 			}
@@ -1226,6 +1228,11 @@ bool IndexThread::readBackupDirs(void)
 bool IndexThread::readBackupScripts()
 {
 	scripts.clear();
+
+	if(!with_scripts)
+	{
+		return false;
+	}
 	
 	std::wstring script_path;
 	std::wstring script_cmd;
@@ -3498,6 +3505,45 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 	else
 	{
 		return false;
+	}
+}
+
+void IndexThread::setFlags( unsigned int flags )
+{
+	if(flags & flag_with_permissions)
+	{
+		with_permissions = true;
+	}
+	else
+	{
+		with_permissions = false;
+	}
+
+	if(flags & flag_calc_checksums)
+	{
+		calculate_filehashes_on_client = true;
+	}
+	else
+	{
+		calculate_filehashes_on_client = false;
+	}
+
+	if(flags & flag_end_to_end_verification)
+	{
+		end_to_end_file_backup_verification=true;
+	}
+	else
+	{
+		end_to_end_file_backup_verification=false;
+	}
+
+	if(flags & flag_with_scripts)
+	{
+		with_scripts=true;
+	}
+	else
+	{
+		with_scripts=false;
 	}
 }
 
