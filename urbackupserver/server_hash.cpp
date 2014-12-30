@@ -1219,6 +1219,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 
 	if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
 	{
+		Server->Log("Error adding metadata to hash output after patching", LL_ERROR);
 		return false;
 	}
 

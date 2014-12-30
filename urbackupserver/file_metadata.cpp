@@ -24,6 +24,7 @@
 #include "server_prepare_hash.h"
 #include "../common/data.h"
 #include "../fileservplugin/chunk_settings.h"
+#include "fileclient/FileClientChunked.h"
 #include <assert.h>
 #include <algorithm>
 #include <memory>
@@ -35,17 +36,7 @@ namespace
 	
 	const unsigned int METADATA_MAGIC=0xA4F04E41;
 
-	int64 get_hashdata_size(int64 hashfilesize)
-	{
-		int64 num_chunks = hashfilesize/c_checkpoint_dist;
-		int64 size = chunkhash_file_off+num_chunks*chunkhash_single_size;
-		if(hashfilesize%c_checkpoint_dist!=0)
-		{
-			size+=big_hash_size + ((hashfilesize%c_checkpoint_dist)/c_chunk_size)*small_hash_size
-					+ ((((hashfilesize%c_checkpoint_dist)%c_chunk_size)!=0)?small_hash_size:0);
-		}
-		return size;
-	}
+	
 
 	bool write_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMetadata& metadata)
 	{

@@ -29,6 +29,8 @@ struct SChunkHashes
 	char small_hash[small_hash_size*(c_checkpoint_dist/c_small_hash_dist)];
 };
 
+int64 get_hashdata_size(int64 hashfilesize);
+
 class FileClientChunked
 {
 public:

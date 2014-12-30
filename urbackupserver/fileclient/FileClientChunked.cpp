@@ -23,6 +23,18 @@ namespace
 	};
 }
 
+int64 get_hashdata_size(int64 hashfilesize)
+{
+	int64 num_chunks = hashfilesize/c_checkpoint_dist;
+	int64 size = chunkhash_file_off+num_chunks*chunkhash_single_size;
+	if(hashfilesize%c_checkpoint_dist!=0)
+	{
+		size+=big_hash_size + ((hashfilesize%c_checkpoint_dist)/c_chunk_size)*small_hash_size
+			+ ((((hashfilesize%c_checkpoint_dist)%c_chunk_size)!=0)?small_hash_size:0);
+	}
+	return size;
+}
+
 FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stack,
 	FileClientChunked::ReconnectionCallback *reconnection_callback, FileClientChunked::NoFreeSpaceCallback *nofreespace_callback
 	, std::string identity, FileClientChunked* prev)

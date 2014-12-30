@@ -372,7 +372,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old), fd->Size(), todl.metadata, todl.parent_metadata);
+		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old), fd->Size(), todl.metadata, todl.parent_metadata, todl.is_script);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -527,7 +527,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		pfd_destroy.release();
 		hash_tmp_destroy.release();
 		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			Server->ConvertToUTF8(dlfiles.filepath_old), download_filesize, todl.metadata, todl.parent_metadata);
+			Server->ConvertToUTF8(dlfiles.filepath_old), download_filesize, todl.metadata, todl.parent_metadata, todl.is_script);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -542,7 +542,8 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		return true;
 }
 
-void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata)
+void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
+	int64 t_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script)
 {
 	int l_backup_id=backupid;
 
@@ -571,7 +572,25 @@ void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath,
 	Server->destroy(fd);
 	if(hashoutput!=NULL)
 	{
-		Server->destroy(hashoutput);
+		if(is_script)
+		{
+			int64 expected_hashoutput_size = get_hashdata_size(t_filesize);
+			if(hashoutput->Size()>expected_hashoutput_size)
+			{
+				std::wstring hashoutput_fn = hashoutput->getFilenameW();
+				Server->destroy(hashoutput);
+				os_file_truncate(hashoutput_fn, expected_hashoutput_size);			
+			}
+			else
+			{
+				Server->destroy(hashoutput);
+			}
+		}
+		else
+		{
+			Server->destroy(hashoutput);
+		}
+		
 	}
 	hashpipe_prepare->Write(data.getDataPtr(), data.getDataSize() );
 }
