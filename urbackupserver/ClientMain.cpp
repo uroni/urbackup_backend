@@ -695,9 +695,12 @@ void ClientMain::operator ()(void)
 			{
 				IScopedLock lock(throttle_mutex);
 
-				client_throttler->changeThrottleUpdater(new
-					ThrottleUpdater(clientid, internet_connection?
-						ThrottleScope_Internet:ThrottleScope_Local));
+				if(client_throttler!=NULL)
+				{
+					client_throttler->changeThrottleUpdater(new
+						ThrottleUpdater(clientid, internet_connection?
+							ThrottleScope_Internet:ThrottleScope_Local));
+				}				
 			}
 
 			tcpstack.setAddChecksum(internet_connection);
@@ -2199,9 +2202,12 @@ void ClientMain::updateClientAddress(const std::string& address_data, bool& swit
 	{
 		IScopedLock lock(throttle_mutex);
 
-		client_throttler->changeThrottleUpdater(new
-			ThrottleUpdater(clientid, internet_connection?
-				ThrottleScope_Internet:ThrottleScope_Local));
+		if(client_throttler!=NULL)
+		{
+			client_throttler->changeThrottleUpdater(new
+				ThrottleUpdater(clientid, internet_connection?
+					ThrottleScope_Internet:ThrottleScope_Local));
+		}		
 	}
 
 	if(internet_connection && server_settings->getSettings()->internet_image_backups )
