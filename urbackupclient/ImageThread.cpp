@@ -682,6 +682,7 @@ void ImageThread::sendIncrImageThread(void)
 void ImageThread::operator()(void)
 {
 #ifdef _WIN32
+#ifndef _DEBUG
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 #if defined(VSS_XP) || defined(VSS_S03)
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
@@ -691,6 +692,7 @@ void ImageThread::operator()(void)
 #else
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif //THREAD_MODE_BACKGROUND_BEGIN
+#endif _DEBUG
 #endif
 	if(image_inf->thread_action==TA_FULL_IMAGE)
 	{

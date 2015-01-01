@@ -236,6 +236,7 @@ void IndexThread::operator()(void)
 #endif
 #ifdef _WIN32
 
+#ifndef _DEBUG
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 #if defined(VSS_XP) || defined(VSS_S03)
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
@@ -245,6 +246,7 @@ void IndexThread::operator()(void)
 #else
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif //THREAD_MODE_BACKGROUND_BEGIN
+#endif //_DEBUG
 
 #endif
 
@@ -1189,7 +1191,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 				{
 					if( std::binary_search(changed_files.begin(), changed_files.end(), tmp[i].name) ||
 						std::binary_search(hardlinked_changed_files.begin(), hardlinked_changed_files.end(),
-							strlower(path_lower + os_file_sep() + tmp[i].name)))
+							strlower(path_lower + tmp[i].name)))
 					{
 						VSSLog(L"Found changed file: " + tmp[i].name, LL_DEBUG);
 
@@ -2964,7 +2966,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 					}
 					else
 					{
-						std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength));
+						std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength-1));
 						if(nfn[0]=='\\')
 							nfn=volume+nfn.substr(1);
 						else
@@ -3005,7 +3007,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 							}
 							else
 							{
-								std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength));
+								std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength-1));
 								if(nfn[0]=='\\')
 									nfn=volume+nfn.substr(1);
 								else

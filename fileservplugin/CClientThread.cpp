@@ -195,11 +195,13 @@ void CClientThread::DisableNagle(void)
 void CClientThread::operator()(void)
 {
 #ifdef _WIN32
+#ifndef _DEBUG
 #ifdef BACKGROUND_PRIORITY
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
+#endif //_DEBUG
 
 #endif // BACKGROUND_PRIORITY
 #endif // _WIN32
