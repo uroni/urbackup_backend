@@ -1365,11 +1365,6 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 		std::wstring &key=setting_names[i];
 		std::wstring value;
 
-		if(internet_connection && key==L"computername")
-		{
-			continue;
-		}
-
 		if(std::find(only_server_settings.begin(), only_server_settings.end(),
 			key)!=only_server_settings.end())
 		{
@@ -1378,6 +1373,12 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 
 		if(sr->getValue(key, &value) )
 		{
+			if(internet_connection && key==L"computername" &&
+				value!=clientname)
+			{
+				continue;
+			}
+
 			bool b=updateClientSetting(key, value);
 			if(b)
 				mod=true;
