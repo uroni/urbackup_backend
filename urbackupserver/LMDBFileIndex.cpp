@@ -120,7 +120,8 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 					backupdao.setPrevEntry(id, last_id);
 				}
 
-				if(next_entry==0)
+				if(next_entry==0
+					&& (last_prev_entry==0 || last_prev_entry==id) )
 				{
 					backupdao.setNextEntry(last_id, id);
 				}
