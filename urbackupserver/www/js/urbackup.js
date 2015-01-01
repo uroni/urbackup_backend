@@ -637,7 +637,7 @@ function createUsageGraph(selectedIdx, params)
 {
 	var addUsagegraph = render_sel_usagegraph(selectedIdx, params);
 	
-	I('usagegraph').innerHTML = "<img src=\"indicator.gif\" />"+trans("loading")+"...";
+	I('usagegraph').innerHTML = "<img src=\"images/indicator.gif\" />"+trans("loading")+"...";
 	
 	var scale;
 	var dateFormat;
@@ -1278,7 +1278,7 @@ function show_backups2(data)
 			if(obj.archive_timeout!=0)
 			{
 				link_title='title="'+trans("unarchived_in")+' '+format_time_seconds(obj.archive_timeout)+'"';
-				stopwatch_img='<img src="stopwatch.png" />';
+				stopwatch_img='<img src="images/stopwatch.png" />';
 			}
 			
 			
@@ -1511,7 +1511,7 @@ function tabMouseOver(obj)
 			}
 			else
 			{
-				obj.childNodes[i].innerHTML="<img src=\"arr.png\" />";
+				obj.childNodes[i].innerHTML="<img src=\"images/arr.png\" />";
 			}
 			++idx;
 		}

@@ -8,7 +8,7 @@ function getExtension(filename) {
     return ext[ext.length - 1];
 }
 
-var templates_file="../templates.js";
+var templates_file="../js/templates.js";
 
 fs.writeFileSync(templates_file, '');
 
