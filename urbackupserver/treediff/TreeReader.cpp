@@ -41,6 +41,7 @@ bool TreeReader::readTree(const std::string &fn)
 	size_t lines=0;
 	size_t stringbuffer_size=0;
 	std::string name;
+	char ltype=0;
 	do
 	{
 		in.read(buffer, buffer_size);
@@ -52,12 +53,9 @@ bool TreeReader::readTree(const std::string &fn)
 			switch(state)
 			{
 			case 0:
-				if(ch=='f')
+				if(ch=='f' || ch=='d')
 				{
-					stringbuffer_size+=2*sizeof(int64);
-				}
-				else if(ch=='d')
-				{
+					ltype = ch;
 				}
 				else
 				{
@@ -115,12 +113,17 @@ bool TreeReader::readTree(const std::string &fn)
 				if(ch=='\n')
 				{
 					state=0;
+					if(ltype=='f')
+					{
+						stringbuffer_size+=2*sizeof(int64);
+					}
 					if(name!="..")
 					{
 						++lines;
 						stringbuffer_size+=name.size()+1;
 					}
 					name.clear();
+					ltype=0;
 				}
 			}		
 		}
