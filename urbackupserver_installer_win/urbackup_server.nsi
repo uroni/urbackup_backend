@@ -173,12 +173,16 @@ Section "install"
 	File "data_common\urbackup\status.htm"
 	SetOutPath "$INSTDIR\urbackup\www"
 	File "data_common\urbackup\www\favicon.ico"
-	File "data_common\urbackup\www\images\*.png"
 	File "data_common\urbackup\www\index.htm"
-	File "data_common\urbackup\www\images\*.gif"
-	File "data_common\urbackup\www\css\*.css"
-	File "data_common\urbackup\www\js\*.js"
 	File "data_common\urbackup\www\*.swf"
+	SetOutPath "$INSTDIR\urbackup\www\images"
+	File "data_common\urbackup\www\images\*.png"
+	File "data_common\urbackup\www\images\*.gif"
+	SetOutPath "$INSTDIR\urbackup\www\css"	
+	File "data_common\urbackup\www\css\*.css"
+	SetOutPath "$INSTDIR\urbackup\www\js"
+	File "data_common\urbackup\www\js\*.js"
+	
 	
 	
 	${IfNot} ${RunningX64}
