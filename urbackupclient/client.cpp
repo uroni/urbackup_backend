@@ -1460,7 +1460,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			{
 				if(!fs_files[i].isdir)
 				{
-					if( std::binary_search(open_files.begin(), open_files.end(), path_lower+os_file_sep()+strlower(fs_files[i].name) ) )
+					if( std::binary_search(open_files.begin(), open_files.end(), path_lower+strlower(fs_files[i].name) ) )
 					{
 						VSSLog(L"File is open: " + fs_files[i].name, LL_DEBUG);
 
@@ -3228,7 +3228,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 					}
 					else
 					{
-						std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength));
+						std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength-1));
 						if(nfn[0]=='\\')
 							nfn=volume+nfn.substr(1);
 						else
@@ -3264,7 +3264,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 							}
 							else if(b)
 							{
-								std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength));
+								std::wstring nfn = strlower(std::wstring(outBuf.begin(), outBuf.begin()+stringLength-1));
 								if(nfn[0]=='\\')
 									nfn=volume+nfn.substr(1);
 								else
