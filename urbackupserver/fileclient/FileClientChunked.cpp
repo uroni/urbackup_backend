@@ -376,11 +376,19 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 				}
 				else
 				{
+					filesize_out = curr_output_fsize;
+
+					if(hashfilesize>filesize_out)
+					{
+						Server->Log("Hashfilesize greater than currently downloaded filesize. Using old filesize (of base file).", LL_DEBUG);
+						filesize_out = hashfilesize;
+					}
+
 					if(patch_mode)
 					{
-						writePatchSize(curr_output_fsize);
+						writePatchSize(filesize_out);
 					}
-					filesize_out = curr_output_fsize;
+					
 					Server->Log("Not successfull. Returning filesize "+nconvert(filesize_out), LL_DEBUG);
 				}
 				return err;
