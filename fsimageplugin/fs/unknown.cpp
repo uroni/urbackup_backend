@@ -65,7 +65,7 @@ FSUnknown::FSUnknown(const std::wstring &pDev) : Filesystem(pDev)
 		++bitmap_bytes;
 
 	bitmap=new unsigned char[bitmap_bytes];
-	memset(bitmap, -1, bitmap_bytes);
+	memset(bitmap, 0xFF, bitmap_bytes);
 }
 
 FSUnknown::~FSUnknown(void)
@@ -80,7 +80,7 @@ int64 FSUnknown::getBlocksize(void)
 
 int64 FSUnknown::getSize(void)
 {
-	return dev->Size();
+	return drivesize;
 }
 
 const unsigned char *FSUnknown::getBitmap(void)
