@@ -716,7 +716,7 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	Server->Log("Waiting for backup threads to finish ("+nconvert(clientid)+")...", LL_DEBUG);
+	Server->Log("Waiting for backup threads to finish (clientid="+nconvert(clientid)+", nthreads=" + nconvert(backup_queue.size())+")...", LL_DEBUG);
 	for(size_t i=0;i<backup_queue.size();++i)
 	{
 		if(backup_queue[i].ticket!=ILLEGAL_THREADPOOL_TICKET)
