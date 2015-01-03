@@ -35,7 +35,7 @@ const unsigned int sha_size=32;
 
 ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs,
 		int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize)
- : mbr_offset(mbr_offset), do_trim(false), hashfile(hashfile), vhd_blocksize(vhd_blocksize)
+ : mbr_offset(mbr_offset), do_trim(false), hashfile(hashfile), vhd_blocksize(vhd_blocksize), do_make_full(false)
 {
 	filebuffer=use_tmpfiles;
 

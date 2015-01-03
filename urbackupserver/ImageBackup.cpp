@@ -134,6 +134,11 @@ bool ImageBackup::doBackup()
 				synthetic_full=true;
 			}
 		}
+
+		if(letter=="ESP")
+		{
+			synthetic_full=false;
+		}
 	}
 
 	bool image_hashed_transfer;
