@@ -86,6 +86,8 @@ void ImageThread::sendFullImageThread(void)
 			{
 				ImageErr("Creating Shadow drive failed. Stopping.");
 				run=false;
+				/*image_inf->shadowdrive="\\\\.\\" + image_inf->image_letter;
+				image_inf->no_shadowcopy=true;*/
 			}
 			mempipe->Write("exit");
 			mempipe=NULL;
