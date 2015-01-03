@@ -9,6 +9,9 @@ def padNum(x, i):
         x="0"+x
     return x
 
+def pressEnter():
+    input("Press Enter to continue...")
+
 
 if len(sys.argv)<2:
     print("Not enough arguments")
@@ -19,7 +22,7 @@ print("Mounting Windows partition...");
 
 mountpoint = "/media/tmp_driver_edit";
 os.mkdir("/media/tmp_driver_edit");
-ret = call("mount -t ntfs-3g "+sys.argv[1]+" "+mountpoint, shell=True)
+ret = call("mount -o ignore_case -t lowntfs-3g "+sys.argv[1]+" "+mountpoint, shell=True)
 
 if ret!=0:
     
@@ -29,23 +32,24 @@ if ret!=0:
     
     print("Trying to mount again...")
     
-    call("mount -t ntfs-3g "+sys.argv[1]+" "+mountpoint, shell=True)
+    call("mount -o ignore_case -t lowntfs-3g "+sys.argv[1]+" "+mountpoint, shell=True)
 
 windows_path = mountpoint+"/WINDOWS"
 
-
 if not os.path.isdir(windows_path):
-    call("umount "+mountpoint)
+    call("umount "+mountpoint, shell=True)
     os.rmdir(mountpoint)
     print("Error: Windows not found on mountpoint")
+    pressEnter()
     exit(1)
     
 
 hive_path= windows_path+"/system32/config/system"
 
 if not os.path.exists(hive_path):
-    call("umount "+mountpoint)
+    call("umount "+mountpoint, shell=True)
     print("Error: System registry hive not found on mountpoint")
+    pressEnter()
     exit(1)
 
 
@@ -101,6 +105,6 @@ os.rmdir(mountpoint)
 
 print("Done.")
 
-input("Press Enter to continue...")
+pressEnter()
 
 exit(0)
