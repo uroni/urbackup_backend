@@ -578,8 +578,17 @@ namespace
 			addrinfo* hp;
 			if(getaddrinfo(host, NULL, &hints, &hp)==0 && hp!=NULL)
 			{
-				memcpy(dest, hp->ai_addr, hp->ai_addrlen);
-				freeaddrinfo(hp);
+				if(hp->ai_addrlen<=sizeof(sockaddr_in))
+				{
+					memcpy(dest, &reinterpret_cast<sockaddr_in*>(hp->ai_addr)->sin_addr, sizeof(in_addr));
+					freeaddrinfo(hp);
+					return true;
+				}
+				else
+				{
+					freeaddrinfo(hp);
+					return false;
+				}
 			}
 			else
 			{

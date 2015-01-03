@@ -665,9 +665,17 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 		{
 			if(h!=NULL)
 			{
-				in_addr tmp;
-				memcpy(&tmp, h->ai_addr,  h->ai_addrlen );
-				*dest=tmp.s_addr;
+				if(h->ai_addrlen>=sizeof(sockaddr_in))
+				{
+					*dest=reinterpret_cast<sockaddr_in*>(h->ai_addr)->sin_addr.s_addr;
+					freeaddrinfo(h);
+					return true;
+				}				
+				else
+				{
+					freeaddrinfo(h);
+					return false;
+				}
 			}
 			else
 			{
