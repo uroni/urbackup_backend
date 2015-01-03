@@ -396,7 +396,10 @@ _i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, 
 				{
 					if(indirchange==true || hasChange(line, diffs))
 					{
-						rsize+=cf.size;
+						if(cf.size>0)
+						{
+							rsize+=cf.size;
+						}						
 					}
 				}
 				++line;
