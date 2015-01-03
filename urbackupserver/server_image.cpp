@@ -390,7 +390,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 			}
 			else
 			{
-				ServerLogger::Log(clientid, "Pipe to client unexpectedly closed has_error="+nconvert(cc->hasError()), LL_ERROR);
+				ServerLogger::Log(clientid, "Pipe to client unexpectedly closed has_error="+(cc==NULL?"NULL":nconvert(cc->hasError())), LL_ERROR);
 				goto do_image_cleanup;
 			}
 		}
@@ -715,9 +715,13 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								}
 							}
 
-							transferred_bytes+=cc->getTransferedBytes();
-							Server->destroy(cc);
+							if(cc!=NULL)
+							{
+								transferred_bytes+=cc->getTransferedBytes();
+								Server->destroy(cc);
+							}
 							if(hashfile!=NULL) Server->destroy(hashfile);
+							
 							if(vhdfile!=NULL)
 							{
 								vhdfile->freeBuffer(blockdata);
@@ -821,7 +825,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 								memcpy(&dig, &buffer[off+2*sizeof(int64)], sha_size);
 
 
-								if( (nextblock<hblock || hblock==blocks) && hblock>0)
+								if( (nextblock<hblock || (hblock==blocks && nextblock%vhd_blocksize!=0) ) && hblock>0)
 								{
 									if(nextblock<hblock)
 									{
