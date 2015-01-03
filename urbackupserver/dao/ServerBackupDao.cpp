@@ -23,6 +23,7 @@
 
 const int ServerBackupDao::c_direction_incoming = 0;
 const int ServerBackupDao::c_direction_outgoing = 1;
+const int ServerBackupDao::c_direction_outgoing_nobackupstat = 2;
 
 /**
 * @-SQLGenTempSetup

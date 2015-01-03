@@ -17,6 +17,7 @@ public:
 	void endTransaction();
 
 	static const int c_direction_outgoing;
+	static const int c_direction_outgoing_nobackupstat;
 	static const int c_direction_incoming;
 
 

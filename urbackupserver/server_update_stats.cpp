@@ -211,8 +211,7 @@ void ServerUpdateStats::update_files(void)
 	num_updated_files=0;
 	
 	Server->Log("Updating file statistics...");
-	db_results res;
-
+	
 	size_t total_num = static_cast<size_t>(backupdao->getIncomingStatsCount().value);
 	size_t total_i=0;
 
@@ -222,6 +221,8 @@ void ServerUpdateStats::update_files(void)
 
 	bool interrupted = false;
 	bool started_transaction = false;
+	
+	std::vector<ServerBackupDao::SIncomingStat> stat_entries;
 
 	int last_pc=0;
 	do
@@ -237,12 +238,14 @@ void ServerUpdateStats::update_files(void)
 
 		ServerStatus::updateActive();
 
-		std::vector<ServerBackupDao::SIncomingStat> stat_entries = 
-			backupdao->getIncomingStats();
+		stat_entries = backupdao->getIncomingStats();
 
-		started_transaction=true;
-		db->DetachDBs();
-		db->BeginTransaction();
+		if(!started_transaction)
+		{
+			started_transaction=true;
+			db->DetachDBs();
+			db->BeginTransaction();
+		}
 
 		for(size_t i=0;i<stat_entries.size();++i,++total_i)
 		{
@@ -295,7 +298,8 @@ void ServerUpdateStats::update_files(void)
 
 				add(size_data_backups, entry.backupid, entry.filesize);
 			}
-			else if(entry.direction==ServerBackupDao::c_direction_outgoing)
+			else if(entry.direction==ServerBackupDao::c_direction_outgoing ||
+				entry.direction==ServerBackupDao::c_direction_outgoing_nobackupstat)
 			{
 				int64 current_size_per_client = entry.filesize;
 				
@@ -319,13 +323,20 @@ void ServerUpdateStats::update_files(void)
 					add(clients, current_size_per_client, size_data_clients);
 				}				
 
-				add_del(del_sizes, entry.backupid, entry.filesize, entry.clientid, entry.incremental);
+				if(entry.direction!=ServerBackupDao::c_direction_outgoing_nobackupstat)
+				{
+					add_del(del_sizes, entry.backupid, entry.filesize, entry.clientid, entry.incremental);
+				}
+			}
+			else
+			{
+				assert(false);
 			}
 
 			backupdao->delIncomingStatEntry(entry.id);
 		}
 	}
-	while(!res.empty());
+	while(!stat_entries.empty());
 
 	updateSizes(size_data_clients);
 	updateDels(del_sizes);

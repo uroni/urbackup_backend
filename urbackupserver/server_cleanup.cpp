@@ -1729,7 +1729,7 @@ void ServerCleanupThread::removeFileBackupSql( int backupid )
 		int pointed_to = watoi(res[L"pointed_to"]);
 
 		BackupServerHash::deleteFileSQL(*backupdao, *fileindex.get(), reinterpret_cast<const char*>(res[L"shahash"].c_str()),
-			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false);
+			filesize, rsize, clientid, backupid, incremental, id, prev_entry, next_entry, pointed_to, false, false, false, true);
 	}
 
 

@@ -116,7 +116,7 @@ public:
 
 	virtual int64 get_with_cache_exact(const SIndexKey& key);
 
-	virtual std::map<int, int64> get_all_clients_with_cache(const SIndexKey& key);
+	virtual std::map<int, int64> get_all_clients_with_cache(const SIndexKey& key, bool with_del);
 
 	virtual int64 get_with_cache_prefer_client(const SIndexKey& key);
 

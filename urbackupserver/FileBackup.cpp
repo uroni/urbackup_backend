@@ -648,7 +648,7 @@ bool FileBackup::link_file(const std::wstring &fn, const std::wstring &short_fn,
 	int64 next_entryid = 0;
 	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, filesize, std::string(), true,
 		tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
-		metadata, parent_metadata);
+		metadata, parent_metadata, true);
 
 	if(ok && add_sql)
 	{

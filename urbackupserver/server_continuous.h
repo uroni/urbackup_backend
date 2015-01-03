@@ -778,7 +778,7 @@ private:
 					local_hash->deleteFileSQL(*backupdao, *fileindex, reinterpret_cast<const char*>(fentry.shahash.c_str()),
 						fentry.filesize, fentry.rsize, fentry.clientid,
 						fentry.backupid, fentry.incremental, fentry.id, fentry.prev_entry, fentry.next_entry, fentry.pointed_to,
-						true, true);
+						true, true, true, false);
 				}
 			}
 		}
@@ -794,7 +794,7 @@ private:
 		FileMetadata metadata(permissions, modified, created);
 		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
 			hash, filesize, std::string(), true, tries_once, ff_last, hardlink_limit, copied_file, entryid,
-			entryclientid, rsize, next_entryid, metadata, FileMetadata()))
+			entryclientid, rsize, next_entryid, metadata, FileMetadata(), true))
 		{
 			local_hash->addFileSQL(backupid, clientid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1),
 				hash, filesize, rsize, entryid, entryclientid, next_entryid, copied_file);

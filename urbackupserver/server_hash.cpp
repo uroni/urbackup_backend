@@ -274,7 +274,7 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 	{
 		new_for_client=true;
 
-		//new file for this client
+		//new file for this client (predicted)
 		prev_entry=0;
 		next_entry=0;
 
@@ -284,28 +284,49 @@ void BackupServerHash::addFileSQL(ServerBackupDao& backupdao, FileIndex& fileind
 		{
 			//Other clients have this file
 
-			std::map<int, int64> all_clients = fileindex.get_all_clients_with_cache(FileIndex::SIndexKey(shahash.c_str(), filesize));
+			std::map<int, int64> all_clients = fileindex.get_all_clients_with_cache(FileIndex::SIndexKey(shahash.c_str(), filesize), true);
 
 			for(std::map<int, int64>::iterator it=all_clients.begin();it!=all_clients.end();++it)
 			{
-				if(it->first==clientid && it->second!=0)
+				if(it->second!=0)
 				{
-					prev_entry=it->second;
-				}
+					if(it->first==clientid)
+					{
+						//client actually has this file, but it e.g. failed to link
+						prev_entry=it->second;
+					}
+				
+					if(!clients.empty())
+					{
+						clients+=L",";
+					}
 
-				if(!clients.empty())
-				{
-					clients+=L",";
+					clients+=convert(it->first);
 				}
-
-				clients+=convert(it->first);
 			}
 		}
 		
-		//TODO: Assertion can be hit by racing condition. Remove before release
-		assert(prev_entry==0);
-		
-		backupdao.addIncomingFile(rsize>0?rsize:filesize, clientid, backupid, clients, ServerBackupDao::c_direction_incoming, incremental);
+		if(prev_entry==0)
+		{
+			backupdao.addIncomingFile(rsize>0?rsize:filesize, clientid, backupid, clients, ServerBackupDao::c_direction_incoming, incremental);
+		}
+		else
+		{
+			ServerBackupDao::SFindFileEntry fentry = backupdao.getFileEntry(prev_entry);
+			
+			if(fentry.exists)
+			{
+				next_entry = fentry.next_entry;
+				if(fentry.pointed_to!=0)
+				{
+					update_fileindex = true;
+				}
+			}
+			else
+			{
+				prev_entry=0;
+			}
+		}
 	}
 
 	if(update_fileindex)
@@ -347,35 +368,41 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 	{
 		deleteFileSQL(backupdao, fileindex, reinterpret_cast<const char*>(entry.shahash.c_str()),
 				entry.filesize, entry.rsize, entry.clientid, entry.backupid, entry.incremental,
-				id, entry.prev_entry, entry.next_entry, entry.pointed_to, true, true);
+				id, entry.prev_entry, entry.next_entry, entry.pointed_to, true, true, true, false);
 	}
 }
 
 void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& fileindex, const char* pHash, _i64 filesize, _i64 rsize, const int clientid, int backupid, int incremental, int64 id, int64 prev_id, int64 next_id, int pointed_to,
-	bool use_transaction, bool del_entry)
+	bool use_transaction, bool del_entry, bool detach_dbs, bool with_backupstat)
 {
 	if(use_transaction)
 	{
-		backupdao.detachDbs();
+		if(detach_dbs)
+		{
+			backupdao.detachDbs();
+		}
 		backupdao.beginTransaction();
 	}
 
 	if(prev_id==0 && next_id==0)
 	{
 		//client does not have this file anymore
-		std::map<int, int64> all_clients = fileindex.get_all_clients_with_cache(FileIndex::SIndexKey(pHash, filesize));
+		std::map<int, int64> all_clients = fileindex.get_all_clients_with_cache(FileIndex::SIndexKey(pHash, filesize), true);
 
 		std::wstring clients;
 		if(!all_clients.empty())
 		{			
 			for(std::map<int, int64>::iterator it=all_clients.begin();it!=all_clients.end();++it)
 			{
-				if(!clients.empty())
+				if(it->second!=0)
 				{
-					clients+=L",";
-				}
+					if(!clients.empty())
+					{
+						clients+=L",";
+					}
 
-				clients+=convert(it->first);
+					clients+=convert(it->first);
+				}
 			}
 		}
 		else
@@ -385,7 +412,9 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 		}
 		
 
-		backupdao.addIncomingFile((rsize>0 && rsize!=filesize)?rsize:filesize, clientid, backupid, clients, ServerBackupDao::c_direction_outgoing, incremental);
+		backupdao.addIncomingFile((rsize>0 && rsize!=filesize)?rsize:filesize, clientid, backupid, clients,
+			with_backupstat?ServerBackupDao::c_direction_outgoing:ServerBackupDao::c_direction_outgoing_nobackupstat,
+			incremental);
 
 		if(pointed_to)
 		{
@@ -424,14 +453,17 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 	if(use_transaction)
 	{
 		backupdao.endTransaction();
-		backupdao.attachDbs();
+		if(!detach_dbs)
+		{
+			backupdao.attachDbs();
+		}
 	}
 }
 
 bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring hash_fn, const std::string &sha2,
 	_i64 t_filesize, const std::string &hashoutput_fn, bool copy_from_hardlink_if_failed,
 	bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid
-	, int64& rsize, int64& next_entry, const FileMetadata& metadata, const FileMetadata& parent_metadata)
+	, int64& rsize, int64& next_entry, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool detach_dbs)
 {
 	hardlink_limit=false;
 	copied_file=false;
@@ -478,7 +510,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 					first_logmsg=true;
 
 					deleteFileSQL(*backupdao, *fileindex, sha2.c_str(), t_filesize, existing_file.rsize, existing_file.clientid, existing_file.backupid, existing_file.incremental,
-						existing_file.id, existing_file.prev_entry, existing_file.next_entry, existing_file.pointed_to, true, true);
+						existing_file.id, existing_file.prev_entry, existing_file.next_entry, existing_file.pointed_to, true, true, detach_dbs, false);
 
 					existing_file = findFileHash(sha2, t_filesize, clientid, find_state);
 				}
@@ -645,7 +677,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	int64 rsize = 0;
 	if(findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
-		metadata, parent_metadata))
+		metadata, parent_metadata, false))
 	{
 		ServerLogger::Log(clientid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 		copy=false;
@@ -933,7 +965,7 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 	if(switch_to_all_clients)
 	{
 		state.state=3;
-		state.entryids = fileindex->get_all_clients_with_cache(FileIndex::SIndexKey(pHash.c_str(), filesize, 0));
+		state.entryids = fileindex->get_all_clients_with_cache(FileIndex::SIndexKey(pHash.c_str(), filesize, 0), false);
 		state.client = state.entryids.begin();
 		if(state.client!=state.entryids.end())
 		{
