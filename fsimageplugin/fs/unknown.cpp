@@ -32,7 +32,7 @@ FSUnknown::FSUnknown(const std::wstring &pDev) : Filesystem(pDev)
 		return;
 
 #ifdef _WIN32
-	HANDLE hDev=CreateFileW( pDev.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL );
+	HANDLE hDev=CreateFileW( pDev.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_NO_BUFFERING, NULL );
 	if(hDev==INVALID_HANDLE_VALUE)
 	{
 		Server->Log("Error opening device -2", LL_ERROR);
@@ -56,7 +56,7 @@ FSUnknown::FSUnknown(const std::wstring &pDev) : Filesystem(pDev)
 #endif
 
 	int64 bitmap_entries=(int64)(drivesize/DEF_BLOCKSIZE);
-	if(dev->Size()%DEF_BLOCKSIZE!=0)
+	if(drivesize%DEF_BLOCKSIZE!=0)
 		++bitmap_entries;
 
 	size_t bitmap_bytes=(size_t)(bitmap_entries/8);
@@ -65,7 +65,7 @@ FSUnknown::FSUnknown(const std::wstring &pDev) : Filesystem(pDev)
 		++bitmap_bytes;
 
 	bitmap=new unsigned char[bitmap_bytes];
-	memset(bitmap, 0xFF, bitmap_bytes);
+	memset(bitmap, -1, bitmap_bytes);
 }
 
 FSUnknown::~FSUnknown(void)
