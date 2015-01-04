@@ -108,7 +108,7 @@ ACTION_IMPL(download_client)
 	Helper helper(tid, &GET, &PARAMS);
 
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 
 	bool all_client_rights;
 	std::vector<int> clientids = helper.clientRights(RIGHT_SETTINGS, all_client_rights);

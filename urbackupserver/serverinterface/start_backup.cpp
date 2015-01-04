@@ -44,7 +44,7 @@ ACTION_IMPL(start_backup)
 	std::wstring start_type=GET[L"start_type"];
 
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 
 	if(session!=NULL && !s_start_client.empty() && helper.getRights("start_backup")=="all")
 	{

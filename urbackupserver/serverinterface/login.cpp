@@ -88,7 +88,7 @@ ACTION_IMPL(login)
 		SUser *session=helper.getSession();
 		if(session!=NULL)
 		{
-			int user_id = -2;
+			int user_id = SESSION_ID_TOKEN_AUTH;
 			
 			if(helper.checkPassword(username, GET[L"password"], &user_id, plainpw) ||
 				(plainpw && helper.ldapLogin(username, GET[L"password"])) )
@@ -145,7 +145,7 @@ ACTION_IMPL(login)
 			{
 				logLogin(helper, PARAMS, L"anonymous", LoginMethod_Webinterface);
 				session->mStr[L"login"]=L"ok";
-				session->id=0;
+				session->id=SESSION_ID_ADMIN;
 			}
 			else
 			{

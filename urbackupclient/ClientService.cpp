@@ -1156,7 +1156,6 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			++i;
 		} while (deleted_key);
 	}
-	
 
 
 	std::wstring mui_text=L"&Access backups";

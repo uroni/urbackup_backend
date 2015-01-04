@@ -41,7 +41,7 @@ ACTION_IMPL(progress)
 	}
 
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
 		if(GET.find(L"stop_clientid")!=GET.end())

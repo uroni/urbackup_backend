@@ -98,7 +98,7 @@ ACTION_IMPL(usage)
 
 	JSON::Object ret;
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL )
 	{
 		IDatabase *db=helper.getDatabase();

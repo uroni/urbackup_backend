@@ -6,6 +6,10 @@
 #include "../../Interface/Template.h"
 #include "../../Interface/Mutex.h"
 
+const int SESSION_ID_ADMIN = 0;
+const int SESSION_ID_INVALID = -1;
+const int SESSION_ID_TOKEN_AUTH = -2;
+
 class Helper
 {
 public:

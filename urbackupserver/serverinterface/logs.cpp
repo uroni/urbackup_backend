@@ -31,7 +31,7 @@ ACTION_IMPL(logs)
 	Helper helper(tid, &GET, &PARAMS);
 	JSON::Object ret;
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	std::wstring filter=GET[L"filter"];
 	std::wstring s_logid=GET[L"logid"];
 	int logid=watoi(s_logid);
@@ -88,7 +88,7 @@ ACTION_IMPL(logs)
 			ret.set("all_clients", JSON::Value(true));
 		}
 		ret.set("clients", clients);
-		ret.set("has_user", session->id>0);
+		ret.set("has_user", session->id!=SESSION_ID_TOKEN_AUTH && session->id!=SESSION_ID_ADMIN);
 
 		IQuery *q_log_right_clients=db->Prepare("SELECT id, name FROM clients"+(clientid.empty()?""
 											:" WHERE "+constructFilter(clientid, "id"))+" ORDER BY name");

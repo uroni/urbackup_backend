@@ -101,7 +101,7 @@ ACTION_IMPL(lastacts)
 	Helper helper(tid, &GET, &PARAMS);
 	JSON::Object ret;
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	std::vector<int> clientids;
 	std::string rights=helper.getRights("lastacts");
 	if(rights!="none" && rights!="all")

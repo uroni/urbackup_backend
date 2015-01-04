@@ -596,7 +596,7 @@ ACTION_IMPL(settings)
 	Helper helper(tid, &GET, &PARAMS);
 	JSON::Object ret;
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	std::wstring sa=GET[L"sa"];
 	int t_clientid=watoi(GET[L"t_clientid"]);
 	std::string rights=helper.getRights("client_settings");

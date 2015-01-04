@@ -89,7 +89,7 @@ namespace
 			backup_tokens, tokens, skip_hashes);
 	}
 
-	std::vector<FileMetadata> getMetadata(std::wstring dir, const std::vector<SFile>& files, bool skip_hashes)
+	std::vector<FileMetadata> getMetadata(std::wstring dir, const std::vector<SFile>& files, bool skip_special)
 	{
 		std::vector<FileMetadata> ret;
 		ret.resize(files.size());
@@ -101,7 +101,7 @@ namespace
 
 		for(size_t i=0;i<files.size();++i)
 		{
-			if(skip_hashes && files[i].name==L".hashes")
+			if(skip_special && (files[i].name==L".hashes" || files[i].name==L"user_views") )
 				continue;
 
 			std::wstring metadata_fn;
@@ -361,7 +361,7 @@ ACTION_IMPL(backups)
 
 	bool token_authentication=false;
 	std::string fileaccesstokens;
-	if( (session==NULL || session->id==-2) && has_tokens)
+	if( (session==NULL || session->id==SESSION_ID_TOKEN_AUTH) && has_tokens)
 	{
 		token_authentication=true;
 		fileaccesstokens = decryptTokens(helper.getDatabase(), GET);
@@ -379,10 +379,11 @@ ACTION_IMPL(backups)
 			if(helper.getSession())
 			{
 				helper.getSession()->mStr[L"fileaccesstokens"]=widen(fileaccesstokens);
+				helper.getSession()->id = SESSION_ID_TOKEN_AUTH;
 			}
 		}
 	}
-	else if(session!=NULL && session->id==-2)
+	else if(session!=NULL && session->id==SESSION_ID_TOKEN_AUTH)
 	{
 		fileaccesstokens = wnarrow(session->mStr[L"fileaccesstokens"]);
 		if(!fileaccesstokens.empty())
@@ -422,34 +423,41 @@ ACTION_IMPL(backups)
 			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup FROM clients";
 			if(token_authentication)
 			{
-				std::vector<std::string> tokens;
-				Tokenize(fileaccesstokens, tokens, ";");
-				IQuery* q_clients = db->Prepare("SELECT clientid FROM tokens_on_client WHERE token=?");
-				for(size_t i=0;i<tokens.size();++i)
+				if(GET.find(L"clientname")==GET.end())
 				{
-					q_clients->Bind(tokens[i]);
-					db_results res = q_clients->Read();
-					q_clients->Reset();
-
-					if(!res.empty())
+					std::vector<std::string> tokens;
+					Tokenize(fileaccesstokens, tokens, ";");
+					IQuery* q_clients = db->Prepare("SELECT clientid FROM tokens_on_client WHERE token=?");
+					for(size_t i=0;i<tokens.size();++i)
 					{
-						int n_clientid = watoi(res[0][L"clientid"]);
-						if(std::find(clientid.begin(), clientid.end(), n_clientid)==
-							clientid.end())
+						q_clients->Bind(tokens[i]);
+						db_results res = q_clients->Read();
+						q_clients->Reset();
+
+						if(!res.empty())
 						{
-							clientid.push_back(n_clientid);
+							int n_clientid = watoi(res[0][L"clientid"]);
+							if(std::find(clientid.begin(), clientid.end(), n_clientid)==
+								clientid.end())
+							{
+								clientid.push_back(n_clientid);
+							}
 						}
 					}
-				}
 
-				if(!clientid.empty())
-				{
-					qstr+=" WHERE "+constructFilter(clientid, "id");
+					if(!clientid.empty())
+					{
+						qstr+=" WHERE "+constructFilter(clientid, "id");
+					}
+					else
+					{
+						sa=L"backups";
+					}
 				}
 				else
 				{
 					sa=L"backups";
-				}
+				}				
 			}
 			else
 			{
@@ -659,7 +667,8 @@ ACTION_IMPL(backups)
 									{
 										std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(metadata_path.empty()?L"":(os_file_sep()+metadata_path));
 
-										if(!has_backupid && is_file && i==t_path.size()-1)
+										if( ( (!has_backupid && is_file) || sa==L"filesdl")
+											&& i==t_path.size()-1)
 										{
 											curr_metadata_dir.erase(curr_metadata_dir.size()-1, 1);
 										}
@@ -692,6 +701,7 @@ ACTION_IMPL(backups)
 								&& !path.empty())
 							{
 								path.erase(path.size()-1, 1);
+								metadata_path.erase(metadata_path.size()-1, 1);
 							}				
 
 							ret.set("clientname", clientname);
@@ -727,7 +737,7 @@ ACTION_IMPL(backups)
 								{
 									if(tfiles[i].isdir)
 									{
-										if(path.empty() && tfiles[i].name==L".hashes")
+										if(path.empty() && (tfiles[i].name==L".hashes" || tfiles[i].name==L"user_views") )
 											continue;
 
 										if(token_authentication && 

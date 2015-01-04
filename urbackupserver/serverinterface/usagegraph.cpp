@@ -78,7 +78,7 @@ ACTION_IMPL(usagegraph)
 
 	JSON::Object ret;
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL &&
 		( ( clientid==-1 && helper.getRights("piegraph")=="all" ) || ( clientid!=-1 && (client_id_found || rights=="all") ) )
 	  )

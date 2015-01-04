@@ -218,3 +218,4 @@ urbackup/new_version_db/*
 urbackup/old_version_db/*
 urbackupserver/www/templates/node_modules/*
 urbackup/open_files.dat
+access_backups_shell_mui.txt

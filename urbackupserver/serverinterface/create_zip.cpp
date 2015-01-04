@@ -268,7 +268,7 @@ bool miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
 }
 
 bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername, const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter,
-		bool token_authentication, const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes)
+		bool token_authentication, const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special)
 {
 	bool has_error=false;
 	const std::vector<SFile> files = getFiles(foldername, &has_error, true);
@@ -280,8 +280,8 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 	{
 		const SFile& file=files[i];
 
-		if(skip_hashes
-			&& file.name==L".hashes")
+		if(skip_special
+			&& (file.name==L".hashes" || file.name==L"user_views") )
 		{
 			continue;
 		}
@@ -321,7 +321,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 		if(has_metadata)
 		{
 #ifdef _WIN32
-			last_modified_wt=static_cast<time_t>(os_to_windows_filetime(metadata.last_modified));
+			last_modified_wt=static_cast<time_t>(metadata.last_modified);
 #else
 			last_modified_wt=static_cast<time_t>(metadata.last_modified);
 #endif

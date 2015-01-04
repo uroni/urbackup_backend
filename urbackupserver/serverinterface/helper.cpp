@@ -154,7 +154,7 @@ ITemplate *Helper::createTemplate(std::string name)
 	else if(session!=NULL)
 		tmpl->setValue(L"SESSION", session->session);
 
-	if( session!=NULL && session->id==-1 )
+	if( session!=NULL && session->id==SESSION_ID_INVALID )
 		tmpl->setValue(L"INVALID_ID",L"true");
 
 	templates.push_back( tmpl );
@@ -196,7 +196,8 @@ std::wstring Helper::generateSession(std::wstring username)
 std::string Helper::getRights(const std::string &domain)
 {
 	if(session==NULL) return "none";
-	if(session->id==0) return "all";
+	if(session->id==SESSION_ID_ADMIN) return "all";
+	if(session->id==SESSION_ID_TOKEN_AUTH && ldap_rights.empty()) return "none";
 
 	if(getRightsInt("all")=="all")
 		return "all";

@@ -58,7 +58,7 @@ ACTION_IMPL(livelog)
 	Helper helper(tid, &GET, &PARAMS);
 
 	SUser *session=helper.getSession();
-	if(session!=NULL && session->id==-1) return;
+	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session==NULL)
 	{
 		JSON::Object ret;
