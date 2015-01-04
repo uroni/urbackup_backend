@@ -28,9 +28,9 @@ db_results create_callback(size_t n_done, void *userdata)
 	
 	int last_pc = static_cast<int>(data->status->pc_done*1000 + 0.5);
 	
-	if(n_done>0)
+	if(data->max_pos>0)
 	{
-		data->status->pc_done = data->max_pos/n_done;
+		data->status->pc_done = n_done/data->max_pos;
 	}
 	
 	int curr_pc = static_cast<int>(data->status->pc_done*1000 + 0.5);
