@@ -30,7 +30,7 @@ db_results create_callback(size_t n_done, void *userdata)
 	
 	if(data->max_pos>0)
 	{
-		data->status->pc_done = n_done/data->max_pos;
+		data->status->pc_done = static_cast<double>(n_done)/data->max_pos;
 	}
 	
 	int curr_pc = static_cast<int>(data->status->pc_done*1000 + 0.5);
