@@ -1463,7 +1463,7 @@ function show_backups2(data)
 			{
 				obj.size=format_size(obj.size);				
 				obj.proc="FilesDL";
-				obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
+				obj.path=encodeURIComponent(path).replace(/'/g,"%27");
 			}
 			obj.clientid=data.clientid;
 			

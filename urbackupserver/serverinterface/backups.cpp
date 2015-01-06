@@ -129,11 +129,11 @@ namespace
 		std::wstring metadata_fn;
 		if(is_file)
 		{
-			metadata_fn = ExtractFilePath(path)+escape_metadata_fn(ExtractFileName(path));
+			metadata_fn = ExtractFilePath(path) + os_file_sep() + escape_metadata_fn(ExtractFileName(path));
 		}
 		else
 		{
-			metadata_fn = ExtractFilePath(path)+escape_metadata_fn(ExtractFileName(path))+os_file_sep()+metadata_dir_fn;
+			metadata_fn = ExtractFilePath(path) + os_file_sep() + escape_metadata_fn(ExtractFileName(path))+os_file_sep()+metadata_dir_fn;
 		}
 
 		FileMetadata ret;
@@ -791,7 +791,7 @@ ACTION_IMPL(backups)
 								
 								if( (is_file && f.get()) || os_directory_exists(os_file_prefix(curr_path)) )
 								{
-									FileMetadata metadata = getMetaData(curr_path, is_file);
+									FileMetadata metadata = getMetaData(curr_metadata_path, is_file);
 
 									JSON::Object obj;
 									obj.set("name", ExtractFileName(curr_path));

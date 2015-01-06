@@ -21,12 +21,12 @@
 			<tbody>
 				{#items}
 					<tr onclick="tabMouseClick{proc}({clientid},{backupid},'{path}')">
-						<td>&nbsp;</td>
-						<td>{name|s}</td>
-						<td>{size|s}</td>
-						<td>{created|s}</td>
-						<td>{last_modified|s}</td>
-						<td>{backuptime|s}</td>
+						<td style="cursor: pointer">&nbsp;</td>
+						<td style="cursor: pointer">{name|s}</td>
+						<td style="cursor: pointer">{size|s}</td>
+						<td style="cursor: pointer">{created|s}</td>
+						<td style="cursor: pointer">{last_modified|s}</td>
+						<td style="cursor: pointer">{backuptime|s}</td>
 					</tr>
 				{/items}
 			</tbody>
