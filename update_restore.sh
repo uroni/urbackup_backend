@@ -2,15 +2,25 @@
 
 ./switch_build.sh client
 
-make
+autoreconf --install
+./configure
+
+make -j4
 cd fileservplugin
-make
+make -j4
 cd ..
 cd urbackupclient
-make
+make -j4
+cd ..
+cd fsimageplugin
+make -j4
 cd ..
 
 ./switch_build.sh server
+
+autoreconf --install
+./configure
+
 make
 
 LANG=en

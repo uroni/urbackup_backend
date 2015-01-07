@@ -336,6 +336,8 @@ bool verify_hashes(std::string arg)
 	{
 		q_get_file->Bind(missing_files[i]);
 		db_results res = q_get_file->Read();
+		q_get_file->Reset();
+		
 		if(!res.empty())
 		{
 			bool is_missing=false;
