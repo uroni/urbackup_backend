@@ -1231,20 +1231,6 @@ bool upgrade35_36()
 		return false;
 	}
 
-	if(!db->EndTransaction())
-	{
-		return false;
-	}
-
-	db->Write("PRAGMA page_size = 32768");
-
-	if(!db->Write("VACUUM"))
-	{
-		return false;
-	}
-
-	db->BeginTransaction();
-
 	return true;
 }
 
@@ -1547,6 +1533,24 @@ void upgrade(void)
 			q_update->Bind(ver);
 			q_update->Write();
 			q_update->Reset();
+
+			if(ver==36)
+			{
+				if(db->EndTransaction())
+				{
+					db->Write("PRAGMA page_size = 32768");
+
+					db->Write("VACUUM");
+
+					db->BeginTransaction();
+				}
+				else
+				{
+					Server->Log("Upgrading database failed. Ending transaction failed. Shutting down server.", LL_ERROR);
+					exit(5);
+				}
+				
+			}
 
 			{
 				IScopedLock lock(startup_status.mutex);
