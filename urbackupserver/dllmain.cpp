@@ -1231,12 +1231,19 @@ bool upgrade35_36()
 		return false;
 	}
 
+	if(!db->EndTransaction())
+	{
+		return false;
+	}
+
 	db->Write("PRAGMA page_size = 32768");
 
 	if(!db->Write("VACUUM"))
 	{
 		return false;
 	}
+
+	db->BeginTransaction();
 
 	return true;
 }
