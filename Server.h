@@ -33,11 +33,14 @@ class IOutputStream;
 
 struct SDatabase
 {
-	SDatabase(IDatabaseFactory *factory, const std::string &file) : factory(factory), file(file) {}
+	SDatabase(IDatabaseFactory *factory, const std::string &file)
+		: factory(factory), file(file), allocation_chunk_size(std::string::npos) {}
+
 	IDatabaseFactory *factory;
 	std::string file;
 	std::map<THREAD_ID, IDatabaseInt*> tmap;
 	std::vector<std::pair<std::string,std::string> > attach;
+	size_t allocation_chunk_size;
 };
 
 
@@ -159,6 +162,7 @@ public:
 	virtual bool hasDatabaseFactory(const std::string &pEngineName);
 
 	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier);
+	virtual bool setDatabaseAllocationChunkSize(DATABASE_ID pIdentifier, size_t allocation_chunk_size);
 
 	static int WriteDump(void* pExceptionPointers);
 

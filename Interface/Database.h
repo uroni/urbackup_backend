@@ -36,6 +36,8 @@ public:
 	virtual void freeMemory()=0;
 
 	virtual int getLastChanges()=0;
+
+	virtual std::wstring getTempDirectoryPath() = 0;
 };
 
 class DBScopedFreeMemory

@@ -152,7 +152,7 @@ int defrag_database(void)
 	db->Write("PRAGMA journal_mode = DELETE");
 
 	Server->Log("Rebuilding Database...", LL_INFO);
-	db->Write("PRAGMA page_size = 4096");
+	db->Write("PRAGMA page_size = 32768");
 	db->Write("VACUUM");
 
 	Server->Log("Rebuilding Database successfull.", LL_INFO);

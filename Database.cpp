@@ -36,6 +36,7 @@
 #include "Query.h"
 #include "sqlite/sqlite3.h"
 #include "Interface/File.h"
+#include <stdlib.h>
 extern "C"
 {
 	#include "sqlite/shell.h"
@@ -46,6 +47,23 @@ extern "C"
 IMutex * CDatabase::lock_mutex=NULL;
 int CDatabase::lock_count=0;
 ICondition *CDatabase::unlock_cond=NULL;
+
+namespace
+{
+	size_t get_sqlite_cache_size()
+	{
+		std::string cache_size_str = Server->getServerParameter("sqlite_cache_size");
+
+		if(!cache_size_str.empty())
+		{
+			return atoi(cache_size_str.c_str());
+		}
+		else
+		{
+			return 2*1024; //2MB
+		}
+	}
+}
 
 
 struct UnlockNotification {
@@ -95,7 +113,8 @@ CDatabase::~CDatabase()
 	sqlite3_close(db);
 }
 
-bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach)
+bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach,
+	size_t allocation_chunk_size)
 {
 	attached_dbs=attach;
 	in_transaction=false;
@@ -122,6 +141,16 @@ bool CDatabase::Open(std::string pFile, const std::vector<std::pair<std::string,
 		#endif
 		Write("PRAGMA foreign_keys = ON");
 		Write("PRAGMA threads = 2");
+
+		if(allocation_chunk_size!=std::string::npos)
+		{
+			int chunk_size = static_cast<int>(allocation_chunk_size);
+			sqlite3_file_control(db, NULL, SQLITE_FCNTL_CHUNK_SIZE, &chunk_size);
+		}
+
+		static size_t sqlite_cache_size = get_sqlite_cache_size();
+		Write("PRAGMA cache_size = -"+nconvert(sqlite_cache_size));	
+
 		sqlite3_busy_timeout(db, c_sqlite_busy_timeout_default);
 		AttachDBs();
 
@@ -538,6 +567,21 @@ void CDatabase::freeMemory()
 int CDatabase::getLastChanges()
 {
 	return sqlite3_changes(db);
+}
+
+std::wstring CDatabase::getTempDirectoryPath()
+{
+	char* tmpfn = NULL;
+	if(sqlite3_file_control(db, NULL, SQLITE_FCNTL_TEMPFILENAME, &tmpfn)==SQLITE_OK && tmpfn!=NULL)
+	{
+		std::wstring ret = ExtractFilePath(Server->ConvertToUnicode(tmpfn));
+		sqlite3_free(tmpfn);
+		return ret;
+	}
+	else
+	{
+		return std::wstring();
+	}
 }
 
 #endif //NO_SQLITE

@@ -147,8 +147,6 @@ std::vector<std::wstring> getGlobalSettingsList(void)
 	ret.push_back(L"tmpdir");
 	ret.push_back(L"update_stats_cachesize");
 	ret.push_back(L"global_soft_fs_quota");
-	ret.push_back(L"filescache_type");
-	ret.push_back(L"filescache_size");
 	ret.push_back(L"trust_client_hashes");
 	ret.push_back(L"show_server_updates");
 	ret.push_back(L"server_url");

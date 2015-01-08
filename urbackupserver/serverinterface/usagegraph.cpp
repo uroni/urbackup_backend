@@ -130,13 +130,7 @@ ACTION_IMPL(usagegraph)
 			date_fmt="%Y-%m-%d";
 		}
 
-		db_results cache_res;
-		if(db->getEngineName()=="sqlite")
-		{
-			cache_res=db->Read("PRAGMA cache_size");
-			db->Write("PRAGMA cache_size = -51200"); //50MB
-		}
-			
+		
 		IQuery *q=db->Prepare("SELECT id, (MAX(b.bytes_used_files)+MAX(b.bytes_used_images)) AS used, strftime('"+date_fmt+"', MAX(b.created), 'localtime') AS tdate, strftime('%Y-%m-%d', MAX(b.created), 'localtime') AS tdate_full "
 				    "FROM "
 				    "("
@@ -169,11 +163,6 @@ ACTION_IMPL(usagegraph)
 			{
 				used.push_back(SUsed(res[i][L"tdate_full"], res[i][L"tdate"], atof(wnarrow(res[i][L"used"]).c_str()) ) );
 			}
-		}
-
-		if(!cache_res.empty())
-		{
-			db->Write("PRAGMA cache_size = "+wnarrow(cache_res[0][L"cache_size"]));
 		}
 
 		bool size_gb=false;

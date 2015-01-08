@@ -163,6 +163,7 @@ public:
 	virtual bool hasDatabaseFactory(const std::string &pEngineName)=0;
 
 	virtual bool attachToDatabase(const std::string &pFile, const std::string &pName, DATABASE_ID pIdentifier)=0;
+	virtual bool setDatabaseAllocationChunkSize(DATABASE_ID pIdentifier, size_t allocation_chunk_size) = 0;
 
 	virtual void waitForStartupComplete(void)=0;
 

@@ -895,7 +895,7 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 	if( thread_iter==database_iter->second.tmap.end() )
 	{
 		IDatabaseInt *db=database_iter->second.factory->createDatabase();
-		if(db->Open(database_iter->second.file, database_iter->second.attach)==false )
+		if(db->Open(database_iter->second.file, database_iter->second.attach, database_iter->second.allocation_chunk_size)==false )
 		{
 			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
@@ -1696,6 +1696,21 @@ bool CServer::attachToDatabase(const std::string &pFile, const std::string &pNam
 	{
 		iter->second.attach.push_back(std::pair<std::string,std::string>(pFile, pName));
 	}
+
+	return true;
+}
+
+bool CServer::setDatabaseAllocationChunkSize(DATABASE_ID pIdentifier, size_t allocation_chunk_size)
+{
+	IScopedLock lock(db_mutex);
+
+	std::map<DATABASE_ID, SDatabase >::iterator iter=databases.find(pIdentifier);
+	if( iter==databases.end() )
+	{
+		return false;
+	}
+
+	iter->second.allocation_chunk_size = allocation_chunk_size;
 
 	return true;
 }

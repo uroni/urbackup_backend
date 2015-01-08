@@ -14,8 +14,10 @@ const int c_sqlite_busy_timeout_default=10000; //10 seconds
 class CDatabase : public IDatabaseInt
 {
 public:
-	bool Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach);
+	bool Open(std::string pFile, const std::vector<std::pair<std::string,std::string> > &attach,
+		size_t allocation_chunk_size);
 	~CDatabase();
+
 	virtual db_nresults ReadN(std::string pQuery); 
 	virtual db_results Read(std::string pQuery); 
 	virtual bool Write(std::string pQuery);
@@ -56,6 +58,8 @@ public:
 	virtual void freeMemory();
 
 	virtual int getLastChanges();
+
+	virtual std::wstring getTempDirectoryPath();
 private:
 	
 	bool backup_db(const std::string &pFile, const std::string &pDB);

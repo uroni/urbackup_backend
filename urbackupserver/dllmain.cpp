@@ -108,6 +108,8 @@ THREADPOOL_TICKET tt_cleanup_thread;
 THREADPOOL_TICKET tt_automatic_archive_thread;
 bool is_leak_check=false;
 
+const size_t sqlite_data_allocation_chunk_size = 50*1024*1024; //50MB
+
 #ifdef _WIN32
 const std::string new_file="new.txt";
 #else
@@ -146,6 +148,8 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 			Server->Log("Couldn't open Database "+db_fn+". Exiting.", LL_ERROR);
 			exit(1);
 		}
+
+		Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER, sqlite_data_allocation_chunk_size);
 
 		if(init_db)
 		{
@@ -205,6 +209,8 @@ void open_server_database(bool &use_berkeleydb, bool init_db)
 				Server->Log("Couldn't open Database backup_server.db. Exiting.", LL_ERROR);
 				exit(1);
 			}
+
+			Server->setDatabaseAllocationChunkSize(URBACKUPDB_SERVER, sqlite_data_allocation_chunk_size);
 		}
 	}
 
@@ -1141,6 +1147,36 @@ bool upgrade35_36()
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 
+	std::auto_ptr<IFile> db_file(Server->openFile("urbackup/backup_server.db", MODE_READ));
+
+	if(db_file.get() && Server->getServerParameter("override_freespace_check")==std::string())
+	{
+		int64 free_space = os_free_space(Server->getServerWorkingDir()+os_file_sep()+L"urbackup");
+
+		int64 missing_free_space = db_file->Size()-free_space;
+		if(free_space<db_file->Size())
+		{
+			Server->Log(L"UrBackup needs "+widen(PrettyPrintBytes(missing_free_space))+L" more free space for the upgrade process. Please free up this amount of space at \""+Server->getServerWorkingDir()+os_file_sep()+L"urbackup\"", LL_ERROR);
+			return false;
+		}
+
+		std::wstring tmpdir = db->getTempDirectoryPath();
+		if(!tmpdir.empty())
+		{
+			free_space = os_free_space(tmpdir);
+
+			int64 missing_free_space = db_file->Size()-free_space;
+			if(free_space<db_file->Size())
+			{
+				Server->Log(L"UrBackup needs "+widen(PrettyPrintBytes(missing_free_space))+L" more free space for the upgrade process at the temporary location. "
+					L"Please free up this amount of space at \""+tmpdir+L"\"", LL_ERROR);
+				return false;
+			}
+		}
+	}
+
+	db_file.reset();
+
 	if(!db->Write("ALTER TABLE files RENAME TO files_bck"))
 	{
 		return false;
@@ -1191,6 +1227,13 @@ bool upgrade35_36()
 	}
 
 	if(!db->Write("CREATE TABLE files_incoming_stat (id INTEGER PRIMARY KEY, filesize INTEGER, clientid INTEGER, backupid INTEGER, existing_clients TEXT, direction INTEGER, incremental INTEGER)"))
+	{
+		return false;
+	}
+
+	db->Write("PRAGMA page_size = 32768");
+
+	if(!db->Write("VACUUM"))
 	{
 		return false;
 	}
