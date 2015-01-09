@@ -148,6 +148,8 @@ private:
 
 	void logTransferProgress();
 
+	void adjustOutputFilesizeOnFailure( _i64& filesize_out);
+
 	std::string remote_filename;
 
 	IFile *m_file;

@@ -376,6 +376,8 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 				Server->Log("Pipe has error. Reconnecting...", LL_DEBUG);
 				if(!Reconnect(true))
 				{
+					adjustOutputFilesizeOnFailure(filesize_out);
+					
 					return ERR_CONN_LOST;
 				}
 				else
@@ -399,20 +401,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 				}
 				else
 				{
-					filesize_out = curr_output_fsize;
-
-					if(hashfilesize>filesize_out)
-					{
-						Server->Log("Hashfilesize greater than currently downloaded filesize. Using old filesize (of base file).", LL_DEBUG);
-						filesize_out = hashfilesize;
-					}
-
-					if(patch_mode)
-					{
-						writePatchSize(filesize_out);
-					}
-					
-					Server->Log("Not successfull. Returning filesize "+nconvert(filesize_out), LL_DEBUG);
+					adjustOutputFilesizeOnFailure(filesize_out);
 				}
 				return err;
 			}
@@ -424,12 +413,8 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 			Server->Log("Connection timeout. Reconnecting...", LL_DEBUG);
 			if(!Reconnect(true))
 			{
-				if(patch_mode)
-				{
-					writePatchSize(curr_output_fsize);
-				}
-				filesize_out = curr_output_fsize;
-				Server->Log("Not successfull (timeout). Returning filesize "+nconvert(filesize_out), LL_DEBUG);
+				adjustOutputFilesizeOnFailure(filesize_out);
+
 				break;
 			}
 			else
@@ -1733,5 +1718,51 @@ std::string FileClientChunked::getErrorcodeString()
 	err+=" System error code: "+nconvert(errorcode2);
 
 	return err;
+}
+
+void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
+{
+	filesize_out = curr_output_fsize;
+
+	if(hashfilesize>filesize_out)
+	{
+		Server->Log("Hashfilesize greater than currently downloaded filesize. Using old filesize (of base file) and copying hash data.", LL_DEBUG);
+		filesize_out = hashfilesize;
+
+		if(m_hashoutput->Seek(m_hashoutput->Size()) &&
+			m_chunkhashes->Seek(m_hashoutput->Size()))
+		{
+			std::vector<char> buffer;
+			buffer.resize(4096);
+
+			_u32 read;
+			do 
+			{
+				bool has_error;
+				read = m_chunkhashes->Read(&buffer[0], 4096, &has_error);
+
+				if(has_error)
+				{
+					Server->Log("Error reading from chunkhashes file. Copying hashdata failed.", LL_ERROR);
+				}
+
+				writeFileRepeat(m_hashoutput, buffer.data(), read);	
+
+			} while (read==4096);
+
+			assert(m_hashoutput->Size() == m_chunkhashes->Size());
+		}
+		else
+		{
+			Server->Log("Error seeking to hashoutput end. Copying hashdata failed.", LL_ERROR);
+		}
+	}
+
+	if(patch_mode)
+	{
+		writePatchSize(filesize_out);
+	}
+
+	Server->Log("Not successfull. Returning filesize "+nconvert(filesize_out), LL_DEBUG);
 }
 
