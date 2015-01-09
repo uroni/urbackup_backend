@@ -403,21 +403,6 @@ bool IncrFileBackup::doFileBackup()
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
-		if(!backup_stopped)
-		{
-			if(ServerStatus::isBackupStopped(clientname))
-			{
-				r_offline=true;
-				backup_stopped=true;
-				ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
-				server_download->queueSkip();
-				if(server_hash_existing.get())
-				{
-					server_hash_existing->queueStop(true);
-				}
-			}
-		}
-
 		filelist_currpos+=read;
 
 		for(size_t i=0;i<read;++i)
@@ -478,6 +463,21 @@ bool IncrFileBackup::doFileBackup()
 				int64 ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
+					if(!backup_stopped)
+					{
+						if(ServerStatus::isBackupStopped(clientname))
+						{
+							r_offline=true;
+							backup_stopped=true;
+							ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
+							server_download->queueSkip();
+							if(server_hash_existing.get())
+							{
+								server_hash_existing->queueStop(true);
+							}
+						}
+					}
+
 					laststatsupdate=ctime;
 					if(files_size==0)
 					{

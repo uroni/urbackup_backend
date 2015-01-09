@@ -218,14 +218,6 @@ bool FullFileBackup::doFileBackup()
 
 	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
 	{
-		if(ServerStatus::isBackupStopped(clientname))
-		{
-			r_done=true;
-			ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
-			server_download->queueSkip();
-			break;
-		}
-
 		for(size_t i=0;i<read;++i)
 		{
 			std::map<std::wstring, std::wstring> extra_params;
@@ -238,6 +230,14 @@ bool FullFileBackup::doFileBackup()
 				int64 ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
+					if(ServerStatus::isBackupStopped(clientname))
+					{
+						r_done=true;
+						ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
+						server_download->queueSkip();
+						break;
+					}
+
 					laststatsupdate=ctime;
 					if(files_size==0)
 					{
