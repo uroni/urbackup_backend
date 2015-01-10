@@ -219,7 +219,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		change_file_permissions_admin_only("urbackup/data/filelist.ub");
 	}
 
+#ifdef _WIN32
 	change_file_permissions_admin_only("urbackup");
+#endif
 	change_file_permissions_admin_only("urbackup/data");
 
 	if(FileExists("debug.log"))

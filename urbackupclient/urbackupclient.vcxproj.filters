@@ -120,6 +120,9 @@
     <ClCompile Include="..\urbackupcommon\glob.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="common_tokens.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">

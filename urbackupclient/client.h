@@ -276,7 +276,7 @@ private:
 
 	_i64 last_filebackup_filetime;
 
-	TokenCache token_cache;
+	tokens::TokenCache token_cache;
 };
 
 std::wstring add_trailing_slash(const std::wstring &strDirName);

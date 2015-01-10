@@ -131,6 +131,10 @@ public:
 	std::wstring getMiscValue(const std::string& key);
 	void updateMiscValue(const std::string& key, const std::wstring& value);
 
+	static const int c_is_group;
+	static const int c_is_user;
+	static const int c_is_system_user;
+
 	//@-SQLGenFunctionsBegin
 	struct CondInt
 	{

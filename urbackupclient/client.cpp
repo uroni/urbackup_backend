@@ -3361,11 +3361,12 @@ void IndexThread::writeTokens()
 		write_file_only_admin(access_keys_data, "access_keys.properties");
 	}	
 
-	write_tokens();
+	tokens::write_tokens();
 	std::vector<ClientDAO::SToken> tokens = cd->getFileAccessTokens();
 
 	std::string ids;
 	std::string uids;
+	std::string real_uids;
 	for(size_t i=0;i<tokens.size();++i)
 	{
 		if(!ids.empty())
@@ -3382,11 +3383,23 @@ void IndexThread::writeTokens()
 			}
 			uids+=nconvert(tokens[i].id);
 		}
+
+		if(tokens[i].is_user &&
+				tokens[i].is_user!=ClientDAO::c_is_system_user)
+		{
+			if(!real_uids.empty())
+			{
+				real_uids+=",";
+			}
+			real_uids+=nconvert(tokens[i].id);
+		}
+
 	}
 
 	std::string data="ids="+ids+"\n";
 	data+="access_key="+curr_key+"\n";
 	data+="uids="+uids+"\n";
+	data+="real_uids="+real_uids+"\n";
 
 	for(size_t i=0;i<tokens.size();++i)
 	{

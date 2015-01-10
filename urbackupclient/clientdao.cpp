@@ -21,6 +21,10 @@
 #include "../Interface/Server.h"
 #include <memory.h>
 
+const int ClientDAO::c_is_group = 0;
+const int ClientDAO::c_is_user = 1;
+const int ClientDAO::c_is_system_user = 2;
+
 ClientDAO::ClientDAO(IDatabase *pDB)
 {
 	db=pDB;

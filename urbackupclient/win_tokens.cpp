@@ -13,6 +13,9 @@
 
 #pragma comment(lib, "netapi32.lib")
 
+namespace tokens
+{
+
 struct Token
 {
 	int id;
@@ -263,11 +266,8 @@ bool write_token( std::wstring hostname, bool is_user, std::wstring accountname,
 	return true;
 }
 
-bool write_tokens()
+std::wstring get_hostname()
 {
-	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	ClientDAO dao(db);
-
 	char hostname_c[MAX_PATH];
 	hostname_c[0]=0;
 	gethostname(hostname_c, MAX_PATH);
@@ -276,88 +276,7 @@ bool write_tokens()
 	if(!hostname.empty())
 		hostname+=L"\\";
 
-	db->BeginTransaction();
-
-	bool has_new_token=false;
-	std::vector<std::wstring> users = get_users();
-
-	os_create_dir("tokens");
-
-	std::vector<SFile> files = getFilesWin(L"tokens", NULL, false, false);
-
-	for(size_t i=0;i<users.size();++i)
-	{
-		std::wstring user_fn=L"user_"+widen(bytesToHex(Server->ConvertToUTF8(users[i])));
-		std::wstring token_fn = L"tokens" + os_file_sep()+user_fn;
-		bool file_found=false;
-		for(size_t j=0;j<files.size();++j)
-		{
-			if(files[j].name==user_fn)
-			{
-				file_found=true;
-				break;
-			}
-		}
-
-		if(file_found)
-		{
-			continue;
-		}
-
-		has_new_token |= write_token(hostname, true, users[i], token_fn, dao);
-	}
-
-	std::vector<std::wstring> groups = get_groups();
-
-	for(size_t i=0;i<groups.size();++i)
-	{
-		std::wstring group_fn=L"group_"+widen(bytesToHex(Server->ConvertToUTF8(groups[i])));
-		std::wstring token_fn = L"tokens" + os_file_sep()+group_fn;
-		bool file_found=false;
-		for(size_t j=0;j<files.size();++j)
-		{
-			if(files[j].name==group_fn)
-			{
-				file_found=true;
-				break;
-			}
-		}
-
-		if(file_found)
-		{
-			continue;
-		}
-
-		has_new_token |= write_token(hostname, false, groups[i], token_fn, dao);
-
-	}
-
-	if(has_new_token)
-	{
-		dao.updateMiscValue("has_new_token", L"true");
-
-		if(has_new_token)
-		{
-			for(size_t i=0;i<users.size();++i)
-			{
-				std::vector<std::wstring> user_groups = get_user_groups(users[i]);
-
-				ClientDAO::CondInt uid = dao.getFileAccessTokenId(users[i], 1);
-				if(uid.exists)
-				{
-					for(size_t j=0;j<user_groups.size();++j)
-					{
-						dao.updateGroupMembership(uid.value, user_groups[j]);
-					}
-				}
-				
-			}
-		}
-	}
-
-	db->EndTransaction();
-
-	return has_new_token;
+	return hostname;
 }
 
 bool read_account_sid( std::vector<char>& sid, std::wstring hostname, std::wstring accountname, bool is_user )
@@ -575,3 +494,5 @@ void free_tokencache( TokenCacheInt* cache )
 {
 	delete cache;
 }
+
+} //namespace tokens

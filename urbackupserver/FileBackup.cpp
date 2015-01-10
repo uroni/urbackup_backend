@@ -941,9 +941,9 @@ void FileBackup::createUserViews(IFile* file_list_f)
 		return;
 	}
 
-	std::string s_uids = urbackup_tokens->getValue("uids", "");
+	std::string s_real_uids = urbackup_tokens->getValue("real_uids", "");
 	std::vector<std::string> uids;
-	Tokenize(s_uids, uids, ",");
+	Tokenize(s_real_uids, uids, ",");
 
 	for(size_t i=0;i<uids.size();++i)
 	{
