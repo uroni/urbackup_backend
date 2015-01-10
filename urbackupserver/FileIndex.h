@@ -14,7 +14,7 @@ const size_t bytes_in_index = 16;
 class FileIndex : public IThread
 {
 public:
-	typedef db_results(*get_data_callback_t)(size_t, void *userdata);
+	typedef db_results(*get_data_callback_t)(size_t, size_t, void *userdata);
 
 #pragma pack(1)
 	class SIndexKey

@@ -92,6 +92,7 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 	ServerBackupDao backupdao(db);
 
 	size_t n_done=0;
+	size_t n_rows=0;
 
 	SIndexKey last;
 	int64 last_prev_entry;
@@ -99,7 +100,9 @@ void LMDBFileIndex::create(get_data_callback_t get_data_callback, void *userdata
 	db_results res;
 	do
 	{
-		res=get_data_callback(n_done, userdata);
+		res=get_data_callback(n_done, n_rows, userdata);
+
+		++n_rows;
 
 		for(size_t i=0;i<res.size();++i)
 		{
