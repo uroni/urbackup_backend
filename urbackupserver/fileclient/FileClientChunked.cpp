@@ -1763,6 +1763,10 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 		writePatchSize(filesize_out);
 	}
 
+	m_hashoutput->Seek(0);
+	_i64 endian_filesize_out = little_endian(filesize_out);
+	writeFileRepeat(m_hashoutput, (char*)&endian_filesize_out, sizeof(_i64));
+
 	Server->Log("Not successfull. Returning filesize "+nconvert(filesize_out), LL_DEBUG);
 }
 
