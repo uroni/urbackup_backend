@@ -129,9 +129,9 @@ int ServerAutomaticArchive::getNonArchivedFileBackup(int backup_types, int clien
 	std::string incremental;
 	if(backup_types & backup_type_full_file && backup_types & backup_type_incr_file)
 		incremental="";
-	else if( backup_types & backup_type_full_file )
+	else if( backup_types & backup_type_incr_file )
 		incremental=" AND incremental<>0";
-	else if( backup_types & backup_type_incr_file)
+	else if( backup_types & backup_type_full_file)
 		incremental=" AND incremental=0";
 
 	IQuery *q_get_backups=db->Prepare("SELECT id FROM backups WHERE complete=1 AND archived=0 AND clientid=?"+incremental+" ORDER BY backuptime DESC LIMIT 1");
