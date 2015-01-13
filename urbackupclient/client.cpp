@@ -1305,6 +1305,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			return tmp;
 		}
 	}
+#else //_WIN32
+	return tmp;
 #endif
 }
 
