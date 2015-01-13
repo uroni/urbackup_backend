@@ -261,7 +261,7 @@ bool ImageBackup::doBackup()
 		}
 	}
 
-	if(ret)
+	if(ret && letter!="SYSVOL" && letter!="ESP")
 	{
 		backup_dao->updateClientLastImageBackup(backupid, clientid);
 	}
