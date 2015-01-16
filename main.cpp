@@ -413,6 +413,8 @@ int main_fkt(int argc, char *argv[])
 		Server->Log("SQLite3 wasn't compiled with the SQLITE_THREADSAFE. Exiting.", LL_ERROR);
 		return 43;
 	}
+
+	sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
 	//sqlite3_enable_shared_cache(1);
 
 	{
