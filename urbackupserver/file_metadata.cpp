@@ -277,6 +277,99 @@ std::wstring unescape_metadata_fn( const std::wstring& fn )
 	}
 }
 
+int64 os_metadata_offset( IFile* meta_file )
+{
+	int64 hashfilesize;
+
+	meta_file->Seek(0);
+	if(meta_file->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize))!=sizeof(hashfilesize))
+	{
+		Server->Log(L"Error reading file metadata hashfilesize from \""+meta_file->getFilenameW()+L"\"", LL_DEBUG);
+		return -1;
+	}
+
+	hashfilesize=little_endian(hashfilesize);
+
+	int64 meta_offset = 0;
+
+	if(hashfilesize!=-1)
+	{
+		meta_offset = get_hashdata_size(hashfilesize);
+		meta_file->Seek(meta_offset);
+	}
+
+	_u32 metadata_size_and_magic[2];
+	if(meta_file->Read(reinterpret_cast<char*>(&metadata_size_and_magic), sizeof(metadata_size_and_magic))!=sizeof(metadata_size_and_magic) ||
+		metadata_size_and_magic[0]==0)
+	{
+		Server->Log(L"Error reading file metadata hashfilesize from \""+meta_file->getFilenameW()+L"\" -2", LL_DEBUG);
+		return -1;
+	}
+
+	if(metadata_size_and_magic[1]!=METADATA_MAGIC)
+	{
+		Server->Log(L"Metadata magic wrong in file \""+meta_file->getFilenameW(), LL_DEBUG);
+		return -1;
+	}
+
+	return meta_offset + sizeof(_u32) + metadata_size_and_magic[0];
+}
+
+bool copy_os_metadata( const std::wstring& in_fn, const std::wstring& out_fn, INotEnoughSpaceCallback *cb)
+{
+	std::auto_ptr<IFile> in_f(Server->openFile(os_file_prefix(in_fn), MODE_READ));
+	std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_READ));
+
+	if(in_f.get()==NULL)
+	{
+		Server->Log(L"Error opening metadata file \""+in_fn+L"\" (input)", LL_ERROR);
+		return false;
+	}
+
+	if(out_f.get()==NULL)
+	{
+		Server->Log(L"Error opening metadata file \""+out_fn+L"\" (output)", LL_ERROR);
+		return false;
+	}
+
+	int64 offset = os_metadata_offset(in_f.get());
+
+	if(offset==-1)
+	{
+		return false;
+	}
+
+	if(!in_f->Seek(offset))
+	{
+		Server->Log(L"Error seeking to os metadata in \""+in_fn+L"\" (input)", LL_ERROR);
+		return false;
+	}
+
+	if(!out_f->Seek(out_f->Size()))
+	{
+		Server->Log(L"Error seeking to os metadata in \""+out_fn+L"\" (output)", LL_ERROR);
+		return false;
+	}
+
+	std::vector<char> buffer;
+	buffer.resize(32768);
+
+	_u32 read;
+	do 
+	{
+		read = in_f->Read(buffer.data(), static_cast<_u32>(buffer.size()));
+
+		if(!BackupServerPrepareHash::writeRepeatFreeSpace(out_f.get(), buffer.data(), read, cb))
+		{
+			Server->Log(L"Error while writing os metadata to \""+out_fn+L"\" (output)", LL_ERROR);
+			return false;
+		}
+
+	} while (read>0);
+
+	return true;
+}
+
 void FileMetadata::serialize( CWData& data ) const
 {
 	data.addString(file_permissions);

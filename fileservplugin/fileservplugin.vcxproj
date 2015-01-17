@@ -185,12 +185,14 @@
     <ClCompile Include="CTCPFileServ.cpp" />
     <ClCompile Include="CUDPThread.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="FileMetadataPipe.cpp" />
     <ClCompile Include="FileServ.cpp" />
     <ClCompile Include="FileServFactory.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="map_buffer.cpp" />
     <ClCompile Include="PipeFile.cpp" />
+    <ClCompile Include="PipeFileBase.cpp" />
     <ClCompile Include="PipeFileWin.cpp" />
     <ClCompile Include="PipeSessions.cpp" />
     <ClCompile Include="pluginmgr.cpp" />
@@ -208,6 +210,7 @@
     <ClInclude Include="CriticalSection.h" />
     <ClInclude Include="CTCPFileServ.h" />
     <ClInclude Include="CUDPThread.h" />
+    <ClInclude Include="FileMetadataPipe.h" />
     <ClInclude Include="FileServ.h" />
     <ClInclude Include="FileServFactory.h" />
     <ClInclude Include="IFileServ.h" />
@@ -217,6 +220,7 @@
     <ClInclude Include="map_buffer.h" />
     <ClInclude Include="packet_ids.h" />
     <ClInclude Include="PipeFile.h" />
+    <ClInclude Include="PipeFileBase.h" />
     <ClInclude Include="PipeSessions.h" />
     <ClInclude Include="pluginmgr.h" />
     <ClInclude Include="settings.h" />

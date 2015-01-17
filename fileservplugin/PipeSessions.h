@@ -1,14 +1,15 @@
 #pragma once
 #include "../Interface/File.h"
 #include "../Interface/Thread.h"
-#include "PipeFile.h"
+#include "PipeFileBase.h"
 #include <map>
 #include <string>
 
 struct SPipeSession
 {
-	PipeFile* file;
+	PipeFileBase* file;
 	bool retrieved_exit_info;
+	IPipe* input_pipe;
 };
 
 struct SExitInformation
@@ -36,6 +37,11 @@ public:
 	static IFile* getFile(const std::wstring& cmd);
 	static void removeFile(const std::wstring& cmd);
 	static SExitInformation getExitInformation(const std::wstring& cmd);
+
+	static void transmitFileMetadata(const std::string& local_fn, const std::string& public_fn,
+		const std::string& server_token);
+
+	static void metadataStreamEnd(const std::string& server_token);
 
 	void operator()();
 

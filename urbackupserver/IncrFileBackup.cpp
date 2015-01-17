@@ -534,6 +534,8 @@ bool IncrFileBackup::doFileBackup()
 					{
 						dir_metadata.push(metadata);
 
+						std::wstring orig_curr_path = curr_path;
+						std::wstring orig_curr_os_path = curr_os_path;
 						curr_path+=L"/"+cf.name;
 						curr_os_path+=L"/"+osspecific_name;
 						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
@@ -638,6 +640,22 @@ bool IncrFileBackup::doFileBackup()
 								c_has_error=true;
 								break;
 							}
+
+							if(indirchange)
+							{
+								server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
+									metadata, FileMetadata(), false, true);
+							}
+							else
+							{
+								std::wstring srcpath=last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn;
+								if(!copy_os_metadata(srcpath, backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main))
+								{
+									ServerLogger::Log(clientid, L"Error copying OS dependent directory metadata from last backup to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\".", LL_ERROR);
+									c_has_error=true;
+									break;
+								}
+							}
 						}
 						++depth;
 						if(depth==1)
@@ -729,7 +747,7 @@ bool IncrFileBackup::doFileBackup()
 							else
 							{
 								server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-									metadata, parent_metadata, script_dir);
+									metadata, parent_metadata, script_dir, false);
 							}							
 						}
 					}
@@ -792,7 +810,7 @@ bool IncrFileBackup::doFileBackup()
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, parent_metadata, script_dir);
+										metadata, parent_metadata, script_dir, false);
 								}
 							}
 						}

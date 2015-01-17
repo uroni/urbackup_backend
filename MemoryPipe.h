@@ -39,6 +39,8 @@ private:
 	
 	IMutex *mutex;
 	ICondition *cond;
+
+	bool has_error;
 };
 
 #endif /*MEMPIPE_H_*/

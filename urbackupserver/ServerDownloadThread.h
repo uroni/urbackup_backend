@@ -69,6 +69,7 @@ struct SQueueItem
 	FileMetadata metadata;
 	FileMetadata parent_metadata;
 	bool is_script;
+	bool is_dir;
 };
 
 class ServerDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback
@@ -83,9 +84,11 @@ public:
 
 	void operator()(void);
 
-	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, bool at_front=false);
+	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
+		_i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, bool is_dir, bool at_front=false);
 
-	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script);
+	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
+		const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script);
 
 	void addToQueueStartShadowcopy(const std::wstring& fn);
 
@@ -136,8 +139,6 @@ private:
 	void start_shadowcopy(const std::string &path);
 
 	void stop_shadowcopy(const std::string &path);
-
-	bool touch_file(SQueueItem todl);
 
 	FileClient& fc;
 	FileClientChunked* fc_chunked;

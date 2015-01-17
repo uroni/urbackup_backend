@@ -1,11 +1,9 @@
 #include "PipeFile.h"
 
 PipeFile::PipeFile(const std::wstring& pCmd)
-	: curr_pos(0), has_error(false), cmd(pCmd),
+	: PipeFileBase(pCmd),
 	hStderr(INVALID_HANDLE_VALUE),
-	hStdout(INVALID_HANDLE_VALUE), buf_w_pos(0), buf_r_pos(0), buf_w_reserved_pos(0),
-	threadidx(0), has_eof(false), stream_size(-1),
-	buf_circle(false)
+	hStdout(INVALID_HANDLE_VALUE)
 {
 	SECURITY_ATTRIBUTES saAttr = {}; 
 	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES); 
@@ -51,13 +49,13 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 	start_info.hStdOutput = hStdoutW;
 	start_info.dwFlags |= STARTF_USESTDHANDLES;
 
-	BOOL b = CreateProcessW(NULL, const_cast<LPWSTR>(cmd.c_str()),
+	BOOL b = CreateProcessW(NULL, const_cast<LPWSTR>(getFilenameW().c_str()),
 		&saAttr, NULL, TRUE, 0, NULL, NULL, &start_info,
 		&proc_info);
 
 	if(!b)
 	{
-		Server->Log(L"Error starting script \"" + cmd + L"\"", LL_ERROR);
+		Server->Log(L"Error starting script \"" + getFilenameW() + L"\"", LL_ERROR);
 		has_error=true;
 	}
 

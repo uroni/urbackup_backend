@@ -62,6 +62,10 @@ bool read_metadata(const std::wstring& in_fn, FileMetadata& metadata);
 
 bool has_metadata(const std::wstring& in_fn, const FileMetadata& metadata);
 
+int64 os_metadata_offset(IFile* meta_file);
+
+bool copy_os_metadata(const std::wstring& in_fn, const std::wstring& out_fn, INotEnoughSpaceCallback *cb);
+
 namespace
 {
 	const wchar_t* metadata_dir_fn=L".dir_metadata";

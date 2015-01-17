@@ -812,7 +812,7 @@ private:
 		if(f->Size()==0 || !transfer_incr_blockdiff)
 		{
 			server_download->addToQueueFull(0, fn, fn,
-				fpath, fpath, filesize, metadata, FileMetadata(), false);
+				fpath, fpath, filesize, metadata, FileMetadata(), false, false);
 		}
 		else
 		{

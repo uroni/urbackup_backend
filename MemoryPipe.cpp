@@ -23,6 +23,7 @@
 #endif
 
 CMemoryPipe::CMemoryPipe(void)
+	: has_error(false)
 {
     mutex=Server->createMutex();
     cond=Server->createCondition();
@@ -41,7 +42,7 @@ size_t CMemoryPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	{
 		int64 starttime=Server->getTimeMS();
 		int64 currtime=starttime;
-		while( queue.empty() && starttime+timeoutms>currtime)
+		while( queue.empty() && starttime+timeoutms>currtime && !has_error)
 		{
 			cond->wait( &lock, timeoutms- static_cast<int>(currtime-starttime) );
 			if(queue.empty())
@@ -60,9 +61,14 @@ size_t CMemoryPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	}
 	else
 	{
-		while( queue.size()==0 )
+		while( queue.size()==0 && !has_error )
 		{
 			cond->wait(&lock);		
+		}
+
+		if(has_error)
+		{
+			return 0;
 		}
 	}
 	
@@ -109,7 +115,7 @@ size_t CMemoryPipe::Read(std::string *str, int timeoutms )
 	{
 		int64 starttime=Server->getTimeMS();
 		int64 currtime=starttime;
-		while( queue.empty() && starttime+timeoutms>currtime)
+		while( queue.empty() && starttime+timeoutms>currtime && !has_error)
 		{
 			cond->wait( &lock, timeoutms- static_cast<int>(currtime-starttime) );
 			if(queue.empty())
@@ -128,9 +134,14 @@ size_t CMemoryPipe::Read(std::string *str, int timeoutms )
 	}
 	else
 	{
-		while( queue.size()==0 )
+		while( queue.size()==0 && !has_error )
 		{
 			cond->wait(&lock);		
+		}
+
+		if(has_error)
+		{
+			return 0;
 		}
 	}
 	
@@ -184,7 +195,8 @@ bool CMemoryPipe::isReadable(int timeoutms)
 
 bool CMemoryPipe::hasError(void)
 {
-	return false;
+	IScopedLock lock(mutex);
+	return has_error;
 }
 
 size_t CMemoryPipe::getNumElements(void)
@@ -195,6 +207,9 @@ size_t CMemoryPipe::getNumElements(void)
 
 void CMemoryPipe::shutdown(void)
 {
+	IScopedLock lock(mutex);
+	has_error=true;
+	cond->notify_all();
 }
 
 void CMemoryPipe::addThrottler(IPipeThrottler *throttler)

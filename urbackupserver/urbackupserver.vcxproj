@@ -279,6 +279,7 @@
     <ClCompile Include="dao\ServerCleanupDAO.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FileBackup.cpp" />
+    <ClCompile Include="FileMetadataDownloadThread.cpp" />
     <ClCompile Include="FullFileBackup.cpp" />
     <ClCompile Include="FileIndex.cpp" />
     <ClCompile Include="fileclient\FileClientChunked.cpp" />
@@ -371,6 +372,7 @@
     <ClInclude Include="dao\ServerCleanupDAO.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="FileBackup.h" />
+    <ClInclude Include="FileMetadataDownloadThread.h" />
     <ClInclude Include="FullFileBackup.h" />
     <ClInclude Include="FileIndex.h" />
     <ClInclude Include="fileclient\FileClientChunked.h" />

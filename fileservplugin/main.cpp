@@ -320,6 +320,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		Log("Backup privileges set successfully", LL_DEBUG);
 	}
+	hr=ModifyPrivilege(SE_SECURITY_NAME, TRUE);
+	if(!SUCCEEDED(hr))
+	{
+		Log("Failed to modify backup privileges (SE_SECURITY_NAME)", LL_ERROR);
+	}
+	else
+	{
+		Log("Backup privileges set successfully (SE_SECURITY_NAME)", LL_DEBUG);
+	}
 #endif
 #endif
 

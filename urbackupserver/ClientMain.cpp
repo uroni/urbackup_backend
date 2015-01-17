@@ -1187,6 +1187,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.efi_version=watoi(it->second);
 		}
+		it=params.find(L"FILE_META");
+		if(it!=params.end())
+		{
+			protocol_versions.file_meta=watoi(it->second);
+		}
 	}
 
 	return !cap.empty();

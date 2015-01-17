@@ -389,7 +389,15 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				if(is_script)
 				{
-					IFile* file = PipeSessions::getFile(filename);
+					IFile* file;
+					if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
+					{
+						file = PipeSessions::getFile(o_filename);
+					}
+					else
+					{
+						file = PipeSessions::getFile(filename);
+					}					
 
 					if(!file)
 					{
@@ -411,6 +419,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 						}
 						break;
 					}
+				}
+				else if(s_filename.find("|"))
+				{
+					PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
+						getafter("|",s_filename), getuntil("|", s_filename));
 				}
 
 #ifndef LINUX
@@ -787,6 +800,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 					return false;
 				}
 			}break;
+
+		case ID_INFORM_METADATA_STREAM_END:
+			{
+				if(!InformMetadataStreamEnd(data))
+				{
+					return false;
+				}
+			} break;
 		}
 	}
 	if( stopped==true )
@@ -1174,6 +1195,12 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	}
 	else
 	{			
+		if(s_filename.find("|"))
+		{
+			PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
+				getafter("|",s_filename), getuntil("|", s_filename));
+		}
+
 #ifdef _WIN32
 #ifndef BACKUP_SEM
 		hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
@@ -1591,4 +1618,32 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 	}
 
 	return curr_filesize!=-1;
+}
+
+bool CClientThread::InformMetadataStreamEnd( CRData * data )
+{
+#ifdef CHECK_IDENT
+	std::string ident;
+	data->getStr(&ident);
+	if(!FileServ::checkIdentity(ident))
+	{
+		Log("Identity check failed -hash", LL_DEBUG);
+		return false;
+	}
+#endif
+
+	std::string token;
+	data->getStr(&token);
+	
+	PipeSessions::metadataStreamEnd(token);
+
+	char ch = ID_PONG;
+	int rc = SendInt(&ch, 1);
+	if(rc==SOCKET_ERROR)
+	{
+		Log("Error: Sending data failed (InformMetadataStreamEnd)");
+		return false;
+	}
+
+	return true;
 }

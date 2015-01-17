@@ -125,7 +125,7 @@ private:
 	bool GetFileHashAndMetadata(CRData* data);
 
 	void queueChunk(SChunk chunk);
-
+	bool InformMetadataStreamEnd( CRData * data );
 
 	volatile bool stopped;
 	volatile bool killable;

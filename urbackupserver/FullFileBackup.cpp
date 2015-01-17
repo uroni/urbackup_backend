@@ -272,6 +272,8 @@ bool FullFileBackup::doFileBackup()
 					{
 						dir_metadata.push(metadata);
 
+						std::wstring orig_curr_path = curr_path;
+						std::wstring orig_curr_os_path = curr_os_path;
 						curr_path+=L"/"+cf.name;
 						curr_os_path+=L"/"+osspecific_name;
 						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
@@ -302,6 +304,13 @@ bool FullFileBackup::doFileBackup()
 							c_has_error=true;
 							break;
 						}
+
+						if(client_main->getProtocolVersions().file_meta>0)
+						{
+							server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
+								metadata, FileMetadata(), false, true);
+						}
+
 						++depth;
 						if(depth==1)
 						{
@@ -369,7 +378,7 @@ bool FullFileBackup::doFileBackup()
 					if(!file_ok)
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-							metadata, parent_metadata, script_dir);
+							metadata, parent_metadata, script_dir, false);
 					}
 				}
 

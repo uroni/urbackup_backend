@@ -674,9 +674,6 @@ bool FileClient::Reconnect(void)
 	bool firstpacket=true;
 	last_progress_log=0;
 
-	if(file==NULL)
-		return ERR_ERROR;
-
     starttime=Server->getTimeMS();
 
 	int state=0;
@@ -727,7 +724,14 @@ bool FileClient::Reconnect(void)
 				if( firstpacket==false )
 					data.addInt64( received ); 
 
-				file->Seek(received);
+				if(file!=NULL)
+				{
+					file->Seek(received);
+				}
+				else
+				{
+					return ERR_ERROR;
+				}
 
 				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 				if(rc==0)
@@ -878,6 +882,11 @@ bool FileClient::Reconnect(void)
 						if((_u64)tw>write_remaining)
 							tw=(_u32)write_remaining;
 
+						if(file==NULL)
+						{
+							return ERR_ERROR;
+						}
+
 						_u32 cw=file->Write(&buf[written], tw);
 						hash_func.update((unsigned char*)&buf[written], cw);
 						written+=cw;
@@ -996,7 +1005,14 @@ bool FileClient::Reconnect(void)
 				if( firstpacket==false )
 					data.addInt64( received ); 
 
-				file->Seek(received);
+				if(file!=NULL)
+				{
+					file->Seek(received);
+				}
+				else
+				{
+					return ERR_ERROR;
+				}
 
 				if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
 				{
@@ -1358,6 +1374,65 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 				starttime=Server->getTimeMS();
 
 				firstpacket=true;
+			}
+		}
+	}
+}
+
+_u32 FileClient::InformMetadataStreamEnd( const std::string& server_token )
+{
+	assert(queued.empty());
+
+	CWData data;
+	data.addUChar( ID_INFORM_METADATA_STREAM_END );
+	data.addString( identity );
+	data.addString(server_token);
+
+	int tries=5000;
+
+	if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+	{
+		Server->Log("Timeout during sending metadata stream end (1)", LL_ERROR);
+	}
+
+	while(true)
+	{
+		size_t rc = tcpsock->Read(dl_buf, 1, 120000);
+
+		if(rc==0)
+		{
+			Server->Log("Server timeout (2) in FileClient sending metadata stream end", LL_DEBUG);
+			bool b=Reconnect();
+			--tries;
+			if(!b || tries<=0 )
+			{
+				Server->Log("FileClient: ERR_TIMEOUT (metadata stream)", LL_INFO);
+				return ERR_TIMEOUT;
+			}
+			else
+			{
+				CWData data;
+				data.addUChar( ID_INFORM_METADATA_STREAM_END );
+				data.addString( identity );
+				data.addString(server_token);
+
+				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
+				if(rc==0)
+				{
+					Server->Log("FileClient: Error sending metadata stream end", LL_INFO);
+				}
+				starttime=Server->getTimeMS();
+			}
+		}
+		else
+		{
+			if(*dl_buf==ID_PONG)
+			{
+				return ERR_SUCCESS;
+			}
+			else
+			{
+				return ERR_ERROR;
 			}
 		}
 	}

@@ -40,7 +40,7 @@ struct SProtocolVersions
 			filesrv_protocol_version(0), file_protocol_version(0),
 				file_protocol_version_v2(0), set_settings_version(0),
 				image_protocol_version(0), eta_version(0), cdp_version(0),
-				efi_version(0)
+				efi_version(0), file_meta(0)
 			{
 
 			}
@@ -53,6 +53,7 @@ struct SProtocolVersions
 	int eta_version;
 	int cdp_version;
 	int efi_version;
+	int file_meta;
 };
 
 struct SRunningBackup

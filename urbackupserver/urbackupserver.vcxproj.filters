@@ -291,6 +291,9 @@
     <ClCompile Include="..\urbackupcommon\glob.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="FileMetadataDownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -529,6 +532,9 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\glob.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileMetadataDownloadThread.h">
+      <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
