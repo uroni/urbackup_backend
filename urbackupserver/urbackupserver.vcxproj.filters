@@ -84,9 +84,6 @@
     <ClCompile Include="..\stringtools.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="fileclient\FileClient.cpp">
-      <Filter>fileclient</Filter>
-    </ClCompile>
     <ClCompile Include="server_update.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -168,9 +165,6 @@
     <ClCompile Include="..\md5.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="fileclient\FileClientChunked.cpp">
-      <Filter>fileclient</Filter>
-    </ClCompile>
     <ClCompile Include="ChunkPatcher.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -237,17 +231,11 @@
     <ClCompile Include="server_hash_existing.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="filelist_utils.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\common\adler32.cpp">
       <Filter>fileclient</Filter>
     </ClCompile>
     <ClCompile Include="create_files_index.cpp">
       <Filter>filesindex</Filter>
-    </ClCompile>
-    <ClCompile Include="file_metadata.cpp">
-      <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="LMDBFileIndex.cpp">
       <Filter>filesindex</Filter>
@@ -293,6 +281,24 @@
     </ClCompile>
     <ClCompile Include="FileMetadataDownloadThread.cpp">
       <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\filelist_utils.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\file_metadata.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="serverinterface\restore_client.cpp">
+      <Filter>serverinterface</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -344,9 +350,6 @@
     <ClInclude Include="..\stringtools.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="fileclient\FileClient.h">
-      <Filter>fileclient</Filter>
-    </ClInclude>
     <ClInclude Include="server_update.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -380,12 +383,6 @@
     <ClInclude Include="..\urbackupcommon\settingslist.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="fileclient\packet_ids.h">
-      <Filter>fileclient</Filter>
-    </ClInclude>
-    <ClInclude Include="fileclient\socket_header.h">
-      <Filter>fileclient</Filter>
-    </ClInclude>
     <ClInclude Include="..\urbackupcommon\os_functions.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -412,9 +409,6 @@
     </ClInclude>
     <ClInclude Include="..\md5.h">
       <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="fileclient\FileClientChunked.h">
-      <Filter>fileclient</Filter>
     </ClInclude>
     <ClInclude Include="ChunkPatcher.h">
       <Filter>Headerdateien</Filter>
@@ -485,14 +479,8 @@
     <ClInclude Include="LMDBFileIndex.h">
       <Filter>filesindex</Filter>
     </ClInclude>
-    <ClInclude Include="filelist_utils.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
     <ClInclude Include="FileIndex.h">
       <Filter>filesindex</Filter>
-    </ClInclude>
-    <ClInclude Include="file_metadata.h">
-      <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="apps\check_files_index.h">
       <Filter>apps</Filter>
@@ -535,6 +523,30 @@
     </ClInclude>
     <ClInclude Include="FileMetadataDownloadThread.h">
       <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\socket_header.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\filelist_utils.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\file_metadata.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\chunk_hasher.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="serverinterface\restore_client.h">
+      <Filter>serverinterface</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -297,7 +297,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool f
 	return tmp;
 }
 
-SFile getFileMetadata( const std::wstring &path )
+SFile getFileMetadataWin( const std::wstring &path, bool with_usn )
 {
 	SFile ret = {};
 	ret.name=path;
@@ -324,12 +324,66 @@ SFile getFileMetadata( const std::wstring &path )
 
 		ret.created=os_windows_to_unix_time(lwt.QuadPart);
 
+		if(with_usn && !ret.isdir && !(fad.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT))
+		{
+			HANDLE hFile = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+				OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+			if(hFile!=INVALID_HANDLE_VALUE)
+			{
+				std::vector<char> buffer;
+				buffer.resize(1024);
+				DWORD last_err=0;
+				do 
+				{
+					DWORD ret_bytes = 0;
+					BOOL b = DeviceIoControl(hFile, FSCTL_READ_FILE_USN_DATA, NULL, 0,
+						buffer.data(), static_cast<DWORD>(buffer.size()), &ret_bytes, NULL);
+
+					if(b)
+					{
+						USN_RECORD* usnv2=reinterpret_cast<USN_RECORD*>(buffer.data());
+						if(usnv2->MajorVersion==2)
+						{
+							ret.usn = usnv2->Usn;
+						}
+						else if(usnv2->MajorVersion==3)
+						{
+							USN_RECORD_V3* usnv3=reinterpret_cast<USN_RECORD_V3*>(buffer.data());
+							ret.usn = usnv3->Usn;
+						}
+						else
+						{
+							Server->Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+path+L"\" not supported", LL_ERROR);
+						}
+					}
+					else
+					{
+						last_err=GetLastError();
+					}
+
+					if(last_err==ERROR_INSUFFICIENT_BUFFER)
+					{
+						buffer.resize(buffer.size()*2);
+					}
+
+				} while (last_err==ERROR_INSUFFICIENT_BUFFER);
+
+				CloseHandle(hFile);
+			}
+		}
+
 		return ret;
 	}
 	else
 	{
 		return SFile();
 	}
+}
+
+SFile getFileMetadata( const std::wstring &path )
+{
+	return getFileMetadataWin(path, false);
 }
 
 #ifndef OS_FUNC_NO_SERVER

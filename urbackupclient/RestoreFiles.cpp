@@ -1,0 +1,416 @@
+#include "RestoreFiles.h"
+#include "ClientService.h"
+#include "../stringtools.h"
+#include "../urbackupcommon/filelist_utils.h"
+#include "RestoreDownloadThread.h"
+#include "../urbackupcommon/fileclient/FileClientChunked.h"
+#include "../urbackupcommon/fileclient/tcpstack.h"
+#include "../Interface/Server.h"
+#include "../Interface/ThreadPool.h"
+#include "clientdao.h"
+#include "../Interface/Server.h"
+#include <algorithm>
+#include "client.h"
+#include <stack>
+#include "../urbackupcommon/chunk_hasher.h"
+#include "database.h"
+
+void RestoreFiles::operator()()
+{
+	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+	FileClient fc(false, client_token, 3,
+		true, this, NULL);
+
+	ClientConnector::updateRestorePc(-1, client_token);
+	
+	if(!connectFileClient(fc))
+	{
+		//TODO: ERR
+		return;
+	}
+
+	if(!downloadFilelist(fc))
+	{
+		//TODO: ERR
+		return;
+	}
+
+	int64 total_size = calculateDownloadSize();
+	if(total_size==-1)
+	{
+		//TODO: ERR
+	}
+
+	if(!downloadFiles(fc, total_size))
+	{
+		//TODO: ERR
+		return;
+	}
+}
+
+IPipe * RestoreFiles::new_fileclient_connection( )
+{
+	return ClientConnector::getFileServConnection(server_token, 10000);
+}
+
+bool RestoreFiles::connectFileClient( FileClient& fc )
+{
+	IPipe* np = new_fileclient_connection();
+
+	if(np!=NULL)
+	{
+		fc.Connect(np);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool RestoreFiles::downloadFilelist( FileClient& fc )
+{
+	filelist = Server->openTemporaryFile();
+	filelist_del.reset(filelist);
+
+	if(filelist==NULL)
+	{
+		return false;
+	}
+
+	_u32 rc = fc.GetFile("clientdl_filelist", filelist, true, false);
+
+	if(rc!=ERR_SUCCESS)
+	{
+		Server->Log("Error getting file list. Errorcode: "+FileClient::getErrorString(rc)+" ("+nconvert(rc)+")", LL_ERROR);
+		return false;
+	}
+
+	return true;
+}
+
+int64 RestoreFiles::calculateDownloadSize()
+{
+	std::vector<char> buffer;
+	buffer.resize(32768);
+
+	FileListParser filelist_parser;
+
+	_u32 read;
+	SFile data;
+	std::map<std::wstring, std::wstring> extra;
+
+	int64 total_size = 0;
+
+	filelist->Seek(0);
+
+	do 
+	{
+		read = filelist->Read(buffer.data(), static_cast<_u32>(buffer.size()));
+
+		for(_u32 i=0;i<read;++i)
+		{
+			if(filelist_parser.nextEntry(buffer[i], data, &extra))
+			{
+				if(data.size>0)
+				{
+					total_size+=data.size;
+				}				
+			}
+		}
+
+	} while (read>0);
+
+	return total_size;
+}
+
+bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
+{
+	std::vector<char> buffer;
+	buffer.resize(32768);
+
+	FileListParser filelist_parser;
+
+	std::auto_ptr<FileClientChunked> fc_chunked = createFcChunked();
+
+	_u32 read;
+	SFile data;
+	std::map<std::wstring, std::wstring> extra;
+
+	size_t depth = 0;
+
+	std::wstring restore_path;
+	std::wstring server_path = L"clientdl";
+
+	RestoreDownloadThread* restore_download = new RestoreDownloadThread(fc, *fc_chunked, client_token);
+	Server->getThreadPool()->execute(restore_download);
+
+	std::wstring curr_files_dir;
+	std::vector<SFileAndHash> curr_files;
+
+	ClientDAO client_dao(db);
+
+	std::stack<FileMetadata> parent_metadata;
+
+	size_t line=0;
+
+	bool has_error=false;
+
+	filelist->Seek(0);
+
+	int64 laststatsupdate=Server->getTimeMS();
+	int64 skipped_bytes = 0;
+
+	do 
+	{
+		read = filelist->Read(buffer.data(), static_cast<_u32>(buffer.size()));
+
+		for(_u32 i=0;i<read;++i)
+		{
+			if(filelist_parser.nextEntry(buffer[i], data, &extra))
+			{
+				FileMetadata metadata;
+				metadata.read(extra);
+
+				int64 ctime=Server->getTimeMS();
+				if(ctime-laststatsupdate>1000)
+				{
+					laststatsupdate=ctime;
+					if(total_size==0)
+					{
+						ClientConnector::updateRestorePc(100, client_token);
+					}
+					else
+					{
+						int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));;
+						ClientConnector::updateRestorePc(pcdone, client_token);
+					}
+				}
+
+				if(data.isdir)
+				{
+					if(data.name!=L"..")
+					{
+						bool set_orig_path = false;
+						str_map::iterator it_orig_path = extra.find(L"orig_path");
+						if(it_orig_path!=extra.end())
+						{
+							restore_path = Server->ConvertToUnicode(base64_decode_dash(wnarrow(it_orig_path->second)));
+							set_orig_path=true;
+						}
+
+						if(depth==0)
+						{
+							if(!os_directory_exists(os_file_prefix(restore_path)))
+							{
+								if(!os_create_dir_recursive(os_file_prefix(restore_path)))
+								{
+									log(L"Error recursively creating directory \""+restore_path+L"\"", LL_ERROR);
+									has_error=true;
+								}
+							}
+						}
+						else
+						{
+							if(!set_orig_path)
+							{
+								restore_path+=os_file_sep()+data.name;
+							}
+
+							if(!os_directory_exists(os_file_prefix(restore_path)))
+							{
+								if(!os_create_dir(os_file_prefix(restore_path)))
+								{
+									log(L"Error creating directory \""+restore_path+L"\"", LL_ERROR);
+									has_error=true;
+								}
+							}							
+						}
+
+						server_path+=L"/"+data.name;
+
+						FileMetadata curr_parent_metadata = parent_metadata.empty()?FileMetadata():parent_metadata.top();
+
+						restore_download->addToQueueFull(line, server_path, restore_path, 0,
+							metadata, curr_parent_metadata, false, true, false, false);
+
+						parent_metadata.push(metadata);
+
+						++depth;
+					}
+					else
+					{
+						--depth;
+
+						if(!parent_metadata.empty())
+						{
+							os_set_file_time(os_file_prefix(restore_path), parent_metadata.top().created, parent_metadata.top().last_modified);
+							parent_metadata.pop();
+						}
+
+						if(depth==0)
+						{
+							server_path.clear();
+							restore_path.clear();
+						}
+						else
+						{
+							server_path=ExtractFilePath(server_path, L"/");
+							restore_path=ExtractFilePath(restore_path, os_file_sep());
+						}
+
+						
+					}
+				}
+				else
+				{
+					std::wstring local_fn = restore_path + os_file_sep() + data.name;
+#ifdef _WIN32
+					std::wstring name_lower = strlower(data.name);
+#else
+					std::wstring name_lower = data.name;
+#endif
+					std::wstring server_fn = server_path + L"/" + data.name;
+
+					str_map::iterator it_orig_path = extra.find(L"orig_path");
+					if(it_orig_path!=extra.end())
+					{
+						local_fn = Server->ConvertToUnicode(base64_decode_dash(wnarrow(it_orig_path->second)));
+						restore_path = ExtractFilePath(local_fn, os_file_sep());
+					}
+
+				
+					if(Server->fileExists(os_file_prefix(local_fn)))
+					{
+						if(restore_path!=curr_files_dir)
+						{
+							curr_files_dir = restore_path;
+
+#ifndef _WIN32
+							std::wstring restore_path_lower = restore_path;
+#else
+							std::wstring restore_path_lower = strlower(restore_path);
+#endif
+
+							if(!client_dao.getFiles(restore_path_lower + os_file_sep(), curr_files))
+							{
+								curr_files.clear();
+							}
+						}
+
+						std::string shahash;
+
+						SFileAndHash search_file = {};
+						search_file.name = data.name;
+
+						std::vector<SFileAndHash>::iterator it_file = std::lower_bound(curr_files.begin(), curr_files.end(), search_file);
+						if(it_file!=curr_files.end() && it_file->name == data.name)
+						{
+							SFile metadata = getFileMetadataWin(local_fn, true);
+							if(!metadata.name.empty())
+							{
+								int64 change_indicator = metadata.last_modified;
+								if(metadata.usn!=0)
+								{
+									change_indicator = metadata.usn;
+								}
+								if(!metadata.isdir
+									&& metadata.size==it_file->size
+									&& change_indicator==it_file->change_indicator
+									&& metadata.created == it_file->created
+									&& !it_file->hash.empty())
+								{
+									shahash = it_file->hash;
+								}
+							}							
+						}
+
+						IFile* orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW);
+
+						if(orig_file==NULL)
+						{
+							log(L"Cannot open file \""+local_fn+L"\" for writing. Not restoring file.", LL_ERROR);
+							has_error=true;
+						}
+						else
+						{
+							IFile* chunkhashes = Server->openTemporaryFile();
+
+							if(chunkhashes==NULL)
+							{
+								log(L"Cannot open temporary file for chunk hashes of file \""+local_fn+L"\". Not restoring file.", LL_ERROR);
+								has_error=true;
+								delete orig_file;
+							}
+							else
+							{
+								if(shahash.empty())
+								{
+									log(L"Calculating hashes of file \""+local_fn+L"\"...", LL_DEBUG);
+									shahash = build_chunk_hashs(orig_file, chunkhashes, NULL, true, NULL, false, NULL);
+								}
+
+								FileMetadata curr_parent_metadata = parent_metadata.empty()?FileMetadata():parent_metadata.top();
+
+								if(shahash!=base64_decode_dash(wnarrow(extra[L"shahash"])))
+								{
+									restore_download->addToQueueChunked(line, server_fn, local_fn, 
+										data.size, metadata, curr_parent_metadata, false, orig_file, chunkhashes);
+								}
+								else
+								{
+									restore_download->addToQueueFull(line, server_fn, local_fn, 
+										data.size, metadata, curr_parent_metadata, false, false, false, true);
+
+									std::wstring tmpfn = chunkhashes->getFilenameW();
+									delete chunkhashes;
+									Server->deleteFile(tmpfn);
+									delete orig_file;
+								}
+							}
+						}
+					}
+					else
+					{
+						FileMetadata curr_parent_metadata = parent_metadata.empty()?FileMetadata():parent_metadata.top();
+
+						restore_download->addToQueueFull(line, server_fn, local_fn, 
+							data.size, metadata, curr_parent_metadata, false, false, false, false);
+					}
+				}
+				++line;
+			}
+		}
+
+	} while (read>0);
+
+	ClientConnector::updateRestorePc(101, client_token);
+
+	return !has_error;
+}
+
+void RestoreFiles::log( const std::string& msg, int loglevel )
+{
+	Server->Log(msg, loglevel);
+	ClientConnector::tochannelLog(restoreid, msg, loglevel, client_token);
+}
+
+void RestoreFiles::log( const std::wstring& msg, int loglevel )
+{
+	Server->Log(msg, loglevel);
+	ClientConnector::tochannelLog(restoreid, msg, loglevel, client_token);
+}
+
+std::auto_ptr<FileClientChunked> RestoreFiles::createFcChunked()
+{
+	IPipe* conn = new_fileclient_connection();
+
+	if(conn==NULL)
+	{
+		return std::auto_ptr<FileClientChunked>();
+	}
+
+	return std::auto_ptr<FileClientChunked>(new FileClientChunked(conn, true, &tcpstack, this,
+		NULL, client_token, NULL));
+}
+

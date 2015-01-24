@@ -258,9 +258,14 @@
     <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
+    <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp" />
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\filelist_utils.cpp" />
+    <ClCompile Include="..\urbackupcommon\file_metadata.cpp" />
     <ClCompile Include="..\urbackupcommon\glob.cpp" />
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
     <ClCompile Include="..\urbackupcommon\json.cpp" />
@@ -282,10 +287,7 @@
     <ClCompile Include="FileMetadataDownloadThread.cpp" />
     <ClCompile Include="FullFileBackup.cpp" />
     <ClCompile Include="FileIndex.cpp" />
-    <ClCompile Include="fileclient\FileClientChunked.cpp" />
     <ClCompile Include="filedownload.cpp" />
-    <ClCompile Include="filelist_utils.cpp" />
-    <ClCompile Include="file_metadata.cpp" />
     <ClCompile Include="ImageBackup.cpp" />
     <ClCompile Include="IncrFileBackup.cpp" />
     <ClCompile Include="InternetServiceConnector.cpp" />
@@ -304,6 +306,7 @@
     <ClCompile Include="serverinterface\logs.cpp" />
     <ClCompile Include="serverinterface\piegraph.cpp" />
     <ClCompile Include="serverinterface\progress.cpp" />
+    <ClCompile Include="serverinterface\restore_client.cpp" />
     <ClCompile Include="serverinterface\salt.cpp" />
     <ClCompile Include="serverinterface\settings.cpp" />
     <ClCompile Include="serverinterface\shutdown.cpp" />
@@ -336,7 +339,6 @@
     <ClCompile Include="treediff\TreeDiff.cpp" />
     <ClCompile Include="treediff\TreeNode.cpp" />
     <ClCompile Include="treediff\TreeReader.cpp" />
-    <ClCompile Include="fileclient\FileClient.cpp" />
     <ClCompile Include="verify_hashes.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -345,9 +347,16 @@
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
+    <ClInclude Include="..\urbackupcommon\chunk_hasher.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\socket_header.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
+    <ClInclude Include="..\urbackupcommon\filelist_utils.h" />
+    <ClInclude Include="..\urbackupcommon\file_metadata.h" />
     <ClInclude Include="..\urbackupcommon\glob.h" />
     <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h" />
     <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
@@ -375,12 +384,7 @@
     <ClInclude Include="FileMetadataDownloadThread.h" />
     <ClInclude Include="FullFileBackup.h" />
     <ClInclude Include="FileIndex.h" />
-    <ClInclude Include="fileclient\FileClientChunked.h" />
-    <ClInclude Include="fileclient\packet_ids.h" />
-    <ClInclude Include="fileclient\socket_header.h" />
     <ClInclude Include="filedownload.h" />
-    <ClInclude Include="filelist_utils.h" />
-    <ClInclude Include="file_metadata.h" />
     <ClInclude Include="ImageBackup.h" />
     <ClInclude Include="IncrFileBackup.h" />
     <ClInclude Include="InternetServiceConnector.h" />
@@ -393,6 +397,7 @@
     <ClInclude Include="serverinterface\backups.h" />
     <ClInclude Include="serverinterface\helper.h" />
     <ClInclude Include="serverinterface\login.h" />
+    <ClInclude Include="serverinterface\restore_client.h" />
     <ClInclude Include="serverinterface\rights.h" />
     <ClInclude Include="server_archive.h" />
     <ClInclude Include="server_channel.h" />
@@ -418,7 +423,6 @@
     <ClInclude Include="treediff\TreeDiff.h" />
     <ClInclude Include="treediff\TreeNode.h" />
     <ClInclude Include="treediff\TreeReader.h" />
-    <ClInclude Include="fileclient\FileClient.h" />
     <ClInclude Include="server_status.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

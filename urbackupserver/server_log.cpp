@@ -22,31 +22,31 @@
 #include "../Interface/Query.h"
 #include "database.h"
 #include "../stringtools.h"
+#include <limits.h>
 
-std::map<int, std::vector<SLogEntry> > ServerLogger::logdata;
+std::map<logid_t, std::vector<SLogEntry> > ServerLogger::logdata;
 IMutex *ServerLogger::mutex=NULL;
 std::map<int, SCircularData> ServerLogger::circular_logdata;
+logid_t ServerLogger::logid_gen;
+std::map<logid_t, int> ServerLogger::logid_client;
 
 const size_t circular_logdata_buffersize=20;
 
-void ServerLogger::Log(int clientid, const std::string &pStr, int LogLevel)
+void ServerLogger::Log(logid_t logid, const std::string &pStr, int LogLevel)
 {
 	Server->Log(pStr, LogLevel);
 
 	IScopedLock lock(mutex);
 
-	logCircular(clientid, pStr, LogLevel);
+	logCircular(logid_client[logid], pStr, LogLevel);
 
 	if(LogLevel<0)
 		return;
 
-	if(clientid==0)
-		return;	
-
-	logMemory(clientid, pStr, LogLevel);
+	logMemory(logid, pStr, LogLevel);
 }
 
-void ServerLogger::Log(int clientid, const std::wstring &pStr, int LogLevel)
+void ServerLogger::Log(logid_t logid, const std::wstring &pStr, int LogLevel)
 {
 	Server->Log(pStr, LogLevel);
 
@@ -54,30 +54,27 @@ void ServerLogger::Log(int clientid, const std::wstring &pStr, int LogLevel)
 
 	const std::string utf8Str=Server->ConvertToUTF8(pStr);
 
-	logCircular(clientid, utf8Str, LogLevel);
+	logCircular(logid_client[logid], utf8Str, LogLevel);
 
 	if(LogLevel<0)
 		return;
 
-	if(clientid==0)
-		return;
-
-	logMemory(clientid, utf8Str, LogLevel);
+	logMemory(logid, utf8Str, LogLevel);
 }
 
-void ServerLogger::logMemory(int clientid, const std::string &pStr, int LogLevel)
+void ServerLogger::logMemory(logid_t logid, const std::string &pStr, int LogLevel)
 {
 	SLogEntry le;
 	le.data=pStr;
 	le.loglevel=LogLevel;
 	le.time=Server->getTimeSeconds();
 
-	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
 	if( iter==logdata.end() )
 	{
 		std::vector<SLogEntry> n;
 		n.push_back(le);
-		logdata.insert(std::pair<int, std::vector<SLogEntry> >(clientid, n) );
+		logdata.insert(std::pair<logid_t, std::vector<SLogEntry> >(logid, n) );
 	}
 	else
 	{
@@ -120,13 +117,13 @@ void ServerLogger::destroy_mutex(void)
 	Server->destroy(mutex);
 }
 
-std::wstring ServerLogger::getLogdata(int clientid, int &errors, int &warnings, int &infos)
+std::wstring ServerLogger::getLogdata(logid_t logid, int &errors, int &warnings, int &infos)
 {
 	IScopedLock lock(mutex);
 
 	std::wstring ret;
 
-	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
 	if( iter!=logdata.end() )
 	{
 		for(size_t i=0;i<iter->second.size();++i)
@@ -156,12 +153,12 @@ std::wstring ServerLogger::getLogdata(int clientid, int &errors, int &warnings, 
 	}
 }
 
-std::string ServerLogger::getWarningLevelTextLogdata(int clientid)
+std::string ServerLogger::getWarningLevelTextLogdata(logid_t logid)
 {
 	IScopedLock lock(mutex);
 
 	std::string ret;
-	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
 	if( iter!=logdata.end() )
 	{
 		for(size_t i=0;i<iter->second.size();++i)
@@ -188,11 +185,11 @@ std::string ServerLogger::getWarningLevelTextLogdata(int clientid)
 	}
 }
 
-void ServerLogger::reset(int clientid)
+void ServerLogger::reset(logid_t id)
 {
 	IScopedLock lock(mutex);
 
-	std::map<int, std::vector<SLogEntry> >::iterator iter=logdata.find(clientid);
+	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(id);
 	if( iter!=logdata.end() )
 	{
 		iter->second.clear();
@@ -222,3 +219,15 @@ std::vector<SCircularLogEntry> ServerLogger::getCircularLogdata( int clientid, s
 		return std::vector<SCircularLogEntry>();
 	}
 }
+
+logid_t ServerLogger::getLogId( int clientid )
+{
+	IScopedLock lock(mutex);
+
+	logid_t ret= std::make_pair(logid_gen.first++, 0);
+
+	logid_client[ret] = clientid;
+
+	return ret;
+}
+

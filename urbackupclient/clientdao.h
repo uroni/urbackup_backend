@@ -83,6 +83,7 @@ class ClientDAO
 {
 public:
 	ClientDAO(IDatabase *pDB);
+	~ClientDAO();
 	void prepareQueries(void);
 	void destroyQueries(void);
 	void restartQueries(void);

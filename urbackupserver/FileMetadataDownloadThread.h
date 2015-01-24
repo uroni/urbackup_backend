@@ -1,12 +1,14 @@
 #pragma once
-#include "fileclient/FileClient.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
 #include "../Interface/Thread.h"
 #include "server_prepare_hash.h"
+#include "../urbackupcommon/chunk_hasher.h"
+#include "server_log.h"
 
 class FileMetadataDownloadThread : public IThread
 {
 public:
-	FileMetadataDownloadThread(FileClient& fc, const std::string& server_token, int clientid);
+	FileMetadataDownloadThread(FileClient& fc, const std::string& server_token, logid_t logid);
 
 	virtual void operator()();
 
@@ -16,10 +18,10 @@ public:
 private:
 	FileClient& fc;
 	const std::string& server_token;
-	int clientid;
 
 	std::vector<char> buffer;
 
 	bool has_error;
 	std::wstring metadata_tmp_fn;
+	logid_t logid;
 };

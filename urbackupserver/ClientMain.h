@@ -7,8 +7,8 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/ThreadPool.h"
 #include "../urlplugin/IUrlFactory.h"
-#include "fileclient/FileClient.h"
-#include "fileclient/FileClientChunked.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
+#include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "../urbackupcommon/os_functions.h"
 #include "server_hash.h"
 #include "server_prepare_hash.h"
@@ -18,6 +18,7 @@
 #include "server_settings.h"
 
 #include <memory>
+#include "server_log.h"
 
 class ServerVHDWriter;
 class IFile;
@@ -72,6 +73,20 @@ struct SRunningBackup
 	std::string letter;
 };
 
+struct SShareCleanup
+{
+	SShareCleanup(std::string name, std::string identity, bool cleanup_file, bool remove_callback)
+		: name(name), identity(identity), cleanup_file(cleanup_file), remove_callback(remove_callback)
+	{
+
+	}
+
+	std::string name;
+	std::string identity;
+	bool cleanup_file;
+	bool remove_callback;
+};
+
 class ClientMain : public IThread, public FileClientChunked::ReconnectionCallback,
 	public FileClient::ReconnectionCallback, public INotEnoughSpaceCallback,
 	public FileClient::NoFreeSpaceCallback, public FileClientChunked::NoFreeSpaceCallback,
@@ -111,7 +126,7 @@ public:
 
 	virtual bool handle_not_enough_space(const std::wstring &path);
 
-	static IFile *getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, int clientid);
+	static IFile *getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, logid_t logid);
 
 	static void destroyTemporaryFile(IFile *tmp);
 
@@ -143,7 +158,7 @@ public:
 		return curr_image_version;
 	}
 
-	static void run_script(std::wstring name, const std::wstring& params, int clientid);
+	static void run_script(std::wstring name, const std::wstring& params, logid_t logid);
 
 	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
@@ -158,6 +173,8 @@ public:
 	void setContinuousBackup(BackupServerContinuous* cb);
 
 	void addContinuousChanges( const std::string& changes );
+
+	static void addShareToCleanup(int clientid, const SShareCleanup& cleanupData);
 
 private:
 	void unloadSQL(void);
@@ -269,4 +286,9 @@ private:
 	unsigned int curr_image_version;
 
 	std::vector<SRunningBackup> backup_queue;
+
+	static IMutex* cleanup_mutex;
+	static std::map<int, std::vector<SShareCleanup> > cleanup_shares;
+
+	logid_t logid;
 };

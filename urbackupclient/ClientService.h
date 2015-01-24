@@ -23,7 +23,9 @@ enum ClientConnectorState
 	CCSTATE_IMAGE_HASHDATA=5,
 	CCSTATE_UPDATE_DATA=6,
 	CCSTATE_UPDATE_FINISH=7,
-	CCSTATE_WAIT_FOR_CONTRACTORS=8
+	CCSTATE_WAIT_FOR_CONTRACTORS=8,
+	CCSTATE_STATUS=9,
+	CCSTATE_FILESERV=10
 };
 
 enum ThreadAction
@@ -41,7 +43,16 @@ enum RunningAction
 	RUNNING_FULL_IMAGE=3,
 	RUNNING_INCR_IMAGE=4,
 	RUNNING_RESUME_INCR_FILE=5,
-	RUNNING_RESUME_FULL_FILE=6
+	RUNNING_RESUME_FULL_FILE=6,
+	RUNNING_RESTORE_FILE=8
+};
+
+enum RestoreOkStatus
+{
+	RestoreOk_None,
+	RestoreOk_Wait,
+	RestoreOk_Declined,
+	RestoreOk_Ok
 };
 
 class ImageThread;
@@ -61,14 +72,17 @@ struct ImageInformation
 
 struct SChannel
 {
-	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name)
-		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name) {}
+	SChannel(IPipe *pipe, bool internet_connection, std::string endpoint_name, std::string token, bool* make_fileserv)
+		: pipe(pipe), internet_connection(internet_connection), endpoint_name(endpoint_name),
+		  token(token), make_fileserv(make_fileserv) {}
 	SChannel(void)
-		: pipe(NULL), internet_connection(false) {}
+		: pipe(NULL), internet_connection(false), make_fileserv(NULL) {}
 
 	IPipe *pipe;
 	bool internet_connection;
 	std::string endpoint_name;
+	std::string token;
+	bool* make_fileserv;
 };
 
 struct SVolumesCache;
@@ -90,6 +104,7 @@ public:
 
 	virtual bool wantReceive(void);
 
+	virtual bool closeSocket( void );
 
 	static int64 getLastTokenTime(const std::string & tok);
 
@@ -104,6 +119,14 @@ public:
 	static bool isBackupRunning();
 
 	static bool tochannelSendChanges(const char* changes, size_t changes_size);
+
+	static bool tochannelLog(int id, const std::string& msg, int loglevel, const std::string& identity);
+
+	static bool tochannelLog(int id, const std::wstring& msg, int loglevel, const std::string& identity);
+
+	static void updateRestorePc(int nv, const std::string& identity);
+
+	static IPipe* getFileServConnection(const std::string& server_token, unsigned int timeoutms);
 
 private:
 	bool checkPassword(const std::wstring &cmd, bool& change_pw);
@@ -130,6 +153,7 @@ private:
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
 	bool calculateFilehashesOnClient(void);
+	void sendStatus();
 
 	std::string getLastBackupTime();
 
@@ -182,6 +206,8 @@ private:
 	void CMD_GET_ACCESS_PARAMS(str_map &params);
 	void CMD_CONTINUOUS_WATCH_START();
 	void CMD_SCRIPT_STDERR(const std::string& cmd);
+	void CMD_FILE_RESTORE(const std::string& cmd);
+	void CMD_RESTORE_OK(str_map &params);
 
 	int getCapabilities();
 
@@ -222,6 +248,9 @@ private:
 	static bool end_to_end_file_backup_verification_enabled;
 	static std::map<std::string, std::string> challenges;
 	static bool has_file_changes;
+	static std::vector<std::pair<std::string, IPipe*> > fileserv_connections;
+	static RestoreOkStatus restore_ok_status;
+	static bool status_updated;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;
@@ -239,6 +268,8 @@ private:
 	bool internet_conn;
 
 	std::string endpoint_name;
+
+	bool make_fileserv;
 
 #ifdef _WIN32
 	static SVolumesCache* volumes_cache;

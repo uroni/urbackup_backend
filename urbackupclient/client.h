@@ -145,6 +145,9 @@ public:
 
 	static std::wstring mapScriptOutputName(const std::wstring& fn);
 
+	static std::string getSHA256(const std::wstring& fn);
+	static std::string getSHA512Binary(const std::wstring& fn);
+
 private:
 
 	bool readBackupDirs(void);
@@ -190,9 +193,6 @@ private:
 	void commitModifyFilesBuffer(void);
 
 	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
-
-	std::string getSHA256(const std::wstring& fn);
-	std::string getSHA512Binary(const std::wstring& fn);
 
 	void resetFileEntries(void);
 

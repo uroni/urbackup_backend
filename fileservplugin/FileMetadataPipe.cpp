@@ -4,6 +4,7 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
+#include "IFileServ.h"
 
 const size_t metadata_id_size = 4+4+8+4;
 
@@ -56,7 +57,23 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		{
 			metadata_buffer_size = 0;
 			metadata_buffer_off = 0;
-			metadata_state = MetadataState_Os;
+			if(callback==NULL)
+			{
+				metadata_state = MetadataState_Os;
+			}
+			else
+			{
+				if(!metadata_file->Seek(metadata_file_off))
+				{
+					errpipe->Write(Server->ConvertToUTF8(L"Error seeking to metadata in \"" + metadata_file->getFilenameW()+L"\""));
+
+					read_bytes=0;
+					metadata_state = MetadataState_Wait;
+					return false;
+				}
+
+				metadata_state = MetadataState_File;
+			}
 		}
 
 		return true;
@@ -64,6 +81,31 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	else if(metadata_state == MetadataState_Os)
 	{
 		if(!transmitCurrMetadata(buf, buf_avail, read_bytes))
+		{
+			metadata_state = MetadataState_Wait;
+		}
+		return true;
+	}
+	else if(metadata_state == MetadataState_File)
+	{
+		read_bytes = static_cast<size_t>((std::min)(static_cast<int64>(buf_avail), metadata_file_size));
+
+		if(read_bytes==0)
+		{
+			metadata_state = MetadataState_Wait;
+			return true;
+		}
+
+		_u32 read = metadata_file->Read(buf, read_bytes);
+		if(read!=read_bytes)
+		{
+			errpipe->Write(Server->ConvertToUTF8(L"Error reading metadata stream from file \""+metadata_file->getFilenameW()+L"\"\n"));
+			memset(buf + read, 0, read_bytes - read);
+		}
+
+		metadata_file_size-=read_bytes;
+
+		if(read_bytes<buf_avail)
 		{
 			metadata_state = MetadataState_Wait;
 		}
@@ -104,13 +146,10 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					return false;
 				}
 
-				if(public_fn=="==&'")
-				{
-					int abc=5;
-				}
-
+				bool isdir=false;
 				if(isDirectory(os_file_prefix(Server->ConvertToUnicode(local_fn))))
 				{
+					isdir=true;
 					public_fn = "d" + public_fn;
 				}
 				else
@@ -122,6 +161,28 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				*buf = ID_METADATA_V1;
 				read_bytes = 1;
 				fn_off = 0;
+
+				if(!msg_data.getVoidPtr(reinterpret_cast<void**>(&callback)))
+				{
+					callback=NULL;
+				}
+				else
+				{
+					std::string orig_path;
+					metadata_file = callback->getMetadata(public_fn, orig_path, metadata_file_off, metadata_file_size);
+
+					if(metadata_file==NULL)
+					{
+						errpipe->Write("Error opening metadata file for \""+public_fn+"\"");
+
+						read_bytes=0;
+						metadata_state = MetadataState_Wait;
+						return false;
+					}
+
+					public_fn = (isdir?"d":"f") + orig_path;
+				}
+
 				return true;
 			}
 			else

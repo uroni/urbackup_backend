@@ -73,6 +73,7 @@ public:
 	static bool isBackupStopped(const std::wstring &clientname);
 	static void setClientVersionString(const std::wstring &clientname, const std::string& client_version_string);
 	static void setOSVersionString(const std::wstring &clientname, const std::string& os_version_string);
+	static bool sendToCommPipe(const std::wstring &clientname, const std::string& msg);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);

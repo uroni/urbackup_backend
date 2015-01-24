@@ -35,9 +35,12 @@
 #include <memory.h>
 #include <algorithm>
 #include <limits.h>
+#include "../fileservplugin/IFileServ.h"
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
+extern std::string server_token;
+extern IFileServ* fileserv;
 
 namespace
 {
@@ -88,6 +91,26 @@ namespace
 	private:
 		volatile bool do_quit;
 		std::wstring session;
+	};
+
+	class FileservClientThread : public IThread
+	{
+	public:
+		FileservClientThread(IPipe* pipe)
+			: pipe(pipe)
+		{
+
+		}
+
+		void operator()()
+		{
+			fileserv->runClient(pipe);
+			delete pipe;
+			delete this;
+		}
+
+	private:
+		IPipe* pipe;
 	};
 }
 
@@ -145,7 +168,7 @@ void ServerChannelThread::operator()(void)
 				}
 				else
 				{
-					tcpstack.Send(input, identity+"1CHANNEL capa="+nconvert(constructCapabilities()));
+					tcpstack.Send(input, identity+"1CHANNEL capa="+nconvert(constructCapabilities())+"&token="+server_token);
 				}
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
@@ -298,6 +321,14 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	else if(next(msg, 0, "CHANGES "))
 	{
 		client_main->addContinuousChanges(msg.substr(8));
+	}
+	else if(next(msg, 0, "FILESERV"))
+	{
+		if(fileserv!=NULL)
+		{
+			Server->getThreadPool()->execute(new FileservClientThread(input));
+			input=NULL;
+		}
 	}
 	else
 	{

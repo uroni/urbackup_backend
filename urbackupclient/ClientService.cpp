@@ -85,6 +85,11 @@ std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::string, std::string> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
+std::vector<std::pair<std::string, IPipe*> > ClientConnector::fileserv_connections;
+RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
+bool ClientConnector::status_updated= false;
+
+
 
 #ifdef _WIN32
 SVolumesCache* ClientConnector::volumes_cache;
@@ -187,6 +192,7 @@ void ClientConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEnd
 	tcpstack.setAddChecksum(false);
 	last_update_time=lasttime;
 	endpoint_name = pEndpointName;
+	make_fileserv=false;
 }
 
 ClientConnector::~ClientConnector(void)
@@ -392,21 +398,41 @@ bool ClientConnector::Run(void)
 			}
 			if(Server->getTimeMS()-last_channel_ping>60000)
 			{
-				bool found=false;
-				for(size_t i=0;i<channel_ping.size();++i)
-				{
-					if(channel_ping[i]==pipe)
-					{
-						found=true;
-						break;
-					}
-				}
+				bool found = std::find(channel_ping.begin(), channel_ping.end(), pipe)!=channel_ping.end();
 				if(!found)
 				{
 					channel_ping.push_back(pipe);
 				}
 				tcpstack.Send(pipe, "PING");
 				last_channel_ping=Server->getTimeMS();
+			}
+			if(make_fileserv)
+			{
+				bool found = std::find(channel_ping.begin(), channel_ping.end(), pipe)!=channel_ping.end();
+				if(!found)
+				{
+					size_t idx=std::string::npos;
+					for(size_t i=0;i<channel_pipes.size();++i)
+					{
+						if(channel_pipes[i].pipe==pipe)
+						{
+							idx=i;
+							break;
+						}
+					}
+
+					if(idx!=std::string::npos)
+					{
+						tcpstack.Send(pipe, "FILESERV");
+						state=CCSTATE_FILESERV;
+						fileserv_connections.push_back(std::make_pair(channel_pipes[idx].token, pipe));
+
+						channel_pipes.erase(channel_pipes.begin()+idx);
+						channel_capa.erase(channel_capa.begin()+idx);
+					}				
+
+					return false;
+				}
 			}
 		}break;
 	case CCSTATE_IMAGE:
@@ -521,6 +547,18 @@ bool ClientConnector::Run(void)
 				return false;
 			}
 		}break;
+	case CCSTATE_STATUS:
+		{
+			IScopedLock lock(backup_mutex);
+			if(Server->getTimeMS()-lasttime>50000 || status_updated)
+			{
+				sendStatus();
+
+				lasttime = Server->getTimeMS();
+				state = CCSTATE_NORMAL;
+			}
+			return true;
+		} break;
 
 	}
 	return true;
@@ -832,6 +870,10 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_SCRIPT_STDERR(cmd); continue;
 			}
+			else if( next(cmd, 0, "FILE RESTORE "))
+			{
+				CMD_FILE_RESTORE(cmd.substr(13)); continue;
+			}
 		}
 		if(pw_ok) //Commands from client frontend
 		{
@@ -856,6 +898,10 @@ void ClientConnector::ReceivePackets(void)
 				else if( cmd=="NEW SERVER" )
 				{
 					CMD_NEW_SERVER(params); continue;
+				}
+				else if( cmd=="RESTORE OK")
+				{
+					CMD_RESTORE_OK(params); continue;
 				}
 			}
 			
@@ -1632,6 +1678,7 @@ bool ClientConnector::sendFullImage(void)
 	backup_running=RUNNING_FULL_IMAGE;
 	pcdone=0;
 	backup_source_token=server_token;
+	status_updated = true;
 	return true;
 }
 
@@ -1648,6 +1695,7 @@ bool ClientConnector::sendIncrImage(void)
 	pcdone=0;
 	pcdone2=0;
 	backup_source_token=server_token;
+	status_updated = true;
 	return true;
 }
 
@@ -2292,6 +2340,10 @@ void ClientConnector::doQuitClient(void)
 void ClientConnector::updatePCDone2(int nv)
 {
 	IScopedLock lock(backup_mutex);
+	if(nv!=pcdone2)
+	{
+		status_updated = true;
+	}
 	pcdone2=nv;
 }
 
@@ -2432,4 +2484,176 @@ int ClientConnector::getCapabilities()
 	}
 	return capa;
 }
+
+IPipe* ClientConnector::getFileServConnection(const std::string& server_token, unsigned int timeoutms)
+{
+	IScopedLock lock(backup_mutex);
+
+	int64 starttime = Server->getTimeMS();
+
+	do 
+	{
+		for(size_t i=0;i<channel_pipes.size();++i)
+		{
+			if(channel_pipes[i].make_fileserv!=NULL &&
+				channel_pipes[i].token==server_token &&
+				!(*channel_pipes[i].make_fileserv))
+			{
+				*channel_pipes[i].make_fileserv=true;
+			}
+		}
+
+		lock.relock(NULL);
+		Server->wait(100);
+		lock.relock(backup_mutex);
+
+		for(size_t i=0;i<fileserv_connections.size();++i)
+		{
+			if(fileserv_connections[i].first==server_token )
+			{
+				IPipe* ret = fileserv_connections[i].second;
+				fileserv_connections.erase(fileserv_connections.begin()+i);
+				return ret;
+			}
+		}
+
+	} while (Server->getTimeMS()-starttime<timeoutms);
+
+	return NULL;	
+}
+
+bool ClientConnector::closeSocket( void )
+{
+	if(state!=CCSTATE_FILESERV)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void ClientConnector::sendStatus()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
+
+	IScopedLock lock(backup_mutex);
+
+	state = CCSTATE_STATUS;
+
+	std::string ret = getLastBackupTime();
+
+	ret += "#" + getCurrRunningJob();
+
+	if(backup_running!=RUNNING_INCR_IMAGE)
+		ret+="#"+nconvert(pcdone);
+	else
+		ret+="#"+nconvert(pcdone2);
+
+	if(IdleCheckerThread::getPause())
+	{
+		ret+="#P";
+	}
+	else
+	{
+		ret+="#NP";
+	}
+
+	ret+="#capa="+nconvert(getCapabilities());
+
+	{
+		IScopedLock lock(ident_mutex);
+		if(!new_server_idents.empty())
+		{
+			ret+="&new_ident="+new_server_idents[new_server_idents.size()-1];
+			new_server_idents.erase(new_server_idents.begin()+new_server_idents.size()-1);
+		}
+	}
+
+	ret+="&has_server=";
+	if(channel_pipes.empty())
+	{
+		ret+="false";
+	}
+	else
+	{
+		ret+="true";
+	}
+
+	if(restore_ok_status==RestoreOk_Wait)
+	{
+		ret+="&restore_ask=true";
+	}
+
+	tcpstack.Send(pipe, ret);
+
+	db->destroyAllQueries();
+}
+
+bool ClientConnector::tochannelLog( int id, const std::string& msg, int loglevel, const std::string& identity)
+{
+	IScopedLock lock(backup_mutex);
+
+	for(size_t i=0;i<channel_pipes.size();++i)
+	{
+		if(channel_pipes[i].token == identity)
+		{
+			std::string cmd = "LOG "+nconvert(id)+"-"+nconvert(loglevel)+"-"+msg;
+
+			CTCPStack tmpstack(channel_pipes[i].internet_connection);
+			if(tmpstack.Send(channel_pipes[i].pipe, cmd)!=cmd.size())
+			{
+				return false;
+			}
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ClientConnector::tochannelLog( int id, const std::wstring& msg, int loglevel, const std::string& identity )
+{
+	return tochannelLog(id, Server->ConvertToUTF8(msg), loglevel, identity);
+}
+
+void ClientConnector::updateRestorePc( int nv, const std::string& identity )
+{
+	IScopedLock lock(backup_mutex);
+
+	if(backup_running==RUNNING_NONE)
+	{
+		backup_running=RUNNING_RESTORE_FILE;
+	}
+
+	if(backup_running==RUNNING_RESTORE_FILE)
+	{
+		if(nv>100)
+		{
+			backup_running = RUNNING_NONE;
+		}
+
+		pcdone = nv;
+	}
+
+	for(size_t i=0;i<channel_pipes.size();++i)
+	{
+		if(channel_pipes[i].token == identity)
+		{
+			std::string cmd = "RESTORE PERCENT "+nconvert(nv);
+
+			CTCPStack tmpstack(channel_pipes[i].internet_connection);
+			if(tmpstack.Send(channel_pipes[i].pipe, cmd)!=cmd.size())
+			{
+				return;
+			}
+
+			return;
+		}
+	}
+}
+
+
 

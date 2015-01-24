@@ -635,7 +635,7 @@ bool FileClient::Reconnect(void)
 	return false;
 }
 
- _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed)
+ _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only)
 {
 	if(tcpsock==NULL)
 		return ERR_ERROR;
@@ -651,7 +651,7 @@ bool FileClient::Reconnect(void)
 	if(queued.empty())
 	{
 		CWData data;
-		data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
+		data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY:(protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE) );
 		data.addString( remotefn );
 		data.addString( identity );
 
@@ -783,7 +783,7 @@ bool FileClient::Reconnect(void)
 						filesize=little_endian(filesize);
 						off=1+sizeof(_u64);
 
-						if( filesize==0 )
+						if( filesize==0 || metadata_only)
 						{
 							if(rc>off)
 							{
@@ -1099,8 +1099,8 @@ void FileClient::fillQueue()
 			return;
 		}
 
-		bool metadata=false;
-		std::string queue_fn = queue_callback->getQueuedFileFull(metadata);
+		MetadataQueue metadata_queue = MetadataQueue_Data;
+		std::string queue_fn = queue_callback->getQueuedFileFull(metadata_queue);
 
 		if(queue_fn.empty())
 		{
@@ -1108,13 +1108,17 @@ void FileClient::fillQueue()
 		}
 
 		CWData data;
-		if(!metadata)
+		if(metadata_queue==MetadataQueue_Data)
 		{
 			data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE );
 		}
-		else
+		else if(metadata_queue == MetadataQueue_MetadataAndHash)
 		{
 			data.addUChar( ID_FILE_HASH_AND_METADATA );
+		}
+		else if(metadata_queue == MetadataQueue_Metadata)
+		{
+			data.addUChar(ID_GET_FILE_METADATA_ONLY);
 		}
 		data.addString( queue_fn );
 		data.addString( identity );

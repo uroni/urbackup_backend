@@ -1,7 +1,7 @@
 #include "../Interface/Thread.h"
 #include "../Interface/Pipe.h"
 #include "../Interface/Mutex.h"
-#include "fileclient/socket_header.h"
+#include "../urbackupcommon/fileclient/socket_header.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 
 class ClientMain;

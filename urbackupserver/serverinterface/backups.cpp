@@ -17,16 +17,21 @@
 **************************************************************************/
 
 #include "action_header.h"
+#include "../../Interface/File.h"
 #include "../../urbackupcommon/os_functions.h"
-#include "../file_metadata.h"
+#include "../../urbackupcommon/file_metadata.h"
 #include "../../Interface/SettingsReader.h"
 #include "../../cryptoplugin/ICryptoFactory.h"
 #include "../server_settings.h"
 #include "backups.h"
 #include <memory>
 #include <algorithm>
+#include "../../fileservplugin/IFileServ.h"
+#include "../server_status.h"
+#include "restore_client.h"
 
 extern ICryptoFactory *crypto_fak;
+extern IFileServ* fileserv;
 
 std::string constructFilter(const std::vector<int> &clientid, std::string key)
 {
@@ -572,7 +577,7 @@ ACTION_IMPL(backups)
 				ret.set("error", 2);
 			}
 		}
-		else if(sa==L"files" || sa==L"filesdl" || sa==L"zipdl" )
+		else if(sa==L"files" || sa==L"filesdl" || sa==L"zipdl" || sa==L"clientdl" )
 		{
 			int t_clientid;
 			std::wstring clientname;
@@ -697,7 +702,7 @@ ACTION_IMPL(backups)
 								continue;
 							}
 
-							if( ((sa==L"filesdl" || sa==L"zipdl") || (!has_backupid && is_file) )
+							if( ((sa==L"filesdl" || sa==L"zipdl" || sa==L"clientdl") || (!has_backupid && is_file) )
 								&& !path.empty())
 							{
 								path.erase(path.size()-1, 1);
@@ -723,6 +728,27 @@ ACTION_IMPL(backups)
 							if(sa==L"zipdl")
 							{
 								sendZip(helper, curr_path, curr_metadata_path, GET[L"filter"], token_authentication, backup_tokens.tokens, tokens, path.empty());
+								return;
+							}
+							else if(sa==L"clientdl" && fileserv!=NULL)
+							{
+								if(ServerStatus::getStatus(clientname).comm_pipe==NULL)
+								{
+									ret.set("err", "client_not_online");
+									helper.Write(ret.get(false));
+									return;
+								}
+
+								if(!create_clientdl_thread(clientname, t_clientid, curr_path, curr_metadata_path, GET[L"filter"], token_authentication,
+									backup_tokens.tokens, tokens, path.empty()))
+								{
+									ret.set("err", "internal_error");
+									helper.Write(ret.get(false));
+									return;
+								}
+
+								ret.set("ok", "true");
+								helper.Write(ret.get(false));
 								return;
 							}
 

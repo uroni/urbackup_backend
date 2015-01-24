@@ -51,13 +51,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\adler32.cpp" />
     <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\md5.cpp" />
     <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
+    <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp" />
     <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
     <ClCompile Include="..\urbackupcommon\escape.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp" />
     <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\filelist_utils.cpp" />
+    <ClCompile Include="..\urbackupcommon\file_metadata.cpp" />
     <ClCompile Include="..\urbackupcommon\glob.cpp" />
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
     <ClCompile Include="..\urbackupcommon\json.cpp" />
@@ -74,10 +80,13 @@
     <ClCompile Include="common_tokens.cpp" />
     <ClCompile Include="DirectoryWatcherThread.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="FileMetadataDownloadThread.cpp" />
     <ClCompile Include="file_permissions.cpp" />
     <ClCompile Include="ImageThread.cpp" />
     <ClCompile Include="InternetClient.cpp" />
     <ClCompile Include="PersistentOpenFiles.cpp" />
+    <ClCompile Include="RestoreDownloadThread.cpp" />
+    <ClCompile Include="RestoreFiles.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
     <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp" />
     <ClCompile Include="watchdir\JournalDAO.cpp" />
@@ -87,15 +96,23 @@
     <ClCompile Include="win_ver.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\adler32.h" />
     <ClInclude Include="..\common\data.h" />
     <ClInclude Include="..\md5.h" />
     <ClInclude Include="..\stringtools.h" />
     <ClInclude Include="..\urbackupcommon\bufmgr.h" />
     <ClInclude Include="..\urbackupcommon\capa_bits.h" />
     <ClInclude Include="..\urbackupcommon\change_ids.h" />
+    <ClInclude Include="..\urbackupcommon\chunk_hasher.h" />
     <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
     <ClInclude Include="..\urbackupcommon\escape.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\socket_header.h" />
     <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
+    <ClInclude Include="..\urbackupcommon\filelist_utils.h" />
+    <ClInclude Include="..\urbackupcommon\file_metadata.h" />
     <ClInclude Include="..\urbackupcommon\glob.h" />
     <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
     <ClInclude Include="..\urbackupcommon\mbrdata.h" />
@@ -108,10 +125,13 @@
     <ClInclude Include="ClientService.h" />
     <ClInclude Include="database.h" />
     <ClInclude Include="DirectoryWatcherThread.h" />
+    <ClInclude Include="FileMetadataDownloadThread.h" />
     <ClInclude Include="file_permissions.h" />
     <ClInclude Include="ImageThread.h" />
     <ClInclude Include="InternetClient.h" />
     <ClInclude Include="PersistentOpenFiles.h" />
+    <ClInclude Include="RestoreDownloadThread.h" />
+    <ClInclude Include="RestoreFiles.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
     <ClInclude Include="tokens.h" />
     <ClInclude Include="watchdir\ContinuousWatchEnqueue.h" />

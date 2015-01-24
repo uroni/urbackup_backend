@@ -27,6 +27,8 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error=NULL, b
 
 std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false);
 
+SFile getFileMetadataWin(const std::wstring &path, bool with_usn);
+
 SFile getFileMetadata(const std::wstring &path);
 
 void removeFile(const std::wstring &path);

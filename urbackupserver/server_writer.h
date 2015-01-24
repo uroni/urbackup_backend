@@ -5,6 +5,7 @@
 #include "../fsimageplugin/IVHDFile.h"
 
 #include <queue>
+#include "server_log.h"
 
 class IVHDFile;
 
@@ -26,7 +27,7 @@ class ServerFileBufferWriter;
 class ServerVHDWriter : public IThread, public ITrimCallback, public IVHDWriteCallback
 {
 public:
-	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize);
+	ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs, int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize, logid_t logid);
 	~ServerVHDWriter(void);
 
 	void operator()(void);
@@ -97,6 +98,8 @@ private:
 	int64 vhd_blocksize;
 
 	int64 trimmed_bytes;
+
+	logid_t logid;
 };
 
 class ServerFileBufferWriter : public IThread

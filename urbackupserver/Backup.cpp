@@ -39,14 +39,10 @@ Backup::Backup(ClientMain* client_main, int clientid, std::wstring clientname, L
 
 void Backup::operator()()
 {
+	logid = ServerLogger::getLogId(clientid);
 	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	server_settings.reset(new ServerSettings(db, clientid));
 	backup_dao.reset(new ServerBackupDao(db));
-
-	if(log_action!=LogAction_NoLogging)
-	{
-		ServerLogger::reset(clientid);
-	}
 
 	ScopedActiveThread sat;
 
@@ -105,14 +101,14 @@ void Backup::operator()()
 
 	if(!has_early_error && log_action!=LogAction_NoLogging)
 	{
-		ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(Server->getTimeMS()-backup_starttime)), LL_INFO);
+		ServerLogger::Log(logid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(Server->getTimeMS()-backup_starttime)), LL_INFO);
 		if(!backup_result)
 		{
-			ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
+			ServerLogger::Log(logid, "Backup failed", LL_ERROR);
 		}
 		else
 		{
-			ServerLogger::Log(clientid, "Backup succeeded", LL_INFO);
+			ServerLogger::Log(logid, "Backup succeeded", LL_INFO);
 		}
 
 		ServerCleanupThread::updateStats(false);
@@ -122,6 +118,8 @@ void Backup::operator()()
 	{
 		saveClientLogdata(is_file_backup?0:1, r_incremental?1:0, backup_result && !has_early_error, r_resumed); 
 	}
+
+	ServerLogger::reset(logid);
 
 	status.pcdone=-1;
 	status.hashqueuesize=0;
@@ -152,7 +150,7 @@ void Backup::saveClientLogdata(int image, int incremental, bool r_success, bool 
 	int errors=0;
 	int warnings=0;
 	int infos=0;
-	std::wstring logdata=ServerLogger::getLogdata(clientid, errors, warnings, infos);
+	std::wstring logdata=ServerLogger::getLogdata(logid, errors, warnings, infos);
 
 	backup_dao->saveBackupLog(clientid, errors, warnings, infos, is_file_backup?0:1,
 		r_incremental?1:0, r_resumed?1:0);
@@ -160,8 +158,6 @@ void Backup::saveClientLogdata(int image, int incremental, bool r_success, bool 
 	backup_dao->saveBackupLogData(db->getLastInsertID(), logdata);
 
 	sendLogdataMail(r_success, image, incremental, resumed, errors, warnings, infos, logdata);
-
-	ServerLogger::reset(clientid);
 }
 
 void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::wstring &data)

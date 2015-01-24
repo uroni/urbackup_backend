@@ -19,7 +19,7 @@
 #include "server_ping.h"
 #include "database.h"
 #include "../stringtools.h"
-#include "fileclient/FileClient.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
 #include "../Interface/Server.h"
 #include "../Interface/ThreadPool.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
@@ -43,7 +43,7 @@
 #include "server_hash_existing.h"
 #include "server_dir_links.h"
 #include "server.h"
-#include "filelist_utils.h"
+#include "../urbackupcommon/filelist_utils.h"
 #include "server_continuous.h"
 #include <algorithm>
 #include <memory.h>
@@ -61,11 +61,13 @@
 #include "ImageBackup.h"
 #include "ContinuousBackup.h"
 #include "ThrottleUpdater.h"
+#include "../fileservplugin/IFileServ.h"
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;
 extern std::string server_identity;
 extern std::string server_token;
+extern IFileServ* fileserv;
 
 const unsigned short serviceport=35623;
 const unsigned int check_time_intervall=5*60*1000;
@@ -87,6 +89,9 @@ int ClientMain::running_file_backups=0;
 IMutex *ClientMain::running_backup_mutex=NULL;
 IMutex *ClientMain::tmpfile_mutex=NULL;
 size_t ClientMain::tmpfile_num=0;
+IMutex* ClientMain::cleanup_mutex = NULL;
+std::map<int, std::vector<SShareCleanup> > ClientMain::cleanup_shares;
+
 
 ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName,
 	     bool internet_connection, bool use_snapshots, bool use_reflink)
@@ -156,12 +161,14 @@ void ClientMain::init_mutex(void)
 {
 	running_backup_mutex=Server->createMutex();
 	tmpfile_mutex=Server->createMutex();
+	cleanup_mutex=Server->createMutex();
 }
 
 void ClientMain::destroy_mutex(void)
 {
 	Server->destroy(running_backup_mutex);
 	Server->destroy(tmpfile_mutex);
+	Server->destroy(cleanup_mutex);
 }
 
 void ClientMain::unloadSQL(void)
@@ -300,11 +307,13 @@ void ClientMain::operator ()(void)
 
 		BackupServer::forceOfflineClient(clientname);
 		pipe->Write("ok");
-		ServerLogger::reset(clientid);
+		ServerLogger::reset(logid);
 		delete server_settings;
 		delete this;
 		return;
 	}
+
+	logid = ServerLogger::getLogId(clientid);
 
 	settings=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid=0");
 	settings_client=Server->createDBSettingsReader(db, "settings", "SELECT value FROM settings_db.settings WHERE key=? AND clientid="+nconvert(clientid));
@@ -379,23 +388,23 @@ void ClientMain::operator ()(void)
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 	bool received_client_settings=true;
-	ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
+	ServerLogger::Log(logid, "Getting client settings...", LL_DEBUG);
 	bool settings_doesnt_exist=false;
 	if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_doesnt_exist))
 	{
 		if(!settings_doesnt_exist)
 		{
-			ServerLogger::Log(clientid, "Getting client settings failed. Retrying...", LL_INFO);
+			ServerLogger::Log(logid, "Getting client settings failed. Retrying...", LL_INFO);
 			Server->wait(200000);
 			if(!getClientSettings(settings_doesnt_exist))
 			{
-				ServerLogger::Log(clientid, "Getting client settings failed -1", LL_ERROR);
+				ServerLogger::Log(logid, "Getting client settings failed -1", LL_ERROR);
 				received_client_settings=false;
 			}
 		}
 		else
 		{
-			ServerLogger::Log(clientid, "Getting client settings failed. Not retrying because settings do not exist.", LL_INFO);
+			ServerLogger::Log(logid, "Getting client settings failed. Not retrying because settings do not exist.", LL_INFO);
 		}
 	}
 
@@ -404,7 +413,7 @@ void ClientMain::operator ()(void)
 		sendSettings();
 	}
 
-	ServerLogger::Log(clientid, "Sending backup incr intervall...", LL_DEBUG);
+	ServerLogger::Log(logid, "Sending backup incr intervall...", LL_DEBUG);
 	sendClientBackupIncrIntervall();
 
 	if(server_settings->getSettings()->autoupdate_clients)
@@ -441,11 +450,11 @@ void ClientMain::operator ()(void)
 				bool settings_dont_exist=false;
 				if(do_update_settings || settings_updated)
 				{
-					ServerLogger::Log(clientid, "Getting client settings...", LL_DEBUG);
+					ServerLogger::Log(logid, "Getting client settings...", LL_DEBUG);
 					do_update_settings=false;
 					if(server_settings->getSettings()->allow_overwrite && !getClientSettings(settings_dont_exist))
 					{
-						ServerLogger::Log(clientid, "Getting client settings failed -2", LL_ERROR);
+						ServerLogger::Log(logid, "Getting client settings failed -2", LL_ERROR);
 						received_client_settings=false;
 					}
 				}
@@ -471,21 +480,21 @@ void ClientMain::operator ()(void)
 			if(do_incr_image_now)
 			{
 				if(!can_backup_images)
-					ServerLogger::Log(clientid, "Cannot do image backup because can_backup_images=false", LL_DEBUG);
+					ServerLogger::Log(logid, "Cannot do image backup because can_backup_images=false", LL_DEBUG);
 				if(server_settings->getSettings()->no_images)
-					ServerLogger::Log(clientid, "Cannot do image backup because no_images=true", LL_DEBUG);
+					ServerLogger::Log(logid, "Cannot do image backup because no_images=true", LL_DEBUG);
 				if(!isBackupsRunningOkay(false))
-					ServerLogger::Log(clientid, "Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
+					ServerLogger::Log(logid, "Cannot do image backup because isBackupsRunningOkay()=false", LL_DEBUG);
 				if(!internet_no_images )
-					ServerLogger::Log(clientid, "Cannot do image backup because internet_no_images=true", LL_DEBUG);
+					ServerLogger::Log(logid, "Cannot do image backup because internet_no_images=true", LL_DEBUG);
 			}
 
 			if(do_incr_backup_now)
 			{
 				if(server_settings->getSettings()->no_file_backups)
-					ServerLogger::Log(clientid, "Cannot do incremental file backup because no_file_backups=true", LL_DEBUG);
+					ServerLogger::Log(logid, "Cannot do incremental file backup because no_file_backups=true", LL_DEBUG);
 				if(!isBackupsRunningOkay(true))
-					ServerLogger::Log(clientid, "Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
+					ServerLogger::Log(logid, "Cannot do incremental file backup because isBackupsRunningOkay()=false", LL_DEBUG);
 			}
 
 
@@ -594,13 +603,13 @@ void ClientMain::operator ()(void)
 							{
 								last_file_backup_try=Server->getTimeSeconds();
 								++count_file_backup_try;
-								ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeFile()*1000) + " before next file backup", LL_WARNING);
+								ServerLogger::Log(logid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeFile()*1000) + " before next file backup", LL_WARNING);
 							}
 							else
 							{
 								last_image_backup_try=Server->getTimeSeconds();
 								++count_image_backup_try;
-								ServerLogger::Log(clientid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeImage()*1000) + " before next image backup", LL_WARNING);				
+								ServerLogger::Log(logid, "Exponential backoff: Waiting at least "+PrettyPrintTime(exponentialBackoffTimeImage()*1000) + " before next image backup", LL_WARNING);				
 							}
 						}
 						else if(backup_queue[i].backup->getResult())
@@ -709,6 +718,18 @@ void ClientMain::operator ()(void)
 		{
 
 		}
+		else if(next(msg, 0, "RESTORE"))
+		{
+			std::string data_str = msg.substr(7);
+			CRData rdata(&data_str);
+
+			std::string restore_identity;
+			rdata.getStr(&restore_identity);
+			int id;
+			rdata.getInt(&id);
+
+			sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+server_token+"&id="+nconvert(id), L"Starting restore failed", 10000, 10, true, LL_ERROR);
+		}
 
 		if(!msg.empty())
 		{
@@ -736,6 +757,39 @@ void ClientMain::operator ()(void)
 		channel_thread.doExit();
 		Server->getThreadPool()->waitFor(channel_thread_id);
 	}
+
+	//cleanup shares
+	if(fileserv!=NULL)
+	{
+		IScopedLock lock(cleanup_mutex);
+		std::vector<SShareCleanup>& tocleanup = cleanup_shares[clientid];
+
+		for(size_t i=0;i<tocleanup.size();++i)
+		{
+			if(tocleanup[i].cleanup_file)
+			{
+				std::wstring cleanupfile = fileserv->getShareDir(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+				if(!cleanupfile.empty())
+				{
+					Server->deleteFile(cleanupfile);
+				}
+			}
+
+			if(tocleanup[i].remove_callback)
+			{
+				fileserv->removeMetadataCallback(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+			}
+
+			fileserv->removeDir(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+
+			if(!tocleanup[i].identity.empty())
+			{
+				fileserv->removeIdentity(tocleanup[i].identity);
+			}
+		}
+
+		tocleanup.clear();
+	}	
 	
 	
 	Server->destroy(settings);
@@ -931,7 +985,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::wst
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
+			ServerLogger::Log(logid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		else
 			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		return "";
@@ -959,7 +1013,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::wst
 		if(rc==0)
 		{
 			if(logerr)
-				ServerLogger::Log(clientid, errmsg, max_loglevel);
+				ServerLogger::Log(logid, errmsg, max_loglevel);
 			else
 				Server->Log(errmsg, max_loglevel);
 
@@ -980,7 +1034,7 @@ std::string ClientMain::sendClientMessage(const std::string &msg, const std::wst
 	}
 
 	if(logerr)
-		ServerLogger::Log(clientid, L"Timeout: "+errmsg, max_loglevel);
+		ServerLogger::Log(logid, L"Timeout: "+errmsg, max_loglevel);
 	else
 		Server->Log(L"Timeout: "+errmsg, max_loglevel);
 
@@ -1027,7 +1081,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	if(cc==NULL)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
+			ServerLogger::Log(logid, L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		else
 			Server->Log(L"Connecting to ClientService of \""+clientname+L"\" failed: "+errmsg, max_loglevel);
 		return false;
@@ -1072,7 +1126,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 			{
 				herr=true;
 				if(logerr)
-					ServerLogger::Log(clientid, errmsg, max_loglevel);
+					ServerLogger::Log(logid, errmsg, max_loglevel);
 				else
 
 				if(retok_err!=NULL)
@@ -1094,7 +1148,7 @@ bool ClientMain::sendClientMessage(const std::string &msg, const std::string &re
 	if(!ok && !herr)
 	{
 		if(logerr)
-			ServerLogger::Log(clientid, L"Timeout: "+errmsg, max_loglevel);
+			ServerLogger::Log(logid, L"Timeout: "+errmsg, max_loglevel);
 		else
 			Server->Log(L"Timeout: "+errmsg, max_loglevel);
 	}
@@ -1291,20 +1345,20 @@ bool ClientMain::getClientSettings(bool& doesnt_exist)
 	_u32 rc=getClientFilesrvConnection(&fc, server_settings);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(clientid, L"Getting Client settings of "+clientname+L" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(logid, L"Getting Client settings of "+clientname+L" failed - CONNECT error", LL_ERROR);
 		return false;
 	}
 	
-	IFile *tmp=getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
+	IFile *tmp=getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	if(tmp==NULL)
 	{
-		ServerLogger::Log(clientid, "Error creating temporary file in BackupServerGet::getClientSettings", LL_ERROR);
+		ServerLogger::Log(logid, "Error creating temporary file in BackupServerGet::getClientSettings", LL_ERROR);
 		return false;
 	}
-	rc=fc.GetFile("urbackup/settings.cfg", tmp, true);
+	rc=fc.GetFile("urbackup/settings.cfg", tmp, true, false);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting Client settings of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, L"Error getting Client settings of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		std::string tmp_fn=tmp->getFilename();
 		Server->destroy(tmp);
 		Server->deleteFile(tmp_fn);
@@ -1545,13 +1599,13 @@ void ClientMain::checkClientVersion(void)
 			IFile *sigfile=Server->openFile("urbackup/UrBackupUpdate.sig", MODE_READ);
 			if(sigfile==NULL)
 			{
-				ServerLogger::Log(clientid, "Error opening sigfile", LL_ERROR);
+				ServerLogger::Log(logid, "Error opening sigfile", LL_ERROR);
 				return;
 			}
 			IFile *updatefile=Server->openFile("urbackup/UrBackupUpdate.exe", MODE_READ);
 			if(updatefile==NULL)
 			{
-				ServerLogger::Log(clientid, "Error opening updatefile", LL_ERROR);
+				ServerLogger::Log(logid, "Error opening updatefile", LL_ERROR);
 				return;
 			}			
 			size_t datasize=3*sizeof(unsigned int)+version.size()+(size_t)sigfile->Size()+(size_t)updatefile->Size();
@@ -1560,7 +1614,7 @@ void ClientMain::checkClientVersion(void)
 			IPipe *cc=getClientCommandConnection(10000);
 			if(cc==NULL)
 			{
-				ServerLogger::Log(clientid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
+				ServerLogger::Log(logid, L"Connecting to ClientService of \""+clientname+L"\" failed - CONNECT error", LL_ERROR);
 				return;
 			}
 
@@ -1636,7 +1690,7 @@ void ClientMain::checkClientVersion(void)
 				size_t rc=cc->Read(&ret, timeout);
 				if(rc==0)
 				{
-					ServerLogger::Log(clientid, "Reading from client failed in update", LL_ERROR);
+					ServerLogger::Log(logid, "Reading from client failed in update", LL_ERROR);
 					break;
 				}
 				tcpstack.AddData((char*)ret.c_str(), ret.size());
@@ -1656,7 +1710,7 @@ void ClientMain::checkClientVersion(void)
 					else
 					{
 						ok=false;
-						ServerLogger::Log(clientid, "Error in update: "+ret, LL_ERROR);
+						ServerLogger::Log(logid, "Error in update: "+ret, LL_ERROR);
 						break;
 					}
 				}
@@ -1664,7 +1718,7 @@ void ClientMain::checkClientVersion(void)
 
 			if(!ok)
 			{
-				ServerLogger::Log(clientid, L"Timeout: In client update", LL_ERROR);
+				ServerLogger::Log(logid, L"Timeout: In client update", LL_ERROR);
 			}
 
 			Server->destroy(cc);
@@ -1673,7 +1727,7 @@ void ClientMain::checkClientVersion(void)
 
 			if(ok)
 			{
-				ServerLogger::Log(clientid, L"Updated client successfully", LL_INFO);
+				ServerLogger::Log(logid, L"Updated client successfully", LL_INFO);
 			}
 		}
 	}
@@ -1926,7 +1980,7 @@ bool ClientMain::getClientChunkedFilesrvConnection(std::auto_ptr<FileClientChunk
 	return true;
 }
 
-IFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, int clientid)
+IFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, logid_t logid)
 {
 	int tries=50;
 	IFile *pfd=NULL;
@@ -1948,7 +2002,7 @@ IFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& 
 
 		if(pfd==NULL)
 		{
-			ServerLogger::Log(clientid, "Error opening temporary file. Retrying...", LL_WARNING);
+			ServerLogger::Log(logid, "Error opening temporary file. Retrying...", LL_WARNING);
 			--tries;
 			if(tries<0)
 			{
@@ -2003,8 +2057,8 @@ bool ClientMain::handle_not_enough_space(const std::wstring &path)
 
 		if(!ServerCleanupThread::cleanupSpace(minfreespace_min) )
 		{
-			ServerLogger::Log(clientid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
-			sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+			ServerLogger::Log(logid, "FATAL: Could not free space. NOT ENOUGH FREE SPACE.", LL_ERROR);
+			sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(logid));
 			return false;
 		}
 	}
@@ -2115,7 +2169,7 @@ bool ClientMain::authenticatePubKey()
 	}
 }
 
-void ClientMain::run_script( std::wstring name, const std::wstring& params, int clientid)
+void ClientMain::run_script( std::wstring name, const std::wstring& params, logid_t logid)
 {
 #ifdef _WIN32
 	name = name + L".bat";
@@ -2123,13 +2177,13 @@ void ClientMain::run_script( std::wstring name, const std::wstring& params, int 
 
 	if(!FileExists(wnarrow(name)))
 	{
-		ServerLogger::Log(clientid, L"Script does not exist "+name, LL_DEBUG);
+		ServerLogger::Log(logid, L"Script does not exist "+name, LL_DEBUG);
 		return;
 	}
 
 	if(!FileExists(wnarrow(name)))
 	{
-		ServerLogger::Log(clientid, L"Script does not exist "+name, LL_DEBUG);
+		ServerLogger::Log(logid, L"Script does not exist "+name, LL_DEBUG);
 		return;
 	}
 
@@ -2145,7 +2199,7 @@ void ClientMain::run_script( std::wstring name, const std::wstring& params, int 
 
 	if(!fp)
 	{
-		ServerLogger::Log(clientid, L"Could not open pipe for command "+name, LL_DEBUG);
+		ServerLogger::Log(logid, L"Could not open pipe for command "+name, LL_DEBUG);
 		return;
 	}
 
@@ -2166,7 +2220,7 @@ void ClientMain::run_script( std::wstring name, const std::wstring& params, int 
 
 	if(rc!=0)
 	{
-		ServerLogger::Log(clientid, L"Script "+name+L" had error (code "+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, L"Script "+name+L" had error (code "+convert(rc)+L")", LL_ERROR);
 	}
 
 	std::vector<std::string> toks;
@@ -2174,7 +2228,7 @@ void ClientMain::run_script( std::wstring name, const std::wstring& params, int 
 
 	for(size_t i=0;i<toks.size();++i)
 	{
-		ServerLogger::Log(clientid, "Script output Line("+nconvert(i+1)+"): " + toks[i], rc!=0?LL_ERROR:LL_INFO);
+		ServerLogger::Log(logid, "Script output Line("+nconvert(i+1)+"): " + toks[i], rc!=0?LL_ERROR:LL_INFO);
 	}
 }
 
@@ -2187,11 +2241,11 @@ void ClientMain::log_progress( const std::string& fn, int64 total, int64 downloa
 		{
 			pc_complete = static_cast<int>((static_cast<float>(downloaded)/total)*100.f);
 		}
-		ServerLogger::Log(clientid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \""+fn+"\". "+nconvert(pc_complete)+"% finished "+PrettyPrintBytes(downloaded)+"/"+PrettyPrintBytes(total)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
 	}
 	else
 	{
-		ServerLogger::Log(clientid, "Loading \""+fn+"\". Loaded "+PrettyPrintBytes(downloaded)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
+		ServerLogger::Log(logid, "Loading \""+fn+"\". Loaded "+PrettyPrintBytes(downloaded)+" at "+PrettyPrintSpeed(static_cast<size_t>(speed_bps)), LL_DEBUG);
 	}
 }
 
@@ -2283,3 +2337,13 @@ void ClientMain::setContinuousBackup( BackupServerContinuous* cb )
 
 	continuous_backup = cb;
 }
+
+void ClientMain::addShareToCleanup( int clientid, const SShareCleanup& cleanupData )
+{
+	if(fileserv==NULL) return;
+
+	IScopedLock lock(cleanup_mutex);
+	std::vector<SShareCleanup>& tocleanup = cleanup_shares[clientid];
+	tocleanup.push_back(cleanupData);
+}
+

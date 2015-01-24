@@ -4,10 +4,11 @@
 #include "dao/ServerBackupDao.h"
 #include <string>
 #include "server_settings.h"
-#include "fileclient/FileClient.h"
-#include "fileclient/FileClientChunked.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
+#include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include <map>
-#include "file_metadata.h"
+#include "../urbackupcommon/file_metadata.h"
+#include "server_log.h"
 
 class ClientMain;
 class BackupServerHash;

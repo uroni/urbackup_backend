@@ -27,14 +27,14 @@
 #define DEF_SERVER
 #include "../Interface/Server.h"
 
+IServer *Server=NULL;
+
 #include "pluginmgr.h"
 #include "FileServ.h"
 #include "IFileServFactory.h"
 #include "IFileServ.h"
 #include "../stringtools.h"
 #include <stdlib.h>
-
-IServer *Server=NULL;
 
 CFileServPluginMgr *fileservpluginmgr=NULL;
 
@@ -64,7 +64,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			udpport=atoi(s_udpport.c_str());
 
 		IFileServ *fileserv=fileserv_fak->createFileServ(tcpport, udpport);
-		fileserv->shareDir(widen(ExtractFileName(share_dir)), widen(share_dir));
+		fileserv->shareDir(widen(ExtractFileName(share_dir)), widen(share_dir), std::string());
 		fileserv->addIdentity("");
 	}
 

@@ -20,6 +20,7 @@
 
 #include "server_status.h"
 #include "../Interface/Server.h"
+#include "../Interface/Pipe.h"
 #include "action_header.h"
 #include <time.h>
 
@@ -210,6 +211,16 @@ void ServerStatus::setOSVersionString(const std::wstring &clientname, const std:
 	IScopedLock lock(mutex);
 	SStatus *s=&status[clientname];
 	s->os_version_string=os_version_string;
+}
+
+bool ServerStatus::sendToCommPipe( const std::wstring &clientname, const std::string& msg )
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	if(s->comm_pipe==NULL)
+		return false;
+
+	s->comm_pipe->Write(msg);
 }
 
 ACTION_IMPL(server_status)

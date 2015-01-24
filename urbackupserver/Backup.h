@@ -4,6 +4,7 @@
 #include <string>
 #include "../Interface/Types.h"
 #include "server_status.h"
+#include "server_log.h"
 
 class IDatabase;
 class ServerSettings;
@@ -84,4 +85,6 @@ protected:
 	bool should_backoff;
 
 	bool backup_result;
+
+	logid_t logid;
 };

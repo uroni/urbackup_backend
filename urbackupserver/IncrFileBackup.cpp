@@ -21,14 +21,14 @@
 #include "../urbackupcommon/os_functions.h"
 #include "ClientMain.h"
 #include "treediff/TreeDiff.h"
-#include "filelist_utils.h"
+#include "../urbackupcommon/filelist_utils.h"
 #include "server_dir_links.h"
 #include "server_running.h"
 #include "ServerDownloadThread.h"
 #include "server_hash_existing.h"
 #include "FileIndex.h"
 #include <stack>
-#include "file_metadata.h"
+#include "../urbackupcommon/file_metadata.h"
 #include "server.h"
 #include "../common/adler32.h"
 #include "../common/data.h"
@@ -49,11 +49,11 @@ IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::wstr
 
 bool IncrFileBackup::doFileBackup()
 {
-	ServerLogger::Log(clientid, "Starting incremental file backup...", LL_INFO);
+	ServerLogger::Log(logid, "Starting incremental file backup...", LL_INFO);
 
 	if(with_hashes)
 	{
-		ServerLogger::Log(clientid, clientname+L": Doing backup with hashes...", LL_DEBUG);
+		ServerLogger::Log(logid, clientname+L": Doing backup with hashes...", LL_DEBUG);
 	}
 
 	bool intra_file_diffs;
@@ -68,7 +68,7 @@ bool IncrFileBackup::doFileBackup()
 
 	if(intra_file_diffs)
 	{
-		ServerLogger::Log(clientid, clientname+L": Doing backup with intra file diffs...", LL_DEBUG);
+		ServerLogger::Log(logid, clientname+L": Doing backup with intra file diffs...", LL_DEBUG);
 	}
 
 	bool use_directory_links = !use_snapshots && server_settings->getSettings()->use_incremental_symlinks;
@@ -76,7 +76,7 @@ bool IncrFileBackup::doFileBackup()
 	SBackup last=getLastIncremental(group);
 	if(last.incremental==-2)
 	{
-		ServerLogger::Log(clientid, "Cannot retrieve last file backup when doing incremental backup. Doing full backup now...", LL_WARNING);
+		ServerLogger::Log(logid, "Cannot retrieve last file backup when doing incremental backup. Doing full backup now...", LL_WARNING);
 
 		deleteBackup();
 
@@ -86,7 +86,7 @@ bool IncrFileBackup::doFileBackup()
 
 			if(!b)
 			{
-				ServerLogger::Log(clientid, "Cannot filesystem for backup", LL_ERROR);
+				ServerLogger::Log(logid, "Cannot filesystem for backup", LL_ERROR);
 				return false;
 			}
 		}
@@ -160,11 +160,11 @@ bool IncrFileBackup::doFileBackup()
 
 	if(hashed_transfer)
 	{
-		ServerLogger::Log(clientid, clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(logid, clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
 	}
 	else
 	{
-		ServerLogger::Log(clientid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(logid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
 	}
 
 	Server->Log(clientname+L": Connecting to client...", LL_DEBUG);
@@ -178,7 +178,7 @@ bool IncrFileBackup::doFileBackup()
 			fc_chunked->setDestroyPipe(true);
 			if(fc_chunked->hasError())
 			{
-				ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -1", LL_ERROR);
+				ServerLogger::Log(logid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -1", LL_ERROR);
 				has_early_error=true;
 				log_backup=false;
 				return false;
@@ -188,32 +188,32 @@ bool IncrFileBackup::doFileBackup()
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(clientid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -2", LL_ERROR);
+		ServerLogger::Log(logid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -2", LL_ERROR);
 		has_early_error=true;
 		log_backup=false;
 		return false;
 	}
 
-	ServerLogger::Log(clientid, clientname+L": Loading file list...", LL_INFO);
-	IFile *tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
+	ServerLogger::Log(logid, clientname+L": Loading file list...", LL_INFO);
+	IFile *tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	if(tmp==NULL)
 	{
-		ServerLogger::Log(clientid, L"Error creating temporary file in ::doIncrBackup", LL_ERROR);
+		ServerLogger::Log(logid, L"Error creating temporary file in ::doIncrBackup", LL_ERROR);
 		return false;
 	}
 
 	int64 incr_backup_starttime=Server->getTimeMS();
 	int64 incr_backup_stoptime=0;
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+nconvert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+nconvert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		has_early_error=true;
 		return false;
 	}
 
-	ServerLogger::Log(clientid, clientname+L" Starting incremental backup...", LL_DEBUG);
+	ServerLogger::Log(logid, clientname+L" Starting incremental backup...", LL_DEBUG);
 
 	int incremental_num = resumed_full?0:(last.incremental+1);
 	backup_dao->newFileBackup(incremental_num, clientid, backuppath_single, resumed_backup, Server->getTimeMS()-indexing_start_time, group);
@@ -227,7 +227,7 @@ bool IncrFileBackup::doFileBackup()
 	std::wstring tmpfilename=tmp->getFilenameW();
 	Server->destroy(tmp);
 
-	ServerLogger::Log(clientid, clientname+L": Calculating file tree differences...", LL_INFO);
+	ServerLogger::Log(logid, clientname+L": Calculating file tree differences...", LL_INFO);
 
 	bool error=false;
 	std::vector<size_t> deleted_ids;
@@ -243,12 +243,12 @@ bool IncrFileBackup::doFileBackup()
 	{
 		if(!client_main->isOnInternetConnection())
 		{
-			ServerLogger::Log(clientid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
+			ServerLogger::Log(logid, "Error while calculating tree diff. Doing full backup.", LL_ERROR);
 			return doFullBackup();
 		}
 		else
 		{
-			ServerLogger::Log(clientid, "Error while calculating tree diff. Not doing full backup because of internet connection.", LL_ERROR);
+			ServerLogger::Log(logid, "Error while calculating tree diff. Not doing full backup because of internet connection.", LL_ERROR);
 			has_early_error=true;
 			return false;
 		}
@@ -256,15 +256,15 @@ bool IncrFileBackup::doFileBackup()
 
 	if(use_snapshots)
 	{
-		ServerLogger::Log(clientid, clientname+L": Creating snapshot...", LL_INFO);
+		ServerLogger::Log(logid, clientname+L": Creating snapshot...", LL_INFO);
 		if(!SnapshotHelper::snapshotFileSystem(clientname, last.path, backuppath_single)
 			|| !SnapshotHelper::isSubvolume(clientname, backuppath_single) )
 		{
-			ServerLogger::Log(clientid, "Creating new snapshot failed (Server error)", LL_WARNING);
+			ServerLogger::Log(logid, "Creating new snapshot failed (Server error)", LL_WARNING);
 
 			if(!SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single) )
 			{
-				ServerLogger::Log(clientid, "Creating empty filesystem failed (Server error)", LL_ERROR);
+				ServerLogger::Log(logid, "Creating empty filesystem failed (Server error)", LL_ERROR);
 				has_early_error=true;
 				return false;
 			}
@@ -272,7 +272,7 @@ bool IncrFileBackup::doFileBackup()
 			{
 				if(!os_create_dir(os_file_prefix(backuppath_hashes)) )
 				{
-					ServerLogger::Log(clientid, "Cannot create hash path (Server error)", LL_ERROR);
+					ServerLogger::Log(logid, "Cannot create hash path (Server error)", LL_ERROR);
 					has_early_error=true;
 					return false;
 				}
@@ -286,17 +286,17 @@ bool IncrFileBackup::doFileBackup()
 
 	if(use_snapshots)
 	{
-		ServerLogger::Log(clientid, clientname+L": Deleting files in snapshot... ("+convert(deleted_ids.size())+L")", LL_INFO);
+		ServerLogger::Log(logid, clientname+L": Deleting files in snapshot... ("+convert(deleted_ids.size())+L")", LL_INFO);
 		if(!deleteFilesInSnapshot(clientlistName(group), deleted_ids, backuppath, false) )
 		{
-			ServerLogger::Log(clientid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
+			ServerLogger::Log(logid, "Deleting files in snapshot failed (Server error)", LL_ERROR);
 			has_early_error=true;
 			return false;
 		}
 
 		if(with_hashes)
 		{
-			ServerLogger::Log(clientid, clientname+L": Deleting files in hash snapshot...", LL_INFO);
+			ServerLogger::Log(logid, clientname+L": Deleting files in hash snapshot...", LL_INFO);
 			deleteFilesInSnapshot(clientlistName(group), deleted_ids, backuppath_hashes, true);
 		}
 	}
@@ -338,7 +338,7 @@ bool IncrFileBackup::doFileBackup()
 		hashed_transfer, intra_file_diffs, clientid, clientname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
 		backupid, r_incremental, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version,
-		incremental_num));
+		incremental_num, logid));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -349,7 +349,7 @@ bool IncrFileBackup::doFileBackup()
 	THREADPOOL_TICKET server_hash_existing_ticket = ILLEGAL_THREADPOOL_TICKET;
 	if(readd_file_entries_sparse && !trust_client_hashes)
 	{
-		server_hash_existing.reset(new ServerHashExisting(clientid, this));
+		server_hash_existing.reset(new ServerHashExisting(clientid, logid, this));
 		server_hash_existing_ticket =
 			Server->getThreadPool()->execute(server_hash_existing.get());
 	}
@@ -359,6 +359,8 @@ bool IncrFileBackup::doFileBackup()
 	std::wstring curr_path;
 	std::wstring curr_os_path;
 	std::wstring curr_hash_path;
+	std::string curr_orig_path;
+	std::string orig_sep;
 	SFile cf;
 	int depth=0;
 	int line=0;
@@ -378,7 +380,7 @@ bool IncrFileBackup::doFileBackup()
 		fc_chunked->resetReceivedDataBytes();
 	}
 
-	ServerLogger::Log(clientid, clientname+L": Calculating tree difference size...", LL_INFO);
+	ServerLogger::Log(logid, clientname+L": Calculating tree difference size...", LL_INFO);
 	_i64 files_size=getIncrementalSize(tmp, diffs);
 	tmp->Seek(0);
 
@@ -391,7 +393,7 @@ bool IncrFileBackup::doFileBackup()
 
 	int64 linked_bytes = 0;
 
-	ServerLogger::Log(clientid, clientname+L": Linking unchanged and loading new files...", LL_INFO);
+	ServerLogger::Log(logid, clientname+L": Linking unchanged and loading new files...", LL_INFO);
 
 	FileListParser list_parser;
 
@@ -411,7 +413,7 @@ bool IncrFileBackup::doFileBackup()
 			bool b=list_parser.nextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
-				std::wstring osspecific_name=fixFilenameForOS(cf.name);		
+				std::wstring osspecific_name=fixFilenameForOS(cf.name);
 
 				if(skip_dir_completely>0)
 				{
@@ -460,6 +462,16 @@ bool IncrFileBackup::doFileBackup()
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
+				bool has_orig_path = false;
+				if(!metadata.orig_path.empty())
+				{
+					curr_orig_path = metadata.orig_path;
+					orig_sep = base64_decode_dash(Server->ConvertToUTF8(extra_params[L"orig_sep"]));
+					if(orig_sep.empty()) orig_sep="\\";
+
+					has_orig_path=true;
+				}
+
 				int64 ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
@@ -469,7 +481,7 @@ bool IncrFileBackup::doFileBackup()
 						{
 							r_offline=true;
 							backup_stopped=true;
-							ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
+							ServerLogger::Log(logid, L"Server admin stopped backup.", LL_ERROR);
 							server_download->queueSkip();
 							if(server_hash_existing.get())
 							{
@@ -499,7 +511,7 @@ bool IncrFileBackup::doFileBackup()
 
 				if(server_download->isOffline() && !r_offline)
 				{
-					ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+					ServerLogger::Log(logid, L"Client "+clientname+L" went offline.", LL_ERROR);
 					r_offline=true;
 					incr_backup_stoptime=Server->getTimeMS();
 				}
@@ -540,6 +552,12 @@ bool IncrFileBackup::doFileBackup()
 						curr_os_path+=L"/"+osspecific_name;
 						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
 
+						if(!has_orig_path)
+						{
+							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
+							metadata.orig_path = curr_orig_path;
+						}
+
 						bool dir_linked=false;
 						if(use_directory_links && hasChange(line, large_unchanged_subtrees) )
 						{
@@ -564,7 +582,7 @@ bool IncrFileBackup::doFileBackup()
 									if(!os_set_file_time(os_file_prefix(backuppath+local_curr_os_path),
 										metadata.created, metadata.last_modified))
 									{
-										ServerLogger::Log(clientid, L"Error setting last modfied and creation time of directory link \""+
+										ServerLogger::Log(logid, L"Error setting last modfied and creation time of directory link \""+
 											backuppath+local_curr_os_path+L"\"", LL_WARNING);
 									}
 								}
@@ -603,13 +621,13 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
 								{
-									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed. - " + widen(systemErrorInfo()), LL_ERROR);
+									ServerLogger::Log(logid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed. - " + widen(systemErrorInfo()), LL_ERROR);
 									c_has_error=true;
 									break;
 								}
 								else
 								{
-									ServerLogger::Log(clientid, L"Directory \""+backuppath+local_curr_os_path+L"\" does already exist.", LL_WARNING);
+									ServerLogger::Log(logid, L"Directory \""+backuppath+local_curr_os_path+L"\" does already exist.", LL_WARNING);
 								}
 							}
 							else if(metadata.exist)
@@ -617,7 +635,7 @@ bool IncrFileBackup::doFileBackup()
 								if(!os_set_file_time(os_file_prefix(backuppath+local_curr_os_path),
 									metadata.created, metadata.last_modified))
 								{
-									ServerLogger::Log(clientid, L"Error setting last modfied and creation time of directory \""+
+									ServerLogger::Log(logid, L"Error setting last modfied and creation time of directory \""+
 										backuppath+local_curr_os_path+L"\"", LL_WARNING);
 								}
 							}
@@ -625,18 +643,18 @@ bool IncrFileBackup::doFileBackup()
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 								{
-									ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. - " + widen(systemErrorInfo()), LL_ERROR);
+									ServerLogger::Log(logid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. - " + widen(systemErrorInfo()), LL_ERROR);
 									c_has_error=true;
 									break;
 								}
 								else
 								{
-									ServerLogger::Log(clientid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
+									ServerLogger::Log(logid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
 								}
 							}
 							else if(!write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata) )
 							{
-								ServerLogger::Log(clientid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
+								ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
 								c_has_error=true;
 								break;
 							}
@@ -651,7 +669,7 @@ bool IncrFileBackup::doFileBackup()
 								std::wstring srcpath=last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn;
 								if(!copy_os_metadata(srcpath, backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main))
 								{
-									ServerLogger::Log(clientid, L"Error copying OS dependent directory metadata from last backup to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\".", LL_ERROR);
+									ServerLogger::Log(logid, L"Error copying OS dependent directory metadata from last backup to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\".", LL_ERROR);
 									c_has_error=true;
 									break;
 								}
@@ -702,12 +720,22 @@ bool IncrFileBackup::doFileBackup()
 						}
 						curr_path=ExtractFilePath(curr_path, L"/");
 						curr_os_path=ExtractFilePath(curr_os_path, L"/");
+
+						if(!has_orig_path)
+						{
+							curr_orig_path = ExtractFilePath(curr_orig_path, orig_sep);
+						}
 					}
 				}
 				else //is file
 				{
 					std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path+L"/"+osspecific_name);
 					std::wstring srcpath=last_backuppath+local_curr_os_path;
+
+					if(!has_orig_path)
+					{
+						metadata.orig_path = curr_orig_path + orig_sep + Server->ConvertToUTF8(cf.name);
+					}
 
 					FileMetadata parent_metadata = dir_metadata.empty()?FileMetadata():dir_metadata.top();
 
@@ -763,7 +791,7 @@ bool IncrFileBackup::doFileBackup()
 						}
 						else if(!b && too_many_hardlinks)
 						{
-							ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Hardlink limit was reached. Copying file...", LL_DEBUG);
+							ServerLogger::Log(logid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Hardlink limit was reached. Copying file...", LL_DEBUG);
 							copyFile(srcpath, backuppath+local_curr_os_path,
 								with_hashes?(last_backuppath_hashes+local_curr_os_path):std::wstring(),
 								with_hashes?(backuppath_hashes+local_curr_os_path):std::wstring(),
@@ -776,11 +804,11 @@ bool IncrFileBackup::doFileBackup()
 						{
 							if(link_logcnt<5)
 							{
-								ServerLogger::Log(clientid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
+								ServerLogger::Log(logid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file...", LL_WARNING);
 							}
 							else if(link_logcnt==5)
 							{
-								ServerLogger::Log(clientid, L"More warnings of kind: Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file... Skipping.", LL_WARNING);
+								ServerLogger::Log(logid, L"More warnings of kind: Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Loading file... Skipping.", LL_WARNING);
 							}
 							else
 							{
@@ -870,7 +898,7 @@ bool IncrFileBackup::doFileBackup()
 		server_hash_existing->queueStop(false);
 	}
 
-	ServerLogger::Log(clientid, L"Waiting for file transfers...", LL_INFO);
+	ServerLogger::Log(logid, L"Waiting for file transfers...", LL_INFO);
 
 	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
 	{
@@ -895,13 +923,13 @@ bool IncrFileBackup::doFileBackup()
 
 	if(server_download->isOffline() && !r_offline)
 	{
-		ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+		ServerLogger::Log(logid, L"Client "+clientname+L" went offline.", LL_ERROR);
 		r_offline=true;
 	}
 
 	sendBackupOkay(!r_offline && !c_has_error);
 
-	ServerLogger::Log(clientid, L"Writing new file list...", LL_INFO);
+	ServerLogger::Log(logid, L"Writing new file list...", LL_INFO);
 
 	tmp->Seek(0);
 	line = 0;
@@ -934,7 +962,7 @@ bool IncrFileBackup::doFileBackup()
 
 	if(server_hash_existing_ticket!=ILLEGAL_THREADPOOL_TICKET)
 	{
-		ServerLogger::Log(clientid, L"Waiting for file entry hashing thread...", LL_INFO);
+		ServerLogger::Log(logid, L"Waiting for file entry hashing thread...", LL_INFO);
 
 		Server->getThreadPool()->waitFor(server_hash_existing_ticket);
 	}
@@ -945,12 +973,12 @@ bool IncrFileBackup::doFileBackup()
 	{
 		if(num_readded_entries>0)
 		{
-			ServerLogger::Log(clientid, L"Number of readded file entries is "+convert(num_readded_entries), LL_INFO);
+			ServerLogger::Log(logid, L"Number of readded file entries is "+convert(num_readded_entries), LL_INFO);
 		}
 
 		if(num_copied_file_entries>0)
 		{
-			ServerLogger::Log(clientid, L"Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
+			ServerLogger::Log(logid, L"Number of copyied file entries from last backup is "+convert(num_copied_file_entries), LL_INFO);
 		}
 
 		if(copy_last_file_entries)
@@ -960,7 +988,7 @@ bool IncrFileBackup::doFileBackup()
 		}
 	}
 
-	ServerLogger::Log(clientid, L"Waiting for file hashing and copying threads...", LL_INFO);
+	ServerLogger::Log(logid, L"Waiting for file hashing and copying threads...", LL_INFO);
 
 	waitForFileThreads();
 
@@ -978,12 +1006,12 @@ bool IncrFileBackup::doFileBackup()
 		{
 			if(!verify_file_backup(tmp))
 			{
-				ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+				ServerLogger::Log(logid, "Backup verification failed", LL_ERROR);
 				c_has_error=true;
 			}
 			else
 			{
-				ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+				ServerLogger::Log(logid, "Backup verification ok", LL_INFO);
 			}
 		}
 
@@ -1009,7 +1037,7 @@ bool IncrFileBackup::doFileBackup()
 				name = L"continuous";
 			}
 
-			ServerLogger::Log(clientid, "Creating symbolic links. -1", LL_DEBUG);
+			ServerLogger::Log(logid, "Creating symbolic links. -1", LL_DEBUG);
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+clientname+os_file_sep()+name;
@@ -1020,23 +1048,23 @@ bool IncrFileBackup::doFileBackup()
 
 		if(b && group==c_group_default)
 		{
-			ServerLogger::Log(clientid, "Creating symbolic links. -2", LL_DEBUG);
+			ServerLogger::Log(logid, "Creating symbolic links. -2", LL_DEBUG);
 
 			std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 			std::wstring currdir=backupfolder+os_file_sep()+L"clients";
 			if(!os_create_dir(os_file_prefix(currdir)) && !os_directory_exists(os_file_prefix(currdir)))
 			{
-				ServerLogger::Log(clientid, "Error creating \"clients\" dir for symbolic links", LL_ERROR);
+				ServerLogger::Log(logid, "Error creating \"clients\" dir for symbolic links", LL_ERROR);
 			}
 			currdir+=os_file_sep()+clientname;
 			os_remove_symlink_dir(os_file_prefix(currdir));
 			os_link_symbolic(os_file_prefix(backuppath), os_file_prefix(currdir));
 
-			ServerLogger::Log(clientid, "Symbolic links created.", LL_DEBUG);
+			ServerLogger::Log(logid, "Symbolic links created.", LL_DEBUG);
 
 			if(server_settings->getSettings()->create_linked_user_views)
 			{
-				ServerLogger::Log(clientid, "Creating user views...", LL_INFO);
+				ServerLogger::Log(logid, "Creating user views...", LL_INFO);
 
 				createUserViews(tmp);
 			}
@@ -1045,13 +1073,13 @@ bool IncrFileBackup::doFileBackup()
 		}
 		else if(!b && !c_has_error)
 		{
-			ServerLogger::Log(clientid, "Fatal error renaming clientlist.", LL_ERROR);
-			ClientMain::sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+			ServerLogger::Log(logid, "Fatal error renaming clientlist.", LL_ERROR);
+			ClientMain::sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(logid));
 		}
 	}
 	else if(!c_has_error && !disk_error)
 	{
-		ServerLogger::Log(clientid, "Client disconnected while backing up. Copying partial file...", LL_DEBUG);
+		ServerLogger::Log(logid, "Client disconnected while backing up. Copying partial file...", LL_DEBUG);
 		db->BeginTransaction();
 		moveFile(widen(clientlistName(group, true)), widen(clientlistName(group, false)));
 		backup_dao->setFileBackupDone(backupid);
@@ -1059,8 +1087,8 @@ bool IncrFileBackup::doFileBackup()
 	}
 	else
 	{
-		ServerLogger::Log(clientid, "Fatal error during backup. Backup not completed", LL_ERROR);
-		ClientMain::sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+		ServerLogger::Log(logid, "Fatal error during backup. Backup not completed", LL_ERROR);
+		ClientMain::sendMailToAdmins("Fatal error occured during incremental file backup", ServerLogger::getWarningLevelTextLogdata(logid));
 	}
 
 	running_updater->stop();
@@ -1075,11 +1103,11 @@ bool IncrFileBackup::doFileBackup()
 
 	_i64 transferred_bytes=fc.getTransferredBytes()+(fc_chunked.get()?fc_chunked->getTransferredBytes():0);
 	int64 passed_time=incr_backup_stoptime-incr_backup_starttime;
-	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
+	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 
 	if(group==c_group_default)
 	{
-		ClientMain::run_script(L"urbackup" + os_file_sep() + L"post_incr_filebackup", L"\""+ backuppath + L"\"", clientid);
+		ClientMain::run_script(L"urbackup" + os_file_sep() + L"post_incr_filebackup", L"\""+ backuppath + L"\"", logid);
 	}
 
 	if(c_has_error) return false;
@@ -1142,7 +1170,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 	IFile *tmp=Server->openFile(clientlist_fn, MODE_READ);
 	if(tmp==NULL)
 	{
-		ServerLogger::Log(clientid, "Could not open clientlist in ::deleteFilesInSnapshot", LL_ERROR);
+		ServerLogger::Log(logid, "Could not open clientlist in ::deleteFilesInSnapshot", LL_ERROR);
 		return false;
 	}
 
@@ -1185,7 +1213,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 							{
 								if(!no_error)
 								{
-									ServerLogger::Log(clientid, L"Could not remove directory \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo()), LL_ERROR);
+									ServerLogger::Log(logid, L"Could not remove directory \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo()), LL_ERROR);
 									Server->destroy(tmp);
 									return false;
 								}
@@ -1206,11 +1234,11 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 									std::auto_ptr<IFile> tf(Server->openFile(os_file_prefix(curr_fn), MODE_READ));
 									if(tf.get()!=NULL)
 									{
-										ServerLogger::Log(clientid, L"Could not remove file \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo()), LL_ERROR);
+										ServerLogger::Log(logid, L"Could not remove file \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo()), LL_ERROR);
 									}
 									else
 									{
-										ServerLogger::Log(clientid, L"Could not remove file \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo())+L". It was already deleted.", LL_ERROR);
+										ServerLogger::Log(logid, L"Could not remove file \""+curr_fn+L"\" in ::deleteFilesInSnapshot - " + widen(systemErrorInfo())+L". It was already deleted.", LL_ERROR);
 									}
 									Server->destroy(tmp);
 									return false;

@@ -71,11 +71,15 @@ SStartupStatus startup_status;
 #include "../Interface/DatabaseCursor.h"
 #include <set>
 #include "apps/check_files_index.h"
+#include "../fileservplugin/IFileServ.h"
+#include "../fileservplugin/IFileServFactory.h"
+#include "serverinterface/restore_client.h"
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
+IFileServ* fileserv=NULL;
 
 std::string server_identity;
 std::string server_token;
@@ -302,6 +306,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	init_mutex1();
 	ServerLogger::init_mutex();
 	init_dir_link_mutex();
+	create_id_mutex();
 
 	std::string app=Server->getServerParameter("app", "");
 
@@ -400,10 +405,22 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+	{
+		str_map params;
+		IFileServFactory* fileserv_fak=(IFileServFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fileserv", params));
+		if( fileserv_fak==NULL )
+		{
+			Server->Log("Error loading fileservplugin. File restores won't work.", LL_ERROR);
+		}
+		else
+		{
+			fileserv = fileserv_fak->createFileServNoBind();
+		}
+	}
+
 	
 	bool use_berkeleydb;
 	open_server_database(use_berkeleydb, true);
-
 	
 
 	ServerStatus::init_mutex();
@@ -663,6 +680,7 @@ DLLEXPORT void UnloadActions(void)
 		ServerSettings::destroy_mutex();
 		ServerStatus::destroy_mutex();
 		destroy_dir_link_mutex();
+		destroy_id_mutex();
 		Server->wait(1000);
 	}
 

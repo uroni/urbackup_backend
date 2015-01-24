@@ -47,14 +47,14 @@ FileServ::~FileServ(void)
 	delete dostop;
 }
 
-void FileServ::shareDir(const std::wstring &name, const std::wstring &path)
+void FileServ::shareDir(const std::wstring &name, const std::wstring &path, const std::string& identity)
 {
-	add_share_path(name, path);
+	add_share_path(name, path, identity);
 }
 
-void FileServ::removeDir(const std::wstring &name)
+void FileServ::removeDir(const std::wstring &name, const std::string& identity)
 {
-	remove_share_path(name);
+	remove_share_path(name, identity);
 }
 
 void FileServ::stopServer(void)
@@ -63,9 +63,9 @@ void FileServ::stopServer(void)
 	Server->getThreadPool()->waitFor(serverticket);
 }
 
-std::wstring FileServ::getShareDir(const std::wstring &name)
+std::wstring FileServ::getShareDir(const std::wstring &name, const std::string& identity)
 {
-	return map_file(name);
+	return map_file(name, identity);
 }
 
 void FileServ::addIdentity(const std::string &pIdentity)
@@ -144,7 +144,7 @@ bool FileServ::removeIdentity( const std::string &pIdentity )
 
 bool FileServ::getExitInformation(const std::wstring& cmd, std::string& stderr_data, int& exit_code)
 {
-	SExitInformation exit_info = PipeSessions::getExitInformation(map_file(cmd));
+	SExitInformation exit_info = PipeSessions::getExitInformation(map_file(cmd, std::string()));
 
 	if(exit_info.created==0)
 	{
@@ -179,5 +179,15 @@ std::wstring FileServ::mapScriptOutputNameToScript(const std::wstring& script_fn
 	{
 		return script_fn;
 	}
+}
+
+void FileServ::registerMetadataCallback( const std::wstring &name, const std::string& identity, IMetadataCallback* callback)
+{
+	PipeSessions::registerMetadataCallback(name, identity, callback);
+}
+
+void FileServ::removeMetadataCallback( const std::wstring &name, const std::string& identity )
+{
+	PipeSessions::removeMetadataCallback(name, identity);
 }
 

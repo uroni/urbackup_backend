@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../file_metadata.h"
+#include "../../urbackupcommon/file_metadata.h"
 
 struct SToken
 {

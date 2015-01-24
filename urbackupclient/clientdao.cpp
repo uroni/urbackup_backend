@@ -700,3 +700,8 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 	}
 	return ret;
 }
+
+ClientDAO::~ClientDAO()
+{
+	destroyQueries();
+}

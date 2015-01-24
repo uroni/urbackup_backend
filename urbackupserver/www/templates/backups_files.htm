@@ -24,5 +24,8 @@
 		{?download_zip}
 		<a class="btn btn-default" href="javascript: downloadZIP({clientid},{backupid},'{path}')">{tDownload folder as ZIP}</a>
 		{/download_zip}
+		{?restore}
+		<a class="btn btn-default" href="javascript: restoreFiles({clientid},{backupid},'{path}')">{tRestore folder to client}</a>
+		{/restore}
 	</div>
 </div>

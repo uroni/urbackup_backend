@@ -6,11 +6,14 @@
 #include "FileMetadataPipe.h"
 #include "../common/data.h"
 #include "PipeFile.h"
+#include <string>
 
 volatile bool PipeSessions::do_stop = false;
 IMutex* PipeSessions::mutex = NULL;
 std::map<std::wstring, SPipeSession> PipeSessions::pipe_files;
 std::map<std::wstring, SExitInformation> PipeSessions::exit_information;
+std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> PipeSessions::metadata_callbacks;
+
 
 const int64 pipe_file_timeout = 1*60*60*1000;
 
@@ -196,18 +199,29 @@ void PipeSessions::operator()()
 	}
 }
 
-void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std::string& public_fn, const std::string& server_token )
+void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std::string& public_fn,
+	const std::string& server_token, const std::string& identity )
 {
 	if(public_fn.empty() || next(public_fn, 0, "urbackup/"))
 	{
 		return;
 	}
 
+	std::string sharename = getuntil("/", public_fn);
+
 	CWData data;
 	data.addString(public_fn);
 	data.addString(local_fn);
 
 	IScopedLock lock(mutex);
+
+	std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*>::iterator iter_cb = 
+		metadata_callbacks.find(std::make_pair(sharename, identity));
+
+	if(iter_cb!=metadata_callbacks.end())
+	{
+		data.addVoidPtr(iter_cb->second);
+	}
 
 	std::map<std::wstring, SPipeSession>::iterator it = pipe_files.find(widen("urbackup/FILE_METADATA|"+server_token));
 
@@ -230,6 +244,34 @@ void PipeSessions::metadataStreamEnd( const std::string& server_token )
 		data.addString(std::string());
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
+	}
+}
+
+void PipeSessions::registerMetadataCallback( const std::wstring &name, const std::string& identity, IFileServ::IMetadataCallback* callback )
+{
+	IScopedLock lock(mutex);
+
+	std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*>::iterator iter
+		= metadata_callbacks.find(std::make_pair(Server->ConvertToUTF8(name), identity));
+
+	if(iter!=metadata_callbacks.end())
+	{
+		delete iter->second;
+	}
+
+	metadata_callbacks[std::make_pair(Server->ConvertToUTF8(name), identity)] = callback;
+}
+
+void PipeSessions::removeMetadataCallback( const std::wstring &name, const std::string& identity )
+{
+	IScopedLock lock(mutex);
+
+	std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*>::iterator iter
+		= metadata_callbacks.find(std::make_pair(Server->ConvertToUTF8(name), identity));
+
+	if(iter!=metadata_callbacks.end())
+	{
+		delete iter->second;
 	}
 }
 

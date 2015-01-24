@@ -10,6 +10,7 @@ const _u32 ID_METADATA_OS = 1<<0;
 #else
 const _u32 ID_METADATA_OS = 1<<2;
 #endif
+#include "IFileServ.h"
 
 const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = ID_METADATA_OS | 1<<3;
@@ -45,12 +46,17 @@ private:
 		MetadataState_Wait,
 		MetadataState_FnSize,
 		MetadataState_Fn,
-		MetadataState_Os
+		MetadataState_Os,
+		MetadataState_File
 	};
 
 	size_t fn_off;
 	std::string public_fn;
 	std::string local_fn;
+	IFileServ::IMetadataCallback* callback;
+	IFile* metadata_file;
+	int64 metadata_file_off;
+	int64 metadata_file_size;
 
 	MetadataState metadata_state;
 
