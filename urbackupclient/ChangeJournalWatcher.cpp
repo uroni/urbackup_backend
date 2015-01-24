@@ -673,7 +673,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 			if(Server->getTimeMS()-last_index_update>10000)
 			{
 				Server->Log("Saving new journal data to database...", LL_DEBUG);
-				update(sj->vol_str);
+				update();
 				last_index_update=Server->getTimeMS();
 			}
 		}
@@ -728,7 +728,10 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	db->Write("DROP TABLE map_frn_tmp");
 
 	Server->Log("Saving new journal data to database. Forcing update...", LL_DEBUG);
+	bool indexing_in_progress_backup = indexing_in_progress;
+	indexing_in_progress=false;
 	update(sj->vol_str);
+	indexing_in_progress = indexing_in_progress_backup;
 }
 
 SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
@@ -975,6 +978,11 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 							if(started_transaction)
 							{
 								started_transaction=false;
+								for(std::map<std::wstring, bool>::iterator it=local_open_write_files.begin();it!=local_open_write_files.end();++it)
+								{
+									open_write_files.add(it->first);
+								}
+								open_write_files.flushf();
 								db->EndTransaction();
 							}
 							reindex(it->second.rid, it->first, &it->second);
@@ -1020,9 +1028,16 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 			}
 		}
 
-		if(startUsn!=it->second.last_record &&
-			started_transaction)
+
+		if((startUsn!=it->second.last_record
+			&& started_transaction) || !vol_str.empty())
 		{
+			if(!started_transaction)
+			{
+				started_transaction=true;
+				db->BeginTransaction();
+			}
+
 			q_update_lastusn->Bind(it->second.last_record);
 			q_update_lastusn->Bind(it->first);
 			q_update_lastusn->Write();
