@@ -101,7 +101,6 @@ namespace
 ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool incremental, std::string letter)
 	: Backup(client_main, clientid, clientname, log_action, false, incremental), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
 {
-	status=ServerStatus::getStatus(clientname);
 }
 
 bool ImageBackup::doBackup()
@@ -155,8 +154,6 @@ bool ImageBackup::doBackup()
 	int esp_id=-1;
 	if(strlower(letter)=="c:")
 	{
-		SStatusAction orig_action = status.statusaction;
-
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
 		client_main->stopBackupRunning(false);
 		ImageBackup sysvol_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "SYSVOL");
@@ -187,14 +184,9 @@ bool ImageBackup::doBackup()
 
 			ServerLogger::Log(logid, "Backing up EFI System Partition done.", LL_DEBUG);
 		}
-
-		status.statusaction = orig_action;
 	}
 
-	status.pcdone=0;
-	ServerStatus::setServerStatus(status);
-
-	pingthread = new ServerPingThread(client_main, client_main->getProtocolVersions().eta_version>0);
+	pingthread = new ServerPingThread(clientname, status_id, client_main->getProtocolVersions().eta_version>0);
 	pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 	bool ret = false;
@@ -440,13 +432,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	int64 last_eta_update=0;
 	int64 last_eta_update_blocks=0;
 	double eta_estimated_speed = 0;
-	status.eta_set_time = Server->getTimeMS();
+	int64 eta_set_time = Server->getTimeMS();
+	ServerStatus::setProcessEtaSetTime(clientname, status_id, eta_set_time);
 
 	int num_hash_errors=0;
 
 	while(Server->getTimeMS()-starttime<=image_timeout)
 	{
-		if(ServerStatus::isBackupStopped(clientname))
+		if(ServerStatus::getProcess(clientname, status_id).stop)
 		{
 			ServerLogger::Log(logid, L"Server admin stopped backup.", LL_ERROR);
 			goto do_image_cleanup;
@@ -472,7 +465,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 				bool reconnected=false;
 				while(Server->getTimeMS()-starttime<=image_timeout)
 				{
-					if(ServerStatus::isBackupStopped(clientname))
+					if(ServerStatus::getProcess(clientname, status_id).stop)
 					{
 						ServerLogger::Log(logid, L"Server admin stopped backup. (2)", LL_ERROR);
 						goto do_image_cleanup;
@@ -821,13 +814,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 								{
 									if(has_parent)
 									{
-										status.pcdone=(int)(((double)currblock/(double)totalblocks)*100.0+0.5);
+										ServerStatus::setProcessPcDone(clientname, status_id, 
+											(int)(((double)currblock/(double)totalblocks)*100.0+0.5) );
 									}
 									else
 									{
-										status.pcdone=(int)(((double)numblocks/(double)blockcnt)*100.0+0.5);
+										ServerStatus::setProcessPcDone(clientname, status_id, 
+											(int)(((double)numblocks/(double)blockcnt)*100.0+0.5) );
 									}
-									ServerStatus::setServerStatus(status, true);
 								}
 							}
 
@@ -842,8 +836,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 										last_eta_update_blocks = rel_blocks;
 
 										int64 currtime = Server->getTimeMS();
-										int64 passed_time = currtime - status.eta_set_time;
-										status.eta_set_time = Server->getTimeMS();
+										int64 passed_time = currtime - eta_set_time;
+										eta_set_time = Server->getTimeMS();
 
 										double speed_bpms = static_cast<double>(new_blocks) / passed_time;
 
@@ -857,9 +851,8 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 										}
 
 										int64 remaining_blocks = (has_parent?totalblocks:blockcnt)-rel_blocks;
-										status.eta_ms = static_cast<int64>(remaining_blocks/speed_bpms+0.5);
-
-										ServerStatus::setServerStatus(status, true);
+										ServerStatus::setProcessEta(clientname, status_id,
+											static_cast<int64>(remaining_blocks/speed_bpms+0.5), eta_set_time);
 									}									
 								}
 							}
@@ -923,9 +916,6 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 							if(parenthashfile!=NULL) Server->destroy(parenthashfile);
 
 							bool vhdfile_err=false;
-
-							status.action_done=true;
-							ServerStatus::setServerStatus(status);
 
 							if(vhdfile!=NULL)
 							{

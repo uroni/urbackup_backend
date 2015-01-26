@@ -121,6 +121,8 @@ namespace
 
 			std::string identity = ServerSettings::generateRandomAuthKey(25);
 			int restore_id = new_restore_id();
+			size_t status_id = ServerStatus::startProcess(clientname, sa_restore);
+
 
 			fileserv->addIdentity(identity);
 			fileserv->shareDir(L"clientdl_filelist", filelist_f->getFilenameW(), identity);
@@ -138,6 +140,7 @@ namespace
 			data.addBuffer("RESTORE", 7);
 			data.addString(identity);
 			data.addInt(restore_id);
+			data.addUInt64(status_id);
 
 			std::string msg(data.getDataPtr(), data.getDataPtr()+data.getDataSize());
 			ServerStatus::sendToCommPipe(clientname, msg);

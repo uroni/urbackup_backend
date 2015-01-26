@@ -14,7 +14,7 @@ class SessionKeepaliveThread;
 class ServerChannelThread : public IThread
 {
 public:
-	ServerChannelThread(ClientMain *client_main, int clientid, bool internet_mode, const std::string& identiy);
+	ServerChannelThread(ClientMain *client_main, const std::wstring& clientname, int clientid, bool internet_mode, const std::string& identiy);
 	~ServerChannelThread(void);
 
 	void operator()(void);
@@ -37,7 +37,7 @@ private:
 	void GET_BACKUPCLIENTS(void);
 	void GET_BACKUPIMAGES(const std::wstring& clientname);
 	void DOWNLOAD_IMAGE(str_map& params);
-
+	void RESTORE_PERCENT( str_map params );
 	ClientMain *client_main;
 	IPipe *exitpipe;
 	IPipe *input;
@@ -62,4 +62,6 @@ private:
 	std::string client_addr;
 
 	SessionKeepaliveThread* keepalive_thread;
+
+	std::wstring clientname;
 };

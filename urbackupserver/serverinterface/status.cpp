@@ -278,10 +278,11 @@ ACTION_IMPL(status)
 			std::string ip="-";
 			std::string client_version_string;
 			std::string os_version_string;
-			int done_pc=-1;
 			int i_status=0;
 			bool online=false;
 			SStatus *curr_status=NULL;
+			JSON::Array processes;
+
 			for(size_t j=0;j<client_status.size();++j)
 			{
 				if(client_status[j].client==clientname)
@@ -291,12 +292,12 @@ ACTION_IMPL(status)
 						curr_status=&client_status[j];
 						online=true;
 					}
+
 					unsigned char *ips=(unsigned char*)&client_status[j].ip_addr;
 					ip=nconvert(ips[0])+"."+nconvert(ips[1])+"."+nconvert(ips[2])+"."+nconvert(ips[3]);
 
 					client_version_string=client_status[j].client_version_string;
 					os_version_string=client_status[j].os_version_string;
-					done_pc=client_status[j].pcdone;
 
 					switch(client_status[j].status_error)
 					{
@@ -307,7 +308,19 @@ ACTION_IMPL(status)
 					case se_authentication_error:
 						i_status=13; break;
 					default:
-						i_status=client_status[j].statusaction; break;
+						if(!client_status[j].processes.empty())
+						{
+							i_status = client_status[j].processes[0].action;
+						}
+					}
+
+					for(size_t k=0;k<client_status[j].processes.size();++k)
+					{
+						SProcess& process = client_status[j].processes[k];
+						JSON::Object proc;
+						proc.set("action", process.action);
+						proc.set("pcdone", process.pcdone);
+						processes.add(proc);
 					}
 				}
 			}
@@ -317,8 +330,7 @@ ACTION_IMPL(status)
 			stat.set("client_version_string", client_version_string);
 			stat.set("os_version_string", os_version_string);
 			stat.set("status", i_status);
-			stat.set("done_pc", done_pc);
-			
+			stat.set("processes", processes);
 
 			ServerSettings settings(db, clientid);
 

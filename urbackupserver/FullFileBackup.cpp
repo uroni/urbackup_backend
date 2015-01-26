@@ -62,8 +62,8 @@ bool FullFileBackup::doFileBackup()
 
 	SBackup last_backup_info = getLastFullDurations();
 
-	status.eta_ms = last_backup_info.backup_time_ms + last_backup_info.indexing_time_ms;
-	ServerStatus::setServerStatus(status, true);
+	int64 eta_set_time = Server->getTimeMS();
+	ServerStatus::setProcessEta(clientname, status_id, last_backup_info.backup_time_ms + last_backup_info.indexing_time_ms, eta_set_time);
 
 	int64 indexing_start_time = Server->getTimeMS();
 
@@ -161,7 +161,7 @@ bool FullFileBackup::doFileBackup()
 		return false;
 	}
 
-	if(ServerStatus::isBackupStopped(clientname))
+	if(ServerStatus::getProcess(clientname, status_id).stop)
 	{
 		ServerLogger::Log(logid, L"Server admin stopped backup. -1", LL_ERROR);
 		has_early_error=true;
@@ -183,7 +183,6 @@ bool FullFileBackup::doFileBackup()
 	int64 last_eta_update=0;
 	int64 last_eta_received_bytes=0;
 	double eta_estimated_speed=0;
-	ServerStatus::setServerStatus(status, true);
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
 	Server->getThreadPool()->execute(running_updater);
 
@@ -243,7 +242,7 @@ bool FullFileBackup::doFileBackup()
 				int64 ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
-					if(ServerStatus::isBackupStopped(clientname))
+					if(ServerStatus::getProcess(clientname, status_id).stop)
 					{
 						r_done=true;
 						ServerLogger::Log(logid, L"Server admin stopped backup.", LL_ERROR);
@@ -254,20 +253,21 @@ bool FullFileBackup::doFileBackup()
 					laststatsupdate=ctime;
 					if(files_size==0)
 					{
-						status.pcdone=100;
+						ServerStatus::setProcessPcDone(clientname, status_id, 100);
 					}
 					else
 					{
-						status.pcdone=(std::min)(100,(int)(((float)fc.getReceivedDataBytes() + linked_bytes)/((float)files_size/100.f)+0.5f));
+						ServerStatus::setProcessPcDone(clientname, status_id,
+							(std::min)(100,(int)(((float)fc.getReceivedDataBytes() + linked_bytes)/((float)files_size/100.f)+0.5f)));
 					}
-					status.hashqueuesize=(_u32)hashpipe->getNumElements();
-					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
-					ServerStatus::setServerStatus(status, true);
+
+					ServerStatus::setProcessQueuesize(clientname, status_id,
+						(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
 				}
 
 				if(ctime-last_eta_update>eta_update_intervall)
 				{
-					calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
+					calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 				}
 
 				if(server_download->isOffline())
@@ -427,20 +427,21 @@ bool FullFileBackup::doFileBackup()
 	{
 		if(files_size==0)
 		{
-			status.pcdone=100;
+			ServerStatus::setProcessPcDone(clientname, status_id, 100);
 		}
 		else
 		{
-			status.pcdone=(std::min)(100,(int)(((float)fc.getReceivedDataBytes())/((float)files_size/100.f)+0.5f));
+			ServerStatus::setProcessPcDone(clientname, status_id,
+				(std::min)(100,(int)(((float)fc.getReceivedDataBytes())/((float)files_size/100.f)+0.5f)));
 		}
-		status.hashqueuesize=(_u32)hashpipe->getNumElements();
-		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
-		ServerStatus::setServerStatus(status, true);
+
+		ServerStatus::setProcessQueuesize(clientname, status_id,
+			(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
 
 		int64 ctime = Server->getTimeMS();
 		if(ctime-last_eta_update>eta_update_intervall)
 		{
-			calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
+			calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 		}
 	}
 

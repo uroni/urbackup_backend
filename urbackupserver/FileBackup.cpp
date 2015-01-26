@@ -414,7 +414,7 @@ _i64 FileBackup::getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, 
 	return rsize;
 }
 
-void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,
+void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_time, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,
 	int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size )
 {
 	last_eta_update=ctime;
@@ -422,9 +422,9 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, Fi
 	int64 received_data_bytes = fc.getReceivedDataBytes() + (fc_chunked?fc_chunked->getReceivedDataBytes():0) + linked_bytes;
 
 	int64 new_bytes =  received_data_bytes - last_eta_received_bytes;
-	int64 passed_time = Server->getTimeMS() - status.eta_set_time;
+	int64 passed_time = Server->getTimeMS() - eta_set_time;
 
-	status.eta_set_time = Server->getTimeMS();
+	eta_set_time = Server->getTimeMS();
 
 	double speed_bpms = static_cast<double>(new_bytes)/passed_time;
 
@@ -439,8 +439,8 @@ void FileBackup::calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, Fi
 
 	if(last_eta_received_bytes>0)
 	{
-		status.eta_ms = static_cast<int64>((files_size-received_data_bytes)/eta_estimated_speed + 0.5);
-		ServerStatus::setServerStatus(status, true);
+		ServerStatus::setProcessEta(clientname, status_id,
+			static_cast<int64>((files_size-received_data_bytes)/eta_estimated_speed + 0.5));
 	}
 
 	last_eta_received_bytes = received_data_bytes;
@@ -484,7 +484,7 @@ bool FileBackup::doBackup()
 		}
 	}
 
-	pingthread =new ServerPingThread(client_main, client_main->getProtocolVersions().eta_version>0);
+	pingthread =new ServerPingThread(clientname, status_id, client_main->getProtocolVersions().eta_version>0);
 	pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid));
@@ -744,19 +744,21 @@ void FileBackup::waitForFileThreads(void)
 	SStatus status=ServerStatus::getStatus(clientname);
 	hashpipe->Write("flush");
 	hashpipe_prepare->Write("flush");
-	status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
-	status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
-	while(status.hashqueuesize>0 || status.prepare_hashqueuesize>0)
+	_u32 hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
+	_u32 prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
+	while(hashqueuesize>0 || prepare_hashqueuesize>0)
 	{
-		ServerStatus::setServerStatus(status, true);
+		ServerStatus::setProcessQueuesize(clientname, status_id, prepare_hashqueuesize, hashqueuesize);
 		Server->wait(1000);
-		status.hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
-		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
+		hashqueuesize=(_u32)hashpipe->getNumElements()+(bsh->isWorking()?1:0);
+		prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements()+(bsh_prepare->isWorking()?1:0);
 	}
 	{
 		Server->wait(10);
 		while(bsh->isWorking()) Server->wait(1000);
 	}	
+
+	ServerStatus::setProcessQueuesize(clientname, status_id, 0, 0);
 }
 
 bool FileBackup::verify_file_backup(IFile *fileentries)

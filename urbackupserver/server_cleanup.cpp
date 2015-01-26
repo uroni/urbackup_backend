@@ -1181,7 +1181,7 @@ void ServerCleanupThread::deletePendingClients(void)
 	for(size_t i=0;i<res.size();++i)
 	{
 		SStatus status=ServerStatus::getStatus(res[i][L"name"]);
-		if(status.done==false && status.has_status==true)
+		if(status.has_status==true)
 		{
 			Server->Log(L"Cannot remove client \""+res[i][L"name"]+L"\" ( with id "+res[i][L"id"]+L"): Client is online or backup is in progress", LL_WARNING);
 			continue;

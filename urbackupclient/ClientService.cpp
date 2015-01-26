@@ -2619,7 +2619,7 @@ bool ClientConnector::tochannelLog( int id, const std::wstring& msg, int logleve
 	return tochannelLog(id, Server->ConvertToUTF8(msg), loglevel, identity);
 }
 
-void ClientConnector::updateRestorePc( int nv, const std::string& identity )
+void ClientConnector::updateRestorePc(int64 status_id, int nv, const std::string& identity )
 {
 	IScopedLock lock(backup_mutex);
 
@@ -2642,7 +2642,7 @@ void ClientConnector::updateRestorePc( int nv, const std::string& identity )
 	{
 		if(channel_pipes[i].token == identity)
 		{
-			std::string cmd = "RESTORE PERCENT "+nconvert(nv);
+			std::string cmd = "RESTORE PERCENT pc="+nconvert(nv)+"&status_id="+nconvert(status_id);
 
 			CTCPStack tmpstack(channel_pipes[i].internet_connection);
 			if(tmpstack.Send(channel_pipes[i].pipe, cmd)!=cmd.size())

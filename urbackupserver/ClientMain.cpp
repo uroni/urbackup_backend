@@ -235,7 +235,7 @@ void ClientMain::operator ()(void)
 
 	if( clientname.find(L"##restore##")==0 )
 	{
-		ServerChannelThread channel_thread(this, -1, internet_connection, server_identity);
+		ServerChannelThread channel_thread(this, clientname, -1, internet_connection, server_identity);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 		while(true)
@@ -362,9 +362,7 @@ void ClientMain::operator ()(void)
 		return;
 	}
 
-	status.client=clientname;
-	status.clientid=clientid;
-	ServerStatus::setServerStatus(status);
+	ServerStatus::setClientId(clientname, clientid);
 
 	bool use_reflink=false;
 #ifndef _WIN32
@@ -384,7 +382,7 @@ void ClientMain::operator ()(void)
 		}
 	}
 
-	ServerChannelThread channel_thread(this, clientid, internet_connection, identity);
+	ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, identity);
 	THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 	bool received_client_settings=true;
@@ -727,8 +725,11 @@ void ClientMain::operator ()(void)
 			rdata.getStr(&restore_identity);
 			int id;
 			rdata.getInt(&id);
+			int64 status_id;
+			rdata.getInt64(&status_id);
 
-			sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+server_token+"&id="+nconvert(id), L"Starting restore failed", 10000, 10, true, LL_ERROR);
+			sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+server_token+
+				"&id="+nconvert(id)+"&status_id="+nconvert(status_id), L"Starting restore failed", 10000, 10, true, LL_ERROR);
 		}
 
 		if(!msg.empty())
@@ -1496,29 +1497,6 @@ void ClientMain::sendToPipe(const std::string &msg)
 	pipe->Write(msg);
 }
 
-int ClientMain::getPCDone(void)
-{
-	SStatus st=ServerStatus::getStatus(clientname);
-	if(!st.has_status)
-		return -1;
-	else
-		return st.pcdone;
-}
-
-int64 ClientMain::getETAms(void)
-{
-	SStatus st=ServerStatus::getStatus(clientname);
-	if(!st.has_status)
-	{
-		return -1;
-	}
-	else
-	{
-		int64 add_time = Server->getTimeMS() - st.eta_set_time;
-		return st.eta_ms - add_time;
-	}
-}
-
 void ClientMain::sendClientLogdata(void)
 {
 	q_get_unsent_logdata->Bind(clientid);
@@ -1596,6 +1574,8 @@ void ClientMain::checkClientVersion(void)
 		std::string r=sendClientMessage("VERSION "+version, L"Sending version to client failed", 10000);
 		if(r=="update")
 		{
+			ScopedProcess process(clientname, sa_update);
+
 			IFile *sigfile=Server->openFile("urbackup/UrBackupUpdate.sig", MODE_READ);
 			if(sigfile==NULL)
 			{

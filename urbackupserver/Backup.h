@@ -72,7 +72,6 @@ protected:
 	std::wstring clientname;
 	LogAction log_action;
 
-	SStatus status;
 	IDatabase* db;
 	std::auto_ptr<ServerSettings> server_settings;
 	std::auto_ptr<ServerBackupDao> backup_dao;
@@ -87,4 +86,5 @@ protected:
 	bool backup_result;
 
 	logid_t logid;
+	size_t status_id;
 };

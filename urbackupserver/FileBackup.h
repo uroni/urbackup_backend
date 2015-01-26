@@ -74,7 +74,7 @@ protected:
 	void createHashThreads(bool use_reflink);
 	void destroyHashThreads();
 	_i64 getIncrementalSize(IFile *f, const std::vector<size_t> &diffs, bool all=false);
-	void calculateEtaFileBackup( int64 &last_eta_update, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,
+	void calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_time, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,
 		int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size );
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	std::wstring fixFilenameForOS(const std::wstring& fn);	

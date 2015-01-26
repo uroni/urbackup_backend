@@ -417,7 +417,7 @@ void BackupServer::startClients(FileClient &fc)
 						else
 						{
 							Server->Log(L"Client finished: "+it->first);
-							ServerStatus::setDone(it->first, true);
+							ServerStatus::removeStatus(it->first);
 							Server->destroy(it->second.pipe);
 
 							IScopedLock lock(force_offline_mutex);
@@ -453,9 +453,7 @@ void BackupServer::startClients(FileClient &fc)
 				}
 				else if(i_c>=maxi)
 				{
-					SStatusAction s_action=ServerStatus::getStatus(it->first).statusaction;
-
-					if(s_action==sa_none)
+					if(ServerStatus::getStatus(it->first).processes.empty())
 					{
 						++it->second.offlinecount;
 					}

@@ -94,9 +94,10 @@ bool IncrFileBackup::doFileBackup()
 		return doFullBackup();
 	}
 
-	status.eta_set_time = Server->getTimeMS();
-	status.eta_ms = last.backup_time_ms + last.indexing_time_ms;
-	ServerStatus::setServerStatus(status, true);
+	int64 eta_set_time=Server->getTimeMS();
+	ServerStatus::setProcessEta(clientname, status_id, 
+		last.backup_time_ms + last.indexing_time_ms,
+		eta_set_time);
 
 
 	int64 indexing_start_time = Server->getTimeMS();
@@ -109,21 +110,8 @@ bool IncrFileBackup::doFileBackup()
 
 		if(resumed_full)
 		{
-			r_incremental=false;
-			if(status.statusaction!=sa_cdp_sync)
-			{
-				status.statusaction=sa_resume_full_file;
-			}			
+			r_incremental=false;	
 		}
-		else
-		{
-			if(status.statusaction!=sa_cdp_sync)
-			{
-				status.statusaction=sa_resume_incr_file;
-			}
-		}
-
-		ServerStatus::setServerStatus(status, true);
 	}
 
 	bool no_backup_dirs=false;
@@ -385,8 +373,6 @@ bool IncrFileBackup::doFileBackup()
 	tmp->Seek(0);
 
 	int64 laststatsupdate=0;
-	ServerStatus::setServerStatus(status, true);
-
 	int64 last_eta_update=0;
 	int64 last_eta_received_bytes=0;
 	double eta_estimated_speed=0;
@@ -477,7 +463,7 @@ bool IncrFileBackup::doFileBackup()
 				{
 					if(!backup_stopped)
 					{
-						if(ServerStatus::isBackupStopped(clientname))
+						if(ServerStatus::getProcess(clientname, status_id).stop)
 						{
 							r_offline=true;
 							backup_stopped=true;
@@ -493,20 +479,22 @@ bool IncrFileBackup::doFileBackup()
 					laststatsupdate=ctime;
 					if(files_size==0)
 					{
-						status.pcdone=100;
+						ServerStatus::setProcessPcDone(clientname, status_id, 100);
 					}
 					else
 					{
-						status.pcdone=(std::min)(100,(int)(((float)(fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0) + linked_bytes))/((float)files_size/100.f)+0.5f));
+						ServerStatus::setProcessPcDone(clientname, status_id,
+								(std::min)(100,(int)(((float)(fc.getReceivedDataBytes()
+									+ (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0) + linked_bytes))/((float)files_size/100.f)+0.5f)) );
 					}
-					status.hashqueuesize=(_u32)hashpipe->getNumElements();
-					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
-					ServerStatus::setServerStatus(status, true);
+
+					ServerStatus::setProcessQueuesize(clientname, status_id,
+						(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
 				}
 
 				if(ctime-last_eta_update>eta_update_intervall)
 				{
-					calculateEtaFileBackup(last_eta_update, ctime, fc, fc_chunked.get(), linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
+					calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, fc_chunked.get(), linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 				}
 
 				if(server_download->isOffline() && !r_offline)
@@ -904,20 +892,21 @@ bool IncrFileBackup::doFileBackup()
 	{
 		if(files_size==0)
 		{
-			status.pcdone=100;
+			ServerStatus::setProcessPcDone(clientname, status_id, 100);
 		}
 		else
 		{
-			status.pcdone=(std::min)(100,(int)(((float)(fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0) + linked_bytes))/((float)files_size/100.f)+0.5f));
+			ServerStatus::setProcessPcDone(clientname, status_id,
+				(std::min)(100,(int)(((float)(fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0) + linked_bytes))/((float)files_size/100.f)+0.5f)));
 		}
-		status.hashqueuesize=(_u32)hashpipe->getNumElements();
-		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
-		ServerStatus::setServerStatus(status, true);
+
+		ServerStatus::setProcessQueuesize(clientname, status_id,
+			(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
 
 		int64 ctime = Server->getTimeMS();
 		if(ctime-last_eta_update>eta_update_intervall)
 		{
-			calculateEtaFileBackup(last_eta_update, ctime, fc, fc_chunked.get(), linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
+			calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, fc_chunked.get(), linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 		}
 	}
 

@@ -12,8 +12,8 @@
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback
 {
 public:
-	RestoreFiles(int restoreid, std::string client_token, std::string server_token) 
-		: restoreid(restoreid), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL)
+	RestoreFiles(int restoreid, int64 status_id, std::string client_token, std::string server_token) 
+		: restoreid(restoreid), status_id(status_id), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL)
 	{
 
 	}
@@ -38,6 +38,8 @@ private:
 	std::auto_ptr<FileClientChunked> createFcChunked();
 
 	int restoreid;
+
+	int64 status_id;
 
 	IFile* filelist;
 	ScopedDeleteFile filelist_del;

@@ -114,8 +114,8 @@ namespace
 	};
 }
 
-ServerChannelThread::ServerChannelThread(ClientMain *client_main, int clientid, bool internet_mode, const std::string& identity) :
-	client_main(client_main), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
+ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::wstring& clientname, int clientid, bool internet_mode, const std::string& identity) :
+	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -329,6 +329,14 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 			Server->getThreadPool()->execute(new FileservClientThread(input));
 			input=NULL;
 		}
+	}
+	else if(next(msg, 0, "RESTORE PERCENT "))
+	{
+		std::string s_params=msg.substr(16);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		RESTORE_PERCENT(params);
 	}
 	else
 	{
@@ -732,4 +740,12 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 		image_fak->destroyVHDFile(vhdfile);
 	}
 	db->destroyAllQueries();
+}
+
+void ServerChannelThread::RESTORE_PERCENT( str_map params )
+{
+	int64 status_id = watoi64(params[L"status_id"]);
+	int pc = watoi(params[L"pc"]);
+
+	ServerStatus::setProcessPcDone(clientname, status_id, pc);
 }

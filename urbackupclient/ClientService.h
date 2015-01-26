@@ -124,7 +124,7 @@ public:
 
 	static bool tochannelLog(int id, const std::wstring& msg, int loglevel, const std::string& identity);
 
-	static void updateRestorePc(int nv, const std::string& identity);
+	static void updateRestorePc(int64 status_id, int nv, const std::string& identity);
 
 	static IPipe* getFileServConnection(const std::string& server_token, unsigned int timeoutms);
 

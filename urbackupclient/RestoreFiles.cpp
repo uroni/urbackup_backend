@@ -21,7 +21,7 @@ void RestoreFiles::operator()()
 	FileClient fc(false, client_token, 3,
 		true, this, NULL);
 
-	ClientConnector::updateRestorePc(-1, client_token);
+	ClientConnector::updateRestorePc(status_id, -1, client_token);
 	
 	if(!connectFileClient(fc))
 	{
@@ -178,12 +178,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					laststatsupdate=ctime;
 					if(total_size==0)
 					{
-						ClientConnector::updateRestorePc(100, client_token);
+						ClientConnector::updateRestorePc(status_id, 100, client_token);
 					}
 					else
 					{
 						int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));;
-						ClientConnector::updateRestorePc(pcdone, client_token);
+						ClientConnector::updateRestorePc(status_id, pcdone, client_token);
 					}
 				}
 
@@ -384,7 +384,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 	} while (read>0);
 
-	ClientConnector::updateRestorePc(101, client_token);
+	ClientConnector::updateRestorePc(status_id, 101, client_token);
 
 	return !has_error;
 }
