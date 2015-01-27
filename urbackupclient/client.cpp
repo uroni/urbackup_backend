@@ -904,12 +904,19 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 
 	if(first && !os_directory_exists(os_file_prefix(add_trailing_slash(dir))) )
 	{
+#ifdef _WIN32
+		if(getFiles(os_file_prefix(add_trailing_slash(dir))).empty())
+		{
+#endif
 		VSSLog(L"Cannot access directory to backup: \""+dir+L"\"", LL_ERROR);
 		if(!optional)
 		{
 			index_error=true;
 		}
 		return false;
+#ifdef _WIN32
+		}
+#endif
 	}
 
 	std::vector<SFileAndHash> files=getFilesProxy(orig_dir, dir, named_path, !first && use_db);
