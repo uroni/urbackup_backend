@@ -580,3 +580,14 @@ int64 os_last_error()
 {
 	return errno;
 }
+
+int64 os_last_error(std::wstring& message)
+{
+	int err = errno;
+	char* str = strerror(err);
+	if(str!=NULL)
+	{
+		message = Server->ConvertToUnicode(str);
+	}
+	return err;
+}

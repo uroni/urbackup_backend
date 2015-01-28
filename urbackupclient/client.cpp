@@ -904,11 +904,13 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 
 	if(first && !os_directory_exists(os_file_prefix(add_trailing_slash(dir))) )
 	{
+		std::wstring err_msg;
+		int64 errcode = os_last_error(err_msg);
 #ifdef _WIN32
 		if(getFiles(os_file_prefix(add_trailing_slash(dir))).empty())
 		{
-#endif
-		VSSLog(L"Cannot access directory to backup: \""+dir+L"\"", LL_ERROR);
+#endif		
+		VSSLog(L"Cannot access directory to backup: \""+dir+L"\" Errorcode: "+convert(errcode)+L" - "+err_msg, LL_ERROR);
 		if(!optional)
 		{
 			index_error=true;

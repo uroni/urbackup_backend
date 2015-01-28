@@ -87,4 +87,6 @@ bool os_finish_transaction(void* transaction);
 
 int64 os_last_error();
 
+int64 os_last_error(std::wstring& message);
+
 #endif //OS_FUNCTIONS_H

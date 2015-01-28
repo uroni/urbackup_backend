@@ -845,3 +845,26 @@ int64 os_last_error()
 {
 	return GetLastError();
 }
+
+int64 os_last_error(std::wstring& message)
+{
+	DWORD last_error = GetLastError();
+
+	wchar_t* output=NULL;
+
+	DWORD r = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, HRESULT_FROM_WIN32(last_error), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&output), 0, NULL);
+
+	if(r>0 && output!=NULL)
+	{
+		message.resize(r);
+		memcpy(&message[0], output, r*sizeof(wchar_t));
+	}
+
+	if(output!=NULL)
+	{
+		LocalFree(output);
+	}
+
+	return last_error;
+}
