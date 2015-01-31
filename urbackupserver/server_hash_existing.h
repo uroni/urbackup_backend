@@ -4,12 +4,13 @@
 #include "../Interface/Condition.h"
 #include "IncrFileBackup.h"
 #include <deque>
+#include "server_log.h"
 
 
 class ServerHashExisting : public IThread
 {
 public:
-	ServerHashExisting(int clientid, IncrFileBackup* incr_backup);
+	ServerHashExisting(int clientid, logid_t logid, IncrFileBackup* incr_backup);
 	~ServerHashExisting();
 
 	void queueStop(bool front);
@@ -37,4 +38,5 @@ private:
 	bool has_error;
 	int clientid;
 	IncrFileBackup* incr_backup;
+	logid_t logid;
 };

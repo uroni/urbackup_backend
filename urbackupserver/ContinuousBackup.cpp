@@ -39,7 +39,7 @@ bool ContinuousBackup::doFileBackup()
 		return false;
 	}
 
-	ServerLogger::Log(clientid, "Starting continuous data protection synchronization...", LL_INFO);
+	ServerLogger::Log(logid, "Starting continuous data protection synchronization...", LL_INFO);
 
 	bool intra_file_diffs;
 	if(client_main->isOnInternetConnection())

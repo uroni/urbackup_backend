@@ -5,7 +5,7 @@
 #include "../Interface/Pipe.h"
 #include "../Interface/Thread.h"
 #include "../Interface/Query.h"
-#include "fileclient/FileClient.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
 
 class IPipeThrottler;
 class IMutex;

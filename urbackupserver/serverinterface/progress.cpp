@@ -44,9 +44,12 @@ ACTION_IMPL(progress)
 	if(session!=NULL && session->id==SESSION_ID_INVALID) return;
 	if(session!=NULL && (rights=="all" || !clientids.empty()) )
 	{
-		if(GET.find(L"stop_clientid")!=GET.end())
+		if(GET.find(L"stop_clientid")!=GET.end() &&
+			GET.find(L"stop_id")!=GET.end())
 		{
 			int stop_clientid=watoi(GET[L"stop_clientid"]);
+			int stop_id=watoi(GET[L"stop_id"]);
+
 			std::string stop_rights=helper.getRights("stop_backup");
 			bool stop_ok=false;
 			if(stop_rights=="all")
@@ -74,7 +77,7 @@ ACTION_IMPL(progress)
 				db_results res=q_get_name->Read();
 				if(!res.empty())
 				{
-					ServerStatus::stopBackup(res[0][L"name"], true);
+					ServerStatus::stopProcess(res[0][L"name"], stop_id, true);
 				}
 			}
 		}
@@ -92,16 +95,17 @@ ACTION_IMPL(progress)
 					break;
 				}
 			}
-			if(clients[i].statusaction!=sa_none && clients[i].action_done==false && (rights=="all" || found==true) )
+			if(rights=="all" || found==true)
 			{
-				if(clients[i].r_online || clients[i].statusaction==sa_incr_image || clients[i].statusaction==sa_full_image)
+				for(size_t j=0;j<clients[i].processes.size();++j)
 				{
 					JSON::Object obj;
 					obj.set("name", JSON::Value(clients[i].client));
 					obj.set("clientid", JSON::Value(clients[i].clientid));
-					obj.set("action", JSON::Value((int)clients[i].statusaction));
-					obj.set("pcdone", JSON::Value(clients[i].pcdone));
-					obj.set("queue", JSON::Value(clients[i].prepare_hashqueuesize+clients[i].hashqueuesize) );
+					obj.set("action", JSON::Value(static_cast<int>(clients[i].processes[j].action)));
+					obj.set("pcdone", JSON::Value(clients[i].processes[j].pcdone));
+					obj.set("queue", JSON::Value(clients[i].processes[j].prepare_hashqueuesize+
+						clients[i].processes[j].hashqueuesize));
 					pg.add(obj);
 				}
 			}

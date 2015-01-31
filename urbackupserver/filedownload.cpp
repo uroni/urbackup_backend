@@ -18,7 +18,7 @@
 
 #include <string>
 
-#include "fileclient/FileClient.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "server_prepare_hash.h"
 
@@ -31,6 +31,7 @@
 #include "../stringtools.h"
 
 #include <stdlib.h>
+#include "../urbackupcommon/chunk_hasher.h"
 
 extern std::string server_identity;
 
@@ -96,7 +97,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 				}
 			}
 
-			rc=fc->GetFile(remotefn, dstfile, true);
+			rc=fc->GetFile(remotefn, dstfile, true, false);
 
 			Server->destroy(dstfile);
 		}
@@ -112,7 +113,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 			hashfile_output=Server->openTemporaryFile();
 
 			Server->Log("Building hashes...");
-			BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
+			build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 			Server->Log("Downloading file...");
 
@@ -184,7 +185,7 @@ void FileDownload::filedownload(std::string remotefn, std::string dest, int meth
 			patchfile=Server->openTemporaryFile();
 
 			Server->Log("Building hashes...");
-			BackupServerPrepareHash::build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
+			build_chunk_hashs(dstfile, hashfile, NULL, false, NULL, false);
 
 			if(queueStatus==SQueueStatus_Queue)
 			{
@@ -447,13 +448,13 @@ FileDownload::FileDownload( std::string servername, unsigned int tcpport )
 	fc->setQueueCallback(this);
 }
 
-std::string FileDownload::getQueuedFileFull( bool& metadata )
+std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata )
 {
 	for(size_t i=0;i<dlqueueFull.size();++i)
 	{
 		if(!dlqueueFull[i].queued)
 		{
-			metadata=false;
+			metadata=FileClient::MetadataQueue_Data;
 			return dlqueueFull[i].remotefn;
 		}
 	}

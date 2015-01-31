@@ -562,7 +562,7 @@ void FileClientChunked::State_Acc(bool ignore_filesize)
 					_i64 new_remote_filesize;
 					msg.getInt64(&new_remote_filesize);
 					
-					if(new_remote_filesize>0)
+					if(new_remote_filesize>=0)
 					{
 						if(remote_filesize!=-1 && new_remote_filesize!=remote_filesize)
 						{

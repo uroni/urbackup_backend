@@ -1392,6 +1392,7 @@ function show_backups2(data)
 		if( data.files.length>0 )
 		{
 			obj.download_zip=true;
+			obj.restore=true;
 		}
 		
 		ndata=dustRender("backups_files", obj);
@@ -1579,6 +1580,20 @@ function tabMouseClickFilesDLAccess(clientid, backupid, path)
 function downloadZIP(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=zipdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
+}
+function restoreFiles(clientid, backupid, path)
+{
+	if(!startLoading()) return;
+	new getJSON("backups", "sa=clientdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"), restore_callback);
+}
+
+function restore_callback(data)
+{
+	stopLoading();
+	if(data.err)
+	{
+		alert("An error occured when starting restore: " + data.err);
+	}
 }
 
 function show_settings1()

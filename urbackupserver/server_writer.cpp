@@ -34,8 +34,9 @@ const uint64 filebuf_lim=1000*1024*1024; //1000MB
 const unsigned int sha_size=32;
 
 ServerVHDWriter::ServerVHDWriter(IVHDFile *pVHD, unsigned int blocksize, unsigned int nbufs,
-		int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize)
- : mbr_offset(mbr_offset), do_trim(false), hashfile(hashfile), vhd_blocksize(vhd_blocksize), do_make_full(false)
+		int pClientid, bool use_tmpfiles, int64 mbr_offset, IFile* hashfile, int64 vhd_blocksize, logid_t logid)
+ : mbr_offset(mbr_offset), do_trim(false), hashfile(hashfile), vhd_blocksize(vhd_blocksize), do_make_full(false),
+   logid(logid)
 {
 	filebuffer=use_tmpfiles;
 
@@ -158,24 +159,24 @@ void ServerVHDWriter::operator()(void)
 
 	if(do_trim)
 	{
-		ServerLogger::Log(clientid, "Starting trimming image file (if possible)", LL_DEBUG);
+		ServerLogger::Log(logid, "Starting trimming image file (if possible)", LL_DEBUG);
 		if(!vhd->trimUnused(mbr_offset, this))
 		{
-			ServerLogger::Log(clientid, "Trimming file failed. Image backup may use too much storage.", LL_WARNING);
+			ServerLogger::Log(logid, "Trimming file failed. Image backup may use too much storage.", LL_WARNING);
 		}
 		else
 		{
-			ServerLogger::Log(clientid, "Trimmed "+PrettyPrintBytes(trimmed_bytes), LL_DEBUG);
+			ServerLogger::Log(logid, "Trimmed "+PrettyPrintBytes(trimmed_bytes), LL_DEBUG);
 		}
 	}
 
 	if(do_make_full)
 	{
-		ServerLogger::Log(clientid, "Converting incremental image file to full image file...", LL_DEBUG);
+		ServerLogger::Log(logid, "Converting incremental image file to full image file...", LL_DEBUG);
 
 		if(!vhd->makeFull(mbr_offset, this))
 		{
-			ServerLogger::Log(clientid, "Covnerting incremental image to full image failed", LL_ERROR);
+			ServerLogger::Log(logid, "Covnerting incremental image to full image failed", LL_ERROR);
 		}
 	}
 
@@ -184,7 +185,7 @@ void ServerVHDWriter::operator()(void)
 		checkFreeSpaceAndCleanup();
 		if(!vhd->finish())
 		{
-			ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
+			ServerLogger::Log(logid, "FATAL: Writing failed after cleanup", LL_ERROR);
 			has_error=true;
 		}
 	}
@@ -263,15 +264,15 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 #ifdef _WIN32
 					if(GetLastError()==ERROR_FILE_SYSTEM_LIMITATION)
 					{
-						ServerLogger::Log(clientid, "FATAL: The filesystem is returning the error code ERROR_FILE_SYSTEM_LIMITATION."
+						ServerLogger::Log(logid, "FATAL: The filesystem is returning the error code ERROR_FILE_SYSTEM_LIMITATION."
 							" This may be caused by the file being too fragmented (try defragmenting or freeing space). This can also be caused by the file being compressed and too large. In this case you have to disable NTFS compression."
 							" See https://support.microsoft.com/kb/2891967 for details.", LL_ERROR);
 					}
 #endif
 
-					ServerLogger::Log(clientid, "FATAL: Writing failed after cleanup", LL_ERROR);
+					ServerLogger::Log(logid, "FATAL: Writing failed after cleanup", LL_ERROR);
 					
-					ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+					ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 					has_error=true;
 				}
 			}
@@ -279,14 +280,14 @@ bool ServerVHDWriter::writeVHD(uint64 pos, char *buf, unsigned int bsize)
 			{
 				has_error=true;
 				Server->Log("FATAL: NOT ENOUGH free space. Cleanup failed.", LL_ERROR);
-				ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+				ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 			}
 		}
 		else
 		{			
 			has_error=true;
-			ServerLogger::Log(clientid, "FATAL: Error writing to VHD-File.", LL_ERROR);
-			ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(clientid));
+			ServerLogger::Log(logid, "FATAL: Error writing to VHD-File.", LL_ERROR);
+			ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 		}
 	}
 
@@ -384,10 +385,10 @@ IVHDFile* ServerVHDWriter::getVHD(void)
 
 bool ServerVHDWriter::cleanupSpace(void)
 {
-	ServerLogger::Log(clientid, "Not enough free space. Cleaning up.", LL_INFO);
+	ServerLogger::Log(logid, "Not enough free space. Cleaning up.", LL_INFO);
 	if(!ServerCleanupThread::cleanupSpace(free_space_lim) )
 	{
-		ServerLogger::Log(clientid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
+		ServerLogger::Log(logid, "Could not free space for image. NOT ENOUGH FREE SPACE.", LL_ERROR);
 		return false;
 	}
 	return true;

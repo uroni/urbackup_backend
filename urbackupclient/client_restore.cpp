@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <algorithm>
-#include "../urbackupserver/fileclient/socket_header.h"
+#include "../urbackupcommon/fileclient/socket_header.h"
 #ifndef _WIN32
 #include <net/if.h>
 #include <sys/ioctl.h>

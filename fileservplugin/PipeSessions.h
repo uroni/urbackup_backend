@@ -1,14 +1,16 @@
 #pragma once
 #include "../Interface/File.h"
 #include "../Interface/Thread.h"
-#include "PipeFile.h"
+#include "PipeFileBase.h"
 #include <map>
 #include <string>
+#include "IFileServ.h"
 
 struct SPipeSession
 {
-	PipeFile* file;
+	PipeFileBase* file;
 	bool retrieved_exit_info;
+	IPipe* input_pipe;
 };
 
 struct SExitInformation
@@ -37,6 +39,14 @@ public:
 	static void removeFile(const std::wstring& cmd);
 	static SExitInformation getExitInformation(const std::wstring& cmd);
 
+	static void transmitFileMetadata(const std::string& local_fn, const std::string& public_fn,
+		const std::string& server_token, const std::string& identity);
+
+	static void metadataStreamEnd(const std::string& server_token);
+
+	static void registerMetadataCallback(const std::wstring &name, const std::string& identity, IFileServ::IMetadataCallback* callback);
+	static void removeMetadataCallback(const std::wstring &name, const std::string& identity);
+
 	void operator()();
 
 private:
@@ -44,4 +54,5 @@ private:
 	static volatile bool do_stop;
 	static std::map<std::wstring, SPipeSession> pipe_files;
 	static std::map<std::wstring, SExitInformation> exit_information;
+	static std::map<std::pair<std::string, std::string>, IFileServ::IMetadataCallback*> metadata_callbacks;
 };

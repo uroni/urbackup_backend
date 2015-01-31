@@ -922,6 +922,9 @@ void IndexThread::indexDirs(void)
 				VSSLog(L"Changed dir: " + changed_dirs[k], LL_DEBUG);
 			}
 
+			extra+="&orig_path=" + base64_encode_dash(Server->ConvertToUTF8(backup_dirs[i].path))
+				    + "&orig_sep=" + base64_encode_dash(Server->ConvertToUTF8(os_file_sep()));
+
 			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 			index_c_db=0;
 			index_c_fs=0;
@@ -1284,7 +1287,7 @@ bool IndexThread::readBackupScripts()
 
 		if(filesrv!=NULL)
 		{
-			filesrv->shareDir(L"urbackup_backup_scripts", script_path);
+			filesrv->shareDir(L"urbackup_backup_scripts", script_path, std::string());
 		}
 	}
 	
@@ -2860,7 +2863,7 @@ void IndexThread::start_filesrv(void)
 	}
 
 	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn);
-	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
+	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data", std::string());
 
 	ServerIdentityMgr::setFileServ(filesrv);
 	ServerIdentityMgr::loadServerIdentities();
@@ -2902,7 +2905,7 @@ void IndexThread::share_dirs()
 	for(std::map<std::wstring, std::wstring>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
 	{
 		std::wstring dir=it->first;
-		filesrv->shareDir(dir, it->second);
+		filesrv->shareDir(dir, it->second, std::string());
 	}
 }
 
@@ -2912,7 +2915,7 @@ void IndexThread::unshare_dirs()
 	for(std::map<std::wstring, std::wstring>::iterator it=filesrv_share_dirs.begin();it!=filesrv_share_dirs.end();++it)
 	{
 		std::wstring dir=it->first;
-		filesrv->removeDir(dir);
+		filesrv->removeDir(dir, std::string());
 	}
 }
 

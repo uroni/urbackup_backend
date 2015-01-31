@@ -7,8 +7,8 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/ThreadPool.h"
 #include "../urlplugin/IUrlFactory.h"
-#include "fileclient/FileClient.h"
-#include "fileclient/FileClientChunked.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
+#include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "../urbackupcommon/os_functions.h"
 #include "server_hash.h"
 #include "server_prepare_hash.h"
@@ -18,6 +18,7 @@
 #include "server_settings.h"
 
 #include <memory>
+#include "server_log.h"
 
 class ServerVHDWriter;
 class IFile;
@@ -40,7 +41,7 @@ struct SProtocolVersions
 			filesrv_protocol_version(0), file_protocol_version(0),
 				file_protocol_version_v2(0), set_settings_version(0),
 				image_protocol_version(0), eta_version(0), cdp_version(0),
-				efi_version(0)
+				efi_version(0), file_meta(0)
 			{
 
 			}
@@ -53,6 +54,7 @@ struct SProtocolVersions
 	int eta_version;
 	int cdp_version;
 	int efi_version;
+	int file_meta;
 };
 
 struct SRunningBackup
@@ -69,6 +71,20 @@ struct SRunningBackup
 	THREADPOOL_TICKET ticket;
 	int group;
 	std::string letter;
+};
+
+struct SShareCleanup
+{
+	SShareCleanup(std::string name, std::string identity, bool cleanup_file, bool remove_callback)
+		: name(name), identity(identity), cleanup_file(cleanup_file), remove_callback(remove_callback)
+	{
+
+	}
+
+	std::string name;
+	std::string identity;
+	bool cleanup_file;
+	bool remove_callback;
 };
 
 class ClientMain : public IThread, public FileClientChunked::ReconnectionCallback,
@@ -88,8 +104,7 @@ public:
 	std::string sendClientMessage(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, bool logerr=true, int max_loglevel=LL_ERROR);
 	std::string sendClientMessageRetry(const std::string &msg, const std::wstring &errmsg, unsigned int timeout, size_t retry=0, bool logerr=true, int max_loglevel=LL_ERROR);
 	void sendToPipe(const std::string &msg);
-	int getPCDone(void);
-	int64 getETAms();
+
 	bool createDirectoryForClient();
 
 	sockaddr_in getClientaddr(void);
@@ -110,7 +125,7 @@ public:
 
 	virtual bool handle_not_enough_space(const std::wstring &path);
 
-	static IFile *getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, int clientid);
+	static IFile *getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& tmpfile_path, logid_t logid);
 
 	static void destroyTemporaryFile(IFile *tmp);
 
@@ -142,7 +157,7 @@ public:
 		return curr_image_version;
 	}
 
-	static void run_script(std::wstring name, const std::wstring& params, int clientid);
+	static void run_script(std::wstring name, const std::wstring& params, logid_t logid);
 
 	void startBackupRunning(bool file);
 	void stopBackupRunning(bool file);
@@ -157,6 +172,8 @@ public:
 	void setContinuousBackup(BackupServerContinuous* cb);
 
 	void addContinuousChanges( const std::string& changes );
+
+	static void addShareToCleanup(int clientid, const SShareCleanup& cleanupData);
 
 private:
 	void unloadSQL(void);
@@ -216,8 +233,6 @@ private:
 	IQuery *q_get_unsent_logdata;
 	IQuery *q_set_logdata_sent;
 
-	SStatus status;
-
 	bool can_backup_images;
 
 	bool do_full_backup_now;
@@ -268,4 +283,9 @@ private:
 	unsigned int curr_image_version;
 
 	std::vector<SRunningBackup> backup_queue;
+
+	static IMutex* cleanup_mutex;
+	static std::map<int, std::vector<SShareCleanup> > cleanup_shares;
+
+	logid_t logid;
 };

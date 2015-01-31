@@ -7,27 +7,20 @@
 
 #include "ChunkPatcher.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "server_log.h"
 
-class INotEnoughSpaceCallback
-{
-public:
-	virtual bool handle_not_enough_space(const std::wstring &path)=0;
-};
+
 
 
 class BackupServerPrepareHash : public IThread, public IChunkPatcherCallback
 {
 public:
-	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid);
+	BackupServerPrepareHash(IPipe *pPipe, IPipe *pOutput, int pClientid, logid_t logid);
 	~BackupServerPrepareHash(void);
 
 	void operator()(void);
 	
 	bool isWorking(void);
-
-	static std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written=NULL);
-	static bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb);
-	static bool writeFileRepeat(IFile *f, const char *buf, size_t bsize);
 
 	void next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed);
 
@@ -50,6 +43,8 @@ private:
 	
 	volatile bool working;
 	volatile bool has_error;
+
+	logid_t logid;
 };
 
 #endif //SERVER_PREPARE_HASH_H

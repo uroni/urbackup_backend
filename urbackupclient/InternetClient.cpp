@@ -481,7 +481,7 @@ void InternetClientThread::operator()(void)
 	unsigned int server_iterations;
 	std::string authkey;
 	std::string challenge_response;
-	InternetServicePipe ics_pipe;
+	InternetServicePipe* ics_pipe = new InternetServicePipe();
 	std::string hmac_key;
 
 	{
@@ -630,12 +630,12 @@ void InternetClientThread::operator()(void)
 				goto cleanup;
 			}
 
-			ics_pipe.init(cs, hmac_key);
+			ics_pipe->init(cs, hmac_key);
 
 			std::string new_token;
 			while(rd.getStr(&new_token))
 			{
-				InternetClient::addOnetimeToken(ics_pipe.decrypt(new_token));
+				InternetClient::addOnetimeToken(ics_pipe->decrypt(new_token));
 			}
 		}
 	}
@@ -652,15 +652,15 @@ void InternetClientThread::operator()(void)
 
 		data.addUInt(capa);
 
-		tcpstack.Send(&ics_pipe, data);
+		tcpstack.Send(ics_pipe, data);
 	}
 
 	comm_pipe=cs;
 	
 	if( capa & IPC_ENCRYPTED )
 	{
-		ics_pipe.setBackendPipe(comm_pipe);
-		comm_pipe=&ics_pipe;
+		ics_pipe->setBackendPipe(comm_pipe);
+		comm_pipe=ics_pipe;
 	}
 	if( capa & IPC_COMPRESSED )
 	{
@@ -670,6 +670,8 @@ void InternetClientThread::operator()(void)
 
 	finish_ok=true;
 	InternetClient::resetAuthErr();
+
+	bool destroy_cs = true;
 
 	while(true)
 	{
@@ -734,6 +736,7 @@ void InternetClientThread::operator()(void)
 				ClientConnector clientservice;
 				runServiceWrapper(comm_pipe, &clientservice);
 				Server->Log("SERVICE_COMMANDS finished", LL_DEBUG);
+				destroy_cs=clientservice.closeSocket();
 				goto cleanup;
 			}
 			else if(service==SERVICE_FILESRV)
@@ -753,9 +756,13 @@ void InternetClientThread::operator()(void)
 	}
 
 cleanup:
-	delete comp_pipe;
-	if(cs!=NULL)
-		Server->destroy(cs);
+	if(destroy_cs)
+	{
+		delete comp_pipe;
+		if(cs!=NULL)
+			Server->destroy(cs);
+		delete ics_pipe;
+	}	
 	if(!finish_ok)
 	{
 		InternetClient::setHasAuthErr();

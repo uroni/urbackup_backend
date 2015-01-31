@@ -1,3 +1,4 @@
+#include "RestoreFiles.h"
 #include "../Interface/Server.h"
 #include "../Interface/SettingsReader.h"
 #include "ClientService.h"
@@ -242,6 +243,8 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		backup_running=RUNNING_RESUME_INCR_FILE;
 	}
 
+	status_updated = true;
+
 	end_to_end_file_backup_verification_enabled=false;
 	
 	last_pingtime=Server->getTimeMS();
@@ -317,6 +320,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	end_to_end_file_backup_verification_enabled=false;
 
 	backup_running=RUNNING_FULL_FILE;
+	status_updated = true;
 	last_pingtime=Server->getTimeMS();
 	pcdone=-1;
 	backup_source_token=server_token;
@@ -469,6 +473,8 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 		}
 		lasttime=Server->getTimeMS();
 	}
+
+	status_updated = true;
 			
 	IndexThread::execute_postbackup_hook();
 }
@@ -547,52 +553,7 @@ std::string ClientConnector::getCurrRunningJob()
 
 void ClientConnector::CMD_STATUS(const std::string &cmd)
 {
-	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-
-	IScopedLock lock(backup_mutex);
-
-	std::string ret = getLastBackupTime();
-
-	ret += "#" + getCurrRunningJob();
-
-	if(backup_running!=RUNNING_INCR_IMAGE)
-		ret+="#"+nconvert(pcdone);
-	else
-		ret+="#"+nconvert(pcdone2);
-
-	if(IdleCheckerThread::getPause())
-	{
-		ret+="#P";
-	}
-	else
-	{
-		ret+="#NP";
-	}
-
-	ret+="#capa="+nconvert(getCapabilities());
-
-	{
-		IScopedLock lock(ident_mutex);
-		if(!new_server_idents.empty())
-		{
-			ret+="&new_ident="+new_server_idents[new_server_idents.size()-1];
-			new_server_idents.erase(new_server_idents.begin()+new_server_idents.size()-1);
-		}
-	}
-
-	ret+="&has_server=";
-	if(channel_pipes.empty())
-	{
-		ret+="false";
-	}
-	else
-	{
-		ret+="true";
-	}
-
-	tcpstack.Send(pipe, ret);
-
-	db->destroyAllQueries();
+	state=CCSTATE_STATUS;
 
 	lasttime=Server->getTimeMS();
 }
@@ -660,10 +621,17 @@ void ClientConnector::CMD_PING_RUNNING(const std::string &cmd)
 	std::string pcdone_new=getbetween("-","-", cmd);
 	if(backup_source_token.empty() || backup_source_token==server_token )
 	{
+		int pcdone_old=pcdone;
+
 		if(pcdone_new.empty())
 			pcdone=-1;
 		else
 			pcdone=atoi(pcdone_new.c_str());
+
+		if(pcdone_old!=pcdone)
+		{
+			status_updated = true;
+		}
 
 		eta_ms = 0;
 	}
@@ -689,10 +657,17 @@ void ClientConnector::CMD_PING_RUNNING2(const std::string &cmd)
 	{
 		std::wstring pcdone_new=params[L"pc_done"];
 
+		int pcdone_old = pcdone;
+
 		if(pcdone_new.empty())
 			pcdone=-1;
 		else
 			pcdone=watoi(pcdone_new);
+
+		if(pcdone_old!=pcdone)
+		{
+			status_updated = true;
+		}
 
 		eta_ms = watoi64(params[L"eta_ms"]);
 	}
@@ -708,23 +683,26 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 	if(!img_download_running)
 	{
 		g_lock->relock(backup_mutex);
-		channel_pipe=SChannel(pipe, internet_conn, endpoint_name);
-		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name));
-		is_channel=true;
-		state=CCSTATE_CHANNEL;
-		last_channel_ping=Server->getTimeMS();
-		lasttime=Server->getTimeMS();
-		Server->Log("New channel: Number of Channels: "+nconvert((int)channel_pipes.size()), LL_DEBUG);
 
 		int capa=0;
+		std::string token;
 		if(cmd.find("1CHANNEL ")==0)
 		{
 			std::string s_params=cmd.substr(9);
 			str_map params;
 			ParseParamStrHttp(s_params, &params);
 			capa=watoi(params[L"capa"]);
+			token=wnarrow(params[L"token"]);
 		}
 		channel_capa.push_back(capa);
+
+		channel_pipe=SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv);
+		channel_pipes.push_back(SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv));
+		is_channel=true;
+		state=CCSTATE_CHANNEL;
+		last_channel_ping=Server->getTimeMS();
+		lasttime=Server->getTimeMS();
+		Server->Log("New channel: Number of Channels: "+nconvert((int)channel_pipes.size()), LL_DEBUG);
 	}
 }
 
@@ -1397,12 +1375,13 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
-		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1");
+		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
+		"&FILE_META=1");
 #else
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0");
+		+"&ETA=1&CPD=0&FILE_META=1");
 #endif
 }
 
@@ -1534,4 +1513,40 @@ void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
 	{
 		tcpstack.Send(pipe, "err");
 	}
+}
+
+void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
+{
+	str_map params;
+	ParseParamStrHttp(cmd, &params);
+
+	std::string client_token = Server->ConvertToUTF8(params[L"client_token"]);
+	std::string server_token=wnarrow(params[L"server_token"]);
+	int64 restore_id=watoi64(params[L"id"]);
+	int64 status_id=watoi64(params[L"status_id"]);
+	int64 log_id=watoi64(params[L"log_id"]);
+
+	{
+		IScopedLock lock(backup_mutex);
+		restore_ok_status = RestoreOk_Wait;
+	}
+
+	Server->getThreadPool()->execute(new RestoreFiles(restore_id, status_id, log_id, client_token, server_token));
+
+	tcpstack.Send(pipe, "ok");
+}
+
+void ClientConnector::CMD_RESTORE_OK( str_map &params )
+{
+	IScopedLock lock(backup_mutex);
+	if(params[L"ok"]==L"true")
+	{
+		restore_ok_status = RestoreOk_Ok;
+	}
+	else
+	{
+		restore_ok_status = RestoreOk_Declined;
+	}
+
+	tcpstack.Send(pipe, "ok");
 }

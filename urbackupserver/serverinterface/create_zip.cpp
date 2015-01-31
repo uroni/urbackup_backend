@@ -348,7 +348,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 
 		if(file.isdir)
 		{
-			add_dir(zip_archive, archivename, filename, hashfoldername + os_file_sep() + file.name, filter,
+			add_dir(zip_archive, archivename, filename, hashfoldername + os_file_sep() + escape_metadata_fn(file.name), filter,
 				token_authentication, backup_tokens, tokens, false);
 		}
 	}

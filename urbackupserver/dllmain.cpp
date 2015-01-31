@@ -71,11 +71,15 @@ SStartupStatus startup_status;
 #include "../Interface/DatabaseCursor.h"
 #include <set>
 #include "apps/check_files_index.h"
+#include "../fileservplugin/IFileServ.h"
+#include "../fileservplugin/IFileServFactory.h"
+#include "serverinterface/restore_client.h"
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
 ICryptoFactory *crypto_fak;
 IUrlFactory *url_fak=NULL;
+IFileServ* fileserv=NULL;
 
 std::string server_identity;
 std::string server_token;
@@ -400,10 +404,22 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		}
 	}
 
+	{
+		str_map params;
+		IFileServFactory* fileserv_fak=(IFileServFactory *)Server->getPlugin(Server->getThreadID(), Server->StartPlugin("fileserv", params));
+		if( fileserv_fak==NULL )
+		{
+			Server->Log("Error loading fileservplugin. File restores won't work.", LL_ERROR);
+		}
+		else
+		{
+			fileserv = fileserv_fak->createFileServNoBind();
+		}
+	}
+
 	
 	bool use_berkeleydb;
 	open_server_database(use_berkeleydb, true);
-
 	
 
 	ServerStatus::init_mutex();
@@ -1290,6 +1306,19 @@ bool update38_39()
 	return b;
 }
 
+bool update39_40()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE logs ADD restore INTEGER");
+	b &= db->Write("UPDATE logs SET restore=0 WHERE restore IS NULL");
+	b &= db->Write("CREATE TABLE restores (id INTEGER PRIMARY KEY, clientid INTEGER REFERENCES clients(id) ON DELETE CASCADE, created DATE DEFAULT CURRENT_TIMESTAMP, finished DATE, done INTEGER, path TEXT, identity TEXT, success INTEGER)");
+
+	return b;
+}
+
 
 void upgrade(void)
 {
@@ -1312,7 +1341,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=39;
+	int max_v=40;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1513,6 +1542,12 @@ void upgrade(void)
 				break;
 			case 38:
 				if(!update38_39())
+				{
+					has_error=true;
+				}
+				++ver;
+			case 39:
+				if(!update39_40())
 				{
 					has_error=true;
 				}

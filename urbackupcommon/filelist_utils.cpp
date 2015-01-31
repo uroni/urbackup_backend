@@ -75,6 +75,24 @@ void writeFileItem(IFile* f, SFile cf)
 	}
 }
 
+void writeFileItem(IFile* f, SFile cf, const FileMetadata& metadata, const std::string& extra)
+{
+	if(cf.isdir)
+	{
+		writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))
+			+"\"#dacl=" + base64_encode_dash(metadata.file_permissions)
+			+"&mod=" + nconvert(metadata.last_modified)
+			+"&creat=" + nconvert(metadata.created)+extra+"\n");
+	}
+	else
+	{
+		writeFileRepeat(f, "f\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)
+			+"\"#dacl=" + base64_encode_dash(metadata.file_permissions)
+			+"&mod=" + nconvert(metadata.last_modified)
+			+"&creat=" + nconvert(metadata.created)+extra+"\n");
+	}
+}
+
 
 bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::wstring, std::wstring>* extra )
 {
@@ -104,6 +122,10 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::wstring, std
 				if(ch=='\n')
 				{
 					reset();
+					if(extra!=NULL)
+					{
+						extra->clear();
+					}
 					return true;
 				}
 				else
@@ -166,6 +188,10 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::wstring, std
 			if(ch=='\n')
 			{
 				reset();
+				if(extra!=NULL)
+				{
+					extra->clear();
+				}
 				return true;
 			}
 			else
@@ -184,6 +210,7 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::wstring, std
 		{
 			if(extra!=NULL)
 			{
+				extra->clear();
 				ParseParamStrHttp(t_name, extra, false);
 			}
 			reset();

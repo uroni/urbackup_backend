@@ -74,7 +74,9 @@ public:
 		mutex = Server->createMutex();
 		cond = Server->createCondition();
 
-		local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles));
+		logid = ServerLogger::getLogId(clientid);
+
+		local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid));
 	}
 
 	~BackupServerContinuous()
@@ -712,7 +714,7 @@ private:
 			fileclient_chunked.get(), continuous_path,
 			continuous_hash_path, continuous_path, std::wstring(), hashed_transfer_full,
 			false, clientid, clientname, use_tmpfiles, tmpfile_path, server_token,
-			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version, 0));
+			use_reflink, backupid, true, hashpipe_prepare, client_main, client_main->getProtocolVersions().file_protocol_version, 0, logid));
 
 		server_download_ticket = Server->getThreadPool()->execute(server_download.get());
 	}
@@ -741,7 +743,7 @@ private:
 		{
 			if(!client_main->getClientChunkedFilesrvConnection(fileclient_chunked, server_settings.get()))
 			{
-				ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
+				ServerLogger::Log(logid, L"Connect error during continuous backup (fileclient_chunked-1)", LL_ERROR);
 				return false;
 			}
 			else
@@ -749,7 +751,7 @@ private:
 				fileclient_chunked->setDestroyPipe(true);
 				if(fileclient_chunked->hasError())
 				{
-					ServerLogger::Log(clientid, L"Connect error during continuous backup (fileclient_chunked)", LL_ERROR);
+					ServerLogger::Log(logid, L"Connect error during continuous backup (fileclient_chunked)", LL_ERROR);
 					return false;
 				}
 			}
@@ -764,7 +766,7 @@ private:
 
 		if(rc!=ERR_SUCCESS)
 		{
-			ServerLogger::Log(clientid, L"Error getting file hash and metadata for \""+Server->ConvertToUnicode(change.fn1)+L"\" from "+clientname+L". Errorcode: "+widen(fileclient->getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+			ServerLogger::Log(logid, L"Error getting file hash and metadata for \""+Server->ConvertToUnicode(change.fn1)+L"\" from "+clientname+L". Errorcode: "+widen(fileclient->getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 			return false;
 		}
 
@@ -791,7 +793,7 @@ private:
 		int entryclientid=0;
 		int64 next_entryid=0;
 		int64 rsize = -1;
-		FileMetadata metadata(permissions, modified, created);
+		FileMetadata metadata(permissions, modified, created, std::string());
 		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
 			hash, filesize, std::string(), true, tries_once, ff_last, hardlink_limit, copied_file, entryid,
 			entryclientid, rsize, next_entryid, metadata, FileMetadata(), true))
@@ -812,7 +814,7 @@ private:
 		if(f->Size()==0 || !transfer_incr_blockdiff)
 		{
 			server_download->addToQueueFull(0, fn, fn,
-				fpath, fpath, filesize, metadata, FileMetadata(), false);
+				fpath, fpath, filesize, metadata, FileMetadata(), false, false);
 		}
 		else
 		{
@@ -855,7 +857,7 @@ private:
 		return false;
 	}
 
-	virtual std::string getQueuedFileFull(bool& metadata)
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata)
 	{
 		for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
 			it!=dl_queue.end();++it)
@@ -864,7 +866,7 @@ private:
 				(it->change.action==CHANGE_ADD_FILE ||
 				 it->change.action==CHANGE_MOD) )
 			{
-				metadata=true;
+				metadata=FileClient::MetadataQueue_MetadataAndHash;
 				it->queued_metdata=true;
 				return it->change.fn1;
 			}
@@ -940,4 +942,6 @@ private:
 	bool has_fullpath_entryid_mapping_table;
 	std::auto_ptr<ServerBackupDao> backupdao;
 	std::auto_ptr<FileIndex> fileindex;
+
+	logid_t logid;
 };

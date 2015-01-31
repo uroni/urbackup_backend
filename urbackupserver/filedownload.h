@@ -1,4 +1,4 @@
-#include "fileclient/FileClientChunked.h"
+#include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "ChunkPatcher.h"
 #include <string>
 #include <memory>
@@ -46,7 +46,7 @@ public:
 	virtual void unqueueFileChunked(const std::string& remotefn);
 	virtual void resetQueueChunked();
 
-	virtual std::string getQueuedFileFull(bool& metadata);
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata);
 	virtual void unqueueFileFull(const std::string& fn);
 	virtual void resetQueueFull();
 private:

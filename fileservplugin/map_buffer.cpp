@@ -33,8 +33,12 @@ struct s_mapl
 	_u32 lastmaptime;
 };
 
-std::map<std::wstring, s_mapl> mapbuffer;
-CriticalSection mapcs;
+namespace
+{
+	std::map<std::pair<std::wstring, std::string>, s_mapl> mapbuffer;
+	CriticalSection mapcs;
+}
+
 
 std::wstring getOsDir(std::wstring input)
 {
@@ -48,41 +52,8 @@ std::wstring getOsDir(std::wstring input)
 	return input;
 }
 
-
-std::wstring getFileName(const std::wstring &fn, const std::wstring &value, bool append_urd, std::wstring *udir=NULL)
+std::wstring map_file(std::wstring fn, const std::string& identity)
 {
-	std::wstring urd=L"urinstaller";
-	std::wstring dir=value;
-
-	/*if( value.find(L"|")!=std::string::npos )
-	{
-		urd=getafter(L"|",value);
-		urd.erase(0,1);
-		dir=getuntil(L"|",value);
-
-		if( udir!=NULL )
-			*udir=urd;
-	}*/
-
-	if( append_urd==true )
-#ifdef _WIN32
-		return dir+L"\\"+urd+fn;
-#else
-		return dir+L"/"+urd+fn;
-#endif
-	else
-#ifdef _WIN32
-		return dir+fn;
-#else
-		return dir+fn;
-#endif
-}
-
-std::wstring map_file(std::wstring fn, bool append_urd, std::wstring *udir=NULL)
-{
-	if(fn==L"speedtest")
-		return testfilename;
-
 	std::wstring ts=getuntil(L"/",fn);
 	if(ts.empty())
 		ts=fn;
@@ -106,7 +77,12 @@ std::wstring map_file(std::wstring fn, bool append_urd, std::wstring *udir=NULL)
 	}
 
 	mapcs.Enter();
-	std::map<std::wstring, s_mapl>::iterator i=mapbuffer.find(ts);
+	std::map<std::pair<std::wstring, std::string>, s_mapl>::iterator i=mapbuffer.find(std::make_pair(ts, std::string()));
+
+	if(i==mapbuffer.end())
+	{
+		i=mapbuffer.find(std::make_pair(ts, identity));
+	}
 
 	if(i==mapbuffer.end() )
 	{
@@ -117,41 +93,29 @@ std::wstring map_file(std::wstring fn, bool append_urd, std::wstring *udir=NULL)
 	else
 	{
 		mapcs.Leave();
-		return getFileName(getOsDir(fn), i->second.value,append_urd, udir);
+		return i->second.value + getOsDir(fn);
 	}
 }
 
-void add_share_path(const std::wstring &name, const std::wstring &path)
+void add_share_path(const std::wstring &name, const std::wstring &path, const std::string& identity)
 {
 	s_mapl m;
 	m.value=getOsDir(path);
 	
 	mapcs.Enter();
-	mapbuffer[name]=m;
+	mapbuffer[std::make_pair(name, identity)]=m;
 	mapcs.Leave();
 }
 
-void remove_share_path(const std::wstring &name)
+void remove_share_path(const std::wstring &name, const std::string& identity)
 {
 	mapcs.Enter();
 
-	std::map<std::wstring, s_mapl>::iterator it=mapbuffer.find(name);
+	std::map<std::pair<std::wstring, std::string>, s_mapl>::iterator it=mapbuffer.find(std::make_pair(name, identity));
 	if(it!=mapbuffer.end())
 	{
 		mapbuffer.erase(it);
 	}
 
 	mapcs.Leave();
-}
-
-std::vector<std::wstring> get_maps(void)
-{
-	std::vector<std::wstring> ret;
-	mapcs.Enter();
-	for(std::map<std::wstring, s_mapl>::iterator it=mapbuffer.begin();it!=mapbuffer.end();++it)
-	{
-		ret.push_back(it->first);
-	}
-	mapcs.Leave();
-	return ret;
 }

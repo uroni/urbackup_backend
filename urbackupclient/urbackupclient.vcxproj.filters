@@ -19,6 +19,9 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
+    <Filter Include="fileclient">
+      <UniqueIdentifier>{5cdf5545-d6e8-4bee-8076-81b308b385b1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c">
@@ -123,6 +126,33 @@
     <ClCompile Include="common_tokens.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClient.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\fileclient\FileClientChunked.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\adler32.cpp">
+      <Filter>fileclient</Filter>
+    </ClCompile>
+    <ClCompile Include="RestoreFiles.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="RestoreDownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FileMetadataDownloadThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\filelist_utils.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\file_metadata.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -219,6 +249,39 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="tokens.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClient.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\FileClientChunked.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\packet_ids.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\fileclient\socket_header.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\adler32.h">
+      <Filter>fileclient</Filter>
+    </ClInclude>
+    <ClInclude Include="RestoreDownloadThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileMetadataDownloadThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\filelist_utils.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="RestoreFiles.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\file_metadata.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\chunk_hasher.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

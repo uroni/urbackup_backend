@@ -35,9 +35,14 @@
 #include <memory.h>
 #include <algorithm>
 #include <limits.h>
+#include "../fileservplugin/IFileServ.h"
+#include "server_log.h"
+#include "serverinterface/restore_client.h"
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
+extern std::string server_token;
+extern IFileServ* fileserv;
 
 namespace
 {
@@ -89,10 +94,30 @@ namespace
 		volatile bool do_quit;
 		std::wstring session;
 	};
+
+	class FileservClientThread : public IThread
+	{
+	public:
+		FileservClientThread(IPipe* pipe)
+			: pipe(pipe)
+		{
+
+		}
+
+		void operator()()
+		{
+			fileserv->runClient(pipe);
+			delete pipe;
+			delete this;
+		}
+
+	private:
+		IPipe* pipe;
+	};
 }
 
-ServerChannelThread::ServerChannelThread(ClientMain *client_main, int clientid, bool internet_mode, const std::string& identity) :
-	client_main(client_main), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
+ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::wstring& clientname, int clientid, bool internet_mode, const std::string& identity) :
+	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
 {
 	do_exit=false;
 	mutex=Server->createMutex();
@@ -145,7 +170,7 @@ void ServerChannelThread::operator()(void)
 				}
 				else
 				{
-					tcpstack.Send(input, identity+"1CHANNEL capa="+nconvert(constructCapabilities()));
+					tcpstack.Send(input, identity+"1CHANNEL capa="+nconvert(constructCapabilities())+"&token="+server_token);
 				}
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
@@ -298,6 +323,47 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	else if(next(msg, 0, "CHANGES "))
 	{
 		client_main->addContinuousChanges(msg.substr(8));
+	}
+	else if(next(msg, 0, "FILESERV"))
+	{
+		if(fileserv!=NULL)
+		{
+			Server->getThreadPool()->execute(new FileservClientThread(input));
+			input=NULL;
+		}
+	}
+	else if(next(msg, 0, "RESTORE PERCENT "))
+	{
+		std::string s_params=msg.substr(16);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		RESTORE_PERCENT(params);
+	}
+	else if(next(msg, 0, "RESTORE DONE "))
+	{
+		std::string s_params=msg.substr(13);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		RESTORE_DONE(params);
+	}
+	else if(next(msg, 0, "LOG "))
+	{
+		size_t first_sep = msg.find("-", 4);
+		size_t second_sep = msg.find("-", first_sep+1);
+
+		if(first_sep!=std::string::npos &&
+			second_sep!=std::string::npos)
+		{
+			logid_t log_id = std::make_pair(os_atoi64(msg.substr(4, first_sep-4)), 0);
+			int loglevel = atoi(msg.substr(first_sep+1, second_sep-first_sep-1).c_str());
+			
+			if(ServerLogger::hasClient(log_id, clientid))
+			{
+				ServerLogger::Log(log_id, msg.substr(second_sep+1), loglevel);
+			}
+		}
 	}
 	else
 	{
@@ -701,4 +767,49 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 		image_fak->destroyVHDFile(vhdfile);
 	}
 	db->destroyAllQueries();
+}
+
+void ServerChannelThread::RESTORE_PERCENT( str_map params )
+{
+	int64 status_id = watoi64(params[L"status_id"]);
+	int pc = watoi(params[L"pc"]);
+
+	ServerStatus::setProcessPcDone(clientname, status_id, pc);
+}
+
+void ServerChannelThread::RESTORE_DONE( str_map params )
+{
+	int64 status_id = watoi64(params[L"status_id"]);
+	logid_t log_id = std::make_pair(watoi64(params[L"log_id"]), 0);
+	int64 restore_id = watoi64(params[L"id"]);
+	bool success = params[L"success"]==L"true";
+
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+
+	ServerBackupDao::CondString restore_ident = backup_dao.getRestoreIdentity(restore_id, clientid);
+
+	if(restore_ident.exists && !restore_ident.value.empty())
+	{
+		std::string ident = Server->ConvertToUTF8(restore_ident.value);
+		ServerStatus::stopProcess(clientname, status_id);
+
+		fileserv->removeIdentity(ident);
+		fileserv->removeDir(L"clientdl_filelist", ident);
+		fileserv->removeDir(L"clientdl", ident);
+		fileserv->removeMetadataCallback(L"clientdl", ident);
+
+		int errors=0;
+		int warnings=0;
+		int infos=0;
+		std::wstring logdata=ServerLogger::getLogdata(log_id, errors, warnings, infos);
+
+		backup_dao.saveBackupLog(clientid, errors, warnings, infos, 0,
+			0, 0, 1);
+
+		backup_dao.saveBackupLogData(db->getLastInsertID(), logdata);
+
+		backup_dao.setRestoreDone(success?1:0, restore_id);
+	}
+	
 }

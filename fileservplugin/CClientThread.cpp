@@ -302,6 +302,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 		case ID_GET_FILE_RESUME:
 		case ID_GET_FILE:
 		case ID_GET_FILE_RESUME_HASH:
+		case ID_GET_FILE_METADATA_ONLY:
 			{
 				errorcode = 0;
 				std::string s_filename;
@@ -340,7 +341,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				}
 				
 
-				std::wstring filename=map_file(o_filename);
+				std::wstring filename=map_file(o_filename, ident);
 
 				Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
 
@@ -389,7 +390,15 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				if(is_script)
 				{
-					IFile* file = PipeSessions::getFile(filename);
+					IFile* file;
+					if(next(s_filename, 0, "urbackup/FILE_METADATA|"))
+					{
+						file = PipeSessions::getFile(o_filename);
+					}
+					else
+					{
+						file = PipeSessions::getFile(filename);
+					}					
 
 					if(!file)
 					{
@@ -412,6 +421,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 						break;
 					}
 				}
+				else if(s_filename.find("|"))
+				{
+					PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
+						getafter("|",s_filename), getuntil("|", s_filename), ident);
+				}
 
 #ifndef LINUX
 #ifndef BACKUP_SEM
@@ -423,7 +437,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
 #ifdef CHECK_BASE_PATH
-					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
+					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
 					if(!isDirectory(basePath))
 					{
 						char ch=ID_BASE_DIR_LOST;
@@ -478,7 +492,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 				}
 
-				if(filesize.QuadPart==0)
+				if(filesize.QuadPart==0 || id==ID_GET_FILE_METADATA_ONLY)
 				{
 					CloseHandle(hFile);
 					hFile=INVALID_HANDLE_VALUE;
@@ -646,7 +660,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 				}
 				
-				if(filesize==0)
+				if(filesize==0 || id==ID_GET_FILE_METADATA_ONLY)
 				{
 					CloseHandle(hFile);
 					hFile=0;
@@ -787,6 +801,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 					return false;
 				}
 			}break;
+
+		case ID_INFORM_METADATA_STREAM_END:
+			{
+				if(!InformMetadataStreamEnd(data))
+				{
+					return false;
+				}
+			} break;
 		}
 	}
 	if( stopped==true )
@@ -1128,7 +1150,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	Log("Sending file (chunked) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
 
-	std::wstring filename=map_file(o_filename);
+	std::wstring filename=map_file(o_filename, ident);
 
 	Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
 
@@ -1174,6 +1196,12 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	}
 	else
 	{			
+		if(s_filename.find("|"))
+		{
+			PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
+				getafter("|",s_filename), getuntil("|", s_filename), ident);
+		}
+
 #ifdef _WIN32
 #ifndef BACKUP_SEM
 		hFile=CreateFileW(filename.c_str(), FILE_READ_DATA, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL);
@@ -1188,7 +1216,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		{
 			hFile=(HANDLE)NULL;
 	#ifdef CHECK_BASE_PATH
-			std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
+			std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
 			if(!isDirectory(basePath))
 			{
 				queueChunk(SChunk(ID_BASE_DIR_LOST));
@@ -1352,7 +1380,7 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 
 	Log("Calculating hash of file "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
 
-	std::wstring filename=map_file(o_filename);
+	std::wstring filename=map_file(o_filename, ident);
 
 	Log("Mapped name: "+Server->ConvertToUTF8(filename), LL_DEBUG);
 
@@ -1397,7 +1425,7 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 	{
 		hFile=NULL;
 #ifdef CHECK_BASE_PATH
-		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
+		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
 		if(!isDirectory(basePath))
 		{
 			char ch=ID_BASE_DIR_LOST;
@@ -1591,4 +1619,32 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 	}
 
 	return curr_filesize!=-1;
+}
+
+bool CClientThread::InformMetadataStreamEnd( CRData * data )
+{
+#ifdef CHECK_IDENT
+	std::string ident;
+	data->getStr(&ident);
+	if(!FileServ::checkIdentity(ident))
+	{
+		Log("Identity check failed -hash", LL_DEBUG);
+		return false;
+	}
+#endif
+
+	std::string token;
+	data->getStr(&token);
+	
+	PipeSessions::metadataStreamEnd(token);
+
+	char ch = ID_PONG;
+	int rc = SendInt(&ch, 1);
+	if(rc==SOCKET_ERROR)
+	{
+		Log("Error: Sending data failed (InformMetadataStreamEnd)");
+		return false;
+	}
+
+	return true;
 }

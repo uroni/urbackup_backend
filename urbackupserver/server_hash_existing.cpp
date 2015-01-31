@@ -21,8 +21,8 @@
 #include "../Interface/Server.h"
 #include "server_log.h"
 
-ServerHashExisting::ServerHashExisting( int clientid, IncrFileBackup* incr_backup )
-	: has_error(false), clientid(clientid), incr_backup(incr_backup)
+ServerHashExisting::ServerHashExisting( int clientid, logid_t logid, IncrFileBackup* incr_backup )
+	: has_error(false), clientid(clientid), incr_backup(incr_backup), logid(logid)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -61,7 +61,7 @@ void ServerHashExisting::operator()()
 
 		if(f==NULL)
 		{
-			ServerLogger::Log(clientid, L"Error opening file \""+item.hashpath+L"\" for hashing", LL_WARNING);
+			ServerLogger::Log(logid, L"Error opening file \""+item.hashpath+L"\" for hashing", LL_WARNING);
 			has_error = true;
 		}
 		else

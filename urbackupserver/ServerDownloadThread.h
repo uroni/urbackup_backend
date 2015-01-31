@@ -8,68 +8,74 @@
 #include "../Interface/Pipe.h"
 #include "../Interface/File.h"
 #include "../Interface/Thread.h"
-#include "fileclient/FileClient.h"
-#include "fileclient/FileClientChunked.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
+#include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "ClientMain.h"
-#include "file_metadata.h"
+#include "../urbackupcommon/file_metadata.h"
 
 
 class FileClient;
 class FileClientChunked;
 
-enum EFileClient
+namespace
 {
-	EFileClient_Full,
-	EFileClient_Chunked
-};
-
-enum EQueueAction
-{
-	EQueueAction_Fileclient,
-	EQueueAction_Quit,
-	EQueueAction_StopShadowcopy,
-	EQueueAction_StartShadowcopy,
-	EQueueAction_Skip
-};
-
-struct SPatchDownloadFiles
-{
-	bool prepared;
-	bool prepare_error;
-	IFile* orig_file;
-	IFile* patchfile;
-	IFile* chunkhashes;
-	bool delete_chunkhashes;
-	IFile* hashoutput;
-	std::wstring hashpath;
-	std::wstring filepath_old;
-};
-
-struct SQueueItem
-{
-	SQueueItem()
-		: id(std::string::npos),
-		  fileclient(EFileClient_Full),
-		  queued(false),
-		  action(EQueueAction_Fileclient),
-		  is_script(false)
+	enum EFileClient
 	{
-	}
+		EFileClient_Full,
+		EFileClient_Chunked
+	};
 
-	size_t id;
-	std::wstring fn;
-	std::wstring short_fn;
-	std::wstring curr_path;
-	std::wstring os_path;
-	_i64 predicted_filesize;
-	EFileClient fileclient;
-	bool queued;
-	EQueueAction action;
-	SPatchDownloadFiles patch_dl_files;
-	FileMetadata metadata;
-	FileMetadata parent_metadata;
-	bool is_script;
-};
+	enum EQueueAction
+	{
+		EQueueAction_Fileclient,
+		EQueueAction_Quit,
+		EQueueAction_StopShadowcopy,
+		EQueueAction_StartShadowcopy,
+		EQueueAction_Skip
+	};
+
+	struct SPatchDownloadFiles
+	{
+		bool prepared;
+		bool prepare_error;
+		IFile* orig_file;
+		IFile* patchfile;
+		IFile* chunkhashes;
+		bool delete_chunkhashes;
+		IFile* hashoutput;
+		std::wstring hashpath;
+		std::wstring filepath_old;
+	};
+
+	struct SQueueItem
+	{
+		SQueueItem()
+			: id(std::string::npos),
+			fileclient(EFileClient_Full),
+			queued(false),
+			action(EQueueAction_Fileclient),
+			is_script(false)
+		{
+		}
+
+		size_t id;
+		std::wstring fn;
+		std::wstring short_fn;
+		std::wstring curr_path;
+		std::wstring os_path;
+		_i64 predicted_filesize;
+		EFileClient fileclient;
+		bool queued;
+		EQueueAction action;
+		SPatchDownloadFiles patch_dl_files;
+		FileMetadata metadata;
+		FileMetadata parent_metadata;
+		bool is_script;
+		bool is_dir;
+	};
+}
+
+
 
 class ServerDownloadThread : public IThread, public FileClient::QueueCallback, public FileClientChunked::QueueCallback
 {
@@ -77,15 +83,17 @@ public:
 	ServerDownloadThread(FileClient& fc, FileClientChunked* fc_chunked, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 		const std::wstring& clientname,
 		bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-		int filesrv_protocol_version, int incremental_num);
+		int filesrv_protocol_version, int incremental_num, logid_t logid);
 
 	~ServerDownloadThread();
 
 	void operator()(void);
 
-	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, bool at_front=false);
+	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
+		_i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, bool is_dir, bool at_front=false);
 
-	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script);
+	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
+		const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script);
 
 	void addToQueueStartShadowcopy(const std::wstring& fn);
 
@@ -118,7 +126,7 @@ public:
 
 	virtual void resetQueueFull();
 
-	virtual std::string getQueuedFileFull(bool& metadata);
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata);
 
 	virtual void unqueueFileFull(const std::string& fn);
 
@@ -137,7 +145,6 @@ private:
 
 	void stop_shadowcopy(const std::string &path);
 
-	bool touch_file(SQueueItem todl);
 	
 	bool link_or_copy_file(SQueueItem todl);
 
@@ -176,4 +183,6 @@ private:
 
 	IMutex* mutex;
 	ICondition* cond;
+
+	logid_t logid;
 };

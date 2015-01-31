@@ -41,20 +41,25 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 	IDatabase *db=helper.getDatabase();
 	IQuery *q=db->Prepare("SELECT * FROM ("
 	"SELECT a.id AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', a.backuptime, 'localtime') AS backuptime, backuptime AS bt,"
-	 "incremental, (strftime('%s',running)-strftime('%s',a.backuptime)) AS duration, size_bytes, 0 AS image, 0 AS del, size_calculated, resumed "
+	 "incremental, (strftime('%s',running)-strftime('%s',a.backuptime)) AS duration, size_bytes, 0 AS image, 0 AS del, size_calculated, resumed, 0 AS restore "
 	"FROM backups a INNER JOIN clients b ON a.clientid=b.id "
 	 "WHERE complete=1 "+filter+
 	"UNION ALL "
 	"SELECT c.id AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', c.backuptime, 'localtime') AS backuptime, backuptime AS bt,"
 	"incremental, (strftime('%s',running)-strftime('%s',c.backuptime)) AS duration, (size_bytes+IFNULL(0,("
 	"SELECT SUM(size_bytes) FROM backup_images INNER JOIN (SELECT * FROM assoc_images WHERE img_id=c.id) ON assoc_id=id"
-	")) ) AS size_bytes, 1 AS image, 0 AS del, 1 as size_calculated, 0 AS resumed "
+	")) ) AS size_bytes, 1 AS image, 0 AS del, 1 as size_calculated, 0 AS resumed, 0 AS restore "
 	"FROM backup_images c INNER JOIN clients d ON c.clientid=d.id "
 	"WHERE complete=1 AND length(letter)<=2 "+filter+
 	"UNION ALL "
 	"SELECT e.backupid AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', e.created, 'localtime') AS backuptime, created AS bt,"
-	"incremental, (strftime('%s',stoptime)-strftime('%s',e.created)) AS duration, delsize AS size_bytes, image, 1 AS del, 1 AS size_calculated, 0 AS resumed "
+	"incremental, (strftime('%s',stoptime)-strftime('%s',e.created)) AS duration, delsize AS size_bytes, image, 1 AS del, 1 AS size_calculated, 0 AS resumed, 0 AS restore "
 	"FROM del_stats e INNER JOIN clients f ON e.clientid=f.id "
+	"WHERE 1=1 "+filter+
+	"UNION ALL " 
+	"SELECT g.id AS backupid, clientid, name, strftime('"+helper.getTimeFormatString()+"', g.created, 'localtime') AS backuptime, g.created as bt,"
+	"0 AS incremental, (strftime('%s',g.finished)-strftime('%s',g.created)) AS duration, -1 AS size_bytes, 0 AS image, 0 AS del, 0 AS size_calculated, 0 AS resumed, 1 AS restore "
+	"FROM restores g INNER JOIN clients h ON g.clientid=h.id "
 	"WHERE 1=1 "+filter+
 	") ORDER BY bt DESC LIMIT "+nconvert(max_display));
 

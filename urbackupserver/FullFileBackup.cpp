@@ -23,11 +23,11 @@
 #include "dao/ServerBackupDao.h"
 #include "ClientMain.h"
 #include "server_log.h"
-#include "fileclient/FileClient.h"
-#include "filelist_utils.h"
+#include "../urbackupcommon/fileclient/FileClient.h"
+#include "../urbackupcommon/filelist_utils.h"
 #include "server_running.h"
 #include "ServerDownloadThread.h"
-#include "file_metadata.h"
+#include "../urbackupcommon/file_metadata.h"
 #include <stack>
 
 extern std::string server_identity;
@@ -58,12 +58,12 @@ SBackup FullFileBackup::getLastFullDurations( void )
 
 bool FullFileBackup::doFileBackup()
 {
-	ServerLogger::Log(clientid, "Starting full file backup...", LL_INFO);
+	ServerLogger::Log(logid, "Starting full file backup...", LL_INFO);
 
 	SBackup last_backup_info = getLastFullDurations();
 
-	status.eta_ms = last_backup_info.backup_time_ms + last_backup_info.indexing_time_ms;
-	ServerStatus::setServerStatus(status, true);
+	int64 eta_set_time = Server->getTimeMS();
+	ServerStatus::setProcessEta(clientname, status_id, last_backup_info.backup_time_ms + last_backup_info.indexing_time_ms, eta_set_time);
 
 	int64 indexing_start_time = Server->getTimeMS();
 
@@ -106,11 +106,11 @@ bool FullFileBackup::doFileBackup()
 
 	if(hashed_transfer)
 	{
-		ServerLogger::Log(clientid, clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(logid, clientname+L": Doing backup with hashed transfer...", LL_DEBUG);
 	}
 	else
 	{
-		ServerLogger::Log(clientid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
+		ServerLogger::Log(logid, clientname+L": Doing backup without hashed transfer...", LL_DEBUG);
 	}
 	std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
 	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
@@ -118,27 +118,27 @@ bool FullFileBackup::doFileBackup()
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
 	if(rc!=ERR_CONNECTED)
 	{
-		ServerLogger::Log(clientid, L"Full Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
+		ServerLogger::Log(logid, L"Full Backup of "+clientname+L" failed - CONNECT error", LL_ERROR);
 		has_early_error=true;
 		log_backup=false;
 		return false;
 	}
 
-	IFile *tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
+	IFile *tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	if(tmp==NULL) 
 	{
-		ServerLogger::Log(clientid, L"Error creating temporary file in ::doFullBackup", LL_ERROR);
+		ServerLogger::Log(logid, L"Error creating temporary file in ::doFullBackup", LL_ERROR);
 		return false;
 	}
 
-	ServerLogger::Log(clientid, clientname+L": Loading file list...", LL_INFO);
+	ServerLogger::Log(logid, clientname+L": Loading file list...", LL_INFO);
 
 	int64 full_backup_starttime=Server->getTimeMS();
 
-	rc=fc.GetFile(group>0?("urbackup/filelist_"+nconvert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer);
+	rc=fc.GetFile(group>0?("urbackup/filelist_"+nconvert(group)+".ub"):"urbackup/filelist.ub", tmp, hashed_transfer, false);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, L"Error getting filelist of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		has_early_error=true;
 		return false;
 	}
@@ -156,14 +156,14 @@ bool FullFileBackup::doFileBackup()
 
 	if(clientlist==NULL )
 	{
-		ServerLogger::Log(clientid, L"Error creating clientlist for client "+clientname, LL_ERROR);
+		ServerLogger::Log(logid, L"Error creating clientlist for client "+clientname, LL_ERROR);
 		has_early_error=true;
 		return false;
 	}
 
-	if(ServerStatus::isBackupStopped(clientname))
+	if(ServerStatus::getProcess(clientname, status_id).stop)
 	{
-		ServerLogger::Log(clientid, L"Server admin stopped backup. -1", LL_ERROR);
+		ServerLogger::Log(logid, L"Server admin stopped backup. -1", LL_ERROR);
 		has_early_error=true;
 		return false;
 	}
@@ -174,6 +174,8 @@ bool FullFileBackup::doFileBackup()
 	_u32 read;
 	std::wstring curr_path;
 	std::wstring curr_os_path;
+	std::string curr_orig_path;
+	std::string orig_sep;
 	SFile cf;
 	int depth=0;
 	bool r_done=false;
@@ -181,11 +183,10 @@ bool FullFileBackup::doFileBackup()
 	int64 last_eta_update=0;
 	int64 last_eta_received_bytes=0;
 	double eta_estimated_speed=0;
-	ServerStatus::setServerStatus(status, true);
 	ServerRunningUpdater *running_updater=new ServerRunningUpdater(backupid, false);
 	Server->getThreadPool()->execute(running_updater);
 
-	ServerLogger::Log(clientid, clientname+L": Started loading files...", LL_INFO);
+	ServerLogger::Log(logid, clientname+L": Started loading files...", LL_INFO);
 
 	std::wstring last_backuppath;
 	std::wstring last_backuppath_complete;
@@ -193,7 +194,7 @@ bool FullFileBackup::doFileBackup()
 		backuppath_hashes, last_backuppath, last_backuppath_complete,
 		hashed_transfer, save_incomplete_files, clientid, clientname,
 		use_tmpfiles, tmpfile_path, server_token, use_reflink,
-		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version, 0));
+		backupid, false, hashpipe_prepare, client_main, client_main->getProtocolVersions().filesrv_protocol_version, 0, logid));
 
 	bool queue_downloads = client_main->getProtocolVersions().filesrv_protocol_version>2;
 
@@ -227,13 +228,24 @@ bool FullFileBackup::doFileBackup()
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
+				bool has_orig_path = false;
+				if(!metadata.orig_path.empty())
+				{
+					curr_orig_path = metadata.orig_path;
+					orig_sep = base64_decode_dash(Server->ConvertToUTF8(extra_params[L"orig_sep"]));
+					if(orig_sep.empty()) orig_sep="\\";
+
+					has_orig_path=true;
+				}
+
+
 				int64 ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>status_update_intervall)
 				{
-					if(ServerStatus::isBackupStopped(clientname))
+					if(ServerStatus::getProcess(clientname, status_id).stop)
 					{
 						r_done=true;
-						ServerLogger::Log(clientid, L"Server admin stopped backup.", LL_ERROR);
+						ServerLogger::Log(logid, L"Server admin stopped backup.", LL_ERROR);
 						server_download->queueSkip();
 						break;
 					}
@@ -241,25 +253,26 @@ bool FullFileBackup::doFileBackup()
 					laststatsupdate=ctime;
 					if(files_size==0)
 					{
-						status.pcdone=100;
+						ServerStatus::setProcessPcDone(clientname, status_id, 100);
 					}
 					else
 					{
-						status.pcdone=(std::min)(100,(int)(((float)fc.getReceivedDataBytes() + linked_bytes)/((float)files_size/100.f)+0.5f));
+						ServerStatus::setProcessPcDone(clientname, status_id,
+							(std::min)(100,(int)(((float)fc.getReceivedDataBytes() + linked_bytes)/((float)files_size/100.f)+0.5f)));
 					}
-					status.hashqueuesize=(_u32)hashpipe->getNumElements();
-					status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
-					ServerStatus::setServerStatus(status, true);
+
+					ServerStatus::setProcessQueuesize(clientname, status_id,
+						(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
 				}
 
 				if(ctime-last_eta_update>eta_update_intervall)
 				{
-					calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
+					calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 				}
 
 				if(server_download->isOffline())
 				{
-					ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+					ServerLogger::Log(logid, L"Client "+clientname+L" went offline.", LL_ERROR);
 					is_offline = true;
 					r_done=true;
 					break;
@@ -272,13 +285,21 @@ bool FullFileBackup::doFileBackup()
 					{
 						dir_metadata.push(metadata);
 
+						std::wstring orig_curr_path = curr_path;
+						std::wstring orig_curr_os_path = curr_os_path;
 						curr_path+=L"/"+cf.name;
 						curr_os_path+=L"/"+osspecific_name;
 						std::wstring local_curr_os_path=convertToOSPathFromFileClient(curr_os_path);
 
+						if(!has_orig_path)
+						{
+							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
+							metadata.orig_path = curr_orig_path;
+						}
+
 						if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
+							ServerLogger::Log(logid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
 							c_has_error=true;
 							break;
 						}
@@ -287,21 +308,28 @@ bool FullFileBackup::doFileBackup()
 							if(!os_set_file_time(os_file_prefix(backuppath+local_curr_os_path),
 								metadata.created, metadata.last_modified))
 							{
-								ServerLogger::Log(clientid, L"Setting last modified and created time of directory  \""+backuppath+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_WARNING);
+								ServerLogger::Log(logid, L"Setting last modified and created time of directory  \""+backuppath+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_WARNING);
 							}
 						}
 						if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 						{
-							ServerLogger::Log(clientid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
+							ServerLogger::Log(logid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
 							c_has_error=true;
 							break;
 						}
 						else if(metadata.exist && !write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata))
 						{
-							ServerLogger::Log(clientid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
+							ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
 						}
+
+						if(client_main->getProtocolVersions().file_meta>0)
+						{
+							server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
+								metadata, FileMetadata(), false, true);
+						}
+
 						++depth;
 						if(depth==1)
 						{
@@ -313,7 +341,7 @@ bool FullFileBackup::doFileBackup()
 							}
 							else
 							{
-								ServerLogger::Log(clientid, L"Starting shadowcopy \""+t+L"\".", LL_DEBUG);
+								ServerLogger::Log(logid, L"Starting shadowcopy \""+t+L"\".", LL_DEBUG);
 								server_download->addToQueueStartShadowcopy(t);
 
 								continuous_sequences[cf.name]=SContinuousSequence(
@@ -339,17 +367,27 @@ bool FullFileBackup::doFileBackup()
 							}
 							else
 							{
-								ServerLogger::Log(clientid, L"Stoping shadowcopy \""+t+L"\".", LL_DEBUG);
+								ServerLogger::Log(logid, L"Stoping shadowcopy \""+t+L"\".", LL_DEBUG);
 								server_download->addToQueueStopShadowcopy(t);
 							}							
 						}
 						curr_path=ExtractFilePath(curr_path, L"/");
 						curr_os_path=ExtractFilePath(curr_os_path, L"/");
+
+						if(!has_orig_path)
+						{
+							curr_orig_path = ExtractFilePath(curr_orig_path, orig_sep);
+						}
 					}
 				}
 				else
 				{
 					FileMetadata parent_metadata = dir_metadata.empty()?FileMetadata():dir_metadata.top();
+
+					if(!has_orig_path)
+					{
+						metadata.orig_path = curr_orig_path + orig_sep + Server->ConvertToUTF8(cf.name);
+					}
 
 					bool file_ok=false;
 					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(L"sha512") );
@@ -369,7 +407,7 @@ bool FullFileBackup::doFileBackup()
 					if(!file_ok)
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-							metadata, parent_metadata, script_dir);
+							metadata, parent_metadata, script_dir, false);
 					}
 				}
 
@@ -383,32 +421,33 @@ bool FullFileBackup::doFileBackup()
 
 	server_download->queueStop(false);
 
-	ServerLogger::Log(clientid, L"Waiting for file transfers...", LL_INFO);
+	ServerLogger::Log(logid, L"Waiting for file transfers...", LL_INFO);
 
 	while(!Server->getThreadPool()->waitFor(server_download_ticket, 1000))
 	{
 		if(files_size==0)
 		{
-			status.pcdone=100;
+			ServerStatus::setProcessPcDone(clientname, status_id, 100);
 		}
 		else
 		{
-			status.pcdone=(std::min)(100,(int)(((float)fc.getReceivedDataBytes())/((float)files_size/100.f)+0.5f));
+			ServerStatus::setProcessPcDone(clientname, status_id,
+				(std::min)(100,(int)(((float)fc.getReceivedDataBytes())/((float)files_size/100.f)+0.5f)));
 		}
-		status.hashqueuesize=(_u32)hashpipe->getNumElements();
-		status.prepare_hashqueuesize=(_u32)hashpipe_prepare->getNumElements();
-		ServerStatus::setServerStatus(status, true);
+
+		ServerStatus::setProcessQueuesize(clientname, status_id,
+			(_u32)hashpipe->getNumElements(), (_u32)hashpipe_prepare->getNumElements());
 
 		int64 ctime = Server->getTimeMS();
 		if(ctime-last_eta_update>eta_update_intervall)
 		{
-			calculateEtaFileBackup(last_eta_update, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
+			calculateEtaFileBackup(last_eta_update, eta_set_time, ctime, fc, NULL, linked_bytes, last_eta_received_bytes, eta_estimated_speed, files_size);
 		}
 	}
 
 	if(server_download->isOffline() && !is_offline)
 	{
-		ServerLogger::Log(clientid, L"Client "+clientname+L" went offline.", LL_ERROR);
+		ServerLogger::Log(logid, L"Client "+clientname+L" went offline.", LL_ERROR);
 		r_done=true;
 	}
 
@@ -426,7 +465,7 @@ bool FullFileBackup::doFileBackup()
 	running_updater->stop();
 	backup_dao->updateFileBackupRunning(backupid);
 
-	ServerLogger::Log(clientid, L"Writing new file list...", LL_INFO);
+	ServerLogger::Log(logid, L"Writing new file list...", LL_INFO);
 
 	tmp->Seek(0);
 	line = 0;
@@ -459,7 +498,7 @@ bool FullFileBackup::doFileBackup()
 
 	Server->destroy(clientlist);
 
-	ServerLogger::Log(clientid, L"Waiting for file hashing and copying threads...", LL_INFO);
+	ServerLogger::Log(logid, L"Waiting for file hashing and copying threads...", LL_INFO);
 
 	waitForFileThreads();
 
@@ -471,13 +510,13 @@ bool FullFileBackup::doFileBackup()
 	{
 		if(!verify_file_backup(tmp))
 		{
-			ServerLogger::Log(clientid, "Backup verification failed", LL_ERROR);
+			ServerLogger::Log(logid, "Backup verification failed", LL_ERROR);
 			c_has_error=true;
 			verification_ok = false;
 		}
 		else
 		{
-			ServerLogger::Log(clientid, "Backup verification ok", LL_INFO);
+			ServerLogger::Log(logid, "Backup verification ok", LL_INFO);
 		}
 	}
 
@@ -492,7 +531,7 @@ bool FullFileBackup::doFileBackup()
 		db->BeginTransaction();
 		if(!os_rename_file(widen(clientlistName(group, true)), widen(clientlistName(group, false))) )
 		{
-			ServerLogger::Log(clientid, "Renaming new client file list to destination failed", LL_ERROR);
+			ServerLogger::Log(logid, "Renaming new client file list to destination failed", LL_ERROR);
 		}
 		backup_dao->setFileBackupDone(backupid);
 		db->EndTransaction();
@@ -526,7 +565,7 @@ bool FullFileBackup::doFileBackup()
 
 			if(server_settings->getSettings()->create_linked_user_views)
 			{
-				ServerLogger::Log(clientid, "Creating user views...", LL_INFO);
+				ServerLogger::Log(logid, "Creating user views...", LL_INFO);
 
 				createUserViews(tmp);
 			}
@@ -545,9 +584,9 @@ bool FullFileBackup::doFileBackup()
 	int64 passed_time=Server->getTimeMS()-full_backup_starttime;
 	if(passed_time==0) passed_time=1;
 
-	ServerLogger::Log(clientid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
+	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
 
-	ClientMain::run_script(L"urbackup" + os_file_sep() + L"post_full_filebackup", L"\""+ backuppath + L"\"", clientid);
+	ClientMain::run_script(L"urbackup" + os_file_sep() + L"post_full_filebackup", L"\""+ backuppath + L"\"", logid);
 
 	if(c_has_error)
 		return false;

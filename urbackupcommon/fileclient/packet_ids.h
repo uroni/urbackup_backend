@@ -6,6 +6,7 @@ typedef unsigned char uchar;
 const uchar ID_GET_FILE=0;
 const uchar ID_GET_FILE_RESUME=6;
 const uchar ID_GET_FILE_RESUME_HASH=7;
+const uchar ID_GET_FILE_METADATA_ONLY=12;
 const uchar ID_GET_FILE_BLOCKDIFF=8;
 	const uchar ID_COULDNT_OPEN=0;
 	const uchar ID_FILESIZE=1;
@@ -26,6 +27,7 @@ const uchar ID_BLOCK_REQUEST=9;
 		const uchar ID_BLOCK_ERROR=18;
 const uchar ID_GET_FILE_HASH_AND_METADATA=10;
 		const uchar ID_FILE_HASH_AND_METADATA=17;
+const uchar ID_INFORM_METADATA_STREAM_END=11;
 
 
 //errors

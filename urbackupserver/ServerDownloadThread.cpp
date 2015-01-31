@@ -25,7 +25,7 @@
 #include "ClientMain.h"
 #include "../stringtools.h"
 #include "../common/data.h"
-#include "file_metadata.h"
+#include "../urbackupcommon/file_metadata.h"
 #include "server_settings.h"
 #include "server_cleanup.h"
 #include "FileBackup.h"
@@ -40,13 +40,13 @@ namespace
 
 ServerDownloadThread::ServerDownloadThread( FileClient& fc, FileClientChunked* fc_chunked, const std::wstring& backuppath, const std::wstring& backuppath_hashes, const std::wstring& last_backuppath, const std::wstring& last_backuppath_complete, bool hashed_transfer, bool save_incomplete_file, int clientid,
 	const std::wstring& clientname, bool use_tmpfiles, const std::wstring& tmpfile_path, const std::string& server_token, bool use_reflink, int backupid, bool r_incremental, IPipe* hashpipe_prepare, ClientMain* client_main,
-	int filesrv_protocol_version, int incremental_num)
+	int filesrv_protocol_version, int incremental_num, logid_t logid)
 	: fc(fc), fc_chunked(fc_chunked), backuppath(backuppath), backuppath_hashes(backuppath_hashes), 
 	last_backuppath(last_backuppath), last_backuppath_complete(last_backuppath_complete), hashed_transfer(hashed_transfer), save_incomplete_file(save_incomplete_file), clientid(clientid),
 	clientname(clientname),
 	use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), server_token(server_token), use_reflink(use_reflink), backupid(backupid), r_incremental(r_incremental), hashpipe_prepare(hashpipe_prepare), max_ok_id(0),
 	is_offline(false), client_main(client_main), filesrv_protocol_version(filesrv_protocol_version), skipping(false), queue_size(0),
-	all_downloads_ok(true), incremental_num(incremental_num)
+	all_downloads_ok(true), incremental_num(incremental_num), logid(logid)
 {
 	mutex = Server->createMutex();
 	cond = Server->createCondition();
@@ -177,13 +177,7 @@ void ServerDownloadThread::operator()( void )
 
 		bool ret = true;
 
-		if((curr.fileclient == EFileClient_Full ||
-			curr.fileclient == EFileClient_Chunked) &&
-			curr.predicted_filesize == 0 )
-		{
-			ret = touch_file(curr);
-		}
-		else if(curr.fileclient == EFileClient_Full)
+		if(curr.fileclient == EFileClient_Full)
 		{
 			ret = load_file(curr);
 		}
@@ -199,13 +193,23 @@ void ServerDownloadThread::operator()( void )
 		}
 	}
 
+	if(!is_offline && !skipping && client_main->getProtocolVersions().file_meta>0)
+	{
+		_u32 rc = fc.InformMetadataStreamEnd(server_token);
+
+		if(rc!=ERR_SUCCESS)
+		{
+			ServerLogger::Log(logid, L"Error informing client about metadata stream end. Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		}
+	}
+
 	std::sort(download_nok_ids.begin(), download_nok_ids.end());
 	std::sort(download_partial_ids.begin(), download_partial_ids.end());
 }
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
 	const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-	const FileMetadata& parent_metadata, bool is_script, bool at_front )
+	const FileMetadata& parent_metadata, bool is_script, bool is_dir, bool at_front )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -221,6 +225,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	ni.metadata = metadata;
 	ni.parent_metadata = parent_metadata;
 	ni.is_script = is_script;
+	ni.is_dir = is_dir;
 
 	IScopedLock lock(mutex);
 	if(!at_front)
@@ -259,6 +264,7 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, 
 	ni.metadata = metadata;
 	ni.parent_metadata = parent_metadata;
 	ni.is_script = is_script;
+	ni.is_dir = false;
 
 	IScopedLock lock(mutex);
 	dl_queue.push_back(ni);
@@ -303,23 +309,28 @@ void ServerDownloadThread::addToQueueStopShadowcopy(const std::wstring& fn)
 
 bool ServerDownloadThread::load_file(SQueueItem todl)
 {
-	ServerLogger::Log(clientid, L"Loading file \""+todl.fn+L"\"", LL_DEBUG);
-	IFile *fd=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
-	if(fd==NULL)
+	ServerLogger::Log(logid, L"Loading file \""+todl.fn+L"\"", LL_DEBUG);
+	IFile *fd=NULL;
+	if(!todl.is_dir)
 	{
-		ServerLogger::Log(clientid, L"Error creating temporary file 'fd' in load_file", LL_ERROR);
-		return false;
+		fd = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
+		if(fd==NULL)
+		{
+			ServerLogger::Log(logid, L"Error creating temporary file 'fd' in load_file", LL_ERROR);
+			return false;
+		}
 	}
+	
 
 	std::wstring cfn=getDLPath(todl);
 
-	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer);
+	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, false);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		fd->Seek(0);
-		rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer);
+		rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, false);
 		--hash_retries;
 	}
 
@@ -329,7 +340,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting complete file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, L"Error getting complete file \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 		{
 			IScopedLock lock(mutex);
 			all_downloads_ok=false;
@@ -337,9 +348,9 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_ERROR)
 			&& save_incomplete_file
-			&& fd->Size()>0 )
+			&& fd!=NULL && fd->Size()>0 )
 		{
-			ServerLogger::Log(clientid, L"Saving incomplete file.", LL_INFO);
+			ServerLogger::Log(logid, L"Saving incomplete file.", LL_INFO);
 			hash_file = true;
 
 			if(todl.id>max_ok_id)
@@ -352,7 +363,10 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		else
 		{
 			download_nok_ids.push_back(todl.id);
-			ClientMain::destroyTemporaryFile(fd);					
+			if(fd!=NULL)
+			{
+				ClientMain::destroyTemporaryFile(fd);
+			}			
 		}
 
 		if(rc==ERR_TIMEOUT || rc==ERR_ERROR || rc==ERR_BASE_DIR_LOST)
@@ -374,7 +388,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		hash_file=true;
 	}
 
-	if(hash_file)
+	if(hash_file && !todl.is_dir)
 	{
 		std::wstring os_curr_path=FileBackup::convertToOSPathFromFileClient(todl.os_path+L"/"+todl.short_fn);
 		std::wstring os_curr_hash_path=FileBackup::convertToOSPathFromFileClient(todl.os_path+L"/"+escape_metadata_fn(todl.short_fn));
@@ -401,7 +415,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 				}
 				if(file_old==NULL)
 				{
-					ServerLogger::Log(clientid, L"No old file for \""+todl.fn+L"\"", LL_DEBUG);
+					ServerLogger::Log(logid, L"No old file for \""+todl.fn+L"\"", LL_DEBUG);
 					filepath_old.clear();
 				}
 			}
@@ -496,7 +510,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
-			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.parent_metadata, todl.is_script, true);
+			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.parent_metadata, todl.is_script, todl.is_dir, true);
 			return true;
 		}
 	}
@@ -507,7 +521,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	}
 
 
-	ServerLogger::Log(clientid, L"Loading file patch for \""+todl.fn+L"\"", LL_DEBUG);
+	ServerLogger::Log(logid, L"Loading file patch for \""+todl.fn+L"\"", LL_DEBUG);
 
 	ScopedDeleteFile pfd_destroy(dlfiles.patchfile);
 	ScopedDeleteFile hash_tmp_destroy(dlfiles.hashoutput);
@@ -534,17 +548,17 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		dlfiles.orig_file->Seek(0);
-		dlfiles.patchfile=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
+		dlfiles.patchfile=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 		if(dlfiles.patchfile==NULL)
 		{
-			ServerLogger::Log(clientid, L"Error creating temporary file 'pfd' in load_file_patch", LL_ERROR);
+			ServerLogger::Log(logid, L"Error creating temporary file 'pfd' in load_file_patch", LL_ERROR);
 			return false;
 		}
 		pfd_destroy.reset(dlfiles.patchfile);
-		dlfiles.hashoutput=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
+		dlfiles.hashoutput=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 		if(dlfiles.hashoutput==NULL)
 		{
-			ServerLogger::Log(clientid, L"Error creating temporary file 'hash_tmp' in load_file_patch -2", LL_ERROR);
+			ServerLogger::Log(logid, L"Error creating temporary file 'hash_tmp' in load_file_patch -2", LL_ERROR);
 			return false;
 		}
 		hash_tmp_destroy.reset(dlfiles.hashoutput);
@@ -566,11 +580,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(clientid, L"Error getting file patch for \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
+		ServerLogger::Log(logid, L"Error getting file patch for \""+cfn+L"\" from "+clientname+L". Errorcode: "+widen(FileClient::getErrorString(rc))+L" ("+convert(rc)+L")", LL_ERROR);
 
 		if(rc==ERR_ERRORCODES)
 		{
-			ServerLogger::Log(clientid, "Remote Error: "+fc_chunked->getErrorcodeString(), LL_ERROR);
+			ServerLogger::Log(logid, "Remote Error: "+fc_chunked->getErrorcodeString(), LL_ERROR);
 		}
 
 		{
@@ -608,7 +622,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			&& dlfiles.patchfile->Size()>0
 			&& save_incomplete_file)
 		{
-			ServerLogger::Log(clientid, L"Saving incomplete file.", LL_INFO);
+			ServerLogger::Log(logid, L"Saving incomplete file.", LL_INFO);
 			hash_file=true;
 
 			if(todl.id>max_ok_id)
@@ -686,7 +700,7 @@ void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath,
 	metadata.serialize(data);
 	parent_metadata.serialize(data);
 
-	ServerLogger::Log(clientid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
+	ServerLogger::Log(logid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
 
 	Server->destroy(fd);
 	if(hashoutput!=NULL)
@@ -756,7 +770,7 @@ size_t ServerDownloadThread::getMaxOkId()
 	return max_ok_id;
 }
 
-std::string ServerDownloadThread::getQueuedFileFull(bool& metadata)
+std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& metadata)
 {
 	IScopedLock lock(mutex);
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
@@ -767,7 +781,7 @@ std::string ServerDownloadThread::getQueuedFileFull(bool& metadata)
 			&& it->predicted_filesize>0)
 		{
 			it->queued=true;
-			metadata=false;
+			metadata=FileClient::MetadataQueue_Data;
 			return Server->ConvertToUTF8(getDLPath(*it));
 		}
 	}
@@ -898,24 +912,24 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem 
 		}
 		if(file_old.get()==NULL)
 		{
-			ServerLogger::Log(clientid, L"No old file for \""+todl.fn+L"\"", LL_DEBUG);
+			ServerLogger::Log(logid, L"No old file for \""+todl.fn+L"\"", LL_DEBUG);
 			full_dl=true;
 			return dlfiles;
 		}
 		hashpath_old=last_backuppath_complete+os_file_sep()+L".hashes"+os_file_sep()+FileBackup::convertToOSPathFromFileClient(cfn_short);
 	}
 
-	IFile *pfd=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
+	IFile *pfd=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	if(pfd==NULL)
 	{
-		ServerLogger::Log(clientid, L"Error creating temporary file 'pfd' in load_file_patch", LL_ERROR);
+		ServerLogger::Log(logid, L"Error creating temporary file 'pfd' in load_file_patch", LL_ERROR);
 		return dlfiles;
 	}
 	ScopedDeleteFile pfd_delete(pfd);
-	IFile *hash_tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid);
+	IFile *hash_tmp=ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 	if(hash_tmp==NULL)
 	{
-		ServerLogger::Log(clientid, L"Error creating temporary file 'hash_tmp' in load_file_patch", LL_ERROR);
+		ServerLogger::Log(logid, L"Error creating temporary file 'hash_tmp' in load_file_patch", LL_ERROR);
 		return dlfiles;
 	}
 	ScopedDeleteFile hash_tmp_delete(pfd);
@@ -933,15 +947,15 @@ SPatchDownloadFiles ServerDownloadThread::preparePatchDownloadFiles( SQueueItem 
 		is_metadata_only(hashfile_old.get()) ) 
 		  && file_old.get()!=NULL )
 	{
-		ServerLogger::Log(clientid, L"Hashes for file \""+filepath_old+L"\" not available. Calulating hashes...", LL_DEBUG);
-		hashfile_old.reset(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, clientid));
+		ServerLogger::Log(logid, L"Hashes for file \""+filepath_old+L"\" not available. Calulating hashes...", LL_DEBUG);
+		hashfile_old.reset(ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid));
 		if(hashfile_old.get()==NULL)
 		{
-			ServerLogger::Log(clientid, L"Error creating temporary file 'hashfile_old' in load_file_patch", LL_ERROR);
+			ServerLogger::Log(logid, L"Error creating temporary file 'hashfile_old' in load_file_patch", LL_ERROR);
 			return dlfiles;
 		}
 		dlfiles.delete_chunkhashes=true;
-		BackupServerPrepareHash::build_chunk_hashs(file_old.get(), hashfile_old.get(), NULL, false, NULL, false);
+		build_chunk_hashs(file_old.get(), hashfile_old.get(), NULL, false, NULL, false);
 		hashfile_old->Seek(0);
 	}
 
@@ -1021,48 +1035,6 @@ void ServerDownloadThread::unqueueFileChunked( const std::string& remotefn )
 	}
 }
 
-bool ServerDownloadThread::touch_file( SQueueItem todl )
-{
-	std::wstring cfn_short=todl.os_path+L"/"+todl.short_fn;
-	if(cfn_short[0]=='/')
-		cfn_short.erase(0,1);
-
-	std::wstring os_curr_path=FileBackup::convertToOSPathFromFileClient(cfn_short);		
-	std::wstring dstpath=backuppath+os_file_sep()+os_curr_path;
-	std::wstring hashpath=backuppath_hashes+os_file_sep()+os_curr_path;
-
-	ServerLogger::Log(clientid, L"GT: Touching file \""+dstpath+L"\"", LL_DEBUG);
-
-	IFile* f = Server->openFile(os_file_prefix(dstpath), MODE_WRITE);
-	if(f!=NULL)
-	{
-		if(todl.id>max_ok_id)
-		{
-			max_ok_id=todl.id;
-		}
-		Server->destroy(f);
-
-		if(!write_file_metadata(hashpath, client_main, todl.metadata))
-		{
-			ServerLogger::Log(clientid, L"GT: Error writing file metadata to \""+hashpath+L"\"", LL_ERROR);
-			return false;
-		}
-
-		return true;
-	}
-	else
-	{
-		{
-			IScopedLock lock(mutex);
-			all_downloads_ok=false;
-		}
-
-		download_nok_ids.push_back(todl.id);
-		ServerLogger::Log(clientid, L"GT: Error creating file \""+dstpath+L"\"", LL_ERROR);
-		return false;
-	}
-}
-
 bool ServerDownloadThread::isAllDownloadsOk()
 {
 	IScopedLock lock(mutex);
@@ -1076,7 +1048,7 @@ bool ServerDownloadThread::logScriptOutput(std::wstring cfn, const SQueueItem &t
 
 	if(script_output=="err")
 	{
-		ServerLogger::Log(clientid, L"Error getting script output for command \""+todl.fn+L"\" (err response)", LL_ERROR);
+		ServerLogger::Log(logid, L"Error getting script output for command \""+todl.fn+L"\" (err response)", LL_ERROR);
 		return false;
 	}
 
@@ -1089,12 +1061,12 @@ bool ServerDownloadThread::logScriptOutput(std::wstring cfn, const SQueueItem &t
 
 		for(size_t k=0;k<lines.size();++k)
 		{
-			ServerLogger::Log(clientid, Server->ConvertToUTF8(todl.fn) + ": " + trim(lines[k]), retval!=0?LL_ERROR:LL_INFO);
+			ServerLogger::Log(logid, Server->ConvertToUTF8(todl.fn) + ": " + trim(lines[k]), retval!=0?LL_ERROR:LL_INFO);
 		}
 
 		if(retval!=0)
 		{
-			ServerLogger::Log(clientid, L"Script \""+todl.fn+L"\" return a nun-null value "+convert(retval)+L". Failing backup.", LL_ERROR);
+			ServerLogger::Log(logid, L"Script \""+todl.fn+L"\" return a nun-null value "+convert(retval)+L". Failing backup.", LL_ERROR);
 			return false;
 		}
 	}

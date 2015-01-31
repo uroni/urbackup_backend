@@ -2,14 +2,14 @@
 
 #include "../Interface/File.h"
 #include "../urbackupcommon/os_functions.h"
-
-void writeFileRepeat(IFile *f, const char *buf, size_t bsize);
+#include "file_metadata.h"
 
 void writeFileRepeat(IFile *f, const std::string &str);
 
 std::string escapeListName( const std::string& listname );
 
 void writeFileItem(IFile* f, SFile cf);
+void writeFileItem(IFile* f, SFile cf, const FileMetadata& metadata, const std::string& extra);
 
 
 class FileListParser

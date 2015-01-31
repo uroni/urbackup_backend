@@ -80,3 +80,11 @@ IPermissionCallback* FileServFactory::getPermissionCallback()
 {
 	return permission_callback;
 }
+
+IFileServ* FileServFactory::createFileServNoBind(const std::wstring &name, bool use_fqdn_default)
+{
+	bool *dostop=new bool;
+	*dostop=false;
+	FileServ *fs=new FileServ(dostop, name, ILLEGAL_THREADPOOL_TICKET, use_fqdn_default);
+	return fs;
+}

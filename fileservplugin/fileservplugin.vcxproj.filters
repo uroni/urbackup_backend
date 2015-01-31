@@ -84,6 +84,12 @@
     <ClCompile Include="PipeFileWin.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="PipeFileBase.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="FileMetadataPipe.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bufmgr.h">
@@ -159,6 +165,12 @@
       <Filter>Quelldateien</Filter>
     </ClInclude>
     <ClInclude Include="PipeSessions.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="PipeFileBase.h">
+      <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileMetadataPipe.h">
       <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>

@@ -26,11 +26,5 @@ const _i32 WINDOW_SIZE=512*1024; // 128 kbyte
 #define BACKGROUND_PRIORITY
 #define BACKUP_SEM
 
-#ifdef _WIN32
-const std::wstring testfilename=L"C:\\Windows\\Temp\\testfile.tmp";
-#else
-const std::wstring testfilename=L"/tmp/testfile.tmp";
-#endif
-
 #endif
 

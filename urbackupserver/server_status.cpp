@@ -20,12 +20,16 @@
 
 #include "server_status.h"
 #include "../Interface/Server.h"
+#include "../Interface/Pipe.h"
 #include "action_header.h"
 #include <time.h>
+#include <algorithm>
 
 IMutex *ServerStatus::mutex=NULL;
 std::map<std::wstring, SStatus> ServerStatus::status;
 int64 ServerStatus::last_status_update;
+size_t ServerStatus::curr_process_id = 0;
+
 
 int ServerStatus::server_nospc_stalled=0;
 bool ServerStatus::server_nospc_fatal=false;
@@ -41,25 +45,6 @@ void ServerStatus::init_mutex(void)
 void ServerStatus::destroy_mutex(void)
 {
 	Server->destroy(mutex);
-}
-
-void ServerStatus::setServerStatus(const SStatus &pStatus, bool setactive)
-{
-	IScopedLock lock(mutex);
-	SStatus *s=&status[pStatus.client];
-	s->hashqueuesize=pStatus.hashqueuesize;
-	s->prepare_hashqueuesize=pStatus.prepare_hashqueuesize;
-	s->starttime=pStatus.starttime;
-	s->pcdone=pStatus.pcdone;
-	s->has_status=true;
-	s->statusaction=pStatus.statusaction;
-	s->clientid=pStatus.clientid;
-	s->eta_ms = pStatus.eta_ms;
-	s->eta_set_time = pStatus.eta_set_time;
-	if(setactive)
-	{
-		last_status_update=Server->getTimeMS();
-	}
 }
 
 void ServerStatus::updateActive(void)
@@ -78,7 +63,6 @@ void ServerStatus::setOnline(const std::wstring &clientname, bool bonline)
 	}
 	s->online=bonline;
 	s->client=clientname;
-	s->done=false;
 	s->has_status=true;
 	s->r_online=bonline;
 	if(bonline)
@@ -96,13 +80,6 @@ void ServerStatus::setROnline(const std::wstring &clientname, bool bonline)
 	{
 		last_status_update=Server->getTimeMS();
 	}
-}
-
-void ServerStatus::setDone(const std::wstring &clientname, bool bdone)
-{
-	IScopedLock lock(mutex);
-	SStatus *s=&status[clientname];
-	s->done=bdone;
 }
 
 void ServerStatus::setIP(const std::wstring &clientname, unsigned int ip)
@@ -126,18 +103,25 @@ void ServerStatus::setCommPipe(const std::wstring &clientname, IPipe *p)
 	s->comm_pipe=p;
 }
 
-void ServerStatus::stopBackup(const std::wstring &clientname, bool b)
+void ServerStatus::stopProcess(const std::wstring &clientname, size_t id, bool b)
 {
 	IScopedLock lock(mutex);
-	SStatus *s=&status[clientname];
-	s->stop_backup=b;
+	SProcess* proc = getProcessInt(clientname, id);
+	if(proc!=NULL)
+	{
+		proc->stop=true;
+	}
 }
 
-bool ServerStatus::isBackupStopped(const std::wstring &clientname)
+bool ServerStatus::isProcessStopped(const std::wstring &clientname, size_t id)
 {
 	IScopedLock lock(mutex);
-	SStatus *s=&status[clientname];
-	return s->stop_backup;
+	SProcess* proc = getProcessInt(clientname, id);
+	if(proc!=NULL)
+	{
+		return proc->stop;
+	}
+	return false;
 }
 
 std::vector<SStatus> ServerStatus::getStatus(void)
@@ -212,6 +196,169 @@ void ServerStatus::setOSVersionString(const std::wstring &clientname, const std:
 	s->os_version_string=os_version_string;
 }
 
+bool ServerStatus::sendToCommPipe( const std::wstring &clientname, const std::string& msg )
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	if(s->comm_pipe==NULL)
+		return false;
+
+	s->comm_pipe->Write(msg);
+
+	return true;
+}
+
+size_t ServerStatus::startProcess( const std::wstring &clientname, SStatusAction action )
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+
+	SProcess new_proc(curr_process_id++, action);
+	s->processes.push_back(new_proc);
+
+	return new_proc.id;
+}
+
+bool ServerStatus::stopProcess( const std::wstring &clientname, size_t id )
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+
+	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none));
+
+	if(it!=s->processes.end())
+	{
+		s->processes.erase(it);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+SProcess* ServerStatus::getProcessInt( const std::wstring &clientname, size_t id )
+{
+	SStatus *s=&status[clientname];
+
+	std::vector<SProcess>::iterator it = std::find(s->processes.begin(), s->processes.end(), SProcess(id, sa_none));
+
+	if(it!=s->processes.end())
+	{
+		return &(*it);
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+void ServerStatus::setProcessQueuesize( const std::wstring &clientname, size_t id, unsigned int prepare_hashqueuesize, unsigned int hashqueuesize )
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if(proc!=NULL)
+	{
+		proc->prepare_hashqueuesize = prepare_hashqueuesize;
+		proc->hashqueuesize = hashqueuesize;
+	}
+}
+
+void ServerStatus::setProcessStarttime( const std::wstring &clientname, size_t id, int64 starttime )
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if(proc!=NULL)
+	{
+		proc->starttime = starttime;
+	}
+}
+
+void ServerStatus::setProcessEta( const std::wstring &clientname, size_t id, int64 eta_ms, int64 eta_set_time )
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if(proc!=NULL)
+	{
+		proc->eta_ms = eta_ms;
+		proc->eta_set_time = eta_set_time;
+	}
+}
+
+void ServerStatus::setProcessEta( const std::wstring &clientname, size_t id, int64 eta_ms )
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if(proc!=NULL)
+	{
+		proc->eta_ms = eta_ms;
+	}
+}
+
+bool ServerStatus::removeStatus( const std::wstring &clientname )
+{
+	IScopedLock lock(mutex);
+
+	std::map<std::wstring, SStatus>::iterator it=status.find(clientname);
+
+	if(it!=status.end())
+	{
+		status.erase(it);
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void ServerStatus::setProcessPcDone( const std::wstring &clientname, size_t id, int pcdone )
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if(proc!=NULL)
+	{
+		proc->pcdone = pcdone;
+	}
+}
+
+SProcess ServerStatus::getProcess( const std::wstring &clientname, size_t id )
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+	if(proc!=NULL)
+	{
+		return *proc;
+	}
+	else
+	{
+		return SProcess(0, sa_none);
+	}
+}
+
+void ServerStatus::setProcessEtaSetTime( const std::wstring &clientname, size_t id, int64 eta_set_time )
+{
+	IScopedLock lock(mutex);
+	SProcess* proc = getProcessInt(clientname, id);
+
+	if(proc!=NULL)
+	{
+		proc->eta_set_time = eta_set_time;
+	}
+}
+
+void ServerStatus::setClientId( const std::wstring &clientname, int clientid)
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->clientid = clientid;
+}
+
 ACTION_IMPL(server_status)
 {
 #ifndef _DEBUG
@@ -225,62 +372,59 @@ ACTION_IMPL(server_status)
 	
 	for(size_t i=0;i<status.size();++i)
 	{
-		if(status[i].done==false)
+		/*ITable *tab=tmpl->getTable(L"CLIENTS."+convert(i));
+		tab->addString(L"NAME", status[i].client );
+		if(status[i].has_status)
 		{
-			ITable *tab=tmpl->getTable(L"CLIENTS."+convert(i));
-			tab->addString(L"NAME", status[i].client );
-			if(status[i].has_status)
-			{
-				tab->addString(L"PCDONE", convert(status[i].pcdone) );
-				tab->addString(L"HASHQUEUESIZE", convert(status[i].hashqueuesize) );
-				tab->addString(L"HASHQUEUE_PREPARE", convert(status[i].prepare_hashqueuesize) );
-				tab->addString(L"ONLINE", convert(status[i].online) );
+			tab->addString(L"PCDONE", convert(status[i].pcdone) );
+			tab->addString(L"HASHQUEUESIZE", convert(status[i].hashqueuesize) );
+			tab->addString(L"HASHQUEUE_PREPARE", convert(status[i].prepare_hashqueuesize) );
+			tab->addString(L"ONLINE", convert(status[i].online) );
 
-				time_t tt=(time_t)(time(0)-((Server->getTimeMS()-status[i].starttime)/1000));
+			time_t tt=(time_t)(time(0)-((Server->getTimeMS()-status[i].starttime)/1000));
 #ifdef _WIN32
-				struct tm ttm;
-				localtime_s(&ttm, &tt);
-				char buf[1000];
-				strftime(buf, 1000, "%d.%m.%Y %H:%M",  &ttm);
+			struct tm ttm;
+			localtime_s(&ttm, &tt);
+			char buf[1000];
+			strftime(buf, 1000, "%d.%m.%Y %H:%M",  &ttm);
 #else
-				struct tm *ttm=localtime(&tt);
-				char buf[1000];
-				strftime(buf, 1000, "%d.%m.%Y %H:%M", ttm);
+			struct tm *ttm=localtime(&tt);
+			char buf[1000];
+			strftime(buf, 1000, "%d.%m.%Y %H:%M", ttm);
 #endif
 
-				tab->addString(L"STARTTIME", widen((std::string)buf) );
-				tab->addString(L"DONE", convert(status[i].done) );
-				std::wstring action;
-				switch(status[i].statusaction)
-				{
-				case sa_none:
-					action=L"none"; break;
-				case sa_incr_file:
-					action=L"incr_file"; break;
-				case sa_full_file:
-					action=L"full_file"; break;
-				case sa_incr_image:
-					action=L"incr_image"; break;
-				case sa_full_image:
-					action=L"full_image"; break;
-				case sa_resume_full_file:
-					action=L"resume_full_file"; break;
-				case sa_resume_incr_file:
-					action=L"resume_incr_file"; break;
-				}
-				tab->addString(L"ACTION", action);
-			}
-			else
+			tab->addString(L"STARTTIME", widen((std::string)buf) );
+			tab->addString(L"DONE", convert(status[i].done) );
+			std::wstring action;
+			switch(status[i].statusaction)
 			{
-				tab->addString(L"PCDONE", L"&nbsp;");
-				tab->addString(L"HASHQUEUESIZE", L"&nbsp;");
-				tab->addString(L"HASHQUEUE_PREPARE", L"&nbsp;");
-				tab->addString(L"ONLINE", convert(status[i].online));
-				tab->addString(L"STARTTIME", L"&nbsp;");
-				tab->addString(L"DONE", L"&nbsp;");
-				tab->addString(L"ACTION", L"&nbsp;");
+			case sa_none:
+				action=L"none"; break;
+			case sa_incr_file:
+				action=L"incr_file"; break;
+			case sa_full_file:
+				action=L"full_file"; break;
+			case sa_incr_image:
+				action=L"incr_image"; break;
+			case sa_full_image:
+				action=L"full_image"; break;
+			case sa_resume_full_file:
+				action=L"resume_full_file"; break;
+			case sa_resume_incr_file:
+				action=L"resume_incr_file"; break;
 			}
+			tab->addString(L"ACTION", action);
 		}
+		else
+		{
+			tab->addString(L"PCDONE", L"&nbsp;");
+			tab->addString(L"HASHQUEUESIZE", L"&nbsp;");
+			tab->addString(L"HASHQUEUE_PREPARE", L"&nbsp;");
+			tab->addString(L"ONLINE", convert(status[i].online));
+			tab->addString(L"STARTTIME", L"&nbsp;");
+			tab->addString(L"DONE", L"&nbsp;");
+			tab->addString(L"ACTION", L"&nbsp;");
+		}*/
 	}
 
 	Server->Write(tid, tmpl->getData());

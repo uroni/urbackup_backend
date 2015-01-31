@@ -32,21 +32,17 @@ extern IUrlFactory *url_fak;
 Backup::Backup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool is_file_backup, bool is_incremental)
 	: client_main(client_main), clientid(clientid), clientname(clientname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
-	log_backup(true), has_early_error(false), should_backoff(true), db(NULL)
+	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0)
 {
-	status = ServerStatus::getStatus(clientname);
+	
 }
 
 void Backup::operator()()
 {
+	logid = ServerLogger::getLogId(clientid);
 	db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	server_settings.reset(new ServerSettings(db, clientid));
 	backup_dao.reset(new ServerBackupDao(db));
-
-	if(log_action!=LogAction_NoLogging)
-	{
-		ServerLogger::reset(clientid);
-	}
 
 	ScopedActiveThread sat;
 
@@ -56,41 +52,37 @@ void Backup::operator()()
 		{
 			if(r_resumed)
 			{
-				status.statusaction=sa_resume_incr_file;
+				status_id = ServerStatus::startProcess(clientname, sa_resume_incr_file);
 			}
 			else
 			{
-				status.statusaction=sa_incr_file;
+				status_id = ServerStatus::startProcess(clientname, sa_incr_file);
 			}
 		}
 		else
 		{
 			if(r_resumed)
 			{
-				status.statusaction=sa_resume_full_file;
+				status_id = ServerStatus::startProcess(clientname, sa_resume_full_file);
 			}
 			else
 			{
-				status.statusaction=sa_full_file;
+				status_id = ServerStatus::startProcess(clientname, sa_full_file);
 			}
 		}
-		status.pcdone=-1;
 	}
 	else
 	{
 		if(r_incremental)
 		{
-			status.statusaction=sa_incr_image;
+			status_id = ServerStatus::startProcess(clientname, sa_incr_image);
 		}
 		else
 		{
-			status.statusaction=sa_full_image;
+			status_id = ServerStatus::startProcess(clientname, sa_full_image);
 		}
-		status.pcdone=0;
+		ServerStatus::setProcessPcDone(clientname, status_id, 0);
 	}
-
-	ServerStatus::setServerStatus(status);
-	ServerStatus::stopBackup(clientname, false);
 
 	createDirectoryForClient();
 
@@ -105,14 +97,14 @@ void Backup::operator()()
 
 	if(!has_early_error && log_action!=LogAction_NoLogging)
 	{
-		ServerLogger::Log(clientid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(Server->getTimeMS()-backup_starttime)), LL_INFO);
+		ServerLogger::Log(logid, L"Time taken for backing up client "+clientname+L": "+widen(PrettyPrintTime(Server->getTimeMS()-backup_starttime)), LL_INFO);
 		if(!backup_result)
 		{
-			ServerLogger::Log(clientid, "Backup failed", LL_ERROR);
+			ServerLogger::Log(logid, "Backup failed", LL_ERROR);
 		}
 		else
 		{
-			ServerLogger::Log(clientid, "Backup succeeded", LL_INFO);
+			ServerLogger::Log(logid, "Backup succeeded", LL_INFO);
 		}
 
 		ServerCleanupThread::updateStats(false);
@@ -123,11 +115,8 @@ void Backup::operator()()
 		saveClientLogdata(is_file_backup?0:1, r_incremental?1:0, backup_result && !has_early_error, r_resumed); 
 	}
 
-	status.pcdone=-1;
-	status.hashqueuesize=0;
-	status.prepare_hashqueuesize=0;
-	status.statusaction=sa_none;
-	ServerStatus::setServerStatus(status);
+	ServerLogger::reset(logid);	
+	ServerStatus::stopProcess(clientname, status_id);
 
 	server_settings.reset();
 	backup_dao.reset();
@@ -152,16 +141,14 @@ void Backup::saveClientLogdata(int image, int incremental, bool r_success, bool 
 	int errors=0;
 	int warnings=0;
 	int infos=0;
-	std::wstring logdata=ServerLogger::getLogdata(clientid, errors, warnings, infos);
+	std::wstring logdata=ServerLogger::getLogdata(logid, errors, warnings, infos);
 
 	backup_dao->saveBackupLog(clientid, errors, warnings, infos, is_file_backup?0:1,
-		r_incremental?1:0, r_resumed?1:0);
+		r_incremental?1:0, r_resumed?1:0, 0);
 
 	backup_dao->saveBackupLogData(db->getLastInsertID(), logdata);
 
 	sendLogdataMail(r_success, image, incremental, resumed, errors, warnings, infos, logdata);
-
-	ServerLogger::reset(clientid);
 }
 
 void Backup::sendLogdataMail(bool r_success, int image, int incremental, bool resumed, int errors, int warnings, int infos, std::wstring &data)

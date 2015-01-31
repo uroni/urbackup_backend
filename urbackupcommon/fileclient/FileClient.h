@@ -14,7 +14,7 @@
 #define UDP_SOURCE_PORT 35623
 
 
-#define BUFFERSIZE 4096
+#define BUFFERSIZE 32768
 #define NBUFFERS   32
 #define NUM_FILECLIENTS 5
 #define VERSION 36
@@ -49,10 +49,17 @@ public:
 			virtual bool handle_not_enough_space(const std::wstring &path)=0;
 		};
 
+		enum MetadataQueue
+		{
+			MetadataQueue_Data,
+			MetadataQueue_Metadata,
+			MetadataQueue_MetadataAndHash
+		};
+
 		class QueueCallback
 		{
 		public:
-			virtual std::string getQueuedFileFull(bool& metadata) = 0;
+			virtual std::string getQueuedFileFull(MetadataQueue& metadata) = 0;
 			virtual void unqueueFileFull(const std::string& fn) = 0;
 			virtual void resetQueueFull() = 0;
 		};
@@ -84,9 +91,11 @@ public:
 		_u32 Connect(IPipe *cp);
 
         //---needs Connection
-        _u32 GetFile(std::string remotefn, IFile *file, bool hashed);
+        _u32 GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only);
 
 		_u32 GetFileHashAndMetadata(std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified);
+
+		_u32 InformMetadataStreamEnd(const std::string& server_token);
 
 		void addThrottler(IPipeThrottler *throttler);
 

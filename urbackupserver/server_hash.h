@@ -11,6 +11,8 @@
 #include "FileIndex.h"
 #include "dao/ServerBackupDao.h"
 #include <vector>
+#include "../urbackupcommon/chunk_hasher.h"
+#include "server_log.h"
 
 
 class FileMetadata;
@@ -38,7 +40,7 @@ public:
 		EAction_Copy
 	};
 
-	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles);
+	BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid);
 	~BackupServerHash(void);
 
 	void operator()(void);
@@ -143,4 +145,6 @@ private:
 	std::wstring backupfolder;
 	bool old_backupfolders_loaded;
 	std::vector<std::wstring> old_backupfolders;
+
+	logid_t logid;
 };
