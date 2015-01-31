@@ -104,32 +104,25 @@ void ServerDownloadThread::operator()( void )
 		{
 			if(curr.fileclient== EFileClient_Chunked)
 			{
-				ServerLogger::Log(clientid, L"Copying incomplete file \"" + curr.fn+ L"\"", LL_INFO);
-				
+				ServerLogger::Log(logid, L"Copying incomplete file \"" + curr.fn+ L"\"", LL_DEBUG);								
 				bool full_dl = false;
 				
 				if(!curr.patch_dl_files.prepared)
 				{
 					curr.patch_dl_files = preparePatchDownloadFiles(curr, full_dl);
-				}
-				
+				}				
 
 				if(!full_dl && curr.patch_dl_files.prepared && curr.patch_dl_files.orig_file!=NULL)
 				{
 					if(link_or_copy_file(curr))
 					{
 						download_partial_ids.push_back(curr.id);
-						
-						if(curr.id>max_ok_id)
-						{
-							max_ok_id=curr.id;
-						}
+						max_ok_id = (std::max)(max_ok_id, curr.id);
 					}
 					else
-		    			{
-						ServerLogger::Log(clientid, L"Copying incomplete file \""+curr.fn+L"\" failed", LL_WARNING);
-						download_nok_ids.push_back(curr.id);
-						
+		    		{
+						ServerLogger::Log(logid, L"Copying incomplete file \""+curr.fn+L"\" failed", LL_WARNING);
+						download_nok_ids.push_back(curr.id);					
 						
 						IScopedLock lock(mutex);
 						all_downloads_ok=false;
@@ -139,7 +132,7 @@ void ServerDownloadThread::operator()( void )
 				}
 			}
 				
-		    	download_nok_ids.push_back(curr.id);
+		    download_nok_ids.push_back(curr.id);
 
 			{
 				IScopedLock lock(mutex);
@@ -353,11 +346,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			ServerLogger::Log(logid, L"Saving incomplete file.", LL_INFO);
 			hash_file = true;
 
-			if(todl.id>max_ok_id)
-			{
-				max_ok_id=todl.id;
-			}
-
+			max_ok_id = (std::max)(max_ok_id, todl.id);
 			download_partial_ids.push_back(todl.id);
 		}
 		else
@@ -381,10 +370,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			script_ok = logScriptOutput(cfn, todl);
 		}
 
-		if(todl.id>max_ok_id)
-		{
-			max_ok_id=todl.id;
-		}
+		max_ok_id = (std::max)(max_ok_id, todl.id);
 		hash_file=true;
 	}
 
@@ -594,7 +580,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if( rc==ERR_BASE_DIR_LOST && save_incomplete_file)
 		{
-			ServerLogger::Log(clientid, L"Saving incomplete file. (2)", LL_INFO);
+			ServerLogger::Log(logid, L"Saving incomplete file. (2)", LL_INFO);
 			
 			pfd_destroy.release();
 			hash_tmp_destroy.release();
@@ -604,11 +590,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			
 			if(link_or_copy_file(todl))
 			{
-				if(todl.id>max_ok_id)
-				{
-					max_ok_id=todl.id;
-				}
-				
+				max_ok_id = (std::max)(max_ok_id, todl.id);
 				download_partial_ids.push_back(todl.id);
 			}
 			else
@@ -625,11 +607,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			ServerLogger::Log(logid, L"Saving incomplete file.", LL_INFO);
 			hash_file=true;
 
-			if(todl.id>max_ok_id)
-			{
-				max_ok_id=todl.id;
-			}
-
+			max_ok_id = (std::max)(max_ok_id, todl.id);
 			download_partial_ids.push_back(todl.id);
 		}
 		else
@@ -645,10 +623,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			script_ok = logScriptOutput(cfn, todl);
 		}
 
-		if(todl.id>max_ok_id)
-		{
-			max_ok_id=todl.id;
-		}
+		max_ok_id = (std::max)(max_ok_id, todl.id);
 		hash_file=true;
 	}
 

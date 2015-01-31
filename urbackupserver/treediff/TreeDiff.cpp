@@ -21,7 +21,8 @@
 #include <algorithm>
 
 std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error,
-	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees)
+	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
+	std::vector<size_t> *modified_inplace_ids)
 {
 	std::vector<size_t> ret;
 
@@ -39,7 +40,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 		return ret;
 	}
 
-	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], ret);
+	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], ret, modified_inplace_ids);
 	if(deleted_ids!=NULL)
 	{
 		gatherDeletes(&(*r1.getNodes())[0], *deleted_ids);
@@ -53,10 +54,16 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 
 	std::sort(ret.begin(), ret.end());
 
+	if(modified_inplace_ids!=NULL)
+	{
+		std::sort(modified_inplace_ids->begin(), modified_inplace_ids->end());
+	}
+
 	return ret;
 }
 
-void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diffs)
+void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diffs,
+	std::vector<size_t> *modified_inplace_ids)
 {
 	size_t nc_2=t2->getNumChildren();
 	size_t nc_1=t1->getNumChildren();
@@ -65,16 +72,22 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 	while(c2!=NULL)
 	{		
 		bool found=false;
+		bool name_found=false;
 		TreeNode *c1=t1->getFirstChild();
 		while(c1!=NULL)
 		{
-			if(c1->equals(*c2))
+			if(c1->nameEquals(*c2))
 			{
-				gatherDiffs(c1, c2, diffs);
-				c2->setMappedNode(c1);
-				c1->setMappedNode(c2);
-				found=true;
-				break;
+				name_found=true;
+
+				if(c1->dataEquals(*c2))
+				{
+					gatherDiffs(c1, c2, diffs, modified_inplace_ids);
+					c2->setMappedNode(c1);
+					c1->setMappedNode(c2);
+					found=true;
+					break;
+				}
 			}
 			c1=c1->getNextSibling();
 		}
@@ -86,6 +99,11 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 			{
 				subtreeChanged(c2);
 				did_subtree_change=true;
+			}
+
+			if(name_found && modified_inplace_ids!=NULL)
+			{
+				modified_inplace_ids->push_back(c2->getId());
 			}
 		}
 

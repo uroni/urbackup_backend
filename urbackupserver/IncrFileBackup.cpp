@@ -33,6 +33,7 @@
 #include "../common/adler32.h"
 #include "../common/data.h"
 #include "FullFileBackup.h"
+#include <algorithm>
 
 extern std::string server_identity;
 extern std::string server_token;
@@ -224,8 +225,10 @@ bool IncrFileBackup::doFileBackup()
 	std::vector<size_t> large_unchanged_subtrees;
 	std::vector<size_t> *large_unchanged_subtrees_ref=NULL;
 	if(use_directory_links) large_unchanged_subtrees_ref=&large_unchanged_subtrees;
+	std::vector<size_t> modified_inplace_ids;
 
-	std::vector<size_t> diffs=TreeDiff::diffTrees(clientlistName(group), wnarrow(tmpfilename), error, deleted_ids_ref, large_unchanged_subtrees_ref);
+	std::vector<size_t> diffs=TreeDiff::diffTrees(clientlistName(group), wnarrow(tmpfilename),
+		error, deleted_ids_ref, large_unchanged_subtrees_ref, &modified_inplace_ids);
 
 	if(error)
 	{
@@ -359,6 +362,7 @@ bool IncrFileBackup::doFileBackup()
 	_i64 filelist_size=tmp->Size();
 	_i64 filelist_currpos=0;
 	int indir_currdepth=0;
+	std::vector<size_t> download_nok_ids;
 
 	std::stack<FileMetadata> dir_metadata;
 
@@ -755,16 +759,23 @@ bool IncrFileBackup::doFileBackup()
 
 						if(!f_ok)
 						{
-							if(intra_file_diffs)
+							if(!r_offline || hasChange(line, modified_inplace_ids))
 							{
-								server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-									metadata, parent_metadata, script_dir);
+								if(intra_file_diffs)
+								{
+									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
+										metadata, parent_metadata, script_dir);
+								}
+								else
+								{
+									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
+										metadata, parent_metadata, script_dir, false);
+								}
 							}
 							else
 							{
-								server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-									metadata, parent_metadata, script_dir, false);
-							}							
+								download_nok_ids.push_back(line);
+							}
 						}
 					}
 					else if(!use_snapshots) //is not changed
@@ -920,6 +931,9 @@ bool IncrFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, L"Writing new file list...", LL_INFO);
 
+	std::sort(download_nok_ids.begin(), download_nok_ids.end());
+
+	size_t max_ok_id = server_download->getMaxOkId();
 	tmp->Seek(0);
 	line = 0;
 	list_parser.reset();
@@ -934,7 +948,9 @@ bool IncrFileBackup::doFileBackup()
 				{
 					writeFileItem(clientlist, cf);
 				}
-				else if( server_download->isDownloadOk(line) )
+				else if( line<=max_ok_id &&
+					 server_download->isDownloadOk(line) &&
+					!std::binary_search(download_nok_ids.begin(), download_nok_ids.end(), line))
 				{
 					if(server_download->isDownloadPartial(line))
 					{
