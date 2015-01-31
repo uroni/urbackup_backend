@@ -110,12 +110,11 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 					else
 					{
 						os_path += Server->ConvertToUnicode(fs_toks[i]);
-					}
-					
+					}					
 				}
 			}
 
-			std::auto_ptr<IFile> output_f(Server->openFile(os_file_prefix(backupdir+os_file_sep()+os_path), MODE_WRITE));
+			std::auto_ptr<IFile> output_f(Server->openFile(os_file_prefix(backupdir+os_file_sep()+os_path), MODE_RW));
 
 			if(output_f.get()==NULL)
 			{
@@ -123,16 +122,25 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 				return false;
 			}
 
-			if(!output_f->Seek(output_f->Size()))
+			int64 offset = os_metadata_offset(output_f.get());
+
+			if(offset==-1)
+			{
+				ServerLogger::Log(logid, L"Error saving metadata. Metadata offset cannot be calculated at \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
+				return false;
+			}
+
+			if(!output_f->Seek(offset))
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Could not seek to end of file \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
 				return false;
 			}
 
+			int64 metadata_size=0;
 			bool ok=false;
 			if(ch & ID_METADATA_OS_WIN)
 			{
-				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), cb);
+				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), metadata_size, cb);
 			}
 
 			if(!ok)
@@ -140,6 +148,11 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 				ServerLogger::Log(logid, L"Error saving metadata. Could not save OS specific metadata to \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
 				return false;
 			}			
+			else if(output_f->Size()>metadata_size)
+			{
+				output_f.reset(NULL);
+				os_file_truncate(os_file_prefix(backupdir+os_file_sep()+os_path), metadata_size);
+			}
 		}
 
 	} while (true);
@@ -161,8 +174,9 @@ namespace
 	const size_t metadata_id_size = 4+4+8+4;
 }
 
-bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, INotEnoughSpaceCallback *cb)
+bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb)
 {
+	metadata_size=0;
 	while(true) 
 	{
 		char cont = 0;
@@ -171,6 +185,13 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 			ServerLogger::Log(logid, L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
 			return false;
 		}
+
+		if(!writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&cont), sizeof(cont), cb))
+		{
+			ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (cont)", LL_ERROR);
+			return false;
+		}
+		++metadata_size;
 
 		if(cont==0)
 		{
@@ -191,6 +212,8 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 			return false;
 		}
 
+		metadata_size+=metadata_id_size;
+
 		if(stream_id.dwStreamNameSize>0)
 		{
 			std::vector<char> stream_name;
@@ -207,6 +230,8 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 				ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" -2", LL_ERROR);
 				return false;
 			}
+
+			metadata_size+=stream_name.size();
 		}	
 
 		int64 curr_pos=0;
@@ -226,6 +251,8 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 				ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" -3", LL_ERROR);
 				return false;
 			}
+
+			metadata_size+=toread;
 
 			curr_pos+=toread;
 		}

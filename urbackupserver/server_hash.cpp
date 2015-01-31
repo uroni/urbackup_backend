@@ -18,6 +18,7 @@
 #include "server_hash.h"
 #include "server_prepare_hash.h"
 #include "server_settings.h"
+#include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "../Interface/Server.h"
 #include "../Interface/File.h"
 #include "../Interface/Mutex.h"
@@ -548,6 +549,14 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 									has_error=true;
 									hash_fn.clear();
 								}
+								else
+								{
+									if(!write_file_metadata(hash_fn, this, metadata))
+									{
+										ServerLogger::Log(logid, "Error writing file metadata -2", LL_ERROR);
+										has_error=true;
+									}
+								}
 								Server->destroy(ctf_hash);
 							}
 							else
@@ -595,67 +604,56 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 				rsize=0;
 			}
 
-			bool do_write_metadata=false;
-			if(!existing_file.hashpath.empty() &&
-				has_metadata(existing_file.hashpath, metadata) )
-			{
-				b=os_create_hardlink(os_file_prefix(hash_fn), os_file_prefix(existing_file.hashpath), use_snapshots, NULL);
-				if(!b)
-				{
-					IFile *ctf=Server->openFile(os_file_prefix(existing_file.hashpath), MODE_READ);
-					if(ctf==NULL)
-					{
-						ServerLogger::Log(logid, "HT: Hardlinking hash file failed (File doesn't exist)", LL_DEBUG);
+			bool write_metadata=false;
 
-						if(!hashoutput_fn.empty())
-						{
-							IFile *src=openFileRetry(Server->ConvertToUnicode(hashoutput_fn), MODE_READ);
-							if(src!=NULL)
-							{
-								if(!copyFile(src, hash_fn))
-								{
-									ServerLogger::Log(logid, "Error copying hashoutput to destination -1", LL_ERROR);
-									has_error=true;
-									hash_fn.clear();
-								}
-								Server->destroy(src);
-							}
-							else
-							{
-								ServerLogger::Log(logid, "HT: Error opening hashoutput", LL_ERROR);
-								has_error=true;
-								hash_fn.clear();
-							}
-						}
-						else
-						{
-							do_write_metadata=true;
-						}
+			if(!hashoutput_fn.empty())
+			{
+				IFile *src=openFileRetry(Server->ConvertToUnicode(hashoutput_fn), MODE_READ);
+				if(src!=NULL)
+				{
+					if(!copyFile(src, hash_fn))
+					{
+						ServerLogger::Log(logid, "Error copying hashoutput to destination -1", LL_ERROR);
+						has_error=true;
+						hash_fn.clear();
 					}
 					else
 					{
-						if(!copyFile(ctf, hash_fn))
-						{
-							ServerLogger::Log(logid, "Error copying hashfile to destination -2", LL_ERROR);
-							has_error=true;
-							hash_fn.clear();
-						}
-						Server->destroy(ctf);
+						write_metadata=true;
 					}
+					Server->destroy(src);
+				}
+				else
+				{
+					ServerLogger::Log(logid, "HT: Error opening hashoutput", LL_ERROR);
+					has_error=true;
+					hash_fn.clear();
 				}
 			}
-			else
+			else if(!existing_file.hashpath.empty())
 			{
-				do_write_metadata=true;
+				IFile *ctf=openFileRetry(os_file_prefix(existing_file.hashpath), MODE_READ);
+				if(ctf!=NULL)
+				{
+					if(!copyFile(ctf, hash_fn))
+					{
+						ServerLogger::Log(logid, "Error copying hashfile to destination -2", LL_ERROR);
+						has_error=true;
+						hash_fn.clear();
+					}
+					else
+					{
+						os_file_truncate(hash_fn, get_hashdata_size(t_filesize));
+						write_metadata=true;
+					}
+					Server->destroy(ctf);
+				}
 			}
 
-			if(do_write_metadata)
+			if(write_metadata && !write_file_metadata(hash_fn, this, metadata))
 			{
-				if(!write_file_metadata(hash_fn, this, metadata))
-				{
-					ServerLogger::Log(logid, "Error writing file metadata -1", LL_ERROR);
-					has_error=true;
-				}
+				ServerLogger::Log(logid, "Error writing file metadata -1", LL_ERROR);
+				has_error=true;
 			}
 
 			copy=false;

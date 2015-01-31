@@ -196,10 +196,11 @@ void ServerChannelThread::operator()(void)
 					tcpstack.AddData((char*)ret.c_str(), ret.size());
 
 					size_t packetsize;
-					char *pck=tcpstack.getPacket(&packetsize);
-					if(pck!=NULL && packetsize>0)
+					char* pck;
+					while( (pck=tcpstack.getPacket(&packetsize))!=NULL && packetsize>0)
 					{
 						ret.assign(pck, pck+packetsize);
+						Server->Log("Channel message: "+ret, LL_DEBUG);
 						delete [] pck;
 						lasttime=Server->getTimeMS();
 						std::string r=processMsg(ret);

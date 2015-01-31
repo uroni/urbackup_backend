@@ -25,6 +25,11 @@ namespace
 
 int64 get_hashdata_size(int64 hashfilesize)
 {
+	if(hashfilesize==-1)
+	{
+		return chunkhash_file_off;
+	}
+
 	int64 num_chunks = hashfilesize/c_checkpoint_dist;
 	int64 size = chunkhash_file_off+num_chunks*chunkhash_single_size;
 	if(hashfilesize%c_checkpoint_dist!=0)

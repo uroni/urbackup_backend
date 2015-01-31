@@ -45,6 +45,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
+#include <assert.h>
 
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
@@ -421,7 +422,12 @@ bool CClientThread::ProcessPacket(CRData *data)
 						break;
 					}
 				}
-				else if(s_filename.find("|"))
+				else if(next(s_filename, 0, "clientdl/"))
+				{
+					PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
+						s_filename, ident, ident);
+				}
+				else if(s_filename.find("|")!=std::string::npos)
 				{
 					PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
 						getafter("|",s_filename), getuntil("|", s_filename), ident);
@@ -476,11 +482,18 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(next_checkpoint>curr_filesize)
 					next_checkpoint=curr_filesize;
 
+				BY_HANDLE_FILE_INFORMATION fi;
+				if(GetFileInformationByHandle(hFile, &fi)==TRUE &&
+					fi.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				{
+					curr_filesize = 0;
+				}
+
 				if( offset_set==false || id==ID_GET_FILE_RESUME || id==ID_GET_FILE_RESUME_HASH )
 				{
 					CWData data;
 					data.addUChar(ID_FILESIZE);
-					data.addUInt64(little_endian(filesize.QuadPart));
+					data.addUInt64(little_endian(curr_filesize));
 
 					int rc=SendInt(data.getDataPtr(), data.getDataSize());
 					if(rc==SOCKET_ERROR)
@@ -492,12 +505,14 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 				}
 
-				if(filesize.QuadPart==0 || id==ID_GET_FILE_METADATA_ONLY)
+				if(curr_filesize==0 || id==ID_GET_FILE_METADATA_ONLY)
 				{
 					CloseHandle(hFile);
 					hFile=INVALID_HANDLE_VALUE;
 					break;
 				}
+
+				assert(!(GetFileAttributesW(filename.c_str()) & FILE_ATTRIBUTE_DIRECTORY));
 
 				for(_i64 i=start_offset;i<filesize.QuadPart && stopped==false;i+=READSIZE)
 				{
@@ -929,6 +944,7 @@ bool CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 	ldata->last=last;
 	ldata->filepart=currfilepart;
 	ldata->sendfilepart=&sendfilepart;
+	ldata->errorcode=&errorcode;
 	overlap->hEvent=ldata;
 
 	BOOL b=ReadFileEx(hFile, ldata->buffer, READSIZE, overlap, FileIOCompletionRoutine);

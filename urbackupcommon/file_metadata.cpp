@@ -295,6 +295,10 @@ int64 os_metadata_offset( IFile* meta_file )
 		meta_offset = get_hashdata_size(hashfilesize);
 		meta_file->Seek(meta_offset);
 	}
+	else
+	{
+		meta_offset=sizeof(int64);
+	}
 
 	_u32 metadata_size_and_magic[2];
 	if(meta_file->Read(reinterpret_cast<char*>(&metadata_size_and_magic), sizeof(metadata_size_and_magic))!=sizeof(metadata_size_and_magic) ||

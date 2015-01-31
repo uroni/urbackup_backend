@@ -13,7 +13,7 @@ public:
 	virtual void operator()();
 
 	bool applyMetadata(const std::wstring& backupdir, INotEnoughSpaceCallback *cb);
-	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, INotEnoughSpaceCallback *cb);
+	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb);
 
 private:
 	FileClient& fc;

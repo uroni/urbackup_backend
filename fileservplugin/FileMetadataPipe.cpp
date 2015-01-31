@@ -96,7 +96,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			return true;
 		}
 
-		_u32 read = metadata_file->Read(buf, read_bytes);
+		_u32 read = metadata_file->Read(buf, static_cast<_u32>(read_bytes));
 		if(read!=read_bytes)
 		{
 			errpipe->Write(Server->ConvertToUTF8(L"Error reading metadata stream from file \""+metadata_file->getFilenameW()+L"\"\n"));

@@ -483,6 +483,7 @@ void InternetClientThread::operator()(void)
 	std::string challenge_response;
 	InternetServicePipe* ics_pipe = new InternetServicePipe();
 	std::string hmac_key;
+	bool destroy_cs = true;
 
 	{
 		char *buf;
@@ -670,8 +671,6 @@ void InternetClientThread::operator()(void)
 
 	finish_ok=true;
 	InternetClient::resetAuthErr();
-
-	bool destroy_cs = true;
 
 	while(true)
 	{

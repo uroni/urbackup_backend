@@ -171,7 +171,7 @@
       <Filter>Quelldateien</Filter>
     </ClInclude>
     <ClInclude Include="FileMetadataPipe.h">
-      <Filter>Quelldateien</Filter>
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

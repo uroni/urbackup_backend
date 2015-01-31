@@ -429,6 +429,9 @@ bool ClientConnector::Run(void)
 
 						channel_pipes.erase(channel_pipes.begin()+idx);
 						channel_capa.erase(channel_capa.begin()+idx);
+
+						if(channel_pipe.pipe==pipe)
+							channel_pipe=SChannel();
 					}				
 
 					return false;

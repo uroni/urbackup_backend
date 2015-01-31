@@ -37,7 +37,7 @@ namespace
 
 			bool isdir = path[0]=='d';
 
-			for(size_t i=0;i<path_segments.size();++i)
+			for(size_t i=1;i<path_segments.size();++i)
 			{
 				if(path_segments[i]=="." || path_segments[i]=="..")
 				{

@@ -79,12 +79,16 @@ bool FileMetadataDownloadThread::applyMetadata()
 			}
 
 			std::string curr_fn;
-			curr_fn.resize(little_endian(curr_fn_size));
 
-			if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
-			{
-				restore.log(L"Error saving metadata. Filename could not be read.", LL_ERROR);
-				return false;
+			if(curr_fn_size>0)
+			{			
+				curr_fn.resize(little_endian(curr_fn_size));
+
+				if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
+				{
+					restore.log(L"Error saving metadata. Filename could not be read.", LL_ERROR);
+					return false;
+				}
 			}
 
 			if(curr_fn.empty())
@@ -92,6 +96,8 @@ bool FileMetadataDownloadThread::applyMetadata()
 				restore.log(L"Error saving metadata. Filename is empty.", LL_ERROR);
 				return false;
 			}
+
+			restore.log("Applying metadata of file \"" + curr_fn + "\"", LL_DEBUG);
 
 			bool is_dir = curr_fn[0]=='d';
 
@@ -148,7 +154,7 @@ namespace
 
 bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, const std::wstring& output_fn)
 {
-	HANDLE hFile = CreateFileW(os_file_prefix(output_fn).c_str(), GENERIC_WRITE|ACCESS_SYSTEM_SECURITY|WRITE_OWNER, FILE_SHARE_READ, NULL,
+	HANDLE hFile = CreateFileW(os_file_prefix(output_fn).c_str(), GENERIC_WRITE|ACCESS_SYSTEM_SECURITY|WRITE_OWNER|WRITE_DAC, FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 
 	if(hFile==INVALID_HANDLE_VALUE)
@@ -157,13 +163,13 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, const 
 		return false;
 	}
 
-	bool has_error=true;
+	bool has_error=false;
 	void* context = NULL;
 
 	while(true) 
 	{
 		char cont = 0;
-		if(metadata_f->Read(reinterpret_cast<char*>(&cont), sizeof(cont))!=sizeof(cont))
+		if(metadata_f->Read(&cont, sizeof(cont))!=sizeof(cont))
 		{
 			restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
 			has_error=true;
@@ -178,7 +184,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, const 
 		std::vector<char> stream_id;
 		stream_id.resize(metadata_id_size);
 
-		if(metadata_f->Read(reinterpret_cast<char*>(&stream_id), metadata_id_size)!=metadata_id_size)
+		if(metadata_f->Read(stream_id.data(), metadata_id_size)!=metadata_id_size)
 		{
 			restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
 			has_error=true;
