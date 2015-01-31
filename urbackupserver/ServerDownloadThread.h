@@ -138,6 +138,8 @@ private:
 	void stop_shadowcopy(const std::string &path);
 
 	bool touch_file(SQueueItem todl);
+	
+	bool link_or_copy_file(SQueueItem todl);
 
 	FileClient& fc;
 	FileClientChunked* fc_chunked;
@@ -170,6 +172,7 @@ private:
 	std::vector<size_t> download_nok_ids;
 	std::vector<size_t> download_partial_ids;
 	size_t max_ok_id;
+	
 
 	IMutex* mutex;
 	ICondition* cond;

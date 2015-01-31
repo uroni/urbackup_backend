@@ -453,7 +453,7 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 	if(use_transaction)
 	{
 		backupdao.endTransaction();
-		if(!detach_dbs)
+		if(detach_dbs)
 		{
 			backupdao.attachDbs();
 		}
@@ -530,6 +530,9 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 						else
 						{
 							copied_file=true;
+							entryid = existing_file.id;
+							entryclientid = existing_file.clientid;
+							next_entry=existing_file.next_entry;
 						}
 
 						if(!hash_fn.empty() && !existing_file.hashpath.empty())

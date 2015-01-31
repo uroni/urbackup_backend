@@ -102,7 +102,44 @@ void ServerDownloadThread::operator()( void )
 
 		if(is_offline || skipping)
 		{
-			download_nok_ids.push_back(curr.id);
+			if(curr.fileclient== EFileClient_Chunked)
+			{
+				ServerLogger::Log(clientid, L"Copying incomplete file \"" + curr.fn+ L"\"", LL_INFO);
+				
+				bool full_dl = false;
+				
+				if(!curr.patch_dl_files.prepared)
+				{
+					curr.patch_dl_files = preparePatchDownloadFiles(curr, full_dl);
+				}
+				
+
+				if(!full_dl && curr.patch_dl_files.prepared && curr.patch_dl_files.orig_file!=NULL)
+				{
+					if(link_or_copy_file(curr))
+					{
+						download_partial_ids.push_back(curr.id);
+						
+						if(curr.id>max_ok_id)
+						{
+							max_ok_id=curr.id;
+						}
+					}
+					else
+		    			{
+						ServerLogger::Log(clientid, L"Copying incomplete file \""+curr.fn+L"\" failed", LL_WARNING);
+						download_nok_ids.push_back(curr.id);
+						
+						
+						IScopedLock lock(mutex);
+						all_downloads_ok=false;
+					}
+				
+					continue;
+				}
+			}
+				
+		    	download_nok_ids.push_back(curr.id);
 
 			{
 				IScopedLock lock(mutex);
@@ -383,6 +420,63 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 	return ret;
 }
 
+bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
+{
+	SPatchDownloadFiles dlfiles = todl.patch_dl_files;
+	
+	std::wstring os_curr_path=FileBackup::convertToOSPathFromFileClient(todl.os_path+L"/"+todl.short_fn);
+	std::wstring dstpath=backuppath+os_curr_path;
+	std::wstring dsthashpath = backuppath_hashes +os_curr_path;
+	
+	ScopedDeleteFile pfd_destroy(dlfiles.patchfile);
+	ScopedDeleteFile hash_tmp_destroy(dlfiles.hashoutput);
+	ScopedDeleteFile hashfile_old_destroy(NULL);
+	ObjectScope file_old_destroy(dlfiles.orig_file);
+	ObjectScope hashfile_old_delete(dlfiles.chunkhashes);
+
+	if(dlfiles.delete_chunkhashes)
+	{
+		hashfile_old_destroy.reset(dlfiles.chunkhashes);
+		hashfile_old_delete.release();
+	}
+	
+	
+	if( os_create_hardlink(os_file_prefix(dstpath), dlfiles.orig_file->getFilenameW(), use_reflink, NULL)
+	    && os_create_hardlink(os_file_prefix(dsthashpath), dlfiles.chunkhashes->getFilenameW(), use_reflink, NULL) )
+	{
+		return true;
+	}
+	else
+	{
+		Server->deleteFile(os_file_prefix(dstpath));			
+		
+		bool ok = dlfiles.patchfile->Seek(0);
+		int64 endian_filesize = little_endian(dlfiles.orig_file->Size());
+		ok = ok && (dlfiles.patchfile->Write(reinterpret_cast<char*>(&endian_filesize), sizeof(endian_filesize))==sizeof(endian_filesize));
+			
+		std::wstring hashfile_old_fn = dlfiles.chunkhashes->getFilenameW();
+		std::wstring hashoutput_fn = dlfiles.hashoutput->getFilenameW();
+		
+		hash_tmp_destroy.release();
+		delete dlfiles.hashoutput;
+			
+		if(ok && copy_file(hashfile_old_fn, hashoutput_fn) 
+		    && (dlfiles.hashoutput=Server->openFile(hashoutput_fn, MODE_RW))!=NULL )
+		{
+			pfd_destroy.release();
+			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
+			    Server->ConvertToUTF8(dlfiles.filepath_old), 0, todl.metadata, todl.parent_metadata, todl.is_script);
+			return true;
+		}
+		else
+		{
+			hash_tmp_destroy.reset(dlfiles.hashoutput);
+			return false;
+		}
+	}
+}
+
+
 bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 {
 	std::wstring cfn=todl.curr_path+L"/"+todl.fn;
@@ -484,8 +578,33 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			all_downloads_ok=false;
 		}
 
-
-		if( (rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR)
+		if( rc==ERR_BASE_DIR_LOST && save_incomplete_file)
+		{
+			ServerLogger::Log(clientid, L"Saving incomplete file. (2)", LL_INFO);
+			
+			pfd_destroy.release();
+			hash_tmp_destroy.release();
+			hashfile_old_destroy.release();
+			file_old_destroy.release();
+			hashfile_old_delete.release();
+			
+			if(link_or_copy_file(todl))
+			{
+				if(todl.id>max_ok_id)
+				{
+					max_ok_id=todl.id;
+				}
+				
+				download_partial_ids.push_back(todl.id);
+			}
+			else
+			{
+				download_nok_ids.push_back(todl.id);				
+			}
+			
+			hash_file=false;
+		}
+		else if( (rc==ERR_TIMEOUT || rc==ERR_CONN_LOST || rc==ERR_SOCKET_ERROR)
 			&& dlfiles.patchfile->Size()>0
 			&& save_incomplete_file)
 		{
@@ -572,7 +691,7 @@ void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath,
 	Server->destroy(fd);
 	if(hashoutput!=NULL)
 	{
-		if(is_script)
+		if(!is_script)
 		{
 			int64 expected_hashoutput_size = get_hashdata_size(t_filesize);
 			if(hashoutput->Size()>expected_hashoutput_size)

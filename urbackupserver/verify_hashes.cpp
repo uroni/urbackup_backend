@@ -332,7 +332,7 @@ bool verify_hashes(std::string arg)
 
 	std::cout << missing_files.size() << " could not be opened during verification. Checking now if they have been deleted from the database..." << std::endl;
 
-	for(size_t i=0;missing_files.size();++i)
+	for(size_t i=0;i<missing_files.size();++i)
 	{
 		q_get_file->Bind(missing_files[i]);
 		db_results res = q_get_file->Read();
@@ -341,7 +341,8 @@ bool verify_hashes(std::string arg)
 		if(!res.empty())
 		{
 			bool is_missing=false;
-			if(!verify_file(res[0], curr_verified, verify_size, is_missing))
+			db_single_result& res_single = res[0];
+			if(!verify_file(res_single, curr_verified, verify_size, is_missing))
 			{
 				v_failure << "Verification of file \"" << Server->ConvertToUTF8(res_single[L"fullpath"]) << "\" failed (during rechecking previously missing files)\r\n";
 				is_okay=false;
