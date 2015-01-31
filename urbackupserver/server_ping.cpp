@@ -26,8 +26,8 @@
 const int64 ping_intervall=10000;
 extern std::string server_token;
 
-ServerPingThread::ServerPingThread(const std::wstring& clientname, size_t status_id, bool with_eta)
-	: clientname(clientname), status_id(status_id), with_eta(with_eta)
+ServerPingThread::ServerPingThread(ClientMain *client_main, const std::wstring& clientname, size_t status_id, bool with_eta)
+	: client_main(client_main), clientname(clientname), status_id(status_id), with_eta(with_eta)
 {
 	stop=false;
 	is_timeout=false;

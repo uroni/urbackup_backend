@@ -484,7 +484,7 @@ bool FileBackup::doBackup()
 		}
 	}
 
-	pingthread =new ServerPingThread(clientname, status_id, client_main->getProtocolVersions().eta_version>0);
+	pingthread =new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0);
 	pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid));

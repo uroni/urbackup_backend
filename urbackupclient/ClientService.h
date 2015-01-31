@@ -120,11 +120,13 @@ public:
 
 	static bool tochannelSendChanges(const char* changes, size_t changes_size);
 
-	static bool tochannelLog(int id, const std::string& msg, int loglevel, const std::string& identity);
+	static bool tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity);
 
-	static bool tochannelLog(int id, const std::wstring& msg, int loglevel, const std::string& identity);
+	static bool tochannelLog(int64 log_id, const std::wstring& msg, int loglevel, const std::string& identity);
 
 	static void updateRestorePc(int64 status_id, int nv, const std::string& identity);
+
+	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 
 	static IPipe* getFileServConnection(const std::string& server_token, unsigned int timeoutms);
 
@@ -154,6 +156,8 @@ private:
 	void update_silent(void);
 	bool calculateFilehashesOnClient(void);
 	void sendStatus();
+
+	static bool sendMessageToChannel(const std::string& msg, int timeoutms, const std::string& identity);
 
 	std::string getLastBackupTime();
 

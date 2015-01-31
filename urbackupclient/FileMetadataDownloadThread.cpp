@@ -43,7 +43,7 @@ void FileMetadataDownloadThread::operator()()
 	metadata_tmp_fn = tmp_f->getFilenameW();
 }
 
-bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir)
+bool FileMetadataDownloadThread::applyMetadata()
 {
 	buffer.resize(32768);
 	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
@@ -122,7 +122,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir)
 
 			if(!ok)
 			{
-				restore.log(L"Error saving metadata. Could not save OS specific metadata to \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
+				restore.log(L"Error saving metadata. Could not save OS specific metadata to \"" + os_path + L"\"", LL_ERROR);
 				return false;
 			}			
 		}

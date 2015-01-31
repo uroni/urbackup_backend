@@ -14,6 +14,7 @@
 #include <stack>
 #include "../urbackupcommon/chunk_hasher.h"
 #include "database.h"
+#include "FileMetadataDownloadThread.h"
 
 void RestoreFiles::operator()()
 {
@@ -21,31 +22,64 @@ void RestoreFiles::operator()()
 	FileClient fc(false, client_token, 3,
 		true, this, NULL);
 
-	ClientConnector::updateRestorePc(status_id, -1, client_token);
+	FileClient fc_metadata(false, client_token, 3,
+		true, this, NULL);
+
+	log("Starting restore...", LL_INFO);
+
+	ClientConnector::updateRestorePc(status_id, -1, server_token);
 	
-	if(!connectFileClient(fc))
+	if(!connectFileClient(fc) ||
+		!connectFileClient(fc_metadata))
 	{
-		//TODO: ERR
+		log("Connecting for restore failed", LL_ERROR);
+		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
 		return;
 	}
 
+	std::auto_ptr<FileMetadataDownloadThread> metadata_thread(new FileMetadataDownloadThread(*this, fc_metadata, client_token ));
+
+	THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get());
+
+	log("Loading file list...", LL_INFO);
+
 	if(!downloadFilelist(fc))
 	{
-		//TODO: ERR
+		restore_failed(fc, metadata_dl);
 		return;
 	}
+
+	log("Calculating download size...", LL_INFO);
 
 	int64 total_size = calculateDownloadSize();
 	if(total_size==-1)
 	{
-		//TODO: ERR
+		restore_failed(fc, metadata_dl);
+		return;
 	}
+
+	log("Downloading necessary file data...", LL_INFO);
 
 	if(!downloadFiles(fc, total_size))
 	{
-		//TODO: ERR
+		restore_failed(fc, metadata_dl);
 		return;
 	}
+
+	ClientConnector::updateRestorePc(status_id, 101, server_token);
+
+	fc.InformMetadataStreamEnd(client_token);
+	Server->getThreadPool()->waitFor(metadata_dl);
+
+	if(!metadata_thread->applyMetadata())
+	{
+		restore_failed(fc, metadata_dl);
+		return;
+	}
+
+	log("Restore finished successfully.", LL_INFO);
+
+	ClientConnector::restoreDone(log_id, status_id, restore_id, true, server_token);
 }
 
 IPipe * RestoreFiles::new_fileclient_connection( )
@@ -82,7 +116,7 @@ bool RestoreFiles::downloadFilelist( FileClient& fc )
 
 	if(rc!=ERR_SUCCESS)
 	{
-		Server->Log("Error getting file list. Errorcode: "+FileClient::getErrorString(rc)+" ("+nconvert(rc)+")", LL_ERROR);
+		log("Error getting file list. Errorcode: "+FileClient::getErrorString(rc)+" ("+nconvert(rc)+")", LL_ERROR);
 		return false;
 	}
 
@@ -178,12 +212,12 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					laststatsupdate=ctime;
 					if(total_size==0)
 					{
-						ClientConnector::updateRestorePc(status_id, 100, client_token);
+						ClientConnector::updateRestorePc(status_id, 100, server_token);
 					}
 					else
 					{
 						int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));;
-						ClientConnector::updateRestorePc(status_id, pcdone, client_token);
+						ClientConnector::updateRestorePc(status_id, pcdone, server_token);
 					}
 				}
 
@@ -384,21 +418,25 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 	} while (read>0);
 
-	ClientConnector::updateRestorePc(status_id, 101, client_token);
-
 	return !has_error;
 }
 
 void RestoreFiles::log( const std::string& msg, int loglevel )
 {
 	Server->Log(msg, loglevel);
-	ClientConnector::tochannelLog(restoreid, msg, loglevel, client_token);
+	if(loglevel>=LL_INFO)
+	{
+		ClientConnector::tochannelLog(log_id, msg, loglevel, server_token);
+	}
 }
 
 void RestoreFiles::log( const std::wstring& msg, int loglevel )
 {
 	Server->Log(msg, loglevel);
-	ClientConnector::tochannelLog(restoreid, msg, loglevel, client_token);
+	if(loglevel>=LL_INFO)
+	{
+		ClientConnector::tochannelLog(log_id, msg, loglevel, server_token);
+	}
 }
 
 std::auto_ptr<FileClientChunked> RestoreFiles::createFcChunked()
@@ -412,5 +450,16 @@ std::auto_ptr<FileClientChunked> RestoreFiles::createFcChunked()
 
 	return std::auto_ptr<FileClientChunked>(new FileClientChunked(conn, true, &tcpstack, this,
 		NULL, client_token, NULL));
+}
+
+void RestoreFiles::restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl)
+{
+	log("Restore failed.", LL_INFO);
+
+	fc.InformMetadataStreamEnd(client_token);
+
+	Server->getThreadPool()->waitFor(metadata_dl);
+
+	ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
 }
 

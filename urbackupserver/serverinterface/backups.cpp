@@ -740,7 +740,7 @@ ACTION_IMPL(backups)
 								}
 
 								if(!create_clientdl_thread(clientname, t_clientid, curr_path, curr_metadata_path, GET[L"filter"], token_authentication,
-									backup_tokens.tokens, tokens, path.empty()))
+									backup_tokens.tokens, tokens, path.empty(), path))
 								{
 									ret.set("err", "internal_error");
 									helper.Write(ret.get(false));

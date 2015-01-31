@@ -34,9 +34,13 @@ public:
 
 	static void reset(logid_t id);
 
+	static void reset(int clientid);
+
 	static std::vector<SCircularLogEntry> getCircularLogdata(int clientid, size_t minid);
 
 	static logid_t getLogId(int clientid);
+	
+	static bool hasClient(logid_t id, int clientid);
 
 private:
 

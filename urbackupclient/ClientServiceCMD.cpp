@@ -1522,15 +1522,16 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 
 	std::string client_token = Server->ConvertToUTF8(params[L"client_token"]);
 	std::string server_token=wnarrow(params[L"server_token"]);
-	int id=watoi(params[L"id"]);
+	int64 restore_id=watoi64(params[L"id"]);
 	int64 status_id=watoi64(params[L"status_id"]);
+	int64 log_id=watoi64(params[L"log_id"]);
 
 	{
 		IScopedLock lock(backup_mutex);
 		restore_ok_status = RestoreOk_Wait;
 	}
 
-	Server->getThreadPool()->execute(new RestoreFiles(id, status_id, client_token, server_token));
+	Server->getThreadPool()->execute(new RestoreFiles(restore_id, status_id, log_id, client_token, server_token));
 
 	tcpstack.Send(pipe, "ok");
 }

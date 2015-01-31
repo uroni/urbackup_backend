@@ -10,7 +10,7 @@ public:
 
 	virtual void operator()();
 
-	bool applyMetadata(const std::wstring& backupdir);
+	bool applyMetadata();
 	bool applyWindowsMetadata(IFile* metadata_f, const std::wstring& output_fn);
 
 private:

@@ -6,7 +6,7 @@ class ClientMain;
 class ServerPingThread : public IThread
 {
 public:
-	ServerPingThread(const std::wstring& clientname, size_t status_id, bool with_eta);
+	ServerPingThread(ClientMain *client_main, const std::wstring& clientname, size_t status_id, bool with_eta);
 	void operator()(void);
 	void setStop(bool b);
 

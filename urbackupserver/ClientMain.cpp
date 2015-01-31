@@ -723,13 +723,16 @@ void ClientMain::operator ()(void)
 
 			std::string restore_identity;
 			rdata.getStr(&restore_identity);
-			int id;
-			rdata.getInt(&id);
+			int64 restore_id;
+			rdata.getInt64(&restore_id);
 			int64 status_id;
 			rdata.getInt64(&status_id);
+			int64 log_id;
+			rdata.getInt64(&log_id);
 
 			sendClientMessageRetry("FILE RESTORE client_token="+restore_identity+"&server_token="+server_token+
-				"&id="+nconvert(id)+"&status_id="+nconvert(status_id), L"Starting restore failed", 10000, 10, true, LL_ERROR);
+				"&id="+nconvert(restore_id)+"&status_id="+nconvert(status_id)+
+				"&log_id="+nconvert(log_id), L"Starting restore failed", 10000, 10, true, LL_ERROR);
 		}
 
 		if(!msg.empty())
@@ -790,7 +793,9 @@ void ClientMain::operator ()(void)
 		}
 
 		tocleanup.clear();
-	}	
+	}
+
+	ServerLogger::reset(clientid);
 	
 	
 	Server->destroy(settings);

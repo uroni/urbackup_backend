@@ -1320,14 +1320,14 @@ void ServerBackupDao::updateFileBackupSetComplete(int backupid)
 * @-SQLGenAccess
 * @func void ServerBackupDao::saveBackupLog
 * @sql
-*       INSERT INTO logs (clientid, errors, warnings, infos, image, incremental, resumed)
-*               VALUES (:clientid(int), :errors(int), :warnings(int), :infos(int), :image(int), :incremental(int), :resumed(int) )
+*       INSERT INTO logs (clientid, errors, warnings, infos, image, incremental, resumed, restore)
+*               VALUES (:clientid(int), :errors(int), :warnings(int), :infos(int), :image(int), :incremental(int), :resumed(int), :restore(int))
 */
-void ServerBackupDao::saveBackupLog(int clientid, int errors, int warnings, int infos, int image, int incremental, int resumed)
+void ServerBackupDao::saveBackupLog(int clientid, int errors, int warnings, int infos, int image, int incremental, int resumed, int restore)
 {
 	if(q_saveBackupLog==NULL)
 	{
-		q_saveBackupLog=db->Prepare("INSERT INTO logs (clientid, errors, warnings, infos, image, incremental, resumed) VALUES (?, ?, ?, ?, ?, ?, ? )", false);
+		q_saveBackupLog=db->Prepare("INSERT INTO logs (clientid, errors, warnings, infos, image, incremental, resumed, restore) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", false);
 	}
 	q_saveBackupLog->Bind(clientid);
 	q_saveBackupLog->Bind(errors);
@@ -1336,6 +1336,7 @@ void ServerBackupDao::saveBackupLog(int clientid, int errors, int warnings, int 
 	q_saveBackupLog->Bind(image);
 	q_saveBackupLog->Bind(incremental);
 	q_saveBackupLog->Bind(resumed);
+	q_saveBackupLog->Bind(restore);
 	q_saveBackupLog->Write();
 	q_saveBackupLog->Reset();
 }
@@ -1870,7 +1871,70 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrImageBackup(const std::
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addRestore
+* @sql
+*       INSERT INTO restores (clientid, done, path, identity, success)
+*       VALUES
+*			(:clientid(int), 0, :path(string), :identity(string), 0)
+*/
+void ServerBackupDao::addRestore(int clientid, const std::wstring& path, const std::wstring& identity)
+{
+	if(q_addRestore==NULL)
+	{
+		q_addRestore=db->Prepare("INSERT INTO restores (clientid, done, path, identity, success) VALUES (?, 0, ?, ?, 0)", false);
+	}
+	q_addRestore->Bind(clientid);
+	q_addRestore->Bind(path);
+	q_addRestore->Bind(identity);
+	q_addRestore->Write();
+	q_addRestore->Reset();
+}
 
+/**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getRestoreIdentity
+* @return string identity
+* @sql
+*       SELECT identity FROM restores WHERE id=:restore_id(int64) AND clientid=:clientid(int)
+*/
+ServerBackupDao::CondString ServerBackupDao::getRestoreIdentity(int64 restore_id, int clientid)
+{
+	if(q_getRestoreIdentity==NULL)
+	{
+		q_getRestoreIdentity=db->Prepare("SELECT identity FROM restores WHERE id=? AND clientid=?", false);
+	}
+	q_getRestoreIdentity->Bind(restore_id);
+	q_getRestoreIdentity->Bind(clientid);
+	db_results res=q_getRestoreIdentity->Read();
+	q_getRestoreIdentity->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"identity"];
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setRestoreDone
+* @sql
+*       UPDATE restores SET done=1, finished=CURRENT_TIMESTAMP, success=:success(int) WHERE id=:restore_id(int64)
+*/
+void ServerBackupDao::setRestoreDone(int success, int64 restore_id)
+{
+	if(q_setRestoreDone==NULL)
+	{
+		q_setRestoreDone=db->Prepare("UPDATE restores SET done=1, finished=CURRENT_TIMESTAMP, success=? WHERE id=?", false);
+	}
+	q_setRestoreDone->Bind(success);
+	q_setRestoreDone->Bind(restore_id);
+	q_setRestoreDone->Write();
+	q_setRestoreDone->Reset();
+}
 
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
@@ -1957,6 +2021,9 @@ void ServerBackupDao::prepareQueries( void )
 	q_hasRecentIncrFileBackup=NULL;
 	q_hasRecentFullOrIncrImageBackup=NULL;
 	q_hasRecentIncrImageBackup=NULL;
+	q_addRestore=NULL;
+	q_getRestoreIdentity=NULL;
+	q_setRestoreDone=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2044,6 +2111,9 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_hasRecentIncrFileBackup);
 	db->destroyQuery(q_hasRecentFullOrIncrImageBackup);
 	db->destroyQuery(q_hasRecentIncrImageBackup);
+	db->destroyQuery(q_addRestore);
+	db->destroyQuery(q_getRestoreIdentity);
+	db->destroyQuery(q_setRestoreDone);
 }
 
 void ServerBackupDao::commit()

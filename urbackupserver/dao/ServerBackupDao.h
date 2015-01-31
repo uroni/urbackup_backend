@@ -178,7 +178,7 @@ public:
 	SLastIncremental getLastIncrementalFileBackup(int clientid, int tgroup);
 	SLastIncremental getLastIncrementalCompleteFileBackup(int clientid, int tgroup);
 	void updateFileBackupSetComplete(int backupid);
-	void saveBackupLog(int clientid, int errors, int warnings, int infos, int image, int incremental, int resumed);
+	void saveBackupLog(int clientid, int errors, int warnings, int infos, int image, int incremental, int resumed, int restore);
 	void saveBackupLogData(int64 logid, const std::wstring& data);
 	std::vector<int> getMailableUserIds(void);
 	CondString getUserRight(int clientid, const std::wstring& t_domain);
@@ -202,6 +202,9 @@ public:
 	CondInt64 hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid);
 	CondInt64 hasRecentFullOrIncrImageBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int image_version, const std::wstring& letter);
 	CondInt64 hasRecentIncrImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter);
+	void addRestore(int clientid, const std::wstring& path, const std::wstring& identity);
+	CondString getRestoreIdentity(int64 restore_id, int clientid);
+	void setRestoreDone(int success, int64 restore_id);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -297,6 +300,9 @@ private:
 	IQuery* q_hasRecentIncrFileBackup;
 	IQuery* q_hasRecentFullOrIncrImageBackup;
 	IQuery* q_hasRecentIncrImageBackup;
+	IQuery* q_addRestore;
+	IQuery* q_getRestoreIdentity;
+	IQuery* q_setRestoreDone;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

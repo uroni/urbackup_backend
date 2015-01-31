@@ -144,7 +144,7 @@ void Backup::saveClientLogdata(int image, int incremental, bool r_success, bool 
 	std::wstring logdata=ServerLogger::getLogdata(logid, errors, warnings, infos);
 
 	backup_dao->saveBackupLog(clientid, errors, warnings, infos, is_file_backup?0:1,
-		r_incremental?1:0, r_resumed?1:0);
+		r_incremental?1:0, r_resumed?1:0, 0);
 
 	backup_dao->saveBackupLogData(db->getLastInsertID(), logdata);
 

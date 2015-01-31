@@ -2591,32 +2591,14 @@ void ClientConnector::sendStatus()
 	db->destroyAllQueries();
 }
 
-bool ClientConnector::tochannelLog( int id, const std::string& msg, int loglevel, const std::string& identity)
+bool ClientConnector::tochannelLog(int64 log_id, const std::string& msg, int loglevel, const std::string& identity)
 {
-	IScopedLock lock(backup_mutex);
-
-	for(size_t i=0;i<channel_pipes.size();++i)
-	{
-		if(channel_pipes[i].token == identity)
-		{
-			std::string cmd = "LOG "+nconvert(id)+"-"+nconvert(loglevel)+"-"+msg;
-
-			CTCPStack tmpstack(channel_pipes[i].internet_connection);
-			if(tmpstack.Send(channel_pipes[i].pipe, cmd)!=cmd.size())
-			{
-				return false;
-			}
-
-			return true;
-		}
-	}
-
-	return false;
+	return sendMessageToChannel("LOG "+nconvert(log_id)+"-"+nconvert(loglevel)+"-"+msg, 10000, identity);
 }
 
-bool ClientConnector::tochannelLog( int id, const std::wstring& msg, int loglevel, const std::string& identity )
+bool ClientConnector::tochannelLog(int64 log_id, const std::wstring& msg, int loglevel, const std::string& identity )
 {
-	return tochannelLog(id, Server->ConvertToUTF8(msg), loglevel, identity);
+	return tochannelLog(log_id, Server->ConvertToUTF8(msg), loglevel, identity);
 }
 
 void ClientConnector::updateRestorePc(int64 status_id, int nv, const std::string& identity )
@@ -2638,21 +2620,46 @@ void ClientConnector::updateRestorePc(int64 status_id, int nv, const std::string
 		pcdone = nv;
 	}
 
-	for(size_t i=0;i<channel_pipes.size();++i)
+	sendMessageToChannel("RESTORE PERCENT pc="+nconvert(nv)+"&status_id="+nconvert(status_id),
+		0, identity);
+}
+
+bool ClientConnector::restoreDone( int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity )
+{
+	return sendMessageToChannel("RESTORE DONE status_id="+nconvert(status_id)+
+		"&log_id=" + nconvert(log_id) +
+		"&id=" + nconvert(restore_id) +
+		"&success=" + nconvert(success), 60000, identity);
+}
+
+bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutms, const std::string& identity )
+{
+	IScopedLock lock(backup_mutex);
+
+	int64 starttime = Server->getTimeMS();
+
+	do
 	{
-		if(channel_pipes[i].token == identity)
+		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			std::string cmd = "RESTORE PERCENT pc="+nconvert(nv)+"&status_id="+nconvert(status_id);
-
-			CTCPStack tmpstack(channel_pipes[i].internet_connection);
-			if(tmpstack.Send(channel_pipes[i].pipe, cmd)!=cmd.size())
+			if(channel_pipes[i].token == identity)
 			{
-				return;
-			}
+				CTCPStack tmpstack(channel_pipes[i].internet_connection);
+				if(tmpstack.Send(channel_pipes[i].pipe, msg)!=msg.size())
+				{
+					return false;
+				}
 
-			return;
+				return true;
+			}
 		}
-	}
+
+		lock.relock(NULL);
+		Server->wait(100);
+		lock.relock(backup_mutex);
+	} while(Server->getTimeMS()-starttime<timeoutms);
+
+	return false;
 }
 
 

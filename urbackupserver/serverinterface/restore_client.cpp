@@ -10,30 +10,10 @@
 #include "backups.h"
 #include "../../urbackupcommon/filelist_utils.h"
 #include "../../common/data.h"
+#include "../database.h"
 
 extern IFileServ* fileserv;
 
-namespace
-{
-	int restore_id = 0;
-	IMutex* id_mutex = NULL;
-}
-
-void create_id_mutex()
-{
-	id_mutex = Server->createMutex();
-}
-
-void destroy_id_mutex()
-{
-	delete id_mutex;
-}
-
-int new_restore_id()
-{
-	IScopedLock lock(id_mutex);
-	return restore_id++;
-}
 
 namespace
 {
@@ -104,10 +84,11 @@ namespace
 		ClientDownloadThread(const std::wstring& clientname, int clientid, IFile* filelist_f, const std::wstring& foldername,
 			const std::wstring& hashfoldername, const std::wstring& filter,
 			bool token_authentication,
-			const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root)
-			: clientname(clientname), filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
+			const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
+			const std::wstring& folder_log_name)
+			: clientname(clientname), clientid(clientid), filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
 			token_authentication(token_authentication), backup_tokens(backup_tokens),
-			tokens(tokens), skip_special_root(skip_special_root)
+			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name)
 		{
 			TokenizeMail(filter, filter_fns, L"/");
 		}
@@ -119,10 +100,15 @@ namespace
 				return;
 			}
 
+			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+			ServerBackupDao backup_dao(db);
+
 			std::string identity = ServerSettings::generateRandomAuthKey(25);
-			int restore_id = new_restore_id();
+			backup_dao.addRestore(clientid, folder_log_name, widen(identity));
+			int64 restore_id = db->getLastInsertID();
 			size_t status_id = ServerStatus::startProcess(clientname, sa_restore);
 
+			logid_t log_id = ServerLogger::getLogId(clientid);
 
 			fileserv->addIdentity(identity);
 			fileserv->shareDir(L"clientdl_filelist", filelist_f->getFilenameW(), identity);
@@ -139,8 +125,9 @@ namespace
 			CWData data;
 			data.addBuffer("RESTORE", 7);
 			data.addString(identity);
-			data.addInt(restore_id);
+			data.addInt64(restore_id);
 			data.addUInt64(status_id);
+			data.addInt64(log_id.first);
 
 			std::string msg(data.getDataPtr(), data.getDataPtr()+data.getDataSize());
 			ServerStatus::sendToCommPipe(clientname, msg);
@@ -239,11 +226,13 @@ namespace
 		std::vector<SToken> backup_tokens;
 		std::vector<std::string> tokens;
 		bool skip_special_root;
+		std::wstring folder_log_name;
 	};
 }
 
 bool create_clientdl_thread(const std::wstring& clientname, int clientid, const std::wstring& foldername, const std::wstring& hashfoldername,
-	const std::wstring& filter, bool token_authentication, const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes )
+	const std::wstring& filter, bool token_authentication, const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
+	const std::wstring& folder_log_name)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
 
@@ -252,7 +241,7 @@ bool create_clientdl_thread(const std::wstring& clientname, int clientid, const 
 		return false;
 	}
 
-	Server->getThreadPool()->execute(new ClientDownloadThread(clientname, clientid, filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes));
+	Server->getThreadPool()->execute(new ClientDownloadThread(clientname, clientid, filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name));
 
 	return true;
 }

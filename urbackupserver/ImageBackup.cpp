@@ -186,7 +186,7 @@ bool ImageBackup::doBackup()
 		}
 	}
 
-	pingthread = new ServerPingThread(clientname, status_id, client_main->getProtocolVersions().eta_version>0);
+	pingthread = new ServerPingThread(client_main, clientname, status_id, client_main->getProtocolVersions().eta_version>0);
 	pingthread_ticket=Server->getThreadPool()->execute(pingthread);
 
 	bool ret = false;

@@ -12,8 +12,9 @@
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback
 {
 public:
-	RestoreFiles(int restoreid, int64 status_id, std::string client_token, std::string server_token) 
-		: restoreid(restoreid), status_id(status_id), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL)
+	RestoreFiles(int64 restore_id, int64 status_id, int64 log_id, std::string client_token, std::string server_token) 
+		: restore_id(restore_id), status_id(status_id), client_token(client_token), server_token(server_token), tcpstack(true), filelist_del(NULL), filelist(NULL),
+		log_id(log_id)
 	{
 
 	}
@@ -31,15 +32,18 @@ private:
 	bool connectFileClient(FileClient& fc);
 	bool downloadFilelist(FileClient& fc);
 
+	void restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl);
+
 	int64 calculateDownloadSize();
 
 	bool downloadFiles(FileClient& fc, int64 total_size);
 	
 	std::auto_ptr<FileClientChunked> createFcChunked();
 
-	int restoreid;
+	int64 restore_id;
 
 	int64 status_id;
+	int64 log_id;
 
 	IFile* filelist;
 	ScopedDeleteFile filelist_del;
