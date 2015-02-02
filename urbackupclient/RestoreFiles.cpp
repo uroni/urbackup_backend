@@ -282,18 +282,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 							parent_metadata.pop();
 						}
 
-						if(depth==0)
-						{
-							server_path.clear();
-							restore_path.clear();
-						}
-						else
-						{
-							server_path=ExtractFilePath(server_path, L"/");
-							restore_path=ExtractFilePath(restore_path, os_file_sep());
-						}
-
-						
+						server_path=ExtractFilePath(server_path, L"/");
+						restore_path=ExtractFilePath(restore_path, os_file_sep());						
 					}
 				}
 				else

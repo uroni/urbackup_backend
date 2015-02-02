@@ -179,7 +179,7 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 {
 	std::auto_ptr<IFile> dest_f;
 	
-	if(!todl.metadata_only)
+	if(!todl.metadata_only && !todl.is_dir)
 	{
 		dest_f.reset(Server->openFile(os_file_prefix(todl.destfn), MODE_WRITE));
 

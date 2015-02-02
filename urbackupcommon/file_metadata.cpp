@@ -372,6 +372,20 @@ bool copy_os_metadata( const std::wstring& in_fn, const std::wstring& out_fn, IN
 	return true;
 }
 
+int64 read_hashdata_size( IFile* meta_file )
+{
+	int64 hashfilesize;
+
+	meta_file->Seek(0);
+	if(meta_file->Read(reinterpret_cast<char*>(&hashfilesize), sizeof(hashfilesize))!=sizeof(hashfilesize))
+	{
+		Server->Log(L"Error reading file metadata hashfilesize from \""+meta_file->getFilenameW()+L"\"", LL_DEBUG);
+		return -1;
+	}
+
+	return little_endian(hashfilesize);
+}
+
 void FileMetadata::serialize( CWData& data ) const
 {
 	data.addString(file_permissions);

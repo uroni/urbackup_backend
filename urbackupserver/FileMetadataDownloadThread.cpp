@@ -147,11 +147,6 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Could not save OS specific metadata to \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
 				return false;
-			}			
-			else if(output_f->Size()>metadata_size)
-			{
-				output_f.reset(NULL);
-				os_file_truncate(os_file_prefix(backupdir+os_file_sep()+os_path), metadata_size);
 			}
 		}
 

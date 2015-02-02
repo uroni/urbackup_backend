@@ -635,17 +635,30 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 				IFile *ctf=openFileRetry(os_file_prefix(existing_file.hashpath), MODE_READ);
 				if(ctf!=NULL)
 				{
-					if(!copyFile(ctf, hash_fn))
+					int64 hashfilesize = read_hashdata_size(ctf);
+					assert(hashfilesize==-1 || hashfilesize==t_filesize);
+					if(hashfilesize!=-1)
 					{
-						ServerLogger::Log(logid, "Error copying hashfile to destination -2", LL_ERROR);
-						has_error=true;
-						hash_fn.clear();
+						if(!copyFile(ctf, hash_fn))
+						{
+							ServerLogger::Log(logid, "Error copying hashfile to destination -2", LL_ERROR);
+							has_error=true;
+							hash_fn.clear();
+						}
+						else
+						{
+							if(!os_file_truncate(hash_fn, get_hashdata_size(t_filesize)))
+							{
+								ServerLogger::Log(logid, "Error truncating hashdata file", LL_ERROR);
+							}
+							write_metadata=true;
+						}
 					}
 					else
 					{
-						os_file_truncate(hash_fn, get_hashdata_size(t_filesize));
 						write_metadata=true;
 					}
+					
 					Server->destroy(ctf);
 				}
 			}

@@ -143,10 +143,12 @@ namespace
 		bool createFilelist(const std::wstring& foldername, const std::wstring& hashfoldername, size_t depth, bool skip_special)
 		{
 			bool has_error=false;
-			const std::vector<SFile> files = getFiles(foldername, &has_error, true);
+			const std::vector<SFile> files = getFiles(os_file_prefix(foldername), &has_error, true);
 
 			if(has_error)
 				return false;
+
+			bool ret=true;
 
 			for(size_t i=0;i<files.size();++i)
 			{
@@ -208,11 +210,16 @@ namespace
 
 				if(file.isdir)
 				{
-					return createFilelist(filename, hashfoldername + os_file_sep() + escape_metadata_fn(file.name), depth+1, false);
+					ret = ret && createFilelist(filename, hashfoldername + os_file_sep() + escape_metadata_fn(file.name), depth+1, false);
+
+					SFile cf;
+					cf.name=L"..";
+					cf.isdir=true;
+					writeFileItem(filelist_f, cf);
 				}
 			}
 
-			return true;
+			return ret;
 		}
 
 	private:
