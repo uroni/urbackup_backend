@@ -122,6 +122,7 @@
     <ProjectGuid>{240F81D1-45E1-4A7A-885C-4887C89D22A3}</ProjectGuid>
     <RootNamespace>urbackup</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <ProjectName>urbackupclient</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release x64|Win32'" Label="Configuration">

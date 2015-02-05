@@ -22,6 +22,7 @@
     <ProjectGuid>{7416F42E-0D3D-42CA-9F31-8C26D58DE5B3}</ProjectGuid>
     <RootNamespace>fsimageplugin</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <ProjectName>fsimageplugin</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">

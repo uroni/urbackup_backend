@@ -22,6 +22,7 @@
     <ProjectGuid>{A4E4AA81-F6C9-476F-A2E4-5D6E3B4EC2B5}</ProjectGuid>
     <RootNamespace>httpserver</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <ProjectName>httpserver</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">

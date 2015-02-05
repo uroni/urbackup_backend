@@ -22,6 +22,7 @@
     <ProjectGuid>{8AF65E2C-BCBD-48EC-976B-49DAD9467B2F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>urlplugin</RootNamespace>
+    <ProjectName>urlplugin</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
