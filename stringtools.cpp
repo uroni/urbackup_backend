@@ -1207,11 +1207,6 @@ void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstri
 	}
 }
 
-int round(float f)
-{
-  return (int)(f<0?f-0.5f:f+0.5f);
-}
-
 std::string FormatTime(int timeins)
 {
 	float t=(float)timeins;

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #include "Interface/Types.h"
 
@@ -76,7 +77,6 @@ void EscapeCh(std::wstring &pStr, wchar_t ch);
 std::string UnescapeSQLString(const std::string &pStr);
 std::wstring UnescapeSQLString(const std::wstring &pStr);
 void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstring> *pMap, bool escape_params=false);
-int round(float f);
 std::string FormatTime(int timeins);
 bool IsHex(const std::string &str);
 unsigned long hexToULong(const std::string &data);
