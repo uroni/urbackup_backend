@@ -217,3 +217,9 @@ debug.log.*
 urbackup/new_version_db/*
 urbackup/old_version_db/*
 urbackup/open_files.dat
+*.suo
+*.sdf
+*.opensdf
+Release x64/*
+urbackupclient/Release x64/*
+urbackupclient/Debug WinXP/*
