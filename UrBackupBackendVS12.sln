@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fileservplugin", "fileservplugin\fileservpluginVS12.vcxproj", "{4ECD51DA-3EFA-4700-9FCB-BCBA05640CB4}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fsimageplugin", "fsimageplugin\fsimagepluginVS12.vcxproj", "{7416F42E-0D3D-42CA-9F31-8C26D58DE5B3}"
@@ -20,6 +22,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sysvol_test", "urbackupclient\sysvol_test\sysvol_testVS12.vcxproj", "{91F5BC8A-ED9B-4C98-AD75-DA137FF72778}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{143E7E9B-6D5D-4AC9-A1BB-A692558B1050}"
+	ProjectSection(SolutionItems) = preProject
+		SolutionDependencies.props = SolutionDependencies.props
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
