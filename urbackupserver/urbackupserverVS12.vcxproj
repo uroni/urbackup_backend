@@ -1,0 +1,405 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Server PreVista|Win32">
+      <Configuration>Release Server PreVista</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Server PreVista|x64">
+      <Configuration>Release Server PreVista</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Server|Win32">
+      <Configuration>Release Server</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Server|x64">
+      <Configuration>Release Server</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{F97AB52D-CF1E-4D8B-A897-B15EC738CC34}</ProjectGuid>
+    <RootNamespace>urbackup</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'">$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'">$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'">$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'">false</LinkIncremental>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'" />
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;USE_NTFS_TXF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;VssApi.Lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;USE_NTFS_TXF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;_WIN_PRE_VISTA;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Server|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;SERVER_ONLY;USE_NTFS_TXF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;Ktmw32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Server PreVista|x64'">
+    <Midl>
+      <TargetEnvironment>X64</TargetEnvironment>
+    </Midl>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;URBACKUP_EXPORTS;_WIN_PRE_VISTA;SERVER_ONLY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\common\adler32.cpp" />
+    <ClCompile Include="..\common\data.cpp" />
+    <ClCompile Include="..\md5.cpp" />
+    <ClCompile Include="..\urbackupcommon\bufmgr.cpp" />
+    <ClCompile Include="..\urbackupcommon\CompressedPipe.cpp" />
+    <ClCompile Include="..\urbackupcommon\escape.cpp" />
+    <ClCompile Include="..\urbackupcommon\fileclient\tcpstack.cpp" />
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
+    <ClCompile Include="..\urbackupcommon\json.cpp" />
+    <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
+    <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
+    <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
+    <ClCompile Include="apps\cleanup_cmd.cpp" />
+    <ClCompile Include="apps\export_auth_log.cpp" />
+    <ClCompile Include="apps\repair_cmd.cpp" />
+    <ClCompile Include="ChunkPatcher.cpp" />
+    <ClCompile Include="create_files_cache.cpp" />
+    <ClCompile Include="dao\ServerBackupDao.cpp" />
+    <ClCompile Include="dao\ServerCleanupDAO.cpp" />
+    <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="DatabaseFileCache.cpp" />
+    <ClCompile Include="FileCache.cpp" />
+    <ClCompile Include="fileclient\FileClientChunked.cpp" />
+    <ClCompile Include="filedownload.cpp" />
+    <ClCompile Include="InternetServiceConnector.cpp" />
+    <ClCompile Include="lmdb\mdb.c" />
+    <ClCompile Include="lmdb\midl.c" />
+    <ClCompile Include="MDBFileCache.cpp" />
+    <ClCompile Include="server.cpp" />
+    <ClCompile Include="serverinterface\backups.cpp" />
+    <ClCompile Include="serverinterface\create_zip.cpp" />
+    <ClCompile Include="serverinterface\download_client.cpp" />
+    <ClCompile Include="serverinterface\getimage.cpp" />
+    <ClCompile Include="serverinterface\helper.cpp" />
+    <ClCompile Include="serverinterface\lastacts.cpp" />
+    <ClCompile Include="serverinterface\livelog.cpp" />
+    <ClCompile Include="serverinterface\login.cpp" />
+    <ClCompile Include="serverinterface\logs.cpp" />
+    <ClCompile Include="serverinterface\piegraph.cpp" />
+    <ClCompile Include="serverinterface\progress.cpp" />
+    <ClCompile Include="serverinterface\salt.cpp" />
+    <ClCompile Include="serverinterface\settings.cpp" />
+    <ClCompile Include="serverinterface\shutdown.cpp" />
+    <ClCompile Include="serverinterface\start_backup.cpp" />
+    <ClCompile Include="serverinterface\status.cpp" />
+    <ClCompile Include="serverinterface\usage.cpp" />
+    <ClCompile Include="serverinterface\usagegraph.cpp" />
+    <ClCompile Include="serverinterface\users.cpp" />
+    <ClCompile Include="server_archive.cpp" />
+    <ClCompile Include="server_channel.cpp" />
+    <ClCompile Include="server_cleanup.cpp" />
+    <ClCompile Include="server_dir_links.cpp" />
+    <ClCompile Include="server_download.cpp" />
+    <ClCompile Include="server_get.cpp" />
+    <ClCompile Include="server_hash.cpp" />
+    <ClCompile Include="server_hash_existing.cpp" />
+    <ClCompile Include="server_image.cpp" />
+    <ClCompile Include="server_log.cpp" />
+    <ClCompile Include="server_ping.cpp" />
+    <ClCompile Include="server_prepare_hash.cpp" />
+    <ClCompile Include="server_running.cpp" />
+    <ClCompile Include="server_settings.cpp" />
+    <ClCompile Include="server_status.cpp" />
+    <ClCompile Include="server_update.cpp" />
+    <ClCompile Include="server_update_stats.cpp" />
+    <ClCompile Include="server_writer.cpp" />
+    <ClCompile Include="..\stringtools.cpp" />
+    <ClCompile Include="snapshot_helper.cpp" />
+    <ClCompile Include="SQLiteFileCache.cpp" />
+    <ClCompile Include="treediff\TreeDiff.cpp" />
+    <ClCompile Include="treediff\TreeNode.cpp" />
+    <ClCompile Include="treediff\TreeReader.cpp" />
+    <ClCompile Include="fileclient\FileClient.cpp" />
+    <ClCompile Include="verify_hashes.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\common\adler32.h" />
+    <ClInclude Include="..\common\data.h" />
+    <ClInclude Include="..\md5.h" />
+    <ClInclude Include="..\urbackupcommon\bufmgr.h" />
+    <ClInclude Include="..\urbackupcommon\capa_bits.h" />
+    <ClInclude Include="..\urbackupcommon\CompressedPipe.h" />
+    <ClInclude Include="..\urbackupcommon\escape.h" />
+    <ClInclude Include="..\urbackupcommon\fileclient\tcpstack.h" />
+    <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h" />
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
+    <ClInclude Include="..\urbackupcommon\internet_pipe_capabilities.h" />
+    <ClInclude Include="..\urbackupcommon\json.h" />
+    <ClInclude Include="..\urbackupcommon\os_functions.h" />
+    <ClInclude Include="..\urbackupcommon\settings.h" />
+    <ClInclude Include="..\urbackupcommon\settingslist.h" />
+    <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
+    <ClInclude Include="action_header.h" />
+    <ClInclude Include="actions.h" />
+    <ClInclude Include="apps\app.h" />
+    <ClInclude Include="apps\cleanup_cmd.h" />
+    <ClInclude Include="apps\export_auth_log.h" />
+    <ClInclude Include="apps\repair_cmd.h" />
+    <ClInclude Include="ChunkPatcher.h" />
+    <ClInclude Include="create_files_cache.h" />
+    <ClInclude Include="dao\ServerBackupDao.h" />
+    <ClInclude Include="dao\ServerCleanupDAO.h" />
+    <ClInclude Include="database.h" />
+    <ClInclude Include="DatabaseFileCache.h" />
+    <ClInclude Include="FileCache.h" />
+    <ClInclude Include="fileclient\FileClientChunked.h" />
+    <ClInclude Include="fileclient\packet_ids.h" />
+    <ClInclude Include="fileclient\socket_header.h" />
+    <ClInclude Include="filedownload.h" />
+    <ClInclude Include="InternetServiceConnector.h" />
+    <ClInclude Include="lmdb\lmdb.h" />
+    <ClInclude Include="lmdb\midl.h" />
+    <ClInclude Include="MDBFileCache.h" />
+    <ClInclude Include="server.h" />
+    <ClInclude Include="serverinterface\actions.h" />
+    <ClInclude Include="serverinterface\action_header.h" />
+    <ClInclude Include="serverinterface\helper.h" />
+    <ClInclude Include="serverinterface\login.h" />
+    <ClInclude Include="serverinterface\rights.h" />
+    <ClInclude Include="server_archive.h" />
+    <ClInclude Include="server_channel.h" />
+    <ClInclude Include="server_cleanup.h" />
+    <ClInclude Include="server_dir_links.h" />
+    <ClInclude Include="server_download.h" />
+    <ClInclude Include="server_get.h" />
+    <ClInclude Include="server_hash.h" />
+    <ClInclude Include="server_hash_existing.h" />
+    <ClInclude Include="server_image.h" />
+    <ClInclude Include="server_log.h" />
+    <ClInclude Include="server_ping.h" />
+    <ClInclude Include="server_prepare_hash.h" />
+    <ClInclude Include="server_running.h" />
+    <ClInclude Include="server_settings.h" />
+    <ClInclude Include="server_update.h" />
+    <ClInclude Include="server_update_stats.h" />
+    <ClInclude Include="server_writer.h" />
+    <ClInclude Include="..\stringtools.h" />
+    <ClInclude Include="snapshot_helper.h" />
+    <ClInclude Include="SQLiteFileCache.h" />
+    <ClInclude Include="treediff\TreeDiff.h" />
+    <ClInclude Include="treediff\TreeNode.h" />
+    <ClInclude Include="treediff\TreeReader.h" />
+    <ClInclude Include="fileclient\FileClient.h" />
+    <ClInclude Include="server_status.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
