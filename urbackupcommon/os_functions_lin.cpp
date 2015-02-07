@@ -42,7 +42,7 @@
 #include <errno.h>
 #include <utime.h>
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__APPLE__)
 #define lstat64 lstat
 #define stat64 stat
 #define statvfs64 statvfs

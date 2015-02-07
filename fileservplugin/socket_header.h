@@ -14,7 +14,11 @@
 #	include <unistd.h>
 #	include <fcntl.h>
 #	include <errno.h>
+#ifndef __APPLE__
 #	include <sys/sendfile.h>
+#else
+#   include <sys/uio.h>
+#endif
 #	define SOCKET_ERROR -1
 #	define closesocket close
 #	define SOCKET int
@@ -28,6 +32,6 @@
 #	define Sleep(x) usleep(x*1000)
 #	define MAX_PATH 260
 #endif
-#ifdef sun
+#ifdef defined(__sun__) || defined(__APPLE__)
 #	define MSG_NOSIGNAL 0
 #endif

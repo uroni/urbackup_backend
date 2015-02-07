@@ -112,6 +112,9 @@ std::vector<std::wstring> get_groups()
 
 std::vector<std::wstring> get_user_groups(const std::wstring& username)
 {
+	#ifdef __APPLE__
+	#define gid_t int
+	#endif
 	std::string utf8_username = Server->ConvertToUTF8(username).c_str();
 	struct passwd* pw = getpwnam(utf8_username.c_str());
 	if(pw==NULL)
@@ -146,6 +149,10 @@ std::vector<std::wstring> get_user_groups(const std::wstring& username)
 	{
 		return std::vector<std::wstring>();
 	}
+
+	#ifdef gid_t
+	#undef gid_t
+	#endif
 }
 
 int read_val(std::string val_name)

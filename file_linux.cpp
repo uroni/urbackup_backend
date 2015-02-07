@@ -20,15 +20,6 @@
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
 
-#if defined(__FreeBSD__)
-#define open64 open
-#define off64_t off_t
-#define lseek64 lseek
-#define O_LARGEFILE 0
-#define stat64 stat
-#define fstat64 fstat
-#endif
-
 #include "Server.h"
 #include "file.h"
 #include "types.h"
@@ -40,6 +31,15 @@
 #include <stdint.h>
 
 #include <sys/fcntl.h>
+
+#if defined(__FreeBSD__) || defined(__APPLE__)
+#define open64 open
+#define off64_t off_t
+#define lseek64 lseek
+#define O_LARGEFILE 0
+#define stat64 stat
+#define fstat64 fstat
+#endif
 
 File::File()
 	: fd(-1)

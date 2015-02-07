@@ -1,4 +1,5 @@
 #pragma once
+#ifndef __APPLE__
 
 #include "IVHDFile.h"
 
@@ -50,3 +51,5 @@ private:
 
 	bool finished;
 };
+
+#endif //__APPLE__

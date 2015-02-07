@@ -47,6 +47,17 @@
 #endif
 #include <assert.h>
 
+#ifdef __APPLE__
+#include <sys/uio.h>
+#define open64 open
+#define off64_t off_t
+#define lseek64 lseek
+#define O_LARGEFILE 0
+#define stat64 stat
+#define fstat64 fstat
+#define sendfile64(a, b, c, d) sendfile(a, b, c, d, NULL, 0)
+#endif
+
 #define CLIENT_TIMEOUT	120
 #define CHECK_BASE_PATH
 #define SEND_TIMEOUT 300000
@@ -130,7 +141,7 @@ void CClientThread::EnableNagle(void)
 	if(has_socket)
 	{
 #ifdef DISABLE_NAGLE
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__APPLE__)
 	BOOL opt=FALSE;
 	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
 	if( err==SOCKET_ERROR )
@@ -624,7 +635,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
 #ifdef CHECK_BASE_PATH
-					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
+					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
 					if(!isDirectory(basePath))
 					{
 						char ch=ID_BASE_DIR_LOST;
@@ -717,7 +728,16 @@ bool CClientThread::ProcessPacket(CRData *data)
 					size_t count=(std::min)((size_t)s_bsize, (size_t)(next_checkpoint-foffset));
 					if( clientpipe==NULL && ( id==ID_GET_FILE || id==ID_GET_FILE_RESUME ) )
 					{
+						#ifdef __APPLE__
+						ssize_t rc=sendfile64(int_socket, hFile, foffset, reinterpret_cast<off_t*>(&count));
+						if(rc==0)
+						{
+							foffset+=count;
+							rc=count;
+						}
+						#else			
 						ssize_t rc=sendfile64(int_socket, hFile, &foffset, count);
+						#endif
 						if(rc<0)
 						{
 							Log("Error: Reading and sending from file failed. Errno: "+nconvert(errno), LL_DEBUG);
