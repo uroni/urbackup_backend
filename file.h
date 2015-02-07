@@ -23,7 +23,7 @@ const int MODE_TEMP=4;
 #	include "Interface/Mutex.h"
 #endif
 #ifdef MODE_LIN
-#ifndef _LARGEFILE64_SOURCE
+#if !defined(_LARGEFILE64_SOURCE) && !defined(__APPLE__)
 #	define _LARGEFILE64_SOURCE
 #endif
 #	include <fcntl.h>

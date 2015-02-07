@@ -1,6 +1,7 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+#ifndef __APPLE__
 #include "cowfile.h"
 #include "../Interface/Server.h"
 #include <sys/types.h>
@@ -541,3 +542,5 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 		}
 	}
 }
+
+#endif //__APPLE__
