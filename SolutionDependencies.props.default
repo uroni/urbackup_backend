@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <BoostDir>C:\Tools\boost_1_57_0</BoostDir>
+    <BoostIncludeDir>$(BoostDir)</BoostIncludeDir>
+    <BoostLibDir>$(BoostDir)\lib$(PlatformArchitecture)-msvc-12.0</BoostLibDir>
+    <CryptoppDir>C:\Tools\cryptopp562</CryptoppDir>
+    <CryptoppIncludeDir>$(CryptoppDir)</CryptoppIncludeDir>
+    <CryptoppLibDir>$(CryptoppDir)\$(Platform)\Output\$(Configuration)</CryptoppLibDir>
+    <CurlDir>C:\GitHub\curl</CurlDir>
+    <CurlIncludeDir>$(CurlDir)\include</CurlIncludeDir>
+    <CurlLibDir>$(CurlDir)\builds\libcurl-vc12-$(PlatformTarget)-release-dll-ipv6-sspi-winssl\lib</CurlLibDir>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup />
+  <ItemGroup>
+    <BuildMacro Include="BoostDir">
+      <Value>$(BoostDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="BoostIncludeDir">
+      <Value>$(BoostIncludeDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="BoostLibDir">
+      <Value>$(BoostLibDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="CryptoppDir">
+      <Value>$(CryptoppDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="CryptoppIncludeDir">
+      <Value>$(CryptoppIncludeDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="CryptoppLibDir">
+      <Value>$(CryptoppLibDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="CurlDir">
+      <Value>$(CurlDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="CurlIncludeDir">
+      <Value>$(CurlIncludeDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="CurlLibDir">
+      <Value>$(CurlLibDir)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

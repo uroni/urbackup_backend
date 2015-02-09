@@ -1,4 +1,5 @@
 #include <string>
+#include <algorithm>
 #include "Interface/File.h"
 
 class CMemoryFile : public IFile

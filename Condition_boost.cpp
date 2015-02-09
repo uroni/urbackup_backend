@@ -35,7 +35,11 @@ void CCondition::wait(IScopedLock *lock, int timems)
 boost::xtime CCondition::getWaitTime(int timeoutms)
 {
 	boost::xtime xt;
+#if BOOST_VERSION < 105000
     xtime_get(&xt, boost::TIME_UTC);
+#else
+	xtime_get(&xt, boost::TIME_UTC_);
+#endif
 	if( timeoutms>1000 )
 	{
 		xt.sec+=timeoutms/1000;
