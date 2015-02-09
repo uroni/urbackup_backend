@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.urbackup.client.backend</string>
+    <key>ProgramArguments</key>
+    <array>
+    	<string>/usr/sbin/urbackup_client</string>
+    	<string>--no_daemon</string>
+    	<string>--no-server</string>
+
+        <string>--plugin</string>
+        <string>liburbackupclient_cryptoplugin.dylib</string>
+
+        <string>--plugin</string>
+        <string>liburbackupclient_fsimageplugin.dylib</string>
+
+        <string>--plugin</string>
+        <string>liburbackupclient_fileservplugin.dylib</string>
+
+        <string>--plugin</string>
+        <string>liburbackupclient.dylib</string>
+
+        <string>--logfile</string>
+        <string>/Library/Logs/urbackup_client_backend.log</string>
+
+        <string>--loglevel</string>
+        <string>debug</string>
+
+        <string>--rotate-filesize</string>
+        <string>20971520</string>
+
+        <string>--workingdir</string>
+        <string>/usr/var</string>
+    </array>
+    <key>KeepAlive</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>/usr/var</string>
+</dict>
+</plist>

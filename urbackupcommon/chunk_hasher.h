@@ -13,4 +13,4 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 
 bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb);
 
-bool writeFileRepeat(IFile *f, const char *buf, size_t bsize);
+bool writeFileRepeatTries(IFile *f, const char *buf, size_t bsize);

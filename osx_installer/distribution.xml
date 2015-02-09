@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-gui-script minSpecVersion="1">
+    <title>UrBackup Client</title>
+    <organization>org.urbackup</organization>
+    <domains enable_localSystem="true"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true" />
+    <!-- Define documents displayed at various steps -->
+    <welcome    file="welcome.html"    mime-type="text/html" />
+    <conclusion file="conclusion.html" mime-type="text/html" />
+    <!-- List all component packages -->
+    <pkg-ref id="org.urbackup.client"
+             version="0"
+             auth="root">output.pkg</pkg-ref>
+    <pkg-ref id="org.urbackup.client.frontend.pkg"
+             version="0"
+             auth="root">output2.pkg</pkg-ref>
+    <!-- List them again here. They can now be organized
+         as a hierarchy if you want. -->
+    <choices-outline>
+        <line choice="default">
+            <line choice="org.urbackup.client"/>
+            <line choice="org.urbackup.client.frontend.choice"/>
+        </line>
+    </choices-outline>
+    <!-- Define each choice above -->
+    <choice id="default"/>
+    <choice
+        id="org.urbackup.client"
+        visible="true"
+        title="UrBackup Client"
+        description="Client to backup your files to a UrBackup server"
+        start_selected="true">
+      <pkg-ref id="org.urbackup.client"/>
+    </choice>
+
+    <choice
+        id="org.urbackup.client.frontend.choice"
+        visible="true"
+        title="UrBackup Client Tray Icon GUI"
+        description="Client to backup your files to a UrBackup server"
+        start_selected="true">
+      <pkg-ref id="org.urbackup.client.frontend.pkg"/>
+    </choice>
+</installer-gui-script>

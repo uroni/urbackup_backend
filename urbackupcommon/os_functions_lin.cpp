@@ -671,6 +671,11 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 	}
 }
 
+SFile getFileMetadataWin( const std::wstring &path, bool with_usn)
+{
+	return getFileMetadata(path);
+}
+
 SFile getFileMetadata( const std::wstring &path )
 {
 	SFile ret = {};
@@ -697,3 +702,4 @@ SFile getFileMetadata( const std::wstring &path )
 		return SFile();
 	}
 }
+

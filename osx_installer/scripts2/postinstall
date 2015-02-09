@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+/bin/launchctl load "/Library/LaunchDaemons/org.urbackup.client.plist"
+/bin/launchctl start "org.urbackup.client.backend"
+/bin/launchctl load "/Library/LaunchAgents/org.urbackup.client.plist"
+/bin/launchctl start "org.urbackup.client.frontend"

@@ -1,6 +1,6 @@
 #include "RestoreDownloadThread.h"
-#include "..\urbackupcommon\file_metadata.h"
-#include "..\urbackupcommon\os_functions.h"
+#include "../urbackupcommon/file_metadata.h"
+#include "../urbackupcommon/os_functions.h"
 
 
 namespace

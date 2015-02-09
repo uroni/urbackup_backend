@@ -559,6 +559,7 @@ bool ClientConnector::Run(void)
 
 				lasttime = Server->getTimeMS();
 				state = CCSTATE_NORMAL;
+				status_updated=false;
 			}
 			return true;
 		} break;
