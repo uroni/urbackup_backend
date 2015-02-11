@@ -1049,6 +1049,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 
 void ChangeJournalWatcher::update_longliving(void)
 {
+	db->BeginTransaction();
 	if(!freeze_open_write_files)
 	{
 		std::vector<std::wstring> files = open_write_files.get();
@@ -1064,6 +1065,8 @@ void ChangeJournalWatcher::update_longliving(void)
 			listener->On_FileModified(it->first, true);
 		}
 	}
+	db->EndTransaction();
+
 	for(size_t i=0;i<error_dirs.size();++i)
 	{
 		listener->On_ResetAll(error_dirs[i]);
