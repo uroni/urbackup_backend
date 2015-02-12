@@ -1314,7 +1314,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				}
 				else
 				{
-					if(UsnRecord->Reason & USN_REASON_CLOSE)
+					if(UsnRecord->Reason & (USN_REASON_CLOSE | USN_REASON_RENAME_OLD_NAME))
 					{
 						std::map<std::wstring, bool>::iterator it_rf=local_open_write_files.find(real_fn);
 
