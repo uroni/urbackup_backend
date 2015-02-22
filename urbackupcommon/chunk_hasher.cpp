@@ -4,6 +4,7 @@
 #include "../fileservplugin/chunk_settings.h"
 #include "../md5.h"
 #include "../common/adler32.h"
+#include <memory.h>
 
 std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written)
 {
