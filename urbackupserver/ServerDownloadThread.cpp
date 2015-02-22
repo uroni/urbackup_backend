@@ -451,7 +451,8 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		Server->deleteFile(os_file_prefix(dstpath));			
 		
 		bool ok = dlfiles.patchfile->Seek(0);
-		int64 endian_filesize = little_endian(dlfiles.orig_file->Size());
+		int64 orig_filesize = dlfiles.orig_file->Size();
+		int64 endian_filesize = little_endian(orig_filesize);
 		ok = ok && (dlfiles.patchfile->Write(reinterpret_cast<char*>(&endian_filesize), sizeof(endian_filesize))==sizeof(endian_filesize));
 			
 		std::wstring hashfile_old_fn = dlfiles.chunkhashes->getFilenameW();
@@ -465,7 +466,7 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		{
 			pfd_destroy.release();
 			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			    Server->ConvertToUTF8(dlfiles.filepath_old), 0, todl.metadata, todl.parent_metadata, todl.is_script);
+			    Server->ConvertToUTF8(dlfiles.filepath_old), orig_filesize, todl.metadata, todl.parent_metadata, todl.is_script);
 			return true;
 		}
 		else
