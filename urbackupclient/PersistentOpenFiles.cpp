@@ -255,6 +255,11 @@ void PersistentOpenFiles::add( const std::wstring& fn )
 	}
 }
 
+bool PersistentOpenFiles::is_present( const std::wstring& fn )
+{
+	return (open_files.find(fn)!=open_files.end());
+}
+
 PersistentOpenFiles::PersistentOpenFiles() : curr_id(0), bytes_written(0), bytes_deleted(0)
 {
 	persistf = Server->openFile(persistent_open_files_fn, MODE_RW_CREATE);
