@@ -616,6 +616,71 @@ namespace
 
 		return true;
 	}
+	
+	struct SLsblk
+	{
+		std::string maj_min;
+		std::string model;
+		std::string size;
+		std::string type;
+		std::string path;
+	};
+	
+	std::vector<SLsblk> lsblk(const std::string& dev)
+	{
+		int rc = system("lsblk -o MAJ:MIN,MODEL,SIZE,TYPE -P 1> out");
+		
+		std::vector<SLsblk> ret;
+		
+		if(rc!=0)
+		{
+			Server->Log("Error while running 'lsblk'", LL_ERROR);
+			return ret;
+		}
+		
+		std::vector<std::string> lines;
+		TokenizeMail(getFile("out"), lines, "\n");
+		
+		for(size_t i=0;i<lines.size();++i)
+		{
+			SLsblk c;
+			c.maj_min = getbetween("MAJ:MIN=\"", "\"", lines[i]);
+			c.model = getbetween("MODEL=\"", "\"", lines[i]);
+			c.size = getbetween("SIZE=\"", "\"", lines[i]);
+			c.type = getbetween("TYPE=\"", "\"", lines[i]);
+			
+			rc = system(("udevadm info --query=property --path=/sys/dev/block/"+greplace(":", "\\:", c.maj_min)+
+					" | grep \"DEVNAME=\" | sed 's/DEVNAME=//' - 1> out").c_str());
+			
+			if(rc==0)
+			{
+			    c.path = trim(getuntil("\n", getFile("out")));
+			}
+			else
+			{
+				Server->Log("Error getting name of device "+c.maj_min, LL_ERROR);
+			}
+			
+			ret.push_back(c);
+		}
+		
+		return ret;
+	}
+	
+	std::string getPartitionPath(const std::string& dev, int partnum)
+	{
+		std::vector<SLsblk> parts = lsblk(dev);
+		
+		if(partnum<parts.size() &&
+			parts[partnum].type=="part")
+		{
+			return parts[partnum].path;
+		}
+		else
+		{
+			return std::string();
+		}
+	}
 }
 
 void do_restore(void)
@@ -1010,7 +1075,7 @@ void restore_wizard(void)
 	SImage r_selimage;
 	std::string seldrive;
 	std::string windows_partition;
-	int selpart;
+	std::string selpart;
 	std::string err;
 	bool res_sysvol=false;
 	while(true)
@@ -1246,37 +1311,21 @@ void restore_wizard(void)
 			}break;
 		case 3:
 			{
-				system("ls /dev | grep \"[h|s]d[a-z]\" > out");
-				std::string drives_s=getFile("out");
-				std::vector<std::string> drives;
-				for(int i=0,lc=linecount(drives_s);i<lc;++i)
-				{
-					std::string l=trim2(getline(i, drives_s));
-					if(l.size()==3)
-					{
-						drives.push_back(l);
-					}
-				}
-
-				std::vector<std::string> vendors;
-				std::vector<_i64> d_sizes;
+				std::vector<SLsblk> drives = lsblk("");
+				
+				bool has_disk=false;
+				
 				for(size_t i=0;i<drives.size();++i)
 				{
-					system(("hdparm -I /dev/"+drives[i]+" | grep Model > out").c_str());
-					std::string out=getFile("out");
-					std::string vendor=trim2(getafter("Model Number:", out));
-					if(vendor.empty())
+					if(drives[i].type=="disk" && !drives[i].path.empty())
 					{
-						vendor="`cat urbackup/restore/unknown_disk`";
+						has_disk=true;
+						break;
 					}
-					vendors.push_back(vendor);
-					system(("hdparm -I /dev/"+drives[i]+" | grep \"M = 1000\" > out").c_str());
-					out=getFile("out");
-					std::string size_s=trim2(getbetween("1000:", "MBytes", out));
-					d_sizes.push_back(os_atoi64(size_s));
 				}
-
-				if(drives.empty())
+				
+				
+				if(!has_disk)
 				{
 					int r=system("dialog --menu \"`cat urbackup/restore/no_disks_found`. `cat urbackup/restore/how_to_continue`\" 15 50 10 \"r\" \"`cat urbackup/restore/search_disk_again`\" \"s\" \"`cat urbackup/restore/stop_restore`\" 2> out");
 					if(r!=0)
@@ -1296,7 +1345,10 @@ void restore_wizard(void)
 				std::string mi;
 				for(size_t i=0;i<drives.size();++i)
 				{
-					mi+="\""+nconvert((int)i+1)+"\" \""+vendors[i]+" `cat urbackup/restore/size`: "+nconvert((int)(d_sizes[i]/1000))+" GB\" ";
+					if(drives[i].type=="disk")
+					{
+						mi+="\""+nconvert((int)i+1)+"\" \""+drives[i].model+" `cat urbackup/restore/size`: "+drives[i].size+"\" ";
+					}
 				}
 				std::string scmd="dialog --menu \"`cat urbackup/restore/select_drive`\" 15 50 10 "+mi+"2> out";
 				writestring(scmd, "scmd.sh");
@@ -1309,8 +1361,8 @@ void restore_wizard(void)
 
 				std::string out=getFile("out");
 				int driveidx=atoi(out.c_str())-1;
-				seldrive=drives[driveidx];
-				r=system(("dialog --yesno \"`cat urbackup/restore/select_certain`\\n"+vendors[driveidx]+" `cat urbackup/restore/size`: "+nconvert((int)(d_sizes[driveidx]/1000))+" GB\" 10 50").c_str());
+				seldrive=drives[driveidx].path;
+				r=system(("dialog --yesno \"`cat urbackup/restore/select_certain`\\n"+drives[driveidx].model+" `cat urbackup/restore/size`: "+drives[driveidx].size+"\" 10 50").c_str());
 				if(r!=0)
 				{
 					break;
@@ -1360,7 +1412,7 @@ void restore_wizard(void)
 
 				system("cat urbackup/restore/writing_mbr");
 				system("echo");
-				IFile *dev=Server->openFile("/dev/"+seldrive, MODE_RW);
+				IFile *dev=Server->openFile(seldrive, MODE_RW);
 				if(dev==NULL)
 				{
 					err="cannot_open_disk";
@@ -1373,24 +1425,33 @@ void restore_wizard(void)
 
 				system("cat urbackup/restore/reading_partition_table");
 				system("echo");
-				system(("partprobe /dev/"+seldrive+" > /dev/null 2>&1").c_str());
+				system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
 				system("echo");
-				dev=Server->openFile("/dev/"+seldrive+nconvert(mbrdata.partition_number), MODE_RW);
+				dev=NULL;
+				std::string partpath = getPartitionPath(seldrive, mbrdata.partition_number);
+				if(!partpath.empty())
+				{
+					dev=Server->openFile(partpath, MODE_RW);
+				}
 				int try_c=0;
 				while(dev==NULL && try_c<10)
 				{
-					system(("partprobe /dev/"+seldrive+" > /dev/null 2>&1").c_str());
+					system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 					Server->wait(10000);
 					system("cat urbackup/restore/testing_partition");
 					system("echo");
-					dev=Server->openFile("/dev/"+seldrive+nconvert(mbrdata.partition_number), MODE_RW);
+					partpath = getPartitionPath(seldrive, mbrdata.partition_number);
+					if(!partpath.empty())
+					{
+						dev=Server->openFile(partpath, MODE_RW);
+					}
 
 					if(dev==NULL)
 					{
 						//Fix LBA partition signature
-						system(("echo w | fdisk.distrib /dev/"+seldrive+" > /dev/null 2>&1").c_str());
+						system(("echo w | fdisk.distrib "+seldrive+" > /dev/null 2>&1").c_str());
 					}
 
 					++try_c;
@@ -1401,21 +1462,18 @@ void restore_wizard(void)
 					state=101;
 					break;
 				}
-				selpart=mbrdata.partition_number;
+				selpart=partpath;
 				Server->destroy(dev);
 				delete []buf;
 				++state;
 			}break;
 		case 5:
 			{
-				//Disable IO scheduler for drive
-				system(("echo noop > /sys/block/"+seldrive+"/queue/scheduler").c_str());
-				const std::string selected_partition="/dev/"+seldrive+nconvert( selpart );
 				if(windows_partition.empty())
 				{
-					windows_partition=selected_partition;
+					windows_partition=selpart;
 				}
-				RestoreThread rt(selimage.id, nconvert(selimage.time_s), selected_partition);
+				RestoreThread rt(selimage.id, nconvert(selimage.time_s), selpart);
 				THREADPOOL_TICKET rt_ticket=Server->getThreadPool()->execute(&rt);
 				while(true)
 				{

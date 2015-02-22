@@ -1669,7 +1669,9 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	tcpstack.Send(pipe, mbr);
 
 	return true;
-#endif //WIN_32
+#else //_WIN32
+	return false;
+#endif
 }
 
 const int64 receive_timeouttime=60000;
