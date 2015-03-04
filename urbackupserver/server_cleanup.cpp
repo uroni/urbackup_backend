@@ -47,6 +47,8 @@ IMutex *ServerCleanupThread::a_mutex=NULL;
 bool ServerCleanupThread::update_stats_interruptible=false;
 volatile bool ServerCleanupThread::do_quit=false;
 
+void cleanupLastActs();
+
 const unsigned int min_cleanup_interval=12*60*60;
 
 void ServerCleanupThread::initMutex(void)
@@ -1704,6 +1706,10 @@ void ServerCleanupThread::cleanup_other()
 	Server->Log("Cleaning history...", LL_INFO);
 	cleanup_client_hist();
 	Server->Log("Done cleaning history", LL_INFO);
+
+	Server->Log("Cleaning deleted backups history...", LL_INFO);
+	cleanupLastActs();
+	Server->Log("Done cleaning deleted backups history.", LL_INFO);
 }
 
 void ServerCleanupThread::removeFileBackupSql( int backupid )

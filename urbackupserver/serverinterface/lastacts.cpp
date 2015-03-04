@@ -20,8 +20,18 @@
 
 #include "action_header.h"
 #include "../server_status.h"
+#include "../database.h"
 
 const size_t max_display=20;
+
+void cleanupLastActs()
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	db->Write("CREATE INDEX IF NOT EXISTS del_stats_del_idx ON del_stats (clientid, created)");
+	db->Write("DELETE FROM del_stats WHERE (SELECT COUNT(*) FROM del_stats b WHERE del_stats.clientid=b.clientid AND b.created<del_stats.created)>"+nconvert(max_display));
+	db->Write("DROP INDEX del_stats_del_idx");
+}
 
 void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 {
