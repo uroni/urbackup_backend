@@ -10,7 +10,11 @@ const size_t metadata_id_size = 4+4+8+4;
 
 
 FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::wstring& cmd )
-	: PipeFileBase(cmd), pipe(pipe), hFile(INVALID_HANDLE_VALUE), metadata_state(MetadataState_Wait),
+	: PipeFileBase(cmd), pipe(pipe),
+#ifdef _WIN32
+	hFile(INVALID_HANDLE_VALUE),
+#endif
+	metadata_state(MetadataState_Wait),
 		errpipe(Server->createMemoryPipe())
 {
 	metadata_buffer.resize(4096);
@@ -216,6 +220,7 @@ bool FileMetadataPipe::readStderrIntoBuffer( char* buf, size_t buf_avail, size_t
 	}	
 }
 
+#ifdef _WIN32
 bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t& read_bytes )
 {
 	if(metadata_buffer_size-metadata_buffer_off>0)
@@ -366,4 +371,15 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 	return false;
 }
+
+#else //_WIN32
+
+bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t& read_bytes)
+{
+	assert(false);
+	//TODO: Implement
+	return false;
+}
+
+#endif //_WIN32
 

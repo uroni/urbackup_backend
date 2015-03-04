@@ -11,7 +11,9 @@ public:
 	virtual void operator()();
 
 	bool applyMetadata();
-	bool applyWindowsMetadata(IFile* metadata_f, const std::wstring& output_fn);
+
+	bool applyOsMetadata(IFile* metadata_f, const std::wstring& output_fn);
+
 
 private:
 	RestoreFiles& restore;

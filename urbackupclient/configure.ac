@@ -16,6 +16,8 @@ AM_CONDITIONAL(WITH_FORTIFY, test "x$enable_fortify" != xno)
 AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_LIBTOOL
+AC_PROG_INSTALL
+AC_PROG_MKDIR_P
 
 # Checks for libraries.
 

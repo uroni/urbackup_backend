@@ -19,6 +19,6 @@
 #	define SOCKET int
 #	define Sleep(x) usleep(x*1000)
 #endif
-#ifdef sun
+#if defined(__sun__) || defined(__APPLE__)
 #	define MSG_NOSIGNAL 0
 #endif

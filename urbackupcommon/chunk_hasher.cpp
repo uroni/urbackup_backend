@@ -4,6 +4,7 @@
 #include "../fileservplugin/chunk_settings.h"
 #include "../md5.h"
 #include "../common/adler32.h"
+#include <memory.h>
 
 std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written)
 {
@@ -98,7 +99,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpaceCallback *cb)
 {
 	if( cb==NULL)
-		return writeFileRepeat(f, buf, bsize);
+		return writeFileRepeatTries(f, buf, bsize);
 
 	int rc=f->Write(buf, (_u32)bsize);
 	if(rc!=bsize)
@@ -123,7 +124,7 @@ bool writeRepeatFreeSpace(IFile *f, const char *buf, size_t bsize, INotEnoughSpa
 	return true;
 }
 
-bool writeFileRepeat(IFile *f, const char *buf, size_t bsize)
+bool writeFileRepeatTries(IFile *f, const char *buf, size_t bsize)
 {
 	_u32 written=0;
 	_u32 rc;

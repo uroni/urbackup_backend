@@ -5,4 +5,4 @@ if WITH_FORTIFY
 AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 endif
 AM_CXXFLAGS = -DLINUX
-AM_LDFLAGS = -Wl,--no-undefined
+AM_LDFLAGS = 

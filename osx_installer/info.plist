@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleGetInfoString</key>
+  <string>UrBackup Client Tray Icon GUI</string>
+  <key>CFBundleExecutable</key>
+  <string>urbackup_client_gui</string>
+  <key>CFBundleIdentifier</key>
+  <string>org.urbackup.client.frontend.bundle2</string>
+  <key>CFBundleName</key>
+  <string>UrBackup Client</string>
+  <key>CFBundleIconFile</key>
+  <string>urbackup.icns</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.5</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>IFMajorVersion</key>
+  <integer>0</integer>
+  <key>IFMinorVersion</key>
+  <integer>1</integer>
+  <key>LSUIElement</key>
+  <string>1</string>
+  <key>LSMultipleInstancesProhibited</key>
+  <true />
+</dict>
+</plist>

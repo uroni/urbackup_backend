@@ -8,8 +8,14 @@
 
 const _u32 ID_METADATA_OS_WIN = 1<<0;
 const _u32 ID_METADATA_OS_UNIX = 1<<2;
+
 const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = 1<<3;
+#ifdef _WIN32
+const _u32 ID_METADATA_OS = ID_METADATA_OS_WIN;
+#else
+const _u32 ID_METADATA_OS = ID_METADATA_OS_UNIX;
+#endif
 
 FileMetadataDownloadThread::FileMetadataDownloadThread(RestoreFiles& restore, FileClient& fc, const std::string& client_token)
 	: restore(restore), fc(fc), client_token(client_token), has_error(false)
@@ -117,13 +123,13 @@ bool FileMetadataDownloadThread::applyMetadata()
 			}
 
 			bool ok=false;
-			if(ch & ID_METADATA_OS_WIN)
+			if(ch & ID_METADATA_OS)
 			{
-				ok = applyWindowsMetadata(metadata_f.get(), os_path);
+				ok = applyOsMetadata(metadata_f.get(), os_path);
 			}
 			else
 			{
-				restore.log("Wrong metadata. This metadata is not for Windows!", LL_ERROR);
+				restore.log("Wrong metadata. This metadata is not for this operating system! (id=" + nconvert(ch)+")", LL_ERROR);
 			}
 
 			if(!ok)
@@ -139,6 +145,7 @@ bool FileMetadataDownloadThread::applyMetadata()
 	return true;
 }
 
+#ifdef _WIN32
 namespace
 {
 	struct WIN32_STREAM_ID_INT
@@ -152,7 +159,7 @@ namespace
 	const size_t metadata_id_size = 4+4+8+4;
 }
 
-bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, const std::wstring& output_fn)
+bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::wstring& output_fn)
 {
 	HANDLE hFile = CreateFileW(os_file_prefix(output_fn).c_str(), GENERIC_WRITE|ACCESS_SYSTEM_SECURITY|WRITE_OWNER|WRITE_DAC, FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
@@ -252,4 +259,15 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, const 
 	CloseHandle(hFile);
 	return !has_error;
 }
+
+#else //_WIN32
+
+bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::wstring& output_fn)
+{
+	//TODO: Implement
+	assert(false);
+	return false;
+}
+
+#endif //_WIN32
 

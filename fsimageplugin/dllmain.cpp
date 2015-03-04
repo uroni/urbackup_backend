@@ -455,7 +455,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			in.reset(new VHDFile(Server->ConvertToUnicode(image_verify), true,0));
 		}
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
 		else if(ext=="raw")
 		{
 			in.reset(new CowFile(Server->ConvertToUnicode(image_verify), true,0));
