@@ -847,10 +847,12 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 									if(num_hash_errors<10)
 									{
 										ServerLogger::Log(clientid, "Checksum for image block wrong. Retrying...", LL_WARNING);
+										transferred_bytes+=cc->getTransferedBytes();
 										Server->destroy(cc);
 										cc=NULL;
 										nextblock=last_verified_block;
 										++num_hash_errors;
+										break;
 									}
 									else
 									{
