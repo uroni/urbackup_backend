@@ -39,6 +39,19 @@
 std::string getSystemServerName(bool use_fqdn)
 {
 	char hostname[MAX_PATH];
+#ifdef __APPLE__
+	//TODO: Fix FQDN for Apple
+	FILE* fd=popen("/bin/hostname");
+	if(fd!=NULL)
+	{
+		if(fgets(hostname, MAX_PATH, fd)!=NULL)
+		{
+			return hostname;
+		}
+		pclose(fd);
+	}
+#endif
+
     _i32 rc=gethostname(hostname, MAX_PATH);
 
 	if(rc==SOCKET_ERROR)
