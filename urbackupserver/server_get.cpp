@@ -53,9 +53,13 @@
 #include <math.h>
 #include <errno.h>
 #include <string.h>
+#ifndef __sun__
 #ifndef NAME_MAX
 #define NAME_MAX _POSIX_NAME_MAX
 #endif
+#else
+#define NAME_MAX 255
+#endif //__sun__
 
 extern IUrlFactory *url_fak;
 extern ICryptoFactory *crypto_fak;

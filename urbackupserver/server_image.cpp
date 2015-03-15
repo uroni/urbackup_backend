@@ -33,6 +33,7 @@
 
 #include <memory.h>
 #include <stdlib.h>
+#include <cstring>
 
 const unsigned int status_update_intervall=1000;
 const unsigned int eta_update_intervall=60000;

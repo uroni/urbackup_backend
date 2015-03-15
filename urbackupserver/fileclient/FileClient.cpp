@@ -29,6 +29,7 @@
 #include <memory.h>
 #include <algorithm>
 #include <assert.h>
+#include <cstring>
 
 #ifndef _WIN32
 #include <errno.h>
