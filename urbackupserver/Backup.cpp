@@ -45,6 +45,7 @@ void Backup::operator()()
 	backup_dao.reset(new ServerBackupDao(db));
 
 	ScopedActiveThread sat;
+	active_thread=sat.get();
 
 	if(is_file_backup)
 	{

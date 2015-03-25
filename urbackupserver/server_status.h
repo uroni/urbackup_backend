@@ -199,6 +199,11 @@ public:
 		delete at;
 	}
 
+	ActiveThread* get()
+	{
+		return at;
+	}
+
 private:
 	ActiveThread *at;
 	THREADPOOL_TICKET at_ticket;

@@ -1351,6 +1351,7 @@ void IncrFileBackup::copyFile(const std::wstring& source, const std::wstring& de
 bool IncrFileBackup::doFullBackup()
 {
 	client_main->stopBackupRunning(true);
+	active_thread->Exit();
 
 	ServerStatus::stopProcess(clientname, status_id);
 

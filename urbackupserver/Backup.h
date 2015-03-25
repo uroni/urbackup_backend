@@ -87,4 +87,6 @@ protected:
 
 	logid_t logid;
 	size_t status_id;
+
+	ActiveThread* active_thread;
 };
