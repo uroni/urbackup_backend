@@ -32,6 +32,6 @@
 #	define Sleep(x) usleep(x*1000)
 #	define MAX_PATH 260
 #endif
-#ifdef defined(__sun__) || defined(__APPLE__)
+#if defined(__sun__) || defined(__APPLE__)
 #	define MSG_NOSIGNAL 0
 #endif
