@@ -1352,6 +1352,8 @@ bool IncrFileBackup::doFullBackup()
 {
 	client_main->stopBackupRunning(true);
 
+	ServerStatus::stopProcess(clientname, status_id);
+
 	FullFileBackup full_backup(client_main, clientid, clientname, LogAction_NoLogging, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
 	full_backup();
 
