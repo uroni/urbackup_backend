@@ -81,17 +81,6 @@ bool IncrFileBackup::doFileBackup()
 
 		deleteBackup();
 
-		if(use_snapshots)
-		{
-			bool b=SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)  && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));
-
-			if(!b)
-			{
-				ServerLogger::Log(logid, "Cannot filesystem for backup", LL_ERROR);
-				return false;
-			}
-		}
-
 		return doFullBackup();
 	}
 
