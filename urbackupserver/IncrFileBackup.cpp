@@ -351,7 +351,7 @@ bool IncrFileBackup::doFileBackup()
 	_i64 filelist_size=tmp->Size();
 	_i64 filelist_currpos=0;
 	int indir_currdepth=0;
-	std::vector<size_t> download_nok_ids;
+	IdRange download_nok_ids;
 
 	std::stack<FileMetadata> dir_metadata;
 
@@ -763,7 +763,7 @@ bool IncrFileBackup::doFileBackup()
 							}
 							else
 							{
-								download_nok_ids.push_back(line);
+								download_nok_ids.add(line);
 							}
 						}
 					}
@@ -920,9 +920,9 @@ bool IncrFileBackup::doFileBackup()
 
 	ServerLogger::Log(logid, L"Writing new file list...", LL_INFO);
 
-	std::sort(download_nok_ids.begin(), download_nok_ids.end());
+	download_nok_ids.finalize();
 
-	size_t max_ok_id = server_download->getMaxOkId();
+	
 	tmp->Seek(0);
 	line = 0;
 	list_parser.reset();
@@ -937,9 +937,8 @@ bool IncrFileBackup::doFileBackup()
 				{
 					writeFileItem(clientlist, cf);
 				}
-				else if( line<=max_ok_id &&
-					 server_download->isDownloadOk(line) &&
-					!std::binary_search(download_nok_ids.begin(), download_nok_ids.end(), line))
+				else if(server_download->isDownloadOk(line)
+					 && !download_nok_ids.hasId(line))
 				{
 					if(server_download->isDownloadPartial(line))
 					{

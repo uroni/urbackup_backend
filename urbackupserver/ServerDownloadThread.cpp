@@ -116,13 +116,13 @@ void ServerDownloadThread::operator()( void )
 				{
 					if(link_or_copy_file(curr))
 					{
-						download_partial_ids.push_back(curr.id);
+						download_partial_ids.add(curr.id);
 						max_ok_id = (std::max)(max_ok_id, curr.id);
 					}
 					else
 		    		{
 						ServerLogger::Log(logid, L"Copying incomplete file \""+curr.fn+L"\" failed", LL_WARNING);
-						download_nok_ids.push_back(curr.id);					
+						download_nok_ids.add(curr.id);					
 						
 						IScopedLock lock(mutex);
 						all_downloads_ok=false;
@@ -132,7 +132,7 @@ void ServerDownloadThread::operator()( void )
 				}
 			}
 				
-		    download_nok_ids.push_back(curr.id);
+		    download_nok_ids.add(curr.id);
 
 			{
 				IScopedLock lock(mutex);
@@ -196,8 +196,8 @@ void ServerDownloadThread::operator()( void )
 		}
 	}
 
-	std::sort(download_nok_ids.begin(), download_nok_ids.end());
-	std::sort(download_partial_ids.begin(), download_partial_ids.end());
+	download_nok_ids.finalize();
+	download_partial_ids.finalize();
 }
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
@@ -347,11 +347,11 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			hash_file = true;
 
 			max_ok_id = (std::max)(max_ok_id, todl.id);
-			download_partial_ids.push_back(todl.id);
+			download_partial_ids.add(todl.id);
 		}
 		else
 		{
-			download_nok_ids.push_back(todl.id);
+			download_nok_ids.add(todl.id);
 			if(fd!=NULL)
 			{
 				ClientMain::destroyTemporaryFile(fd);
@@ -592,11 +592,11 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			if(link_or_copy_file(todl))
 			{
 				max_ok_id = (std::max)(max_ok_id, todl.id);
-				download_partial_ids.push_back(todl.id);
+				download_partial_ids.add(todl.id);
 			}
 			else
 			{
-				download_nok_ids.push_back(todl.id);				
+				download_nok_ids.add(todl.id);				
 			}
 			
 			hash_file=false;
@@ -609,12 +609,12 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			hash_file=true;
 
 			max_ok_id = (std::max)(max_ok_id, todl.id);
-			download_partial_ids.push_back(todl.id);
+			download_partial_ids.add(todl.id);
 		}
 		else
 		{
 			hash_file=false;
-			download_nok_ids.push_back(todl.id);
+			download_nok_ids.add(todl.id);
 		}
 	}
 	else
@@ -729,15 +729,13 @@ void ServerDownloadThread::queueStop(bool immediately)
 
 bool ServerDownloadThread::isDownloadOk( size_t id )
 {
-	return !std::binary_search(download_nok_ids.begin(), download_nok_ids.end(),
-		id);
+	return !download_nok_ids.hasId(id);
 }
 
 
 bool ServerDownloadThread::isDownloadPartial( size_t id )
 {
-	return !download_partial_ids.empty() && 
-		std::binary_search(download_partial_ids.begin(), download_partial_ids.end(), id);
+	return download_partial_ids.hasId(id);
 }
 
 

@@ -548,7 +548,7 @@ bool FileBackup::doBackup()
 		metadata_download_thread->applyMetadata(backuppath_hashes, client_main);
 	}
 
-	if(!has_early_error && !backup_result)
+	if((!has_early_error && !backup_result) || disk_error)
 	{
 		sendBackupOkay(false);
 	}

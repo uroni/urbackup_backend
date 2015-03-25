@@ -728,10 +728,6 @@ bool FileClient::Reconnect(void)
 				{
 					file->Seek(received);
 				}
-				else
-				{
-					return ERR_ERROR;
-				}
 
 				rc=stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() );
 				if(rc==0)
@@ -1008,10 +1004,6 @@ bool FileClient::Reconnect(void)
 				if(file!=NULL)
 				{
 					file->Seek(received);
-				}
-				else
-				{
-					return ERR_ERROR;
 				}
 
 				if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())

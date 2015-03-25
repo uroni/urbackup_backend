@@ -453,7 +453,7 @@ bool FullFileBackup::doFileBackup()
 
 	size_t max_line = line;
 
-	if(r_done==false && c_has_error==false)
+	if(!r_done && !c_has_error)
 	{
 		sendBackupOkay(true);
 	}
@@ -503,7 +503,8 @@ bool FullFileBackup::doFileBackup()
 	waitForFileThreads();
 
 	bool verification_ok = true;
-	if(server_settings->getSettings()->end_to_end_file_backup_verification
+	if(!r_done && !c_has_error
+	        && server_settings->getSettings()->end_to_end_file_backup_verification
 		|| (client_main->isOnInternetConnection()
 		&& server_settings->getSettings()->verify_using_client_hashes 
 		&& server_settings->getSettings()->internet_calculate_filehashes_on_client) )
@@ -537,7 +538,7 @@ bool FullFileBackup::doFileBackup()
 		db->EndTransaction();
 	}
 
-	if( r_done==false && c_has_error==false && disk_error==false
+	if( !r_done && !c_has_error && !disk_error
 		&& (group==c_group_default || group==c_group_continuous)) 
 	{
 		std::wstring backupfolder=server_settings->getSettings()->backupfolder;

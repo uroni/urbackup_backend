@@ -2,6 +2,8 @@
 
 #include <string>
 #include <deque>
+#include <algorithm>
+#include <assert.h>
 
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
@@ -72,6 +74,49 @@ namespace
 		FileMetadata parent_metadata;
 		bool is_script;
 		bool is_dir;
+	};
+	
+	
+	class IdRange
+	{
+	public:
+		IdRange()
+		 : min_id(std::string::npos), max_id(0), finalized(false)
+		{}
+		
+		void add(size_t id)
+		{
+			max_id = (std::max)(id, max_id);
+			min_id = (std::min)(id, min_id);
+			ids.push_back(id);
+			finalized=false;
+		}
+		
+		void finalize()
+		{
+			std::sort(ids.begin(), ids.end());
+			finalized=true;
+		}
+		
+		bool hasId(size_t id)
+		{
+			assert(finalized);
+			
+			if(id>=min_id && id<=max_id)
+			{
+				return std::binary_search(ids.begin(), ids.end(), id);
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+	private:
+		bool finalized;
+		std::vector<size_t> ids;
+		size_t min_id;
+		size_t max_id;
 	};
 }
 
@@ -176,8 +221,8 @@ private:
 	size_t queue_size;
 
 	bool all_downloads_ok;
-	std::vector<size_t> download_nok_ids;
-	std::vector<size_t> download_partial_ids;
+	IdRange download_nok_ids;
+	IdRange download_partial_ids;
 	size_t max_ok_id;
 	
 

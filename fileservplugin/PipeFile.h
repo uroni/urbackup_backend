@@ -5,10 +5,11 @@
 #include "../Interface/Pipe.h"
 #include "PipeFileBase.h"
 #include <memory>
-#include <unistd.h>
 
 #ifdef _WIN32
 #include <Windows.h>
+#else
+#include <unistd.h>
 #endif
 
 
