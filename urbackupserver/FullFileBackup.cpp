@@ -504,10 +504,10 @@ bool FullFileBackup::doFileBackup()
 
 	bool verification_ok = true;
 	if(!r_done && !c_has_error
-	        && server_settings->getSettings()->end_to_end_file_backup_verification
+	        && (server_settings->getSettings()->end_to_end_file_backup_verification
 		|| (client_main->isOnInternetConnection()
 		&& server_settings->getSettings()->verify_using_client_hashes 
-		&& server_settings->getSettings()->internet_calculate_filehashes_on_client) )
+		&& server_settings->getSettings()->internet_calculate_filehashes_on_client) ) )
 	{
 		if(!verify_file_backup(tmp))
 		{
