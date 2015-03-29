@@ -224,7 +224,14 @@ getJSON = function(action, parameters, callback)
 					g.last_function=cb;
 					g.last_data=clone(data);
 				}
-				cb(data);
+				try
+				{
+					cb(data);
+				}
+				catch(e)
+				{
+					console.log(e);
+				}
 			}
 		});
 }
