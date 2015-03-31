@@ -3,7 +3,7 @@
 set -e
 
 #Comment for development ----
-git reset hard
+git reset --hard
 python3 build/replace_versions.py
 #----
 
