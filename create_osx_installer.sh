@@ -28,4 +28,6 @@ productbuild --distribution osx_installer/distribution.xml --resources osx_insta
 
 #Uncomment for development
 #sudo pkgutil --forget org.urbackup.client
+#sudo pkgutil --forget org.urbackup.client.frontend.pkg
+#sudo pkgutil --forget org.urbackup.client.frontend2.pkg
 #sudo rm -R "/Applications/UrBackup Client.app"
