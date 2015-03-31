@@ -21,22 +21,34 @@ mkdir -p "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources"
 cp osx_installer/info.plist "osx-pkg2/Applications/UrBackup Client.app/Contents/Info.plist"
 cp osx_installer/urbackup.icns "osx-pkg2/Applications/UrBackup Client.app/Contents/Resources/"
 mv osx-pkg/usr/bin/urbackup_client_gui "osx-pkg2/Applications/UrBackup Client.app/Contents/MacOS/"
+
+UNINSTALLER="$PWD/osx-pkg/usr/sbin/urbackup_uninstall"
+
+cat osx_installer/uninstall1.sh > $UNINSTALLER
+
+cd osx-pkg
+find . -type f -exec echo rm -fv /{} \; >> $UNINSTALLER
+cd ..
+cd osx-pkg2
+find . -type f -exec echo rm -fv /{} \; >> $UNINSTALLER
+cd ..
+
+echo "osascript -e 'display notification \"UrBackup was uninstalled successfully.\" with title \"UrBackup\"'" >> $UNINSTALLER
+
+chmod +x $UNINSTALLER
+
 mkdir pkg1 || true
 pkgbuild --root osx-pkg --identifier org.urbackup.client --version 1.5 --scripts osx_installer/scripts --ownership recommended pkg1/output.pkg
 pkgbuild --root osx-pkg2/Applications --identifier "org.urbackup.client.frontend2.pkg" --version 1.5 --scripts osx_installer/scripts2 --ownership recommended pkg1/output2.pkg --install-location "/Applications"
 productbuild --distribution osx_installer/distribution.xml --resources osx_installer/resources --package-path pkg1 --version 1.5 final.pkg
+
+
+
+rm -R osx-pkg
+rm -R osx-pkg2
 
 #Uncomment for development
 #sudo pkgutil --forget org.urbackup.client
 #sudo pkgutil --forget org.urbackup.client.frontend.pkg
 #sudo pkgutil --forget org.urbackup.client.frontend2.pkg
 #sudo rm -R "/Applications/UrBackup Client.app"
-
-echo "#!/bin/sh" > uninstall2.sh
-
-cd osx-pkg
-find . -type f -exec echo rm -fv /{} \; >> ../uninstall2.sh
-cd ..
-cd osx-pkg2
-find . -type f -exec echo rm -fv /{} \; >> ../uninstall2.sh
-cd ..
