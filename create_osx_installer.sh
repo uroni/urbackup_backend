@@ -31,3 +31,12 @@ productbuild --distribution osx_installer/distribution.xml --resources osx_insta
 #sudo pkgutil --forget org.urbackup.client.frontend.pkg
 #sudo pkgutil --forget org.urbackup.client.frontend2.pkg
 #sudo rm -R "/Applications/UrBackup Client.app"
+
+echo "#!/bin/sh" > uninstall2.sh
+
+cd osx-pkg
+find . -type f -exec echo rm -fv /{} \; >> ../uninstall2.sh
+cd ..
+cd osx-pkg2
+find . -type f -exec echo rm -fv /{} \; >> ../uninstall2.sh
+cd ..
