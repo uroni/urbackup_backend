@@ -136,7 +136,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			}
 			else
 			{
-				Server->Log("No permission to stat \""+upath+dirp->d_name+"\"", LL_ERROR);
+				Server->Log("No permission to stat \""+upath+dirp->d_name+"\" errno: "+nconvert(errno), LL_ERROR);
 				continue;
 			}
 #ifndef sun
