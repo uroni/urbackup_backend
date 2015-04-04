@@ -69,7 +69,7 @@ protected:
 	ServerBackupDao::SDuration interpolateDurations(const std::vector<ServerBackupDao::SDuration>& durations);
 	bool request_filelist_construct(bool full, bool resume, int group, bool with_token, bool& no_backup_dirs, bool& connect_fail);
 	void logVssLogdata();
-	void getTokenFile(FileClient &fc, bool hashed_transfer );
+	bool getTokenFile(FileClient &fc, bool hashed_transfer );
 	std::string clientlistName( int group, bool new_list=false );
 	void createHashThreads(bool use_reflink);
 	void destroyHashThreads();

@@ -642,8 +642,11 @@ bool IncrFileBackup::doFileBackup()
 
 							if(indirchange)
 							{
-								server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
-									metadata, FileMetadata(), false, true);
+								if(client_main->getProtocolVersions().file_meta>0)
+								{
+									server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
+										metadata, FileMetadata(), false, true);
+								}
 							}
 							else
 							{

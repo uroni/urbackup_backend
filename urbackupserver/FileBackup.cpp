@@ -252,18 +252,21 @@ void FileBackup::logVssLogdata()
 	}
 }
 
-void FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
+bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 {
+	bool has_token_file=true;
+	
 	IFile *tokens_file=Server->openFile(os_file_prefix(backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties"), MODE_WRITE);
 	if(tokens_file==NULL)
 	{
 		ServerLogger::Log(logid, L"Error opening "+backuppath_hashes+os_file_sep()+L".urbackup_tokens.properties", LL_ERROR);
-		return;
+		return false;
 	}
 	_u32 rc=fc.GetFile("urbackup/tokens_"+server_token+".properties", tokens_file, hashed_transfer, false);
 	if(rc!=ERR_SUCCESS)
 	{
-		ServerLogger::Log(logid, L"Error getting tokens file of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_INFO);
+		ServerLogger::Log(logid, L"Error getting tokens file of "+clientname+L". Errorcode: "+widen(fc.getErrorString(rc))+L" ("+convert(rc)+L")", LL_DEBUG);
+		has_token_file=false;
 	}
 	Server->destroy(tokens_file);
 
@@ -279,6 +282,8 @@ void FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 		backup_dao->updateOrInsertSetting(clientid, L"client_access_key", widen(access_key));
 		server_settings->update(true);
 	}
+	
+	return has_token_file;
 }
 
 std::string FileBackup::clientlistName( int group, bool new_list )
