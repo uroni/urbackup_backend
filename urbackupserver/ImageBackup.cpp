@@ -290,10 +290,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 		with_checksum=true;
 	}
 
+	/*
+	Not needed currently
 	if(client_main->getProtocolVersions().image_protocol_version>0)
 	{
 		chksum_str+="&emptyblocks=1";
-	}
+	}*/
 
 	std::string identity= client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
 
