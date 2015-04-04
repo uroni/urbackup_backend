@@ -52,6 +52,7 @@ IServer *Server;
 #ifdef _WIN32
 #include "win_dialog.h"
 #endif
+#include "FileWrapper.h"
 
 
 CImagePluginMgr *imagepluginmgr;
@@ -156,7 +157,31 @@ namespace
 			return true;
 		}
 	}
+
+
+	IVHDFile* open_device_file(std::string device_verify)
+	{
+		std::string ext = strlower(findextension(device_verify));
+		if(ext=="vhd" || ext=="vhdz")
+		{
+			return new VHDFile(Server->ConvertToUnicode(device_verify), true,0);
+		}
+#if !defined(_WIN32) && !defined(__APPLE__)
+		else if(ext=="raw")
+		{
+			return new CowFile(Server->ConvertToUnicode(device_verify), true,0);
+		}
+#endif
+		else
+		{
+			Server->Log("Unknown image file extension \""+ext+"\"", LL_ERROR);
+			return NULL;
+		}
+	}
+
 }
+
+void openDeviceFile(std::string device_verify);
 
 DLLEXPORT void LoadActions(IServer* pServer)
 {
@@ -449,25 +474,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string image_verify=Server->getServerParameter("image_verify");
 	if(!image_verify.empty())
 	{
-		std::auto_ptr<IVHDFile> in;
-		std::string ext = strlower(findextension(image_verify));
-		if(ext=="vhd" || ext=="vhdz")
-		{
-			in.reset(new VHDFile(Server->ConvertToUnicode(image_verify), true,0));
-		}
-#if !defined(_WIN32) && !defined(__APPLE__)
-		else if(ext=="raw")
-		{
-			in.reset(new CowFile(Server->ConvertToUnicode(image_verify), true,0));
-		}
-#endif
-		else
-		{
-			Server->Log("Unknown image file extension \""+ext+"\"", LL_ERROR);
-			exit(3);
-		}
+		std::auto_ptr<IVHDFile> in(open_device_file(image_verify));
 
-		if(in->isOpen()==false)
+		if(in.get()==NULL || in->isOpen()==false)
 		{
 			Server->Log("Error opening Image-File \""+image_verify+"\"", LL_ERROR);
 			exit(4);
@@ -504,10 +513,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		bool has_dig_z=false;
 		for(;currpos<size;currpos+=vhd_blocksize)
 		{
-			if(currpos==8912896)
-			{
-				int a4=4;
-			}
 			in->Seek(currpos);
 			bool has_sector=in->this_has_sector(vhd_blocksize);
 
@@ -585,7 +590,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string device_verify=Server->getServerParameter("device_verify");
 	if(!device_verify.empty())
 	{
-		FSNTFS fs(Server->ConvertToUnicode(device_verify));
+		std::auto_ptr<IVHDFile> in(open_device_file(device_verify));
+
+		if(in.get()==NULL || in->isOpen()==false)
+		{
+			Server->Log("Error opening Image-File \""+device_verify+"\"", LL_ERROR);
+			exit(4);
+		}
+
+		int skip=1024*512;
+		FileWrapper wrapper(in.get(), skip);
+		FSNTFS fs(&wrapper);
 		if(fs.hasError())
 		{
 			Server->Log("Error opening device file", LL_ERROR);
@@ -635,14 +650,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 				sha256_update(&ctx, (unsigned char*)buf, ntfs_blocksize);
 
-				mixed = mixed & 1;
+				mixed = mixed | 1;
 			}
 			else
 			{
 				memset(buf, 0, ntfs_blocksize);
 				sha256_update(&ctx, (unsigned char*)buf, ntfs_blocksize);
 
-				mixed = mixed & 2;
+				mixed = mixed | 2;
 			}
 
 			if( (currpos+ntfs_blocksize)%vhd_sectorsize==0 )
@@ -659,12 +674,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				sha256_final(&ctx, dig_r);
 				sha256_init(&ctx);
 
-				if(memcmp(dig_r, dig_f, 32)!=0)
+				if(memcmp(dig_r, dig_f, 32)!=0 && mixed!=2)
 				{
 					++diff;
 					Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos)+" mixed = "+
-						(mixed==3? "true":"false") + " empty=" + (mixed==2 ? "true" : "false") );
+						(mixed==3? "true":"false") );
 				}
+
+				mixed=0;
 			}		
 		
 			int pc=(int)((float)((float)currpos/(float)size)*100.f+0.5f);
