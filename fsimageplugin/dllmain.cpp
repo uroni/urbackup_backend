@@ -612,14 +612,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		std::string s_hashfile=Server->getServerParameter("hash_file");
 		if(s_hashfile.empty())
 		{
-			Server->Log("Hash file parameter not set (--hash_file)", LL_ERROR);
-			exit(4);
+			s_hashfile = device_verify+".hash";
 		}
 
 		IFile *hashfile=Server->openFile(s_hashfile, MODE_READ);
 		if(hashfile==NULL)
 		{
-			Server->Log("Error opening hashfile");
+			Server->Log("Error opening hashfile "+s_hashfile);
 			exit(7);
 		}
 
