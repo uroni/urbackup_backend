@@ -68,6 +68,7 @@ struct ImageInformation
 	bool no_shadowcopy;
 	ImageThread *image_thread;
 	bool with_checksum;
+	bool with_emptyblocks;
 };
 
 struct SChannel

@@ -863,6 +863,8 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 				image_inf.with_checksum=true;
 		}
 
+		image_inf.with_emptyblocks=false;
+
 		image_inf.no_shadowcopy=false;
 
 		if(image_inf.image_letter=="SYSVOL"
@@ -970,6 +972,13 @@ void ClientConnector::CMD_INCR_IMAGE(const std::string &cmd, bool ident_ok)
 			{
 				if(params[L"checksum"]==L"1")
 					image_inf.with_checksum=true;
+			}
+
+			image_inf.with_emptyblocks=false;
+			if(params.find(L"emptyblocks")!=params.end())
+			{
+				if(params[L"emptyblocks"]==L"1")
+					image_inf.with_emptyblocks=true;
 			}
 
 			image_inf.no_shadowcopy=false;

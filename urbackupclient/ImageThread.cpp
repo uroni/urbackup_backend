@@ -7,6 +7,7 @@
 
 #include "../common/data.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "../common/bitmap.h"
 
 #include "ClientService.h"
 #include "ImageThread.h"
@@ -368,12 +369,16 @@ void ImageThread::sendIncrImageThread(void)
 
 	bool has_error=true;
 	bool with_checksum=image_inf->with_checksum;
+	bool with_emptyblocks=image_inf->with_emptyblocks;
 
 	int save_id=-1;
 	int update_cnt=0;
 
 	int64 lastsendtime=Server->getTimeMS();
 	int64 last_shadowcopy_update = Server->getTimeSeconds();
+
+	char* empty_vhd_blocks_buffer = NULL;
+	size_t empty_vhd_block_buffer_pos = 0;
 
 	bool run=true;
 	while(run)
@@ -553,6 +558,12 @@ void ImageThread::sendIncrImageThread(void)
 					}						
 					if(!has_hashdata || memcmp(hashdata_buf, digest, c_hashsize)!=0)
 					{
+						if(empty_vhd_blocks_buffer!=NULL)
+						{
+							cs->sendBuffer(empty_vhd_blocks_buffer, empty_vhd_block_buffer_pos, true);
+							empty_vhd_blocks_buffer=NULL;
+						}
+
 						Server->Log("Block did change: "+nconvert(i)+" mixed="+nconvert(mixed), LL_DEBUG);
 						bool notify_cs=false;
 						for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
@@ -618,6 +629,27 @@ void ImageThread::sendIncrImageThread(void)
 
 						lastsendtime=tt;
 					}
+
+					if(empty_vhd_blocks_buffer==NULL)
+					{
+						empty_vhd_blocks_buffer = cs->getBuffer();
+						empty_vhd_block_buffer_pos = 0;
+					}
+
+					if(with_emptyblocks)
+					{
+						int64 bs=-127;
+						memcpy(&empty_vhd_blocks_buffer[empty_vhd_block_buffer_pos], &bs, sizeof(bs));
+						empty_vhd_block_buffer_pos+=sizeof(bs);
+						memcpy(&empty_vhd_blocks_buffer[empty_vhd_block_buffer_pos], &i, sizeof(i));
+						empty_vhd_block_buffer_pos+=sizeof(i);
+
+						if(empty_vhd_block_buffer_pos>=blocksize-sizeof(int64))
+						{
+							cs->sendBuffer(empty_vhd_blocks_buffer, empty_vhd_block_buffer_pos, true);
+							empty_vhd_blocks_buffer=NULL;
+						}
+					}
 				}
 
 				if(IdleCheckerThread::getPause())
@@ -630,6 +662,12 @@ void ImageThread::sendIncrImageThread(void)
 					updateShadowCopyStarttime(save_id);
 					last_shadowcopy_update = Server->getTimeSeconds();
 				}
+			}
+
+			if(empty_vhd_blocks_buffer!=NULL)
+			{
+				cs->sendBuffer(empty_vhd_blocks_buffer, empty_vhd_block_buffer_pos, true);
+				empty_vhd_blocks_buffer=NULL;
 			}
 
 			cs->doExit();
