@@ -663,7 +663,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				{
 					++diff;
 					Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos)+" mixed = "+
-						(mixed==3? "true":"false") );
+						(mixed==3? "true":"false") + " empty=" + (mixed==2 ? "true" : "false") );
 				}
 			}		
 		
