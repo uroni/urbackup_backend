@@ -618,6 +618,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		char *buf=new char[ntfs_blocksize];
 		int diff=0;
 		int last_pc=0;
+		int mixed=0;
 
 		for(;currpos<size;currpos+=ntfs_blocksize)
 		{
@@ -633,11 +634,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				}
 
 				sha256_update(&ctx, (unsigned char*)buf, ntfs_blocksize);
+
+				mixed = mixed & 1;
 			}
 			else
 			{
 				memset(buf, 0, ntfs_blocksize);
 				sha256_update(&ctx, (unsigned char*)buf, ntfs_blocksize);
+
+				mixed = mixed & 2;
 			}
 
 			if( (currpos+ntfs_blocksize)%vhd_sectorsize==0 )
@@ -657,7 +662,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				if(memcmp(dig_r, dig_f, 32)!=0)
 				{
 					++diff;
-					Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos));
+					Server->Log("Different blocks: "+nconvert(diff)+" at pos "+nconvert(currpos)+" mixed = "+
+						(mixed==3? "true":"false") );
 				}
 			}		
 		
