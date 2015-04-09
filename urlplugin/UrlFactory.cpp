@@ -179,7 +179,7 @@ std::string UrlFactory::downloadString( const std::string& url, const std::strin
 
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1);
-	curl_easy_setopt(curl, CURLOPT_FAILONERROR);
+	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
 	
 	if(!http_proxy.empty())
 	{
@@ -223,7 +223,7 @@ bool UrlFactory::downloadFile(const std::string& url, IFile* output, const std::
 
 	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION , 1);
-	curl_easy_setopt(curl, CURLOPT_FAILONERROR);
+	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
 
 	if(!http_proxy.empty())
 	{
