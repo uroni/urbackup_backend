@@ -162,8 +162,8 @@ void BackupServerHash::operator()(void)
 				if(!rd.getStr(&sha2))
 					ServerLogger::Log(logid, "Reading hash from pipe failed", LL_ERROR);
 
-				if(sha2.size()!=64)
-					ServerLogger::Log(logid, "SHA512 length of file \""+tfn+"\" wrong.", LL_ERROR);
+				if(sha2.size()!=SHA_DEF_DIGEST_SIZE)
+					ServerLogger::Log(logid, "SHA length of file hash of \""+tfn+"\" wrong.", LL_ERROR);
 
 				std::string hashoutput_fn;
 				rd.getStr(&hashoutput_fn);
