@@ -1077,20 +1077,34 @@ std::string EscapeSQLString(const std::string &pStr)
 std::string EscapeParamString(const std::string &pStr)
 {
 	std::string ret;
-	ret.reserve(pStr.size());
 	for(size_t i=0;i<pStr.size();++i)
 	{
-		if(pStr[i]=='&')
+		switch(pStr[i])
 		{
-			ret+="%26";
+		case '&': ret+="%26"; break;
+		case '$': ret+="%24"; break;
+		case '/': ret+="%2F"; break;
+		case ' ': ret+="%20"; break;
+		case '#': ret+="%23"; break;
+		default: ret+=pStr[i]; break;
 		}
-		else if(pStr[i]=='$')
+	}
+	return ret;
+}
+
+std::wstring EscapeParamString(const std::wstring &pStr)
+{
+	std::wstring ret;
+	for(size_t i=0;i<pStr.size();++i)
+	{
+		switch(pStr[i])
 		{
-			ret+="%24";
-		}
-		else
-		{
-			ret+=pStr[i];
+		case '&': ret+=L"%26"; break;
+		case '$': ret+=L"%24"; break;
+		case '/': ret+=L"%2F"; break;
+		case ' ': ret+=L"%20"; break;
+		case '#': ret+=L"%23"; break;
+		default: ret+=pStr[i]; break;
 		}
 	}
 	return ret;
