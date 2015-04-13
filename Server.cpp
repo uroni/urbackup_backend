@@ -900,8 +900,6 @@ IDatabase* CServer::getDatabase(THREAD_ID tid, DATABASE_ID pIdentifier)
 			Log("Database \""+database_iter->second.file+"\" couldn't be opened", LL_ERROR);
 			return NULL;
 		}
-		
-		Log("Created new database connection for "+database_iter->second.file, LL_DEBUG);
 
 		database_iter->second.tmap.insert( std::pair< THREAD_ID, IDatabaseInt* >( tid, db ) );
 
