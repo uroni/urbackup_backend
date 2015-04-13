@@ -9,7 +9,7 @@
     	<string>/Applications/UrBackup Client.app/Contents/MacOS/urbackup_client_gui</string>
     </array>
     <key>KeepAlive</key>
-    <false/>
+    <true/>
     <key>WorkingDirectory</key>
     <string>/usr/var</string>
 </dict>
