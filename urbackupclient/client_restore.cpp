@@ -1466,7 +1466,7 @@ void restore_wizard(void)
 					if(dev==NULL)
 					{
 						//Fix LBA partition signature
-						system(("echo w | fdisk.distrib /dev/"+seldrive+" > /dev/null 2>&1").c_str());
+						system(("echo w | fdisk /dev/"+seldrive+" > /dev/null 2>&1").c_str());
 					}
 
 					++try_c;
