@@ -1395,11 +1395,11 @@ void restore_wizard(void)
 
 				if(mbrdata.gpt_style)
 				{
-					unsigned int physical_block_size = atoi(getFile("/sys/block/"+seldrive+"/queue/physical_block_size").c_str());
+					unsigned int physical_block_size = atoi(getFile("/sys/block/"+seldrive+"/queue/logical_block_size").c_str());
 
 					if(physical_block_size!=mbrdata.gpt_header_pos)
 					{
-						err="gpt_physical_blocksize_change";
+						err="gpt_logical_blocksize_change";
 						state=101;
 						break;						
 					}
