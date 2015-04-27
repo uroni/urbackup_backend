@@ -5,6 +5,7 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
 #include "IFileServ.h"
+#include <cstring>
 
 const size_t metadata_id_size = 4+4+8+4;
 
