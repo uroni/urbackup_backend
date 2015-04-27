@@ -300,6 +300,9 @@
     <ClCompile Include="serverinterface\restore_client.cpp">
       <Filter>serverinterface</Filter>
     </ClCompile>
+    <ClCompile Include="WalCheckpointThread.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -547,6 +550,9 @@
     </ClInclude>
     <ClInclude Include="serverinterface\restore_client.h">
       <Filter>serverinterface</Filter>
+    </ClInclude>
+    <ClInclude Include="WalCheckpointThread.h">
+      <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
