@@ -4,6 +4,7 @@
 #include "../Interface/Server.h"
 #include "database.h"
 #include "../Interface/Database.h"
+#include <memory>
 
 void WalCheckpointThread::checkpoint(bool in_transaction)
 {
