@@ -7,6 +7,7 @@
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "../Interface/Database.h"
+#include <memory>
 
 
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback

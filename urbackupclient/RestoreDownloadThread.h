@@ -5,6 +5,7 @@
 #include "../Interface/Mutex.h"
 #include "../Interface/Condition.h"
 #include "../urbackupcommon/file_metadata.h"
+#include <memory>
 
 namespace
 {
