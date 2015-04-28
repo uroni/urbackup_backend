@@ -388,6 +388,7 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&img_id="+nconvert(img_id)+"&time="+img_time+"&mbr="+nconvert(mbr)+s_offset);
 
 	std::string restore_out=outfile;
+	Server->Log("Restoring to "+restore_out);
 	std::auto_ptr<IFile> out_file(Server->openFile(restore_out, MODE_RW_READNONE));
 	if(out_file.get()==NULL)
 	{
@@ -1460,8 +1461,12 @@ void restore_wizard(void)
 							state=101;
 							break;						
 						}
-						system(("echo \"Logical block size: "+logical_block_size_str+"\"").c_str());
-					}					
+						Server->Log("Logical block size: "+nconvert(logical_block_size));
+					}
+					else
+					{
+						Server->Log("Could not get logical block size")
+					}
 
 					system("cat urbackup/restore/writing_gpt_header");
 					system("echo");
@@ -1508,6 +1513,7 @@ void restore_wizard(void)
 
 				system("cat urbackup/restore/reading_partition_table");
 				system("echo");
+				System->Log("Selected device: "+seldrive);
 				system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
@@ -1533,6 +1539,7 @@ void restore_wizard(void)
 
 					if(dev==NULL)
 					{
+						Server->Log("Trying to fix LBA partitioning scheme via fdisk...");
 						//Fix LBA partition signature
 						system(("echo w | fdisk "+seldrive+" > /dev/null 2>&1").c_str());
 					}
@@ -1554,6 +1561,7 @@ void restore_wizard(void)
 			{
 				//Disable IO scheduler for drive
 				std::string onlypart = ExtractFileName(seldrive);
+				System->Log("Selected device name: "+onlypart)
 				system(("echo noop > /sys/block/"+onlypart+"/queue/scheduler").c_str());
 				if(windows_partition.empty())
 				{
