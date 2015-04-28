@@ -8,7 +8,11 @@
 
 void WalCheckpointThread::checkpoint(bool in_transaction)
 {
-	std::auto_ptr<IFile> wal_file(Server->openFile(L"urbackup" + os_file_sep() + L"backup_server.db-wal"));
+	int mode = MODE_READ;
+#ifdef _WIN32
+	mode=MODE_READ_DEVICE;
+#endif
+	std::auto_ptr<IFile> wal_file(Server->openFile(L"urbackup" + os_file_sep() + L"backup_server.db-wal", mode));
 
 	if(wal_file.get()!=NULL)
 	{
