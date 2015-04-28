@@ -1460,6 +1460,7 @@ void restore_wizard(void)
 							state=101;
 							break;						
 						}
+						system(("echo \"Logical block size: "+logical_block_size_str+"\"").c_str());
 					}					
 
 					system("cat urbackup/restore/writing_gpt_header");
