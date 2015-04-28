@@ -1447,14 +1447,20 @@ void restore_wizard(void)
 
 				if(mbrdata.gpt_style)
 				{
-					unsigned int physical_block_size = atoi(getFile("/sys/block/"+seldrive+"/queue/logical_block_size").c_str());
+					std::string onlypart = ExtractFileName(seldrive);
+					std::string logical_block_size_str = getFile("/sys/block/"+onlypart+"/queue/logical_block_size");
 
-					if(physical_block_size!=mbrdata.gpt_header_pos)
+					if(!logical_block_size_str.empty())
 					{
-						err="gpt_logical_blocksize_change";
-						state=101;
-						break;						
-					}
+						unsigned int logical_block_size = atoi(logical_block_size_str.c_str());
+
+						if(logical_block_size!=mbrdata.gpt_header_pos)
+						{
+							err="gpt_logical_blocksize_change";
+							state=101;
+							break;						
+						}
+					}					
 
 					system("cat urbackup/restore/writing_gpt_header");
 					system("echo");
@@ -1545,6 +1551,9 @@ void restore_wizard(void)
 			}break;
 		case 5:
 			{
+				//Disable IO scheduler for drive
+				std::string onlypart = ExtractFileName(seldrive);
+				system(("echo noop > /sys/block/"+onlypart+"/queue/scheduler").c_str());
 				if(windows_partition.empty())
 				{
 					windows_partition=selpart;
