@@ -1465,7 +1465,7 @@ void restore_wizard(void)
 					}
 					else
 					{
-						Server->Log("Could not get logical block size")
+						Server->Log("Could not get logical block size");
 					}
 
 					system("cat urbackup/restore/writing_gpt_header");
@@ -1513,7 +1513,7 @@ void restore_wizard(void)
 
 				system("cat urbackup/restore/reading_partition_table");
 				system("echo");
-				System->Log("Selected device: "+seldrive);
+				Server->Log("Selected device: "+seldrive);
 				system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
@@ -1561,7 +1561,7 @@ void restore_wizard(void)
 			{
 				//Disable IO scheduler for drive
 				std::string onlypart = ExtractFileName(seldrive);
-				System->Log("Selected device name: "+onlypart)
+				Server->Log("Selected device name: "+onlypart);
 				system(("echo noop > /sys/block/"+onlypart+"/queue/scheduler").c_str());
 				if(windows_partition.empty())
 				{
