@@ -1513,7 +1513,7 @@ void restore_wizard(void)
 
 				system("cat urbackup/restore/reading_partition_table");
 				system("echo");
-				Server->Log("Selected device: "+seldrive);
+				Server->Log("Selected device: "+seldrive+" Partition: "+nconvert(mbrdata.partition_number));
 				system(("partprobe "+seldrive+" > /dev/null 2>&1").c_str());
 				Server->wait(10000);
 				system("cat urbackup/restore/testing_partition");
