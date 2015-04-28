@@ -10,29 +10,31 @@ void WalCheckpointThread::checkpoint(bool in_transaction)
 {
 	std::auto_ptr<IFile> wal_file(Server->openFile(L"urbackup" + os_file_sep() + L"backup_server.db-wal"));
 
-	if(wal_file.get()!=NULL
-		&& wal_file->Size()>1*1024*1024*1024) //>1GiB
+	if(wal_file.get()!=NULL)
 	{
-		wal_file.reset();
-
-		Server->Log("WAL file greater than 1GiB. Doing WAL checkpoint...", LL_INFO);
-
-		IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-
-
-		if(in_transaction)
+		if(wal_file->Size()>1*1024*1024*1024) //>1GiB
 		{
-			db->Write("BEGIN EXCLUSIVE");
-		}
+			wal_file.reset();
 
-		db->Write("PRAGMA wal_checkpoint(RESTART)");
-		
-		if(in_transaction)
-		{
-			db->EndTransaction();
-		}
+			Server->Log("WAL file greater than 1GiB. Doing WAL checkpoint...", LL_INFO);
 
-		checkpoint(true);
+			IDatabase* db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+
+			if(in_transaction)
+			{
+				db->Write("BEGIN EXCLUSIVE");
+			}
+
+			db->Write("PRAGMA wal_checkpoint(RESTART)");
+
+			if(in_transaction)
+			{
+				db->EndTransaction();
+			}
+
+			checkpoint(true);
+		}		
 	}
 	else
 	{
