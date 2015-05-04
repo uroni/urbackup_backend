@@ -1305,3 +1305,8 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 
 	return true;
 }
+
+bool VHDFile::PunchHole( _i64 spos, _i64 size )
+{
+	return false;
+}

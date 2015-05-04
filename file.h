@@ -49,6 +49,7 @@ public:
 	_i64 Size(void);
 	_i64 RealSize();
 	void Close();
+	bool PunchHole( _i64 spos, _i64 size );
 
 #ifdef _WIN32
 	static void init_mutex();
@@ -56,13 +57,15 @@ public:
 #endif
 	
 	std::string getFilename(void);
-	std::wstring getFilenameW(void);
+	std::wstring getFilenameW(void);	
+
 private:
 #ifdef MODE_STL
 	std::fstream fi;
 #endif
 #ifdef MODE_WIN
 	HANDLE hfile;
+	bool is_sparse;
 #endif
 #ifdef MODE_LIN
 	int fd;
@@ -75,6 +78,7 @@ private:
 	static std::wstring random_prefix;
 #endif
 };
+
 
 bool DeleteFileInt(std::string pFilename);
 bool DeleteFileInt(std::wstring pFilename);

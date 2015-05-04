@@ -596,3 +596,8 @@ bool CompressedFile::hasNoMagic()
 {
 	return noMagic;
 }
+
+bool CompressedFile::PunchHole( _i64 spos, _i64 size )
+{
+	return false;
+}

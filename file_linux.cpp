@@ -238,4 +238,18 @@ void File::Close()
 	}
 }
 
+bool File::PunchHole( _i64 spos, _i64 size )
+{
+	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, spos, size);
+
+	if(rc==0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
 #endif
