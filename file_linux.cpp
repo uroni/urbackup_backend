@@ -19,6 +19,9 @@
 #define _FILE_OFFSET_BITS 64
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include "Server.h"
 #include "file.h"
@@ -30,8 +33,15 @@
 #include <errno.h>
 #include <stdint.h>
 
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
+
+#ifndef FALLOC_FL_KEEP_SIZE
+#define FALLOC_FL_KEEP_SIZE    0x1
+#endif
+#ifndef FALLOC_FL_PUNCH_HOLE
+#define FALLOC_FL_PUNCH_HOLE   0x2
+#endif
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #define open64 open
