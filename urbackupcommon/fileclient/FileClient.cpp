@@ -36,8 +36,6 @@
 
 #ifndef _WIN32
 #include <errno.h>
-#include <ws2ipdef.h>
-#include <ws2tcpip.h>
 #endif
 
 namespace
