@@ -36,6 +36,8 @@
 
 #ifndef _WIN32
 #include <errno.h>
+#include <ws2ipdef.h>
+#include <ws2tcpip.h>
 #endif
 
 namespace
@@ -49,6 +51,13 @@ namespace
 
 	const size_t maxQueuedFiles = 3000;
 	const size_t queuedFilesLow = 100;
+
+	std::string ipToString(sockaddr_in sa)
+	{
+		char str[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &(sa.sin_addr), str, INET_ADDRSTRLEN);
+		return str;
+	}
 }
 
 void Log(std::string str)
@@ -188,6 +197,8 @@ void FileClient::bindToNewInterfaces()
 				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
 				broadcast_addrs.push_back(*((struct sockaddr_in *)ifap->ifa_broadaddr));
 				udpsocks.push_back(udpsock);
+
+				Server->Log("Broadcasting on interface IP "+ ipToString(source_addr));
 			}
 		}
 		freeifaddrs(start_ifap);
@@ -233,6 +244,8 @@ void FileClient::bindToNewInterfaces()
 				source_addr.sin_addr.s_addr = INADDR_BROADCAST;
 				broadcast_addrs.push_back(source_addr);
 				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
+
+				Server->Log("Broadcasting on interface IP "+ ipToString(source_addr));
 			}
 		}
 	}
@@ -294,6 +307,8 @@ void FileClient::bindToNewInterfaces()
 
 				udpsocks.push_back(udpsock);
 				broadcast_iface_addrs.push_back(source_addr.sin_addr.s_addr);
+
+				Server->Log("Broadcasting on interface IP "+ ipToString(source_addr));
 			}
 		}				
     }

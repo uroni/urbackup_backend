@@ -3,6 +3,7 @@
 
 #ifdef _WIN32
 #	include <winsock2.h>
+#	include <ws2tcpip.h>
 #	include <windows.h>
 #ifndef MSG_NOSIGNAL
 #	define MSG_NOSIGNAL 0
