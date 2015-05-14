@@ -5,6 +5,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+#include <memory>
 
 const _u32 ID_METADATA_OS_WIN = 1<<0;
 const _u32 ID_METADATA_OS_UNIX = 1<<2;

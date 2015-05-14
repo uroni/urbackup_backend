@@ -7,7 +7,6 @@
 
 #include "../common/data.h"
 #include "../urbackupcommon/sha2/sha2.h"
-#include "../common/bitmap.h"
 
 #include "ClientService.h"
 #include "ImageThread.h"

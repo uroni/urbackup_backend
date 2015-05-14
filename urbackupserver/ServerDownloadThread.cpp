@@ -112,7 +112,8 @@ void ServerDownloadThread::operator()( void )
 					curr.patch_dl_files = preparePatchDownloadFiles(curr, full_dl);
 				}				
 
-				if(!full_dl && curr.patch_dl_files.prepared && curr.patch_dl_files.orig_file!=NULL)
+				if(!full_dl && curr.patch_dl_files.prepared 
+				    && !curr.patch_dl_files.prepare_error && curr.patch_dl_files.orig_file!=NULL)
 				{
 					if(link_or_copy_file(curr))
 					{
@@ -490,7 +491,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 	}
 
 	bool full_dl=false;
-	SPatchDownloadFiles dlfiles = todl.patch_dl_files;
+	SPatchDownloadFiles& dlfiles = todl.patch_dl_files;
 	if(!dlfiles.prepared && !dlfiles.prepare_error)
 	{
 		dlfiles = preparePatchDownloadFiles(todl, full_dl);

@@ -74,6 +74,7 @@ SStartupStatus startup_status;
 #include "../fileservplugin/IFileServ.h"
 #include "../fileservplugin/IFileServFactory.h"
 #include "serverinterface/restore_client.h"
+#include "WalCheckpointThread.h"
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
@@ -620,6 +621,11 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	Server->setLogCircularBufferSize(20);
+
+	WalCheckpointThread* wal_checkpoint_thread = new WalCheckpointThread();
+	wal_checkpoint_thread->checkpoint();
+
+	Server->createThread(wal_checkpoint_thread);
 
 	Server->Log("UrBackup Server start up complete.", LL_INFO);
 }
