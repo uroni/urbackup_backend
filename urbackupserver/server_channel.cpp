@@ -434,6 +434,10 @@ void ServerChannelThread::LOGIN(str_map& params)
 			GET[L"ses"]=session;
 			helper.update(Server->getThreadID(), &GET, &PARAMS);
 
+			if(keepalive_thread!=NULL)
+			{
+				keepalive_thread->doQuit();
+			}
 			keepalive_thread = new SessionKeepaliveThread(session);
 			Server->getThreadPool()->execute(keepalive_thread);
 		}
