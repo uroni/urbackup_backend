@@ -4,7 +4,7 @@
 class FSNTFSWIN : public Filesystem
 {
 public:
-	FSNTFSWIN(const std::wstring &pDev);
+	FSNTFSWIN(const std::wstring &pDev, bool read_ahead);
 	~FSNTFSWIN(void);
 
 	int64 getBlocksize(void);
