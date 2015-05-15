@@ -276,7 +276,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(!devinfo.empty())
 	{
-		FSNTFS ntfs(L"\\\\.\\"+widen(devinfo)+L":");
+		FSNTFS ntfs(L"\\\\.\\"+widen(devinfo)+L":", false);
 	
 		if(!ntfs.hasError())
 		{
@@ -600,7 +600,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		int skip=1024*512;
 		FileWrapper wrapper(in.get(), skip);
-		FSNTFS fs(&wrapper);
+		FSNTFS fs(&wrapper, true);
 		if(fs.hasError())
 		{
 			Server->Log("Error opening device file", LL_ERROR);
@@ -629,32 +629,35 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		uint64 size=fs.getSize();
 		sha256_ctx ctx;
 		sha256_init(&ctx);
-		char *buf=new char[ntfs_blocksize];
 		int diff=0;
 		int last_pc=0;
 		int mixed=0;
+		std::vector<char> zerobuf;
+		zerobuf.resize(ntfs_blocksize);
+		memset(&zerobuf[0], 0, ntfs_blocksize);
 
 		for(;currpos<size;currpos+=ntfs_blocksize)
 		{
-			bool has_block=fs.readBlock(currpos/ntfs_blocksize, NULL);
+			bool has_block=fs.hasBlock(currpos/ntfs_blocksize);
 
 			if(has_block)
 			{
-				bool read_block=fs.readBlock(currpos/ntfs_blocksize, buf);
+				fs_buffer buf(&fs, fs.readBlock(currpos/ntfs_blocksize));
 
-				if(!read_block)
+				if(buf.get())
 				{
 					Server->Log("Could not read block "+nconvert(currpos/ntfs_blocksize), LL_ERROR);
 				}
-
-				sha256_update(&ctx, (unsigned char*)buf, ntfs_blocksize);
+				else
+				{
+					sha256_update(&ctx, (unsigned char*)buf.get(), ntfs_blocksize);
+				}
 
 				mixed = mixed | 1;
 			}
 			else
 			{
-				memset(buf, 0, ntfs_blocksize);
-				sha256_update(&ctx, (unsigned char*)buf, ntfs_blocksize);
+				sha256_update(&ctx, (unsigned char*)&zerobuf[0], ntfs_blocksize);
 
 				mixed = mixed | 2;
 			}

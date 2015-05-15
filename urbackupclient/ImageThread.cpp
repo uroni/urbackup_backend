@@ -15,6 +15,7 @@
 
 #include <memory.h>
 #include <stdlib.h>
+#include <assert.h>
 
 extern IFSImageFactory *image_fak;
 
@@ -94,12 +95,12 @@ void ImageThread::sendFullImageThread(void)
 		}
 		else
 		{
-			IFilesystem *fs=NULL;
+			std::auto_ptr<IFilesystem> fs;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs=image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive));
+				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true));
 			}
-			if(fs==NULL)
+			if(fs.get()==NULL)
 			{
 				int tloglevel=LL_ERROR;
 				if(image_inf->shadowdrive.empty())
@@ -361,10 +362,8 @@ void ImageThread::removeShadowCopyThread(int save_id)
 
 void ImageThread::sendIncrImageThread(void)
 {
-	char *blockbuf=NULL;
-	char *blockdatabuf=NULL;
-	bool *has_blocks=NULL;
 	char *zeroblockbuf=NULL;
+	std::vector<char*> blockbufs;
 
 	bool has_error=true;
 	bool with_checksum=image_inf->with_checksum;
@@ -409,12 +408,12 @@ void ImageThread::sendIncrImageThread(void)
 		}
 		else
 		{
-			IFilesystem *fs=NULL;
+			std::auto_ptr<IFilesystem> fs;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs=image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive));
+				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true));
 			}
-			if(fs==NULL)
+			if(fs.get()==NULL)
 			{
 				int tloglevel=LL_ERROR;
 				if(image_inf->shadowdrive.empty())
@@ -482,11 +481,9 @@ void ImageThread::sendIncrImageThread(void)
 					break;
 				}
 			}
-
-			delete []blockbuf;
-			blockbuf=new char[vhdblocks*blocksize];
-			delete []has_blocks;
-			has_blocks=new bool[vhdblocks];
+			
+			blockbufs.clear();
+			blockbufs.resize(vhdblocks);
 			delete []zeroblockbuf;
 			zeroblockbuf=new char[blocksize];
 			memset(zeroblockbuf, 0, blocksize);
@@ -507,12 +504,19 @@ void ImageThread::sendIncrImageThread(void)
 				bool has_data=false;
 				for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 				{
-					if( fs->readBlock(j, NULL) )
+					if( fs->hasBlock(j) )
 					{
 						has_data=true;
 						break;
 					}
 				}
+
+#ifdef _DEBUG
+				for(size_t k=0;k<blockbufs.size();++k)
+				{
+					assert(blockbufs[k]==NULL);
+				}
+#endif
 
 				if(has_data)
 				{
@@ -520,21 +524,29 @@ void ImageThread::sendIncrImageThread(void)
 					bool mixed=false;
 					for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 					{
-						char *dpos=blockbuf+(j-i)*blocksize;
-						if( fs->readBlock(j, dpos) )
+						char* buf = fs->readBlock(j);
+						if( buf!=NULL )
 						{
-							sha256_update(&shactx, (unsigned char*)dpos, blocksize);
-							has_blocks[j-i]=true;
+							sha256_update(&shactx, (unsigned char*)buf, blocksize);
+							blockbufs[j-i] = buf;
 						}
 						else
 						{
 							sha256_update(&shactx, (unsigned char*)zeroblockbuf, blocksize);
-							has_blocks[j-i]=false;
 							mixed=true;
+							blockbufs[j-i] = NULL;
 						}
 					}
 					if(fs->hasError())
 					{
+						for(size_t i=0;i<blockbufs.size();++i)
+						{
+							if(blockbufs[i]!=NULL)
+							{
+								fs->releaseBuffer(blockbufs[i]);
+								blockbufs[i]=NULL;
+							}
+						}
 						ImageErrRunning("Error while reading from shadow copy device -2");
 						run=false;
 						break;
@@ -567,14 +579,16 @@ void ImageThread::sendIncrImageThread(void)
 						bool notify_cs=false;
 						for(int64 j=i;j<blocks && j<i+vhdblocks;++j)
 						{
-							if(has_blocks[j-i])
+							if(blockbufs[j-i]!=NULL)
 							{
 								char* cb=cs->getBuffer();
 								memcpy(cb, &j, sizeof(int64) );
-								memcpy(&cb[sizeof(int64)], blockbuf+(j-i)*blocksize, blocksize);
+								memcpy(&cb[sizeof(int64)], blockbufs[j-i], blocksize);
 								cs->sendBuffer(cb, sizeof(int64)+blocksize, false);
 								notify_cs=true;
 								lastsendtime=Server->getTimeMS();
+								fs->releaseBuffer(blockbufs[j-i]);
+								blockbufs[j-i]=NULL;
 							}
 						}
 
@@ -612,6 +626,15 @@ void ImageThread::sendIncrImageThread(void)
 							cs->sendBuffer(buffer, sizeof(int64), true);
 
 							lastsendtime=tt;
+						}
+
+						for(size_t k=0;k<blockbufs.size();++k)
+						{
+							if(blockbufs[k]!=NULL)
+							{
+								fs->releaseBuffer(blockbufs[k]);
+								blockbufs[k]=NULL;
+							}
 						}
 					}
 					if(!run)break;
@@ -694,8 +717,6 @@ void ImageThread::sendIncrImageThread(void)
 		}
 	}
 
-	delete [] blockbuf;
-	delete [] has_blocks;
 	delete [] zeroblockbuf;
 
 	std::wstring hashdatafile_fn=hashdatafile->getFilenameW();

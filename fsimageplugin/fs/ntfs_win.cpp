@@ -3,8 +3,8 @@
 #include "../../Interface/Server.h"
 #include "../../stringtools.h"
 
-FSNTFSWIN::FSNTFSWIN(const std::wstring &pDev)
-	: Filesystem(pDev), bitmap(NULL)
+FSNTFSWIN::FSNTFSWIN(const std::wstring &pDev, bool read_ahead)
+	: Filesystem(pDev, read_ahead), bitmap(NULL)
 {
 	HANDLE hDev=CreateFileW( pDev.c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL|FILE_FLAG_NO_BUFFERING, NULL );
 	if(hDev==INVALID_HANDLE_VALUE)
