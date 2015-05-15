@@ -217,7 +217,6 @@ unsigned int CSessionMgr::TimeoutSessions(void)
 		{
 			Server->Log(L"Session timeout: Session "+i->first, LL_INFO);
 			to_timeout.push_back(i->first);
-			return 0;
 		}
 		else
 		{
