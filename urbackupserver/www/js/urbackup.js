@@ -440,7 +440,7 @@ function show_progress11()
 	if( g.progress_stop_id!=-1)
 	{
 		//alert(stop_clientid);
-		pars="stop_clientid="+g.progress_stop_id;
+		pars="stop_clientid="+g.progress_stop_client_id+"&stop_id="+g.progress_stop_id;
 		g.progress_stop_id=-1;
 	}
 	
@@ -3600,12 +3600,13 @@ function backups_started(data)
 		}
 	}
 }
-function stopBackup(clientid)
+function stopBackup(clientid, id)
 {
 	if(!startLoading()) return;
 	
 	alert(trans("trying_to_stop_backup"));
-	g.progress_stop_id=clientid;
+	g.progress_stop_client_id=clientid;
+	g.progress_stop_id=id;
 	show_progress1(true);
 }
 function recalculateStatistics()
