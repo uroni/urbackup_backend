@@ -53,6 +53,28 @@ public:
 	virtual bool hasError(void)=0;
 	virtual int64 calculateUsedSpace(void)=0;
 	virtual void releaseBuffer(char* buf)=0;
+
+	virtual void shutdownReadahead()=0;
+};
+
+class FsShutdownHelper
+{
+public:
+	FsShutdownHelper(IFilesystem* fs)
+		: fs(fs) {}
+
+	FsShutdownHelper()
+		: fs(NULL) {}
+
+	void reset(IFilesystem* pfs) {
+		fs=pfs;
+	}
+
+	~FsShutdownHelper() {
+		if(fs!=NULL) fs->shutdownReadahead();
+	}	
+private:
+	IFilesystem* fs;
 };
 
 inline fs_buffer::~fs_buffer()

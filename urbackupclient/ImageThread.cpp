@@ -96,9 +96,11 @@ void ImageThread::sendFullImageThread(void)
 		else
 		{
 			std::auto_ptr<IFilesystem> fs;
+			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
 				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true));
+				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
 			{
@@ -409,9 +411,11 @@ void ImageThread::sendIncrImageThread(void)
 		else
 		{
 			std::auto_ptr<IFilesystem> fs;
+			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
 				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true));
+				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
 			{

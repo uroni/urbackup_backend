@@ -29,6 +29,7 @@
 #include "../Interface/Thread.h"
 #include "../Interface/Condition.h"
 #include "../Interface/ThreadPool.h"
+#include <assert.h>
 
 namespace
 {
@@ -43,8 +44,8 @@ namespace
 		return last_error;
 	}
 
-	const size_t max_idle_buffers = 64;
 	const size_t readahead_num_blocks = 5120;
+	const size_t max_idle_buffers = readahead_num_blocks;
 	const size_t readahead_low_level_blocks = readahead_num_blocks/2;
 
 	class ReadaheadThread : public IThread
@@ -108,7 +109,7 @@ namespace
 				std::map<int64, char*>::iterator it;
 				do 
 				{
-					read_blocks.find(current_block);
+					it = read_blocks.find(current_block);
 					if(it!=read_blocks.end())
 					{
 						current_block = next_used_block(current_block);
@@ -118,9 +119,14 @@ namespace
 				if(current_block!=-1)
 				{
 					lock.relock(NULL);
-					char* buf = fs.readBlock(current_block);
+					char* buf = fs.readBlockInt(current_block, false);
 					lock.relock(mutex.get());
+
 					read_blocks[current_block] = buf;
+
+					if(do_stop) break;
+
+					current_block = next_used_block(current_block);
 
 					if(readahead_miss)
 					{
@@ -152,7 +158,7 @@ namespace
 
 				if(it!=read_blocks.end())
 				{
-					char* ret = it->second;
+					ret = it->second;
 					read_blocks.erase(it);
 				}
 				else
@@ -267,12 +273,7 @@ Filesystem::Filesystem(IFile *pDev, bool read_ahead)
 
 Filesystem::~Filesystem()
 {
-	if(readahead_thread.get()!=NULL)
-	{
-		readahead_thread->stop();
-		Server->getThreadPool()->waitFor(readahead_thread_ticket);
-		readahead_thread.reset();
-	}
+	assert(readahead_thread.get()==NULL);
 
 	if(dev!=NULL && own_dev)
 	{
@@ -302,6 +303,11 @@ bool Filesystem::hasBlock(int64 pBlock)
 
 char* Filesystem::readBlock(int64 pBlock)
 {
+	return readBlockInt(pBlock, readahead_thread.get()!=NULL);
+}
+
+char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead)
+{
 	const unsigned char *bitmap=getBitmap();
 	int64 blocksize=getBlocksize();
 
@@ -315,7 +321,7 @@ char* Filesystem::readBlock(int64 pBlock)
 	if(!has_bit)
 		return NULL;
 	
-	if(readahead_thread.get()==NULL)
+	if(!use_readahead)
 	{
 		bool b=dev->Seek(pBlock*blocksize);
 		if(!b)
@@ -446,5 +452,15 @@ void Filesystem::releaseBuffer(char* buf)
 	}
 
 	delete[] buf;
+}
+
+void Filesystem::shutdownReadahead()
+{
+	if(readahead_thread.get()!=NULL)
+	{
+		readahead_thread->stop();
+		Server->getThreadPool()->waitFor(readahead_thread_ticket);
+		readahead_thread.reset();
+	}
 }
 
