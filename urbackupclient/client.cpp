@@ -1622,6 +1622,156 @@ bool IndexThread::wait_for(IVssAsync *vsasync)
 }
 #endif
 
+bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, const std::wstring& wpath,
+	const std::vector<SCRef*>& no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy, bool consider_only_own_tokens)
+{
+#ifdef _WIN32
+#ifdef ENABLE_VSS
+	for(size_t i=sc_refs.size();i-- > 0;)
+	{
+		if(sc_refs[i]->target==wpath && sc_refs[i]->ok)
+		{
+			bool do_restart = std::find(no_restart_refs.begin(),
+				no_restart_refs.end(), sc_refs[i])==no_restart_refs.end();
+
+			bool only_own_tokens=true;
+			for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
+			{
+				int64 last_token_time = ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]);
+				int64 curr_time = Server->getTimeSeconds();
+				bool token_timeout=true;
+				if(curr_time>=last_token_time && curr_time-last_token_time<10*60*1000)
+				{
+					token_timeout=false;
+				}
+				if( sc_refs[i]->starttokens[k]!=starttoken && !token_timeout)
+				{
+					only_own_tokens=false;
+					break;
+				}
+			}
+
+			if(consider_only_own_tokens && !only_own_tokens)
+				continue;
+
+
+			bool cannot_open_shadowcopy = false;
+
+			IFile *volf=Server->openFile(sc_refs[i]->volpath, MODE_READ);
+			if(volf==NULL)
+			{
+				if(!do_restart)
+				{
+					VSSLog("Cannot open shadowcopy. Creating new or choosing other.", LL_WARNING);
+					continue;
+				}
+				else
+				{
+					VSSLog("Removing reference because shadowcopy could not be openend", LL_WARNING);
+					cannot_open_shadowcopy=true;
+				}
+			}
+			else
+			{
+				Server->destroy(volf);
+			}
+
+			if( do_restart && allow_restart && (Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_startnew_timeout/1000
+				|| only_own_tokens 
+				|| cannot_open_shadowcopy ) )
+			{
+				if( only_own_tokens)
+				{
+					VSSLog(L"Restarting shadow copy of " + sc_refs[i]->target + L" because it was started by this server", LL_WARNING);
+				}
+				else if(!cannot_open_shadowcopy)
+				{
+					VSSLog(L"Restarting/not using already existing shadow copy of " + sc_refs[i]->target + L" because it is too old", LL_INFO);
+				}
+
+				SCRef *curr=sc_refs[i];
+				std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
+
+				std::vector<std::wstring> paths;
+				for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();
+					it!=scdirs_server.end();++it)
+				{
+					paths.push_back(it->first);
+				}
+
+				for(size_t j=0;j<paths.size();++j)
+				{
+					std::map<std::wstring, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
+					if(it!=scdirs_server.end() 
+						&& it->second->ref==curr)
+					{
+						VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
+						release_shadowcopy(it->second, false, -1, dir);
+					}
+				}
+				dir->target=dir->orig_target;
+				continue;
+			}
+			else if(!cannot_open_shadowcopy)
+			{
+				dir->ref=sc_refs[i];
+				if(!dir->ref->dontincrement)
+				{
+					sc_refs[i]->starttokens.push_back(starttoken);
+				}
+				else
+				{
+					dir->ref->dontincrement=false;
+				}
+
+				VSSLog(L"orig_target="+dir->orig_target+L" volpath="+dir->ref->volpath, LL_DEBUG);
+
+				dir->target=dir->orig_target;
+				dir->target.erase(0,wpath.size());
+
+				dir->target=dir->ref->volpath+os_file_sep()+dir->target;
+				if(dir->fileserv)
+				{
+					shareDir(widen(starttoken), dir->dir, dir->target);
+				}
+
+				if(for_imagebackup && dir->ref->save_id!=-1)
+				{
+					cd->modShadowcopyRefCount(dir->ref->save_id, 1);
+				}
+
+				if(onlyref!=NULL)
+				{
+					*onlyref=true;
+				}
+
+				if( stale_shadowcopy!=NULL )
+				{
+					if(!do_restart)
+					{
+						*stale_shadowcopy=false;
+					}
+					else if(!only_own_tokens || !allow_restart)
+					{
+						*stale_shadowcopy=true;
+					}
+				}
+
+				VSSLog("Shadowcopy already present.", LL_DEBUG);
+				return true;
+			}
+		}
+	}
+
+	return false;
+#else
+	return false;
+#endif
+#else
+	return false;
+#endif
+}
+
 bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restart, std::vector<SCRef*> no_restart_refs, bool for_imagebackup, bool *stale_shadowcopy)
 {
 #ifdef _WIN32
@@ -1640,158 +1790,19 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 
 	std::wstring wpath=volume_path;
 
+	
+	if(find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true)
+		|| find_existing_shadowcopy(dir, onlyref, allow_restart, wpath, no_restart_refs, for_imagebackup, stale_shadowcopy, true) )
 	{
-		for(size_t i=0;i<sc_refs.size();++i)
-		{
-			if(sc_refs[i]->target==wpath && sc_refs[i]->ok)
-			{
-				bool do_restart=true;
-				bool found_in_no_restart_refs=false;
-				for(size_t k=0;k<no_restart_refs.size();++k)
-				{
-					if(no_restart_refs[k]==sc_refs[i])
-					{
-						found_in_no_restart_refs=true;
-						break;
-					}
-				}
-
-				if(found_in_no_restart_refs)
-				{
-					do_restart=false;
-				}
-
-				bool only_own_tokens=true;
-				for(size_t k=0;k<sc_refs[i]->starttokens.size();++k)
-				{
-					int64 last_token_time = ClientConnector::getLastTokenTime(sc_refs[i]->starttokens[k]);
-					int64 curr_time = Server->getTimeSeconds();
-					bool token_timeout=true;
-					if(curr_time>=last_token_time && curr_time-last_token_time<10*60*1000)
-					{
-						token_timeout=false;
-					}
-					if( sc_refs[i]->starttokens[k]!=starttoken && !token_timeout)
-					{
-						only_own_tokens=false;
-						break;
-					}
-				}
-
-				bool cannot_open_shadowcopy = false;
-
-				IFile *volf=Server->openFile(sc_refs[i]->volpath, MODE_READ);
-				if(volf==NULL)
-				{
-					if(!do_restart)
-					{
-						VSSLog("Cannot open shadowcopy. Creating new or choosing other.", LL_WARNING);
-						continue;
-					}
-					else
-					{
-						VSSLog("Removing reference because shadowcopy could not be openend", LL_WARNING);
-						cannot_open_shadowcopy=true;
-					}
-				}
-				else
-				{
-					Server->destroy(volf);
-				}
-
-				if( do_restart && allow_restart && (Server->getTimeSeconds()-sc_refs[i]->starttime>shadowcopy_startnew_timeout/1000
-													|| only_own_tokens 
-													|| cannot_open_shadowcopy ) )
-				{
-					if( only_own_tokens)
-					{
-						VSSLog(L"Restarting shadow copy of " + sc_refs[i]->target + L" because it was started by this server", LL_WARNING);
-					}
-					else
-					{
-						VSSLog(L"Restarting/not using already existing shadow copy of " + sc_refs[i]->target + L" because it is too old", LL_INFO);
-					}
-
-					SCRef *curr=sc_refs[i];
-					std::map<std::wstring, SCDirs*>& scdirs_server = scdirs[starttoken];
-
-					std::vector<std::wstring> paths;
-					for(std::map<std::wstring, SCDirs*>::iterator it=scdirs_server.begin();
-						it!=scdirs_server.end();++it)
-					{
-						paths.push_back(it->first);
-					}
-
-					for(size_t j=0;j<paths.size();++j)
-					{
-						std::map<std::wstring, SCDirs*>::iterator it = scdirs_server.find(paths[j]);
-						if(it!=scdirs_server.end() 
-							&& it->second->ref==curr)
-						{
-							VSSLog(L"Releasing "+it->first+L" orig_target="+it->second->orig_target+L" target="+it->second->target, LL_DEBUG);
-							release_shadowcopy(it->second, false, -1, dir);
-						}
-					}
-					dir->target=dir->orig_target;
-					continue;
-				}
-				else if(!cannot_open_shadowcopy)
-				{
-					dir->ref=sc_refs[i];
-					if(!dir->ref->dontincrement)
-					{
-						sc_refs[i]->starttokens.push_back(starttoken);
-					}
-					else
-					{
-						dir->ref->dontincrement=false;
-					}
-
-					VSSLog(L"orig_target="+dir->orig_target+L" volpath="+dir->ref->volpath, LL_DEBUG);
-
-					dir->target=dir->orig_target;
-					dir->target.erase(0,wpath.size());
-
-					dir->target=dir->ref->volpath+os_file_sep()+dir->target;
-					if(dir->fileserv)
-					{
-						shareDir(widen(starttoken), dir->dir, dir->target);
-					}
-
-					if(for_imagebackup && dir->ref->save_id!=-1)
-					{
-						cd->modShadowcopyRefCount(dir->ref->save_id, 1);
-					}
-
-					if(onlyref!=NULL)
-					{
-						*onlyref=true;
-					}
-
-					if( stale_shadowcopy!=NULL )
-					{
-						if(found_in_no_restart_refs)
-						{
-							*stale_shadowcopy=false;
-						}
-						else if(!only_own_tokens || !allow_restart)
-						{
-							*stale_shadowcopy=true;
-						}
-					}
-
-					VSSLog("Shadowcopy already present.", LL_DEBUG);
-					return true;
-				}
-			}
-		}
-
-		dir->ref=new SCRef;
-		dir->ref->starttime=Server->getTimeSeconds();
-		dir->ref->target=wpath;
-		dir->ref->starttokens.push_back(starttoken);
-		sc_refs.push_back(dir->ref);
+		return true;
 	}
+
+	dir->ref=new SCRef;
+	dir->ref->starttime=Server->getTimeSeconds();
+	dir->ref->target=wpath;
+	dir->ref->starttokens.push_back(starttoken);
+	sc_refs.push_back(dir->ref);
+	
 
 	int tries=3;
 	bool retryable_error=true;
