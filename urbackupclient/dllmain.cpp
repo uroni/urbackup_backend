@@ -86,7 +86,7 @@ bool upgrade_client(void);
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
-std::string time_format_str="%m/%d/%Y %H:%M";
+std::string time_format_str="%d.%m.%Y %H:%M";
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
