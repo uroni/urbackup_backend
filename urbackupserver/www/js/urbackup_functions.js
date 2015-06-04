@@ -23,6 +23,12 @@ else if (navigator.appName == 'Netscape' &&
 
 if (!Date.now) { Date.now = function now() { return +(new Date); }; } 
 
+if(typeof String.prototype.trim !== 'function') {
+  String.prototype.trim = function() {
+    return this.replace(/^\s+|\s+$/g, ''); 
+  }
+}
+
 function trans(str)
 {
 	if(typeof curr_trans[str]=="undefined")
