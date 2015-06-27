@@ -1176,3 +1176,37 @@ bool os_path_absolute(const std::wstring& path)
 {
 	return PathIsRelative(path.c_str())==FALSE;
 }
+
+std::string os_popen( std::string& cmd )
+{
+	FILE* in = NULL;
+
+#ifndef _WIN32
+#define _popen popen
+#define _pclose pclose
+#endif
+
+	in = _popen(cmd.c_str(), "r");
+
+	if(in==NULL)
+	{
+		return std::string();
+	}
+
+	char buf[4096];
+	std::string ret;
+	size_t read;
+	do
+	{
+		read=fread(buf, 1, sizeof(buf), in);
+		if(read>0)
+		{
+			ret.append(buf, buf+read);
+		}
+	}
+	while(read==sizeof(buf));
+
+	_pclose(in);
+
+	return ret;
+}
