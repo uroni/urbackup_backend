@@ -782,7 +782,7 @@ bool os_path_absolute(const std::wstring& path)
     }
 }
 
-std::string os_popen( std::string& cmd )
+std::string os_popen( const std::string& cmd )
 {
 	FILE* in = NULL;
 

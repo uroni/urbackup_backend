@@ -1177,7 +1177,7 @@ bool os_path_absolute(const std::wstring& path)
 	return PathIsRelative(path.c_str())==FALSE;
 }
 
-std::string os_popen( std::string& cmd )
+std::string os_popen(const std::string& cmd )
 {
 	FILE* in = NULL;
 
