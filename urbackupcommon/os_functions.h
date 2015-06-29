@@ -123,6 +123,6 @@ enum EFileType
 
 int os_get_file_type(const std::wstring &path);
 
-std::string os_popen(const std::string& cmd);
+int os_popen(const std::string& cmd, std::string& ret);
 
 #endif //OS_FUNCTIONS_H

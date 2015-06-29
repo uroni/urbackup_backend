@@ -782,8 +782,10 @@ bool os_path_absolute(const std::wstring& path)
     }
 }
 
-std::string os_popen( const std::string& cmd )
+int os_popen(const std::string& cmd, std::string& ret)
 {
+	ret.clear();
+
 	FILE* in = NULL;
 
 #ifndef _WIN32
@@ -795,11 +797,10 @@ std::string os_popen( const std::string& cmd )
 
 	if(in==NULL)
 	{
-		return std::string();
+		return -1;
 	}
 
 	char buf[4096];
-	std::string ret;
 	size_t read;
 	do
 	{
@@ -811,8 +812,6 @@ std::string os_popen( const std::string& cmd )
 	}
 	while(read==sizeof(buf));
 
-	_pclose(in);
-
-	return ret;
+	return _pclose(in);
 }
 
