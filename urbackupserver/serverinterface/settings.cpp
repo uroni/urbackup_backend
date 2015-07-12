@@ -149,6 +149,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(verify_using_client_hashes);
 	SET_SETTING(internet_readd_file_entries);
 	SET_SETTING(background_backups);
+	SET_SETTING(follow_symlinks);
 #undef SET_SETTING
 	return ret;
 }

@@ -100,6 +100,7 @@ struct SSettings
 	bool verify_using_client_hashes;
 	bool internet_readd_file_entries;
 	bool background_backups;
+	bool follow_symlinks;
 };
 
 struct STimeSpan

@@ -129,6 +129,9 @@ public:
 private:
 
 	void readBackupDirs(void);
+
+	void readFollowSymlinks();
+
 	bool initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db);
 
 	void indexDirs(void);
@@ -242,6 +245,8 @@ private:
 	std::vector<std::pair<std::string, int> > vsslog;
 
 	_i64 last_filebackup_filetime;
+
+	bool follow_symlinks;
 };
 
 std::wstring add_trailing_slash(const std::wstring &strDirName);

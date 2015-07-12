@@ -625,6 +625,7 @@ void IndexThread::indexDirs(void)
 {
 	bool patterns_changed=false;
 	readPatterns(patterns_changed, false);
+	readFollowSymlinks();
 
 	if(patterns_changed)
 	{
@@ -1141,7 +1142,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
-		tmp=convertToFileAndHash(getFiles(tpath, &has_error));
+		tmp=convertToFileAndHash(getFiles(tpath, &has_error, follow_symlinks));
 
 		if(has_error)
 		{
@@ -1294,7 +1295,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			std::wstring tpath=os_file_prefix(path);
 
 			bool has_error;
-			tmp=convertToFileAndHash(getFiles(tpath, &has_error));
+			tmp=convertToFileAndHash(getFiles(tpath, &has_error, follow_symlinks));
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
@@ -3111,4 +3112,22 @@ bool IndexThread::backgroundBackupsEnabled()
 		}
 	}
 	return true;
+}
+
+void IndexThread::readFollowSymlinks()
+{
+#ifdef _WIN32
+	follow_symlinks=false;
+#else
+	follow_symlinks=true;
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+	if(curr_settings.get()!=NULL)
+	{	
+		std::wstring val;
+		if(curr_settings->getValue(L"follow_symlinks", &val) || curr_settings->getValue(L"follow_symlinks", &val) )
+		{
+			follow_symlinks = (val=="true");
+		}
+	}
+#endif
 }

@@ -317,6 +317,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->verify_using_client_hashes=(settings_default->getValue("verify_using_client_hashes", "false")=="true");
 	settings->internet_readd_file_entries=(settings_default->getValue("internet_readd_file_entries", "true")=="true");
 	settings->background_backups=(settings_default->getValue("background_backups", "true")=="true");
+	settings->follow_symlinks=(settings_default->getValue("follow_symlinks", "true")=="true");
 }
 
 void ServerSettings::readSettingsClient(void)
@@ -458,6 +459,7 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("verify_using_client_hashes", &settings->verify_using_client_hashes);
 	readBoolClientSetting("internet_readd_file_entries", &settings->internet_readd_file_entries);
 	readBoolClientSetting("background_backups", &settings->background_backups);
+	readBoolClientSetting("follow_symlinks", &settings->follow_symlinks);
 }
 
 void ServerSettings::readBoolClientSetting(const std::string &name, bool *output)

@@ -90,7 +90,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 		{
 #endif
 			struct stat64 f_info;
-			int rc=stat64((upath+dirp->d_name).c_str(), &f_info);
+			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
 			if(rc==0)
 			{
 #ifndef sun

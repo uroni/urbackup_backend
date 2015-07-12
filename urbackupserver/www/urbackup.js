@@ -1485,6 +1485,8 @@ function show_settings2(data)
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
+			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
+			data.settings.follow_symlinks=getCheckboxValue(data.settings.follow_symlinks);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1600,6 +1602,8 @@ function show_settings2(data)
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
+			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
+			data.settings.follow_symlinks=getCheckboxValue(data.settings.follow_symlinks);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1884,7 +1888,9 @@ g.settings_list=[
 "image_file_format",
 "internet_connect_always",
 "verify_using_client_hashes",
-"internet_readd_file_entries"
+"internet_readd_file_entries",
+"background_backups",
+"follow_symlinks"
 ];
 g.general_settings_list=[
 "backupfolder",
