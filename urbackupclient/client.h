@@ -151,6 +151,8 @@ private:
 
 	bool readBackupDirs(void);
 	bool readBackupScripts();
+	void readFollowSymlinks();
+
 	bool initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db);
 
 	void indexDirs(void);
@@ -271,6 +273,7 @@ private:
 	_i64 last_filebackup_filetime;
 
 	tokens::TokenCache token_cache;
+	bool follow_symlinks;
 };
 
 std::wstring add_trailing_slash(const std::wstring &strDirName);

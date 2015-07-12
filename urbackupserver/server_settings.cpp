@@ -321,6 +321,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_readd_file_entries=(settings_default->getValue("internet_readd_file_entries", "true")=="true");
 	settings->max_running_jobs_per_client=atoi(settings_default->getValue("max_running_jobs_per_client", "1").c_str());
 	settings->create_linked_user_views=(settings_default->getValue("create_linked_user_views", "true")=="true");
+	settings->follow_symlinks=(settings_default->getValue("follow_symlinks", "true")=="true");
 	settings->local_incr_image_style=settings_default->getValue("local_incr_image_style", incr_image_style_to_full);
 	settings->local_full_image_style=settings_default->getValue("local_full_image_style", full_image_style_full);
 	settings->internet_incr_image_style=settings_default->getValue("internet_incr_image_style", incr_image_style_to_last);
@@ -466,6 +467,7 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("internet_readd_file_entries", &settings->internet_readd_file_entries);
 
 	readIntClientSetting("max_running_jobs_per_client", &settings->max_running_jobs_per_client);
+	readBoolClientSetting("follow_symlinks", &settings->follow_symlinks);
 	readBoolClientSetting("create_linked_user_views", &settings->create_linked_user_views);
 
 	readStringClientSetting("local_incr_image_style", &settings->local_incr_image_style);

@@ -1752,6 +1752,8 @@ function show_settings2(data)
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
+			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
+			data.settings.follow_symlinks=getCheckboxValue(data.settings.follow_symlinks);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -1878,6 +1880,8 @@ function show_settings2(data)
 			data.settings.internet_connect_always=getCheckboxValue(data.settings.internet_connect_always);
 			data.settings.verify_using_client_hashes=getCheckboxValue(data.settings.verify_using_client_hashes);
 			data.settings.internet_readd_file_entries=getCheckboxValue(data.settings.internet_readd_file_entries);
+			data.settings.background_backups=getCheckboxValue(data.settings.background_backups);
+			data.settings.follow_symlinks=getCheckboxValue(data.settings.follow_symlinks);
 			
 			var transfer_mode_params1=["raw", "hashed"];
 			var transfer_mode_params2=["raw", "hashed", "blockhash"];
@@ -2199,6 +2203,7 @@ g.settings_list=[
 "internet_readd_file_entries",
 "local_incr_image_style",
 "local_full_image_style",
+"follow_symlinks",
 "internet_incr_image_style",
 "internet_full_image_style"
 ];

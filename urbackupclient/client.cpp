@@ -735,6 +735,7 @@ void IndexThread::indexDirs(void)
 {
 	bool patterns_changed=false;
 	readPatterns(patterns_changed, false);
+	readFollowSymlinks();
 
 	if(patterns_changed)
 	{
@@ -3497,6 +3498,24 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 		outfile << "d\"..\"\n";
 
 		return true;
+}
+
+void IndexThread::readFollowSymlinks()
+{
+#ifdef _WIN32
+	follow_symlinks=false;
+#else
+	follow_symlinks=true;
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+	if(curr_settings.get()!=NULL)
+	{	
+		std::wstring val;
+		if(curr_settings->getValue(L"follow_symlinks", &val) || curr_settings->getValue(L"follow_symlinks", &val) )
+		{
+			follow_symlinks = (val=="true");
+		}
+	}
+#endif
 	}
 	else
 	{
