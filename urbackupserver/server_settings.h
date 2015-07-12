@@ -99,6 +99,7 @@ struct SSettings
 	bool show_server_updates;
 	bool verify_using_client_hashes;
 	bool internet_readd_file_entries;
+	bool background_backups;
 };
 
 struct STimeSpan

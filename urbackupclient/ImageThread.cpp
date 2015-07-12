@@ -683,15 +683,18 @@ void ImageThread::operator()(void)
 {
 #ifdef _WIN32
 #ifndef _DEBUG
+	if(IndexThread::backgroundBackupsEnabled())
+	{
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 #if defined(VSS_XP) || defined(VSS_S03)
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #else
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
+		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
 #else
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif //THREAD_MODE_BACKGROUND_BEGIN
+	}
 #endif _DEBUG
 #endif
 	if(image_inf->thread_action==TA_FULL_IMAGE)

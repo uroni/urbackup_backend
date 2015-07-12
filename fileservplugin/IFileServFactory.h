@@ -10,7 +10,7 @@
 class IFileServFactory : public IPlugin
 {
 public:
-	virtual IFileServ * createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name=L"", bool use_fqdn_default=false)=0;
+	virtual IFileServ * createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name=L"", bool use_fqdn_default=false, bool enable_background_priority=true)=0;
 	virtual void destroyFileServ(IFileServ *filesrv)=0;
 };
 

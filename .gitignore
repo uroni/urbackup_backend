@@ -224,3 +224,7 @@ Release x64/*
 urbackupclient/Release x64/*
 urbackupclient/Debug WinXP/*
 SolutionDependencies.props
+clouddrive/*
+transaction_helper/*
+access_backups_shell_mui.txt
+urbackup/new2_db/*

@@ -236,19 +236,22 @@ void IndexThread::operator()(void)
 #endif
 #ifdef _WIN32
 
+	if(backgroundBackupsEnabled())
+	{
 #ifndef _DEBUG
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 #if defined(VSS_XP) || defined(VSS_S03)
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #else
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
+		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
 #else
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif //THREAD_MODE_BACKGROUND_BEGIN
 #endif //_DEBUG
 
 #endif
+	}
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
@@ -2599,7 +2602,8 @@ void IndexThread::start_filesrv(void)
 		}
 	}
 
-	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn);
+	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn,
+		backgroundBackupsEnabled());
 	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data");
 
 	ServerIdentityMgr::setFileServ(filesrv);
@@ -3092,4 +3096,19 @@ std::string IndexThread::escapeListName( const std::string& listname )
 		}
 	}
 	return ret;
+}
+
+bool IndexThread::backgroundBackupsEnabled()
+{
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+	if(curr_settings.get()!=NULL)
+	{
+		std::string background_backups;
+		if(curr_settings->getValue("background_backups", &background_backups)
+			|| curr_settings->getValue("background_backups_def", &background_backups) )
+		{
+			return background_backups!="false";
+		}
+	}
+	return true;
 }

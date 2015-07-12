@@ -31,6 +31,7 @@
 #include "CriticalSection.h"
 #include "FileServ.h"
 #include "ChunkSendThread.h"
+#include "FileServFactory.h"
 
 #include <algorithm>
 #include <memory.h>
@@ -196,14 +197,16 @@ void CClientThread::operator()(void)
 {
 #ifdef _WIN32
 #ifndef _DEBUG
+	if(FileServFactory::backgroundBackupsEnabled())
+	{
 #ifdef BACKGROUND_PRIORITY
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
+		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
-#endif //_DEBUG
-
 #endif // BACKGROUND_PRIORITY
+	}
+#endif //_DEBUG
 #endif // _WIN32
 
 #ifdef HIGH_PRIORITY

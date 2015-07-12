@@ -124,6 +124,8 @@ public:
 
 	static void doStop(void);
 
+	static bool backgroundBackupsEnabled();
+
 private:
 
 	void readBackupDirs(void);

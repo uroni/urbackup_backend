@@ -62,6 +62,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"internet_connect_always");
 	ret.push_back(L"verify_using_client_hashes");
 	ret.push_back(L"internet_readd_file_entries");
+	ret.push_back(L"background_backups");
 	return ret;
 }
 
@@ -84,6 +85,7 @@ std::vector<std::wstring> getOnlyServerClientSettingsList(void)
 	ret.push_back(L"image_file_format");
 	ret.push_back(L"verify_using_client_hashes");
 	ret.push_back(L"internet_readd_file_entries");
+	ret.push_back(L"background_backups");
 	return ret;
 }
 
