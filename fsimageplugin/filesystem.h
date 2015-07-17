@@ -19,8 +19,6 @@ namespace
 
 class Filesystem : public IFilesystem
 {
-	friend class ReadaheadThread;
-
 public:
 	Filesystem(const std::wstring &pDev, bool read_ahead);
 	Filesystem(IFile *pDev, bool read_ahead);
@@ -39,8 +37,9 @@ public:
 
 	virtual void shutdownReadahead();
 
-protected:
 	virtual char* readBlockInt(int64 pBlock, bool use_readahead);
+
+protected:
 	bool readFromDev(char *buf, _u32 bsize);
 	IFile *dev;
 
