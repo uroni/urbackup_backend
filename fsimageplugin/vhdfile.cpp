@@ -1247,7 +1247,7 @@ bool VHDFile::isCompressed()
 bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 {
 	FileWrapper devfile(this, fs_offset);
-	FSNTFS ntfs(&devfile);
+	FSNTFS ntfs(&devfile, false);
 
 	if(ntfs.hasError())
 	{
@@ -1263,7 +1263,7 @@ bool VHDFile::makeFull( _i64 fs_offset, IVHDWriteCallback* write_callback)
 	for(int64 ntfs_block=0, n_ntfs_blocks = ntfs.getSize()/ntfs_blocksize;
 		ntfs_block<n_ntfs_blocks; ++ntfs_block)
 	{
-		if(ntfs.readBlock(ntfs_block, NULL))
+		if(ntfs.hasBlock(ntfs_block))
 		{
 			int64 block_pos = fs_offset + ntfs_block*ntfs_blocksize;
 			for(unsigned int i=0;i<ntfs_blocksize;i+=sector_size)

@@ -57,6 +57,9 @@ CSessionMgr::~CSessionMgr()
 		  {
 			  sesids.push_back(i->first);
 		  }
+
+		  lock.relock(NULL);
+
 		  for(size_t i=0;i<sesids.size();++i)
 		  {
 			  RemoveSession(sesids[i]);
@@ -98,20 +101,23 @@ std::wstring CSessionMgr::GenerateSessionIDWithUser(const std::wstring &pUsernam
 	IScopedLock lock( sess_mutex );
 	if(update_user)
 	{
-		bool changed=true;
-		while(changed==true)
+		std::vector<std::wstring> to_remove;
+		for(std::map<std::wstring, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
 		{
-			changed=false;
-			for(std::map<std::wstring, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
+			if( i->second->username==pUsername )
 			{
-				if( i->second->username==pUsername )
-				{
-					changed=true;
-					RemoveSession(i->first);
-					break;
-				}
+				to_remove.push_back(i->first);
 			}
 		}
+		
+		lock.relock(NULL);
+
+		for(size_t i=0;i<to_remove.size();++i)
+		{
+			RemoveSession(to_remove[i]);
+		}
+
+		lock.relock(sess_mutex);
 	}
 
 
@@ -136,6 +142,8 @@ SUser *CSessionMgr::getUser(const std::wstring &pSID, const std::wstring &pIdent
 	{
 		if( i->second->ident_data!=pIdentData )
 			return NULL;
+
+		lock.relock(NULL);
 
 		ILock *lock=((IMutex*)i->second->mutex)->Lock2();
 		i->second->lock=lock;
@@ -170,19 +178,24 @@ bool CSessionMgr::RemoveSession(const std::wstring &pSID)
 	std::map<std::wstring, SUser*>::iterator i=mSessions.find(pSID);
 	if( i!=mSessions.end() )
 	{
-		IScopedLock *lock=new IScopedLock(((IMutex*)i->second->mutex));
-		delete lock;
-		
-		Server->destroy((IMutex*)i->second->mutex);
+		SUser* user=i->second;
+		mSessions.erase(i);
 
-		for(std::map<std::string, IObject* >::iterator iter=i->second->mCustom.begin();
-			iter!=i->second->mCustom.end();++iter)
+		lock.relock(NULL);
+
+		IScopedLock *lock=new IScopedLock(((IMutex*)user->mutex));
+		delete lock;
+
+		Server->destroy((IMutex*)user->mutex);
+
+		for(std::map<std::string, IObject* >::iterator iter=user->mCustom.begin();
+			iter!=user->mCustom.end();++iter)
 		{
 			iter->second->Remove();
 		}
 
-		delete i->second;
-		mSessions.erase(i);
+		delete user;
+		
 		return true;
 	}
 	else
@@ -196,32 +209,40 @@ unsigned int CSessionMgr::TimeoutSessions(void)
 	unsigned int ret=0;
 	IScopedLock lock( sess_mutex );
 	int64 ttime=Server->getTimeMS();
+	std::vector<std::wstring> to_timeout;
 	for(std::map<std::wstring, SUser*>::iterator i=mSessions.begin();i!=mSessions.end();++i)
 	{
 		int64 diff=ttime-i->second->lastused;
 		if( diff > (unsigned int)(SESSION_TIMEOUT_S)*1000 )
 		{
 			Server->Log(L"Session timeout: Session "+i->first, LL_INFO);
-			RemoveSession(i->first);
-			return 0;
+			to_timeout.push_back(i->first);
 		}
 		else
 		{
 		    ret=static_cast<unsigned int>((std::max)(diff, static_cast<int64>(ret)));
 		}
 	}
+
+	lock.relock(NULL);
+
+	for(size_t i=0;i<to_timeout.size();++i)
+	{
+		RemoveSession(to_timeout[i]);
+	}
+
 	return (unsigned int)((SESSION_TIMEOUT_S)*1000)-ret+1000;
 }
 
 void CSessionMgr::operator()(void)
 {
     {
-      IScopedLock lock( wait_mutex );
-      while(run)
-      {	
-	  unsigned int wtime=TimeoutSessions();
-	  wait_cond->wait(&lock, wtime);
-      }
+		IScopedLock lock( wait_mutex );
+		while(run)
+		{	
+			unsigned int wtime=TimeoutSessions();
+			wait_cond->wait(&lock, wtime);
+		}
     }
     IScopedLock slock(stop_mutex);
     stop_cond->notify_one();

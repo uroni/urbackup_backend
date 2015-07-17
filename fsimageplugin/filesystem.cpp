@@ -26,6 +26,10 @@
 #else
 #include <errno.h>
 #endif
+#include "../Interface/Thread.h"
+#include "../Interface/Condition.h"
+#include "../Interface/ThreadPool.h"
+#include <assert.h>
 
 namespace
 {
@@ -39,9 +43,203 @@ namespace
 #endif
 		return last_error;
 	}
+
+	const size_t readahead_num_blocks = 5120;
+	const size_t max_idle_buffers = readahead_num_blocks;
+	const size_t readahead_low_level_blocks = readahead_num_blocks/2;
+
+	class ReadaheadThread : public IThread
+	{
+	public:
+		ReadaheadThread(Filesystem& fs)
+			: fs(fs), 
+			  mutex(Server->createMutex()),
+			  start_readahead_cond(Server->createCondition()),
+			  read_block_cond(Server->createCondition()),
+			  current_block(-1),
+			  do_stop(false),
+			  readahead_miss(false)
+		{
+
+		}
+
+		~ReadaheadThread()
+		{
+			for(std::map<int64, char*>::iterator it=read_blocks.begin();
+				it!=read_blocks.end();++it)
+			{
+				fs.releaseBuffer(it->second);
+			}
+		}
+
+
+		void operator()()
+		{
+#ifdef _WIN32
+#ifdef THREAD_MODE_BACKGROUND_BEGIN
+			SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
+#else
+			SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#endif //THREAD_MODE_BACKGROUND_BEGIN
+#endif
+
+			IScopedLock lock(mutex.get());
+			while(!do_stop)
+			{
+				if(read_blocks.size()>=readahead_num_blocks)
+				{
+					while(read_blocks.size()>readahead_low_level_blocks
+						&& !readahead_miss)
+					{
+						start_readahead_cond->wait(&lock);
+
+						if(do_stop) break;
+					}
+				}
+
+				if(do_stop) break;
+
+				while(current_block==-1)
+				{
+					start_readahead_cond->wait(&lock);
+				}
+
+				if(do_stop) break;
+
+				std::map<int64, char*>::iterator it;
+				do 
+				{
+					it = read_blocks.find(current_block);
+					if(it!=read_blocks.end())
+					{
+						current_block = next_used_block(current_block);
+					}
+				} while (it!=read_blocks.end());
+
+				if(current_block!=-1)
+				{
+					lock.relock(NULL);
+					char* buf = fs.readBlockInt(current_block, false);
+					lock.relock(mutex.get());
+
+					read_blocks[current_block] = buf;
+
+					if(do_stop) break;
+
+					current_block = next_used_block(current_block);
+
+					if(readahead_miss)
+					{
+						read_block_cond->notify_all();
+						readahead_miss=false;
+					}
+				}
+			}
+
+#ifdef _WIN32
+#ifdef THREAD_MODE_BACKGROUND_END
+			SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
+#else
+			SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+#endif
+#endif
+		}
+
+		char* getBlock(int64 block)
+		{
+			IScopedLock lock(mutex.get());
+
+			clearUnusedReadahead(block);
+
+			char* ret=NULL;
+			while(ret==NULL)
+			{
+				std::map<int64, char*>::iterator it=read_blocks.find(block);
+
+				if(it!=read_blocks.end())
+				{
+					ret = it->second;
+					read_blocks.erase(it);
+				}
+				else
+				{
+					readaheadFromInt(block);
+					readahead_miss=true;
+					read_block_cond->wait(&lock);
+				}
+			}
+
+			return ret;
+		}
+
+		void stop()
+		{
+			IScopedLock lock(mutex.get());
+			do_stop=true;
+			start_readahead_cond->notify_all();
+		}
+
+	private:
+
+		void readaheadFromInt(int64 pBlock)
+		{
+			current_block=pBlock;
+			start_readahead_cond->notify_all();
+		}
+
+		void clearUnusedReadahead(int64 pBlock)
+		{
+			for(std::map<int64, char*>::iterator it=read_blocks.begin();
+				it!=read_blocks.end();)
+			{
+				if(it->first<pBlock)
+				{
+					std::map<int64, char*>::iterator todel = it;
+					++it;
+					fs.releaseBuffer(todel->second);
+					read_blocks.erase(todel);
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		int64 next_used_block(int64 pBlock)
+		{
+			int64 size = fs.getSize();
+
+			while(pBlock<size/fs.getBlocksize())
+			{
+				++pBlock;
+
+				if(fs.hasBlock(pBlock))
+				{
+					return pBlock;
+				}
+			}
+
+			return -1;
+		}
+
+		std::auto_ptr<IMutex> mutex;
+		std::auto_ptr<ICondition> start_readahead_cond;
+		std::auto_ptr<ICondition> read_block_cond;
+		Filesystem& fs;
+
+		std::map<int64, char*> read_blocks;
+
+		bool readahead_miss;
+
+		int64 current_block;
+
+		bool do_stop;
+	};
 }
 
-Filesystem::Filesystem(const std::wstring &pDev)
+Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead)
+	: buffer_mutex(Server->createMutex())
 {
 	has_error=false;
 
@@ -51,29 +249,64 @@ Filesystem::Filesystem(const std::wstring &pDev)
 		Server->Log("Error opening device file. Errorcode: "+nconvert(getLastSystemError()), LL_ERROR);
 		has_error=true;
 	}
-	tmp_buf=NULL;
 	own_dev=true;
+
+	if(read_ahead)
+	{
+		readahead_thread.reset(new ReadaheadThread(*this));
+		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get());
+	}
 }
 
-Filesystem::Filesystem(IFile *pDev)
+Filesystem::Filesystem(IFile *pDev, bool read_ahead)
 	: dev(pDev)
 {
 	has_error=false;
-	tmp_buf=NULL;
 	own_dev=false;
+
+	if(read_ahead)
+	{
+		readahead_thread.reset(new ReadaheadThread(*this));
+		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get());
+	}
 }
 
 Filesystem::~Filesystem()
 {
+	assert(readahead_thread.get()==NULL);
+
 	if(dev!=NULL && own_dev)
 	{
 		Server->destroy(dev);
 	}
-	if(tmp_buf!=NULL)
-		delete [] tmp_buf;
+	
+	for(size_t i=0;i<buffers.size();++i)
+	{
+		delete[] buffers[i];
+	}
 }
 
-bool Filesystem::readBlock(int64 pBlock, char * buffer)
+bool Filesystem::hasBlock(int64 pBlock)
+{
+	const unsigned char *bitmap=getBitmap();
+	int64 blocksize=getBlocksize();
+
+	size_t bitmap_byte=(size_t)(pBlock/8);
+	size_t bitmap_bit=pBlock%8;
+
+	unsigned char b=bitmap[bitmap_byte];
+
+	bool has_bit=((b & (1<<bitmap_bit))>0);
+
+	return has_bit;
+}
+
+char* Filesystem::readBlock(int64 pBlock)
+{
+	return readBlockInt(pBlock, readahead_thread.get()!=NULL);
+}
+
+char* Filesystem::readBlockInt(int64 pBlock, bool use_readahead)
 {
 	const unsigned char *bitmap=getBitmap();
 	int64 blocksize=getBlocksize();
@@ -86,90 +319,51 @@ bool Filesystem::readBlock(int64 pBlock, char * buffer)
 	bool has_bit=((b & (1<<bitmap_bit))>0);
 
 	if(!has_bit)
-		return false;
-	else if(buffer!=NULL)
+		return NULL;
+	
+	if(!use_readahead)
 	{
 		bool b=dev->Seek(pBlock*blocksize);
 		if(!b)
 		{
 			Server->Log("Seeking in device failed -1", LL_ERROR);
 			has_error=true;
-			return false;
+			return NULL;
 		}
-		if(!readFromDev(buffer, (_u32)blocksize) )
+		char* buf = getBuffer();
+		if(!readFromDev(buf, (_u32)blocksize) )
 		{
 			Server->Log("Reading from device failed -1", LL_ERROR);
 			has_error=true;
-			return false;
+			return NULL;
 		}
-		return true;
+
+		return buf;
 	}
 	else
-		return true;
+	{
+		return readahead_thread->getBlock(pBlock);
+	}
 }
 
-std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n, const std::vector<char*> buffers, unsigned int buffer_offset)
+std::vector<int64> Filesystem::readBlocks(int64 pStartBlock, unsigned int n,
+	const std::vector<char*>& buffers, unsigned int buffer_offset)
 {
-	const unsigned char *bitmap=getBitmap();
 	_u32 blocksize=(_u32)getBlocksize();
 	std::vector<int64> ret;
 
-	unsigned int currbuf=0;
+	size_t currbuf = 0;
 
-	bool has_all=true;
 	for(int64 i=pStartBlock;i<pStartBlock+n;++i)
 	{
-		size_t bitmap_byte=(size_t)(i/8);
-		size_t bitmap_bit=i%8;
-
-		unsigned char b=bitmap[bitmap_byte];
-
-		bool has_bit=((b & (1<<bitmap_bit))>0);
-
-		if(!has_bit)
+		char* buf = readBlock(i);
+		if(buf!=NULL)
 		{
-			has_all=false;
-			break;
-		}
-	}
-
-	if(has_all)
-	{
-		if(tmp_buf==NULL || tmpbufsize!=n*blocksize )
-		{
-			if(tmp_buf!=NULL) delete [] tmp_buf;
-			tmpbufsize=n*blocksize;
-			tmp_buf=new char[tmpbufsize];
-		}
-
-		if(!dev->Seek(pStartBlock*blocksize))
-		{
-			Server->Log("Seeking in device failed -2", LL_ERROR);
-			has_error=true;
-			return std::vector<int64>();
-		}
-		if(!readFromDev(tmp_buf, n*(_u32)blocksize))
-		{
-			Server->Log("Reading from device failed -2", LL_ERROR);
-			has_error=true;
-			return std::vector<int64>();
-		}
-		for(int64 i=pStartBlock;i<pStartBlock+n;++i)
-		{
-			memcpy(buffers[currbuf]+buffer_offset, tmp_buf+currbuf*blocksize, blocksize);
+			memcpy(buffers[currbuf]+buffer_offset, buf, blocksize);
 			++currbuf;
 			ret.push_back(i);
-		}
-	}
-	else
-	{
-		for(int64 i=pStartBlock;i<pStartBlock+n;++i)
-		{
-			if(readBlock(i, buffers[currbuf]+buffer_offset) )
-			{
-				++currbuf;
-				ret.push_back(i);
-			}
+
+			releaseBuffer(buf);
 		}
 	}
 
@@ -228,3 +422,45 @@ bool Filesystem::hasError(void)
 {
 	return has_error;
 }
+
+char* Filesystem::getBuffer()
+{
+	{
+		IScopedLock lock(buffer_mutex.get());
+
+		if(!buffers.empty())
+		{
+			char* ret = buffers[buffers.size()-1];
+			buffers.erase(buffers.begin()+buffers.size()-1);
+			return ret;
+		}
+	}
+
+	return new char[getBlocksize()];
+}
+
+void Filesystem::releaseBuffer(char* buf)
+{
+	{
+		IScopedLock lock(buffer_mutex.get());
+		
+		if(buffers.size()<max_idle_buffers)
+		{
+			buffers.push_back(buf);
+			return;
+		}
+	}
+
+	delete[] buf;
+}
+
+void Filesystem::shutdownReadahead()
+{
+	if(readahead_thread.get()!=NULL)
+	{
+		readahead_thread->stop();
+		Server->getThreadPool()->waitFor(readahead_thread_ticket);
+		readahead_thread.reset();
+	}
+}
+
