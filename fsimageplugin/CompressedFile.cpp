@@ -224,7 +224,7 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 {
 	size_t block = static_cast<size_t>(offset/blocksize);
 
-	if(block>=blockOffsets.size() || blockOffsets[block]==-1)
+	if(block>=blockOffsets.size() )
 	{
 		if(errorMsg)
 		{
@@ -238,6 +238,12 @@ bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 	if(error)
 	{
 		return false;
+	}
+
+	if(blockOffsets[block]==-1)
+	{
+		memset(buf, 0, blocksize);
+		return true;
 	}
 
 	const __int64 blockDataOffset = blockOffsets[block];	

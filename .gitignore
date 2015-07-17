@@ -224,3 +224,9 @@ access_backups_shell_mui.txt
 sha2.Plo
 *.Plo
 osx-pkg
+
+clouddrive/*
+transaction_helper/*
+urbackup/new2_db/*
+urbackup/server_ident_ecdsa409k1.priv
+urbackup/server_ident_ecdsa409k1.pub
