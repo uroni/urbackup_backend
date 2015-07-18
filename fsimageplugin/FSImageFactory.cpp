@@ -40,7 +40,7 @@ void PrintInfo(IFilesystem *fs)
 	Server->Log("FSINFO: blocksize="+nconvert(fs->getBlocksize())+" size="+nconvert(fs->getSize())+" has_error="+nconvert(fs->hasError())+" used_space="+nconvert(fs->calculateUsedSpace()), LL_DEBUG);
 }
 
-IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool read_ahead)
+IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool read_ahead, bool background_priority)
 {
 	IFile *dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
@@ -67,7 +67,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 	if(isNTFS(buffer) )
 	{
 		Server->Log(L"Filesystem type is ntfs ("+pDev+L")", LL_DEBUG);
-		FSNTFS *fs=new FSNTFS(pDev, read_ahead);
+		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
 		
 		/*
 		int64 idx=0;
@@ -95,7 +95,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 			delete fs;
 
 			Server->Log("Unknown filesystem type", LL_DEBUG);
-			FSUnknown *fs2=new FSUnknown(pDev, read_ahead);
+			FSUnknown *fs2=new FSUnknown(pDev, read_ahead, background_priority);
 			if(fs2->hasError())
 			{
 				delete fs2;
@@ -110,7 +110,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 	else
 	{
 		Server->Log("Unknown filesystem type", LL_DEBUG);
-		FSUnknown *fs=new FSUnknown(pDev, read_ahead);
+		FSUnknown *fs=new FSUnknown(pDev, read_ahead, background_priority);
 		if(fs->hasError())
 		{
 			delete fs;

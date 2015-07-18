@@ -248,7 +248,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	if(!devinfo.empty())
 	{
-		FSNTFS ntfs(L"\\\\.\\"+widen(devinfo)+L":", false);
+		FSNTFS ntfs(L"\\\\.\\"+widen(devinfo)+L":", false, true);
 	
 		if(!ntfs.hasError())
 		{
@@ -568,7 +568,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string device_verify=Server->getServerParameter("device_verify");
 	if(!device_verify.empty())
 	{
-		FSNTFS fs(Server->ConvertToUnicode(device_verify), true);
+		FSNTFS fs(Server->ConvertToUnicode(device_verify), true, false);
 		if(fs.hasError())
 		{
 			Server->Log("Error opening device file", LL_ERROR);
@@ -798,7 +798,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		if(Server->getServerParameter("fix")!="true")
 		{
-			FSNTFS fs(&vhd, true);
+			FSNTFS fs(&vhd, true, false);
 			if(fs.hasError())
 			{
 				Server->Log("NTFS filesystem has errors", LL_ERROR);

@@ -20,8 +20,8 @@ namespace
 class Filesystem : public IFilesystem
 {
 public:
-	Filesystem(const std::wstring &pDev, bool read_ahead);
-	Filesystem(IFile *pDev, bool read_ahead);
+	Filesystem(const std::wstring &pDev, bool read_ahead, bool background_priority);
+	Filesystem(IFile *pDev, bool read_ahead, bool background_priority);
 	virtual ~Filesystem();
 	virtual int64 getBlocksize(void)=0;
 	virtual int64 getSize(void)=0;
