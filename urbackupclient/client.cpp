@@ -249,9 +249,9 @@ void IndexThread::operator()(void)
 		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif //THREAD_MODE_BACKGROUND_BEGIN
 #endif //_DEBUG
-
-#endif
 	}
+#endif
+	
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 
