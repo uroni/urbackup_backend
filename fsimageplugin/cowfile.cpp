@@ -473,7 +473,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 {
 	FileWrapper devfile(this, fs_offset);
-	FSNTFS ntfs(&devfile);
+	FSNTFS ntfs(&devfile, false);
 
 	if(ntfs.hasError())
 	{
@@ -486,7 +486,7 @@ bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 	for(int64 ntfs_block=0, n_ntfs_blocks = ntfs.getSize()/ntfs.getBlocksize();
 			ntfs_block<n_ntfs_blocks; ++ntfs_block)
 	{
-		if(!ntfs.readBlock(ntfs_block, NULL))
+		if(!ntfs.hasBlock(ntfs_block))
 		{
 			if(unused_start_block==-1)
 			{
@@ -517,7 +517,7 @@ bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 bool CowFile::syncBitmap(_i64 fs_offset)
 {
 	FileWrapper devfile(this, fs_offset);
-	FSNTFS ntfs(&devfile);
+	FSNTFS ntfs(&devfile, false);
 
 	if(ntfs.hasError())
 	{
@@ -530,7 +530,7 @@ bool CowFile::syncBitmap(_i64 fs_offset)
 	for(int64 ntfs_block=0, n_ntfs_blocks = ntfs.getSize()/ntfs.getBlocksize();
 				ntfs_block<n_ntfs_blocks; ++ntfs_block)
 	{
-		if(ntfs.readBlock(ntfs_block, NULL))
+		if(ntfs.hasBlock(ntfs_block))
 		{
 			used_start_block=ntfs_block;
 		}
