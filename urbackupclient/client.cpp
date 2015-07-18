@@ -3127,7 +3127,7 @@ void IndexThread::readFollowSymlinks()
 		std::wstring val;
 		if(curr_settings->getValue(L"follow_symlinks", &val) || curr_settings->getValue(L"follow_symlinks", &val) )
 		{
-			follow_symlinks = (val=="true");
+			follow_symlinks = (val==L"true");
 		}
 	}
 #endif
