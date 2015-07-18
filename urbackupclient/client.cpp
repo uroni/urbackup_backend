@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <fstream>
 #include <stdlib.h>
+#include <memory>
 
 //For truncating files
 #ifdef _WIN32
