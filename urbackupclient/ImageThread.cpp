@@ -16,6 +16,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <memory>
 
 extern IFSImageFactory *image_fak;
 
