@@ -288,7 +288,7 @@ then
 	$DAEMON $S_DAEMON $DAEMON_ARGS
 	sleep 3
 	echo "Starting mounting..."
-	mount -v -o ro "$MOUNTVHD_TMPDIR/volume" "$MOUNTVHD_MOUNTPOINT"
+	mount -v -o loop,ro "$MOUNTVHD_TMPDIR/volume" "$MOUNTVHD_MOUNTPOINT"
 else
 	if [ "x$DECOMPRESS" = "x" ]; then
 		cd $DAEMON_DIR
