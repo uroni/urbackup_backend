@@ -189,6 +189,8 @@ _u32 CompressedFile::Read( char* buffer, _u32 bsize )
 	size_t canRead = bsize;
 	if(cacheSize<canRead)
 		canRead = cacheSize;
+	if(currentPosition+canRead>filesize)
+		canRead = filesize-currentPosition;
 
 	memcpy(buffer, cachePtr, canRead);
 
