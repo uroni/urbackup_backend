@@ -24,7 +24,8 @@ g.languages=[
 				{ l: "Nederlands", s: "nl" },
 				{ l: "norsk", s: "no_NO" },
 				{ l: "Italiano", s: "it_IT" },
-				{ l: "České", s: "cs_CZ" }
+				{ l: "České", s: "cs_CZ" },
+				{ l: "Türk", s: "tr" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
