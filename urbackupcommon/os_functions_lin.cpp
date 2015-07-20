@@ -90,7 +90,13 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 		{
 #endif
 			struct stat64 f_info;
+			bool is_link=false;
 			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
+			if(rc==0 && S_ISLNK(f_info.st_mode))
+			{
+				is_link=true;
+				rc=stat64((upath+dirp->d_name).c_str(), &f_info);
+			}
 			if(rc==0)
 			{
 #ifndef sun
@@ -112,7 +118,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 					}
 					else
 					{
-						if(!follow_symlinks && S_ISLNK(f_info.st_mode) )
+						if(!follow_symlinks && is_link )
 						{
 							continue;
 						}
