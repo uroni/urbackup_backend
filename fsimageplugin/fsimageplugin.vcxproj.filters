@@ -57,6 +57,12 @@
     <ClCompile Include="CompressedFile.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="FileWrapper.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\data.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="filesystem.h">
@@ -99,6 +105,12 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="win_dialog.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="FileWrapper.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\data.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>
