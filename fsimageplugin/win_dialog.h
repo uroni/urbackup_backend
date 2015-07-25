@@ -3,7 +3,9 @@
 
 namespace
 {
-	std::vector<std::wstring> file_via_dialog(const std::wstring& title, const std::wstring& filter, bool multi_select, bool existing_file)
+	std::vector<std::wstring> file_via_dialog(const std::wstring& title,
+		const std::wstring& filter, bool multi_select, bool existing_file,
+		const std::wstring& defExt)
 	{
 		OPENFILENAMEW ofn = {};
 
@@ -20,6 +22,10 @@ namespace
 		{
 			ofn.Flags |= OFN_FILEMUSTEXIST;
 		}
+		else
+		{
+			ofn.Flags |= OFN_OVERWRITEPROMPT | OFN_CREATEPROMPT;
+		}
 
 		if(multi_select)
 		{
@@ -29,6 +35,11 @@ namespace
 		ofn.lpstrTitle = title.c_str();
 
 		ofn.lpstrFile = buf.data();
+
+		if(!defExt.empty())
+		{
+			ofn.lpstrDefExt = defExt.c_str();
+		}
 
 		if(GetOpenFileNameW(&ofn))
 		{
@@ -56,12 +67,15 @@ namespace
 					}
 				}
 
-				for(size_t i=1;i<ret.size();++i)
+				if(ret.size()>1)
 				{
-					ret[i] = ret[0] + ret[i];
-				}
+					for(size_t i=1;i<ret.size();++i)
+					{
+						ret[i] = ret[0] + ret[i];
+					}
 
-				ret.erase(ret.begin());
+					ret.erase(ret.begin());
+				}				
 
 				return ret;
 			}

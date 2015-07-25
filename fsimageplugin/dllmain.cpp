@@ -246,10 +246,12 @@ namespace
 		std::vector<IFilesystem*> input_fs;
 
 		input_files.resize(fn.size());
+		input_fs.resize(fn.size());
 
 		int64 total_copy_bytes = 0;
 		const int64 c_sector_size=512;
 		int64 total_size = 0;
+		int64 total_written = 0;
 
 		for(size_t i=0;i<fn.size();++i)
 		{
@@ -276,15 +278,15 @@ namespace
 				total_copy_bytes+=input_files[i]->Size();
 			}
 
-			partition* cpart = partitions + mbrdatas[i].partition_number;
+			partition* cpart = partitions + (mbrdatas[i].partition_number-1);
 
-			unsigned char chs_expected[3] = { 0xfe, 0xff, 0xff };
+			/*unsigned char chs_expected[3] = { 0xfe, 0xff, 0xff };
 			if(memcmp(cpart->chs_begin, chs_expected, 3)!=0
 				|| memcmp(cpart->chs_end, chs_expected,3)!=0)
 			{
 				Server->Log(L"MBR partition of Volume "+mbrdatas[i].volume_name+L" does not use LBA addressing scheme", LL_ERROR);
 				return false;
-			}
+			}*/
 
 			cpart->start_sector=little_endian(cpart->start_sector);
 			cpart->nr_sector=little_endian(cpart->nr_sector);
@@ -313,7 +315,7 @@ namespace
 		{
 			Server->Log(L"Writing "+fn[i]+L" into output VHD...");
 
-			partition* cpart = partitions + mbrdatas[i].partition_number;
+			partition* cpart = partitions + (mbrdatas[i].partition_number-1);
 			int64 out_pos = cpart->start_sector*c_sector_size;
 			int64 max_pos = out_pos + cpart->nr_sector*c_sector_size;
 
@@ -346,6 +348,10 @@ namespace
 						Server->Log("Trying to write beyon partition", LL_ERROR);
 						return false;
 					}
+
+
+					total_written+=blocksize;
+					show_progress(total_written, total_size);
 				}
 			}
 			else
@@ -378,6 +384,9 @@ namespace
 						Server->Log("Error writing to VHD output file (2)", LL_ERROR);
 						return false;
 					}
+
+					total_written+=read;
+					show_progress(total_written, total_size);
 				}
 			}
 		}
@@ -445,7 +454,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			filter += L"*.vhdz";
 			filter += (wchar_t)'\0';
 			filter += (wchar_t)'\0';
-			std::vector<std::wstring> res = file_via_dialog(L"Please select compressed image file to decompress", filter, false, true);
+			std::vector<std::wstring> res = file_via_dialog(L"Please select compressed image file to decompress",
+				filter, false, true, L"");
 			if(!res.empty())
 			{
 				decompress = Server->ConvertToUTF8(res[0]);
@@ -494,16 +504,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		if(assemble=="SelectViaGUI")
 		{
 			std::wstring filter;
-			filter += L"Compressed image files (*.vhdz)";
+			filter += L"Image files (*.vhdz;*.vhd)";
 			filter += (wchar_t)'\0';
-			filter += L"*.vhdz";
+			filter += L"*.vhdz;*.vhd";
 			filter += (wchar_t)'\0';
-			filter += L"Image files (*.vhd)";
+			/*filter += L"Image files (*.vhd)";
 			filter += (wchar_t)'\0';
 			filter += L"*.vhd";
+			filter += (wchar_t)'\0';*/
 			filter += (wchar_t)'\0';
-			filter += (wchar_t)'\0';
-			std::vector<std::wstring> input_files = file_via_dialog(L"Please select all the images to assemble into one image", filter, true, true);
+			input_files = file_via_dialog(L"Please select all the images to assemble into one image",
+				filter, true, true, L"");
 
 			filter.clear();
 			filter += L"Image file (*.vhd)";
@@ -512,7 +523,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			filter += (wchar_t)'\0';
 			filter += (wchar_t)'\0';
 
-			std::vector<std::wstring> output_files = file_via_dialog(L"Please select where to save the output image", filter, true, false);
+			std::vector<std::wstring> output_files = file_via_dialog(L"Please select where to save the output image",
+				filter, false, false, L"vhd");
 
 			if(!output_files.empty())
 			{
