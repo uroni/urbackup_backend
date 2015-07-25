@@ -79,14 +79,16 @@ namespace
 
 		if(findextension(fn)==L"vhdz")
 		{
-			VHDFile vhdfile(fn, true, 0);
+			std::auto_ptr<VHDFile> vhdfile(new VHDFile(fn, true, 0));
 
-			if(vhdfile.isOpen() && vhdfile.getParent()!=NULL)
+			if(vhdfile->isOpen() && vhdfile->getParent()!=NULL)
 			{
-				if(vhdfile.isCompressed())
+				if(vhdfile->isCompressed())
 				{
-					Server->Log("Decompressing parent VHD \""+vhdfile.getParent()->getFilename()+"\"...", LL_INFO);
-					bool b = decompress_vhd(vhdfile.getParent()->getFilenameW(), vhdfile.getParent()->getFilenameW());
+					std::wstring parent_fn = vhdfile->getParent()->getFilenameW();
+					vhdfile.reset();
+					Server->Log(L"Decompressing parent VHD \""+parent_fn+L"\"...", LL_INFO);
+					bool b = decompress_vhd(parent_fn, parent_fn);
 
 					if(!b)
 					{
