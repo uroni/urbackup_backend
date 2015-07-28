@@ -69,6 +69,11 @@ namespace
 
 				if(ret.size()>1)
 				{
+					if(!ret[0].empty() && ret[0][ret[0].size()-1]!='\\' )
+					{
+						ret[0]+='\\';
+					}
+
 					for(size_t i=1;i<ret.size();++i)
 					{
 						ret[i] = ret[0] + ret[i];

@@ -109,6 +109,9 @@ print_help()
 	echo "--broadcast_interfaces   List of network interfaces from which to send broadcasts (separated by ,)"
 	echo "--user			   Start as specific user (default: urbackup)"
 	echo "--decompress {file}	Decompress a UrBackup compressed file"
+	echo "--assemble {Image_C_XXX.vhdz};{Image_SYSVOL_XXX.vhdz}"
+	echo "                Assemble VHD(Z) volumes into one disk VHD file. Requires --assemble_output."
+	echo "--assemble_output {path/Disk.vhd}  Location where disk VHD is written when assembling"
 	if [ "x$HAS_MOUNTVHD" = "x1" ]; then
 		echo "--mountvhd {file} 	Mount the VHD(z)-file"
 		echo "--mountpoint {dir}	Mount the VHD(z)-file at this mountpoint"
@@ -155,7 +158,9 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	BROADCAST_INTERFACES=""
 	URB_USER="urbackup"	
 	DECOMPRESS=""
-	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,run_in_valgrind,user:,defrag_database,export_auth_log,mountvhd:,mountpoint:,tempmount:,decompress:,delete_verify_failed -- "$@"`
+	ASSEMBLE=""
+	ASSEMBLE_OUTPUT=""
+	TEMP=`$GETOPT -o f:h:l:v -n start_urbackup_server --long version,no_daemon,help,fastcgi_port:,http_port:,logfile:,loglevel:,pidfile:,sqlite_tmpdir:,verify_hashes:,reset_pw:,cleanup:,remove_unknown,cleanup_database,repair_database,broadcast_interfaces:,run_in_gdb,run_in_valgrind,user:,defrag_database,export_auth_log,mountvhd:,mountpoint:,tempmount:,decompress:,delete_verify_failed,assemble:,assemble_output: -- "$@"`
 	eval set -- "$TEMP"
 	while true ; do
 		case "$1" in
@@ -185,6 +190,8 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--mountpoint) MOUNTVHD_MOUNTPOINT="$2"; shift 2;;
 			--tempmount) MOUNTVHD_TMPDIR="$2"; shift 2;;
 			--decompress) DECOMPRESS="$2"; shift 2 ;;
+			--assemble) ASSEMBLE="$2"; shift 2;;
+			--assemble_output) ASSEMBLE_OUTPUT="$2"; shift 2;;
 			--) shift; break ;;
 			*) echo "error!" ; exit 1 ;;
 		esac
@@ -248,6 +255,16 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	elif [ "x$DECOMPRESS" != "x" ]
 	then
 		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --decompress $DECOMPRESS --loglevel debug"
+		S_DAEMON=""
+	elif [ "x$ASSEMBLE" != "x" ]
+	then
+		if [ "x$ASSEMBLE_OUTPUT" == "x" ]
+		then
+			echo "Error: Output file (--assemble_output) not set"
+			exit 1
+		fi
+		
+		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --assemble \"$ASSEMBLE\" --output_file \"$ASSEMBLE_OUTPUT\" --loglevel debug"
 		S_DAEMON=""
 	else
 		DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $USER_ARG $SQLITE_TMPDIR $VERIFY_HASHES $DELETE_VERIFY_FAILED $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
