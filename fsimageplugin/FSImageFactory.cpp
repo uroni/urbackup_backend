@@ -40,7 +40,7 @@ void PrintInfo(IFilesystem *fs)
 	Server->Log("FSINFO: blocksize="+nconvert(fs->getBlocksize())+" size="+nconvert(fs->getSize())+" has_error="+nconvert(fs->hasError())+" used_space="+nconvert(fs->calculateUsedSpace()), LL_DEBUG);
 }
 
-IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool read_ahead, bool background_priority)
+IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage)
 {
 	IFile *dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
@@ -68,6 +68,13 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 	{
 		Server->Log(L"Filesystem type is ntfs ("+pDev+L")", LL_DEBUG);
 		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
+
+#ifdef _WIN32
+		if(exclude_shadow_storage)
+		{
+			fs->excludeFiles(pDev+L"\\System Volume Information", L"{3808876b-c176-4e48-b7ae-04046e6cc752}");
+		}
+#endif
 		
 		/*
 		int64 idx=0;

@@ -99,3 +99,128 @@ const unsigned char * FSNTFSWIN::getBitmap(void)
 {
 	return bitmap;
 }
+
+bool FSNTFSWIN::excludeFiles( const std::wstring& path, const std::wstring& fn_contains )
+{
+	HANDLE fHandle;
+	WIN32_FIND_DATAW wfd;
+	std::wstring tpath=path;
+	if(!tpath.empty() && tpath[tpath.size()-1]=='\\' ) tpath.erase(path.size()-1, 1);
+	fHandle=FindFirstFileW((tpath+L"\\*"+fn_contains+L"*").c_str(),&wfd); 
+
+	if(fHandle==INVALID_HANDLE_VALUE)
+	{
+		Server->Log(L"Error opening find handle to "+tpath, LL_WARNING);
+		return false;
+	}
+
+	do
+	{
+		std::wstring name = wfd.cFileName;
+		if(name==L"." || name==L".." )
+			continue;
+
+		if(!(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+		{
+			Server->Log(L"Trying to exclude contents of file "+tpath+L"\\"+name+L" from backup...", LL_DEBUG);
+
+			HANDLE hFile = CreateFileW((tpath+L"\\"+name).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+				OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+			if(hFile!=INVALID_HANDLE_VALUE)
+			{
+				STARTING_VCN_INPUT_BUFFER start_vcn = {};
+				std::vector<char> ret_buf;
+				ret_buf.resize(32768);
+
+				while(true)
+				{
+					RETRIEVAL_POINTERS_BUFFER* ret_ptrs = reinterpret_cast<RETRIEVAL_POINTERS_BUFFER*>(ret_buf.data());
+
+					DWORD bytesRet = 0;
+
+					BOOL b = DeviceIoControl(hFile, FSCTL_GET_RETRIEVAL_POINTERS,
+						&start_vcn, sizeof(start_vcn), ret_ptrs, static_cast<DWORD>(ret_buf.size()), &bytesRet, NULL);
+
+					DWORD err=GetLastError();
+
+					if(b || err==ERROR_MORE_DATA)
+					{
+						LARGE_INTEGER last_vcn = ret_ptrs->StartingVcn;
+						for(DWORD i=0;i<ret_ptrs->ExtentCount;++i)
+						{
+							//Sparse entries have Lcn -1
+							if(ret_ptrs->Extents[i].Lcn.QuadPart!=-1)
+							{
+								int64 count = ret_ptrs->Extents[i].NextVcn.QuadPart - last_vcn.QuadPart;
+
+								if(!excludeSectors(ret_ptrs->Extents[i].Lcn.QuadPart, count))
+								{
+									Server->Log(L"Error excluding sectors of file "+tpath+L"\\"+name, LL_WARNING);
+								}
+							}							
+
+							last_vcn = ret_ptrs->Extents[i].NextVcn;
+						}
+					}
+
+					if(!b)
+					{
+						if(err==ERROR_MORE_DATA)
+						{
+							 start_vcn.StartingVcn = ret_ptrs->Extents[ret_ptrs->ExtentCount-1].NextVcn;
+						}
+						else
+						{
+							Server->Log("Error "+nconvert((int)GetLastError())+" while accessing retrieval points", LL_WARNING);
+							CloseHandle(hFile);
+							break;
+						}
+					}
+					else
+					{
+						CloseHandle(hFile);
+						break;
+					}
+				}				
+			}
+			else
+			{
+				Server->Log(L"Error opening file handle to "+tpath+L"\\"+name, LL_WARNING);
+			}
+		}
+	}
+	while (FindNextFileW(fHandle,&wfd) );
+	FindClose(fHandle);
+
+	return true;
+}
+
+bool FSNTFSWIN::excludeSectors( int64 start, int64 count )
+{
+	for(int64 block=start;block<start+count;++block)
+	{
+		if(!excludeBlock(block))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool FSNTFSWIN::excludeBlock( int64 block )
+{
+	int64 blocksize=getBlocksize();
+
+	size_t bitmap_byte=(size_t)(block/8);
+	size_t bitmap_bit=block%8;
+
+	unsigned char b=bitmap[bitmap_byte];
+
+	b=b&(~(1<<(7-bitmap_bit)));
+
+	bitmap[bitmap_byte]=b;
+
+	return true;
+}

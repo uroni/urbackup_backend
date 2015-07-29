@@ -11,6 +11,10 @@ public:
 	virtual int64 getSize(void);
 	const unsigned char * getBitmap(void);
 
+	bool excludeFiles(const std::wstring& path, const std::wstring& fn_contains);
+	bool excludeSectors(int64 start, int64 count);
+	bool excludeBlock(int64 block);
+
 private:
 	unsigned char *bitmap;
 
