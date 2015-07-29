@@ -206,7 +206,7 @@ namespace
 		{
 			int64 size = fs.getSize();
 
-			while(pBlock<size/fs.getBlocksize())
+			while(pBlock+1<size/fs.getBlocksize())
 			{
 				++pBlock;
 
