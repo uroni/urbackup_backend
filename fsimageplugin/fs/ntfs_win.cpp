@@ -110,7 +110,7 @@ bool FSNTFSWIN::excludeFiles( const std::wstring& path, const std::wstring& fn_c
 
 	if(fHandle==INVALID_HANDLE_VALUE)
 	{
-		Server->Log(L"Error opening find handle to "+tpath, LL_WARNING);
+		Server->Log(L"Error opening find handle to "+tpath+L" err: "+convert((int)GetLastError()), LL_WARNING);
 		return false;
 	}
 
