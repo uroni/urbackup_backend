@@ -70,9 +70,10 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
 
 #ifdef _WIN32
-		if(exclude_shadow_storage)
+		if(exclude_shadow_storage && pDev.find(L"HarddiskVolumeShadowCopy")!=std::string::npos)
 		{
 			fs->excludeFiles(pDev+L"\\System Volume Information", L"{3808876b-c176-4e48-b7ae-04046e6cc752}");
+			fs->excludeFile(pDev+L"\\pagefile.sys");
 		}
 #endif
 		
