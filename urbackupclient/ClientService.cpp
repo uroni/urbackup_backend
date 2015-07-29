@@ -81,6 +81,7 @@ IMutex *ClientConnector::ident_mutex=NULL;
 std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::string, std::string> ClientConnector::challenges;
+void* ClientConnector::backup_running_owner=NULL;
 #ifdef _WIN32
 SVolumesCache* ClientConnector::volumes_cache;
 #endif
@@ -276,7 +277,8 @@ bool ClientConnector::Run(void)
 				}
 				IScopedLock lock(backup_mutex);
 				backup_running=RUNNING_NONE;
-				backup_done=true;
+				backup_running_owner=NULL;
+				backup_done=true;	
 				return false;
 			}
 			else if(msg=="done")
@@ -298,6 +300,7 @@ bool ClientConnector::Run(void)
 				state=CCSTATE_NORMAL;
 				IScopedLock lock(backup_mutex);
 				backup_running=RUNNING_NONE;
+				backup_running_owner=NULL;
 				backup_done=true;
 			}
 			else if(file_version>1 && Server->getTimeMS()-last_update_time>30000)
@@ -1459,12 +1462,17 @@ bool ClientConnector::sendFullImage(void)
 	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile);
 	mempipe=Server->createMemoryPipe();
 	mempipe_owner=true;
-	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
-	state=CCSTATE_IMAGE;
+
 	IScopedLock lock(backup_mutex);
+
 	backup_running=RUNNING_FULL_IMAGE;
+	backup_running_owner = image_inf.image_thread;
 	pcdone=0;
 	backup_source_token=server_token;
+
+	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
+	state=CCSTATE_IMAGE;
+	
 	return true;
 }
 
@@ -1474,13 +1482,17 @@ bool ClientConnector::sendIncrImage(void)
 	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile);
 	mempipe=Server->createMemoryPipe();
 	mempipe_owner=true;
-	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
-	state=CCSTATE_IMAGE_HASHDATA;
+
 	IScopedLock lock(backup_mutex);
 	backup_running=RUNNING_INCR_IMAGE;
+	backup_running_owner = image_inf.image_thread;
 	pcdone=0;
 	pcdone2=0;
 	backup_source_token=server_token;
+
+	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
+	state=CCSTATE_IMAGE_HASHDATA;
+	
 	return true;
 }
 
@@ -1956,10 +1968,11 @@ bool ClientConnector::isHashdataOkay(void)
 	return hashdataok;
 }
 
-void ClientConnector::resetImageBackupStatus(void)
+void ClientConnector::resetImageBackupStatus(void* owner)
 {
 	IScopedLock lock(backup_mutex);
-	if(backup_running==RUNNING_FULL_IMAGE || backup_running==RUNNING_INCR_IMAGE)
+	if( (backup_running==RUNNING_FULL_IMAGE || backup_running==RUNNING_INCR_IMAGE)
+		&& (backup_running_owner==NULL || backup_running_owner==owner) )
 	{
 		backup_running=RUNNING_NONE;
 	}
@@ -2020,7 +2033,7 @@ bool ClientConnector::isBackupRunning()
 {
 	IScopedLock lock(backup_mutex);
 
-	std::string job = getCurrRunningJob();
+	std::string job = getCurrRunningJob(false);
 
 	return job!="NOA" && job!="DONE";
 }

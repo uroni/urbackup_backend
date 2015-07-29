@@ -755,7 +755,7 @@ void ImageThread::operator()(void)
 			}
 		}
 	}
-	client->resetImageBackupStatus();
+	client->resetImageBackupStatus(this);
 #ifdef _WIN32
 #ifdef THREAD_MODE_BACKGROUND_END
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
