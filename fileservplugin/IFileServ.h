@@ -20,6 +20,18 @@ public:
 		virtual IFile* getMetadata(const std::string& path, std::string& orig_path, int64& offset, int64& length)=0;
 	};
 
+	class ITokenCallback
+	{
+	public:
+		virtual std::string getFileTokens(const std::wstring& fn) = 0;
+	};
+
+	class ITokenCallbackFactory
+	{
+	public:
+		virtual ITokenCallback* getTokenCallback() = 0;
+	};
+
 
 	virtual void shareDir(const std::wstring &name, const std::wstring &path, const std::string& identity)=0;
 	virtual void removeDir(const std::wstring &name, const std::string& identity)=0;
@@ -35,6 +47,7 @@ public:
 	virtual void addScriptOutputFilenameMapping(const std::wstring& script_output_fn, const std::wstring& script_fn) = 0;
 	virtual void registerMetadataCallback(const std::wstring &name, const std::string& identity, IMetadataCallback* callback) = 0;
 	virtual void removeMetadataCallback(const std::wstring &name, const std::string& identity) = 0;
+	virtual void registerTokenCallbackFactory(ITokenCallbackFactory* callback_factory) = 0;
 };
 
 #endif //IFILESERV_H

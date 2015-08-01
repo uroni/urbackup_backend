@@ -195,11 +195,6 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 
 	unsigned int flags = 0;
 
-	if(params.find(L"with_permissions")!=params.end())
-	{
-		flags |= flag_with_permissions;
-	}
-
 	if(params.find(L"with_scripts")!=params.end())
 	{
 		flags |= flag_with_scripts;
@@ -281,11 +276,6 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	}
 
 	int flags = 0;
-
-	if(params.find(L"with_permissions")!=params.end())
-	{
-		flags |= flag_with_permissions;
-	}
 
 	if(params.find(L"with_scripts")!=params.end())
 	{

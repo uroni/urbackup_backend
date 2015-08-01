@@ -184,8 +184,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 	ClientDAO client_dao(db);
 
-	std::stack<FileMetadata> parent_metadata;
-
 	size_t line=0;
 
 	bool has_error=false;
@@ -263,24 +261,14 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 						server_path+=L"/"+data.name;
 
-						FileMetadata curr_parent_metadata = parent_metadata.empty()?FileMetadata():parent_metadata.top();
-
 						restore_download->addToQueueFull(line, server_path, restore_path, 0,
-							metadata, curr_parent_metadata, false, true, false, false);
-
-						parent_metadata.push(metadata);
+							metadata, false, true, false, false);
 
 						++depth;
 					}
 					else
 					{
 						--depth;
-
-						if(!parent_metadata.empty())
-						{
-							os_set_file_time(os_file_prefix(restore_path), parent_metadata.top().created, parent_metadata.top().last_modified);
-							parent_metadata.pop();
-						}
 
 						server_path=ExtractFilePath(server_path, L"/");
 						restore_path=ExtractFilePath(restore_path, os_file_sep());						
@@ -341,7 +329,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 								if(!metadata.isdir
 									&& metadata.size==it_file->size
 									&& change_indicator==it_file->change_indicator
-									&& metadata.created == it_file->created
 									&& !it_file->hash.empty())
 								{
 									shahash = it_file->hash;
@@ -373,18 +360,16 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 									log(L"Calculating hashes of file \""+local_fn+L"\"...", LL_DEBUG);
 									shahash = build_chunk_hashs(orig_file, chunkhashes, NULL, true, NULL, false, NULL);
 								}
-
-								FileMetadata curr_parent_metadata = parent_metadata.empty()?FileMetadata():parent_metadata.top();
-
+								
 								if(shahash!=base64_decode_dash(wnarrow(extra[L"shahash"])))
 								{
 									restore_download->addToQueueChunked(line, server_fn, local_fn, 
-										data.size, metadata, curr_parent_metadata, false, orig_file, chunkhashes);
+										data.size, metadata, false, orig_file, chunkhashes);
 								}
 								else
 								{
 									restore_download->addToQueueFull(line, server_fn, local_fn, 
-										data.size, metadata, curr_parent_metadata, false, false, false, true);
+										data.size, metadata, false, false, false, true);
 
 									std::wstring tmpfn = chunkhashes->getFilenameW();
 									delete chunkhashes;
@@ -396,10 +381,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					}
 					else
 					{
-						FileMetadata curr_parent_metadata = parent_metadata.empty()?FileMetadata():parent_metadata.top();
-
 						restore_download->addToQueueFull(line, server_fn, local_fn, 
-							data.size, metadata, curr_parent_metadata, false, false, false, false);
+							data.size, metadata, false, false, false, false);
 					}
 				}
 				++line;

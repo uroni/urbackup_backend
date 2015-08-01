@@ -679,8 +679,7 @@ std::string FileBackup::systemErrorInfo()
 }
 
 bool FileBackup::link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
-	const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata,
-	const FileMetadata& parent_metadata)
+	const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata)
 {
 	std::wstring os_curr_path=convertToOSPathFromFileClient(os_path+L"/"+short_fn);
 	std::wstring os_curr_hash_path=convertToOSPathFromFileClient(os_path+L"/"+escape_metadata_fn(short_fn));
@@ -698,7 +697,7 @@ bool FileBackup::link_file(const std::wstring &fn, const std::wstring &short_fn,
 	int64 next_entryid = 0;
 	bool ok=local_hash->findFileAndLink(dstpath, NULL, hashpath, sha2, filesize, std::string(), true,
 		tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
-		metadata, parent_metadata, true);
+		metadata, true);
 
 	if(ok && add_sql)
 	{

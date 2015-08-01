@@ -57,9 +57,6 @@ struct SFileAndHash
 	int64 change_indicator;
 	bool isdir;
 	std::string hash;
-	std::string permissions;
-	int64 last_modified_orig;
-	int64 created;
 
 	bool operator<(const SFileAndHash &other) const
 	{
@@ -72,10 +69,7 @@ struct SFileAndHash
 			size == other.size &&
 			change_indicator == other.change_indicator &&
 			isdir == other.isdir &&
-			hash == other.hash &&
-			permissions == other.permissions &&
-			last_modified_orig == other.last_modified_orig &&
-			created == other.created;
+			hash == other.hash;
 	}
 };
 

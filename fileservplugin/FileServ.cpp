@@ -30,6 +30,7 @@ IMutex *FileServ::mutex=NULL;
 std::vector<std::string> FileServ::identities;
 bool FileServ::pause=false;
 std::map<std::wstring, std::wstring> FileServ::script_output_names;
+IFileServ::ITokenCallbackFactory* FileServ::token_callback_factory = NULL;
 
 
 FileServ::FileServ(bool *pDostop, const std::wstring &pServername, THREADPOOL_TICKET serverticket, bool use_fqdn)
@@ -189,5 +190,15 @@ void FileServ::registerMetadataCallback( const std::wstring &name, const std::st
 void FileServ::removeMetadataCallback( const std::wstring &name, const std::string& identity )
 {
 	PipeSessions::removeMetadataCallback(name, identity);
+}
+
+void FileServ::registerTokenCallbackFactory( IFileServ::ITokenCallbackFactory* callback_factory )
+{
+	token_callback_factory = callback_factory;
+}
+
+IFileServ::ITokenCallback* FileServ::newTokenCallback()
+{
+	return token_callback_factory->getTokenCallback();
 }
 

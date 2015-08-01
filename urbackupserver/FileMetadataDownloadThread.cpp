@@ -2,6 +2,7 @@
 #include "ClientMain.h"
 #include "server_log.h"
 #include "../urbackupcommon/file_metadata.h"
+#include "../common/data.h"
 
 const _u32 ID_METADATA_OS_WIN = 1<<0;
 const _u32 ID_METADATA_OS_UNIX = 1<<2;
@@ -119,6 +120,53 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 			if(output_f.get()==NULL)
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Filename could not open output file at \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
+				return false;
+			}
+
+			unsigned int common_metadata_size =0;
+			if(metadata_f->Read(reinterpret_cast<char*>(&common_metadata_size), sizeof(common_metadata_size))!=sizeof(common_metadata_size))
+			{
+				ServerLogger::Log(logid, L"Error saving metadata. Common metadata size could not be read.", LL_ERROR);
+				return false;
+			}
+
+			std::vector<char> common_metadata;
+			common_metadata.resize(common_metadata_size);
+
+			if(metadata_f->Read(&common_metadata[0], static_cast<_u32>(common_metadata.size()))!=common_metadata.size())
+			{
+				ServerLogger::Log(logid, L"Error saving metadata. Common metadata could not be read.", LL_ERROR);
+				return false;
+			}
+
+			CRData common_data(common_metadata.data(), common_metadata.size());
+			char common_version;
+			common_data.getChar(&common_version);
+			int64 created;
+			int64 modified;
+			std::string permissions;
+			if(common_version!=1
+				|| !common_data.getInt64(&created)
+				|| !common_data.getInt64(&modified)
+				|| !common_data.getStr(&permissions) )
+			{
+				ServerLogger::Log(logid, L"Error saving metadata. Cannot parse common metadata.", LL_ERROR);
+				return false;
+			}
+
+			FileMetadata curr_metadata;
+			if(!read_metadata(output_f.get(), curr_metadata))
+			{
+				ServerLogger::Log(logid, L"Error reading current metadata", LL_WARNING);
+			}
+
+			curr_metadata.created=created;
+			curr_metadata.last_modified = modified;
+			curr_metadata.file_permissions = permissions;
+
+			if(!write_file_metadata(output_f.get(), cb, curr_metadata))
+			{
+				ServerLogger::Log(logid, L"Error saving metadata. Cannot write common metadata.", LL_ERROR);
 				return false;
 			}
 

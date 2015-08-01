@@ -79,8 +79,7 @@ protected:
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
 	std::wstring fixFilenameForOS(const std::wstring& fn);	
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
-		const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata,
-		const FileMetadata& parent_metadata);
+		const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata);
 	void sendBackupOkay(bool b_okay);
 	void notifyClientBackupSuccessfull(void);
 	void waitForFileThreads();

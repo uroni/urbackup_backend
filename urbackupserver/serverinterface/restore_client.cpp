@@ -206,7 +206,7 @@ namespace
 					extra+="&shahash="+base64_encode_dash(metadata.shahash);
 				}
 
-				writeFileItem(filelist_f, file, metadata, extra);
+				writeFileItem(filelist_f, file, extra);
 
 				if(file.isdir)
 				{

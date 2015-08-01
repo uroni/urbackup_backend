@@ -3,6 +3,7 @@
 #include "../Interface/Pipe.h"
 #include <string>
 #include "../Interface/Condition.h"
+#include "IFileServ.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -14,7 +15,6 @@ const _u32 ID_METADATA_OS = 1<<2;
 
 const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = ID_METADATA_OS | 1<<3;
-
 
 class FileMetadataPipe : public PipeFileBase
 {
@@ -46,6 +46,7 @@ private:
 		MetadataState_Wait,
 		MetadataState_FnSize,
 		MetadataState_Fn,
+		MetadataState_Common,
 		MetadataState_Os,
 		MetadataState_File
 	};
@@ -67,4 +68,6 @@ private:
 	size_t metadata_buffer_size;
 	size_t metadata_buffer_off;
 	std::vector<char> metadata_buffer;
+
+	std::auto_ptr<IFileServ::ITokenCallback> token_callback;
 };

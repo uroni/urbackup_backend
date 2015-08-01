@@ -170,24 +170,6 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 
 		ptr+=hashsize;
 
-		unsigned short fpb_size;
-		memcpy(&fpb_size, ptr, sizeof(unsigned short));
-		ptr+=sizeof(unsigned short);
-
-		f.permissions.resize(fpb_size);
-		if(fpb_size>0)
-		{
-			memcpy(&f.permissions[0], ptr, fpb_size);
-		}
-
-		ptr+=fpb_size;
-
-		memcpy(&f.last_modified_orig, ptr, sizeof(int64));
-		ptr+=sizeof(int64);
-
-		memcpy(&f.created, ptr, sizeof(int64));
-		ptr+=sizeof(int64);
-
 		data.push_back(f);
 	}
 	return true;
@@ -207,9 +189,6 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		++datasize;
 		datasize+=sizeof(unsigned short);
 		datasize+=data[i].hash.size();
-		datasize+=sizeof(unsigned short);
-		datasize+=data[i].permissions.size();
-		datasize+=sizeof(int64)*2;
 	}
 	char *buffer=new char[datasize];
 	char *ptr=buffer;
@@ -234,15 +213,6 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		ptr+=sizeof(hashsize);
 		memcpy(ptr, data[i].hash.data(), hashsize);
 		ptr+=hashsize;
-		unsigned short fpb_size=static_cast<unsigned short>(data[i].permissions.size());
-		memcpy(ptr, &fpb_size, sizeof(fpb_size));
-		ptr+=sizeof(fpb_size);
-		memcpy(ptr, data[i].permissions.data(), fpb_size);
-		ptr+=fpb_size;
-		memcpy(ptr, (char*)&data[i].last_modified_orig, sizeof(int64));
-		ptr+=sizeof(int64);
-		memcpy(ptr, (char*)&data[i].created, sizeof(int64));
-		ptr+=sizeof(int64);
 	}
 	return buffer;
 }

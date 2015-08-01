@@ -58,7 +58,7 @@ public:
 
 	bool findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring hash_fn, const std::string &sha2, _i64 t_filesize, const std::string &hashoutput_fn, 
 		bool copy_from_hardlink_if_failed, bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid, int64& rsize, int64& next_entry,
-		const FileMetadata& metadata, const FileMetadata& parent_metadata, bool datch_dbs);
+		const FileMetadata& metadata, bool datch_dbs);
 
 	void addFileSQL(int backupid, int clientid, int incremental, const std::wstring &fp, const std::wstring &hash_path,
 		const std::string &shahash, _i64 filesize, _i64 rsize, int64 prev_entry, int64 prev_entry_clientid, int64 next_entry, bool update_fileindex);
@@ -76,7 +76,7 @@ public:
 private:
 	void addFile(int backupid, int incremental, IFile *tf, const std::wstring &tfn,
 			std::wstring hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
-			const FileMetadata& metadata, const FileMetadata& parent_metadata);
+			const FileMetadata& metadata);
 			
 	struct SFindState
 	{

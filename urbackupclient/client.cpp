@@ -34,7 +34,6 @@
 #include <algorithm>
 #include <fstream>
 #include <stdlib.h>
-#include "tokens.h"
 #include "file_permissions.h"
 
 //For truncating files
@@ -229,7 +228,7 @@ std::wstring add_trailing_slash(const std::wstring &strDirName)
 }
 
 IndexThread::IndexThread(void)
-	: index_error(false), last_filebackup_filetime(0), index_group(-1), with_permissions(false), with_scripts(false)
+	: index_error(false), last_filebackup_filetime(0), index_group(-1), with_scripts(false)
 {
 	if(filelist_mutex==NULL)
 		filelist_mutex=Server->createMutex();
@@ -931,8 +930,7 @@ void IndexThread::indexDirs(void)
 			index_c_db_update=0;
 			SFile dirInfo = getFileMetadata(os_file_prefix(mod_path));
 			std::string dir_permissions;
-			readPermissions(mod_path, dir_permissions);
-			writeDir(outfile, backup_dirs[i].tname, dirInfo.created, dirInfo.last_modified, dir_permissions, extra);
+			writeDir(outfile, backup_dirs[i].tname, extra);
 			//db->Write("BEGIN IMMEDIATE;");
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
@@ -1134,14 +1132,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			}
 			has_include=true;
 			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].change_indicator << "#";
-
-			if(with_permissions)
-			{
-				outfile << "dacl=" << base64_encode_dash(files[i].permissions)
-					<< "&mod=" << nconvert(files[i].last_modified_orig)
-					<< "&creat=" << nconvert(files[i].created);
-			}
-			
+		
 
 			if(calculate_filehashes_on_client)
 			{
@@ -1179,7 +1170,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			{
 				std::streampos pos=outfile.tellp();
 				
-				writeDir(outfile, files[i].name, files[i].created, files[i].last_modified_orig, files[i].permissions);
+				writeDir(outfile, files[i].name);
 
 				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);		
 
@@ -1313,8 +1304,6 @@ namespace
 			}
 			ret[i].name=files[i].name;
 			ret[i].size=files[i].size;
-    		ret[i].last_modified_orig=files[i].last_modified;
-			ret[i].created=files[i].created;
 		}
 		return ret;
 	}
@@ -1419,7 +1408,6 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 		bool has_error;
 		fs_files=convertToFileAndHash(getFilesWin(tpath, &has_error, false, true, true));
-		readPermissions(tpath, fs_files);
 
 		if(has_error)
 		{
@@ -1532,7 +1520,6 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 
 			bool has_error;
 			fs_files=convertToFileAndHash(getFiles(tpath, &has_error));
-			readPermissions(tpath, fs_files);
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
@@ -3432,29 +3419,16 @@ void IndexThread::writeTokens()
 	write_file_only_admin(data, "urbackup"+os_file_sepn()+"data"+os_file_sepn()+"tokens_"+starttoken+".properties");
 }
 
-void IndexThread::readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files )
-{
-	for(size_t i=0;i<files.size();++i)
-	{
-		readPermissions(dir + os_file_sep() + files[i].name, files[i].permissions);
-	}
-}
-
-void IndexThread::readPermissions( const std::wstring& path, std::string& permissions )
-{
-	permissions = get_file_tokens(path, cd, token_cache);
-}
-
-void IndexThread::writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra )
+void IndexThread::writeDir(std::fstream& out, const std::wstring& name, const std::string& extra )
 {
 	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\"";
 
-	if(with_permissions)
+	if(!extra.empty())
 	{
-		out << "#dacl=" << base64_encode_dash(permissions) <<
-			"&mod=" << nconvert(mod) <<
-			"&creat=" << nconvert(creat) <<
-			extra << "\n";
+		if(extra[0]=='&')
+			out << "#" << extra.substr(1);
+		else
+			out << extra << "\n";
 	}
 	else
 	{
@@ -3530,15 +3504,6 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 
 void IndexThread::setFlags( unsigned int flags )
 {
-	if(flags & flag_with_permissions)
-	{
-		with_permissions = true;
-	}
-	else
-	{
-		with_permissions = false;
-	}
-
 	if(flags & flag_calc_checksums)
 	{
 		calculate_filehashes_on_client = true;

@@ -388,9 +388,6 @@ int64 read_hashdata_size( IFile* meta_file )
 
 void FileMetadata::serialize( CWData& data ) const
 {
-	data.addString(file_permissions);
-	data.addInt64(last_modified);
-	data.addInt64(created);
 	data.addString(shahash);
 	data.addString(orig_path);
 }
@@ -398,13 +395,10 @@ void FileMetadata::serialize( CWData& data ) const
 bool FileMetadata::read( CRData& data )
 {
 	bool ok=true;
-	ok &= data.getStr(&file_permissions);
-	ok &= data.getInt64(&last_modified);
-	ok &= data.getInt64(&created);
 	ok &= data.getStr(&shahash);
 	ok &= data.getStr(&orig_path);
 
-	if(ok && last_modified>0 && created>0)
+	if(ok)
 	{
 		exist=true;
 	}
@@ -414,17 +408,13 @@ bool FileMetadata::read( CRData& data )
 
 bool FileMetadata::read( str_map& extra_params )
 {
-	file_permissions = base64_decode_dash(wnarrow(extra_params[L"dacl"]));
-	last_modified = watoi64(extra_params[L"mod"]);
-	created = watoi64(extra_params[L"creat"]);
-
 	str_map::iterator it_orig_path = extra_params.find(L"orig_path");
 	if(it_orig_path!=extra_params.end())
 	{
 		orig_path = base64_decode_dash(Server->ConvertToUTF8(it_orig_path->second));
 	}
 
-	if(last_modified>0 && created>0)
+	if(!orig_path.empty() || !shahash.empty())
 	{
 		exist=true;
 	}

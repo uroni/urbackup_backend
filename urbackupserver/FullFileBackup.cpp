@@ -303,14 +303,7 @@ bool FullFileBackup::doFileBackup()
 							c_has_error=true;
 							break;
 						}
-						else if(metadata.exist)
-						{
-							if(!os_set_file_time(os_file_prefix(backuppath+local_curr_os_path),
-								metadata.created, metadata.last_modified))
-							{
-								ServerLogger::Log(logid, L"Setting last modified and created time of directory  \""+backuppath+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_WARNING);
-							}
-						}
+						
 						if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 						{
 							ServerLogger::Log(logid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
@@ -327,7 +320,7 @@ bool FullFileBackup::doFileBackup()
 						if(client_main->getProtocolVersions().file_meta>0)
 						{
 							server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
-								metadata, FileMetadata(), false, true);
+								metadata, false, true);
 						}
 
 						++depth;
@@ -382,8 +375,6 @@ bool FullFileBackup::doFileBackup()
 				}
 				else
 				{
-					FileMetadata parent_metadata = dir_metadata.empty()?FileMetadata():dir_metadata.top();
-
 					if(!has_orig_path)
 					{
 						metadata.orig_path = curr_orig_path + orig_sep + Server->ConvertToUTF8(cf.name);
@@ -394,7 +385,7 @@ bool FullFileBackup::doFileBackup()
 					if( hash_it!=extra_params.end())
 					{
 						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, base64_decode_dash(wnarrow(hash_it->second)), cf.size,
-							true, metadata, parent_metadata))
+							true, metadata))
 						{
 							file_ok=true;
 							linked_bytes+=cf.size;
@@ -407,7 +398,7 @@ bool FullFileBackup::doFileBackup()
 					if(!file_ok)
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-							metadata, parent_metadata, script_dir, false);
+							metadata, script_dir, false);
 					}
 				}
 

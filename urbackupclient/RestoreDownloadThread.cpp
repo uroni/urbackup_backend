@@ -104,7 +104,7 @@ void RestoreDownloadThread::operator()()
 }
 
 void RestoreDownloadThread::addToQueueFull( size_t id, const std::wstring &remotefn, const std::wstring &destfn,
-	_i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, bool is_dir, bool at_front, bool metadata_only )
+	_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool is_dir, bool at_front, bool metadata_only )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -114,7 +114,6 @@ void RestoreDownloadThread::addToQueueFull( size_t id, const std::wstring &remot
 	ni.action = EQueueAction_Fileclient;
 	ni.predicted_filesize = predicted_filesize;
 	ni.metadata = metadata;
-	ni.parent_metadata = parent_metadata;
 	ni.is_script = is_script;
 	ni.is_dir = is_dir;
 	ni.patch_dl_files.chunkhashes=NULL;
@@ -140,7 +139,7 @@ void RestoreDownloadThread::addToQueueFull( size_t id, const std::wstring &remot
 }
 
 void RestoreDownloadThread::addToQueueChunked( size_t id, const std::wstring &remotefn, const std::wstring &destfn,
-	_i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, IFile* orig_file, IFile* chunkhashes )
+	_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFile* orig_file, IFile* chunkhashes )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -150,7 +149,6 @@ void RestoreDownloadThread::addToQueueChunked( size_t id, const std::wstring &re
 	ni.action = EQueueAction_Fileclient;
 	ni.predicted_filesize= predicted_filesize;
 	ni.metadata = metadata;
-	ni.parent_metadata = parent_metadata;
 	ni.is_script = is_script;
 	ni.is_dir = false;
 	ni.patch_dl_files.chunkhashes=chunkhashes;

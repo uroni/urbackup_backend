@@ -35,6 +35,10 @@ public:
 
 	static std::wstring mapScriptOutputNameToScript(const std::wstring& script_fn);
 
+	virtual void registerTokenCallbackFactory( IFileServ::ITokenCallbackFactory* callback_factory );
+
+	static IFileServ::ITokenCallback* newTokenCallback();
+
 private:
 	bool *dostop;
 	THREADPOOL_TICKET serverticket;
@@ -45,4 +49,6 @@ private:
 	static std::map<std::wstring, std::wstring> script_output_names;
 	
 	static IMutex *mutex;
+
+	static ITokenCallbackFactory* token_callback_factory;
 };

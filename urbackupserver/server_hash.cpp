@@ -178,9 +178,6 @@ void BackupServerHash::operator()(void)
 				metadata.read(rd);
 				metadata.set_shahash(sha2);
 
-				FileMetadata parent_metadata;
-				parent_metadata.read(rd);
-
 				IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ_SEQUENTIAL);
 
 				if(tf==NULL)
@@ -191,7 +188,7 @@ void BackupServerHash::operator()(void)
 				else
 				{
 					addFile(backupid, incremental, tf, Server->ConvertToUnicode(tfn), Server->ConvertToUnicode(hashpath), sha2,
-						old_file_fn, hashoutput_fn, t_filesize, metadata, parent_metadata);
+						old_file_fn, hashoutput_fn, t_filesize, metadata);
 				}
 
 				if(!hashoutput_fn.empty())
@@ -465,7 +462,7 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::wstring hash_fn, const std::string &sha2,
 	_i64 t_filesize, const std::string &hashoutput_fn, bool copy_from_hardlink_if_failed,
 	bool &tries_once, std::wstring &ff_last, bool &hardlink_limit, bool &copied_file, int64& entryid, int& entryclientid
-	, int64& rsize, int64& next_entry, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool detach_dbs)
+	, int64& rsize, int64& next_entry, const FileMetadata& metadata, bool detach_dbs)
 {
 	hardlink_limit=false;
 	copied_file=false;
@@ -579,18 +576,6 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 			entryclientid = existing_file.clientid;
 			next_entry=existing_file.next_entry;
 
-			if(existing_file.rsize!=0 &&
-				existing_file.rsize!=existing_file.filesize)
-			if(parent_metadata.exist)
-			{
-				std::wstring parent_path = ExtractFilePath(tfn);
-				if(!os_set_file_time(os_file_prefix(parent_path),
-					parent_metadata.created, parent_metadata.last_modified))
-				{
-					ServerLogger::Log(logid, L"HT: Error setting creation and last modified time of parent directory \""+parent_path+L"\"", LL_WARNING);
-				}
-			}
-
 			assert(!hash_fn.empty());
 			
 			if(existing_file.rsize!=0 &&
@@ -679,7 +664,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 
 void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const std::wstring &tfn,
 	std::wstring hash_fn, const std::string &sha2, const std::string &orig_fn, const std::string &hashoutput_fn, int64 t_filesize,
-	const FileMetadata& metadata, const FileMetadata& parent_metadata)
+	const FileMetadata& metadata)
 {
 	bool copy=true;
 	bool tries_once;
@@ -692,7 +677,7 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 	int64 rsize = 0;
 	if(findFileAndLink(tfn, tf, hash_fn, sha2, t_filesize,hashoutput_fn,
 		false, tries_once, ff_last, hardlink_limit, copied_file, entryid, entryclientid, rsize, next_entryid,
-		metadata, parent_metadata, false))
+		metadata, false))
 	{
 		ServerLogger::Log(logid, L"HT: Linked file: \""+tfn+L"\"", LL_DEBUG);
 		copy=false;
@@ -839,19 +824,6 @@ void BackupServerHash::addFile(int backupid, int incremental, IFile *tf, const s
 				{
 					has_error=true;
 					ServerLogger::Log(logid, "Storing file failed -1", LL_ERROR);
-				}
-				else
-				{
-					if(metadata.exist && !os_set_file_time(os_file_prefix(tfn), metadata.created, metadata.last_modified))
-					{
-						ServerLogger::Log(logid, L"Error setting created and last modified time on file \""+tfn+L"\"", LL_WARNING);
-					}
-
-					std::wstring parent_fn = ExtractFilePath(tfn);
-					if(parent_metadata.exist && !os_set_file_time(os_file_prefix(parent_fn), parent_metadata.created, parent_metadata.last_modified))
-					{
-						ServerLogger::Log(logid, L"Error setting created and last modified time on parent directory \""+parent_fn+L"\"", LL_WARNING);
-					}
 				}
 
 				if(tf!=NULL)

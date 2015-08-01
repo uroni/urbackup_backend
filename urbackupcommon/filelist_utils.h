@@ -9,7 +9,7 @@ void writeFileRepeat(IFile *f, const std::string &str);
 std::string escapeListName( const std::string& listname );
 
 void writeFileItem(IFile* f, SFile cf);
-void writeFileItem(IFile* f, SFile cf, const FileMetadata& metadata, const std::string& extra);
+void writeFileItem(IFile* f, SFile cf, std::string extra);
 
 
 class FileListParser

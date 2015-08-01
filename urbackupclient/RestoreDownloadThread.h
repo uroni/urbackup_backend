@@ -49,7 +49,6 @@ namespace
 		EQueueAction action;
 		SPatchDownloadFiles patch_dl_files;
 		FileMetadata metadata;
-		FileMetadata parent_metadata;
 		bool is_script;
 		bool is_dir;
 	};
@@ -63,10 +62,10 @@ public:
 	void operator()();
 
 	void addToQueueFull(size_t id, const std::wstring &remotefn, const std::wstring &destfn,
-		_i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, bool is_dir, bool at_front, bool metadata_only);
+		_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool is_dir, bool at_front, bool metadata_only);
 
 	void addToQueueChunked(size_t id, const std::wstring &remotefn, const std::wstring &destfn,
-		_i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, IFile* orig_file, IFile* chunkhashes);
+		_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFile* orig_file, IFile* chunkhashes);
 
 	void queueSkip();
 

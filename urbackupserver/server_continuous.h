@@ -796,7 +796,7 @@ private:
 		FileMetadata metadata(permissions, modified, created, std::string());
 		if(local_hash->findFileAndLink(getFullpath(change.fn1), NULL, getFullHashpath(change.fn1),
 			hash, filesize, std::string(), true, tries_once, ff_last, hardlink_limit, copied_file, entryid,
-			entryclientid, rsize, next_entryid, metadata, FileMetadata(), true))
+			entryclientid, rsize, next_entryid, metadata, true))
 		{
 			local_hash->addFileSQL(backupid, clientid, 1, getFullpath(change.fn1), getFullHashpath(change.fn1),
 				hash, filesize, rsize, entryid, entryclientid, next_entryid, copied_file);
@@ -814,12 +814,12 @@ private:
 		if(f->Size()==0 || !transfer_incr_blockdiff)
 		{
 			server_download->addToQueueFull(0, fn, fn,
-				fpath, fpath, filesize, metadata, FileMetadata(), false, false);
+				fpath, fpath, filesize, metadata, false, false);
 		}
 		else
 		{
 			server_download->addToQueueChunked(0, fn, fn,
-				fpath, fpath, filesize, metadata, FileMetadata(), false);
+				fpath, fpath, filesize, metadata, false);
 		}
 
 		return true;

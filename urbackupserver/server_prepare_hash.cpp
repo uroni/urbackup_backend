@@ -101,9 +101,6 @@ void BackupServerPrepareHash::operator()(void)
 			FileMetadata metadata;
 			metadata.read(rd);
 
-			FileMetadata parent_metadata;
-			parent_metadata.read(rd);
-
 			IFile *tf=Server->openFile(os_file_prefix(Server->ConvertToUnicode(temp_fn)), MODE_READ);
 			IFile *old_file=NULL;
 			if(diff_file)
@@ -158,7 +155,6 @@ void BackupServerPrepareHash::operator()(void)
 				data.addString(old_file_fn);
 				data.addInt64(t_filesize);
 				metadata.serialize(data);
-				parent_metadata.serialize(data);
 
 				output->Write(data.getDataPtr(), data.getDataSize() );
 			}

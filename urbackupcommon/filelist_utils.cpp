@@ -75,21 +75,21 @@ void writeFileItem(IFile* f, SFile cf)
 	}
 }
 
-void writeFileItem(IFile* f, SFile cf, const FileMetadata& metadata, const std::string& extra)
+void writeFileItem(IFile* f, SFile cf, std::string extra)
 {
+	if(!extra.empty() && extra[0]=='&') extra[0]='#';
+
 	if(cf.isdir)
 	{
 		writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))
-			+"\"#dacl=" + base64_encode_dash(metadata.file_permissions)
-			+"&mod=" + nconvert(metadata.last_modified)
-			+"&creat=" + nconvert(metadata.created)+extra+"\n");
+			+"\""+extra+"\n");
 	}
 	else
 	{
+		
+
 		writeFileRepeat(f, "f\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)
-			+"\"#dacl=" + base64_encode_dash(metadata.file_permissions)
-			+"&mod=" + nconvert(metadata.last_modified)
-			+"&creat=" + nconvert(metadata.created)+extra+"\n");
+			+"\""+extra+"\n");
 	}
 }
 

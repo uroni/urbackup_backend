@@ -71,7 +71,6 @@ namespace
 		EQueueAction action;
 		SPatchDownloadFiles patch_dl_files;
 		FileMetadata metadata;
-		FileMetadata parent_metadata;
 		bool is_script;
 		bool is_dir;
 	};
@@ -135,10 +134,10 @@ public:
 	void operator()(void);
 
 	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
-		_i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script, bool is_dir, bool at_front=false);
+		_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool is_dir, bool at_front=false);
 
 	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
-		const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script);
+		const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script);
 
 	void addToQueueStartShadowcopy(const std::wstring& fn);
 
@@ -165,7 +164,7 @@ public:
 	bool isOffline();
 
 	void hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file, int64 t_filesize,
-		const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script);
+		const FileMetadata& metadata, bool is_script);
 
 	virtual bool getQueuedFileChunked(std::string& remotefn, IFile*& orig_file, IFile*& patchfile, IFile*& chunkhashes, IFile*& hashoutput, _i64& predicted_filesize);
 

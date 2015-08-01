@@ -203,7 +203,7 @@ void ServerDownloadThread::operator()( void )
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
 	const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-	const FileMetadata& parent_metadata, bool is_script, bool is_dir, bool at_front )
+	bool is_script, bool is_dir, bool at_front )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -217,7 +217,6 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	ni.action = EQueueAction_Fileclient;
 	ni.predicted_filesize = predicted_filesize;
 	ni.metadata = metadata;
-	ni.parent_metadata = parent_metadata;
 	ni.is_script = is_script;
 	ni.is_dir = is_dir;
 
@@ -242,7 +241,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 
 void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn,
 	const std::wstring &curr_path, const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-	const FileMetadata& parent_metadata, bool is_script)
+	bool is_script)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -256,7 +255,6 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, 
 	ni.action = EQueueAction_Fileclient;
 	ni.predicted_filesize= predicted_filesize;
 	ni.metadata = metadata;
-	ni.parent_metadata = parent_metadata;
 	ni.is_script = is_script;
 	ni.is_dir = false;
 
@@ -410,7 +408,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			Server->destroy(file_old);
 		}
 
-		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old), fd->Size(), todl.metadata, todl.parent_metadata, todl.is_script);
+		hashFile(dstpath, hashpath, fd, NULL, Server->ConvertToUTF8(filepath_old), fd->Size(), todl.metadata, todl.is_script);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -467,7 +465,7 @@ bool ServerDownloadThread::link_or_copy_file(SQueueItem todl)
 		{
 			pfd_destroy.release();
 			hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			    Server->ConvertToUTF8(dlfiles.filepath_old), orig_filesize, todl.metadata, todl.parent_metadata, todl.is_script);
+			    Server->ConvertToUTF8(dlfiles.filepath_old), orig_filesize, todl.metadata, todl.is_script);
 			return true;
 		}
 		else
@@ -498,7 +496,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
-			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.parent_metadata, todl.is_script, todl.is_dir, true);
+			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.is_script, todl.is_dir, true);
 			return true;
 		}
 	}
@@ -637,7 +635,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 		pfd_destroy.release();
 		hash_tmp_destroy.release();
 		hashFile(dstpath, dlfiles.hashpath, dlfiles.patchfile, dlfiles.hashoutput,
-			Server->ConvertToUTF8(dlfiles.filepath_old), download_filesize, todl.metadata, todl.parent_metadata, todl.is_script);
+			Server->ConvertToUTF8(dlfiles.filepath_old), download_filesize, todl.metadata, todl.is_script);
 	}
 
 	if(todl.is_script && (rc!=ERR_SUCCESS || !script_ok) )
@@ -653,7 +651,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 }
 
 void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath, IFile *fd, IFile *hashoutput, std::string old_file,
-	int64 t_filesize, const FileMetadata& metadata, const FileMetadata& parent_metadata, bool is_script)
+	int64 t_filesize, const FileMetadata& metadata, bool is_script)
 {
 	int l_backup_id=backupid;
 
@@ -675,7 +673,6 @@ void ServerDownloadThread::hashFile(std::wstring dstpath, std::wstring hashpath,
 	data.addString(old_file);
 	data.addInt64(t_filesize);
 	metadata.serialize(data);
-	parent_metadata.serialize(data);
 
 	ServerLogger::Log(logid, "GT: Loaded file \""+ExtractFileName(Server->ConvertToUTF8(dstpath))+"\"", LL_DEBUG);
 

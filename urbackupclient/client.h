@@ -36,7 +36,6 @@
 const int c_group_default = 0;
 const int c_group_continuous = 1;
 
-const unsigned int flag_with_permissions = 1;
 const unsigned int flag_end_to_end_verification = 2;
 const unsigned int flag_with_scripts = 4;
 const unsigned int flag_calc_checksums = 8;
@@ -204,13 +203,9 @@ private:
 
 	void writeTokens();
 
-	void readPermissions(const std::wstring& path, std::string& permissions);
-
-	void readPermissions(const std::wstring& dir, std::vector<SFileAndHash>& files);
-
 	void setFlags(unsigned int flags);
 
-	void writeDir(std::fstream& out, const std::wstring& name, int64 creat, int64 mod, const std::string& permissions, const std::string& extra=std::string());
+	void writeDir(std::fstream& out, const std::wstring& name, const std::string& extra=std::string());
 	bool addBackupScripts(std::fstream& outfile);
 	std::string starttoken;
 
@@ -262,7 +257,6 @@ private:
 
 	bool end_to_end_file_backup_verification;
 	bool calculate_filehashes_on_client;
-	bool with_permissions;
 	bool with_scripts;
 
 	int64 last_tmp_update_time;

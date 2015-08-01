@@ -6,6 +6,7 @@
 #include "../urbackupcommon/os_functions.h"
 #include "IFileServ.h"
 #include <cstring>
+#include "FileServ.h"
 
 const size_t metadata_id_size = 4+4+8+4;
 
@@ -31,6 +32,11 @@ bool FileMetadataPipe::getExitCode( int& exit_code )
 
 bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes )
 {
+	if(token_callback.get()==NULL)
+	{
+		token_callback.reset(FileServ::newTokenCallback());
+	}
+
 	if(buf_avail==0)
 	{
 		read_bytes = 0;
@@ -64,7 +70,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			metadata_buffer_off = 0;
 			if(callback==NULL)
 			{
-				metadata_state = MetadataState_Os;
+				metadata_state = MetadataState_Common;
 			}
 			else
 			{
@@ -81,6 +87,54 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			}
 		}
 
+		return true;
+	}
+	else if(metadata_state == MetadataState_Common)
+	{
+		if(metadata_buffer_size==0)
+		{
+			SFile file_meta = getFileMetadata(os_file_prefix(Server->ConvertToUnicode(local_fn)));
+			if(file_meta.name.empty())
+			{
+				Server->Log("Error getting metadata (created and last modified time) of "+local_fn, LL_ERROR);
+			}
+			
+			int64 created = little_endian(file_meta.created);
+			int64 modified = little_endian(file_meta.last_modified);
+			
+			CWData meta_data;
+			meta_data.addChar(1);
+			meta_data.addInt64(created);
+			meta_data.addInt64(modified);
+			meta_data.addString(token_callback->getFileTokens(Server->ConvertToUnicode(local_fn)));
+
+			if(meta_data.getDataSize()+sizeof(unsigned int)<metadata_buffer.size())
+			{
+				unsigned int data_size = little_endian(static_cast<unsigned int>(meta_data.getDataSize()));
+				memcpy(metadata_buffer.data(), &data_size, sizeof(data_size));
+				memcpy(metadata_buffer.data()+sizeof(unsigned int), meta_data.getDataPtr(), meta_data.getDataSize());
+				metadata_buffer_size = meta_data.getDataSize();
+			}
+			else
+			{
+				Server->Log("File metadata of "+local_fn+" too large ("+nconvert((size_t)meta_data.getDataSize())+")", LL_ERROR);
+			}
+			
+		}
+
+		if(metadata_buffer_size-metadata_buffer_off>0)
+		{
+			read_bytes = (std::min)(metadata_buffer_size-metadata_buffer_off, buf_avail);
+			memcpy(buf, metadata_buffer.data()+metadata_buffer_off, read_bytes);
+			metadata_buffer_off+=read_bytes;
+
+			if(metadata_buffer_size-metadata_buffer_off == 0)
+			{
+				metadata_buffer_size = 0;
+				metadata_buffer_off = 0;
+				metadata_state=MetadataState_Os;
+			}
+		}
 		return true;
 	}
 	else if(metadata_state == MetadataState_Os)
@@ -234,7 +288,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
-		hFile = CreateFileW(Server->ConvertToUnicode(local_fn).c_str(), GENERIC_READ|ACCESS_SYSTEM_SECURITY|READ_CONTROL, FILE_SHARE_READ, NULL,
+		hFile = CreateFileW(os_file_prefix(Server->ConvertToUnicode(local_fn)).c_str(), GENERIC_READ|ACCESS_SYSTEM_SECURITY|READ_CONTROL, FILE_SHARE_READ, NULL,
 			OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
 
 		if(hFile==INVALID_HANDLE_VALUE)

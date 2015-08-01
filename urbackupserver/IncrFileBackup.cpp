@@ -558,16 +558,6 @@ bool IncrFileBackup::doFileBackup()
 										src_hashpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled());
 								}
 
-								if(metadata.exist)
-								{
-									if(!os_set_file_time(os_file_prefix(backuppath+local_curr_os_path),
-										metadata.created, metadata.last_modified))
-									{
-										ServerLogger::Log(logid, L"Error setting last modfied and creation time of directory link \""+
-											backuppath+local_curr_os_path+L"\"", LL_WARNING);
-									}
-								}
-
 								if(copy_last_file_entries)
 								{
 									std::vector<ServerBackupDao::SFileEntry> file_entries = backup_dao->getFileEntriesFromTemporaryTableGlob(escape_glob_sql(srcpath)+os_file_sep()+L"*");
@@ -611,15 +601,7 @@ bool IncrFileBackup::doFileBackup()
 									ServerLogger::Log(logid, L"Directory \""+backuppath+local_curr_os_path+L"\" does already exist.", LL_WARNING);
 								}
 							}
-							else if(metadata.exist)
-							{
-								if(!os_set_file_time(os_file_prefix(backuppath+local_curr_os_path),
-									metadata.created, metadata.last_modified))
-								{
-									ServerLogger::Log(logid, L"Error setting last modfied and creation time of directory \""+
-										backuppath+local_curr_os_path+L"\"", LL_WARNING);
-								}
-							}
+							
 							if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
@@ -645,7 +627,7 @@ bool IncrFileBackup::doFileBackup()
 								if(client_main->getProtocolVersions().file_meta>0)
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
-										metadata, FileMetadata(), false, true);
+										metadata, false, true);
 								}
 							}
 							else
@@ -742,7 +724,7 @@ bool IncrFileBackup::doFileBackup()
 						if(!curr_sha2.empty())
 						{
 							if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2 , cf.size, true,
-								metadata, parent_metadata))
+								metadata))
 							{
 								f_ok=true;
 								linked_bytes+=cf.size;
@@ -756,12 +738,12 @@ bool IncrFileBackup::doFileBackup()
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, parent_metadata, script_dir);
+										metadata, script_dir);
 								}
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, parent_metadata, script_dir, false);
+										metadata, script_dir, false);
 								}
 							}
 							else
@@ -810,7 +792,7 @@ bool IncrFileBackup::doFileBackup()
 							if(!curr_sha2.empty())
 							{
 								if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, curr_sha2, cf.size, false,
-									metadata, parent_metadata))
+									metadata))
 								{
 									f_ok=true;
 									copy_curr_file_entry=copy_last_file_entries;						
@@ -824,12 +806,12 @@ bool IncrFileBackup::doFileBackup()
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, parent_metadata, script_dir);
+										metadata, script_dir);
 								}
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, parent_metadata, script_dir, false);
+										metadata, script_dir, false);
 								}
 							}
 						}
