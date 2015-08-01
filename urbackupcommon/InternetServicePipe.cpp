@@ -87,10 +87,10 @@ std::string InternetServicePipe::encrypt(const std::string &data)
 	return enc->encrypt(data);
 }
 
-bool InternetServicePipe::Write(const char *buffer, size_t bsize, int timeoutms)
+bool InternetServicePipe::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	std::string encbuf=enc->encrypt(buffer, bsize);
-	bool b=cs->Write(encbuf, timeoutms);
+	bool b=cs->Write(encbuf, timeoutms, flush);
 	return b;
 }
 
@@ -118,9 +118,9 @@ size_t InternetServicePipe::Read(std::string *ret, int timeoutms)
 	return 0;
 }
 
-bool InternetServicePipe::Write(const std::string &str, int timeoutms)
+bool InternetServicePipe::Write(const std::string &str, int timeoutms, bool flush)
 {
-	return Write(str.c_str(), str.size(), timeoutms);
+	return Write(str.c_str(), str.size(), timeoutms, flush);
 }
 
 /**
@@ -189,4 +189,9 @@ _i64 InternetServicePipe::getTransferedBytes(void)
 void InternetServicePipe::resetTransferedBytes(void)
 {
 	cs->resetTransferedBytes();
+}
+
+bool InternetServicePipe::Flush(int timeoutms)
+{
+	return cs->Flush(timeoutms);
 }

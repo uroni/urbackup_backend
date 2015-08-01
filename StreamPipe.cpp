@@ -137,7 +137,7 @@ size_t CStreamPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	}
 }
 
-bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
+bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	int rc = selectSocketWrite(s, timeoutms);
 	size_t written=0;
@@ -194,9 +194,9 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 	return true;
 }
 
-bool CStreamPipe::Write(const std::string &str, int timeoutms)
+bool CStreamPipe::Write(const std::string &str, int timeoutms, bool flush)
 {
-	return Write(&str[0], str.size(), timeoutms);
+	return Write(&str[0], str.size(), timeoutms, flush);
 }
 
 size_t CStreamPipe::Read(std::string *ret, int timeoutms)
@@ -322,4 +322,9 @@ void CStreamPipe::addOutgoingThrottler(IPipeThrottler *throttler)
 void CStreamPipe::addIncomingThrottler(IPipeThrottler *throttler)
 {
 	incoming_throttlers.push_back(throttler);
+}
+
+bool CStreamPipe::Flush( int timeoutms/*=-1 */ )
+{
+	return true;
 }

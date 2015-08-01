@@ -25,8 +25,11 @@
 #include "AESDecryption.h"
 #include "ZlibCompression.h"
 #include "ZlibDecompression.h"
+#include "AESGCMDecryption.h"
+#include "AESGCMEncryption.h"
 
 #include "cryptopp_inc.h"
+#include "ECDHKeyExchange.h"
 
 IAESEncryption* CryptoFactory::createAESEncryption(const std::string &password)
 {
@@ -46,6 +49,26 @@ IAESEncryption* CryptoFactory::createAESEncryptionNoDerivation(const std::string
 IAESDecryption* CryptoFactory::createAESDecryptionNoDerivation(const std::string &password)
 {
 	return new AESDecryption(password, false);
+}
+
+IAESGCMEncryption* CryptoFactory::createAESGCMEncryption(const std::string &password)
+{
+	return new AESGCMEncryption(password, true);
+}
+
+IAESGCMDecryption* CryptoFactory::createAESGCMDecryption(const std::string &password)
+{
+	return new AESGCMDecryption(password, true);
+}
+
+IAESGCMEncryption* CryptoFactory::createAESGCMEncryptionNoDerivation(const std::string &password)
+{
+	return new AESGCMEncryption(password, false);
+}
+
+IAESGCMDecryption* CryptoFactory::createAESGCMDecryptionNoDerivation(const std::string &password)
+{
+	return new AESGCMDecryption(password, false);
 }
 
 bool CryptoFactory::generatePrivatePublicKeyPair(const std::string &keybasename)
@@ -266,4 +289,9 @@ std::string CryptoFactory::decryptAuthenticatedAES(const std::string& data, cons
 	{
 		return std::string();
 	}
+}
+
+IECDHKeyExchange* CryptoFactory::createECDHKeyExchange()
+{
+	return new ECDHKeyExchange();
 }

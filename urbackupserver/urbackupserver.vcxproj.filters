@@ -303,6 +303,9 @@
     <ClCompile Include="WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -552,6 +555,9 @@
       <Filter>serverinterface</Filter>
     </ClInclude>
     <ClInclude Include="WalCheckpointThread.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

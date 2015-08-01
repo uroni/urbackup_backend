@@ -268,6 +268,7 @@
     <ClCompile Include="..\urbackupcommon\file_metadata.cpp" />
     <ClCompile Include="..\urbackupcommon\glob.cpp" />
     <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp" />
     <ClCompile Include="..\urbackupcommon\json.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
@@ -361,6 +362,7 @@
     <ClInclude Include="..\urbackupcommon\glob.h" />
     <ClInclude Include="..\urbackupcommon\InternetServiceIDs.h" />
     <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h" />
     <ClInclude Include="..\urbackupcommon\internet_pipe_capabilities.h" />
     <ClInclude Include="..\urbackupcommon\json.h" />
     <ClInclude Include="..\urbackupcommon\os_functions.h" />

@@ -1,7 +1,7 @@
 lib_LTLIBRARIES = liburbackupserver_cryptoplugin.la
-liburbackupserver_cryptoplugin_la_SOURCES = dllmain.cpp AESDecryption.cpp CryptoFactory.cpp pluginmgr.cpp AESEncryption.cpp ZlibCompression.cpp ZlibDecompression.cpp
+liburbackupserver_cryptoplugin_la_SOURCES = dllmain.cpp AESDecryption.cpp CryptoFactory.cpp pluginmgr.cpp AESEncryption.cpp ZlibCompression.cpp ZlibDecompression.cpp AESGCMDecryption.cpp AESGCMEncryption.cpp ECDHKeyExchange.cpp
 liburbackupserver_cryptoplugin_la_LIBADD = $(CRYPTOPP_LIBS)
-noinst_HEADERS = AESEncryption.h AESDecryption.h IAESDecryption.h ICryptoFactory.h pluginmgr.h IAESEncryption.h CryptoFactory.h IZlibCompression.h IZlibDecompression.h ZlibCompression.h ZlibDecompression.h cryptopp_inc.h
+noinst_HEADERS = AESEncryption.h AESDecryption.h IAESDecryption.h ICryptoFactory.h pluginmgr.h IAESEncryption.h CryptoFactory.h IZlibCompression.h IZlibDecompression.h ZlibCompression.h ZlibDecompression.h cryptopp_inc.h AESGCMDecryption.h AESGCMEncryption.h ECDHKeyExchange.h IAESGCMDecryption.h IAESGCMEncryption.h IECDHKeyExchange.h
 if WITH_FORTIFY
 AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
 endif

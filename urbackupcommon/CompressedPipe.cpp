@@ -197,7 +197,7 @@ void CompressedPipe::Process(const char *buffer, size_t bsize)
 	}
 }
 
-bool CompressedPipe::Write(const char *buffer, size_t bsize, int timeoutms)
+bool CompressedPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	const char *ptr=buffer;
 	size_t cbsize=bsize;
@@ -205,11 +205,14 @@ bool CompressedPipe::Write(const char *buffer, size_t bsize, int timeoutms)
 	{
 		cbsize=(std::min)(max_send_size, bsize);
 
-		_u16 rc=(_u16)comp->compress(ptr, cbsize, &comp_buffer, true, sizeof(_u16));
-		*((_u16*)&comp_buffer[0])=little_endian(rc);
-		bool b=cs->Write(&comp_buffer[0], rc+sizeof(_u16), timeoutms);
-		if(!b)
-			return false;
+		_u16 rc=(_u16)comp->compress(ptr, cbsize, &comp_buffer, flush, sizeof(_u16));
+		if(rc>0)
+		{
+			*((_u16*)&comp_buffer[0])=little_endian(rc);
+			bool b=cs->Write(&comp_buffer[0], rc+sizeof(_u16), timeoutms);
+			if(!b)
+				return false;
+		}		
 
 		ptr+=cbsize;
 		bsize-=cbsize;
@@ -273,9 +276,9 @@ size_t CompressedPipe::Read(std::string *ret, int timeoutms)
 	return rc;
 }
 
-bool CompressedPipe::Write(const std::string &str, int timeoutms)
+bool CompressedPipe::Write(const std::string &str, int timeoutms, bool flush)
 {
-	return Write(str.c_str(), str.size(), timeoutms);
+	return Write(str.c_str(), str.size(), timeoutms, flush);
 }
 
 /**
@@ -342,4 +345,9 @@ _i64 CompressedPipe::getTransferedBytes(void)
 void CompressedPipe::resetTransferedBytes(void)
 {
 	cs->resetTransferedBytes();
+}
+
+bool CompressedPipe::Flush( int timeoutms/*=-1 */ )
+{
+	return Write(NULL, 0, timeoutms, true);
 }

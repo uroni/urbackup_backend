@@ -33,6 +33,7 @@
 #include <memory.h>
 #include <algorithm>
 #include <assert.h>
+#include "../urbackupcommon/InternetServicePipe2.h"
 
 const unsigned int ping_interval=5*60*1000;
 const unsigned int ping_timeout=30000;
@@ -45,6 +46,8 @@ IMutex *InternetServiceConnector::onetime_token_mutex=NULL;
 std::map<unsigned int, SOnetimeToken> InternetServiceConnector::onetime_tokens;
 unsigned int InternetServiceConnector::onetime_token_id=0;
 int64 InternetServiceConnector::last_token_remove=0;
+std::vector<IECDHKeyExchange*> InternetServiceConnector::ecdh_key_exchange_buffer;
+
 
 extern ICryptoFactory *crypto_fak;
 const size_t pbkdf2_iterations=20000;
@@ -62,6 +65,7 @@ void InternetService::destroyClient( ICustomClient * pClient)
 InternetServiceConnector::InternetServiceConnector(void)
 {
 	local_mutex=Server->createMutex();
+	ecdh_key_exchange=NULL;
 }
 
 InternetServiceConnector::~InternetServiceConnector(void)
@@ -72,6 +76,11 @@ InternetServiceConnector::~InternetServiceConnector(void)
 		cleanup_pipes(true);
 	}
 	Server->destroy(local_mutex);
+
+	if(ecdh_key_exchange!=NULL)
+	{
+		ecdh_key_exchange_buffer.push_back(ecdh_key_exchange);
+	}
 }
 
 void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::string& pEndpointName)
@@ -110,6 +119,22 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 		data.addUInt(capa);
 		data.addInt(compression_level);
 		data.addUInt((unsigned int)pbkdf2_iterations);
+
+		if(ecdh_key_exchange==NULL)
+		{
+			IScopedLock lock(mutex);
+			if(!ecdh_key_exchange_buffer.empty())
+			{
+				ecdh_key_exchange = ecdh_key_exchange_buffer[ecdh_key_exchange_buffer.size()-1];
+				ecdh_key_exchange_buffer.pop_back();
+			}
+		}
+		if(ecdh_key_exchange==NULL)
+		{
+			ecdh_key_exchange=crypto_fak->createECDHKeyExchange();
+		}
+
+		data.addString(ecdh_key_exchange->getPublicKey());
 
 		tcpstack.Send(cs, data);
 	}
@@ -238,9 +263,9 @@ void InternetServiceConnector::ReceivePackets(void)
 			{
 			case ISS_AUTH:
 				{
-					if(id==ID_ISC_AUTH || id==ID_ISC_AUTH_TOKEN)
+					if(id==ID_ISC_AUTH || id==ID_ISC_AUTH_TOKEN || id==ID_ISC_AUTH2)
 					{
-						unsigned int iterations=(unsigned int)pbkdf2_iterations;
+						unsigned int iterations=static_cast<unsigned int>(pbkdf2_iterations);
 						if(id==ID_ISC_AUTH_TOKEN)
 						{
 							iterations=1;
@@ -285,22 +310,46 @@ void InternetServiceConnector::ReceivePackets(void)
 							{
 								authkey=getAuthkeyFromDB(clientname, db_timeout);
 							}
-
 							
 							if(!rd.getStr(&client_challenge) || client_challenge.size()<32 )
 							{
 								errmsg="Client challenge missing or not long enough";
 							}
 
+							std::string ecdh_pubkey;
+							if(id==ID_ISC_AUTH2)
+							{
+								if(!rd.getStr(&ecdh_pubkey) || ecdh_pubkey.empty())
+								{
+									errmsg="Missing field -2";
+								}
+							}
+
 							if(errmsg.empty() && !authkey.empty())
 							{
-								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, iterations);
+								std::string salt = challenge+client_challenge;
+
+								if(id==ID_ISC_AUTH2)
+								{
+									salt+=ecdh_key_exchange->getSharedKey(ecdh_pubkey);
+								}
+
+								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, iterations);
 
 								std::string hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);								
 								if(hmac_loc==hmac)
 								{
-									state=ISS_CAPA;									
-									is_pipe=new InternetServicePipe(comm_pipe, hmac_key);
+									if(id==ID_ISC_AUTH2)
+									{
+										delete ecdh_key_exchange;
+										ecdh_key_exchange=NULL;
+										is_pipe=new InternetServicePipe2(comm_pipe, hmac_key);
+									}
+									else
+									{
+										is_pipe=new InternetServicePipe(comm_pipe, hmac_key);
+									}		
+									state=ISS_CAPA;	
 									comm_pipe=is_pipe;
 								}
 								else
@@ -356,14 +405,13 @@ void InternetServiceConnector::ReceivePackets(void)
 							rd.getUInt(&client_iterations);
 							
 							data.addChar(ID_ISC_AUTH_OK);
-							if(is_pipe!=NULL)
-							{
-								std::string hmac_loc;
-								hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);
-								data.addString(hmac_loc);
-								std::string new_token=generateOnetimeToken(clientname);
-								data.addString(is_pipe->encrypt(new_token));
-							}
+
+							std::string hmac_loc;
+							hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, client_challenge, 1);
+							data.addString(hmac_loc);							
+							
+							std::string new_token=generateOnetimeToken(clientname);
+							data.addString(is_pipe->encrypt(new_token));
 						}
 						tcpstack.Send(cs, data);
 					}

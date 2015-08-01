@@ -12,7 +12,7 @@
 #include "../common/data.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
-#include "../urbackupcommon/InternetServicePipe.h"
+#include "../urbackupcommon/InternetServicePipe2.h"
 #include "../urbackupcommon/internet_pipe_capabilities.h"
 #include "../urbackupcommon/CompressedPipe.h"
 
@@ -38,6 +38,7 @@ std::queue<std::pair<unsigned int, std::string> > InternetClient::onetime_tokens
 bool InternetClient::do_exit=false;
 IMutex *InternetClient::onetime_token_mutex=NULL;
 std::string InternetClient::status_msg="initializing";
+
 
 const unsigned int ic_lan_timeout=10*60*1000;
 const unsigned int spare_connections=1;
@@ -137,6 +138,7 @@ void InternetClient::resetAuthErr(void)
 void InternetClient::operator()(void)
 {
 	Server->waitForStartupComplete();
+
 	setStatusMsg("wait_local");
 	if(Server->getServerParameter("internet_only_mode")!="true")
 	{
@@ -481,9 +483,11 @@ void InternetClientThread::operator()(void)
 	unsigned int server_iterations;
 	std::string authkey;
 	std::string challenge_response;
-	InternetServicePipe* ics_pipe = new InternetServicePipe();
+	InternetServicePipe2* ics_pipe = new InternetServicePipe2();
 	std::string hmac_key;
+	std::string server_pubkey;
 	bool destroy_cs = true;
+	std::auto_ptr<IECDHKeyExchange> ecdh_key_exchange(crypto_fak->createECDHKeyExchange());
 
 	{
 		char *buf;
@@ -508,6 +512,15 @@ void InternetClientThread::operator()(void)
 				&& rd.getUInt(&server_iterations) ))
 			{
 				std::string error = "Not enough challenge fields -1";
+				Server->Log(error, LL_ERROR);
+				InternetClient::setStatusMsg("error:"+error);
+				delete []buf;
+				goto cleanup;
+			}
+
+			if(!rd.getStr(&server_pubkey) || server_pubkey.empty())
+			{
+				std::string error = "No server public key. Server version probably not new enough.";
 				Server->Log(error, LL_ERROR);
 				InternetClient::setStatusMsg("error:"+error);
 				delete []buf;
@@ -541,7 +554,7 @@ void InternetClientThread::operator()(void)
 		CWData data;
 		if(token.second.empty())
 		{
-			data.addChar(ID_ISC_AUTH);
+			data.addChar(ID_ISC_AUTH2);
 		}
 		else
 		{
@@ -555,7 +568,8 @@ void InternetClientThread::operator()(void)
 		if(token.second.empty())
 		{
 			authkey=server_settings.authkey;			
-			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, challenge+client_challenge, (std::max)(pbkdf2_iterations,server_iterations) );
+			std::string salt = challenge+client_challenge+ecdh_key_exchange->getSharedKey(server_pubkey);
+			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, (std::max)(pbkdf2_iterations,server_iterations) );
 			std::string hmac_l=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);
 			data.addString(hmac_l);
 		}
@@ -567,6 +581,9 @@ void InternetClientThread::operator()(void)
 			data.addString(hmac_l);
 			data.addUInt(token.first);
 		}
+
+		ecdh_key_exchange.reset();
+
 		
 		data.addString(client_challenge);
 		data.addUInt(pbkdf2_iterations);

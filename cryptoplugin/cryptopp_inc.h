@@ -9,6 +9,11 @@
 #include <pwdbased.h>
 #include <hex.h>
 #include <eax.h>
+#include <gcm.h>
+#include <filters.h>
+#include <eccrypto.h>
+#include <oids.h>
+#include <dsa.h>
 #else
 #include "config.h"
 #define CRYPTOPP_INCLUDE_AES <CRYPTOPP_INCLUDE_PREFIX/aes.h>
@@ -21,6 +26,11 @@
 #define CRYPTOPP_INCLUDE_PWDBASED <CRYPTOPP_INCLUDE_PREFIX/pwdbased.h>
 #define CRYPTOPP_INCLUDE_HEX <CRYPTOPP_INCLUDE_PREFIX/hex.h>
 #define CRYPTOPP_INCLUDE_EAX <CRYPTOPP_INCLUDE_PREFIX/eax.h>
+#define CRYPTOPP_INCLUDE_GCM <CRYPTOPP_INCLUDE_PREFIX/gcm.h>
+#define CRYPTOPP_INCLUDE_FILTERS <CRYPTOPP_INCLUDE_PREFIX/filters.h>
+#define CRYPTOPP_INCLUDE_ECCRYPTO <CRYPTOPP_INCLUDE_PREFIX/eccrypto.h>
+#define CRYPTOPP_INCLUDE_OIDS <CRYPTOPP_INCLUDE_PREFIX/oids.h>
+#define CRYPTOPP_INCLUDE_DSA <CRYPTOPP_INCLUDE_PREFIX/dsa.h>
 
 #include CRYPTOPP_INCLUDE_AES
 #include CRYPTOPP_INCLUDE_SHA
@@ -32,4 +42,9 @@
 #include CRYPTOPP_INCLUDE_PWDBASED
 #include CRYPTOPP_INCLUDE_HEX
 #include CRYPTOPP_INCLUDE_EAX
+#include CRYPTOPP_INCLUDE_GCM
+#include CRYPTOPP_INCLUDE_FILTERS
+#include CRYPTOPP_INCLUDE_ECCRYPTO
+#include CRYPTOPP_INCLUDE_OIDS
+#include CRYPTOPP_INCLUDE_DSA
 #endif

@@ -1,9 +1,26 @@
+#pragma once
+
 #include "../Interface/Pipe.h"
 
 class IAESEncryption;
 class IAESDecryption;
 
-class InternetServicePipe : public IPipe
+#ifndef HAS_IINTERNET_SERVICE_PIPE
+#define HAS_IINTERNET_SERVICE_PIPE
+class IInternetServicePipe : public IPipe
+{
+public:
+	virtual std::string decrypt(const std::string &data) = 0;
+	virtual std::string encrypt(const std::string &data) = 0;
+
+	virtual void destroyBackendPipeOnDelete(bool b)=0;
+	virtual void setBackendPipe(IPipe *pCS)=0;
+
+	virtual IPipe *getRealPipe(void)=0;
+};
+#endif
+
+class InternetServicePipe : public IInternetServicePipe
 {
 public:
 	InternetServicePipe(void);
@@ -13,9 +30,11 @@ public:
 	void init(IPipe *pcs, const std::string &key);
 
 	virtual size_t Read(char *buffer, size_t bsize, int timeoutms=-1);
-	virtual bool Write(const char *buffer, size_t bsize, int timeoutms=-1);
+	virtual bool Write(const char *buffer, size_t bsize, int timeoutms=-1, bool flush=true);
 	virtual size_t Read(std::string *ret, int timeoutms=-1);
-	virtual bool Write(const std::string &str, int timeoutms=-1);
+	virtual bool Write(const std::string &str, int timeoutms=-1, bool flush=true);
+
+	virtual bool Flush(int timeoutms=-1);
 
 	std::string decrypt(const std::string &data);
 	std::string encrypt(const std::string &data);

@@ -8,8 +8,9 @@
 
 class IMutex;
 class ICondition;
-class InternetServicePipe;
+class IInternetServicePipe;
 class CompressedPipe;
+class IECDHKeyExchange;
 
 class InternetService : public IService
 {
@@ -101,11 +102,12 @@ private:
 
 	THREAD_ID tid;
 	IPipe *cs;
-	InternetServicePipe *is_pipe;
+	IInternetServicePipe *is_pipe;
 	CompressedPipe *comp_pipe;
 	IPipe *comm_pipe;
 	IMutex *local_mutex;
 	ICondition* connection_done_cond;
+	IECDHKeyExchange* ecdh_key_exchange;
 
 	CTCPStack tcpstack;
 
@@ -135,6 +137,7 @@ private:
 	static IMutex *onetime_token_mutex;
 	static std::map<unsigned int, SOnetimeToken> onetime_tokens;
 	static unsigned int onetime_token_id;
+	static std::vector<IECDHKeyExchange*> ecdh_key_exchange_buffer;
 
 	static int64 last_token_remove;
 };

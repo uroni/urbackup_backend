@@ -12,7 +12,10 @@ ZlibCompression::~ZlibCompression(void)
 
 size_t ZlibCompression::compress(const char *input, size_t input_length, std::vector<char> *output, bool flush, size_t output_off)
 {
-	comp.Put((const byte*)input, input_length);
+	if(input_length>0)
+	{
+		comp.Put((const byte*)input, input_length);
+	}
 	if(flush)
 	{
 		comp.Flush(true);

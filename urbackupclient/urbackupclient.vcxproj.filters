@@ -84,9 +84,6 @@
     <ClCompile Include="InternetClient.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="..\md5.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -153,6 +150,9 @@
     <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -204,9 +204,6 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="InternetClient.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="..\urbackupcommon\InternetServicePipe.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\md5.h">
@@ -282,6 +279,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\chunk_hasher.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

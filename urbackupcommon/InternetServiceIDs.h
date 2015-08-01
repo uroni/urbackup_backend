@@ -9,3 +9,4 @@ const char ID_ISC_AUTH_FAILED=2;
 const char ID_ISC_CHALLENGE=3;
 const char ID_ISC_CAPA=6;
 const char ID_ISC_AUTH_TOKEN=7;
+const char ID_ISC_AUTH2=8;

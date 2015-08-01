@@ -65,7 +65,7 @@
     <ClCompile Include="..\urbackupcommon\filelist_utils.cpp" />
     <ClCompile Include="..\urbackupcommon\file_metadata.cpp" />
     <ClCompile Include="..\urbackupcommon\glob.cpp" />
-    <ClCompile Include="..\urbackupcommon\InternetServicePipe.cpp" />
+    <ClCompile Include="..\urbackupcommon\InternetServicePipe2.cpp" />
     <ClCompile Include="..\urbackupcommon\json.cpp" />
     <ClCompile Include="..\urbackupcommon\os_functions_win.cpp" />
     <ClCompile Include="..\urbackupcommon\settingslist.cpp" />
@@ -114,7 +114,7 @@
     <ClInclude Include="..\urbackupcommon\filelist_utils.h" />
     <ClInclude Include="..\urbackupcommon\file_metadata.h" />
     <ClInclude Include="..\urbackupcommon\glob.h" />
-    <ClInclude Include="..\urbackupcommon\InternetServicePipe.h" />
+    <ClInclude Include="..\urbackupcommon\InternetServicePipe2.h" />
     <ClInclude Include="..\urbackupcommon\mbrdata.h" />
     <ClInclude Include="..\urbackupcommon\os_functions.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />

@@ -90,7 +90,7 @@ size_t CMemoryPipe::Read(char *buffer, size_t bsize, int timeoutms)
 	}
 }
 
-bool CMemoryPipe::Write(const char *buffer, size_t bsize, int timeoutms)
+bool CMemoryPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool flush)
 {
 	IScopedLock lock(mutex);
 	
@@ -158,7 +158,7 @@ size_t CMemoryPipe::Read(std::string *str, int timeoutms )
 	return fsize;		
 }
 
-bool CMemoryPipe::Write(const std::string &str, int timeoutms)
+bool CMemoryPipe::Write(const std::string &str, int timeoutms, bool flush)
 {
 	IScopedLock lock(mutex);
 	
@@ -234,4 +234,9 @@ _i64 CMemoryPipe::getTransferedBytes(void)
 
 void CMemoryPipe::resetTransferedBytes(void)
 {
+}
+
+bool CMemoryPipe::Flush( int timeoutms/*=-1 */ )
+{
+	return true;
 }
