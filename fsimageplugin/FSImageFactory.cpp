@@ -69,13 +69,13 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 		Server->Log(L"Filesystem type is ntfs ("+pDev+L")", LL_DEBUG);
 		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
 
-#ifdef _WIN32
+
+		/** NOT TESTED ENOUGH
 		if(exclude_shadow_storage && pDev.find(L"HarddiskVolumeShadowCopy")!=std::string::npos)
 		{
 			fs->excludeFiles(pDev+L"\\System Volume Information", L"{3808876b-c176-4e48-b7ae-04046e6cc752}");
 			fs->excludeFile(pDev+L"\\pagefile.sys");
-		}
-#endif
+		}*/
 		
 		/*
 		int64 idx=0;
