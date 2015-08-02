@@ -95,6 +95,8 @@ namespace
 				while(current_block==-1)
 				{
 					start_readahead_cond->wait(&lock);
+
+					if(do_stop) break;
 				}
 
 				if(do_stop) break;
@@ -116,8 +118,6 @@ namespace
 					lock.relock(mutex.get());
 
 					read_blocks[current_block] = buf;
-
-					if(do_stop) break;
 
 					current_block = next_used_block(current_block);
 
