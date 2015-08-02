@@ -153,6 +153,9 @@
     <ClCompile Include="win_tokens.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="TokenCallback.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">
@@ -282,6 +285,9 @@
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="tokens.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="TokenCallback.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
   </ItemGroup>

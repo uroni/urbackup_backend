@@ -88,6 +88,7 @@
     <ClCompile Include="RestoreDownloadThread.cpp" />
     <ClCompile Include="RestoreFiles.cpp" />
     <ClCompile Include="ServerIdentityMgr.cpp" />
+    <ClCompile Include="TokenCallback.cpp" />
     <ClCompile Include="watchdir\ContinuousWatchEnqueue.cpp" />
     <ClCompile Include="watchdir\JournalDAO.cpp" />
     <ClCompile Include="win_all_volumes.cpp" />
@@ -133,6 +134,7 @@
     <ClInclude Include="RestoreDownloadThread.h" />
     <ClInclude Include="RestoreFiles.h" />
     <ClInclude Include="ServerIdentityMgr.h" />
+    <ClInclude Include="TokenCallback.h" />
     <ClInclude Include="tokens.h" />
     <ClInclude Include="watchdir\ContinuousWatchEnqueue.h" />
     <ClInclude Include="watchdir\JournalDAO.h" />

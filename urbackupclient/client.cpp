@@ -48,6 +48,7 @@
 #endif
 #include <set>
 #include "../urbackupcommon/glob.h"
+#include "TokenCallback.h"
 
 volatile bool IdleCheckerThread::idle=false;
 volatile bool IdleCheckerThread::pause=false;
@@ -354,6 +355,7 @@ void IndexThread::operator()(void)
 #endif
 	
 	updateDirs();
+	register_token_callback();
 
 	while(true)
 	{
