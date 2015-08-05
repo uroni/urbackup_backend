@@ -17,7 +17,7 @@ _i64 FileWrapper::RealSize()
 
 _i64 FileWrapper::Size( void )
 {
-	return static_cast<_i64>(wfile->getSize());
+	return static_cast<_i64>(wfile->getSize())-offset;
 }
 
 bool FileWrapper::Seek( _i64 spos )
