@@ -219,14 +219,16 @@ namespace
 	struct SSymlinkCallbackData
 	{
 		SSymlinkCallbackData(ServerBackupDao* backup_dao,
-			int clientid)
-			: backup_dao(backup_dao), clientid(clientid)
+			int clientid, bool with_transaction)
+			: backup_dao(backup_dao), clientid(clientid),
+			with_transaction(with_transaction)
 		{
 
 		}
 
 		ServerBackupDao* backup_dao;
 		int clientid;
+		bool with_transaction;
 	};
 
 	bool symlink_callback(const std::wstring &path, void* userdata)
@@ -258,7 +260,10 @@ namespace
 			target_raw = path;
 		}
 
-		data->backup_dao->beginTransaction();
+		if(data->with_transaction)
+		{
+			data->backup_dao->beginTransaction();
+		}		
 
 		data->backup_dao->removeDirectoryLink(data->clientid, target_raw);
 
@@ -267,7 +272,7 @@ namespace
 			bool ret = true;
 			if(data->backup_dao->getDirectoryRefcount(data->clientid, pool_name)==0)
 			{
-				ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid, false);
+				ret = remove_directory_link_dir(path, *data->backup_dao, data->clientid, false, false);
 				ret = ret && os_remove_dir(os_file_prefix(pool_path));
 
 				if(!ret)
@@ -291,17 +296,20 @@ namespace
 			Server->Log(L"Error removing symlink dir \""+path+L"\"", LL_ERROR);
 		}
 
-		data->backup_dao->endTransaction();
+		if(data->with_transaction)
+		{
+			data->backup_dao->endTransaction();
+		}
 
 		return true;
 	}
 }
 
-bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup_dao, int clientid, bool delete_root)
+bool remove_directory_link_dir(const std::wstring &path, ServerBackupDao& backup_dao, int clientid, bool delete_root, bool with_transaction)
 {
 	IScopedLock lock(dir_link_mutex);
 
-	SSymlinkCallbackData userdata(&backup_dao, clientid);
+	SSymlinkCallbackData userdata(&backup_dao, clientid, with_transaction);
 	return os_remove_nonempty_dir(os_file_prefix(path), symlink_callback, &userdata, delete_root);
 }
 
