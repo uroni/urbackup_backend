@@ -411,7 +411,7 @@ bool FileMetadata::read( str_map& extra_params )
 	str_map::iterator it_orig_path = extra_params.find(L"orig_path");
 	if(it_orig_path!=extra_params.end())
 	{
-		orig_path = base64_decode_dash(Server->ConvertToUTF8(it_orig_path->second));
+		orig_path = Server->ConvertToUTF8(it_orig_path->second);
 	}
 
 	if(!orig_path.empty() || !shahash.empty())

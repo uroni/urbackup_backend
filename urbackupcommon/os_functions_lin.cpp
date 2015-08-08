@@ -709,3 +709,14 @@ SFile getFileMetadata( const std::wstring &path )
 	}
 }
 
+std::wstring os_get_final_path(std::wstring path)
+{
+	char* retptr = realpath(path.c_str(), NULL);
+	if(retptr==NULL)
+	{
+		return std::wstring();
+	}
+	std::wstring ret(retptr);
+	free(retptr);
+	return ret;
+}

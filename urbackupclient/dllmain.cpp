@@ -458,6 +458,14 @@ void update_client18_19(IDatabase* db)
 	db->Write("CREATE UNIQUE INDEX token_group_memberships_unique ON token_group_memberships(uid, gid)");
 }
 
+void update_client19_20(IDatabase* db)
+{
+	db->Write("DROP TABLE mfiles");
+	db->Write("DROP TABLE mfiles_backup");
+	db->Write("ALTER TABLE backupdirs ADD symlinked INTEGER DEFAULT 0");
+	db->Write("UPDATE backupdirs SET symlinked=0 WHERE symlinked IS NULL");
+}
+
 bool upgrade_client(void)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
@@ -549,6 +557,10 @@ bool upgrade_client(void)
 				break;
 			case 18:
 				update_client18_19(db);
+				++ver;
+				break;
+			case 19:
+				update_client19_20(db);
 				++ver;
 				break;
 			default:

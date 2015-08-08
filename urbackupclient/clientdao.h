@@ -31,6 +31,8 @@ struct SBackupDir
 	std::wstring path;
 	bool optional;
 	int group;
+	bool symlinked;
+	bool symlinked_confirmed;
 };
 
 struct SShadowCopy
@@ -57,6 +59,10 @@ struct SFileAndHash
 	int64 change_indicator;
 	bool isdir;
 	std::string hash;
+	bool issym;
+	bool isspecial;
+
+	std::wstring symlink_target;
 
 	bool operator<(const SFileAndHash &other) const
 	{
@@ -151,6 +157,8 @@ public:
 	CondInt getFileAccessTokenId(const std::wstring& accountname, int is_user);
 	void updateGroupMembership(int uid, const std::wstring& accountname);
 	std::vector<int> getGroupMembership(int uid);
+	void addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int optional, int tgroup, int symlinked);
+	void delBackupDir(int64 id);
 	//@-SQLGenFunctionsEnd
 
 private:
@@ -192,5 +200,7 @@ private:
 	IQuery* q_getFileAccessTokenId;
 	IQuery* q_updateGroupMembership;
 	IQuery* q_getGroupMembership;
+	IQuery* q_addBackupDir;
+	IQuery* q_delBackupDir;
 	//@-SQLGenVariablesEnd
 };

@@ -143,7 +143,7 @@ namespace
 		bool createFilelist(const std::wstring& foldername, const std::wstring& hashfoldername, size_t depth, bool skip_special)
 		{
 			bool has_error=false;
-			const std::vector<SFile> files = getFiles(os_file_prefix(foldername), &has_error, true);
+			const std::vector<SFile> files = getFiles(os_file_prefix(foldername), &has_error);
 
 			if(has_error)
 				return false;

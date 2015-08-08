@@ -384,7 +384,7 @@ void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
 void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id,name,path,tgroup FROM backupdirs");
+	IQuery *q=db->Prepare("SELECT id,name,path,tgroup FROM backupdirs WHERE symlinked=0");
 	int timeoutms=300;
 	db_results res=q->Read(&timeoutms);
 

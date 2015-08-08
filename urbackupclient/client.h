@@ -153,6 +153,13 @@ private:
 	bool readBackupScripts();
 	void readFollowSymlinks();
 
+	bool getAbsSymlinkTarget(const std::wstring& symlink, std::wstring& target);
+	void addSymlinkBackupDir(const std::wstring& target);
+	bool backupNameInUse(const std::wstring& name);
+	void removeUnconfirmedSymlinkDirs();
+
+	std::vector<SFileAndHash> convertToFileAndHash(const std::wstring& orig_dir, const std::vector<SFile> files);
+
 	bool initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db);
 
 	void indexDirs(void);
@@ -194,6 +201,7 @@ private:
 	void commitModifyFilesBuffer(void);
 
 	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
+	std::wstring addDirectorySeparatorAtEnd(const std::wstring& path);
 
 	void resetFileEntries(void);
 
@@ -256,6 +264,7 @@ private:
 	size_t modify_hash_buffer_size;
 
 	int index_group;
+	bool index_optional;
 
 	bool end_to_end_file_backup_verification;
 	bool calculate_filehashes_on_client;

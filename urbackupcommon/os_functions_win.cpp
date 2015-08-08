@@ -125,13 +125,13 @@ int64 os_to_windows_filetime(int64 unix_time)
 	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 {
-	return getFilesWin(path, has_error, follow_symlinks);
+	return getFilesWin(path, has_error);
 }
 
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool follow_symlinks, bool exact_filesize, bool with_usn)
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool exact_filesize, bool with_usn)
 {
 	if(has_error!=NULL)
 	{
@@ -169,7 +169,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool f
 
 	do
 	{
-		if( !(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT && wfd.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) || follow_symlinks )
+		if( !(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT && wfd.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) )
 		{
 			SFile f;
 			f.name=wfd.cFileName;
@@ -190,6 +190,12 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool f
 			lwt.HighPart=wfd.ftCreationTime.dwHighDateTime;
 			lwt.LowPart=wfd.ftCreationTime.dwLowDateTime;
 			f.created=os_windows_to_unix_time(lwt.QuadPart);
+
+			if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT)
+			{
+				f.issym=true;
+				f.isspecial=true;
+			}
 
 			if(exact_filesize && !(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
 			{
@@ -299,7 +305,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool f
 
 SFile getFileMetadataWin( const std::wstring &path, bool with_usn )
 {
-	SFile ret = {};
+	SFile ret;
 	ret.name=path;
 	WIN32_FILE_ATTRIBUTE_DATA fad;
 	if( GetFileAttributesExW(path.c_str(),  GetFileExInfoStandard, &fad) )

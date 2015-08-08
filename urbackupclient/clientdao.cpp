@@ -31,11 +31,16 @@ ClientDAO::ClientDAO(IDatabase *pDB)
 	prepareQueries();
 }
 
+ClientDAO::~ClientDAO()
+{
+	destroyQueries();
+}
+
 void ClientDAO::prepareQueries(void)
 {
 	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=?", false);
 	q_add_files=db->Prepare("INSERT INTO files_tmp (name, num, data) VALUES (?,?,?)", false);
-	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup FROM backupdirs", false);
+	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
 	q_remove_changed_dirs=db->Prepare("DELETE FROM mdirs WHERE name GLOB ?", false);
@@ -102,6 +107,8 @@ void ClientDAO::prepareQueriesGen(void)
 	q_getFileAccessTokenId=NULL;
 	q_updateGroupMembership=NULL;
 	q_getGroupMembership=NULL;
+	q_addBackupDir=NULL;
+	q_delBackupDir=NULL;
 }
 
 //@-SQLGenDestruction
@@ -113,6 +120,8 @@ void ClientDAO::destroyQueriesGen(void)
 	db->destroyQuery(q_getFileAccessTokenId);
 	db->destroyQuery(q_updateGroupMembership);
 	db->destroyQuery(q_getGroupMembership);
+	db->destroyQuery(q_addBackupDir);
+	db->destroyQuery(q_delBackupDir);
 }
 
 void ClientDAO::restartQueries(void)
@@ -170,6 +179,24 @@ bool ClientDAO::getFiles(std::wstring path, std::vector<SFileAndHash> &data)
 
 		ptr+=hashsize;
 
+		char issym=*ptr;
+		++ptr;
+		f.issym=issym==0?false:true;
+
+		char isspecial=*ptr;
+		++ptr;
+		f.isspecial=isspecial==0?false:true;
+
+
+		if(f.issym)
+		{
+			memcpy(&ss, ptr, sizeof(unsigned short));
+			ptr+=sizeof(unsigned short);
+			tmp.resize(ss);
+			memcpy(&tmp[0], ptr, ss);
+			f.symlink_target=Server->ConvertToUnicode(tmp);
+		}
+
 		data.push_back(f);
 	}
 	return true;
@@ -186,9 +213,16 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		datasize+=utf[i].size();
 		datasize+=sizeof(unsigned short);
 		datasize+=sizeof(int64)*2;
-		++datasize;
+		++datasize; //isdir
 		datasize+=sizeof(unsigned short);
 		datasize+=data[i].hash.size();
+		++datasize; //issym
+		++datasize; //isspecial
+		if(data[i].issym)
+		{
+			datasize+=sizeof(unsigned short);
+			datasize+=Server->ConvertToUTF8(data[i].symlink_target).size();
+		}
 	}
 	char *buffer=new char[datasize];
 	char *ptr=buffer;
@@ -213,6 +247,24 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 		ptr+=sizeof(hashsize);
 		memcpy(ptr, data[i].hash.data(), hashsize);
 		ptr+=hashsize;
+		char issym = data[i].issym?1:0;
+		*ptr=issym;
+		++ptr;
+		char isspecial = data[i].isspecial?1:0;
+		*ptr=isspecial?1:0;
+		++ptr;
+		if(data[i].issym)
+		{
+			std::string symlink_target = Server->ConvertToUTF8(data[i].symlink_target);
+			ss=(unsigned short)symlink_target.size();
+			memcpy(ptr, (char*)&ss, sizeof(unsigned short));
+			ptr+=sizeof(unsigned short);
+			if(ss>0)
+			{
+				memcpy(ptr, &symlink_target[0], ss);
+			}
+			ptr+=ss;
+		}
 	}
 	return buffer;
 }
@@ -258,6 +310,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 	q_get_dirs->Reset();
 
 	std::vector<SBackupDir> ret;
+	std::vector<SBackupDir> sym_ret;
 	for(size_t i=0;i<res.size();++i)
 	{
 		SBackupDir dir;
@@ -266,10 +319,24 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.path=res[i][L"path"];
 		dir.optional=(res[i][L"optional"]==L"1");
 		dir.group=watoi(res[i][L"tgroup"]);
+		dir.symlinked=(res[i][L"symlinked"]==L"1");
+		dir.symlinked_confirmed=false;
 
 		if(dir.tname!=L"*")
-			ret.push_back(dir);
+		{
+			if(dir.symlinked)
+			{
+				sym_ret.push_back(dir);
+			}
+			else
+			{
+				ret.push_back(dir);
+			}			
+		}
 	}
+
+	ret.insert(ret.end(), sym_ret.begin(), sym_ret.end());
+
 	return ret;
 }
 
@@ -671,7 +738,46 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 	return ret;
 }
 
-ClientDAO::~ClientDAO()
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::addBackupDir
+* @sql
+*    INSERT INTO backupdirs
+*		(name, path, server_default, optional, tgroup, symlinked)
+*    VALUES
+*       (:name(string), :path(string), :server_default(int), :optional(int), :tgroup(int),
+*        :symlinked(int) )
+**/
+void ClientDAO::addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int optional, int tgroup, int symlinked)
 {
-	destroyQueries();
+	if(q_addBackupDir==NULL)
+	{
+		q_addBackupDir=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup, symlinked) VALUES (?, ?, ?, ?, ?, ? )", false);
+	}
+	q_addBackupDir->Bind(name);
+	q_addBackupDir->Bind(path);
+	q_addBackupDir->Bind(server_default);
+	q_addBackupDir->Bind(optional);
+	q_addBackupDir->Bind(tgroup);
+	q_addBackupDir->Bind(symlinked);
+	q_addBackupDir->Write();
+	q_addBackupDir->Reset();
 }
+
+/**
+* @-SQLGenAccess
+* @func void ClientDAO::delBackupDir
+* @sql
+*    DELETE FROM backupdirs WHERE id=:id(int64)
+**/
+void ClientDAO::delBackupDir(int64 id)
+{
+	if(q_delBackupDir==NULL)
+	{
+		q_delBackupDir=db->Prepare("DELETE FROM backupdirs WHERE id=?", false);
+	}
+	q_delBackupDir->Bind(id);
+	q_delBackupDir->Write();
+	q_delBackupDir->Reset();
+}
+

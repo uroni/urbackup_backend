@@ -588,7 +588,17 @@ bool IncrFileBackup::doFileBackup()
 						}
 						if(!dir_linked && (!use_snapshots || indirchange) )
 						{
-							if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
+							str_map::iterator sym_target = extra_params.find(L"sym_target");
+							if(sym_target!=extra_params.end())
+							{
+								if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep)))
+								{
+									ServerLogger::Log(logid, L"Creating symlink at \""+backuppath+local_curr_os_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
+									c_has_error=true;
+									break;
+								}
+							}
+							else if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
 								{
@@ -718,7 +728,18 @@ bool IncrFileBackup::doFileBackup()
 						}
 					}
 
-					if(indirchange || hasChange(line, diffs)) //is changed
+					str_map::iterator sym_target = extra_params.find(L"sym_target");
+					if(sym_target!=extra_params.end())
+					{
+						std::wstring symlink_path = backuppath+local_curr_os_path;
+						if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep)))
+						{
+							ServerLogger::Log(logid, L"Creating symlink at \""+symlink_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+					}
+					else if(indirchange || hasChange(line, diffs)) //is changed
 					{
 						bool f_ok=false;
 						if(!curr_sha2.empty())

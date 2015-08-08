@@ -232,7 +232,7 @@ bool FullFileBackup::doFileBackup()
 				if(!metadata.orig_path.empty())
 				{
 					curr_orig_path = metadata.orig_path;
-					orig_sep = base64_decode_dash(Server->ConvertToUTF8(extra_params[L"orig_sep"]));
+					orig_sep = Server->ConvertToUTF8(extra_params[L"orig_sep"]);
 					if(orig_sep.empty()) orig_sep="\\";
 
 					has_orig_path=true;
@@ -297,7 +297,17 @@ bool FullFileBackup::doFileBackup()
 							metadata.orig_path = curr_orig_path;
 						}
 
-						if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
+						str_map::iterator sym_target = extra_params.find(L"sym_target");
+						if(sym_target!=extra_params.end())
+						{
+							if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep)))
+							{
+								ServerLogger::Log(logid, L"Creating symlink at \""+backuppath+local_curr_os_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
+								c_has_error=true;
+								break;
+							}
+						}
+						else if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 						{
 							ServerLogger::Log(logid, L"Creating directory  \""+backuppath+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
 							c_has_error=true;
@@ -395,7 +405,19 @@ bool FullFileBackup::doFileBackup()
 							}
 						}
 					}
-					if(!file_ok)
+
+					str_map::iterator sym_target = extra_params.find(L"sym_target");
+					if(sym_target!=extra_params.end())
+					{
+						std::wstring symlink_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
+						if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep)))
+						{
+							ServerLogger::Log(logid, L"Creating symlink at \""+symlink_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+					}
+					else if(!file_ok)
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
 							metadata, script_dir, false);

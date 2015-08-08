@@ -1077,6 +1077,7 @@ std::string EscapeSQLString(const std::string &pStr)
 std::string EscapeParamString(const std::string &pStr)
 {
 	std::string ret;
+	ret.reserve(pStr.size());
 	for(size_t i=0;i<pStr.size();++i)
 	{
 		if(pStr[i]=='&')

@@ -1337,3 +1337,33 @@ void FileBackup::deleteBackup()
 		Server->getThreadPool()->executeWait(new ServerCleanupThread(CleanupAction(server_settings->getSettings()->backupfolder, clientid, backupid, true) ) );
 	}
 }
+
+bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std::wstring& symlink_target, const std::wstring& dir_sep )
+{
+	std::vector<std::wstring> toks;
+	TokenizeMail(symlink_target, toks, dir_sep);
+
+	std::wstring target;
+
+	for(size_t i=0;i<depth;++i)
+	{
+		target+=L".."+os_file_sep();
+	}
+
+	for(size_t i=0;i<toks.size();++i)
+	{
+		std::wstring component = fixFilenameForOS(toks[i]);
+
+		if(component==L".." || component==L".")
+			continue;
+
+		target+=component;
+
+		if(i+1<toks.size())
+		{
+			target+=os_file_sep();
+		}
+	}
+
+	return os_link_symbolic(target, name);
+}

@@ -1040,7 +1040,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
-	db->Prepare("DELETE FROM backupdirs")->Write();
+	db->Prepare("DELETE FROM backupdirs WHERE symlinked=0")->Write();
 	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+nconvert(server_default?1:0)+", ?, ?)");
 	/**
 	Use empty client settings

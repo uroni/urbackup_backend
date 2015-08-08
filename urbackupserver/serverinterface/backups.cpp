@@ -754,7 +754,7 @@ ACTION_IMPL(backups)
 
 							if(has_backupid)
 							{
-								std::vector<SFile> tfiles=getFiles(os_file_prefix(curr_path), NULL, true);
+								std::vector<SFile> tfiles=getFiles(os_file_prefix(curr_path), NULL);
 								std::vector<FileMetadata> tmetadata=getMetadata(curr_metadata_path, tfiles, path.empty());
 
 

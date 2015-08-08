@@ -924,8 +924,8 @@ void IndexThread::indexDirs(void)
 				VSSLog(L"Changed dir: " + changed_dirs[k], LL_DEBUG);
 			}
 
-			extra+="&orig_path=" + base64_encode_dash(Server->ConvertToUTF8(backup_dirs[i].path))
-				    + "&orig_sep=" + base64_encode_dash(Server->ConvertToUTF8(os_file_sep()));
+			extra+="&orig_path=" + EscapeParamString(Server->ConvertToUTF8(backup_dirs[i].path))
+				    + "&orig_sep=" + EscapeParamString(Server->ConvertToUTF8(os_file_sep()));
 
 			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 			index_c_db=0;
@@ -970,6 +970,12 @@ void IndexThread::indexDirs(void)
 			//db->EndTransaction();
 			outfile << "d\"..\"\n";
 			VSSLog(L"Indexing of \""+backup_dirs[i].tname+L"\" done. "+convert(index_c_fs)+L" filesystem lookups "+convert(index_c_db)+L" db lookups and "+convert(index_c_db_update)+L" db updates" , LL_INFO);		
+
+			if(i+1<backup_dirs.size() && backup_dirs[i+1].symlinked)
+			{
+				//Remove unreferenced symlinks now
+				removeUnconfirmedSymlinkDirs();
+			}
 		}
 		std::streampos pos=outfile.tellp();
 		outfile.seekg(0, std::ios::end);
@@ -1086,6 +1092,7 @@ bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& nam
 bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db)
 {
 	bool has_include=false;
+	index_optional=optional;
 
 	//Server->Log(L"Indexing "+dir, LL_DEBUG);
 	if(Server->getTimeMS()-last_transaction_start>1000)
@@ -1134,19 +1141,38 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 				continue;
 			}
 			has_include=true;
-			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].change_indicator << "#";
+			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].change_indicator;
 		
+			bool params_started=false;
+
+			std::string extra;
 
 			if(calculate_filehashes_on_client)
 			{
-				outfile << "&sha512=" << base64_encode_dash(files[i].hash);
+				extra+="&sha512=" + base64_encode_dash(files[i].hash);
 			}
 				
 			if(end_to_end_file_backup_verification)
 			{
-				outfile << "&sha256=" << getSHA256(dir+os_file_sep()+files[i].name);
+				extra+="&sha256=" + getSHA256(dir+os_file_sep()+files[i].name);
+			}
+
+			if(files[i].issym)
+			{
+				extra+="&sym_target="+EscapeParamString(Server->ConvertToUTF8(files[i].symlink_target));
 			}
 			
+			if(files[i].isspecial)
+			{
+				extra+="&special=1";
+			}
+
+			if(!extra.empty())
+			{
+				extra[0]='#';
+				outfile << extra;
+			}
+
 			outfile << "\n";
 		}
 	}
@@ -1172,10 +1198,27 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 			if( curr_included ||  !adding_worthless1 || !adding_worthless2 )
 			{
 				std::streampos pos=outfile.tellp();
-				
-				writeDir(outfile, files[i].name);
 
-				bool b=initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);		
+				std::string extra;
+
+				if(files[i].issym)
+				{
+					extra+="&sym_target="+EscapeParamString(Server->ConvertToUTF8(files[i].symlink_target));
+				}
+
+				if(files[i].isspecial)
+				{
+					extra+="&special=1";
+				}
+				
+				writeDir(outfile, files[i].name, extra);
+
+				bool b=true;
+
+				if(!files[i].issym)
+				{
+					b = initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);
+				}
 
 				outfile << "d\"..\"\n";
 
@@ -1206,14 +1249,11 @@ bool IndexThread::readBackupDirs(void)
 {
 	backup_dirs=cd->getBackupDirs();
 
-
 	bool has_backup_dir = false;
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
-#ifdef _WIN32
 		backup_dirs[i].path=os_get_final_path(backup_dirs[i].path);
 		Server->Log(L"Final path: "+backup_dirs[i].path, LL_INFO);
-#endif
 
 		if(index_group!=-1 && backup_dirs[i].group == index_group)
 		{
@@ -1286,30 +1326,6 @@ bool IndexThread::readBackupScripts()
 	}
 	
 	return !scripts.empty();	
-}
-
-namespace
-{
-	std::vector<SFileAndHash> convertToFileAndHash(const std::vector<SFile> files)
-	{
-		std::vector<SFileAndHash> ret;
-		ret.resize(files.size());
-		for(size_t i=0;i<files.size();++i)
-		{
-			ret[i].isdir=files[i].isdir;
-			if(files[i].usn==0)
-			{
-				ret[i].change_indicator=files[i].last_modified;
-			}
-			else
-			{
-				ret[i].change_indicator=files[i].usn;
-			}
-			ret[i].name=files[i].name;
-			ret[i].size=files[i].size;
-		}
-		return ret;
-	}
 }
 
 bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::wstring &orig_path, const std::wstring& filepath, const std::wstring& namedpath)
@@ -1410,7 +1426,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
-		fs_files=convertToFileAndHash(getFilesWin(tpath, &has_error, false, true, true));
+		fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true));
 
 		if(has_error)
 		{
@@ -1522,7 +1538,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			std::wstring tpath=os_file_prefix(path);
 
 			bool has_error;
-			fs_files=convertToFileAndHash(getFiles(tpath, &has_error));
+			fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true));
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
@@ -2961,6 +2977,16 @@ std::wstring IndexThread::removeDirectorySeparatorAtEnd(const std::wstring& path
 	return path;
 }
 
+std::wstring IndexThread::addDirectorySeparatorAtEnd(const std::wstring& path)
+{
+	wchar_t path_sep=os_file_sep()[0];
+	if(!path.empty() && path[path.size()-1]!=path_sep )
+	{
+		return path+os_file_sep();
+	}
+	return path;
+}
+
 std::string IndexThread::getSHA256(const std::wstring& fn)
 {
 	sha256_ctx ctx;
@@ -3498,6 +3524,11 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 		outfile << "d\"..\"\n";
 
 		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 void IndexThread::readFollowSymlinks()
@@ -3515,12 +3546,7 @@ void IndexThread::readFollowSymlinks()
 			follow_symlinks = (val==L"true");
 		}
 	}
-#endif
-	}
-	else
-	{
-		return false;
-	}
+#endif	
 }
 
 void IndexThread::setFlags( unsigned int flags )
@@ -3551,6 +3577,141 @@ void IndexThread::setFlags( unsigned int flags )
 	{
 		with_scripts=false;
 	}
+}
+
+bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, std::wstring& target)
+{
+	if(!os_get_symlink_target(symlink, target))
+	{
+		Server->Log(L"Error getting symlink target of symlink "+symlink+L". Not following symlink.", LL_ERROR);
+		return false;
+	}
+
+	target = os_get_final_path(target);
+
+	for(size_t i=0;i<backup_dirs.size();++i)
+	{
+		std::wstring bpath = addDirectorySeparatorAtEnd(backup_dirs[i].path);
+		if(next(target, 0, bpath))
+		{
+			target.erase(0, bpath.size());
+			target = backup_dirs[i].tname + os_file_sep() + target;
+			return true;
+		}
+	}
+
+	if(follow_symlinks)
+	{
+		addSymlinkBackupDir(target);
+		return true;
+	}
+	else
+	{
+		Server->Log(L"Not following symlink "+symlink+L" because of configuration.", LL_INFO);
+		return false;
+	}
+}
+
+void IndexThread::addSymlinkBackupDir( const std::wstring& target )
+{
+	std::wstring name=L".symlink_"+ExtractFileName(target);
+
+	//Make sure it is unique
+	if(backupNameInUse(name))
+	{
+		int n=1;
+		std::wstring add=L"_"+convert(n);
+		while(backupNameInUse(name+add))
+		{
+			add=L"_"+convert(++n);
+		}
+		name+=add;
+	}
+
+	SBackupDir backup_dir;
+
+	cd->addBackupDir(name, target, 0, index_optional?1:0, index_group, 1);
+
+	backup_dir.id=static_cast<int>(db->getLastInsertID());
+
+	if(dwt!=NULL)
+	{
+		std::wstring msg=L"A"+target;
+		dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+	}	
+
+	
+	backup_dir.group=index_group;
+	backup_dir.optional=index_optional;
+	backup_dir.path=target;
+	backup_dir.tname=name;
+	backup_dir.symlinked=true;
+	backup_dir.symlinked_confirmed=true;
+
+	backup_dirs.push_back(backup_dir);
+}
+
+bool IndexThread::backupNameInUse( const std::wstring& name )
+{
+	for(size_t i=0;i<backup_dirs.size();++i)
+	{
+		if(backup_dirs[i].tname==name)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void IndexThread::removeUnconfirmedSymlinkDirs()
+{
+	for(size_t i=0;i<backup_dirs.size();)
+	{
+		if(backup_dirs[i].symlinked &&
+			!backup_dirs[i].symlinked_confirmed)
+		{
+			if(dwt!=NULL)
+			{
+				std::wstring msg=L"D"+backup_dirs[i].path;
+				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
+			}
+
+			cd->delBackupDir(backup_dirs[i].id);
+
+			backup_dirs.erase(backup_dirs.begin()+i);
+			continue;
+		}
+		++i;
+	}
+}
+
+std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::wstring& orig_dir, const std::vector<SFile> files )
+{
+	std::vector<SFileAndHash> ret;
+	ret.resize(files.size());
+	for(size_t i=0;i<files.size();++i)
+	{
+		ret[i].isdir=files[i].isdir;
+		if(files[i].usn==0)
+		{
+			ret[i].change_indicator=files[i].last_modified;
+		}
+		else
+		{
+			ret[i].change_indicator=files[i].usn;
+		}
+		ret[i].name=files[i].name;
+		ret[i].size=files[i].size;
+
+		if(files[i].issym)
+		{
+			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, ret[i].symlink_target))
+			{
+				Server->Log(L"Error getting symlink target of symlink "+orig_dir+os_file_sep()+files[i].name, LL_ERROR);
+			}
+		}
+	}
+	return ret;
 }
 
 

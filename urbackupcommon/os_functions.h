@@ -10,12 +10,23 @@ void getMousePos(int &x, int &y);
 
 struct SFile
 {
+	SFile() :
+		size(0), last_modified(0), 
+		usn(0), created(0),
+		isdir(false), issym(false),
+		isspecial(false)
+	{
+
+	}
+
 	std::wstring name;
 	int64 size;
 	int64 last_modified;
 	int64 usn;
 	int64 created;
 	bool isdir;
+	bool issym;
+	bool isspecial;
 
 	bool operator<(const SFile &other) const
 	{
@@ -23,9 +34,9 @@ struct SFile
 	}
 };
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false, bool exact_filesize=true, bool with_usn=false);
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error=NULL, bool exact_filesize=true, bool with_usn=false);
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL, bool follow_symlinks=false);
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL);
 
 SFile getFileMetadataWin(const std::wstring &path, bool with_usn);
 
