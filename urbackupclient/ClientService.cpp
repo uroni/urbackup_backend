@@ -758,7 +758,7 @@ void ClientConnector::ReceivePackets(void)
 			}
 		}
 
-		if(!identity.empty() && ServerIdentityMgr::checkServerSessionIdentity(identity))
+		if(!identity.empty() && ServerIdentityMgr::checkServerSessionIdentity(identity, endpoint_name))
 		{
 			ident_ok=true;
 		}

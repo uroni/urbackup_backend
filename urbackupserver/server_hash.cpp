@@ -987,6 +987,14 @@ ServerBackupDao::SFindFileEntry BackupServerHash::findFileHash(const std::string
 
 	state.prev = backupdao->getFileEntry(entryid);
 
+	if(!state.prev.exists)
+	{
+		Server->Log("Entry from file entry index not found. File entry index probably out of sync. Needs to be regenerated.", LL_WARNING);
+		ServerBackupDao::SFindFileEntry ret;
+		ret.exists=false;
+		return ret;
+	}
+
 	if(memcmp(state.prev.shahash.data(), pHash.data(), pHash.size())!=0)
 	{
 		Server->Log("Hash of file entry differs from file entry index result. Something may be wrong with the file entry index or this is a hash collision. Ignoring existing file and downloading anew.", LL_WARNING);

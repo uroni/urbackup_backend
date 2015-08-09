@@ -76,7 +76,7 @@ std::wstring os_file_sep(void);
 
 std::string os_file_sepn(void);
 
-bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction=NULL);
+bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction=NULL, bool* isdir=NULL);
 
 bool os_get_symlink_target(const std::wstring &lname, std::wstring &target);
 
@@ -111,5 +111,7 @@ int64 os_to_windows_filetime(int64 unix_time);
 bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified);
 
 bool copy_file(const std::wstring &src, const std::wstring &dst);
+
+bool os_path_absolute(const std::wstring& path);
 
 #endif //OS_FUNCTIONS_H

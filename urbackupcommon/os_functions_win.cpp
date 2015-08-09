@@ -40,6 +40,10 @@
 #ifdef USE_NTFS_TXF
 #include <KtmW32.h>
 #endif
+#include <shlwapi.h>
+
+//For PathIsRelative
+#pragma comment(lib, "Shlwapi.lib")
 
 namespace
 {
@@ -138,6 +142,9 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool e
 		*has_error=false;
 	}
 
+	std::vector<char> usn_buffer;
+	usn_buffer.resize(1024);
+
 	std::vector<SFile> tmp;
 	HANDLE fHandle;
 	WIN32_FIND_DATAW wfd;
@@ -169,131 +176,127 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool e
 
 	do
 	{
-		if( !(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT && wfd.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY) )
+		SFile f;
+		f.name=wfd.cFileName;
+		if(f.name==L"." || f.name==L".." )
+			continue;
+
+		f.usn=0;
+		f.isdir=(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)>0;			
+		LARGE_INTEGER lwt;
+		lwt.HighPart=wfd.ftLastWriteTime.dwHighDateTime;
+		lwt.LowPart=wfd.ftLastWriteTime.dwLowDateTime;
+		f.last_modified=os_windows_to_unix_time(lwt.QuadPart);
+		LARGE_INTEGER size;
+		size.HighPart=wfd.nFileSizeHigh;
+		size.LowPart=wfd.nFileSizeLow;
+		f.size=size.QuadPart;
+
+		lwt.HighPart=wfd.ftCreationTime.dwHighDateTime;
+		lwt.LowPart=wfd.ftCreationTime.dwLowDateTime;
+		f.created=os_windows_to_unix_time(lwt.QuadPart);
+
+		if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT)
 		{
-			SFile f;
-			f.name=wfd.cFileName;
-			if(f.name==L"." || f.name==L".." )
-				continue;
+			f.issym=true;
+			f.isspecial=true;
+		}
+		else
+		{
+			f.issym=false;
+			f.isspecial=false;
+		}
 
-			f.usn=0;
-			f.isdir=(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)>0;			
-			LARGE_INTEGER lwt;
-			lwt.HighPart=wfd.ftLastWriteTime.dwHighDateTime;
-			lwt.LowPart=wfd.ftLastWriteTime.dwLowDateTime;
-			f.last_modified=os_windows_to_unix_time(lwt.QuadPart);
-			LARGE_INTEGER size;
-			size.HighPart=wfd.nFileSizeHigh;
-			size.LowPart=wfd.nFileSizeLow;
-			f.size=size.QuadPart;
-
-			lwt.HighPart=wfd.ftCreationTime.dwHighDateTime;
-			lwt.LowPart=wfd.ftCreationTime.dwLowDateTime;
-			f.created=os_windows_to_unix_time(lwt.QuadPart);
-
-			if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT)
+		if( (exact_filesize || with_usn ) && !f.issym && !f.isdir)
+		{
+			if(with_usn)
 			{
-				f.issym=true;
-				f.isspecial=true;
-			}
+				HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
+					OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 
-			if(exact_filesize && !(wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
-			{
-				if(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT || with_usn)
+				if(hFile!=INVALID_HANDLE_VALUE)
 				{
-					HANDLE hFile = CreateFileW(os_file_prefix(tpath+L"\\"+f.name).c_str(), GENERIC_READ, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
-						OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
-
-					if(hFile!=INVALID_HANDLE_VALUE)
+					BY_HANDLE_FILE_INFORMATION file_info;
+					if(GetFileInformationByHandle(hFile, &file_info))
 					{
-						BY_HANDLE_FILE_INFORMATION file_info;
-						if(GetFileInformationByHandle(hFile, &file_info))
-						{
-							size.HighPart = file_info.nFileSizeHigh;
-							size.LowPart = file_info.nFileSizeLow;
-							f.size = size.QuadPart;
-
-							lwt.HighPart = file_info.ftLastWriteTime.dwHighDateTime;
-							lwt.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
-
-							f.last_modified = os_windows_to_unix_time(lwt.QuadPart);
-
-							lwt.HighPart=file_info.ftCreationTime.dwHighDateTime;
-							lwt.LowPart=file_info.ftCreationTime.dwLowDateTime;
-
-							f.created=os_windows_to_unix_time(lwt.QuadPart);
-						}
-
-						if(!(wfd.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT))
-						{
-							std::vector<char> buffer;
-							buffer.resize(1024);
-							DWORD last_err=0;
-							do 
-							{
-								DWORD ret_bytes = 0;
-								BOOL b = DeviceIoControl(hFile, FSCTL_READ_FILE_USN_DATA, NULL, 0,
-									buffer.data(), static_cast<DWORD>(buffer.size()), &ret_bytes, NULL);
-
-								if(b)
-								{
-									USN_RECORD* usnv2=reinterpret_cast<USN_RECORD*>(buffer.data());
-									if(usnv2->MajorVersion==2)
-									{
-										f.usn = usnv2->Usn;
-									}
-									else if(usnv2->MajorVersion==3)
-									{
-										USN_RECORD_V3* usnv3=reinterpret_cast<USN_RECORD_V3*>(buffer.data());
-										f.usn = usnv3->Usn;
-									}
-									else
-									{
-										Server->Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+tpath+L"\\"+f.name+L"\" not supported", LL_ERROR);
-									}
-								}
-								else
-								{
-									last_err=GetLastError();
-								}
-
-								if(last_err==ERROR_INSUFFICIENT_BUFFER)
-								{
-									buffer.resize(buffer.size()*2);
-								}
-
-							} while (last_err==ERROR_INSUFFICIENT_BUFFER);
-							
-						}
-
-						CloseHandle(hFile);
-					}
-				}
-				else
-				{
-					WIN32_FILE_ATTRIBUTE_DATA fad;
-					if( GetFileAttributesExW(os_file_prefix(tpath+L"\\"+f.name).c_str(),  GetFileExInfoStandard, &fad) )
-					{
-						size.HighPart = fad.nFileSizeHigh;
-						size.LowPart = fad.nFileSizeLow;
+						size.HighPart = file_info.nFileSizeHigh;
+						size.LowPart = file_info.nFileSizeLow;
 						f.size = size.QuadPart;
 
-						lwt.HighPart = fad.ftLastWriteTime.dwHighDateTime;
-						lwt.LowPart = fad.ftLastWriteTime.dwLowDateTime;
+						lwt.HighPart = file_info.ftLastWriteTime.dwHighDateTime;
+						lwt.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
 
 						f.last_modified = os_windows_to_unix_time(lwt.QuadPart);
 
-						lwt.HighPart=fad.ftCreationTime.dwHighDateTime;
-						lwt.LowPart=fad.ftCreationTime.dwLowDateTime;
+						lwt.HighPart=file_info.ftCreationTime.dwHighDateTime;
+						lwt.LowPart=file_info.ftCreationTime.dwLowDateTime;
 
 						f.created=os_windows_to_unix_time(lwt.QuadPart);
 					}
-				}				
-			}			
 
-			if(f.last_modified<0) f.last_modified*=-1;
-			tmp.push_back(f);		
+					
+					DWORD last_err=0;
+					do 
+					{
+						DWORD ret_bytes = 0;
+						BOOL b = DeviceIoControl(hFile, FSCTL_READ_FILE_USN_DATA, NULL, 0,
+							usn_buffer.data(), static_cast<DWORD>(usn_buffer.size()), &ret_bytes, NULL);
+
+						if(b)
+						{
+							USN_RECORD* usnv2=reinterpret_cast<USN_RECORD*>(usn_buffer.data());
+							if(usnv2->MajorVersion==2)
+							{
+								f.usn = usnv2->Usn;
+							}
+							else if(usnv2->MajorVersion==3)
+							{
+								USN_RECORD_V3* usnv3=reinterpret_cast<USN_RECORD_V3*>(usn_buffer.data());
+								f.usn = usnv3->Usn;
+							}
+							else
+							{
+								Server->Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+tpath+L"\\"+f.name+L"\" not supported", LL_ERROR);
+							}
+						}
+						else
+						{
+							last_err=GetLastError();
+						}
+
+						if(last_err==ERROR_INSUFFICIENT_BUFFER)
+						{
+							usn_buffer.resize(usn_buffer.size()*2);
+						}
+
+					} while (last_err==ERROR_INSUFFICIENT_BUFFER);
+
+					CloseHandle(hFile);
+				}
+			}
+			else
+			{
+				WIN32_FILE_ATTRIBUTE_DATA fad;
+				if( GetFileAttributesExW(os_file_prefix(tpath+L"\\"+f.name).c_str(),  GetFileExInfoStandard, &fad) )
+				{
+					size.HighPart = fad.nFileSizeHigh;
+					size.LowPart = fad.nFileSizeLow;
+					f.size = size.QuadPart;
+
+					lwt.HighPart = fad.ftLastWriteTime.dwHighDateTime;
+					lwt.LowPart = fad.ftLastWriteTime.dwLowDateTime;
+
+					f.last_modified = os_windows_to_unix_time(lwt.QuadPart);
+
+					lwt.HighPart=fad.ftCreationTime.dwHighDateTime;
+					lwt.LowPart=fad.ftCreationTime.dwLowDateTime;
+
+					f.created=os_windows_to_unix_time(lwt.QuadPart);
+				}
+			}							
 		}
+		if(f.last_modified<0) f.last_modified*=-1;
+		tmp.push_back(f);		
 	}
 	while (FindNextFileW(fHandle,&wfd) );
 	FindClose(fHandle);
@@ -608,12 +611,18 @@ std::string os_file_sepn(void)
 	return "\\";
 }
 
-bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &lname, void* transaction)
+bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &lname, void* transaction, bool* isdir)
 {
 #if (_WIN32_WINNT >= 0x0600)
 	DWORD flags=0;
-	if(isDirectory(target, transaction))
+	if(isdir!=NULL && *isdir)
+	{
 		flags|=SYMBOLIC_LINK_FLAG_DIRECTORY;
+	}
+	else if(isdir==NULL && isDirectory(target, transaction))
+	{
+		flags|=SYMBOLIC_LINK_FLAG_DIRECTORY;
+	}
 
 	DWORD rc;
 	if(transaction==NULL)
@@ -753,16 +762,25 @@ bool os_lookuphostname(std::string pServer, unsigned int *dest)
 }
 #endif
 
-bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction)
+bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction, bool* isdir)
 {
 	if(transaction==NULL)
 	{
-		if(!isDirectory(target, NULL) || !os_link_symbolic_junctions(target, lname) )
-			return os_link_symbolic_symlink(target, lname, NULL);
+		bool l_isdir;
+		if(isdir!=NULL)
+		{
+			l_isdir=*isdir;
+		}
+		else
+		{
+			l_isdir=isDirectory(target, NULL);
+		}
+		if(!l_isdir || !os_path_absolute(target) ||!os_link_symbolic_junctions(target, lname) )
+			return os_link_symbolic_symlink(target, lname, NULL, isdir);
 	}
 	else
 	{
-		return os_link_symbolic_symlink(target, lname, transaction);
+		return os_link_symbolic_symlink(target, lname, transaction, isdir);
 	}
 
 	return true;
@@ -1142,4 +1160,9 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 	{
 		return true;
 	}
+}
+
+bool os_path_absolute(const std::wstring& path)
+{
+	return PathIsRelative(path.c_str())==FALSE;
 }

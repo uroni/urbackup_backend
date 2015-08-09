@@ -170,7 +170,7 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	
 	if(crypto_fak->verifyData(pubkey, challenge, signature))
 	{
-		ServerIdentityMgr::addSessionIdentity(session_identity);
+		ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name);
 		tcpstack.Send(pipe, "ok");
 		challenges.erase(challenge_it);
 	}

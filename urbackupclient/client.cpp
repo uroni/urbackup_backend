@@ -746,13 +746,6 @@ void IndexThread::indexDirs(void)
 
 	writeTokens();
 
-	bool tokens_changed=false;
-	if(cd->getMiscValue("has_new_token")==L"true")
-	{
-		VSSLog("File access tokens changed (e.g. new user). Not using db...", LL_INFO);
-		tokens_changed=true;
-	}
-
 	token_cache.reset();
 
 	std::vector<std::wstring> selected_dirs;
@@ -944,7 +937,7 @@ void IndexThread::indexDirs(void)
 			}
 #endif
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
-				backup_dirs[i].optional, !(patterns_changed || tokens_changed) );
+				backup_dirs[i].optional, !patterns_changed );
 
 			cd->copyFromTmpFiles();
 			commitModifyFilesBuffer();
@@ -1060,10 +1053,6 @@ void IndexThread::indexDirs(void)
 	{
 		readPatterns(patterns_changed, true);
 	}
-	if(tokens_changed)
-	{
-		cd->updateMiscValue("has_new_token", L"false");
-	}
 	share_dirs();
 }
 
@@ -1089,7 +1078,7 @@ bool IndexThread::skipFile(const std::wstring& filepath, const std::wstring& nam
 	return false;
 }
 
-bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring &dir, const std::wstring &named_path, std::fstream &outfile, bool first, bool optional, bool use_db)
+bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, std::wstring named_path, std::fstream &outfile, bool first, bool optional, bool use_db)
 {
 	bool has_include=false;
 	index_optional=optional;
@@ -3455,7 +3444,7 @@ void IndexThread::writeDir(std::fstream& out, const std::wstring& name, const st
 	if(!extra.empty())
 	{
 		if(extra[0]=='&')
-			out << "#" << extra.substr(1);
+			out << "#" << extra.substr(1) << "\n";
 		else
 			out << extra << "\n";
 	}
@@ -3533,9 +3522,6 @@ bool IndexThread::addBackupScripts(std::fstream& outfile)
 
 void IndexThread::readFollowSymlinks()
 {
-#ifdef _WIN32
-	follow_symlinks=false;
-#else
 	follow_symlinks=true;
 	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 	if(curr_settings.get()!=NULL)
@@ -3546,7 +3532,6 @@ void IndexThread::readFollowSymlinks()
 			follow_symlinks = (val==L"true");
 		}
 	}
-#endif	
 }
 
 void IndexThread::setFlags( unsigned int flags )
@@ -3579,7 +3564,7 @@ void IndexThread::setFlags( unsigned int flags )
 	}
 }
 
-bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, std::wstring& target)
+bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::wstring& orig_path, std::wstring& target)
 {
 	if(!os_get_symlink_target(symlink, target))
 	{
@@ -3587,15 +3572,27 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, std::wstring
 		return false;
 	}
 
+	if(!os_path_absolute(target))
+	{
+		target = orig_path + os_file_sep() + target;
+	}
+
 	target = os_get_final_path(target);
 
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 		std::wstring bpath = addDirectorySeparatorAtEnd(backup_dirs[i].path);
-		if(next(target, 0, bpath))
+		if(removeDirectorySeparatorAtEnd(target)==removeDirectorySeparatorAtEnd(backup_dirs[i].path)
+			|| next(target, 0, bpath))
 		{
 			target.erase(0, bpath.size());
-			target = backup_dirs[i].tname + os_file_sep() + target;
+			target = backup_dirs[i].tname + (target.empty() ? L"" : (os_file_sep() + target));
+
+			if(backup_dirs[i].symlinked)
+			{
+				backup_dirs[i].symlinked_confirmed=true;
+			}
+
 			return true;
 		}
 	}
@@ -3702,10 +3699,12 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::wstring&
 		}
 		ret[i].name=files[i].name;
 		ret[i].size=files[i].size;
+		ret[i].issym=files[i].issym;
+		ret[i].isspecial=files[i].isspecial;
 
 		if(files[i].issym)
 		{
-			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, ret[i].symlink_target))
+			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target))
 			{
 				Server->Log(L"Error getting symlink target of symlink "+orig_dir+os_file_sep()+files[i].name, LL_ERROR);
 			}

@@ -300,7 +300,7 @@ bool FullFileBackup::doFileBackup()
 						str_map::iterator sym_target = extra_params.find(L"sym_target");
 						if(sym_target!=extra_params.end())
 						{
-							if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep)))
+							if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
 							{
 								ServerLogger::Log(logid, L"Creating symlink at \""+backuppath+local_curr_os_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
 								c_has_error=true;
@@ -410,7 +410,7 @@ bool FullFileBackup::doFileBackup()
 					if(sym_target!=extra_params.end())
 					{
 						std::wstring symlink_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
-						if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep)))
+						if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
 						{
 							ServerLogger::Log(logid, L"Creating symlink at \""+symlink_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
 							c_has_error=true;

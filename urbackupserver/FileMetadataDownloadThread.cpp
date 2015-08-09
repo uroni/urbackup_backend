@@ -92,17 +92,22 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 			std::string curr_fn;
 			curr_fn.resize(little_endian(curr_fn_size));
 
-			if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
+			if(curr_fn_size>0)
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Filename could not be read.", LL_ERROR);
-				return false;
+				if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
+				{
+					ServerLogger::Log(logid, L"Error saving metadata. Filename could not be read.", LL_ERROR);
+					return false;
+				}
 			}
-
-			if(curr_fn.empty())
+			else
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Filename is empty.", LL_ERROR);
-				return false;
-			}
+				if(curr_fn.empty())
+				{
+					ServerLogger::Log(logid, L"Error saving metadata. Filename is empty.", LL_ERROR);
+					return false;
+				}
+			}					
 
 			bool is_dir = curr_fn[0]=='d';
 

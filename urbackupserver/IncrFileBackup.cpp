@@ -591,7 +591,7 @@ bool IncrFileBackup::doFileBackup()
 							str_map::iterator sym_target = extra_params.find(L"sym_target");
 							if(sym_target!=extra_params.end())
 							{
-								if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep)))
+								if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
 								{
 									ServerLogger::Log(logid, L"Creating symlink at \""+backuppath+local_curr_os_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
 									c_has_error=true;
@@ -732,7 +732,7 @@ bool IncrFileBackup::doFileBackup()
 					if(sym_target!=extra_params.end())
 					{
 						std::wstring symlink_path = backuppath+local_curr_os_path;
-						if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep)))
+						if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
 						{
 							ServerLogger::Log(logid, L"Creating symlink at \""+symlink_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
 							c_has_error=true;

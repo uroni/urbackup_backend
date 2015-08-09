@@ -19,7 +19,7 @@
 #include "../fileservplugin/IFileServ.h"
 #include "tokens.h"
 #include "clientdao.h"
-#include "../urbackupserver/database.h"
+#include "database.h"
 #include "client.h"
 
 namespace
@@ -28,7 +28,7 @@ namespace
 	{
 	public:
 		TokenCallback()
-			: client_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER))
+			: client_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT), false)
 		{
 		}
 

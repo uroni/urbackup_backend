@@ -1,18 +1,29 @@
 #include "../Interface/Mutex.h"
 #include "../fileservplugin/IFileServFactory.h"
 
+struct SSessionIdentity
+{
+	std::string ident;
+	std::string endpoint;
+
+	bool operator==(const SSessionIdentity& other) const
+	{
+		return ident==other.ident;
+	}
+};
+
 class ServerIdentityMgr
 {
 public:
 	static void addServerIdentity(const std::string &pIdentity, const std::string& pPublicKey);
-	static bool checkServerSessionIdentity(const std::string &pIdentity);
+	static bool checkServerSessionIdentity(const std::string &pIdentity, const std::string& endpoint);
 	static bool checkServerIdentity(const std::string &pIdentity);
 	static bool hasPublicKey(const std::string &pIdentity);
 	static std::string getPublicKey(const std::string &pIdentity);
 	static bool setPublicKey(const std::string &pIdentity, const std::string &pPublicKey);
 	static void loadServerIdentities(void);
 	static size_t numServerIdentities(void);
-	static void addSessionIdentity(const std::string &pIdentity);
+	static void addSessionIdentity(const std::string &pIdentity, const std::string& endpoint);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);
@@ -30,7 +41,7 @@ private:
 	static std::vector<std::string> publickeys;
 	static std::vector<int64> online_identities;
 	static std::vector<std::string> new_identities;
-	static std::vector<std::string> session_identities;
+	static std::vector<SSessionIdentity> session_identities;
 	static std::vector<int64> online_session_identities;
 
 	static IMutex *mutex;

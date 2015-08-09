@@ -929,10 +929,7 @@ bool FileBackup::constructBackupPath(bool with_hashes, bool on_snapshot, bool cr
 	backuppath_single=widen((std::string)buffer);
 	std::wstring backupfolder=server_settings->getSettings()->backupfolder;
 	backuppath=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single;
-	if(with_hashes)
-		backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+L".hashes";
-	else
-		backuppath_hashes.clear();
+	backuppath_hashes=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath_single+os_file_sep()+L".hashes";
 
 	dir_pool_path = backupfolder + os_file_sep() + clientname + os_file_sep() + L".directory_pool";
 
@@ -940,7 +937,7 @@ bool FileBackup::constructBackupPath(bool with_hashes, bool on_snapshot, bool cr
 	{
 		if(create_fs)
 		{
-			return SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)  && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));
+			return SnapshotHelper::createEmptyFilesystem(clientname, backuppath_single)  && os_create_dir(os_file_prefix(backuppath_hashes));
 		}
 		else
 		{
@@ -949,7 +946,7 @@ bool FileBackup::constructBackupPath(bool with_hashes, bool on_snapshot, bool cr
 	}
 	else
 	{
-		return os_create_dir(os_file_prefix(backuppath)) && (!with_hashes || os_create_dir(os_file_prefix(backuppath_hashes)));	
+		return os_create_dir(os_file_prefix(backuppath)) && os_create_dir(os_file_prefix(backuppath_hashes));	
 	}
 }
 
@@ -1338,7 +1335,7 @@ void FileBackup::deleteBackup()
 	}
 }
 
-bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std::wstring& symlink_target, const std::wstring& dir_sep )
+bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std::wstring& symlink_target, const std::wstring& dir_sep, bool isdir )
 {
 	std::vector<std::wstring> toks;
 	TokenizeMail(symlink_target, toks, dir_sep);
@@ -1365,5 +1362,5 @@ bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std
 		}
 	}
 
-	return os_link_symbolic(target, name);
+	return os_link_symbolic(target, name, NULL, &isdir);
 }

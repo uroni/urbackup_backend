@@ -82,9 +82,9 @@ struct SFileAndHash
 class ClientDAO
 {
 public:
-	ClientDAO(IDatabase *pDB);
+	ClientDAO(IDatabase *pDB, bool with_files_tmp=true);
 	~ClientDAO();
-	void prepareQueries(void);
+	void prepareQueries();
 	void destroyQueries(void);
 	void restartQueries(void);
 
@@ -203,4 +203,6 @@ private:
 	IQuery* q_addBackupDir;
 	IQuery* q_delBackupDir;
 	//@-SQLGenVariablesEnd
+
+	bool with_files_tmp;
 };

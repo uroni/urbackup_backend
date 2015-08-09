@@ -103,7 +103,7 @@ bool write_tokens()
 
 	if(has_new_token)
 	{
-		dao.updateMiscValue("has_new_token", L"true");
+		//dao.updateMiscValue("has_new_token", L"true");
 
 		if(has_new_token)
 		{
