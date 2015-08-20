@@ -24,7 +24,7 @@ namespace
 		}
 		else
 		{
-			ofn.Flags |= OFN_OVERWRITEPROMPT | OFN_CREATEPROMPT;
+			ofn.Flags |= OFN_OVERWRITEPROMPT;
 		}
 
 		if(multi_select)

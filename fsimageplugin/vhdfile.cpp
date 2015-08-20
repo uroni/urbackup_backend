@@ -39,7 +39,8 @@ const int64 unixtime_offset=946684800;
 const unsigned int sector_size=512;
 
 VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsigned int pBlocksize, bool fast_mode, bool compress)
-	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false)
+	: dstsize(pDstsize), blocksize(pBlocksize), fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false),
+	file(NULL)
 {
 	compressed_file=NULL;
 	parent=NULL;
@@ -133,7 +134,7 @@ VHDFile::VHDFile(const std::wstring &fn, bool pRead_only, uint64 pDstsize, unsig
 }
 
 VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRead_only, bool fast_mode, bool compress)
-	: fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false)
+	: fast_mode(fast_mode), bitmap_offset(0), bitmap_dirty(false), volume_offset(0), finished(false), file(NULL)
 {
 	compressed_file=NULL;
 	curr_offset=0;
@@ -233,7 +234,7 @@ VHDFile::VHDFile(const std::wstring &fn, const std::wstring &parent_fn, bool pRe
 
 VHDFile::~VHDFile()
 {
-	if(!finished)
+	if(!finished && file!=NULL)
 	{
 		finish();
 	}

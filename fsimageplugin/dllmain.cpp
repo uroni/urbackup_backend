@@ -367,7 +367,9 @@ namespace
 					return false;
 				}
 
-				for(int64 pos=0, size=input_files[i]->Size();pos<size;pos+=buf.size())
+				input_files[i]->Seek(0);
+
+				for(int64 pos=0, size=input_files[i]->Size();pos<size;)
 				{
 					int64 toread = (std::min)(static_cast<int64>(buf.size()), size-pos);
 
@@ -386,6 +388,7 @@ namespace
 					}
 
 					total_written+=read;
+					pos+=read;
 					show_progress(total_written, total_size);
 				}
 			}
