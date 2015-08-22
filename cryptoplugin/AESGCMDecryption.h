@@ -2,6 +2,14 @@
 #include "IAESGCMDecryption.h"
 #include "cryptopp_inc.h"
 
+class CtrIvGCMDecryption : public CryptoPP::GCM<CryptoPP::AES >::Decryption
+{
+public:
+	void Resynchonize() {
+		m_state = State_IVSet;
+	}
+};
+
 class AESGCMDecryption : public IAESGCMDecryption
 {
 public:
@@ -14,10 +22,15 @@ public:
 	virtual bool get(char *data, size_t& data_size);
 
 private:
-	CryptoPP::GCM< CryptoPP::AES >::Decryption decryption;
+	size_t findAndUnescapeEndMarker(const char *data, size_t data_size,
+		std::string& data_copy, bool& has_error);
+
+	CtrIvGCMDecryption decryption;
 	CryptoPP::AuthenticatedDecryptionFilter decryption_filter;
 
 	CryptoPP::SecByteBlock m_sbbKey;
 	std::string iv_buffer;
 	bool iv_done;
+
+	size_t end_marker_state;
 };

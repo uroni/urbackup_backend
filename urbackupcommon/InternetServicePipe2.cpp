@@ -18,6 +18,7 @@
 
 #include "InternetServicePipe2.h"
 #include "../cryptoplugin/ICryptoFactory.h"
+#include "../Interface/Server.h"
 
 extern ICryptoFactory *crypto_fak;
 
@@ -51,51 +52,78 @@ void InternetServicePipe2::init( IPipe *pcs, const std::string &key )
 
 size_t InternetServicePipe2::Read( char *buffer, size_t bsize, int timeoutms/*=-1 */ )
 {
-	size_t read = cs->Read(buffer, bsize, timeoutms);
+	int64 starttime=0;
 
-	if(read>0)
+	if(timeoutms>0)
 	{
-		if(!dec->put(buffer, read))
-		{
-			has_error=true;
-			return 0;
-		}
-
-		if(!dec->get(buffer, bsize))
-		{
-			has_error=true;
-			return 0;
-		}
-
-		return bsize;
+		starttime = Server->getTimeMS();
 	}
+
+	do
+	{
+		size_t read = cs->Read(buffer, bsize, static_cast<int>(timeoutms>0 ? (timeoutms-(Server->getTimeMS()-starttime)) : timeoutms));
+
+		if(read>0)
+		{
+			if(!dec->put(buffer, read))
+			{
+				has_error=true;
+				return 0;
+			}
+
+			if(!dec->get(buffer, bsize))
+			{
+				has_error=true;
+				return 0;
+			}
+
+			if(bsize>0)
+			{
+				return bsize;
+			}			
+		}
+	}
+	while(timeoutms>0 && Server->getTimeMS()-starttime<timeoutms);
 
 	return 0;
 }
 
 size_t InternetServicePipe2::Read( std::string *ret, int timeoutms/*=-1 */ )
 {
-	size_t read = cs->Read(ret, timeoutms);
+	int64 starttime=0;
 
-	if(read>0)
+	if(timeoutms>0)
 	{
-		if(!dec->put(ret->data(), read))
-		{
-			has_error=true;
-			return 0;
-		}
-
-		bool l_has_error=false;
-		*ret = dec->get(l_has_error);
-
-		if(l_has_error)
-		{
-			has_error=true;
-			return 0;
-		}
-
-		return ret->size();
+		starttime = Server->getTimeMS();
 	}
+
+	do 
+	{
+		size_t read = cs->Read(ret, static_cast<int>(timeoutms>0 ? (timeoutms-(Server->getTimeMS()-starttime)) : timeoutms));
+
+		if(read>0)
+		{
+			if(!dec->put(ret->data(), read))
+			{
+				has_error=true;
+				return 0;
+			}
+
+			bool l_has_error=false;
+			*ret = dec->get(l_has_error);
+
+			if(l_has_error)
+			{
+				has_error=true;
+				return 0;
+			}
+
+			if(!ret->empty())
+			{
+				return ret->size();
+			}			
+		}
+	} while (timeoutms>0 && Server->getTimeMS()-starttime<timeoutms);	
 
 	return 0;
 }

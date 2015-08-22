@@ -17,11 +17,13 @@
 **************************************************************************/
 
 #include "AESGCMEncryption.h"
+#include "..\stringtools.h"
 
 const size_t iv_size = 64;
+const size_t end_marker_zeros=2;
 
 AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
-	: encryption(), encryption_filter(encryption), iv_done(false)
+	: encryption(), encryption_filter(encryption), iv_done(false), end_marker_state(0)
 {
 	if(hash_password)
 	{
@@ -40,7 +42,13 @@ AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 
 	prng.GenerateBlock(m_IV.BytePtr(), m_IV.size());
 
+	encryption.SetKeyWithIV(m_sbbKey.BytePtr(), m_sbbKey.size(),
+		m_IV.BytePtr(), m_IV.size());
+
 	iv_done=false;
+
+	assert(encryption.CanUseStructuredIVs());
+	assert(encryption.IsResynchronizable());
 }
 
 
@@ -52,15 +60,31 @@ void AESGCMEncryption::put( const char *data, size_t data_size )
 void AESGCMEncryption::flush()
 {
 	encryption_filter.MessageEnd();
+	encryption.Resynchonize();
+	end_markers.push_back(encryption_filter.MaxRetrievable());
 }
 
 std::string AESGCMEncryption::get()
 {
 	std::string ret;
 
-	size_t iv_add = 0;
+	size_t iv_add = iv_done ? 0 : m_IV.size();
 
-	ret.resize(encryption_filter.MaxRetrievable()+iv_add);
+	size_t max_retrievable;
+
+	bool add_end_marker=false;
+	if(!end_markers.empty())
+	{
+		max_retrievable = end_markers[0];
+		end_markers.erase(end_markers.begin());
+		add_end_marker=true;
+	}
+	else
+	{
+		max_retrievable = encryption_filter.MaxRetrievable();
+	}
+
+	ret.resize(max_retrievable+iv_add + ( end_marker_zeros ? (end_marker_zeros + 1) : 0 ) );
 
 	if(!iv_done)
 	{
@@ -71,14 +95,63 @@ std::string AESGCMEncryption::get()
 
 	if(ret.size()>iv_add)
 	{
-		size_t nb = encryption_filter.Get(reinterpret_cast<byte*>(&ret[iv_add]), ret.size()-iv_add);
-		if(nb+iv_add!=ret.size())
+		size_t nb = encryption_filter.Get(reinterpret_cast<byte*>(&ret[iv_add]), max_retrievable);
+		if(nb!=max_retrievable)
 		{
-			ret.resize(nb+iv_add);
+			ret.resize(nb+iv_add+ ( end_marker_zeros ? (end_marker_zeros + 1) : 0 ));
 		}
+		escapeEndMarker(ret, nb+iv_add);
+		decEndMarkers(nb);
 	}
-	
+
+	if(add_end_marker)	
+	{
+		//The rest is already zero
+		ret[ret.size()-1]=1;
+		end_marker_state=0;
+		encryption_filter.GetNextMessage();
+	}
 
 	return ret;
+}
+
+void AESGCMEncryption::decEndMarkers( size_t n )
+{
+	for(size_t i=0;i<end_markers.size();++i)
+		end_markers[i]-=n;
+}
+
+void AESGCMEncryption::escapeEndMarker(std::string& ret, size_t size)
+{
+	for(size_t i=0;i<size;)
+	{
+		char ch=ret[i];
+
+		if(end_marker_state==0 && i+end_marker_zeros<=size
+			&& ret[i+end_marker_zeros-1]!=0)
+		{
+			i+=end_marker_zeros;
+			continue;
+		}
+		
+		if(ch==0)
+		{
+			++end_marker_state;
+
+			if(end_marker_state==end_marker_zeros)
+			{
+				char ich=0;
+				ret.insert(ret.begin()+i+1, ich);
+				++i;
+				end_marker_state=0;
+			}
+		}
+		else
+		{
+			end_marker_state=0;
+		}
+
+		++i;
+	}
 }
 

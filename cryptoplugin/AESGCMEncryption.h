@@ -1,6 +1,18 @@
 #pragma once
 #include "IAESGCMEncryption.h"
 #include "cryptopp_inc.h"
+#include <vector>
+
+namespace 
+{
+	class CtrIvGCMEncryption : public CryptoPP::GCM<CryptoPP::AES >::Encryption
+	{
+	public:
+		void Resynchonize() {
+			m_state = State_IVSet;
+		}
+	};
+}
 
 class AESGCMEncryption : public IAESGCMEncryption
 {
@@ -14,11 +26,16 @@ public:
 	virtual std::string get();
 
 private:
+	void reinit();
+	void decEndMarkers(size_t n);
+	void escapeEndMarker(std::string& ret, size_t size);
 
+	size_t end_marker_state;
 	bool iv_done;
 	CryptoPP::SecByteBlock m_sbbKey;
 	CryptoPP::SecByteBlock m_IV;
 
-	CryptoPP::GCM<CryptoPP::AES >::Encryption encryption;
+	CtrIvGCMEncryption encryption;
 	CryptoPP::AuthenticatedEncryptionFilter encryption_filter;
+	std::vector<size_t> end_markers;
 };

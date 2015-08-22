@@ -505,7 +505,6 @@ void InternetClientThread::operator()(void)
 	std::string hmac_key;
 	std::string server_pubkey;
 	bool destroy_cs = true;
-	std::auto_ptr<IECDHKeyExchange> ecdh_key_exchange(crypto_fak->createECDHKeyExchange());
 
 	{
 		char *buf;
@@ -576,7 +575,7 @@ void InternetClientThread::operator()(void)
 		}
 		else
 		{
-			data.addChar(ID_ISC_AUTH_TOKEN);
+			data.addChar(ID_ISC_AUTH_TOKEN2);
 		}
 
 		data.addString(server_settings.clientname);
@@ -585,11 +584,14 @@ void InternetClientThread::operator()(void)
 
 		if(token.second.empty())
 		{
+			std::auto_ptr<IECDHKeyExchange> ecdh_key_exchange(crypto_fak->createECDHKeyExchange());
+
 			authkey=server_settings.authkey;			
 			std::string salt = challenge+client_challenge+ecdh_key_exchange->getSharedKey(server_pubkey);
 			hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, (std::max)(pbkdf2_iterations,server_iterations) );
 			std::string hmac_l=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);
 			data.addString(hmac_l);
+			data.addString(ecdh_key_exchange->getPublicKey());
 		}
 		else
 		{
@@ -599,9 +601,6 @@ void InternetClientThread::operator()(void)
 			data.addString(hmac_l);
 			data.addUInt(token.first);
 		}
-
-		ecdh_key_exchange.reset();
-
 		
 		data.addString(client_challenge);
 		data.addUInt(pbkdf2_iterations);

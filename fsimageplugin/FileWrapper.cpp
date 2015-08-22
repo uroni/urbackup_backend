@@ -35,7 +35,7 @@ _i64 FileWrapper::RealSize()
 
 _i64 FileWrapper::Size( void )
 {
-	return static_cast<_i64>(wfile->getSize());
+	return static_cast<_i64>(wfile->getSize())-offset;
 }
 
 bool FileWrapper::Seek( _i64 spos )
@@ -79,6 +79,6 @@ std::string FileWrapper::Read( _u32 tr, bool *has_error )
 FileWrapper::FileWrapper( IVHDFile* wfile, int64 offset )
 	: wfile(wfile), offset(offset)
 {
-
+	Seek(0);
 }
 

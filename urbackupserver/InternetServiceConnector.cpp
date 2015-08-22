@@ -263,10 +263,11 @@ void InternetServiceConnector::ReceivePackets(void)
 			{
 			case ISS_AUTH:
 				{
-					if(id==ID_ISC_AUTH || id==ID_ISC_AUTH_TOKEN || id==ID_ISC_AUTH2)
+					if(id==ID_ISC_AUTH || id==ID_ISC_AUTH_TOKEN
+						|| id==ID_ISC_AUTH2 || id==ID_ISC_AUTH_TOKEN2)
 					{
 						unsigned int iterations=static_cast<unsigned int>(pbkdf2_iterations);
-						if(id==ID_ISC_AUTH_TOKEN)
+						if(id==ID_ISC_AUTH_TOKEN || id==ID_ISC_AUTH_TOKEN2)
 						{
 							iterations=1;
 							token_auth=true;
@@ -285,7 +286,7 @@ void InternetServiceConnector::ReceivePackets(void)
 						{							
 							std::string token;
 							bool db_timeout=false;
-							if(id==ID_ISC_AUTH_TOKEN)
+							if(id==ID_ISC_AUTH_TOKEN || id==ID_ISC_AUTH_TOKEN2)
 							{
 								unsigned int token_id;
 								if(rd.getUInt(&token_id) )
@@ -310,11 +311,6 @@ void InternetServiceConnector::ReceivePackets(void)
 							{
 								authkey=getAuthkeyFromDB(clientname, db_timeout);
 							}
-							
-							if(!rd.getStr(&client_challenge) || client_challenge.size()<32 )
-							{
-								errmsg="Client challenge missing or not long enough";
-							}
 
 							std::string ecdh_pubkey;
 							if(id==ID_ISC_AUTH2)
@@ -323,6 +319,17 @@ void InternetServiceConnector::ReceivePackets(void)
 								{
 									errmsg="Missing field -2";
 								}
+							}
+							
+							if(!rd.getStr(&client_challenge) || client_challenge.size()<32 )
+							{
+								errmsg="Client challenge missing or not long enough";
+							}
+
+							unsigned int client_iterations = iterations;
+							if(id!=ID_ISC_AUTH_TOKEN && id!=ID_ISC_AUTH_TOKEN2)
+							{
+								rd.getUInt(&client_iterations);
 							}
 
 							if(errmsg.empty() && !authkey.empty())
@@ -334,15 +341,19 @@ void InternetServiceConnector::ReceivePackets(void)
 									salt+=ecdh_key_exchange->getSharedKey(ecdh_pubkey);
 								}
 
-								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, iterations);
+								hmac_key=crypto_fak->generateBinaryPasswordHash(authkey, salt, (std::max)(iterations, client_iterations));
 
 								std::string hmac_loc=crypto_fak->generateBinaryPasswordHash(hmac_key, challenge, 1);								
 								if(hmac_loc==hmac)
 								{
-									if(id==ID_ISC_AUTH2)
+									if(id==ID_ISC_AUTH2 || id==ID_ISC_AUTH_TOKEN2)
 									{
-										delete ecdh_key_exchange;
-										ecdh_key_exchange=NULL;
+										if(id==ID_ISC_AUTH2)
+										{
+											delete ecdh_key_exchange;
+											ecdh_key_exchange=NULL;
+										}
+										
 										is_pipe=new InternetServicePipe2(comm_pipe, hmac_key);
 									}
 									else
@@ -400,10 +411,7 @@ void InternetServiceConnector::ReceivePackets(void)
 							data.addString(errmsg);
 						}
 						else if(state==ISS_CAPA)
-						{
-							unsigned int client_iterations;
-							rd.getUInt(&client_iterations);
-							
+						{						
 							data.addChar(ID_ISC_AUTH_OK);
 
 							std::string hmac_loc;

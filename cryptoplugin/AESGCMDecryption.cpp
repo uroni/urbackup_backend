@@ -17,11 +17,13 @@
 **************************************************************************/
 #include "AESGCMDecryption.h"
 #include "../Interface/Server.h"
+#include "../stringtools.h"
 
 const size_t iv_size = 64;
+const size_t end_marker_zeros=2;
 
 AESGCMDecryption::AESGCMDecryption( const std::string &password, bool hash_password )
-	: decryption(), decryption_filter(decryption), iv_done(false)
+	: decryption(), decryption_filter(decryption), iv_done(false), end_marker_state(0)
 {
 	if(hash_password)
 	{
@@ -33,6 +35,9 @@ AESGCMDecryption::AESGCMDecryption( const std::string &password, bool hash_passw
 		m_sbbKey.resize(password.size());
 		memcpy(m_sbbKey.BytePtr(), password.c_str(), password.size());
 	}
+
+	assert(decryption.CanUseStructuredIVs());
+	assert(decryption.IsResynchronizable());
 }
 
 bool AESGCMDecryption::put( const char *data, size_t data_size)
@@ -49,6 +54,7 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 		{
 			decryption.SetKeyWithIV(m_sbbKey.BytePtr(), m_sbbKey.size(),
 				reinterpret_cast<const byte*>(iv_buffer.data()), iv_buffer.size());
+			iv_done=true;
 		}
 
 		if(data_size==0)
@@ -63,7 +69,40 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 
 	try
 	{
-		decryption_filter.Put(reinterpret_cast<const byte*>(data), data_size);
+		std::string data_copy;
+		bool has_error=false;
+		size_t end_marker_pos = findAndUnescapeEndMarker(data, data_size, data_copy, has_error);
+
+		if(end_marker_pos==std::string::npos)
+		{
+			if(has_error)
+			{
+				Server->Log("Error scanning encrypted data for end marker", LL_ERROR);
+				return false;
+			}
+		}
+		else
+		{
+			if(end_marker_pos>end_marker_zeros+1)
+			{
+				if(!data_copy.empty())
+				{
+					decryption_filter.Put(reinterpret_cast<const byte*>(data_copy.data()), end_marker_pos-end_marker_zeros-1);
+				}
+				else
+				{
+					decryption_filter.Put(reinterpret_cast<const byte*>(data), end_marker_pos-end_marker_zeros-1);
+				}
+			}
+			decryption_filter.MessageEnd();
+			decryption.Resynchonize();
+
+			if(data_size>end_marker_pos)
+			{
+				return put(data+end_marker_pos, data_size-end_marker_pos);
+			}
+		}		
+
 		return true;
 	}
 	catch (CryptoPP::Exception& e)
@@ -78,14 +117,19 @@ std::string AESGCMDecryption::get( bool& has_error )
 	try
 	{
 		std::string ret;
-		ret.resize(decryption_filter.MaxRetrievable());
-
-		if(!ret.empty())
+		if(decryption_filter.GetLastResult())
 		{
-			size_t nb = decryption_filter.Get(reinterpret_cast<byte*>(&ret[0]), ret.size());
-			if(nb!=ret.size())
+			ret.resize(decryption_filter.MaxRetrievable());
+
+			if(!ret.empty())
 			{
-				ret.resize(nb);
+				size_t nb = decryption_filter.Get(reinterpret_cast<byte*>(&ret[0]), ret.size());
+				if(nb!=ret.size())
+				{
+					ret.resize(nb);
+				}
+
+				decryption_filter.GetNextMessage();
 			}
 		}
 
@@ -105,7 +149,11 @@ bool AESGCMDecryption::get( char *data, size_t& data_size )
 {
 	try
 	{
-		data_size = decryption_filter.Get(reinterpret_cast<byte*>(data), data_size);
+		if(decryption_filter.GetLastResult())
+		{
+			data_size = decryption_filter.Get(reinterpret_cast<byte*>(data), data_size);
+		}
+
 		return true;
 	}
 	catch (CryptoPP::Exception& e)
@@ -114,5 +162,67 @@ bool AESGCMDecryption::get( char *data, size_t& data_size )
 	}
 
 	return false;
+}
+
+size_t AESGCMDecryption::findAndUnescapeEndMarker( const char *data, size_t data_size, std::string& data_copy,
+	bool& has_error)
+{
+	size_t data_copy_offset=0;
+	for(size_t i=0;i<data_size;)
+	{
+		char ch=data[i];
+
+		if(end_marker_state==0 && i+end_marker_zeros<=data_size
+			&& data[i+end_marker_zeros-1]!=0)
+		{
+			i+=end_marker_zeros;
+			continue;
+		}
+
+
+		if(end_marker_state==end_marker_zeros)
+		{
+			end_marker_state=0;
+
+			if(ch==0)
+			{
+				if(data_copy.empty())
+				{
+					data_copy.insert(data_copy.begin(), data, data+data_size);
+				}
+				data_copy.erase(data_copy.begin()+i-data_copy_offset);
+				++data_copy_offset;
+			}
+			else if(ch==1)
+			{
+				if(i+1>data_copy_offset)
+				{
+					return i+1-data_copy_offset;
+				}
+				else
+				{
+					has_error=true;
+					return std::string::npos;
+				}
+			}
+			else
+			{
+				has_error=true;
+				return std::string::npos;
+			}
+		}
+		else if(ch==0)
+		{
+			++end_marker_state;
+		}
+		else
+		{
+			end_marker_state=0;
+		}
+
+		++i;
+	}
+
+	return std::string::npos;
 }
 
