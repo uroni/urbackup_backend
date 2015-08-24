@@ -45,6 +45,9 @@
     <ClCompile Include="ECDHKeyExchange.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="..\stringtools.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AESDecryption.h">

@@ -23,7 +23,8 @@ public:
 
 private:
 	size_t findAndUnescapeEndMarker(const char *data, size_t data_size,
-		std::string& data_copy, bool& has_error);
+		std::string& data_copy, bool& has_copy, bool& has_error,
+		size_t& escaped_zeros);
 
 	CtrIvGCMDecryption decryption;
 	CryptoPP::AuthenticatedDecryptionFilter decryption_filter;

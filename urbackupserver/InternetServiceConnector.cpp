@@ -560,6 +560,11 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 					{
 						isc_pipe->destroyBackendPipeOnDelete(true);
 					}
+					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(comp_pipe->getRealPipe());
+					if(isc_pipe2!=NULL)
+					{
+						isc_pipe2->destroyBackendPipeOnDelete(true);
+					}
 					comp_pipe->destroyBackendPipeOnDelete(true);
 				}
 				else
@@ -568,6 +573,11 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 					if(isc_pipe!=NULL)
 					{
 						isc_pipe->destroyBackendPipeOnDelete(true);
+					}
+					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(ret);
+					if(isc_pipe2!=NULL)
+					{
+						isc_pipe2->destroyBackendPipeOnDelete(true);
 					}
 				}
 				Server->Log("Established internet connection. Service="+nconvert((int)service), LL_DEBUG);

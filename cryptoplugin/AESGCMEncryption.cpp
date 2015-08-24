@@ -17,7 +17,9 @@
 **************************************************************************/
 
 #include "AESGCMEncryption.h"
-#include "..\stringtools.h"
+#include "../stringtools.h"
+#include "../Interface/Server.h"
+#include <assert.h>
 
 const size_t iv_size = 64;
 const size_t end_marker_zeros=2;
@@ -84,7 +86,7 @@ std::string AESGCMEncryption::get()
 		max_retrievable = encryption_filter.MaxRetrievable();
 	}
 
-	ret.resize(max_retrievable+iv_add + ( end_marker_zeros ? (end_marker_zeros + 1) : 0 ) );
+	ret.resize(max_retrievable+iv_add + ( add_end_marker ? (end_marker_zeros + 1) : 0 ) );
 
 	if(!iv_done)
 	{
@@ -96,11 +98,12 @@ std::string AESGCMEncryption::get()
 	if(ret.size()>iv_add)
 	{
 		size_t nb = encryption_filter.Get(reinterpret_cast<byte*>(&ret[iv_add]), max_retrievable);
-		if(nb!=max_retrievable)
+		assert(nb==max_retrievable);
+		/*if(nb!=max_retrievable)
 		{
-			ret.resize(nb+iv_add+ ( end_marker_zeros ? (end_marker_zeros + 1) : 0 ));
-		}
-		escapeEndMarker(ret, nb+iv_add);
+			ret.resize(nb+iv_add+ ( add_end_marker ? (end_marker_zeros + 1) : 0 ));
+		}*/
+		escapeEndMarker(ret, nb, iv_add);
 		decEndMarkers(nb);
 	}
 
@@ -121,9 +124,9 @@ void AESGCMEncryption::decEndMarkers( size_t n )
 		end_markers[i]-=n;
 }
 
-void AESGCMEncryption::escapeEndMarker(std::string& ret, size_t size)
+void AESGCMEncryption::escapeEndMarker(std::string& ret, size_t size, size_t offset)
 {
-	for(size_t i=0;i<size;)
+	for(size_t i=offset;i<size;)
 	{
 		char ch=ret[i];
 
@@ -140,10 +143,11 @@ void AESGCMEncryption::escapeEndMarker(std::string& ret, size_t size)
 
 			if(end_marker_state==end_marker_zeros)
 			{
-				char ich=0;
+				char ich=2;
 				ret.insert(ret.begin()+i+1, ich);
 				++i;
 				end_marker_state=0;
+				Server->Log("Escaped something at "+nconvert(i));
 			}
 		}
 		else

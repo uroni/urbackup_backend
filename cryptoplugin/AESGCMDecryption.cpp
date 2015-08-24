@@ -71,7 +71,17 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 	{
 		std::string data_copy;
 		bool has_error=false;
-		size_t end_marker_pos = findAndUnescapeEndMarker(data, data_size, data_copy, has_error);
+		bool has_copy=false;
+
+		size_t carry_zeros=0;
+		if(end_marker_state>0)
+		{
+			carry_zeros = end_marker_state;
+		}
+
+		size_t escaped_zeros=0;
+		size_t end_marker_pos = findAndUnescapeEndMarker(data, data_size, data_copy,
+			has_copy, has_error, escaped_zeros);
 
 		if(end_marker_pos==std::string::npos)
 		{
@@ -80,12 +90,43 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 				Server->Log("Error scanning encrypted data for end marker", LL_ERROR);
 				return false;
 			}
+			else
+			{
+				if(end_marker_state>0 )
+				{
+					if(data_size-escaped_zeros>=end_marker_state)
+					{
+						data_size-=end_marker_state;
+					}
+					else if(data_size-escaped_zeros>=end_marker_state-carry_zeros)
+					{
+						data_size-=end_marker_state-carry_zeros;
+					}
+				}
+
+				if(has_copy && data_size-escaped_zeros>0)
+				{
+					decryption_filter.Put(reinterpret_cast<const byte*>(data_copy.data()), data_size-escaped_zeros);
+				}
+				else if(data_size>0)
+				{
+					decryption_filter.Put(reinterpret_cast<const byte*>(data), data_size);
+				}
+
+				Server->Log("Data without end: "+nconvert(data_size));
+			}
 		}
 		else
 		{
 			if(end_marker_pos>end_marker_zeros+1)
 			{
-				if(!data_copy.empty())
+				if(carry_zeros>0)
+				{
+					for(size_t i=0;i<carry_zeros;++i)
+						decryption_filter.Put(0);
+				}
+
+				if(has_copy)
 				{
 					decryption_filter.Put(reinterpret_cast<const byte*>(data_copy.data()), end_marker_pos-end_marker_zeros-1);
 				}
@@ -94,12 +135,21 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 					decryption_filter.Put(reinterpret_cast<const byte*>(data), end_marker_pos-end_marker_zeros-1);
 				}
 			}
-			decryption_filter.MessageEnd();
+			try
+			{
+				Server->Log("Message end");
+				decryption_filter.MessageEnd();
+			}
+			catch (CryptoPP::Exception&)
+			{
+				return false;
+			}
+			
 			decryption.Resynchonize();
 
 			if(data_size>end_marker_pos)
 			{
-				return put(data+end_marker_pos, data_size-end_marker_pos);
+				return put(data+end_marker_pos+escaped_zeros, data_size-end_marker_pos-escaped_zeros);
 			}
 		}		
 
@@ -117,7 +167,7 @@ std::string AESGCMDecryption::get( bool& has_error )
 	try
 	{
 		std::string ret;
-		if(decryption_filter.GetLastResult())
+		if(decryption_filter.NumberOfMessages()>0)
 		{
 			ret.resize(decryption_filter.MaxRetrievable());
 
@@ -128,9 +178,9 @@ std::string AESGCMDecryption::get( bool& has_error )
 				{
 					ret.resize(nb);
 				}
-
-				decryption_filter.GetNextMessage();
 			}
+
+			decryption_filter.GetNextMessage();
 		}
 
 		has_error=false;
@@ -149,9 +199,15 @@ bool AESGCMDecryption::get( char *data, size_t& data_size )
 {
 	try
 	{
-		if(decryption_filter.GetLastResult())
+		if(decryption_filter.NumberOfMessages()>0)
 		{
 			data_size = decryption_filter.Get(reinterpret_cast<byte*>(data), data_size);
+
+			decryption_filter.GetNextMessage();
+		}
+		else
+		{
+			data_size=0;
 		}
 
 		return true;
@@ -164,10 +220,9 @@ bool AESGCMDecryption::get( char *data, size_t& data_size )
 	return false;
 }
 
-size_t AESGCMDecryption::findAndUnescapeEndMarker( const char *data, size_t data_size, std::string& data_copy,
-	bool& has_error)
+size_t AESGCMDecryption::findAndUnescapeEndMarker( const char* data, size_t data_size, std::string& data_copy,
+	bool& has_copy, bool& has_error, size_t& escaped_zeros)
 {
-	size_t data_copy_offset=0;
 	for(size_t i=0;i<data_size;)
 	{
 		char ch=data[i];
@@ -182,22 +237,26 @@ size_t AESGCMDecryption::findAndUnescapeEndMarker( const char *data, size_t data
 
 		if(end_marker_state==end_marker_zeros)
 		{
-			end_marker_state=0;
-
-			if(ch==0)
+			if(ch==2)
 			{
+				end_marker_state=0;
+
 				if(data_copy.empty())
 				{
 					data_copy.insert(data_copy.begin(), data, data+data_size);
 				}
-				data_copy.erase(data_copy.begin()+i-data_copy_offset);
-				++data_copy_offset;
+				data_copy.erase(data_copy.begin()+i-escaped_zeros);
+				Server->Log("Unescaped something at "+nconvert(i));
+				++escaped_zeros;
+				has_copy=true;
 			}
 			else if(ch==1)
 			{
-				if(i+1>data_copy_offset)
+				end_marker_state=0;
+
+				if(i+1>escaped_zeros)
 				{
-					return i+1-data_copy_offset;
+					return i+1-escaped_zeros;
 				}
 				else
 				{
@@ -205,7 +264,7 @@ size_t AESGCMDecryption::findAndUnescapeEndMarker( const char *data, size_t data
 					return std::string::npos;
 				}
 			}
-			else
+			else if(ch!=0)
 			{
 				has_error=true;
 				return std::string::npos;

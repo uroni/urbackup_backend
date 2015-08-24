@@ -172,6 +172,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\stringtools.cpp" />
     <ClCompile Include="AESDecryption.cpp" />
     <ClCompile Include="AESEncryption.cpp" />
     <ClCompile Include="AESGCMDecryption.cpp" />

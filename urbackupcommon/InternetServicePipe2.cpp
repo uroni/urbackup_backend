@@ -52,6 +52,18 @@ void InternetServicePipe2::init( IPipe *pcs, const std::string &key )
 
 size_t InternetServicePipe2::Read( char *buffer, size_t bsize, int timeoutms/*=-1 */ )
 {
+	size_t data_size = bsize;
+	if(!dec->get(buffer, data_size))
+	{
+		has_error=true;
+		return 0;
+	}
+
+	if(data_size>0)
+	{
+		return data_size;
+	}
+
 	int64 starttime=0;
 
 	if(timeoutms>0)
@@ -71,16 +83,21 @@ size_t InternetServicePipe2::Read( char *buffer, size_t bsize, int timeoutms/*=-
 				return 0;
 			}
 
-			if(!dec->get(buffer, bsize))
+			data_size=bsize;
+			if(!dec->get(buffer, data_size))
 			{
 				has_error=true;
 				return 0;
 			}
 
-			if(bsize>0)
+			if(data_size>0)
 			{
-				return bsize;
+				return data_size;
 			}			
+		}
+		else
+		{
+			return 0;
 		}
 	}
 	while(timeoutms>0 && Server->getTimeMS()-starttime<timeoutms);
@@ -90,6 +107,20 @@ size_t InternetServicePipe2::Read( char *buffer, size_t bsize, int timeoutms/*=-
 
 size_t InternetServicePipe2::Read( std::string *ret, int timeoutms/*=-1 */ )
 {
+	bool l_has_error=false;
+	*ret = dec->get(l_has_error);
+
+	if(l_has_error)
+	{
+		has_error=true;
+		return 0;
+	}
+
+	if(!ret->empty())
+	{
+		return ret->size();
+	}
+
 	int64 starttime=0;
 
 	if(timeoutms>0)
@@ -123,6 +154,11 @@ size_t InternetServicePipe2::Read( std::string *ret, int timeoutms/*=-1 */ )
 				return ret->size();
 			}			
 		}
+		else
+		{
+			return 0;
+		}
+
 	} while (timeoutms>0 && Server->getTimeMS()-starttime<timeoutms);	
 
 	return 0;

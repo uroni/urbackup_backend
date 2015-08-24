@@ -28,7 +28,7 @@ public:
 private:
 	void reinit();
 	void decEndMarkers(size_t n);
-	void escapeEndMarker(std::string& ret, size_t size);
+	void escapeEndMarker(std::string& ret, size_t size, size_t offset);
 
 	size_t end_marker_state;
 	bool iv_done;
