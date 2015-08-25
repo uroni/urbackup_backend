@@ -45,6 +45,8 @@
 #define stat64 stat
 #define statvfs64 statvfs
 #define open64 open
+#define readdir64 readdir
+#define dirent64 dirent
 #endif
 
 void getMousePos(int &x, int &y)
@@ -62,7 +64,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 	std::string upath=Server->ConvertToUTF8(path);
 	std::vector<SFile> tmp;
 	DIR *dp;
-    struct dirent *dirp;
+    struct dirent64 *dirp;
     if((dp  = opendir(upath.c_str())) == NULL)
 	{
 		if(has_error!=NULL)
@@ -75,7 +77,8 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 	
 	upath+=os_file_sepn();
 
-    while ((dirp = readdir(dp)) != NULL)
+    errno=0;
+    while ((dirp = readdir64(dp)) != NULL)
 	{
 		SFile f;
 		f.name=Server->ConvertToUnicode(dirp->d_name);
@@ -147,7 +150,16 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 		}
 #endif
 		tmp.push_back(f);
+		errno=0;
     }
+    
+    if(errno!=0)
+    {
+	    Server->Log(L"Error listing files in directory \""+path+L"\" errno: "+convert(errno), LL_ERROR);
+		if(has_error!=NULL)
+			*has_error=true;
+    }
+    
     closedir(dp);
 	
 	std::sort(tmp.begin(), tmp.end());
