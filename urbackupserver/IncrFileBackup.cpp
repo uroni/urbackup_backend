@@ -161,7 +161,14 @@ bool IncrFileBackup::doFileBackup()
 				log_backup=false;
 				return false;
 			}
-		}		
+		}
+		else
+		{
+			ServerLogger::Log(logid, L"Incremental Backup of "+clientname+L" failed - CONNECT error -3", LL_ERROR);
+			has_early_error=true;
+			log_backup=false;
+			return false;
+		}
 	}
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
 	if(rc!=ERR_CONNECTED)
