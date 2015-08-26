@@ -522,7 +522,7 @@ _u32 FileClientChunked::handle_data( char* buf, size_t bsize, bool ignore_filesi
 		
 		if(reconnected)
 		{
-			continue;
+			break;
 		}
 	}
 
