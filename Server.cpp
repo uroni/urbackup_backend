@@ -663,11 +663,21 @@ int64 CServer::getTimeMS(void)
 	xt.sec-=start_t;
 	unsigned int t=xt.sec*1000+(unsigned int)((double)xt.nsec/1000000.0);
 	return t;*/
-	timeval tp;
+	/*timeval tp;
 	gettimeofday(&tp, NULL);
 	static long start_t=tp.tv_sec;
 	tp.tv_sec-=start_t;
-	return tp.tv_sec*1000+tp.tv_usec/1000;
+	return tp.tv_sec*1000+tp.tv_usec/1000;*/
+	timespec tp;
+	if(clock_gettime(CLOCK_MONOTONIC, &tp)!=0)
+	{
+		timeval tv;
+		gettimeofday(&tv, NULL);
+		static long start_t=tv.tv_sec;
+		tv.tv_sec-=start_t;
+		return tv.tv_sec*1000+tv.tv_usec/1000;
+	}
+	return static_cast<int64>(tp.tv_sec)*1000+tp.tv_nsec/1000000;
 #endif
 }
 
