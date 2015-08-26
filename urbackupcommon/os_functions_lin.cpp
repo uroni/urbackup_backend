@@ -55,12 +55,12 @@ void getMousePos(int &x, int &y)
 	y=0;
 }
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool follow_symlinks, bool exact_filesize, bool with_usn)
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool exact_filesize, bool with_usn)
 {
-	return getFiles(path, has_error, follow_symlinks);
+	return getFiles(path, has_error);
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool follow_symlinks)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 {
 	if(has_error!=NULL)
 	{
@@ -97,11 +97,11 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 		{
 #endif
 			struct stat64 f_info;
-			bool is_link=false;
 			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
 			if(rc==0 && S_ISLNK(f_info.st_mode))
 			{
-				is_link=true;
+				f.issym=true;
+				f.isspecial=true;
 				rc=stat64((upath+dirp->d_name).c_str(), &f_info);
 			}
 			if(rc==0)
@@ -117,18 +117,11 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 					{
 						if(!S_ISREG(f_info.st_mode) )
 						{
-							continue;
+							f.isspecial=true;
 						}
 						f.last_modified=f_info.st_mtime;
 						if(f.last_modified<0) f.last_modified*=-1;
 						f.size=f_info.st_size;
-					}
-					else
-					{
-						if(!follow_symlinks && is_link )
-						{
-							continue;
-						}
 					}
 #ifndef sun
 				}
@@ -684,7 +677,7 @@ SFile getFileMetadataWin( const std::wstring &path, bool with_usn)
 
 SFile getFileMetadata( const std::wstring &path )
 {
-	SFile ret = {};
+	SFile ret;
 	ret.name=path;
 
 	struct stat64 f_info;
@@ -711,12 +704,12 @@ SFile getFileMetadata( const std::wstring &path )
 
 std::wstring os_get_final_path(std::wstring path)
 {
-	char* retptr = realpath(path.c_str(), NULL);
+	char* retptr = realpath(Server->ConvertToUTF8(path).c_str(), NULL);
 	if(retptr==NULL)
 	{
 		return std::wstring();
 	}
-	std::wstring ret(retptr);
+	std::wstring ret = Server->ConvertToUnicode(retptr);
 	free(retptr);
 	return ret;
 }
