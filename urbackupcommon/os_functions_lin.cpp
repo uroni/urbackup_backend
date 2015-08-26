@@ -445,7 +445,7 @@ std::string os_file_sepn(void)
 	return "/";
 }
 
-bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction)
+bool os_link_symbolic(const std::wstring &target, const std::wstring &lname, void* transaction, bool* isdir)
 {
 	return symlink(Server->ConvertToUTF8(target).c_str(), Server->ConvertToUTF8(lname).c_str())==0;
 }
