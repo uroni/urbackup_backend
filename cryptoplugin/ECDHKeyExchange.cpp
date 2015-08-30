@@ -21,7 +21,7 @@
 
 ECDHKeyExchange::ECDHKeyExchange()
 {
-	CryptoPP::ECDH< CryptoPP::EC2N >::Domain ecdh(CryptoPP::ASN1::sect409k1());
+	CryptoPP::ECDH< CryptoPP::EC2N >::Domain ecdh(CryptoPP::ASN1::sect233k1());
 
 	CryptoPP::AutoSeededRandomPool rng;
 	priv.resize(ecdh.PrivateKeyLength());
@@ -36,7 +36,7 @@ std::string ECDHKeyExchange::getPublicKey()
 
 std::string ECDHKeyExchange::getSharedKey( const std::string& other_public )
 {
-	CryptoPP::ECDH< CryptoPP::EC2N >::Domain ecdh(CryptoPP::ASN1::sect409k1());
+	CryptoPP::ECDH< CryptoPP::EC2N >::Domain ecdh(CryptoPP::ASN1::sect233k1());
 
 	if(other_public.size()!=ecdh.PublicKeyLength())
 	{
