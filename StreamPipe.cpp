@@ -152,7 +152,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool fl
 			written+=rc;
 			if( written<bsize )
 			{
-				return Write(buffer+written, bsize-written, -1);
+				return Write(buffer+written, bsize-written, -1, flush);
 			}
 		}
 		else
@@ -161,7 +161,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool fl
 			DWORD err = WSAGetLastError();
 			if(err==EINTR)
 			{
-				return Write(buffer, bsize, timeoutms);
+				return Write(buffer, bsize, timeoutms, flush);
 			}
 
 			if(err!=WSAEWOULDBLOCK)
@@ -171,7 +171,7 @@ bool CStreamPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool fl
 #else
 			if(errno==EINTR)
 			{
-				return Write(buffer, bsize, timeoutms);
+				return Write(buffer, bsize, timeoutms, flush);
 			}
 
 			if(errno!=EAGAIN && errno!=EWOULDBLOCK)

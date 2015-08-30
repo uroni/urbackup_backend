@@ -595,10 +595,15 @@ bool FullFileBackup::doFileBackup()
 	}
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
+	_i64 transferred_compressed=fc.getRealTransferredBytes();
 	int64 passed_time=Server->getTimeMS()-full_backup_starttime;
 	if(passed_time==0) passed_time=1;
 
 	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
+	if(transferred_compressed>0)
+	{
+		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_compressed)+" ratio: "+nconvert((float)transferred_compressed/transferred_bytes)+")");
+	}
 
 	ClientMain::run_script(L"urbackup" + os_file_sep() + L"post_full_filebackup", L"\""+ backuppath + L"\"", logid);
 

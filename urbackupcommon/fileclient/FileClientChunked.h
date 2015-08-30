@@ -68,6 +68,8 @@ public:
 
 	_i64 getTransferredBytes(void);
 
+	_i64 getRealTransferredBytes();
+
 	_i64 getReceivedDataBytes();
 
 	void resetReceivedDataBytes(void);
@@ -150,6 +152,8 @@ private:
 
 	void adjustOutputFilesizeOnFailure( _i64& filesize_out);
 
+	_u32 Flush(IPipe* fpipe);
+
 	std::string remote_filename;
 
 	IFile *m_file;
@@ -207,6 +211,7 @@ private:
 	bool has_error;
 	bool destroy_pipe;
 
+	_i64 real_transferred_bytes;
 	_i64 transferred_bytes;
 
 	FileClientChunked::ReconnectionCallback *reconnection_callback;
@@ -243,6 +248,8 @@ private:
 	_u32 errorcode2;
 	
 	bool reconnected;
+
+	bool needs_flush;
 };
 
 #endif //FILECLIENTCHUNKED_H

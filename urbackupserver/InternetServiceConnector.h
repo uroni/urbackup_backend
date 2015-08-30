@@ -9,7 +9,7 @@
 class IMutex;
 class ICondition;
 class IInternetServicePipe;
-class CompressedPipe;
+class ICompressedPipe;
 class IECDHKeyExchange;
 
 class InternetService : public IService
@@ -103,7 +103,8 @@ private:
 	THREAD_ID tid;
 	IPipe *cs;
 	IInternetServicePipe *is_pipe;
-	CompressedPipe *comp_pipe;
+	ICompressedPipe *comp_pipe;
+	int conn_version;
 	IPipe *comm_pipe;
 	IMutex *local_mutex;
 	ICondition* connection_done_cond;

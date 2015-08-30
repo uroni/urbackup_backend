@@ -101,6 +101,8 @@ public:
 
 		_i64 getTransferredBytes(void);
 
+		_i64 getRealTransferredBytes();
+
 		_i64 getReceivedDataBytes(void);
 		void resetReceivedDataBytes(void);
 
@@ -111,6 +113,8 @@ public:
 		void setQueueCallback(FileClient::QueueCallback* cb);
 
 		void setProgressLogCallback(FileClient::ProgressLogCallback* cb);
+
+		_u32 Flush();
               
 private:
 		void bindToNewInterfaces();
@@ -156,6 +160,7 @@ private:
 		int protocol_version;
 		bool internet_connection;
 
+		_i64 real_transferred_bytes;
 		_i64 transferred_bytes;
 		std::vector<IPipeThrottler*> throttlers;
 
@@ -181,6 +186,8 @@ private:
 		int64 last_transferred_bytes;
 		int64 last_progress_log;
 		FileClient::ProgressLogCallback* progress_log_callback;
+
+		bool needs_flush;
 };
 
 const _u32 ERR_CONTINUE=0;

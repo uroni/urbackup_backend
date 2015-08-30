@@ -201,9 +201,13 @@ bool CompressedPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool
 {
 	const char *ptr=buffer;
 	size_t cbsize=bsize;
-	while(bsize>0)
+	do
 	{
 		cbsize=(std::min)(max_send_size, bsize);
+
+		bsize-=cbsize;
+
+		bool has_next = bsize>0;
 
 		_u16 rc=(_u16)comp->compress(ptr, cbsize, &comp_buffer, flush, sizeof(_u16));
 		if(rc>0)
@@ -212,11 +216,15 @@ bool CompressedPipe::Write(const char *buffer, size_t bsize, int timeoutms, bool
 			bool b=cs->Write(&comp_buffer[0], rc+sizeof(_u16), timeoutms);
 			if(!b)
 				return false;
-		}		
+		}
+		else if(!has_next && flush)
+		{
+			return cs->Flush();
+		}
 
 		ptr+=cbsize;
-		bsize-=cbsize;
-	}
+		
+	} while(bsize>0);
 
 	return true;
 }

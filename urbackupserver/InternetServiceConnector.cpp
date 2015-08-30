@@ -24,6 +24,7 @@
 #include "../common/data.h"
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe.h"
+#include "../urbackupcommon/CompressedPipe2.h"
 #include "../urbackupcommon/CompressedPipe.h"
 #include "server_settings.h"
 #include "database.h"
@@ -89,6 +90,7 @@ void InternetServiceConnector::Init(THREAD_ID pTID, IPipe *pPipe, const std::str
 	cs=pPipe;
 	comm_pipe=cs;
 	is_pipe=NULL;
+	conn_version=2;
 	comp_pipe=NULL;
 	connect_start=false;
 	do_connect=false;
@@ -355,10 +357,12 @@ void InternetServiceConnector::ReceivePackets(void)
 										}
 										
 										is_pipe=new InternetServicePipe2(comm_pipe, hmac_key);
+										conn_version=2;
 									}
 									else
 									{
 										is_pipe=new InternetServicePipe(comm_pipe, hmac_key);
+										conn_version=1;
 									}		
 									state=ISS_CAPA;	
 									comm_pipe=is_pipe;
@@ -439,7 +443,19 @@ void InternetServiceConnector::ReceivePackets(void)
 							}	
 							if(capa & IPC_COMPRESSED )
 							{
-								comp_pipe=new CompressedPipe(comm_pipe, compression_level);
+								if(conn_version==1)
+								{
+									comp_pipe=new CompressedPipe(comm_pipe, compression_level);
+								}
+								else if(conn_version==2)
+								{
+									comp_pipe=new CompressedPipe2(comm_pipe, compression_level);
+								}
+								else
+								{
+									assert(false);
+								}
+								
 								comm_pipe=comp_pipe;
 							}
 

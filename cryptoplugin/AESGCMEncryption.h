@@ -25,6 +25,8 @@ public:
 
 	virtual std::string get();
 
+	virtual int64 getOverheadBytes();
+
 private:
 	void reinit();
 	void decEndMarkers(size_t n);
@@ -38,4 +40,5 @@ private:
 	CtrIvGCMEncryption encryption;
 	CryptoPP::AuthenticatedEncryptionFilter encryption_filter;
 	std::vector<size_t> end_markers;
+	int64 overhead_size;
 };

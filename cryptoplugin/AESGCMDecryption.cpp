@@ -23,7 +23,8 @@ const size_t iv_size = 64;
 const size_t end_marker_zeros=2;
 
 AESGCMDecryption::AESGCMDecryption( const std::string &password, bool hash_password )
-	: decryption(), decryption_filter(decryption), iv_done(false), end_marker_state(0)
+	: decryption(), decryption_filter(decryption), iv_done(false), end_marker_state(0),
+	overhead_bytes(0)
 {
 	if(hash_password)
 	{
@@ -52,6 +53,7 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 
 		if(iv_buffer.size()==iv_size)
 		{
+			overhead_bytes+=iv_buffer.size();
 			decryption.SetKeyWithIV(m_sbbKey.BytePtr(), m_sbbKey.size(),
 				reinterpret_cast<const byte*>(iv_buffer.data()), iv_buffer.size());
 			iv_done=true;
@@ -145,6 +147,8 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 				return false;
 			}
 			
+			overhead_bytes+=16; //tag size
+
 			decryption.Resynchonize();
 
 			if(data_size>end_marker_pos)
@@ -248,6 +252,7 @@ size_t AESGCMDecryption::findAndUnescapeEndMarker( const char* data, size_t data
 				data_copy.erase(data_copy.begin()+i-escaped_zeros);
 				Server->Log("Unescaped something at "+nconvert(i));
 				++escaped_zeros;
+				++overhead_bytes;
 				has_copy=true;
 			}
 			else if(ch==1)
@@ -256,6 +261,7 @@ size_t AESGCMDecryption::findAndUnescapeEndMarker( const char* data, size_t data
 
 				if(i+1>escaped_zeros)
 				{
+					overhead_bytes+=end_marker_zeros+1;
 					return i+1-escaped_zeros;
 				}
 				else
@@ -283,5 +289,10 @@ size_t AESGCMDecryption::findAndUnescapeEndMarker( const char* data, size_t data
 	}
 
 	return std::string::npos;
+}
+
+int64 AESGCMDecryption::getOverheadBytes()
+{
+	return overhead_bytes;
 }
 

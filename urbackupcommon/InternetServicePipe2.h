@@ -69,6 +69,8 @@ public:
 
 	virtual IPipe *getRealPipe();
 
+	int64 getEncryptionOverheadBytes();
+
 private:
 	std::auto_ptr<IAESGCMDecryption> dec;
 	std::auto_ptr<IAESGCMEncryption> enc;

@@ -1,25 +1,25 @@
 #pragma once
 
-#include "CompressedPipe2.h"
 #include "../Interface/Pipe.h"
 #include "../Interface/Types.h"
 #include <vector>
+#define MINIZ_HEADER_FILE_ONLY
+#include "../common/miniz.c"
 
-class IZlibCompression;
-class IZlibDecompression;
-
-
-enum RecvState
-{
-	RS_LENGTH,
-	RS_CONTENT
-};
-
-class CompressedPipe : public ICompressedPipe
+class ICompressedPipe : public IPipe
 {
 public:
-	CompressedPipe(IPipe *cs, int compression_level);
-	~CompressedPipe(void);
+	virtual void destroyBackendPipeOnDelete(bool b)=0;
+
+	virtual IPipe *getRealPipe(void)=0;
+};
+
+
+class CompressedPipe2 : public ICompressedPipe
+{
+public:
+	CompressedPipe2(IPipe *cs, int compression_level);
+	~CompressedPipe2(void);
 
 	virtual size_t Read(char *buffer, size_t bsize, int timeoutms=-1);
 	virtual bool Write(const char *buffer, size_t bsize, int timeoutms=-1, bool flush=true);
@@ -38,9 +38,9 @@ public:
 
 	virtual size_t getNumElements(void);
 
-	void destroyBackendPipeOnDelete(bool b);
+	virtual void destroyBackendPipeOnDelete(bool b);
 
-	IPipe *getRealPipe(void);
+	virtual IPipe *getRealPipe(void);
 
 	virtual void addThrottler(IPipeThrottler *throttler);
 	virtual void addOutgoingThrottler(IPipeThrottler *throttler);
@@ -51,17 +51,19 @@ public:
 
 	virtual bool Flush( int timeoutms=-1 );
 
+	int64 getUncompressedSentBytes();
+	int64 getUncompressedReceivedBytes();
+	int64 getSentFlushes();
+
+	virtual _i64 getRealTransferredBytes();
+
 private:
 	void Process(const char *buffer, size_t bsize);
+	void ProcessToString(const char *buffer, size_t bsize, std::string* ret);
 	size_t ReadToBuffer(char *buffer, size_t bsize);
 	size_t ReadToString(std::string *ret);
 
-	
-
 	IPipe *cs;
-
-	IZlibCompression *comp;
-	IZlibDecompression *decomp;
 
 	std::vector<char> decomp_buffer;
 	size_t decomp_buffer_pos;
@@ -70,11 +72,13 @@ private:
 	std::vector<char> input_buffer;
 	size_t input_buffer_pos;
 
-	int recv_state;
-	_u16 message_len;
-	size_t message_left;
-	size_t message_len_byte;
+	int64 uncompressed_sent_bytes;
+	int64 uncompressed_received_bytes;
+	int64 sent_flushes;
 
 	bool destroy_cs;
 	bool has_error;
+	
+	mz_stream inf_stream;
+	mz_stream def_stream;
 };

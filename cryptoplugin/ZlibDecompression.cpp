@@ -25,10 +25,7 @@ size_t ZlibDecompression::decompress(const char *input, size_t input_size, std::
 	try
 	{
 		decomp.Put((const byte*)input, input_size);
-		if(flush)
-		{
-			decomp.Flush(true);
-		}
+		decomp.Flush(true);
 		size_t rc=(size_t)decomp.MaxRetrievable();
 		if(rc>0)
 		{

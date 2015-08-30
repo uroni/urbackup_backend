@@ -42,6 +42,8 @@ public:
 
 	virtual _i64 getTransferedBytes(void)=0;
 	virtual void resetTransferedBytes(void)=0;
+
+	virtual _i64 getRealTransferredBytes() { return 0; }
 };
 
 #endif //IPIPE_H

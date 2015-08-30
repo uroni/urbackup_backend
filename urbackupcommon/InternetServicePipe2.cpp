@@ -289,3 +289,8 @@ IPipe * InternetServicePipe2::getRealPipe()
 	return cs;
 }
 
+int64 InternetServicePipe2::getEncryptionOverheadBytes()
+{
+	return enc->getOverheadBytes() + dec->getOverheadBytes();
+}
+

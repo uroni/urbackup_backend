@@ -25,7 +25,8 @@ const size_t iv_size = 64;
 const size_t end_marker_zeros=2;
 
 AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
-	: encryption(), encryption_filter(encryption), iv_done(false), end_marker_state(0)
+	: encryption(), encryption_filter(encryption), iv_done(false), end_marker_state(0),
+	overhead_size(0)
 {
 	if(hash_password)
 	{
@@ -64,6 +65,7 @@ void AESGCMEncryption::flush()
 	encryption_filter.MessageEnd();
 	encryption.Resynchonize();
 	end_markers.push_back(encryption_filter.MaxRetrievable());
+	overhead_size+=16; //tag size
 }
 
 std::string AESGCMEncryption::get()
@@ -93,6 +95,7 @@ std::string AESGCMEncryption::get()
 		iv_add=m_IV.size();
 		memcpy(&ret[0], m_IV.BytePtr(), m_IV.size());
 		iv_done=true;
+		overhead_size+=m_IV.size();
 	}
 
 	if(ret.size()>iv_add)
@@ -112,6 +115,7 @@ std::string AESGCMEncryption::get()
 		//The rest is already zero
 		ret[ret.size()-1]=1;
 		end_marker_state=0;
+		overhead_size+=end_marker_zeros+1;
 		encryption_filter.GetNextMessage();
 	}
 
@@ -148,6 +152,7 @@ void AESGCMEncryption::escapeEndMarker(std::string& ret, size_t size, size_t off
 				++i;
 				end_marker_state=0;
 				Server->Log("Escaped something at "+nconvert(i));
+				++overhead_size;
 			}
 		}
 		else
@@ -157,5 +162,10 @@ void AESGCMEncryption::escapeEndMarker(std::string& ret, size_t size, size_t off
 
 		++i;
 	}
+}
+
+int64 AESGCMEncryption::getOverheadBytes()
+{
+	return overhead_size;
 }
 

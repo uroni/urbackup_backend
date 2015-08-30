@@ -32,7 +32,7 @@
 #include "../urbackupcommon/InternetServiceIDs.h"
 #include "../urbackupcommon/InternetServicePipe2.h"
 #include "../urbackupcommon/internet_pipe_capabilities.h"
-#include "../urbackupcommon/CompressedPipe.h"
+#include "../urbackupcommon/CompressedPipe2.h"
 
 #include "../stringtools.h"
 
@@ -699,7 +699,7 @@ void InternetClientThread::operator()(void)
 	}
 	if( capa & IPC_COMPRESSED )
 	{
-		comp_pipe=new CompressedPipe(comm_pipe, compression_level);
+		comp_pipe=new CompressedPipe2(comm_pipe, compression_level);
 		comm_pipe=comp_pipe;
 	}
 
@@ -820,6 +820,7 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 		bool b=client->Run();
 		if(!b)
 		{
+			printInfo(pipe);
 			return;
 		}
 
@@ -838,6 +839,39 @@ void InternetClientThread::runServiceWrapper(IPipe *pipe, ICustomClient *client)
 		else
 		{
 			Server->wait(20);
+		}
+	}
+}
+
+void InternetClientThread::printInfo( IPipe * pipe )
+{
+	int64 transferred_bytes = pipe->getTransferedBytes();
+
+	if(transferred_bytes>1*1024*1024) //1MB
+	{
+		Server->Log("Service finished. Transferred "+PrettyPrintBytes(transferred_bytes));
+
+		IPipe* back_pipe= pipe;
+		CompressedPipe2* comp_pipe = dynamic_cast<CompressedPipe2*>(pipe);
+
+		if(comp_pipe!=NULL)
+		{
+			back_pipe=comp_pipe->getRealPipe();
+		}
+
+		int64 enc_overhead=0;
+		InternetServicePipe2* isp2 = dynamic_cast<InternetServicePipe2*>(back_pipe);
+		if(isp2!=NULL)
+		{
+			enc_overhead=isp2->getEncryptionOverheadBytes();
+			Server->Log("Encryption overhead: "+PrettyPrintBytes(enc_overhead));
+		}
+
+		if(comp_pipe!=NULL)
+		{
+			int64 uncompr_transferred = comp_pipe->getUncompressedReceivedBytes()+comp_pipe->getUncompressedSentBytes();
+			Server->Log("Transferred uncompressed: "+PrettyPrintBytes(uncompr_transferred)+" (ratio: "+nconvert((float)uncompr_transferred/(transferred_bytes-enc_overhead))+")");
+			Server->Log("Average sent paket size: "+PrettyPrintBytes(comp_pipe->getUncompressedSentBytes()/comp_pipe->getSentFlushes()));
 		}
 	}
 }

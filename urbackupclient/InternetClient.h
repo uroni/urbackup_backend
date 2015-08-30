@@ -86,6 +86,7 @@ public:
 
 private:
 	std::string generateRandomBinaryAuthKey(void);
+	void printInfo( IPipe * pipe );
 	IPipe *cs;
 	SServerSettings server_settings;
 };

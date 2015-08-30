@@ -87,7 +87,8 @@ FileClient::FileClient(bool enable_find_servers, std::string identity, int proto
 	transferred_bytes(0), reconnection_callback(reconnection_callback),
 	nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), retryBindToNewInterfaces(true),
 	identity(identity), received_data_bytes(0), queue_callback(NULL), dl_off(0),
-	last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL)
+	last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), needs_flush(false),
+	real_transferred_bytes(0)
 {
 	memset(buffer, 0, BUFFERSIZE_UDP);
 
@@ -602,6 +603,7 @@ bool FileClient::Reconnect(void)
 	}
 
 	transferred_bytes+=tcpsock->getTransferedBytes();
+	real_transferred_bytes+=tcpsock->getRealTransferredBytes();
 	Server->destroy(tcpsock);
 	connect_starttime=Server->getTimeMS();
 
@@ -660,6 +662,8 @@ bool FileClient::Reconnect(void)
 			Server->Log("Timeout during file request (1)", LL_ERROR);
 			return ERR_TIMEOUT;
 		}
+
+		needs_flush=true;
 	}
 	else
 	{
@@ -1096,6 +1100,12 @@ void FileClient::fillQueue()
 
 		if(queue_fn.empty())
 		{
+			if(needs_flush)
+			{
+				needs_flush=false;
+				Flush();
+			}
+
 			return;
 		}
 
@@ -1432,5 +1442,31 @@ _u32 FileClient::InformMetadataStreamEnd( const std::string& server_token )
 			}
 		}
 	}
+}
+
+_u32 FileClient::Flush()
+{
+	if(tcpsock==NULL)
+		return ERR_ERROR;
+
+	CWData data;
+	data.addUChar(ID_FLUSH_SOCKET);
+
+	if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+	{
+		Server->Log("Timeout during flush request", LL_ERROR);
+		return ERR_TIMEOUT;
+	}
+
+	return ERR_SUCCESS;
+}
+
+_i64 FileClient::getRealTransferredBytes()
+{
+	if(tcpsock!=NULL)
+	{
+		return real_transferred_bytes+=tcpsock->getRealTransferredBytes();
+	}
+	return real_transferred_bytes;
 }
 

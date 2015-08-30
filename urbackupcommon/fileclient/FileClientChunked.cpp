@@ -64,7 +64,8 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 	: pipe(pipe), destroy_pipe(del_pipe), stack(stack), transferred_bytes(0), reconnection_callback(reconnection_callback),
 	  nofreespace_callback(nofreespace_callback), reconnection_timeout(300000), identity(identity), received_data_bytes(0),
 	  parent(prev), queue_only(false), queue_callback(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0),
-	  last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), reconnected(false)
+	  last_transferred_bytes(0), last_progress_log(0), progress_log_callback(NULL), reconnected(false), needs_flush(false),
+	  real_transferred_bytes(0)
 {
 	has_error=false;
 	if(parent==NULL)
@@ -80,7 +81,7 @@ FileClientChunked::FileClientChunked(IPipe *pipe, bool del_pipe, CTCPStack *stac
 FileClientChunked::FileClientChunked(void)
 	: pipe(NULL), stack(NULL), destroy_pipe(false), transferred_bytes(0), reconnection_callback(NULL), reconnection_timeout(300000), received_data_bytes(0),
 	  parent(NULL), remote_filesize(-1), ofb_pipe(NULL), hashfilesize(-1), did_queue_fc(false), queued_chunks(0), last_transferred_bytes(0), last_progress_log(0),
-	  progress_log_callback(NULL), reconnected(false)
+	  progress_log_callback(NULL), reconnected(false), real_transferred_bytes(0)
 {
 	has_error=true;
 	mutex=NULL;
@@ -207,6 +208,7 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 			return ERR_TIMEOUT;
 		}
 
+		needs_flush=true;
 		next_chunk=0;
 	}
 	
@@ -317,10 +319,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 			IFile* chunkhashes;
 			IFile* hashoutput;
 			_i64 predicted_filesize;
+			bool has_queue_item=true;
 
 			if(queue_callback && 
 				getPipe()->isWritable() &&
-				queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize))
+				(has_queue_item=queue_callback->getQueuedFileChunked(remotefn, orig_file, patchfile, chunkhashes, hashoutput, predicted_filesize)) )
 			{
 				did_queue_fc=true;
 
@@ -368,6 +371,11 @@ _u32 FileClientChunked::GetFile(std::string remotefn, _i64& filesize_out)
 				{
 					next->setQueueOnly(false);
 				}
+			}
+			else if(!has_queue_item
+				&& needs_flush)
+			{
+				Flush(getPipe());
 			}
 		}
 
@@ -1227,6 +1235,11 @@ _i64 FileClientChunked::getTransferredBytes(void)
 		transferred_bytes+=getPipe()->getTransferedBytes();
 		getPipe()->resetTransferedBytes();
 	}
+	if(ofbPipe()!=NULL)
+	{
+		transferred_bytes+=ofbPipe()->getTransferedBytes();
+		ofbPipe()->resetTransferedBytes();
+	}
 	return transferred_bytes;
 }
 
@@ -1251,6 +1264,8 @@ bool FileClientChunked::Reconnect(bool rerequest)
 			if(getPipe()!=NULL &&
 				( destroy_pipe || (parent && parent->destroy_pipe) ) )
 			{
+				transferred_bytes+=getPipe()->getTransferedBytes();
+				real_transferred_bytes+=getPipe()->getRealTransferredBytes();
 				Server->destroy(getPipe());
 			}
 			setPipe(nc);
@@ -1300,6 +1315,8 @@ bool FileClientChunked::Reconnect(bool rerequest)
 					Server->wait(2000);
 					continue;
 				}
+
+				needs_flush=true;
 
 				Server->Log("pending_chunks="+nconvert(pending_chunks.size())+" next_chunk="+nconvert(next_chunk), LL_DEBUG);
 				for(std::map<_i64, SChunkHashes>::iterator it=pending_chunks.begin();it!=pending_chunks.end();++it)
@@ -1421,6 +1438,8 @@ bool FileClientChunked::constructOutOfBandPipe()
 
 	if(ofbPipe())
 	{
+		transferred_bytes+=ofbPipe()->getTransferedBytes();
+		real_transferred_bytes+=ofbPipe()->getRealTransferredBytes();
 		Server->destroy(ofbPipe());
 	}
 
@@ -1475,7 +1494,9 @@ _u32 FileClientChunked::loadChunkOutOfBand(_i64 chunk_pos)
 		data.addChar(1);
 
 		stack->Send( ofbPipe(), data.getDataPtr(), data.getDataSize());
-	}	
+	}
+
+	Flush(ofbPipe());
 
 	char stack_buf[BUFFERSIZE];
 
@@ -1791,5 +1812,33 @@ void FileClientChunked::adjustOutputFilesizeOnFailure( _i64& filesize_out )
 	writeFileRepeat(m_hashoutput, (char*)&endian_filesize_out, sizeof(_i64));
 
 	Server->Log("Not successfull. Returning filesize "+nconvert(filesize_out), LL_DEBUG);
+}
+
+_u32 FileClientChunked::Flush(IPipe* fpipe)
+{
+	CWData data;
+	data.addUChar( ID_FLUSH_SOCKET );
+
+	if(stack->Send( fpipe, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+	{
+		Server->Log("Error sending flush request", LL_ERROR);
+		return ERR_TIMEOUT;
+	}
+
+	return ERR_SUCCESS;
+}
+
+_i64 FileClientChunked::getRealTransferredBytes()
+{
+	_i64 tbytes=real_transferred_bytes;
+	if(getPipe()!=NULL)
+	{
+		tbytes+=getPipe()->getRealTransferredBytes();
+	}
+	if(ofbPipe()!=NULL)
+	{
+		tbytes+=ofbPipe()->getRealTransferredBytes();
+	}
+	return tbytes;
 }
 

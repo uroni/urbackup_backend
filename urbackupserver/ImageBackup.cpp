@@ -431,6 +431,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	sha256_init(&shactx);
 
 	_i64 transferred_bytes=0;
+	_i64 transferred_bytes_real=0;
 	int64 image_backup_starttime=Server->getTimeMS();
 
 	unsigned int curr_image_recv_timeout=image_recv_timeout;
@@ -481,6 +482,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 					if(cc!=NULL)
 					{
 						transferred_bytes+=cc->getTransferedBytes();
+						transferred_bytes_real+=cc->getRealTransferredBytes();
 						Server->destroy(cc);
 					}
 					Server->Log("Trying to reconnect in doImage", LL_DEBUG);
@@ -533,6 +535,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 					{
 						ServerLogger::Log(logid, "Sending 'FULL IMAGE' command failed", LL_WARNING);
 						transferred_bytes+=cc->getTransferedBytes();
+						transferred_bytes_real+=cc->getRealTransferredBytes();
 						Server->destroy(cc);
 						cc=NULL;
 						continue;
@@ -546,6 +549,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 					{
 						ServerLogger::Log(logid, "Sending 'INCR IMAGE' command failed", LL_DEBUG);
 						transferred_bytes+=cc->getTransferedBytes();
+						transferred_bytes_real+=cc->getRealTransferredBytes();
 						Server->destroy(cc);
 						cc=NULL;
 						continue;
@@ -555,6 +559,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 					{
 						ServerLogger::Log(logid, "Sending hashdata failed", LL_DEBUG);
 						transferred_bytes+=cc->getTransferedBytes();
+						transferred_bytes_real+=cc->getRealTransferredBytes();
 						Server->destroy(cc);
 						cc=NULL;
 						continue;
@@ -915,6 +920,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 							if(cc!=NULL)
 							{
 								transferred_bytes+=cc->getTransferedBytes();
+								transferred_bytes_real+=cc->getRealTransferredBytes();
 								Server->destroy(cc);
 							}
 							
@@ -971,6 +977,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 							if(passed_time==0) passed_time=1;
 
 							ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
+							if(transferred_bytes_real>0)
+							{
+								ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_bytes_real)+" ratio: "+nconvert((float)transferred_bytes_real/transferred_bytes)+")");
+							}
 
 							return !vhdfile_err;
 						}
@@ -1146,6 +1156,10 @@ do_image_cleanup:
 	int64 passed_time=Server->getTimeMS()-image_backup_starttime;
 	if(passed_time==0) passed_time=1;
 	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time) )), LL_INFO );
+	if(transferred_bytes_real>0)
+	{
+		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_bytes_real)+" ratio: "+nconvert((float)transferred_bytes_real/transferred_bytes)+")");
+	}
 	if(cc!=NULL)
 		Server->destroy(cc);
 
