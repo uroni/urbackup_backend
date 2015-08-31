@@ -497,7 +497,7 @@ void InternetClientThread::operator()(void)
 	std::string challenge;
 	unsigned int server_capa;
 	unsigned int capa=0;
-	int compression_level;
+	int compression_level=6;
 	unsigned int server_iterations;
 	std::string authkey;
 	std::string challenge_response;

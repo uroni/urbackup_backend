@@ -23,18 +23,20 @@
 #include <string.h>
 #include "../stringtools.h"
 #include <assert.h>
+#include "InternetServicePipe2.h"
 
 
 const size_t max_send_size=20000;
 const size_t output_incr_size=8192;
+const size_t output_max_size=32*1024;
 
 CompressedPipe2::CompressedPipe2(IPipe *cs, int compression_level)
 	: cs(cs), has_error(false),
-	uncompressed_sent_bytes(0), uncompressed_received_bytes(0), sent_flushes(0)
+	uncompressed_sent_bytes(0), uncompressed_received_bytes(0), sent_flushes(0),
+	input_buffer_size(0)
 {
-	decomp_buffer_pos=0;
-	decomp_read_pos=0;
 	comp_buffer.resize(4096);
+	input_buffer.resize(16384);
 	destroy_cs=false;
 
 	memset(&inf_stream, 0, sizeof(mz_stream));
@@ -61,135 +63,133 @@ CompressedPipe2::~CompressedPipe2(void)
 	}
 }
 
-size_t CompressedPipe2::ReadToBuffer(char *buffer, size_t bsize)
-{
-	if(decomp_read_pos<decomp_buffer_pos)
-	{
-		size_t toread=(std::min)(bsize, decomp_buffer_pos-decomp_read_pos);
-		memcpy(buffer, &decomp_buffer[decomp_read_pos], toread);
-		decomp_read_pos+=toread;
-		uncompressed_received_bytes+=toread;
-
-		if(decomp_read_pos==decomp_buffer_pos)
-		{
-			decomp_read_pos=0;
-			decomp_buffer_pos=0;
-		}
-
-		return toread;
-	}
-	return 0;
-}
-
-size_t CompressedPipe2::ReadToString(std::string *ret)
-{
-	if(decomp_read_pos<decomp_buffer_pos)
-	{
-		size_t toread=decomp_buffer_pos-decomp_read_pos;
-		ret->resize(toread);
-		uncompressed_received_bytes+=toread;
-		memcpy((char*)ret->c_str(), &decomp_buffer[decomp_read_pos], toread);
-		decomp_read_pos=0;
-		decomp_buffer_pos=0;
-		return toread;
-	}
-	return 0;
-}
-
 size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 {
-	size_t rc=ReadToBuffer(buffer, bsize);
-	if(rc>0) return rc;
+	if(input_buffer_size>0)
+	{
+		size_t rc = ProcessToBuffer(buffer, bsize);
+		if(rc>0)
+		{
+			return rc;
+		}
+		else if(input_buffer_size==input_buffer.size())
+		{
+			input_buffer.resize(input_buffer.size()+output_incr_size);
+		}
+	}
 
 	if(timeoutms==0)
 	{
-		rc=cs->Read(buffer, bsize, timeoutms);
-		Process(buffer, rc);
-		if(has_error)
-		{
+		size_t rc=cs->Read(input_buffer.data()+input_buffer_size, input_buffer.size()-input_buffer_size, timeoutms);
+		if(rc==0)
 			return 0;
-		}
-		return ReadToBuffer(buffer, bsize);
+
+		input_buffer_size+=rc;		
+		return ProcessToBuffer(buffer, bsize);
 	}
 	else if(timeoutms==-1)
 	{
+		size_t rc;
 		do
 		{
-			rc=cs->Read(buffer, bsize, timeoutms);
+			rc=cs->Read(input_buffer.data()+input_buffer_size, input_buffer.size()-input_buffer_size, timeoutms);
 			if(rc==0)
 				return 0;
-
-			Process(buffer, rc);
 			if(has_error)
 			{
 				return 0;
 			}
-			rc=ReadToBuffer(buffer, bsize);
+
+			input_buffer_size += rc;	
+			rc = ProcessToBuffer(buffer, bsize);
 		}
 		while(rc==0);
 		return rc;
 	}
 
 	int64 starttime=Server->getTimeMS();
+	size_t rc;
 	do
 	{
 		int left=timeoutms-static_cast<int>(Server->getTimeMS()-starttime);
 
-		rc=cs->Read(buffer, bsize, left);
+		rc=cs->Read(input_buffer.data()+input_buffer_size, input_buffer.size()-input_buffer_size, left);
 		if(rc==0)
 			return 0;
-		Process(buffer, rc);
 		if(has_error)
 		{
 			return 0;
 		}
-		rc=ReadToBuffer(buffer, bsize);
+		input_buffer_size += rc;	
+		rc = ProcessToBuffer(buffer, bsize);
 	}
 	while(rc==0 && Server->getTimeMS()-starttime<static_cast<int64>(timeoutms));
 
 	return rc;
 }
 
-void CompressedPipe2::Process(const char *buffer, size_t bsize)
+size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize)
 {
-	inf_stream.avail_in = static_cast<unsigned int>(bsize);
-	inf_stream.next_in = reinterpret_cast<const unsigned char*>(buffer);
-
-	do 
+	bool set_out=false;
+	if(inf_stream.avail_in>0)
 	{
-		if(decomp_buffer_pos==decomp_buffer.size())
-		{
-			decomp_buffer.resize(decomp_buffer.size()+output_incr_size);
-		}
-
-		inf_stream.next_out=reinterpret_cast<unsigned char*>(&decomp_buffer[decomp_buffer_pos]);
-		inf_stream.avail_out=static_cast<unsigned int>(decomp_buffer.size()-decomp_buffer_pos);
+		inf_stream.next_out=reinterpret_cast<unsigned char*>(buffer);
+		inf_stream.avail_out=static_cast<unsigned int>(bsize);
+		set_out=true;
 
 		int rc = mz_inflate(&inf_stream, MZ_SYNC_FLUSH);
 
-		size_t used = (decomp_buffer.size()-decomp_buffer_pos) - inf_stream.avail_out;
-
-		decomp_buffer_pos+=used;
+		size_t used = bsize - inf_stream.avail_out;
+		uncompressed_received_bytes+=used;
 
 		if(rc!=MZ_OK && rc!=MZ_STREAM_END)
 		{
-			Server->Log("Error decompressing stream: "+nconvert(rc));
+			Server->Log("Error decompressing stream(1): "+nconvert(rc));
 			has_error=true;
-			return;
+			return 0;
 		}
-	} while (inf_stream.avail_out==0);
+
+		if(inf_stream.avail_in==0)
+		{
+			input_buffer_size=0;
+		}
+
+		return used;
+	}
+
+	inf_stream.avail_in = static_cast<unsigned int>(input_buffer_size);
+	inf_stream.next_in = reinterpret_cast<const unsigned char*>(input_buffer.data());
+	
+	if(!set_out)
+	{
+		inf_stream.next_out=reinterpret_cast<unsigned char*>(buffer);
+		inf_stream.avail_out=static_cast<unsigned int>(bsize);
+	}	
+
+	int rc = mz_inflate(&inf_stream, MZ_SYNC_FLUSH);
+
+	size_t used = bsize - inf_stream.avail_out;
+	uncompressed_received_bytes+=used;
+
+	if(rc!=MZ_OK && rc!=MZ_STREAM_END)
+	{
+		Server->Log("Error decompressing stream(2): "+nconvert(rc));
+		has_error=true;
+		return 0;
+	}
+
+	if(inf_stream.avail_out!=0)
+	{
+		input_buffer_size=0;
+	}
+
+	return used;
 }
 
 
-void CompressedPipe2::ProcessToString( const char *buffer, size_t bsize, std::string* ret )
+void CompressedPipe2::ProcessToString(std::string* ret )
 {
-	assert(decomp_buffer_pos==0);
-
-	inf_stream.avail_in = static_cast<unsigned int>(bsize);
-	inf_stream.next_in = reinterpret_cast<const unsigned char*>(buffer);
-
 	size_t data_pos = 0;
-
 	do 
 	{
 		if(data_pos==ret->size())
@@ -197,25 +197,20 @@ void CompressedPipe2::ProcessToString( const char *buffer, size_t bsize, std::st
 			ret->resize(ret->size()+output_incr_size);
 		}
 
-		inf_stream.next_out=reinterpret_cast<unsigned char*>(&(*ret)[data_pos]);
-		inf_stream.avail_out=static_cast<unsigned int>(ret->size()-data_pos);
-
-		int rc = mz_inflate(&inf_stream, MZ_SYNC_FLUSH);
-
-		size_t used = (ret->size()-data_pos) - inf_stream.avail_out;
-
-		data_pos+=used;
-
-		if(rc!=MZ_OK && rc!=MZ_STREAM_END)
-		{
-			Server->Log("Error decompressing stream: "+nconvert(rc));
-			has_error=true;
-			return;
-		}
+		size_t avail = ret->size()-data_pos;
+		ProcessToBuffer(&(*ret)[data_pos], avail);
 
 		if(inf_stream.avail_out!=0)
 		{
 			ret->resize(ret->size()-inf_stream.avail_out);
+		}
+		else if(ret->size()>output_max_size)
+		{
+			return;
+		}
+		else
+		{
+			data_pos+=avail;
 		}
 
 	} while (inf_stream.avail_out==0);
@@ -298,34 +293,49 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 
 size_t CompressedPipe2::Read(std::string *ret, int timeoutms)
 {
-	size_t rc=ReadToString(ret);
-	if(rc>0) return rc;
+	if(input_buffer_size>0)
+	{
+		ProcessToString(ret);
+		if(!ret->empty())
+		{
+			return ret->size();
+		}
+		else if(input_buffer_size==input_buffer.size())
+		{
+			input_buffer.resize(input_buffer.size()+output_incr_size);
+		}
+	}
 
 	if(timeoutms==0)
 	{
-		std::string tmp;
-		rc=cs->Read(&tmp, timeoutms);
-		ProcessToString(tmp.c_str(), tmp.size(), ret);
+		size_t rc=cs->Read(input_buffer.data()+input_buffer_size, input_buffer.size()-input_buffer_size, timeoutms);
+		if(rc==0)
+			return 0;
+
 		if(has_error)
 		{
 			return 0;
 		}
+		input_buffer_size+=rc;
+		ProcessToString(ret);
 		return ret->size();
 	}
 	else if(timeoutms==-1)
 	{
+		size_t rc;
 		do
 		{
-			std::string tmp;
-			rc=cs->Read(&tmp, timeoutms);
+			rc=cs->Read(input_buffer.data()+input_buffer_size, input_buffer.size()-input_buffer_size, timeoutms);
 			if(rc==0)
 				return 0;
 
-			ProcessToString(tmp.c_str(), tmp.size(), ret);
 			if(has_error)
 			{
 				return 0;
 			}
+
+			input_buffer_size+=rc;
+			ProcessToString(ret);
 			rc=ret->size();
 		}
 		while(rc==0);
@@ -333,20 +343,21 @@ size_t CompressedPipe2::Read(std::string *ret, int timeoutms)
 	}
 
 	int64 starttime=Server->getTimeMS();
+	size_t rc;
 	do
 	{
 		int left=timeoutms-static_cast<int>(Server->getTimeMS()-starttime);
 
-		std::string tmp;
-		rc=cs->Read(&tmp, left);
+		rc=cs->Read(input_buffer.data()+input_buffer_size, input_buffer.size()-input_buffer_size, left);
 		if(rc==0)
 			return 0;
 
-		ProcessToString(tmp.c_str(), tmp.size(), ret);
 		if(has_error)
 		{
 			return 0;
 		}
+		input_buffer_size+=rc;
+		ProcessToString(ret);
 		rc=ret->size();
 	}
 	while(rc==0 && Server->getTimeMS()-starttime<static_cast<int64>(timeoutms));
@@ -369,7 +380,7 @@ bool CompressedPipe2::isWritable(int timeoutms)
 
 bool CompressedPipe2::isReadable(int timeoutms)
 {
-	if(decomp_read_pos<decomp_buffer_pos)
+	if(input_buffer_size>0)
 		return true;
 	else
 		return cs->isReadable(timeoutms);
@@ -447,5 +458,13 @@ int64 CompressedPipe2::getSentFlushes()
 
 _i64 CompressedPipe2::getRealTransferredBytes()
 {
-	return getUncompressedSentBytes()+getUncompressedReceivedBytes();
+	int64 encryption_overhead=0;
+	InternetServicePipe2* isp2 = dynamic_cast<InternetServicePipe2*>(getRealPipe());
+	if(isp2!=NULL)
+	{
+		encryption_overhead=isp2->getEncryptionOverheadBytes();
+		Server->Log("Encryption overhead: "+PrettyPrintBytes(encryption_overhead));
+	}
+
+	return getUncompressedSentBytes()+getUncompressedReceivedBytes()-encryption_overhead;
 }

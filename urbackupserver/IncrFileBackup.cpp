@@ -288,6 +288,13 @@ bool IncrFileBackup::doFileBackup()
 		}
 	}
 
+	if(!startFileMetadataDownloadThread())
+	{
+		ServerLogger::Log(logid, "Error starting file metadata download thread", LL_ERROR);
+		has_early_error=true;
+		return false;
+	}
+
 	bool readd_file_entries_sparse = client_main->isOnInternetConnection() && server_settings->getSettings()->internet_calculate_filehashes_on_client
 		&& server_settings->getSettings()->internet_readd_file_entries;
 
@@ -1115,6 +1122,8 @@ bool IncrFileBackup::doFileBackup()
 	{
 		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_compressed)+" ratio: "+nconvert((float)transferred_compressed/transferred_bytes)+")");
 	}
+
+	stopFileMetadataDownloadThread();
 
 	if(group==c_group_default)
 	{

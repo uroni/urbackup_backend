@@ -8,7 +8,7 @@
 class FileMetadataDownloadThread : public IThread
 {
 public:
-	FileMetadataDownloadThread(FileClient& fc, const std::string& server_token, logid_t logid);
+	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid);
 
 	virtual void operator()();
 
@@ -16,7 +16,7 @@ public:
 	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb);
 
 private:
-	FileClient& fc;
+	std::auto_ptr<FileClient> fc;
 	const std::string& server_token;
 
 	std::vector<char> buffer;

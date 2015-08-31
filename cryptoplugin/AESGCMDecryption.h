@@ -23,6 +23,8 @@ public:
 
 	virtual int64 getOverheadBytes();
 
+	virtual bool hasData();
+
 private:
 	size_t findAndUnescapeEndMarker(const char *data, size_t data_size,
 		std::string& data_copy, bool& has_copy, bool& has_error,

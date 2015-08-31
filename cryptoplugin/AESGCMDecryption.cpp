@@ -139,7 +139,7 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 			}
 			try
 			{
-				Server->Log("Message end");
+				Server->Log("Message end. Size: "+nconvert(decryption_filter.MaxRetrievable()));
 				decryption_filter.MessageEnd();
 			}
 			catch (CryptoPP::Exception&)
@@ -180,6 +180,7 @@ std::string AESGCMDecryption::get( bool& has_error )
 				size_t nb = decryption_filter.Get(reinterpret_cast<byte*>(&ret[0]), ret.size());
 				if(nb!=ret.size())
 				{
+					assert(false);
 					ret.resize(nb);
 				}
 			}
@@ -294,5 +295,10 @@ size_t AESGCMDecryption::findAndUnescapeEndMarker( const char* data, size_t data
 int64 AESGCMDecryption::getOverheadBytes()
 {
 	return overhead_bytes;
+}
+
+bool AESGCMDecryption::hasData()
+{
+	return decryption_filter.NumberOfMessages()>0;
 }
 

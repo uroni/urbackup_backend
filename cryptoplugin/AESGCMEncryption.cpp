@@ -92,7 +92,6 @@ std::string AESGCMEncryption::get()
 
 	if(!iv_done)
 	{
-		iv_add=m_IV.size();
 		memcpy(&ret[0], m_IV.BytePtr(), m_IV.size());
 		iv_done=true;
 		overhead_size+=m_IV.size();
@@ -106,7 +105,7 @@ std::string AESGCMEncryption::get()
 		{
 			ret.resize(nb+iv_add+ ( add_end_marker ? (end_marker_zeros + 1) : 0 ));
 		}*/
-		escapeEndMarker(ret, nb, iv_add);
+		escapeEndMarker(ret, iv_add+nb, iv_add);
 		decEndMarkers(nb);
 	}
 

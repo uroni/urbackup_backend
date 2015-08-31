@@ -569,17 +569,22 @@ IPipe *InternetServiceConnector::getConnection(const std::string &clientname, ch
 				isc->freeConnection(); //deletes ics
 
 				CompressedPipe *comp_pipe=dynamic_cast<CompressedPipe*>(ret);
-				if(comp_pipe!=NULL)
+				CompressedPipe2 *comp_pipe2=dynamic_cast<CompressedPipe2*>(ret);
+				if(comp_pipe2!=NULL)
+				{
+					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(comp_pipe2->getRealPipe());
+					if(isc_pipe2!=NULL)
+					{
+						isc_pipe2->destroyBackendPipeOnDelete(true);
+					}
+					comp_pipe2->destroyBackendPipeOnDelete(true);
+				}
+				else if(comp_pipe!=NULL)
 				{
 					InternetServicePipe *isc_pipe=dynamic_cast<InternetServicePipe*>(comp_pipe->getRealPipe());
 					if(isc_pipe!=NULL)
 					{
 						isc_pipe->destroyBackendPipeOnDelete(true);
-					}
-					InternetServicePipe2 *isc_pipe2=dynamic_cast<InternetServicePipe2*>(comp_pipe->getRealPipe());
-					if(isc_pipe2!=NULL)
-					{
-						isc_pipe2->destroyBackendPipeOnDelete(true);
 					}
 					comp_pipe->destroyBackendPipeOnDelete(true);
 				}

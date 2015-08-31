@@ -168,6 +168,13 @@ bool FullFileBackup::doFileBackup()
 		return false;
 	}
 
+	if(!startFileMetadataDownloadThread())
+	{
+		ServerLogger::Log(logid, "Error starting file metadata download thread", LL_ERROR);
+		has_early_error=true;
+		return false;
+	}
+
 	_i64 filelist_size=tmp->Size();
 
 	char buffer[4096];
@@ -604,6 +611,8 @@ bool FullFileBackup::doFileBackup()
 	{
 		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_compressed)+" ratio: "+nconvert((float)transferred_compressed/transferred_bytes)+")");
 	}
+
+	stopFileMetadataDownloadThread();
 
 	ClientMain::run_script(L"urbackup" + os_file_sep() + L"post_full_filebackup", L"\""+ backuppath + L"\"", logid);
 

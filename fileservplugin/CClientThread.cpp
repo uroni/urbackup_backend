@@ -300,7 +300,7 @@ int CClientThread::SendInt(const char *buf, size_t bsize)
 	}
 	else
 	{
-		return (int)(clientpipe->Write(buf, bsize, SEND_TIMEOUT)?bsize:SOCKET_ERROR);
+		return (int)(clientpipe->Write(buf, bsize, SEND_TIMEOUT, false)?bsize:SOCKET_ERROR);
 	}
 }
 
@@ -842,6 +842,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(!InformMetadataStreamEnd(data))
 				{
 					return false;
+				}
+			} break;
+		case ID_FLUSH_SOCKET:
+			{
+				if(!clientpipe->Flush(CLIENT_TIMEOUT*1000))
+				{
+					Server->Log("Error flushing output socket", LL_INFO);
 				}
 			} break;
 		}
@@ -1680,6 +1687,11 @@ bool CClientThread::InformMetadataStreamEnd( CRData * data )
 	{
 		Log("Error: Sending data failed (InformMetadataStreamEnd)");
 		return false;
+	}
+
+	if(!clientpipe->Flush(CLIENT_TIMEOUT*1000))
+	{
+		Server->Log("Error flushing output socket (2)", LL_INFO);
 	}
 
 	return true;

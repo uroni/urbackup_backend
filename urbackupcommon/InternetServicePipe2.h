@@ -78,4 +78,7 @@ private:
 	IPipe *cs;
 	bool destroy_cs;
 	bool has_error;
+
+	size_t curr_write_chunk_size;
+	int64 last_flush_time;
 };

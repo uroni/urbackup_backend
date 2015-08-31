@@ -50,7 +50,7 @@ FileBackup::FileBackup( ClientMain* client_main, int clientid, std::wstring clie
 	disk_error(false), with_hashes(false),
 	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
-	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false)
+	pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), cdp_path(false), metadata_download_thread_ticket(ILLEGAL_THREADPOOL_TICKET)
 {
 	createHashThreads(use_reflink);
 }
@@ -495,28 +495,7 @@ bool FileBackup::doBackup()
 	local_hash.reset(new BackupServerHash(NULL, clientid, use_snapshots, use_reflink, use_tmpfiles, logid));
 	local_hash->setupDatabase();
 
-	std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
-	FileClient fc_metadata_stream(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
-		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
-
-	std::auto_ptr<FileMetadataDownloadThread> metadata_download_thread;
-	THREADPOOL_TICKET metadata_download_thread_ticket = ILLEGAL_THREADPOOL_TICKET;
-
-	if(client_main->getProtocolVersions().file_meta>0)
-	{
-		_u32 rc=client_main->getClientFilesrvConnection(&fc_metadata_stream, server_settings.get(), 10000);
-		if(rc!=ERR_CONNECTED)
-		{
-			ServerLogger::Log(logid, L"Full Backup of "+clientname+L" failed - CONNECT error (for metadata stream)", LL_ERROR);
-			has_early_error=true;
-			log_backup=false;
-			return false;
-		}
-
-		metadata_download_thread.reset(new FileMetadataDownloadThread(fc_metadata_stream, server_token, logid));
-
-		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get());
-	}	
+	
 
 	bool backup_result = doFileBackup();
 
@@ -528,29 +507,12 @@ bool FileBackup::doBackup()
 	}	
 
 	local_hash->deinitDatabase();
-
-	if(metadata_download_thread.get()!=NULL)
-	{
-		if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket))
-		{
-			ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_INFO);
-			do 
-			{
-				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
-				Server->wait(10000);
-			} while (!Server->getThreadPool()->waitFor(metadata_download_thread_ticket));
-		}		
-	}
 	
 
 	if(disk_error)
 	{
 		ServerLogger::Log(logid, "FATAL: Backup failed because of disk problems", LL_ERROR);
 		client_main->sendMailToAdmins("Fatal error occured during backup", ServerLogger::getWarningLevelTextLogdata(logid));
-	}
-	else if(!has_early_error && metadata_download_thread.get()!=NULL)
-	{
-		metadata_download_thread->applyMetadata(backuppath_hashes, client_main);
 	}
 
 	if((!has_early_error && !backup_result) || disk_error)
@@ -1363,4 +1325,53 @@ bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std
 	}
 
 	return os_link_symbolic(target, name, NULL, &isdir);
+}
+
+bool FileBackup::startFileMetadataDownloadThread()
+{
+
+	if(client_main->getProtocolVersions().file_meta>0)
+	{
+		std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+		std::auto_ptr<FileClient> fc_metadata_stream(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
+			client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main));
+
+		_u32 rc=client_main->getClientFilesrvConnection(fc_metadata_stream.get(), server_settings.get(), 10000);
+		if(rc!=ERR_CONNECTED)
+		{
+			ServerLogger::Log(logid, L"Full Backup of "+clientname+L" failed - CONNECT error (for metadata stream)", LL_ERROR);
+			has_early_error=true;
+			log_backup=false;
+			return false;
+		}
+
+		metadata_download_thread.reset(new FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid));
+
+		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get());
+	}	
+
+	return true;
+}
+
+bool FileBackup::stopFileMetadataDownloadThread()
+{
+	if(metadata_download_thread.get()!=NULL)
+	{
+		if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket))
+		{
+			ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_INFO);
+			do 
+			{
+				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
+				Server->wait(10000);
+			} while (!Server->getThreadPool()->waitFor(metadata_download_thread_ticket));
+		}	
+
+		if(!disk_error && !has_early_error)
+		{
+			metadata_download_thread->applyMetadata(backuppath_hashes, client_main);
+		}
+	}
+
+	return true;
 }

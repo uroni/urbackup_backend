@@ -12,4 +12,6 @@ public:
 	virtual bool get(char *data, size_t& data_size) = 0;
 
 	virtual int64 getOverheadBytes() = 0;
+
+	virtual bool hasData() = 0;
 };

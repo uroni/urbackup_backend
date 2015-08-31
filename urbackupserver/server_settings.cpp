@@ -291,7 +291,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_full_file_backups=(settings_default->getValue("internet_full_file_backups", "false")=="true");
 	settings->internet_encrypt=(settings_default->getValue("internet_encrypt", "true")=="true");
 	settings->internet_compress=(settings_default->getValue("internet_compress", "true")=="true");
-	settings->internet_compression_level=atoi(settings_default->getValue("internet_compress", "6").c_str());
+	settings->internet_compression_level=atoi(settings_default->getValue("internet_compression_level", "6").c_str());
 	settings->internet_speed=settings_default->getValue("internet_speed", "-1");
 	settings->local_speed=settings_default->getValue("local_speed", "-1");
 	settings->global_internet_speed=settings_default->getValue("global_internet_speed", "-1");

@@ -745,6 +745,7 @@ bool FileClient::Reconnect(void)
 
 				hash_func.init();
 				state=0;
+				needs_flush=true;
 			}
 		}
         else
@@ -1022,6 +1023,7 @@ bool FileClient::Reconnect(void)
 
 				hash_func.init();
 				state=0;
+				needs_flush=true;
 			}
 		}
 
@@ -1086,7 +1088,15 @@ void FileClient::setQueueCallback( QueueCallback* cb )
 void FileClient::fillQueue()
 {
 	if(queue_callback==NULL)
+	{
+		if(needs_flush)
+		{
+			needs_flush=false;
+			Flush();
+		}
+
 		return;
+	}
 
 	while(queued.size()<maxQueuedFiles)
 	{
@@ -1133,6 +1143,7 @@ void FileClient::fillQueue()
 		}
 
 		queued.push_back(queue_fn);
+		needs_flush=true;
 	}
 }
 
@@ -1235,6 +1246,7 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 				starttime=Server->getTimeMS();
 
 				firstpacket=true;
+				needs_flush=true;
 			}
 		}
 		else
@@ -1380,6 +1392,7 @@ _u32 FileClient::GetFileHashAndMetadata( std::string remotefn, std::string& hash
 				starttime=Server->getTimeMS();
 
 				firstpacket=true;
+				needs_flush=true;
 			}
 		}
 	}

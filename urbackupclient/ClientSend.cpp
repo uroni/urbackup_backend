@@ -53,6 +53,21 @@ void ClientSend::operator()(void)
 		bool do_exit;
 		{
 			IScopedLock lock(mutex);
+
+			if(tqueue.empty() && exit==false)
+			{
+				cond->wait(&lock, 100);
+
+				if(tqueue.empty())
+				{
+					if(!pipe->Flush(-1))
+					{
+						print_last_error();
+						has_error=true;
+					}
+				}
+			}
+
 			if(tqueue.empty() && exit==false)
 				cond->wait(&lock);
 
@@ -70,7 +85,7 @@ void ClientSend::operator()(void)
 		{
 			if(!has_error)
 			{
-				bool b=pipe->Write(item.buf, item.bsize);
+				bool b=pipe->Write(item.buf, item.bsize, -1, false);
 				if(!b)
 				{
 					print_last_error();

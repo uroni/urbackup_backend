@@ -58,19 +58,13 @@ public:
 	virtual _i64 getRealTransferredBytes();
 
 private:
-	void Process(const char *buffer, size_t bsize);
-	void ProcessToString(const char *buffer, size_t bsize, std::string* ret);
-	size_t ReadToBuffer(char *buffer, size_t bsize);
-	size_t ReadToString(std::string *ret);
+	size_t ProcessToBuffer(char *buffer, size_t bsize);
+	void ProcessToString(std::string* ret);
 
 	IPipe *cs;
-
-	std::vector<char> decomp_buffer;
-	size_t decomp_buffer_pos;
-	size_t decomp_read_pos;
 	std::vector<char> comp_buffer;
 	std::vector<char> input_buffer;
-	size_t input_buffer_pos;
+	size_t input_buffer_size;
 
 	int64 uncompressed_sent_bytes;
 	int64 uncompressed_received_bytes;

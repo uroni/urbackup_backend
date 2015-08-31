@@ -45,6 +45,8 @@ void InternetServicePipe2::init( IPipe *pcs, const std::string &key )
 	cs=pcs;
 	destroy_cs=false;
 	has_error=false;
+	curr_write_chunk_size=0;
+	last_flush_time=Server->getTimeMS();
 
 	enc.reset(crypto_fak->createAESGCMEncryption(key));
 	dec.reset(crypto_fak->createAESGCMDecryption(key));
@@ -168,12 +170,15 @@ bool InternetServicePipe2::Write( const char *buffer, size_t bsize, int timeoutm
 {
 	if(buffer!=NULL)
 	{
+		curr_write_chunk_size+=bsize;
 		enc->put(buffer, bsize);
 	}
 
-	if(flush)
+	if(flush || curr_write_chunk_size>128*1024 || (Server->getTimeMS()-last_flush_time)>200)
 	{
 		enc->flush();
+		curr_write_chunk_size=0;
+		last_flush_time=Server->getTimeMS();
 	}
 
 	std::string tosend = enc->get();
@@ -205,7 +210,7 @@ bool InternetServicePipe2::isWritable( int timeoutms/*=0 */ )
 
 bool InternetServicePipe2::isReadable( int timeoutms/*=0 */ )
 {
-	return cs->isReadable(timeoutms);
+	return dec->hasData() || cs->isReadable(timeoutms);
 }
 
 bool InternetServicePipe2::hasError( void )

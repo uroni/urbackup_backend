@@ -40,30 +40,24 @@ void RestoreFiles::operator()()
 	FileClient fc(false, client_token, 3,
 		true, this, NULL);
 
-	FileClient fc_metadata(false, client_token, 3,
-		true, this, NULL);
+	
 
 	log("Starting restore...", LL_INFO);
 
 	ClientConnector::updateRestorePc(status_id, -1, server_token);
 	
-	if(!connectFileClient(fc) ||
-		!connectFileClient(fc_metadata))
+	if(!connectFileClient(fc))
 	{
 		log("Connecting for restore failed", LL_ERROR);
 		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
 		return;
 	}
 
-	std::auto_ptr<FileMetadataDownloadThread> metadata_thread(new FileMetadataDownloadThread(*this, fc_metadata, client_token ));
-
-	THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get());
-
 	log("Loading file list...", LL_INFO);
 
 	if(!downloadFilelist(fc))
 	{
-		restore_failed(fc, metadata_dl);
+		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
 		return;
 	}
 
@@ -72,9 +66,22 @@ void RestoreFiles::operator()()
 	int64 total_size = calculateDownloadSize();
 	if(total_size==-1)
 	{
-		restore_failed(fc, metadata_dl);
+		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
 		return;
 	}
+
+	FileClient fc_metadata(false, client_token, 3,
+		true, this, NULL);
+
+	if(!connectFileClient(fc_metadata))
+	{
+		log("Connecting for file metadata failed", LL_ERROR);
+		ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+		return;
+	}
+
+	std::auto_ptr<FileMetadataDownloadThread> metadata_thread(new FileMetadataDownloadThread(*this, fc_metadata, client_token ));
+	THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get());
 
 	log("Downloading necessary file data...", LL_INFO);
 

@@ -15,6 +15,7 @@ class BackupServerHash;
 class BackupServerPrepareHash;
 class ServerPingThread;
 class FileIndex;
+class FileMetadataDownloadThread;
 
 namespace
 {
@@ -95,6 +96,8 @@ protected:
 	std::vector<size_t> findIdenticalPermissionRoots(IFile* file_list_f, const std::vector<int>& ids);
 	void deleteBackup();
 	bool createSymlink(const std::wstring& name, size_t depth, const std::wstring& symlink_target, const std::wstring& dir_sep, bool isdir);
+	bool startFileMetadataDownloadThread();
+	bool stopFileMetadataDownloadThread();
 
 	int group;
 	bool use_tmpfiles;
@@ -127,4 +130,7 @@ protected:
 	bool disk_error;
 
 	int backupid;
+
+	std::auto_ptr<FileMetadataDownloadThread> metadata_download_thread;
+	THREADPOOL_TICKET metadata_download_thread_ticket;
 };

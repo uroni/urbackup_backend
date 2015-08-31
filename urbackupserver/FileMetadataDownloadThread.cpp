@@ -27,7 +27,7 @@ const _u32 ID_METADATA_OS_UNIX = 1<<2;
 const _u32 ID_METADATA_NOP = 0;
 const _u32 ID_METADATA_V1 = 1<<3;
 
-FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient& fc, const std::string& server_token, logid_t logid)
+FileMetadataDownloadThread::FileMetadataDownloadThread( FileClient* fc, const std::string& server_token, logid_t logid)
 	: fc(fc), server_token(server_token), logid(logid), has_error(false)
 {
 
@@ -39,7 +39,7 @@ void FileMetadataDownloadThread::operator()()
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token;
 
-	_u32 rc = fc.GetFile(remote_fn, tmp_f.get(), true, false);
+	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false);
 
 	if(rc!=ERR_SUCCESS)
 	{
