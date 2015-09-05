@@ -58,8 +58,8 @@ public:
 	virtual _i64 getRealTransferredBytes();
 
 private:
-	size_t ProcessToBuffer(char *buffer, size_t bsize);
-	void ProcessToString(std::string* ret);
+	size_t ProcessToBuffer(char *buffer, size_t bsize, bool fromLast);
+	void ProcessToString(std::string* ret, bool fromLast);
 
 	IPipe *cs;
 	std::vector<char> comp_buffer;

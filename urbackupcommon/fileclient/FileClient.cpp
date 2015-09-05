@@ -1462,6 +1462,8 @@ _u32 FileClient::Flush()
 	if(tcpsock==NULL)
 		return ERR_ERROR;
 
+	Server->Log("Flushing FileClient...", LL_DEBUG);
+
 	CWData data;
 	data.addUChar(ID_FLUSH_SOCKET);
 

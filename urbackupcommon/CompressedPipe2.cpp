@@ -67,7 +67,7 @@ size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 {
 	if(input_buffer_size>0)
 	{
-		size_t rc = ProcessToBuffer(buffer, bsize);
+		size_t rc = ProcessToBuffer(buffer, bsize, true);
 		if(rc>0)
 		{
 			return rc;
@@ -85,7 +85,7 @@ size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 			return 0;
 
 		input_buffer_size+=rc;		
-		return ProcessToBuffer(buffer, bsize);
+		return ProcessToBuffer(buffer, bsize, false);
 	}
 	else if(timeoutms==-1)
 	{
@@ -101,7 +101,7 @@ size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 			}
 
 			input_buffer_size += rc;	
-			rc = ProcessToBuffer(buffer, bsize);
+			rc = ProcessToBuffer(buffer, bsize, false);
 		}
 		while(rc==0);
 		return rc;
@@ -121,17 +121,17 @@ size_t CompressedPipe2::Read(char *buffer, size_t bsize, int timeoutms)
 			return 0;
 		}
 		input_buffer_size += rc;	
-		rc = ProcessToBuffer(buffer, bsize);
+		rc = ProcessToBuffer(buffer, bsize, false);
 	}
 	while(rc==0 && Server->getTimeMS()-starttime<static_cast<int64>(timeoutms));
 
 	return rc;
 }
 
-size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize)
+size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize, bool fromLast)
 {
 	bool set_out=false;
-	if(inf_stream.avail_in>0)
+	if(fromLast)
 	{
 		inf_stream.next_out=reinterpret_cast<unsigned char*>(buffer);
 		inf_stream.avail_out=static_cast<unsigned int>(bsize);
@@ -142,16 +142,20 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize)
 		size_t used = bsize - inf_stream.avail_out;
 		uncompressed_received_bytes+=used;
 
-		if(rc!=MZ_OK && rc!=MZ_STREAM_END)
+		if(rc!=MZ_OK && rc!=MZ_STREAM_END && rc!=MZ_BUF_ERROR /*Needs more input*/)
 		{
 			Server->Log("Error decompressing stream(1): "+nconvert(rc));
 			has_error=true;
 			return 0;
 		}
 
-		if(inf_stream.avail_in==0)
+		if(inf_stream.avail_in==0 && inf_stream.avail_out!=0)
 		{
 			input_buffer_size=0;
+		}
+		else if(inf_stream.avail_in==0)
+		{
+			inf_stream.next_in=NULL;
 		}
 
 		return used;
@@ -178,27 +182,31 @@ size_t CompressedPipe2::ProcessToBuffer(char *buffer, size_t bsize)
 		return 0;
 	}
 
-	if(inf_stream.avail_out!=0)
+	if(inf_stream.avail_in==0 && inf_stream.avail_out!=0)
 	{
 		input_buffer_size=0;
+	}
+	else if(inf_stream.avail_in==0)
+	{
+		inf_stream.next_in=NULL;
 	}
 
 	return used;
 }
 
 
-void CompressedPipe2::ProcessToString(std::string* ret )
+void CompressedPipe2::ProcessToString(std::string* ret, bool fromLast )
 {
 	size_t data_pos = 0;
 	do 
 	{
-		if(data_pos==ret->size())
+		if(data_pos+output_incr_size>ret->size())
 		{
 			ret->resize(ret->size()+output_incr_size);
 		}
 
 		size_t avail = ret->size()-data_pos;
-		ProcessToBuffer(&(*ret)[data_pos], avail);
+		ProcessToBuffer(&(*ret)[data_pos], avail, fromLast);
 
 		if(inf_stream.avail_out!=0)
 		{
@@ -226,7 +234,7 @@ bool CompressedPipe2::Write(const char *buffer, size_t bsize, int timeoutms, boo
 		cbsize=(std::min)(max_send_size, bsize);
 
 		bsize-=cbsize;
-		uncompressed_sent_bytes=cbsize;
+		uncompressed_sent_bytes+=cbsize;
 
 		bool has_next = bsize>0;
 		bool curr_flush = has_next ? false : flush;
@@ -295,7 +303,7 @@ size_t CompressedPipe2::Read(std::string *ret, int timeoutms)
 {
 	if(input_buffer_size>0)
 	{
-		ProcessToString(ret);
+		ProcessToString(ret, true);
 		if(!ret->empty())
 		{
 			return ret->size();
@@ -317,7 +325,7 @@ size_t CompressedPipe2::Read(std::string *ret, int timeoutms)
 			return 0;
 		}
 		input_buffer_size+=rc;
-		ProcessToString(ret);
+		ProcessToString(ret, false);
 		return ret->size();
 	}
 	else if(timeoutms==-1)
@@ -335,7 +343,7 @@ size_t CompressedPipe2::Read(std::string *ret, int timeoutms)
 			}
 
 			input_buffer_size+=rc;
-			ProcessToString(ret);
+			ProcessToString(ret, false);
 			rc=ret->size();
 		}
 		while(rc==0);
@@ -357,7 +365,7 @@ size_t CompressedPipe2::Read(std::string *ret, int timeoutms)
 			return 0;
 		}
 		input_buffer_size+=rc;
-		ProcessToString(ret);
+		ProcessToString(ret, false);
 		rc=ret->size();
 	}
 	while(rc==0 && Server->getTimeMS()-starttime<static_cast<int64>(timeoutms));

@@ -103,7 +103,14 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 					else if(data_size-escaped_zeros>=end_marker_state-carry_zeros)
 					{
 						data_size-=end_marker_state-carry_zeros;
+						carry_zeros=0;
 					}
+				}
+
+				if(carry_zeros>0)
+				{
+					for(size_t i=0;i<carry_zeros;++i)
+						decryption_filter.Put(0);
 				}
 
 				if(has_copy && data_size-escaped_zeros>0)

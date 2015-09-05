@@ -26,7 +26,7 @@ const size_t end_marker_zeros=2;
 
 AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 	: encryption(), encryption_filter(encryption), iv_done(false), end_marker_state(0),
-	overhead_size(0)
+	overhead_size(0), message_size(0)
 {
 	if(hash_password)
 	{
@@ -58,6 +58,7 @@ AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 void AESGCMEncryption::put( const char *data, size_t data_size )
 {
 	encryption_filter.Put(reinterpret_cast<const byte*>(data), data_size);
+	message_size+=data_size;
 }
 
 void AESGCMEncryption::flush()
@@ -97,7 +98,7 @@ std::string AESGCMEncryption::get()
 		overhead_size+=m_IV.size();
 	}
 
-	if(ret.size()>iv_add)
+	if(max_retrievable>0)
 	{
 		size_t nb = encryption_filter.Get(reinterpret_cast<byte*>(&ret[iv_add]), max_retrievable);
 		assert(nb==max_retrievable);
@@ -115,7 +116,10 @@ std::string AESGCMEncryption::get()
 		ret[ret.size()-1]=1;
 		end_marker_state=0;
 		overhead_size+=end_marker_zeros+1;
+		message_size+=end_marker_zeros+1;
 		encryption_filter.GetNextMessage();
+		Server->Log("New message. Size: "+nconvert(message_size));
+		message_size=0;
 	}
 
 	return ret;

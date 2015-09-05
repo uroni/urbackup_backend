@@ -41,4 +41,5 @@ private:
 	CryptoPP::AuthenticatedEncryptionFilter encryption_filter;
 	std::vector<size_t> end_markers;
 	int64 overhead_size;
+	size_t message_size;
 };

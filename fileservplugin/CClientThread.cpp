@@ -846,6 +846,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 			} break;
 		case ID_FLUSH_SOCKET:
 			{
+				Server->Log("Received flush.", LL_DEBUG);
 				if(!clientpipe->Flush(CLIENT_TIMEOUT*1000))
 				{
 					Server->Log("Error flushing output socket", LL_INFO);
