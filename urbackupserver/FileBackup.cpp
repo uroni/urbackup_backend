@@ -1369,7 +1369,7 @@ bool FileBackup::stopFileMetadataDownloadThread()
 
 		if(!disk_error && !has_early_error)
 		{
-			metadata_download_thread->applyMetadata(backuppath_hashes, client_main);
+			metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main);
 		}
 	}
 

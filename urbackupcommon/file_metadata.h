@@ -56,9 +56,9 @@ public:
 	void set_orig_path(const std::string& the_orig_path);
 };
 
-bool write_file_metadata(const std::wstring& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata);
+bool write_file_metadata(const std::wstring& out_fn, INotEnoughSpaceCallback *cb, const FileMetadata& metadata, bool overwrite_existing);
 
-bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMetadata& metadata);
+bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMetadata& metadata, bool overwrite_existing, int64& truncate_to_bytes);
 
 bool is_metadata_only(IFile* hash_file);
 

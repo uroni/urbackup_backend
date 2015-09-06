@@ -602,9 +602,12 @@ bool FileClient::Reconnect(void)
 		queue_callback->resetQueueFull();
 	}
 
-	transferred_bytes+=tcpsock->getTransferedBytes();
-	real_transferred_bytes+=tcpsock->getRealTransferredBytes();
-	Server->destroy(tcpsock);
+	if(tcpsock!=NULL)
+	{
+		transferred_bytes+=tcpsock->getTransferedBytes();
+		real_transferred_bytes+=tcpsock->getRealTransferredBytes();
+		Server->destroy(tcpsock);
+	}
 	connect_starttime=Server->getTimeMS();
 
 	while(Server->getTimeMS()-connect_starttime<reconnection_timeout)

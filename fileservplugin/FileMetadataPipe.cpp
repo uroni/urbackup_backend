@@ -131,7 +131,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 				unsigned int data_size = little_endian(static_cast<unsigned int>(meta_data.getDataSize()));
 				memcpy(metadata_buffer.data(), &data_size, sizeof(data_size));
 				memcpy(metadata_buffer.data()+sizeof(unsigned int), meta_data.getDataPtr(), meta_data.getDataSize());
-				metadata_buffer_size = meta_data.getDataSize();
+				metadata_buffer_size = meta_data.getDataSize()+sizeof(unsigned int);
 			}
 			else
 			{

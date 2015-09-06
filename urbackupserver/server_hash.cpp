@@ -548,7 +548,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 								}
 								else
 								{
-									if(!write_file_metadata(hash_fn, this, metadata))
+									if(!write_file_metadata(hash_fn, this, metadata, false))
 									{
 										ServerLogger::Log(logid, "Error writing file metadata -2", LL_ERROR);
 										has_error=true;
@@ -648,7 +648,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 				}
 			}
 
-			if(write_metadata && !write_file_metadata(hash_fn, this, metadata))
+			if(write_metadata && !write_file_metadata(hash_fn, this, metadata, false))
 			{
 				ServerLogger::Log(logid, "Error writing file metadata -1", LL_ERROR);
 				has_error=true;
@@ -1086,14 +1086,23 @@ bool BackupServerHash::copyFileWithHashoutput(IFile *tf, const std::wstring &des
 		if(r=="")
 			return false;
 
-		if(!write_file_metadata(dst_hash, this, metadata))
+		int64 truncate_to_bytes;
+		if(!write_file_metadata(dst_hash, this, metadata, false, truncate_to_bytes))
 		{
 			return false;
+		}
+		else if(truncate_to_bytes>0)
+		{
+			dst_hash_s.clear();
+			if(!os_file_truncate(os_file_prefix(hash_dest), truncate_to_bytes))
+			{
+				return false;
+			}
 		}
 	}
 	else
 	{
-		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
+		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata, false))
 		{
 			return false;
 		}
@@ -1244,7 +1253,7 @@ bool BackupServerHash::patchFile(IFile *patch, const std::wstring &source, const
 		return false;
 	}
 
-	if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
+	if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata, false))
 	{
 		Server->Log("Error adding metadata to hash output after patching", LL_ERROR);
 		return false;
@@ -1353,9 +1362,19 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 		if(r=="")
 			return false;
 
-		if(!write_file_metadata(dst_hash, this, metadata))
+		int64 truncate_to_bytes;
+		if(!write_file_metadata(dst_hash, this, metadata, false, truncate_to_bytes))
 		{
 			return false;
+		}
+		else if(truncate_to_bytes>0)
+		{
+			dst_hash_s.clear();
+			if(!os_file_truncate(os_file_prefix(hash_dest), truncate_to_bytes))
+			{
+				Server->Log(L"Error truncating file \""+hash_dest+L"\" -3", LL_ERROR);
+				return false;
+			}
 		}
 
 		_i64 dst_size=dst->Size();
@@ -1375,7 +1394,7 @@ bool BackupServerHash::replaceFileWithHashoutput(IFile *tf, const std::wstring &
 	{
 		dst_s.clear();
 
-		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
+		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata, false))
 		{
 			return false;
 		}
@@ -1406,14 +1425,24 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &d
 		if(r=="")
 			return false;
 
-		if(!write_file_metadata(dst_hash, this, metadata))
+		int64 truncate_to_bytes;
+		if(!write_file_metadata(dst_hash, this, metadata, false, truncate_to_bytes))
 		{
 			return false;
+		}
+		else if(truncate_to_bytes>0)
+		{
+			dst_hash_s.clear();
+			if(!os_file_truncate(hash_dest, truncate_to_bytes))
+			{
+				Server->Log(L"Error truncating file \""+hash_dest+L"\" -4", LL_ERROR);
+				return false;
+			}
 		}
 	}
 	else
 	{
-		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata))
+		if(!write_file_metadata(os_file_prefix(hash_dest), this, metadata, false))
 		{
 			return false;
 		}

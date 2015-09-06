@@ -54,7 +54,7 @@ void FileMetadataDownloadThread::operator()()
 	metadata_tmp_fn = tmp_f->getFilenameW();
 }
 
-bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, INotEnoughSpaceCallback *cb)
+bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metadata_dir, const std::wstring& backup_dir, INotEnoughSpaceCallback *cb)
 {
 	buffer.resize(32768);
 	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
@@ -111,6 +111,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 
 			bool is_dir = curr_fn[0]=='d';
 
+			std::wstring os_path_metadata;
 			std::wstring os_path;
 			std::vector<std::string> fs_toks;
 			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
@@ -119,30 +120,35 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 			{
 				if(fs_toks[i]!="." && fs_toks[i]!="..")
 				{
-					if(!os_path.empty())
+					if(!os_path_metadata.empty())
+					{
+						os_path_metadata+=os_file_sep();
 						os_path+=os_file_sep();
+					}
 
 					if(i==fs_toks.size()-1)
 					{
-						os_path += escape_metadata_fn(Server->ConvertToUnicode(fs_toks[i]));
+						os_path_metadata += escape_metadata_fn(Server->ConvertToUnicode(fs_toks[i]));
+						os_path+=Server->ConvertToUnicode(fs_toks[i]);
 
 						if(is_dir)
 						{
-							os_path+=os_file_sep()+metadata_dir_fn;
+							os_path_metadata+=os_file_sep()+metadata_dir_fn;
 						}
 					}
 					else
 					{
-						os_path += Server->ConvertToUnicode(fs_toks[i]);
+						os_path_metadata += Server->ConvertToUnicode(fs_toks[i]);
+						os_path+= Server->ConvertToUnicode(fs_toks[i]);
 					}					
 				}
 			}
 
-			std::auto_ptr<IFile> output_f(Server->openFile(os_file_prefix(backupdir+os_file_sep()+os_path), MODE_RW));
+			std::auto_ptr<IFile> output_f(Server->openFile(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata), MODE_RW));
 
 			if(output_f.get()==NULL)
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Filename could not open output file at \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
+				ServerLogger::Log(logid, L"Error saving metadata. Filename could not open output file at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
 				return false;
 			}
 
@@ -187,7 +193,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 			curr_metadata.last_modified = modified;
 			curr_metadata.file_permissions = permissions;
 
-			if(!write_file_metadata(output_f.get(), cb, curr_metadata))
+			int64 truncate_to_bytes;
+			if(!write_file_metadata(output_f.get(), cb, curr_metadata, true, truncate_to_bytes))
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Cannot write common metadata.", LL_ERROR);
 				return false;
@@ -197,13 +204,13 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 
 			if(offset==-1)
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Metadata offset cannot be calculated at \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
+				ServerLogger::Log(logid, L"Error saving metadata. Metadata offset cannot be calculated at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
 				return false;
 			}
 
 			if(!output_f->Seek(offset))
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Could not seek to end of file \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
+				ServerLogger::Log(logid, L"Error saving metadata. Could not seek to end of file \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
 				return false;
 			}
 
@@ -211,13 +218,28 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backupdir, I
 			bool ok=false;
 			if(ch & ID_METADATA_OS_WIN)
 			{
-				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), metadata_size, cb);
+				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset);
 			}
 
 			if(!ok)
 			{
-				ServerLogger::Log(logid, L"Error saving metadata. Could not save OS specific metadata to \"" + backupdir+os_file_sep()+os_path + L"\"", LL_ERROR);
+				ServerLogger::Log(logid, L"Error saving metadata. Could not save OS specific metadata to \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
 				return false;
+			}
+			else if(offset+metadata_size<output_f->Size())
+			{
+				output_f.reset();
+				if(!os_file_truncate(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata),
+					offset+metadata_size))
+				{
+					ServerLogger::Log(logid, L"Error saving metadata. Could not truncate file \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
+					return false;
+				}
+			}
+
+			if(!os_set_file_time(os_file_prefix(backup_dir+os_file_sep()+os_path), created, modified))
+			{
+				ServerLogger::Log(logid, L"Error setting file time of "+backup_dir+os_file_sep()+os_path, LL_WARNING);
 			}
 		}
 
@@ -238,11 +260,21 @@ namespace
 	};
 
 	const size_t metadata_id_size = 4+4+8+4;
+	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4A);
 }
 
-bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb)
+bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset)
 {
-	metadata_size=0;
+	int64 win32_magic_and_size[2];
+	win32_magic_and_size[1]=win32_meta_magic;
+	
+	if(!writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size), cb))
+	{
+		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (beg)", LL_ERROR);
+		return false;
+	}
+	
+	metadata_size=sizeof(int64);
 	while(true) 
 	{
 		char cont = 0;
@@ -322,6 +354,20 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 			curr_pos+=toread;
 		}
+	}
+
+	if(!output_f->Seek(output_offset))
+	{
+		ServerLogger::Log(logid, L"Error seeking to  \"" + convert(output_offset) + L"\" -5 in output_f", LL_ERROR);
+		return false;
+	}
+
+	win32_magic_and_size[0]=little_endian(metadata_size);
+
+	if(!writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&win32_magic_and_size[0]), sizeof(win32_magic_and_size[0]), cb))
+	{
+		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (end)", LL_ERROR);
+		return false;
 	}
 
 	return true;

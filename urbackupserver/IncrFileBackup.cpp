@@ -367,8 +367,6 @@ bool IncrFileBackup::doFileBackup()
 	int indir_currdepth=0;
 	IdRange download_nok_ids;
 
-	std::stack<FileMetadata> dir_metadata;
-
 	fc.resetReceivedDataBytes();
 	if(fc_chunked.get()!=NULL)
 	{
@@ -539,8 +537,6 @@ bool IncrFileBackup::doFileBackup()
 
 					if(cf.name!=L"..")
 					{
-						dir_metadata.push(metadata);
-
 						std::wstring orig_curr_path = curr_path;
 						std::wstring orig_curr_os_path = curr_os_path;
 						curr_path+=L"/"+cf.name;
@@ -639,22 +635,14 @@ bool IncrFileBackup::doFileBackup()
 									ServerLogger::Log(logid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
 								}
 							}
-							else if(!write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata) )
+							else if(!write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata, false) )
 							{
 								ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
 								c_has_error=true;
 								break;
 							}
 
-							if(indirchange)
-							{
-								if(client_main->getProtocolVersions().file_meta>0)
-								{
-									server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
-										metadata, false, true);
-								}
-							}
-							else
+							if(!indirchange)
 							{
 								std::wstring srcpath=last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn;
 								if(!copy_os_metadata(srcpath, backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main))
@@ -685,9 +673,11 @@ bool IncrFileBackup::doFileBackup()
 					}
 					else //cf.name==".."
 					{
-						if(!dir_metadata.empty())
+						if(indirchange && client_main->getProtocolVersions().file_meta>0)
 						{
-							dir_metadata.pop();
+							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"), ExtractFileName(curr_os_path, L"/"),
+								ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
+								metadata, false, true);
 						}
 
 						--depth;
@@ -726,8 +716,6 @@ bool IncrFileBackup::doFileBackup()
 					{
 						metadata.orig_path = curr_orig_path + orig_sep + Server->ConvertToUTF8(cf.name);
 					}
-
-					FileMetadata parent_metadata = dir_metadata.empty()?FileMetadata():dir_metadata.top();
 
 					bool copy_curr_file_entry=false;
 					bool curr_has_hash = false;

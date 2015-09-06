@@ -176,6 +176,7 @@ namespace
 	};
 
 	const size_t metadata_id_size = 4+4+8+4;
+	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4A);
 }
 
 bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::wstring& output_fn)
@@ -186,6 +187,22 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	if(hFile==INVALID_HANDLE_VALUE)
 	{
 		restore.log(L"Cannot open handle to restore file metadata of file \""+output_fn+L"\"", LL_ERROR);
+		return false;
+	}
+
+	int64 win32_magic_and_size[2];
+
+	if(metadata_f->Read(reinterpret_cast<char*>(win32_magic_and_size), sizeof(win32_magic_and_size))!=sizeof(win32_magic_and_size))
+	{
+		restore.log(L"Error reading  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		has_error=true;
+		return false;
+	}
+
+	if(win32_magic_and_size[1]!=win32_meta_magic)
+	{
+		restore.log(L"Win32 metadata magic wrong in  \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		has_error=true;
 		return false;
 	}
 

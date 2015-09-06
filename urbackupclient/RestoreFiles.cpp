@@ -207,7 +207,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 	std::wstring curr_files_dir;
 	std::vector<SFileAndHash> curr_files;
 
-	ClientDAO client_dao(db);
+	ClientDAO client_dao(db, false);
 
 	size_t line=0;
 

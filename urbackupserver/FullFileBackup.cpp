@@ -222,8 +222,6 @@ bool FullFileBackup::doFileBackup()
 	bool is_offline=false;
 	bool script_dir=false;
 
-	std::stack<FileMetadata> dir_metadata;
-
 	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
 	{
 		for(size_t i=0;i<read;++i)
@@ -290,8 +288,6 @@ bool FullFileBackup::doFileBackup()
 				{
 					if(cf.name!=L"..")
 					{
-						dir_metadata.push(metadata);
-
 						std::wstring orig_curr_path = curr_path;
 						std::wstring orig_curr_os_path = curr_os_path;
 						curr_path+=L"/"+cf.name;
@@ -327,17 +323,11 @@ bool FullFileBackup::doFileBackup()
 							c_has_error=true;
 							break;
 						}
-						else if(metadata.exist && !write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata))
+						else if(metadata.exist && !write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata, false))
 						{
 							ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
 							c_has_error=true;
 							break;
-						}
-
-						if(client_main->getProtocolVersions().file_meta>0)
-						{
-							server_download->addToQueueFull(line, cf.name, osspecific_name, orig_curr_path, orig_curr_os_path, queue_downloads?0:-1,
-								metadata, false, true);
 						}
 
 						++depth;
@@ -361,9 +351,11 @@ bool FullFileBackup::doFileBackup()
 					}
 					else
 					{
-						if(!dir_metadata.empty())
+						if(client_main->getProtocolVersions().file_meta>0)
 						{
-							dir_metadata.pop();
+							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"),
+								ExtractFileName(curr_os_path, L"/"), ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
+								metadata, false, true);
 						}
 
 						--depth;
@@ -381,6 +373,7 @@ bool FullFileBackup::doFileBackup()
 								server_download->addToQueueStopShadowcopy(t);
 							}							
 						}
+
 						curr_path=ExtractFilePath(curr_path, L"/");
 						curr_os_path=ExtractFilePath(curr_os_path, L"/");
 
