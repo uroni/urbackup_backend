@@ -26,6 +26,11 @@
 #include <cstring>
 #include "FileServ.h"
 
+#ifndef _WIN32
+#include <sys/types.h>
+#include <sys/xattr.h>
+#endif
+
 const size_t metadata_id_size = 4+4+8+4;
 
 
@@ -33,6 +38,8 @@ FileMetadataPipe::FileMetadataPipe( IPipe* pipe, const std::wstring& cmd )
 	: PipeFileBase(cmd), pipe(pipe),
 #ifdef _WIN32
 	hFile(INVALID_HANDLE_VALUE),
+#else
+	backup_state(BackupState_StatInit),
 #endif
 	metadata_state(MetadataState_Wait),
 		errpipe(Server->createMemoryPipe())
@@ -160,6 +167,13 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		if(!transmitCurrMetadata(buf, buf_avail, read_bytes))
 		{
 			metadata_state = MetadataState_Wait;
+
+#ifndef _WIN32
+			backup_state=BackupState_StatInit;
+#else
+			hFile = INVALID_HANDLE_VALUE;
+#endif
+
 		}
 		return true;
 	}
@@ -447,11 +461,287 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 #else //_WIN32
 
+namespace
+{
+	void serialize_stat_buf(struct stat& buf, CWData& data)
+	{
+		data.addChar(1);
+		data.addInt64(buf.st_dev);
+		data.addInt64(buf.st_mode);
+		data.addInt64(buf.st_uid);
+		data.addInt64(buf.st_gid);
+		data.addInt64(buf.st_rdev);
+		data.addInt64(buf.st_atime);
+		data.addInt64(buf.st_mtime);
+		data.addInt64(buf.st_ctime);
+	}
+
+	bool get_xattr_keys(const std::string& fn, bool oflink, std::vector<std::string>& keys)
+	{
+		while(true)
+		{
+			ssize_t bufsize;
+			if(oflink)
+			{
+				bufsize = llistxattr(fn.c_str(), NULL, 0);
+			}
+			else
+			{
+				bufsize = listxattr(fn.c_str(), NULL, 0);
+			}
+
+			if(bufsize==-1)
+			{
+				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+nconvert(errno), LL_ERROR);
+				return false;
+			}
+
+			std::string buf;
+			buf.resize(bufsize);
+
+			if(oflink)
+			{
+				bufsize = llistxattr(fn.c_str(), &buf[0], buf.size());
+			}
+			else
+			{
+				bufsize = listxattr(fn.c_str(), &buf[0], buf.size());
+			}
+
+			if(bufsize==-1 && errno==ERANGE)
+			{
+				Server->Log("Extended attribute list size increased. Retrying...", LL_DEBUG);
+				continue;
+			}
+
+			if(bufsize==-1)
+			{
+				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+nconvert(errno)+" (2)", LL_ERROR);
+				return false;
+			}
+
+			TokenizeMail(buf, keys, "\0");
+
+			return true;
+		}
+	}
+
+	bool get_xattr(const std::string& fn, bool oflink, const std::string& key, std::string& value)
+	{
+		while(true)
+		{
+			ssize_t bufsize;
+			if(oflink)
+			{
+				bufsize = lgetxattr(fn.c_str(), key.c_str(), NULL, 0);
+			}
+			else
+			{
+				bufsize = getxattr(fn.c_str(), key.c_str(), NULL, 0);
+			}
+
+			if(bufsize==-1)
+			{
+				Server->Log("Error getting extended attribute "+key+" of file "+fn+" errno: "+nconvert(errno), LL_ERROR);
+				return false;
+			}
+
+			value.resize(bufsize+sizeof(_u32));
+
+			if(oflink)
+			{
+				bufsize = lgetxattr(fn.c_str(), key.c_str(), &value[sizeof(_u32)], value.size()-sizeof(_u32));
+			}
+			else
+			{
+				bufsize = getxattr(fn.c_str(), key.c_str(), &value[sizeof(_u32)], value.size()-sizeof(_u32));
+			}
+
+			if(bufsize==-1 && errno==ERANGE)
+			{
+				Server->Log("Extended attribute size increased. Retrying...", LL_DEBUG);
+				continue;
+			}
+
+			if(bufsize==-1)
+			{
+				Server->Log("Error getting extended attribute list of file "+fn+" errno: "+nconvert(errno)+" (2)", LL_ERROR);
+				return false;
+			}
+
+			if(bufsize<value.size()-sizeof(_u32))
+			{
+				value.resize(bufsize+sizeof(_u32));
+			}
+
+			_u32 vsize=static_cast<_u32>(bufsize);
+			vsize=little_endian(vsize);
+
+			memcpy(&value[0], &vsize, sizeof(vsize));
+
+			return true;
+		}
+	}
+}
+
 bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t& read_bytes)
 {
-	assert(false);
-	//TODO: Implement
-	return false;
+	if(backup_state==BackupState_StatInit)
+	{
+		CWData data;
+		struct stat buf;
+		int rc = lstat64(local_fn.c_str(), &buf);
+
+		if(rc!=0)
+		{
+			Server->Log("Error with lstat of "+local_fn+" errorcode: "+nconvert(errno), LL_ERROR);
+			return false;
+		}
+
+		serialize_stat_buf(buf, data);
+
+		if(S_ISLNK(buf.st_mode))
+		{
+			rc = stat64(local_fn.c_str(), &buf);
+
+			if(rc!=0)
+			{
+				Server->Log("Error with stat of "+local_fn+" errorcode: "+nconvert(errno), LL_ERROR);
+				return false;
+			}
+
+			serialize_stat_buf(buf, data);
+			is_symlink=true;
+		}
+		else
+		{
+			is_symlink=false;
+		}
+
+		eattr_oflink=true;
+
+		if(data.getDataSize()>metadata_buffer.size())
+		{
+			Server->Log("File metadata of "+local_fn+" too large ("+nconvert((size_t)data.getDataSize())+")", LL_ERROR);
+			return false;
+		}
+
+		memcpy(metadata_buffer.data(), data.getDataPtr(), data.getDataSize());
+		metadata_buffer_size=data.getDataSize();
+		metadata_buffer_off=0;
+		backup_state=BackupState_Stat;
+
+		return transmitCurrMetadata(buf, buf_avail, read_bytes);
+	}
+	else if(backup_read_state==BackupState_Stat)
+	{
+		if(metadata_buffer_size-metadata_buffer_off>0)
+		{
+			read_bytes = (std::min)(metadata_buffer_size-metadata_buffer_off, buf_avail);
+			memcpy(buf, metadata_buffer.data()+metadata_buffer_off, read_bytes);
+			metadata_buffer_off+=read_bytes;
+		}
+		if(metadata_buffer_size-metadata_buffer_off==0)
+		{
+			backup_state=BackupState_EAttrInit;
+			return true;
+		}
+	}
+	else if(backup_state==BackupState_EAttrInit)
+	{
+		eattr_keys.clear();
+		if(!get_xattr_keys(local_fn, eattr_oflink, eattr_keys))
+		{
+			return false;
+		}
+
+		CWData data;
+		data.addInt64(eattr_keys.size());
+
+		memcpy(metadata_buffer.data(), data.getDataPtr(), data.getDataSize());
+		metadata_buffer_size=data.getDataSize();
+		metadata_buffer_off=0;
+		backup_state=BackupState_EAttr;
+	}
+	else if(backup_state==BackupState_EAttr)
+	{
+		if(metadata_buffer_size-metadata_buffer_off>0)
+		{
+			read_bytes = (std::min)(metadata_buffer_size-metadata_buffer_off, buf_avail);
+			memcpy(buf, metadata_buffer.data()+metadata_buffer_off, read_bytes);
+			metadata_buffer_off+=read_bytes;
+		}
+		if(metadata_buffer_size-metadata_buffer_off==0)
+		{
+			if(!eattr_keys.empty())
+			{
+				eattr_idx=0;
+				backup_state=BackupState_EAttr_Vals_Key;
+				eattr_key_off=0;
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+	else if(backup_state==BackupState_EAttr_Vals_Key)
+	{
+		if(eattr_keys[eattr_idx].size()+1-eattr_key_off>0)
+		{
+			read_bytes = (std::min)(eattr_keys[eattr_idx].size()+1-eattr_key_off, buf_avail);
+			memcpy(buf, eattr_keys[eattr_idx].c_str()+eattr_key_off, read_bytes);
+			eattr_key_off+=read_bytes;
+		}
+
+		if(eattr_keys[eattr_idx].size()+1-eattr_key_off==0)
+		{
+			backup_state= BackupState_EAttr_Vals_Val;
+			
+			if(!get_xattr(local_fn, eattr_oflink, eattr_keys[eattr_idx], eattr_val))
+			{
+				return false;
+			}
+			eattr_val_off=0;
+			return true;
+		}
+	}
+	else if(backup_state==BackupState_EAttr_Vals_Val)
+	{
+		if(eattr_val.size()-eattr_val_off>0)
+		{
+			read_bytes = (std::min)(eattr_val.size()-eattr_val_off, buf_avail);
+			memcpy(buf, eattr_val.data()+eattr_val_off, read_bytes);
+			eattr_val_off+=read_bytes;
+		}
+
+		if(eattr_val.size()-eattr_val_off==0)
+		{
+			if(eattr_idx+1<eattr_keys.size())
+			{
+				++eattr_idx;
+				backup_state=BackupState_EAttr_Vals_Key;
+				eattr_key_off=0;
+
+				return true;
+			}
+			else
+			{
+				if(is_symlink && eattr_oflink)
+				{
+					eattr_oflink=false;
+					backup_state=BackupState_EAttrInit;
+					return true;
+				}
+				else
+				{
+					return false;
+				}
+			}
+		}
+	}
+	
 }
 
 #endif //_WIN32

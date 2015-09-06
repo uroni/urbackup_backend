@@ -39,6 +39,25 @@ private:
 	void* backup_read_context;
 	LARGE_INTEGER curr_stream_size;
 	int64 curr_pos;
+#else
+	enum BackupState
+	{
+		BackupState_StatInit
+		BackupState_Stat,
+		BackupState_EAttrInit,
+		BackupState_EAttr,
+		BackupState_EAttr_Vals_Key,
+		BackupState_EAttr_Vals_Val
+	};
+
+	BackupState backup_state;
+	size_t eattr_idx;
+	std::vector<std::string> eattr_keys;
+	size_t eattr_key_off;
+	std::string eattr_val;
+	size_t eattr_val_off;
+	bool is_symlink;
+	bool eattr_oflink;
 #endif
 
 	enum MetadataState

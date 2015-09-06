@@ -146,6 +146,13 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 
 			std::auto_ptr<IFile> output_f(Server->openFile(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata), MODE_RW));
 
+			bool new_metadata_file=false;
+			if(output_f.get()==NULL)
+			{
+				output_f.reset(Server->openFile(os_file_prefix(backup_metadata_dir+os_file_sep()+os_path_metadata), MODE_RW_CREATE));
+				new_metadata_file=true;
+			}
+
 			if(output_f.get()==NULL)
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Filename could not open output file at \"" + backup_metadata_dir+os_file_sep()+os_path_metadata + L"\"", LL_ERROR);
@@ -184,11 +191,12 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			}
 
 			FileMetadata curr_metadata;
-			if(!read_metadata(output_f.get(), curr_metadata))
+			if(!new_metadata_file && !read_metadata(output_f.get(), curr_metadata))
 			{
 				ServerLogger::Log(logid, L"Error reading current metadata", LL_WARNING);
 			}
 
+			curr_metadata.exist=true;
 			curr_metadata.created=created;
 			curr_metadata.last_modified = modified;
 			curr_metadata.file_permissions = permissions;
