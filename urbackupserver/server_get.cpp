@@ -3501,6 +3501,7 @@ bool BackupServerGet::sendClientMessage(const std::string &msg, const std::strin
 				if(logerr)
 					ServerLogger::Log(clientid, errmsg, max_loglevel);
 				else
+					Server->Log(errmsg, max_loglevel);
 
 				if(retok_err!=NULL)
 					*retok_err=true;
@@ -5065,6 +5066,7 @@ bool BackupServerGet::authenticatePubKey()
 {
 	if(crypto_fak==NULL)
 	{
+		Server->Log("Crypto not available buf client needs private/public key authentication", LL_ERROR);
 		return false;
 	}
 
@@ -5117,6 +5119,7 @@ bool BackupServerGet::authenticatePubKey()
 	}
 	else
 	{
+		Server->Log("Could not get challenge from client for private/public key authentication", LL_ERROR);
 		return false;
 	}
 }
