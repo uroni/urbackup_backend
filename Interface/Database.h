@@ -50,4 +50,66 @@ private:
 	IDatabase* db;
 };
 
+class DBScopedDetach
+{
+public:
+	DBScopedDetach(IDatabase* db)
+		: db(db) {
+			if(db!=NULL) db->DetachDBs();
+	}
+	~DBScopedDetach() {
+		if(db!=NULL) db->AttachDBs();
+	}
+	void attach() {
+		if(db!=NULL) db->AttachDBs();
+		db=NULL;
+	}
+private:
+	IDatabase* db;
+};
+
+class DBScopedAttach
+{
+public:
+	DBScopedAttach(IDatabase* db)
+		: db(db) {
+			if(db!=NULL) db->AttachDBs();
+	}
+	~DBScopedAttach() {
+		if(db!=NULL) db->DetachDBs();
+	}
+	void detach() {
+		if(db!=NULL) db->DetachDBs();
+		db=NULL;
+	}
+private:
+	IDatabase* db;
+};
+
+class DBScopedTransaction
+{
+public:
+	DBScopedTransaction(IDatabase* db)
+		: db(db) {
+			if(db!=NULL) db->BeginTransaction();
+	}
+	~DBScopedTransaction() {
+		if(db!=NULL) db->EndTransaction();
+	}
+
+	void restart() {
+		if(db!=NULL) {
+			db->EndTransaction();
+			db->BeginTransaction();
+		}
+	}
+
+	void end() {
+		if(db!=NULL) db->EndTransaction();
+		db=NULL;
+	}
+private:
+	IDatabase* db;
+};
+
 #endif

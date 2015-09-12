@@ -113,17 +113,16 @@ void ServerUpdateStats::operator()(void)
 
 	bool indices_suspended=suspendFilesIndices(server_settings);
 
-	db->DetachDBs();
-	db->BeginTransaction();
+	{
+		DBScopedDetach detachDbs(db);
+		DBScopedTransaction transaction(db);
 
-	db->Write("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) "
-			  "SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, 0 AS did_count, clientid, incremental FROM files_new");
+		db->Write("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) "
+			"SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, 0 AS did_count, clientid, incremental FROM files_new");
 
-	Server->Log("Deleting contents of files_new table...", LL_DEBUG);
-	db->Write("DELETE FROM files_new");
-
-	db->EndTransaction();
-	db->AttachDBs();
+		Server->Log("Deleting contents of files_new table...", LL_DEBUG);
+		db->Write("DELETE FROM files_new");
+	}
 
 	if(indices_suspended)
 	{

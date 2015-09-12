@@ -131,4 +131,6 @@ private:
 	std::wstring backupfolder;
 	bool old_backupfolders_loaded;
 	std::vector<std::wstring> old_backupfolders;
+
+	bool detached_db;
 };

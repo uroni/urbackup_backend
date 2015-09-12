@@ -51,7 +51,8 @@ void destroy_mutex1(void)
 }
 
 BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles)
-	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), copy_limit(1000), backupdao(NULL), old_backupfolders_loaded(false)
+	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), copy_limit(1000), backupdao(NULL), old_backupfolders_loaded(false),
+	  detached_db(false)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -149,8 +150,8 @@ void BackupServerHash::operator()(void)
 		file_hash_collect_cachesize=server_settings.getSettings()->file_hash_collect_cachesize;
 	}
 
-	db->DetachDBs();
-	
+	DBScopedDetach detachDbs(db);
+	detached_db=true;
 
 	while(true)
 	{
@@ -197,7 +198,7 @@ void BackupServerHash::operator()(void)
 		{
 			deinitDatabase();
 			Server->Log("server_hash Thread finished - normal");
-			db->AttachDBs();
+			detachDbs.attach();
 			Server->destroyDatabases(Server->getThreadID());
 			delete this;
 			return;
@@ -1282,17 +1283,15 @@ bool BackupServerHash::correctPath( std::wstring& ff, std::wstring& f_hashpath )
 	if(!old_backupfolders_loaded)
 	{
 		old_backupfolders_loaded=true;
-		db->AttachDBs();
+		DBScopedAttach attachDbs(detached_db ? db : NULL);
 		old_backupfolders=backupdao->getOldBackupfolders();
-		db->DetachDBs();
 	}
 
 	if(backupfolder.empty())
 	{
-		db->AttachDBs();
+		DBScopedAttach attachDbs(detached_db ? db : NULL);
 		ServerSettings settings(db);
 		backupfolder = settings.getSettings()->backupfolder;
-		db->DetachDBs();
 	}
 
 	for(size_t i=0;i<old_backupfolders.size();++i)
