@@ -23,6 +23,7 @@
 #include <string.h>
 #include "../stringtools.h"
 #include <assert.h>
+#include <stdexcept>
 #include "InternetServicePipe2.h"
 
 
@@ -44,11 +45,11 @@ CompressedPipe2::CompressedPipe2(IPipe *cs, int compression_level)
 
 	if(mz_deflateInit(&def_stream, compression_level)!=MZ_OK)
 	{
-		throw new std::runtime_error("Error initializing compression stream");
+		throw std::runtime_error("Error initializing compression stream");
 	}
 	if(mz_inflateInit(&inf_stream)!=MZ_OK)
 	{
-		throw new std::runtime_error("Error initializing decompression stream");
+		throw std::runtime_error("Error initializing decompression stream");
 	}
 }
 
