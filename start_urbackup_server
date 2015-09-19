@@ -172,12 +172,12 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 			--sqlite_tmpdir) SQLITE_TMPDIR="--sqlite_tmpdir $2"; shift 2 ;;
 			--verify_hashes) VERIFY_HASHES="--verify_hashes $2"; shift 2 ;;
 			--delete_verify_failed) DELETE_VERIFY_FAILED="--delete_verify_failed true"; shift ;;
-			--reset_pw) RESET_PW="--reset_pw \"$2\""; shift 2 ;;
+			--reset_pw) RESET_PW="$2"; shift 2 ;;
 			--cleanup) CLEANUP="--app cleanup --cleanup_amount $2"; shift 2;;
 			--remove_unknown) CLEANUP="--app remove_unknown"; shift ;;
 			--cleanup_database) CLEANUP="--app cleanup_database"; shift ;;
 			--repair_database) CLEANUP="--app repair_database"; shift ;;
-			--broadcast_interfaces) BROADCAST_INTERFACES="--broadcast_interfaces \"$2\""; shift 2 ;;
+			--broadcast_interfaces) BROADCAST_INTERFACES="--broadcast_interfaces $2"; shift 2 ;;
 			--run_in_gdb) RUN_IN_GDB=1; shift ;;
 			--run_in_valgrind) RUN_IN_VALGRIND=1; shift ;;
 			--user) URB_USER="$2"; shift 2;;
@@ -261,12 +261,14 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --decompress $DECOMPRESS --loglevel debug"
 		S_DAEMON=""
 	else
-		DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $USER_ARG $SQLITE_TMPDIR $VERIFY_HASHES $DELETE_VERIFY_FAILED $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
+		echo $BROADCAST_INTERFACES
+		DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $USER_ARG $SQLITE_TMPDIR $VERIFY_HASHES $DELETE_VERIFY_FAILED $CLEANUP $BROADCAST_INTERFACES"
 	fi
 else
 	DAEMON_ARGS="--user urbackup $*"
 fi
 
+echo $DAEMON_ARGS
 
 # Exit if the package is not installed
 if [ ! -x $DAEMON ]
@@ -283,7 +285,10 @@ then
 	DAEMON_ARGS="$HTTP_PLUGIN $DAEMON_PLUGINS $DAEMON_ARGS"
 fi
 
-if [ "x$RUN_IN_GDB" = "x1" ]
+if [ "x$RESET_PW" != "x" ]
+then
+	exec $DAEMON $S_DAEMON --loglevel debug --reset_pw "$RESET_PW"
+elif [ "x$RUN_IN_GDB" = "x1" ]
 then
 	cd $DAEMON_DIR
 	export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so.1"

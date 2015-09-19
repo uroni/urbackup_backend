@@ -21,6 +21,7 @@
 #include "server_log.h"
 #include "../urbackupcommon/file_metadata.h"
 #include "../common/data.h"
+#include <memory>
 
 const _u32 ID_METADATA_OS_WIN = 1<<0;
 const _u32 ID_METADATA_OS_UNIX = 1<<2;
@@ -268,7 +269,7 @@ namespace
 	};
 
 	const size_t metadata_id_size = 4+4+8+4;
-	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4A);
+	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4AULL);
 }
 
 bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset)

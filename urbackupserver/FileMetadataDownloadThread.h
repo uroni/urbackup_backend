@@ -4,6 +4,7 @@
 #include "server_prepare_hash.h"
 #include "../urbackupcommon/chunk_hasher.h"
 #include "server_log.h"
+#include <memory>
 
 class FileMetadataDownloadThread : public IThread
 {
