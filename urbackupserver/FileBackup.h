@@ -85,6 +85,7 @@ protected:
 	void notifyClientBackupSuccessfull(void);
 	void waitForFileThreads();
 	bool verify_file_backup(IFile *fileentries);
+	void save_debug_data(const std::wstring& rfn, const std::string& local_hash, const std::string& remote_hash);
 	std::string getSHA256(const std::wstring& fn);
 	std::string getSHA512(const std::wstring& fn);
 	bool constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs);

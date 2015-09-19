@@ -738,6 +738,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 	unsigned int read;
 	char buffer[4096];
 	std::wstring curr_path=backuppath;
+	std::wstring remote_path;
 	size_t verified_files=0;
 	SFile cf;
 	fileentries->Seek(0);
@@ -771,6 +772,9 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 							verify_ok=false;
 							ServerLogger::Log(logid, msg, LL_ERROR);
 							log << msg << std::endl;
+							save_debug_data(remote_path+L"/"+cf.name,
+								base64_encode_dash(getSHA512(curr_path+os_file_sep()+cfn)),
+								sha512base64);
 						}
 						else
 						{
@@ -794,10 +798,16 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					if(cf.name==L"..")
 					{
 						curr_path=ExtractFilePath(curr_path, os_file_sep());
+						remote_path=ExtractFilePath(remote_path, L"/");
 					}
 					else
 					{
 						curr_path+=os_file_sep()+cfn;
+
+						if(!remote_path.empty())
+							remote_path+=L"/";
+
+						remote_path+=cfn;
 					}
 				}
 			}
@@ -1374,4 +1384,42 @@ bool FileBackup::stopFileMetadataDownloadThread()
 	}
 
 	return true;
+}
+
+void FileBackup::save_debug_data(const std::wstring& rfn, const std::string& local_hash, const std::string& remote_hash)
+{
+	ServerLogger::Log(logid, "Local hash: "+local_hash+" remote hash: "+remote_hash, LL_INFO);
+	ServerLogger::Log(logid, L"Trying to download "+rfn, LL_INFO);
+
+	FileClient fc(false, server_identity, client_main->getProtocolVersions().filesrv_protocol_version,
+		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
+
+	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);
+	if(rc!=ERR_CONNECTED)
+	{
+		ServerLogger::Log(logid, L"Cannot connect to retrieve file that failed to verify - CONNECT error", LL_ERROR);
+		return;
+	}
+
+	std::auto_ptr<IFile> tmpfile(Server->openTemporaryFile());
+	std::wstring tmpdirname = tmpfile->getFilenameW();
+	tmpfile.reset();
+	Server->deleteFile(tmpdirname);
+	os_create_dir(tmpdirname);
+
+	std::auto_ptr<IFile> output_file(Server->openFile(tmpdirname+os_file_sep()+L"verify_failed.file", MODE_WRITE));
+	rc = fc.GetFile(Server->ConvertToUTF8(rfn), output_file.get(), true, false);
+
+	if(rc!=ERR_SUCCESS)
+	{
+		ServerLogger::Log(logid, L"Error downloading "+rfn+L" after verification failed", LL_ERROR);
+	}
+	else
+	{
+		output_file.reset();
+		std::string sha512 = base64_encode_dash(getSHA512(tmpdirname+os_file_sep()+L"verify_failed.file"));
+		std::string sha256 = getSHA256(tmpdirname+os_file_sep()+L"verify_failed.file");
+		ServerLogger::Log(logid, L"Downloaded file "+rfn+L" with failed verification to "+tmpdirname+L" for analysis. "
+			L" SHA512: "+widen(sha512)+L" SHA256: "+widen(sha256), LL_INFO);
+	}
 }
