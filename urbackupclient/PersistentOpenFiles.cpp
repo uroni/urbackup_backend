@@ -65,7 +65,8 @@ bool PersistentOpenFiles::flushf_int(bool allow_cycle)
 	}
 	wdata.clear();
 
-	if(persistf->Size()>20*1024*1024 && allow_cycle)
+	if(persistf->Size()>20*1024*1024 && allow_cycle
+		&& bytes_deleted>5*1024*1024)
 	{
 		return cycle();
 	}
