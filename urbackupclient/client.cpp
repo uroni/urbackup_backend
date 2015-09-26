@@ -3631,11 +3631,13 @@ void IndexThread::addSymlinkBackupDir( const std::wstring& target )
 
 	backup_dir.id=static_cast<int>(db->getLastInsertID());
 
+#ifdef _WIN32
 	if(dwt!=NULL)
 	{
 		std::wstring msg=L"A"+target;
 		dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
-	}	
+    }
+#endif
 
 	
 	backup_dir.group=index_group;
@@ -3667,11 +3669,13 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 		if(backup_dirs[i].symlinked &&
 			!backup_dirs[i].symlinked_confirmed)
 		{
+#ifdef _WIN32
 			if(dwt!=NULL)
 			{
 				std::wstring msg=L"D"+backup_dirs[i].path;
 				dwt->getPipe()->Write((char*)msg.c_str(), sizeof(wchar_t)*msg.size());
 			}
+#endif
 
 			cd->delBackupDir(backup_dirs[i].id);
 

@@ -229,6 +229,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			{
 				ok = applyWindowsMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset);
 			}
+            else if(ch & ID_METADATA_OS_UNIX)
+            {
+                ok = applyUnixMetadata(metadata_f.get(), output_f.get(), metadata_size, cb, offset);
+            }
 
 			if(!ok)
 			{
@@ -270,6 +274,7 @@ namespace
 
 	const size_t metadata_id_size = 4+4+8+4;
 	const int64 win32_meta_magic = little_endian(0x320FAB3D119DCB4AULL);
+    const int64 unix_meta_magic =  little_endian(0xFE4378A3467647F0ULL);
 }
 
 bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset)
@@ -283,7 +288,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		return false;
 	}
 	
-	metadata_size=sizeof(int64);
+    metadata_size=sizeof(win32_magic_and_size);
 	while(true) 
 	{
 		char cont = 0;
@@ -380,5 +385,157 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 	}
 
 	return true;
+}
+
+bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback* cb, int64 output_offset)
+{
+    int64 unix_magic_and_size[2];
+    unix_magic_and_size[1]=unix_meta_magic;
+
+    if(!writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(unix_magic_and_size), sizeof(unix_magic_and_size), cb))
+    {
+        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (beg, unix)", LL_ERROR);
+        return false;
+    }
+
+    metadata_size=sizeof(unix_magic_and_size);
+
+    char version;
+    if(!metadata_f->Read(&version, 1)!=1)
+    {
+        ServerLogger::Log(logid, L"Error reading unix metadata version from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        return false;
+    }
+
+    if(version!=1)
+    {
+        ServerLogger::Log(logid, L"Unknown unix metadata version +"+convert((int)version)+L" in \"" + output_f->getFilenameW() + L"\"", LL_ERROR);
+        return false;
+    }
+
+    if(!writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
+    {
+        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (ver)", LL_ERROR);
+        return false;
+    }
+
+    metadata_size+=1;
+
+    char stat_data[sizeof(int64)*8+sizeof(_u32)*3];
+    if(!metadata_f->Read(stat_data, sizeof(stat_data))!=sizeof(stat_data))
+    {
+        ServerLogger::Log(logid, L"Error reading unix metadata from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        return false;
+    }
+
+    if(!writeRepeatFreeSpace(output_f, stat_data, sizeof(stat_data), cb))
+    {
+        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data)", LL_ERROR);
+        return false;
+    }
+
+    metadata_size+=sizeof(stat_data);
+
+    int64 num_eattr_keys;
+    if(!metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))
+    {
+        ServerLogger::Log(logid, L"Error reading eattr num from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        return false;
+    }
+
+    if(!writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys), cb))
+    {
+        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (num_eattr_keys)", LL_ERROR);
+        return false;
+    }
+
+    metadata_size+=sizeof(num_eattr_keys);
+
+    num_eattr_keys = little_endian(num_eattr_keys);
+
+    for(int64 i=0;i<num_eattr_keys;++i)
+    {
+        unsigned int key_size;
+        if(!metadata_f->Read(reinterpret_cast<char*>(&key_size), sizeof(key_size))!=sizeof(key_size))
+        {
+            ServerLogger::Log(logid, L"Error reading eattr key size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            return false;
+        }
+
+        if(!writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&key_size), sizeof(key_size), cb))
+        {
+            ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (key_size)", LL_ERROR);
+            return false;
+        }
+
+        metadata_size+=sizeof(key_size);
+        key_size = little_endian(key_size);
+
+        std::string eattr_key;
+        eattr_key.resize(key_size);
+
+        if(!metadata_f->Read(&eattr_key[0], eattr_key.size())!=eattr_key.size())
+        {
+            ServerLogger::Log(logid, L"Error reading eattr key from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            return false;
+        }
+
+        if(!writeRepeatFreeSpace(output_f, eattr_key.data(), eattr_key.size(), cb))
+        {
+            ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (eattr_key)", LL_ERROR);
+            return false;
+        }
+
+        metadata_size+=eattr_key.size();
+
+        unsigned int val_size;
+        if(!metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
+        {
+            ServerLogger::Log(logid, L"Error reading eattr value size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            return false;
+        }
+
+        if(!writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&val_size), sizeof(val_size), cb))
+        {
+            ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (val_size)", LL_ERROR);
+            return false;
+        }
+
+        metadata_size+=sizeof(val_size);
+        val_size = little_endian(val_size);
+
+        std::string eattr_val;
+        eattr_val.resize(val_size);
+
+        if(!metadata_f->Read(&eattr_val[0], eattr_val.size())!=eattr_val.size())
+        {
+            ServerLogger::Log(logid, L"Error reading eattr value from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+            return false;
+        }
+
+        if(!writeRepeatFreeSpace(output_f, eattr_val.data(), eattr_val.size(), cb))
+        {
+            ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (eattr_val)", LL_ERROR);
+            return false;
+        }
+
+        metadata_size+=eattr_val.size();
+    }
+
+    if(!output_f->Seek(output_offset))
+    {
+        ServerLogger::Log(logid, L"Error seeking to  \"" + convert(output_offset) + L"\" -6 in output_f", LL_ERROR);
+        return false;
+    }
+
+    unix_magic_and_size[0]=little_endian(metadata_size);
+
+    if(!writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&unix_magic_and_size[0]), sizeof(unix_magic_and_size[0]), cb))
+    {
+        ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (end,unix)", LL_ERROR);
+        return false;
+    }
+
+    return true;
 }
 

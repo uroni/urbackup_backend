@@ -42,7 +42,7 @@ private:
 #else
 	enum BackupState
 	{
-		BackupState_StatInit
+        BackupState_StatInit,
 		BackupState_Stat,
 		BackupState_EAttrInit,
 		BackupState_EAttr,
@@ -56,8 +56,6 @@ private:
 	size_t eattr_key_off;
 	std::string eattr_val;
 	size_t eattr_val_off;
-	bool is_symlink;
-	bool eattr_oflink;
 #endif
 
 	enum MetadataState

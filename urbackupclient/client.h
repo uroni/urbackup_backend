@@ -153,7 +153,7 @@ private:
 	bool readBackupScripts();
 	void readFollowSymlinks();
 
-	bool getAbsSymlinkTarget(const std::wstring& symlink, const std::wstring& orig_path, std::wstring& target);
+    bool getAbsSymlinkTarget(const std::wstring& symlink, const std::wstring& orig_path, std::wstring& target);
 	void addSymlinkBackupDir(const std::wstring& target);
 	bool backupNameInUse(const std::wstring& name);
 	void removeUnconfirmedSymlinkDirs();

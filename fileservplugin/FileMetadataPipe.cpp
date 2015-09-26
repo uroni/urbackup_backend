@@ -29,6 +29,10 @@
 #ifndef _WIN32
 #include <sys/types.h>
 #include <sys/xattr.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 #endif
 
 const size_t metadata_id_size = 4+4+8+4;
@@ -321,7 +325,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
 		hFile = CreateFileW(os_file_prefix(Server->ConvertToUnicode(local_fn)).c_str(), GENERIC_READ|ACCESS_SYSTEM_SECURITY|READ_CONTROL, FILE_SHARE_READ, NULL,
-			OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN, NULL);
+            OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_SEQUENTIAL_SCAN|FILE_FLAG_OPEN_REPARSE_POINT, NULL);
 
 		if(hFile==INVALID_HANDLE_VALUE)
 		{
@@ -463,7 +467,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 namespace
 {
-	void serialize_stat_buf(struct stat& buf, CWData& data)
+    void serialize_stat_buf(const struct stat64& buf, CWData& data)
 	{
 		data.addChar(1);
 		data.addInt64(buf.st_dev);
@@ -472,23 +476,19 @@ namespace
 		data.addInt64(buf.st_gid);
 		data.addInt64(buf.st_rdev);
 		data.addInt64(buf.st_atime);
+        data.addUInt(buf.st_atim.tv_nsec);
 		data.addInt64(buf.st_mtime);
+        data.addUInt(buf.st_mtim.tv_nsec);
 		data.addInt64(buf.st_ctime);
+        data.addUInt(buf.st_ctim.tv_nsec);
 	}
 
-	bool get_xattr_keys(const std::string& fn, bool oflink, std::vector<std::string>& keys)
+    bool get_xattr_keys(const std::string& fn, std::vector<std::string>& keys)
 	{
 		while(true)
 		{
 			ssize_t bufsize;
-			if(oflink)
-			{
-				bufsize = llistxattr(fn.c_str(), NULL, 0);
-			}
-			else
-			{
-				bufsize = listxattr(fn.c_str(), NULL, 0);
-			}
+            bufsize = llistxattr(fn.c_str(), NULL, 0);
 
 			if(bufsize==-1)
 			{
@@ -499,14 +499,7 @@ namespace
 			std::string buf;
 			buf.resize(bufsize);
 
-			if(oflink)
-			{
-				bufsize = llistxattr(fn.c_str(), &buf[0], buf.size());
-			}
-			else
-			{
-				bufsize = listxattr(fn.c_str(), &buf[0], buf.size());
-			}
+            bufsize = llistxattr(fn.c_str(), &buf[0], buf.size());
 
 			if(bufsize==-1 && errno==ERANGE)
 			{
@@ -522,23 +515,24 @@ namespace
 
 			TokenizeMail(buf, keys, "\0");
 
+            for(size_t i=0;i<keys.size();++i)
+            {
+                unsigned int ksize = keys[i].size();
+                ksize = little_endian(ksize);
+
+                keys[i].insert(0, reinterpret_cast<char*>(&ksize), sizeof(ksize));
+            }
+
 			return true;
 		}
 	}
 
-	bool get_xattr(const std::string& fn, bool oflink, const std::string& key, std::string& value)
+    bool get_xattr(const std::string& fn, const std::string& key, std::string& value)
 	{
 		while(true)
 		{
 			ssize_t bufsize;
-			if(oflink)
-			{
-				bufsize = lgetxattr(fn.c_str(), key.c_str(), NULL, 0);
-			}
-			else
-			{
-				bufsize = getxattr(fn.c_str(), key.c_str(), NULL, 0);
-			}
+            bufsize = lgetxattr(fn.c_str(), key.c_str()+sizeof(unsigned int), NULL, 0);
 
 			if(bufsize==-1)
 			{
@@ -548,14 +542,7 @@ namespace
 
 			value.resize(bufsize+sizeof(_u32));
 
-			if(oflink)
-			{
-				bufsize = lgetxattr(fn.c_str(), key.c_str(), &value[sizeof(_u32)], value.size()-sizeof(_u32));
-			}
-			else
-			{
-				bufsize = getxattr(fn.c_str(), key.c_str(), &value[sizeof(_u32)], value.size()-sizeof(_u32));
-			}
+            bufsize = lgetxattr(fn.c_str(), key.c_str()+sizeof(unsigned int), &value[sizeof(_u32)], value.size()-sizeof(_u32));
 
 			if(bufsize==-1 && errno==ERANGE)
 			{
@@ -589,36 +576,16 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 	if(backup_state==BackupState_StatInit)
 	{
 		CWData data;
-		struct stat buf;
-		int rc = lstat64(local_fn.c_str(), &buf);
+        struct stat64 statbuf;
+        int rc = lstat64(local_fn.c_str(), &statbuf);
 
 		if(rc!=0)
 		{
-			Server->Log("Error with lstat of "+local_fn+" errorcode: "+nconvert(errno), LL_ERROR);
+            Server->Log("Error with lstat of "+local_fn+" errorcode: "+nconvert(errno), LL_ERROR);
 			return false;
 		}
 
-		serialize_stat_buf(buf, data);
-
-		if(S_ISLNK(buf.st_mode))
-		{
-			rc = stat64(local_fn.c_str(), &buf);
-
-			if(rc!=0)
-			{
-				Server->Log("Error with stat of "+local_fn+" errorcode: "+nconvert(errno), LL_ERROR);
-				return false;
-			}
-
-			serialize_stat_buf(buf, data);
-			is_symlink=true;
-		}
-		else
-		{
-			is_symlink=false;
-		}
-
-		eattr_oflink=true;
+        serialize_stat_buf(statbuf, data);
 
 		if(data.getDataSize()>metadata_buffer.size())
 		{
@@ -633,7 +600,7 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 
 		return transmitCurrMetadata(buf, buf_avail, read_bytes);
 	}
-	else if(backup_read_state==BackupState_Stat)
+    else if(backup_state==BackupState_Stat)
 	{
 		if(metadata_buffer_size-metadata_buffer_off>0)
 		{
@@ -650,7 +617,7 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 	else if(backup_state==BackupState_EAttrInit)
 	{
 		eattr_keys.clear();
-		if(!get_xattr_keys(local_fn, eattr_oflink, eattr_keys))
+        if(!get_xattr_keys(local_fn, eattr_keys))
 		{
 			return false;
 		}
@@ -688,18 +655,18 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 	}
 	else if(backup_state==BackupState_EAttr_Vals_Key)
 	{
-		if(eattr_keys[eattr_idx].size()+1-eattr_key_off>0)
+        if(eattr_keys[eattr_idx].size()-eattr_key_off>0)
 		{
-			read_bytes = (std::min)(eattr_keys[eattr_idx].size()+1-eattr_key_off, buf_avail);
+            read_bytes = (std::min)(eattr_keys[eattr_idx].size()-eattr_key_off, buf_avail);
 			memcpy(buf, eattr_keys[eattr_idx].c_str()+eattr_key_off, read_bytes);
 			eattr_key_off+=read_bytes;
 		}
 
-		if(eattr_keys[eattr_idx].size()+1-eattr_key_off==0)
+        if(eattr_keys[eattr_idx].size()-eattr_key_off==0)
 		{
 			backup_state= BackupState_EAttr_Vals_Val;
 			
-			if(!get_xattr(local_fn, eattr_oflink, eattr_keys[eattr_idx], eattr_val))
+            if(!get_xattr(local_fn, eattr_keys[eattr_idx], eattr_val))
 			{
 				return false;
 			}
@@ -728,16 +695,8 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 			}
 			else
 			{
-				if(is_symlink && eattr_oflink)
-				{
-					eattr_oflink=false;
-					backup_state=BackupState_EAttrInit;
-					return true;
-				}
-				else
-				{
-					return false;
-				}
+                //finished
+                return false;
 			}
 		}
 	}
