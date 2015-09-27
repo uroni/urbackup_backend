@@ -259,7 +259,9 @@ namespace
 			{
 				if(mbrdatas[j].partition_number==mbrdata.partition_number)
 				{
-					Server->Log(L"Volume "+mbrdatas[j].volume_name+L" has the same partition number as the volume "+mbrdata.volume_name+L". Please make sure you only select volumes from one device.", LL_ERROR);
+					Server->Log(L"Volume "+mbrdatas[j].volume_name+L" ("+
+						fn[j]+L") has the same partition number as the volume "+mbrdata.volume_name+
+						L" ("+fn[i]+L"). Please make sure you only select volumes from one device.", LL_ERROR);
 					return false;
 				}
 			}
