@@ -476,7 +476,7 @@ bool FileBackup::doBackup()
 	{
 		if(!constructBackupPath(with_hashes, use_snapshots, !r_incremental))
 		{
-			ServerLogger::Log(logid, "Cannot create Directory for backup (Server error)", LL_ERROR);
+            ServerLogger::Log(logid, L"Cannot create directory "+backuppath+L" for backup (server error)", LL_ERROR);
 			return false;
 		}
 	}
@@ -484,7 +484,7 @@ bool FileBackup::doBackup()
 	{
 		if(!constructBackupPathCdp())
 		{
-			ServerLogger::Log(logid, "Cannot create Directory for backup (Server error)", LL_ERROR);
+            ServerLogger::Log(logid, L"Cannot create directory "+backuppath+L" for backup (server error)", LL_ERROR);
 			return false;
 		}
 	}
@@ -1355,7 +1355,7 @@ bool FileBackup::startFileMetadataDownloadThread()
 			return false;
 		}
 
-		metadata_download_thread.reset(new FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid));
+        metadata_download_thread.reset(new server::FileMetadataDownloadThread(fc_metadata_stream.release(), server_token, logid));
 
 		metadata_download_thread_ticket = Server->getThreadPool()->execute(metadata_download_thread.get());
 	}	

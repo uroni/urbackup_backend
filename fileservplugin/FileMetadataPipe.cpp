@@ -629,6 +629,8 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 		metadata_buffer_size=data.getDataSize();
 		metadata_buffer_off=0;
 		backup_state=BackupState_EAttr;
+
+        return transmitCurrMetadata(buf, buf_avail, read_bytes);
 	}
 	else if(backup_state==BackupState_EAttr)
 	{

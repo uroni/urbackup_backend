@@ -15,7 +15,9 @@ class BackupServerHash;
 class BackupServerPrepareHash;
 class ServerPingThread;
 class FileIndex;
+namespace server {
 class FileMetadataDownloadThread;
+}
 
 namespace
 {
@@ -132,6 +134,6 @@ protected:
 
 	int backupid;
 
-	std::auto_ptr<FileMetadataDownloadThread> metadata_download_thread;
+    std::auto_ptr<server::FileMetadataDownloadThread> metadata_download_thread;
 	THREADPOOL_TICKET metadata_download_thread_ticket;
 };

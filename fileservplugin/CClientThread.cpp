@@ -343,14 +343,21 @@ bool CClientThread::ProcessPacket(CRData *data)
 				_i64 start_offset=0;
 				bool offset_set=data->getInt64(&start_offset);
 
-				if(!is_script)
-				{
-					Log("Sending file (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
-				}
-				else
-				{
-					Log("Sending script output (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
-				}
+                if(id!=ID_GET_FILE_METADATA_ONLY)
+                {
+                    if(!is_script)
+                    {
+                        Log("Sending file (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+                    }
+                    else
+                    {
+                        Log("Sending script output (normal) "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+                    }
+                }
+                else
+                {
+                    Log("Sending meta data of "+Server->ConvertToUTF8(o_filename), LL_DEBUG);
+                }
 				
 
 				std::wstring filename=map_file(o_filename, ident);
@@ -630,6 +637,20 @@ bool CClientThread::ProcessPacket(CRData *data)
 					}
 				}
 #else //LINUX
+                if(id==ID_GET_FILE_METADATA_ONLY || isDirectory(filename))
+                {
+                    CWData data;
+                    data.addUChar(ID_FILESIZE);
+                    data.addUInt64(little_endian(static_cast<uint64>(0)));
+
+                    int rc=SendInt(data.getDataPtr(), data.getDataSize() );
+                    if(rc==SOCKET_ERROR)
+                    {
+                        Log("Error: Socket Error - DBG: Send file size", LL_DEBUG);
+                    }
+                    break;
+                }
+
 				hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
 				
 				if(hFile == INVALID_HANDLE_VALUE)

@@ -730,6 +730,8 @@ bool IncrFileBackup::doFileBackup()
 						}
 					}
 
+                    bool download_metadata=false;
+
 					str_map::iterator sym_target = extra_params.find(L"sym_target");
 					if(sym_target!=extra_params.end())
 					{
@@ -740,6 +742,10 @@ bool IncrFileBackup::doFileBackup()
 							c_has_error=true;
 							break;
 						}
+                        else
+                        {
+                            download_metadata=true;
+                        }
 					}
 					else if(indirchange || hasChange(line, diffs)) //is changed
 					{
@@ -751,6 +757,7 @@ bool IncrFileBackup::doFileBackup()
 							{
 								f_ok=true;
 								linked_bytes+=cf.size;
+                                download_metadata=true;
 							}
 						}
 
@@ -821,6 +828,7 @@ bool IncrFileBackup::doFileBackup()
 									copy_curr_file_entry=copy_last_file_entries;						
 									readd_curr_file_entry_sparse = readd_file_entries_sparse;
 									linked_bytes+=cf.size;
+                                    download_metadata=true;
 								}
 							}
 
@@ -876,6 +884,12 @@ bool IncrFileBackup::doFileBackup()
 							trust_client_hashes, curr_sha2, local_curr_os_path, curr_has_hash, server_hash_existing,
 							num_readded_entries);
 					}
+
+                    if(download_metadata)
+                    {
+                        server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
+                            metadata, script_dir, true);
+                    }
 				}
 				++line;
 			}

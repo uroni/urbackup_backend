@@ -72,7 +72,7 @@ namespace
 		SPatchDownloadFiles patch_dl_files;
 		FileMetadata metadata;
 		bool is_script;
-		bool is_dir;
+        bool metadata_only;
 	};
 	
 	
@@ -134,7 +134,7 @@ public:
 	void operator()(void);
 
 	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
-		_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool is_dir, bool at_front=false);
+        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, bool at_front=false);
 
 	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
 		const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script);

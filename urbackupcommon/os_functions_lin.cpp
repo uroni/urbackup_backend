@@ -713,3 +713,15 @@ std::wstring os_get_final_path(std::wstring path)
 	free(retptr);
 	return ret;
 }
+
+bool os_path_absolute(const std::wstring& path)
+{
+    if(!path.empty() && path[0]=='/')
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}

@@ -351,7 +351,7 @@ bool FullFileBackup::doFileBackup()
 					}
 					else
 					{
-						if(client_main->getProtocolVersions().file_meta>0)
+                        if(client_main->getProtocolVersions().file_meta>0 && !script_dir)
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"),
 								ExtractFileName(curr_os_path, L"/"), ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
@@ -391,6 +391,23 @@ bool FullFileBackup::doFileBackup()
 					}
 
 					bool file_ok=false;
+
+                    str_map::iterator sym_target = extra_params.find(L"sym_target");
+                    if(sym_target!=extra_params.end())
+                    {
+                        std::wstring symlink_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
+                        if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
+                        {
+                            ServerLogger::Log(logid, L"Creating symlink at \""+symlink_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
+                            c_has_error=true;
+                            break;
+                        }
+                        else
+                        {
+                            file_ok=true;
+                        }
+                    }
+
 					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(L"sha512") );
 					if( hash_it!=extra_params.end())
 					{
@@ -406,18 +423,12 @@ bool FullFileBackup::doFileBackup()
 						}
 					}
 
-					str_map::iterator sym_target = extra_params.find(L"sym_target");
-					if(sym_target!=extra_params.end())
-					{
-						std::wstring symlink_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
-						if(!createSymlink(symlink_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
-						{
-							ServerLogger::Log(logid, L"Creating symlink at \""+symlink_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
-							c_has_error=true;
-							break;
-						}
-					}
-					else if(!file_ok)
+                    if(file_ok)
+                    {
+                        server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
+                            metadata, script_dir, true);
+                    }
+                    else
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
 							metadata, script_dir, false);

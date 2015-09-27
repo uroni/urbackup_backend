@@ -6,6 +6,9 @@
 #include "server_log.h"
 #include <memory>
 
+namespace server
+{
+
 class FileMetadataDownloadThread : public IThread
 {
 public:
@@ -27,3 +30,5 @@ private:
 	std::wstring metadata_tmp_fn;
 	logid_t logid;
 };
+
+}

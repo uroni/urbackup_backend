@@ -23,6 +23,9 @@
 #include "../common/data.h"
 #include <memory>
 
+namespace server
+{
+
 const _u32 ID_METADATA_OS_WIN = 1<<0;
 const _u32 ID_METADATA_OS_UNIX = 1<<2;
 const _u32 ID_METADATA_NOP = 0;
@@ -401,7 +404,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     metadata_size=sizeof(unix_magic_and_size);
 
     char version;
-    if(!metadata_f->Read(&version, 1)!=1)
+    if(metadata_f->Read(&version, 1)!=1)
     {
         ServerLogger::Log(logid, L"Error reading unix metadata version from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
         return false;
@@ -422,7 +425,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     metadata_size+=1;
 
     char stat_data[sizeof(int64)*8+sizeof(_u32)*3];
-    if(!metadata_f->Read(stat_data, sizeof(stat_data))!=sizeof(stat_data))
+    if(metadata_f->Read(stat_data, sizeof(stat_data))!=sizeof(stat_data))
     {
         ServerLogger::Log(logid, L"Error reading unix metadata from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
         return false;
@@ -437,7 +440,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     metadata_size+=sizeof(stat_data);
 
     int64 num_eattr_keys;
-    if(!metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))
+    if(metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))
     {
         ServerLogger::Log(logid, L"Error reading eattr num from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
         return false;
@@ -456,7 +459,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     for(int64 i=0;i<num_eattr_keys;++i)
     {
         unsigned int key_size;
-        if(!metadata_f->Read(reinterpret_cast<char*>(&key_size), sizeof(key_size))!=sizeof(key_size))
+        if(metadata_f->Read(reinterpret_cast<char*>(&key_size), sizeof(key_size))!=sizeof(key_size))
         {
             ServerLogger::Log(logid, L"Error reading eattr key size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
             return false;
@@ -474,7 +477,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         std::string eattr_key;
         eattr_key.resize(key_size);
 
-        if(!metadata_f->Read(&eattr_key[0], eattr_key.size())!=eattr_key.size())
+        if(metadata_f->Read(&eattr_key[0], eattr_key.size())!=eattr_key.size())
         {
             ServerLogger::Log(logid, L"Error reading eattr key from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
             return false;
@@ -489,7 +492,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         metadata_size+=eattr_key.size();
 
         unsigned int val_size;
-        if(!metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
+        if(metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
         {
             ServerLogger::Log(logid, L"Error reading eattr value size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
             return false;
@@ -507,7 +510,7 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
         std::string eattr_val;
         eattr_val.resize(val_size);
 
-        if(!metadata_f->Read(&eattr_val[0], eattr_val.size())!=eattr_val.size())
+        if(metadata_f->Read(&eattr_val[0], eattr_val.size())!=eattr_val.size())
         {
             ServerLogger::Log(logid, L"Error reading eattr value from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
             return false;
@@ -539,3 +542,4 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     return true;
 }
 
+} //namespace server

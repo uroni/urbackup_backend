@@ -3,6 +3,8 @@
 #include "../Interface/Thread.h"
 #include "RestoreFiles.h"
 
+namespace client {
+
 class FileMetadataDownloadThread : public IThread
 {
 public:
@@ -25,3 +27,5 @@ private:
 	bool has_error;
 	std::wstring metadata_tmp_fn;
 };
+
+} //namespace client

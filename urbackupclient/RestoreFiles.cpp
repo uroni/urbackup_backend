@@ -80,7 +80,7 @@ void RestoreFiles::operator()()
 		return;
 	}
 
-	std::auto_ptr<FileMetadataDownloadThread> metadata_thread(new FileMetadataDownloadThread(*this, fc_metadata, client_token ));
+    std::auto_ptr<client::FileMetadataDownloadThread> metadata_thread(new client::FileMetadataDownloadThread(*this, fc_metadata, client_token ));
 	THREADPOOL_TICKET metadata_dl = Server->getThreadPool()->execute(metadata_thread.get());
 
 	log("Downloading necessary file data...", LL_INFO);

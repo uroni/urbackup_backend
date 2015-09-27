@@ -104,7 +104,7 @@ void ServerDownloadThread::operator()( void )
 		{
 			if(curr.fileclient== EFileClient_Chunked)
 			{
-				ServerLogger::Log(logid, L"Copying incomplete file \"" + curr.fn+ L"\"", LL_DEBUG);								
+				ServerLogger::Log(logid, L"Copying incomplete file \"" + curr.fn+ L"\"", LL_DEBUG);								
 				bool full_dl = false;
 				
 				if(!curr.patch_dl_files.prepared)
@@ -203,7 +203,7 @@ void ServerDownloadThread::operator()( void )
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
 	const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-	bool is_script, bool is_dir, bool at_front )
+    bool is_script, bool metadata_only, bool at_front )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -218,7 +218,7 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	ni.predicted_filesize = predicted_filesize;
 	ni.metadata = metadata;
 	ni.is_script = is_script;
-	ni.is_dir = is_dir;
+    ni.metadata_only = metadata_only;
 
 	IScopedLock lock(mutex);
 	if(!at_front)
@@ -256,7 +256,7 @@ void ServerDownloadThread::addToQueueChunked(size_t id, const std::wstring &fn, 
 	ni.predicted_filesize= predicted_filesize;
 	ni.metadata = metadata;
 	ni.is_script = is_script;
-	ni.is_dir = false;
+    ni.metadata_only = false;
 
 	IScopedLock lock(mutex);
 	dl_queue.push_back(ni);
@@ -303,7 +303,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 {
 	ServerLogger::Log(logid, L"Loading file \""+todl.fn+L"\"", LL_DEBUG);
 	IFile *fd=NULL;
-	if(!todl.is_dir)
+    if(!todl.metadata_only)
 	{
 		fd = ClientMain::getTemporaryFileRetry(use_tmpfiles, tmpfile_path, logid);
 		if(fd==NULL)
@@ -316,13 +316,13 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	std::wstring cfn=getDLPath(todl);
 
-	_u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, false);
+    _u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, todl.metadata_only);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		fd->Seek(0);
-		rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, false);
+        rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, todl.metadata_only);
 		--hash_retries;
 	}
 
@@ -373,7 +373,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 		hash_file=true;
 	}
 
-	if(hash_file && !todl.is_dir)
+    if(hash_file && !todl.metadata_only)
 	{
 		std::wstring os_curr_path=FileBackup::convertToOSPathFromFileClient(todl.os_path+L"/"+todl.short_fn);
 		std::wstring os_curr_hash_path=FileBackup::convertToOSPathFromFileClient(todl.os_path+L"/"+escape_metadata_fn(todl.short_fn));
@@ -496,7 +496,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 
 		if(dlfiles.orig_file==NULL && full_dl)
 		{
-			addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.is_script, todl.is_dir, true);
+            addToQueueFull(todl.id, todl.fn, todl.short_fn, todl.curr_path, todl.os_path, todl.predicted_filesize, todl.metadata, todl.is_script, todl.metadata_only, true);
 			return true;
 		}
 	}
@@ -595,7 +595,7 @@ bool ServerDownloadThread::load_file_patch(SQueueItem todl)
 			}
 			else
 			{
-				download_nok_ids.add(todl.id);				
+				download_nok_ids.add(todl.id);				
 			}
 			
 			hash_file=false;

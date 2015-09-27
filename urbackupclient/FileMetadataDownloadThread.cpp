@@ -32,6 +32,8 @@
 #endif
 #include <memory>
 
+namespace client {
+
 const _u32 ID_METADATA_OS_WIN = 1<<0;
 const _u32 ID_METADATA_OS_UNIX = 1<<2;
 
@@ -577,4 +579,6 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 }
 
 #endif //_WIN32
+
+} //namespace client
 

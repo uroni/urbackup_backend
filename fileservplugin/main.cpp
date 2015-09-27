@@ -384,7 +384,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #ifndef AS_SERVICE
 	while(true)
 	{
-#ifdef _DEBUG
+#if defined(_DEBUG) && defined(_WIN32)
 		if( _kbhit() )
 		{
 			break;
