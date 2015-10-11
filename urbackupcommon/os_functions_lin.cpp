@@ -119,7 +119,8 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 						{
 							f.isspecial=true;
 						}
-						f.last_modified=f_info.st_mtime;
+                        uint64 last_modified = (uint64)f_info.st_mtime | ((uint64)f_info.st_ctime<<32);
+                        f.last_modified=last_modified;
 						if(f.last_modified<0) f.last_modified*=-1;
 						f.size=f_info.st_size;
 					}
@@ -127,7 +128,8 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 				}
 				else
 				{
-					f.last_modified=f_info.st_mtime;
+                    uint64 last_modified = (uint64)f_info.st_mtime | ((uint64)f_info.st_ctime<<32);
+                    f.last_modified=last_modified;
 					if(f.last_modified<0) f.last_modified*=-1;
 					f.size=f_info.st_size;
 				}

@@ -202,7 +202,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 	std::wstring server_path = L"clientdl";
 
 	RestoreDownloadThread* restore_download = new RestoreDownloadThread(fc, *fc_chunked, client_token);
-	Server->getThreadPool()->execute(restore_download);
+    THREADPOOL_TICKET restore_download_ticket = Server->getThreadPool()->execute(restore_download);
 
 	std::wstring curr_files_dir;
 	std::vector<SFileAndHash> curr_files;
@@ -249,10 +249,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					if(data.name!=L"..")
 					{
 						bool set_orig_path = false;
-						str_map::iterator it_orig_path = extra.find(L"orig_path");
-						if(it_orig_path!=extra.end())
+                        if(!metadata.orig_path.empty())
 						{
-							restore_path = Server->ConvertToUnicode(base64_decode_dash(wnarrow(it_orig_path->second)));
+                            restore_path = Server->ConvertToUnicode(metadata.orig_path);
 							set_orig_path=true;
 						}
 
@@ -286,9 +285,6 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 						server_path+=L"/"+data.name;
 
-						restore_download->addToQueueFull(line, server_path, restore_path, 0,
-							metadata, false, true, false, false);
-
 						++depth;
 					}
 					else
@@ -297,6 +293,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 						server_path=ExtractFilePath(server_path, L"/");
 						restore_path=ExtractFilePath(restore_path, os_file_sep());						
+
+                        restore_download->addToQueueFull(line, server_path, restore_path, 0,
+                            metadata, false, false, true);
 					}
 				}
 				else
@@ -312,10 +311,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					str_map::iterator it_orig_path = extra.find(L"orig_path");
 					if(it_orig_path!=extra.end())
 					{
-						local_fn = Server->ConvertToUnicode(base64_decode_dash(wnarrow(it_orig_path->second)));
+                        local_fn = it_orig_path->second;
 						restore_path = ExtractFilePath(local_fn, os_file_sep());
 					}
-
 				
 					if(Server->fileExists(os_file_prefix(local_fn)))
 					{
@@ -380,21 +378,29 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 							}
 							else
 							{
+                                bool calc_hashes=false;
 								if(shahash.empty())
 								{
 									log(L"Calculating hashes of file \""+local_fn+L"\"...", LL_DEBUG);
 									shahash = build_chunk_hashs(orig_file, chunkhashes, NULL, true, NULL, false, NULL);
+                                    calc_hashes = true;
 								}
 								
 								if(shahash!=base64_decode_dash(wnarrow(extra[L"shahash"])))
 								{
+                                    if(!calc_hashes)
+                                    {
+                                        log(L"Calculating hashes of file \""+local_fn+L"\"...", LL_DEBUG);
+                                        build_chunk_hashs(orig_file, chunkhashes, NULL, false, NULL, false, NULL);
+                                    }
+
 									restore_download->addToQueueChunked(line, server_fn, local_fn, 
 										data.size, metadata, false, orig_file, chunkhashes);
 								}
 								else
 								{
 									restore_download->addToQueueFull(line, server_fn, local_fn, 
-										data.size, metadata, false, false, false, true);
+                                        data.size, metadata, false, false, true);
 
 									std::wstring tmpfn = chunkhashes->getFilenameW();
 									delete chunkhashes;
@@ -407,7 +413,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					else
 					{
 						restore_download->addToQueueFull(line, server_fn, local_fn, 
-							data.size, metadata, false, false, false, false);
+                            data.size, metadata, false, false, false);
 					}
 				}
 				++line;
@@ -416,7 +422,28 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 	} while (read>0);
 
-	return !has_error;
+    restore_download->queueStop();
+
+    while(!Server->getThreadPool()->waitFor(restore_download_ticket, 1000))
+    {
+        if(total_size==0)
+        {
+            ClientConnector::updateRestorePc(status_id, 100, server_token);
+        }
+        else
+        {
+            int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));
+            ClientConnector::updateRestorePc(status_id, pcdone, server_token);
+        }
+    }
+
+    if(restore_download->hasError())
+    {
+        log("Error while downloading files during restore", LL_ERROR);
+        return false;
+    }
+
+    return !has_error;
 }
 
 void RestoreFiles::log( const std::string& msg, int loglevel )

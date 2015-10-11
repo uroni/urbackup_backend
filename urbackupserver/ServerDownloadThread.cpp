@@ -340,7 +340,8 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 		if( (rc==ERR_TIMEOUT || rc==ERR_ERROR)
 			&& save_incomplete_file
-			&& fd!=NULL && fd->Size()>0 )
+            && fd!=NULL && fd->Size()>0
+                && !todl.metadata_only)
 		{
 			ServerLogger::Log(logid, L"Saving incomplete file.", LL_INFO);
 			hash_file = true;
@@ -348,7 +349,7 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 			max_ok_id = (std::max)(max_ok_id, todl.id);
 			download_partial_ids.add(todl.id);
 		}
-		else
+        else if(!todl.metadata_only)
 		{
 			download_nok_ids.add(todl.id);
 			if(fd!=NULL)

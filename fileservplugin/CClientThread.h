@@ -103,7 +103,7 @@ public:
 
 	void StopThread(void);
 
-	int SendInt(const char *buf, size_t bsize);
+    int SendInt(const char *buf, size_t bsize, bool flush=false);
 	bool getNextChunk(SChunk *chunk, bool has_error);
 private:
 

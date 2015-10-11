@@ -1414,7 +1414,7 @@ bool BackupServerHash::renameFileWithHashoutput(IFile *tf, const std::wstring &d
 {
 	if(tf->Size()>0)
 	{
-		IFile *dst_hash=openFileRetry(hash_dest, MODE_WRITE);
+        IFile *dst_hash=openFileRetry(hash_dest, MODE_RW_CREATE);
 		if(dst_hash==NULL)
 		{
 			return false;

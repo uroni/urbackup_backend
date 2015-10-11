@@ -547,6 +547,7 @@ bool IncrFileBackup::doFileBackup()
 						{
 							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
 							metadata.orig_path = curr_orig_path;
+                            metadata.exist=true;
 						}
 
 						bool dir_linked=false;
@@ -642,7 +643,7 @@ bool IncrFileBackup::doFileBackup()
 								break;
 							}
 
-							if(!indirchange)
+                            if(!indirchange && curr_path!=L"/urbackup_backup_scripts")
 							{
 								std::wstring srcpath=last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn;
 								if(!copy_os_metadata(srcpath, backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main))

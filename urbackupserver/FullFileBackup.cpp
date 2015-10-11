@@ -298,6 +298,7 @@ bool FullFileBackup::doFileBackup()
 						{
 							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
 							metadata.orig_path = curr_orig_path;
+                            metadata.exist=true;
 						}
 
 						str_map::iterator sym_target = extra_params.find(L"sym_target");

@@ -419,7 +419,7 @@ int64 os_metadata_offset( IFile* meta_file )
 bool copy_os_metadata( const std::wstring& in_fn, const std::wstring& out_fn, INotEnoughSpaceCallback *cb)
 {
 	std::auto_ptr<IFile> in_f(Server->openFile(os_file_prefix(in_fn), MODE_READ));
-	std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_READ));
+    std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_WRITE));
 
 	if(in_f.get()==NULL)
 	{
@@ -512,6 +512,12 @@ bool FileMetadata::read( str_map& extra_params )
 	{
 		orig_path = Server->ConvertToUTF8(it_orig_path->second);
 	}
+
+    str_map::iterator it_shahash = extra_params.find(L"sha512");
+    if(it_shahash!=extra_params.end())
+    {
+        shahash = base64_decode_dash(wnarrow(it_shahash->second));
+    }
 
 	if(!orig_path.empty() || !shahash.empty())
 	{

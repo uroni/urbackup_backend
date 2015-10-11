@@ -83,7 +83,7 @@ void ChunkSendThread::operator()(void)
 			CWData sdata;
 			sdata.addUChar(ID_FILESIZE);
 			sdata.addUInt64(little_endian(curr_file_size));
-			if(parent->SendInt(sdata.getDataPtr(), sdata.getDataSize())!=sdata.getDataSize())
+            if(parent->SendInt(sdata.getDataPtr(), sdata.getDataSize(), true)!=sdata.getDataSize())
 			{
 				has_error = true;
 			}

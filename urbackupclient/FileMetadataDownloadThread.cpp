@@ -135,7 +135,11 @@ bool FileMetadataDownloadThread::applyMetadata()
 
 			bool is_dir = curr_fn[0]=='d';
 
+#ifdef _WIN32
 			std::wstring os_path;
+#else
+            std::wstring os_path=L"/";
+#endif
 			std::vector<std::string> fs_toks;
 			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
 
@@ -487,7 +491,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
     }
 
     char version;
-    if(!metadata_f->Read(&version, 1)!=1)
+    if(metadata_f->Read(&version, 1)!=1)
     {
         restore.log(L"Error reading unix metadata version from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
         return false;
@@ -500,7 +504,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
     }
 
     char stat_data[sizeof(int64)*8+sizeof(_u32)*3];
-    if(!metadata_f->Read(stat_data, sizeof(stat_data))!=sizeof(stat_data))
+    if(metadata_f->Read(stat_data, sizeof(stat_data))!=sizeof(stat_data))
     {
         restore.log(L"Error reading unix metadata from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
         return false;
@@ -523,7 +527,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
     }
 
     int64 num_eattr_keys;
-    if(!metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))
+    if(metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))
     {
         restore.log(L"Error reading eattr num from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
         return false;
@@ -534,7 +538,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
     for(int64 i=0;i<num_eattr_keys;++i)
     {
         unsigned int key_size;
-        if(!metadata_f->Read(reinterpret_cast<char*>(&key_size), sizeof(key_size))!=sizeof(key_size))
+        if(metadata_f->Read(reinterpret_cast<char*>(&key_size), sizeof(key_size))!=sizeof(key_size))
         {
             restore.log(L"Error reading eattr key size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
             return false;
@@ -545,14 +549,14 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
         std::string eattr_key;
         eattr_key.resize(key_size);
 
-        if(!metadata_f->Read(&eattr_key[0], eattr_key.size())!=eattr_key.size())
+        if(metadata_f->Read(&eattr_key[0], eattr_key.size())!=eattr_key.size())
         {
             restore.log(L"Error reading eattr key from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
             return false;
         }
 
         unsigned int val_size;
-        if(!metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
+        if(metadata_f->Read(reinterpret_cast<char*>(&val_size), sizeof(val_size))!=sizeof(val_size))
         {
             restore.log(L"Error reading eattr value size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
             return false;
@@ -563,7 +567,7 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
         std::string eattr_val;
         eattr_val.resize(val_size);
 
-        if(!metadata_f->Read(&eattr_val[0], eattr_val.size())!=eattr_val.size())
+        if(metadata_f->Read(&eattr_val[0], eattr_val.size())!=eattr_val.size())
         {
             restore.log(L"Error reading eattr value from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
             return false;

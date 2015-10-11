@@ -291,7 +291,7 @@ bool CClientThread::RecvMessage(void)
 	return true;
 }
 
-int CClientThread::SendInt(const char *buf, size_t bsize)
+int CClientThread::SendInt(const char *buf, size_t bsize, bool flush)
 {
 	if(bsize==0)
 	{
@@ -300,7 +300,7 @@ int CClientThread::SendInt(const char *buf, size_t bsize)
 	}
 	else
 	{
-		return (int)(clientpipe->Write(buf, bsize, SEND_TIMEOUT, false)?bsize:SOCKET_ERROR);
+        return (int)(clientpipe->Write(buf, bsize, SEND_TIMEOUT, flush)?bsize:SOCKET_ERROR);
 	}
 }
 
@@ -1316,7 +1316,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	}
 	else
 	{
-		curr_filesize = srv_file->Size();
+        curr_filesize = srv_file->Size();
 	}
 
 	next_checkpoint=start_offset+c_checkpoint_dist;

@@ -216,7 +216,7 @@ namespace
 				if(!metadata.orig_path.empty() &&
 					(depth==0 || metadata.orig_path.find(fn_utf8)!=metadata.orig_path.size()-fn_utf8.size()))
 				{
-					extra="&orig_path="+base64_encode_dash(metadata.orig_path);
+                    extra="&orig_path="+EscapeParamString(metadata.orig_path);
 				}
 
 				if(!metadata.shahash.empty())

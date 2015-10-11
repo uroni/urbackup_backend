@@ -122,7 +122,7 @@ void RestoreDownloadThread::operator()()
 }
 
 void RestoreDownloadThread::addToQueueFull( size_t id, const std::wstring &remotefn, const std::wstring &destfn,
-	_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool is_dir, bool at_front, bool metadata_only )
+    _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool at_front, bool metadata_only )
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -133,7 +133,6 @@ void RestoreDownloadThread::addToQueueFull( size_t id, const std::wstring &remot
 	ni.predicted_filesize = predicted_filesize;
 	ni.metadata = metadata;
 	ni.is_script = is_script;
-	ni.is_dir = is_dir;
 	ni.patch_dl_files.chunkhashes=NULL;
 	ni.patch_dl_files.orig_file=NULL;
 	ni.metadata_only = metadata_only;
@@ -168,7 +167,6 @@ void RestoreDownloadThread::addToQueueChunked( size_t id, const std::wstring &re
 	ni.predicted_filesize= predicted_filesize;
 	ni.metadata = metadata;
 	ni.is_script = is_script;
-	ni.is_dir = false;
 	ni.patch_dl_files.chunkhashes=chunkhashes;
 	ni.patch_dl_files.orig_file=orig_file;
 	ni.metadata_only=false;
@@ -188,14 +186,24 @@ void RestoreDownloadThread::queueSkip()
 
 	IScopedLock lock(mutex.get());
 	dl_queue.push_front(ni);
-	cond->notify_one();
+    cond->notify_one();
+}
+
+void RestoreDownloadThread::queueStop()
+{
+    SQueueItem ni;
+    ni.action = EQueueAction_Quit;
+
+    IScopedLock lock(mutex.get());
+    dl_queue.push_front(ni);
+    cond->notify_one();
 }
 
 bool RestoreDownloadThread::load_file( SQueueItem todl )
 {
 	std::auto_ptr<IFile> dest_f;
 	
-	if(!todl.metadata_only && !todl.is_dir)
+    if(!todl.metadata_only)
 	{
 		dest_f.reset(Server->openFile(os_file_prefix(todl.destfn), MODE_WRITE));
 
@@ -367,7 +375,12 @@ void RestoreDownloadThread::resetQueueChunked()
 		{
 			it->queued=false;
 		}
-	}
+    }
+}
+
+bool RestoreDownloadThread::hasError()
+{
+    return !download_nok_ids.empty();
 }
 
 void RestoreDownloadThread::sleepQueue(IScopedLock& lock)
