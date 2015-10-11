@@ -267,7 +267,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --assemble \"$ASSEMBLE\" --output_file \"$ASSEMBLE_OUTPUT\" --loglevel debug"
 		S_DAEMON=""
 	else
-		DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $USER_ARG $SQLITE_TMPDIR $VERIFY_HASHES $DELETE_VERIFY_FAILED $RESET_PW $CLEANUP $BROADCAST_INTERFACES"
+		DAEMON_ARGS="--port $FASTCGI_PORT --logfile /var/log/$LOGFILE --loglevel $LOGLEVEL --http_port $HTTP_PORT --pidfile $PIDFILE $USER_ARG $SQLITE_TMPDIR $VERIFY_HASHES $DELETE_VERIFY_FAILED $CLEANUP $BROADCAST_INTERFACES"
 	fi
 else
 	DAEMON_ARGS="--user urbackup $*"
