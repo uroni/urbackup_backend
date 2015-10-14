@@ -1657,7 +1657,7 @@ bool IndexThread::find_existing_shadowcopy(SCDirs *dir, bool *onlyref, bool allo
 
 			bool cannot_open_shadowcopy = false;
 
-			IFile *volf=Server->openFile(sc_refs[i]->volpath, MODE_READ);
+			IFile *volf=Server->openFile(sc_refs[i]->volpath, MODE_READ_DEVICE);
 			if(volf==NULL)
 			{
 				if(!do_restart)
