@@ -1663,7 +1663,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	mbr.addString(Server->ConvertToUTF8((std::wstring)voln));
 	mbr.addString(Server->ConvertToUTF8((std::wstring)fsn));
 
-	IFile *dev=Server->openFile(L"\\\\.\\PhysicalDrive"+convert((int)dev_num.DeviceNumber), MODE_READ);
+	IFile *dev=Server->openFile(L"\\\\.\\PhysicalDrive"+convert((int)dev_num.DeviceNumber), MODE_READ_DEVICE);
 
 	if(dev==NULL)
 	{
