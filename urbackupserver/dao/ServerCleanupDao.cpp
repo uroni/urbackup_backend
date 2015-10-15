@@ -1,5 +1,6 @@
 #include "ServerCleanupDao.h"
 #include "../../stringtools.h"
+#include <assert.h>
 
 ServerCleanupDao::ServerCleanupDao(IDatabase *db)
 	: db(db)
@@ -213,6 +214,29 @@ std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getIncrNumImages(i
 		ret[i].letter=res[i][L"letter"];
 	}
 	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int ServerCleanupDao::getIncrNumImagesForBackup
+* @return int_raw c
+* @sql
+*	SELECT COUNT(id) AS c FROM backup_images
+*	WHERE clientid=(SELECT clientid FROM backup_images WHERE id=:backupid(int))
+*			AND incremental<>0 AND complete=1 AND letter=(SELECT letter FROM backup_images WHERE id=:backupid(int))
+*/
+int ServerCleanupDao::getIncrNumImagesForBackup(int backupid)
+{
+	if(q_getIncrNumImagesForBackup==NULL)
+	{
+		q_getIncrNumImagesForBackup=db->Prepare("SELECT COUNT(id) AS c FROM backup_images WHERE clientid=(SELECT clientid FROM backup_images WHERE id=?) AND incremental<>0 AND complete=1 AND letter=(SELECT letter FROM backup_images WHERE id=?)", false);
+	}
+	q_getIncrNumImagesForBackup->Bind(backupid);
+	q_getIncrNumImagesForBackup->Bind(backupid);
+	db_results res=q_getIncrNumImagesForBackup->Read();
+	q_getIncrNumImagesForBackup->Reset();
+	assert(!res.empty());
+	return watoi(res[0][L"c"]);
 }
 
 /**
@@ -949,6 +973,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getImageRefs=NULL;
 	q_getImagePath=NULL;
 	q_getIncrNumImages=NULL;
+	q_getIncrNumImagesForBackup=NULL;
 	q_getFullNumFiles=NULL;
 	q_getIncrNumFiles=NULL;
 	q_getClientName=NULL;
@@ -992,6 +1017,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getImageRefs);
 	db->destroyQuery(q_getImagePath);
 	db->destroyQuery(q_getIncrNumImages);
+	db->destroyQuery(q_getIncrNumImagesForBackup);
 	db->destroyQuery(q_getFullNumFiles);
 	db->destroyQuery(q_getIncrNumFiles);
 	db->destroyQuery(q_getClientName);

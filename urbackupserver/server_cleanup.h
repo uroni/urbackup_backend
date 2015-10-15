@@ -90,6 +90,8 @@ private:
 
 	void check_symlinks(const ServerCleanupDao::SClientInfo& client_info, const std::wstring& backupfolder);
 
+	int max_removable_incr_images(ServerSettings& settings, int backupid);
+
 	bool cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids);
 
 	void cleanup_images(int64 minspace=-1);
@@ -110,7 +112,7 @@ private:
 	size_t getFilesFullNum(int clientid, int &backupid_top);
 	size_t getFilesIncrNum(int clientid, int &backupid_top);
 
-	bool removeImage(int backupid, bool update_stat=true, int64 size_correction=0, bool force_remove=false);
+	bool removeImage(int backupid, ServerSettings* settings, bool update_stat, bool force_remove, bool remove_associated, bool remove_references);
 	bool findUncompleteImageRef(int backupid);
 
 	void removeClient(int clientid);
