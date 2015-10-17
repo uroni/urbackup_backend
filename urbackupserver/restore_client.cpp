@@ -17,18 +17,20 @@
 **************************************************************************/
 
 #include "restore_client.h"
-#include "../../Interface/Thread.h"
-#include "../../fileservplugin/IFileServ.h"
-#include "../../Interface/File.h"
-#include "../../Interface/Server.h"
-#include "../server_settings.h"
-#include "../ClientMain.h"
+#include "../Interface/Thread.h"
+#include "../fileservplugin/IFileServ.h"
+#include "../Interface/File.h"
+#include "../Interface/Server.h"
+#include "server_settings.h"
+#include "ClientMain.h"
 #include <algorithm>
-#include "../../urbackupcommon/file_metadata.h"
-#include "backups.h"
-#include "../../urbackupcommon/filelist_utils.h"
-#include "../../common/data.h"
-#include "../database.h"
+#include "../urbackupcommon/file_metadata.h"
+#include "serverinterface/backups.h"
+#include "../urbackupcommon/filelist_utils.h"
+#include "../common/data.h"
+#include "database.h"
+#include "dao/ServerBackupDao.h"
+#include "dao/ServerCleanupDao.h"
 
 extern IFileServ* fileserv;
 
@@ -99,12 +101,13 @@ namespace
 	class ClientDownloadThread : public IThread
 	{
 	public:
-		ClientDownloadThread(const std::wstring& clientname, int clientid, IFile* filelist_f, const std::wstring& foldername,
+		ClientDownloadThread(const std::wstring& curr_clientname, int curr_clientid, int restore_clientid, IFile* filelist_f, const std::wstring& foldername,
 			const std::wstring& hashfoldername, const std::wstring& filter,
 			bool token_authentication,
 			const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
 			const std::wstring& folder_log_name)
-			: clientname(clientname), clientid(clientid), filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
+			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
+			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
 			token_authentication(token_authentication), backup_tokens(backup_tokens),
 			tokens(tokens), skip_special_root(skip_special_root), folder_log_name(folder_log_name)
 		{
@@ -122,21 +125,21 @@ namespace
 			ServerBackupDao backup_dao(db);
 
 			std::string identity = ServerSettings::generateRandomAuthKey(25);
-			backup_dao.addRestore(clientid, folder_log_name, widen(identity));
+			backup_dao.addRestore(restore_clientid, folder_log_name, widen(identity));
 			int64 restore_id = db->getLastInsertID();
-			size_t status_id = ServerStatus::startProcess(clientname, sa_restore);
+			size_t status_id = ServerStatus::startProcess(curr_clientname, sa_restore);
 
-			logid_t log_id = ServerLogger::getLogId(clientid);
+			logid_t log_id = ServerLogger::getLogId(restore_clientid);
 
 			fileserv->addIdentity(identity);
 			fileserv->shareDir(L"clientdl_filelist", filelist_f->getFilenameW(), identity);
-			ClientMain::addShareToCleanup(clientid, SShareCleanup("urbackup", identity, true, false));
+			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl_filelist", identity, true, false));
 
 			delete filelist_f;
 
 			MetadataCallback* callback = new MetadataCallback(hashfoldername);
 			fileserv->shareDir(L"clientdl", foldername, identity);
-			ClientMain::addShareToCleanup(clientid, SShareCleanup("clientdl", identity, false, true));
+			ClientMain::addShareToCleanup(curr_clientid, SShareCleanup("clientdl", identity, false, true));
 			fileserv->registerMetadataCallback(L"clientdl", identity, callback);
 
 
@@ -148,7 +151,7 @@ namespace
 			data.addInt64(log_id.first);
 
 			std::string msg(data.getDataPtr(), data.getDataPtr()+data.getDataSize());
-			ServerStatus::sendToCommPipe(clientname, msg);
+			ServerStatus::sendToCommPipe(curr_clientname, msg);
 		}
 
 		bool writeFile(const std::wstring& data)
@@ -241,8 +244,9 @@ namespace
 		}
 
 	private:
-		std::wstring clientname;
-		int clientid;
+		std::wstring curr_clientname;
+		int curr_clientid;
+		int restore_clientid;
 		IFile* filelist_f;
 		std::wstring foldername;
 		std::wstring hashfoldername;
@@ -255,7 +259,7 @@ namespace
 	};
 }
 
-bool create_clientdl_thread(const std::wstring& clientname, int clientid, const std::wstring& foldername, const std::wstring& hashfoldername,
+bool create_clientdl_thread(const std::wstring& curr_clientname, int curr_clientid, int restore_clientid, const std::wstring& foldername, const std::wstring& hashfoldername,
 	const std::wstring& filter, bool token_authentication, const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
 	const std::wstring& folder_log_name)
 {
@@ -266,8 +270,48 @@ bool create_clientdl_thread(const std::wstring& clientname, int clientid, const 
 		return false;
 	}
 
-	Server->getThreadPool()->execute(new ClientDownloadThread(clientname, clientid, filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name));
+	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 
+		filelist_f, foldername, hashfoldername, filter, token_authentication, backup_tokens, tokens, skip_hashes, folder_log_name));
 
 	return true;
+}
+
+bool create_clientdl_thread( int backupid, const std::wstring& curr_clientname, int curr_clientid)
+{
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	ServerBackupDao backup_dao(db);
+	ServerCleanupDao cleanup_dao(db);
+
+	ServerBackupDao::SFileBackupInfo file_backup_info = backup_dao.getFileBackupInfo(backupid);
+
+	if(!file_backup_info.exists)
+	{
+		Server->Log("Could not get file backup info for backupid "+nconvert(backupid));
+		return false;
+	}
+
+	ServerCleanupDao::CondString client_name = cleanup_dao.getClientName(file_backup_info.clientid);
+
+	if(!client_name.exists)
+	{
+		Server->Log("Could not get client name for clientid "+nconvert(file_backup_info.clientid));
+		return false;
+	}
+
+	ServerBackupDao::CondString backupfolder = backup_dao.getSetting(0, L"backupfolder");
+
+	if(!backupfolder.exists)
+	{
+		Server->Log("Could not get backup storage folder");
+		return false;
+	}
+
+	std::wstring curr_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path;
+	std::wstring curr_metadata_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path+os_file_sep()+L".hashes";
+
+	std::vector<SToken> backup_tokens;
+	std::vector<std::string> tokens;
+	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::wstring(), false, backup_tokens,
+		tokens, true, L"");
 }
 

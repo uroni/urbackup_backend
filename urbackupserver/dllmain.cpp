@@ -73,7 +73,7 @@ SStartupStatus startup_status;
 #include "apps/check_files_index.h"
 #include "../fileservplugin/IFileServ.h"
 #include "../fileservplugin/IFileServFactory.h"
-#include "serverinterface/restore_client.h"
+#include "restore_client.h"
 #include "WalCheckpointThread.h"
 
 IPipe *server_exit_pipe=NULL;

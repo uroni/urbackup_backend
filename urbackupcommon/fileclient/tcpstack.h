@@ -16,8 +16,10 @@ class CTCPStack
 public:
 	CTCPStack(bool add_checksum=false);
 	void AddData(char* buf, size_t datasize);
+	void AddData(std::string data);
 
 	char* getPacket(size_t* packsize);
+	bool getPacket(std::string& msg);
 
 	size_t Send(IPipe* p, char* buf, size_t msglen, int timeoutms = c_default_timeout);
 	size_t Send(IPipe* p, CWData data, int timeoutms = c_default_timeout);

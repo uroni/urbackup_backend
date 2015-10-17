@@ -356,6 +356,72 @@ std::vector<SImage> getBackupimages(std::string clientname, int *ec)
 	return ret;
 }
 
+struct SFileBackup
+{
+	bool operator<(const SFileBackup &other) const
+	{
+		return other.time_s<time_s;
+	}
+	std::string time_str;
+	_i64 time_s;
+	int id;
+	int tgroup;
+};
+
+std::vector<SFileBackup> getFileBackups(std::string clientname, int *ec)
+{
+	std::string pw=getFile(pw_file);
+	CTCPStack tcpstack;
+	std::vector<SFileBackup> ret;
+	*ec=0;
+
+	IPipe *c=Server->ConnectStream("localhost", 35623, 60000);
+	if(c==NULL)
+	{
+		Server->Log("Error connecting to client service -1", LL_ERROR);
+		*ec=10;
+		return ret;
+	}
+
+	tcpstack.Send(c, "GET FILE BACKUPS "+clientname+"#pw="+pw);
+	std::string r=getResponse(c);
+	if(r.empty() )
+	{
+		Server->Log("No response from ClientConnector", LL_ERROR);
+		*ec=1;
+	}
+	else
+	{
+		if(r[0]=='0')
+		{
+			Server->Log("No backupserver found", LL_ERROR);
+			*ec=1;
+		}
+		else
+		{
+			std::vector<std::string> toks;
+			std::string t=r.substr(1);
+			Tokenize(t, toks, "\n");
+			for(size_t i=0;i<toks.size();++i)
+			{
+				std::vector<std::string> t2;
+				Tokenize(toks[i], t2, "|");
+				if(t2.size()==4  )
+				{
+					SFileBackup si;
+					si.id=atoi(t2[0].c_str());
+					si.time_s=os_atoi64(t2[1]);
+					si.time_str=t2[2];
+					si.tgroup=atoi(t2[3].c_str());
+					ret.push_back(si);
+				}
+			}
+		}
+	}
+	Server->destroy(c);
+	return ret;
+}
+
 volatile bool restore_retry_ok=false;
 
 int downloadImage(int img_id, std::string img_time, std::string outfile, bool mbr, _i64 offset, int recur_depth);
@@ -573,7 +639,55 @@ int downloadImage(int img_id, std::string img_time, std::string outfile, bool mb
 	return 0;
 }
 
+int downloadFiles(int backupid, std::string backup_time)
+{
+	std::string pw=getFile(pw_file);
+	CTCPStack tcpstack;
+	std::vector<SImage> ret;
+
+	std::auto_ptr<IPipe> client_pipe(Server->ConnectStream("localhost", 35623, 60000));
+	if(client_pipe.get()==NULL)
+	{
+		Server->Log("Error connecting to client service -1", LL_ERROR);
+		return 10;
+	}
+
+	tcpstack.Send(client_pipe.get(), "DOWNLOAD IMAGE#pw="+pw+"&backupid="+nconvert(backupid)+"&time="+backup_time);
+	int64 starttime = Server->getTimeMS();
+
+	while(Server->getTimeMS()-starttime<60000)
+	{
+		std::string msg;
+		if(client_pipe->Read(&msg, 60000)>0)
+		{
+			tcpstack.AddData(&msg[0], msg.size());
+
+			if(tcpstack.getPacket(msg) )
+			{
+				if(msg=="ok")
+				{
+					return 0;
+				}
+				else
+				{
+					Server->Log("Error: "+msg, LL_ERROR);
+					return 1;
+				}
+
+				break;
+			}
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	Server->Log("Timeout", LL_ERROR);
+	return 2;
 }
+
+} //unnamed namespace
 
 namespace
 {
@@ -811,7 +925,10 @@ void do_restore(void)
 		Server->Log("write_mbr(mbr_filename,out_device)", LL_INFO);
 		Server->Log("get_clientnames", LL_INFO);
 		Server->Log("get_backupimages(restore_name)", LL_INFO);
+		Server->Log("get_file_backups(restore_name)", LL_INFO);
 		Server->Log("download_mbr(restore_img_id,restore_time,restore_out)", LL_INFO);
+		Server->Log("download_image(restore_img_id,restore_time,restore_out)", LL_INFO);
+		Server->Log("download_files(restore_backupid,restore_time,restore_out)", LL_INFO);
 		Server->Log("download_progress(mbr_filename,out_device)", LL_INFO);
 		exit(0);
 	}
@@ -877,6 +994,29 @@ void do_restore(void)
 			}
 		}
 	}
+	else if(cmd=="get_file_backups" )
+	{
+		tcpstack.Send(c, "GET FILE BACKUPS "+Server->getServerParameter("restore_name")+"#pw="+pw);
+		std::string r=getResponse(c);
+		if(r.empty() )
+		{
+			Server->Log("No response from ClientConnector", LL_ERROR);
+			Server->destroy(c);exit(2);return;
+		}
+		else
+		{
+			if(r[0]=='0')
+			{
+				Server->Log("No backupserver found", LL_ERROR);
+				Server->destroy(c);exit(3);return;
+			}
+			else
+			{
+				std::cout << r.substr(1) ;
+				Server->destroy(c);exit(0);return;
+			}
+		}
+	}
 	else if(cmd=="download_mbr" || cmd=="download_image" )
 	{
 		bool mbr=false;
@@ -884,6 +1024,11 @@ void do_restore(void)
 			mbr=true;
 
 		int ec=downloadImage(atoi(Server->getServerParameter("restore_img_id").c_str()), Server->getServerParameter("restore_time"), Server->getServerParameter("restore_out"), mbr);
+		exit(ec);
+	}
+	else if(cmd=="download_files")
+	{
+		int ec=downloadFiles(atoi(Server->getServerParameter("restore_backupid").c_str()), Server->getServerParameter("restore_time"));
 		exit(ec);
 	}
 	else if(cmd=="download_progress")

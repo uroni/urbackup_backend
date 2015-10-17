@@ -37,7 +37,7 @@
 #include <limits.h>
 #include "../fileservplugin/IFileServ.h"
 #include "server_log.h"
-#include "serverinterface/restore_client.h"
+#include "restore_client.h"
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
@@ -317,7 +317,20 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		GET_BACKUPIMAGES(name);
 	}
+	else if(msg.find("GET FILE BACKUPS ")==0 && hasDownloadImageRights())
+	{
+		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
+		GET_BACKUPIMAGES(name);
+	}
 	else if(next(msg, 0, "DOWNLOAD IMAGE ") && !internet_mode && hasDownloadImageRights())
+	{
+		std::string s_params=msg.substr(15);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		DOWNLOAD_IMAGE(params);
+	}
+	else if(next(msg, 0, "DOWNLOAD FILES ") && hasDownloadImageRights())
 	{
 		std::string s_params=msg.substr(15);
 		str_map params;
@@ -609,6 +622,38 @@ void ServerChannelThread::GET_BACKUPIMAGES(const std::wstring& clientname)
 	ServerStatus::updateActive();
 }
 
+void ServerChannelThread::GET_FILE_BACKUPS( const std::wstring& clientname )
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	IQuery *q=db->Prepare("SELECT backupid AS id, strftime('%s', backuptime) AS timestamp, strftime('%Y-%m-%d %H:%M',backuptime) AS backuptime, clientid, tgroup FROM "
+		"((SELECT id AS backupid, clientid, backuptime, complete, tgroup FROM backups) c INNER JOIN (SELECT id FROM clients WHERE name=?) b ON c.clientid=b.id) a "
+		"WHERE a.complete=1 ORDER BY backuptime DESC");
+	q->Bind(clientname);
+	db_results res=q->Read();
+
+	for(size_t i=0;i<res.size();++i)
+	{
+		if(!all_client_rights &&
+			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[i][L"clientid"]))==client_right_ids.end())
+		{
+			tcpstack.Send(input, "0|0|0|NO RIGHTS");
+			db->destroyAllQueries();
+			return;
+		}
+	}
+
+	std::string r;
+	for(size_t i=0;i<res.size();++i)
+	{
+		r+=nconvert(img_id_offset+watoi(res[i][L"id"]))+"|"+Server->ConvertToUTF8(res[i][L"timestamp"])+"|"+Server->ConvertToUTF8(res[i][L"backuptime"])+"|"+Server->ConvertToUTF8(res[i][L"tgroup"])+"\n";
+	}
+	tcpstack.Send(input, r);
+
+	db->destroyAllQueries();
+
+	ServerStatus::updateActive();
+}
+
 void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 {
 	int img_id=watoi(params[L"img_id"])-img_id_offset;
@@ -778,6 +823,39 @@ void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 	db->destroyAllQueries();
 }
 
+void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
+{
+	int backupid=watoi(params[L"backupid"])-img_id_offset;
+
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	IQuery *q=db->Prepare("SELECT clientid FROM backups WHERE id=? AND strftime('%s', backuptime)=?");
+	q->Bind(backupid);
+	q->Bind(params[L"time"]);
+	db_results res=q->Read();
+	if(res.empty())
+	{
+		tcpstack.Send(input, "Backup not found");
+	}
+	else
+	{
+		if( !all_client_rights &&
+			std::find(client_right_ids.begin(), client_right_ids.end(), watoi(res[0][L"clientid"]))==client_right_ids.end())
+		{
+			tcpstack.Send(input, "Insufficient rights");
+			return;
+		}
+
+		if(create_clientdl_thread(backupid, clientname, clientid))
+		{
+			tcpstack.Send(input, "ok");
+		}
+		else
+		{
+			tcpstack.Send(input, "err");
+		}
+	}
+}
+
 void ServerChannelThread::RESTORE_PERCENT( str_map params )
 {
 	int64 status_id = watoi64(params[L"status_id"]);
@@ -822,3 +900,5 @@ void ServerChannelThread::RESTORE_DONE( str_map params )
 	}
 	
 }
+
+

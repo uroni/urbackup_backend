@@ -208,6 +208,8 @@ private:
 
 	bool authenticatePubKey();
 
+	void cleanupShares();
+
 	std::string curr_image_format;
 
 	IPipe *pipe;
@@ -288,4 +290,5 @@ private:
 	static std::map<int, std::vector<SShareCleanup> > cleanup_shares;
 
 	logid_t logid;
+	static int restore_client_id;
 };

@@ -953,6 +953,10 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_RESTORE_GET_BACKUPIMAGES(cmd); continue;
 			}
+			else if( cmd=="GET FILE BACKUPS" )
+			{
+				CMD_RESTORE_GET_FILE_BACKUPS(cmd); continue;
+			}
 			else if( cmd=="LOGIN FOR DOWNLOAD" )
 			{
 				CMD_RESTORE_LOGIN_FOR_DOWNLOAD(cmd, params); continue;
@@ -964,7 +968,11 @@ void ClientConnector::ReceivePackets(void)
 			else if( cmd=="DOWNLOAD IMAGE" )
 			{
 				CMD_RESTORE_DOWNLOAD_IMAGE(cmd, params); continue;
-			}
+			}		
+			else if( cmd=="DOWNLOAD FILES" )
+			{
+				CMD_RESTORE_DOWNLOAD_FILES(cmd, params); continue;
+			}	
 			else if( cmd=="GET DOWNLOADPROGRESS" )
 			{
 				CMD_RESTORE_DOWNLOADPROGRESS(cmd); continue;		

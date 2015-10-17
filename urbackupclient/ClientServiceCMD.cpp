@@ -1149,6 +1149,31 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd)
 	}
 }
 
+void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS(const std::string &cmd)
+{
+	lasttime=Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+	if(channel_pipes.size()==0)
+	{
+		tcpstack.Send(pipe, "0");
+	}
+	else
+	{
+		std::string filebackups;
+		for(size_t i=0;i<channel_pipes.size();++i)
+		{
+			tcpstack.Send(channel_pipes[i].pipe, cmd);
+			std::string nc=receivePacket(channel_pipes[i].pipe);
+			if(!nc.empty())
+			{
+				filebackups+=nc+"\n";
+			}
+		}
+		tcpstack.Send(pipe, "1"+filebackups);
+	}
+}
+
 void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params)
 {
 	lasttime=Server->getTimeMS();
@@ -1161,6 +1186,72 @@ void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map
 	img_download_running=false;
 	Server->Log("Download done -2", LL_DEBUG);
 	do_quit=true;
+}
+
+void ClientConnector::CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params)
+{
+	lasttime=Server->getTimeMS();
+	Server->Log("Downloading image...", LL_DEBUG);
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+	
+	if(channel_pipes.size()==0)
+	{
+		tcpstack.Send(pipe, "No backup server found");
+		return;
+	}
+
+	std::string last_error;
+
+	for(size_t i=0;i<channel_pipes.size();++i)
+	{
+		IPipe *c=channel_pipes[i].pipe;
+
+		tcpstack.Send(c, "DOWNLOAD FILES backupid="+wnarrow(params[L"backupid"])+"&time="+wnarrow(params[L"time"]));
+
+		Server->Log("Start downloading files from channel "+nconvert((int)i), LL_DEBUG);
+
+		CTCPStack recv_stack;
+
+		int64 starttime = Server->getTimeMS();
+
+		while(Server->getTimeMS()-starttime<60000)
+		{
+			std::string msg;
+			if(c->Read(&msg, 60000)>0)
+			{
+				recv_stack.AddData(&msg[0], msg.size());
+
+				if(recv_stack.getPacket(msg) )
+				{
+					if(msg=="ok")
+					{
+						tcpstack.Send(pipe, "ok");
+						return;
+					}
+					else
+					{
+						last_error=msg;
+					}
+
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	if(!last_error.empty())
+	{
+		tcpstack.Send(pipe, last_error);
+	}
+	else
+	{
+		tcpstack.Send(pipe, "timeout");
+	}
 }
 
 void ClientConnector::CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd)

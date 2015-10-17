@@ -1936,6 +1936,46 @@ void ServerBackupDao::setRestoreDone(int success, int64 restore_id)
 	q_setRestoreDone->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func SFileBackupInfo ServerBackupDao::getFileBackupInfo
+* @return int64 id, int clientid, int64 backuptime, int incremental, string path, int complete, int64 running, int64 size_bytes, int done, int archived, int64 archive_timeout, int64 size_calculated, int resumed, int64 indexing_time_ms, int tgroup
+* @sql
+*       SELECT id, clientid, strftime('%s',backuptime) AS backuptime, incremental, path, complete, strftime('%s',running), size_bytes, done, archived, archive_timeout, size_calculated, resumed, indexing_time_ms, tgroup
+*       FROM backups WHERE id=:backupid(int)
+*/
+ServerBackupDao::SFileBackupInfo ServerBackupDao::getFileBackupInfo(int backupid)
+{
+	if(q_getFileBackupInfo==NULL)
+	{
+		q_getFileBackupInfo=db->Prepare("SELECT id, clientid, strftime('%s',backuptime) AS backuptime, incremental, path, complete, strftime('%s',running), size_bytes, done, archived, archive_timeout, size_calculated, resumed, indexing_time_ms, tgroup FROM backups WHERE id=?", false);
+	}
+	q_getFileBackupInfo->Bind(backupid);
+	db_results res=q_getFileBackupInfo->Read();
+	q_getFileBackupInfo->Reset();
+	SFileBackupInfo ret = { false, 0, 0, 0, 0, L"", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.id=watoi64(res[0][L"id"]);
+		ret.clientid=watoi(res[0][L"clientid"]);
+		ret.backuptime=watoi64(res[0][L"backuptime"]);
+		ret.incremental=watoi(res[0][L"incremental"]);
+		ret.path=res[0][L"path"];
+		ret.complete=watoi(res[0][L"complete"]);
+		ret.running=watoi64(res[0][L"running"]);
+		ret.size_bytes=watoi64(res[0][L"size_bytes"]);
+		ret.done=watoi(res[0][L"done"]);
+		ret.archived=watoi(res[0][L"archived"]);
+		ret.archive_timeout=watoi64(res[0][L"archive_timeout"]);
+		ret.size_calculated=watoi64(res[0][L"size_calculated"]);
+		ret.resumed=watoi(res[0][L"resumed"]);
+		ret.indexing_time_ms=watoi64(res[0][L"indexing_time_ms"]);
+		ret.tgroup=watoi(res[0][L"tgroup"]);
+	}
+	return ret;
+}
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -2024,6 +2064,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_addRestore=NULL;
 	q_getRestoreIdentity=NULL;
 	q_setRestoreDone=NULL;
+	q_getFileBackupInfo=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2114,6 +2155,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_addRestore);
 	db->destroyQuery(q_getRestoreIdentity);
 	db->destroyQuery(q_setRestoreDone);
+	db->destroyQuery(q_getFileBackupInfo);
 }
 
 void ServerBackupDao::commit()

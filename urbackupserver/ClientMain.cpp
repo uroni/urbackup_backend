@@ -91,6 +91,8 @@ IMutex *ClientMain::tmpfile_mutex=NULL;
 size_t ClientMain::tmpfile_num=0;
 IMutex* ClientMain::cleanup_mutex = NULL;
 std::map<int, std::vector<SShareCleanup> > ClientMain::cleanup_shares;
+int ClientMain::restore_client_id = -1;
+
 
 
 ClientMain::ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName,
@@ -235,7 +237,12 @@ void ClientMain::operator ()(void)
 
 	if( clientname.find(L"##restore##")==0 )
 	{
-		ServerChannelThread channel_thread(this, clientname, -1, internet_connection, server_identity);
+		{
+			IScopedLock lock(cleanup_mutex);
+			clientid = restore_client_id--;
+		}
+
+		ServerChannelThread channel_thread(this, clientname, clientid, internet_connection, server_identity);
 		THREADPOOL_TICKET channel_thread_id=Server->getThreadPool()->execute(&channel_thread);
 
 		while(true)
@@ -248,6 +255,8 @@ void ClientMain::operator ()(void)
 
 		channel_thread.doExit();
 		Server->getThreadPool()->waitFor(channel_thread_id);
+
+		cleanupShares();
 
 		pipe->Write("ok");
 		Server->Log(L"client_main Thread for client "+clientname+L" finished, restore thread");
@@ -762,38 +771,7 @@ void ClientMain::operator ()(void)
 		Server->getThreadPool()->waitFor(channel_thread_id);
 	}
 
-	//cleanup shares
-	if(fileserv!=NULL)
-	{
-		IScopedLock lock(cleanup_mutex);
-		std::vector<SShareCleanup>& tocleanup = cleanup_shares[clientid];
-
-		for(size_t i=0;i<tocleanup.size();++i)
-		{
-			if(tocleanup[i].cleanup_file)
-			{
-				std::wstring cleanupfile = fileserv->getShareDir(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
-				if(!cleanupfile.empty())
-				{
-					Server->deleteFile(cleanupfile);
-				}
-			}
-
-			if(tocleanup[i].remove_callback)
-			{
-				fileserv->removeMetadataCallback(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
-			}
-
-			fileserv->removeDir(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
-
-			if(!tocleanup[i].identity.empty())
-			{
-				fileserv->removeIdentity(tocleanup[i].identity);
-			}
-		}
-
-		tocleanup.clear();
-	}
+	cleanupShares();
 
 	ServerLogger::reset(clientid);
 	
@@ -2330,5 +2308,40 @@ void ClientMain::addShareToCleanup( int clientid, const SShareCleanup& cleanupDa
 	IScopedLock lock(cleanup_mutex);
 	std::vector<SShareCleanup>& tocleanup = cleanup_shares[clientid];
 	tocleanup.push_back(cleanupData);
+}
+
+void ClientMain::cleanupShares()
+{
+	if(fileserv!=NULL)
+	{
+		IScopedLock lock(cleanup_mutex);
+		std::vector<SShareCleanup>& tocleanup = cleanup_shares[clientid];
+
+		for(size_t i=0;i<tocleanup.size();++i)
+		{
+			if(tocleanup[i].cleanup_file)
+			{
+				std::wstring cleanupfile = fileserv->getShareDir(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+				if(!cleanupfile.empty())
+				{
+					Server->deleteFile(cleanupfile);
+				}
+			}
+
+			if(tocleanup[i].remove_callback)
+			{
+				fileserv->removeMetadataCallback(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+			}
+
+			fileserv->removeDir(Server->ConvertToUnicode(tocleanup[i].name), tocleanup[i].identity);
+
+			if(!tocleanup[i].identity.empty())
+			{
+				fileserv->removeIdentity(tocleanup[i].identity);
+			}
+		}
+
+		tocleanup.clear();
+	}
 }
 

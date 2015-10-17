@@ -297,9 +297,6 @@
     <ClCompile Include="..\urbackupcommon\chunk_hasher.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="serverinterface\restore_client.cpp">
-      <Filter>serverinterface</Filter>
-    </ClCompile>
     <ClCompile Include="WalCheckpointThread.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -307,6 +304,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="..\urbackupcommon\CompressedPipe2.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="restore_client.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
@@ -554,9 +554,6 @@
     <ClInclude Include="..\urbackupcommon\chunk_hasher.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
-    <ClInclude Include="serverinterface\restore_client.h">
-      <Filter>serverinterface</Filter>
-    </ClInclude>
     <ClInclude Include="WalCheckpointThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
@@ -565,6 +562,9 @@
     </ClInclude>
     <ClInclude Include="..\urbackupcommon\CompressedPipe2.h">
       <Filter>Headerdateien</Filter>
+    </ClInclude>
+    <ClInclude Include="restore_client.h">
+      <Filter>Quelldateien</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

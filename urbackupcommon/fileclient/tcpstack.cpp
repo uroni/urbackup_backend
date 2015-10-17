@@ -41,6 +41,14 @@ void CTCPStack::AddData(char* buf, size_t datasize)
 	}
 }
 
+void CTCPStack::AddData( std::string data )
+{
+	if(!data.empty())
+	{
+		AddData(&data[0], data.size());
+	}
+}
+
 size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms)
 {
 	char* buffer;
@@ -168,6 +176,23 @@ char* CTCPStack::getPacket(size_t* packetsize)
 		}
 	}
 	return NULL;
+}
+
+bool CTCPStack::getPacket( std::string& msg )
+{
+	size_t packetsize = 0;
+	char* packet = getPacket(&packetsize);
+
+	if(packet)
+	{
+		msg.assign(packet, packet+packetsize);
+		delete[] packet;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 void CTCPStack::reset(void)

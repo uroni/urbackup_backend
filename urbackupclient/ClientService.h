@@ -198,7 +198,9 @@ private:
 	void CMD_MBR(const std::string &cmd);
 	void CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd);
 	void CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd);
+	void CMD_RESTORE_GET_FILE_BACKUPS(const std::string &cmd);
 	void CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params);
+	void CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd);
 	void CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &params);

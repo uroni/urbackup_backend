@@ -47,6 +47,25 @@ public:
 		int64 indexing_time_ms;
 		int64 duration;
 	};
+	struct SFileBackupInfo
+	{
+		bool exists;
+		int64 id;
+		int clientid;
+		int64 backuptime;
+		int incremental;
+		std::wstring path;
+		int complete;
+		int64 running;
+		int64 size_bytes;
+		int done;
+		int archived;
+		int64 archive_timeout;
+		int64 size_calculated;
+		int resumed;
+		int64 indexing_time_ms;
+		int tgroup;
+	};
 	struct SFileEntry
 	{
 		bool exists;
@@ -205,6 +224,7 @@ public:
 	void addRestore(int clientid, const std::wstring& path, const std::wstring& identity);
 	CondString getRestoreIdentity(int64 restore_id, int clientid);
 	void setRestoreDone(int success, int64 restore_id);
+	SFileBackupInfo getFileBackupInfo(int backupid);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -303,6 +323,7 @@ private:
 	IQuery* q_addRestore;
 	IQuery* q_getRestoreIdentity;
 	IQuery* q_setRestoreDone;
+	IQuery* q_getFileBackupInfo;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

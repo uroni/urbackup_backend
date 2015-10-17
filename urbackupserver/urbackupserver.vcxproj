@@ -296,6 +296,7 @@
     <ClCompile Include="lmdb\mdb.c" />
     <ClCompile Include="lmdb\midl.c" />
     <ClCompile Include="LMDBFileIndex.cpp" />
+    <ClCompile Include="restore_client.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="serverinterface\backups.cpp" />
     <ClCompile Include="serverinterface\create_zip.cpp" />
@@ -308,7 +309,6 @@
     <ClCompile Include="serverinterface\logs.cpp" />
     <ClCompile Include="serverinterface\piegraph.cpp" />
     <ClCompile Include="serverinterface\progress.cpp" />
-    <ClCompile Include="serverinterface\restore_client.cpp" />
     <ClCompile Include="serverinterface\salt.cpp" />
     <ClCompile Include="serverinterface\settings.cpp" />
     <ClCompile Include="serverinterface\shutdown.cpp" />
@@ -396,13 +396,13 @@
     <ClInclude Include="lmdb\lmdb.h" />
     <ClInclude Include="lmdb\midl.h" />
     <ClInclude Include="LMDBFileIndex.h" />
+    <ClInclude Include="restore_client.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="serverinterface\actions.h" />
     <ClInclude Include="serverinterface\action_header.h" />
     <ClInclude Include="serverinterface\backups.h" />
     <ClInclude Include="serverinterface\helper.h" />
     <ClInclude Include="serverinterface\login.h" />
-    <ClInclude Include="serverinterface\restore_client.h" />
     <ClInclude Include="serverinterface\rights.h" />
     <ClInclude Include="server_archive.h" />
     <ClInclude Include="server_channel.h" />

@@ -28,7 +28,7 @@
 #include <algorithm>
 #include "../../fileservplugin/IFileServ.h"
 #include "../server_status.h"
-#include "restore_client.h"
+#include "../restore_client.h"
 
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
@@ -739,7 +739,7 @@ ACTION_IMPL(backups)
 									return;
 								}
 
-								if(!create_clientdl_thread(clientname, t_clientid, curr_path, curr_metadata_path, GET[L"filter"], token_authentication,
+								if(!create_clientdl_thread(clientname, t_clientid, t_clientid, curr_path, curr_metadata_path, GET[L"filter"], token_authentication,
 									backup_tokens.tokens, tokens, path.empty(), path))
 								{
 									ret.set("err", "internal_error");
