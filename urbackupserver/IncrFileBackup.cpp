@@ -747,6 +747,21 @@ bool IncrFileBackup::doFileBackup()
                             download_metadata=true;
                         }
 					}
+					else if(extra_params.find(L"special")!=extra_params.end())
+					{
+						std::wstring touch_path = backuppath+local_curr_os_path;
+						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
+						if(touch_file.get()==NULL)
+						{
+							ServerLogger::Log(logid, L"Error touching file at \""+touch_path+L"\". " + widen(systemErrorInfo()), LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+						else
+						{
+							download_metadata=true;
+						}
+					}
 					else if(indirchange || hasChange(line, diffs)) //is changed
 					{
 						bool f_ok=false;

@@ -408,6 +408,22 @@ bool FullFileBackup::doFileBackup()
                         }
                     }
 
+					if(extra_params.find(L"special")!=extra_params.end())
+					{
+						std::wstring touch_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
+						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
+						if(touch_file.get()==NULL)
+						{
+							ServerLogger::Log(logid, L"Error touching file at \""+touch_path+L"\". " + widen(systemErrorInfo()), LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+						else
+						{
+							file_ok=true;
+						}
+					}
+
 					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(L"sha512") );
 					if( hash_it!=extra_params.end())
 					{
