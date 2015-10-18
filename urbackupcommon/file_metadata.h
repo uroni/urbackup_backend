@@ -13,7 +13,7 @@ class FileMetadata
 {
 public:
 	FileMetadata()
-		: last_modified(0), created(0), exist(false)
+		: last_modified(0), created(0), exist(false), has_orig_path(false)
 	{
 
 	}
@@ -31,6 +31,7 @@ public:
 	int64 last_modified;
 	int64 created;
 	std::string shahash;
+	bool has_orig_path;
 	std::string orig_path;
 	bool exist;
 

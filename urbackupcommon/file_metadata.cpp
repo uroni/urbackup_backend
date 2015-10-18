@@ -511,6 +511,7 @@ bool FileMetadata::read( str_map& extra_params )
 	if(it_orig_path!=extra_params.end())
 	{
 		orig_path = Server->ConvertToUTF8(it_orig_path->second);
+		has_orig_path=true;
 	}
 
     str_map::iterator it_shahash = extra_params.find(L"sha512");
@@ -519,7 +520,7 @@ bool FileMetadata::read( str_map& extra_params )
         shahash = base64_decode_dash(wnarrow(it_shahash->second));
     }
 
-	if(!orig_path.empty() || !shahash.empty())
+	if(has_orig_path || !shahash.empty())
 	{
 		exist=true;
 	}

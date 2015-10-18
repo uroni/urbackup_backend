@@ -233,14 +233,12 @@ bool FullFileBackup::doFileBackup()
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
-				bool has_orig_path = false;
-				if(!metadata.orig_path.empty())
+				bool has_orig_path = metadata.has_orig_path;
+				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
 					orig_sep = Server->ConvertToUTF8(extra_params[L"orig_sep"]);
 					if(orig_sep.empty()) orig_sep="\\";
-
-					has_orig_path=true;
 				}
 
 
@@ -299,6 +297,7 @@ bool FullFileBackup::doFileBackup()
 							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
 							metadata.orig_path = curr_orig_path;
                             metadata.exist=true;
+							metadata.has_orig_path=true;
 						}
 
 						str_map::iterator sym_target = extra_params.find(L"sym_target");

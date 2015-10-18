@@ -453,14 +453,12 @@ bool IncrFileBackup::doFileBackup()
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
-				bool has_orig_path = false;
-				if(!metadata.orig_path.empty())
+				bool has_orig_path = metadata.has_orig_path;
+				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
 					orig_sep = base64_decode_dash(Server->ConvertToUTF8(extra_params[L"orig_sep"]));
 					if(orig_sep.empty()) orig_sep="\\";
-
-					has_orig_path=true;
 				}
 
 				int64 ctime=Server->getTimeMS();
@@ -548,6 +546,7 @@ bool IncrFileBackup::doFileBackup()
 							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
 							metadata.orig_path = curr_orig_path;
                             metadata.exist=true;
+							metadata.has_orig_path=true;
 						}
 
 						bool dir_linked=false;
