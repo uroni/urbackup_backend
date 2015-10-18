@@ -317,15 +317,6 @@ namespace
 
     void unserialize_stat_buf(CRData& data, struct stat64& statbuf)
     {
-        /*data.addInt64(buf.st_dev);
-        data.addInt64(buf.st_mode);
-        data.addInt64(buf.st_uid);
-        data.addInt64(buf.st_gid);
-        data.addInt64(buf.st_rdev);
-        data.addInt64(buf.st_atime);
-        data.addInt64(buf.st_mtime);
-        data.addInt64(buf.st_ctime);*/
-
 #define SET_STAT_MEM(x)  {int64 tmp; assert(data.getInt64(&tmp)); statbuf.x = tmp;}
 #define SET_STAT_MEM32(x)  {_u32 tmp; assert(data.getUInt(&tmp)); statbuf.x = tmp;}
 
@@ -342,6 +333,7 @@ namespace
         SET_STAT_MEM32(st_ctim.tv_nsec);
 
 #undef SET_STAT_MEM
+#undef SET_STAT_MEM32
     }
 
     bool restore_stat_buf(RestoreFiles& restore, struct stat64& statbuf, const std::string& fn)

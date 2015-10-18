@@ -137,8 +137,19 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			}
 			else
 			{
-				Server->Log("No permission to stat \""+upath+dirp->d_name+"\" errno: "+nconvert(errno), LL_ERROR);
-				continue;
+                if(f.issym && (errno==ENOTDIR || errno==ENOENT) )
+                {
+                    Server->Log("Symlink target of \""+upath+dirp->d_name+"\" not found. Errno: "+nconvert(errno), LL_DEBUG);
+                }
+                else
+                {
+                    Server->Log("Stat failed for \""+upath+dirp->d_name+"\" errno: "+nconvert(errno), LL_ERROR);
+                    if(has_error!=NULL)
+                    {
+                        *has_error=true;
+                    }
+                    continue;
+                }
 			}
 #ifndef sun
 		}
