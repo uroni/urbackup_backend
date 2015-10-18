@@ -453,14 +453,12 @@ bool IncrFileBackup::doFileBackup()
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
-				bool has_orig_path = false;
-				if(!metadata.orig_path.empty())
+				bool has_orig_path = metadata.has_orig_path;
+				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
 					orig_sep = base64_decode_dash(Server->ConvertToUTF8(extra_params[L"orig_sep"]));
 					if(orig_sep.empty()) orig_sep="\\";
-
-					has_orig_path=true;
 				}
 
 				int64 ctime=Server->getTimeMS();
@@ -548,6 +546,7 @@ bool IncrFileBackup::doFileBackup()
 							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
 							metadata.orig_path = curr_orig_path;
                             metadata.exist=true;
+							metadata.has_orig_path=true;
 						}
 
 						bool dir_linked=false;
@@ -747,6 +746,21 @@ bool IncrFileBackup::doFileBackup()
                         {
                             download_metadata=true;
                         }
+					}
+					else if(extra_params.find(L"special")!=extra_params.end())
+					{
+						std::wstring touch_path = backuppath+local_curr_os_path;
+						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
+						if(touch_file.get()==NULL)
+						{
+							ServerLogger::Log(logid, L"Error touching file at \""+touch_path+L"\". " + widen(systemErrorInfo()), LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+						else
+						{
+							download_metadata=true;
+						}
 					}
 					else if(indirchange || hasChange(line, diffs)) //is changed
 					{

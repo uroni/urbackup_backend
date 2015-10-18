@@ -233,14 +233,12 @@ bool FullFileBackup::doFileBackup()
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
-				bool has_orig_path = false;
-				if(!metadata.orig_path.empty())
+				bool has_orig_path = metadata.has_orig_path;
+				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
 					orig_sep = Server->ConvertToUTF8(extra_params[L"orig_sep"]);
 					if(orig_sep.empty()) orig_sep="\\";
-
-					has_orig_path=true;
 				}
 
 
@@ -299,6 +297,7 @@ bool FullFileBackup::doFileBackup()
 							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
 							metadata.orig_path = curr_orig_path;
                             metadata.exist=true;
+							metadata.has_orig_path=true;
 						}
 
 						str_map::iterator sym_target = extra_params.find(L"sym_target");
@@ -408,6 +407,22 @@ bool FullFileBackup::doFileBackup()
                             file_ok=true;
                         }
                     }
+
+					if(extra_params.find(L"special")!=extra_params.end())
+					{
+						std::wstring touch_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
+						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
+						if(touch_file.get()==NULL)
+						{
+							ServerLogger::Log(logid, L"Error touching file at \""+touch_path+L"\". " + widen(systemErrorInfo()), LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+						else
+						{
+							file_ok=true;
+						}
+					}
 
 					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(L"sha512") );
 					if( hash_it!=extra_params.end())
