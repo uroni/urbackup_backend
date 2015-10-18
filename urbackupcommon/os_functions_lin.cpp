@@ -102,7 +102,6 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			{
 				f.issym=true;
 				f.isspecial=true;
-				rc=stat64((upath+dirp->d_name).c_str(), &f_info);
 			}
 			if(rc==0)
 			{
@@ -137,19 +136,12 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			}
 			else
 			{
-                if(f.issym && (errno==ENOTDIR || errno==ENOENT) )
-                {
-                    Server->Log("Symlink target of \""+upath+dirp->d_name+"\" not found. Errno: "+nconvert(errno), LL_DEBUG);
-                }
-                else
-                {
                     Server->Log("Stat failed for \""+upath+dirp->d_name+"\" errno: "+nconvert(errno), LL_ERROR);
                     if(has_error!=NULL)
                     {
                         *has_error=true;
                     }
                     continue;
-                }
 			}
 #ifndef sun
 		}
@@ -694,7 +686,7 @@ SFile getFileMetadata( const std::wstring &path )
 	ret.name=path;
 
 	struct stat64 f_info;
-	int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+	int rc=lstat64(Server->ConvertToUTF8(path).c_str(), &f_info);
 
 	if(rc==0)
 	{

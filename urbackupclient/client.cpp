@@ -916,6 +916,7 @@ void IndexThread::indexDirs(void)
 			{
 				VSSLog(L"Changed dir: " + changed_dirs[k], LL_DEBUG);
 			}
+			
 
 			extra+="&orig_path=" + EscapeParamString(Server->ConvertToUTF8(backup_dirs[i].path))
 				    + "&orig_sep=" + EscapeParamString(Server->ConvertToUTF8(os_file_sep()));
@@ -3582,6 +3583,14 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 		std::wstring bpath = addDirectorySeparatorAtEnd(backup_dirs[i].path);
+		
+		#ifndef _WIN32
+		if(bpath.empty())
+		{
+			bpath=L"/";
+		}
+		#endif
+		
 		if(removeDirectorySeparatorAtEnd(target)==removeDirectorySeparatorAtEnd(backup_dirs[i].path)
 			|| next(target, 0, bpath))
 		{
