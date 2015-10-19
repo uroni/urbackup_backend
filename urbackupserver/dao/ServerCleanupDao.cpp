@@ -575,6 +575,31 @@ std::vector<int> ServerCleanupDao::getClientFileBackups(int clientid)
 
 /**
 * @-SQLGenAccess
+* @func int ServerCleanupDao::getParentImageBackup
+* @return int img_id
+* @sql
+*	SELECT img_id FROM assoc_images WHERE assoc_id=:assoc_id(int)
+*/
+ServerCleanupDao::CondInt ServerCleanupDao::getParentImageBackup(int assoc_id)
+{
+	if(q_getParentImageBackup==NULL)
+	{
+		q_getParentImageBackup=db->Prepare("SELECT img_id FROM assoc_images WHERE assoc_id=?", false);
+	}
+	q_getParentImageBackup->Bind(assoc_id);
+	db_results res=q_getParentImageBackup->Read();
+	q_getParentImageBackup->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0][L"img_id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
 * @func vector<int> ServerCleanupDao::getAssocImageBackups
 * @return int assoc_id
 * @sql
@@ -986,6 +1011,7 @@ void ServerCleanupDao::createQueries(void)
 	q_updateDelImageStats=NULL;
 	q_getClientImages=NULL;
 	q_getClientFileBackups=NULL;
+	q_getParentImageBackup=NULL;
 	q_getAssocImageBackups=NULL;
 	q_getImageSize=NULL;
 	q_getClients=NULL;
@@ -1029,6 +1055,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_updateDelImageStats);
 	db->destroyQuery(q_getClientImages);
 	db->destroyQuery(q_getClientFileBackups);
+	db->destroyQuery(q_getParentImageBackup);
 	db->destroyQuery(q_getAssocImageBackups);
 	db->destroyQuery(q_getImageSize);
 	db->destroyQuery(q_getClients);
