@@ -102,6 +102,13 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			{
 				f.issym=true;
 				f.isspecial=true;
+				struct stat64 l_info;
+				int rc2 = stat64((upath+dirp->d_name).c_str(), &l_info);
+				
+				if(rc2==0)
+				{
+					f.isdir=S_ISDIR(f_info.st_mode);
+				}
 			}
 			if(rc==0)
 			{
@@ -111,7 +118,11 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 					|| dirp->d_type==DT_LNK)
 				{
 #endif
-					f.isdir=S_ISDIR(f_info.st_mode);
+					if(!f.issym)
+					{
+						f.isdir=S_ISDIR(f_info.st_mode);
+					}
+					
 					if(!f.isdir)
 					{
 						if(!S_ISREG(f_info.st_mode) )
@@ -191,7 +202,11 @@ bool isDirectory(const std::wstring &path, void* transaction)
 		int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
 		if(rc!=0)
 		{
-			return false;
+			rc = lstat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+			if(rc!=0)
+			{
+				return false;
+			}
 		}
 
         if ( S_ISDIR(f_info.st_mode) )
