@@ -76,6 +76,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	{
 		read_bytes = (std::min)(buf_avail, sizeof(unsigned int) - fn_off);
 		unsigned int fn_size = little_endian(static_cast<unsigned int>(public_fn.size()));
+		fn_size = little_endian(fn_size);
 		memcpy(buf, &fn_size + fn_off, read_bytes);
 		fn_off+=read_bytes;
 

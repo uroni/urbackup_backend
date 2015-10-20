@@ -1377,7 +1377,7 @@ bool FileBackup::stopFileMetadataDownloadThread()
 			} while (!Server->getThreadPool()->waitFor(metadata_download_thread_ticket));
 		}	
 
-		if(!disk_error && !has_early_error)
+		if(!disk_error && !has_early_error && !metadata_download_thread->getHasError())
 		{
 			metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main);
 		}

@@ -259,6 +259,11 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 				ServerLogger::Log(logid, L"Error setting file time of "+backup_dir+os_file_sep()+os_path, LL_WARNING);
 			}
 		}
+		else
+		{
+			ServerLogger::Log(logid, L"Error applying meta data. Unknown meta data.", LL_ERROR);
+			return false;
+		}
 
 	} while (true);
 
@@ -541,6 +546,11 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
     }
 
     return true;
+}
+
+bool FileMetadataDownloadThread::getHasError()
+{
+	return has_error;
 }
 
 } //namespace server

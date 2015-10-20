@@ -20,6 +20,8 @@ public:
 	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
     bool applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
 
+	bool getHasError();
+
 private:
 	std::auto_ptr<FileClient> fc;
 	const std::string& server_token;
