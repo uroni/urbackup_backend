@@ -23,7 +23,7 @@ function generate_templates()
 	generating = true;
 	console.log("Generating templates...");
 	
-	fs.writeFileSync(templates_file, '');
+	fs.writeFileSync(templates_file+".new", '');
 	
 	var open_files = 0;
 
@@ -41,13 +41,15 @@ function generate_templates()
 						data = data.substring(1);
 					}
 					console.log("Compiling template "+file+" ...");
-					fs.appendFileSync(templates_file, dust.compile(data, file.substring(0, file.length-4))+"\n");
+					fs.appendFileSync(templates_file+".new", dust.compile(data, file.substring(0, file.length-4))+"\n");
 					--open_files;
 					
 					if(open_files==0)
 					{
 						console.log("Done compiling templates.");
 						generating = false;
+						
+						fs.createReadStream(templates_file+".new").pipe(fs.createWriteStream(templates_file));
 					}					
 				});
 			}
