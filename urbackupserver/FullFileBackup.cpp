@@ -407,8 +407,7 @@ bool FullFileBackup::doFileBackup()
                             file_ok=true;
                         }
                     }
-
-					if(extra_params.find(L"special")!=extra_params.end())
+					else if(extra_params.find(L"special")!=extra_params.end())
 					{
 						std::wstring touch_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
 						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));

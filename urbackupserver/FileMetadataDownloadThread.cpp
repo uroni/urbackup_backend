@@ -92,11 +92,13 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 				ServerLogger::Log(logid, L"Error saving metadata. Filename size could not be read.", LL_ERROR);
 				return false;
 			}
+			
+			curr_fn_size = little_endian(curr_fn_size);
 
 			std::string curr_fn;
-			curr_fn.resize(little_endian(curr_fn_size));
+			curr_fn.resize(curr_fn_size);
 
-			if(curr_fn_size>0)
+			if(curr_fn_size>1)
 			{
 				if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
 				{
@@ -106,11 +108,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			}
 			else
 			{
-				if(curr_fn.empty())
-				{
-					ServerLogger::Log(logid, L"Error saving metadata. Filename is empty.", LL_ERROR);
-					return false;
-				}
+				ServerLogger::Log(logid, L"Error saving metadata. Filename is empty.", LL_ERROR);
+				return false;
 			}					
 
 			bool is_dir = curr_fn[0]=='d';
@@ -169,6 +168,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 				ServerLogger::Log(logid, L"Error saving metadata. Common metadata size could not be read.", LL_ERROR);
 				return false;
 			}
+			
+			common_metadata_size = little_endian(common_metadata_size);
 
 			std::vector<char> common_metadata;
 			common_metadata.resize(common_metadata_size);
