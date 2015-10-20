@@ -435,7 +435,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						if(sendFullFile(file, start_offset, id==ID_GET_FILE_RESUME_HASH))
 						{
-							PipeSessions::removeFile(filename);
+							PipeSessions::removeFile(file->getFilenameW());
 						}
 						break;
 					}

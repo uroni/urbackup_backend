@@ -137,7 +137,7 @@ void PipeSessions::removeFile(const std::wstring& cmd)
 	}
 	else
 	{
-		Server->Log(L"Pipe file "+cmd+L" not found", LL_WARNING);
+		Server->Log(L"Pipe file "+cmd+L" not found while removing pipe file", LL_WARNING);
 	}
 }
 
