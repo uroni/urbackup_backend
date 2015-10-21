@@ -47,7 +47,7 @@ void TokenCache::reset(TokenCacheInt* cache)
 
 TokenCacheInt* TokenCache::get()
 {
-	token_cache.get();
+	return token_cache.get();
 }
 
 void TokenCache::operator=(const TokenCache& other)
