@@ -281,7 +281,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt token_id = dao->getFileAccessTokenId2Alt(users[i], ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+		ClientDAO::CondInt token_id = dao->getFileAccessTokenId2Alts(users[i], ClientDAO::c_is_user, ClientDAO::c_is_system_user);
 
 		if(!token_id.exists)
 		{
