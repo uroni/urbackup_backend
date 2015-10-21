@@ -87,7 +87,7 @@ PipeFile::~PipeFile()
 	
 }
 
-void FileMetadataPipe::forceExitWait()
+void PipeFile::forceExitWait()
 {
 	if(child_pid!=-1)
 	{
