@@ -131,6 +131,7 @@ void PipeSessions::removeFile(const std::wstring& cmd)
 			Server->Log("Pipe file has exit code "+nconvert(exit_code), LL_DEBUG);
 		}		
 
+		it->second.file->forceExitWait();
 		delete it->second.file;
 		delete it->second.input_pipe;
 		pipe_files.erase(it);
@@ -196,6 +197,7 @@ void PipeSessions::operator()()
 		{
 			if(currtime - it->second.file->getLastRead() > pipe_file_timeout)
 			{
+				it->second.file->forceExitWait();
 				delete it->second.file;
 				delete it->second.input_pipe;
 				std::map<std::wstring, SPipeSession>::iterator del_it = it;

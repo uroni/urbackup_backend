@@ -85,6 +85,11 @@ PipeFile::PipeFile(const std::wstring& pCmd)
 
 PipeFile::~PipeFile()
 {
+	
+}
+
+void PipeFile::forceExitWait()
+{
 	CloseHandle(hStdout);
 	CloseHandle(hStderr);
 
@@ -92,6 +97,8 @@ PipeFile::~PipeFile()
 
 	CloseHandle(proc_info.hProcess);
 	CloseHandle(proc_info.hThread);
+
+	waitForExit();
 }
 
 bool PipeFile::getExitCode(int& exit_code)

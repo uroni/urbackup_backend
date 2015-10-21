@@ -30,7 +30,7 @@ const _u32 buffer_keep_free = 1*1024*1024;
 PipeFileBase::PipeFileBase(const std::wstring& pCmd)
 	: curr_pos(0), has_error(false), cmd(pCmd), buf_w_pos(0), buf_r_pos(0), buf_w_reserved_pos(0),
 	threadidx(0), has_eof(false), stream_size(-1),
-	buf_circle(false)
+	buf_circle(false), stdout_thread(ILLEGAL_THREADPOOL_TICKET), stderr_thread(ILLEGAL_THREADPOOL_TICKET)
 {
 	last_read = Server->getTimeMS();
 
@@ -43,8 +43,8 @@ void PipeFileBase::init()
 	if(!has_error)
 	{
 		buffer.resize(buffer_size);
-		Server->getThreadPool()->execute(this);
-		Server->getThreadPool()->execute(this);
+		stdout_thread = Server->getThreadPool()->execute(this);
+		stderr_thread = Server->getThreadPool()->execute(this);
 	}
 }
 
@@ -379,4 +379,13 @@ std::string PipeFileBase::getStdErr()
 {
 	IScopedLock lock(buffer_mutex.get());
 	return stderr_ret;
+}
+
+void PipeFileBase::waitForExit()
+{
+	std::vector<THREADPOOL_TICKET> tickets;
+	tickets.push_back(stdout_thread);
+	tickets.push_back(stderr_thread);
+
+	Server->getThreadPool()->waitFor(tickets);
 }

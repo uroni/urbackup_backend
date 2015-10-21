@@ -329,6 +329,19 @@ bool FileMetadataPipe::readStderrIntoBuffer( char* buf, size_t buf_avail, size_t
 	}	
 }
 
+
+void FileMetadataPipe::forceExitWait()
+{
+	CWData data;
+	data.addString(std::string());
+	data.addString(std::string());
+	pipe->Write(data.getDataPtr(), data.getDataSize());
+
+	errpipe->shutdown();
+
+	waitForExit();
+}
+
 #ifdef _WIN32
 bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t& read_bytes )
 {
