@@ -136,7 +136,14 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			meta_data.addChar(1);
 			meta_data.addInt64(created);
 			meta_data.addInt64(modified);
-			meta_data.addString(token_callback->getFileTokens(Server->ConvertToUnicode(local_fn)));
+			if(token_callback.get()!=NULL)
+			{
+				meta_data.addString(token_callback->getFileTokens(Server->ConvertToUnicode(local_fn)));
+			}
+			else
+			{
+				meta_data.addString("");
+			}
 
 			if(meta_data.getDataSize()+sizeof(unsigned int)<metadata_buffer.size())
 			{
