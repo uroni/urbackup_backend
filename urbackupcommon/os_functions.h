@@ -116,9 +116,9 @@ bool os_path_absolute(const std::wstring& path);
 
 enum EFileType
 {
-	EFileType_File,
-	EFileType_Directory,
-	EFileType_Symlink
+	EFileType_File = 1,
+	EFileType_Directory = 2,
+	EFileType_Symlink = 4
 };
 
 int os_get_file_type(const std::wstring &path);

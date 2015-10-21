@@ -229,11 +229,11 @@ int os_get_file_type(const std::wstring &path)
 	{
 		if ( S_ISDIR(f_info.st_mode) )
         {
-			ret &= EFileType_Directory;
+			ret |= EFileType_Directory;
 		}
 		else
 		{
-			ret &= EFileType_File;
+			ret |= EFileType_File;
 		}
 	}
 
@@ -242,12 +242,12 @@ int os_get_file_type(const std::wstring &path)
 	{
 		if(S_ISLNK(f_info.st_mode))
 		{
-			ret &= EFileType_Symlink;
+			ret |= EFileType_Symlink;
 		}
 		
 		if(rc1!=0)
 		{
-			ret &= EFileType_File;
+			ret |= EFileType_File;
 		}
 	}
 	

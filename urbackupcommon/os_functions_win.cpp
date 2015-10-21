@@ -454,16 +454,16 @@ int os_get_file_type(const std::wstring &path)
 
 	if(attrib & FILE_ATTRIBUTE_DIRECTORY)
 	{
-		ret &= EFileType_Directory;
+		ret |= EFileType_Directory;
 	}
 	else
 	{
-		ret &= EFileType_File;
+		ret |= EFileType_File;
 	}
 
 	if(attrib & FILE_ATTRIBUTE_REPARSE_POINT)
 	{
-		ret &= EFileType_Symlink;
+		ret |= EFileType_Symlink;
 	}
 
 	return ret;
