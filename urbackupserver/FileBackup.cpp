@@ -1367,14 +1367,26 @@ bool FileBackup::stopFileMetadataDownloadThread()
 {
 	if(metadata_download_thread.get()!=NULL)
 	{
-		if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket))
+		if(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 1000))
 		{
 			ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_INFO);
-			do 
+
+			do
 			{
+				std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+				std::auto_ptr<FileClient> fc_metadata_stream_end(new FileClient(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
+					client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main));
+
+				_u32 rc=client_main->getClientFilesrvConnection(fc_metadata_stream_end.get(), server_settings.get(), 10000);
+				if(rc==ERR_CONNECTED)
+				{
+					fc_metadata_stream_end->InformMetadataStreamEnd(server_token);
+				}
+
 				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
 				Server->wait(10000);
-			} while (!Server->getThreadPool()->waitFor(metadata_download_thread_ticket));
+			}
+			while(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 10000));
 		}	
 
 		if(!disk_error && !has_early_error && !metadata_download_thread->getHasError())
