@@ -123,6 +123,7 @@ void ClientDAO::prepareQueriesGen(void)
 	q_updateShadowCopyStarttime=NULL;
 	q_updateFileAccessToken=NULL;
 	q_getFileAccessTokens=NULL;
+	q_getFileAccessTokenId2Alts=NULL;
 	q_getFileAccessTokenId=NULL;
 	q_updateGroupMembership=NULL;
 	q_getGroupMembership=NULL;
@@ -136,6 +137,7 @@ void ClientDAO::destroyQueriesGen(void)
 	db->destroyQuery(q_updateShadowCopyStarttime);
 	db->destroyQuery(q_updateFileAccessToken);
 	db->destroyQuery(q_getFileAccessTokens);
+	db->destroyQuery(q_getFileAccessTokenId2Alts);
 	db->destroyQuery(q_getFileAccessTokenId);
 	db->destroyQuery(q_updateGroupMembership);
 	db->destroyQuery(q_getGroupMembership);
@@ -681,6 +683,35 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 		ret[i].accountname=res[i][L"accountname"];
 		ret[i].token=res[i][L"token"];
 		ret[i].is_user=watoi(res[i][L"is_user"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int ClientDAO::getFileAccessTokenId2Alts
+* @return int id
+* @sql
+*    SELECT id
+*    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
+*								  (is_user = :is_user_alt1(int) OR is_user = :is_user_alt2(int))
+*/
+ClientDAO::CondInt ClientDAO::getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2)
+{
+	if(q_getFileAccessTokenId2Alts==NULL)
+	{
+		q_getFileAccessTokenId2Alts=db->Prepare("SELECT id FROM fileaccess_tokens WHERE accountname = ? AND (is_user = ? OR is_user = ?)", false);
+	}
+	q_getFileAccessTokenId2Alts->Bind(accountname);
+	q_getFileAccessTokenId2Alts->Bind(is_user_alt1);
+	q_getFileAccessTokenId2Alts->Bind(is_user_alt2);
+	db_results res=q_getFileAccessTokenId2Alts->Read();
+	q_getFileAccessTokenId2Alts->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0][L"id"]);
 	}
 	return ret;
 }

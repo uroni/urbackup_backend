@@ -154,6 +154,7 @@ public:
 	void updateShadowCopyStarttime(int id);
 	void updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user);
 	std::vector<SToken> getFileAccessTokens(void);
+	CondInt getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2);
 	CondInt getFileAccessTokenId(const std::wstring& accountname, int is_user);
 	void updateGroupMembership(int uid, const std::wstring& accountname);
 	std::vector<int> getGroupMembership(int uid);
@@ -197,6 +198,7 @@ private:
 	IQuery* q_updateShadowCopyStarttime;
 	IQuery* q_updateFileAccessToken;
 	IQuery* q_getFileAccessTokens;
+	IQuery* q_getFileAccessTokenId2Alts;
 	IQuery* q_getFileAccessTokenId;
 	IQuery* q_updateGroupMembership;
 	IQuery* q_getGroupMembership;
