@@ -431,7 +431,7 @@ bool isDirectory(const std::wstring &path, void* transaction)
 		}
 #endif	
 
-        if ( attrib == 0xFFFFFFFF || !(attrib & FILE_ATTRIBUTE_DIRECTORY) )
+        if ( attrib == INVALID_FILE_ATTRIBUTES || !(attrib & FILE_ATTRIBUTE_DIRECTORY) )
         {
                 return false;
         }
@@ -439,6 +439,34 @@ bool isDirectory(const std::wstring &path, void* transaction)
         {
                 return true;
         }
+}
+
+int os_get_file_type(const std::wstring &path)
+{
+	DWORD attrib = GetFileAttributesW(path.c_str());
+
+	if(attrib==INVALID_FILE_ATTRIBUTES)
+	{
+		return 0;
+	}
+
+	int ret = 0;
+
+	if(attrib & FILE_ATTRIBUTE_DIRECTORY)
+	{
+		ret &= EFileType_Directory;
+	}
+	else
+	{
+		ret &= EFileType_File;
+	}
+
+	if(attrib & FILE_ATTRIBUTE_REPARSE_POINT)
+	{
+		ret &= EFileType_Symlink;
+	}
+
+	return ret;
 }
 
 int64 os_atoi64(const std::string &str)

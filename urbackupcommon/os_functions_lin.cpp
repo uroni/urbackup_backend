@@ -98,20 +98,21 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 #endif
 			struct stat64 f_info;
 			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
-			if(rc==0 && S_ISLNK(f_info.st_mode))
-			{
-				f.issym=true;
-				f.isspecial=true;
-				struct stat64 l_info;
-				int rc2 = stat64((upath+dirp->d_name).c_str(), &l_info);
-				
-				if(rc2==0)
-				{
-					f.isdir=S_ISDIR(f_info.st_mode);
-				}
-			}
 			if(rc==0)
 			{
+				if(S_ISLNK(f_info.st_mode))
+				{
+					f.issym=true;
+					f.isspecial=true;
+					struct stat64 l_info;
+					int rc2 = stat64((upath+dirp->d_name).c_str(), &l_info);
+					
+					if(rc2==0)
+					{
+						f.isdir=S_ISDIR(l_info.st_mode);
+					}
+				}
+			
 #ifndef sun
 				if(dirp->d_type==DT_UNKNOWN
 					|| (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR)
@@ -217,6 +218,40 @@ bool isDirectory(const std::wstring &path, void* transaction)
         {
                 return false;
         }
+}
+
+int os_get_file_type(const std::wstring &path)
+{
+	int ret = 0;
+	struct stat64 f_info;
+	int rc1=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+	if(rc1==0)
+	{
+		if ( S_ISDIR(f_info.st_mode) )
+        {
+			ret &= EFileType_Directory;
+		}
+		else
+		{
+			ret &= EFileType_File;
+		}
+	}
+
+	int rc2 = lstat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+	if(rc2==0)
+	{
+		if(S_ISLNK(f_info.st_mode))
+		{
+			ret &= EFileType_Symlink;
+		}
+		
+		if(rc1!=0)
+		{
+			ret &= EFileType_File;
+		}
+	}
+	
+	return ret;
 }
 
 int64 os_atoi64(const std::string &str)

@@ -549,6 +549,8 @@ bool IncrFileBackup::doFileBackup()
 							metadata.has_orig_path=true;
 						}
 
+						std::wstring metadata_fn = backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn;
+
 						bool dir_linked=false;
 						if(use_directory_links && hasChange(line, large_unchanged_subtrees) )
 						{
@@ -598,6 +600,7 @@ bool IncrFileBackup::doFileBackup()
 						}
 						if(!dir_linked && (!use_snapshots || indirchange) )
 						{
+							bool create_hash_dir=true;
 							str_map::iterator sym_target = extra_params.find(L"sym_target");
 							if(sym_target!=extra_params.end())
 							{
@@ -607,6 +610,9 @@ bool IncrFileBackup::doFileBackup()
 									c_has_error=true;
 									break;
 								}
+
+								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + L"/" + escape_metadata_fn(cf.name)); 
+								create_hash_dir=false;
 							}
 							else if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
@@ -622,7 +628,7 @@ bool IncrFileBackup::doFileBackup()
 								}
 							}
 							
-							if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+							if(create_hash_dir && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 								{
@@ -635,7 +641,7 @@ bool IncrFileBackup::doFileBackup()
 									ServerLogger::Log(logid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
 								}
 							}
-							else if(!write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata, false) )
+							else if(!write_file_metadata(metadata_fn, client_main, metadata, false) )
 							{
 								ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
 								c_has_error=true;

@@ -13,6 +13,7 @@ class FileMetadataDownloadThread : public IThread
 {
 public:
 	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid);
+	~FileMetadataDownloadThread();
 
 	virtual void operator()();
 

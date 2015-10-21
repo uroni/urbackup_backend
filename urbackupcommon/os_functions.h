@@ -114,4 +114,13 @@ bool copy_file(const std::wstring &src, const std::wstring &dst);
 
 bool os_path_absolute(const std::wstring& path);
 
+enum EFileType
+{
+	EFileType_File,
+	EFileType_Directory,
+	EFileType_Symlink
+};
+
+int os_get_file_type(const std::wstring &path);
+
 #endif //OS_FUNCTIONS_H

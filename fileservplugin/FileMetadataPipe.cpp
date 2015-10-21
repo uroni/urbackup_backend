@@ -242,16 +242,33 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					return false;
 				}
 
-				bool isdir=false;
-				if(isDirectory(os_file_prefix(Server->ConvertToUnicode(local_fn))))
+
+				int file_type_flags = os_get_file_type(os_file_prefix(Server->ConvertToUnicode(local_fn)));
+
+				if(file_type_flags==0)
 				{
-					isdir=true;
-					public_fn = "d" + public_fn;
+					Server->Log("Error getting file type of "+local_fn, LL_ERROR);
+					*buf = ID_METADATA_NOP;
+					read_bytes = 1;
+					return true;
+				}
+
+				std::string file_type;
+				if( (file_type_flags & EFileType_Directory) 
+					&& (file_type_flags & EFileType_Symlink) )
+				{
+					file_type="l";
+				}
+				else if(file_type_flags & EFileType_Directory)
+				{
+					file_type="d";
 				}
 				else
 				{
-					public_fn = "f" + public_fn;
+					file_type="f";
 				}
+
+				public_fn = file_type + public_fn;
 
 				metadata_state = MetadataState_FnSize;
 				*buf = ID_METADATA_V1;
@@ -276,7 +293,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						return false;
 					}
 
-					public_fn = (isdir?"d":"f") + orig_path;
+					public_fn = file_type + orig_path;
 				}
 
 				return true;

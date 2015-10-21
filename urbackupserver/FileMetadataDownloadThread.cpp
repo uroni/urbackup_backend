@@ -112,7 +112,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 				return false;
 			}					
 
-			bool is_dir = curr_fn[0]=='d';
+			bool is_dir = (curr_fn[0]=='d' || curr_fn[0]=='l');
+			bool is_dir_symlink = curr_fn[0]=='l';
 
 			std::wstring os_path_metadata;
 			std::wstring os_path;
@@ -134,7 +135,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 						os_path_metadata += escape_metadata_fn(Server->ConvertToUnicode(fs_toks[i]));
 						os_path+=Server->ConvertToUnicode(fs_toks[i]);
 
-						if(is_dir)
+						if(is_dir && !is_dir_symlink)
 						{
 							os_path_metadata+=os_file_sep()+metadata_dir_fn;
 						}
@@ -551,6 +552,14 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 bool FileMetadataDownloadThread::getHasError()
 {
 	return has_error;
+}
+
+FileMetadataDownloadThread::~FileMetadataDownloadThread()
+{
+	if(!metadata_tmp_fn.empty())
+	{
+		Server->deleteFile(metadata_tmp_fn);
+	}
 }
 
 } //namespace server
