@@ -13,6 +13,7 @@ class FileMetadataDownloadThread : public IThread
 {
 public:
 	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid);
+	FileMetadataDownloadThread(const std::string& server_token, std::wstring metadata_tmp_fn);
 	~FileMetadataDownloadThread();
 
 	virtual void operator()();
@@ -32,6 +33,11 @@ private:
 	bool has_error;
 	std::wstring metadata_tmp_fn;
 	logid_t logid;
+
+	bool dry_run;
 };
 
-}
+int check_metadata();
+
+} //namespace server
+

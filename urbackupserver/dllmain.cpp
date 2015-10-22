@@ -75,6 +75,7 @@ SStartupStatus startup_status;
 #include "../fileservplugin/IFileServFactory.h"
 #include "restore_client.h"
 #include "WalCheckpointThread.h"
+#include "FileMetadataDownloadThread.h"
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
@@ -341,6 +342,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		else if(app=="check_fileindex")
 		{
 			rc=check_files_index();
+		}
+		else if(app=="check_metadata")
+		{
+			rc=server::check_metadata();
 		}
 		else
 		{
