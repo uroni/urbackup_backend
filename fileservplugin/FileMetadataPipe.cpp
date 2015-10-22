@@ -91,7 +91,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	else if(metadata_state==MetadataState_Fn)
 	{
 		read_bytes = (std::min)(buf_avail, public_fn.size()- fn_off);
-		memcpy(buf, public_fn.data(), read_bytes);
+		memcpy(buf, public_fn.data()+fn_off, read_bytes);
 		fn_off+=read_bytes;
 
 		if(fn_off==public_fn.size())
