@@ -41,6 +41,7 @@ const unsigned int flag_with_scripts = 4;
 const unsigned int flag_calc_checksums = 8;
 const unsigned int flag_with_orig_path = 16;
 const unsigned int flag_with_sequence = 32;
+const unsigned int flag_with_proper_symlinks = 64;
 
 class DirectoryWatcherThread;
 
@@ -275,6 +276,7 @@ private:
 	bool with_scripts;
 	bool with_orig_path;
 	bool with_sequence;
+	bool with_proper_symlinks;
 
 	int64 last_tmp_update_time;
 

@@ -228,6 +228,11 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		flags |= flag_with_sequence;
 	}
 
+	if(params.find(L"with_proper_symlinks")!=params.end())
+	{
+		flags |= flag_with_proper_symlinks;
+	}
+
 	if(end_to_end_file_backup_verification_enabled)
 	{
 		flags |= flag_end_to_end_verification;
@@ -318,6 +323,11 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	if(params.find(L"with_sequence")!=params.end())
 	{
 		flags |= flag_with_sequence;
+	}
+
+	if(params.find(L"with_proper_symlinks")!=params.end())
+	{
+		flags |= flag_with_proper_symlinks;
 	}
 
 	if(end_to_end_file_backup_verification_enabled)

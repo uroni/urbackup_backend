@@ -155,7 +155,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group, b
 			start_backup_cmd+="incr";
 	}
 
-	start_backup_cmd+="&with_permissions=1&with_scripts=1&with_orig_path=1&with_sequence=1";
+	start_backup_cmd+="&with_permissions=1&with_scripts=1&with_orig_path=1&with_sequence=1&with_proper_symlinks=1";
 
 	if(with_token)
 	{

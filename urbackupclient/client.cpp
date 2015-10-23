@@ -1128,6 +1128,12 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 	{
 		if( !files[i].isdir )
 		{
+			if( (files[i].issym && !with_proper_symlinks && !follow_symlinks) 
+				|| (files[i].isspecial && !with_proper_symlinks) )
+			{
+				continue;
+			}
+
 			if( skipFile(orig_dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name) )
 			{
 				continue;
@@ -1149,12 +1155,12 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 				extra+="&sha256=" + getSHA256(dir+os_file_sep()+files[i].name);
 			}
 
-			if(files[i].issym)
+			if(files[i].issym && with_proper_symlinks)
 			{
 				extra+="&sym_target="+EscapeParamString(Server->ConvertToUTF8(files[i].symlink_target));
 			}
 			
-			if(files[i].isspecial)
+			if(files[i].isspecial && with_proper_symlinks)
 			{
 				extra+="&special=1";
 			}
@@ -1173,6 +1179,12 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 	{
 		if( files[i].isdir )
 		{
+			if( (files[i].issym && !with_proper_symlinks && !follow_symlinks) 
+				|| (files[i].isspecial && !with_proper_symlinks) )
+			{
+				continue;
+			}
+
 			if( isExcluded(exlude_dirs, orig_dir+os_file_sep()+files[i].name)
 				|| isExcluded(exlude_dirs, named_path+os_file_sep()+files[i].name) )
 			{
@@ -1193,12 +1205,12 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 
 				std::string extra;
 
-				if(files[i].issym)
+				if(files[i].issym && with_proper_symlinks)
 				{
 					extra+="&sym_target="+EscapeParamString(Server->ConvertToUTF8(files[i].symlink_target));
 				}
 
-				if(files[i].isspecial)
+				if(files[i].isspecial && with_proper_symlinks)
 				{
 					extra+="&special=1";
 				}
@@ -1207,7 +1219,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 
 				bool b=true;
 
-				if(!files[i].issym)
+				if(!files[i].issym || !with_proper_symlinks)
 				{
 					b = initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);
 				}
@@ -3539,11 +3551,11 @@ void IndexThread::readFollowSymlinks()
 
 void IndexThread::setFlags( unsigned int flags )
 {
-	calculate_filehashes_on_client = flags & calculate_filehashes_on_client;
-	end_to_end_file_backup_verification = flags & flag_end_to_end_verification;
-	with_scripts = flags & flag_with_scripts;
-	with_orig_path = flags & flag_with_orig_path;
-	with_sequence = flags & flag_with_sequence;
+	calculate_filehashes_on_client = (flags & flag_calc_checksums)>0;
+	end_to_end_file_backup_verification = (flags & flag_end_to_end_verification)>0;
+	with_scripts = (flags & flag_with_scripts)>0;
+	with_orig_path = (flags & flag_with_orig_path)>0;
+	with_sequence = (flags & flag_with_sequence)>0;
 }
 
 bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::wstring& orig_path, std::wstring& target)
@@ -3696,7 +3708,7 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::wstring&
 		ret[i].issym=files[i].issym;
 		ret[i].isspecial=files[i].isspecial;
 
-		if(files[i].issym)
+		if(files[i].issym && with_proper_symlinks)
 		{
 			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target))
 			{
