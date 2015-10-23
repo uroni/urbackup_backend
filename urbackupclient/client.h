@@ -39,6 +39,8 @@ const int c_group_continuous = 1;
 const unsigned int flag_end_to_end_verification = 2;
 const unsigned int flag_with_scripts = 4;
 const unsigned int flag_calc_checksums = 8;
+const unsigned int flag_with_orig_path = 16;
+const unsigned int flag_with_sequence = 32;
 
 class DirectoryWatcherThread;
 
@@ -271,6 +273,8 @@ private:
 	bool end_to_end_file_backup_verification;
 	bool calculate_filehashes_on_client;
 	bool with_scripts;
+	bool with_orig_path;
+	bool with_sequence;
 
 	int64 last_tmp_update_time;
 

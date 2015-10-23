@@ -905,7 +905,7 @@ void IndexThread::indexDirs(void)
 
 			int64 sequence_id;
 			int64 sequence_next = getUsnNum(mod_path, sequence_id);
-			if(sequence_next!=-1)
+			if(sequence_next!=-1 && with_sequence)
 			{
 				extra = "&sequence_next="+nconvert(sequence_next) +
 					"&sequence_id="+nconvert(sequence_id);
@@ -917,9 +917,11 @@ void IndexThread::indexDirs(void)
 				VSSLog(L"Changed dir: " + changed_dirs[k], LL_DEBUG);
 			}
 			
-
-			extra+="&orig_path=" + EscapeParamString(Server->ConvertToUTF8(backup_dirs[i].path))
-				    + "&orig_sep=" + EscapeParamString(Server->ConvertToUTF8(os_file_sep()));
+			if(with_orig_path)
+			{
+				extra+="&orig_path=" + EscapeParamString(Server->ConvertToUTF8(backup_dirs[i].path))
+					+ "&orig_sep=" + EscapeParamString(Server->ConvertToUTF8(os_file_sep()));
+			}
 
 			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 			index_c_db=0;
@@ -3537,32 +3539,11 @@ void IndexThread::readFollowSymlinks()
 
 void IndexThread::setFlags( unsigned int flags )
 {
-	if(flags & flag_calc_checksums)
-	{
-		calculate_filehashes_on_client = true;
-	}
-	else
-	{
-		calculate_filehashes_on_client = false;
-	}
-
-	if(flags & flag_end_to_end_verification)
-	{
-		end_to_end_file_backup_verification=true;
-	}
-	else
-	{
-		end_to_end_file_backup_verification=false;
-	}
-
-	if(flags & flag_with_scripts)
-	{
-		with_scripts=true;
-	}
-	else
-	{
-		with_scripts=false;
-	}
+	calculate_filehashes_on_client = flags & calculate_filehashes_on_client;
+	end_to_end_file_backup_verification = flags & flag_end_to_end_verification;
+	with_scripts = flags & flag_with_scripts;
+	with_orig_path = flags & flag_with_orig_path;
+	with_sequence = flags & flag_with_sequence;
 }
 
 bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::wstring& orig_path, std::wstring& target)
