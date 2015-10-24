@@ -448,7 +448,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 		}
 
 
-		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clie
+		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname, NULL);
 		std::vector<ServerCleanupDao::SImageBackupInfo> res_images=cleanupdao->getClientImages(clientid);
 
 		for(size_t j=0;j<files.size();++j)
