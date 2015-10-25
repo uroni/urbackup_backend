@@ -257,7 +257,7 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 	{
 		if(err==SQLITE_LOCKED)
 		{
-			if(LockForTransaction())
+			if(!transaction_lock && LockForTransaction())
 			{
 				transaction_lock=true;
 				if(!WaitForUnlock())
@@ -266,7 +266,7 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 		}
 		else
 		{
-			if(transaction_lock==false)
+			if(!transaction_lock)
 			{
 				if(!isInTransaction() && LockForTransaction())
 				{
