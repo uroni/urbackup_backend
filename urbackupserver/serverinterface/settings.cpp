@@ -723,13 +723,13 @@ ACTION_IMPL(settings)
 					s.overwrite=(GET[L"overwrite"]==L"true");
 					if(s.overwrite)
 					{
-						db->BeginTransaction();
+						db->BeginWriteTransaction();
 						updateClientSettings(t_clientid, GET, db);
 						updateArchiveSettings(t_clientid, GET, db);
 						db->EndTransaction();
 					}
 					
-					db->BeginTransaction();
+					db->BeginWriteTransaction();
 					saveClientSettings(s, db, t_clientid);
 					db->EndTransaction();
 					if(GET[L"no_ok"]!=L"true")
@@ -896,7 +896,7 @@ ACTION_IMPL(settings)
 			if(sa==L"general_save")
 			{
 				ServerSettings serv_settings(db);
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 				propagateGlobalClientSettings(backupdao, db, GET);
 				updateClientSettings(0, GET, db);
 				updateArchiveSettings(0, GET, db);

@@ -276,7 +276,7 @@ void ClientDAO::removeAllFiles(void)
 std::vector<SMDir> ClientDAO::getChangedDirs(bool del)
 {
 	std::vector<SMDir> ret;
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 
 	if(del)
 	{
@@ -301,7 +301,7 @@ void ClientDAO::moveChangedFiles(bool del)
 {
 	if(del)
 	{
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		q_save_changed_files->Write();
 		q_save_changed_files->Reset();
 		q_remove_changed_files->Write();
@@ -428,7 +428,7 @@ std::vector<std::wstring> ClientDAO::getGapDirs(void)
 std::vector<std::wstring> ClientDAO::getDelDirs(bool del)
 {
 	std::vector<std::wstring> ret;
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 
 	if(del)
 	{

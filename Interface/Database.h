@@ -14,7 +14,8 @@ public:
 	virtual db_results Read(std::string pQuery)=0; 
 	virtual bool Write(std::string pQuery)=0;
 
-	virtual void BeginTransaction(void)=0;
+	virtual bool BeginWriteTransaction(void)=0;
+	virtual bool BeginReadTransaction(void)=0;
 	virtual bool EndTransaction(void)=0;
 
 	virtual IQuery* Prepare(std::string pQuery, bool autodestroy=true)=0;
@@ -86,21 +87,21 @@ private:
 	IDatabase* db;
 };
 
-class DBScopedTransaction
+class DBScopedWriteTransaction
 {
 public:
-	DBScopedTransaction(IDatabase* db)
+	DBScopedWriteTransaction(IDatabase* db)
 		: db(db) {
-			if(db!=NULL) db->BeginTransaction();
+			if(db!=NULL) db->BeginWriteTransaction();
 	}
-	~DBScopedTransaction() {
+	~DBScopedWriteTransaction() {
 		if(db!=NULL) db->EndTransaction();
 	}
 
 	void restart() {
 		if(db!=NULL) {
 			db->EndTransaction();
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 		}
 	}
 

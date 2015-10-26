@@ -970,7 +970,7 @@ std::wstring removeChars(std::wstring in)
 bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
 	db->Prepare("DELETE FROM backupdirs")->Write();
 	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional) VALUES (?, ? ,"+nconvert(server_default?1:0)+", ?)");
@@ -1379,7 +1379,7 @@ void ClientConnector::saveLogdata(const std::string &created, const std::string 
 	q_p->Write();
 	_i64 logid=db->getLastInsertID();
 
-	while(!db->Write("BEGIN IMMEDIATE;"))
+	while(!db->BeginWriteTransaction())
 				Server->wait(500);
 
 	IQuery *q=db->Prepare("INSERT INTO logdata (logid, loglevel, message, idx, ltime) VALUES (?, ?, ?, ?, datetime(?, 'unixepoch'))");

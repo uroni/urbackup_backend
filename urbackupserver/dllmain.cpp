@@ -658,7 +658,7 @@ DLLEXPORT void UnloadActions(void)
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("PRAGMA wal_checkpoint");
 	if(!shutdown_ok)
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 	else
 		Server->destroyAllDatabases();
 }
@@ -1170,7 +1170,7 @@ void upgrade(void)
 		{
 		    Server->Log("Upgrading database to version "+nconvert(ver+1), LL_WARNING);
 		}
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		old_v=ver;
 		switch(ver)
 		{

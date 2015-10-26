@@ -115,7 +115,7 @@ void ServerUpdateStats::operator()(void)
 
 	{
 		DBScopedDetach detachDbs(db);
-		DBScopedTransaction transaction(db);
+		DBScopedWriteTransaction transaction(db);
 
 		db->Write("INSERT INTO files (backupid, fullpath, hashpath, shahash, filesize, created, rsize, did_count, clientid, incremental) "
 			"SELECT backupid, fullpath, hashpath, shahash, filesize, created, rsize, 0 AS did_count, clientid, incremental FROM files_new");
@@ -269,7 +269,7 @@ void ServerUpdateStats::update_files(void)
 	if(update_stats_use_transactions_del)
 	{
 		db->DetachDBs();
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 	}
 
 	Server->Log("Updating deleted files...");
@@ -312,7 +312,7 @@ void ServerUpdateStats::update_files(void)
 		q_get_delfiles->Reset();
 		if(update_stats_use_transactions_del)
 		{
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 		}
 		for(size_t i=0;i<res.size();++i,++total_i)
 		{
@@ -327,7 +327,7 @@ void ServerUpdateStats::update_files(void)
 			if(update_stats_use_transactions_del && Server->getTimeMS()-last_commit_time>1000)
 			{
 				db->EndTransaction();
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 				last_commit_time=Server->getTimeMS();
 			}
 
@@ -478,7 +478,7 @@ void ServerUpdateStats::update_files(void)
 			Server->Log("done. (wal chkp)", LL_DEBUG);
 			if(update_stats_use_transactions_del)
 			{
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 			}
 		}
 	}
@@ -504,7 +504,7 @@ void ServerUpdateStats::update_files(void)
 	if(update_stats_use_transactions_done)
 	{
 		db->DetachDBs();
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 	}
 
 	size_t ncount_files_num=0;
@@ -536,7 +536,7 @@ void ServerUpdateStats::update_files(void)
 		q_get_ncount_files->Reset();
 		if(update_stats_use_transactions_done)
 		{
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 		}
 		for(size_t i=0;i<res.size();++i,++total_i)
 		{
@@ -551,7 +551,7 @@ void ServerUpdateStats::update_files(void)
 			if(update_stats_use_transactions_done && Server->getTimeMS()-last_commit_time>300)
 			{
 				db->EndTransaction();
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 				last_commit_time=Server->getTimeMS();
 			}
 
@@ -633,7 +633,7 @@ void ServerUpdateStats::update_files(void)
 			Server->Log("done.", LL_DEBUG);
 			if(update_stats_use_transactions_done)
 			{
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 			}
 		}
 
@@ -644,7 +644,7 @@ void ServerUpdateStats::update_files(void)
 				db->EndTransaction();
 			}
 
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 
 			q_mark_done_bulk_files->Write();
 			q_mark_done_bulk_files->Reset();
@@ -655,7 +655,7 @@ void ServerUpdateStats::update_files(void)
 
 			if(update_stats_use_transactions_done)
 			{
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 			}
 		}
 	}

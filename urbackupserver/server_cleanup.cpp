@@ -385,7 +385,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 				Server->Log(L"Path for file backup [id="+convert(res_file_backups[j].id)+L" path="+res_file_backups[j].path+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
 
 				DBScopedDetach detachDbs(db);
-				DBScopedTransaction transaction(db);
+				DBScopedWriteTransaction transaction(db);
 
 				cleanupdao->moveFiles(backupid);
 				cleanupdao->deleteFiles(backupid);
@@ -782,7 +782,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 
 		if( deleteImage(res.value) || force_remove )
 		{
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 			cleanupdao->removeImage(backupid);
 			cleanupdao->removeImageSize(backupid);
 			db->EndTransaction();
@@ -1121,7 +1121,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	if(del || force_remove)
 	{
 		DBScopedDetach detachDbs(db);
-		DBScopedTransaction transaction(db);
+		DBScopedWriteTransaction transaction(db);
 
 		cleanupdao->moveFiles(backupid);
 		cleanupdao->deleteFiles(backupid);
@@ -1702,7 +1702,7 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 
 	{
 		DBScopedDetach detachDbs(db);
-		DBScopedTransaction transaction(db);
+		DBScopedWriteTransaction transaction(db);
 
 		Server->Log("Deleting history...", LL_DEBUG);
 		cleanupdao->deleteClientHistoryIds(back_start, back_stop);

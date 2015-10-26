@@ -746,7 +746,7 @@ bool BackupServerGet::doImage(const std::string &pLetter, const std::wstring &pP
 							IFile *t_file=Server->openFile(os_file_prefix(imagefn), MODE_READ);
 							if(t_file!=NULL)
 							{
-								db->BeginTransaction();
+								db->BeginWriteTransaction();
 								q_set_image_size->Bind(t_file->Size());
 								q_set_image_size->Bind(backupid);
 								q_set_image_size->Write();

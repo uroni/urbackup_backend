@@ -1987,7 +1987,7 @@ bool BackupServerGet::doFullBackup(bool with_hashes, bool &disk_error, bool &log
 	}
 	else if(verification_ok)
 	{
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		if(!os_rename_file(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub") )
 		{
 			ServerLogger::Log(clientid, "Renaming new client file list to destination failed", LL_ERROR);
@@ -3027,7 +3027,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 		{
 			std::wstring dst_file=L"urbackup/clientlist_"+convert(clientid)+L"_new.ub";
 
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 			b=os_rename_file(dst_file, L"urbackup/clientlist_"+convert(clientid)+L".ub");
 			if(b)
 			{
@@ -3068,7 +3068,7 @@ bool BackupServerGet::doIncrBackup(bool with_hashes, bool intra_file_diffs, bool
 	else if(!c_has_error && !disk_error)
 	{
 		ServerLogger::Log(clientid, "Client disconnected while backing up. Copying partial file...", LL_DEBUG);
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		moveFile(L"urbackup/clientlist_"+convert(clientid)+L"_new.ub", L"urbackup/clientlist_"+convert(clientid)+L".ub");
 		setBackupDone();
 		db->EndTransaction();

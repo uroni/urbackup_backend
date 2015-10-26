@@ -817,9 +817,9 @@ int64 ServerBackupDao::getLastId()
 	return db->getLastInsertID();
 }
 
-void ServerBackupDao::beginTransaction()
+void ServerBackupDao::BeginWriteTransaction()
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 }
 
 void ServerBackupDao::endTransaction()

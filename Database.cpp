@@ -193,10 +193,30 @@ void CDatabase::InsertResults(const db_nsingle_result &pResult)
 
 //ToDo: Cache Writings
 
-void CDatabase::BeginTransaction(void)
+bool CDatabase::BeginReadTransaction()
 {
-	Write("BEGIN IMMEDIATE;");
-	in_transaction=true;
+	if(Write("BEGIN"))
+	{
+		in_transaction=true;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool CDatabase::BeginWriteTransaction()
+{
+	if(Write("BEGIN IMMEDIATE;"))
+	{
+		in_transaction=true;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 bool CDatabase::EndTransaction(void)

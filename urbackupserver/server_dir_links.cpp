@@ -262,7 +262,7 @@ namespace
 
 		if(data->with_transaction)
 		{
-			data->backup_dao->beginTransaction();
+			data->backup_dao->BeginWriteTransaction();
 		}		
 
 		data->backup_dao->removeDirectoryLink(data->clientid, target_raw);

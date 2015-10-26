@@ -568,7 +568,7 @@ void BackupServer::testSnapshotAvailability(IDatabase *db)
 			else
 			{
 				Server->Log("Copy on write mode is disabled, because the filesystem does not support it anymore.", LL_ERROR);
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 				db->Write("DELETE FROM settings_db.settings WHERE key='cow_mode' AND clientid=0");
 				db->Write("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'false', 0)");
 				db->EndTransaction();
@@ -579,7 +579,7 @@ void BackupServer::testSnapshotAvailability(IDatabase *db)
 	else
 	{
 		snapshots_enabled=true;
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		db->Write("DELETE FROM settings_db.settings WHERE key='cow_mode' AND clientid=0");
 		db->Write("INSERT INTO settings_db.settings (key, value, clientid) VALUES ('cow_mode', 'true', 0)");
 		db->EndTransaction();

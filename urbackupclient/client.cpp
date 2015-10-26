@@ -890,7 +890,7 @@ bool IndexThread::initialCheck(const std::wstring &orig_dir, const std::wstring 
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
 		/*db->EndTransaction();
-		db->Write("BEGIN IMMEDIATE;");*/
+		db->BeginWriteTransaction()*/
 		last_transaction_start=Server->getTimeMS();
 	}
 	if( IdleCheckerThread::getIdle()==false )
@@ -2693,7 +2693,7 @@ void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHa
 
 void IndexThread::commitModifyFilesBuffer(void)
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	for(size_t i=0;i<modify_file_buffer.size();++i)
 	{
 		cd->modifyFiles(modify_file_buffer[i].first, modify_file_buffer[i].second);

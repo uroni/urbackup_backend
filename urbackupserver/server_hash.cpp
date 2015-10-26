@@ -362,7 +362,7 @@ void BackupServerHash::addFileTmp(int backupid, const std::wstring &fp, const st
 
 void BackupServerHash::deleteFileSQL(const std::string &pHash, const std::wstring &fp, _i64 filesize, int backupid)
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	q_move_del_file->Bind(pHash.c_str(), (_u32)pHash.size());
 	q_move_del_file->Bind(filesize);
 	q_move_del_file->Bind(fp);

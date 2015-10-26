@@ -38,7 +38,7 @@ void SQLiteFileCache::setup_queries(void)
 
 void SQLiteFileCache::create(get_data_callback_t get_data_callback, void *userdata)
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 
 	size_t n_done=0;
 
@@ -120,7 +120,7 @@ FileCache::SCacheValue SQLiteFileCache::get(const SCacheKey& key)
 
 void SQLiteFileCache::start_transaction(void)
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 }
 
 void SQLiteFileCache::put(const SCacheKey& key, const SCacheValue& value)

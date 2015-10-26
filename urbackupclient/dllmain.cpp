@@ -477,7 +477,7 @@ bool upgrade_client(void)
 	IQuery *q_update=db->Prepare("UPDATE misc SET tvalue=? WHERE tkey='db_version'");
 	do
 	{
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 
 		old_v=ver;
 		switch(ver)

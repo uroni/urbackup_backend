@@ -590,7 +590,7 @@ void ChangeJournalWatcher::reindex(_i64 rid, std::wstring vol, SChangeJournal *s
 	if(not_supported)
 	{
 		Server->Log("Fast indexing method not supported. Falling back to slow one.", LL_WARNING);
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		size_t nDirFrns=0;
 		indexRootDirs(sj->rid, vol, c_frn_root, nDirFrns);
 		db->EndTransaction();
@@ -854,7 +854,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 				if(!started_transaction)
 				{
 					started_transaction=true;
-					db->BeginTransaction();
+					db->BeginWriteTransaction();
 				}
 				for(size_t i=0;i<jd.size();++i)
 				{
@@ -925,7 +925,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 								if(!started_transaction)
 								{
 									started_transaction=true;
-									db->BeginTransaction();
+									db->BeginWriteTransaction();
 								}
 								updateWithUsn(it->first, it->second, &usn_record, true, local_open_write_files);
 							}
@@ -938,7 +938,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 								if(started_transaction==false)
 								{
 									started_transaction=true;
-									db->BeginTransaction();
+									db->BeginWriteTransaction();
 								}
 								saveJournalData(it->second.journal_id, it->first, usn_record, nextUsn);	
 							}
@@ -1035,7 +1035,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 			if(!started_transaction)
 			{
 				started_transaction=true;
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 			}
 
 			q_update_lastusn->Bind(it->second.last_record);
@@ -1067,7 +1067,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 
 void ChangeJournalWatcher::update_longliving(void)
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	if(!freeze_open_write_files)
 	{
 		std::vector<std::wstring> files = open_write_files.get();

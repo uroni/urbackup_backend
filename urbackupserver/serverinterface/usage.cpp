@@ -36,7 +36,7 @@ namespace
 		{
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			db->DetachDBs();
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 			db->Write("UPDATE files SET did_count=0");
 			db->Write("UPDATE clients SET bytes_used_files=0");
 			db->Write("UPDATE backups SET size_bytes=0");
