@@ -41,7 +41,7 @@ bool write_tokens()
 
 	std::wstring hostname = get_hostname();
 
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 
 	bool has_new_token=false;
 	std::vector<std::wstring> users = get_users();

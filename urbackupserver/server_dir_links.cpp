@@ -276,7 +276,7 @@ namespace
 			target_raw = path;
 		}
 
-		data->backup_dao->beginTransaction();
+		data->backup_dao->BeginWriteTransaction();
 
 		data->backup_dao->removeDirectoryLink(data->clientid, target_raw);
 

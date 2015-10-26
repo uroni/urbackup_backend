@@ -574,7 +574,7 @@ bool FullFileBackup::doFileBackup()
 	}
 	else if(verification_ok)
 	{
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		if(!os_rename_file(widen(clientlistName(group, true)), widen(clientlistName(group, false))) )
 		{
 			ServerLogger::Log(logid, "Renaming new client file list to destination failed", LL_ERROR);

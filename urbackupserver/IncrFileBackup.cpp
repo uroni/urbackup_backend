@@ -1056,7 +1056,7 @@ bool IncrFileBackup::doFileBackup()
 		{
 			std::wstring dst_file=widen(clientlistName(group, true));
 
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 			b=os_rename_file(dst_file, widen(clientlistName(group)));
 			if(b)
 			{
@@ -1116,7 +1116,7 @@ bool IncrFileBackup::doFileBackup()
 	else if(!c_has_error && !disk_error)
 	{
 		ServerLogger::Log(logid, "Client disconnected while backing up. Copying partial file...", LL_DEBUG);
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		moveFile(widen(clientlistName(group, true)), widen(clientlistName(group, false)));
 		backup_dao->setFileBackupDone(backupid);
 		db->EndTransaction();

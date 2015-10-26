@@ -13,7 +13,7 @@ public:
 	void detachDbs();
 	int getLastChanges();
 	void attachDbs();
-	void beginTransaction();
+	void BeginWriteTransaction();
 	void endTransaction();
 
 	static const int c_direction_outgoing;

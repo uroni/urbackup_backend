@@ -701,7 +701,7 @@ DLLEXPORT void UnloadActions(void)
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("PRAGMA wal_checkpoint");
 	if(!shutdown_ok)
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 	else
 		Server->destroyAllDatabases();
 }
@@ -1389,7 +1389,7 @@ void upgrade(void)
 				" You need a newer UrBackup server version to work with this database.", LL_ERROR);
 			exit(4);
 		}
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		old_v=ver;
 		bool has_error=false;
 		switch(ver)
@@ -1588,7 +1588,7 @@ void upgrade(void)
 
 					db->Write("VACUUM");
 
-					db->BeginTransaction();
+					db->BeginWriteTransaction();
 				}
 				else
 				{

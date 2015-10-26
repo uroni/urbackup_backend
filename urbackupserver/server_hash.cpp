@@ -380,7 +380,7 @@ void BackupServerHash::deleteFileSQL(ServerBackupDao& backupdao, FileIndex& file
 		{
 			backupdao.detachDbs();
 		}
-		backupdao.beginTransaction();
+		backupdao.BeginWriteTransaction();
 	}
 
 	if(prev_id==0 && next_id==0)

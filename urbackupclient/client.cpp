@@ -767,7 +767,7 @@ void IndexThread::indexDirs(void)
 	DirectoryWatcherThread::update_and_wait(open_files);
 
 	//---TRANSACTION---
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 
 	changed_dirs.clear();
 	for(size_t i=0;i<selected_dirs.size();++i)
@@ -930,7 +930,7 @@ void IndexThread::indexDirs(void)
 			SFile dirInfo = getFileMetadata(os_file_prefix(mod_path));
 			std::string dir_permissions;
 			writeDir(outfile, backup_dirs[i].tname, extra);
-			//db->Write("BEGIN IMMEDIATE;");
+			//db->BeginWriteTransaction();
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
 #ifndef _WIN32
@@ -1090,7 +1090,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
 		/*db->EndTransaction();
-		db->Write("BEGIN IMMEDIATE;");*/
+		db->BeginWriteTransaction();*/
 		last_transaction_start=Server->getTimeMS();
 	}
 	if( IdleCheckerThread::getIdle()==false )
@@ -2960,7 +2960,7 @@ void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHa
 
 void IndexThread::commitModifyFilesBuffer(void)
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	for(size_t i=0;i<modify_file_buffer.size();++i)
 	{
 		cd->modifyFiles(modify_file_buffer[i].first, modify_file_buffer[i].second);

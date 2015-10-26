@@ -959,7 +959,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 							if(t_file!=NULL)
 							{
 								int64 image_size = t_file->RealSize();
-								db->BeginTransaction();
+								db->BeginWriteTransaction();
 								backup_dao->setImageSize(image_size, backupid);
 								backup_dao->addImageSizeToClient(clientid, image_size);
 								if(vhdfile_err==false)

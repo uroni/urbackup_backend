@@ -800,7 +800,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 
 		if( deleteImage(res.value) || force_remove )
 		{
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 			cleanupdao->removeImage(backupid);
 			cleanupdao->removeImageSize(backupid);
 			db->EndTransaction();
@@ -1720,7 +1720,7 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 	}
 
 	db->DetachDBs();
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	Server->Log("Deleting history...", LL_DEBUG);
 	cleanupdao->deleteClientHistoryIds(back_start, back_stop);
 	cleanupdao->deleteClientHistoryItems(back_start, back_stop);
@@ -1778,7 +1778,7 @@ void ServerCleanupThread::cleanup_other()
 void ServerCleanupThread::removeFileBackupSql( int backupid )
 {
 	db->DetachDBs();
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 
 	IQuery* q_iterate = db->Prepare("SELECT id, shahash, filesize, rsize, clientid, backupid, incremental, next_entry, prev_entry, pointed_to FROM files WHERE backupid=?", false);
 	q_iterate->Bind(backupid);
