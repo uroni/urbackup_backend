@@ -30,7 +30,7 @@ ClientDAO::ClientDAO(IDatabase *pDB)
 void ClientDAO::prepareQueries(void)
 {
 	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=?", false);
-	q_add_files=db->Prepare("INSERT INTO files_tmp (name, num, data) VALUES (?,?,?)", false);
+	q_add_files=db->Prepare("INSERT INTO files (name, num, data) VALUES (?,?,?)", false);
 	q_get_dirs=db->Prepare("SELECT name, path, id, optional FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs UNION SELECT id, name FROM mdirs_backup", false);
@@ -42,8 +42,6 @@ void ClientDAO::prepareQueries(void)
 	q_remove_shadowcopies=db->Prepare("DELETE FROM shadowcopies WHERE id=?", false);
 	q_save_changed_dirs=db->Prepare("INSERT OR REPLACE INTO mdirs_backup SELECT id,name FROM mdirs", false);
 	q_delete_saved_changed_dirs=db->Prepare("DELETE FROM mdirs_backup", false);
-	q_copy_from_tmp_files=db->Prepare("INSERT INTO files (num, data, name) SELECT num, data, name FROM files_tmp", false);
-	q_delete_tmp_files=db->Prepare("DELETE FROM files_tmp", false);
 	q_has_changed_gap=db->Prepare("SELECT name FROM mdirs WHERE name GLOB '##-GAP-##*'", false);
 	q_get_del_dirs=db->Prepare("SELECT name FROM del_dirs UNION SELECT name FROM del_dirs_backup", false);
 	q_del_del_dirs=db->Prepare("DELETE FROM del_dirs", false);
@@ -78,8 +76,6 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_remove_shadowcopies);
 	db->destroyQuery(q_save_changed_dirs);
 	db->destroyQuery(q_delete_saved_changed_dirs);
-	db->destroyQuery(q_copy_from_tmp_files);
-	db->destroyQuery(q_delete_tmp_files);
 	db->destroyQuery(q_has_changed_gap);
 	db->destroyQuery(q_get_del_dirs);
 	db->destroyQuery(q_del_del_dirs);
@@ -388,14 +384,6 @@ void ClientDAO::deleteSavedChangedFiles(void)
 {
 	q_delete_saved_changed_files->Write();
 	q_delete_saved_changed_files->Reset();
-}
-
-void ClientDAO::copyFromTmpFiles(void)
-{
-	q_copy_from_tmp_files->Write();
-	q_copy_from_tmp_files->Reset();
-	q_delete_tmp_files->Write();
-	q_delete_tmp_files->Reset();
 }
 
 bool ClientDAO::hasChangedGap(void)
