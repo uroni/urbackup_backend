@@ -826,7 +826,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 		if(image_inf.image_letter=="SYSVOL")
 		{
 			std::wstring mpath;
-			std::wstring sysvol=getSysVolume(mpath);
+			std::wstring sysvol=getSysVolumeCached(mpath);
 			if(!mpath.empty())
 			{
 				image_inf.image_letter=Server->ConvertToUTF8(mpath);
@@ -1000,7 +1000,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	if(dl==L"SYSVOL")
 	{
 		std::wstring mpath;
-		dl=getSysVolume(mpath);
+		dl=getSysVolumeCached(mpath);
 	}
 
 	bool b=false;
