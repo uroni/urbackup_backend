@@ -82,7 +82,7 @@ struct SFileAndHash
 class ClientDAO
 {
 public:
-	ClientDAO(IDatabase *pDB, bool with_files_tmp=true);
+	ClientDAO(IDatabase *pDB);
 	~ClientDAO();
 	void prepareQueries();
 	void destroyQueries(void);
@@ -98,8 +98,6 @@ public:
 	bool hasFiles(std::wstring path);
 	
 	void removeAllFiles(void);
-
-	void copyFromTmpFiles(void);
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
@@ -180,8 +178,6 @@ private:
 	IQuery *q_remove_shadowcopies;
 	IQuery *q_save_changed_dirs;
 	IQuery *q_delete_saved_changed_dirs;
-	IQuery *q_copy_from_tmp_files;
-	IQuery *q_delete_tmp_files;
 	IQuery *q_has_changed_gap;
 	IQuery *q_get_del_dirs;
 	IQuery *q_del_del_dirs;

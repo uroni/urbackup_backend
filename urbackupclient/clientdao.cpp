@@ -25,8 +25,7 @@ const int ClientDAO::c_is_group = 0;
 const int ClientDAO::c_is_user = 1;
 const int ClientDAO::c_is_system_user = 2;
 
-ClientDAO::ClientDAO(IDatabase *pDB, bool with_files_tmp)
-	: with_files_tmp(with_files_tmp)
+ClientDAO::ClientDAO(IDatabase *pDB)
 {
 	db=pDB;
 	prepareQueries();
@@ -40,16 +39,7 @@ ClientDAO::~ClientDAO()
 void ClientDAO::prepareQueries()
 {
 	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=?", false);
-
-	if(with_files_tmp)
-	{
-		q_add_files=db->Prepare("INSERT INTO files_tmp (name, num, data) VALUES (?,?,?)", false);
-	}
-	else
-	{
-		q_add_files=NULL;
-	}
-	
+	q_add_files=db->Prepare("INSERT INTO files (name, num, data) VALUES (?,?,?)", false);
 	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
@@ -61,17 +51,6 @@ void ClientDAO::prepareQueries()
 	q_remove_shadowcopies=db->Prepare("DELETE FROM shadowcopies WHERE id=?", false);
 	q_save_changed_dirs=db->Prepare("INSERT OR REPLACE INTO mdirs_backup SELECT id, name FROM mdirs WHERE name GLOB ?", false);
 	q_delete_saved_changed_dirs=db->Prepare("DELETE FROM mdirs_backup", false);
-	if(with_files_tmp)
-	{
-		q_copy_from_tmp_files=db->Prepare("INSERT INTO files (num, data, name) SELECT num, data, name FROM files_tmp", false);
-		q_delete_tmp_files=db->Prepare("DELETE FROM files_tmp", false);
-	}
-	else
-	{
-		q_copy_from_tmp_files=NULL;
-		q_delete_tmp_files=NULL;
-	}
-	
 	q_has_changed_gap=db->Prepare("SELECT name FROM mdirs WHERE name GLOB '##-GAP-##*'", false);
 	q_get_del_dirs=db->Prepare("SELECT name FROM del_dirs WHERE name GLOB ? UNION SELECT name FROM del_dirs_backup WHERE name GLOB ?", false);
 	q_del_del_dirs=db->Prepare("DELETE FROM del_dirs WHERE name GLOB ?", false);
@@ -101,8 +80,6 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_remove_shadowcopies);
 	db->destroyQuery(q_save_changed_dirs);
 	db->destroyQuery(q_delete_saved_changed_dirs);
-	db->destroyQuery(q_copy_from_tmp_files);
-	db->destroyQuery(q_delete_tmp_files);
 	db->destroyQuery(q_has_changed_gap);
 	db->destroyQuery(q_get_del_dirs);
 	db->destroyQuery(q_del_del_dirs);
@@ -475,14 +452,6 @@ void ClientDAO::deleteSavedChangedDirs(void)
 {
 	q_delete_saved_changed_dirs->Write();
 	q_delete_saved_changed_dirs->Reset();
-}
-
-void ClientDAO::copyFromTmpFiles(void)
-{
-	q_copy_from_tmp_files->Write();
-	q_copy_from_tmp_files->Reset();
-	q_delete_tmp_files->Write();
-	q_delete_tmp_files->Reset();
 }
 
 bool ClientDAO::hasChangedGap(void)

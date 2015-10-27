@@ -70,8 +70,9 @@ const unsigned short udpport=35622;
 const unsigned int shadowcopy_timeout=7*24*60*60*1000;
 const unsigned int shadowcopy_startnew_timeout=55*60*1000;
 const size_t max_modify_file_buffer_size=500*1024;
-const size_t max_modify_hash_buffer_size=500*1024;
+const size_t max_add_file_buffer_size=500*1024;
 const int64 save_filehash_limit=20*4096;
+const int64 file_buffer_commit_interval=120*1000;
 
 
 #ifndef SERVER_ONLY
@@ -254,8 +255,10 @@ IndexThread::IndexThread(void)
 
 	modify_file_buffer_size=0;
 	end_to_end_file_backup_verification=false;
+	add_file_buffer_size=0;
 	calculate_filehashes_on_client=false;
 	last_tmp_update_time=0;
+	last_file_buffer_commit_time=0;
 }
 
 IndexThread::~IndexThread()
@@ -343,8 +346,6 @@ void IndexThread::operator()(void)
 #endif
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-
-	db->Write("CREATE TEMPORARY TABLE files_tmp (num NUMERIC, data BLOB, name TEXT);");
 
 	cd=new ClientDAO(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 
@@ -948,8 +949,8 @@ void IndexThread::indexDirs(void)
 			initialCheck( backup_dirs[i].path, mod_path, backup_dirs[i].tname, outfile, true,
 				backup_dirs[i].optional, !patterns_changed );
 
-			cd->copyFromTmpFiles();
 			commitModifyFilesBuffer();
+			commitAddFilesBuffer();
 
 			if(stop_index || index_error)
 			{
@@ -1007,8 +1008,8 @@ void IndexThread::indexDirs(void)
 		}		
 	}
 
-	cd->copyFromTmpFiles();
 	commitModifyFilesBuffer();
+	commitAddFilesBuffer();
 
 #ifdef _WIN32
 	if(!has_stale_shadowcopy)
@@ -1521,7 +1522,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			if(calculate_filehashes_on_client)
 			{
 #endif
-				cd->addFiles(path_lower, fs_files);
+				addFilesInt(path_lower, fs_files);
 #ifndef _WIN32
 			}
 #endif
@@ -1573,7 +1574,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 				addMissingHashes(NULL, &fs_files, orig_path, path, named_path);
 			}
 
-			cd->addFiles(path_lower, fs_files);
+			addFilesInt(path_lower, fs_files);
 			return fs_files;
 		}
 	}
@@ -2960,7 +2961,8 @@ void IndexThread::doStop(void)
 	msgpipe->Write(wd.getDataPtr(), wd.getDataSize());
 }
 
-void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data)
+
+size_t IndexThread::calcBufferSize( std::wstring &path, const std::vector<SFileAndHash> &data )
 {
 	size_t add_size=path.size()*sizeof(wchar_t)+sizeof(std::wstring);
 	for(size_t i=0;i<data.size();++i)
@@ -2971,11 +2973,23 @@ void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHa
 	}
 	add_size+=sizeof(std::vector<SFile>);
 
-	modify_file_buffer_size+=add_size;
+	return add_size;
+}
 
-	modify_file_buffer.push_back(std::pair<std::wstring, std::vector<SFileAndHash> >(path, data) );
 
-	if( modify_file_buffer_size>max_modify_file_buffer_size)
+void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data)
+{
+	modify_file_buffer_size+=calcBufferSize(path, data);
+
+	modify_file_buffer.push_back(std::make_pair(path, data) );
+
+	if(last_file_buffer_commit_time==0)
+	{
+		last_file_buffer_commit_time = Server->getTimeMS();
+	}
+
+	if( modify_file_buffer_size>max_modify_file_buffer_size 
+		|| Server->getTimeMS()-last_file_buffer_commit_time>file_buffer_commit_interval)
 	{
 		commitModifyFilesBuffer();
 	}
@@ -2992,7 +3006,42 @@ void IndexThread::commitModifyFilesBuffer(void)
 
 	modify_file_buffer.clear();
 	modify_file_buffer_size=0;
+	last_file_buffer_commit_time=Server->getTimeMS();
 }
+
+void IndexThread::addFilesInt( std::wstring path, const std::vector<SFileAndHash> &data )
+{
+	add_file_buffer_size+=calcBufferSize(path, data);
+
+	add_file_buffer.push_back(std::make_pair(path, data));
+
+	if(last_file_buffer_commit_time==0)
+	{
+		last_file_buffer_commit_time = Server->getTimeMS();
+	}
+
+	if(add_file_buffer_size>max_add_file_buffer_size
+		|| Server->getTimeMS()-last_file_buffer_commit_time>file_buffer_commit_interval)
+	{
+		commitAddFilesBuffer();
+	}
+
+}
+
+void IndexThread::commitAddFilesBuffer()
+{
+	db->BeginWriteTransaction();
+	for(size_t i=0;i<add_file_buffer.size();++i)
+	{
+		cd->addFiles(add_file_buffer[i].first, add_file_buffer[i].second);
+	}
+	db->EndTransaction();
+
+	add_file_buffer.clear();
+	add_file_buffer_size=0;
+	last_file_buffer_commit_time=Server->getTimeMS();
+}
+
 
 std::wstring IndexThread::removeDirectorySeparatorAtEnd(const std::wstring& path)
 {

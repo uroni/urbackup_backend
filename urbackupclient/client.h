@@ -203,7 +203,13 @@ private:
 	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::wstring &orig_path, const std::wstring& filepath, const std::wstring& namedpath);
 
 	void modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data);
-	void commitModifyFilesBuffer(void);
+
+	size_t calcBufferSize( std::wstring &path, const std::vector<SFileAndHash> &data );
+
+	void commitModifyFilesBuffer();
+
+	void addFilesInt(std::wstring path, const std::vector<SFileAndHash> &data);
+	void commitAddFilesBuffer();
 
 	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
 	std::wstring addDirectorySeparatorAtEnd(const std::wstring& path);
@@ -264,9 +270,12 @@ private:
 	static std::map<std::wstring, std::wstring> filesrv_share_dirs;
 
 	std::vector< std::pair<std::wstring, std::vector<SFileAndHash> > > modify_file_buffer;
-	std::vector< SHashedFile > modify_hash_buffer;
 	size_t modify_file_buffer_size;
-	size_t modify_hash_buffer_size;
+
+	std::vector< std::pair<std::wstring, std::vector<SFileAndHash> > > add_file_buffer;
+	size_t add_file_buffer_size;
+
+	int64 last_file_buffer_commit_time;
 
 	int index_group;
 	bool index_optional;
