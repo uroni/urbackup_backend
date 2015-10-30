@@ -1,20 +1,56 @@
 #pragma once
 
 #include "../../urbackupcommon/file_metadata.h"
+#include "../../urbackupcommon/json.h"
+#include "../../Interface/Database.h"
+#include <string>
+#include <vector>
 
-struct SToken
+namespace backupaccess
 {
-	int64 id;
-	std::string username;
-	std::string token;
-};
+	std::string constructFilter(const std::vector<int> &clientid, std::string key);
 
-struct STokens
-{
-	std::string access_key;
-	std::vector<SToken> tokens;
-};	
+	struct SToken
+	{
+		int64 id;
+		std::string username;
+		std::string token;
+	};
 
-STokens readTokens(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path);
+	struct STokens
+	{
+		std::string access_key;
+		std::vector<SToken> tokens;
+	};	
 
-bool checkFileToken( const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, const FileMetadata &metadata );
+	STokens readTokens(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path);
+
+	bool checkFileToken( const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, const FileMetadata &metadata );
+
+	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::wstring clientname, std::string* fileaccesstokens );
+
+	struct SPathInfo
+	{
+		SPathInfo()
+			: can_access_path(false)
+		{
+
+		}
+
+		STokens backup_tokens;
+		bool can_access_path;
+
+		std::wstring rel_metadata_path;
+		std::wstring rel_path;
+
+		std::wstring full_metadata_path;
+		std::wstring full_path;
+	};
+
+	SPathInfo get_metadata_path_with_tokens(const std::wstring& u_path, bool is_file, std::string* fileaccesstokens,
+		std::wstring clientname, std::wstring backupfolder, int* backupid, std::wstring backuppath);
+
+	bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname,
+		std::string* fileaccesstokens, const std::wstring& u_path, bool is_file, JSON::Object& ret);
+}
+

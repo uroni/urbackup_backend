@@ -21,10 +21,9 @@
 #include "action_header.h"
 #include "../../urbackupcommon/os_functions.h"
 #include "../../urlplugin/IUrlFactory.h"
+#include "backups.h"
 
 extern IUrlFactory *url_fak;
-
-std::string constructFilter(const std::vector<int> &clientid, std::string key);
 
 ACTION_IMPL(logs)
 {
@@ -69,7 +68,7 @@ ACTION_IMPL(logs)
 	{
 		IDatabase *db=helper.getDatabase();
 		std::string qstr="SELECT c.id AS id, c.name AS name FROM clients c WHERE ";
-		if(!clientid.empty()) qstr+=constructFilter(clientid, "c.id")+" AND ";
+		if(!clientid.empty()) qstr+=backupaccess::constructFilter(clientid, "c.id")+" AND ";
 		qstr+=" EXISTS (SELECT id FROM logs l WHERE l.clientid=c.id LIMIT 1) ORDER BY name";
 		
 		IQuery *q_clients=db->Prepare(qstr);
@@ -91,7 +90,7 @@ ACTION_IMPL(logs)
 		ret.set("has_user", session->id!=SESSION_ID_TOKEN_AUTH && session->id!=SESSION_ID_ADMIN);
 
 		IQuery *q_log_right_clients=db->Prepare("SELECT id, name FROM clients"+(clientid.empty()?""
-											:" WHERE "+constructFilter(clientid, "id"))+" ORDER BY name");
+											:" WHERE "+backupaccess::constructFilter(clientid, "id"))+" ORDER BY name");
 
 		res=q_log_right_clients->Read();
 		q_log_right_clients->Reset();
@@ -128,7 +127,7 @@ ACTION_IMPL(logs)
 
 			if(!v_filter.empty())
 			{
-				qstr+=" WHERE "+constructFilter(v_filter, "l.clientid");
+				qstr+=" WHERE "+backupaccess::constructFilter(v_filter, "l.clientid");
 				if(!bed.empty())
 				{
 					qstr+=" AND "+bed;

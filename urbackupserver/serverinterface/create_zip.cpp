@@ -289,7 +289,7 @@ bool miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
 }
 
 bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername, const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter,
-		bool token_authentication, const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special)
+		bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special)
 {
 	bool has_error=false;
 	const std::vector<SFile> files = getFiles(foldername, &has_error);
@@ -324,7 +324,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 		FileMetadata metadata;
 		if(token_authentication &&
 			( !read_metadata(metadataname, metadata) ||
-			  !checkFileToken(backup_tokens, tokens, metadata) ) )
+			  !backupaccess::checkFileToken(backup_tokens, tokens, metadata) ) )
 		{
 			continue;
 		}
@@ -380,7 +380,7 @@ bool add_dir(mz_zip_archive& zip_archive, const std::wstring& archivefoldername,
 }
 
 bool create_zip_to_output(const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter, bool token_authentication,
-	const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes)
+	const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes)
 {
 	mz_zip_archive zip_archive;
 	memset(&zip_archive, 0, sizeof(zip_archive));
