@@ -37,8 +37,11 @@ private:
 	void GET_BACKUPCLIENTS(void);
 	void GET_BACKUPIMAGES(const std::wstring& clientname);
 	void GET_FILE_BACKUPS(const std::wstring& clientname);
+	void GET_FILE_BACKUPS_TOKENS(str_map& params);
+	void GET_FILE_LIST_TOKENS(str_map& params);
 	void DOWNLOAD_IMAGE(str_map& params);
 	void DOWNLOAD_FILES(str_map& params);
+	void DOWNLOAD_FILES_TOKENS(str_map& params);
 	void RESTORE_PERCENT( str_map params );
 	void RESTORE_DONE( str_map params );
 

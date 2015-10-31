@@ -8,6 +8,8 @@
 
 namespace backupaccess
 {
+	std::wstring getBackupFolder(IDatabase* db);
+
 	std::string constructFilter(const std::vector<int> &clientid, std::string key);
 
 	struct SToken
@@ -26,6 +28,10 @@ namespace backupaccess
 	STokens readTokens(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path);
 
 	bool checkFileToken( const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, const FileMetadata &metadata );
+
+	std::string decryptTokens(IDatabase* db, const str_map& GET);
+
+	std::wstring get_backup_path(IDatabase* db, int backupid, int t_clientid);
 
 	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::wstring clientname, std::string* fileaccesstokens );
 

@@ -183,21 +183,6 @@ namespace
 		}
 	}
 
-	std::wstring getBackupFolder(IDatabase* db)
-	{
-		IQuery* q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder'");
-		db_results res_bf=q->Read();
-		q->Reset();
-		if(!res_bf.empty() )
-		{
-			return res_bf[0][L"value"];
-		}
-		else
-		{
-			return std::wstring();
-		}
-	}
-
 	bool checkBackupTokens(const std::string& fileaccesstokens, const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path)
 	{
 		std::vector<std::string> tokens;
@@ -249,7 +234,22 @@ namespace
 
 namespace backupaccess
 {
-	std::string decryptTokens(IDatabase* db, str_map GET)
+	std::wstring getBackupFolder(IDatabase* db)
+	{
+		IQuery* q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder'");
+		db_results res_bf=q->Read();
+		q->Reset();
+		if(!res_bf.empty() )
+		{
+			return res_bf[0][L"value"];
+		}
+		else
+		{
+			return std::wstring();
+		}
+	}
+
+	std::string decryptTokens(IDatabase* db, const str_map& GET)
 	{
 		if(crypto_fak==NULL)
 		{
@@ -257,14 +257,14 @@ namespace backupaccess
 		}
 
 		int clientid;
-		str_map::iterator iter_clientname =GET.find(L"clientname");
+		str_map::const_iterator iter_clientname =GET.find(L"clientname");
 		if(iter_clientname!=GET.end())
 		{
 			clientid = getClientid(db, iter_clientname->second);
 		}
 		else
 		{
-			str_map::iterator iter_clientid = GET.find(L"clientid");
+			str_map::const_iterator iter_clientid = GET.find(L"clientid");
 			if(iter_clientid!=GET.end())
 			{
 				clientid = watoi(iter_clientid->second);
@@ -285,7 +285,7 @@ namespace backupaccess
 		std::string client_key = server_settings.getSettings()->client_access_key;
 
 		size_t i=0;
-		str_map::iterator iter;
+		str_map::const_iterator iter;
 		do 
 		{
 			iter = GET.find(L"tokens"+convert(i));
@@ -868,7 +868,7 @@ ACTION_IMPL(backups)
 				{
 					if( (sa==L"filesdl" || sa==L"zipdl" || sa==L"clientdl") && has_backupid)
 					{
-						std::wstring backupfolder = getBackupFolder(db);
+						std::wstring backupfolder = backupaccess::getBackupFolder(db);
 						std::wstring backuppath = backupaccess::get_backup_path(db, backupid, t_clientid);
 
 						if(backupfolder.empty())
