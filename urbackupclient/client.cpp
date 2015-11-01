@@ -1424,7 +1424,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 #ifdef _WIN32
 				VSSLog(L"Error while getting files in folder \""+path+L"\". SYSTEM may not have permissions to access this folder. Windows errorcode: "+convert((int)GetLastError()), LL_ERROR);
 #else
-				VSSLog(L"Error while getting files in folder \""+path+L"\". User may not have permissions to access this folder. Errorno is "+convert(errno), LL_ERROR);
+                VSSLog(L"Error while getting files in folder \""+path+L"\". User may not have permissions to access this folder. Errno is "+convert(errno), LL_ERROR);
+                index_error=true;
 #endif
 			}
 			else

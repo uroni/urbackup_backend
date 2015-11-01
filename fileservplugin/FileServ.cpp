@@ -199,6 +199,11 @@ void FileServ::registerTokenCallbackFactory( IFileServ::ITokenCallbackFactory* c
 
 IFileServ::ITokenCallback* FileServ::newTokenCallback()
 {
+    if(token_callback_factory==NULL)
+    {
+        return NULL;
+    }
+
 	return token_callback_factory->getTokenCallback();
 }
 

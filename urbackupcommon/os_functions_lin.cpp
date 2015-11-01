@@ -694,7 +694,7 @@ SFile getFileMetadata( const std::wstring &path )
 	ret.name=path;
 
 	struct stat64 f_info;
-	int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+    int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
 
 	if(rc==0)
 	{

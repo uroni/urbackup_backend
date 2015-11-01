@@ -66,6 +66,11 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 		token_callback.reset(FileServ::newTokenCallback());
 	}
 
+    if(token_callback.get()==NULL)
+    {
+        return false;
+    }
+
 	if(buf_avail==0)
 	{
 		read_bytes = 0;
