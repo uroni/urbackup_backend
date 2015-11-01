@@ -435,7 +435,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						if(sendFullFile(file, start_offset, id==ID_GET_FILE_RESUME_HASH))
 						{
-							PipeSessions::removeFile(filename);
+							PipeSessions::removeFile(file->getFilenameW());
 						}
 						break;
 					}
@@ -1610,9 +1610,14 @@ bool CClientThread::sendFullFile(IFile* file, _i64 start_offset, bool with_hashe
 			next_checkpoint=curr_filesize;
 	}
 
+	if(start_offset!=0)
+	{
+		Log("Sending pipe file from offset "+nconvert(start_offset), LL_DEBUG);
+	}
+
 	if(!file->Seek(start_offset))
 	{
-		Log("Error: Seeking in file failed (5044)", LL_ERROR);
+		Log("Error: Seeking in file failed (5044) to "+nconvert(start_offset), LL_ERROR);
 		return false;
 	}
 

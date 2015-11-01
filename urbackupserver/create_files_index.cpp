@@ -97,7 +97,7 @@ bool create_files_index_common(FileIndex& fileindex, SStartupStatus& status)
 		n_files=watoi64(res[0][L"c"]);
 	}
 
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	
 	Server->Log("Starting creating files index...", LL_INFO);
 

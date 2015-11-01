@@ -453,14 +453,12 @@ bool IncrFileBackup::doFileBackup()
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
-				bool has_orig_path = false;
-				if(!metadata.orig_path.empty())
+				bool has_orig_path = metadata.has_orig_path;
+				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
 					orig_sep = base64_decode_dash(Server->ConvertToUTF8(extra_params[L"orig_sep"]));
 					if(orig_sep.empty()) orig_sep="\\";
-
-					has_orig_path=true;
 				}
 
 				int64 ctime=Server->getTimeMS();
@@ -548,7 +546,10 @@ bool IncrFileBackup::doFileBackup()
 							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
 							metadata.orig_path = curr_orig_path;
                             metadata.exist=true;
+							metadata.has_orig_path=true;
 						}
+
+						std::wstring metadata_fn = backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn;
 
 						bool dir_linked=false;
 						if(use_directory_links && hasChange(line, large_unchanged_subtrees) )
@@ -599,6 +600,7 @@ bool IncrFileBackup::doFileBackup()
 						}
 						if(!dir_linked && (!use_snapshots || indirchange) )
 						{
+							bool create_hash_dir=true;
 							str_map::iterator sym_target = extra_params.find(L"sym_target");
 							if(sym_target!=extra_params.end())
 							{
@@ -608,6 +610,9 @@ bool IncrFileBackup::doFileBackup()
 									c_has_error=true;
 									break;
 								}
+
+								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + L"/" + escape_metadata_fn(cf.name)); 
+								create_hash_dir=false;
 							}
 							else if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
@@ -623,7 +628,7 @@ bool IncrFileBackup::doFileBackup()
 								}
 							}
 							
-							if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+							if(create_hash_dir && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 								{
@@ -636,7 +641,7 @@ bool IncrFileBackup::doFileBackup()
 									ServerLogger::Log(logid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
 								}
 							}
-							else if(!write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata, false) )
+							else if(!write_file_metadata(metadata_fn, client_main, metadata, false) )
 							{
 								ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
 								c_has_error=true;
@@ -747,6 +752,21 @@ bool IncrFileBackup::doFileBackup()
                         {
                             download_metadata=true;
                         }
+					}
+					else if(extra_params.find(L"special")!=extra_params.end())
+					{
+						std::wstring touch_path = backuppath+local_curr_os_path;
+						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
+						if(touch_file.get()==NULL)
+						{
+							ServerLogger::Log(logid, L"Error touching file at \""+touch_path+L"\". " + widen(systemErrorInfo()), LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+						else
+						{
+							download_metadata=true;
+						}
 					}
 					else if(indirchange || hasChange(line, diffs)) //is changed
 					{
@@ -1036,7 +1056,7 @@ bool IncrFileBackup::doFileBackup()
 		{
 			std::wstring dst_file=widen(clientlistName(group, true));
 
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 			b=os_rename_file(dst_file, widen(clientlistName(group)));
 			if(b)
 			{
@@ -1096,7 +1116,7 @@ bool IncrFileBackup::doFileBackup()
 	else if(!c_has_error && !disk_error)
 	{
 		ServerLogger::Log(logid, "Client disconnected while backing up. Copying partial file...", LL_DEBUG);
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		moveFile(widen(clientlistName(group, true)), widen(clientlistName(group, false)));
 		backup_dao->setFileBackupDone(backupid);
 		db->EndTransaction();

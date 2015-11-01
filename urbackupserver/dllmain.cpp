@@ -75,6 +75,7 @@ SStartupStatus startup_status;
 #include "../fileservplugin/IFileServFactory.h"
 #include "restore_client.h"
 #include "WalCheckpointThread.h"
+#include "FileMetadataDownloadThread.h"
 
 IPipe *server_exit_pipe=NULL;
 IFSImageFactory *image_fak;
@@ -341,6 +342,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		else if(app=="check_fileindex")
 		{
 			rc=check_files_index();
+		}
+		else if(app=="check_metadata")
+		{
+			rc=server::check_metadata();
 		}
 		else
 		{
@@ -696,7 +701,7 @@ DLLEXPORT void UnloadActions(void)
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	db->Write("PRAGMA wal_checkpoint");
 	if(!shutdown_ok)
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 	else
 		Server->destroyAllDatabases();
 }
@@ -1384,7 +1389,7 @@ void upgrade(void)
 				" You need a newer UrBackup server version to work with this database.", LL_ERROR);
 			exit(4);
 		}
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		old_v=ver;
 		bool has_error=false;
 		switch(ver)
@@ -1583,7 +1588,7 @@ void upgrade(void)
 
 					db->Write("VACUUM");
 
-					db->BeginTransaction();
+					db->BeginWriteTransaction();
 				}
 				else
 				{

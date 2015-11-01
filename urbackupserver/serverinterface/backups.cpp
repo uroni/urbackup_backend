@@ -33,21 +33,25 @@
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
 
-std::string constructFilter(const std::vector<int> &clientid, std::string key)
+namespace backupaccess
 {
-	std::string clientf="(";
-	for(size_t i=0;i<clientid.size();++i)
+	std::string constructFilter(const std::vector<int> &clientid, std::string key)
 	{
-		clientf+=key+"="+nconvert(clientid[i]);
-		if(i+1<clientid.size())
-			clientf+=" OR ";
+		std::string clientf="(";
+		for(size_t i=0;i<clientid.size();++i)
+		{
+			clientf+=key+"="+nconvert(clientid[i]);
+			if(i+1<clientid.size())
+				clientf+=" OR ";
+		}
+		clientf+=")";
+		return clientf;
 	}
-	clientf+=")";
-	return clientf;
 }
 
+
 bool create_zip_to_output(const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter, bool token_authentication,
-	const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes);
+	const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes);
 
 namespace
 {
@@ -81,7 +85,7 @@ namespace
 	}
 
 	bool sendZip(Helper& helper, const std::wstring& foldername, const std::wstring& hashfoldername, const std::wstring& filter, bool token_authentication,
-		const std::vector<SToken>& backup_tokens, const std::vector<std::string>& tokens, bool skip_hashes)
+		const std::vector<backupaccess::SToken>& backup_tokens, const std::vector<std::string>& tokens, bool skip_hashes)
 	{
 		std::wstring zipname=ExtractFileName(foldername)+L".zip";
 
@@ -179,27 +183,12 @@ namespace
 		}
 	}
 
-	std::wstring getBackupFolder(IDatabase* db)
-	{
-		IQuery* q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder'");
-		db_results res_bf=q->Read();
-		q->Reset();
-		if(!res_bf.empty() )
-		{
-			return res_bf[0][L"value"];
-		}
-		else
-		{
-			return std::wstring();
-		}
-	}
-
 	bool checkBackupTokens(const std::string& fileaccesstokens, const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path)
 	{
 		std::vector<std::string> tokens;
 		Tokenize(fileaccesstokens, tokens, ";");
 
-		STokens backup_tokens = readTokens(backupfolder, clientname, path);
+		backupaccess::STokens backup_tokens = backupaccess::readTokens(backupfolder, clientname, path);
 		if(backup_tokens.tokens.empty())
 		{
 			return false;
@@ -227,7 +216,7 @@ namespace
 		std::vector<std::string> tokens;
 		Tokenize(fileaccesstokens, tokens, ";");
 
-		STokens backup_tokens = readTokens(backupfolder, clientname, path);
+		backupaccess::STokens backup_tokens = backupaccess::readTokens(backupfolder, clientname, path);
 		if(backup_tokens.tokens.empty())
 		{
 			return false;
@@ -241,8 +230,26 @@ namespace
 
 		return checkFileToken(backup_tokens.tokens, tokens, metadata);
 	}
+} //unnamed namespace
 
-	std::string decryptTokens(IDatabase* db, str_map GET)
+namespace backupaccess
+{
+	std::wstring getBackupFolder(IDatabase* db)
+	{
+		IQuery* q=db->Prepare("SELECT value FROM settings_db.settings WHERE key='backupfolder'");
+		db_results res_bf=q->Read();
+		q->Reset();
+		if(!res_bf.empty() )
+		{
+			return res_bf[0][L"value"];
+		}
+		else
+		{
+			return std::wstring();
+		}
+	}
+
+	std::string decryptTokens(IDatabase* db, const str_map& GET)
 	{
 		if(crypto_fak==NULL)
 		{
@@ -250,14 +257,14 @@ namespace
 		}
 
 		int clientid;
-		str_map::iterator iter_clientname =GET.find(L"clientname");
+		str_map::const_iterator iter_clientname =GET.find(L"clientname");
 		if(iter_clientname!=GET.end())
 		{
 			clientid = getClientid(db, iter_clientname->second);
 		}
 		else
 		{
-			str_map::iterator iter_clientid = GET.find(L"clientid");
+			str_map::const_iterator iter_clientid = GET.find(L"clientid");
 			if(iter_clientid!=GET.end())
 			{
 				clientid = watoi(iter_clientid->second);
@@ -278,7 +285,7 @@ namespace
 		std::string client_key = server_settings.getSettings()->client_access_key;
 
 		size_t i=0;
-		str_map::iterator iter;
+		str_map::const_iterator iter;
 		do 
 		{
 			iter = GET.find(L"tokens"+convert(i));
@@ -295,66 +302,359 @@ namespace
 
 		return std::string();
 	}
-}
 
-STokens readTokens(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path)
-{
-	if(backupfolder.empty() || clientname.empty() || path.empty())
+	STokens readTokens(const std::wstring& backupfolder, const std::wstring& clientname, const std::wstring& path)
 	{
-		return STokens();
-	}
-
-	std::auto_ptr<ISettingsReader> backup_tokens(Server->createFileSettingsReader(backupfolder+os_file_sep()+clientname+os_file_sep()+path+os_file_sep()+L".hashes"+os_file_sep()+L".urbackup_tokens.properties"));
-
-	if(!backup_tokens.get())
-	{
-		return STokens();
-	}
-
-	std::string ids_str = backup_tokens->getValue("ids", "");
-	std::vector<std::string> ids;
-	Tokenize(ids_str, ids, ",");
-
-	std::vector<SToken> ret;
-	for(size_t i=0;i<ids.size();++i)
-	{
-		SToken token = { watoi64(widen(ids[i])),
-			base64_decode_dash(backup_tokens->getValue(ids[i]+"."+"accountname", "")),
-			backup_tokens->getValue(ids[i]+"."+"token", "") };
-
-		ret.push_back(token);
-	}
-	STokens tokens = { backup_tokens->getValue("access_key", ""),
-		ret };
-
-	return tokens;
-}
-
-bool checkFileToken( const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, const FileMetadata &metadata )
-{
-	bool has_permission=false;
-	for(size_t i=0;i<backup_tokens.size();++i)
-	{
-		for(size_t j=0;j<tokens.size();++j)
+		if(backupfolder.empty() || clientname.empty() || path.empty())
 		{
-			if(backup_tokens[i].token.empty())
-				continue;
+			return STokens();
+		}
 
-			bool denied = false;
-			if(backup_tokens[i].token==tokens[j] &&
-				metadata.hasPermission(static_cast<int>(backup_tokens[i].id), denied))
+		std::auto_ptr<ISettingsReader> backup_tokens(Server->createFileSettingsReader(backupfolder+os_file_sep()+clientname+os_file_sep()+path+os_file_sep()+L".hashes"+os_file_sep()+L".urbackup_tokens.properties"));
+
+		if(!backup_tokens.get())
+		{
+			return STokens();
+		}
+
+		std::string ids_str = backup_tokens->getValue("ids", "");
+		std::vector<std::string> ids;
+		Tokenize(ids_str, ids, ",");
+
+		std::vector<SToken> ret;
+		for(size_t i=0;i<ids.size();++i)
+		{
+			SToken token = { watoi64(widen(ids[i])),
+				base64_decode_dash(backup_tokens->getValue(ids[i]+"."+"accountname", "")),
+				backup_tokens->getValue(ids[i]+"."+"token", "") };
+
+			ret.push_back(token);
+		}
+		STokens tokens = { backup_tokens->getValue("access_key", ""),
+			ret };
+
+		return tokens;
+	}
+
+	bool checkFileToken( const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, const FileMetadata &metadata )
+	{
+		bool has_permission=false;
+		for(size_t i=0;i<backup_tokens.size();++i)
+		{
+			for(size_t j=0;j<tokens.size();++j)
 			{
-				has_permission=true;
+				if(backup_tokens[i].token.empty())
+					continue;
+
+				bool denied = false;
+				if(backup_tokens[i].token==tokens[j] &&
+					metadata.hasPermission(static_cast<int>(backup_tokens[i].id), denied))
+				{
+					has_permission=true;
+				}
+				else if(denied)
+				{
+					return false;
+				}
 			}
-			else if(denied)
+		}
+
+		return has_permission;
+	}
+
+	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, int backupid_offset)
+	{
+		std::wstring backupfolder = getBackupFolder(db);
+
+		Helper helper(Server->getThreadID(), NULL, NULL);
+
+		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
+		q->Bind(t_clientid);
+		db_results res=q->Read();
+		JSON::Array backups;
+		for(size_t i=0;i<res.size();++i)
+		{
+			if(fileaccesstokens!=NULL && !checkBackupTokens(*fileaccesstokens, backupfolder, clientname, res[i][L"path"]) )
 			{
-				return false;
+				continue;
 			}
+
+			JSON::Object obj;
+			obj.set("id", watoi(res[i][L"id"])+backupid_offset);
+			obj.set("backuptime", res[i][L"t_backuptime"]);
+			obj.set("incremental", watoi(res[i][L"incremental"]));
+			obj.set("size_bytes", res[i][L"size_bytes"]);
+			obj.set("archived", res[i][L"archived"]);
+			_i64 archive_timeout=0;
+			if(!res[i][L"archive_timeout"].empty())
+			{
+				archive_timeout=watoi64(res[i][L"archive_timeout"]);
+				if(archive_timeout!=0)
+				{
+					archive_timeout-=Server->getTimeSeconds();
+				}
+			}
+			obj.set("archive_timeout", archive_timeout);
+			backups.add(obj);
+		}
+
+		return backups;
+	}
+
+	SPathInfo get_metadata_path_with_tokens(const std::wstring& u_path, std::string* fileaccesstokens, std::wstring clientname, std::wstring backupfolder, int* backupid, std::wstring backuppath)
+	{
+		SPathInfo ret;
+		std::vector<std::string> tokens;
+		if(fileaccesstokens)
+		{
+			ret.backup_tokens = readTokens(backupfolder, clientname, backuppath);							
+			Tokenize(*fileaccesstokens, tokens, ";");
+		}
+
+		std::vector<std::wstring> t_path;
+		Tokenize(u_path, t_path, L"/");
+
+		for(size_t i=0;i<t_path.size();++i)
+		{
+			if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".."
+				&& t_path[i].find(L"/")==std::string::npos
+				&& t_path[i].find(L"\\")==std::string::npos )
+			{
+				ret.rel_path+=UnescapeSQLString(t_path[i])+os_file_sep();
+				ret.rel_metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]))+os_file_sep();
+
+				if(fileaccesstokens)
+				{
+					std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(ret.rel_metadata_path.empty()?L"":(os_file_sep()+ret.rel_metadata_path));
+
+			
+					if(!backupid 
+						&& i==t_path.size()-1
+						&& !os_directory_exists(os_file_prefix(curr_metadata_dir)) )
+					{
+						ret.is_file=true;
+					}
+
+					if( ret.is_file)
+					{
+						curr_metadata_dir.erase(curr_metadata_dir.size()-1, 1);
+					}
+					else
+					{
+						curr_metadata_dir+=metadata_dir_fn;
+					}
+
+					FileMetadata dir_metadata;
+					if(!read_metadata(curr_metadata_dir, dir_metadata))
+					{
+						ret.can_access_path=false;
+						break;
+					}
+					if(!checkFileToken(ret.backup_tokens.tokens, tokens, dir_metadata))
+					{
+						ret.can_access_path=false;
+						break;
+					}
+				}
+			}
+		}
+
+		ret.full_metadata_path = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(ret.rel_metadata_path.empty()?L"":(os_file_sep()+ret.rel_metadata_path));
+		ret.full_path = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?L"":(os_file_sep()+ret.rel_path));
+
+		return ret;
+	}
+
+	std::wstring get_backup_path(IDatabase* db, int backupid, int t_clientid)
+	{
+		IQuery* q=db->Prepare("SELECT path FROM backups WHERE id=? AND clientid=?");
+		q->Bind(backupid);
+		q->Bind(t_clientid);
+		db_results res=q->Read();
+		q->Reset();
+		if(!res.empty())
+		{
+			return res[0][L"path"];
+		}
+		else
+		{
+			return std::wstring();
 		}
 	}
 
-	return has_permission;
-}
+	bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, const std::wstring& u_path, JSON::Object& ret)
+	{
+		Helper helper(Server->getThreadID(), NULL, NULL);
+
+		db_results res;
+		if(backupid)
+		{
+			IQuery* q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=? AND clientid=?");
+			q->Bind(*backupid);
+			q->Bind(t_clientid);
+			res=q->Read();
+			q->Reset();
+
+			if(!res.empty())
+			{
+				ret.set("backuptime", res[0][L"backuptime"]);
+				ret.set("backupid", *backupid);
+			}
+		}
+		else
+		{
+			IQuery* q=db->Prepare("SELECT id, path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE clientid=? ORDER BY backuptime DESC");
+			q->Bind(t_clientid);
+			res=q->Read();
+			q->Reset();
+		}
+
+		std::wstring backupfolder=getBackupFolder(db);
+
+		if(backupfolder.empty())
+		{
+			return false;
+		}
+
+		std::wstring path;
+		std::vector<std::wstring> t_path;
+		Tokenize(u_path, t_path, L"/");
+
+		bool is_file=false;
+
+		JSON::Array ret_files;
+		for(size_t k=0;k<res.size();++k)
+		{
+			std::wstring backuppath=res[k][L"path"];
+
+			if( !fileaccesstokens || checkBackupTokens(*fileaccesstokens, backupfolder, clientname, backuppath) )
+			{
+				SPathInfo path_info = get_metadata_path_with_tokens(u_path, fileaccesstokens, clientname, backupfolder, backupid, backuppath);
+
+				if(!path_info.can_access_path)
+				{
+					continue;
+				}
+
+				is_file = path_info.is_file;
+
+				std::vector<std::string> tokens;
+				if(fileaccesstokens)
+				{	
+					Tokenize(*fileaccesstokens, tokens, ";");
+				}
+
+				ret.set("clientname", clientname);
+				ret.set("clientid", t_clientid);							
+				ret.set("path", u_path);
+
+				if(backupid)
+				{
+					std::vector<SFile> tfiles=getFiles(os_file_prefix(path_info.full_path), NULL);
+					std::vector<FileMetadata> tmetadata=getMetadata(path_info.full_metadata_path, tfiles, path.empty());
+
+					JSON::Array files;
+					for(size_t i=0;i<tfiles.size();++i)
+					{
+						if(tfiles[i].isdir)
+						{
+							if(path.empty() && (tfiles[i].name==L".hashes" || tfiles[i].name==L"user_views") )
+								continue;
+
+							if(fileaccesstokens && 
+								!checkFileToken(path_info.backup_tokens.tokens, tokens, tmetadata[i]))
+							{
+								continue;
+							}
+
+							JSON::Object obj;
+							obj.set("name", tfiles[i].name);
+							obj.set("dir", tfiles[i].isdir);
+							obj.set("size", tfiles[i].size);
+							obj.set("mod", tmetadata[i].last_modified);
+							obj.set("creat", tmetadata[i].created);
+							files.add(obj);
+						}
+					}
+					for(size_t i=0;i<tfiles.size();++i)
+					{
+						if(!tfiles[i].isdir)
+						{
+							if(path.empty() && tfiles[i].name==L".urbackup_tokens.properties")
+								continue;
+
+							if(fileaccesstokens && 
+								!checkFileToken(path_info.backup_tokens.tokens, tokens, tmetadata[i]))
+							{
+								continue;
+							}
+
+							JSON::Object obj;
+							obj.set("name", tfiles[i].name);
+							obj.set("dir", tfiles[i].isdir);
+							obj.set("size", tfiles[i].size);
+							obj.set("mod", tmetadata[i].last_modified);
+							obj.set("creat", tmetadata[i].created);
+							if(!tmetadata[i].shahash.empty())
+							{
+								obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(tmetadata[i].shahash.c_str()), static_cast<unsigned int>(tmetadata[i].shahash.size())));
+							}
+							files.add(obj);
+						}
+					}
+
+					ret.set("files", files);
+				}
+				else
+				{
+					std::auto_ptr<IFile> f;
+
+					if(path_info.is_file)
+					{
+						f.reset(Server->openFile(os_file_prefix(path_info.full_path), MODE_READ));
+					}
+
+					if( (path_info.is_file && f.get()) || os_directory_exists(os_file_prefix(path_info.full_path)) )
+					{
+						FileMetadata metadata = getMetaData(path_info.full_metadata_path, path_info.is_file);
+
+						JSON::Object obj;
+						obj.set("name", ExtractFileName(path_info.full_path));
+						if(path_info.is_file)
+						{
+							obj.set("size", f->Size());
+							obj.set("dir", false);
+						}
+						else
+						{
+							obj.set("size", 0);
+							obj.set("dir", true);
+						}
+						obj.set("mod", metadata.last_modified);
+						obj.set("creat", metadata.created);
+						obj.set("backupid", res[k][L"id"]);
+						obj.set("backuptime", res[k][L"backuptime"]);
+						if(!metadata.shahash.empty())
+						{
+							obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(metadata.shahash.c_str()), static_cast<unsigned int>(metadata.shahash.size())));
+						}
+						ret_files.add(obj);
+					}								
+				}
+			}
+		}
+
+		if(!backupid)
+		{
+			ret.set("single_item", true);
+			ret.set("is_file", is_file);
+			ret.set("files", ret_files);
+		}
+
+		return true;
+	}
+
+} //namespace backupaccess
 
 ACTION_IMPL(backups)
 {
@@ -369,7 +669,7 @@ ACTION_IMPL(backups)
 	if( (session==NULL || session->id==SESSION_ID_TOKEN_AUTH) && has_tokens)
 	{
 		token_authentication=true;
-		fileaccesstokens = decryptTokens(helper.getDatabase(), GET);
+		fileaccesstokens = backupaccess::decryptTokens(helper.getDatabase(), GET);
 
 		if(fileaccesstokens.empty())
 		{
@@ -452,7 +752,7 @@ ACTION_IMPL(backups)
 
 					if(!clientid.empty())
 					{
-						qstr+=" WHERE "+constructFilter(clientid, "id");
+						qstr+=" WHERE "+backupaccess::constructFilter(clientid, "id");
 					}
 					else
 					{
@@ -468,7 +768,7 @@ ACTION_IMPL(backups)
 			{
 				if(!clientid.empty())
 				{
-					qstr+=" WHERE "+constructFilter(clientid, "id");
+					qstr+=" WHERE "+backupaccess::constructFilter(clientid, "id");
 				}
 			}
 
@@ -535,37 +835,9 @@ ACTION_IMPL(backups)
 					}
 				}
 
-				std::wstring backupfolder = getBackupFolder(helper.getDatabase());
+				JSON::Array backups = backupaccess::get_backups_with_tokens(db, t_clientid, clientname,
+					token_authentication ? &fileaccesstokens : NULL, 0);
 
-				IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
-				q->Bind(t_clientid);
-				db_results res=q->Read();
-				JSON::Array backups;
-				for(size_t i=0;i<res.size();++i)
-				{
-					if(token_authentication && !checkBackupTokens(fileaccesstokens, backupfolder, clientname, res[i][L"path"]) )
-					{
-						continue;
-					}
-
-					JSON::Object obj;
-					obj.set("id", watoi(res[i][L"id"]));
-					obj.set("backuptime", res[i][L"t_backuptime"]);
-					obj.set("incremental", watoi(res[i][L"incremental"]));
-					obj.set("size_bytes", res[i][L"size_bytes"]);
-					obj.set("archived", res[i][L"archived"]);
-					_i64 archive_timeout=0;
-					if(!res[i][L"archive_timeout"].empty())
-					{
-						archive_timeout=watoi64(res[i][L"archive_timeout"]);
-						if(archive_timeout!=0)
-						{
-							archive_timeout-=Server->getTimeSeconds();
-						}
-					}
-					obj.set("archive_timeout", archive_timeout);
-					backups.add(obj);
-				}
 				ret.set("backups", backups);
 				ret.set("can_archive", archive_ok);
 
@@ -597,7 +869,6 @@ ACTION_IMPL(backups)
 				t_clientid = watoi(GET[L"clientid"]);
 				clientname = getClientname(helper.getDatabase(), t_clientid);
 			}
-			bool is_file=GET[L"is_file"]==L"true";
 			bool r_ok = token_authentication ? true : 
 				helper.hasRights(t_clientid, rights, clientid);
 
@@ -610,242 +881,79 @@ ACTION_IMPL(backups)
 					backupid=watoi(GET[L"backupid"]);
 				}
 				std::wstring u_path=UnescapeHTML(GET[L"path"]);
-				std::wstring path;
-				std::vector<std::wstring> t_path;
-				Tokenize(u_path, t_path, L"/");
 
-				std::wstring backupfolder=getBackupFolder(db);
-
-				if(!clientname.empty() && !backupfolder.empty() )
+				if(!clientname.empty() )
 				{
-					db_results res;
-					if(has_backupid)
+					if( (sa==L"filesdl" || sa==L"zipdl" || sa==L"clientdl") && has_backupid)
 					{
-						IQuery* q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=? AND clientid=?");
-						q->Bind(backupid);
-						q->Bind(t_clientid);
-						res=q->Read();
-						q->Reset();
+						std::wstring backupfolder = backupaccess::getBackupFolder(db);
+						std::wstring backuppath = backupaccess::get_backup_path(db, backupid, t_clientid);
 
-						if(!res.empty())
+						if(backupfolder.empty())
 						{
-							ret.set("backuptime", res[0][L"backuptime"]);
-							ret.set("backupid", backupid);
+							return;
 						}
-					}
-					else
-					{
-						IQuery* q=db->Prepare("SELECT id, path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE clientid=? ORDER BY backuptime DESC");
-						q->Bind(t_clientid);
-						res=q->Read();
-						q->Reset();
-					}
-					
-					JSON::Array ret_files;
-					for(size_t k=0;k<res.size();++k)
-					{
-						std::wstring backuppath=res[k][L"path"];
 
-						if( !token_authentication || checkBackupTokens(fileaccesstokens, backupfolder, clientname, backuppath) )
+						backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, token_authentication ? &fileaccesstokens : NULL,
+							clientname, backupfolder, has_backupid ? &backupid : NULL, backuppath);
+
+						if(!path_info.can_access_path)
 						{
-							STokens backup_tokens;
-							std::vector<std::string> tokens;
-							if(token_authentication)
+							return;
+						}
+
+						std::vector<std::string> tokens;
+						if(token_authentication)
+						{
+							Tokenize(fileaccesstokens, tokens, ";");
+						}
+
+						if(sa==L"filesdl")
+						{
+							if(!token_authentication || checkFileToken(fileaccesstokens, backupfolder, clientname, backuppath, path_info.full_metadata_path))
 							{
-								backup_tokens = readTokens(backupfolder, clientname, backuppath);							
-								Tokenize(fileaccesstokens, tokens, ";");
+								sendFile(helper, path_info.full_path);
 							}
-
-							path.clear();
-							std::wstring metadata_path;
-							bool cannot_access_path=false;
-							for(size_t i=0;i<t_path.size();++i)
+							return;
+						}
+						else if(sa==L"zipdl")
+						{
+							sendZip(helper, path_info.full_path, path_info.full_metadata_path, GET[L"filter"], token_authentication, path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty());
+							return;
+						}
+						else if(sa==L"clientdl" && fileserv!=NULL)
+						{
+							if(ServerStatus::getStatus(clientname).comm_pipe==NULL)
 							{
-								if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".."
-									&& t_path[i].find(L"/")==std::string::npos
-									&& t_path[i].find(L"\\")==std::string::npos )
-								{
-									path+=UnescapeSQLString(t_path[i])+os_file_sep();
-									metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]))+os_file_sep();
-
-									if(token_authentication)
-									{
-										std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(metadata_path.empty()?L"":(os_file_sep()+metadata_path));
-
-										if( ( (!has_backupid && is_file) || sa==L"filesdl")
-											&& i==t_path.size()-1)
-										{
-											curr_metadata_dir.erase(curr_metadata_dir.size()-1, 1);
-										}
-										else
-										{
-											curr_metadata_dir+=metadata_dir_fn;
-										}
-
-										FileMetadata dir_metadata;
-										if(!read_metadata(curr_metadata_dir, dir_metadata))
-										{
-											cannot_access_path=true;
-											break;
-										}
-										if(!checkFileToken(backup_tokens.tokens, tokens, dir_metadata))
-										{
-											cannot_access_path=true;
-											break;
-										}
-									}
-								}
-							}
-
-							if(cannot_access_path)
-							{
-								continue;
-							}
-
-							if( ((sa==L"filesdl" || sa==L"zipdl" || sa==L"clientdl") || (!has_backupid && is_file) )
-								&& !path.empty())
-							{
-								path.erase(path.size()-1, 1);
-								metadata_path.erase(metadata_path.size()-1, 1);
-							}				
-
-							ret.set("clientname", clientname);
-							ret.set("clientid", t_clientid);							
-							ret.set("path", u_path);
-
-							std::wstring curr_path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(path.empty()?L"":(os_file_sep()+path));
-							std::wstring curr_metadata_path=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(metadata_path.empty()?L"":(os_file_sep()+metadata_path));
-
-							if(sa==L"filesdl")
-							{
-								if(!token_authentication || checkFileToken(fileaccesstokens, backupfolder, clientname, backuppath, curr_metadata_path))
-								{
-									sendFile(helper, curr_path);
-								}
-								return;
-							}
-												
-							if(sa==L"zipdl")
-							{
-								sendZip(helper, curr_path, curr_metadata_path, GET[L"filter"], token_authentication, backup_tokens.tokens, tokens, path.empty());
-								return;
-							}
-							else if(sa==L"clientdl" && fileserv!=NULL)
-							{
-								if(ServerStatus::getStatus(clientname).comm_pipe==NULL)
-								{
-									ret.set("err", "client_not_online");
-									helper.Write(ret.get(false));
-									return;
-								}
-
-								if(!create_clientdl_thread(clientname, t_clientid, t_clientid, curr_path, curr_metadata_path, GET[L"filter"], token_authentication,
-									backup_tokens.tokens, tokens, path.empty(), path))
-								{
-									ret.set("err", "internal_error");
-									helper.Write(ret.get(false));
-									return;
-								}
-
-								ret.set("ok", "true");
+								ret.set("err", "client_not_online");
 								helper.Write(ret.get(false));
 								return;
 							}
 
-							if(has_backupid)
+							if(!create_clientdl_thread(clientname, t_clientid, t_clientid, path_info.full_path, path_info.full_metadata_path, GET[L"filter"], token_authentication,
+								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path))
 							{
-								std::vector<SFile> tfiles=getFiles(os_file_prefix(curr_path), NULL);
-								std::vector<FileMetadata> tmetadata=getMetadata(curr_metadata_path, tfiles, path.empty());
-
-
-								JSON::Array files;
-								for(size_t i=0;i<tfiles.size();++i)
-								{
-									if(tfiles[i].isdir)
-									{
-										if(path.empty() && (tfiles[i].name==L".hashes" || tfiles[i].name==L"user_views") )
-											continue;
-
-										if(token_authentication && 
-											!checkFileToken(backup_tokens.tokens, tokens, tmetadata[i]))
-										{
-											continue;
-										}
-
-										JSON::Object obj;
-										obj.set("name", tfiles[i].name);
-										obj.set("dir", tfiles[i].isdir);
-										obj.set("size", tfiles[i].size);
-										obj.set("mod", tmetadata[i].last_modified);
-										obj.set("creat", tmetadata[i].created);
-										files.add(obj);
-									}
-								}
-								for(size_t i=0;i<tfiles.size();++i)
-								{
-									if(!tfiles[i].isdir)
-									{
-										if(path.empty() && tfiles[i].name==L".urbackup_tokens.properties")
-											continue;
-
-										if(token_authentication && 
-											!checkFileToken(backup_tokens.tokens, tokens, tmetadata[i]))
-										{
-											continue;
-										}
-
-										JSON::Object obj;
-										obj.set("name", tfiles[i].name);
-										obj.set("dir", tfiles[i].isdir);
-										obj.set("size", tfiles[i].size);
-										obj.set("mod", tmetadata[i].last_modified);
-										obj.set("creat", tmetadata[i].created);
-										files.add(obj);
-									}
-								}
-
-								ret.set("files", files);
+								ret.set("err", "internal_error");
+								helper.Write(ret.get(false));
+								return;
 							}
-							else
-							{
-								std::auto_ptr<IFile> f;
 
-								if(is_file)
-								{
-									f.reset(Server->openFile(os_file_prefix(curr_path), MODE_READ));
-								}
-								
-								if( (is_file && f.get()) || os_directory_exists(os_file_prefix(curr_path)) )
-								{
-									FileMetadata metadata = getMetaData(curr_metadata_path, is_file);
-
-									JSON::Object obj;
-									obj.set("name", ExtractFileName(curr_path));
-									if(is_file)
-									{
-										obj.set("size", f->Size());
-										obj.set("dir", false);
-									}
-									else
-									{
-										obj.set("size", 0);
-										obj.set("dir", true);
-									}
-									obj.set("mod", metadata.last_modified);
-									obj.set("creat", metadata.created);
-									obj.set("backupid", res[k][L"id"]);
-									obj.set("backuptime", res[k][L"backuptime"]);
-									ret_files.add(obj);
-								}								
-							}
+							ret.set("ok", "true");
+							helper.Write(ret.get(false));
+							return;
 						}
 					}
-
-					if(!has_backupid)
+					else
 					{
-						ret.set("single_item", true);
-						ret.set("is_file", is_file);
-						ret.set("files", ret_files);
+						if(!backupaccess::get_files_with_tokens(db, has_backupid ? &backupid : NULL, t_clientid, clientname, token_authentication ? &fileaccesstokens : NULL,
+								u_path, ret))
+						{
+							return;
+						}
+
+						ret.set("clientname", clientname);
+						ret.set("clientid", t_clientid);							
+						ret.set("path", u_path);
 					}
 				}
 			}

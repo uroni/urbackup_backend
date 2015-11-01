@@ -133,7 +133,7 @@ bool FileMetadataDownloadThread::applyMetadata()
 
 			restore.log("Applying metadata of file \"" + curr_fn + "\"", LL_DEBUG);
 
-			bool is_dir = curr_fn[0]=='d';
+			bool is_dir = (curr_fn[0]=='d' || curr_fn[0]=='l');
 
 #ifdef _WIN32
 			std::wstring os_path;

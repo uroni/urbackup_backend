@@ -13,12 +13,16 @@ class FileMetadataDownloadThread : public IThread
 {
 public:
 	FileMetadataDownloadThread(FileClient* fc, const std::string& server_token, logid_t logid);
+	FileMetadataDownloadThread(const std::string& server_token, std::wstring metadata_tmp_fn);
+	~FileMetadataDownloadThread();
 
 	virtual void operator()();
 
 	bool applyMetadata(const std::wstring& backup_metadata_dir, const std::wstring& backup_dir, INotEnoughSpaceCallback *cb);
 	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
     bool applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
+
+	bool getHasError();
 
 private:
 	std::auto_ptr<FileClient> fc;
@@ -29,6 +33,11 @@ private:
 	bool has_error;
 	std::wstring metadata_tmp_fn;
 	logid_t logid;
+
+	bool dry_run;
 };
 
-}
+int check_metadata();
+
+} //namespace server
+

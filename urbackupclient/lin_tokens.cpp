@@ -14,6 +14,7 @@
 #include "../common/data.h"
 #include <memory.h>
 #include <stdlib.h>
+#include <assert.h>
 
 namespace tokens
 {
@@ -46,17 +47,17 @@ void TokenCache::reset(TokenCacheInt* cache)
 
 TokenCacheInt* TokenCache::get()
 {
-	token_cache.get();
+	return token_cache.get();
 }
 
 void TokenCache::operator=(const TokenCache& other)
 {
-
+	assert(false);
 }
 
 TokenCache::TokenCache(const TokenCache& other)
 {
-
+	assert(false);
 }
 
 std::wstring get_hostname()
@@ -280,7 +281,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt token_id = dao->getFileAccessTokenId(users[i], 1);
+		ClientDAO::CondInt token_id = dao->getFileAccessTokenId2Alts(users[i], ClientDAO::c_is_user, ClientDAO::c_is_system_user);
 
 		if(!token_id.exists)
 		{
@@ -303,7 +304,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt token_id = dao->getFileAccessTokenId(groups[i], 0);
+		ClientDAO::CondInt token_id = dao->getFileAccessTokenId(groups[i], ClientDAO::c_is_group);
 
 		if(!token_id.exists)
 		{
@@ -340,6 +341,16 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 	}
 	else
 	{
+		//Allow root
+		{
+			std::map<uid_t, unsigned int>::iterator it = token_cache.get()->uid_map.find(0);
+			if(it!=token_cache.get()->uid_map.end())
+			{
+				token_info.addChar(ID_GRANT_ACCESS);
+				token_info.addUInt(it->second);
+			}
+		}
+	
 		if(stat_data.st_mode & S_IRUSR)
 		{
 			std::map<uid_t, unsigned int>::iterator it = token_cache.get()->uid_map.find(stat_data.st_uid);

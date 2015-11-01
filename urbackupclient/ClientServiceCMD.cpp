@@ -218,6 +218,21 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		flags |= flag_with_scripts;
 	}
 
+	if(params.find(L"with_orig_path")!=params.end())
+	{
+		flags |= flag_with_orig_path;
+	}
+
+	if(params.find(L"with_sequence")!=params.end())
+	{
+		flags |= flag_with_sequence;
+	}
+
+	if(params.find(L"with_proper_symlinks")!=params.end())
+	{
+		flags |= flag_with_proper_symlinks;
+	}
+
 	if(end_to_end_file_backup_verification_enabled)
 	{
 		flags |= flag_end_to_end_verification;
@@ -298,6 +313,21 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	if(params.find(L"with_scripts")!=params.end())
 	{
 		flags |= flag_with_scripts;
+	}
+
+	if(params.find(L"with_orig_path")!=params.end())
+	{
+		flags |= flag_with_orig_path;
+	}
+
+	if(params.find(L"with_sequence")!=params.end())
+	{
+		flags |= flag_with_sequence;
+	}
+
+	if(params.find(L"with_proper_symlinks")!=params.end())
+	{
+		flags |= flag_with_proper_symlinks;
 	}
 
 	if(end_to_end_file_backup_verification_enabled)
@@ -1174,6 +1204,99 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS(const std::string &cmd)
 	}
 }
 
+
+void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cmd, str_map &params )
+{
+	lasttime=Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+	if(channel_pipes.size()==0)
+	{
+		tcpstack.Send(pipe, "0");
+	}
+	else
+	{
+		std::string accessparams = getAccessTokensParams(params[L"tokens"], true);
+
+		if(accessparams.empty())
+		{
+			tcpstack.Send(pipe, "0");
+			return;
+		}
+
+		accessparams[0]=' ';
+
+		std::string filebackups;
+		for(size_t i=0;i<channel_pipes.size();++i)
+		{
+			tcpstack.Send(channel_pipes[i].pipe, cmd+accessparams);
+			std::string nc=receivePacket(channel_pipes[i].pipe);
+			if(!nc.empty())
+			{
+				if(!filebackups.empty())
+				{
+					filebackups[filebackups.size()-1] = ',';
+					nc[0]=' ';
+				}
+				filebackups+=nc;
+			}
+		}
+
+		tcpstack.Send(pipe, "1"+filebackups);
+	}
+}
+
+void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &params)
+{
+	lasttime=Server->getTimeMS();
+	IScopedLock lock(backup_mutex);
+	waitForPings(&lock);
+	if(channel_pipes.size()==0)
+	{
+		tcpstack.Send(pipe, "0");
+	}
+	else
+	{
+		std::string accessparams = getAccessTokensParams(params[L"tokens"], true);
+
+		if(accessparams.empty())
+		{
+			tcpstack.Send(pipe, "0");
+			return;
+		}
+
+		accessparams[0]=' ';
+
+		str_map::iterator it_path = params.find(L"path");
+
+		if(it_path!=params.end())
+		{
+			accessparams+="&path="+EscapeParamString(Server->ConvertToUTF8(it_path->second));
+		}
+
+		str_map::iterator it_backupid = params.find(L"backupid");
+
+		if(it_backupid!=params.end())
+		{
+			accessparams+="&backupid="+EscapeParamString(Server->ConvertToUTF8(it_backupid->second));
+		}
+
+		for(size_t i=0;i<channel_pipes.size();++i)
+		{
+			tcpstack.Send(channel_pipes[i].pipe, cmd+accessparams);
+
+			std::string nc=receivePacket(channel_pipes[i].pipe);
+			if(!nc.empty() && nc!="err")
+			{
+				tcpstack.Send(pipe, "1"+nc);
+				return;
+			}
+		}
+
+		tcpstack.Send(pipe, "0");
+	}
+}
+
 void ClientConnector::CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params)
 {
 	lasttime=Server->getTimeMS();
@@ -1542,14 +1665,6 @@ void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 	std::auto_ptr<ISettingsReader> settings(
 		Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 
-	std::string computername;
-	if( (!settings->getValue("computername", &computername)
-		&& !settings->getValue("computername_def", &computername) ) 
-		|| computername.empty())
-	{
-		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
-	}
-
 	std::string server_url;
 	if( (!settings->getValue("server_url", &server_url)
 		&& !settings->getValue("server_url_def", &server_url) ) 
@@ -1560,36 +1675,17 @@ void ClientConnector::CMD_GET_ACCESS_PARAMS(str_map &params)
 		return;
 	}
 
-	std::auto_ptr<ISettingsReader> access_keys(
-		Server->createFileSettingsReader("access_keys.properties"));
+	std::string ret = getAccessTokensParams(tokens, true);
 
-	std::vector<std::wstring> server_token_keys = access_keys->getKeys();
-
-	if(server_token_keys.empty())
+	if(!ret.empty())
 	{
-		Server->Log("No access key present", LL_ERROR);
+		ret[0]='#';
+		ret = server_url + ret;
+	}
+	else
+	{
 		tcpstack.Send(pipe, "");
 		return;
-	}
-
-	if(server_url[server_url.size()-1]!='/')
-	{
-		server_url+="/";
-	}
-
-	std::string ret = server_url+"#computername="+computername;
-
-	for(size_t i=0;i<server_token_keys.size();++i)
-	{
-		std::wstring server_key;
-
-		if(access_keys->getValue(server_token_keys[i],
-			&server_key) && !server_key.empty())
-		{
-			ret += "&tokens"+nconvert(i)+"="+base64_encode_dash(
-				crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
-					Server->ConvertToUTF8(server_key) ) );
-		}
 	}
 
 	tcpstack.Send(pipe, ret);

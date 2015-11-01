@@ -18,10 +18,6 @@
 
 #include "os_functions.h"
 #include "../stringtools.h"
-#ifndef OS_FUNC_NO_SERVER
-#include "../Interface/Server.h"
-#include "../Interface/File.h"
-#endif
 #ifdef _WIN_PRE_VISTA
 #define _WIN32_WINNT 0x0500
 #endif
@@ -42,12 +38,14 @@
 #endif
 #include <shlwapi.h>
 
+#include "server_compat.h"
+
 //For PathIsRelative
 #pragma comment(lib, "Shlwapi.lib")
 
 namespace
 {
-
+	
 #define REPARSE_MOUNTPOINT_HEADER_SIZE   8
 
 	typedef struct {
@@ -256,7 +254,7 @@ std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool e
 							}
 							else
 							{
-								Server->Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+tpath+L"\\"+f.name+L"\" not supported", LL_ERROR);
+								Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+tpath+L"\\"+f.name+L"\" not supported", LL_ERROR);
 							}
 						}
 						else
@@ -363,7 +361,7 @@ SFile getFileMetadataWin( const std::wstring &path, bool with_usn )
 						}
 						else
 						{
-							Server->Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+path+L"\" not supported", LL_ERROR);
+							Log(L"USN entry major version "+convert(usnv2->MajorVersion)+L" of file \""+path+L"\" not supported", LL_ERROR);
 						}
 					}
 					else
@@ -395,17 +393,15 @@ SFile getFileMetadata( const std::wstring &path )
 	return getFileMetadataWin(path, false);
 }
 
-#ifndef OS_FUNC_NO_SERVER
 void removeFile(const std::wstring &path)
 {
-	_unlink(Server->ConvertToUTF8(path).c_str());
+	_unlink(ConvertToUTF8(path).c_str());
 }
 
 void moveFile(const std::wstring &src, const std::wstring &dst)
 {
-	rename(Server->ConvertToUTF8(src).c_str(), Server->ConvertToUTF8(dst).c_str() );
+	rename(ConvertToUTF8(src).c_str(), ConvertToUTF8(dst).c_str() );
 }
-#endif
 
 bool isDirectory(const std::wstring &path, void* transaction)
 {
@@ -431,7 +427,7 @@ bool isDirectory(const std::wstring &path, void* transaction)
 		}
 #endif	
 
-        if ( attrib == 0xFFFFFFFF || !(attrib & FILE_ATTRIBUTE_DIRECTORY) )
+        if ( attrib == INVALID_FILE_ATTRIBUTES || !(attrib & FILE_ATTRIBUTE_DIRECTORY) )
         {
                 return false;
         }
@@ -439,6 +435,34 @@ bool isDirectory(const std::wstring &path, void* transaction)
         {
                 return true;
         }
+}
+
+int os_get_file_type(const std::wstring &path)
+{
+	DWORD attrib = GetFileAttributesW(path.c_str());
+
+	if(attrib==INVALID_FILE_ATTRIBUTES)
+	{
+		return 0;
+	}
+
+	int ret = 0;
+
+	if(attrib & FILE_ATTRIBUTE_DIRECTORY)
+	{
+		ret |= EFileType_Directory;
+	}
+	else
+	{
+		ret |= EFileType_File;
+	}
+
+	if(attrib & FILE_ATTRIBUTE_REPARSE_POINT)
+	{
+		ret |= EFileType_Symlink;
+	}
+
+	return ret;
 }
 
 int64 os_atoi64(const std::string &str)
@@ -578,9 +602,7 @@ bool os_remove_nonempty_dir(const std::wstring &path, os_symlink_callback_t syml
 	{
 		if(!RemoveDirectoryW(path.c_str()))
 		{
-#ifndef OS_FUNC_NO_SERVER
-			Server->Log(L"Error deleting directory \""+path+L"\"", LL_ERROR);
-#endif
+			Log(L"Error deleting directory \""+path+L"\"", LL_ERROR);
 		}
 	}
 	return true;
@@ -635,9 +657,7 @@ bool os_link_symbolic_symlink(const std::wstring &target, const std::wstring &ln
 	}
 	if(rc==FALSE)
 	{
-#ifndef OS_FUNC_NO_SERVER
-		Server->Log(L"Creating symbolic link from \""+lname+L"\" to \""+target+L"\" failed with error "+convert((int)GetLastError()), LL_ERROR);
-#endif
+		Log(L"Creating symbolic link from \""+lname+L"\" to \""+target+L"\" failed with error "+convert((int)GetLastError()), LL_ERROR);
 	}
 	return rc!=0;
 #else
@@ -698,9 +718,7 @@ bool os_link_symbolic_junctions(const std::wstring &target, const std::wstring &
 cleanup:
 	if(!ret)
 	{
-		#ifndef OS_FUNC_NO_SERVER
-		Server->Log("Creating junction failed. Last error="+nconvert((int)GetLastError()), LL_ERROR);
-		#endif
+		Log("Creating junction failed. Last error="+nconvert((int)GetLastError()), LL_ERROR);
 	}
 	delete []buf;
 	if(hJunc!=INVALID_HANDLE_VALUE)
@@ -958,9 +976,7 @@ std::wstring os_get_final_path(std::wstring path)
 
 	if( hFile==INVALID_HANDLE_VALUE )
 	{
-#ifndef OS_FUNC_NO_SERVER
-		Server->Log(L"Could not open path in os_get_final_path for \""+path+L"\"", LL_ERROR);
-#endif
+		Log(L"Could not open path in os_get_final_path for \""+path+L"\"", LL_ERROR);
 		return path;
 	}
 
@@ -968,9 +984,7 @@ std::wstring os_get_final_path(std::wstring path)
 
 	if(dwBufsize==0)
 	{
-#ifndef OS_FUNC_NO_SERVER
-		Server->Log(L"Error getting path size in in os_get_final_path error="+convert((int)GetLastError())+L" for \""+path+L"\"", LL_ERROR);
-#endif
+		Log(L"Error getting path size in in os_get_final_path error="+convert((int)GetLastError())+L" for \""+path+L"\"", LL_ERROR);
 		CloseHandle(hFile);
 		return path;
 	}
@@ -983,9 +997,7 @@ std::wstring os_get_final_path(std::wstring path)
 
 	if(dwRet==0)
 	{
-#ifndef OS_FUNC_NO_SERVER
-		Server->Log("Error getting path in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
-#endif
+		Log("Error getting path in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
 	}
 	else if(dwRet<ret.size())
 	{
@@ -1007,9 +1019,7 @@ std::wstring os_get_final_path(std::wstring path)
 	}
 	else
 	{
-#ifndef OS_FUNC_NO_SERVER
-		Server->Log("Error getting path (buffer too small) in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
-#endif
+		Log("Error getting path (buffer too small) in in os_get_final_path error="+nconvert((int)GetLastError()), LL_ERROR);
 	}
 
 	return path;
@@ -1018,7 +1028,6 @@ std::wstring os_get_final_path(std::wstring path)
 #endif
 }
 
-#ifndef OS_FUNC_NO_SERVER
 bool os_rename_file(std::wstring src, std::wstring dst, void* transaction)
 {
 	BOOL rc;
@@ -1037,12 +1046,11 @@ bool os_rename_file(std::wstring src, std::wstring dst, void* transaction)
 #ifdef _DEBUG
 	if(rc==0)
 	{
-		Server->Log("MoveFileW error: "+nconvert((int)GetLastError()), LL_ERROR);
+		Log("MoveFileW error: "+nconvert((int)GetLastError()), LL_ERROR);
 	}
 #endif
 	return rc!=0;
 }
-#endif
 
 void* os_start_transaction()
 {
@@ -1050,7 +1058,7 @@ void* os_start_transaction()
 	HANDLE htrans = CreateTransaction(NULL, NULL, 0, 0, 0, 0, NULL);
 	if(htrans==INVALID_HANDLE_VALUE)
 	{
-		Server->Log("Creating transaction failed. ec="+nconvert((int)GetLastError), LL_WARNING);
+		Log("Creating transaction failed. ec="+nconvert((int)GetLastError), LL_WARNING);
 		return NULL;
 	}
 	return htrans;
@@ -1069,7 +1077,7 @@ bool os_finish_transaction(void* transaction)
 	BOOL b = CommitTransaction(transaction);
 	if(!b)
 	{
-		Server->Log("Commiting transaction failed. ec="+nconvert((int)GetLastError), LL_ERROR);
+		Log("Commiting transaction failed. ec="+nconvert((int)GetLastError), LL_ERROR);
 		CloseHandle(transaction);
 		return false;
 	}
@@ -1123,6 +1131,7 @@ bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified
 	}
 }
 
+#ifndef OS_FUNC_NO_SERVER
 bool copy_file(const std::wstring &src, const std::wstring &dst)
 {
 	IFile *fsrc=Server->openFile(src, MODE_READ);
@@ -1161,6 +1170,7 @@ bool copy_file(const std::wstring &src, const std::wstring &dst)
 		return true;
 	}
 }
+#endif
 
 bool os_path_absolute(const std::wstring& path)
 {

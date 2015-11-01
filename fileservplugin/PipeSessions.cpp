@@ -115,6 +115,8 @@ void PipeSessions::removeFile(const std::wstring& cmd)
 	std::map<std::wstring, SPipeSession>::iterator it = pipe_files.find(cmd);
 	if(it != pipe_files.end())
 	{
+		Server->Log(L"Removing pipe file "+cmd, LL_DEBUG);
+
 		if(!it->second.retrieved_exit_info)
 		{
 			int exit_code = -1;
@@ -125,11 +127,18 @@ void PipeSessions::removeFile(const std::wstring& cmd)
 				Server->getTimeMS() );
 
 			exit_information[cmd] = exit_info;
+
+			Server->Log("Pipe file has exit code "+nconvert(exit_code), LL_DEBUG);
 		}		
 
+		it->second.file->forceExitWait();
 		delete it->second.file;
 		delete it->second.input_pipe;
 		pipe_files.erase(it);
+	}
+	else
+	{
+		Server->Log(L"Pipe file "+cmd+L" not found while removing pipe file", LL_WARNING);
 	}
 }
 
@@ -188,6 +197,7 @@ void PipeSessions::operator()()
 		{
 			if(currtime - it->second.file->getLastRead() > pipe_file_timeout)
 			{
+				it->second.file->forceExitWait();
 				delete it->second.file;
 				delete it->second.input_pipe;
 				std::map<std::wstring, SPipeSession>::iterator del_it = it;

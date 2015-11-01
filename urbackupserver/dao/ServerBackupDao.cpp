@@ -2180,9 +2180,9 @@ void ServerBackupDao::updateOrInsertSetting( int clientid, const std::wstring& k
 	}
 }
 
-void ServerBackupDao::beginTransaction()
+void ServerBackupDao::BeginWriteTransaction()
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 }
 
 void ServerBackupDao::endTransaction()

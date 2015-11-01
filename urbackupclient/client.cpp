@@ -767,7 +767,7 @@ void IndexThread::indexDirs(void)
 	DirectoryWatcherThread::update_and_wait(open_files);
 
 	//---TRANSACTION---
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 
 	changed_dirs.clear();
 	for(size_t i=0;i<selected_dirs.size();++i)
@@ -905,7 +905,7 @@ void IndexThread::indexDirs(void)
 
 			int64 sequence_id;
 			int64 sequence_next = getUsnNum(mod_path, sequence_id);
-			if(sequence_next!=-1)
+			if(sequence_next!=-1 && with_sequence)
 			{
 				extra = "&sequence_next="+nconvert(sequence_next) +
 					"&sequence_id="+nconvert(sequence_id);
@@ -916,9 +916,12 @@ void IndexThread::indexDirs(void)
 			{
 				VSSLog(L"Changed dir: " + changed_dirs[k], LL_DEBUG);
 			}
-
-			extra+="&orig_path=" + EscapeParamString(Server->ConvertToUTF8(backup_dirs[i].path))
-				    + "&orig_sep=" + EscapeParamString(Server->ConvertToUTF8(os_file_sep()));
+			
+			if(with_orig_path)
+			{
+				extra+="&orig_path=" + EscapeParamString(Server->ConvertToUTF8(backup_dirs[i].path))
+					+ "&orig_sep=" + EscapeParamString(Server->ConvertToUTF8(os_file_sep()));
+			}
 
 			VSSLog(L"Indexing \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 			index_c_db=0;
@@ -927,7 +930,7 @@ void IndexThread::indexDirs(void)
 			SFile dirInfo = getFileMetadata(os_file_prefix(mod_path));
 			std::string dir_permissions;
 			writeDir(outfile, backup_dirs[i].tname, extra);
-			//db->Write("BEGIN IMMEDIATE;");
+			//db->BeginWriteTransaction();
 			last_transaction_start=Server->getTimeMS();
 			index_root_path=mod_path;
 #ifndef _WIN32
@@ -1087,7 +1090,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 	if(Server->getTimeMS()-last_transaction_start>1000)
 	{
 		/*db->EndTransaction();
-		db->Write("BEGIN IMMEDIATE;");*/
+		db->BeginWriteTransaction();*/
 		last_transaction_start=Server->getTimeMS();
 	}
 	if( IdleCheckerThread::getIdle()==false )
@@ -1125,6 +1128,12 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 	{
 		if( !files[i].isdir )
 		{
+			if( (files[i].issym && !with_proper_symlinks && !follow_symlinks) 
+				|| (files[i].isspecial && !with_proper_symlinks) )
+			{
+				continue;
+			}
+
 			if( skipFile(orig_dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name) )
 			{
 				continue;
@@ -1146,12 +1155,12 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 				extra+="&sha256=" + getSHA256(dir+os_file_sep()+files[i].name);
 			}
 
-			if(files[i].issym)
+			if(files[i].issym && with_proper_symlinks)
 			{
 				extra+="&sym_target="+EscapeParamString(Server->ConvertToUTF8(files[i].symlink_target));
 			}
 			
-			if(files[i].isspecial)
+			if(files[i].isspecial && with_proper_symlinks)
 			{
 				extra+="&special=1";
 			}
@@ -1170,6 +1179,12 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 	{
 		if( files[i].isdir )
 		{
+			if( (files[i].issym && !with_proper_symlinks && !follow_symlinks) 
+				|| (files[i].isspecial && !with_proper_symlinks) )
+			{
+				continue;
+			}
+
 			if( isExcluded(exlude_dirs, orig_dir+os_file_sep()+files[i].name)
 				|| isExcluded(exlude_dirs, named_path+os_file_sep()+files[i].name) )
 			{
@@ -1190,12 +1205,12 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 
 				std::string extra;
 
-				if(files[i].issym)
+				if(files[i].issym && with_proper_symlinks)
 				{
 					extra+="&sym_target="+EscapeParamString(Server->ConvertToUTF8(files[i].symlink_target));
 				}
 
-				if(files[i].isspecial)
+				if(files[i].isspecial && with_proper_symlinks)
 				{
 					extra+="&special=1";
 				}
@@ -1204,7 +1219,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 
 				bool b=true;
 
-				if(!files[i].issym)
+				if(!files[i].issym || !with_proper_symlinks)
 				{
 					b = initialCheck(orig_dir+os_file_sep()+files[i].name, dir+os_file_sep()+files[i].name, named_path+os_file_sep()+files[i].name, outfile, false, optional, use_db);
 				}
@@ -2946,7 +2961,7 @@ void IndexThread::modifyFilesInt(std::wstring path, const std::vector<SFileAndHa
 
 void IndexThread::commitModifyFilesBuffer(void)
 {
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	for(size_t i=0;i<modify_file_buffer.size();++i)
 	{
 		cd->modifyFiles(modify_file_buffer[i].first, modify_file_buffer[i].second);
@@ -3537,32 +3552,11 @@ void IndexThread::readFollowSymlinks()
 
 void IndexThread::setFlags( unsigned int flags )
 {
-	if(flags & flag_calc_checksums)
-	{
-		calculate_filehashes_on_client = true;
-	}
-	else
-	{
-		calculate_filehashes_on_client = false;
-	}
-
-	if(flags & flag_end_to_end_verification)
-	{
-		end_to_end_file_backup_verification=true;
-	}
-	else
-	{
-		end_to_end_file_backup_verification=false;
-	}
-
-	if(flags & flag_with_scripts)
-	{
-		with_scripts=true;
-	}
-	else
-	{
-		with_scripts=false;
-	}
+	calculate_filehashes_on_client = (flags & flag_calc_checksums)>0;
+	end_to_end_file_backup_verification = (flags & flag_end_to_end_verification)>0;
+	with_scripts = (flags & flag_with_scripts)>0;
+	with_orig_path = (flags & flag_with_orig_path)>0;
+	with_sequence = (flags & flag_with_sequence)>0;
 }
 
 bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::wstring& orig_path, std::wstring& target)
@@ -3583,6 +3577,14 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
 		std::wstring bpath = addDirectorySeparatorAtEnd(backup_dirs[i].path);
+		
+		#ifndef _WIN32
+		if(bpath.empty())
+		{
+			bpath=L"/";
+		}
+		#endif
+		
 		if(removeDirectorySeparatorAtEnd(target)==removeDirectorySeparatorAtEnd(backup_dirs[i].path)
 			|| next(target, 0, bpath))
 		{
@@ -3707,7 +3709,7 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::wstring&
 		ret[i].issym=files[i].issym;
 		ret[i].isspecial=files[i].isspecial;
 
-		if(files[i].issym)
+		if(files[i].issym && with_proper_symlinks)
 		{
 			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target))
 			{

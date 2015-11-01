@@ -92,7 +92,12 @@ std::wstring map_file(std::wstring fn, const std::string& identity)
 	}
 	else
 	{
-        std::wstring ret = i->second.value + getOsDir(fn);
+		std::wstring ret;
+		if(i->second.value!=L"/" || fn.empty() || fn[0]!='/')
+	            ret = i->second.value + getOsDir(fn);
+	        else
+	    	    ret = getOsDir(fn);
+	    	
 		mapcs.Leave();
         return ret;
 	}

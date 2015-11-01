@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include "create_files_index.h"
+#include <assert.h>
 
 IMutex *ServerCleanupThread::mutex=NULL;
 ICondition *ServerCleanupThread::cond=NULL;
@@ -428,8 +429,26 @@ void ServerCleanupThread::do_remove_unknown(void)
 			}
 		}
 
-		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname, NULL);
+		res_image_backups=cleanupdao->getImageBackupsOfClient(clientid);
 
+		for(size_t j=0;j<res_image_backups.size();++j)
+		{
+			if(res_image_backups[i].letter==L"SYSVOL"
+				|| res_image_backups[i].letter==L"ESP")
+			{
+				if(!cleanupdao->getParentImageBackup(res_image_backups[i].id).exists)
+				{
+					Server->Log(L"Image backup [id="+convert(res_image_backups[j].id)+L" path="+res_image_backups[j].path+L" clientname="+clientname+L"] is a system reserved or EFI system partition image and has no parent image. Deleting it.", LL_WARNING);
+					if(!removeImage(res_image_backups[i].id, &settings, false, false, true, false))
+					{
+						Server->Log(L"Could not remove image backup [id="+convert(res_image_backups[j].id)+L" path="+res_image_backups[j].path+L" clientname="+clientname+L"]", LL_ERROR);
+					}
+				}
+			}
+		}
+
+
+		std::vector<SFile> files=getFiles(backupfolder+os_file_sep()+clientname, NULL);
 		std::vector<ServerCleanupDao::SImageBackupInfo> res_images=cleanupdao->getClientImages(clientid);
 
 		for(size_t j=0;j<files.size();++j)
@@ -568,6 +587,21 @@ bool ServerCleanupThread::deleteImage(std::wstring path)
 	return b;
 }
 
+int ServerCleanupThread::max_removable_incr_images(ServerSettings& settings, int backupid)
+{
+	int incr_image_num=cleanupdao->getIncrNumImagesForBackup(backupid);
+	int min_incr_image_num = static_cast<int>(settings.getSettings()->min_image_incr);
+
+	int max_allowed_del_refs = 0;
+
+	if(min_incr_image_num<incr_image_num)
+	{
+		max_allowed_del_refs = incr_image_num-min_incr_image_num;
+	}
+
+	return max_allowed_del_refs;
+}
+
 bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, std::vector<int> &imageids)
 {
 	ServerSettings settings(db, clientid);
@@ -593,24 +627,15 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 		}
 
 		if(!findUncompleteImageRef(backupid) )
-		{
-			std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
-			int64 corr=0;
-			for(size_t i=0;i<assoc.size();++i)
-			{
-				int64 is=getImageSize(assoc[i]);
-				if(is!=-1) corr+=is;
-				removeImage(assoc[i], false);
-			}
-			if(!removeImage(backupid, true, corr))
+		{			
+			if(!removeImage(backupid, &settings, true, false, true, true))
 			{
 				notit.push_back(backupid);
 			}
 			else
 			{
 				imageids.push_back(backupid);
-			}
-				
+			}	
 		}
 		else
 		{
@@ -644,15 +669,7 @@ bool ServerCleanupThread::cleanup_images_client(int clientid, int64 minspace, st
 
 		if(!findUncompleteImageRef(backupid) )
 		{
-			std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
-			int64 corr=0;
-			for(size_t i=0;i<assoc.size();++i)
-			{
-				int64 is=getImageSize(assoc[i]);
-				if(is!=-1) corr+=is;
-				removeImage(assoc[i], false);
-			}
-			if(!removeImage(backupid, true, corr))
+			if(!removeImage(backupid, &settings, true, false, true, true))
 			{
 				notit.push_back(backupid);
 			}
@@ -713,19 +730,60 @@ void ServerCleanupThread::cleanup_images(int64 minspace)
 	}
 }
 
-bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size_correction, bool force_remove)
+bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings, 
+	bool update_stat, bool force_remove, bool remove_associated, bool remove_references)
 {
+	int64 deleted_size_bytes = 0;
+
+	if(update_stat)
+	{
+		deleted_size_bytes=getImageSize(backupid);
+	}
+
+	if(remove_associated)
+	{
+		std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
+		for(size_t i=0;i<assoc.size();++i)
+		{
+			int64 is=getImageSize(assoc[i]);
+			if(is>0) deleted_size_bytes+=is;
+			removeImage(assoc[i], settings, false, force_remove, remove_associated, remove_references);
+		}
+	}
+
 	bool ret=true;
 
 	ServerStatus::updateActive();
 
-	std::vector<ServerCleanupDao::SImageRef> refs=cleanupdao->getImageRefs(backupid);
-
-	for(size_t i=0;i<refs.size();++i)
+	if(remove_references)
 	{
-		bool b=removeImage(refs[i].id, true, getImageSize(refs[i].id));
-		if(!b)
-			ret=false;
+		assert(settings!=NULL);
+		std::vector<ServerCleanupDao::SImageRef> refs=cleanupdao->getImageRefs(backupid);
+
+		for(size_t i=0;i<refs.size();++i)
+		{
+			if(max_removable_incr_images(*settings, refs[i].id)<=0)
+			{
+				Server->Log("Cannot delete image because incremental image backups referencing this image are not allowed to be deleted", LL_INFO);
+				return false;
+			}
+
+			bool b=removeImage(refs[i].id, settings, true, force_remove, remove_associated, remove_references);
+			if(!b)
+			{
+				ret=false;
+			}
+		}
+	}
+	else if(!remove_references && !force_remove)
+	{
+		std::vector<ServerCleanupDao::SImageRef> refs=cleanupdao->getImageRefs(backupid);
+
+		if(!refs.empty())
+		{
+			Server->Log("Cannot delete image because incremental image backups referencing this image exist", LL_INFO);
+			return false;
+		}
 	}
 
 	ServerCleanupDao::CondString res=cleanupdao->getImagePath(backupid);
@@ -736,19 +794,20 @@ bool ServerCleanupThread::removeImage(int backupid, bool update_stat, int64 size
 		_i64 stat_id;
 		if(update_stat)
 		{
-			cleanupdao->addToImageStats(size_correction, backupid);
+			cleanupdao->addToImageStats(deleted_size_bytes, backupid);
 			stat_id=db->getLastInsertID();
 		}
 
 		if( deleteImage(res.value) || force_remove )
 		{
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 			cleanupdao->removeImage(backupid);
 			cleanupdao->removeImageSize(backupid);
 			db->EndTransaction();
 		}
 		else
 		{
+			Server->Log(L"Deleting image backup failed.", LL_INFO);
 			ret=false;
 		}
 
@@ -1102,7 +1161,7 @@ void ServerCleanupThread::removeClient(int clientid)
 		{
 			int backupid=res_images[0].id;
 			Server->Log("Removing image with id \""+nconvert(backupid)+"\"", LL_INFO);
-			removeImage(backupid, true, 0, true);
+			removeImage(backupid, NULL, true, true, false, false);
 		}
 	}while(!res_images.empty());
 
@@ -1661,7 +1720,7 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 	}
 
 	db->DetachDBs();
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 	Server->Log("Deleting history...", LL_DEBUG);
 	cleanupdao->deleteClientHistoryIds(back_start, back_stop);
 	cleanupdao->deleteClientHistoryItems(back_start, back_stop);
@@ -1719,7 +1778,7 @@ void ServerCleanupThread::cleanup_other()
 void ServerCleanupThread::removeFileBackupSql( int backupid )
 {
 	db->DetachDBs();
-	db->BeginTransaction();
+	db->BeginWriteTransaction();
 
 	IQuery* q_iterate = db->Prepare("SELECT id, shahash, filesize, rsize, clientid, backupid, incremental, next_entry, prev_entry, pointed_to FROM files WHERE backupid=?", false);
 	q_iterate->Bind(backupid);

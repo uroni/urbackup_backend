@@ -233,14 +233,12 @@ bool FullFileBackup::doFileBackup()
 				FileMetadata metadata;
 				metadata.read(extra_params);
 
-				bool has_orig_path = false;
-				if(!metadata.orig_path.empty())
+				bool has_orig_path = metadata.has_orig_path;
+				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
 					orig_sep = Server->ConvertToUTF8(extra_params[L"orig_sep"]);
 					if(orig_sep.empty()) orig_sep="\\";
-
-					has_orig_path=true;
 				}
 
 
@@ -299,8 +297,12 @@ bool FullFileBackup::doFileBackup()
 							curr_orig_path += orig_sep + Server->ConvertToUTF8(cf.name);
 							metadata.orig_path = curr_orig_path;
                             metadata.exist=true;
+							metadata.has_orig_path=true;
 						}
 
+						std::wstring metadata_fn = backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn;
+
+						bool create_hash_dir=true;
 						str_map::iterator sym_target = extra_params.find(L"sym_target");
 						if(sym_target!=extra_params.end())
 						{
@@ -310,6 +312,9 @@ bool FullFileBackup::doFileBackup()
 								c_has_error=true;
 								break;
 							}
+
+							metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + L"/" + escape_metadata_fn(cf.name)); 
+							create_hash_dir=false;
 						}
 						else if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 						{
@@ -318,13 +323,13 @@ bool FullFileBackup::doFileBackup()
 							break;
 						}
 						
-						if(!os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
+						if(create_hash_dir && !os_create_dir(os_file_prefix(backuppath_hashes+local_curr_os_path)))
 						{
 							ServerLogger::Log(logid, L"Creating directory  \""+backuppath_hashes+local_curr_os_path+L"\" failed. " + widen(systemErrorInfo()), LL_ERROR);
 							c_has_error=true;
 							break;
 						}
-						else if(metadata.exist && !write_file_metadata(backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main, metadata, false))
+						else if(metadata.exist && !write_file_metadata(metadata_fn, client_main, metadata, false))
 						{
 							ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
 							c_has_error=true;
@@ -408,6 +413,21 @@ bool FullFileBackup::doFileBackup()
                             file_ok=true;
                         }
                     }
+					else if(extra_params.find(L"special")!=extra_params.end())
+					{
+						std::wstring touch_path = backuppath + convertToOSPathFromFileClient(curr_os_path)+os_file_sep()+osspecific_name;
+						std::auto_ptr<IFile> touch_file(Server->openFile(os_file_prefix(touch_path), MODE_WRITE));
+						if(touch_file.get()==NULL)
+						{
+							ServerLogger::Log(logid, L"Error touching file at \""+touch_path+L"\". " + widen(systemErrorInfo()), LL_ERROR);
+							c_has_error=true;
+							break;
+						}
+						else
+						{
+							file_ok=true;
+						}
+					}
 
 					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(L"sha512") );
 					if( hash_it!=extra_params.end())
@@ -554,7 +574,7 @@ bool FullFileBackup::doFileBackup()
 	}
 	else if(verification_ok)
 	{
-		db->BeginTransaction();
+		db->BeginWriteTransaction();
 		if(!os_rename_file(widen(clientlistName(group, true)), widen(clientlistName(group, false))) )
 		{
 			ServerLogger::Log(logid, "Renaming new client file list to destination failed", LL_ERROR);

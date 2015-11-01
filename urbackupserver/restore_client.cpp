@@ -104,7 +104,7 @@ namespace
 		ClientDownloadThread(const std::wstring& curr_clientname, int curr_clientid, int restore_clientid, IFile* filelist_f, const std::wstring& foldername,
 			const std::wstring& hashfoldername, const std::wstring& filter,
 			bool token_authentication,
-			const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
+			const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_special_root,
 			const std::wstring& folder_log_name)
 			: curr_clientname(curr_clientname), curr_clientid(curr_clientid), restore_clientid(restore_clientid),
 			filelist_f(filelist_f), foldername(foldername), hashfoldername(hashfoldername),
@@ -199,7 +199,7 @@ namespace
 				FileMetadata metadata;
 				if(token_authentication &&
 					( !read_metadata(metadataname, metadata) ||
-					!checkFileToken(backup_tokens, tokens, metadata) ) )
+					!backupaccess::checkFileToken(backup_tokens, tokens, metadata) ) )
 				{
 					continue;
 				}
@@ -252,7 +252,7 @@ namespace
 		std::wstring hashfoldername;
 		std::vector<std::wstring> filter_fns;
 		bool token_authentication;
-		std::vector<SToken> backup_tokens;
+		std::vector<backupaccess::SToken> backup_tokens;
 		std::vector<std::string> tokens;
 		bool skip_special_root;
 		std::wstring folder_log_name;
@@ -260,7 +260,7 @@ namespace
 }
 
 bool create_clientdl_thread(const std::wstring& curr_clientname, int curr_clientid, int restore_clientid, const std::wstring& foldername, const std::wstring& hashfoldername,
-	const std::wstring& filter, bool token_authentication, const std::vector<SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
+	const std::wstring& filter, bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
 	const std::wstring& folder_log_name)
 {
 	IFile* filelist_f = Server->openTemporaryFile();
@@ -309,7 +309,7 @@ bool create_clientdl_thread( int backupid, const std::wstring& curr_clientname, 
 	std::wstring curr_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path;
 	std::wstring curr_metadata_path=backupfolder.value+os_file_sep()+client_name.value+os_file_sep()+file_backup_info.path+os_file_sep()+L".hashes";
 
-	std::vector<SToken> backup_tokens;
+	std::vector<backupaccess::SToken> backup_tokens;
 	std::vector<std::string> tokens;
 	return create_clientdl_thread(curr_clientname, curr_clientid, file_backup_info.clientid, curr_path, curr_metadata_path, std::wstring(), false, backup_tokens,
 		tokens, true, L"");

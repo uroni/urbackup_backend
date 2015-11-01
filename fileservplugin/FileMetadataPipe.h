@@ -23,6 +23,8 @@ public:
 
 	virtual bool getExitCode( int& exit_code );
 
+	void forceExitWait();
+
 protected:
 	virtual bool readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t& read_bytes );
 

@@ -185,7 +185,7 @@ bool CQuery::Execute(int timeoutms)
 			{
 				break;
 			}
-			else if(!db->isInTransaction() && transaction_lock==false)
+			else if(!db->isInTransaction() && !transaction_lock)
 			{
 				sqlite3_reset(ps);
 				if(db->LockForTransaction())
@@ -212,7 +212,8 @@ bool CQuery::Execute(int timeoutms)
 		}
 		else if(err==SQLITE_LOCKED)
 		{
-			if(!db->isInTransaction() && db->LockForTransaction())
+			if(!db->isInTransaction() 
+				&& !transaction_lock && db->LockForTransaction())
 			{
 				transaction_lock=true;
 			}				
@@ -398,7 +399,7 @@ int CQuery::step(db_single_result& res, int *timeoutms, int& tries, bool& transa
 			{
 				return SQLITE_ABORT;
 			}
-			else if(!db->isInTransaction() && transaction_lock==false)
+			else if(!db->isInTransaction() && !transaction_lock)
 			{
 				sqlite3_reset(ps);
 				reset=true;
@@ -519,7 +520,7 @@ int CQuery::stepN(db_nsingle_result& res, int *timeoutms, int& tries, bool& tran
 			{
 				return SQLITE_ABORT;
 			}
-			else if(!db->isInTransaction() && transaction_lock==false)
+			else if(!db->isInTransaction() && !transaction_lock)
 			{
 				sqlite3_reset(ps);
 				reset=true;

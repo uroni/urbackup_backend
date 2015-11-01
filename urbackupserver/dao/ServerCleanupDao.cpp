@@ -18,6 +18,7 @@
 
 #include "ServerCleanupDao.h"
 #include "../../stringtools.h"
+#include <assert.h>
 
 ServerCleanupDao::ServerCleanupDao(IDatabase *db)
 	: db(db)
@@ -231,6 +232,29 @@ std::vector<ServerCleanupDao::SImageLetter> ServerCleanupDao::getIncrNumImages(i
 		ret[i].letter=res[i][L"letter"];
 	}
 	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int ServerCleanupDao::getIncrNumImagesForBackup
+* @return int_raw c
+* @sql
+*	SELECT COUNT(id) AS c FROM backup_images
+*	WHERE clientid=(SELECT clientid FROM backup_images WHERE id=:backupid(int))
+*			AND incremental<>0 AND complete=1 AND letter=(SELECT letter FROM backup_images WHERE id=:backupid(int))
+*/
+int ServerCleanupDao::getIncrNumImagesForBackup(int backupid)
+{
+	if(q_getIncrNumImagesForBackup==NULL)
+	{
+		q_getIncrNumImagesForBackup=db->Prepare("SELECT COUNT(id) AS c FROM backup_images WHERE clientid=(SELECT clientid FROM backup_images WHERE id=?) AND incremental<>0 AND complete=1 AND letter=(SELECT letter FROM backup_images WHERE id=?)", false);
+	}
+	q_getIncrNumImagesForBackup->Bind(backupid);
+	q_getIncrNumImagesForBackup->Bind(backupid);
+	db_results res=q_getIncrNumImagesForBackup->Read();
+	q_getIncrNumImagesForBackup->Reset();
+	assert(!res.empty());
+	return watoi(res[0][L"c"]);
 }
 
 /**
@@ -545,6 +569,31 @@ std::vector<int> ServerCleanupDao::getClientFileBackups(int clientid)
 	for(size_t i=0;i<res.size();++i)
 	{
 		ret[i]=watoi(res[i][L"id"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func int ServerCleanupDao::getParentImageBackup
+* @return int img_id
+* @sql
+*	SELECT img_id FROM assoc_images WHERE assoc_id=:assoc_id(int)
+*/
+ServerCleanupDao::CondInt ServerCleanupDao::getParentImageBackup(int assoc_id)
+{
+	if(q_getParentImageBackup==NULL)
+	{
+		q_getParentImageBackup=db->Prepare("SELECT img_id FROM assoc_images WHERE assoc_id=?", false);
+	}
+	q_getParentImageBackup->Bind(assoc_id);
+	db_results res=q_getParentImageBackup->Read();
+	q_getParentImageBackup->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0][L"img_id"]);
 	}
 	return ret;
 }
@@ -948,6 +997,7 @@ void ServerCleanupDao::createQueries(void)
 	q_getImageRefs=NULL;
 	q_getImagePath=NULL;
 	q_getIncrNumImages=NULL;
+	q_getIncrNumImagesForBackup=NULL;
 	q_getFullNumFiles=NULL;
 	q_getIncrNumFiles=NULL;
 	q_getClientName=NULL;
@@ -961,6 +1011,7 @@ void ServerCleanupDao::createQueries(void)
 	q_updateDelImageStats=NULL;
 	q_getClientImages=NULL;
 	q_getClientFileBackups=NULL;
+	q_getParentImageBackup=NULL;
 	q_getAssocImageBackups=NULL;
 	q_getImageSize=NULL;
 	q_getClients=NULL;
@@ -990,6 +1041,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_getImageRefs);
 	db->destroyQuery(q_getImagePath);
 	db->destroyQuery(q_getIncrNumImages);
+	db->destroyQuery(q_getIncrNumImagesForBackup);
 	db->destroyQuery(q_getFullNumFiles);
 	db->destroyQuery(q_getIncrNumFiles);
 	db->destroyQuery(q_getClientName);
@@ -1003,6 +1055,7 @@ void ServerCleanupDao::destroyQueries(void)
 	db->destroyQuery(q_updateDelImageStats);
 	db->destroyQuery(q_getClientImages);
 	db->destroyQuery(q_getClientFileBackups);
+	db->destroyQuery(q_getParentImageBackup);
 	db->destroyQuery(q_getAssocImageBackups);
 	db->destroyQuery(q_getImageSize);
 	db->destroyQuery(q_getClients);

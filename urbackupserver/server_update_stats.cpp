@@ -244,7 +244,7 @@ void ServerUpdateStats::update_files(void)
 		{
 			started_transaction=true;
 			db->DetachDBs();
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 		}
 
 		for(size_t i=0;i<stat_entries.size();++i,++total_i)
@@ -266,7 +266,7 @@ void ServerUpdateStats::update_files(void)
 				updateBackups(size_data_backups);
 
 				db->EndTransaction();
-				db->BeginTransaction();
+				db->BeginWriteTransaction();
 			}
 
 			ServerBackupDao::SIncomingStat& entry = stat_entries[i];

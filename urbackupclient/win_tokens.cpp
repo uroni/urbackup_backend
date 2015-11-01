@@ -48,7 +48,7 @@ struct TokenCacheInt
 
 TokenCache::TokenCache( const TokenCache& other )
 {
-
+	assert(false);
 }
 
 TokenCache::TokenCache() : token_cache(NULL)
@@ -65,7 +65,7 @@ TokenCache::~TokenCache()
 
 void TokenCache::operator=(const TokenCache& other )
 {
-
+	assert(false);
 }
 
 TokenCacheInt* TokenCache::get()

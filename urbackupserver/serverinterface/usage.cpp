@@ -37,7 +37,7 @@ namespace
 		{
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			db->DetachDBs();
-			db->BeginTransaction();
+			db->BeginWriteTransaction();
 			db->Write("UPDATE clients SET bytes_used_files=0");
 
 			ServerBackupDao backupdao(db);

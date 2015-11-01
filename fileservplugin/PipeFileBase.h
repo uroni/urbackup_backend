@@ -38,6 +38,8 @@ public:
 
 	std::string getStdErr();
 
+	virtual void forceExitWait() = 0;
+
 protected:
 
 	void init();
@@ -46,6 +48,8 @@ protected:
 	virtual bool readStderrIntoBuffer(char* buf, size_t buf_avail, size_t& read_bytes) = 0;
 
 	bool has_error;
+
+	void waitForExit();
 
 private:
 	bool fillBuffer();
@@ -69,4 +73,7 @@ private:
 	int64 stream_size;
 
 	int64 last_read;
+
+	THREADPOOL_TICKET stdout_thread;
+	THREADPOOL_TICKET stderr_thread;
 };

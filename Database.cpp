@@ -223,10 +223,30 @@ void CDatabase::InsertResults(const db_nsingle_result &pResult)
 
 //ToDo: Cache Writings
 
-void CDatabase::BeginTransaction(void)
+bool CDatabase::BeginReadTransaction()
 {
-	Write("BEGIN IMMEDIATE;");
-	in_transaction=true;
+	if(Write("BEGIN"))
+	{
+		in_transaction=true;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool CDatabase::BeginWriteTransaction()
+{
+	if(Write("BEGIN IMMEDIATE;"))
+	{
+		in_transaction=true;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 bool CDatabase::EndTransaction(void)
@@ -257,7 +277,7 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 	{
 		if(err==SQLITE_LOCKED)
 		{
-			if(LockForTransaction())
+			if(!transaction_lock && LockForTransaction())
 			{
 				transaction_lock=true;
 				if(!WaitForUnlock())
@@ -266,7 +286,7 @@ IQuery* CDatabase::Prepare(std::string pQuery, bool autodestroy)
 		}
 		else
 		{
-			if(transaction_lock==false)
+			if(!transaction_lock)
 			{
 				if(!isInTransaction() && LockForTransaction())
 				{

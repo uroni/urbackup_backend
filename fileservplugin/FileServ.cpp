@@ -194,15 +194,19 @@ void FileServ::removeMetadataCallback( const std::wstring &name, const std::stri
 
 void FileServ::registerTokenCallbackFactory( IFileServ::ITokenCallbackFactory* callback_factory )
 {
+	IScopedLock lock(mutex);
+
 	token_callback_factory = callback_factory;
 }
 
 IFileServ::ITokenCallback* FileServ::newTokenCallback()
 {
-    if(token_callback_factory==NULL)
-    {
-        return NULL;
-    }
+	IScopedLock lock(mutex);
+
+	if(token_callback_factory==NULL)
+	{
+		return NULL;
+	}
 
 	return token_callback_factory->getTokenCallback();
 }

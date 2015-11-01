@@ -98,21 +98,32 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 #endif
 			struct stat64 f_info;
 			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
-			if(rc==0 && S_ISLNK(f_info.st_mode))
-			{
-				f.issym=true;
-				f.isspecial=true;
-				rc=stat64((upath+dirp->d_name).c_str(), &f_info);
-			}
 			if(rc==0)
 			{
+				if(S_ISLNK(f_info.st_mode))
+				{
+					f.issym=true;
+					f.isspecial=true;
+					struct stat64 l_info;
+					int rc2 = stat64((upath+dirp->d_name).c_str(), &l_info);
+					
+					if(rc2==0)
+					{
+						f.isdir=S_ISDIR(l_info.st_mode);
+					}
+				}
+			
 #ifndef sun
 				if(dirp->d_type==DT_UNKNOWN
 					|| (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR)
 					|| dirp->d_type==DT_LNK)
 				{
 #endif
-					f.isdir=S_ISDIR(f_info.st_mode);
+					if(!f.issym)
+					{
+						f.isdir=S_ISDIR(f_info.st_mode);
+					}
+					
 					if(!f.isdir)
 					{
 						if(!S_ISREG(f_info.st_mode) )
@@ -137,19 +148,12 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			}
 			else
 			{
-                if(f.issym && (errno==ENOTDIR || errno==ENOENT) )
-                {
-                    Server->Log("Symlink target of \""+upath+dirp->d_name+"\" not found. Errno: "+nconvert(errno), LL_DEBUG);
-                }
-                else
-                {
                     Server->Log("Stat failed for \""+upath+dirp->d_name+"\" errno: "+nconvert(errno), LL_ERROR);
                     if(has_error!=NULL)
                     {
                         *has_error=true;
                     }
                     continue;
-                }
 			}
 #ifndef sun
 		}
@@ -199,7 +203,11 @@ bool isDirectory(const std::wstring &path, void* transaction)
 		int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
 		if(rc!=0)
 		{
-			return false;
+			rc = lstat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+			if(rc!=0)
+			{
+				return false;
+			}
 		}
 
         if ( S_ISDIR(f_info.st_mode) )
@@ -210,6 +218,40 @@ bool isDirectory(const std::wstring &path, void* transaction)
         {
                 return false;
         }
+}
+
+int os_get_file_type(const std::wstring &path)
+{
+	int ret = 0;
+	struct stat64 f_info;
+	int rc1=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+	if(rc1==0)
+	{
+		if ( S_ISDIR(f_info.st_mode) )
+        {
+			ret |= EFileType_Directory;
+		}
+		else
+		{
+			ret |= EFileType_File;
+		}
+	}
+
+	int rc2 = lstat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+	if(rc2==0)
+	{
+		if(S_ISLNK(f_info.st_mode))
+		{
+			ret |= EFileType_Symlink;
+		}
+		
+		if(rc1!=0)
+		{
+			ret |= EFileType_File;
+		}
+	}
+	
+	return ret;
 }
 
 int64 os_atoi64(const std::string &str)
@@ -694,7 +736,7 @@ SFile getFileMetadata( const std::wstring &path )
 	ret.name=path;
 
 	struct stat64 f_info;
-    int rc=stat64(Server->ConvertToUTF8(path).c_str(), &f_info);
+	int rc=lstat64(Server->ConvertToUTF8(path).c_str(), &f_info);
 
 	if(rc==0)
 	{

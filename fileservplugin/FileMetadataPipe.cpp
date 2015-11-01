@@ -81,6 +81,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	{
 		read_bytes = (std::min)(buf_avail, sizeof(unsigned int) - fn_off);
 		unsigned int fn_size = little_endian(static_cast<unsigned int>(public_fn.size()));
+		fn_size = little_endian(fn_size);
 		memcpy(buf, &fn_size + fn_off, read_bytes);
 		fn_off+=read_bytes;
 
@@ -95,7 +96,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 	else if(metadata_state==MetadataState_Fn)
 	{
 		read_bytes = (std::min)(buf_avail, public_fn.size()- fn_off);
-		memcpy(buf, public_fn.data(), read_bytes);
+		memcpy(buf, public_fn.data()+fn_off, read_bytes);
 		fn_off+=read_bytes;
 
 		if(fn_off==public_fn.size())
@@ -140,7 +141,14 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			meta_data.addChar(1);
 			meta_data.addInt64(created);
 			meta_data.addInt64(modified);
-			meta_data.addString(token_callback->getFileTokens(Server->ConvertToUnicode(local_fn)));
+			if(token_callback.get()!=NULL)
+			{
+				meta_data.addString(token_callback->getFileTokens(Server->ConvertToUnicode(local_fn)));
+			}
+			else
+			{
+				meta_data.addString("");
+			}
 
 			if(meta_data.getDataSize()+sizeof(unsigned int)<metadata_buffer.size())
 			{
@@ -246,16 +254,33 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					return false;
 				}
 
-				bool isdir=false;
-				if(isDirectory(os_file_prefix(Server->ConvertToUnicode(local_fn))))
+
+				int file_type_flags = os_get_file_type(os_file_prefix(Server->ConvertToUnicode(local_fn)));
+
+				if(file_type_flags==0)
 				{
-					isdir=true;
-					public_fn = "d" + public_fn;
+					Server->Log("Error getting file type of "+local_fn, LL_ERROR);
+					*buf = ID_METADATA_NOP;
+					read_bytes = 1;
+					return true;
+				}
+
+				std::string file_type;
+				if( (file_type_flags & EFileType_Directory) 
+					&& (file_type_flags & EFileType_Symlink) )
+				{
+					file_type="l";
+				}
+				else if(file_type_flags & EFileType_Directory)
+				{
+					file_type="d";
 				}
 				else
 				{
-					public_fn = "f" + public_fn;
+					file_type="f";
 				}
+
+				public_fn = file_type + public_fn;
 
 				metadata_state = MetadataState_FnSize;
 				*buf = ID_METADATA_V1;
@@ -280,7 +305,7 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 						return false;
 					}
 
-					public_fn = (isdir?"d":"f") + orig_path;
+					public_fn = file_type + orig_path;
 				}
 
 				return true;
@@ -314,6 +339,19 @@ bool FileMetadataPipe::readStderrIntoBuffer( char* buf, size_t buf_avail, size_t
 			}
 		}
 	}	
+}
+
+
+void FileMetadataPipe::forceExitWait()
+{
+	CWData data;
+	data.addString(std::string());
+	data.addString(std::string());
+	pipe->Write(data.getDataPtr(), data.getDataSize());
+
+	errpipe->shutdown();
+
+	waitForExit();
 }
 
 #ifdef _WIN32

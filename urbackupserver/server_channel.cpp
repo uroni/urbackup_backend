@@ -38,6 +38,7 @@
 #include "../fileservplugin/IFileServ.h"
 #include "server_log.h"
 #include "restore_client.h"
+#include "serverinterface/backups.h"
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
@@ -312,15 +313,31 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 	{
 		GET_BACKUPCLIENTS();
 	}
-	else if(msg.find("GET BACKUPIMAGES ")==0 && !internet_mode && hasDownloadImageRights())
+	else if(next(msg, 0, "GET BACKUPIMAGES ") && !internet_mode && hasDownloadImageRights())
 	{
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		GET_BACKUPIMAGES(name);
 	}
-	else if(msg.find("GET FILE BACKUPS ")==0 && hasDownloadImageRights())
+	else if(next(msg, 0, "GET FILE BACKUPS ") && hasDownloadImageRights())
 	{
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
-		GET_BACKUPIMAGES(name);
+		GET_FILE_BACKUPS(name);
+	}
+	else if(next(msg, 0, "GET FILE BACKUPS TOKENS "))
+	{
+		std::string s_params=msg.substr(24);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		GET_FILE_BACKUPS_TOKENS(params);
+	}
+	else if(next(msg, 0, "GET FILE LIST TOKENS "))
+	{
+		std::string s_params=msg.substr(21);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		GET_FILE_LIST_TOKENS(params);
 	}
 	else if(next(msg, 0, "DOWNLOAD IMAGE ") && !internet_mode && hasDownloadImageRights())
 	{
@@ -336,7 +353,15 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		str_map params;
 		ParseParamStrHttp(s_params, &params);
 
-		DOWNLOAD_IMAGE(params);
+		DOWNLOAD_FILES(params);
+	}
+	else if(next(msg, 0, "DOWNLOAD FILES TOKENS ") && hasDownloadImageRights())
+	{
+		std::string s_params=msg.substr(21);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+
+		DOWNLOAD_FILES_TOKENS(params);
 	}
 	else if(next(msg, 0, "CHANGES "))
 	{
@@ -654,6 +679,67 @@ void ServerChannelThread::GET_FILE_BACKUPS( const std::wstring& clientname )
 	ServerStatus::updateActive();
 }
 
+void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	std::string fileaccesstokens = backupaccess::decryptTokens(db, params);
+
+	JSON::Object ret;
+	if(fileaccesstokens.empty())
+	{
+		ret.set("err", 1);
+		tcpstack.Send(input, ret.get(false));
+		db->destroyAllQueries();
+		return;
+	}
+
+	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &fileaccesstokens, img_id_offset);
+
+	ret.set("backups", backups);
+
+	tcpstack.Send(input, ret.get(false));
+	db->destroyAllQueries();
+
+	ServerStatus::updateActive();
+}
+
+void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	std::string fileaccesstokens = backupaccess::decryptTokens(db, params);
+
+	JSON::Object ret;
+	if(fileaccesstokens.empty())
+	{
+		tcpstack.Send(input, "err");
+		db->destroyAllQueries();
+		return;
+	}
+
+	bool has_backupid=params.find(L"backupid")!=params.end();
+	int backupid=0;
+	if(has_backupid)
+	{
+		backupid=watoi(params[L"backupid"])-img_id_offset;
+	}
+
+	std::wstring u_path=params[L"path"];
+
+	if(!backupaccess::get_files_with_tokens(db, has_backupid? &backupid:NULL,
+		clientid, clientname, &fileaccesstokens, u_path, ret))
+	{
+		tcpstack.Send(input, "err");
+	}
+	else
+	{
+		tcpstack.Send(input, ret.get(false));
+	}
+
+	db->destroyAllQueries();
+
+	ServerStatus::updateActive();
+}
+
 void ServerChannelThread::DOWNLOAD_IMAGE(str_map& params)
 {
 	int img_id=watoi(params[L"img_id"])-img_id_offset;
@@ -854,6 +940,70 @@ void ServerChannelThread::DOWNLOAD_FILES( str_map& params )
 			tcpstack.Send(input, "err");
 		}
 	}
+}
+
+void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+	std::string fileaccesstokens = backupaccess::decryptTokens(db, params);
+
+	JSON::Object ret;
+	do 
+	{
+		if(fileaccesstokens.empty())
+		{
+			ret.set("err", 1);			
+			break;
+		}
+
+		bool has_backupid=params.find(L"backupid")!=params.end();
+		int backupid=0;
+		if(has_backupid)
+		{
+			backupid=watoi(params[L"backupid"]);
+		}
+		else
+		{
+			ret.set("err", 2);			
+			break;
+		}
+
+		std::wstring u_path=params[L"path"];
+
+		std::wstring backupfolder = backupaccess::getBackupFolder(db);
+		std::wstring backuppath = backupaccess::get_backup_path(db, backupid, clientid);
+
+		if(backupfolder.empty())
+		{
+			ret.set("err", 3);
+			break;
+		}
+
+		backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, &fileaccesstokens,
+			clientname, backupfolder, &backupid, backuppath);
+
+		if(!path_info.can_access_path)
+		{
+			ret.set("err", 4);
+			break;
+		}
+
+		std::vector<std::string> tokens;
+		Tokenize(fileaccesstokens, tokens, ";");
+
+		if(!create_clientdl_thread(clientname, clientid, clientid, path_info.full_path, path_info.full_metadata_path, params[L"filter"], true,
+			path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path))
+		{
+			ret.set("err", 5);
+			break;
+		}
+
+		ret.set("ok", true);
+
+	} while (false);
+
+	tcpstack.Send(input, ret.get(false));
+	db->destroyAllQueries();	
 }
 
 void ServerChannelThread::RESTORE_PERCENT( str_map params )

@@ -14,7 +14,8 @@ public:
 	virtual db_results Read(std::string pQuery)=0; 
 	virtual bool Write(std::string pQuery)=0;
 
-	virtual void BeginTransaction(void)=0;
+	virtual bool BeginReadTransaction()=0;
+	virtual bool BeginWriteTransaction()=0;
 	virtual bool EndTransaction(void)=0;
 
 	virtual IQuery* Prepare(std::string pQuery, bool autodestroy=true)=0;
