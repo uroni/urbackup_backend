@@ -29,7 +29,22 @@ namespace {
 		return ret;
 	}
 
-	void Log(const std::wstring& pStr, int loglevel)
+        std::wstring ConvertToUnicode(const std::string& input)
+        {
+                std::wstring ret;
+                try
+                {
+                            if(sizeof(wchar_t)==2)
+                                    utf8::utf8to16(input.begin(), input.end(), back_inserter(ret));
+                    else
+                                    utf8::utf8to32(input.begin(), input.end(), back_inserter(ret));
+                }
+                catch(...){}
+
+                return ret;
+        }
+
+        void Log(const std::wstring& pStr, int loglevel)
 	{
 		if( loglevel==LL_ERROR )
 		{
@@ -45,7 +60,7 @@ namespace {
 		}
 	}
 
-	void Log(const std::string& pStr, int loglevel)
+        void Log(const std::string& pStr, int loglevel)
 	{
 		if( loglevel==LL_ERROR )
 		{
@@ -67,6 +82,11 @@ namespace {
 	{
 		return Server->ConvertToUTF8(input);
 	}
+
+        std::wstring ConvertToUnicode(const std::string& input)
+        {
+                return Server->ConvertToUnicode(input);
+        }
 
 	void Log(const std::wstring& pStr, int loglevel)
 	{

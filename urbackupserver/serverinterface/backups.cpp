@@ -383,8 +383,9 @@ namespace backupaccess
 			obj.set("id", watoi(res[i][L"id"])+backupid_offset);
 			obj.set("backuptime", res[i][L"t_backuptime"]);
 			obj.set("incremental", watoi(res[i][L"incremental"]));
-			obj.set("size_bytes", res[i][L"size_bytes"]);
-			obj.set("archived", res[i][L"archived"]);
+            obj.set("size_bytes", watoi64(res[i][L"size_bytes"]));
+            int archived = watoi(res[i][L"archived"]);
+            obj.set("archived", watoi(res[i][L"archived"]));
 			_i64 archive_timeout=0;
 			if(!res[i][L"archive_timeout"].empty())
 			{
@@ -394,7 +395,10 @@ namespace backupaccess
 					archive_timeout-=Server->getTimeSeconds();
 				}
 			}
-			obj.set("archive_timeout", archive_timeout);
+            if(archived!=0)
+            {
+                obj.set("archive_timeout", archive_timeout);
+            }
 			backups.add(obj);
 		}
 

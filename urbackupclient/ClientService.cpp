@@ -750,6 +750,7 @@ void ClientConnector::ReceivePackets(void)
 			if(!checkPassword(params[L"pw"], pw_change_ok))
 			{
 				Server->Log("Password wrong!", LL_ERROR);
+                do_quit=true;
 				continue;
 			}
 			else
@@ -2093,29 +2094,23 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 
 const int64 receive_timeouttime=60000;
 
-std::string ClientConnector::receivePacket(IPipe *p)
+std::string ClientConnector::receivePacket(const SChannel& channel)
 {
+    CTCPStack localstack(channel.internet_connection);
 	int64 starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=receive_timeouttime)
 	{
-		std::string ret;
-		size_t rc=p->Read(&ret, 10000);
+        std::string ret;
+        size_t rc=channel.pipe->Read(&ret, 10000);
 		if(rc==0)
 		{
 			return "";
 		}
-		tcpstack.AddData((char*)ret.c_str(), ret.size());
+        localstack.AddData((char*)ret.c_str(), ret.size());
 
-		size_t packetsize;
-		char *pck=tcpstack.getPacket(&packetsize);
-		if(pck!=NULL)
+        ret.clear();
+        if(localstack.getPacket(ret))
 		{
-			ret.resize(packetsize);
-			if(packetsize>0)
-			{
-				memcpy(&ret[0], pck, packetsize);
-			}
-			delete [] pck;
 			return ret;
 		}
 	}
@@ -2684,6 +2679,11 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 
 std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, bool with_clientname )
 {
+    if(tokens.empty())
+    {
+        return std::string();
+    }
+
 	std::auto_ptr<ISettingsReader> access_keys(
 		Server->createFileSettingsReader("access_keys.properties"));
 
@@ -2716,14 +2716,28 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 
 		std::string computername;
-		if( (!settings->getValue("computername", &computername)
-			&& !settings->getValue("computername_def", &computername) ) 
-			|| computername.empty())
-		{
-			ret+="&clientname="+EscapeParamString(Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName()));
+        if( !settings->getValue("computername", &computername) )
+        {
+            settings->getValue("computername_def", &computername);
+        }
+        if(computername.empty())
+        {
+            computername = Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
+        }
+
+        if(!computername.empty())
+        {
+            ret+="&clientname="+EscapeParamString(computername);
 		}
 	}
+
+    return ret;
 }
 
+bool ClientConnector::sendChannelPacket(const SChannel& channel, const std::string& msg)
+{
+    CTCPStack localstack(channel.internet_connection);
+    return localstack.Send(channel.pipe, msg) == msg.size();
+}
 
 

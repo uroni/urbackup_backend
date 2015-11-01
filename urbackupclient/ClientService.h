@@ -145,7 +145,7 @@ private:
 	bool sendFullImage(void);
 	bool sendIncrImage(void);
 	bool sendMBR(std::wstring dl, std::wstring &errmsg);
-	std::string receivePacket(IPipe *p);
+    std::string receivePacket(const SChannel& channel);
 	void downloadImage(str_map params);
 	void removeChannelpipe(IPipe *cp);
 	void waitForPings(IScopedLock *lock);
@@ -157,6 +157,7 @@ private:
 	void update_silent(void);
 	bool calculateFilehashesOnClient(void);
 	void sendStatus();
+    bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 
 	std::string getAccessTokensParams(const std::wstring& tokens, bool with_clientname);
 

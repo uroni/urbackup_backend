@@ -18,7 +18,7 @@
 
 #include "tcpstack.h"
 #include <memory.h>
-#include <Windows.h>
+#include "../socket_header.h"
 
 
 void CTCPStack::AddData(char* buf, size_t datasize)

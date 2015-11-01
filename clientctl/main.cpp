@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include <string>
+#include <stdlib.h>
 #include "Connector.h"
 #include "../stringtools.h"
 
@@ -25,9 +26,15 @@
 int main(int argc, char *argv[])
 {
 	bool help=false;
+
+        if(argc>1 && (std::string)argv[1]=="help")
+        {
+            help=true;
+        }
+
 	for(int i=0;i<argc;++i)
 	{
-		if((std::string)argv[i]=="help")
+                if((std::string)argv[i]=="--help")
 			help=true;
 	}
 	if(argc==1 || help)

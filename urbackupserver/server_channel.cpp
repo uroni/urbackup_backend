@@ -318,18 +318,18 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		GET_BACKUPIMAGES(name);
 	}
+    else if(next(msg, 0, "GET FILE BACKUPS TOKENS "))
+    {
+        std::string s_params=msg.substr(24);
+        str_map params;
+        ParseParamStrHttp(s_params, &params);
+
+        GET_FILE_BACKUPS_TOKENS(params);
+    }
 	else if(next(msg, 0, "GET FILE BACKUPS ") && hasDownloadImageRights())
 	{
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		GET_FILE_BACKUPS(name);
-	}
-	else if(next(msg, 0, "GET FILE BACKUPS TOKENS "))
-	{
-		std::string s_params=msg.substr(24);
-		str_map params;
-		ParseParamStrHttp(s_params, &params);
-
-		GET_FILE_BACKUPS_TOKENS(params);
 	}
 	else if(next(msg, 0, "GET FILE LIST TOKENS "))
 	{
@@ -684,20 +684,16 @@ void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	std::string fileaccesstokens = backupaccess::decryptTokens(db, params);
 
-	JSON::Object ret;
 	if(fileaccesstokens.empty())
 	{
-		ret.set("err", 1);
-		tcpstack.Send(input, ret.get(false));
+        tcpstack.Send(input, "err");
 		db->destroyAllQueries();
 		return;
 	}
 
 	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &fileaccesstokens, img_id_offset);
 
-	ret.set("backups", backups);
-
-	tcpstack.Send(input, ret.get(false));
+    tcpstack.Send(input, backups.get(false));
 	db->destroyAllQueries();
 
 	ServerStatus::updateActive();

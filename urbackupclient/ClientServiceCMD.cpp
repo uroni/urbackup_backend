@@ -1136,10 +1136,10 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd)
 		std::string clients;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i].pipe, "GET BACKUPCLIENTS");
+            sendChannelPacket(channel_pipes[i], "GET BACKUPCLIENTS");
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
-			std::string nc=receivePacket(channel_pipes[i].pipe);
+            std::string nc=receivePacket(channel_pipes[i]);
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after read -1", LL_DEBUG);
 						
@@ -1168,8 +1168,8 @@ void ClientConnector::CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd)
 		std::string imgs;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i].pipe, cmd);
-			std::string nc=receivePacket(channel_pipes[i].pipe);
+            sendChannelPacket(channel_pipes[i], cmd);
+            std::string nc=receivePacket(channel_pipes[i]);
 			if(!nc.empty())
 			{
 				imgs+=nc+"\n";
@@ -1193,8 +1193,8 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS(const std::string &cmd)
 		std::string filebackups;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i].pipe, cmd);
-			std::string nc=receivePacket(channel_pipes[i].pipe);
+            sendChannelPacket(channel_pipes[i], cmd);
+            std::string nc=receivePacket(channel_pipes[i]);
 			if(!nc.empty())
 			{
 				filebackups+=nc+"\n";
@@ -1229,9 +1229,9 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 		std::string filebackups;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i].pipe, cmd+accessparams);
-			std::string nc=receivePacket(channel_pipes[i].pipe);
-			if(!nc.empty())
+            sendChannelPacket(channel_pipes[i], cmd+accessparams);
+            std::string nc=receivePacket(channel_pipes[i]);
+            if(!nc.empty() && nc!="err")
 			{
 				if(!filebackups.empty())
 				{
@@ -1241,8 +1241,14 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 				filebackups+=nc;
 			}
 		}
-
-		tcpstack.Send(pipe, "1"+filebackups);
+        if(filebackups.empty())
+        {
+            tcpstack.Send(pipe, "0");
+        }
+        else
+        {
+            tcpstack.Send(pipe, "1"+filebackups);
+        }
 	}
 }
 
@@ -1283,9 +1289,9 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i].pipe, cmd+accessparams);
+            sendChannelPacket(channel_pipes[i], cmd+accessparams);
 
-			std::string nc=receivePacket(channel_pipes[i].pipe);
+            std::string nc=receivePacket(channel_pipes[i]);
 			if(!nc.empty() && nc!="err")
 			{
 				tcpstack.Send(pipe, "1"+nc);
@@ -1426,18 +1432,18 @@ void ClientConnector::CMD_RESTORE_LOGIN_FOR_DOWNLOAD(const std::string &cmd, str
 		{
 			if(params[L"username"].empty())
 			{
-				tcpstack.Send(channel_pipes[i].pipe, "LOGIN username=&password=");
+                sendChannelPacket(channel_pipes[i], "LOGIN username=&password=");
 			}
 			else
 			{
-				tcpstack.Send(channel_pipes[i].pipe, "LOGIN username="+Server->ConvertToUTF8(params[L"username"])
+                sendChannelPacket(channel_pipes[i], "LOGIN username="+Server->ConvertToUTF8(params[L"username"])
 														+"&password="+Server->ConvertToUTF8(params[L"password"+convert(i)]));
 			}
 
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
 
-			std::string nc=receivePacket(channel_pipes[i].pipe);
+            std::string nc=receivePacket(channel_pipes[i]);
 
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after read -1", LL_DEBUG);
@@ -1483,12 +1489,12 @@ void ClientConnector::CMD_RESTORE_GET_SALT(const std::string &cmd, str_map &para
 		std::string salts;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-			tcpstack.Send(channel_pipes[i].pipe, "SALT username="+Server->ConvertToUTF8(params[L"username"]));
+            sendChannelPacket(channel_pipes[i], "SALT username="+Server->ConvertToUTF8(params[L"username"]));
 
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after request -1", LL_DEBUG);
 
-			std::string nc=receivePacket(channel_pipes[i].pipe);
+            std::string nc=receivePacket(channel_pipes[i]);
 
 			if(channel_pipes[i].pipe->hasError())
 				Server->Log("Channel has error after read -1", LL_DEBUG);

@@ -21,8 +21,13 @@
 #include "../stringtools.h"
 #include "../urbackupcommon/escape.h"
 #include "../urbackupcommon/os_functions.h"
+#include "../socket_header.h"
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 #include <iostream>
+#include <memory.h>
+#include <stdlib.h>
 
 std::string Connector::pw;
 bool Connector::error=false;
@@ -60,6 +65,8 @@ namespace
 
 	void read_tokens(std::wstring token_path, std::string& tokens)
 	{
+            if(os_directory_exists(os_file_prefix(token_path)))
+            {
 		std::vector<SFile> token_files = getFiles(token_path);
 
 		for(size_t i=0;i<token_files.size();++i)
@@ -79,18 +86,23 @@ namespace
 				tokens+=nt;
 			}
 		}
+            }
 	}
 }
 
 
 std::string Connector::getResponse(const std::string &cmd, const std::string &args, bool change_command)
 {
+#ifdef _WIN32
+    {
 	 WSADATA wsaData = {0};
 	int rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (rc != 0) {
-        wprintf(L"WSAStartup failed: %d\n", rc);
-        return "";
+        if (rc != 0) {
+            wprintf(L"WSAStartup failed: %d\n", rc);
+            return "";
+        }
     }
+#endif
 
 
 	busy=true;
@@ -116,7 +128,7 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(35623);
 
-	rc=connect(p, (sockaddr*)&addr, sizeof(sockaddr));
+        int rc=connect(p, (sockaddr*)&addr, sizeof(sockaddr));
 
 	if(rc==SOCKET_ERROR)
 		return "";
@@ -136,9 +148,9 @@ std::string Connector::getResponse(const std::string &cmd, const std::string &ar
 	size_t packetsize;
 	while(resp==NULL)
 	{
-		int rc=recv(p, buffer, 1024, 0);
+                int rc=recv(p, buffer, 1024, MSG_NOSIGNAL);
 		
-		if(rc==SOCKET_ERROR)
+                if(rc<=0)
 		{
 			closesocket(p);
 			error=true;
@@ -395,8 +407,6 @@ bool Connector::readTokens()
 	{
 		return true;
 	}
-
-	std::string tokens;
 
 	read_tokens(L"tokens", tokens);
 

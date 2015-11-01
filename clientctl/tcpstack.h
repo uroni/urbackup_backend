@@ -19,8 +19,13 @@
 #ifndef TCPSTACK_H
 #define TCPSTACK_H
 
+#ifdef _WIN32
 #include <WinSock2.h>
+#else
+#define SOCKET int
+#endif
 #include <vector>
+#include <string>
 
 #define MAX_PACKETSIZE	unsigned int
 
