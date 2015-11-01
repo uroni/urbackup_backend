@@ -230,3 +230,5 @@ transaction_helper/*
 urbackup/new2_db/*
 urbackup/server_ident_ecdsa409k1.priv
 urbackup/server_ident_ecdsa409k1.pub
+clientctl/Debug/*
+urbackup/new_version_deb/*

@@ -957,6 +957,14 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_RESTORE_GET_FILE_BACKUPS(cmd); continue;
 			}
+			else if( cmd=="GET FILE BACKUPS TOKENS")
+			{
+				CMD_RESTORE_GET_FILE_BACKUPS_TOKENS(cmd, params); continue;
+			}
+			else if(cmd=="GET FILE LIST TOKENS")
+			{
+				CMD_GET_FILE_LIST_TOKENS(cmd, params); continue;
+			}
 			else if( cmd=="LOGIN FOR DOWNLOAD" )
 			{
 				CMD_RESTORE_LOGIN_FOR_DOWNLOAD(cmd, params); continue;
@@ -2672,6 +2680,49 @@ bool ClientConnector::sendMessageToChannel( const std::string& msg, int timeoutm
 	} while(Server->getTimeMS()-starttime<timeoutms);
 
 	return false;
+}
+
+std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, bool with_clientname )
+{
+	std::auto_ptr<ISettingsReader> access_keys(
+		Server->createFileSettingsReader("access_keys.properties"));
+
+	std::vector<std::wstring> server_token_keys = access_keys->getKeys();
+
+	if(server_token_keys.empty())
+	{
+		Server->Log("No access key present", LL_ERROR);
+		return std::string();
+	}
+
+	std::string ret;
+
+	for(size_t i=0;i<server_token_keys.size();++i)
+	{
+		std::wstring server_key;
+
+		if(access_keys->getValue(server_token_keys[i],
+			&server_key) && !server_key.empty())
+		{
+			ret += "&tokens"+nconvert(i)+"="+base64_encode_dash(
+				crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
+				Server->ConvertToUTF8(server_key) ) );
+		}
+	}
+
+	if(with_clientname)
+	{
+		std::auto_ptr<ISettingsReader> settings(
+			Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+
+		std::string computername;
+		if( (!settings->getValue("computername", &computername)
+			&& !settings->getValue("computername_def", &computername) ) 
+			|| computername.empty())
+		{
+			ret+="&clientname="+EscapeParamString(Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName()));
+		}
+	}
 }
 
 

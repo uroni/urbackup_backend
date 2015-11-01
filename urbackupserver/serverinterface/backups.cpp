@@ -362,7 +362,7 @@ namespace backupaccess
 		return has_permission;
 	}
 
-	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::wstring clientname, std::string* fileaccesstokens )
+	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, int backupid_offset)
 	{
 		std::wstring backupfolder = getBackupFolder(db);
 
@@ -380,7 +380,7 @@ namespace backupaccess
 			}
 
 			JSON::Object obj;
-			obj.set("id", watoi(res[i][L"id"]));
+			obj.set("id", watoi(res[i][L"id"])+backupid_offset);
 			obj.set("backuptime", res[i][L"t_backuptime"]);
 			obj.set("incremental", watoi(res[i][L"incremental"]));
 			obj.set("size_bytes", res[i][L"size_bytes"]);
@@ -401,7 +401,7 @@ namespace backupaccess
 		return backups;
 	}
 
-	SPathInfo get_metadata_path_with_tokens(const std::wstring& u_path, bool is_file, std::string* fileaccesstokens, std::wstring clientname, std::wstring backupfolder, int* backupid, std::wstring backuppath)
+	SPathInfo get_metadata_path_with_tokens(const std::wstring& u_path, std::string* fileaccesstokens, std::wstring clientname, std::wstring backupfolder, int* backupid, std::wstring backuppath)
 	{
 		SPathInfo ret;
 		std::vector<std::string> tokens;
@@ -427,8 +427,15 @@ namespace backupaccess
 				{
 					std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(ret.rel_metadata_path.empty()?L"":(os_file_sep()+ret.rel_metadata_path));
 
-					if( !backupid && is_file 
-						&& i==t_path.size()-1)
+			
+					if(!backupid 
+						&& i==t_path.size()-1
+						&& !os_directory_exists(os_file_prefix(curr_metadata_dir)) )
+					{
+						ret.is_file=true;
+					}
+
+					if( ret.is_file)
 					{
 						curr_metadata_dir.erase(curr_metadata_dir.size()-1, 1);
 					}
@@ -475,7 +482,7 @@ namespace backupaccess
 		}
 	}
 
-	bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, const std::wstring& u_path, bool is_file, JSON::Object& ret)
+	bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, const std::wstring& u_path, JSON::Object& ret)
 	{
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
@@ -513,6 +520,8 @@ namespace backupaccess
 		std::vector<std::wstring> t_path;
 		Tokenize(u_path, t_path, L"/");
 
+		bool is_file=false;
+
 		JSON::Array ret_files;
 		for(size_t k=0;k<res.size();++k)
 		{
@@ -520,12 +529,14 @@ namespace backupaccess
 
 			if( !fileaccesstokens || checkBackupTokens(*fileaccesstokens, backupfolder, clientname, backuppath) )
 			{
-				SPathInfo path_info = get_metadata_path_with_tokens(u_path, is_file, fileaccesstokens, clientname, backupfolder, backupid, backuppath);
+				SPathInfo path_info = get_metadata_path_with_tokens(u_path, fileaccesstokens, clientname, backupfolder, backupid, backuppath);
 
 				if(!path_info.can_access_path)
 				{
 					continue;
 				}
+
+				is_file = path_info.is_file;
 
 				std::vector<std::string> tokens;
 				if(fileaccesstokens)
@@ -584,6 +595,10 @@ namespace backupaccess
 							obj.set("size", tfiles[i].size);
 							obj.set("mod", tmetadata[i].last_modified);
 							obj.set("creat", tmetadata[i].created);
+							if(!tmetadata[i].shahash.empty())
+							{
+								obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(tmetadata[i].shahash.c_str()), static_cast<unsigned int>(tmetadata[i].shahash.size())));
+							}
 							files.add(obj);
 						}
 					}
@@ -594,18 +609,18 @@ namespace backupaccess
 				{
 					std::auto_ptr<IFile> f;
 
-					if(is_file)
+					if(path_info.is_file)
 					{
 						f.reset(Server->openFile(os_file_prefix(path_info.full_path), MODE_READ));
 					}
 
-					if( (is_file && f.get()) || os_directory_exists(os_file_prefix(path_info.full_path)) )
+					if( (path_info.is_file && f.get()) || os_directory_exists(os_file_prefix(path_info.full_path)) )
 					{
-						FileMetadata metadata = getMetaData(path_info.full_metadata_path, is_file);
+						FileMetadata metadata = getMetaData(path_info.full_metadata_path, path_info.is_file);
 
 						JSON::Object obj;
 						obj.set("name", ExtractFileName(path_info.full_path));
-						if(is_file)
+						if(path_info.is_file)
 						{
 							obj.set("size", f->Size());
 							obj.set("dir", false);
@@ -619,6 +634,10 @@ namespace backupaccess
 						obj.set("creat", metadata.created);
 						obj.set("backupid", res[k][L"id"]);
 						obj.set("backuptime", res[k][L"backuptime"]);
+						if(!metadata.shahash.empty())
+						{
+							obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(metadata.shahash.c_str()), static_cast<unsigned int>(metadata.shahash.size())));
+						}
 						ret_files.add(obj);
 					}								
 				}
@@ -817,7 +836,7 @@ ACTION_IMPL(backups)
 				}
 
 				JSON::Array backups = backupaccess::get_backups_with_tokens(db, t_clientid, clientname,
-					token_authentication ? &fileaccesstokens : NULL);
+					token_authentication ? &fileaccesstokens : NULL, 0);
 
 				ret.set("backups", backups);
 				ret.set("can_archive", archive_ok);
@@ -850,7 +869,6 @@ ACTION_IMPL(backups)
 				t_clientid = watoi(GET[L"clientid"]);
 				clientname = getClientname(helper.getDatabase(), t_clientid);
 			}
-			bool is_file=GET[L"is_file"]==L"true";
 			bool r_ok = token_authentication ? true : 
 				helper.hasRights(t_clientid, rights, clientid);
 
@@ -876,7 +894,7 @@ ACTION_IMPL(backups)
 							return;
 						}
 
-						backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, is_file, token_authentication ? &fileaccesstokens : NULL,
+						backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, token_authentication ? &fileaccesstokens : NULL,
 							clientname, backupfolder, has_backupid ? &backupid : NULL, backuppath);
 
 						if(!path_info.can_access_path)
@@ -928,7 +946,7 @@ ACTION_IMPL(backups)
 					else
 					{
 						if(!backupaccess::get_files_with_tokens(db, has_backupid ? &backupid : NULL, t_clientid, clientname, token_authentication ? &fileaccesstokens : NULL,
-								u_path, is_file, ret))
+								u_path, ret))
 						{
 							return;
 						}

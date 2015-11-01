@@ -693,7 +693,7 @@ void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
 		return;
 	}
 
-	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &fileaccesstokens);
+	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &fileaccesstokens, img_id_offset);
 
 	ret.set("backups", backups);
 
@@ -711,8 +711,7 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 	JSON::Object ret;
 	if(fileaccesstokens.empty())
 	{
-		ret.set("err", 1);
-		tcpstack.Send(input, ret.get(false));
+		tcpstack.Send(input, "err");
 		db->destroyAllQueries();
 		return;
 	}
@@ -721,19 +720,21 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 	int backupid=0;
 	if(has_backupid)
 	{
-		backupid=watoi(params[L"backupid"]);
+		backupid=watoi(params[L"backupid"])-img_id_offset;
 	}
 
 	std::wstring u_path=params[L"path"];
-	bool is_file=params[L"is_file"]==L"true";
 
 	if(!backupaccess::get_files_with_tokens(db, has_backupid? &backupid:NULL,
-		clientid, clientname, &fileaccesstokens, u_path, is_file, ret))
+		clientid, clientname, &fileaccesstokens, u_path, ret))
 	{
-		ret.set("err", 1);
+		tcpstack.Send(input, "err");
+	}
+	else
+	{
+		tcpstack.Send(input, ret.get(false));
 	}
 
-	tcpstack.Send(input, ret.get(false));
 	db->destroyAllQueries();
 
 	ServerStatus::updateActive();
@@ -968,7 +969,6 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 		}
 
 		std::wstring u_path=params[L"path"];
-		bool is_file=params[L"is_file"]==L"true";
 
 		std::wstring backupfolder = backupaccess::getBackupFolder(db);
 		std::wstring backuppath = backupaccess::get_backup_path(db, backupid, clientid);
@@ -979,7 +979,7 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 			break;
 		}
 
-		backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, is_file, &fileaccesstokens,
+		backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, &fileaccesstokens,
 			clientname, backupfolder, &backupid, backuppath);
 
 		if(!path_info.can_access_path)

@@ -33,12 +33,12 @@ namespace backupaccess
 
 	std::wstring get_backup_path(IDatabase* db, int backupid, int t_clientid);
 
-	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::wstring clientname, std::string* fileaccesstokens );
+	JSON::Array get_backups_with_tokens(IDatabase * db, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, int backupid_offset);
 
 	struct SPathInfo
 	{
 		SPathInfo()
-			: can_access_path(false)
+			: can_access_path(false), is_file(false)
 		{
 
 		}
@@ -51,12 +51,14 @@ namespace backupaccess
 
 		std::wstring full_metadata_path;
 		std::wstring full_path;
+
+		bool is_file;
 	};
 
-	SPathInfo get_metadata_path_with_tokens(const std::wstring& u_path, bool is_file, std::string* fileaccesstokens,
+	SPathInfo get_metadata_path_with_tokens(const std::wstring& u_path, std::string* fileaccesstokens,
 		std::wstring clientname, std::wstring backupfolder, int* backupid, std::wstring backuppath);
 
 	bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname,
-		std::string* fileaccesstokens, const std::wstring& u_path, bool is_file, JSON::Object& ret);
+		std::string* fileaccesstokens, const std::wstring& u_path, JSON::Object& ret);
 }
 

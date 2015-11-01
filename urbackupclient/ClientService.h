@@ -158,6 +158,8 @@ private:
 	bool calculateFilehashesOnClient(void);
 	void sendStatus();
 
+	std::string getAccessTokensParams(const std::wstring& tokens, bool with_clientname);
+
 	static bool sendMessageToChannel(const std::string& msg, int timeoutms, const std::string& identity);
 
 	std::string getLastBackupTime();
@@ -199,6 +201,8 @@ private:
 	void CMD_RESTORE_GET_BACKUPCLIENTS(const std::string &cmd);
 	void CMD_RESTORE_GET_BACKUPIMAGES(const std::string &cmd);
 	void CMD_RESTORE_GET_FILE_BACKUPS(const std::string &cmd);
+	void CMD_RESTORE_GET_FILE_BACKUPS_TOKENS(const std::string &cmd, str_map &params);
+	void CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOAD_IMAGE(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOAD_FILES(const std::string &cmd, str_map &params);
 	void CMD_RESTORE_DOWNLOADPROGRESS(const std::string &cmd);
