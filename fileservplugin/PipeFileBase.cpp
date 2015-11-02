@@ -133,6 +133,11 @@ _u32 PipeFileBase::Write(const char* buffer, _u32 bsiz, bool *has_error/*=NULL*/
 bool PipeFileBase::Seek(_i64 spos)
 {
 	_i64 seek_off = spos - curr_pos;
+	
+	if(seek_off==0)
+	{
+		return true;
+	}
 
 	IScopedLock lock(buffer_mutex.get());
 
