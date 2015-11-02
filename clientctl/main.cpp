@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 				pbackupid = &backupid;
 			}
 
-			if(path.empty())
+            if(path.empty() && !has_backupid)
 			{
 				std::string filebackups = Connector::getFileBackupsList();
 

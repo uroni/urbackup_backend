@@ -1026,7 +1026,7 @@ ACTION_IMPL(settings)
 	ret.set("ONLY_WIN32_END", "-->");
 #endif
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

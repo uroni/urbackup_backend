@@ -126,7 +126,7 @@ ACTION_IMPL(start_backup)
 
 		JSON::Object ret;
 		ret.set("result", result);
-		helper.Write(ret.get(false));
+        helper.Write(ret.stringify(false));
 	}
 	else
 	{

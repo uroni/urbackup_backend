@@ -48,7 +48,7 @@ ACTION_IMPL(login)
 			ret.set("creating_filescache", startup_status.creating_filesindex);
 			ret.set("processed_file_entries", startup_status.processed_file_entries);
 			ret.set("percent_finished", startup_status.pc_done*100.0);
-			Server->Write( tid, ret.get(false) );
+            Server->Write( tid, ret.stringify(false) );
 			return;
 		}
 		else if(startup_status.upgrading_database)
@@ -58,7 +58,7 @@ ACTION_IMPL(login)
 			ret.set("upgrading_database", startup_status.upgrading_database);
 			ret.set("curr_db_version", startup_status.curr_db_version);
 			ret.set("target_db_version", startup_status.target_db_version);
-			Server->Write( tid, ret.get(false) );
+            Server->Write( tid, ret.stringify(false) );
 			return;
 		}
 	}
@@ -154,7 +154,7 @@ ACTION_IMPL(login)
 		}
 	}
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

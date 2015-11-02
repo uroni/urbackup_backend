@@ -66,6 +66,7 @@ SStartupStatus startup_status;
 #include "apps/export_auth_log.h"
 #include "create_files_index.h"
 #include "server_dir_links.h"
+#include "server_channel.h"
 
 #include <stdlib.h>
 #include "../Interface/DatabaseCursor.h"
@@ -582,6 +583,8 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	{
 		Server->Log("Error loading IUrlFactory", LL_INFO);
 	}
+
+    ServerChannelThread::initOffset();
 
 	server_exit_pipe=Server->createMemoryPipe();
 	BackupServer *backup_server=new BackupServer(server_exit_pipe);

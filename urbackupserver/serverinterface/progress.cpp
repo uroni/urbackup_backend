@@ -135,7 +135,7 @@ ACTION_IMPL(progress)
 		getLastActs(helper, ret, clientids);
 	}
 	
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY
