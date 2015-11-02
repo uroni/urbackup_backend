@@ -49,7 +49,7 @@ void FileMetadataDownloadThread::operator()()
 	
 	std::string remote_fn = "SCRIPT|urbackup/FILE_METADATA|"+server_token;
 
-	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false);
+	_u32 rc = fc->GetFile(remote_fn, tmp_f.get(), true, false, false);
 
 	if(rc!=ERR_SUCCESS)
 	{
@@ -108,7 +108,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			{
 				if(metadata_f->Read(&curr_fn[0], static_cast<_u32>(curr_fn.size()))!=curr_fn.size())
 				{
-					ServerLogger::Log(logid, L"Error saving metadata. Filename could not be read.", LL_ERROR);
+					ServerLogger::Log(logid, L"Error saving metadata. Filename could not be read. Size: "+convert(curr_fn_size), LL_ERROR);
 					return false;
 				}
 			}
@@ -116,7 +116,9 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Filename is empty.", LL_ERROR);
 				return false;
-			}					
+			}
+			
+			Server->Log("Metadata of "+curr_fn, LL_DEBUG);					
 
 			bool is_dir = (curr_fn[0]=='d' || curr_fn[0]=='l');
 			bool is_dir_symlink = curr_fn[0]=='l';
@@ -577,6 +579,11 @@ FileMetadataDownloadThread::~FileMetadataDownloadThread()
 	{
 		Server->deleteFile(metadata_tmp_fn);
 	}
+}
+
+void FileMetadataDownloadThread::shutdown()
+{
+	fc->Shutdown();
 }
 
 int check_metadata()

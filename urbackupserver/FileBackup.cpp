@@ -1385,6 +1385,8 @@ bool FileBackup::stopFileMetadataDownloadThread()
 
 				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
 				Server->wait(10000);
+				
+				metadata_download_thread->shutdown();
 			}
 			while(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 10000));
 		}	
