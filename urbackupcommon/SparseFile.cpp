@@ -86,6 +86,18 @@ namespace
 	};
 }
 
+
+std::string SparseFile::Read(int64 spos, _u32 tr, bool * has_error)
+{
+	if (!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return std::string();
+	}
+
+	return Read(tr, has_error);
+}
+
 std::string SparseFile::Read(_u32 tr, bool * has_error)
 {
 	BackingReadStrOp read_str_op(backing_file);
@@ -120,9 +132,31 @@ _u32 SparseFile::Read(char * buffer, _u32 bsize, bool * has_error)
 	return mappedOrigOp(&read_buf_op, bsize, has_error);
 }
 
+_u32 SparseFile::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
+{
+	if (!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Read(buffer, bsize, has_error);
+}
+
 _u32 SparseFile::Write(const std::string & tw, bool * has_error)
 {
 	return Write(tw.data(), static_cast<_u32>(tw.size()), has_error);
+}
+
+_u32 SparseFile::Write(int64 spos, const std::string & tw, bool * has_error)
+{
+	if (!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Write(tw, has_error);
 }
 
 namespace
@@ -149,6 +183,17 @@ _u32 SparseFile::Write(const char * buffer, _u32 bsize, bool * has_error)
 {
 	BackingWriteBufOp write_buf_op(backing_file, buffer);
 	return mappedOrigOp(&write_buf_op, bsize, has_error);
+}
+
+_u32 SparseFile::Write(int64 spos, const char * buffer, _u32 bsize, bool * has_error)
+{
+	if (!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Write(buffer, bsize, has_error);
 }
 
 bool SparseFile::Seek(_i64 spos)

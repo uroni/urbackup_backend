@@ -61,6 +61,8 @@
 #define fstat64 fstat
 #define ftruncate64 ftruncate
 #define fallocate64 fallocate
+#define pwrite pwrite64
+#define pread pread64
 #else
 #include <linux/fs.h>
 
@@ -184,6 +186,17 @@ std::string File::Read(_u32 tr, bool *has_error)
 	return ret;
 }
 
+std::string File::Read(int64 spos, _u32 tr, bool *has_error)
+{
+	std::string ret;
+	ret.resize(tr);
+	_u32 gc=Read(spos, (char*)ret.c_str(), tr, has_error);
+	if( gc<tr )
+		ret.resize( gc );
+
+	return ret;
+}
+
 _u32 File::Read(char* buffer, _u32 bsize, bool *has_error)
 {
 	ssize_t r=read(fd, buffer, bsize);
@@ -196,14 +209,43 @@ _u32 File::Read(char* buffer, _u32 bsize, bool *has_error)
 	return (_u32)r;
 }
 
+_u32 File::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
+{
+	ssize_t r=pread64(fd, buffer, bsize, spos);
+	if (r < 0)
+	{
+		if (has_error) *has_error = true;
+		r = 0;
+	}
+
+	return (_u32)r;
+}
+
 _u32 File::Write(const std::string &tw, bool *has_error)
 {
 	return Write( tw.c_str(), (_u32)tw.size(), has_error);
 }
 
+_u32 File::Write(int64 spos, const std::string &tw, bool *has_error)
+{
+	return Write(spos, tw.c_str(), (_u32)tw.size(), has_error);
+}
+
 _u32 File::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
 	ssize_t w=write(fd, buffer, bsize);
+	if( w<0 )
+	{
+		Server->Log("Write failed. errno="+convert(errno), LL_DEBUG);
+		if (has_error) *has_error = true;
+		w=0;
+	}
+	return (_u32)w;
+}
+
+_u32 File::Write(int64 spos, const char* buffer, _u32 bsize, bool *has_error)
+{
+	ssize_t w=pwrite64(fd, buffer, bsize, spos);
 	if( w<0 )
 	{
 		Server->Log("Write failed. errno="+convert(errno), LL_DEBUG);

@@ -979,6 +979,17 @@ _u32 VHDFile::Write(const char *buffer, _u32 bsize, bool *has_error)
 	return bsize;
 }
 
+_u32 VHDFile::Write(int64 spos, const char *buffer, _u32 bsize, bool* has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Write(buffer, bsize, has_error);
+}
+
 bool VHDFile::has_block(bool use_parent)
 {
 	unsigned int block=(unsigned int)(curr_offset/blocksize);
@@ -1165,6 +1176,17 @@ std::string VHDFile::Read(_u32 tr, bool *has_error)
 	return ret;
 }
 
+std::string VHDFile::Read(int64 spos, _u32 tr, bool* has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return std::string();
+	}
+
+	return Read(tr);
+}
+
 _u32 VHDFile::Read(char* buffer, _u32 bsize, bool *has_error)
 {
 	size_t read;
@@ -1180,9 +1202,25 @@ _u32 VHDFile::Read(char* buffer, _u32 bsize, bool *has_error)
 	}
 }
 
+_u32 VHDFile::Read(int64 spos, char* buffer, _u32 bsize, bool* has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Read(buffer, bsize);
+}
+
 _u32 VHDFile::Write(const std::string &tw, bool *has_error)
 {
 	return Write(tw.c_str(), (_u32)tw.size(), has_error);
+}
+
+_u32 VHDFile::Write(int64 spos, const std::string &tw, bool *has_error)
+{
+	return Write(spos, tw.c_str(), (_u32)tw.size(), has_error);
 }
 
 _i64 VHDFile::Size(void)

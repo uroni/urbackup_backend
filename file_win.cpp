@@ -206,21 +206,56 @@ std::string File::Read(_u32 tr, bool *has_error)
 	return ret;
 }
 
+std::string File::Read(int64 spos, _u32 tr, bool *has_error)
+{
+	std::string ret;
+	ret.resize(tr);
+	_u32 gc=Read(spos, (char*)ret.c_str(), tr, has_error);
+	if( gc<tr )
+		ret.resize( gc );
+
+	return ret;
+}
+
 _u32 File::Read(char* buffer, _u32 bsize, bool *has_error)
 {
 	DWORD read;
 	BOOL b=ReadFile(hfile, buffer, bsize, &read, NULL );
-#ifdef _DEBUG
 	if(b==FALSE)
 	{
+#ifdef _DEBUG
 		int err=GetLastError();
 		Server->Log("Read error: "+convert(err));
+#endif
 		if(has_error)
 		{
 			*has_error=true;
 		}
 	}
+	return (_u32)read;
+}
+
+_u32 File::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
+{
+	OVERLAPPED overlapped = {};
+	LARGE_INTEGER li;
+	li.QuadPart = spos;
+	overlapped.Offset = li.LowPart;
+	overlapped.OffsetHigh = li.HighPart;
+
+	DWORD read;
+	BOOL b=ReadFile(hfile, buffer, bsize, &read, &overlapped );
+	if(b==FALSE)
+	{
+#ifdef _DEBUG
+		int err=GetLastError();
+		Server->Log("Read error: "+convert(err));
 #endif
+		if (has_error)
+		{
+			*has_error = true;
+		}
+	}
 	return (_u32)read;
 }
 
@@ -229,14 +264,38 @@ _u32 File::Write(const std::string &tw, bool *has_error)
 	return Write( tw.c_str(), (_u32)tw.size(), has_error );
 }
 
+_u32 File::Write(int64 spos, const std::string &tw, bool *has_error)
+{
+	return Write(spos, tw.c_str(), (_u32)tw.size(), has_error);
+}
+
 _u32 File::Write(const char* buffer, _u32 bsize, bool *has_error)
 {
 	DWORD written;
-	if(WriteFile(hfile, buffer, bsize, &written, NULL)==FALSE)
+	if (WriteFile(hfile, buffer, bsize, &written, NULL) == FALSE)
 	{
-		if(has_error)
+		if (has_error)
 		{
-			*has_error=true;
+			*has_error = true;
+		}
+	}
+	return written;
+}
+
+_u32 File::Write(int64 spos, const char* buffer, _u32 bsize, bool *has_error)
+{
+	OVERLAPPED overlapped = {};
+	LARGE_INTEGER li;
+	li.QuadPart = spos;
+	overlapped.Offset = li.LowPart;
+	overlapped.OffsetHigh = li.HighPart;
+
+	DWORD written;
+	if (WriteFile(hfile, buffer, bsize, &written, &overlapped) == FALSE)
+	{
+		if (has_error)
+		{
+			*has_error = true;
 		}
 	}
 	return written;

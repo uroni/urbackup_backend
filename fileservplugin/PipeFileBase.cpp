@@ -44,6 +44,66 @@ PipeFileBase::~PipeFileBase()
 }
 
 
+bool PipeFileBase::SeekInt(_i64 spos)
+{
+	_i64 seek_off = spos - curr_pos;
+
+	if (seek_off == 0)
+	{
+		return true;
+	}
+
+	_i64 seeked_r_pos = static_cast<_i64>(buf_r_pos) + seek_off;
+
+	if (buf_r_pos <= buf_w_pos)
+	{
+		if (seeked_r_pos >= 0
+			&& static_cast<size_t>(seeked_r_pos) <= buf_w_pos)
+		{
+			curr_pos = spos;
+			buf_r_pos = static_cast<size_t>(seeked_r_pos);
+			assert(buf_r_pos <= buffer_size);
+			return true;
+		}
+		else if (seeked_r_pos<0 &&
+			buffer_size - buf_w_reserved_pos>static_cast<size_t>(-1 * seeked_r_pos) &&
+			buf_circle)
+		{
+			buf_r_pos = buffer_size + seeked_r_pos;
+			assert(buf_r_pos <= buffer_size);
+			curr_pos = spos;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
+	{
+		if (seeked_r_pos >= static_cast<_i64>(buf_w_reserved_pos) &&
+			seeked_r_pos < static_cast<_i64>(buffer_size))
+		{
+			buf_r_pos = static_cast<size_t>(seeked_r_pos);
+			assert(buf_r_pos <= buffer_size);
+			curr_pos = spos;
+			return true;
+		}
+		else if (seeked_r_pos >= buffer_size &&
+			seeked_r_pos - buffer_size <= buf_w_pos)
+		{
+			buf_r_pos = static_cast<size_t>(seeked_r_pos - buffer_size);
+			assert(buf_r_pos <= buffer_size);
+			curr_pos = spos;
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+}
+
 void PipeFileBase::init()
 {
 	if(!has_error)
@@ -59,18 +119,30 @@ void PipeFileBase::init()
 
 std::string PipeFileBase::Read(_u32 tr, bool *has_error/*=NULL*/)
 {
-	if(tr==0)
+	IScopedLock lock(buffer_mutex.get());
+	return Read(curr_pos, tr, has_error);
+}
+
+std::string PipeFileBase::Read(int64 spos, _u32 tr, bool * has_error)
+{
+	if (tr == 0)
 	{
 		return std::string();
 	}
 
 	IScopedLock lock(buffer_mutex.get());
 
+	if (!SeekInt(spos))
+	{
+		if (has_error) *has_error = true;
+		return std::string();
+	}
+
 	last_read = Server->getTimeMS();
 
 	int64 starttime = Server->getTimeMS();
 	size_t read_avail = getReadAvail();
-	while(read_avail<tr && !has_eof && (read_avail==0 || Server->getTimeMS()-starttime<60000))
+	while (read_avail<tr && !has_eof && (read_avail == 0 || Server->getTimeMS() - starttime<60000))
 	{
 		lock.relock(NULL);
 		Server->wait(100);
@@ -78,18 +150,18 @@ std::string PipeFileBase::Read(_u32 tr, bool *has_error/*=NULL*/)
 		read_avail = getReadAvail();
 	}
 
-	if(has_eof)
+	if (has_eof)
 	{
 		tr = (std::min)(static_cast<_u32>(read_avail), tr);
 		std::string ret;
-		if(tr>0)
+		if (tr>0)
 		{
 			ret.resize(tr);
 			readBuf(&ret[0], tr);
-		}		
-		if(getReadAvail()==0)
+		}
+		if (getReadAvail() == 0)
 		{
-			stream_size=curr_pos;
+			stream_size = curr_pos;
 		}
 		return ret;
 	}
@@ -101,19 +173,31 @@ std::string PipeFileBase::Read(_u32 tr, bool *has_error/*=NULL*/)
 		ret.resize(tr);
 		readBuf(&ret[0], tr);
 		return ret;
-	}
+	}	
 }
 
 _u32 PipeFileBase::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 {
 	IScopedLock lock(buffer_mutex.get());
+	return Read(curr_pos, buffer, bsize, has_error);
+}
+
+_u32 PipeFileBase::Read(int64 spos, char * buffer, _u32 bsize, bool * has_error)
+{
+	IScopedLock lock(buffer_mutex.get());
+
+	if (!SeekInt(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
 
 	last_read = Server->getTimeMS();
 
 	int64 starttime = Server->getTimeMS();
 	size_t read_avail = getReadAvail();
-	while(read_avail<bsize && !has_eof && ( (read_avail==0 && Server->getTimeMS() - starttime<120000)
-											|| Server->getTimeMS()-starttime<60000))
+	while (read_avail<bsize && !has_eof && ((read_avail == 0 && Server->getTimeMS() - starttime<120000)
+		|| Server->getTimeMS() - starttime<60000))
 	{
 		lock.relock(NULL);
 		Server->wait(100);
@@ -121,13 +205,13 @@ _u32 PipeFileBase::Read(char* buffer, _u32 bsize, bool *has_error/*=NULL*/)
 		read_avail = getReadAvail();
 	}
 
-	if(has_eof)
+	if (has_eof)
 	{
 		size_t tr = (std::min)(read_avail, static_cast<size_t>(bsize));
 		readBuf(buffer, tr);
-		if(getReadAvail()==0)
+		if (getReadAvail() == 0)
 		{
-			stream_size=curr_pos;
+			stream_size = curr_pos;
 		}
 		return static_cast<_u32>(tr);
 	}
@@ -147,71 +231,25 @@ _u32 PipeFileBase::Write(const std::string &tw, bool *has_error/*=NULL*/)
 	throw std::logic_error("The method or operation is not implemented.");
 }
 
+_u32 PipeFileBase::Write(int64 spos, const std::string & tw, bool * has_error)
+{
+	throw std::logic_error("The method or operation is not implemented.");
+}
+
 _u32 PipeFileBase::Write(const char* buffer, _u32 bsiz, bool *has_error/*=NULL*/)
+{
+	throw std::logic_error("The method or operation is not implemented.");
+}
+
+_u32 PipeFileBase::Write(int64 spos, const char * buffer, _u32 bsiz, bool * has_error)
 {
 	throw std::logic_error("The method or operation is not implemented.");
 }
 
 bool PipeFileBase::Seek(_i64 spos)
 {
-	_i64 seek_off = spos - curr_pos;
-	
-	if(seek_off==0)
-	{
-		return true;
-	}
-
 	IScopedLock lock(buffer_mutex.get());
-
-	_i64 seeked_r_pos = static_cast<_i64>(buf_r_pos)+seek_off;
-
-	if(buf_r_pos<=buf_w_pos)
-	{
-		if(seeked_r_pos>=0
-			&& static_cast<size_t>(seeked_r_pos)<=buf_w_pos)
-		{
-			curr_pos = spos;
-			buf_r_pos=static_cast<size_t>(seeked_r_pos);
-			assert(buf_r_pos <= buffer_size);
-			return true;
-		}
-		else if(seeked_r_pos<0 &&
-			buffer_size-buf_w_reserved_pos>static_cast<size_t>(-1*seeked_r_pos) &&
-			buf_circle)
-		{
-			buf_r_pos = buffer_size + seeked_r_pos;
-			assert(buf_r_pos <= buffer_size);
-			curr_pos = spos;
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	else
-	{
-		if(seeked_r_pos >= static_cast<_i64>(buf_w_reserved_pos) &&
-			seeked_r_pos < static_cast<_i64>(buffer_size))
-		{
-			buf_r_pos=static_cast<size_t>(seeked_r_pos);
-			assert(buf_r_pos <= buffer_size);
-			curr_pos = spos;
-			return true;
-		}
-		else if(seeked_r_pos>=buffer_size &&
-			seeked_r_pos-buffer_size<=buf_w_pos)
-		{
-			buf_r_pos=static_cast<size_t>(seeked_r_pos - buffer_size);
-			assert(buf_r_pos <= buffer_size);
-			curr_pos = spos;
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
+	return SeekInt(spos);
 }
 
 _i64 PipeFileBase::Size(void)
@@ -300,11 +338,13 @@ bool PipeFileBase::fillBuffer()
 
 	size_t read = 0;
 
+	size_t cp_buf_w_pos = buf_w_pos;
+
 	lock.relock(NULL);
 
-	bool b = readStdoutIntoBuffer(&buffer[buf_w_pos], bsize_free, read);
+	bool b = readStdoutIntoBuffer(&buffer[cp_buf_w_pos], bsize_free, read);
 
-	sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(&buffer[buf_w_pos]), static_cast<unsigned int>(read));
+	sha_def_update(&sha_ctx, reinterpret_cast<const unsigned char*>(&buffer[cp_buf_w_pos]), static_cast<unsigned int>(read));
 
 	lock.relock(buffer_mutex.get());
 

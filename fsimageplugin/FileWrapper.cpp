@@ -43,9 +43,31 @@ _u32 FileWrapper::Write( const char* buffer, _u32 bsize, bool *has_error )
 	return wfile->Write(buffer, bsize, has_error);
 }
 
+_u32 FileWrapper::Write(int64 spos, const char* buffer, _u32 bsize, bool *has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return wfile->Write( buffer, bsize);
+}
+
 _u32 FileWrapper::Write( const std::string &tw, bool *has_error )
 {
 	return Write( tw.c_str(), (_u32)tw.size(), has_error);
+}
+
+_u32 FileWrapper::Write( int64 spos, const std::string &tw, bool *has_error)
+{
+	if (!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Write(tw.c_str(), (_u32)tw.size(), has_error);
 }
 
 _u32 FileWrapper::Read( char* buffer, _u32 bsize, bool *has_error )
@@ -60,6 +82,17 @@ _u32 FileWrapper::Read( char* buffer, _u32 bsize, bool *has_error )
 	return static_cast<_u32>(read);
 }
 
+_u32 FileWrapper::Read(int64 spos, char* buffer, _u32 bsize, bool *has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Read(buffer, bsize, has_error);
+}
+
 std::string FileWrapper::Read( _u32 tr, bool *has_error )
 {
 	std::string ret;
@@ -69,6 +102,17 @@ std::string FileWrapper::Read( _u32 tr, bool *has_error )
 		ret.resize( gc );
 
 	return ret;
+}
+
+std::string FileWrapper::Read(int64 spos, _u32 tr, bool *has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return std::string();
+	}
+
+	return Read(tr, has_error);
 }
 
 FileWrapper::FileWrapper( IVHDFile* wfile, int64 offset )

@@ -16,9 +16,13 @@ public:
 	~CompressedFile();
 
 	virtual std::string Read(_u32 tr, bool *has_error=NULL);
+	virtual std::string Read(int64 spos, _u32 tr, bool *has_error = NULL);
 	virtual _u32 Read(char* buffer, _u32 bsize, bool *has_error=NULL);
+	virtual _u32 Read(int64 spos, char* buffer, _u32 bsize, bool *has_error = NULL);
 	virtual _u32 Write(const std::string &tw, bool *has_error=NULL);
+	virtual _u32 Write(int64 spos, const std::string &tw, bool *has_error = NULL);
 	virtual _u32 Write(const char* buffer, _u32 bsize, bool *has_error=NULL);
+	virtual _u32 Write(int64 spos, const char* buffer, _u32 bsize, bool *has_error = NULL);
 	virtual bool Seek(_i64 spos);
 	virtual _i64 Size(void);
 	virtual _i64 RealSize();

@@ -190,6 +190,17 @@ bool CompressedFile::Seek( _i64 spos )
 	return true;
 }
 
+_u32 CompressedFile::Read(_i64 spos, char* buffer, _u32 bsize, bool *has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Read(buffer, bsize, has_error);
+}
+
 _u32 CompressedFile::Read( char* buffer, _u32 bsize, bool *has_error)
 {
 	assert(!finished);
@@ -253,11 +264,22 @@ std::string CompressedFile::Read( _u32 tr, bool *has_error)
 	return ret;
 }
 
+std::string CompressedFile::Read(_i64 spos, _u32 tr, bool *has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return std::string();
+	}
+
+	return Read(tr, has_error);
+}
+
 bool CompressedFile::fillCache( __int64 offset, bool errorMsg, bool *has_error)
 {
 	size_t block = static_cast<size_t>(offset/blocksize);
 
-	if(block>=blockOffsets.size() )
+	if(block>=blockOffsets.size())
 	{
 		if(errorMsg)
 		{
@@ -402,9 +424,25 @@ _u32 CompressedFile::Write( const char* buffer, _u32 bsize, bool *has_error)
 	return write;
 }
 
+_u32 CompressedFile::Write(_i64 spos, const char* buffer, _u32 bsize, bool *has_error)
+{
+	if(!Seek(spos))
+	{
+		if (has_error) *has_error = true;
+		return 0;
+	}
+
+	return Write(buffer, bsize, has_error);
+}
+
 _u32 CompressedFile::Write( const std::string &tw, bool *has_error)
 {
 	return Write(tw.data(), static_cast<_u32>(tw.size()), has_error);
+}
+
+_u32 CompressedFile::Write(_i64 spos, const std::string &tw, bool *has_error)
+{
+	return Write(spos, tw.data(), static_cast<_u32>(tw.size()), has_error);
 }
 
 void CompressedFile::evictFromLruCache( const SCacheItem& item )
