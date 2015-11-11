@@ -21,7 +21,37 @@
 #include "action_header.h"
 #include "login.h"
 
-void logLogin(Helper& helper, str_nmap& PARAMS, const std::wstring& username, LoginMethod method)
+#ifndef _WIN32
+#include <syslog.h>
+#endif
+
+namespace
+{
+#ifndef _WIN32
+	class InitSyslog
+	{
+	public:
+		InitSyslog()
+		{
+			openlog(NULL, 0, LOG_USER);
+		}
+	};
+
+	InitSyslog initSyslog;
+#endif
+}
+
+std::string loginMethodToString(LoginMethod lm)
+{
+	switch(lm)
+	{
+	case LoginMethod_RestoreCD: return "restore CD";
+	case LoginMethod_Webinterface: return "web interface";
+	}
+	return std::string();
+}
+
+void logSuccessfullLogin(Helper& helper, str_nmap& PARAMS, const std::wstring& username, LoginMethod method)
 {
 	IQuery* q = helper.getDatabase()->Prepare("INSERT INTO settings_db.login_access_log (username, ip, method)"
 		" VALUES (?, ?, ?)");
@@ -31,6 +61,17 @@ void logLogin(Helper& helper, str_nmap& PARAMS, const std::wstring& username, Lo
 	q->Bind(static_cast<int>(method));
 	q->Write();
 	q->Reset();
+
+#ifndef _WIN32
+	syslog(LOG_AUTH|LOG_INFO, "Login successful for %S from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
+#endif
+}
+
+void logFailedLogin(Helper& helper, str_nmap& PARAMS, const std::wstring& username, LoginMethod method)
+{
+#ifndef _WIN32
+	syslog(LOG_AUTH|LOG_INFO, "Authentication failure for %S from %s via %s", username.c_str(), PARAMS["REMOTE_ADDR"].c_str(), loginMethodToString(method).c_str());
+#endif
 }
 
 ACTION_IMPL(login)
@@ -90,7 +131,7 @@ ACTION_IMPL(login)
 			if(helper.checkPassword(username, GET[L"password"], &user_id) )
 			{
 				ret.set("success", JSON::Value(true));
-				logLogin(helper, PARAMS, username, LoginMethod_Webinterface);
+				logSuccessfullLogin(helper, PARAMS, username, LoginMethod_Webinterface);
 				session->mStr[L"login"]=L"ok";
 				session->mStr[L"username"]=username;
 				session->id=user_id;
@@ -104,6 +145,7 @@ ACTION_IMPL(login)
 			}
 			else
 			{
+				logFailedLogin(helper, PARAMS, username, LoginMethod_Webinterface);
 				Server->wait(1000);
 				ret.set("error", JSON::Value(2));
 			}
@@ -134,7 +176,7 @@ ACTION_IMPL(login)
 			SUser *session=helper.getSession();
 			if(session!=NULL)
 			{
-				logLogin(helper, PARAMS, L"anonymous", LoginMethod_Webinterface);
+				logSuccessfullLogin(helper, PARAMS, L"anonymous", LoginMethod_Webinterface);
 				session->mStr[L"login"]=L"ok";
 				session->id=0;
 			}
