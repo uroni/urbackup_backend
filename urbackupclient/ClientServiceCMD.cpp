@@ -16,7 +16,7 @@
 #include "win_all_volumes.h"
 #else
 #include "lin_ver.h"
-std::wstring getSysVolume(std::wstring &mpath){ return L""; }
+std::wstring getSysVolumeCached(std::wstring &mpath){ return L""; }
 #endif
 #include "../client_version.h"
 
