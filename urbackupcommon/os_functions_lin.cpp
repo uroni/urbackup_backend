@@ -71,7 +71,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 		{
 			*has_error=true;
 		}
-		Server->Log("No permission to access \""+upath+"\"", LL_ERROR);
+		std::wstring errmsg;
+		int err = os_last_error(errmsg);
+		Server->Log(L"Cannot open \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
         return tmp;
     }
 	
@@ -138,7 +140,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			}
 			else
 			{
-				Server->Log("No permission to stat \""+upath+dirp->d_name+"\"", LL_ERROR);
+				std::wstring errmsg;
+				int err = os_last_error(errmsg);
+				Server->Log("Cannot stat \""+upath+dirp->d_name+"\": "+Server->ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
 				continue;
 			}
 #ifndef sun
@@ -155,7 +159,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
     
     if(errno!=0)
     {
-	    Server->Log(L"Error listing files in directory \""+path+L"\" errno: "+convert(errno), LL_ERROR);
+		std::wstring errmsg;
+		int err = os_last_error(errmsg);
+	    Server->Log(L"Error listing files in directory \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
 		if(has_error!=NULL)
 			*has_error=true;
     }
