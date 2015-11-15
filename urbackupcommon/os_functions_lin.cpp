@@ -101,6 +101,12 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			{
 				is_link=true;
 				rc=stat64((upath+dirp->d_name).c_str(), &f_info);
+				
+				if(rc!=0 && errno==ENOENT)
+				{
+					//Ignore broken symlinks
+					continue;
+				}
 			}
 			if(rc==0)
 			{
