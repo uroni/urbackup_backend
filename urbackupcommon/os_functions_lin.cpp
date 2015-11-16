@@ -303,7 +303,7 @@ int64 os_free_space(const std::wstring &path)
 	struct statvfs64 buf;
 	int rc=statvfs64(Server->ConvertToUTF8(path).c_str(), &buf);
 	if(rc==0)
-		return buf.f_bsize*buf.f_bavail;
+		return int64(buf.f_bsize)*buf.f_bavail;
 	else
 		return -1;
 }
