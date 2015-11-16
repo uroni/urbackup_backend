@@ -300,12 +300,17 @@ int64 os_free_space(const std::wstring &path)
 	if(cp[cp.size()-1]!='/')
 		cp+='/';
 
-	struct statvfs64 buf;
+	struct statvfs64 buf = {};
 	int rc=statvfs64(Server->ConvertToUTF8(path).c_str(), &buf);
 	if(rc==0)
-		return int64(buf.f_bsize)*buf.f_bavail;
+	{
+		int64 blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
+		return blocksize*buf.f_bavail;
+	}
 	else
+	{
 		return -1;
+	}
 }
 
 int64 os_total_space(const std::wstring &path)
