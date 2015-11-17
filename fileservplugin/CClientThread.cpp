@@ -95,7 +95,7 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	bufmgr=NULL;
 #endif
 
-	hFile=0;
+	hFile=INVALID_HANDLE_VALUE;
 
 #ifdef _WIN32
 	int window_size;
@@ -123,7 +123,7 @@ CClientThread::CClientThread(IPipe *pClientpipe, CTCPFileServ* pParent)
 
 	bufmgr=NULL;
 
-	hFile=0;
+	hFile=INVALID_HANDLE_VALUE;
 
 	close_the_socket=false;
 	errcount=0;
@@ -213,15 +213,15 @@ void CClientThread::operator()(void)
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 #endif
 
-	while( RecvMessage()==true && stopped==false )
+	while( RecvMessage() && !stopped )
 	{
 	}
 	ReleaseMemory();
 
-	if( hFile!=0 )
+	if( hFile!=INVALID_HANDLE_VALUE )
 	{
 		CloseHandle( hFile );
-		hFile=0;
+		hFile=INVALID_HANDLE_VALUE;
 	}
 
 	if(chunk_send_thread_ticket!=ILLEGAL_THREADPOOL_TICKET)
@@ -246,7 +246,7 @@ void CClientThread::operator()(void)
 	killable=true;
 }
 
-bool CClientThread::RecvMessage(void)
+bool CClientThread::RecvMessage()
 {
 	_i32 rc;
 	timeval lon;
@@ -262,7 +262,7 @@ bool CClientThread::RecvMessage(void)
 		bufmgr=NULL;
 		lon.tv_sec=3600;
 		int n=0;
-		while(stopped==false && rc==0 && n<60)
+		while(!stopped && rc==0 && n<60)
 		{
 			rc=clientpipe->isReadable(lon.tv_sec*1000)?1:0;
 			if(clientpipe->hasError())
@@ -303,7 +303,7 @@ bool CClientThread::RecvMessage(void)
 			bool b=ProcessPacket( &data );
 			delete[] packet;
 
-			if( b==false )
+			if( !b )
 				return false;
 		}
 	}
@@ -400,7 +400,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				if(hFile == INVALID_HANDLE_VALUE)
 				{
-					hFile=NULL;
 #ifdef CHECK_BASE_PATH
 					std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
 					if(!isDirectory(basePath))
@@ -452,7 +451,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
 						CloseHandle(hFile);
-						hFile=NULL;
+						hFile=INVALID_HANDLE_VALUE;
 						return false;
 					}
 				}
@@ -460,22 +459,24 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(filesize.QuadPart==0)
 				{
 					CloseHandle(hFile);
-					hFile=NULL;
+					hFile=INVALID_HANDLE_VALUE;
 					break;
 				}
 
-				for(_i64 i=start_offset;i<filesize.QuadPart && stopped==false;i+=READSIZE)
+				for(_i64 i=start_offset;i<filesize.QuadPart && !stopped;i+=READSIZE)
 				{
 					bool last;
 					if(i+READSIZE<filesize.QuadPart)
+					{
 						last=false;
+					}
 					else
 					{
 						last=true;
 						Log("Reading last file part", LL_DEBUG);
 					}
 
-					while(bufmgr->nfreeBufffer()==0 && stopped==false)
+					while(bufmgr->nfreeBufffer()==0 && !stopped)
 					{
 						int rc;
 						SleepEx(0,true);
@@ -483,20 +484,23 @@ bool CClientThread::ProcessPacket(CRData *data)
 						if(rc==-1)
 						{
 							Log("Error: Send failed in file loop -1", LL_DEBUG);
-							CloseHandle(hFile);
-							hFile=NULL;
+							stopped=true;
 						}
 						else if(rc==0)
+						{
 							SleepEx(1,true);
+						}
 					}
 
-					if( stopped==false )
+					if( !stopped )
+					{
 						ReadFilePart(hFile, i, last);
+					}
 
 					if(FileServ::isPause() )
 					{
 						DWORD starttime=GetTickCount();
-						while(GetTickCount()-starttime<5000)
+						while(GetTickCount()-starttime<5000 && !stopped)
 						{
 							SleepEx(500,true);
 
@@ -504,14 +508,13 @@ bool CClientThread::ProcessPacket(CRData *data)
 							if(rc==-1)
 							{
 								Log("Error: Send failed in file pause loop -2", LL_DEBUG);
-								CloseHandle(hFile);
-								hFile=NULL;
+								stopped=true;
 							}
 						}
 					}
 				}
 
-				while(bufmgr->nfreeBufffer()!=NBUFFERS && stopped==false)
+				while(bufmgr->nfreeBufffer()!=NBUFFERS && !stopped)
 				{
 					SleepEx(0,true);
 					int rc;
@@ -525,19 +528,34 @@ bool CClientThread::ProcessPacket(CRData *data)
 					if(rc==-1)
 					{
 						Log("Error: Send failed in off file loop -3", LL_DEBUG);
-						CloseHandle(hFile);
-						hFile=NULL;
-						break;
+						stopped=true;
 					}
 					else if(rc==0)
+					{
 						SleepEx(1,true);
+					}
 				}
 
-				if( stopped==false )
+				while(stopped && bufmgr->nfreeBufffer()!=NBUFFERS)
+				{
+					SleepEx(100, true);
+
+					for(size_t i=0;i<t_send.size();++i)
+					{
+						if(t_send[i]->delbuf)
+						{
+							bufmgr->releaseBuffer(t_send[i]->delbufptr);
+						}
+						delete t_send[i];
+					}
+					t_send.clear();
+				}
+
+				if( !stopped )
 				{
 					Log("Closed file.", LL_DEBUG);
 					CloseHandle(hFile);
-					hFile=NULL;
+					hFile=INVALID_HANDLE_VALUE;
 				}
 #else //LINUX
 				hFile=open64(Server->ConvertToUTF8(filename).c_str(), O_RDONLY|O_LARGEFILE);
@@ -559,7 +577,6 @@ bool CClientThread::ProcessPacket(CRData *data)
 						break;
 					}
 #endif
-					hFile=0;
 					char ch=ID_COULDNT_OPEN;
 					int rc=SendInt(&ch, 1);
 					if(rc==SOCKET_ERROR)
@@ -591,7 +608,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 					{
 						Log("Error: Socket Error - DBG: SendSize", LL_DEBUG);
 						CloseHandle(hFile);
-						hFile=0;
+						hFile=INVALID_HANDLE_VALUE;
 						return false;
 					}
 				}
@@ -599,7 +616,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				if(filesize==0)
 				{
 					CloseHandle(hFile);
-					hFile=0;
+					hFile=INVALID_HANDLE_VALUE;
 					break;
 				}
 				
@@ -694,7 +711,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 				
 				CloseHandle(hFile);
 				delete []buf;
-				hFile=0;
+				hFile=INVALID_HANDLE_VALUE;
 #endif
 
 			}break;
@@ -713,7 +730,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 			}break;
 		}
 	}
-	if( stopped==true )
+	if( stopped )
 		return false;
 	else
 		return true;
@@ -831,7 +848,7 @@ void CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 
 	++currfilepart;
 
-	if( /*GetLastError() != ERROR_SUCCESS ||*/ b==false)
+	if( /*GetLastError() != ERROR_SUCCESS ||*/ !b)
 	{
 		Log("Error: Can't start reading from File", LL_DEBUG);
 		return;
@@ -844,7 +861,7 @@ void CClientThread::ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &la
 }
 #endif
 
-int CClientThread::SendData(void)
+int CClientThread::SendData()
 {
 	if( t_send.size()==0 )
 		return 0;
@@ -858,7 +875,7 @@ int CClientThread::SendData(void)
 	{
 		Log("Client Timeout occured.", LL_DEBUG);
 		
-		if( ldata->delbuf==true )
+		if( ldata->delbuf )
 		{
 			bufmgr->releaseBuffer(ldata->delbufptr);
 			ldata->delbuf=false;
@@ -891,7 +908,7 @@ int CClientThread::SendData(void)
 	#endif
 					Log("SOCKET_ERROR in SendData(). BSize: "+nconvert(ldata->bsize)+" WSAGetLastError: "+nconvert(err), LL_DEBUG);
 				
-					if( ldata->delbuf==true )
+					if( ldata->delbuf )
 					{
 						bufmgr->releaseBuffer(ldata->delbufptr);
 						ldata->delbuf=false;
@@ -1075,7 +1092,6 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
-		hFile=(HANDLE)NULL;
 #ifdef CHECK_BASE_PATH
 		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/");
 		if(!isDirectory(basePath))
@@ -1129,8 +1145,6 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 	chunk.hashsize = curr_hash_size;
 
 	queueChunk(chunk);
-
-	hFile=(HANDLE)NULL;
 
 	return true;
 }

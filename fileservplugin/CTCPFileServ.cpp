@@ -260,7 +260,7 @@ void CTCPFileServ::DelClientThreads(void)
 		proc=false;
 		for(size_t i=0;i<clientthreads.size();++i)
 		{
-			if(clientthreads[i]->isKillable()==true)
+			if(clientthreads[i]->isKillable())
 			{
 				delete clientthreads[i];
 				clientthreads.erase( clientthreads.begin()+i );

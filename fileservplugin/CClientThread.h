@@ -104,10 +104,10 @@ public:
 	bool getNextChunk(SChunk *chunk, bool has_error);
 private:
 
-	bool RecvMessage(void);
+	bool RecvMessage();
 	bool ProcessPacket(CRData *data);
 	void ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last);
-	int SendData(void);
+	int SendData();
 	void ReleaseMemory(void);
 	void CloseThread(HANDLE hFile);
 
