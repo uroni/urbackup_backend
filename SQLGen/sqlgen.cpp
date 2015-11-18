@@ -364,6 +364,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		{
 			return_type="std::vector<std::string>";
 		}
+		if(struct_name=="blob")
+		{
+			return_type="std::vector<std::string>";
+		}
 		return_vector=true;
 	}
 
@@ -487,6 +491,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 				{
 					return_outer+="std::string";
 				}
+				else if(return_types[0].type=="blob")
+				{
+					return_outer+="std::string";
+				}
 				else
 				{
 					return_outer+=return_types[0].type;
@@ -501,7 +509,7 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 		return_type=struct_name;
 	}
 	else if(struct_name!="string" && struct_name!="void" && struct_name!="int"
-		&& struct_name!="bool")
+		&& struct_name!="bool" && struct_name!="int64")
 	{
 		return_outer=(classname.empty()?"":classname+"::")+struct_name;
 		return_type=struct_name;
@@ -513,6 +521,9 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 
 	if(return_type=="string")
 		return_type="std::string";
+
+	if(return_type=="string")
+		return_type="std::wstring";
 
 	std::string funcdecl=return_type+" "+func_s_name+"(";
 	std::string code="\r\n"+return_outer+" "+funcsig+"(";
@@ -623,6 +634,10 @@ AnnotatedCode generateSqlFunction(IDatabase* db, AnnotatedCode input, GeneratedD
 			if(!return_types.empty())
 			{
 				if(return_types[0].type=="string")
+				{
+					code+="std::string";
+				}
+				else if(return_types[0].type=="blob")
 				{
 					code+="std::string";
 				}
