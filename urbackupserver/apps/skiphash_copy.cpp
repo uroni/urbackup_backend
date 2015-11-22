@@ -31,6 +31,11 @@ bool skiphash_copy(const std::wstring& src_path,
 
 	if(!dst.get())
 	{
+		dst.reset(Server->openFile(os_file_prefix(dst_path), MODE_WRITE));
+	}
+
+	if(!dst.get())
+	{
 		Server->Log(L"Could not open output file for writing at \""+dst_path+L"\"", LL_ERROR);
 		return false;
 	}
