@@ -44,7 +44,7 @@ bool skiphash_copy(const std::wstring& src_path,
 	
 	if(!hashinput_path.empty())
 	{
-		hashinput.reset(Server->openFile(os_file_prefix(hashinput_path), MODE_READ));
+		hashinput.reset(Server->openFile(os_file_prefix(hashinput_path), MODE_READ_DEVICE));
 
 		if(!hashinput.get())
 		{

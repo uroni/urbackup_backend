@@ -31,6 +31,7 @@
 #include <stdint.h>
 
 #include <sys/fcntl.h>
+#include <sys/ioctl.h>
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #define open64 open
@@ -196,9 +197,26 @@ bool File::Seek(_i64 spos)
 _i64 File::Size(void)
 {
 	struct stat64 stat_buf;
-	fstat64(fd, &stat_buf);
-
-	return stat_buf.st_size;
+	int rc = fstat64(fd, &stat_buf);
+	
+	if(rc==0)
+	{
+		if(S_ISBLK(stat_buf.st_mode))
+		{
+			_i64 ret;
+			rc = ioctl(file, BLKGETSIZE64, &ret);
+			if(rc==0)
+			{
+				return ret;
+			}
+		}
+		
+		return stat_buf.st_size;	
+	}
+	else
+	{
+		return -1;
+	}
 }
 
 _i64 File::RealSize(void)
