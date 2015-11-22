@@ -3,6 +3,7 @@
 #include "../../urbackupcommon/chunk_hasher.h"
 #include "../../stringtools.h"
 #include "../../urbackupcommon/os_functions.h"
+#include <memory>
 
 bool skiphash_copy(const std::wstring& src_path,
 	const std::wstring& dst_path,

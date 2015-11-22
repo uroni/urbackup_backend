@@ -64,6 +64,7 @@ SStartupStatus startup_status;
 #include "apps/cleanup_cmd.h"
 #include "apps/repair_cmd.h"
 #include "apps/export_auth_log.h"
+#include "apps/skiphash_copy.h"
 #include "create_files_index.h"
 #include "server_dir_links.h"
 #include "server_channel.h"
@@ -348,10 +349,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=server::check_metadata();
 		}
+		else if(app=="skiphash_copy")
+		{
+			rc=skiphash_copy_file();
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex, skiphash_copy");
 		}
 		exit(rc);
 	}
