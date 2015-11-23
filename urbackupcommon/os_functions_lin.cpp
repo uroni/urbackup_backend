@@ -105,6 +105,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 				if(rc!=0 && errno==ENOENT)
 				{
 					//Ignore broken symlinks
+					errno=0;
 					continue;
 				}
 			}
