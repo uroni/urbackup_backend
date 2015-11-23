@@ -40,7 +40,7 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
+#if defined(__FreeBSD__)
 #define lstat64 lstat
 #define stat64 stat
 #define statvfs64 statvfs
@@ -71,7 +71,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 		{
 			*has_error=true;
 		}
-		Server->Log("No permission to access \""+upath+"\"", LL_ERROR);
+		std::wstring errmsg;
+		int err = os_last_error(errmsg);
+		Server->Log(L"Cannot open \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
         return tmp;
     }
 	
@@ -103,7 +105,6 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 				if(rc!=0 && errno==ENOENT)
 				{
 					//Ignore broken symlinks
-					errno=0;
 					continue;
 				}
 			}
@@ -145,7 +146,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
 			}
 			else
 			{
-				Server->Log("No permission to stat \""+upath+dirp->d_name+"\" errno: "+nconvert(errno), LL_ERROR);
+				std::wstring errmsg;
+				int err = os_last_error(errmsg);
+				Server->Log("Cannot stat \""+upath+dirp->d_name+"\": "+Server->ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
 				continue;
 			}
 #ifndef sun
@@ -162,7 +165,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool foll
     
     if(errno!=0)
     {
-	    Server->Log(L"Error listing files in directory \""+path+L"\" errno: "+convert(errno), LL_ERROR);
+		std::wstring errmsg;
+		int err = os_last_error(errmsg);
+	    Server->Log(L"Error listing files in directory \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
 		if(has_error!=NULL)
 			*has_error=true;
     }
@@ -620,37 +625,4 @@ int64 os_last_error(std::wstring& message)
 		message = Server->ConvertToUnicode(str);
 	}
 	return err;
-}
-
-int os_popen(const std::string& cmd, std::string& ret)
-{
-	ret.clear();
-
-	FILE* in = NULL;
-
-#ifndef _WIN32
-#define _popen popen
-#define _pclose pclose
-#endif
-
-	in = _popen(cmd.c_str(), "r");
-
-	if(in==NULL)
-	{
-		return -1;
-	}
-
-	char buf[4096];
-	size_t read;
-	do
-	{
-		read=fread(buf, 1, sizeof(buf), in);
-		if(read>0)
-		{
-			ret.append(buf, buf+read);
-		}
-	}
-	while(read==sizeof(buf));
-
-	return _pclose(in);
 }
