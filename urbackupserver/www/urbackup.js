@@ -5,7 +5,7 @@ g.startup=true;
 g.no_tab_mouse_click=false;
 g.tabberidx=-1;
 g.progress_stop_id=-1;
-g.current_version=1004010000;
+g.current_version=1004011000;
 g.status_show_all=false;
 g.datatable_default_config={};
 
@@ -25,7 +25,8 @@ g.languages=[
 				{ l: "norsk", s: "no_NO" },
 				{ l: "Italiano", s: "it_IT" },
 				{ l: "České", s: "cs_CZ" },
-				{ l: "Türk", s: "tr" }
+				{ l: "Türk", s: "tr" },
+				{ l: "Português", s: "pt" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	

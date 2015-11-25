@@ -3,198 +3,198 @@
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # 
 # Translators:
-# Olivian Daniel Tofan <daniel@toffee.ro>, 2015
+# sieks <sieks@inbox.lv>, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2015-11-17 07:25+0000\n"
-"Last-Translator: Olivian Daniel Tofan <daniel@toffee.ro>\n"
-"Language-Team: Romanian (http://www.transifex.com/uroni/urbackup/language/ro/)\n"
+"PO-Revision-Date: 2015-11-24 09:52+0000\n"
+"Last-Translator: sieks <sieks@inbox.lv>\n"
+"Language-Team: Latvian (http://www.transifex.com/uroni/urbackup/language/lv/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: ro\n"
-"Plural-Forms: nplurals=3; plural=(n==1?0:(((n%100>19)||((n%100==0)&&(n!=0)))?2:1));\n"
+"Language: lv\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);\n"
 
 msgid "action_1"
-msgstr "Copie de rezervă incrementală fișier"
+msgstr "Inkrementālā failu rezerves kopijas izveidošana"
 
 msgid "action_2"
-msgstr "Copie de rezervă întreagă fișier"
+msgstr "Pilna failu rezerves kopija"
 
 msgid "action_3"
-msgstr "Copie de rezervă incrementală imagine"
+msgstr "Inkrementālā klona rezerves kopijas izveide"
 
 msgid "action_4"
-msgstr "Copie de rezervă întreagă imagine"
+msgstr "Pilna klona rezerves kopija"
 
 msgid "action_1_d"
-msgstr "Ștergere copie de rezervă incrementală fișier"
+msgstr ""
 
 msgid "action_2_d"
-msgstr "Ștergere copie de rezervă întreagă fișier"
+msgstr ""
 
 msgid "action_3_d"
-msgstr "Ștergere copie de rezervă întreagă fișier"
+msgstr ""
 
 msgid "action_4_d"
-msgstr "Ștergere copie de rezervă întreagă imagine"
+msgstr ""
 
 msgid "nav_item_6"
-msgstr "Stare"
+msgstr "Statuss"
 
 msgid "nav_item_5"
-msgstr "Activități"
+msgstr "Aktivitātes"
 
 msgid "nav_item_4"
-msgstr "Copii de rezervă"
+msgstr "Rezerves kopijas"
 
 msgid "nav_item_3"
-msgstr "Jurnal"
+msgstr "Žurnālfaili"
 
 msgid "nav_item_2"
-msgstr "Statistici"
+msgstr "Statistika"
 
 msgid "nav_item_1"
-msgstr " Preferințe"
+msgstr "Iestatījumi"
 
 msgid "unknown"
-msgstr "Necunoscut"
+msgstr "Nezināms"
 
 msgid "overview"
 msgstr ""
 
 msgid "ok"
-msgstr "Ok"
+msgstr "Labi"
 
 msgid "no_recent_backup"
-msgstr "Nicio copie de rezervă recentă"
+msgstr ""
 
 msgid "backup_never"
-msgstr "Niciodata"
+msgstr "Nekad"
 
 msgid "yes"
-msgstr "Da"
+msgstr "Jā"
 
 msgid "no"
-msgstr "Nu"
+msgstr "Nē"
 
 msgid "tBackup status"
-msgstr "Stare copie de rezervă"
+msgstr "Rezerves kopiju statuss"
 
 msgid "tComputer name"
-msgstr "Nume calculator"
+msgstr "Datora nosaukums"
 
 msgid "tLast seen"
-msgstr ""
+msgstr "Pēdējo reizi redzēts"
 
 msgid "tLast file backup"
-msgstr "Ultima copie de rezervă fișier"
+msgstr "Pēdējā faila rezerves kopija"
 
 msgid "tLast image backup"
-msgstr "Ultima copie de rezervă imagine"
+msgstr ""
 
 msgid "tFile backup status"
-msgstr "Stare copie de rezervă fișier"
+msgstr ""
 
 msgid "tImage backup status"
-msgstr "Stare copie de rezervă imagine"
+msgstr ""
 
 msgid "tShow details"
-msgstr "Arată detaliile"
+msgstr ""
 
 msgid "tExtra clients"
-msgstr "Clienti suplimentari"
+msgstr ""
 
 msgid "tNo extra clients"
-msgstr "Niciun client suplimentar"
+msgstr ""
 
 msgid "tActions"
-msgstr "Acțiuni"
+msgstr "Darbības"
 
 msgid "tOnline"
-msgstr "Conectat"
+msgstr ""
 
 msgid "tHostname/IP"
-msgstr "Nume gazdă/IP"
+msgstr "Datora nosaukums/IP"
 
 msgid "tServer identity"
-msgstr "Identitatea serverului"
+msgstr "Servera identitāte"
 
 msgid "users"
-msgstr "Utilizatori"
+msgstr "Lietotāji"
 
 msgid "general_settings"
-msgstr "General"
+msgstr ""
 
 msgid "admin"
-msgstr "Administrator"
+msgstr "Administrators"
 
 msgid "user"
-msgstr "Utilizator"
+msgstr "Lietotājs"
 
 msgid "username_empty"
-msgstr "Introduceți nume utilizator"
+msgstr "Lūdzu ievadiet lietotāja vārdu"
 
 msgid "password_empty"
-msgstr "Introduceți parola"
+msgstr "Lūdzu ievadiet paroli"
 
 msgid "password_differ"
-msgstr "Cele două parole sunt diferite"
+msgstr "Parole atšķiras"
 
 msgid "user_n_exist"
-msgstr "Utilizator inexistent"
+msgstr "Lietotājs neeksistē"
 
 msgid "password_wrong"
-msgstr "Parolă greșită"
+msgstr "Nepareiza parole"
 
 msgid "user_exists"
-msgstr "Deja există un utilizator cu acest nume"
+msgstr ""
 
 msgid "session_timeout"
-msgstr "Inactivitatea a făcut ca această sesiune să devină invalidă. Autentificați-vă din nou pentru a continua."
+msgstr ""
 
 msgid "really_del_user"
-msgstr "Stergeți într-adevar acest utilizator?"
+msgstr ""
 
 msgid "user_add_done"
-msgstr "Utilizatorul nou s-a adăugat cu succes."
+msgstr "Jauns lietotājs veiksmīgi pievienots."
 
 msgid "user_remove_done"
-msgstr "Utilizatorul s-a șters cu succes."
+msgstr ""
 
 msgid "user_update_right_done"
-msgstr "Drepturile de utilizator s-au schimbat cu succes."
+msgstr ""
 
 msgid "user_pw_change_ok"
-msgstr "Parola s-a schimbat cu succes."
+msgstr ""
 
 msgid "right_all"
-msgstr "Toate drepturile"
+msgstr "Visas tiesības"
 
 msgid "right_none"
-msgstr "Niciun drept"
+msgstr "Nav tiesību"
 
 msgid "filter"
-msgstr "Filtru"
+msgstr "Filtrēt"
 
 msgid "all"
-msgstr ""
+msgstr "Viss"
 
 msgid "loglevel_0"
 msgstr "Info"
 
 msgid "loglevel_1"
-msgstr "Avertismente"
+msgstr ""
 
 msgid "loglevel_2"
-msgstr "Erori"
+msgstr "Kļūdas"
 
 msgid "dir_error_text"
-msgstr "Dosarul unde UrBackup va salva copiile de rezervă este inaccesibil. Reparați aceasta prin modificarea acestui dosar în 'Preferințe' sau dând lui UrBackup drepturi de access la acest dosar."
+msgstr ""
 
 msgid "tmpdir_error_text"
-msgstr "Dosarul unde UrBackup va salva fișierele temporare este inaccesibil. Reparați aceasta prin modificarea acestui dosar în 'Preferințe' sau dând lui UrBackup drepturi de access la acest dosar."
+msgstr ""
 
 msgid "starting"
 msgstr ""
@@ -203,19 +203,19 @@ msgid "ident_err"
 msgstr ""
 
 msgid "enter_hostname"
-msgstr "Introduceți un nume gazdă sau o adresă IP"
+msgstr "Lūdzu ievadiet datora nosaukumu vai IP adresi"
 
 msgid "clients"
-msgstr "Clienți"
+msgstr "Klienti"
 
 msgid "validate_text_empty"
-msgstr "Introduceți o valoare pentru {name}"
+msgstr ""
 
 msgid "validate_text_notint"
-msgstr "Introduceți o valoare numerică pentru {name}"
+msgstr ""
 
 msgid "validate_name_update_freq_incr"
-msgstr "interval pentru copiile de rezervă incrementale fișier"
+msgstr ""
 
 msgid "validate_name_update_freq_full"
 msgstr ""
@@ -266,22 +266,22 @@ msgid "validate_name_backupfolder"
 msgstr ""
 
 msgid "validate_name_computername"
-msgstr ""
+msgstr "datora nosaukums"
 
 msgid "too_many_clients_err"
-msgstr ""
+msgstr "Par daudz klientu"
 
 msgid "really_remove_client"
 msgstr ""
 
 msgid "computername"
-msgstr "Nume calculator"
+msgstr "Datora nosaukums"
 
 msgid "storage_usage_pie_graph_title"
 msgstr ""
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr "Nume calculator"
+msgstr "Datora nosaukums"
 
 msgid "storage_usage_pie_graph_colname2"
 msgstr ""
@@ -290,7 +290,7 @@ msgid "storage_usage_bar_graph_title"
 msgstr ""
 
 msgid "storage_usage_bar_graph_colname1"
-msgstr ""
+msgstr "Datums"
 
 msgid "storage_usage_bar_graph_colname2"
 msgstr ""
@@ -299,7 +299,7 @@ msgid "tImages"
 msgstr ""
 
 msgid "tFiles"
-msgstr ""
+msgstr "Faili"
 
 msgid "tSum"
 msgstr ""
@@ -314,16 +314,16 @@ msgid "upgrade_error_text"
 msgstr ""
 
 msgid "tActivities"
-msgstr "Activități"
+msgstr "Aktivitātes"
 
 msgid "tAction"
-msgstr ""
+msgstr "Darbība"
 
 msgid "tProgress"
-msgstr ""
+msgstr "Progress"
 
 msgid "tFiles in queue"
-msgstr ""
+msgstr "Faili rindā"
 
 msgid "tLast activities"
 msgstr ""
@@ -332,37 +332,37 @@ msgid "tStarting time"
 msgstr ""
 
 msgid "tRequired time"
-msgstr ""
+msgstr "Nepieciešamais laiks"
 
 msgid "tUsed Storage"
 msgstr ""
 
 msgid "tClients"
-msgstr "Clienți"
+msgstr "Klienti"
 
 msgid "tLogs"
-msgstr "Jurnal"
+msgstr "Žurnālfaili"
 
 msgid "tReports"
-msgstr ""
+msgstr "Atskaites"
 
 msgid "tSend reports to"
 msgstr ""
 
 msgid "tSend"
-msgstr ""
+msgstr "Sūtīt"
 
 msgid "tBackups with a log message of at least log level"
 msgstr ""
 
 msgid "tBackup time"
-msgstr ""
+msgstr "Rezerves kopijas laiks"
 
 msgid "tErrors"
-msgstr "Erori"
+msgstr "Kļūdas"
 
 msgid "tWarnings"
-msgstr "Avertismente"
+msgstr ""
 
 msgid "tStorage allocation"
 msgstr ""
@@ -371,7 +371,7 @@ msgid "tStorage usage"
 msgstr ""
 
 msgid "tAll"
-msgstr ""
+msgstr "Viss"
 
 msgid "tBackup storage path"
 msgstr ""
@@ -383,7 +383,7 @@ msgid "tDo not do file backups"
 msgstr ""
 
 msgid "tAutomatically shut down server"
-msgstr ""
+msgstr "Automātiski izslēgt serveri"
 
 msgid "tAutoupdate clients"
 msgstr ""
@@ -473,34 +473,34 @@ msgid "tAllow client-side changing of settings"
 msgstr ""
 
 msgid "tdays"
-msgstr ""
+msgstr "dienas"
 
 msgid "thours"
-msgstr ""
+msgstr "stundas"
 
 msgid "tmin"
 msgstr ""
 
 msgid "tMail server name"
-msgstr ""
+msgstr "E-pasta servera nosaukums"
 
 msgid "tMail server port"
-msgstr ""
+msgstr "E-pasta servera ports"
 
 msgid "tMail server username (empty for none)"
-msgstr ""
+msgstr "E-pasta servera lietotāja vārds (tukšs - bez lietotāja)"
 
 msgid "tMail server password"
-msgstr ""
+msgstr "E-pasta servera parole"
 
 msgid "tSender E-Mail Address"
-msgstr ""
+msgstr "Sūtītāja e-pasta adrese"
 
 msgid "tSend mails only with SSL/TLS"
-msgstr ""
+msgstr "Sūtīt pastus tikai ar SSL/TLS"
 
 msgid "tCheck SSL/TLS certificate"
-msgstr ""
+msgstr "Pārbaudīt SSL/TLS sertifikātu"
 
 msgid ""
 "tSend test mail to this email address after saving the settings (leave empty"
@@ -514,94 +514,94 @@ msgid "tSending test mail failed. Error:"
 msgstr ""
 
 msgid "tFilter"
-msgstr "Filtru"
+msgstr "Filtrēt"
 
 msgid "tBack"
-msgstr ""
+msgstr "Atpakaļ"
 
 msgid "tAdd"
-msgstr ""
+msgstr "Pievienot"
 
 msgid "tRemove"
-msgstr ""
+msgstr "Noņemt"
 
 msgid "tSave"
-msgstr ""
+msgstr "Saglabāt"
 
 msgid "tLevel"
 msgstr ""
 
 msgid "tTime"
-msgstr ""
+msgstr "Laiks"
 
 msgid "tMessage"
-msgstr ""
+msgstr "Ziņa"
 
 msgid "tLog"
 msgstr ""
 
 msgid "tUsername"
-msgstr ""
+msgstr "Lietotāja vārds"
 
 msgid "tRights"
-msgstr ""
+msgstr "Tiesības"
 
 msgid "tNo Users"
-msgstr ""
+msgstr "Nav lietotāju"
 
 msgid "tCreate user"
-msgstr ""
+msgstr "Izveidot lietotāju"
 
 msgid "tPassword"
-msgstr ""
+msgstr "Parole"
 
 msgid "tRepeat password"
-msgstr ""
+msgstr "Atkārtot paroli"
 
 msgid "tRights for"
 msgstr ""
 
 msgid "tAbort"
-msgstr ""
+msgstr "Atcelt"
 
 msgid "tCreate"
-msgstr ""
+msgstr "Izveidot"
 
 msgid "tChange rights"
 msgstr ""
 
 msgid "tChange password"
-msgstr ""
+msgstr "Mainīt paroli"
 
 msgid "tLogin"
 msgstr ""
 
 msgid "tInfos"
-msgstr ""
+msgstr "Informācija"
 
 msgid "tSeparate settings for this client"
 msgstr ""
 
 msgid "tServer"
-msgstr ""
+msgstr "Serveris"
 
 msgid "tFile backups"
-msgstr ""
+msgstr "Faila rezerves kopija"
 
 msgid "tImage backups"
 msgstr ""
 
 msgid "tPermissions"
-msgstr ""
+msgstr "Tiesības"
 
 msgid "tClient"
-msgstr ""
+msgstr "Klients"
 
 msgid "tArchival"
 msgstr ""
 
 msgid "tInternet"
-msgstr ""
+msgstr "Internets"
 
 msgid "tPerform autoupdates silently"
 msgstr ""
@@ -610,40 +610,40 @@ msgid "tMax backup speed for local network"
 msgstr ""
 
 msgid "tNo activities"
-msgstr ""
+msgstr "Nav aktivitātes"
 
 msgid "tSelect all"
-msgstr ""
+msgstr "Iezīmēt visu"
 
 msgid "tSelect none"
-msgstr ""
+msgstr "Iezīmēt nevienu"
 
 msgid "tRemove selected"
-msgstr ""
+msgstr "Dzēst iezīmēto"
 
 msgid "tStart for selected"
 msgstr ""
 
 msgid "tInternet clients"
-msgstr ""
+msgstr "Interneta klients"
 
 msgid "tAdd additional internet clients"
 msgstr ""
 
 msgid "tClient name"
-msgstr ""
+msgstr "Klienta vārds"
 
 msgid "tNo entries for this filter"
 msgstr ""
 
 msgid "tNo data"
-msgstr ""
+msgstr "Nav datu"
 
 msgid "tTotal max backup speed for local network"
 msgstr ""
 
 msgid "tArchive every"
-msgstr ""
+msgstr "Arhivēt katru"
 
 msgid "tArchive for"
 msgstr ""
@@ -661,7 +661,7 @@ msgid "tInternet server name/IP"
 msgstr ""
 
 msgid "tInternet server port"
-msgstr ""
+msgstr "Interneta servera ports"
 
 msgid "tDo image backups over internet"
 msgstr ""
@@ -676,58 +676,58 @@ msgid "tTotal max backup speed for internet connection"
 msgstr ""
 
 msgid "tEncrypted transfer"
-msgstr ""
+msgstr "Šifrēta pārraide:"
 
 msgid "tCompressed transfer"
-msgstr ""
+msgstr "Saspiesta pārraide:"
 
 msgid "file_backup"
-msgstr ""
+msgstr "Faila rezerves kopija"
 
 msgid "hours"
-msgstr ""
+msgstr "stundas"
 
 msgid "days"
-msgstr ""
+msgstr "dienas"
 
 msgid "weeks"
-msgstr ""
+msgstr "nedēļas"
 
 msgid "months"
-msgstr ""
+msgstr "mēneši"
 
 msgid "year"
-msgstr ""
+msgstr "gads"
 
 msgid "hour"
-msgstr ""
+msgstr "stunda"
 
 msgid "day"
-msgstr ""
+msgstr "diena"
 
 msgid "week"
-msgstr ""
+msgstr "nedēļa"
 
 msgid "month"
-msgstr ""
+msgstr "mēnesis"
 
 msgid "years"
-msgstr ""
+msgstr "gadi"
 
 msgid "min"
-msgstr ""
+msgstr "minūte"
 
 msgid "mins"
-msgstr ""
+msgstr "minūtes"
 
 msgid "validate_name_archive_every"
-msgstr ""
+msgstr "Arhivēt katru"
 
 msgid "validate_name_archive_for"
 msgstr ""
 
 msgid "forever"
-msgstr ""
+msgstr "vienmēr"
 
 msgid "backup_in_progress"
 msgstr ""
@@ -778,22 +778,22 @@ msgid "internet_client_added"
 msgstr ""
 
 msgid "change_pw"
-msgstr ""
+msgstr "Mainīt paroli"
 
 msgid "old_pw_wrong"
-msgstr ""
+msgstr "Vecā parole nav pareiza"
 
 msgid "tID"
-msgstr ""
+msgstr "ID"
 
 msgid "tFile"
-msgstr ""
+msgstr "Fails"
 
 msgid "tSize"
-msgstr ""
+msgstr "Izmērs"
 
 msgid "tIncremental"
-msgstr ""
+msgstr "Inkrementāli"
 
 msgid "tLoading"
 msgstr ""
@@ -802,25 +802,25 @@ msgid "tStorage usage of"
 msgstr ""
 
 msgid "tDelete domain"
-msgstr ""
+msgstr "Dzēst domēnu"
 
 msgid "tChange rights for user"
 msgstr ""
 
 msgid "tDomain"
-msgstr ""
+msgstr "Domēns"
 
 msgid "tTranslation"
 msgstr ""
 
 msgid "tNew domain"
-msgstr ""
+msgstr "Jauns domēns"
 
 msgid "tChange"
-msgstr ""
+msgstr "Labot"
 
 msgid "tChange password for user"
-msgstr ""
+msgstr "Mainīt lietotāja paroli"
 
 msgid "tSaved settings successfully"
 msgstr ""
@@ -835,19 +835,19 @@ msgid "tFailed"
 msgstr ""
 
 msgid "tSuccessfull"
-msgstr ""
+msgstr "Veiksmīgi"
 
 msgid "tInfo"
 msgstr "Info"
 
 msgid "tError"
-msgstr ""
+msgstr "Kļūda"
 
 msgid "tWarning"
 msgstr ""
 
 msgid "tCurrent version"
-msgstr ""
+msgstr "Pašreizējā versija"
 
 msgid "tTarget version"
 msgstr ""
@@ -862,25 +862,25 @@ msgid "tNext archival"
 msgstr ""
 
 msgid "tweeks"
-msgstr ""
+msgstr "nedēļas"
 
 msgid "tmonth"
-msgstr ""
+msgstr "mēnesis"
 
 msgid "tyears"
-msgstr ""
+msgstr "gadi"
 
 msgid "tforever"
-msgstr ""
+msgstr "vienmēr"
 
 msgid "tFile backup"
-msgstr ""
+msgstr "Faila rezerves kopija"
 
 msgid "tIncremental file backup"
-msgstr "Copie de rezervă incrementală fișier"
+msgstr "Inkrementālā failu rezerves kopijas izveidošana"
 
 msgid "tFull file backup"
-msgstr "Copie de rezervă întreagță fișier"
+msgstr "Pilna failu rezerves kopija"
 
 msgid "tEnable internet mode"
 msgstr ""
@@ -889,10 +889,10 @@ msgid "tInternet auth key"
 msgstr ""
 
 msgid "tIncremental image backup"
-msgstr "Copie de rezervă incrementală imagine"
+msgstr "Inkrementālā klona rezerves kopijas izveide"
 
 msgid "tFull image backup"
-msgstr "Copie de rezervă întreagă imagine"
+msgstr "Pilna klona rezerves kopija"
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
@@ -941,22 +941,22 @@ msgid "creating_filescache_text"
 msgstr ""
 
 msgid "tDownload folder as ZIP"
-msgstr ""
+msgstr "Lejupielādēt mapi kā ZIP arhīvu"
 
 msgid "tOld password"
-msgstr ""
+msgstr "Vecā parole"
 
 msgid "tNew password"
-msgstr ""
+msgstr "Jauna parole"
 
 msgid "tRepeat new password"
-msgstr ""
+msgstr "Atkārtojiet jauno paroli"
 
 msgid "tChanging password failed:"
-msgstr ""
+msgstr "Paroles maiņa neveiksmīga:"
 
 msgid "tChanged password successfully"
-msgstr ""
+msgstr "Parole nomainīta"
 
 msgid "tNumber of file entries processed"
 msgstr ""
@@ -968,16 +968,16 @@ msgid "tLive Log"
 msgstr ""
 
 msgid "tShow"
-msgstr ""
+msgstr "Rādīt"
 
 msgid "tThere is a new version of UrBackup server available"
 msgstr ""
 
 msgid "tIndexing..."
-msgstr ""
+msgstr "Indeksē..."
 
 msgid "tDelete"
-msgstr ""
+msgstr "Dzēst"
 
 msgid "tDownload client from update server"
 msgstr ""
@@ -1067,7 +1067,7 @@ msgid "tFile hash collection database cachesize"
 msgstr ""
 
 msgid "tMB"
-msgstr ""
+msgstr "MB"
 
 msgid "tUpdate stats database cachesize"
 msgstr ""
@@ -1091,7 +1091,7 @@ msgid "tEnd-to-end verification of all file backups"
 msgstr ""
 
 msgid "tServer admin mail address"
-msgstr ""
+msgstr "Servera administratora pasta adrese"
 
 msgid ""
 "tWarning: The settings configured on the client will overwrite the settings "
@@ -1103,22 +1103,22 @@ msgid "tClient download"
 msgstr ""
 
 msgid "tDownload"
-msgstr ""
+msgstr "Lejupielādēt"
 
 msgid "tStatus"
-msgstr "Stare"
+msgstr "Statuss"
 
 msgid "tIP"
 msgstr "IP"
 
 msgid "tClient version"
-msgstr "Versiune client"
+msgstr "Klienta versija"
 
 msgid "tOperating System"
-msgstr "Sistem de operare"
+msgstr ""
 
 msgid "tShow all clients"
-msgstr "Afișează toti clienții"
+msgstr "Rādīt visus klientus"
 
 msgid "tThis client is going to be removed. "
 msgstr ""
@@ -1127,19 +1127,19 @@ msgid "tClients are removed during the cleanup in the cleanup time window. "
 msgstr ""
 
 msgid "tRecalculate statistics"
-msgstr "Recalculează statisticile"
+msgstr ""
 
 msgid "First"
-msgstr "Primul"
+msgstr "Pirmais"
 
 msgid "Last"
-msgstr "Ultimul"
+msgstr "Pēdējais"
 
 msgid "Next"
-msgstr ""
+msgstr "Nākošais"
 
 msgid "Previous"
-msgstr ""
+msgstr "Iepriekšējais"
 
 msgid "No data available in table"
 msgstr ""
@@ -1154,25 +1154,25 @@ msgid "(filtered from _MAX_ total entries)"
 msgstr ""
 
 msgid "sInfoThousands"
-msgstr ""
+msgstr ","
 
 msgid "Show _MENU_ entries"
 msgstr ""
 
 msgid "Processing..."
-msgstr ""
+msgstr "Procesā..."
 
 msgid "Search:"
-msgstr ""
+msgstr "Meklēt:"
 
 msgid "No matching records found"
 msgstr ""
 
 msgid "Restore to default"
-msgstr ""
+msgstr "Uzstādīt sākotnējos parametrus"
 
 msgid "Save"
-msgstr ""
+msgstr "Saglabāt"
 
 msgid "tConnect to Internet backup server if connected to local backup server"
 msgstr ""
@@ -1184,7 +1184,7 @@ msgid "tYou need to create a user to be able to send reports"
 msgstr ""
 
 msgid "Show/hide columns"
-msgstr ""
+msgstr "Rādīt/Slēpt kolonnas"
 
 msgid "tShow when a new server version is available"
 msgstr ""

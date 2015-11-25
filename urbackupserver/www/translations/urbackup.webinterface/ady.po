@@ -3,198 +3,197 @@
 # This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
 # 
 # Translators:
-# Olivian Daniel Tofan <daniel@toffee.ro>, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: UrBackup\n"
-"PO-Revision-Date: 2015-11-17 07:25+0000\n"
-"Last-Translator: Olivian Daniel Tofan <daniel@toffee.ro>\n"
-"Language-Team: Romanian (http://www.transifex.com/uroni/urbackup/language/ro/)\n"
+"PO-Revision-Date: 2014-04-23 20:33+0000\n"
+"Last-Translator: uroni <urpc@gmx.de>\n"
+"Language-Team: Adyghe (http://www.transifex.com/uroni/urbackup/language/ady/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: ro\n"
-"Plural-Forms: nplurals=3; plural=(n==1?0:(((n%100>19)||((n%100==0)&&(n!=0)))?2:1));\n"
+"Language: ady\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "action_1"
-msgstr "Copie de rezervă incrementală fișier"
+msgstr ""
 
 msgid "action_2"
-msgstr "Copie de rezervă întreagă fișier"
+msgstr ""
 
 msgid "action_3"
-msgstr "Copie de rezervă incrementală imagine"
+msgstr ""
 
 msgid "action_4"
-msgstr "Copie de rezervă întreagă imagine"
+msgstr ""
 
 msgid "action_1_d"
-msgstr "Ștergere copie de rezervă incrementală fișier"
+msgstr ""
 
 msgid "action_2_d"
-msgstr "Ștergere copie de rezervă întreagă fișier"
+msgstr ""
 
 msgid "action_3_d"
-msgstr "Ștergere copie de rezervă întreagă fișier"
+msgstr ""
 
 msgid "action_4_d"
-msgstr "Ștergere copie de rezervă întreagă imagine"
+msgstr ""
 
 msgid "nav_item_6"
-msgstr "Stare"
+msgstr ""
 
 msgid "nav_item_5"
-msgstr "Activități"
+msgstr ""
 
 msgid "nav_item_4"
-msgstr "Copii de rezervă"
+msgstr ""
 
 msgid "nav_item_3"
-msgstr "Jurnal"
+msgstr ""
 
 msgid "nav_item_2"
-msgstr "Statistici"
+msgstr ""
 
 msgid "nav_item_1"
-msgstr " Preferințe"
+msgstr ""
 
 msgid "unknown"
-msgstr "Necunoscut"
+msgstr ""
 
 msgid "overview"
 msgstr ""
 
 msgid "ok"
-msgstr "Ok"
+msgstr ""
 
 msgid "no_recent_backup"
-msgstr "Nicio copie de rezervă recentă"
+msgstr ""
 
 msgid "backup_never"
-msgstr "Niciodata"
+msgstr ""
 
 msgid "yes"
-msgstr "Da"
+msgstr ""
 
 msgid "no"
-msgstr "Nu"
+msgstr ""
 
 msgid "tBackup status"
-msgstr "Stare copie de rezervă"
+msgstr ""
 
 msgid "tComputer name"
-msgstr "Nume calculator"
+msgstr ""
 
 msgid "tLast seen"
 msgstr ""
 
 msgid "tLast file backup"
-msgstr "Ultima copie de rezervă fișier"
+msgstr ""
 
 msgid "tLast image backup"
-msgstr "Ultima copie de rezervă imagine"
+msgstr ""
 
 msgid "tFile backup status"
-msgstr "Stare copie de rezervă fișier"
+msgstr ""
 
 msgid "tImage backup status"
-msgstr "Stare copie de rezervă imagine"
+msgstr ""
 
 msgid "tShow details"
-msgstr "Arată detaliile"
+msgstr ""
 
 msgid "tExtra clients"
-msgstr "Clienti suplimentari"
+msgstr ""
 
 msgid "tNo extra clients"
-msgstr "Niciun client suplimentar"
+msgstr ""
 
 msgid "tActions"
-msgstr "Acțiuni"
+msgstr ""
 
 msgid "tOnline"
-msgstr "Conectat"
+msgstr ""
 
 msgid "tHostname/IP"
-msgstr "Nume gazdă/IP"
+msgstr ""
 
 msgid "tServer identity"
-msgstr "Identitatea serverului"
+msgstr ""
 
 msgid "users"
-msgstr "Utilizatori"
+msgstr ""
 
 msgid "general_settings"
-msgstr "General"
+msgstr ""
 
 msgid "admin"
-msgstr "Administrator"
+msgstr ""
 
 msgid "user"
-msgstr "Utilizator"
+msgstr ""
 
 msgid "username_empty"
-msgstr "Introduceți nume utilizator"
+msgstr ""
 
 msgid "password_empty"
-msgstr "Introduceți parola"
+msgstr ""
 
 msgid "password_differ"
-msgstr "Cele două parole sunt diferite"
+msgstr ""
 
 msgid "user_n_exist"
-msgstr "Utilizator inexistent"
+msgstr ""
 
 msgid "password_wrong"
-msgstr "Parolă greșită"
+msgstr ""
 
 msgid "user_exists"
-msgstr "Deja există un utilizator cu acest nume"
+msgstr ""
 
 msgid "session_timeout"
-msgstr "Inactivitatea a făcut ca această sesiune să devină invalidă. Autentificați-vă din nou pentru a continua."
+msgstr ""
 
 msgid "really_del_user"
-msgstr "Stergeți într-adevar acest utilizator?"
+msgstr ""
 
 msgid "user_add_done"
-msgstr "Utilizatorul nou s-a adăugat cu succes."
+msgstr ""
 
 msgid "user_remove_done"
-msgstr "Utilizatorul s-a șters cu succes."
+msgstr ""
 
 msgid "user_update_right_done"
-msgstr "Drepturile de utilizator s-au schimbat cu succes."
+msgstr ""
 
 msgid "user_pw_change_ok"
-msgstr "Parola s-a schimbat cu succes."
+msgstr ""
 
 msgid "right_all"
-msgstr "Toate drepturile"
+msgstr ""
 
 msgid "right_none"
-msgstr "Niciun drept"
+msgstr ""
 
 msgid "filter"
-msgstr "Filtru"
+msgstr ""
 
 msgid "all"
 msgstr ""
 
 msgid "loglevel_0"
-msgstr "Info"
+msgstr ""
 
 msgid "loglevel_1"
-msgstr "Avertismente"
+msgstr ""
 
 msgid "loglevel_2"
-msgstr "Erori"
+msgstr ""
 
 msgid "dir_error_text"
-msgstr "Dosarul unde UrBackup va salva copiile de rezervă este inaccesibil. Reparați aceasta prin modificarea acestui dosar în 'Preferințe' sau dând lui UrBackup drepturi de access la acest dosar."
+msgstr ""
 
 msgid "tmpdir_error_text"
-msgstr "Dosarul unde UrBackup va salva fișierele temporare este inaccesibil. Reparați aceasta prin modificarea acestui dosar în 'Preferințe' sau dând lui UrBackup drepturi de access la acest dosar."
+msgstr ""
 
 msgid "starting"
 msgstr ""
@@ -203,19 +202,19 @@ msgid "ident_err"
 msgstr ""
 
 msgid "enter_hostname"
-msgstr "Introduceți un nume gazdă sau o adresă IP"
+msgstr ""
 
 msgid "clients"
-msgstr "Clienți"
+msgstr ""
 
 msgid "validate_text_empty"
-msgstr "Introduceți o valoare pentru {name}"
+msgstr ""
 
 msgid "validate_text_notint"
-msgstr "Introduceți o valoare numerică pentru {name}"
+msgstr ""
 
 msgid "validate_name_update_freq_incr"
-msgstr "interval pentru copiile de rezervă incrementale fișier"
+msgstr ""
 
 msgid "validate_name_update_freq_full"
 msgstr ""
@@ -275,13 +274,13 @@ msgid "really_remove_client"
 msgstr ""
 
 msgid "computername"
-msgstr "Nume calculator"
+msgstr ""
 
 msgid "storage_usage_pie_graph_title"
 msgstr ""
 
 msgid "storage_usage_pie_graph_colname1"
-msgstr "Nume calculator"
+msgstr ""
 
 msgid "storage_usage_pie_graph_colname2"
 msgstr ""
@@ -314,7 +313,7 @@ msgid "upgrade_error_text"
 msgstr ""
 
 msgid "tActivities"
-msgstr "Activități"
+msgstr ""
 
 msgid "tAction"
 msgstr ""
@@ -338,10 +337,10 @@ msgid "tUsed Storage"
 msgstr ""
 
 msgid "tClients"
-msgstr "Clienți"
+msgstr ""
 
 msgid "tLogs"
-msgstr "Jurnal"
+msgstr ""
 
 msgid "tReports"
 msgstr ""
@@ -359,10 +358,10 @@ msgid "tBackup time"
 msgstr ""
 
 msgid "tErrors"
-msgstr "Erori"
+msgstr ""
 
 msgid "tWarnings"
-msgstr "Avertismente"
+msgstr ""
 
 msgid "tStorage allocation"
 msgstr ""
@@ -514,7 +513,7 @@ msgid "tSending test mail failed. Error:"
 msgstr ""
 
 msgid "tFilter"
-msgstr "Filtru"
+msgstr ""
 
 msgid "tBack"
 msgstr ""
@@ -838,7 +837,7 @@ msgid "tSuccessfull"
 msgstr ""
 
 msgid "tInfo"
-msgstr "Info"
+msgstr ""
 
 msgid "tError"
 msgstr ""
@@ -877,10 +876,10 @@ msgid "tFile backup"
 msgstr ""
 
 msgid "tIncremental file backup"
-msgstr "Copie de rezervă incrementală fișier"
+msgstr ""
 
 msgid "tFull file backup"
-msgstr "Copie de rezervă întreagță fișier"
+msgstr ""
 
 msgid "tEnable internet mode"
 msgstr ""
@@ -889,10 +888,10 @@ msgid "tInternet auth key"
 msgstr ""
 
 msgid "tIncremental image backup"
-msgstr "Copie de rezervă incrementală imagine"
+msgstr ""
 
 msgid "tFull image backup"
-msgstr "Copie de rezervă întreagă imagine"
+msgstr ""
 
 msgid ""
 "tClients are removed during the cleanup time window, if they are offline."
@@ -1106,19 +1105,19 @@ msgid "tDownload"
 msgstr ""
 
 msgid "tStatus"
-msgstr "Stare"
+msgstr ""
 
 msgid "tIP"
-msgstr "IP"
+msgstr ""
 
 msgid "tClient version"
-msgstr "Versiune client"
+msgstr ""
 
 msgid "tOperating System"
-msgstr "Sistem de operare"
+msgstr ""
 
 msgid "tShow all clients"
-msgstr "Afișează toti clienții"
+msgstr ""
 
 msgid "tThis client is going to be removed. "
 msgstr ""
@@ -1127,13 +1126,13 @@ msgid "tClients are removed during the cleanup in the cleanup time window. "
 msgstr ""
 
 msgid "tRecalculate statistics"
-msgstr "Recalculează statisticile"
+msgstr ""
 
 msgid "First"
-msgstr "Primul"
+msgstr ""
 
 msgid "Last"
-msgstr "Ultimul"
+msgstr ""
 
 msgid "Next"
 msgstr ""
