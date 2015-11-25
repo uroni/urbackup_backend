@@ -306,7 +306,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->filescache_type=settings_default->getValue("filescache_type", "none");
 	settings->filescache_size=watoi64(settings_default->getValue(L"filescache_size", L"68719476736")); //64GB
 	settings->suspend_index_limit=settings_default->getValue("suspend_index_limit", 100000);
-	settings->client_quota=settings_default->getValue("client_quota", "100%");
+	settings->client_quota=settings_default->getValue("client_quota", "");
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
