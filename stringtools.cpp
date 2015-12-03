@@ -1237,7 +1237,11 @@ std::string FormatTime(int timeins)
 
 //-------------------HTML DECODE-----------------
 
-const char array[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'}; 
+namespace
+{
+	const char hexnum_array[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'}; 
+}
+
 
 bool IsHex(const std::string &str)
 {
@@ -1247,7 +1251,7 @@ bool IsHex(const std::string &str)
 		bool in=false;
 		for(size_t t=0;t<16;++t)
 		{
-			if(array[t]==str[i])
+			if(hexnum_array[t]==str[i])
 			{
 				in=true;
 				break;
@@ -1271,7 +1275,7 @@ unsigned long hexToULong(const std::string &data)
 	{
 		for(unsigned char j = 0; j < 16; j++)
 		{
-			if( str[i] == array[j])
+			if( str[i] == hexnum_array[j])
 			{			
 				return_value = ((return_value * 16) + j);
 			}
@@ -1284,15 +1288,15 @@ std::string byteToHex(unsigned char ch)
 {
 	std::string r;
 	r.resize(2);
-	r[0]=array[ch%16];
-	ch/=16;
-	r[1]=array[ch%16];
+	r[0]=hexnum_array[ch/16];
+	r[1]=hexnum_array[ch%16];
 	return r;
 }
 
 std::string bytesToHex(const unsigned char *b, size_t bsize)
 {
 	std::string r;
+	r.reserve(bsize*2);
 	for(size_t i=0;i<bsize;++i)
 	{
 		r+=byteToHex(b[i]);
