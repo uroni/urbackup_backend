@@ -722,20 +722,7 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 		deleted_size_bytes=getImageSize(backupid);
 	}
 
-	if(remove_associated)
-	{
-		std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
-		for(size_t i=0;i<assoc.size();++i)
-		{
-			int64 is=getImageSize(assoc[i]);
-			if(is>0) deleted_size_bytes+=is;
-			removeImage(assoc[i], settings, false, force_remove, remove_associated, remove_references);
-		}
-	}
-
 	bool ret=true;
-
-	ServerStatus::updateActive();
 
 	if(remove_references)
 	{
@@ -767,6 +754,19 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 			return false;
 		}
 	}
+
+	if(remove_associated)
+	{
+		std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
+		for(size_t i=0;i<assoc.size();++i)
+		{
+			int64 is=getImageSize(assoc[i]);
+			if(is>0) deleted_size_bytes+=is;
+			removeImage(assoc[i], settings, false, force_remove, remove_associated, remove_references);
+		}
+	}
+
+	ServerStatus::updateActive();
 
 	ServerCleanupDao::CondString res=cleanupdao->getImagePath(backupid);
 	if(res.exists)
