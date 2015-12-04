@@ -2614,7 +2614,14 @@ function login2(data)
 	var username=I('username').value;
 	var password=I('password').value;
 	
-	var pwmd5 = calcMD5(data.rnd+calcMD5(data.salt+password));
+	var pwmd5 = calcMD5(data.salt+password);
+	
+	if(data.pbkdf2_rounds>0)
+	{
+		pwmd5 = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(sjcl.codec.hex.toBits(pwmd5), data.salt, data.pbkdf2_rounds));
+	}
+	
+	pwmd5 = calcMD5(data.rnd+pwmd5);
 	
 	new getJSON("login", "username="+username+"&password="+pwmd5, login3);
 }
@@ -2745,12 +2752,19 @@ function doChangePW2(data)
 	var password=I('old_password').value;
 	var password1=I('password1').value;
 	
-	var pwmd5=calcMD5(data.rnd+calcMD5(data.salt+password));
-		
-	var salt=randomString();
-	var password_md5=calcMD5(salt+password1);
+	var pwmd5 = calcMD5(data.salt+password);
 	
-	var pars="&userid=own&pwmd5="+password_md5+"&salt="+salt+"&old_pw="+pwmd5;
+	if(data.pbkdf2_rounds>0)
+	{
+		pwmd5 = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(sjcl.codec.hex.toBits(pwmd5), data.salt, data.pbkdf2_rounds));
+	}
+	
+	pwmd5=calcMD5(data.rnd+pwmd5);
+	
+	var new_salt = randomString();
+	var pwmd5_new = calcMD5(new_salt + password1);
+		
+	var pars="&userid=own&pwmd5="+pwmd5_new+"&salt="+new_salt+"&old_pw="+pwmd5;
 	
 	new getJSON("settings", "sa=changepw"+pars, doChangePW3);
 }

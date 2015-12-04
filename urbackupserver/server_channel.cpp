@@ -529,7 +529,7 @@ void ServerChannelThread::SALT(str_map& params)
 
 		Helper helper(Server->getThreadID(), &GET, &PARAMS);
 
-		IQuery * q = helper.getDatabase()->Prepare("SELECT salt FROM settings_db.si_users WHERE name=?");
+		IQuery * q = helper.getDatabase()->Prepare("SELECT salt, pbkdf2_rounds FROM settings_db.si_users WHERE name=?");
 		q->Bind(username);
 		db_results res=q->Read();
 		if(res.empty())
@@ -539,7 +539,14 @@ void ServerChannelThread::SALT(str_map& params)
 		else
 		{
 			salt=ServerSettings::generateRandomAuthKey();
-			tcpstack.Send(input, "ok;"+Server->ConvertToUTF8(res[0][L"salt"])+";"+salt);
+
+			std::string pbkdf2_rounds="";
+			if(res[0][L"pbkdf2_rounds"]!=L"0")
+			{
+				pbkdf2_rounds+=";"+Server->ConvertToUTF8(res[0][L"pbkdf2_rounds"]);
+			}
+
+			tcpstack.Send(input, "ok;"+Server->ConvertToUTF8(res[0][L"salt"])+";"+salt+pbkdf2_rounds);
 		}
 	}
 	else
