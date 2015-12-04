@@ -52,12 +52,12 @@ namespace JSON
 		data.erase(data.begin()+idx);
 	}
 
-	std::string Array::get(bool compressed)
+    std::string Array::stringify(bool compressed) const
 	{
 		std::string r="[";
 		for(size_t i=0;i<data.size();++i)
 		{
-			r+=data[i].get(compressed);
+            r+=data[i].stringify(compressed);
 			if(i+1<data.size())
 				r+=",";
 		}
@@ -87,26 +87,26 @@ namespace JSON
 			data.erase(it);
 	}
 
-	Value Object::get(const std::string &key)
+    Value Object::get(const std::string &key)
 	{
-		std::map<std::string, Value>::iterator it=data.find(key);
+        std::map<std::string, Value>::const_iterator it=data.find(key);
 		if(it!=data.end())
 			return it->second;
 		else
 			return Value();
 	}
 
-	std::string Object::get(bool compressed)
+    std::string Object::stringify(bool compressed) const
 	{
 		std::string r="{";
 		if(!compressed)
 			r+="\n";
-		std::map<std::string, Value>::iterator last=data.end();
+        std::map<std::string, Value>::const_iterator last=data.end();
 		if(!data.empty())
 			--last;
-		for(std::map<std::string, Value>::iterator it=data.begin();it!=data.end();++it)
+        for(std::map<std::string, Value>::const_iterator it=data.begin();it!=data.end();++it)
 		{
-			r+="\""+it->first+"\": "+it->second.get(compressed);
+            r+="\""+it->first+"\": "+it->second.stringify(compressed);
 			if(it!=last)
 			{
 				r+=",";
@@ -352,7 +352,7 @@ namespace JSON
 		return *this;
 	}
 
-	std::wstring Value::escape(const std::wstring &t)
+    std::wstring Value::escape(const std::wstring &t) const
 	{
 		std::wstring r;
 		for(size_t i=0;i<t.size();++i)
@@ -390,14 +390,14 @@ namespace JSON
 		return r;
 	}
 
-	std::string Value::get(bool compressed)
+    std::string Value::stringify(bool compressed) const
 	{
 		switch(data_type)
 		{
 			case str_type: return "\""+Server->ConvertToUTF8(escape(Server->ConvertToUnicode(*((std::string*)data))))+"\"";
 			case wstr_type: return "\""+Server->ConvertToUTF8(escape(*((std::wstring*)data)))+"\"";
-			case obj_type: return ((Object*)data)->get(compressed);
-			case array_type: return ((Array*)data)->get(compressed);
+            case obj_type: return ((Object*)data)->stringify(compressed);
+            case array_type: return ((Array*)data)->stringify(compressed);
 			case bool_type: return nconvert(*((bool*)data));
 			case int_type: return nconvert(*((int*)data));
 			case uint_type: return nconvert(*((unsigned int*)data));

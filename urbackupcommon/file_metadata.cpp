@@ -489,6 +489,7 @@ void FileMetadata::serialize( CWData& data ) const
 {
 	data.addString(shahash);
 	data.addString(orig_path);
+    data.addString(file_permissions);
 }
 
 bool FileMetadata::read( CRData& data )
@@ -496,6 +497,7 @@ bool FileMetadata::read( CRData& data )
 	bool ok=true;
 	ok &= data.getStr(&shahash);
 	ok &= data.getStr(&orig_path);
+    ok &= data.getStr(&file_permissions);
 
 	if(ok)
 	{

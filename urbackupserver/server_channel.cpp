@@ -39,6 +39,7 @@
 #include "server_log.h"
 #include "restore_client.h"
 #include "serverinterface/backups.h"
+#include "dao/ServerBackupDao.h"
 
 const unsigned short serviceport=35623;
 extern IFSImageFactory *image_fak;
@@ -121,6 +122,26 @@ namespace
 	};
 }
 
+int ServerChannelThread::img_id_offset=0;
+
+void ServerChannelThread::initOffset()
+{
+    IDatabase* db = getDatabase();
+    ServerBackupDao backupdao(db);
+
+    ServerBackupDao::CondString offset_str = backupdao.getMiscValue(L"img_id_offset");
+
+    if(offset_str.exists)
+    {
+        img_id_offset = watoi(offset_str.value);
+    }
+    else
+    {
+        img_id_offset = Server->getRandomNumber()%((unsigned int)INT_MAX/2);
+        backupdao.addMiscValue(L"img_id_offset", convert(img_id_offset));
+    }
+}
+
 ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::wstring& clientname, int clientid, bool internet_mode, const std::string& identity) :
 	client_main(client_main), clientname(clientname), clientid(clientid), settings(NULL), internet_mode(internet_mode), identity(identity), keepalive_thread(NULL)
 {
@@ -136,8 +157,6 @@ ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::wst
 		combat_mode=true;
 	}
 	tcpstack.setAddChecksum(internet_mode);
-
-	img_id_offset=Server->getRandomNumber()%((unsigned int)INT_MAX/2);
 }
 
 ServerChannelThread::~ServerChannelThread(void)
@@ -700,7 +719,7 @@ void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
 
 	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &fileaccesstokens, img_id_offset);
 
-    tcpstack.Send(input, backups.get(false));
+    tcpstack.Send(input, backups.stringify(false));
 	db->destroyAllQueries();
 
 	ServerStatus::updateActive();
@@ -729,13 +748,13 @@ void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 	std::wstring u_path=params[L"path"];
 
 	if(!backupaccess::get_files_with_tokens(db, has_backupid? &backupid:NULL,
-		clientid, clientname, &fileaccesstokens, u_path, ret))
+        clientid, clientname, &fileaccesstokens, u_path, img_id_offset, ret))
 	{
 		tcpstack.Send(input, "err");
 	}
 	else
 	{
-		tcpstack.Send(input, ret.get(false));
+        tcpstack.Send(input, ret.get(std::string("files")).getArray().stringify(false));
 	}
 
 	db->destroyAllQueries();
@@ -1005,7 +1024,7 @@ void ServerChannelThread::DOWNLOAD_FILES_TOKENS(str_map& params)
 
 	} while (false);
 
-	tcpstack.Send(input, ret.get(false));
+    tcpstack.Send(input, ret.stringify(false));
 	db->destroyAllQueries();	
 }
 

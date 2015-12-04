@@ -457,7 +457,7 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 
 		ret.set("dirs", dirs);
 
-		tcpstack.Send(pipe, ret.get(true));
+        tcpstack.Send(pipe, ret.stringify(true));
 	}
 	else
 	{
@@ -633,7 +633,7 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	ret.set("capability_bits", getCapabilities());
 
-	tcpstack.Send(pipe, ret.get(false));
+    tcpstack.Send(pipe, ret.stringify(false));
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->destroyAllQueries();
@@ -1287,6 +1287,8 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 			accessparams+="&backupid="+EscapeParamString(Server->ConvertToUTF8(it_backupid->second));
 		}
 
+        std::string filelist;
+
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
             sendChannelPacket(channel_pipes[i], cmd+accessparams);
@@ -1294,12 +1296,29 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
             std::string nc=receivePacket(channel_pipes[i]);
 			if(!nc.empty() && nc!="err")
 			{
-				tcpstack.Send(pipe, "1"+nc);
-				return;
+                if(!filelist.empty())
+                {
+                    filelist[filelist.size()-1] = ',';
+                    nc[0]=' ';
+                }
+
+                filelist+=nc;
+
+                if(it_backupid!=params.end())
+                {
+                    break;
+                }
 			}
 		}
 
-		tcpstack.Send(pipe, "0");
+        if(!filelist.empty())
+        {
+            tcpstack.Send(pipe, "1"+filelist);
+        }
+        else
+        {
+            tcpstack.Send(pipe, "0");
+        }
 	}
 }
 

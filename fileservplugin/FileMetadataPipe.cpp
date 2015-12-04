@@ -333,7 +333,7 @@ bool FileMetadataPipe::readStderrIntoBuffer( char* buf, size_t buf_avail, size_t
 
 		if(errpipe->Read(&stderr_buf)==0)
 		{
-			if(pipe->hasError())
+            if(errpipe->hasError())
 			{
 				return false;
 			}

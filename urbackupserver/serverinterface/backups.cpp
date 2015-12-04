@@ -418,6 +418,8 @@ namespace backupaccess
 		std::vector<std::wstring> t_path;
 		Tokenize(u_path, t_path, L"/");
 
+        ret.can_access_path=true;
+
 		for(size_t i=0;i<t_path.size();++i)
 		{
 			if(!t_path[i].empty() && t_path[i]!=L" " && t_path[i]!=L"." && t_path[i]!=L".."
@@ -486,7 +488,8 @@ namespace backupaccess
 		}
 	}
 
-	bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, const std::wstring& u_path, JSON::Object& ret)
+    bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname, std::string* fileaccesstokens,
+                               const std::wstring& u_path, int backupid_offset, JSON::Object& ret)
 	{
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
@@ -502,8 +505,12 @@ namespace backupaccess
 			if(!res.empty())
 			{
 				ret.set("backuptime", res[0][L"backuptime"]);
-				ret.set("backupid", *backupid);
+                ret.set("backupid", *backupid + backupid_offset);
 			}
+            else
+            {
+                return false;
+            }
 		}
 		else
 		{
@@ -636,7 +643,7 @@ namespace backupaccess
 						}
 						obj.set("mod", metadata.last_modified);
 						obj.set("creat", metadata.created);
-						obj.set("backupid", res[k][L"id"]);
+                        obj.set("backupid", watoi(res[k][L"id"])+backupid_offset);
 						obj.set("backuptime", res[k][L"backuptime"]);
 						if(!metadata.shahash.empty())
 						{
@@ -807,7 +814,7 @@ ACTION_IMPL(backups)
 				if(t_clientid==-1)
 				{
 					ret.set("error", "2");
-					helper.Write(ret.get(false));
+                    helper.Write(ret.stringify(false));
 					return;
 				}
 			}
@@ -864,7 +871,7 @@ ACTION_IMPL(backups)
 				if(t_clientid==-1)
 				{
 					ret.set("error", "2");
-					helper.Write(ret.get(false));
+                    helper.Write(ret.stringify(false));
 					return;
 				}
 			}
@@ -930,7 +937,7 @@ ACTION_IMPL(backups)
 							if(ServerStatus::getStatus(clientname).comm_pipe==NULL)
 							{
 								ret.set("err", "client_not_online");
-								helper.Write(ret.get(false));
+                                helper.Write(ret.stringify(false));
 								return;
 							}
 
@@ -938,19 +945,19 @@ ACTION_IMPL(backups)
 								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path))
 							{
 								ret.set("err", "internal_error");
-								helper.Write(ret.get(false));
+                                helper.Write(ret.stringify(false));
 								return;
 							}
 
 							ret.set("ok", "true");
-							helper.Write(ret.get(false));
+                            helper.Write(ret.stringify(false));
 							return;
 						}
 					}
 					else
 					{
 						if(!backupaccess::get_files_with_tokens(db, has_backupid ? &backupid : NULL, t_clientid, clientname, token_authentication ? &fileaccesstokens : NULL,
-								u_path, ret))
+                                u_path, 0, ret))
 						{
 							return;
 						}
@@ -968,5 +975,5 @@ ACTION_IMPL(backups)
 		ret.set("error", 1);
 	}
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }

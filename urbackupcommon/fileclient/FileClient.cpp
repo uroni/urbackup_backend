@@ -640,7 +640,7 @@ bool FileClient::Reconnect(void)
 	return false;
 }
 
- _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only)
+ _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, bool with_timeout)
 {
 	if(tcpsock==NULL)
 		return ERR_ERROR;
@@ -698,7 +698,7 @@ bool FileClient::Reconnect(void)
 		if(tcpsock->isReadable() || dl_off==0 ||
 			(firstpacket && dl_buf[0]==ID_FILESIZE && dl_off<1+sizeof(_u64) ) )
 		{
-			rc = tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, 120000)+dl_off;
+			rc = tcpsock->Read(&dl_buf[dl_off], BUFFERSIZE-dl_off, with_timeout ? 120000 : -1)+dl_off;
 		}
 		else
 		{
@@ -728,7 +728,7 @@ bool FileClient::Reconnect(void)
 					received=last_checkpoint;
 				}
 
-				if( firstpacket==false )
+				if( received>0 )
 					data.addInt64( received ); 
 
 				if(file!=NULL)
@@ -802,7 +802,7 @@ bool FileClient::Reconnect(void)
 						}
 						else if(filesize==received)
 						{
-							if(rc>0)
+							if(rc>off)
 							{
 								memmove(dl_buf, dl_buf+off, rc-off);
 								dl_off = rc-off;
@@ -984,7 +984,7 @@ bool FileClient::Reconnect(void)
             }
 		}
             
-	    if( Server->getTimeMS()-starttime > SERVER_TIMEOUT )
+	    if( with_timeout && Server->getTimeMS()-starttime > SERVER_TIMEOUT )
 		{
 			Server->Log("Server timeout in FileClient. Trying to reconnect...", LL_INFO);
 			bool b=Reconnect();
@@ -1006,7 +1006,7 @@ bool FileClient::Reconnect(void)
 					received=last_checkpoint;
 				}
 
-				if( firstpacket==false )
+				if( received>0 )
 					data.addInt64( received ); 
 
 				if(file!=NULL)
@@ -1486,5 +1486,10 @@ _i64 FileClient::getRealTransferredBytes()
 		return real_transferred_bytes+=tcpsock->getRealTransferredBytes();
 	}
 	return real_transferred_bytes;
+}
+
+void FileClient::Shutdown()
+{
+	tcpsock->shutdown();
 }
 

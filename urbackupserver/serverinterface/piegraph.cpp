@@ -50,7 +50,7 @@ ACTION_IMPL(piegraph)
 		ret.set("error", JSON::Value(1));
 	}
 	
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

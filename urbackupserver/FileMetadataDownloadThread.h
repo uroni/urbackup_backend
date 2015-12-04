@@ -23,6 +23,8 @@ public:
     bool applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
 
 	bool getHasError();
+	
+	void shutdown();
 
 private:
 	std::auto_ptr<FileClient> fc;

@@ -89,9 +89,11 @@ public:
 
         _u32 Connect(sockaddr_in *addr=NULL);
 		_u32 Connect(IPipe *cp);
+		
+		void Shutdown();
 
         //---needs Connection
-        _u32 GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only);
+        _u32 GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, bool with_timeout=true);
 
 		_u32 GetFileHashAndMetadata(std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified);
 

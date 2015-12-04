@@ -822,6 +822,12 @@ void IndexThread::indexDirs(void)
 			{
 				continue;
 			}
+			
+			if(backup_dirs[i].symlinked &&
+			    !backup_dirs[i].symlinked_confirmed)
+			{
+				continue;
+			}
 
 			SCDirs *scd=getSCDir(backup_dirs[i].tname);
 			if(!scd->running)
@@ -1106,6 +1112,11 @@ bool IndexThread::initialCheck(std::wstring orig_dir, const std::wstring &dir, s
 	{
 		return false;
 	}
+	
+	/*if(first && (os_get_file_type(os_file_prefix(dir)) & EFileType_File) )
+	{
+		SFile file = getFileMetadataWin(os_file_prefix(dir), true);
+	}*/
 
 	if(first && !os_directory_exists(os_file_prefix(add_trailing_slash(dir))) )
 	{
@@ -3563,7 +3574,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 {
 	if(!os_get_symlink_target(symlink, target))
 	{
-		Server->Log(L"Error getting symlink target of symlink "+symlink+L". Not following symlink.", LL_ERROR);
+		VSSLog(L"Error getting symlink target of symlink "+symlink+L". Not following symlink.", LL_WARNING);
 		return false;
 	}
 
@@ -3573,6 +3584,12 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 	}
 
 	target = os_get_final_path(target);
+	
+	if(os_get_file_type(os_file_prefix(target))==0)
+	{
+		VSSLog(L"Symbolic link target of symbolic link "+symlink+L" does not exist. Not following symlink.", LL_WARNING);
+		return false;
+	}
 
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{

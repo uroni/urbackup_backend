@@ -247,7 +247,7 @@ ACTION_IMPL(logs)
 		ret.set("error", 1);
 	}
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY
