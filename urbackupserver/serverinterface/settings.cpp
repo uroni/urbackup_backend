@@ -767,20 +767,28 @@ ACTION_IMPL(settings)
 		{
 			std::wstring name=strlower(GET[L"name"]);
 			std::wstring salt=GET[L"salt"];
-			std::wstring pwmd5=GET[L"pwmd5"];
+			std::string pwmd5=Server->ConvertToUTF8(GET[L"pwmd5"]);
 
 			IQuery *q_find=db->Prepare("SELECT id FROM settings_db.si_users WHERE name=?");
 			q_find->Bind(name);
 			db_results res=q_find->Read();
 			q_find->Reset();
 
-
 			if(res.empty())
 			{
-				IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt) VALUES (?,?,?)");
+				size_t pbkdf2_rounds=0;
+				if(crypto_fak!=NULL)
+				{
+					pbkdf2_rounds=10000;
+
+					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), Server->ConvertToUTF8(salt), pbkdf2_rounds));
+				}
+
+				IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt, pbkdf2_rounds) VALUES (?,?,?,?)");
 				q->Bind(name);
 				q->Bind(pwmd5);
 				q->Bind(salt);
+				q->Bind(pbkdf2_rounds);
 				q->Write();
 				q->Reset();
 
@@ -812,7 +820,7 @@ ACTION_IMPL(settings)
 			if(ok)
 			{
 				std::wstring salt=GET[L"salt"];
-				std::wstring pwmd5=GET[L"pwmd5"];
+				std::string pwmd5=Server->ConvertToUTF8(GET[L"pwmd5"]);
 				int t_userid;
 				if(GET[L"userid"]==L"own")
 				{
@@ -822,10 +830,20 @@ ACTION_IMPL(settings)
 				{
 					t_userid=watoi(GET[L"userid"]);
 				}
-				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET salt=?, password_md5=? WHERE id=?");
+
+				size_t pbkdf2_rounds=0;
+				if(crypto_fak!=NULL)
+				{
+					pbkdf2_rounds=10000;
+
+					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), Server->ConvertToUTF8(salt), pbkdf2_rounds));
+				}
+
+				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET salt=?, password_md5=?, pbkdf2_rounds=? WHERE id=?");
 			
 				q->Bind(salt);
 				q->Bind(pwmd5);
+				q->Bind(pbkdf2_rounds);
 				q->Bind(t_userid);
 				q->Write();
 				q->Reset();

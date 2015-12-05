@@ -40,6 +40,7 @@
 #include "../fileservplugin/settings.h"
 #include "../fileservplugin/packet_ids.h"
 #include <memory>
+#include "../cryptoplugin/ICryptoFactory.h"
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -52,6 +53,7 @@ const std::string configure_networkcard=configure_wlan;
 
 #define UDP_SOURCE_PORT 35623
 
+extern ICryptoFactory *crypto_fak;
 
 namespace
 {
@@ -173,13 +175,19 @@ IPipe* connectToService(int *ec)
 	return c;
 }
 
+struct SPasswordSalt
+{
+	std::string salt;
+	std::string rnd;
+	int pbkdf2_rounds;
+};
 
-std::vector<std::pair<std::string, std::string> > getSalt(const std::string& username, int *ec)
+std::vector<SPasswordSalt> getSalt(const std::string& username, int *ec)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
 	*ec=0;
-	std::vector<std::pair<std::string, std::string> > ret;
+	std::vector<SPasswordSalt> ret;
 
 	IPipe *c=connectToService(ec);
 	if(c==NULL)
@@ -209,15 +217,28 @@ std::vector<std::pair<std::string, std::string> > getSalt(const std::string& use
 				std::vector<std::string> salt_toks;
 				Tokenize(toks[i], salt_toks, ";");
 
+				SPasswordSalt new_salts;
+				new_salts.pbkdf2_rounds=0;
+
 				if(salt_toks.size()==3)
 				{
-					ret.push_back(std::make_pair(salt_toks[1], salt_toks[2]));
+					new_salts.salt = salt_toks[1];
+					new_salts.rnd = salt_toks[2];
 				}
+				else if(salt_toks.size()==4)
+				{
+					new_salts.salt = salt_toks[1];
+					new_salts.rnd = salt_toks[2];
+					new_salts.pbkdf2_rounds = atoi(salt_toks[3].c_str());
+				}
+
+				ret.push_back(new_salts);
 			}
 			else
 			{
 				Server->Log("SALT error: "+toks[i], LL_ERROR);
-				ret.push_back(std::make_pair(std::string(), std::string()));
+				SPasswordSalt new_salts = {};
+				ret.push_back(new_salts);
 			}
 		}
 	}
@@ -225,7 +246,7 @@ std::vector<std::pair<std::string, std::string> > getSalt(const std::string& use
 	return ret;
 }
 
-bool tryLogin(const std::string& username, const std::string& password, std::vector<std::pair<std::string, std::string> > salts, int *ec)
+bool tryLogin(const std::string& username, const std::string& password, std::vector<SPasswordSalt> salts, int *ec)
 {
 	std::string pw=getFile(pw_file);
 	CTCPStack tcpstack;
@@ -244,11 +265,19 @@ bool tryLogin(const std::string& username, const std::string& password, std::vec
 
 		for(size_t i=0;i<salts.size();++i)
 		{
-			if(!salts[i].first.empty()
-				&& !salts[i].second.empty())
+			if(!salts[i].salt.empty()
+				&& !salts[i].rnd.empty())
 			{
+
+				std::string pw_md5 = Server->GenerateHexMD5(salts[i].salt+password);
+
+				if(salts[i].pbkdf2_rounds>0)
+				{
+					pw_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pw_md5), salts[i].salt, salts[i].pbkdf2_rounds));
+				}
+
 				auth_str+="&password"+nconvert(i)+"="+
-					Server->GenerateHexMD5(salts[i].second+Server->GenerateHexMD5(salts[i].first+password));
+					Server->GenerateHexMD5(salts[i].rnd+pw_md5);
 			}
 		}
 	}
@@ -1171,7 +1200,7 @@ bool do_login(void)
 	system("cat urbackup/restore/trying_to_login");
 
 	int ec;
-	if(!tryLogin("", "", std::vector<std::pair<std::string, std::string> >(), &ec) )
+	if(!tryLogin("", "", std::vector<SPasswordSalt>(), &ec) )
 	{
 		if(ec==1)
 		{
@@ -1193,13 +1222,13 @@ bool do_login(void)
 				return false;
 			}
 
-			std::vector<std::pair<std::string, std::string> > salts=getSalt(username, &ec);
+			std::vector<SPasswordSalt> salts=getSalt(username, &ec);
 
 			bool found_salt=false;
 			for(size_t i=0;i<salts.size();++i)
 			{
-				if(!salts[i].first.empty() &&
-					!salts[i].second.empty() )
+				if(!salts[i].salt.empty() &&
+					!salts[i].rnd.empty() )
 				{
 					found_salt=true;
 					break;

@@ -46,7 +46,7 @@ ACTION_IMPL(salt)
 				username=iter->second;
 			}
 		}
-		IQuery *q=helper.getDatabase()->Prepare("SELECT salt FROM settings_db.si_users WHERE name=?");
+		IQuery *q=helper.getDatabase()->Prepare("SELECT salt, pbkdf2_rounds FROM settings_db.si_users WHERE name=?");
 		q->Bind(username);
 		db_results res=q->Read();
 	
@@ -57,6 +57,7 @@ ACTION_IMPL(salt)
 		else
 		{
 			ret.set("salt", res[0][L"salt"]);
+			ret.set("pbkdf2_rounds", watoi(res[0][L"pbkdf2_rounds"]));
 			std::string rnd=ServerSettings::generateRandomAuthKey();
 			ret.set("rnd", JSON::Value(rnd));
 			session->mStr[L"rnd"]=widen(rnd);

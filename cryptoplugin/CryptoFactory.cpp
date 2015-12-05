@@ -147,9 +147,9 @@ bool CryptoFactory::verifyFile(const std::string &keyfilename, const std::string
 std::string CryptoFactory::generatePasswordHash(const std::string &password, const std::string &salt, size_t iterations)
 {
 	CryptoPP::SecByteBlock derived;
-	derived.resize(CryptoPP::SHA512::DIGESTSIZE);
-	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA512> pkcs;
-	pkcs.DeriveKey(derived, CryptoPP::SHA512::DIGESTSIZE, 0, (byte*)password.c_str(), password.size(), (byte*)salt.c_str(), salt.size(), (unsigned int)iterations, 0);
+	derived.resize(CryptoPP::SHA256::DIGESTSIZE);
+	CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256> pkcs;
+	pkcs.DeriveKey(derived, CryptoPP::SHA256::DIGESTSIZE, 0, (byte*)password.c_str(), password.size(), (byte*)salt.c_str(), salt.size(), (unsigned int)iterations, 0);
 
 	CryptoPP::HexEncoder hexEncoder;
 	hexEncoder.Put(derived,derived.size());

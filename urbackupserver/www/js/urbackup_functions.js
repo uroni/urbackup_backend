@@ -509,6 +509,16 @@ function randomString()
 	var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
 	var string_length = 50;
 	var randomstring = '';
+	
+	var array = new Uint32Array(string_length);
+	if(window.crypto && window.crypto.getRandomValues(array))
+	{
+		for (var i=0; i<string_length; i++) {
+			randomstring += chars.charAt(array[i]%chars.length);
+		}
+		return randomstring;
+	}
+	
 	for (var i=0; i<string_length; i++) {
 		var rnum = Math.floor(Math.random() * chars.length);
 		randomstring += chars.substring(rnum,rnum+1);

@@ -574,8 +574,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(shutdown);
 	}
 
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	{
-		ServerBackupDao backup_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
+		ServerBackupDao backup_dao(db);
 		replay_directory_link_journal(backup_dao);
 	}
 
@@ -590,6 +591,13 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
     ServerChannelThread::initOffset();
+
+	if(crypto_fak==NULL 
+		&& db->Read("SELECT * FROM settings_db.si_users WHERE pbkdf2_rounds>0").size()>0)
+	{
+		Server->Log("Encrypted user passwords need cryptoplugin. Cannot run without cryptoplugin", LL_ERROR);
+		exit(1);
+	}
 
 	server_exit_pipe=Server->createMemoryPipe();
 	BackupServer *backup_server=new BackupServer(server_exit_pipe);
@@ -1338,6 +1346,39 @@ bool update39_40()
 	return b;
 }
 
+bool upgrade40_41()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE settings_db.si_users ADD pbkdf2_rounds INTEGER");
+	b &= db->Write("UPDATE settings_db.si_users SET pbkdf2_rounds=0");
+
+	if(crypto_fak!=NULL)
+	{
+		db_results res = db->Read("SELECT id, password_md5, salt FROM settings_db.si_users");
+
+		const size_t pbkdf2_rounds = 10000;
+
+		IQuery* q_update = db->Prepare("UPDATE settings_db.si_users SET password_md5=?, pbkdf2_rounds=? WHERE id=?");
+
+		for(size_t i=0;i<res.size();++i)
+		{
+			std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(Server->ConvertToUTF8(res[i][L"password_md5"])),
+				Server->ConvertToUTF8(res[i][L"password_md5"]), pbkdf2_rounds));
+
+			q_update->Bind(password_md5);
+			q_update->Bind(pbkdf2_rounds);
+			q_update->Bind(res[i][L"id"]);
+			q_update->Write();
+			q_update->Reset();
+		}
+	}	
+
+	return b;
+}
+
 
 void upgrade(void)
 {
@@ -1360,7 +1401,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=40;
+	int max_v=41;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1567,6 +1608,12 @@ void upgrade(void)
 				++ver;
 			case 39:
 				if(!update39_40())
+				{
+					has_error=true;
+				}
+				++ver;
+			case 40:
+				if(!upgrade40_41())
 				{
 					has_error=true;
 				}
