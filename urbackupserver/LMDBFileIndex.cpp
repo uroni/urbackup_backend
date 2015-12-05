@@ -223,7 +223,7 @@ int64 LMDBFileIndex::get(const LMDBFileIndex::SIndexKey& key)
 	{
 		CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
 		
-		data.getInt64(&ret);
+		data.getVarInt(&ret);
 	}
 
 	abort_transaction();
@@ -239,7 +239,7 @@ void LMDBFileIndex::start_transaction(void)
 void LMDBFileIndex::put_internal(const SIndexKey& key, int64 value, int flags, bool log, bool handle_enosp)
 {
 	CWData vdata;
-	vdata.addInt64(value);
+	vdata.addVarInt(value);
 			
 	MDB_val mdb_tkey;
 	mdb_tkey.mv_data=const_cast<void*>(static_cast<const void*>(&key));
@@ -572,7 +572,7 @@ int64 LMDBFileIndex::get_any_client( const SIndexKey& key )
 	{
 		CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
 
-		data.getInt64(&ret);
+		data.getVarInt(&ret);
 	}
 
 	mdb_cursor_close(cursor);
@@ -617,7 +617,7 @@ std::map<int, int64> LMDBFileIndex::get_all_clients( const SIndexKey& key )
 	{
 		CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
 		int64 entryid;
-		data.getInt64(&entryid);
+		data.getVarInt(&entryid);
 
 		ret[curr_key->getClientid()] = entryid;
 
@@ -675,7 +675,7 @@ int64 LMDBFileIndex::get_prefer_client( const SIndexKey& key )
 		else if( curr_key->isEqualWithoutClientid(orig_key))
 		{
 			CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
-			data.getInt64(&ret);
+			data.getVarInt(&ret);
 			retry_prev=0;
 		}
 		else
@@ -763,7 +763,7 @@ std::map<int, int64> LMDBFileIndex::get_next_entries_iteration(bool& has_next)
 	{
 		int64 entryid;
 		CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
-		data.getInt64(&entryid);
+		data.getVarInt(&entryid);
 
 		ret[start_key->getClientid()]=entryid;
 	}
@@ -796,7 +796,7 @@ std::map<int, int64> LMDBFileIndex::get_next_entries_iteration(bool& has_next)
 
 		int64 entryid;
 		CRData data((const char*)mdb_tvalue.mv_data, mdb_tvalue.mv_size);
-		data.getInt64(&entryid);
+		data.getVarInt(&entryid);
 
 		ret[key.getClientid()]=entryid;
 

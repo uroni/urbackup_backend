@@ -133,14 +133,11 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			{
 				Server->Log("Error getting metadata (created and last modified time) of "+local_fn, LL_ERROR);
 			}
-			
-			int64 created = little_endian(file_meta.created);
-			int64 modified = little_endian(file_meta.last_modified);
-			
+					
 			CWData meta_data;
 			meta_data.addChar(1);
-			meta_data.addInt64(created);
-			meta_data.addInt64(modified);
+			meta_data.addVarInt(file_meta.created);
+			meta_data.addVarInt(file_meta.last_modified);
 			if(token_callback.get()!=NULL)
 			{
 				meta_data.addString(token_callback->getFileTokens(Server->ConvertToUnicode(local_fn)));
@@ -513,16 +510,16 @@ namespace
     void serialize_stat_buf(const struct stat64& buf, CWData& data)
 	{
 		data.addChar(1);
-		data.addInt64(buf.st_dev);
-		data.addInt64(buf.st_mode);
-		data.addInt64(buf.st_uid);
-		data.addInt64(buf.st_gid);
-		data.addInt64(buf.st_rdev);
-		data.addInt64(buf.st_atime);
+		data.addVarInt(buf.st_dev);
+		data.addVarInt(buf.st_mode);
+		data.addVarInt(buf.st_uid);
+		data.addVarInt(buf.st_gid);
+		data.addVarInt(buf.st_rdev);
+		data.addVarInt(buf.st_atime);
         data.addUInt(buf.st_atim.tv_nsec);
-		data.addInt64(buf.st_mtime);
+		data.addVarInt(buf.st_mtime);
         data.addUInt(buf.st_mtim.tv_nsec);
-		data.addInt64(buf.st_ctime);
+		data.addVarInt(buf.st_ctime);
         data.addUInt(buf.st_ctim.tv_nsec);
 	}
 

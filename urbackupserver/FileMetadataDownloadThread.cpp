@@ -202,8 +202,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			int64 modified;
 			std::string permissions;
 			if(common_version!=1
-				|| !common_data.getInt64(&created)
-				|| !common_data.getInt64(&modified)
+				|| !common_data.getVarInt(&created)
+				|| !common_data.getVarInt(&modified)
 				|| !common_data.getStr(&permissions) )
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Cannot parse common metadata.", LL_ERROR);

@@ -317,7 +317,7 @@ namespace
 
     void unserialize_stat_buf(CRData& data, struct stat64& statbuf)
     {
-#define SET_STAT_MEM(x)  {int64 tmp; assert(data.getInt64(&tmp)); statbuf.x = tmp;}
+#define SET_STAT_MEM(x)  {int64 tmp; assert(data.getVarInt(&tmp)); statbuf.x = tmp;}
 #define SET_STAT_MEM32(x)  {_u32 tmp; assert(data.getUInt(&tmp)); statbuf.x = tmp;}
 
         SET_STAT_MEM(st_dev);
