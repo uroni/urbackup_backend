@@ -3,17 +3,6 @@
 #include "cryptopp_inc.h"
 #include <vector>
 
-namespace 
-{
-	class CtrIvGCMEncryption : public CryptoPP::GCM<CryptoPP::AES >::Encryption
-	{
-	public:
-		void Resynchonize() {
-			m_state = State_IVSet;
-		}
-	};
-}
-
 class AESGCMEncryption : public IAESGCMEncryption
 {
 public:
@@ -37,7 +26,7 @@ private:
 	CryptoPP::SecByteBlock m_sbbKey;
 	CryptoPP::SecByteBlock m_IV;
 
-	CtrIvGCMEncryption encryption;
+	CryptoPP::GCM<CryptoPP::AES >::Encryption encryption;
 	CryptoPP::AuthenticatedEncryptionFilter encryption_filter;
 	std::vector<size_t> end_markers;
 	int64 overhead_size;

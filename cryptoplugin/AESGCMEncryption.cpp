@@ -21,7 +21,7 @@
 #include "../Interface/Server.h"
 #include <assert.h>
 
-const size_t iv_size = 64;
+const size_t iv_size = 12;
 const size_t end_marker_zeros=2;
 
 AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
@@ -64,7 +64,8 @@ void AESGCMEncryption::put( const char *data, size_t data_size )
 void AESGCMEncryption::flush()
 {
 	encryption_filter.MessageEnd();
-	encryption.Resynchonize();
+	CryptoPP::IncrementCounterByOne(m_IV.BytePtr(), static_cast<unsigned int>(m_IV.size()));
+	encryption.Resynchronize(m_IV.BytePtr(), static_cast<int>(m_IV.size()));
 	end_markers.push_back(encryption_filter.MaxRetrievable());
 	overhead_size+=16; //tag size
 }
