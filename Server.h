@@ -116,7 +116,7 @@ public:
 	virtual std::string GenerateHexMD5(const std::wstring &input);
 	virtual std::string GenerateBinaryMD5(const std::wstring &input);
 
-	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1);
+	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1, IServer::BindTarget bindTarget=IServer::BindTarget_All);
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
 	virtual IPipe *PipeFromSocket(SOCKET pSocket);
 	virtual void DisconnectStream(IPipe *pipe);
