@@ -56,13 +56,13 @@ bool skiphash_copy(const std::wstring& src_path,
 	if(!dst_exists || !hashinput.get())
 	{
 		Server->Log("Destination file does not exist or there is no hash input. Performing full copy (with hash output)...", LL_INFO);
-		return build_chunk_hashs(src.get(), hashoutput.get(), NULL, false, dst.get(), false)!="";
+		return build_chunk_hashs(src.get(), hashoutput.get(), NULL, false, dst.get(), false, NULL, NULL, true)!="";
 	}
 	else
 	{
 		int64 inplace_written = 0;
 		bool ret = build_chunk_hashs(src.get(), hashoutput.get(), NULL, false,
-			dst.get(), true, &inplace_written, hashinput.get())!="";
+			dst.get(), true, &inplace_written, hashinput.get(), true)!="";
 		float skipped_pc=0;
 		if(src->Size()>0)
 		{
@@ -85,5 +85,5 @@ int skiphash_copy_file()
 
 	return skiphash_copy(Server->ConvertToUnicode(src),
 		Server->ConvertToUnicode(dst),
-		Server->ConvertToUnicode(hashsrc)) ? 1 : 0;
+		Server->ConvertToUnicode(hashsrc)) ? 0 : 1;
 }

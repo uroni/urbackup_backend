@@ -40,6 +40,8 @@
 #define O_LARGEFILE 0
 #define stat64 stat
 #define fstat64 fstat
+#else
+#include <linux/fs.h>
 #endif
 
 File::File()
@@ -204,7 +206,7 @@ _i64 File::Size(void)
 		if(S_ISBLK(stat_buf.st_mode))
 		{
 			_i64 ret;
-			rc = ioctl(file, BLKGETSIZE64, &ret);
+			rc = ioctl(fd, BLKGETSIZE64, &ret);
 			if(rc==0)
 			{
 				return ret;

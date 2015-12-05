@@ -27,7 +27,7 @@
 #include <memory>
 
 std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
-	bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput)
+	bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput, bool show_pc)
 {
 	f->Seek(0);
 
@@ -67,6 +67,12 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		chunk_hashes.reset(new SChunkHashes);
 	}
 
+	int last_pc=0;
+	if(show_pc)
+	{
+		Server->Log("0%", LL_INFO);
+	}
+
 	for(_i64 pos=0;pos<fsize;)
 	{
 		if(chunk_hashes.get())
@@ -74,7 +80,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			if(pos<input_size)
 			{
 				hashinput->Seek(hashoutputpos);
-				_u32 read = hashinput->Read(reinterpret_cast<char*>(chunk_hashes.get()), sizeof(SChunkHashes));
+				_u32 read = hashinput->Read(chunk_hashes->big_hash, sizeof(SChunkHashes));
 				if(read==0)
 				{
 					chunk_hashes.reset();
@@ -83,6 +89,16 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			else
 			{
 				chunk_hashes.reset();
+			}
+		}
+
+		if(show_pc)
+		{
+			int curr_pc = (int)( (100.f*pos)/fsize+0.5f );
+			if(curr_pc!=last_pc)
+			{
+				last_pc=curr_pc;
+				Server->Log(nconvert(curr_pc)+"%", LL_INFO);
 			}
 		}
 
@@ -115,7 +131,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 				{
 					if(chunk_hashes.get())
 					{
-						if(small_hash==chunk_hashes->small_hash[chunkidx])
+						if(memcmp(&small_hash, &chunk_hashes->small_hash[chunkidx*small_hash_size], sizeof(small_hash))==0)
 						{
 							big_hash_copy_control.update((unsigned char*)buf, r);
 						}
@@ -196,9 +212,10 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 			big_hash_copy_control.finalize();
 			if(memcmp(big_hash_copy_control.raw_digest_int(), chunk_hashes->big_hash, big_hash_size)!=0)
 			{
-				//small hash collision copy whole big block
+				Server->Log("Small hash collision. Copying whole big block...", LL_DEBUG);
 				copy_write_pos = copy_write_pos_start;
 				pos = epos - c_checkpoint_dist;
+				f->Seek(pos);
 				for(;pos<epos && pos<fsize;pos+=c_small_hash_dist)
 				{
 					_u32 r=f->Read(buf, c_small_hash_dist);
