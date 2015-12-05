@@ -433,6 +433,8 @@ int main_fkt(int argc, char *argv[])
 			Server->Log("Loading "+(std::string)plugins[i]+" failed", LL_ERROR);
 		}
 	}
+
+	Server->LoadStaticPlugins();
 	
 	CLoadbalancerClient *lbs=NULL;
 	if( loadbalancer!="" )

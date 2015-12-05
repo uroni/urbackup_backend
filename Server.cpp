@@ -87,6 +87,7 @@
 #	include <sys/types.h>
 #	include <pwd.h>
 #endif
+#include "StaticPluginRegistration.h"
 
 const size_t SEND_BLOCKSIZE=8192;
 const size_t MAX_THREAD_ID=std::string::npos;
@@ -1977,4 +1978,15 @@ void CServer::setLogRotationFilesize( size_t filesize )
 void CServer::setLogRotationNumFiles( size_t numfiles )
 {
 	log_rotation_files=numfiles;
+}
+
+void CServer::LoadStaticPlugins()
+{
+	std::vector<SStaticPlugin>& staticplugins = get_static_plugin_registrations();
+	std::sort(staticplugins.begin(), staticplugins.end());
+	for(size_t i=0;i<staticplugins.size();++i)
+	{
+		LOADACTIONS loadfunc = staticplugins[i].loadactions;
+		loadfunc(this);
+	}
 }

@@ -25,9 +25,21 @@
 
 #include <vector>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_urbackupserver
+#define UnloadActions UnloadActions_urbackupserver
+#endif
 
 #include "../Interface/Action.h"
 #include "../Interface/Database.h"
@@ -721,6 +733,13 @@ DLLEXPORT void UnloadActions(void)
 	else
 		Server->destroyAllDatabases();
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 20);
+}
+#endif
 
 void update_file(IQuery *q_space_get, IQuery* q_space_update, IQuery *q_file_update, db_results &curr_r)
 {

@@ -5,7 +5,7 @@ AC_PREREQ(2.61)
 AC_INIT([urbackup-client], [1.5.0], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 
 AC_ARG_ENABLE([headless],
      AS_HELP_STRING([--enable-headless], [Do not compile and install the GUI components]))
@@ -19,16 +19,6 @@ AM_CONDITIONAL(WITH_FORTIFY, test "x$enable_fortify" != xno)
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
-
-#AX_BOOST_BASE([1.38.0])
-#AX_BOOST_THREAD
-
-#if !($HAVE_BOOST_THREAD)
-#then
-#   echo "Sorry, you need the Thread-Lib from Boost."
-#   echo "Please install from http://www.boost.org"
-#   exit 1
-#fi
 
 AX_PTHREAD
 if !($HAVE_PTHREAD)
@@ -52,24 +42,56 @@ AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
 
+AC_MSG_CHECKING([for operating system])
+case "$host_os" in
+freebsd*)
+        opsys="freebsd"
+        ;;
+linux*)
+        opsys="linux"
+        ;;
+darwin*)
+		opsys="osx"
+        ;;
+*)
+        opsys=""
+        ;;
+esac
+AM_CONDITIONAL([FREEBSD], test x"$opsys" = x"freebsd")
+AM_CONDITIONAL([LINUX], test x"$opsys" = x"linux")
+AM_CONDITIONAL([MACOSX], test x"$opsys" = x"osx")
+
 AX_LIB_SOCKET_NSL
 
 # Checks for library functions.
 AC_FUNC_SELECT_ARGTYPES
 AC_FUNC_STRFTIME
 AC_CHECK_FUNCS([gettimeofday memset select socket strstr])
+AC_CHECK_LIB(dl, dlopen, [DLOPEN_LIBS="-ldl"])
+AC_SUBST([DLOPEN_LIBS])
 
-P_SUBDIRS="cryptoplugin fileservplugin fsimageplugin urbackupclient"
+MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install or build without crypto support."; exit 44;])
 
-AS_IF([test "x$enable_headless" != "xyes"],
-    [P_SUBDIRS="client $P_SUBDIRS"])
-	
-AC_SUBST([P_SUBDIRS])
+AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")
 
-if test "x$enable_headless" != "xyes"; then
-    AC_CONFIG_SUBDIRS([client])
+if test "x$enable_headless" != "xyes"
+then
+	AM_OPTIONS_WXCONFIG
+	reqwx=2.9.0
+	AM_PATH_WXCONFIG($reqwx, wxWin=1)
+	if test "$wxWin" != 1; then
+		AC_MSG_ERROR([
+			wxWidgets must be installed on your system.
+	 
+			Please check that wx-config is in path, the directory
+			where wxWidgets libraries are installed (returned by
+			'wx-config --libs' or 'wx-config --static --libs' command)
+			is in LD_LIBRARY_PATH or equivalent variable and
+			wxWidgets version is $reqwx or above.
+			])
+	fi
+	AC_PROG_OBJCXX
 fi
 
-AC_CONFIG_SUBDIRS([cryptoplugin fileservplugin fsimageplugin urbackupclient clientctl])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

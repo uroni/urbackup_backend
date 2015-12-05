@@ -133,7 +133,7 @@ private:
 	int currfilepart;
 	int sendfilepart;
 
-	CBufMgr* bufmgr;
+	fileserv::CBufMgr* bufmgr;
 	CTCPStack stack;
 	char buffer[BUFFERSIZE];
 

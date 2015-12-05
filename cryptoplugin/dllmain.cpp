@@ -26,7 +26,9 @@
 #endif
 
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
 #include "../Interface/Server.h"
 
 #include "pluginmgr.h"
@@ -34,7 +36,16 @@
 //---
 #include "CryptoFactory.h"
 
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_cryptoplugin
+#define UnloadActions UnloadActions_cryptoplugin
+#endif
 
 CCryptoPluginMgr *cryptopluginmgr=NULL;
 
@@ -110,3 +121,9 @@ DLLEXPORT void UnloadActions(void)
 {
 }
 
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 0);
+}
+#endif

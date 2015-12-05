@@ -26,7 +26,10 @@
 
 #include <vector>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
+
 #include "../Interface/Server.h"
 #include "../Interface/Action.h"
 
@@ -37,7 +40,17 @@
 #include "IndexFiles.h"
 #include "HTTPClient.h"
 
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_httpserver
+#define UnloadActions UnloadActions_httpserver
+#endif
+
 CHTTPService* http_service=NULL;
 std::vector<std::string> allowed_urls;
 
@@ -97,3 +110,11 @@ DLLEXPORT void UnloadActions(void)
 		CHTTPClient::destroy_mutex();
 	}
 }
+
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 0);
+}
+#endif

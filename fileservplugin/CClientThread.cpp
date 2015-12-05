@@ -75,7 +75,7 @@ CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 	parent=pParent;
 
 #ifdef _WIN32
-	bufmgr=new CBufMgr(NBUFFERS,READSIZE);
+	bufmgr=new fileserv::CBufMgr(NBUFFERS,READSIZE);
 #else
 	bufmgr=NULL;
 #endif
@@ -403,7 +403,7 @@ bool CClientThread::ProcessPacket(CRData *data)
 
 				if(bufmgr==NULL && !is_script)
 				{
-					bufmgr=new CBufMgr(NBUFFERS,READSIZE);
+					bufmgr=new fileserv::CBufMgr(NBUFFERS,READSIZE);
 				}
 #endif
 				

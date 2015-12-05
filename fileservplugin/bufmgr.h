@@ -1,26 +1,31 @@
 #include <vector>
 
-struct SBuffer
+namespace fileserv
 {
-	char* buffer;
-	bool used;
-};
+	struct SBuffer
+	{
+		char* buffer;
+		bool used;
+	};
 
-class CBufMgr
-{
-public:
-	CBufMgr(unsigned int nbuf, unsigned int bsize);
-	~CBufMgr(void);
+	class CBufMgr
+	{
+	public:
+		CBufMgr(unsigned int nbuf, unsigned int bsize);
+		~CBufMgr(void);
 
-	char* getBuffer(void);
-	void releaseBuffer(char* buf);
-	unsigned int nfreeBufffer(void);
+		char* getBuffer(void);
+		void releaseBuffer(char* buf);
+		unsigned int nfreeBufffer(void);
 
-private:
+	private:
 
-	std::vector<SBuffer> buffers;
-	unsigned int freebufs;
+		std::vector<SBuffer> buffers;
+		unsigned int freebufs;
 
-};
+	};
+}
+
+
 
 

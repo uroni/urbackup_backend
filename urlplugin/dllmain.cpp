@@ -24,9 +24,22 @@
 #endif
 
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
+
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_urlplugin
+#define UnloadActions UnloadActions_urlplugin
+#endif
 
 #include "../Interface/Action.h"
 #include "../stringtools.h"
@@ -51,3 +64,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 DLLEXPORT void UnloadActions(void)
 {
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 0);
+}
+#endif

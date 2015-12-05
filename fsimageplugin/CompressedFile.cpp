@@ -21,10 +21,9 @@
 #include <assert.h>
 #include <memory>
 #include <algorithm>
+#include <memory.h>
 
-#define MINIZ_NO_STDIO
-#define MINIZ_NO_TIME
-#define MINIZ_NO_ARCHIVE_APIS
+#define MINIZ_HEADER_FILE_ONLY
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.c"
 

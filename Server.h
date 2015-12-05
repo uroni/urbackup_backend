@@ -80,6 +80,7 @@ public:
 
 	virtual bool LoadDLL(const std::string &name);
 	virtual bool UnloadDLL(const std::string &name);
+	void LoadStaticPlugins();
 
 	virtual void destroy(IObject *obj);
 
