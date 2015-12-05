@@ -348,7 +348,7 @@ namespace backupaccess
 
 				bool denied = false;
 				if(backup_tokens[i].token==tokens[j] &&
-					metadata.hasPermission(static_cast<int>(backup_tokens[i].id), denied))
+					metadata.hasPermission(backup_tokens[i].id, denied))
 				{
 					has_permission=true;
 				}

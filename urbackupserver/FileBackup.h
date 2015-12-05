@@ -95,8 +95,8 @@ protected:
 	std::string systemErrorInfo();
 	void saveUsersOnClient();
 	void createUserViews(IFile* file_list_f);
-	bool createUserView(IFile* file_list_f, const std::vector<int>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots);
-	std::vector<size_t> findIdenticalPermissionRoots(IFile* file_list_f, const std::vector<int>& ids);
+	bool createUserView(IFile* file_list_f, const std::vector<int64>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots);
+	std::vector<size_t> findIdenticalPermissionRoots(IFile* file_list_f, const std::vector<int64>& ids);
 	void deleteBackup();
 	bool createSymlink(const std::wstring& name, size_t depth, const std::wstring& symlink_target, const std::wstring& dir_sep, bool isdir);
 	bool startFileMetadataDownloadThread();

@@ -530,12 +530,12 @@ bool FileMetadata::read( str_map& extra_params )
 	return true;
 }
 
-bool FileMetadata::hasPermission(int id, bool& denied) const
+bool FileMetadata::hasPermission(int64 id, bool& denied) const
 {
 	return hasPermission(file_permissions, id, denied);
 }
 
-bool FileMetadata::hasPermission( const std::string& permissions, int id, bool& denied )
+bool FileMetadata::hasPermission( const std::string& permissions, int64 id, bool& denied )
 {
 	CRData perm(permissions.data(),
 		permissions.size());
@@ -543,8 +543,8 @@ bool FileMetadata::hasPermission( const std::string& permissions, int id, bool& 
 	char action;
 	while(perm.getChar(&action))
 	{
-		int pid;
-		if(!perm.getInt(&pid))
+		int64 pid;
+		if(!perm.getVarInt(&pid))
 		{
 			return false;
 		}
@@ -552,13 +552,13 @@ bool FileMetadata::hasPermission( const std::string& permissions, int id, bool& 
 		switch(action)
 		{
 		case ID_GRANT_ACCESS:
-			if(pid==-1 || pid==id)
+			if(pid==0 || pid==id)
 			{
 				return true;
 			}
 			break;
 		case ID_DENY_ACCESS:
-			if(pid==-1 || pid==id)
+			if(pid==0 || pid==id)
 			{
 				denied=true;
 				return false;

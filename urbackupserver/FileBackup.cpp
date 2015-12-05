@@ -964,15 +964,15 @@ void FileBackup::createUserViews(IFile* file_list_f)
 
 	for(size_t i=0;i<uids.size();++i)
 	{
-		int uid = atoi(uids[i].c_str());
+		int64 uid = os_atoi64(uids[i]);
 		std::string s_gids = urbackup_tokens->getValue(uids[i]+".gids", "");
 		std::vector<std::string> gids;
 		Tokenize(s_gids, gids, ",");
-		std::vector<int> ids;
+		std::vector<int64> ids;
 		ids.push_back(uid);
 		for(size_t j=0;j<gids.size();++j)
 		{
-			ids.push_back(atoi(gids[j].c_str()));
+			ids.push_back(os_atoi64(gids[j]));
 		}
 
 		std::string accountname = base64_decode_dash(urbackup_tokens->getValue(uids[i]+".accountname", std::string()));
@@ -997,7 +997,7 @@ namespace
 	};
 }
 
-std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f, const std::vector<int>& ids)
+std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f, const std::vector<int64>& ids)
 {
 	file_list_f->Seek(0);
 
@@ -1092,7 +1092,7 @@ std::vector<size_t> FileBackup::findIdenticalPermissionRoots(IFile* file_list_f,
 	return identical_permission_roots;
 }
 
-bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots)
+bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& ids, std::string accoutname, const std::vector<size_t>& identical_permission_roots)
 {
 	std::wstring user_view_home_path = backuppath + os_file_sep() + L"user_views" + os_file_sep() + Server->ConvertToUnicode(accoutname);
 

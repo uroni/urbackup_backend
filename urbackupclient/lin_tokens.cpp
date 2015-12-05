@@ -21,14 +21,14 @@ namespace tokens
 
 struct Token
 {
-	int id;
+	int64 id;
 	bool is_user;
 };
 
 struct TokenCacheInt
 {
-	std::map<uid_t, unsigned int> uid_map;
-	std::map<gid_t, unsigned int> gid_map;
+	std::map<uid_t, int64> uid_map;
+	std::map<gid_t, int64> gid_map;
 };
 
 TokenCache::TokenCache()
@@ -281,7 +281,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt token_id = dao->getFileAccessTokenId2Alts(users[i], ClientDAO::c_is_user, ClientDAO::c_is_system_user);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId2Alts(users[i], ClientDAO::c_is_user, ClientDAO::c_is_system_user);
 
 		if(!token_id.exists)
 		{
@@ -304,7 +304,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt token_id = dao->getFileAccessTokenId(groups[i], ClientDAO::c_is_group);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(groups[i], ClientDAO::c_is_group);
 
 		if(!token_id.exists)
 		{
@@ -337,45 +337,51 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 	{
 		//Allow all
 		token_info.addChar(ID_GRANT_ACCESS);
-		token_info.addUInt(-1);
+		token_info.addVarInt(0);
 	}
 	else
 	{
 		//Allow root
 		{
-			std::map<uid_t, unsigned int>::iterator it = token_cache.get()->uid_map.find(0);
+			std::map<uid_t, int64>::iterator it = token_cache.get()->uid_map.find(0);
 			if(it!=token_cache.get()->uid_map.end())
 			{
+				assert(it->second!=0);
+			
 				token_info.addChar(ID_GRANT_ACCESS);
-				token_info.addUInt(it->second);
+				token_info.addVarInt(it->second);
 			}
 		}
 	
 		if(stat_data.st_mode & S_IRUSR)
 		{
-			std::map<uid_t, unsigned int>::iterator it = token_cache.get()->uid_map.find(stat_data.st_uid);
+			std::map<uid_t, int64>::iterator it = token_cache.get()->uid_map.find(stat_data.st_uid);
 			if(it==token_cache.get()->uid_map.end())
 			{
 				Server->Log("Error getting internal id for user with id "+nconvert(stat_data.st_uid), LL_ERROR);
 			}
 			else
 			{
+				assert(it->second!=0);
+				
 				token_info.addChar(ID_GRANT_ACCESS);
-				token_info.addUInt(it->second);
+				token_info.addVarInt(it->second);
 			}
 		}
 
 		if(stat_data.st_mode & S_IRGRP)
 		{
-			std::map<gid_t, unsigned int>::iterator it = token_cache.get()->gid_map.find(stat_data.st_gid);
+			std::map<gid_t, int64>::iterator it = token_cache.get()->gid_map.find(stat_data.st_gid);
 			if(it==token_cache.get()->gid_map.end())
 			{
 				Server->Log("Error getting internal id for group with id "+nconvert(stat_data.st_gid), LL_ERROR);
 			}
 			else
 			{
+				assert(it->second!=0);
+				
 				token_info.addChar(ID_GRANT_ACCESS);
-				token_info.addUInt(it->second);
+				token_info.addVarInt(it->second);
 			}
 		}
 	}

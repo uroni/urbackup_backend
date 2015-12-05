@@ -23,7 +23,9 @@
 #include <algorithm>
 #include <memory.h>
 
+#ifndef _WIN32
 #define MINIZ_HEADER_FILE_ONLY
+#endif
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.c"
 

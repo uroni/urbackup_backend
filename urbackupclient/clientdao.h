@@ -137,10 +137,10 @@ public:
 	static const int c_is_system_user;
 
 	//@-SQLGenFunctionsBegin
-	struct CondInt
+	struct CondInt64
 	{
 		bool exists;
-		int value;
+		int64 value;
 	};
 	struct SToken
 	{
@@ -154,9 +154,9 @@ public:
 	void updateShadowCopyStarttime(int id);
 	void updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user);
 	std::vector<SToken> getFileAccessTokens(void);
-	CondInt getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2);
-	CondInt getFileAccessTokenId(const std::wstring& accountname, int is_user);
-	void updateGroupMembership(int uid, const std::wstring& accountname);
+	CondInt64 getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2);
+	CondInt64 getFileAccessTokenId(const std::wstring& accountname, int is_user);
+	void updateGroupMembership(int64 uid, const std::wstring& accountname);
 	std::vector<int> getGroupMembership(int uid);
 	void addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int optional, int tgroup, int symlinked);
 	void delBackupDir(int64 id);

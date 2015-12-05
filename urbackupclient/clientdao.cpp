@@ -689,14 +689,14 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 
 /**
 * @-SQLGenAccess
-* @func int ClientDAO::getFileAccessTokenId2Alts
-* @return int id
+* @func int64 ClientDAO::getFileAccessTokenId2Alts
+* @return int64 id
 * @sql
 *    SELECT id
 *    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
 *								  (is_user = :is_user_alt1(int) OR is_user = :is_user_alt2(int))
 */
-ClientDAO::CondInt ClientDAO::getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2)
+ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2)
 {
 	if(q_getFileAccessTokenId2Alts==NULL)
 	{
@@ -707,25 +707,25 @@ ClientDAO::CondInt ClientDAO::getFileAccessTokenId2Alts(const std::wstring& acco
 	q_getFileAccessTokenId2Alts->Bind(is_user_alt2);
 	db_results res=q_getFileAccessTokenId2Alts->Read();
 	q_getFileAccessTokenId2Alts->Reset();
-	CondInt ret = { false, 0 };
+	CondInt64 ret = { false, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi(res[0][L"id"]);
+		ret.value=watoi64(res[0][L"id"]);
 	}
 	return ret;
 }
 
 /**
 * @-SQLGenAccess
-* @func int ClientDAO::getFileAccessTokenId
-* @return int id
+* @func int64 ClientDAO::getFileAccessTokenId
+* @return int64 id
 * @sql
 *    SELECT id
 *    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
 *								  is_user = :is_user(int)
 */
-ClientDAO::CondInt ClientDAO::getFileAccessTokenId(const std::wstring& accountname, int is_user)
+ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& accountname, int is_user)
 {
 	if(q_getFileAccessTokenId==NULL)
 	{
@@ -735,11 +735,11 @@ ClientDAO::CondInt ClientDAO::getFileAccessTokenId(const std::wstring& accountna
 	q_getFileAccessTokenId->Bind(is_user);
 	db_results res=q_getFileAccessTokenId->Read();
 	q_getFileAccessTokenId->Reset();
-	CondInt ret = { false, 0 };
+	CondInt64 ret = { false, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi(res[0][L"id"]);
+		ret.value=watoi64(res[0][L"id"]);
 	}
 	return ret;
 }
@@ -751,9 +751,9 @@ ClientDAO::CondInt ClientDAO::getFileAccessTokenId(const std::wstring& accountna
 *    INSERT OR REPLACE INTO token_group_memberships
 *          (uid, gid)
 *      VALUES
-*           (:uid(int), (SELECT id FROM fileaccess_tokens WHERE accountname = :accountname(string) AND is_user=0) )
+*           (:uid(int64), (SELECT id FROM fileaccess_tokens WHERE accountname = :accountname(string) AND is_user=0) )
 */
-void ClientDAO::updateGroupMembership(int uid, const std::wstring& accountname)
+void ClientDAO::updateGroupMembership(int64 uid, const std::wstring& accountname)
 {
 	if(q_updateGroupMembership==NULL)
 	{

@@ -111,7 +111,7 @@ bool write_tokens()
 			{
 				std::vector<std::wstring> user_groups = get_user_groups(users[i]);
 
-				ClientDAO::CondInt uid = dao.getFileAccessTokenId(users[i], 1);
+				ClientDAO::CondInt64 uid = dao.getFileAccessTokenId(users[i], 1);
 				if(uid.exists)
 				{
 					for(size_t j=0;j<user_groups.size();++j)
