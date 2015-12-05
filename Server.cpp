@@ -1047,7 +1047,7 @@ std::string CServer::GenerateBinaryMD5(const std::wstring &input)
 }
 
 
-void CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread)
+void CServer::StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
 {
 	CServiceAcceptor *acc=new CServiceAcceptor(pService, pServiceName, pPort, pMaxClientsPerThread);
 	Server->createThread(acc);

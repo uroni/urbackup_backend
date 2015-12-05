@@ -21,7 +21,6 @@
 #include <winsock2.h>
 #endif
 #include "ServiceAcceptor.h"
-#include "Server.h"
 #include "stringtools.h"
 #include "ServiceWorker.h"
 #include <memory.h>
@@ -30,7 +29,7 @@
 #include "Interface/Condition.h"
 #include "Interface/Service.h"
 
-CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsigned short port, int pMaxClientsPerThread)
+CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsigned short port, int pMaxClientsPerThread, IServer::BindTarget bindTarget)
 	: maxClientsPerThread(pMaxClientsPerThread)
 {
 	name=pName;
@@ -71,7 +70,15 @@ CServiceAcceptor::CServiceAcceptor(IService * pService, std::string pName, unsig
 	memset(&addr, 0, sizeof(sockaddr_in));
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(port);
-	addr.sin_addr.s_addr=INADDR_ANY;
+	switch(bindTarget)
+	{
+	case IServer::BindTarget_All:
+		addr.sin_addr.s_addr=INADDR_ANY;
+		break;
+	case IServer::BindTarget_Localhost:
+		addr.sin_addr.s_addr=INADDR_LOOPBACK;
+		break;
+	}
 
 	rc=bind(s,(sockaddr*)&addr,sizeof(addr));
 	if(rc==SOCKET_ERROR)
