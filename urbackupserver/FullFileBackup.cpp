@@ -574,6 +574,8 @@ bool FullFileBackup::doFileBackup()
 	}
 	else if(verification_ok)
 	{
+		FileIndex::flush();
+
 		db->BeginWriteTransaction();
 		if(!os_rename_file(widen(clientlistName(group, true)), widen(clientlistName(group, false))) )
 		{

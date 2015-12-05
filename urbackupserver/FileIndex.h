@@ -136,6 +136,8 @@ public:
 
 	static void shutdown();
 
+	static void flush();
+
 private:
 
 	bool get_from_cache( const FileIndex::SIndexKey &key, const std::map<SIndexKey, int64>& cache, int64& res );
@@ -154,4 +156,6 @@ private:
 	static IMutex *mutex;
 	static ICondition *cond;
 	static bool do_shutdown;
+
+	static bool do_flush;
 };
