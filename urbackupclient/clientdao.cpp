@@ -271,6 +271,18 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 	return buffer;
 }
 
+std::string guidToString( GUID guid )
+{
+	return bytesToHex(reinterpret_cast<unsigned char*>(&guid), sizeof(guid));
+}
+
+GUID randomGuid()
+{
+	GUID ret;
+	Server->secureRandomFill(reinterpret_cast<char*>(&ret), sizeof(ret));
+	return ret;
+}
+
 void ClientDAO::addFiles(std::wstring path, const std::vector<SFileAndHash> &data)
 {
 	size_t ds;
@@ -319,7 +331,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.id=watoi(res[i][L"id"]);
 		dir.tname=res[i][L"name"];
 		dir.path=res[i][L"path"];
-		dir.optional=(res[i][L"optional"]==L"1");
+		dir.flags=watoi(res[i][L"flags"]);
 		dir.group=watoi(res[i][L"tgroup"]);
 		dir.symlinked=(res[i][L"symlinked"]==L"1");
 		dir.symlinked_confirmed=false;
@@ -768,10 +780,10 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 *    INSERT INTO backupdirs
 *		(name, path, server_default, optional, tgroup, symlinked)
 *    VALUES
-*       (:name(string), :path(string), :server_default(int), :optional(int), :tgroup(int),
+*       (:name(string), :path(string), :server_default(int), :flags(int), :tgroup(int),
 *        :symlinked(int) )
 **/
-void ClientDAO::addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int optional, int tgroup, int symlinked)
+void ClientDAO::addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int flags, int tgroup, int symlinked)
 {
 	if(q_addBackupDir==NULL)
 	{
@@ -780,7 +792,7 @@ void ClientDAO::addBackupDir(const std::wstring& name, const std::wstring& path,
 	q_addBackupDir->Bind(name);
 	q_addBackupDir->Bind(path);
 	q_addBackupDir->Bind(server_default);
-	q_addBackupDir->Bind(optional);
+	q_addBackupDir->Bind(flags);
 	q_addBackupDir->Bind(tgroup);
 	q_addBackupDir->Bind(symlinked);
 	q_addBackupDir->Write();

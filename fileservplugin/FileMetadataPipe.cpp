@@ -352,6 +352,12 @@ void FileMetadataPipe::forceExitWait()
 }
 
 #ifdef _WIN32
+
+int64 to_int64(FILETIME ft)
+{
+	return static_cast<int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
+}
+
 bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t& read_bytes )
 {
 	if(metadata_buffer_size-metadata_buffer_off>0)
@@ -375,6 +381,27 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 		backup_read_state = 0;
 		backup_read_context=NULL;
+
+		BY_HANDLE_FILE_INFORMATION file_information;
+		if(GetFileInformationByHandle(hFile, &file_information)==FALSE)
+		{
+			errpipe->Write("Error getting file attributes of \""+local_fn+"\". Last error: "+nconvert((int)GetLastError())+"\n");
+			return false;
+		}
+
+		CWData data;
+		data.addChar(1);
+		data.addUInt(file_information.dwFileAttributes);
+		data.addVarInt(to_int64(file_information.ftCreationTime));
+		data.addVarInt(to_int64(file_information.ftLastAccessTime));
+		data.addVarInt(to_int64(file_information.ftLastWriteTime));
+
+		_u32 data_size = little_endian(data.getDataSize());
+		memcpy(metadata_buffer.data(), &data_size, sizeof(data_size));
+		memcpy(metadata_buffer.data()+sizeof(data_size), &data.getDataPtr(), data.getDataSize());
+		metadata_buffer_size = data.getDataSize()+data_size;
+		metadata_buffer_off=0;
+		return transmitCurrMetadata(buf, buf_avail, read_bytes);
 	}
 
 	if(backup_read_state==0)
@@ -627,14 +654,17 @@ bool FileMetadataPipe::transmitCurrMetadata(char* buf, size_t buf_avail, size_t&
 
         serialize_stat_buf(statbuf, data);
 
-		if(data.getDataSize()>metadata_buffer.size())
+		if(data.getDataSize()+sizeof(_u32)>metadata_buffer.size())
 		{
-			Server->Log("File metadata of "+local_fn+" too large ("+nconvert((size_t)data.getDataSize())+")", LL_ERROR);
+			Server->Log("File metadata of "+local_fn+" too large ("+nconvert((size_t)data.getDataSize()+sizeof(_u32))+")", LL_ERROR);
 			return false;
 		}
 
-		memcpy(metadata_buffer.data(), data.getDataPtr(), data.getDataSize());
-		metadata_buffer_size=data.getDataSize();
+
+		_u32 metadata_size = little_endian(static_cast<_u32>(data.getDataSize()));
+		memcpy(metadata_buffer.data(), &metadata_size, sizeof(_u32));
+		memcpy(metadata_buffer.data()+sizeof(_u32), data.getDataPtr(), data.getDataSize());
+		metadata_buffer_size=data.getDataSize()+sizeof(_u32);
 		metadata_buffer_off=0;
 		backup_state=BackupState_Stat;
 

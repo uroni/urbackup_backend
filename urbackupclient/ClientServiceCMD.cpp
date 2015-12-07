@@ -366,7 +366,6 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 {
-#ifdef _WIN32
 	if(cmd[cmd.size()-1]=='"')
 	{
 		state=CCSTATE_SHADOWCOPY;
@@ -384,14 +383,10 @@ void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 	{
 		Server->Log("Invalid command", LL_ERROR);
 	}
-#else
-	tcpstack.Send(pipe, "DONE");
-#endif
 }
 
 void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 {
-#ifdef _WIN32
 	if(cmd[cmd.size()-1]=='"')
 	{
 		state=CCSTATE_SHADOWCOPY;
@@ -409,9 +404,6 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 	{
 		Server->Log("Invalid command", LL_ERROR);
 	}
-#else
-	tcpstack.Send(pipe, "DONE");
-#endif
 }
 
 void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)

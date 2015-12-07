@@ -1,3 +1,4 @@
+#pragma once
 #define NO_INTERFACE
 
 #ifdef THREAD_BOOST

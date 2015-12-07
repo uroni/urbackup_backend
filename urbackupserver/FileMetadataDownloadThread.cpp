@@ -116,9 +116,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Filename is empty.", LL_ERROR);
 				return false;
-			}
-			
-			Server->Log("Metadata of "+curr_fn, LL_DEBUG);					
+			}				
 
 			bool is_dir = (curr_fn[0]=='d' || curr_fn[0]=='l');
 			bool is_dir_symlink = curr_fn[0]=='l';
@@ -316,8 +314,70 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (beg)", LL_ERROR);
 		return false;
 	}
+
+	metadata_size=sizeof(win32_magic_and_size);
+
+	_u32 stat_data_size;
+	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size))!=sizeof(stat_data_size))
+	{
+		ServerLogger::Log(logid, L"Error reading stat data size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
+	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
+	{
+		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data_size)", LL_ERROR);
+		return false;
+	}
+
+	metadata_size+=sizeof(_u32);
+
+	stat_data_size = little_endian(stat_data_size);
+
+	if(stat_data_size<1)
+	{
+		ServerLogger::Log(logid, L"stat data size is zero", LL_ERROR);
+		return false;
+	}
+
+	char version;
+	if(metadata_f->Read(&version, 1)!=1)
+	{
+		ServerLogger::Log(logid, L"Error reading windows metadata version from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
+	if(version!=1)
+	{
+		ServerLogger::Log(logid, L"Unknown windows metadata version +"+convert((int)version)+L" in \"" + output_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
+	if(!dry_run && !writeRepeatFreeSpace(output_f, &version, sizeof(version), cb))
+	{
+		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (ver)", LL_ERROR);
+		return false;
+	}
+
+	metadata_size+=1;
+
+	std::vector<char> stat_data;
+	stat_data.resize(stat_data_size-1);
+
+	if(metadata_f->Read(stat_data.data(), static_cast<_u32>(stat_data.size()))!= stat_data.size())
+	{
+		ServerLogger::Log(logid, L"Error reading windows stat data from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
+	if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
+	{
+		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data)", LL_ERROR);
+		return false;
+	}
+
+	metadata_size+=stat_data.size();
 	
-    metadata_size=sizeof(win32_magic_and_size);
 	while(true) 
 	{
 		char cont = 0;
@@ -429,6 +489,29 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     metadata_size=sizeof(unix_magic_and_size);
 
+	_u32 stat_data_size;
+	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size))!=sizeof(stat_data_size))
+	{
+		ServerLogger::Log(logid, L"Error reading stat data size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
+	if(!dry_run && !writeRepeatFreeSpace(output_f, reinterpret_cast<char*>(&stat_data_size), sizeof(stat_data_size), cb))
+	{
+		ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data_size)", LL_ERROR);
+		return false;
+	}
+
+	metadata_size+=sizeof(_u32);
+
+	stat_data_size = little_endian(stat_data_size);
+
+	if(stat_data_size<1)
+	{
+		ServerLogger::Log(logid, L"stat data size is zero", LL_ERROR);
+		return false;
+	}
+
     char version;
     if(metadata_f->Read(&version, 1)!=1)
     {
@@ -450,20 +533,22 @@ bool FileMetadataDownloadThread::applyUnixMetadata(IFile* metadata_f, IFile* out
 
     metadata_size+=1;
 
-    char stat_data[sizeof(int64)*8+sizeof(_u32)*3];
-    if(metadata_f->Read(stat_data, sizeof(stat_data))!=sizeof(stat_data))
+    std::vector<char> stat_data;
+	stat_data.resize(stat_data_size-1);
+
+    if(metadata_f->Read(stat_data.data(), static_cast<_u32>(stat_data.size()))!= stat_data.size())
     {
-        ServerLogger::Log(logid, L"Error reading unix metadata from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+        ServerLogger::Log(logid, L"Error reading stat data from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
         return false;
     }
 
-    if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data, sizeof(stat_data), cb))
+    if(!dry_run && !writeRepeatFreeSpace(output_f, stat_data.data(), stat_data.size(), cb))
     {
         ServerLogger::Log(logid, L"Error writing to  \"" + output_f->getFilenameW() + L"\" (stat_data)", LL_ERROR);
         return false;
     }
 
-    metadata_size+=sizeof(stat_data);
+    metadata_size+=stat_data.size();
 
     int64 num_eattr_keys;
     if(metadata_f->Read(reinterpret_cast<char*>(&num_eattr_keys), sizeof(num_eattr_keys))!=sizeof(num_eattr_keys))

@@ -1093,13 +1093,32 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			if(group_arg!=args.end() && !group_arg->second.empty())
 				group=watoi(group_arg->second);
 
-			bool optional = false;
-			size_t optional_off = name.find(L"/optional");
-			if(optional_off!=std::string::npos &&
-				optional_off == name.size()-9)
+			int flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional; //default flags
+			size_t flags_off = name.find(L"/");
+			if(flags_off!=std::string::npos)
 			{
-				optional=true;
-				name.resize(optional_off);
+				flags=0;
+
+				std::vector<std::wstring> str_flags;
+				TokenizeMail(getafter(L"/", name), str_flags, L"|");
+
+				for(size_t i=0;i<str_flags.size();++i)
+				{
+					std::wstring flag = strlower(trim(str_flags[i]));
+					if(flag==L"optional")
+					{
+						flags |= EBackupDirFlag_Optional;
+					}
+					else if(flag==L"follow_symlinks")
+					{
+						flags |= EBackupDirFlag_FollowSymlinks;
+					}
+					else if(flag==L"symlinks_optional")
+					{
+						flags |= EBackupDirFlag_SymlinksOptional;
+					}
+				}
+				name.resize(flags_off);
 			}
 
 			name=removeChars(name);
@@ -1151,14 +1170,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			{
 				//It's not already watched. Add it
 				SBackupDir new_dir = {
-					0, name, dir, optional, group };
+					0, name, dir, flags, group };
 
 				new_watchdirs.push_back(new_dir);
 			}
 			
 			q->Bind(name);
 			q->Bind(dir);
-			q->Bind(optional?1:0);
+			q->Bind(flags);
 			q->Bind(group);
 			q->Write();
 			q->Reset();

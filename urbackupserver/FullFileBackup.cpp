@@ -222,6 +222,9 @@ bool FullFileBackup::doFileBackup()
 	bool is_offline=false;
 	bool script_dir=false;
 
+	std::stack<std::set<std::wstring> > folder_files;
+	folder_files.push(std::set<std::wstring>());
+
 	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
 	{
 		for(size_t i=0;i<read;++i)
@@ -281,7 +284,13 @@ bool FullFileBackup::doFileBackup()
 					break;
 				}
 
-				std::wstring osspecific_name=fixFilenameForOS(cf.name);
+				std::wstring osspecific_name;
+
+				if(!cf.isdir || cf.name!=L"..")
+				{
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top());
+				}
+
 				if(cf.isdir)
 				{
 					if(cf.name!=L"..")
@@ -336,6 +345,8 @@ bool FullFileBackup::doFileBackup()
 							break;
 						}
 
+						folder_files.push(std::set<std::wstring>());
+
 						++depth;
 						if(depth==1)
 						{
@@ -357,6 +368,8 @@ bool FullFileBackup::doFileBackup()
 					}
 					else
 					{
+						folder_files.pop();
+
                         if(client_main->getProtocolVersions().file_meta>0 && !script_dir)
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"),

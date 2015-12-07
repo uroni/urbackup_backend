@@ -24,12 +24,23 @@ typedef struct _GUID {
 #endif
 #endif
 
+std::string guidToString(GUID guid);
+GUID randomGuid();
+
+enum EBackupDirFlag
+{
+	EBackupDirFlag_None = 0,
+	EBackupDirFlag_Optional = 1,
+	EBackupDirFlag_FollowSymlinks = 2,
+	EBackupDirFlag_SymlinksOptional = 4
+};
+
 struct SBackupDir
 {
 	int id;
 	std::wstring tname;
 	std::wstring path;
-	bool optional;
+	int flags;
 	int group;
 	bool symlinked;
 	bool symlinked_confirmed;
@@ -156,7 +167,7 @@ public:
 	CondInt64 getFileAccessTokenId(const std::wstring& accountname, int is_user);
 	void updateGroupMembership(int64 uid, const std::wstring& accountname);
 	std::vector<int> getGroupMembership(int uid);
-	void addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int optional, int tgroup, int symlinked);
+	void addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int flags, int tgroup, int symlinked);
 	void delBackupDir(int64 id);
 	//@-SQLGenFunctionsEnd
 

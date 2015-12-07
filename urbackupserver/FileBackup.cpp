@@ -166,6 +166,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group, b
 
 	ServerLogger::Log(logid, clientname+L": Waiting for filelist", LL_DEBUG);
 	std::string ret;
+	int64 total_starttime_s = Server->getTimeSeconds();
 	int64 starttime=Server->getTimeMS();
 	while(Server->getTimeMS()-starttime<=timeout_time)
 	{
@@ -207,7 +208,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group, b
 				}
 				else if(ret!="no backup dirs")
 				{
-					logVssLogdata();
+					logVssLogdata(Server->getTimeSeconds()-total_starttime_s);
 					ServerLogger::Log(logid, L"Constructing of filelist of \""+clientname+L"\" failed: "+widen(ret), LL_ERROR);
 					break;
 				}
@@ -220,7 +221,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group, b
 			}
 			else
 			{
-				logVssLogdata();
+				logVssLogdata(Server->getTimeSeconds()-total_starttime_s);
 				Server->destroy(cc);
 				return true;
 			}
@@ -235,7 +236,7 @@ bool FileBackup::hasEarlyError()
 	return has_early_error;
 }
 
-void FileBackup::logVssLogdata()
+void FileBackup::logVssLogdata(int64 vss_duration_s)
 {
 	std::string vsslogdata=client_main->sendClientMessage("GET VSSLOG", L"Getting volume shadow copy logdata from client failed", 10000, false, LL_INFO);
 
@@ -243,11 +244,49 @@ void FileBackup::logVssLogdata()
 	{
 		std::vector<std::string> lines;
 		TokenizeMail(vsslogdata, lines, "\n");
+		int64 initial_time=Server->getTimeSeconds();
 		for(size_t i=0;i<lines.size();++i)
 		{
-			int loglevel=atoi(getuntil("-", lines[i]).c_str());
+			size_t s1 = lines[i].find("-");
+			size_t s2 = lines[i].find("-", s1+1);
+
+			if(s1==std::string::npos)
+			{
+				continue;
+			}
+
+			int loglevel=atoi(lines[i].substr(0, s1).c_str());
+
+			int64 times = 0;
+
+			std::string msg;
+			
+			if(s2!=std::string::npos)
+			{
+				times = os_atoi64(lines[i].substr(s1+1, s2-s1));
+
+				if(i==0)
+				{
+					initial_time = times;
+					continue;
+				}
+
+				times = initial_time - times;
+
+				if(times>vss_duration_s+60)
+				{
+					times = 0;
+				}
+
+				msg = lines[i].substr(s2+1);
+			}			
+			else
+			{
+				msg = lines[i].substr(s1+1);
+			}
+
 			std::string data=getafter("-", lines[i]);
-			ServerLogger::Log(logid, data, loglevel);
+			ServerLogger::Log(logid, msg, loglevel);
 		}
 	}
 }
@@ -542,7 +581,7 @@ bool FileBackup::hasChange(size_t line, const std::vector<size_t> &diffs)
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
-std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn)
+std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::wstring>& samedir_filenames)
 {
 	std::wstring ret;
 	bool modified_filename=false;
@@ -616,12 +655,26 @@ std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn)
 	if(modified_filename)
 	{
 		std::string hex_md5=Server->GenerateHexMD5(fn);
-		return ret+L"-"+widen(hex_md5.substr(0, 10));
+		ret = ret+L"-"+widen(hex_md5.substr(0, 10));
 	}
 	else
 	{
-		return fn;
+		ret = fn;
 	}
+
+#ifdef _WIN32
+	size_t idx=0;
+	std::wstring base=ret;
+	while(samedir_filenames.find(strlower(ret))!=samedir_filenames.end())
+	{
+		ret = base + L"_" + convert(idx);
+		++idx;
+	}
+
+	samedir_filenames.insert(strlower(ret));
+#endif
+
+	return ret;
 }
 
 std::wstring FileBackup::convertToOSPathFromFileClient(std::wstring path)
@@ -743,6 +796,9 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 	SFile cf;
 	fileentries->Seek(0);
 	FileListParser list_parser;
+	std::stack<std::set<std::wstring> > folder_files;
+	folder_files.push(std::set<std::wstring>());
+
 	while( (read=fileentries->Read(buffer, 4096))>0 )
 	{
 		for(size_t i=0;i<read;++i)
@@ -751,7 +807,13 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 			bool b=list_parser.nextEntry(buffer[i], cf, &extras);
 			if(b)
 			{
-				std::wstring cfn = fixFilenameForOS(cf.name);
+				std::wstring cfn;
+
+				if(!cf.isdir || cf.name!=L"..")
+				{
+					cfn = fixFilenameForOS(cf.name, folder_files.top());
+				}
+
 				if( !cf.isdir )
 				{
 					std::string sha256hex=Server->ConvertToUTF8(extras[L"sha256"]);
@@ -799,6 +861,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					{
 						curr_path=ExtractFilePath(curr_path, os_file_sep());
 						remote_path=ExtractFilePath(remote_path, L"/");
+						folder_files.push(std::set<std::wstring>());
 					}
 					else
 					{
@@ -808,6 +871,8 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 							remote_path+=L"/";
 
 						remote_path+=cfn;
+
+						folder_files.pop();
 					}
 				}
 			}
@@ -1111,6 +1176,8 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 	size_t skip = 0;
 	size_t id = 0;
 	SFile data;
+	std::stack<std::set<std::wstring> > folder_files;
+	folder_files.push(std::set<std::wstring>());
 	
 	while((bread=file_list_f->Read(buffer, 4096))>0)
 	{
@@ -1141,16 +1208,25 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 					continue;
 				}
 
+				std::wstring osspecific_name;
+
+				if(!data.isdir || data.name!=L"..")
+				{
+					osspecific_name = fixFilenameForOS(data.name, folder_files.top());
+				}
+
 				std::string permissions = base64_decode_dash(wnarrow(extra[L"dacl"]));
 				if(data.isdir)
 				{
 					if(data.name==L"..")
 					{
+						folder_files.pop();
 						curr_path = ExtractFilePath(curr_path, os_file_sep());
 					}
 					else
 					{
-						curr_path += os_file_sep() + fixFilenameForOS(data.name);
+						folder_files.push(std::set<std::wstring>());
+						curr_path += os_file_sep() + osspecific_name;
 
 						bool has_perm = false;
 						for(size_t j=0;j<ids.size();++j)
@@ -1195,7 +1271,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 						bool denied=false;
 						if(FileMetadata::hasPermission(permissions, ids[j], denied))
 						{
-							std::wstring filename = curr_path + os_file_sep() + fixFilenameForOS(data.name);
+							std::wstring filename = curr_path + os_file_sep() + osspecific_name;
 
 							if(!os_link_symbolic(os_file_prefix(backuppath + filename),
 								os_file_prefix(user_view_home_path + filename)))
@@ -1321,7 +1397,7 @@ bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std
 
 	for(size_t i=0;i<toks.size();++i)
 	{
-		std::wstring component = fixFilenameForOS(toks[i]);
+		std::wstring component = fixFilenameForOS(toks[i], std::set<std::wstring>());
 
 		if(component==L".." || component==L".")
 			continue;

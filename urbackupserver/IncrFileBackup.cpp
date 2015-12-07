@@ -393,6 +393,8 @@ bool IncrFileBackup::doFileBackup()
 	size_t skip_dir_completely=0;
 	bool skip_dir_copy_sparse=false;
 	bool script_dir=false;
+	std::stack<std::set<std::wstring> > folder_files;
+	folder_files.push(std::set<std::wstring>());
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -404,7 +406,12 @@ bool IncrFileBackup::doFileBackup()
 			bool b=list_parser.nextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
-				std::wstring osspecific_name=fixFilenameForOS(cf.name);
+				std::wstring osspecific_name;
+
+				if(!cf.isdir || cf.name!=L"..")
+				{
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top());
+				}
 
 				if(skip_dir_completely>0)
 				{
@@ -659,6 +666,9 @@ bool IncrFileBackup::doFileBackup()
 								}
 							}
 						}
+						
+						folder_files.push(std::set<std::wstring>());
+
 						++depth;
 						if(depth==1)
 						{
@@ -685,6 +695,8 @@ bool IncrFileBackup::doFileBackup()
 								ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
 								metadata, false, true);
 						}
+
+						folder_files.pop();
 
 						--depth;
 						if(indirchange==true && depth==changelevel)
@@ -1229,6 +1241,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 	std::wstring curr_path=snapshot_path;
 	std::wstring curr_os_path=snapshot_path;
 	bool curr_dir_exists=true;
+	std::stack<std::set<std::wstring> > folder_files;
+	folder_files.push(std::set<std::wstring>());
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -1240,6 +1254,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 				{
 					if(curr_file.name==L"..")
 					{
+						folder_files.pop();
 						curr_path=ExtractFilePath(curr_path, L"/");
 						curr_os_path=ExtractFilePath(curr_os_path, L"/");
 						if(!curr_dir_exists)
@@ -1249,9 +1264,15 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 					}
 				}
 
-				if( hasChange(line, deleted_ids) )
+				std::wstring osspecific_name;
+
+				if(!curr_file.isdir || curr_file.name!=L"..")
 				{
-					std::wstring osspecific_name=fixFilenameForOS(curr_file.name);
+					osspecific_name = fixFilenameForOS(curr_file.name, folder_files.top());
+				}
+
+				if( hasChange(line, deleted_ids) )
+				{					
 					std::wstring curr_fn=convertToOSPathFromFileClient(curr_os_path+os_file_sep()+osspecific_name);
 					if(curr_file.isdir)
 					{
@@ -1270,6 +1291,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 						curr_path+=os_file_sep()+curr_file.name;
 						curr_os_path+=os_file_sep()+osspecific_name;
 						curr_dir_exists=false;
+						folder_files.push(std::set<std::wstring>());
 					}
 					else
 					{
@@ -1298,7 +1320,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 				else if( curr_file.isdir && curr_file.name!=L".." )
 				{
 					curr_path+=os_file_sep()+curr_file.name;
-					curr_os_path+=os_file_sep()+fixFilenameForOS(curr_file.name);
+					curr_os_path+=os_file_sep()+osspecific_name;
+					folder_files.push(std::set<std::wstring>());
 				}
 				++line;
 			}

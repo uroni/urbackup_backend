@@ -219,6 +219,39 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		return false;
 	}
 
+	_u32 stat_data_size;
+	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(_u32))!=sizeof(_u32))
+	{
+		restore.log(L"Error reading stat data size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
+	stat_data_size = little_endian(stat_data_size);
+
+	if(stat_data_size<1)
+	{
+		restore.log(L"Stat data size from \"" + metadata_f->getFilenameW() + L"\" is zero", LL_ERROR);
+		return false;
+	}
+
+	char version=-1;    
+
+	std::vector<char> stat_data;
+	stat_data.resize(stat_data_size);
+	if(metadata_f->Read(stat_data.data(), static_cast<_u32>(stat_data.size()))!=stat_data.size())
+	{
+		restore.log(L"Error reading windows metadata from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
+	CRData read_stat(stat_data.data(), stat_data.size());
+
+	if(!read_stat.getChar(&version) || version!=1)
+	{
+		restore.log(L"Unknown windows metadata version "+convert((int)version)+L" in \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
 	bool has_error=false;
 	void* context = NULL;
 
@@ -303,6 +336,38 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 	{
 		DWORD written;
 		BackupWrite(hFile, NULL, 0, &written, TRUE, TRUE, &context);
+	}
+
+	FILE_BASIC_INFO basic_info;
+
+	if(!read_stat.getUInt(reinterpret_cast<unsigned int*>(&basic_info.FileAttributes)))
+	{
+		restore.log(L"Error getting FileAttributes of file \""+output_fn+L"\".", LL_ERROR);
+		has_error=true;
+	}
+
+	if(!read_stat.getVarInt(&basic_info.CreationTime.QuadPart))
+	{
+		restore.log(L"Error getting CreationTime of file \""+output_fn+L"\".", LL_ERROR);
+		has_error=true;
+	}
+
+	if(!read_stat.getVarInt(&basic_info.LastAccessTime.QuadPart))
+	{
+		restore.log(L"Error getting LastAccessTime of file \""+output_fn+L"\".", LL_ERROR);
+		has_error=true;
+	}
+
+	if(!read_stat.getVarInt(&basic_info.LastWriteTime.QuadPart))
+	{
+		restore.log(L"Error getting LastWriteTime of file \""+output_fn+L"\".", LL_ERROR);
+		has_error=true;
+	}
+
+	if(SetFileInformationByHandle(hFile, FileBasicInfo, &basic_info, sizeof(basic_info))!=TRUE)
+	{
+		restore.log(L"Error setting file attributes of file \""+output_fn+L"\".", LL_ERROR);
+		has_error=true;
 	}
 
 	CloseHandle(hFile);
@@ -482,28 +547,40 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
         return false;
     }
 
-    char version;
-    if(metadata_f->Read(&version, 1)!=1)
-    {
-        restore.log(L"Error reading unix metadata version from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
-        return false;
-    }
+	_u32 stat_data_size;
+	if(metadata_f->Read(reinterpret_cast<char*>(&stat_data_size), sizeof(_u32))!=sizeof(_u32))
+	{
+		restore.log(L"Error reading stat data size from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
 
-    if(version!=1)
-    {
-        restore.log(L"Unknown unix metadata version +"+convert((int)version)+L" in \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
-        return false;
-    }
+	stat_data_size = little_endian(stat_data_size);
 
-    char stat_data[sizeof(int64)*8+sizeof(_u32)*3];
-    if(metadata_f->Read(stat_data, sizeof(stat_data))!=sizeof(stat_data))
+	if(stat_data_size<1)
+	{
+		restore.log(L"Stat data size from \"" + metadata_f->getFilenameW() + L"\" is zero", LL_ERROR);
+		return false;
+	}
+
+    char version=-1;    
+
+    std::vector<char> stat_data;
+	stat_data.resize(stat_data_size);
+    if(metadata_f->Read(stat_data.data(), stat_data.size())!=stat_data.size())
     {
         restore.log(L"Error reading unix metadata from \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
         return false;
     }
 
-    CRData read_stat(stat_data, sizeof(stat_data));
-    struct stat64 statbuf;
+    CRData read_stat(stat_data.data(), stat_data.size());
+
+	if(!read_stat.getChar(&version) || version!=1)
+	{
+		restore.log(L"Unknown unix metadata version +"+convert((int)version)+L" in \"" + metadata_f->getFilenameW() + L"\"", LL_ERROR);
+		return false;
+	}
+
+	struct stat64 statbuf;
     unserialize_stat_buf(read_stat, statbuf);
 
     std::string utf8fn = Server->ConvertToUTF8(output_fn);

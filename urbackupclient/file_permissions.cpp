@@ -191,7 +191,7 @@ bool change_file_permissions_admin_only(const std::string& filename)
 {
 	if(chmod(filename.c_str(), S_IRWXU)!=0)
 	{
-		Server->Log("Error setting file permissions", LL_ERROR);
+		Server->Log("Error setting file permissions to \""+filename+"\"", LL_ERROR);
 		return false;
 	}
 	return true;

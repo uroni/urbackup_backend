@@ -110,6 +110,10 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 					{
 						f.isdir=S_ISDIR(l_info.st_mode);
 					}
+					else
+					{
+						f.isdir=false;
+					}
 				}
 			
 #ifndef sun

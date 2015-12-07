@@ -67,10 +67,10 @@ install-data-local: urbackupclient/backup_client.db urbackupclient/backup_script
 	
 if WITH_GUI_CLIENT
 	$(MKDIR_P) "$(DESTDIR)$(datadir)/urbackup"
-	$(INSTALL_DATA) $(srcdir)/data/*.png "$(DESTDIR)$(datadir)/urbackup/"
-	$(INSTALL_DATA) $(srcdir)/data/*.xpm "$(DESTDIR)$(datadir)/urbackup/"
-	$(INSTALL_DATA) $(srcdir)/data/*.ico "$(DESTDIR)$(datadir)/urbackup/"
-	$(INSTALL_DATA) $(srcdir)/data/info.txt "$(DESTDIR)$(datadir)/urbackup/"
+	$(INSTALL_DATA) $(srcdir)/client/data/*.png "$(DESTDIR)$(datadir)/urbackup/"
+	$(INSTALL_DATA) $(srcdir)/client/data/*.xpm "$(DESTDIR)$(datadir)/urbackup/"
+	$(INSTALL_DATA) $(srcdir)/client/data/*.ico "$(DESTDIR)$(datadir)/urbackup/"
+	$(INSTALL_DATA) $(srcdir)/client/data/info.txt "$(DESTDIR)$(datadir)/urbackup/"
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/it
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/pl
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/pt_BR
@@ -86,21 +86,21 @@ if WITH_GUI_CLIENT
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/nl
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/fa
 	$(MKDIR_P) $(DESTDIR)$(datadir)/urbackup/lang/cs
-	$(INSTALL_DATA) $(srcdir)/data/lang/it/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/it/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/pl/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/pl/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/pt_BR/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/pt_BR/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/sk/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/sk/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/zh_TW/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/zh_TW/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/zh_CN/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/zh_CN/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/de/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/de/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/es/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/es/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/fr/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/fr/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/ru/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/ru/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/uk/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/uk/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/da/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/da/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/nl/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/nl/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/fa/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/fa/urbackup.mo"
-	$(INSTALL_DATA) $(srcdir)/data/lang/cs/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/cs/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/it/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/it/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/pl/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/pl/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/pt_BR/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/pt_BR/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/sk/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/sk/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/zh_TW/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/zh_TW/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/zh_CN/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/zh_CN/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/de/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/de/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/es/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/es/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/fr/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/fr/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/ru/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/ru/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/uk/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/uk/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/da/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/da/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/nl/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/nl/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/fa/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/fa/urbackup.mo"
+	$(INSTALL_DATA) $(srcdir)/client/data/lang/cs/urbackup.mo "$(DESTDIR)$(datadir)/urbackup/lang/cs/urbackup.mo"
 endif
 	
 cryptoplugin_headers = cryptoplugin/AESEncryption.h cryptoplugin/AESDecryption.h cryptoplugin/IAESDecryption.h cryptoplugin/ICryptoFactory.h cryptoplugin/pluginmgr.h cryptoplugin/IAESEncryption.h cryptoplugin/CryptoFactory.h cryptoplugin/IZlibCompression.h cryptoplugin/IZlibDecompression.h cryptoplugin/ZlibCompression.h cryptoplugin/ZlibDecompression.h cryptoplugin/cryptopp_inc.h cryptoplugin/AESGCMDecryption.h cryptoplugin/AESGCMEncryption.h cryptoplugin/ECDHKeyExchange.h cryptoplugin/IAESGCMDecryption.h cryptoplugin/IAESGCMEncryption.h cryptoplugin/IECDHKeyExchange.h
