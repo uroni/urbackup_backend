@@ -1,0 +1,39 @@
+.TH "urbackupclientbackend" "1"
+.SH "NAME"
+urbackupclientbackend \(em Run UrBackup Client Backend
+.SH "SYNOPSIS"
+.PP
+\fBurbackupclientbackend \fR-c \fIpath\fR \-t \-w \fIpath\fR \-d \-v \fIdebug|info|warn|error\fR \-l \fIpath\fR \-\-version \-h
+.SH "Description"
+.PP
+Run UrBackup Client Backend
+.SH "Options"
+.IP "\fB-c\fP" 10
+.IP "\fB\-\-config \fIpath\fR\fP" 10
+Read configuration parameters from config file
+.IP "\fB-t\fP" 10
+.IP "\fB\-\-no-consoletime\fP" 10
+Do not print time when logging to console
+.IP "\fB-w\fP" 10
+.IP "\fB\-\-pidfile \fIpath\fR\fP" 10
+Save pid of daemon in file
+.IP "\fB-d\fP" 10
+.IP "\fB\-\-daemon\fP" 10
+Daemonize process
+.IP "\fB-v\fP" 10
+.IP "\fB\-\-loglevel \fIdebug|info|warn|error\fR\fP" 10
+Specifies the log level
+.IP "\fB-l\fP" 10
+.IP "\fB\-\-logfile \fIpath\fR\fP" 10
+Specifies the log file name
+.IP "\fB\-\-\fP" 10
+.IP "\fB\-\-ignore_rest\fP" 10
+Ignores the rest of the labeled arguments following this flag.
+.IP "\fB\-\-version\fP" 10
+Displays version information and exits.
+.IP "\fB-h\fP" 10
+.IP "\fB\-\-help\fP" 10
+Displays usage information and exits.
+.SH EXAMPLES
+urbackupclientbackend --loglevel debug --daemon
+.\" created by instant / docbook-to-man

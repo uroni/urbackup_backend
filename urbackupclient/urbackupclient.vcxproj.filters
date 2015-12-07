@@ -159,6 +159,9 @@
     <ClCompile Include="..\common\miniz.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="cmdline_preprocessor.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h">

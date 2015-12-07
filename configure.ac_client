@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-client], [1.5.0], [martin@urbackup.org])
+AC_INIT([urbackup-client], [2.0.0], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([subdir-objects])
@@ -41,6 +41,10 @@ AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
+
+AC_CXX_HAVE_SSTREAM
+AC_CXX_HAVE_STRSTREAM
+AC_CXX_HAVE_LONG_LONG
 
 AC_MSG_CHECKING([for operating system])
 case "$host_os" in

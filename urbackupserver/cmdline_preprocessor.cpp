@@ -19,14 +19,19 @@
 #	include <sys/fcntl.h>
 #	include <memory>
 #	include "../Interface/SettingsReader.h"
+#endif
 
-extern CServer* Server;
-
+#ifndef _WIN32
+#include "config.h"
+#define _getcwd getcwd
+#else
+#define PACKAGE_VERSION "unknown"
+#define VARDIR ""
+#include <direct.h>
 #endif
 
 
-
-const std::string cmdline_version = "2.0";
+const std::string cmdline_version = PACKAGE_VERSION;
 
 void show_version()
 {
@@ -226,7 +231,7 @@ int action_run(std::vector<std::string> args)
 
 	TCLAP::ValueArg<std::string> pidfile_arg("w", "pidfile",
 		"Save pid of daemon in file",
-		false, "/var/run/urbackup_srv.pid", "path", cmd);
+		false, "/var/run/urbackup_client.pid", "path", cmd);
 
 	TCLAP::MultiArg<std::string> broadcast_interface_arg("b", "broadcast-interface",
 		"Network interface from which to send broadcasts", false, "network interface name", cmd);
@@ -271,6 +276,8 @@ int action_run(std::vector<std::string> args)
 
 	real_args.push_back("--pidfile");
 	real_args.push_back(pidfile_arg.getValue());
+	real_args.push_back("--workingdir");
+	real_args.push_back(VARDIR);
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	if(!sqlite_tmpdir_arg.getValue().empty())
@@ -337,6 +344,8 @@ int action_verify_hashes(std::vector<std::string> args)
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 	real_args.push_back("--no-server");
+	real_args.push_back("--workingdir");
+	real_args.push_back(VARDIR);
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	real_args.push_back("--loglevel");
@@ -374,6 +383,8 @@ int action_remove_unknown(std::vector<std::string> args)
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 	real_args.push_back("--no-server");
+	real_args.push_back("--workingdir");
+	real_args.push_back(VARDIR);
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	real_args.push_back("--loglevel");
@@ -397,6 +408,8 @@ int action_defrag_database(std::vector<std::string> args)
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 	real_args.push_back("--no-server");
+	real_args.push_back("--workingdir");
+	real_args.push_back(VARDIR);
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	real_args.push_back("--loglevel");
@@ -420,6 +433,8 @@ int action_repair_database(std::vector<std::string> args)
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 	real_args.push_back("--no-server");
+	real_args.push_back("--workingdir");
+	real_args.push_back(VARDIR);
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	real_args.push_back("--loglevel");
@@ -447,6 +462,8 @@ int action_reset_pw(std::vector<std::string> args)
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 	real_args.push_back("--no-server");
+	real_args.push_back("--workingdir");
+	real_args.push_back(VARDIR);
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	real_args.push_back("--loglevel");
@@ -474,6 +491,8 @@ int action_cleanup(std::vector<std::string> args)
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 	real_args.push_back("--no-server");
+	real_args.push_back("--workingdir");
+	real_args.push_back(VARDIR);
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	real_args.push_back("--loglevel");
@@ -495,12 +514,39 @@ int action_export_auth_log(std::vector<std::string> args)
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
 	real_args.push_back("--no-server");
+	real_args.push_back("--workingdir");
+	real_args.push_back(VARDIR);
 	real_args.push_back("--loglevel");
 	real_args.push_back("debug");
 	real_args.push_back("--app");
 	real_args.push_back("export_auth_log");
 
 	return run_real_main(real_args);
+}
+
+std::string curr_dir()
+{
+	char buf[4096];
+	char* cwd = _getcwd(buf, sizeof(buf));
+	if(cwd!=NULL)
+	{
+		return cwd;
+	}
+	else
+	{
+		return std::string();
+	}
+}
+
+std::string make_absolute(std::string fn)
+{
+	std::string cdir = curr_dir();
+	bool is_absolute = (fn.empty() || fn[0]=='/');
+	if(!is_absolute && !cdir.empty())
+	{
+		fn = cdir + "/" + fn;
+	}
+	return fn;
 }
 
 int action_decompress_file(std::vector<std::string> args)
@@ -525,7 +571,7 @@ int action_decompress_file(std::vector<std::string> args)
 	real_args.push_back("--loglevel");
 	real_args.push_back("debug");
 	real_args.push_back("--decompress");
-	real_args.push_back(file_arg.getValue());
+	real_args.push_back(make_absolute(file_arg.getValue()));
 
 	return run_real_main(real_args);
 }
@@ -561,7 +607,7 @@ int action_mount_vhd(std::vector<std::string> args)
 	real_args.push_back("--loglevel");
 	real_args.push_back("debug");
 	real_args.push_back("--mount");
-	real_args.push_back(file_arg.getValue());
+	real_args.push_back(make_absolute(file_arg.getValue()));
 
 	std::string tmpmountpoint;
 
@@ -677,7 +723,7 @@ int action_assemble(std::vector<std::string> args)
 		{
 			assemble_input+=";";
 		}
-		assemble_input+=assemble_in_arg.getValue()[i];
+		assemble_input+=make_absolute(assemble_in_arg.getValue()[i]);
 	}
 
 	std::vector<std::string> real_args;

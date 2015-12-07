@@ -5,7 +5,6 @@ After=syslog.target network.target
 [Service]
 ExecStart=/usr/bin/urbackupsrv run --config /etc/default/urbackupsrv --no-consoletime
 User=root
-WorkingDirectory=/var
 
 [Install]
 WantedBy=multi-user.target
