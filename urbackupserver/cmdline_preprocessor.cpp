@@ -491,6 +491,7 @@ int action_mount_vhd(std::vector<std::string> args)
 				exit(0);
 			}
 		}
+		usleep(100*1000);
 	}
 
 	std::cout << "Timeout while waiting for background process. Please see logfile (" << logfile_arg.getValue() << ") for error details." << std::endl;
@@ -542,7 +543,7 @@ void action_help(std::string cmd)
 	std::cout << std::endl;
 	std::cout << "\t" << cmd << " [--help] [--version] <command> [<args>]" << std::endl;
 	std::cout << std::endl;
-	std::cout << "Get specific command help with urbackupsrv <command> --help" << std::endl;
+	std::cout << "Get specific command help with " << cmd << " <command> --help" << std::endl;
 	std::cout << std::endl;
 	std::cout << "\t" << cmd << " run" << std::endl;
 	std::cout << "\t\t" "Run UrBackup server" << std::endl;
