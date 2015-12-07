@@ -193,6 +193,8 @@ public:
 
 	void setLogRotationNumFiles(size_t numfiles);
 
+	void setLogConsoleTime(bool b);
+
 private:
 
 	void logToCircularBuffer(const std::string& msg, int loglevel);
@@ -287,6 +289,8 @@ private:
 	std::string logfile_chown_user;
 
 	size_t log_rotation_size;
+
+	bool log_console_time;
 
 	size_t log_rotation_files;
 };

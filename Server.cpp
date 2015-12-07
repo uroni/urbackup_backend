@@ -153,6 +153,8 @@ CServer::CServer()
 		log_rotation_files = 100;
 	}
 
+	log_console_time = true;
+
 #ifdef _WIN32
 	initialize_GetTickCount64();
 	log_rotation_size = 20*1024*1024; //20MB
@@ -368,22 +370,26 @@ void CServer::Log( const std::string &pStr, int LogLevel)
 		strftime (buffer,100,"%Y-%m-%d %X: ",timeinfo);
 #endif	
 
+		if(log_console_time)
+		{
+			std::cout << buffer;
+		}
 
 		if( LogLevel==LL_ERROR )
 		{
-			std::cout << buffer << "ERROR: " << pStr << std::endl;
+			std::cout << "ERROR: " << pStr << std::endl;
 			if(logfile_a)
 				logfile << buffer << "ERROR: " << pStr << std::endl;
 		}
 		else if( LogLevel==LL_WARNING )
 		{
-			std::cout << buffer << "WARNING: " << pStr << std::endl;
+			std::cout << "WARNING: " << pStr << std::endl;
 			if(logfile_a)
 				logfile<< buffer << "WARNING: " << pStr << std::endl;
 		}
 		else
 		{
-			std::cout << buffer << pStr << std::endl;		
+			std::cout << pStr << std::endl;		
 			if(logfile_a)
 				logfile << buffer << pStr << std::endl;
 		}
@@ -450,21 +456,26 @@ void CServer::Log( const std::wstring &pStr, int LogLevel)
 
 		std::string out_str=ConvertToUTF8(pStr);
 
+		if(log_console_time)
+		{
+			std::cout << buffer;
+		}
+
 		if( LogLevel==LL_ERROR )
 		{
-			std::cout << buffer << "ERROR: " << out_str << std::endl;
+			std::cout << "ERROR: " << out_str << std::endl;
 			if(logfile_a)
 				logfile << buffer << "ERROR: " << out_str << std::endl;
 		}
 		else if( LogLevel==LL_WARNING )
 		{
-			std::cout << buffer << "WARNING: " << out_str << std::endl;
+			std::cout << "WARNING: " << out_str << std::endl;
 			if(logfile_a)
 				logfile << buffer << "WARNING: " << out_str << std::endl;
 		}
 		else
 		{
-			std::cout << buffer << out_str << std::endl;
+			std::cout << out_str << std::endl;
 			if(logfile_a)
 				logfile << buffer << out_str<< std::endl;
 		}
@@ -1989,4 +2000,9 @@ void CServer::LoadStaticPlugins()
 		LOADACTIONS loadfunc = staticplugins[i].loadactions;
 		loadfunc(this);
 	}
+}
+
+void CServer::setLogConsoleTime(bool b)
+{
+	log_console_time = b;
 }

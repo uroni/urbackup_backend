@@ -281,6 +281,7 @@
     <ClCompile Include="apps\skiphash_copy.cpp" />
     <ClCompile Include="Backup.cpp" />
     <ClCompile Include="ChunkPatcher.cpp" />
+    <ClCompile Include="cmdline_preprocessor.cpp" />
     <ClCompile Include="ContinuousBackup.cpp" />
     <ClCompile Include="create_files_index.cpp" />
     <ClCompile Include="dao\ServerBackupDao.cpp" />

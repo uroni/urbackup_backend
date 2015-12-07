@@ -1397,7 +1397,8 @@ bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std
 
 	for(size_t i=0;i<toks.size();++i)
 	{
-		std::wstring component = fixFilenameForOS(toks[i], std::set<std::wstring>());
+		std::set<std::wstring> emptyset;
+		std::wstring component = fixFilenameForOS(toks[i], emptyset);
 
 		if(component==L".." || component==L".")
 			continue;
