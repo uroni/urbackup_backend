@@ -1,39 +1,28 @@
-# Defaults for urbackup_srv initscript
-# sourced by /etc/init.d/urbackup_srv
-# installed at /etc/default/urbackup_srv by the maintainer scripts
-
-#
-# This is a POSIX shell fragment
-#
+# Defaults for urbackupsrv initscript
+# sourced by /etc/init.d/urbackupsrv and /lib/systemd/system/urbackup-server.service
+# installed at /etc/default/urbackupsrv by the maintainer scripts
 
 # Additional options that are passed to the Daemon.
 
-#Port for fastcgi requests
+#Port for FastCGI requests
 FASTCGI_PORT=55413
 
-#Port for the webinterface
+#Port for the web interface
 HTTP_PORT=55414
 
-#logfile name
-LOGFILE="urbackup.log"
+#log file name
+LOGFILE="/var/log/urbackup.log"
 
 #Either debug,warn,info or error
 LOGLEVEL="warn"
 
-#Tmp file directory - be carefull this can get very large
+#Temporary file directory - this may get very large
 DAEMON_TMPDIR="/tmp"
 
 #Tmp file directory for sqlite temporary tables.
 #You might want to put the databases on another filesystem than the other temporary files.
 #Default is the same as DAEMON_TMPDIR
 SQLITE_TMPDIR=""
-
-#Priority adjustment of the server process. Increase to lower priority.
-NICE_LEVEL="0"
-
-#I/O-Scheduling class (with IO-priotity) of the server process.
-#Values e.g. idle, best-effort or real-time
-IOSCHED_CLASS="best-effort"
 
 #Interfaces from which to send broadcasts. (Default: all)
 BROADCAST_INTERFACES=""

@@ -1,10 +1,11 @@
 #include "../tclap/CmdLine.h"
-#include "../tclap/DocBookOutput.h"
 #include <vector>
 #include "../stringtools.h"
 #include "../urbackupcommon/os_functions.h"
+#include <stdlib.h>
 
 #ifndef _WIN32
+#	include "../Server.h"
 #	include <sys/types.h>
 #	include <pwd.h>
 #	include <sys/wait.h>
@@ -16,7 +17,14 @@
 #	include <sys/stat.h>
 #	include <sys/types.h>
 #	include <sys/fcntl.h>
+#	include <memory>
+#	include "../Interface/SettingsReader.h"
+
+extern CServer* Server;
+
 #endif
+
+
 
 const std::string cmdline_version = "2.0";
 
@@ -62,6 +70,126 @@ int run_real_main(std::vector<std::string> args)
 }
 
 typedef int(*action_fun)(std::vector<std::string> args);
+
+std::string unquote_value(std::string val)
+{
+	val = trim(val);
+	if(val[0]=='"')
+	{
+		size_t last_pos = val.find_last_of('"');
+		if(last_pos!=0)
+		{
+			val=val.substr(1, last_pos-1);
+		}
+	}
+	else if(val[0]=='\'')
+	{
+		size_t last_pos = val.find_last_of('\'');
+		if(last_pos!=0)
+		{
+			val=val.substr(1, last_pos-1);
+		}
+	}
+	return val;
+}
+
+#ifndef _WIN32
+void read_config_file(std::string fn, std::vector<std::string>& real_args)
+{
+	bool destroy_server=false;
+	if(Server==NULL)
+	{
+		Server = new CServer;
+		destroy_server=true;
+	}
+
+	{
+		std::auto_ptr<ISettingsReader> settings(Server->createFileSettingsReader(fn));
+		std::string val;
+		if(settings->getValue("FASTCGI_PORT", &val))
+		{
+			val = unquote_value(val);
+
+			if(!val.empty())
+			{
+				real_args.push_back("--port");
+				real_args.push_back(val);
+			}
+		}
+		if(settings->getValue("HTTP_PORT", &val))
+		{
+			val = unquote_value(val);
+
+			if(!val.empty())
+			{
+				real_args.push_back("--http_port");
+				real_args.push_back(val);
+			}
+		}
+		if(settings->getValue("LOGFILE", &val))
+		{
+			val = unquote_value(val);
+
+			if(!val.empty())
+			{
+				if(val[0]!='/')
+				{
+					val = "/var/log/"+val;
+				}
+				real_args.push_back("--logfile");
+				real_args.push_back(val);
+			}
+		}
+		if(settings->getValue("LOGLEVEL", &val))
+		{
+			val = unquote_value(val);
+
+			if(!val.empty())
+			{
+				real_args.push_back("--loglevel");
+				real_args.push_back(unquote_value(val));
+			}
+		}
+		if(settings->getValue("DAEMON_TMPDIR", &val))
+		{
+			std::string tmpdir = unquote_value(val);
+			if(!tmpdir.empty())
+			{
+				if(setenv("TMPDIR", tmpdir.c_str(), 1)!=0)
+				{
+					std::cout << "Error setting TMPDIR" << std::endl;
+					exit(1);
+				}
+			}
+		}
+		if(settings->getValue("SQLITE_TMPDIR", &val))
+		{
+			val = unquote_value(val);
+
+			if(!val.empty())
+			{
+				real_args.push_back("--sqlite_tmpdir");
+				real_args.push_back(val);
+			}
+		}
+		if(settings->getValue("BROADCAST_INTERFACES", &val))
+		{
+			val = unquote_value(val);
+
+			if(!val.empty())
+			{
+				real_args.push_back("--broadcast_interfaces");
+				real_args.push_back(val);
+			}
+		}
+	}	
+
+	if(destroy_server)
+	{
+		delete Server;
+	}
+}
+#endif
 
 int action_run(std::vector<std::string> args)
 {
@@ -111,14 +239,36 @@ int action_run(std::vector<std::string> args)
 		"Change process to run as specific user",
 		false, "urbackup", "user", cmd);
 
+#ifndef _WIN32
+	TCLAP::ValueArg<std::string> config_arg("c", "config",
+		"Read configuration parameters from config file",
+		false, "", "path", cmd);
+#endif
+
 	cmd.parse(args);
 
 	std::vector<std::string> real_args;
 	real_args.push_back(args[0]);
-	real_args.push_back("--port");
-	real_args.push_back(nconvert(fastcgi_port_arg.getValue()));
-	real_args.push_back("--http_port");
-	real_args.push_back(nconvert(http_port_arg.getValue()));
+
+#ifndef _WIN32
+	if(!config_arg.getValue().empty())
+	{
+		read_config_file(config_arg.getValue(), real_args);
+	}
+#endif
+
+	if(std::find(real_args.begin(), real_args.end(), "--port")==real_args.end())
+	{
+		real_args.push_back("--port");
+		real_args.push_back(nconvert(fastcgi_port_arg.getValue()));
+	}
+	
+	if(std::find(real_args.begin(), real_args.end(), "--http_port")==real_args.end())
+	{
+		real_args.push_back("--http_port");
+		real_args.push_back(nconvert(http_port_arg.getValue()));
+	}
+
 	real_args.push_back("--pidfile");
 	real_args.push_back(pidfile_arg.getValue());
 	real_args.push_back("--user");
@@ -139,15 +289,22 @@ int action_run(std::vector<std::string> args)
 		}
 		broadcast_interfaces+=bi[i];
 	}
-	if(!broadcast_interfaces.empty())
+	if(!broadcast_interfaces.empty()
+		&& std::find(real_args.begin(), real_args.end(), "--broadcast_interfaces")==real_args.end())
 	{
 		real_args.push_back("--broadcast_interfaces");
 		real_args.push_back(broadcast_interfaces);
 	}
-	real_args.push_back("--logfile");
-	real_args.push_back(logfile_arg.getValue());
-	real_args.push_back("--loglevel");
-	real_args.push_back(loglevel_arg.getValue());
+	if(std::find(real_args.begin(), real_args.end(), "--logfile")==real_args.end())
+	{
+		real_args.push_back("--logfile");
+		real_args.push_back(logfile_arg.getValue());
+	}
+	if(std::find(real_args.begin(), real_args.end(), "--loglevel")==real_args.end())
+	{
+		real_args.push_back("--loglevel");
+		real_args.push_back(loglevel_arg.getValue());
+	}
 	if(daemon_arg.getValue())
 	{
 		real_args.push_back("--daemon");
