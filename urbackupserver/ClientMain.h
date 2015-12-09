@@ -180,8 +180,8 @@ private:
 	void unloadSQL(void);
 	void prepareSQL(void);
 	void updateLastseen(void);
-	bool isUpdateFull(void);
-	bool isUpdateIncr(void);
+	bool isUpdateFull(int tgroup);
+	bool isUpdateIncr(int tgroup);
 	bool isUpdateFullImage(void);
 	bool isUpdateIncrImage(void);
 	bool isUpdateFullImage(const std::string &letter);

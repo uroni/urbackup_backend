@@ -1778,18 +1778,19 @@ void ServerBackupDao::addUserToken(const std::wstring& username, const std::wstr
 *				AND clientid=:clientid(int) AND incremental=0)
 *		  OR (datetime('now', :backup_interval_incr(string))<backuptime
 *				AND clientid=:clientid(int) AND complete=1) )
-*		  AND done=1 AND tgroup=0
+*		  AND done=1 AND tgroup=:tgroup(int)
 */
-ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr)
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int tgroup)
 {
 	if(q_hasRecentFullOrIncrFileBackup==NULL)
 	{
-		q_hasRecentFullOrIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE ((datetime('now', ?)<backuptime AND clientid=? AND incremental=0) OR (datetime('now', ?)<backuptime AND clientid=? AND complete=1) ) AND done=1 AND tgroup=0", false);
+		q_hasRecentFullOrIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE ((datetime('now', ?)<backuptime AND clientid=? AND incremental=0) OR (datetime('now', ?)<backuptime AND clientid=? AND complete=1) ) AND done=1 AND tgroup=?", false);
 	}
 	q_hasRecentFullOrIncrFileBackup->Bind(backup_interval_full);
 	q_hasRecentFullOrIncrFileBackup->Bind(clientid);
 	q_hasRecentFullOrIncrFileBackup->Bind(backup_interval_incr);
 	q_hasRecentFullOrIncrFileBackup->Bind(clientid);
+	q_hasRecentFullOrIncrFileBackup->Bind(tgroup);
 	db_results res=q_hasRecentFullOrIncrFileBackup->Read();
 	q_hasRecentFullOrIncrFileBackup->Reset();
 	CondInt64 ret = { false, 0 };
@@ -1808,16 +1809,17 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const 
 * @sql
 *       SELECT id FROM backups
 *		WHERE datetime('now', :backup_interval(string))<backuptime
-*			AND clientid=:clientid(int) AND complete=1 AND done=1 AND tgroup=0
+*			AND clientid=:clientid(int) AND complete=1 AND done=1 AND tgroup=:tgroup(int)
 */
-ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid)
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid, int tgroup)
 {
 	if(q_hasRecentIncrFileBackup==NULL)
 	{
-		q_hasRecentIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE datetime('now', ?)<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=0", false);
+		q_hasRecentIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE datetime('now', ?)<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=?", false);
 	}
 	q_hasRecentIncrFileBackup->Bind(backup_interval);
 	q_hasRecentIncrFileBackup->Bind(clientid);
+	q_hasRecentIncrFileBackup->Bind(tgroup);
 	db_results res=q_hasRecentIncrFileBackup->Read();
 	q_hasRecentIncrFileBackup->Reset();
 	CondInt64 ret = { false, 0 };

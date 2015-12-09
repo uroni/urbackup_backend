@@ -532,10 +532,10 @@ void ClientMain::operator ()(void)
 
 
 			if( !server_settings->getSettings()->no_file_backups && !internet_no_full_file &&
-				( (isUpdateFull() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
+				( (isUpdateFull(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowFullFile())
 				&& exponentialBackoffFile() ) || do_full_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now && !do_incr_backup_now
-				&& (!isRunningFileBackup(c_group_default) || do_full_backup_now) )
+				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_full_backup_now) )
 			{
 				SRunningBackup backup;
 				backup.backup = new FullFileBackup(this, clientid, clientname, clientsubname,
@@ -548,10 +548,10 @@ void ClientMain::operator ()(void)
 				do_full_backup_now=false;
 			}
 			else if( !server_settings->getSettings()->no_file_backups
-				&& ( (isUpdateIncr() && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
+				&& ( (isUpdateIncr(filebackup_group_offset + c_group_default) && ServerSettings::isInTimeSpan(server_settings->getBackupWindowIncrFile())
 				&& exponentialBackoffFile() ) || do_incr_backup_now )
 				&& isBackupsRunningOkay(true) && !do_full_image_now && !do_full_image_now
-				&& (!isRunningFileBackup(c_group_default) || do_incr_backup_now) )
+				&& (!isRunningFileBackup(filebackup_group_offset + c_group_default) || do_incr_backup_now) )
 			{
 				SRunningBackup backup;
 				backup.backup = new IncrFileBackup(this, clientid, clientname, clientsubname,
@@ -608,15 +608,15 @@ void ClientMain::operator ()(void)
 
 				do_incr_image_now=false;
 			}
-			else if(protocol_versions.cdp_version>0 && cdp_needs_sync && !isRunningFileBackup(c_group_continuous))
+			else if(protocol_versions.cdp_version>0 && cdp_needs_sync && !isRunningFileBackup(filebackup_group_offset + c_group_continuous))
 			{
 				cdp_needs_sync=false;
 
 				SRunningBackup backup;
 				backup.backup = new ContinuousBackup(this, clientid, clientname, clientsubname,
-					LogAction_LogIfNotDisabled, c_group_default, use_tmpfiles,
+					LogAction_LogIfNotDisabled, filebackup_group_offset + c_group_continuous, use_tmpfiles,
 					tmpfile_path, use_reflink, use_snapshots);
-				backup.group=c_group_continuous;
+				backup.group=filebackup_group_offset + c_group_continuous;
 
 				backup_queue.push_back(backup);
 			}
@@ -889,7 +889,7 @@ void ClientMain::updateLastseen(void)
 	q_update_lastseen->Reset();
 }
 
-bool ClientMain::isUpdateFull(void)
+bool ClientMain::isUpdateFull(int tgroup)
 {
 	int update_freq_full = server_settings->getUpdateFreqFileFull();
 	if( update_freq_full<0 )
@@ -900,17 +900,17 @@ bool ClientMain::isUpdateFull(void)
 		update_freq_incr=0;
 
 	return !backup_dao->hasRecentFullOrIncrFileBackup(convert(-1*update_freq_full)+L" seconds",
-		clientid, convert(-1*update_freq_incr)+L" seconds").exists;
+		clientid, convert(-1*update_freq_incr)+L" seconds", tgroup).exists;
 }
 
-bool ClientMain::isUpdateIncr(void)
+bool ClientMain::isUpdateIncr(int tgroup)
 {
 	int update_freq = server_settings->getUpdateFreqFileIncr();
 	if( update_freq<0 )
 		return false;
 
 	return !backup_dao->hasRecentIncrFileBackup(convert(-1*update_freq)+L" seconds",
-		clientid).exists;
+		clientid, tgroup).exists;
 }
 
 bool ClientMain::isUpdateFullImage(const std::string &letter)
