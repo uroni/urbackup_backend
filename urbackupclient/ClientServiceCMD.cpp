@@ -211,6 +211,14 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		group = watoi(it_group->second);
 	}
 
+	std::string clientsubname;
+
+	str_map::iterator it_clientsubname = params.find(L"clientsubname");
+	if(it_clientsubname!=params.end())
+	{
+		clientsubname = conv_filename(Server->ConvertToUTF8(it_clientsubname->second));
+	}
+
 	unsigned int flags = 0;
 
 	if(params.find(L"with_scripts")!=params.end())
@@ -238,7 +246,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		flags |= flag_end_to_end_verification;
 	}
 
-	if(calculateFilehashesOnClient())
+	if(calculateFilehashesOnClient(clientsubname))
 	{
 		flags |= flag_calc_checksums;
 	}
@@ -248,11 +256,12 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	IScopedLock lock(backup_mutex);
 
 	CWData data;
-	data.addChar(0);
+	data.addChar(IndexThread::IndexThreadAction_StartIncrFileBackup);
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
 	data.addInt(group);
 	data.addInt(flags);
+	data.addString(clientsubname);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -308,6 +317,13 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		group = watoi(it_group->second);
 	}
 
+	std::string clientsubname;
+	str_map::iterator it_clientsubname = params.find(L"clientsubname");
+	if(it_clientsubname!=params.end())
+	{
+		clientsubname = conv_filename(Server->ConvertToUTF8(it_clientsubname->second));
+	}
+
 	int flags = 0;
 
 	if(params.find(L"with_scripts")!=params.end())
@@ -335,7 +351,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		flags |= flag_end_to_end_verification;
 	}
 
-	if(calculateFilehashesOnClient())
+	if(calculateFilehashesOnClient(clientsubname))
 	{
 		flags |= flag_calc_checksums;
 	}
@@ -345,11 +361,12 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	IScopedLock lock(backup_mutex);
 
 	CWData data;
-	data.addChar(1);
+	data.addChar(IndexThread::IndexThreadAction_StartFullFileBackup);
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
 	data.addInt(group);
 	data.addInt(flags);
+	data.addString(clientsubname);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 

@@ -399,7 +399,7 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 		_u32 data_size = little_endian(static_cast<_u32>(data.getDataSize()));
 		memcpy(metadata_buffer.data(), &data_size, sizeof(data_size));
 		memcpy(metadata_buffer.data()+sizeof(data_size), data.getDataPtr(), data.getDataSize());
-		metadata_buffer_size = data.getDataSize()+data_size;
+		metadata_buffer_size = data.getDataSize()+sizeof(data_size);
 		metadata_buffer_off=0;
 		return transmitCurrMetadata(buf, buf_avail, read_bytes);
 	}

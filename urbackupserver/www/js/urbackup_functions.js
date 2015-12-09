@@ -565,7 +565,7 @@ function validate_text_int(a)
 {
 	for(var i=0;i<a.length;++i)
 	{
-		if(!isInt(I(a[i]).value))
+		if(I(a[i]) && !isInt(I(a[i]).value))
 		{
 			if(trans("validate_err_notint_"+a[i]))
 			{

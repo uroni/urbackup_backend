@@ -254,7 +254,7 @@ void InternetClient::doUpdateSettings(void)
 		 && !settings->getValue("computername_def", &computername) ) 
 		   || computername.empty())
 	{
-		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());
+		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());		
 	}
 	if(settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name) )
 	{

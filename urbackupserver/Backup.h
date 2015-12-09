@@ -34,7 +34,7 @@ enum LogAction
 class Backup : public IThread
 {
 public:
-	Backup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool is_file_backup, bool is_incremental);
+	Backup(ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental);
 	virtual ~Backup() {}
 
 	virtual void operator()();
@@ -70,6 +70,7 @@ protected:
 	ClientMain* client_main;
 	int clientid;
 	std::wstring clientname;
+	std::wstring clientsubname;
 	LogAction log_action;
 
 	IDatabase* db;

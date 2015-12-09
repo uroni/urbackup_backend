@@ -31,9 +31,10 @@ class BackupServerContinuous;
 class ContinuousBackup;
 class Backup;
 
-const int c_group_all = -1;
 const int c_group_default = 0;
 const int c_group_continuous = 1;
+const int c_group_max = 99;
+const int c_group_size = 100;
 
 struct SProtocolVersions
 {
@@ -94,7 +95,7 @@ class ClientMain : public IThread, public FileClientChunked::ReconnectionCallbac
 {
 	friend class ServerHashExisting;
 public:
-	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots, bool use_reflink);
+	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, const std::wstring& pSubName, const std::wstring& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink);
 	~ClientMain(void);
 
 	void operator()(void);
@@ -218,6 +219,9 @@ private:
 	sockaddr_in clientaddr;
 	IMutex *clientaddr_mutex;
 	std::wstring clientname;
+	std::wstring clientsubname;
+	std::wstring clientmainname;
+	int filebackup_group_offset;
 
 	std::wstring tmpfile_path;
 	static size_t tmpfile_num;

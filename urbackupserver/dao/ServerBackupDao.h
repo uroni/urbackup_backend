@@ -153,6 +153,7 @@ public:
 	void addToOldBackupfolders(const std::wstring& backupfolder);
 	std::vector<std::wstring> getOldBackupfolders(void);
 	std::vector<std::wstring> getDeletePendingClientNames(void);
+	CondString getVirtualMainClientname(int clientid);
 	bool createTemporaryLastFilesTable(void);
 	void dropTemporaryLastFilesTable(void);
 	bool createTemporaryLastFilesTableIndex(void);
@@ -225,6 +226,7 @@ public:
 	CondString getRestoreIdentity(int64 restore_id, int clientid);
 	void setRestoreDone(int success, int64 restore_id);
 	SFileBackupInfo getFileBackupInfo(int backupid);
+	void setVirtualMainClient(const std::wstring& virtualmain, int64 clientid);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -252,6 +254,7 @@ private:
 	IQuery* q_addToOldBackupfolders;
 	IQuery* q_getOldBackupfolders;
 	IQuery* q_getDeletePendingClientNames;
+	IQuery* q_getVirtualMainClientname;
 	IQuery* q_createTemporaryLastFilesTable;
 	IQuery* q_dropTemporaryLastFilesTable;
 	IQuery* q_createTemporaryLastFilesTableIndex;
@@ -324,6 +327,7 @@ private:
 	IQuery* q_getRestoreIdentity;
 	IQuery* q_setRestoreDone;
 	IQuery* q_getFileBackupInfo;
+	IQuery* q_setVirtualMainClient;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

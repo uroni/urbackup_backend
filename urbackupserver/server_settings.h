@@ -51,6 +51,7 @@ struct SSettings
 	std::string backup_window_incr_image;
 	std::string backup_window_full_image;
 	std::wstring computername;
+	std::wstring virtual_clients;
 	std::wstring exclude_files;
 	std::wstring include_files;
 	std::wstring default_dirs;

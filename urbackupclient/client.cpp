@@ -57,6 +57,8 @@ volatile bool IdleCheckerThread::pause=false;
 volatile bool IndexThread::stop_index=false;
 std::map<std::wstring, std::wstring> IndexThread::filesrv_share_dirs;
 
+const char IndexThread::IndexThreadAction_StartFullFileBackup=0;
+const char IndexThread::IndexThreadAction_StartIncrFileBackup=1;
 const char IndexThread::IndexThreadAction_GetLog=9;
 const char IndexThread::IndexThreadAction_PingShadowCopy=10;
 const char IndexThread::IndexThreadAction_AddWatchdir = 5;
@@ -361,7 +363,7 @@ void IndexThread::operator()(void)
 #endif
 #ifdef _WIN32
 
-	if(backgroundBackupsEnabled())
+	if(backgroundBackupsEnabled(std::string()))
 	{
 #ifndef _DEBUG
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
@@ -413,7 +415,7 @@ void IndexThread::operator()(void)
 		char action;
 		data.getChar(&action);
 		data.getVoidPtr((void**)&contractor);
-		if(action==0)
+		if(action==IndexThreadAction_StartFullFileBackup)
 		{
 			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
@@ -422,6 +424,7 @@ void IndexThread::operator()(void)
 			data.getInt(&index_group);
 			unsigned int flags;
 			data.getUInt(&flags);
+			data.getStr(&index_clientsubname);
 
 			setFlags(flags);
 
@@ -498,7 +501,7 @@ void IndexThread::operator()(void)
 				contractor->Write("error - stop_index 1");
 			}
 		}
-		else if(action==1)
+		else if(action==IndexThreadAction_StartIncrFileBackup)
 		{
 			Server->Log("Removing VSS log data...", LL_DEBUG);
 			vsslog.clear();
@@ -507,6 +510,7 @@ void IndexThread::operator()(void)
 			data.getInt(&index_group);
 			unsigned int flags;
 			data.getUInt(&flags);
+			data.getStr(&index_clientsubname);
 
 			setFlags(flags);
 
@@ -1325,7 +1329,7 @@ bool IndexThread::readBackupScripts()
 {
 	scripts.clear();
 
-	if(!with_scripts)
+	if(!with_scripts || index_group!=c_group_default)
 	{
 		return false;
 	}
@@ -2569,7 +2573,13 @@ void IndexThread::readPatterns(bool &pattern_changed, bool update_saved_patterns
 		include_pattern_key=L"continuous_include_files";
 	}
 
-	ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+	std::string settings_fn = "urbackup/data/settings.cfg";
+	if(!index_clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_"+index_clientsubname+".cfg";
+	}
+
+	ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 	exlude_dirs.clear();
 	if(curr_settings!=NULL)
 	{	
@@ -2862,6 +2872,10 @@ void IndexThread::start_filesrv(void)
 		curr_udpport=0;
 	}
 
+	IFileServFactory* filesrv_fak = (IFileServFactory*)Server->getPlugin(Server->getThreadID(), filesrv_pluginid);
+
+	filesrv=filesrv_fak->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn,
+		backgroundBackupsEnabled(std::string()));
 	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data", std::string());
 
 	ServerIdentityMgr::setFileServ(filesrv);
@@ -3415,9 +3429,16 @@ std::string IndexThread::escapeListName( const std::string& listname )
 	return ret;
 }
 
-bool IndexThread::backgroundBackupsEnabled()
+bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 {
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+	std::string settings_fn = "urbackup/data/settings.cfg";
+
+	if(!clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+	}
+
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 	if(curr_settings.get()!=NULL)
 	{
 		std::string background_backups;

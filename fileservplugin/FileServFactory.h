@@ -13,6 +13,8 @@ public:
 
 	static IPermissionCallback* getPermissionCallback();
 
+	std::wstring getDefaultServerName(bool use_fqdn);
+
 private:
 	static IPermissionCallback* permission_callback;
 	static bool backupground_backups_enabled;

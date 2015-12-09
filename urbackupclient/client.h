@@ -39,6 +39,8 @@
 
 const int c_group_default = 0;
 const int c_group_continuous = 1;
+const int c_group_max = 99;
+const int c_group_size = 100;
 
 const unsigned int flag_end_to_end_verification = 2;
 const unsigned int flag_with_scripts = 4;
@@ -142,6 +144,8 @@ class ClientDAO;
 class IndexThread : public IThread
 {
 public:
+	static const char IndexThreadAction_StartFullFileBackup;
+	static const char IndexThreadAction_StartIncrFileBackup;
 	static const char IndexThreadAction_GetLog;
 	static const char IndexThreadAction_PingShadowCopy;
 	static const char IndexThreadAction_AddWatchdir;
@@ -168,7 +172,7 @@ public:
 
 	static void doStop(void);
 	
-	static bool backgroundBackupsEnabled();
+	static bool backgroundBackupsEnabled(const std::string& clientsubname);
 
 	static std::vector<std::wstring> parseExcludePatterns(const std::wstring& val);
 	static std::vector<std::wstring> parseIncludePatterns(const std::wstring& val, std::vector<int>& include_depth,
@@ -322,6 +326,7 @@ private:
 
 	int index_group;
 	int index_flags;
+	std::string index_clientsubname;
 
 	SCDirs* index_scd;
 

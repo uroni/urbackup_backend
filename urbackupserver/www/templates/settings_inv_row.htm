@@ -162,6 +162,7 @@
 	</div>
 </div>
 
+{?main_client}
 <div class="tab-pane" id="permissions">
 	<div class="panel panel-default">
 	<div class="panel-body">
@@ -224,11 +225,13 @@
 	</div>
 	</div>
 </div>
+{/main_client}
 
 <div class="tab-pane" id="client">
 	<div class="panel panel-default">
 	<div class="panel-body">
 		<form class="form-horizontal" role="form">
+			{?main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="startup_backup_delay">{tDelay after system startup}:</label>
 				<div class="col-sm-6">
@@ -238,6 +241,7 @@
 					</div>
 				</div>
 			</div>
+			{/main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label">{tBackup window}</label>
 				<div class="col-sm-6">
@@ -283,14 +287,16 @@
 					</div>
 				</div>
 			</div>
+			{?main_client}
 			{no_compname_start|s}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="computername">{tComputer name}</label>
 				<div class="col-sm-6">
-					<input type="text" class="form-control" id="computername" value="{computername|s}"/>
+					<input type="text" class="form-control" id="computername" value="{computername}"/>
 				</div>
 			</div>
 			{no_compname_end|s}
+			{/main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="local_speed">{tMax backup speed for local network}:</label>
 				<div class="col-sm-6">
@@ -300,18 +306,30 @@
 					</div>
 				</div>
 			</div>
+			{?main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="silent_update">{tPerform autoupdates silently}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="silent_update" {silent_update}/></label>
 				</div>
 			</div>
+			{/main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="client_quota">{tSoft client quota}:</label>
 				<div class="col-sm-6">
 					<input type="text" class="form-control" id="client_quota" value="{client_quota}"/>
 				</div>
 			</div>
+			{?main_client}
+			{no_compname_start|s}
+			<div class="form-group">
+				<label class="col-sm-4 control-label" for="virtual_clients">{tVirtual sub client names}</label>
+				<div class="col-sm-6">
+					<input type="text" class="form-control" id="virtual_clients" value="{virtual_clients}"/>
+				</div>
+			</div>
+			{no_compname_end|s}
+			{/main_client}
 		</form>
 	</div>
 	</div>
@@ -399,6 +417,7 @@
 				</div>
 			</div>
 			{global_settings_end_inet|s}
+			{?main_client}
 			{no_compname_start_inet|s}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_mode_enabled">{tEnable internet mode}:</label>
@@ -413,6 +432,7 @@
 				</div>
 			</div>
 			{no_compname_end_inet|s}
+			{/main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_image_backups">{tDo image backups over internet}:</label>
 				<div class="col-sm-6">
@@ -445,6 +465,7 @@
 				</div>
 			</div>
 			{global_settings_end_inet|s}
+			{?main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_encrypt">{tEncrypted transfer}:</label>
 				<div class="col-sm-6">
@@ -457,18 +478,21 @@
 					<label><input type="checkbox" id="internet_compress" value="false" {internet_compress}/></label>
 				</div>
 			</div>
+			{/main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_calculate_filehashes_on_client">{tCalculate file-hashes on the client}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_calculate_filehashes_on_client" value="false" {internet_calculate_filehashes_on_client}/></label>
 				</div>
 			</div>
+			{?main_client}
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="internet_connect_always">{tConnect to Internet backup server if connected to local backup server}:</label>
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="internet_connect_always" value="false" {internet_connect_always}/></label>
 				</div>
 			</div>
+			{/main_client}
 		</form>
 	</div>
 	</div>
@@ -582,10 +606,6 @@
 				<div class="col-sm-6">
 					<label><input type="checkbox" id="end_to_end_file_backup_verification" value="false" {end_to_end_file_backup_verification}/></label>
 				</div>
-<tr>
-<td>{tFollow symbolic links on Linux}:</td>
-<td><input type="checkbox" id="follow_symlinks" value="true" {follow_symlinks}/></td>
-</tr>
 			</div>
 			<div class="form-group">
 				<label class="col-sm-4 control-label" for="verify_using_client_hashes">{tVerify file backups using client side hashes}:</label>

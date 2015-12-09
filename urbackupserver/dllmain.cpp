@@ -1398,6 +1398,17 @@ bool upgrade40_41()
 	return b;
 }
 
+bool upgrade41_42()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE clients ADD virtualmain TEXT");
+
+	return b;
+}
+
 
 void upgrade(void)
 {
@@ -1420,7 +1431,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=41;
+	int max_v=42;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1633,6 +1644,12 @@ void upgrade(void)
 				++ver;
 			case 40:
 				if(!upgrade40_41())
+				{
+					has_error=true;
+				}
+				++ver;
+			case 41:
+				if(!upgrade41_42())
 				{
 					has_error=true;
 				}

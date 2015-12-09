@@ -45,8 +45,8 @@ const unsigned int full_backup_construct_timeout=4*60*60*1000;
 extern std::string server_identity;
 extern std::string server_token;
 
-FileBackup::FileBackup( ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool is_incremental, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots)
-	:  Backup(client_main, clientid, clientname, log_action, true, is_incremental), group(group), use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), use_reflink(use_reflink), use_snapshots(use_snapshots),
+FileBackup::FileBackup( ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool is_incremental, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots)
+	:  Backup(client_main, clientid, clientname, clientsubname, log_action, true, is_incremental), group(group), use_tmpfiles(use_tmpfiles), tmpfile_path(tmpfile_path), use_reflink(use_reflink), use_snapshots(use_snapshots),
 	disk_error(false), with_hashes(false),
 	backupid(-1), hashpipe(NULL), hashpipe_prepare(NULL), bsh(NULL), bsh_prepare(NULL),
 	bsh_ticket(ILLEGAL_THREADPOOL_TICKET), bsh_prepare_ticket(ILLEGAL_THREADPOOL_TICKET), pingthread(NULL),
@@ -92,7 +92,8 @@ bool FileBackup::getResult()
 	return backup_result;
 }
 
-bool FileBackup::request_filelist_construct(bool full, bool resume, int group, bool with_token, bool& no_backup_dirs, bool& connect_fail)
+bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
+	bool with_token, bool& no_backup_dirs, bool& connect_fail, const std::wstring& clientsubname)
 {
 	if(server_settings->getSettings()->end_to_end_file_backup_verification)
 	{
@@ -144,6 +145,10 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group, b
 	if(client_main->getProtocolVersions().file_protocol_version_v2>=1)
 	{
 		start_backup_cmd+=" group="+nconvert(group);
+		if(!clientsubname.empty())
+		{
+			start_backup_cmd+="&clientsubname="+EscapeParamString(Server->ConvertToUTF8(clientsubname));
+		}
 	}
 
 	if(resume && client_main->getProtocolVersions().file_protocol_version_v2>=1)
@@ -177,7 +182,7 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group, b
 			{
 				Server->destroy(cc);
 				ServerLogger::Log(logid, clientname+L": Trying old filelist request", LL_WARNING);
-				return request_filelist_construct(full, resume, group, false, no_backup_dirs, connect_fail);
+				return request_filelist_construct(full, resume, group, false, no_backup_dirs, connect_fail, clientsubname);
 			}
 			else
 			{

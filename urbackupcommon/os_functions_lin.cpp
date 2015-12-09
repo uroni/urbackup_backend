@@ -79,7 +79,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 		}
 		std::wstring errmsg;
 		int err = os_last_error(errmsg);
-		Server->Log(L"Cannot open \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
+		Log(L"Cannot open \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
         return tmp;
     }
 	
@@ -156,9 +156,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			}
 			else
 			{
-                    		std::wstring errmsg;
+                 std::wstring errmsg;
 				int err = os_last_error(errmsg);
-				Server->Log("Cannot stat \""+upath+dirp->d_name+"\": "+Server->ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
+				Log("Cannot stat \""+upath+dirp->d_name+"\": "+ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
                     if(has_error!=NULL)
                     {
                         *has_error=true;
@@ -181,7 +181,7 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
     {
 		std::wstring errmsg;
 		int err = os_last_error(errmsg);
-	    Server->Log(L"Error listing files in directory \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
+	    Log(L"Error listing files in directory \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
 		if(has_error!=NULL)
 			*has_error=true;
     }
@@ -696,7 +696,7 @@ int64 os_last_error(std::wstring& message)
 	char* str = strerror(err);
 	if(str!=NULL)
 	{
-		message = Server->ConvertToUnicode(str);
+		message = ConvertToUnicode(str);
 	}
 	return err;
 }

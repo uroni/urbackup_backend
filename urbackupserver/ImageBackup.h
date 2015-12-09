@@ -11,7 +11,7 @@ class ServerPingThread;
 class ImageBackup : public Backup
 {
 public:
-	ImageBackup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool incremental, std::string letter);
+	ImageBackup(ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool incremental, std::string letter);
 
 	int getBackupId()
 	{

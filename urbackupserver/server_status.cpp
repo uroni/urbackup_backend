@@ -359,6 +359,27 @@ void ServerStatus::setClientId( const std::wstring &clientname, int clientid)
 	s->clientid = clientid;
 }
 
+void ServerStatus::addRunningJob( const std::wstring &clientname )
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->running_jobs+=1;
+}
+
+void ServerStatus::subRunningJob( const std::wstring &clientname )
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->running_jobs-=1;
+}
+
+int ServerStatus::numRunningJobs( const std::wstring &clientname )
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	return s->running_jobs;
+}
+
 ACTION_IMPL(server_status)
 {
 #ifndef _DEBUG

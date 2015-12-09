@@ -16,6 +16,7 @@ public:
 	virtual IFileServ * createFileServNoBind(const std::wstring &name=L"", bool use_fqdn_default=false)=0;
 	virtual void destroyFileServ(IFileServ *filesrv)=0;
 	virtual void setPermissionCallback(IPermissionCallback* new_permission_callback)=0;
+	virtual std::wstring getDefaultServerName(bool use_fqdn)=0;
 };
 
 #endif //IFILESERVFACTORY_H

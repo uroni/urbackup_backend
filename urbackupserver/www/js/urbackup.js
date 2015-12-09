@@ -1809,6 +1809,8 @@ function show_settings2(data)
 			data.settings.global_settings_start="";
 			data.settings.global_settings_end="";
 			
+			data.settings.main_client = true;
+			
 			data.settings.client_plural="s";
 			
 			data.settings.ONLY_WIN32_BEGIN=unescapeHTML(data.settings.ONLY_WIN32_BEGIN);
@@ -2191,6 +2193,7 @@ g.settings_list=[
 "internet_mode_enabled",
 "silent_update",
 "client_quota",
+"virtual_clients",
 "end_to_end_file_backup_verification",
 "local_full_file_transfer_mode",
 "internet_full_file_transfer_mode",

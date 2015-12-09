@@ -42,6 +42,8 @@ public:
 
 	static void forceOfflineClient(const std::wstring& clientname);
 
+	static void setVirtualClients(const std::wstring& clientname, const std::wstring& virtual_clients);
+
 private:
 	void findClients(FileClient &fc);
 	void startClients(FileClient &fc);
@@ -77,6 +79,9 @@ private:
 
 	static IMutex* force_offline_mutex;
 	static std::vector<std::wstring> force_offline_clients;
+
+	static IMutex* virtual_clients_mutex;
+	static std::map<std::wstring, std::vector<std::wstring> > virtual_clients;
 };
 
 #endif //URB_SERVER_H

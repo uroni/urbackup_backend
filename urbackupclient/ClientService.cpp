@@ -1055,12 +1055,12 @@ namespace
 }
 
 
-bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
+bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
-	db->Prepare("DELETE FROM backupdirs WHERE symlinked=0")->Write();
+	db->Prepare("DELETE FROM backupdirs WHERE symlinked=0 AND tgroup BETWEEN "+nconvert(group_offset)+" AND "+nconvert(group_offset+c_group_max))->Write();
 	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+nconvert(server_default?1:0)+", ?, ?)");
 	/**
 	Use empty client settings
@@ -1090,11 +1090,11 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			else
 				name=ExtractFileName(dir);
 
-			int group = c_group_default;
+			int group = group_offset + c_group_default;
 
 			str_map::iterator group_arg=args.find(L"dir_"+convert(i)+L"_group");
 			if(group_arg!=args.end() && !group_arg->second.empty())
-				group=watoi(group_arg->second);
+				group=group_offset + watoi(group_arg->second);
 
 			int flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional; //default flags
 			size_t flags_off = name.find(L"/");
@@ -1220,7 +1220,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			data.addChar(IndexThread::IndexThreadAction_RemoveWatchdir);
 			data.addVoidPtr(contractor);
 			data.addString(Server->ConvertToUTF8(backupdirs[i][L"path"]));
-			if(watoi(backupdirs[i][L"group"])==c_group_continuous)
+			if(watoi(backupdirs[i][L"group"])%c_group_size==c_group_continuous)
 			{
 				data.addString(Server->ConvertToUTF8(backupdirs[i][L"name"]));
 			}
@@ -1348,8 +1348,22 @@ std::vector<std::wstring> getSettingsList(void);
 
 void ClientConnector::updateSettings(const std::string &pData)
 {
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
+
+	std::string settings_fn="urbackup/data/settings.cfg";
+	std::string settings_server_fn="urbackup/data/settings_"+server_token+".cfg";
+	std::string clientsubname;
+	std::string str_group_offset;
+	int group_offset=0;
+	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty()
+		&& new_settings->getValue("filebackup_group_offset", &str_group_offset))
+	{
+		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+		settings_server_fn = "urbackup/data/settings_"+conv_filename(clientsubname) + "_"+server_token+".cfg";
+		group_offset = atoi(str_group_offset.c_str());
+	}
+
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
 	std::vector<std::wstring> settings_names=getSettingsList();
 	settings_names.push_back(L"client_set_settings");
@@ -1455,7 +1469,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 	}
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id FROM backupdirs WHERE server_default=0", false);
+	IQuery *q=db->Prepare("SELECT id FROM backupdirs WHERE server_default=0 AND tgroup=?", false);
+	q->Bind(group_offset);
 	db_results res=q->Read();
 	db->destroyQuery(q);
 	if(res.empty())
@@ -1474,15 +1489,20 @@ void ClientConnector::updateSettings(const std::string &pData)
 				std::wstring path=trim(def_dirs_toks[i]);
 				std::wstring name;
 				int group = c_group_default;
-				if(path.find(L"|")!=std::string::npos)
+				std::wstring first_path = path;
+				if(path.find(L"/")!=std::string::npos)
+				{
+					first_path = getuntil(L"/", path);
+				}
+				if(first_path.find(L"|")!=std::string::npos)
 				{
 					std::vector<std::wstring> toks;
-					Tokenize(default_dirs, toks, L"|");
+					Tokenize(first_path, toks, L"|");
 					name = toks[0];
 					path = toks[1];
 					if(toks.size()>2)
 					{
-						group = watoi(toks[2]);
+						group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
 					}
 				}
 				args[L"dir_"+convert(i)]=path;
@@ -1492,18 +1512,18 @@ void ClientConnector::updateSettings(const std::string &pData)
 				args[L"dir_"+convert(i)+L"_group"]=convert(group);
 			}
 
-			saveBackupDirs(args, true);
+			saveBackupDirs(args, true, group_offset);
 		}
 	}
 
 	if(mod)
 	{
-		writestring(Server->ConvertToUTF8(new_settings_str), "urbackup/data/settings.cfg");
+		writestring(Server->ConvertToUTF8(new_settings_str), settings_fn);
 
 		InternetClient::updateSettings();
 	}
 
-	std::auto_ptr<ISettingsReader> curr_server_settings(Server->createFileSettingsReader("urbackup/data/settings_"+server_token+".cfg"));
+	std::auto_ptr<ISettingsReader> curr_server_settings(Server->createFileSettingsReader(settings_server_fn));
 	std::vector<std::wstring> global_settings = getGlobalizedSettingsList();
 
 	std::wstring new_token_settings=L"";
@@ -1543,7 +1563,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	if(mod_server_settings)
 	{
-		writestring(Server->ConvertToUTF8(new_settings_str), "urbackup/data/settings_"+server_token+".cfg");
+		writestring(Server->ConvertToUTF8(new_settings_str), settings_server_fn);
 	}
 }
 
@@ -1560,7 +1580,14 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
-	ISettingsReader* old_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+	std::string settings_fn="urbackup/data/settings.cfg";
+	std::string clientsubname;
+	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+	}
+
+	ISettingsReader* old_settings=Server->createFileSettingsReader(settings_fn);
 
 	std::vector<std::wstring> new_keys = new_settings->getKeys();
 	bool modified_settings=true;
@@ -1618,7 +1645,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		new_data+="client_set_settings=true\n";
 		new_data+="client_set_settings_time="+nconvert(Server->getTimeSeconds())+"\n";
 
-		writestring(new_data, "urbackup/data/settings.cfg");
+		writestring(new_data, settings_fn);
 	}
 
 	Server->destroy(new_settings);
@@ -2442,11 +2469,16 @@ void ClientConnector::update_silent(void)
 #endif
 }
 
-bool ClientConnector::calculateFilehashesOnClient(void)
+bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubname)
 {
 	if(internet_conn)
 	{
-		ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+		std::string settings_fn = "urbackup/data/settings.cfg";
+		if(!clientsubname.empty())
+		{
+			settings_fn = "urbackup/data/settings_"+clientsubname+".cfg";
+		}
+		ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 
 		std::string val;
 		if(curr_settings->getValue("internet_calculate_filehashes_on_client", &val)

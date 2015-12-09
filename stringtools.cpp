@@ -365,7 +365,7 @@ string ExtractFileName(string fulln, string separators)
 		bool separator = separators.find(fulln[i])!=string::npos;
 		if(separator)
 		{
-			if(i<(s32)fulln.length()-2)
+			if(i<(s32)fulln.length()-1)
 				break;
 		}
 		if(fulln[i]!=0 && !separator)
@@ -386,7 +386,7 @@ wstring ExtractFileName(wstring fulln, wstring separators)
 
 		if( separator )
 		{
-			if(i<(s32)fulln.length()-2)
+			if(i<(s32)fulln.length()-1)
 				break;
 		}
 		if(fulln[i]!=0 && !separator)

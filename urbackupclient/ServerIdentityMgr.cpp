@@ -73,8 +73,12 @@ bool ServerIdentityMgr::checkServerSessionIdentity(const std::string &pIdentity,
 
 	for(size_t i=0;i<session_identities.size();++i)
 	{
+		int64 time = online_session_identities[i];
+		if(time<0) time*=-1;
+
 		if(session_identities[i].ident==pIdentity
-			&& session_identities[i].endpoint==endpoint)
+			&& session_identities[i].endpoint==endpoint
+			&& Server->getTimeMS()-time<ident_online_timeout)
 		{
 			online_session_identities[i]=Server->getTimeMS();
 			return true;
@@ -187,7 +191,7 @@ void ServerIdentityMgr::loadServerIdentities(void)
 			}
 			else
 			{
-				online_session_identities.push_back(0);
+				online_session_identities.push_back(-1*Server->getTimeMS());
 			}
 		}
 	}
@@ -314,7 +318,7 @@ void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const 
 	IScopedLock lock(mutex);
 	SSessionIdentity session_ident = { pIdentity, endpoint};
 	session_identities.push_back(session_ident);
-	online_session_identities.push_back(0);
+	online_session_identities.push_back(Server->getTimeMS());
 	filesrv->addIdentity("#I"+pIdentity+"#");
 	writeSessionIdentities();
 }
@@ -323,7 +327,7 @@ void ServerIdentityMgr::writeSessionIdentities()
 {
 	IScopedLock lock(mutex);
 
-	const size_t max_session_identities=20;
+	const size_t max_session_identities=1000;
 
 	size_t start=0;
 	if(session_identities.size()>max_session_identities)
@@ -331,12 +335,26 @@ void ServerIdentityMgr::writeSessionIdentities()
 		start=session_identities.size()-max_session_identities;
 	}
 
+	size_t written = 0;
 	std::string idents;
-	for(size_t i=start;i<session_identities.size();++i)
+	for(size_t i=session_identities.size(); i-- >0;)
 	{
-		if(!idents.empty()) idents+="\r\n";
-		idents+=session_identities[i].ident;
-		idents+="#endpoint="+session_identities[i].endpoint;
+		int64 time = online_session_identities[i];
+		if(time<0) time*=-1;
+
+		if(Server->getTimeMS()-time<ident_online_timeout)
+		{
+			if(!idents.empty()) idents+="\r\n";
+			idents+=session_identities[i].ident;
+			idents+="#endpoint="+session_identities[i].endpoint;
+
+			++written;
+			if(written>=max_session_identities)
+			{
+				break;
+			}
+		}
+		
 	}
 	write_file_only_admin(idents, server_session_ident_file);
 }

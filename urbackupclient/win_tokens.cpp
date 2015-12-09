@@ -477,10 +477,10 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 			std::map<std::vector<char>, Token>::iterator token_it =
 				token_cache.get()->tokens.find(sid);
 
-			assert(token_it->second.id!=0);
-
 			if(token_it!=token_cache.get()->tokens.end())
 			{
+				assert(token_it->second.id!=0);
+
 				if(allow)
 				{
 					token_info.addChar(ID_GRANT_ACCESS);

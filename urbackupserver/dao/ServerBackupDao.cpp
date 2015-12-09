@@ -345,6 +345,32 @@ std::vector<std::wstring> ServerBackupDao::getDeletePendingClientNames(void)
 }
 
 /**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getVirtualMainClientname
+* @return string virtualmain
+* @sql
+*      SELECT virtualmain FROM clients WHERE id=:clientid(int)
+*/
+ServerBackupDao::CondString ServerBackupDao::getVirtualMainClientname(int clientid)
+{
+	if(q_getVirtualMainClientname==NULL)
+	{
+		q_getVirtualMainClientname=db->Prepare("SELECT virtualmain FROM clients WHERE id=?", false);
+	}
+	q_getVirtualMainClientname->Bind(clientid);
+	db_results res=q_getVirtualMainClientname->Read();
+	q_getVirtualMainClientname->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"virtualmain"];
+	}
+	return ret;
+}
+
+
+/**
 * @-SQLGenAccessNoCheck
 * @func bool ServerBackupDao::createTemporaryLastFilesTable
 * @sql
@@ -1976,6 +2002,24 @@ ServerBackupDao::SFileBackupInfo ServerBackupDao::getFileBackupInfo(int backupid
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setVirtualMainClient
+* @sql
+*       UPDATE clients SET virtualmain=:virtualmain(string) WHERE id=:clientid(int64)
+*/
+void ServerBackupDao::setVirtualMainClient(const std::wstring& virtualmain, int64 clientid)
+{
+	if(q_setVirtualMainClient==NULL)
+	{
+		q_setVirtualMainClient=db->Prepare("UPDATE clients SET virtualmain=? WHERE id=?", false);
+	}
+	q_setVirtualMainClient->Bind(virtualmain);
+	q_setVirtualMainClient->Bind(clientid);
+	q_setVirtualMainClient->Write();
+	q_setVirtualMainClient->Reset();
+}
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -1993,6 +2037,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_addToOldBackupfolders=NULL;
 	q_getOldBackupfolders=NULL;
 	q_getDeletePendingClientNames=NULL;
+	q_getVirtualMainClientname=NULL;
 	q_createTemporaryLastFilesTable=NULL;
 	q_dropTemporaryLastFilesTable=NULL;
 	q_createTemporaryLastFilesTableIndex=NULL;
@@ -2065,6 +2110,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_getRestoreIdentity=NULL;
 	q_setRestoreDone=NULL;
 	q_getFileBackupInfo=NULL;
+	q_setVirtualMainClient=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2084,6 +2130,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_addToOldBackupfolders);
 	db->destroyQuery(q_getOldBackupfolders);
 	db->destroyQuery(q_getDeletePendingClientNames);
+	db->destroyQuery(q_getVirtualMainClientname);
 	db->destroyQuery(q_createTemporaryLastFilesTable);
 	db->destroyQuery(q_dropTemporaryLastFilesTable);
 	db->destroyQuery(q_createTemporaryLastFilesTableIndex);
@@ -2156,6 +2203,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getRestoreIdentity);
 	db->destroyQuery(q_setRestoreDone);
 	db->destroyQuery(q_getFileBackupInfo);
+	db->destroyQuery(q_setVirtualMainClient);
 }
 
 void ServerBackupDao::commit()

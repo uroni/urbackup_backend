@@ -46,7 +46,7 @@ struct SContinuousSequence
 class FileBackup : public Backup
 {
 public:
-	FileBackup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool is_incremental, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots);
+	FileBackup(ClientMain* client_main, int clientid, std::wstring clientname, std::wstring subclientname, LogAction log_action, bool is_incremental, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots);
 	~FileBackup();
 
 	bool getResult();
@@ -71,7 +71,8 @@ protected:
 	virtual bool doFileBackup() = 0;
 
 	ServerBackupDao::SDuration interpolateDurations(const std::vector<ServerBackupDao::SDuration>& durations);
-	bool request_filelist_construct(bool full, bool resume, int group, bool with_token, bool& no_backup_dirs, bool& connect_fail);
+	bool request_filelist_construct(bool full, bool resume, int group,
+		bool with_token, bool& no_backup_dirs, bool& connect_fail, const std::wstring& clientsubname);
 	void logVssLogdata(int64 vss_duration_s);
 	bool getTokenFile(FileClient &fc, bool hashed_transfer );
 	std::string clientlistName( int group, bool new_list=false );

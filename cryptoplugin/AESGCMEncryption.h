@@ -25,6 +25,7 @@ private:
 	bool iv_done;
 	CryptoPP::SecByteBlock m_sbbKey;
 	CryptoPP::SecByteBlock m_IV;
+	CryptoPP::SecByteBlock m_orig_IV;
 
 	CryptoPP::GCM<CryptoPP::AES >::Encryption encryption;
 	CryptoPP::AuthenticatedEncryptionFilter encryption_filter;

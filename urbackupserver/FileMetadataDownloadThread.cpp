@@ -396,7 +396,7 @@ bool FileMetadataDownloadThread::applyWindowsMetadata( IFile* metadata_f, IFile*
 
 		if(cont==0)
 		{
-			return true;
+			break;
 		}
 	
 		WIN32_STREAM_ID_INT stream_id;

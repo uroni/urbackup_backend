@@ -62,7 +62,7 @@ struct SProcess
 struct SStatus
 {
 	SStatus(void){ online=false; has_status=false;r_online=false; clientid=0; 
-		comm_pipe=NULL; status_error=se_none; ; }
+		comm_pipe=NULL; status_error=se_none; running_jobs=0; }
 
 	std::wstring client;
 	int clientid;
@@ -75,6 +75,7 @@ struct SStatus
 	std::string client_version_string;
 	std::string os_version_string;
 	std::vector<SProcess> processes;
+	int running_jobs;
 };
 
 class ServerStatus
@@ -130,6 +131,12 @@ public:
 
 	static void setProcessPcDone(const std::wstring &clientname, size_t id,
 		int pcdone);
+
+	static void addRunningJob(const std::wstring &clientname);
+
+	static void subRunningJob(const std::wstring &clientname);
+
+	static int numRunningJobs(const std::wstring &clientname);
 
 	static SProcess getProcess(const std::wstring &clientname, size_t id);
 

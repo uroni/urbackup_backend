@@ -34,8 +34,8 @@ extern std::string server_identity;
 extern std::string server_token;
 
 
-FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots )
-	: FileBackup(client_main, clientid, clientname, log_action, false, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots)
+FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots )
+	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, false, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots)
 {
 
 }
@@ -69,7 +69,7 @@ bool FullFileBackup::doFileBackup()
 
 	bool no_backup_dirs=false;
 	bool connect_fail=false;
-	bool b=request_filelist_construct(true, false, group, true, no_backup_dirs, connect_fail);
+	bool b=request_filelist_construct(true, false, group, true, no_backup_dirs, connect_fail, clientsubname);
 	if(!b)
 	{
 		has_early_error=true;

@@ -41,6 +41,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"exclude_files");
 	ret.push_back(L"include_files");
 	ret.push_back(L"computername");
+	ret.push_back(L"virtual_clients");
 	ret.push_back(L"default_dirs");
 	ret.push_back(L"allow_config_paths");
 	ret.push_back(L"allow_starting_full_file_backups");

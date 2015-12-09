@@ -111,6 +111,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(backup_window_incr_image);
 	SET_SETTING(backup_window_full_image);
 	SET_SETTING(computername);
+	SET_SETTING(virtual_clients);
 	SET_SETTING(exclude_files);
 	SET_SETTING(include_files);
 	SET_SETTING(default_dirs);
@@ -772,6 +773,7 @@ ACTION_IMPL(settings)
 				s=getClientSettings(db, t_clientid);
 				obj.set("overwrite", s.overwrite);
 				obj.set("clientid", t_clientid);
+				obj.set("main_client", backupdao.getVirtualMainClientname(t_clientid).value.empty());
 
 				ret.set("cowraw_available", BackupServer::isSnapshotsEnabled());
 				ret.set("settings",  obj);

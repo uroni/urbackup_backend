@@ -607,27 +607,32 @@ bool FileClient::Reconnect(void)
 	{
 		transferred_bytes+=tcpsock->getTransferedBytes();
 		real_transferred_bytes+=tcpsock->getRealTransferredBytes();
+		IScopedLock lock(mutex);
 		Server->destroy(tcpsock);
+		tcpsock=NULL;
 	}
 	connect_starttime=Server->getTimeMS();
 
 	while(Server->getTimeMS()-connect_starttime<reconnection_timeout)
 	{
+		IPipe* new_tcpsock;
 		if(reconnection_callback==NULL)
 		{
-			tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
+			new_tcpsock=Server->ConnectStream(inet_ntoa(server_addr.sin_addr), TCP_PORT, 10000);
 		}
 		else
 		{
-			tcpsock=reconnection_callback->new_fileclient_connection();
+			new_tcpsock=reconnection_callback->new_fileclient_connection();
 		}
-		if(tcpsock!=NULL)
+		if(new_tcpsock!=NULL)
 		{
 			for(size_t i=0;i<throttlers.size();++i)
 			{
-				tcpsock->addThrottler(throttlers[i]);
+				new_tcpsock->addThrottler(throttlers[i]);
 			}
 			Server->Log("Reconnected successfully,", LL_DEBUG);
+			IScopedLock lock(mutex);
+			tcpsock = new_tcpsock;
 			socket_open=true;
 			return true;
 		}
@@ -1491,6 +1496,10 @@ _i64 FileClient::getRealTransferredBytes()
 
 void FileClient::Shutdown()
 {
-	tcpsock->shutdown();
+	IScopedLock lock(mutex);
+	if(tcpsock!=NULL)
+	{
+		tcpsock->shutdown();
+	}
 }
 

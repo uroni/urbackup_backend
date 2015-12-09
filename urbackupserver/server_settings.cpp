@@ -395,6 +395,8 @@ void ServerSettings::readSettingsClient(void)
 	std::wstring swtmp=settings_client->getValue(L"computername", L"");
 	if(!swtmp.empty())
 		settings->computername=swtmp;
+	if(settings_client->getValue(L"virtual_clients", &swtmp))
+		settings->virtual_clients=swtmp;
 	if(settings_client->getValue(L"exclude_files", &swtmp))
 		settings->exclude_files=swtmp;
 	if(settings_client->getValue(L"include_files", &swtmp))

@@ -133,7 +133,7 @@ public:
 
 private:
 	bool checkPassword(const std::wstring &cmd, bool& change_pw);
-	bool saveBackupDirs(str_map &args, bool server_default=false);
+	bool saveBackupDirs(str_map &args, bool server_default=false, int group_offset=0);
 	void updateLastBackup(void);
 	std::string replaceChars(std::string in);
 	void updateSettings(const std::string &pData);
@@ -155,7 +155,7 @@ private:
 	void tochannelSendStartbackup(RunningAction backup_type);
 	void ImageErr(const std::string &msg);
 	void update_silent(void);
-	bool calculateFilehashesOnClient(void);
+	bool calculateFilehashesOnClient(const std::string& clientsubname);
 	void sendStatus();
     bool sendChannelPacket(const SChannel& channel, const std::string& msg);
 

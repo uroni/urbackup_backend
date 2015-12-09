@@ -40,9 +40,9 @@ extern std::string server_token;
 
 const int64 c_readd_size_limit=100*1024;
 
-IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action,
+IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action,
 	int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots )
-	: FileBackup(client_main, clientid, clientname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots), 
+	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots), 
 	intra_file_diffs(intra_file_diffs), hash_existing_mutex(NULL)
 {
 
@@ -106,7 +106,7 @@ bool IncrFileBackup::doFileBackup()
 
 	bool no_backup_dirs=false;
 	bool connect_fail = false;
-	bool b=request_filelist_construct(resumed_full, resumed_backup, group, true, no_backup_dirs, connect_fail);
+	bool b=request_filelist_construct(resumed_full, resumed_backup, group, true, no_backup_dirs, connect_fail, clientsubname);
 	if(!b)
 	{
 		has_early_error=true;
@@ -1433,7 +1433,7 @@ bool IncrFileBackup::doFullBackup()
 
 	ServerStatus::stopProcess(clientname, status_id);
 
-	FullFileBackup full_backup(client_main, clientid, clientname, LogAction_NoLogging, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
+	FullFileBackup full_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
 	full_backup();
 
 	disk_error = full_backup.hasDiskError();

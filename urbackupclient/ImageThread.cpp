@@ -119,7 +119,7 @@ void ImageThread::sendFullImageThread(void)
 			if(!image_inf->shadowdrive.empty())
 			{
 				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true,
-					IndexThread::backgroundBackupsEnabled(), true));
+					IndexThread::backgroundBackupsEnabled(std::string()), true));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
@@ -435,7 +435,7 @@ void ImageThread::sendIncrImageThread(void)
 			if(!image_inf->shadowdrive.empty())
 			{
 				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true,
-					IndexThread::backgroundBackupsEnabled(), true));
+					IndexThread::backgroundBackupsEnabled(std::string()), true));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)

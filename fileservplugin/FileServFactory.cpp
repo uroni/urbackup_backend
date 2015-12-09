@@ -21,6 +21,7 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include "FileServ.h"
+#include "CUDPThread.h"
 
 int start_server_int(unsigned short tcpport, unsigned short udpport, const std::string &pSname, const bool *pDostop, bool use_fqdn);
 
@@ -96,4 +97,9 @@ IFileServ* FileServFactory::createFileServNoBind(const std::wstring &name, bool 
 	*dostop=false;
 	FileServ *fs=new FileServ(dostop, name, ILLEGAL_THREADPOOL_TICKET, use_fqdn_default);
 	return fs;
+}
+
+std::wstring FileServFactory::getDefaultServerName( bool use_fqdn )
+{
+	return Server->ConvertToUnicode(getSystemServerName(use_fqdn));
 }

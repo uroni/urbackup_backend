@@ -222,7 +222,8 @@ ACTION_IMPL(status)
 			{
 				for(size_t i=0;i<remove_client.size();++i)
 				{
-					IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=?");
+					IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=? OR virtualmain = (SELECT name FROM clients WHERE id=?)");
+					q->Bind(remove_client[i]);
 					q->Bind(remove_client[i]);
 					q->Write();
 					q->Reset();
