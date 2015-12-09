@@ -4,7 +4,7 @@
 class FSUnknown : public Filesystem
 {
 public:
-	FSUnknown(const std::wstring &pDev, bool read_ahead);
+	FSUnknown(const std::wstring &pDev, bool read_ahead, bool background_priority);
 	~FSUnknown(void);
 
 	int64 getBlocksize(void);

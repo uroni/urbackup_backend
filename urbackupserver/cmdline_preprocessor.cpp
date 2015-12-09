@@ -59,7 +59,12 @@ int64 get_time_ms()
 #endif
 }
 
-int real_main(int argc, char* argv[]);
+int real_main(int argc, char* argv[])
+#ifndef _WIN32
+	;
+#else
+{return 1;}
+#endif
 
 int run_real_main(std::vector<std::string> args)
 {

@@ -394,10 +394,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		
 		if( b==false )
 			break;
-
-#ifdef _WIN32
-		LookForInterfaceChanges();
-#endif
 		
 #ifdef LINUX_DEAMON
 		if( c_run==false )

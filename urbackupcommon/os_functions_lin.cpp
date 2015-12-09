@@ -46,6 +46,8 @@
 #define stat64 stat
 #define statvfs64 statvfs
 #define open64 open
+#define readdir64 readdir
+#define dirent64 dirent
 #endif
 
 void getMousePos(int &x, int &y)
@@ -68,20 +70,23 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
     std::string upath=ConvertToUTF8(path);
 	std::vector<SFile> tmp;
 	DIR *dp;
-    struct dirent *dirp;
+    struct dirent64 *dirp;
     if((dp  = opendir(upath.c_str())) == NULL)
 	{
 		if(has_error!=NULL)
 		{
 			*has_error=true;
 		}
-        Log("No permission to access \""+upath+"\"", LL_ERROR);
+		std::wstring errmsg;
+		int err = os_last_error(errmsg);
+		Server->Log(L"Cannot open \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
         return tmp;
     }
 	
 	upath+=os_file_sepn();
 
-    while ((dirp = readdir(dp)) != NULL)
+    errno=0;
+    while ((dirp = readdir64(dp)) != NULL)
 	{
 		SFile f;
         f.name=ConvertToUnicode(dirp->d_name);
@@ -151,7 +156,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			}
 			else
 			{
-                    Log("Stat failed for \""+upath+dirp->d_name+"\" errno: "+nconvert(errno), LL_ERROR);
+                    		std::wstring errmsg;
+				int err = os_last_error(errmsg);
+				Server->Log("Cannot stat \""+upath+dirp->d_name+"\": "+Server->ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
                     if(has_error!=NULL)
                     {
                         *has_error=true;
@@ -167,7 +174,18 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 		}
 #endif
 		tmp.push_back(f);
+		errno=0;
     }
+    
+    if(errno!=0)
+    {
+		std::wstring errmsg;
+		int err = os_last_error(errmsg);
+	    Server->Log(L"Error listing files in directory \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
+		if(has_error!=NULL)
+			*has_error=true;
+    }
+    
     closedir(dp);
 	
 	std::sort(tmp.begin(), tmp.end());
@@ -340,12 +358,17 @@ int64 os_free_space(const std::wstring &path)
 	if(cp[cp.size()-1]!='/')
 		cp+='/';
 
-	struct statvfs64 buf;
+	struct statvfs64 buf = {};
     int rc=statvfs64(ConvertToUTF8(path).c_str(), &buf);
 	if(rc==0)
-		return buf.f_bsize*buf.f_bavail;
+	{
+		int64 blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
+		return blocksize*buf.f_bavail;
+	}
 	else
+	{
 		return -1;
+	}
 }
 
 int64 os_total_space(const std::wstring &path)
@@ -665,6 +688,17 @@ bool os_finish_transaction(void* transaction)
 int64 os_last_error()
 {
 	return errno;
+}
+
+int64 os_last_error(std::wstring& message)
+{
+	int err = errno;
+	char* str = strerror(err);
+	if(str!=NULL)
+	{
+		message = Server->ConvertToUnicode(str);
+	}
+	return err;
 }
 
 const int64 WINDOWS_TICK=10000000;

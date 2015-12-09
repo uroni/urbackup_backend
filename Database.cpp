@@ -547,12 +547,12 @@ bool CDatabase::backup_db(const std::string &pFile, const std::string &pDB)
     }
 	else
 	{
-		Server->Log("Opening backup connection failed", LL_INFO);
+		Server->Log("Opening backup connection failed", LL_ERROR);
 	}
     rc = sqlite3_errcode(pBackupDB);
 	if(rc!=0)
 	{
-		Server->Log("Database backup failed with error code: "+nconvert(rc)+" err: "+sqlite3_errmsg(pBackupDB), LL_INFO);
+		Server->Log("Database backup failed with error code: "+nconvert(rc)+" err: "+sqlite3_errmsg(pBackupDB), LL_ERROR);
 	}
   }
   

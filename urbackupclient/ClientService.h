@@ -113,7 +113,7 @@ public:
 	bool isQuitting(void);
 	void updatePCDone2(int nv);
 	bool isHashdataOkay(void);
-	void resetImageBackupStatus(void);
+	void resetImageBackupStatus(void* owner);
 
 	void setIsInternetConnection(void);
 
@@ -165,7 +165,7 @@ private:
 
 	std::string getLastBackupTime();
 
-	static std::string getCurrRunningJob();
+	static std::string getCurrRunningJob(bool reset_done);
 
 	void CMD_ADD_IDENTITY(const std::string &identity, const std::string &cmd, bool ident_ok);
 	void CMD_GET_CHALLENGE(const std::string &identity);
@@ -236,6 +236,7 @@ private:
 	bool is_channel;
 
 	static RunningAction backup_running;
+	static void* backup_running_owner;
 	static volatile bool backup_done;
 	static IMutex *backup_mutex;
 	static unsigned int incr_update_intervall;

@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <limits.h>
+#include <cstring>
 
 #ifndef _WIN32
 #include <errno.h>

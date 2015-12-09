@@ -62,10 +62,12 @@ extern IServer* Server;
 #include "../urbackupcommon/os_functions.h"
 #ifdef _WIN32
 #include "DirectoryWatcherThread.h"
+#include "win_sysvol.h"
 #endif
 #include "InternetClient.h"
 #include <stdlib.h>
 #include "file_permissions.h"
+
 
 PLUGIN_ID filesrv_pluginid;
 IFSImageFactory *image_fak;
@@ -312,6 +314,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	}
 
 	internetclient_ticket=InternetClient::start(do_leak_check);
+
+#ifdef _WIN32
+	cacheSysVolume();
+#endif
 
 	Server->Log("Started UrBackupClient Backend...", LL_INFO);
 	Server->wait(1000);

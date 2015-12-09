@@ -956,7 +956,7 @@ std::wstring os_get_final_path(std::wstring path)
 #if (_WIN32_WINNT >= 0x0600)
 	std::wstring ret;
 
-	if(path.find(L":")==std::string::npos)
+	if(path.size()<3 && path.find(L":")==std::string::npos)
 	{
 		path+=L":";
 	}
@@ -1208,4 +1208,27 @@ int os_popen(const std::string& cmd, std::string& ret)
 	while(read==sizeof(buf));
 
 	return _pclose(in);
+}
+
+int64 os_last_error(std::wstring& message)
+{
+	DWORD last_error = GetLastError();
+
+	wchar_t* output=NULL;
+
+	DWORD r = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER|FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, HRESULT_FROM_WIN32(last_error), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&output), 0, NULL);
+
+	if(r>0 && output!=NULL)
+	{
+		message.resize(r);
+		memcpy(&message[0], output, r*sizeof(wchar_t));
+	}
+
+	if(output!=NULL)
+	{
+		LocalFree(output);
+	}
+
+	return last_error;
 }

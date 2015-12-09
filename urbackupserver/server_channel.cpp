@@ -510,18 +510,19 @@ void ServerChannelThread::LOGIN(str_map& params)
 		{
 			helper.getSession()->id=user_id;
 			PARAMS["REMOTE_ADDR"]=client_addr;
-			logLogin(helper, PARAMS, params[L"username"], LoginMethod_RestoreCD);
+			logSuccessfullLogin(helper, PARAMS, params[L"username"], LoginMethod_RestoreCD);
 			tcpstack.Send(input, "ok");
 		}
 		else
 		{
 			helper.getSession()->id=-1;
 			tcpstack.Send(input, "err");
+			logFailedLogin(helper, PARAMS, params[L"username"], LoginMethod_RestoreCD);
 		}
 	}
 	else
 	{
-		logLogin(helper, PARAMS, L"anonymous", LoginMethod_RestoreCD);
+		logSuccessfullLogin(helper, PARAMS, L"anonymous", LoginMethod_RestoreCD);
 		tcpstack.Send(input, "ok");
 	}
 }
@@ -586,6 +587,12 @@ bool ServerChannelThread::hasDownloadImageRights()
 	str_nmap PARAMS;
 	GET[L"ses"]=session;
 	Helper helper(Server->getThreadID(), &GET, &PARAMS);
+
+	if(helper.getSession()==NULL)
+	{
+		Server->Log("Channel session timeout", LL_ERROR);
+		return false;
+	}
 
 	if(helper.getSession()==NULL)
 	{

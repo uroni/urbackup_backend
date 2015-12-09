@@ -224,7 +224,6 @@ access_backups_shell_mui.txt
 sha2.Plo
 *.Plo
 osx-pkg
-
 clouddrive/*
 transaction_helper/*
 urbackup/new2_db/*

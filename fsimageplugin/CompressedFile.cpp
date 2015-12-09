@@ -157,6 +157,13 @@ void CompressedFile::readIndex(bool *has_error)
 
 	size_t nOffsetItems = static_cast<size_t>(filesize/blocksize + ((filesize%blocksize!=0)?1:0));
 
+	if(nOffsetItems==0)
+	{
+		Server->Log("Compressed file contains nothing", LL_ERROR);
+		error=true;
+		return;
+	}
+
 	blockOffsets.resize(nOffsetItems);
 
 	if(readFromFile(reinterpret_cast<char*>(&blockOffsets[0]), static_cast<_u32>(sizeof(__int64)*nOffsetItems), has_error)

@@ -93,8 +93,8 @@ void ServerUpdateStats::operator()(void)
 
 	createQueries();
 
-	db->DetachDBs();
-	db->AttachDBs();
+
+
 	if(!image_repair_mode)
 	{
 		q_create_hist->Write();

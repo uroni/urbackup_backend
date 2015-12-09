@@ -20,10 +20,15 @@ public:
 	bool hasError(void);
 	void stop(void);
 private:
+	void init(_u16 udpport,std::string servername, bool use_fqdn);
+
 	SOCKET udpsock;
 	std::string mServername;
 
 	bool UdpStep(void);
+
+	bool use_fqdn_;
+	_u16 udpport_;
 
 	bool has_error;
 	volatile bool do_stop;

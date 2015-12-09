@@ -1207,11 +1207,6 @@ void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstri
 	}
 }
 
-int round(float f)
-{
-  return (int)(f<0?f-0.5f:f+0.5f);
-}
-
 std::string FormatTime(int timeins)
 {
 	float t=(float)timeins;
@@ -1737,6 +1732,8 @@ std::string PrettyPrintTime(int64 ms)
 	unsigned int c_h=c_m*60;
 	unsigned int c_d=c_h*24;
 
+	int64 orig = ms;
+
 	if( ms>c_d)
 	{
 		int64 t=ms/c_d;
@@ -1767,6 +1764,12 @@ std::string PrettyPrintTime(int64 ms)
 		if(!ret.empty()) ret+=" ";
 		ret+=nconvert(t)+"s";
 		ms-=t*c_s;
+	}
+
+	if( orig < c_s)
+	{
+		if(!ret.empty()) ret+=" ";
+		ret+=nconvert(ms)+"ms";
 	}
 
 	return ret;

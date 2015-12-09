@@ -607,7 +607,7 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 			if(Server->getTimeMS()-last_index_update>10000)
 			{
 				Server->Log("Saving new journal data to database...", LL_DEBUG);
-				update(sj->vol_str);
+				update();
 				last_index_update=Server->getTimeMS();
 			}
 		}
@@ -661,7 +661,10 @@ void ChangeJournalWatcher::indexRootDirs2(const std::wstring &root, SChangeJourn
 	db->Write("DROP TABLE map_frn_tmp");
 
 	Server->Log("Saving new journal data to database. Forcing update...", LL_DEBUG);
+	bool indexing_in_progress_backup = indexing_in_progress;
+	indexing_in_progress=false;
 	update(sj->vol_str);
+	indexing_in_progress = indexing_in_progress_backup;
 }
 
 SDeviceInfo ChangeJournalWatcher::getDeviceInfo(const std::wstring &name)
@@ -909,6 +912,11 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 							if(started_transaction)
 							{
 								started_transaction=false;
+								for(std::map<std::wstring, bool>::iterator it=local_open_write_files.begin();it!=local_open_write_files.end();++it)
+								{
+									open_write_files.add(it->first);
+								}
+								open_write_files.flushf();
 								db->EndTransaction();
 							}
 							reindex(it->second.rid, it->first, &it->second);
@@ -954,8 +962,9 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 			}
 		}
 
-		if(startUsn!=it->second.last_record &&
-			started_transaction)
+
+		if((startUsn!=it->second.last_record
+			&& started_transaction) || !vol_str.empty())
 		{
 			if(!started_transaction)
 			{
@@ -987,7 +996,10 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 	{
 		for(std::map<std::wstring, bool>::iterator it=local_open_write_files.begin();it!=local_open_write_files.end();++it)
 		{
-			open_write_files.add(it->first);
+			if(!it->second)
+			{
+				open_write_files.add(it->first);
+			}
 		}
 		open_write_files.flushf();
 		db->EndTransaction();
@@ -996,6 +1008,7 @@ void ChangeJournalWatcher::update(std::wstring vol_str)
 
 void ChangeJournalWatcher::update_longliving(void)
 {
+	db->BeginWriteTransaction();
 	if(!freeze_open_write_files)
 	{
 		std::vector<std::wstring> files = open_write_files.get();
@@ -1019,6 +1032,8 @@ void ChangeJournalWatcher::update_longliving(void)
 			}
 		}
 	}
+	db->EndTransaction();
+
 	for(size_t i=0;i<error_dirs.size();++i)
 	{
 		resetAll(error_dirs[i]);
@@ -1098,7 +1113,23 @@ void ChangeJournalWatcher::logEntry(const std::wstring &vol, const UsnInt *UsnRe
 	Server->Log(lstr, LL_DEBUG);
 }
 
-const DWORD watch_flags=USN_REASON_DATA_EXTEND | USN_REASON_EA_CHANGE | USN_REASON_HARD_LINK_CHANGE | USN_REASON_NAMED_DATA_EXTEND | USN_REASON_NAMED_DATA_OVERWRITE| USN_REASON_NAMED_DATA_TRUNCATION| USN_REASON_REPARSE_POINT_CHANGE| USN_REASON_SECURITY_CHANGE| USN_REASON_STREAM_CHANGE| USN_REASON_DATA_TRUNCATION | USN_REASON_BASIC_INFO_CHANGE | USN_REASON_DATA_OVERWRITE | USN_REASON_FILE_CREATE | USN_REASON_FILE_DELETE | USN_REASON_RENAME_NEW_NAME | USN_REASON_TRANSACTED_CHANGE;
+const DWORD watch_flags=\
+	USN_REASON_BASIC_INFO_CHANGE | \
+	USN_REASON_DATA_EXTEND | \
+	USN_REASON_DATA_OVERWRITE | \
+	USN_REASON_DATA_TRUNCATION | \
+	USN_REASON_EA_CHANGE | \
+	USN_REASON_FILE_CREATE | \
+	USN_REASON_FILE_DELETE | \
+	USN_REASON_HARD_LINK_CHANGE | \
+	USN_REASON_NAMED_DATA_EXTEND | \
+	USN_REASON_NAMED_DATA_OVERWRITE | \
+	USN_REASON_NAMED_DATA_TRUNCATION | \
+	USN_REASON_RENAME_NEW_NAME | \
+	USN_REASON_REPARSE_POINT_CHANGE| \
+	USN_REASON_SECURITY_CHANGE | \
+	USN_REASON_STREAM_CHANGE | \
+	USN_REASON_TRANSACTED_CHANGE;
 
 void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJournal &cj, const UsnInt *UsnRecord, bool fallback_to_mft, std::map<std::wstring, bool>& local_open_write_files)
 {
@@ -1305,12 +1336,16 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 				}
 				else
 				{
-					if(UsnRecord->Reason & USN_REASON_CLOSE)
+					if(UsnRecord->Reason & (USN_REASON_CLOSE | USN_REASON_RENAME_OLD_NAME))
 					{
 						std::map<std::wstring, bool>::iterator it_rf=local_open_write_files.find(real_fn);
 
 						if(it_rf!=local_open_write_files.end())
 						{
+							if(it_rf->second)
+							{
+								open_write_files.remove(real_fn);
+							}
 							local_open_write_files.erase(it_rf);
 						}
 						else
@@ -1320,11 +1355,16 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 					}
 					else if(UsnRecord->Reason & watch_flags)
 					{
-						local_open_write_files[real_fn]=true;
+						std::map<std::wstring, bool>::iterator it_rf=local_open_write_files.find(real_fn);
 
-						if(freeze_open_write_files)
+						if(it_rf==local_open_write_files.end())
 						{
-							open_write_files_frozen[real_fn]=true;
+							local_open_write_files[real_fn]=open_write_files.is_present(real_fn);
+
+							if(freeze_open_write_files)
+							{
+								open_write_files_frozen[real_fn]=true;
+							}
 						}
 					}
 				}
@@ -1356,7 +1396,7 @@ void ChangeJournalWatcher::updateWithUsn(const std::wstring &vol, const SChangeJ
 							}
 						}
 					}
-					else
+					if(UsnRecord->Reason & (watch_flags & ~USN_REASON_RENAME_NEW_NAME ) )
 					{
 						++num_changes;
 

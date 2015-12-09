@@ -147,4 +147,6 @@ private:
 	std::vector<std::wstring> old_backupfolders;
 
 	logid_t logid;
+
+	bool detached_db;
 };

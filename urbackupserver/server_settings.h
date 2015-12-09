@@ -104,7 +104,7 @@ struct SSettings
 	bool internet_readd_file_entries;
 	std::string client_access_key;
 	int max_running_jobs_per_client;
-	bool follow_symlinks;
+	bool background_backups;
 	bool create_linked_user_views;
 	std::string local_incr_image_style;
 	std::string local_full_image_style;

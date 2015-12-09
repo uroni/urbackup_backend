@@ -24,6 +24,9 @@
 
 int start_server_int(unsigned short tcpport, unsigned short udpport, const std::string &pSname, const bool *pDostop, bool use_fqdn);
 
+bool FileServFactory::backupground_backups_enabled = true;
+
+
 class ExecThread : public IThread
 {
 public:
@@ -56,10 +59,11 @@ private:
 
 IPermissionCallback* FileServFactory::permission_callback = NULL;
 
-IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name, bool use_fqdn_default)
+IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name, bool use_fqdn_default, bool enable_background_priority)
 {
 	bool *dostop=new bool;
 	*dostop=false;
+	backupground_backups_enabled = enable_background_priority;
 	ExecThread *et=new ExecThread(tcpport, udpport, name, dostop, use_fqdn_default);
 	THREADPOOL_TICKET t=Server->getThreadPool()->execute(et);
 	FileServ *fs=new FileServ(dostop, name, t, use_fqdn_default);
@@ -74,6 +78,11 @@ void FileServFactory::destroyFileServ(IFileServ *filesrv)
 void FileServFactory::setPermissionCallback( IPermissionCallback* new_permission_callback )
 {
 	permission_callback=new_permission_callback;
+}
+
+bool FileServFactory::backgroundBackupsEnabled()
+{
+	return backupground_backups_enabled;
 }
 
 IPermissionCallback* FileServFactory::getPermissionCallback()

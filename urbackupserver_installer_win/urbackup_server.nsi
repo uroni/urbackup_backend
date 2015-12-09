@@ -139,6 +139,7 @@ Section "install"
 	File "data_common\repair_database.bat"
 	File "data_common\export_auth_log.bat"
 	File "data_common\uncompress_image.bat"
+	File "data_common\assemble_disk_image.bat"
 	
 	WriteUninstaller "$INSTDIR\Uninstall.exe"
 	

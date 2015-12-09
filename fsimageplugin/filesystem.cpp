@@ -31,19 +31,9 @@
 #include "../Interface/ThreadPool.h"
 #include <assert.h>
 
+
 namespace
 {
-	unsigned int getLastSystemError()
-	{
-		unsigned int last_error;
-#ifdef _WIN32
-		last_error=GetLastError();
-#else
-		last_error=errno;
-#endif
-		return last_error;
-	}
-
 	const size_t readahead_num_blocks = 5120;
 	const size_t max_idle_buffers = readahead_num_blocks;
 	const size_t readahead_low_level_blocks = readahead_num_blocks/2;
@@ -51,18 +41,18 @@ namespace
 	class ReadaheadThread : public IThread
 	{
 	public:
-		ReadaheadThread(Filesystem& fs)
+		ReadaheadThread(Filesystem& fs, bool background_priority)
 			: fs(fs), 
 			  mutex(Server->createMutex()),
 			  start_readahead_cond(Server->createCondition()),
 			  read_block_cond(Server->createCondition()),
 			  current_block(-1),
 			  do_stop(false),
-			  readahead_miss(false)
+			  readahead_miss(false),
+			  background_priority(background_priority)
 		{
 
 		}
-
 		~ReadaheadThread()
 		{
 			for(std::map<int64, char*>::iterator it=read_blocks.begin();
@@ -76,11 +66,14 @@ namespace
 		void operator()()
 		{
 #ifdef _WIN32
+			if(background_priority)
+			{
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
-			SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
+				SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #else
-			SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+				SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif //THREAD_MODE_BACKGROUND_BEGIN
+			}
 #endif
 
 			IScopedLock lock(mutex.get());
@@ -102,6 +95,8 @@ namespace
 				while(current_block==-1)
 				{
 					start_readahead_cond->wait(&lock);
+
+					if(do_stop) break;
 				}
 
 				if(do_stop) break;
@@ -124,8 +119,6 @@ namespace
 
 					read_blocks[current_block] = buf;
 
-					if(do_stop) break;
-
 					current_block = next_used_block(current_block);
 
 					if(readahead_miss)
@@ -137,11 +130,14 @@ namespace
 			}
 
 #ifdef _WIN32
+			if(background_priority)
+			{
 #ifdef THREAD_MODE_BACKGROUND_END
-			SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
+				SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
 #else
-			SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+				SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_NORMAL);
 #endif
+			}
 #endif
 		}
 
@@ -210,7 +206,7 @@ namespace
 		{
 			int64 size = fs.getSize();
 
-			while(pBlock<size/fs.getBlocksize())
+			while(pBlock+1<size/fs.getBlocksize())
 			{
 				++pBlock;
 
@@ -235,10 +231,23 @@ namespace
 		int64 current_block;
 
 		bool do_stop;
+
+		bool background_priority;
 	};
+
+	unsigned int getLastSystemError()
+	{
+		unsigned int last_error;
+#ifdef _WIN32
+		last_error=GetLastError();
+#else
+		last_error=errno;
+#endif
+		return last_error;
+	}
 }
 
-Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead)
+Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead, bool background_priority)
 	: buffer_mutex(Server->createMutex())
 {
 	has_error=false;
@@ -253,12 +262,12 @@ Filesystem::Filesystem(const std::wstring &pDev, bool read_ahead)
 
 	if(read_ahead)
 	{
-		readahead_thread.reset(new ReadaheadThread(*this));
+		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
 		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get());
 	}
 }
 
-Filesystem::Filesystem(IFile *pDev, bool read_ahead)
+Filesystem::Filesystem(IFile *pDev, bool read_ahead, bool background_priority)
 	: dev(pDev)
 {
 	has_error=false;
@@ -266,7 +275,7 @@ Filesystem::Filesystem(IFile *pDev, bool read_ahead)
 
 	if(read_ahead)
 	{
-		readahead_thread.reset(new ReadaheadThread(*this));
+		readahead_thread.reset(new ReadaheadThread(*this, background_priority));
 		readahead_thread_ticket = Server->getThreadPool()->execute(readahead_thread.get());
 	}
 }

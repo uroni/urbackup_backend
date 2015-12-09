@@ -1,0 +1,1196 @@
+# UrBackup translation
+# Copyright (C) 2011-2015 See translators
+# This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
+# 
+# Translators:
+# sieks <sieks@inbox.lv>, 2015
+msgid ""
+msgstr ""
+"Project-Id-Version: UrBackup\n"
+"PO-Revision-Date: 2015-11-24 09:52+0000\n"
+"Last-Translator: sieks <sieks@inbox.lv>\n"
+"Language-Team: Latvian (http://www.transifex.com/uroni/urbackup/language/lv/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: lv\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n != 0 ? 1 : 2);\n"
+
+msgid "action_1"
+msgstr "Inkrementālā failu rezerves kopijas izveidošana"
+
+msgid "action_2"
+msgstr "Pilna failu rezerves kopija"
+
+msgid "action_3"
+msgstr "Inkrementālā klona rezerves kopijas izveide"
+
+msgid "action_4"
+msgstr "Pilna klona rezerves kopija"
+
+msgid "action_1_d"
+msgstr ""
+
+msgid "action_2_d"
+msgstr ""
+
+msgid "action_3_d"
+msgstr ""
+
+msgid "action_4_d"
+msgstr ""
+
+msgid "nav_item_6"
+msgstr "Statuss"
+
+msgid "nav_item_5"
+msgstr "Aktivitātes"
+
+msgid "nav_item_4"
+msgstr "Rezerves kopijas"
+
+msgid "nav_item_3"
+msgstr "Žurnālfaili"
+
+msgid "nav_item_2"
+msgstr "Statistika"
+
+msgid "nav_item_1"
+msgstr "Iestatījumi"
+
+msgid "unknown"
+msgstr "Nezināms"
+
+msgid "overview"
+msgstr ""
+
+msgid "ok"
+msgstr "Labi"
+
+msgid "no_recent_backup"
+msgstr ""
+
+msgid "backup_never"
+msgstr "Nekad"
+
+msgid "yes"
+msgstr "Jā"
+
+msgid "no"
+msgstr "Nē"
+
+msgid "tBackup status"
+msgstr "Rezerves kopiju statuss"
+
+msgid "tComputer name"
+msgstr "Datora nosaukums"
+
+msgid "tLast seen"
+msgstr "Pēdējo reizi redzēts"
+
+msgid "tLast file backup"
+msgstr "Pēdējā faila rezerves kopija"
+
+msgid "tLast image backup"
+msgstr ""
+
+msgid "tFile backup status"
+msgstr ""
+
+msgid "tImage backup status"
+msgstr ""
+
+msgid "tShow details"
+msgstr ""
+
+msgid "tExtra clients"
+msgstr ""
+
+msgid "tNo extra clients"
+msgstr ""
+
+msgid "tActions"
+msgstr "Darbības"
+
+msgid "tOnline"
+msgstr ""
+
+msgid "tHostname/IP"
+msgstr "Datora nosaukums/IP"
+
+msgid "tServer identity"
+msgstr "Servera identitāte"
+
+msgid "users"
+msgstr "Lietotāji"
+
+msgid "general_settings"
+msgstr ""
+
+msgid "admin"
+msgstr "Administrators"
+
+msgid "user"
+msgstr "Lietotājs"
+
+msgid "username_empty"
+msgstr "Lūdzu ievadiet lietotāja vārdu"
+
+msgid "password_empty"
+msgstr "Lūdzu ievadiet paroli"
+
+msgid "password_differ"
+msgstr "Parole atšķiras"
+
+msgid "user_n_exist"
+msgstr "Lietotājs neeksistē"
+
+msgid "password_wrong"
+msgstr "Nepareiza parole"
+
+msgid "user_exists"
+msgstr ""
+
+msgid "session_timeout"
+msgstr ""
+
+msgid "really_del_user"
+msgstr ""
+
+msgid "user_add_done"
+msgstr "Jauns lietotājs veiksmīgi pievienots."
+
+msgid "user_remove_done"
+msgstr ""
+
+msgid "user_update_right_done"
+msgstr ""
+
+msgid "user_pw_change_ok"
+msgstr ""
+
+msgid "right_all"
+msgstr "Visas tiesības"
+
+msgid "right_none"
+msgstr "Nav tiesību"
+
+msgid "filter"
+msgstr "Filtrēt"
+
+msgid "all"
+msgstr "Viss"
+
+msgid "loglevel_0"
+msgstr "Info"
+
+msgid "loglevel_1"
+msgstr ""
+
+msgid "loglevel_2"
+msgstr "Kļūdas"
+
+msgid "dir_error_text"
+msgstr ""
+
+msgid "tmpdir_error_text"
+msgstr ""
+
+msgid "starting"
+msgstr ""
+
+msgid "ident_err"
+msgstr ""
+
+msgid "enter_hostname"
+msgstr "Lūdzu ievadiet datora nosaukumu vai IP adresi"
+
+msgid "clients"
+msgstr "Klienti"
+
+msgid "validate_text_empty"
+msgstr ""
+
+msgid "validate_text_notint"
+msgstr ""
+
+msgid "validate_name_update_freq_incr"
+msgstr ""
+
+msgid "validate_name_update_freq_full"
+msgstr ""
+
+msgid "validate_name_update_freq_image_full"
+msgstr ""
+
+msgid "validate_name_update_freq_image_incr"
+msgstr ""
+
+msgid "validate_name_max_file_incr"
+msgstr ""
+
+msgid "validate_name_min_file_incr"
+msgstr ""
+
+msgid "validate_name_max_file_full"
+msgstr ""
+
+msgid "validate_name_min_file_full"
+msgstr ""
+
+msgid "validate_name_min_image_incr"
+msgstr ""
+
+msgid "validate_name_max_image_incr"
+msgstr ""
+
+msgid "validate_name_min_image_full"
+msgstr ""
+
+msgid "validate_name_max_image_full"
+msgstr ""
+
+msgid "validate_name_startup_backup_delay"
+msgstr ""
+
+msgid "validate_err_notregexp_backup_window"
+msgstr ""
+
+msgid "validate_name_max_active_clients"
+msgstr ""
+
+msgid "validate_name_max_sim_backups"
+msgstr ""
+
+msgid "validate_name_backupfolder"
+msgstr ""
+
+msgid "validate_name_computername"
+msgstr "datora nosaukums"
+
+msgid "too_many_clients_err"
+msgstr "Par daudz klientu"
+
+msgid "really_remove_client"
+msgstr ""
+
+msgid "computername"
+msgstr "Datora nosaukums"
+
+msgid "storage_usage_pie_graph_title"
+msgstr ""
+
+msgid "storage_usage_pie_graph_colname1"
+msgstr "Datora nosaukums"
+
+msgid "storage_usage_pie_graph_colname2"
+msgstr ""
+
+msgid "storage_usage_bar_graph_title"
+msgstr ""
+
+msgid "storage_usage_bar_graph_colname1"
+msgstr "Datums"
+
+msgid "storage_usage_bar_graph_colname2"
+msgstr ""
+
+msgid "tImages"
+msgstr ""
+
+msgid "tFiles"
+msgstr "Faili"
+
+msgid "tSum"
+msgstr ""
+
+msgid "validate_err_notregexp_cleanup_window"
+msgstr ""
+
+msgid "mail_settings"
+msgstr ""
+
+msgid "upgrade_error_text"
+msgstr ""
+
+msgid "tActivities"
+msgstr "Aktivitātes"
+
+msgid "tAction"
+msgstr "Darbība"
+
+msgid "tProgress"
+msgstr "Progress"
+
+msgid "tFiles in queue"
+msgstr "Faili rindā"
+
+msgid "tLast activities"
+msgstr ""
+
+msgid "tStarting time"
+msgstr ""
+
+msgid "tRequired time"
+msgstr "Nepieciešamais laiks"
+
+msgid "tUsed Storage"
+msgstr ""
+
+msgid "tClients"
+msgstr "Klienti"
+
+msgid "tLogs"
+msgstr "Žurnālfaili"
+
+msgid "tReports"
+msgstr "Atskaites"
+
+msgid "tSend reports to"
+msgstr ""
+
+msgid "tSend"
+msgstr "Sūtīt"
+
+msgid "tBackups with a log message of at least log level"
+msgstr ""
+
+msgid "tBackup time"
+msgstr "Rezerves kopijas laiks"
+
+msgid "tErrors"
+msgstr "Kļūdas"
+
+msgid "tWarnings"
+msgstr ""
+
+msgid "tStorage allocation"
+msgstr ""
+
+msgid "tStorage usage"
+msgstr ""
+
+msgid "tAll"
+msgstr "Viss"
+
+msgid "tBackup storage path"
+msgstr ""
+
+msgid "tDo not do image backups"
+msgstr ""
+
+msgid "tDo not do file backups"
+msgstr ""
+
+msgid "tAutomatically shut down server"
+msgstr "Automātiski izslēgt serveri"
+
+msgid "tAutoupdate clients"
+msgstr ""
+
+msgid "tMax number of simultaneous backups"
+msgstr ""
+
+msgid "tMax number of recently active clients"
+msgstr ""
+
+msgid "tCleanup time window"
+msgstr ""
+
+msgid "tAutomatically backup UrBackup database"
+msgstr ""
+
+msgid "tInterval for incremental file backups"
+msgstr ""
+
+msgid "tInterval for full file backups"
+msgstr ""
+
+msgid "tInterval for incremental image backups"
+msgstr ""
+
+msgid "tInterval for full image backups"
+msgstr ""
+
+msgid "tMaximal number of incremental file backups"
+msgstr ""
+
+msgid "tMinimal number of incremental file backups"
+msgstr ""
+
+msgid "tMaximal number of full file backups"
+msgstr ""
+
+msgid "tMinimal number of full file backups"
+msgstr ""
+
+msgid "tMaximal number of incremental image backups"
+msgstr ""
+
+msgid "tMinimal number of incremental image backups"
+msgstr ""
+
+msgid "tMaximal number of full image backups"
+msgstr ""
+
+msgid "tMinimal number of full image backups"
+msgstr ""
+
+msgid "tDelay after system startup"
+msgstr ""
+
+msgid "tBackup window"
+msgstr ""
+
+msgid "tExcluded files (with wildcards)"
+msgstr ""
+
+msgid "tIncluded files (with wildcards)"
+msgstr ""
+
+msgid "tDefault directories to backup"
+msgstr ""
+
+msgid "tVolumes to backup"
+msgstr ""
+
+msgid "tAllow client-side changing of the directories to backup"
+msgstr ""
+
+msgid "tAllow client-side starting of file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of image backups"
+msgstr ""
+
+msgid "tAllow client-side viewing of backup logs"
+msgstr ""
+
+msgid "tAllow client-side pausing of backups"
+msgstr ""
+
+msgid "tAllow client-side changing of settings"
+msgstr ""
+
+msgid "tdays"
+msgstr "dienas"
+
+msgid "thours"
+msgstr "stundas"
+
+msgid "tmin"
+msgstr ""
+
+msgid "tMail server name"
+msgstr "E-pasta servera nosaukums"
+
+msgid "tMail server port"
+msgstr "E-pasta servera ports"
+
+msgid "tMail server username (empty for none)"
+msgstr "E-pasta servera lietotāja vārds (tukšs - bez lietotāja)"
+
+msgid "tMail server password"
+msgstr "E-pasta servera parole"
+
+msgid "tSender E-Mail Address"
+msgstr "Sūtītāja e-pasta adrese"
+
+msgid "tSend mails only with SSL/TLS"
+msgstr "Sūtīt pastus tikai ar SSL/TLS"
+
+msgid "tCheck SSL/TLS certificate"
+msgstr "Pārbaudīt SSL/TLS sertifikātu"
+
+msgid ""
+"tSend test mail to this email address after saving the settings (leave empty"
+" to not send a test mail)"
+msgstr ""
+
+msgid "tTest Mail sent successfully"
+msgstr ""
+
+msgid "tSending test mail failed. Error:"
+msgstr ""
+
+msgid "tFilter"
+msgstr "Filtrēt"
+
+msgid "tBack"
+msgstr "Atpakaļ"
+
+msgid "tAdd"
+msgstr "Pievienot"
+
+msgid "tRemove"
+msgstr "Noņemt"
+
+msgid "tSave"
+msgstr "Saglabāt"
+
+msgid "tLevel"
+msgstr ""
+
+msgid "tTime"
+msgstr "Laiks"
+
+msgid "tMessage"
+msgstr "Ziņa"
+
+msgid "tLog"
+msgstr ""
+
+msgid "tUsername"
+msgstr "Lietotāja vārds"
+
+msgid "tRights"
+msgstr "Tiesības"
+
+msgid "tNo Users"
+msgstr "Nav lietotāju"
+
+msgid "tCreate user"
+msgstr "Izveidot lietotāju"
+
+msgid "tPassword"
+msgstr "Parole"
+
+msgid "tRepeat password"
+msgstr "Atkārtot paroli"
+
+msgid "tRights for"
+msgstr ""
+
+msgid "tAbort"
+msgstr "Atcelt"
+
+msgid "tCreate"
+msgstr "Izveidot"
+
+msgid "tChange rights"
+msgstr ""
+
+msgid "tChange password"
+msgstr "Mainīt paroli"
+
+msgid "tLogin"
+msgstr ""
+
+msgid "tInfos"
+msgstr "Informācija"
+
+msgid "tSeparate settings for this client"
+msgstr ""
+
+msgid "tServer"
+msgstr "Serveris"
+
+msgid "tFile backups"
+msgstr "Faila rezerves kopija"
+
+msgid "tImage backups"
+msgstr ""
+
+msgid "tPermissions"
+msgstr "Tiesības"
+
+msgid "tClient"
+msgstr "Klients"
+
+msgid "tArchival"
+msgstr ""
+
+msgid "tInternet"
+msgstr "Internets"
+
+msgid "tPerform autoupdates silently"
+msgstr ""
+
+msgid "tMax backup speed for local network"
+msgstr ""
+
+msgid "tNo activities"
+msgstr "Nav aktivitātes"
+
+msgid "tSelect all"
+msgstr "Iezīmēt visu"
+
+msgid "tSelect none"
+msgstr "Iezīmēt nevienu"
+
+msgid "tRemove selected"
+msgstr "Dzēst iezīmēto"
+
+msgid "tStart for selected"
+msgstr ""
+
+msgid "tInternet clients"
+msgstr "Interneta klients"
+
+msgid "tAdd additional internet clients"
+msgstr ""
+
+msgid "tClient name"
+msgstr "Klienta vārds"
+
+msgid "tNo entries for this filter"
+msgstr ""
+
+msgid "tNo data"
+msgstr "Nav datu"
+
+msgid "tTotal max backup speed for local network"
+msgstr ""
+
+msgid "tArchive every"
+msgstr "Arhivēt katru"
+
+msgid "tArchive for"
+msgstr ""
+
+msgid "tArchive window"
+msgstr ""
+
+msgid "tBackup type"
+msgstr ""
+
+msgid "tEnable internet mode (requires server restart)"
+msgstr ""
+
+msgid "tInternet server name/IP"
+msgstr ""
+
+msgid "tInternet server port"
+msgstr "Interneta servera ports"
+
+msgid "tDo image backups over internet"
+msgstr ""
+
+msgid "tDo full file backups over internet"
+msgstr ""
+
+msgid "tMax backup speed for internet connection"
+msgstr ""
+
+msgid "tTotal max backup speed for internet connection"
+msgstr ""
+
+msgid "tEncrypted transfer"
+msgstr "Šifrēta pārraide:"
+
+msgid "tCompressed transfer"
+msgstr "Saspiesta pārraide:"
+
+msgid "file_backup"
+msgstr "Faila rezerves kopija"
+
+msgid "hours"
+msgstr "stundas"
+
+msgid "days"
+msgstr "dienas"
+
+msgid "weeks"
+msgstr "nedēļas"
+
+msgid "months"
+msgstr "mēneši"
+
+msgid "year"
+msgstr "gads"
+
+msgid "hour"
+msgstr "stunda"
+
+msgid "day"
+msgstr "diena"
+
+msgid "week"
+msgstr "nedēļa"
+
+msgid "month"
+msgstr "mēnesis"
+
+msgid "years"
+msgstr "gadi"
+
+msgid "min"
+msgstr "minūte"
+
+msgid "mins"
+msgstr "minūtes"
+
+msgid "validate_name_archive_every"
+msgstr "Arhivēt katru"
+
+msgid "validate_name_archive_for"
+msgstr ""
+
+msgid "forever"
+msgstr "vienmēr"
+
+msgid "backup_in_progress"
+msgstr ""
+
+msgid "really_remove_clients"
+msgstr ""
+
+msgid "no_client_selected"
+msgstr ""
+
+msgid "queued_backup"
+msgstr ""
+
+msgid "starting_backup_failed"
+msgstr ""
+
+msgid "trying_to_stop_backup"
+msgstr ""
+
+msgid "unarchived_in"
+msgstr ""
+
+msgid "validate_err_notregexp_archive_window"
+msgstr ""
+
+msgid "wait_for_archive_window"
+msgstr ""
+
+msgid "validate_err_notregexp_image_letters"
+msgstr ""
+
+msgid "validate_name_global_local_speed"
+msgstr ""
+
+msgid "validate_name_global_internet_speed"
+msgstr ""
+
+msgid "validate_name_local_speed"
+msgstr ""
+
+msgid "validate_name_internet_speed"
+msgstr ""
+
+msgid "enter_clientname"
+msgstr ""
+
+msgid "internet_client_added"
+msgstr ""
+
+msgid "change_pw"
+msgstr "Mainīt paroli"
+
+msgid "old_pw_wrong"
+msgstr "Vecā parole nav pareiza"
+
+msgid "tID"
+msgstr "ID"
+
+msgid "tFile"
+msgstr "Fails"
+
+msgid "tSize"
+msgstr "Izmērs"
+
+msgid "tIncremental"
+msgstr "Inkrementāli"
+
+msgid "tLoading"
+msgstr ""
+
+msgid "tStorage usage of"
+msgstr ""
+
+msgid "tDelete domain"
+msgstr "Dzēst domēnu"
+
+msgid "tChange rights for user"
+msgstr ""
+
+msgid "tDomain"
+msgstr "Domēns"
+
+msgid "tTranslation"
+msgstr ""
+
+msgid "tNew domain"
+msgstr "Jauns domēns"
+
+msgid "tChange"
+msgstr "Labot"
+
+msgid "tChange password for user"
+msgstr "Mainīt lietotāja paroli"
+
+msgid "tSaved settings successfully"
+msgstr ""
+
+msgid "tThis client is going to be removed."
+msgstr ""
+
+msgid "tStop removing client"
+msgstr ""
+
+msgid "tFailed"
+msgstr ""
+
+msgid "tSuccessfull"
+msgstr "Veiksmīgi"
+
+msgid "tInfo"
+msgstr "Info"
+
+msgid "tError"
+msgstr "Kļūda"
+
+msgid "tWarning"
+msgstr ""
+
+msgid "tCurrent version"
+msgstr "Pašreizējā versija"
+
+msgid "tTarget version"
+msgstr ""
+
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings."
+msgstr ""
+
+msgid "tNext archival"
+msgstr ""
+
+msgid "tweeks"
+msgstr "nedēļas"
+
+msgid "tmonth"
+msgstr "mēnesis"
+
+msgid "tyears"
+msgstr "gadi"
+
+msgid "tforever"
+msgstr "vienmēr"
+
+msgid "tFile backup"
+msgstr "Faila rezerves kopija"
+
+msgid "tIncremental file backup"
+msgstr "Inkrementālā failu rezerves kopijas izveidošana"
+
+msgid "tFull file backup"
+msgstr "Pilna failu rezerves kopija"
+
+msgid "tEnable internet mode"
+msgstr ""
+
+msgid "tInternet auth key"
+msgstr ""
+
+msgid "tIncremental image backup"
+msgstr "Inkrementālā klona rezerves kopijas izveide"
+
+msgid "tFull image backup"
+msgstr "Pilna klona rezerves kopija"
+
+msgid ""
+"tClients are removed during the cleanup time window, if they are offline."
+msgstr ""
+
+msgid "tArchived"
+msgstr ""
+
+msgid "nospc_stalled_text"
+msgstr ""
+
+msgid "nospc_fatal_text"
+msgstr ""
+
+msgid "tNondefault temporary file directory"
+msgstr ""
+
+msgid "tClients are removed during the cleanup in the cleanup time window."
+msgstr ""
+
+msgid "about_urbackup"
+msgstr ""
+
+msgid "loading"
+msgstr ""
+
+msgid "authentication_err"
+msgstr ""
+
+msgid "tInverval for incremental image backups"
+msgstr ""
+
+msgid "action_5"
+msgstr ""
+
+msgid "action_6"
+msgstr ""
+
+msgid "really_recalculate"
+msgstr ""
+
+msgid "database_error_text"
+msgstr ""
+
+msgid "creating_filescache_text"
+msgstr ""
+
+msgid "tDownload folder as ZIP"
+msgstr "Lejupielādēt mapi kā ZIP arhīvu"
+
+msgid "tOld password"
+msgstr "Vecā parole"
+
+msgid "tNew password"
+msgstr "Jauna parole"
+
+msgid "tRepeat new password"
+msgstr "Atkārtojiet jauno paroli"
+
+msgid "tChanging password failed:"
+msgstr "Paroles maiņa neveiksmīga:"
+
+msgid "tChanged password successfully"
+msgstr "Parole nomainīta"
+
+msgid "tNumber of file entries processed"
+msgstr ""
+
+msgid "tUrBackup live log"
+msgstr ""
+
+msgid "tLive Log"
+msgstr ""
+
+msgid "tShow"
+msgstr "Rādīt"
+
+msgid "tThere is a new version of UrBackup server available"
+msgstr ""
+
+msgid "tIndexing..."
+msgstr "Indeksē..."
+
+msgid "tDelete"
+msgstr "Dzēst"
+
+msgid "tDownload client from update server"
+msgstr ""
+
+msgid "tGlobal soft filesystem quota"
+msgstr ""
+
+msgid "tDisable"
+msgstr ""
+
+msgid "tImage backup file format"
+msgstr ""
+
+msgid "tAllow client-side starting of full file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of incremental file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of full image backups"
+msgstr ""
+
+msgid "tAllow client-side starting of incremental image backups"
+msgstr ""
+
+msgid "tBackup window for incremental file backups"
+msgstr ""
+
+msgid "tBackup window for full file backups"
+msgstr ""
+
+msgid "tBackup window for incremental image backups"
+msgstr ""
+
+msgid "tBackup window for full image backups"
+msgstr ""
+
+msgid "tSoft client quota"
+msgstr ""
+
+msgid "tCalculate file-hashes on the client"
+msgstr ""
+
+msgid "tAdvanced"
+msgstr ""
+
+msgid "tTemporary files as file backup buffer"
+msgstr ""
+
+msgid "tTemporary files as image backup buffer"
+msgstr ""
+
+msgid "tLocal full file backup transfer mode"
+msgstr ""
+
+msgid "tRaw"
+msgstr ""
+
+msgid "tHashed"
+msgstr ""
+
+msgid "tInternet full file backup transfer mode"
+msgstr ""
+
+msgid "tLocal incremental file backup transfer mode"
+msgstr ""
+
+msgid "tBlock differences - hashed"
+msgstr ""
+
+msgid "tInternet incremental file backup transfer mode"
+msgstr ""
+
+msgid "tLocal image backup transfer mode"
+msgstr ""
+
+msgid "tInternet image backup transfer mode"
+msgstr ""
+
+msgid "tFile hash collection amount"
+msgstr ""
+
+msgid "tFile hash collection timeout"
+msgstr ""
+
+msgid "tFile hash collection database cachesize"
+msgstr ""
+
+msgid "tMB"
+msgstr "MB"
+
+msgid "tUpdate stats database cachesize"
+msgstr ""
+
+msgid "tCache database type for file entries"
+msgstr ""
+
+msgid "tNone"
+msgstr ""
+
+msgid "tCache database size for file entries"
+msgstr ""
+
+msgid "tSuspend index limit"
+msgstr ""
+
+msgid "tUse symlinks during incremental file backups"
+msgstr ""
+
+msgid "tEnd-to-end verification of all file backups"
+msgstr ""
+
+msgid "tServer admin mail address"
+msgstr "Servera administratora pasta adrese"
+
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings. "
+msgstr ""
+
+msgid "tClient download"
+msgstr ""
+
+msgid "tDownload"
+msgstr "Lejupielādēt"
+
+msgid "tStatus"
+msgstr "Statuss"
+
+msgid "tIP"
+msgstr "IP"
+
+msgid "tClient version"
+msgstr "Klienta versija"
+
+msgid "tOperating System"
+msgstr ""
+
+msgid "tShow all clients"
+msgstr "Rādīt visus klientus"
+
+msgid "tThis client is going to be removed. "
+msgstr ""
+
+msgid "tClients are removed during the cleanup in the cleanup time window. "
+msgstr ""
+
+msgid "tRecalculate statistics"
+msgstr ""
+
+msgid "First"
+msgstr "Pirmais"
+
+msgid "Last"
+msgstr "Pēdējais"
+
+msgid "Next"
+msgstr "Nākošais"
+
+msgid "Previous"
+msgstr "Iepriekšējais"
+
+msgid "No data available in table"
+msgstr ""
+
+msgid "Showing _START_ to _END_ of _TOTAL_ entries"
+msgstr ""
+
+msgid "Showing 0 to 0 of 0 entries"
+msgstr ""
+
+msgid "(filtered from _MAX_ total entries)"
+msgstr ""
+
+msgid "sInfoThousands"
+msgstr ","
+
+msgid "Show _MENU_ entries"
+msgstr ""
+
+msgid "Processing..."
+msgstr "Procesā..."
+
+msgid "Search:"
+msgstr "Meklēt:"
+
+msgid "No matching records found"
+msgstr ""
+
+msgid "Restore to default"
+msgstr "Uzstādīt sākotnējos parametrus"
+
+msgid "Save"
+msgstr "Saglabāt"
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr ""
+
+msgid "tAllow clients to quit the tray icon"
+msgstr ""
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr ""
+
+msgid "Show/hide columns"
+msgstr "Rādīt/Slēpt kolonnas"
+
+msgid "tShow when a new server version is available"
+msgstr ""
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr ""
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgstr ""

@@ -33,6 +33,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include "../Interface/Types.h"
+#include <cstring>
 #include "../urbackupcommon/sha2/sha2.h"
 #include "../Interface/Pipe.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
@@ -1059,10 +1060,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 									if(num_hash_errors<10)
 									{
 										ServerLogger::Log(logid, "Checksum for image block wrong. Retrying...", LL_WARNING);
+										transferred_bytes+=cc->getTransferedBytes();
 										Server->destroy(cc);
 										cc=NULL;
 										nextblock=last_verified_block;
 										++num_hash_errors;
+										break;
 									}
 									else
 									{

@@ -309,7 +309,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_image_transfer_mode=settings_default->getValue("internet_image_transfer_mode", "hashed");
 	settings->update_stats_cachesize=static_cast<size_t>(settings_default->getValue("update_stats_cachesize", 200*1024));
 	settings->global_soft_fs_quota=settings_default->getValue("global_soft_fs_quota", "100%");
-	settings->client_quota=settings_default->getValue("client_quota", "100%");
+	settings->client_quota=settings_default->getValue("client_quota", "");
 	settings->end_to_end_file_backup_verification=(settings_default->getValue("end_to_end_file_backup_verification", "false")=="true");
 	settings->internet_calculate_filehashes_on_client=(settings_default->getValue("internet_calculate_filehashes_on_client", "true")=="true");
 	settings->use_incremental_symlinks=(settings_default->getValue("use_incremental_symlinks", "true")=="true");
@@ -321,7 +321,7 @@ void ServerSettings::readSettingsDefault(void)
 	settings->internet_readd_file_entries=(settings_default->getValue("internet_readd_file_entries", "true")=="true");
 	settings->max_running_jobs_per_client=atoi(settings_default->getValue("max_running_jobs_per_client", "1").c_str());
 	settings->create_linked_user_views=(settings_default->getValue("create_linked_user_views", "true")=="true");
-	settings->follow_symlinks=(settings_default->getValue("follow_symlinks", "true")=="true");
+	settings->background_backups=(settings_default->getValue("background_backups", "true")=="true");
 	settings->local_incr_image_style=settings_default->getValue("local_incr_image_style", incr_image_style_to_full);
 	settings->local_full_image_style=settings_default->getValue("local_full_image_style", full_image_style_full);
 	settings->internet_incr_image_style=settings_default->getValue("internet_incr_image_style", incr_image_style_to_last);
@@ -465,9 +465,8 @@ void ServerSettings::readSettingsClient(void)
 	readBoolClientSetting("allow_tray_exit", &settings->allow_tray_exit);
 	readBoolClientSetting("verify_using_client_hashes", &settings->verify_using_client_hashes);
 	readBoolClientSetting("internet_readd_file_entries", &settings->internet_readd_file_entries);
-
+	readBoolClientSetting("background_backups", &settings->background_backups);
 	readIntClientSetting("max_running_jobs_per_client", &settings->max_running_jobs_per_client);
-	readBoolClientSetting("follow_symlinks", &settings->follow_symlinks);
 	readBoolClientSetting("create_linked_user_views", &settings->create_linked_user_views);
 
 	readStringClientSetting("local_incr_image_style", &settings->local_incr_image_style);

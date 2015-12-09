@@ -79,7 +79,7 @@ std::vector<std::wstring> getSettingsList(void)
 	ret.push_back(L"verify_using_client_hashes");
 	ret.push_back(L"internet_readd_file_entries");
 	ret.push_back(L"max_running_jobs_per_client");
-	ret.push_back(L"follow_symlinks");
+	ret.push_back(L"background_backups");
 	ret.push_back(L"local_full_image_style");
 	ret.push_back(L"internet_incr_image_style");
 	ret.push_back(L"internet_full_image_style");
@@ -104,7 +104,7 @@ std::vector<std::wstring> getOnlyServerClientSettingsList(void)
 	ret.push_back(L"internet_readd_file_entries");
 	ret.push_back(L"local_incr_image_style");
 	ret.push_back(L"local_full_image_style");
-	ret.push_back(L"follow_symlinks");
+	ret.push_back(L"background_backups");
 	ret.push_back(L"internet_incr_image_style");
 	ret.push_back(L"internet_full_image_style");
 	return ret;

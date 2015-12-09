@@ -21,6 +21,10 @@
 #include "../../stringtools.h"
 #include <Windows.h>
 
+#define DEF_SERVER
+#include "../../Interface/Server.h"
+IServer *Server = NULL;
+
 int main(void)
 {
 	std::wstring mpath;

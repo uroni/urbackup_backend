@@ -26,8 +26,8 @@
 
 #define DEF_BLOCKSIZE 4096
 
-FSUnknown::FSUnknown(const std::wstring &pDev, bool read_ahead)
-	: Filesystem(pDev, read_ahead)
+FSUnknown::FSUnknown(const std::wstring &pDev, bool read_ahead, bool background_priority)
+	: Filesystem(pDev, read_ahead, background_priority)
 {
 	if(has_error)
 		return;

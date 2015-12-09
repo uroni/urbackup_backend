@@ -167,6 +167,8 @@ public:
 	static void execute_postbackup_hook(void);
 
 	static void doStop(void);
+	
+	static bool backgroundBackupsEnabled();
 
 	static std::vector<std::wstring> parseExcludePatterns(const std::wstring& val);
 	static std::vector<std::wstring> parseIncludePatterns(const std::wstring& val, std::vector<int>& include_depth,
@@ -243,7 +245,6 @@ private:
 	bool addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vector<SFileAndHash>* fsfiles, const std::wstring &orig_path, const std::wstring& filepath, const std::wstring& namedpath);
 
 	void modifyFilesInt(std::wstring path, const std::vector<SFileAndHash> &data);
-
 	size_t calcBufferSize( std::wstring &path, const std::vector<SFileAndHash> &data );
 
 	void commitModifyFilesBuffer();
@@ -314,7 +315,6 @@ private:
 
 	std::vector< std::pair<std::wstring, std::vector<SFileAndHash> > > modify_file_buffer;
 	size_t modify_file_buffer_size;
-
 	std::vector< std::pair<std::wstring, std::vector<SFileAndHash> > > add_file_buffer;
 	size_t add_file_buffer_size;
 

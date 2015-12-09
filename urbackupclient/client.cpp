@@ -35,6 +35,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include "file_permissions.h"
+#include <memory>
 
 //For truncating files
 #ifdef _WIN32
@@ -360,20 +361,24 @@ void IndexThread::operator()(void)
 #endif
 #ifdef _WIN32
 
+	if(backgroundBackupsEnabled())
+	{
+#ifndef _DEBUG
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 #if defined(VSS_XP) || defined(VSS_S03)
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #else
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
+		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
 #else
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif //THREAD_MODE_BACKGROUND_BEGIN
-
+#endif //_DEBUG
+	}
 #endif
+	
 
 	db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-
 	cd=new ClientDAO(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT));
 
 #ifdef _WIN32
@@ -1063,6 +1068,8 @@ void IndexThread::indexDirs(void)
 		readPatterns(patterns_changed, true);
 	}
 	share_dirs();
+
+	changed_dirs.clear();
 }
 
 void IndexThread::resetFileEntries(void)
@@ -1633,6 +1640,8 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			return fs_files;
 		}
 	}
+#else //_WIN32
+	return tmp;
 #endif
 }
 
@@ -2853,7 +2862,6 @@ void IndexThread::start_filesrv(void)
 		curr_udpport=0;
 	}
 
-	filesrv=((IFileServFactory*)(Server->getPlugin(Server->getThreadID(), filesrv_pluginid)))->createFileServ(curr_tcpport, curr_udpport, name, use_fqdn);
 	filesrv->shareDir(L"urbackup", Server->getServerWorkingDir()+L"/urbackup/data", std::string());
 
 	ServerIdentityMgr::setFileServ(filesrv);
@@ -3248,6 +3256,8 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 
 		bool has_error;
 		std::vector<SFile> files = getFilesWin(os_file_prefix(vsstpath), &has_error, false, false);
+		std::vector<std::wstring> changed_files;
+		bool looked_up_changed_files=false;
 
 		if(has_error)
 		{
@@ -3255,6 +3265,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 		}
 
 		const size_t& cdir_idx = i;
+
 
 		for(size_t i=0;i<files.size();++i)
 		{
@@ -3310,8 +3321,8 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 						else
 							nfn=volume+nfn;
 
-						std::wstring ndir= ExtractFilePath(nfn)+os_file_sep();
-						
+						std::wstring ndir=ExtractFilePath(nfn)+os_file_sep();
+					
 						if(!std::binary_search(changed_dirs.begin(), changed_dirs.end(), ndir) )
 						{
 							additional_changed_dirs.push_back(ndir);
@@ -3402,6 +3413,21 @@ std::string IndexThread::escapeListName( const std::string& listname )
 		}
 	}
 	return ret;
+}
+
+bool IndexThread::backgroundBackupsEnabled()
+{
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
+	if(curr_settings.get()!=NULL)
+	{
+		std::string background_backups;
+		if(curr_settings->getValue("background_backups", &background_backups)
+			|| curr_settings->getValue("background_backups_def", &background_backups) )
+		{
+			return background_backups!="false";
+		}
+	}
+	return true;
 }
 
 void IndexThread::writeTokens()

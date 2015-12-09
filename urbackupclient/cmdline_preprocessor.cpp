@@ -1,5 +1,4 @@
 #include "../tclap/CmdLine.h"
-#include "../tclap/DocBookOutput.h"
 #include <vector>
 #include "../stringtools.h"
 #include <stdlib.h>
@@ -23,7 +22,12 @@ void show_version()
 	std::cout << "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<< std::endl;
 }
 
-int real_main(int argc, char* argv[]);
+int real_main(int argc, char* argv[])
+#ifndef _WIN32
+	;
+#else
+{return 1;}
+#endif
 
 int run_real_main(std::vector<std::string> args)
 {

@@ -37,7 +37,7 @@
 #include "DirectoryWatcherThread.h"
 #else
 #include "lin_ver.h"
-std::wstring getSysVolume(std::wstring &mpath){ return L""; }
+std::wstring getSysVolumeCached(std::wstring &mpath){ return L""; }
 std::wstring getEspVolume(std::wstring &mpath){ return L""; }
 #endif
 #include "../client_version.h"
@@ -499,6 +499,7 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 			backup_running==RUNNING_RESUME_INCR_FILE || backup_running==RUNNING_RESUME_FULL_FILE )
 		{
 			backup_running=RUNNING_NONE;
+			backup_running_owner=NULL;
 			backup_done=true;
 		}
 		lasttime=Server->getTimeMS();
@@ -537,7 +538,7 @@ std::string ClientConnector::getLastBackupTime()
 	}
 }
 
-std::string ClientConnector::getCurrRunningJob()
+std::string ClientConnector::getCurrRunningJob(bool reset_done)
 {
 	if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout)
 	{
@@ -550,8 +551,11 @@ std::string ClientConnector::getCurrRunningJob()
 			return "DONE";
 		else
 			return "NOA";
-
-		backup_done=false;
+		
+		if(reset_done)
+		{
+			backup_done=false;
+		}
 	}
 	else if(backup_running==RUNNING_INCR_FILE)
 	{
@@ -603,7 +607,7 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	ret.set("eta_ms", eta_ms);
 
-	ret.set("currently_running", getCurrRunningJob());
+	ret.set("currently_running", getCurrRunningJob(false));
 
 	JSON::Array servers;
 
@@ -904,7 +908,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			std::wstring sysvol;
 			if(image_inf.image_letter=="SYSVOL")
 			{
-				sysvol=getSysVolume(mpath);
+				sysvol=getSysVolumeCached(mpath);
 			}
 			else
 			{
@@ -1091,7 +1095,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	if(dl==L"SYSVOL")
 	{
 		std::wstring mpath;
-		dl=getSysVolume(mpath);
+		dl=getSysVolumeCached(mpath);
 	}
 	else if(dl==L"ESP")
 	{

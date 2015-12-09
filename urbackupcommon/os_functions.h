@@ -125,4 +125,6 @@ int os_get_file_type(const std::wstring &path);
 
 int os_popen(const std::string& cmd, std::string& ret);
 
+int64 os_last_error(std::wstring& message);
+
 #endif //OS_FUNCTIONS_H

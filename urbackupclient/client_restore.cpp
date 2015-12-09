@@ -1751,10 +1751,6 @@ void restore_wizard(void)
 			}break;
 		case 5:
 			{
-				//Disable IO scheduler for drive
-				std::string onlypart = ExtractFileName(seldrive);
-				Server->Log("Selected device name: "+onlypart);
-				system(("echo noop > /sys/block/"+onlypart+"/queue/scheduler").c_str());
 				if(windows_partition.empty())
 				{
 					windows_partition=selpart;
