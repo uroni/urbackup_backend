@@ -141,4 +141,4 @@ noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h 
 
 EXTRA_DIST_GUI = client/data/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-ok-big.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/it/urbackup.mo client/data/lang/pl/urbackup.mo client/data/lang/pt_BR/urbackup.mo client/data/lang/sk/urbackup.mo client/data/lang/zh_TW/urbackup.mo client/data/lang/zh_CN/urbackup.mo client/data/lang/de/urbackup.mo client/data/lang/es/urbackup.mo client/data/lang/fr/urbackup.mo client/data/lang/ru/urbackup.mo client/data/lang/uk/urbackup.mo client/data/lang/da/urbackup.mo client/data/lang/nl/urbackup.mo client/data/lang/fa/urbackup.mo client/data/lang/cs/urbackup.mo
 
-EXTRA_DIST=docs/urbackupclientbackend.1 init.d_client defaults_client $(EXTRA_DIST_GUI) tclap/COPYING tclap/AUTHORS
+EXTRA_DIST=docs/urbackupclientbackend.1 init.d_client defaults_client $(EXTRA_DIST_GUI) tclap/COPYING tclap/AUTHORS urbackup-client-backend.service
