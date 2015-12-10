@@ -814,7 +814,7 @@ private:
 		if(f->Size()==0 || !transfer_incr_blockdiff)
 		{
 			server_download->addToQueueFull(0, fn, fn,
-				fpath, fpath, filesize, metadata, false, false);
+				fpath, fpath, filesize, metadata, false, false, 0);
 		}
 		else
 		{
@@ -857,7 +857,7 @@ private:
 		return false;
 	}
 
-	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata)
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items)
 	{
 		for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
 			it!=dl_queue.end();++it)
@@ -868,6 +868,7 @@ private:
 			{
 				metadata=FileClient::MetadataQueue_MetadataAndHash;
 				it->queued_metdata=true;
+				folder_items=0;
 				return it->change.fn1;
 			}
 		}

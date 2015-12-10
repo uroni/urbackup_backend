@@ -82,6 +82,10 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 		char ch;
 		if(metadata_f->Read(reinterpret_cast<char*>(&ch), sizeof(ch))!=sizeof(ch))
 		{
+			if(!saved_folder_items.empty())
+			{
+				ServerLogger::Log(logid, L"Not all folder metadata could be applied. Metadata was inconsistent.", LL_WARNING);
+			}
 			return true;
 		}
 
@@ -198,10 +202,14 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			common_data.getChar(&common_version);
 			int64 created;
 			int64 modified;
+			int64 accessed;
+			int64 folder_items;
 			std::string permissions;
 			if(common_version!=1
 				|| !common_data.getVarInt(&created)
 				|| !common_data.getVarInt(&modified)
+				|| !common_data.getVarInt(&accessed)
+				|| !common_data.getVarInt(&folder_items)
 				|| !common_data.getStr(&permissions) )
 			{
 				ServerLogger::Log(logid, L"Error saving metadata. Cannot parse common metadata.", LL_ERROR);
@@ -272,9 +280,14 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 				}
 			}
 
-			if(!dry_run && !os_set_file_time(os_file_prefix(backup_dir+os_file_sep()+os_path), created, modified))
+			if(!dry_run && !is_dir && !os_set_file_time(os_file_prefix(backup_dir+os_file_sep()+os_path), created, modified, accessed))
 			{
 				ServerLogger::Log(logid, L"Error setting file time of "+backup_dir+os_file_sep()+os_path, LL_WARNING);
+			}
+
+			if(!dry_run)
+			{
+				addFolderItem(curr_fn.substr(1), backup_dir+os_file_sep()+os_path, is_dir, created, modified, accessed, folder_items);
 			}
 		}
 		else
@@ -669,6 +682,87 @@ FileMetadataDownloadThread::~FileMetadataDownloadThread()
 void FileMetadataDownloadThread::shutdown()
 {
 	fc->Shutdown();
+}
+
+void FileMetadataDownloadThread::addFolderItem(std::string path, const std::wstring& os_path, bool is_dir, int64 created, int64 modified, int64 accessed, int64 folder_items)
+{
+	std::vector<std::string> toks;
+	TokenizeMail(path, toks, "/");
+
+	std::string curr_path;
+	for(size_t i=0;i<toks.size()-1;++i)
+	{
+		if(!curr_path.empty())
+		{
+			curr_path+="/";
+		}
+		curr_path+=toks[i];
+		addSingleFileItem(curr_path);
+	}
+	
+	if(is_dir)
+	{
+		if(folder_items==0)
+		{
+			if(!os_set_file_time(os_file_prefix(os_path), created, modified, accessed))
+			{
+				ServerLogger::Log(logid, L"Error setting file time of "+os_path, LL_WARNING);
+			}
+			return;
+		}
+
+		for(size_t i=0;i<saved_folder_items.size();++i)
+		{
+			if(saved_folder_items[i].path==path)
+			{
+				if(saved_folder_items[i].counted_items==folder_items)
+				{
+					if(!os_set_file_time(os_file_prefix(os_path), created, modified, accessed))
+					{
+						ServerLogger::Log(logid, L"Error setting file time of "+os_path, LL_WARNING);
+					}
+					saved_folder_items.erase(saved_folder_items.begin()+i);
+				}
+				else
+				{
+					saved_folder_items[i].folder_items = folder_items;
+					saved_folder_items[i].os_path = os_path;
+					saved_folder_items[i].accessed = accessed;
+					saved_folder_items[i].created = created;
+					saved_folder_items[i].modified = modified;
+				}
+				return;
+			}
+		}
+	}
+	
+}
+
+void FileMetadataDownloadThread::addSingleFileItem( std::string dir_path )
+{
+	for(size_t i=0;i<saved_folder_items.size();++i)
+	{
+		if(saved_folder_items[i].path==dir_path)
+		{
+			++saved_folder_items[i].counted_items;
+
+			if(saved_folder_items[i].counted_items==saved_folder_items[i].folder_items)
+			{
+				if(!os_set_file_time(os_file_prefix(saved_folder_items[i].os_path), saved_folder_items[i].created, saved_folder_items[i].modified, saved_folder_items[i].accessed))
+				{
+					ServerLogger::Log(logid, L"Error setting file time of "+saved_folder_items[i].os_path, LL_WARNING);
+				}
+				saved_folder_items.erase(saved_folder_items.begin()+i);
+			}
+
+			return;
+		}
+	}
+
+	SFolderItem new_folder_item;
+	new_folder_item.counted_items=1;
+	new_folder_item.path = dir_path;
+	saved_folder_items.push_back(new_folder_item);
 }
 
 int check_metadata()

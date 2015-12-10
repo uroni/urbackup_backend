@@ -127,13 +127,14 @@ int64 os_to_windows_filetime(int64 unix_time)
 	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool ignore_other_fs)
 {
-	return getFilesWin(path, has_error);
+	return getFilesWin(path, has_error, true, false, ignore_other_fs);
 }
 
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool exact_filesize, bool with_usn)
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error,
+	bool exact_filesize, bool with_usn, bool ignore_other_fs)
 {
 	if(has_error!=NULL)
 	{
@@ -330,6 +331,11 @@ SFile getFileMetadataWin( const std::wstring &path, bool with_usn )
 		lwt.LowPart=fad.ftCreationTime.dwLowDateTime;
 
 		ret.created=os_windows_to_unix_time(lwt.QuadPart);
+
+		lwt.HighPart = fad.ftLastAccessTime.dwHighDateTime;
+		lwt.LowPart = fad.ftLastAccessTime.dwLowDateTime;
+
+		ret.accessed = os_windows_to_unix_time(lwt.QuadPart);
 
 		if(with_usn && !ret.isdir && !(fad.dwFileAttributes &FILE_ATTRIBUTE_REPARSE_POINT))
 		{
@@ -1093,7 +1099,7 @@ int64 os_last_error()
 	return GetLastError();
 }
 
-bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified)
+bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified, int64 accessed)
 {
 	HANDLE hFile = CreateFileW(fn.c_str(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE|FILE_SHARE_READ, NULL,
 		OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
@@ -1114,7 +1120,13 @@ bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified
 		modified_time.dwHighDateTime=li.HighPart;
 		modified_time.dwLowDateTime=li.LowPart;
 
-		if(SetFileTime(hFile, &creation_time, NULL, &modified_time))
+		li.QuadPart=os_to_windows_filetime(accessed);
+
+		FILETIME accessed_time;
+		accessed_time.dwHighDateTime = li.HighPart;
+		accessed_time.dwLowDateTime = li.LowPart;
+
+		if(SetFileTime(hFile, &creation_time, &accessed_time, &modified_time))
 		{
 			CloseHandle(hFile);
 			return true;

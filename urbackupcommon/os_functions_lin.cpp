@@ -56,12 +56,12 @@ void getMousePos(int &x, int &y)
 	y=0;
 }
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool exact_filesize, bool with_usn)
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool exact_filesize, bool with_usn, bool ignore_other_fs)
 {
-	return getFiles(path, has_error);
+	return getFiles(path, has_error, ignore_other_fs);
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool ignore_other_fs)
 {
 	if(has_error!=NULL)
 	{
@@ -83,6 +83,19 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
         return tmp;
     }
 	
+	dev_t parent_dev_id;
+	bool has_parent_dev_id=false;
+	if(ignore_other_fs)
+	{
+		struct stat64 f_info;
+		int rc=lstat64(upath.c_str(), &f_info);
+		if(rc==0)
+		{
+			has_parent_dev_id = true;
+			parent_dev_id = f_info.st_dev; 
+		}
+	}
+	
 	upath+=os_file_sepn();
 
     errno=0;
@@ -103,7 +116,13 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			struct stat64 f_info;
 			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
 			if(rc==0)
-			{
+			{	
+				if(ignore_other_fs && S_ISDIR(f_info.st_mode)
+					&& has_parent_dev_id && parent_dev_id!=f_info.st_dev)
+				{
+					continue;
+				}
+				
 				if(S_ISLNK(f_info.st_mode))
 				{
 					f.issym=true;
@@ -169,6 +188,16 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 		}
 		else
 		{
+			if(ignore_other_fs && has_parent_dev_id)
+			{
+				struct stat64 f_info;
+				int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
+				if(rc==0 && parent_dev_id!=f_info.st_dev)
+				{
+					continue;
+				}
+			}
+		
 			f.last_modified=0;
 			f.size=0;
 		}
@@ -714,10 +743,10 @@ int64 os_to_windows_filetime(int64 unix_time)
 	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
 }
 
-bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified)
+bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified, int64 accessed)
 {
 	struct utimbuf times;
-	times.actime = static_cast<time_t>(last_modified);
+	times.actime = static_cast<time_t>(accessed);
 	times.modtime = static_cast<time_t>(last_modified);
     int rc = utime(ConvertToUTF8(fn).c_str(), &times);
 	return rc==0;
@@ -787,6 +816,7 @@ SFile getFileMetadata( const std::wstring &path )
 		ret.size = f_info.st_size;
 		ret.last_modified = f_info.st_mtime;
 		ret.created = f_info.st_ctime;
+		ret.accessed = f_info.st_atime;
 
 		return ret;
 	}

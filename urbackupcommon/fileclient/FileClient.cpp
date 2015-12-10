@@ -47,7 +47,8 @@ namespace
 	const unsigned int DISCOVERY_TIMEOUT=1000; //1sec
 #endif
 
-	const size_t maxQueuedFiles = 2000;
+	const size_t maxQueuedFiles = 3000;
+	const size_t queuedFilesLow = 100;
 }
 
 void Log(std::string str)
@@ -646,7 +647,7 @@ bool FileClient::Reconnect(void)
 	return false;
 }
 
- _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, bool with_timeout)
+ _u32 FileClient::GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, bool with_timeout, size_t folder_items)
 {
 	if(tcpsock==NULL)
 		return ERR_ERROR;
@@ -665,6 +666,11 @@ bool FileClient::Reconnect(void)
 		data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY:(protocol_version>1?ID_GET_FILE_RESUME_HASH:ID_GET_FILE) );
 		data.addString( remotefn );
 		data.addString( identity );
+
+		if(metadata_only)
+		{
+			data.addVarInt(folder_items);
+		}
 
 		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
 		{
@@ -725,9 +731,14 @@ bool FileClient::Reconnect(void)
 			else
 			{
 				CWData data;
-				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
+				data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY : (protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE)) );
 				data.addString( remotefn );
 				data.addString( identity );
+
+				if(metadata_only)
+				{
+					data.addVarInt(folder_items);
+				}
 
 				if( protocol_version>1 )
 				{
@@ -1003,9 +1014,14 @@ bool FileClient::Reconnect(void)
 			else
 			{
 				CWData data;
-				data.addUChar( protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE) );
+				data.addUChar( metadata_only?ID_GET_FILE_METADATA_ONLY : (protocol_version>1?ID_GET_FILE_RESUME_HASH:(protocol_version>0?ID_GET_FILE_RESUME:ID_GET_FILE)) );
 				data.addString( remotefn );
 				data.addString( identity );
+
+				if(metadata_only)
+				{
+					data.addVarInt(folder_items);
+				}
 
 				if( protocol_version>1 )
 				{
@@ -1107,6 +1123,13 @@ void FileClient::fillQueue()
 		return;
 	}
 
+	if(queued.size()>queuedFilesLow)
+	{
+		return;
+	}
+
+	bool needs_send_flush=false;
+
 	while(queued.size()<maxQueuedFiles)
 	{
 		if(!tcpsock->isWritable())
@@ -1115,13 +1138,15 @@ void FileClient::fillQueue()
 		}
 
 		MetadataQueue metadata_queue = MetadataQueue_Data;
-		std::string queue_fn = queue_callback->getQueuedFileFull(metadata_queue);
+		size_t folder_items = 0;
+		std::string queue_fn = queue_callback->getQueuedFileFull(metadata_queue, folder_items);
 
 		if(queue_fn.empty())
 		{
 			if(needs_flush)
 			{
 				needs_flush=false;
+				needs_send_flush=false;
 				Flush();
 			}
 
@@ -1144,7 +1169,13 @@ void FileClient::fillQueue()
 		data.addString( queue_fn );
 		data.addString( identity );
 
-		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
+		if(metadata_queue == MetadataQueue_Metadata)
+		{
+			data.addVarInt(folder_items);
+		}
+
+		needs_send_flush=true;
+		if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize(), c_default_timeout, false)!=data.getDataSize())
 		{
 			Server->Log("Queueing file failed", LL_DEBUG);
 			queue_callback->unqueueFileFull(queue_fn);
@@ -1153,6 +1184,11 @@ void FileClient::fillQueue()
 
 		queued.push_back(queue_fn);
 		needs_flush=true;
+	}
+
+	if(needs_send_flush)
+	{
+		tcpsock->Flush(c_default_timeout);
 	}
 }
 

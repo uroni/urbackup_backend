@@ -235,7 +235,15 @@ void InternetClient::doUpdateSettings(void)
 		if( !settings->getValue("internet_mode_enabled_def", &internet_mode_enabled) || internet_mode_enabled=="false" )
 		{
 			Server->destroy(settings);
-			Server->Log("Internet mode is not enabled.", LL_DEBUG);
+			if(Server->getServerParameter("internet_only_mode")=="true")
+			{
+				Server->Log("Internet mode not enabled. Please set \"internet_mode_enabled\" to \"true\".", LL_ERROR);
+				exit(2);
+			}
+			else
+			{
+				Server->Log("Internet mode not enabled", LL_DEBUG);
+			}
 			return;
 		}
 	}
@@ -247,7 +255,15 @@ void InternetClient::doUpdateSettings(void)
 	if(!settings->getValue("internet_authkey", &authkey) && !settings->getValue("internet_authkey_def", &authkey))
 	{
 		Server->destroy(settings);
-		Server->Log("Cannot read internet_authkey", LL_INFO);
+		if(Server->getServerParameter("internet_only_mode")=="true")
+		{
+			Server->Log("Internet authentication key not configured. Please configure \"internet_authkey\".", LL_ERROR);
+			exit(2);
+		}
+		else
+		{
+			Server->Log("Internet authentication key not configured", LL_INFO);
+		}
 		return;
 	}
 	if( (!settings->getValue("computername", &computername)
@@ -256,7 +272,8 @@ void InternetClient::doUpdateSettings(void)
 	{
 		computername=Server->ConvertToUTF8(IndexThread::getFileSrv()->getServerName());		
 	}
-	if(settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name) )
+	if( (settings->getValue("internet_server", &server_name) || settings->getValue("internet_server_def", &server_name))
+		&& !server_name.empty() )
 	{
 		if(!settings->getValue("internet_server_port", &server_port) )
 			settings->getValue("internet_server_port_def", &server_port);
@@ -282,6 +299,18 @@ void InternetClient::doUpdateSettings(void)
 		}
 		server_settings.clientname=computername;
 		server_settings.authkey=authkey;
+	}
+	else
+	{
+		if(Server->getServerParameter("internet_only_mode")=="true")
+		{
+			Server->Log("Internet server not configured. Please configure \"internet_server\".", LL_ERROR);
+			exit(2);
+		}
+		else
+		{
+			Server->Log("Internet server not configured", LL_INFO);
+		}
 	}
 	std::string tmp;
 	server_settings.internet_compress=true;

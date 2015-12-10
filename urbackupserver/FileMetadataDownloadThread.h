@@ -9,6 +9,28 @@
 namespace server
 {
 
+namespace
+{
+	struct SFolderItem
+	{
+		SFolderItem()
+			: created(0), modified(0),
+			  accessed(0), folder_items(-1),
+			  counted_items(0)
+		{
+
+		}
+
+		std::string path;
+		std::wstring os_path;
+		int64 created;
+		int64 modified;
+		int64 accessed;
+		int64 folder_items;
+		int64 counted_items;
+	};
+}
+
 class FileMetadataDownloadThread : public IThread
 {
 public:
@@ -27,6 +49,12 @@ public:
 	void shutdown();
 
 private:
+
+	void addSingleFileItem(std::string dir_path);
+	void addFolderItem(std::string path, const std::wstring& os_path, bool is_dir, int64 created, int64 modified, int64 accessed, int64 folder_items);
+
+	std::vector<SFolderItem> saved_folder_items;
+
 	std::auto_ptr<FileClient> fc;
 	const std::string& server_token;
 

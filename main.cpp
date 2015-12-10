@@ -333,6 +333,14 @@ int main_fkt(int argc, char *argv[])
 	else
 	{
 		Server->setServerWorkingDir(Server->ConvertToUnicode(workingdir));
+#ifndef _WIN32
+		int rc = chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
+		if(rc!=0)
+		{
+			Server->Log("Cannot set working directory to directory "+workingdir, LL_ERROR);
+		}
+
+#endif
 	}
 
 

@@ -224,6 +224,8 @@ bool FullFileBackup::doFileBackup()
 
 	std::stack<std::set<std::wstring> > folder_files;
 	folder_files.push(std::set<std::wstring>());
+	std::vector<size_t> folder_items;
+	folder_items.push_back(0);
 
 	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
 	{
@@ -289,6 +291,11 @@ bool FullFileBackup::doFileBackup()
 				if(!cf.isdir || cf.name!=L"..")
 				{
 					osspecific_name = fixFilenameForOS(cf.name, folder_files.top());
+
+					for(size_t j=0;j<folder_items.size();++j)
+					{
+						++folder_items[j];
+					}
 				}
 
 				if(cf.isdir)
@@ -346,6 +353,7 @@ bool FullFileBackup::doFileBackup()
 						}
 
 						folder_files.push(std::set<std::wstring>());
+						folder_items.push_back(0);
 
 						++depth;
 						if(depth==1)
@@ -374,9 +382,9 @@ bool FullFileBackup::doFileBackup()
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"),
 								ExtractFileName(curr_os_path, L"/"), ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
-								metadata, false, true);
+								metadata, false, true, folder_items.back());
 						}
-
+						folder_items.pop_back();
 						--depth;
 						if(depth==0)
 						{
@@ -460,12 +468,12 @@ bool FullFileBackup::doFileBackup()
                     if(file_ok)
                     {
                         server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                            metadata, script_dir, true);
+                            metadata, script_dir, true, 0);
                     }
                     else
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-							metadata, script_dir, false);
+							metadata, script_dir, false, 0);
 					}
 				}
 

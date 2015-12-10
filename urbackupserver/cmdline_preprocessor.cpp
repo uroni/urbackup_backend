@@ -839,7 +839,7 @@ int main(int argc, char* argv[])
 			has_help=true;
 		}
 
-		if(arg=="--version" || arg=="-v")
+		if(arg=="--version")
 		{
 			has_version=true;
 		}

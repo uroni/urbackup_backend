@@ -334,6 +334,11 @@ bool CClientThread::ProcessPacket(CRData *data)
 					return false;
 				}
 #endif
+				int64 folder_items=0;
+				if(id==ID_GET_FILE_METADATA_ONLY)
+				{
+					data->getVarInt(&folder_items);
+				}
 
 				bool is_script = false;
 				if(next(s_filename, 0, "SCRIPT|"))
@@ -447,12 +452,12 @@ bool CClientThread::ProcessPacket(CRData *data)
 				else if(next(s_filename, 0, "clientdl/"))
 				{
 					PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
-						s_filename, ident, ident);
+						s_filename, ident, ident, folder_items);
 				}
 				else if(s_filename.find("|")!=std::string::npos)
 				{
 					PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
-						getafter("|",s_filename), getuntil("|", s_filename), ident);
+						getafter("|",s_filename), getuntil("|", s_filename), ident, folder_items);
 				}
 
 #ifndef LINUX
@@ -1272,7 +1277,7 @@ bool CClientThread::GetFileBlockdiff(CRData *data)
 		if(s_filename.find("|"))
 		{
 			PipeSessions::transmitFileMetadata(Server->ConvertToUTF8(filename),
-				getafter("|",s_filename), getuntil("|", s_filename), ident);
+				getafter("|",s_filename), getuntil("|", s_filename), ident, 0);
 		}
 
 #ifdef _WIN32

@@ -138,6 +138,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			meta_data.addChar(1);
 			meta_data.addVarInt(file_meta.created);
 			meta_data.addVarInt(file_meta.last_modified);
+			meta_data.addVarInt(file_meta.accessed);
+			meta_data.addVarInt(folder_items);
 			if(token_callback.get()!=NULL)
 			{
 				meta_data.addString(token_callback->getFileTokens(Server->ConvertToUnicode(local_fn)));
@@ -242,7 +244,8 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 			CRData msg_data(&msg);
 
 			if(msg_data.getStr(&public_fn) &&
-				msg_data.getStr(&local_fn))
+				msg_data.getStr(&local_fn) &&
+				msg_data.getInt64(&folder_items))
 			{
 				if(public_fn.empty() &&
 					local_fn.empty())

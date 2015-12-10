@@ -395,6 +395,8 @@ bool IncrFileBackup::doFileBackup()
 	bool script_dir=false;
 	std::stack<std::set<std::wstring> > folder_files;
 	folder_files.push(std::set<std::wstring>());
+	std::vector<size_t> folder_items;
+	folder_items.push_back(0);
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -542,6 +544,14 @@ bool IncrFileBackup::doFileBackup()
 
 					if(cf.name!=L"..")
 					{
+						if(indirchange)
+						{
+							for(size_t j=0;j<folder_items.size();++j)
+							{
+								++folder_items[j];
+							}
+						}
+
 						std::wstring orig_curr_path = curr_path;
 						std::wstring orig_curr_os_path = curr_os_path;
 						curr_path+=L"/"+cf.name;
@@ -668,6 +678,7 @@ bool IncrFileBackup::doFileBackup()
 						}
 						
 						folder_files.push(std::set<std::wstring>());
+						folder_items.push_back(0);
 
 						++depth;
 						if(depth==1)
@@ -693,10 +704,11 @@ bool IncrFileBackup::doFileBackup()
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"), ExtractFileName(curr_os_path, L"/"),
 								ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
-								metadata, false, true);
+								metadata, false, true, folder_items.back());
 						}
 
 						folder_files.pop();
+						folder_items.pop_back();
 
 						--depth;
 						if(indirchange==true && depth==changelevel)
@@ -806,7 +818,7 @@ bool IncrFileBackup::doFileBackup()
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, script_dir, false);
+										metadata, script_dir, false, 0);
 								}
 							}
 							else
@@ -867,6 +879,11 @@ bool IncrFileBackup::doFileBackup()
 
 							if(!f_ok)
 							{
+								for(size_t j=0;j<folder_items.size();++j)
+								{
+									++folder_items[j];
+								}
+
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
@@ -875,7 +892,7 @@ bool IncrFileBackup::doFileBackup()
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, script_dir, false);
+										metadata, script_dir, false, 0);
 								}
 							}
 						}
@@ -920,8 +937,13 @@ bool IncrFileBackup::doFileBackup()
 
                     if(download_metadata)
                     {
+						for(size_t j=0;j<folder_items.size();++j)
+						{
+							++folder_items[j];
+						}
+
                         server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                            metadata, script_dir, true);
+                            metadata, script_dir, true, 0);
                     }
 				}
 				++line;

@@ -1103,7 +1103,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 				flags=0;
 
 				std::vector<std::wstring> str_flags;
-				TokenizeMail(getafter(L"/", name), str_flags, L"|");
+				TokenizeMail(getafter(L"/", name), str_flags, L",;");
 
 				for(size_t i=0;i<str_flags.size();++i)
 				{
@@ -1119,6 +1119,10 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int gro
 					else if(flag==L"symlinks_optional")
 					{
 						flags |= EBackupDirFlag_SymlinksOptional;
+					}
+					else if(flag==L"one_filesystem" || flag==L"one_fs")
+					{
+						flags |= EBackupDirFlag_OneFilesystem;
 					}
 				}
 				name.resize(flags_off);
@@ -1489,17 +1493,12 @@ void ClientConnector::updateSettings(const std::string &pData)
 				std::wstring path=trim(def_dirs_toks[i]);
 				std::wstring name;
 				int group = c_group_default;
-				std::wstring first_path = path;
-				if(path.find(L"/")!=std::string::npos)
-				{
-					first_path = getuntil(L"/", path);
-				}
-				if(first_path.find(L"|")!=std::string::npos)
+				if(path.find(L"|")!=std::string::npos)
 				{
 					std::vector<std::wstring> toks;
-					Tokenize(first_path, toks, L"|");
-					name = toks[0];
-					path = toks[1];
+					Tokenize(path, toks, L"|");
+					path = toks[0];
+					name = toks[1];
 					if(toks.size()>2)
 					{
 						group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));

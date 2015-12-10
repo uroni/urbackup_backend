@@ -448,13 +448,14 @@ FileDownload::FileDownload( std::string servername, unsigned int tcpport )
 	fc->setQueueCallback(this);
 }
 
-std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata )
+std::string FileDownload::getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items)
 {
 	for(size_t i=0;i<dlqueueFull.size();++i)
 	{
 		if(!dlqueueFull[i].queued)
 		{
 			metadata=FileClient::MetadataQueue_Data;
+			folder_items=0;
 			return dlqueueFull[i].remotefn;
 		}
 	}

@@ -59,7 +59,7 @@ public:
 		class QueueCallback
 		{
 		public:
-			virtual std::string getQueuedFileFull(MetadataQueue& metadata) = 0;
+			virtual std::string getQueuedFileFull(MetadataQueue& metadata, size_t& folder_items) = 0;
 			virtual void unqueueFileFull(const std::string& fn) = 0;
 			virtual void resetQueueFull() = 0;
 		};
@@ -93,7 +93,7 @@ public:
 		void Shutdown();
 
         //---needs Connection
-        _u32 GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, bool with_timeout=true);
+        _u32 GetFile(std::string remotefn, IFile *file, bool hashed, bool metadata_only, bool with_timeout=true, size_t folder_items=0);
 
 		_u32 GetFileHashAndMetadata(std::string remotefn, std::string& hash, std::string& permissions, int64& filesize, int64& created, int64& modified);
 

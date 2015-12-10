@@ -49,7 +49,7 @@ void CTCPStack::AddData( std::string data )
 	}
 }
 
-size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms)
+size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms, bool flush)
 {
 	char* buffer;
 	size_t msg_off=sizeof(MAX_PACKETSIZE);
@@ -87,7 +87,7 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms)
 	while(currpos<packet_len)
 	{
 		size_t ts=(std::min)((size_t)MAX_PACKET, packet_len-currpos);
-		bool b=p->Write(&buffer[currpos], ts, first_packet ? timeoutms : -1 );
+		bool b=p->Write(&buffer[currpos], ts, first_packet ? timeoutms : -1, flush);
 		first_packet=false;
 		currpos+=ts;
 		if(!b)
@@ -101,14 +101,14 @@ size_t CTCPStack::Send(IPipe* p, char* buf, size_t msglen, int timeoutms)
 	return msglen;
 }
 
-size_t  CTCPStack::Send(IPipe* p, CWData data, int timeoutms)
+size_t  CTCPStack::Send(IPipe* p, CWData data, int timeoutms, bool flush)
 {
-	return Send(p, data.getDataPtr(), data.getDataSize(), timeoutms);
+	return Send(p, data.getDataPtr(), data.getDataSize(), timeoutms, flush);
 }
 
-size_t CTCPStack::Send(IPipe* p, const std::string &msg, int timeoutms)
+size_t CTCPStack::Send(IPipe* p, const std::string &msg, int timeoutms, bool flush)
 {
-	return Send(p, (char*)msg.c_str(), msg.size(), timeoutms);
+	return Send(p, (char*)msg.c_str(), msg.size(), timeoutms, flush);
 }
 
 

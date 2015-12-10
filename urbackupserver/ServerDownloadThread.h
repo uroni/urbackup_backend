@@ -56,7 +56,8 @@ namespace
 			fileclient(EFileClient_Full),
 			queued(false),
 			action(EQueueAction_Fileclient),
-			is_script(false)
+			is_script(false),
+			folder_items(0)
 		{
 		}
 
@@ -73,6 +74,7 @@ namespace
 		FileMetadata metadata;
 		bool is_script;
         bool metadata_only;
+		size_t folder_items;
 	};
 	
 	
@@ -134,7 +136,7 @@ public:
 	void operator()(void);
 
 	void addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path, const std::wstring &os_path,
-        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, bool at_front=false);
+        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items);
 
 	void addToQueueChunked(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
 		const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata, bool is_script);
@@ -170,7 +172,7 @@ public:
 
 	virtual void resetQueueFull();
 
-	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata);
+	virtual std::string getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items);
 
 	virtual void unqueueFileFull(const std::string& fn);
 

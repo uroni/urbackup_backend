@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
 	{
 		std::string arg = argv[i];
 
-		if(arg=="--version" || arg=="-v")
+		if(arg=="--version")
 		{
 			show_version();
 			return 0;
@@ -162,6 +162,8 @@ int main(int argc, char* argv[])
 			false, "info", &loglevels_constraint, cmd);
 
 		TCLAP::SwitchArg daemon_arg("d", "daemon", "Daemonize process", cmd, false);
+
+		TCLAP::SwitchArg internet_only_arg("i", "internet-only", "Only connect to backup servers via internet", cmd, false);
 
 		TCLAP::ValueArg<std::string> pidfile_arg("w", "pidfile",
 			"Save pid of daemon in file",
@@ -209,6 +211,11 @@ int main(int argc, char* argv[])
 		if(no_console_time_arg.getValue())
 		{
 			real_args.push_back("--log_console_no_time");
+		}
+		if(internet_only_arg.getValue())
+		{
+			real_args.push_back("--internet_only_mode");
+			real_args.push_back("true");
 		}
 		return run_real_main(real_args);
 	}

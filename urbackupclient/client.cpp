@@ -1508,7 +1508,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		std::wstring tpath=os_file_prefix(path);
 
 		bool has_error;
-		fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true), fn_filter);
+		fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem)>0), fn_filter);
 
 		if(has_error)
 		{
@@ -1621,7 +1621,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 			std::wstring tpath=os_file_prefix(path);
 
 			bool has_error;
-			fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true), fn_filter);
+			fs_files=convertToFileAndHash(orig_path, getFilesWin(tpath, &has_error, true, true, (index_flags & EBackupDirFlag_OneFilesystem)>0), fn_filter);
 			if(has_error)
 			{
 				if(os_directory_exists(index_root_path))
@@ -1645,7 +1645,7 @@ std::vector<SFileAndHash> IndexThread::getFilesProxy(const std::wstring &orig_pa
 		}
 	}
 #else //_WIN32
-	return tmp;
+	return fs_files;
 #endif
 }
 
@@ -3269,7 +3269,7 @@ void IndexThread::handleHardLinks(const std::wstring& bpath, const std::wstring&
 		}
 
 		bool has_error;
-		std::vector<SFile> files = getFilesWin(os_file_prefix(vsstpath), &has_error, false, false);
+		std::vector<SFile> files = getFilesWin(os_file_prefix(vsstpath), &has_error, false, false, (index_flags & EBackupDirFlag_OneFilesystem)>0);
 		std::vector<std::wstring> changed_files;
 		bool looked_up_changed_files=false;
 
@@ -3656,6 +3656,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 
 	if(index_flags & EBackupDirFlag_FollowSymlinks)
 	{
+		VSSLog(L"Following symbolic link at \""+symlink+L"\" to new backup target \""+target+L"\"", LL_INFO);
 		addSymlinkBackupDir(target);
 		return true;
 	}
