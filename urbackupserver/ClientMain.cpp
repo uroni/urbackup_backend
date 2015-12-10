@@ -1595,7 +1595,7 @@ void ClientMain::checkClientVersion(void)
 		{
 			ScopedProcess process(clientname, sa_update);
 
-			IFile *sigfile=Server->openFile("urbackup/UrBackupUpdate.sig", MODE_READ);
+			IFile *sigfile=Server->openFile("urbackup/UrBackupUpdate.sig2", MODE_READ);
 			if(sigfile==NULL)
 			{
 				ServerLogger::Log(logid, "Error opening sigfile", LL_ERROR);
@@ -2149,6 +2149,7 @@ bool ClientMain::authenticatePubKey()
 	if(!challenge.empty())
 	{
 		std::string signature;
+		std::string signature_ecdsa409k1;
 		std::string privkey = getFile("urbackup/server_ident.priv");
 
 		if(privkey.empty())
@@ -2157,11 +2158,27 @@ bool ClientMain::authenticatePubKey()
 			return false;
 		}
 
-		bool rc = crypto_fak->signData(privkey, challenge, signature);
+		std::string privkey_ecdsa409k1 = getFile("urbackup/server_ident_ecdsa409k1.priv");
+
+		if(privkey_ecdsa409k1.empty())
+		{
+			Server->Log("Cannot read private key urbackup/server_ident_ecdsa409k1.priv", LL_ERROR);
+			return false;
+		}
+
+		bool rc = crypto_fak->signDataDSA(privkey, challenge, signature);
 
 		if(!rc)
 		{
 			Server->Log("Signing challenge failed", LL_ERROR);
+			return false;
+		}
+
+		rc = crypto_fak->signData(privkey_ecdsa409k1, challenge, signature_ecdsa409k1);
+
+		if(!rc)
+		{
+			Server->Log("Signing challenge failed -2", LL_ERROR);
 			return false;
 		}
 
@@ -2173,10 +2190,20 @@ bool ClientMain::authenticatePubKey()
 			return false;
 		}
 
+		std::string pubkey_ecdsa = getFile("urbackup/server_ident_ecdsa409k1.pub");
+
+		if(pubkey.empty())
+		{
+			Server->Log("Reading public key from urbackup/server_ident_ecdsa409k1.pub failed", LL_ERROR);
+			return false;
+		}
+
 		std::string identity = ServerSettings::generateRandomAuthKey(20);
 
 		bool ret = sendClientMessageRetry("SIGNATURE#pubkey="+base64_encode_dash(pubkey)+
+			"&pubkey_ecdsa409k1="+base64_encode_dash(pubkey_ecdsa)+
 			"&signature="+base64_encode_dash(signature)+
+			"&signature_ecdsa409k1="+base64_encode_dash(signature_ecdsa409k1)+
 			"&session_identity="+identity, "ok", L"Error sending server signature to client", 10000, 10, true);
 
 		if(ret)

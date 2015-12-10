@@ -64,7 +64,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 	{
 		if(Server->getServerParameter("restore_mode")=="true" && !ident_ok )
 		{
-			ServerIdentityMgr::addServerIdentity(identity, "");
+			ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
 				tcpstack.Send(pipe, "OK");
 		}
 		else if( ident_ok )
@@ -89,7 +89,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 
 			if( ServerIdentityMgr::numServerIdentities()==0 )
 			{
-				ServerIdentityMgr::addServerIdentity(identity, "");
+				ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
 				tcpstack.Send(pipe, "OK");
 			}
 			else
@@ -158,19 +158,23 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	ParseParamStrHttp(cmd.substr(hashpos+1), &params);
 
 	std::string pubkey = base64_decode_dash(wnarrow(params[L"pubkey"]));
+	std::string pubkey_ecdsa409k1 = base64_decode_dash(wnarrow(params[L"pubkey_ecdsa409k1"]));
 	std::string signature = base64_decode_dash(wnarrow(params[L"signature"]));
+	std::string signature_ecdsa409k1 = base64_decode_dash(wnarrow(params[L"signature_ecdsa409k1"]));
 	std::string session_identity = Server->ConvertToUTF8(params[L"session_identity"]);
 
 	if(!ServerIdentityMgr::hasPublicKey(identity))
 	{
-		ServerIdentityMgr::setPublicKey(identity, pubkey);
+		ServerIdentityMgr::setPublicKeys(identity, SPublicKeys(pubkey, pubkey_ecdsa409k1));
 	}
 
-	pubkey = ServerIdentityMgr::getPublicKey(identity);
+	SPublicKeys pubkeys = ServerIdentityMgr::getPublicKeys(identity);
 	
-	if(crypto_fak->verifyData(pubkey, challenge, signature))
+	if( (!pubkeys.ecdsa409k1_key.empty() && crypto_fak->verifyData(pubkeys.ecdsa409k1_key, challenge, signature_ecdsa409k1))
+		|| (pubkeys.ecdsa409k1_key.empty() && !pubkeys.dsa_key.empty() && crypto_fak->verifyDataDSA(pubkeys.dsa_key, challenge, signature)) )
 	{
 		ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name);
+		ServerIdentityMgr::setPublicKeys(identity, SPublicKeys(pubkey, pubkey_ecdsa409k1));
 		tcpstack.Send(pipe, "ok");
 		challenges.erase(challenge_it);
 	}
@@ -1659,7 +1663,7 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	std::string ident=Server->ConvertToUTF8(params[L"ident"]);
 	if(!ident.empty())
 	{
-		ServerIdentityMgr::addServerIdentity(ident, "");
+		ServerIdentityMgr::addServerIdentity(ident, SPublicKeys());
 		tcpstack.Send(pipe, "OK");
 	}
 	else

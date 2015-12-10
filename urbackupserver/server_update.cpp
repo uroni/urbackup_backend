@@ -57,19 +57,19 @@ void ServerUpdate::update_client()
 	{
 		Server->Log("Downloading signature...", LL_INFO);
 
-		IFile* sig_file = Server->openFile("urbackup/UrBackupUpdate.sig", MODE_WRITE);
+		IFile* sig_file = Server->openFile("urbackup/UrBackupUpdate.sig2", MODE_WRITE);
 		if(sig_file==NULL)
 		{
-			Server->Log("Error opening signature output file urbackup/UrBackupUpdate.sig", LL_ERROR);
+			Server->Log("Error opening signature output file urbackup/UrBackupUpdate.sig2", LL_ERROR);
 			return;
 		}
 		ObjectScope sig_file_scope(sig_file);
 
-		bool b = url_fak->downloadFile(urbackup_update_url+"UrBackupUpdate.sig", sig_file, http_proxy, &errmsg);
+		bool b = url_fak->downloadFile(urbackup_update_url+"UrBackupUpdate.sig2", sig_file, http_proxy, &errmsg);
 
 		if(!b)
 		{
-			Server->Log("Error while downloading update signature from "+urbackup_update_url+"UrBackupUpdate.sig: " + errmsg, LL_ERROR);
+			Server->Log("Error while downloading update signature from "+urbackup_update_url+"UrBackupUpdate.sig2: " + errmsg, LL_ERROR);
 		}
 
 		Server->Log("Getting update file URL...", LL_INFO);

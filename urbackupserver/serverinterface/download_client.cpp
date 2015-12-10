@@ -31,12 +31,12 @@ namespace
 			return false;
 
 #ifdef _WIN32
-		const std::string pubkey_fn="urbackup_dsa.pub";
+		const std::string pubkey_fn="urbackup_ecdsa409k1.pub";
 #else
-		const std::string pubkey_fn="urbackup/urbackup_dsa.pub";
+		const std::string pubkey_fn="urbackup/urbackup_ecdsa409k1.pub";
 #endif
 
-		return crypto_fak->verifyFile(pubkey_fn, "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig");
+		return crypto_fak->verifyFile(pubkey_fn, "urbackup/UrBackupUpdate.exe", "urbackup/UrBackupUpdate.sig2");
 	}
 
 	std::string constructClientSettings(Helper& helper, int clientid, const std::string& clientname)

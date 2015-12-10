@@ -471,7 +471,7 @@ bool ClientConnector::Run(void)
 				{
 					hashdatafile->Seek(0);
 					writeUpdateFile(hashdatafile, "version_new.txt");
-					writeUpdateFile(hashdatafile, "UrBackupUpdate.sig");
+					writeUpdateFile(hashdatafile, "UrBackupUpdate.sig2");
 					writeUpdateFile(hashdatafile, "UrBackupUpdate_untested.exe");
 
 					std::wstring hashdatafile_fn=hashdatafile->getFilenameW();
@@ -486,7 +486,7 @@ bool ClientConnector::Run(void)
 							if(checkHash(getSha512Hash(updatefile)))
 							{
 								Server->destroy(updatefile);
-								if(crypto_fak->verifyFile("urbackup_dsa.pub", "UrBackupUpdate_untested.exe", "UrBackupUpdate.sig"))
+								if(crypto_fak->verifyFile("urbackup_ecdsa409k1.pub", "UrBackupUpdate_untested.exe", "UrBackupUpdate.sig2"))
 								{
 									Server->deleteFile("UrBackupUpdate.exe");
 									moveFile(L"UrBackupUpdate_untested.exe", L"UrBackupUpdate.exe");

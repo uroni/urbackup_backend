@@ -42,7 +42,7 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 	if(!FileExists("urbackup/UrBackupUpdate.exe"))
 		return false;
 
-	if(!FileExists("urbackup/UrBackupUpdate.sig"))
+	if(!FileExists("urbackup/UrBackupUpdate.sig2"))
 		return false;
 
 	if(crypto_fak==NULL)

@@ -65,6 +65,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			std::string key_name=Server->getServerParameter("key_name");
 			CryptoFactory fak;
+			Server->Log("Generating private/public key pair...", LL_INFO);
 			bool b=fak.generatePrivatePublicKeyPair(key_name);
 			if(b)
 			{
@@ -89,6 +90,22 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			else
 			{
 				Server->Log("Signed file sucessfully", LL_INFO);
+			}
+		}
+		else if(crypto_action=="sign_file_dsa")
+		{
+			std::string sign_filename=Server->getServerParameter("sign_filename");
+			std::string keyfile=Server->getServerParameter("keyfile");
+			std::string signature_filename=Server->getServerParameter("signature_filename");
+			CryptoFactory fak;
+			bool b=fak.signFileDSA(keyfile, sign_filename, signature_filename);
+			if(!b)
+			{
+				Server->Log("Signing file failed", LL_INFO);
+			}
+			else
+			{
+				Server->Log("Signed file sucessfully (DSA)", LL_INFO);
 			}
 		}
 		else if(crypto_action=="verify_file")

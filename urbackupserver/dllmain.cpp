@@ -403,10 +403,39 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		writestring(ident, "urbackup/server_ident.key");
 		server_identity=ident;
 	}
+
+	if(FileExists("urbackup/server_ident_ecdsa409k1.pub") && crypto_fak!=NULL)
+	{
+		std::string signature;
+		if(!crypto_fak->signData(getFile("urbackup/server_ident_ecdsa409k1.priv"), "test", signature))
+		{
+			Server->Log("Server ECDSA identity broken. Regenerating...", LL_ERROR);
+			Server->deleteFile("urbackup/server_ident_ecdsa409k1.pub");
+			Server->deleteFile("urbackup/server_ident_ecdsa409k1.priv");
+		}
+	}
+
+	if(!FileExists("urbackup/server_ident_ecdsa409k1.pub") && crypto_fak!=NULL)
+	{
+		Server->Log("Generating Server private/public ECDSA key...", LL_INFO);
+		crypto_fak->generatePrivatePublicKeyPair("urbackup/server_ident_ecdsa409k1");
+	}
+
+	if(FileExists("urbackup/server_ident.pub") && crypto_fak!=NULL)
+	{
+		std::string signature;
+		if(!crypto_fak->signDataDSA(getFile("urbackup/server_ident.priv"), "test", signature))
+		{
+			Server->Log("Server DSA identity broken. Regenerating...", LL_ERROR);
+			Server->deleteFile("urbackup/server_ident.pub");
+			Server->deleteFile("urbackup/server_ident.priv");
+		}
+	}
+
 	if(!FileExists("urbackup/server_ident.pub") && crypto_fak!=NULL)
 	{
-		Server->Log("Generating Server private/public key...", LL_INFO);
-		crypto_fak->generatePrivatePublicKeyPair("urbackup/server_ident");
+		Server->Log("Generating Server private/public DSA key...", LL_INFO);
+		crypto_fak->generatePrivatePublicKeyPairDSA("urbackup/server_ident");
 	}
 	if((server_token=getFile("urbackup/server_token.key")).size()<5)
 	{
