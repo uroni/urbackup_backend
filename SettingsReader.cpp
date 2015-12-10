@@ -62,6 +62,16 @@ float CSettingsReader::getValue(std::string key, float def)
 		return (float)atof(value.c_str());
 }
 
+int64 CSettingsReader::getValue(std::string key, int64 def)
+{
+	std::string value;
+	bool b=getValue(key,&value);
+	if(b==false)
+		return def;
+	else
+		return watoi64(widen(value));
+}
+
 std::wstring CSettingsReader::getValue(std::wstring key,std::wstring def)
 {
 	std::wstring value;
@@ -100,4 +110,14 @@ float CSettingsReader::getValue(std::wstring key, float def)
 		return def;
 	else
 		return (float)atof(wnarrow(value).c_str());
+}
+
+int64 CSettingsReader::getValue(std::wstring key, int64 def)
+{
+	std::wstring value;
+	bool b=getValue(key,&value);
+	if(b==false)
+		return def;
+	else
+		return watoi64(value);
 }

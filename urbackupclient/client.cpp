@@ -3463,24 +3463,39 @@ void IndexThread::writeTokens()
 
 	bool has_server_key=false;
 	std::string curr_key;
+	int64 curr_key_age = 0;
 	for(size_t i=0;i<keys.size();++i)
 	{
 		if(keys[i]==L"key."+widen(starttoken))
 		{
 			has_server_key=true;
 			curr_key=wnarrow(access_keys->getValue(keys[i], std::wstring()));
+			curr_key_age = access_keys->getValue(L"key_age."+widen(starttoken), Server->getTimeSeconds());
 		}
-		access_keys_data+=wnarrow(keys[i])+"="+
-			wnarrow(access_keys->getValue(keys[i], std::wstring()))+"\n";
+		else if(keys[i]!=L"key."+widen(starttoken))
+		{
+			access_keys_data+=wnarrow(keys[i])+"="+
+				wnarrow(access_keys->getValue(keys[i], std::wstring()))+"\n";
+		}
 	}
 
-	if(!has_server_key)
+	bool modified_file = false;
+
+	if(!has_server_key || (Server->getTimeSeconds()-curr_key_age)>7*24*60*60)
 	{
-		curr_key = Server->secureRandomString(30);	
+		curr_key = Server->secureRandomString(30);
+		curr_key_age = Server->getTimeSeconds();
+		modified_file=true;
+	}
 
-		access_keys_data+="key."+starttoken+"="+
-			curr_key+"\n";
+	access_keys_data+="key."+starttoken+"="+
+		curr_key+"\n";
 
+	access_keys_data+="key_age."+starttoken+"="+
+		nconvert(curr_key_age)+"\n";
+
+	if(modified_file)
+	{
 		write_file_only_admin(access_keys_data, "access_keys.properties");
 	}	
 

@@ -324,6 +324,12 @@ bool FileBackup::getTokenFile(FileClient &fc, bool hashed_transfer )
 		access_key != server_settings->getSettings()->client_access_key )
 	{
 		backup_dao->updateOrInsertSetting(clientid, L"client_access_key", widen(access_key));
+
+		if(!server_settings->getSettings()->client_access_key.empty())
+		{
+			backup_dao->deleteUsedAccessTokens(clientid);
+		}
+
 		server_settings->update(true);
 	}
 	

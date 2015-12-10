@@ -2022,6 +2022,69 @@ void ServerBackupDao::setVirtualMainClient(const std::wstring& virtualmain, int6
 	q_setVirtualMainClient->Reset();
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::deleteUsedAccessTokens
+* @sql
+*       DELETE FROM settings_db.access_tokens WHERE clientid=:clientid(int)
+*/
+void ServerBackupDao::deleteUsedAccessTokens(int clientid)
+{
+	if(q_deleteUsedAccessTokens==NULL)
+	{
+		q_deleteUsedAccessTokens=db->Prepare("DELETE FROM settings_db.access_tokens WHERE clientid=?", false);
+	}
+	q_deleteUsedAccessTokens->Bind(clientid);
+	q_deleteUsedAccessTokens->Write();
+	q_deleteUsedAccessTokens->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func int ServerBackupDao::hasUsedAccessToken
+* @return int clientid
+* @sql
+*       SELECT clientid FROM settings_db.access_tokens WHERE tokenhash=:tokenhash(blob)
+*/
+ServerBackupDao::CondInt ServerBackupDao::hasUsedAccessToken(const std::string& tokenhash)
+{
+	if(q_hasUsedAccessToken==NULL)
+	{
+		q_hasUsedAccessToken=db->Prepare("SELECT clientid FROM settings_db.access_tokens WHERE tokenhash=?", false);
+	}
+	q_hasUsedAccessToken->Bind(tokenhash.c_str(), (_u32)tokenhash.size());
+	db_results res=q_hasUsedAccessToken->Read();
+	q_hasUsedAccessToken->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0][L"clientid"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addUsedAccessToken
+* @sql
+*       INSERT INTO settings_db.access_tokens (clientid, tokenhash)
+*		VALUES (:clientid(int), :tokenhash(blob) )
+*/
+void ServerBackupDao::addUsedAccessToken(int clientid, const std::string& tokenhash)
+{
+	if(q_addUsedAccessToken==NULL)
+	{
+		q_addUsedAccessToken=db->Prepare("INSERT INTO settings_db.access_tokens (clientid, tokenhash) VALUES (?, ? )", false);
+	}
+	q_addUsedAccessToken->Bind(clientid);
+	q_addUsedAccessToken->Bind(tokenhash.c_str(), (_u32)tokenhash.size());
+	q_addUsedAccessToken->Write();
+	q_addUsedAccessToken->Reset();
+}
+
+
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -2113,6 +2176,9 @@ void ServerBackupDao::prepareQueries( void )
 	q_setRestoreDone=NULL;
 	q_getFileBackupInfo=NULL;
 	q_setVirtualMainClient=NULL;
+	q_deleteUsedAccessTokens=NULL;
+	q_hasUsedAccessToken=NULL;
+	q_addUsedAccessToken=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2206,6 +2272,9 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_setRestoreDone);
 	db->destroyQuery(q_getFileBackupInfo);
 	db->destroyQuery(q_setVirtualMainClient);
+	db->destroyQuery(q_deleteUsedAccessTokens);
+	db->destroyQuery(q_hasUsedAccessToken);
+	db->destroyQuery(q_addUsedAccessToken);
 }
 
 void ServerBackupDao::commit()

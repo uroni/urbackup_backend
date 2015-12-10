@@ -22,6 +22,11 @@ public:
 
 
 	//@-SQLGenFunctionsBegin
+	struct CondInt
+	{
+		bool exists;
+		int value;
+	};
 	struct CondInt64
 	{
 		bool exists;
@@ -227,6 +232,9 @@ public:
 	void setRestoreDone(int success, int64 restore_id);
 	SFileBackupInfo getFileBackupInfo(int backupid);
 	void setVirtualMainClient(const std::wstring& virtualmain, int64 clientid);
+	void deleteUsedAccessTokens(int clientid);
+	CondInt hasUsedAccessToken(const std::string& tokenhash);
+	void addUsedAccessToken(int clientid, const std::string& tokenhash);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -328,6 +336,9 @@ private:
 	IQuery* q_setRestoreDone;
 	IQuery* q_getFileBackupInfo;
 	IQuery* q_setVirtualMainClient;
+	IQuery* q_deleteUsedAccessTokens;
+	IQuery* q_hasUsedAccessToken;
+	IQuery* q_addUsedAccessToken;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

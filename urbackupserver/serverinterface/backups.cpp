@@ -29,6 +29,7 @@
 #include "../../fileservplugin/IFileServ.h"
 #include "../server_status.h"
 #include "../restore_client.h"
+#include "../dao/ServerBackupDao.h"
 
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
@@ -292,9 +293,22 @@ namespace backupaccess
 
 			if(iter!=GET.end())
 			{
-				std::string decry = crypto_fak->decryptAuthenticatedAES(base64_decode_dash(wnarrow(iter->second)), client_key);
+				std::string bin_input = base64_decode_dash(wnarrow(iter->second));
+				std::string decry = crypto_fak->decryptAuthenticatedAES(bin_input, client_key);
 				if(!decry.empty())
 				{
+					std::string tokenhash = Server->GenerateBinaryMD5(bin_input);
+
+					ServerBackupDao backupdao(db);
+					if(backupdao.hasUsedAccessToken(tokenhash).exists)
+					{
+						return std::string();
+					}
+					else
+					{
+						backupdao.addUsedAccessToken(clientid, tokenhash);
+					}
+
 					return decry;
 				}
 			}
