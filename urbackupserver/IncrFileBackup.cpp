@@ -40,9 +40,9 @@ extern std::string server_token;
 
 const int64 c_readd_size_limit=100*1024;
 
-IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action,
+IncrFileBackup::IncrFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action,
 	int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots )
-	: FileBackup(client_main, clientid, clientname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots), 
+	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, true, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots), 
 	intra_file_diffs(intra_file_diffs), hash_existing_mutex(NULL)
 {
 
@@ -106,7 +106,7 @@ bool IncrFileBackup::doFileBackup()
 
 	bool no_backup_dirs=false;
 	bool connect_fail = false;
-	bool b=request_filelist_construct(resumed_full, resumed_backup, group, true, no_backup_dirs, connect_fail);
+	bool b=request_filelist_construct(resumed_full, resumed_backup, group, true, no_backup_dirs, connect_fail, clientsubname);
 	if(!b)
 	{
 		has_early_error=true;
@@ -393,6 +393,10 @@ bool IncrFileBackup::doFileBackup()
 	size_t skip_dir_completely=0;
 	bool skip_dir_copy_sparse=false;
 	bool script_dir=false;
+	std::stack<std::set<std::wstring> > folder_files;
+	folder_files.push(std::set<std::wstring>());
+	std::vector<size_t> folder_items;
+	folder_items.push_back(0);
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -404,7 +408,12 @@ bool IncrFileBackup::doFileBackup()
 			bool b=list_parser.nextEntry(buffer[i], cf, &extra_params);
 			if(b)
 			{
-				std::wstring osspecific_name=fixFilenameForOS(cf.name);
+				std::wstring osspecific_name;
+
+				if(!cf.isdir || cf.name!=L"..")
+				{
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
+				}
 
 				if(skip_dir_completely>0)
 				{
@@ -417,6 +426,7 @@ bool IncrFileBackup::doFileBackup()
 							{
 								curr_os_path=ExtractFilePath(curr_os_path, L"/");
 								curr_path=ExtractFilePath(curr_path, L"/");
+								folder_files.pop();
 							}
 						}
 						else
@@ -424,6 +434,7 @@ bool IncrFileBackup::doFileBackup()
 							curr_os_path+=L"/"+osspecific_name;
 							curr_path+=L"/"+cf.name;
 							++skip_dir_completely;
+							folder_files.push(std::set<std::wstring>());
 						}
 					}
 					else if(skip_dir_copy_sparse)
@@ -535,6 +546,14 @@ bool IncrFileBackup::doFileBackup()
 
 					if(cf.name!=L"..")
 					{
+						if(indirchange)
+						{
+							for(size_t j=0;j<folder_items.size();++j)
+							{
+								++folder_items[j];
+							}
+						}
+
 						std::wstring orig_curr_path = curr_path;
 						std::wstring orig_curr_os_path = curr_os_path;
 						curr_path+=L"/"+cf.name;
@@ -560,15 +579,11 @@ bool IncrFileBackup::doFileBackup()
 							{
 								skip_dir_completely=1;
 								dir_linked=true;
-								bool curr_has_hashes = false;
 
 								std::wstring src_hashpath = last_backuppath_hashes+local_curr_os_path;
 
-								if(with_hashes)
-								{
-									curr_has_hashes = link_directory_pool(*backup_dao, clientid, backuppath_hashes+local_curr_os_path,
+								bool curr_has_hashes = link_directory_pool(*backup_dao, clientid, backuppath_hashes+local_curr_os_path,
 										src_hashpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled());
-								}
 
 								if(copy_last_file_entries)
 								{
@@ -641,24 +656,39 @@ bool IncrFileBackup::doFileBackup()
 									ServerLogger::Log(logid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
 								}
 							}
-							else if(!write_file_metadata(metadata_fn, client_main, metadata, false) )
+							
+							if(!indirchange && curr_path!=L"/urbackup_backup_scripts")
 							{
-								ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
+								std::wstring srcpath=os_file_prefix(last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn);
+								if(!os_create_hardlink(metadata_fn, srcpath, use_snapshots, NULL))
+								{
+									if(!copy_file(srcpath, metadata_fn))
+									{
+										if(client_main->handle_not_enough_space(metadata_fn))
+										{
+											if(!copy_file(srcpath, metadata_fn))
+											{
+												ServerLogger::Log(logid, L"Cannot copy directory metadata from \""+srcpath+L"\" to \""+metadata_fn+L"\". - " + widen(systemErrorInfo()), LL_ERROR);
+											}
+										}
+										else
+										{
+											ServerLogger::Log(logid, L"Cannot copy directory metadata from \""+srcpath+L"\" to \""+metadata_fn+L"\". - " + widen(systemErrorInfo()), LL_ERROR);
+										}
+									}
+								}
+							}
+							else if(!write_file_metadata(metadata_fn, client_main, metadata, false))
+							{
+								ServerLogger::Log(logid, L"Writing directory metadata to \""+metadata_fn+L"\" failed.", LL_ERROR);
 								c_has_error=true;
 								break;
 							}
-
-                            if(!indirchange && curr_path!=L"/urbackup_backup_scripts")
-							{
-								std::wstring srcpath=last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn;
-								if(!copy_os_metadata(srcpath, backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main))
-								{
-									ServerLogger::Log(logid, L"Error copying OS dependent directory metadata from last backup to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\".", LL_ERROR);
-									c_has_error=true;
-									break;
-								}
-							}
 						}
+						
+						folder_files.push(std::set<std::wstring>());
+						folder_items.push_back(0);
+
 						++depth;
 						if(depth==1)
 						{
@@ -683,8 +713,11 @@ bool IncrFileBackup::doFileBackup()
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"), ExtractFileName(curr_os_path, L"/"),
 								ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
-								metadata, false, true);
+								metadata, false, true, folder_items.back());
 						}
+
+						folder_files.pop();
+						folder_items.pop_back();
 
 						--depth;
 						if(indirchange==true && depth==changelevel)
@@ -724,12 +757,12 @@ bool IncrFileBackup::doFileBackup()
 					}
 
 					bool copy_curr_file_entry=false;
-					bool curr_has_hash = false;
+					bool curr_has_hash = true;
 					bool readd_curr_file_entry_sparse=false;
 					std::string curr_sha2;
 					{
 						std::map<std::wstring, std::wstring>::iterator hash_it = 
-							( (local_hash.get()==NULL)?extra_params.end():extra_params.find(L"sha512") );					
+							( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier_w) );					
 						if(hash_it!=extra_params.end())
 						{
 							curr_sha2 = base64_decode_dash(wnarrow(hash_it->second));
@@ -786,6 +819,11 @@ bool IncrFileBackup::doFileBackup()
 						{
 							if(!r_offline || hasChange(line, modified_inplace_ids))
 							{
+								for(size_t j=0;j<folder_items.size();++j)
+								{
+									++folder_items[j];
+								}
+
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
@@ -794,7 +832,7 @@ bool IncrFileBackup::doFileBackup()
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, script_dir, false);
+										metadata, script_dir, false, 0);
 								}
 							}
 							else
@@ -817,8 +855,8 @@ bool IncrFileBackup::doFileBackup()
 						{
 							ServerLogger::Log(logid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Hardlink limit was reached. Copying file...", LL_DEBUG);
 							copyFile(srcpath, backuppath+local_curr_os_path,
-								with_hashes?(last_backuppath_hashes+local_curr_os_path):std::wstring(),
-								with_hashes?(backuppath_hashes+local_curr_os_path):std::wstring(),
+								last_backuppath_hashes+local_curr_os_path,
+								backuppath_hashes+local_curr_os_path,
 								metadata);
 							f_ok=true;
 							copied_hashes=true;
@@ -855,6 +893,11 @@ bool IncrFileBackup::doFileBackup()
 
 							if(!f_ok)
 							{
+								for(size_t j=0;j<folder_items.size();++j)
+								{
+									++folder_items[j];
+								}
+
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
@@ -863,7 +906,7 @@ bool IncrFileBackup::doFileBackup()
 								else
 								{
 									server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-										metadata, script_dir, false);
+										metadata, script_dir, false, 0);
 								}
 							}
 						}
@@ -872,17 +915,16 @@ bool IncrFileBackup::doFileBackup()
 							copy_curr_file_entry=copy_last_file_entries;						
 							readd_curr_file_entry_sparse = readd_file_entries_sparse;
 
-							if(with_hashes && !copied_hashes)
+							if(!copied_hashes)
 							{
 								curr_has_hash = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, NULL);
 							}
 						}
 					}
-					else
+					else //use_snapshot
 					{
 						copy_curr_file_entry=copy_last_file_entries;
 						readd_curr_file_entry_sparse = readd_file_entries_sparse;
-						curr_has_hash = with_hashes;
 					}
 
 					if(copy_curr_file_entry)
@@ -908,8 +950,13 @@ bool IncrFileBackup::doFileBackup()
 
                     if(download_metadata && client_main->getProtocolVersions().file_meta>0)
                     {
+						for(size_t j=0;j<folder_items.size();++j)
+						{
+							++folder_items[j];
+						}
+
                         server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                            metadata, script_dir, true);
+                            metadata, script_dir, true, 0);
                     }
 				}
 				++line;
@@ -1056,6 +1103,8 @@ bool IncrFileBackup::doFileBackup()
 		{
 			std::wstring dst_file=widen(clientlistName(group, true));
 
+			FileIndex::flush();
+
 			db->BeginWriteTransaction();
 			b=os_rename_file(dst_file, widen(clientlistName(group)));
 			if(b)
@@ -1116,6 +1165,9 @@ bool IncrFileBackup::doFileBackup()
 	else if(!c_has_error && !disk_error)
 	{
 		ServerLogger::Log(logid, "Client disconnected while backing up. Copying partial file...", LL_DEBUG);
+
+		FileIndex::flush();
+
 		db->BeginWriteTransaction();
 		moveFile(widen(clientlistName(group, true)), widen(clientlistName(group, false)));
 		backup_dao->setFileBackupDone(backupid);
@@ -1224,6 +1276,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 	std::wstring curr_path=snapshot_path;
 	std::wstring curr_os_path=snapshot_path;
 	bool curr_dir_exists=true;
+	std::stack<std::set<std::wstring> > folder_files;
+	folder_files.push(std::set<std::wstring>());
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -1235,6 +1289,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 				{
 					if(curr_file.name==L"..")
 					{
+						folder_files.pop();
 						curr_path=ExtractFilePath(curr_path, L"/");
 						curr_os_path=ExtractFilePath(curr_os_path, L"/");
 						if(!curr_dir_exists)
@@ -1244,9 +1299,15 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 					}
 				}
 
-				if( hasChange(line, deleted_ids) )
+				std::wstring osspecific_name;
+
+				if(!curr_file.isdir || curr_file.name!=L"..")
 				{
-					std::wstring osspecific_name=fixFilenameForOS(curr_file.name);
+					osspecific_name = fixFilenameForOS(curr_file.name, folder_files.top(), curr_path);
+				}
+
+				if( hasChange(line, deleted_ids) )
+				{					
 					std::wstring curr_fn=convertToOSPathFromFileClient(curr_os_path+os_file_sep()+osspecific_name);
 					if(curr_file.isdir)
 					{
@@ -1265,6 +1326,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 						curr_path+=os_file_sep()+curr_file.name;
 						curr_os_path+=os_file_sep()+osspecific_name;
 						curr_dir_exists=false;
+						folder_files.push(std::set<std::wstring>());
 					}
 					else
 					{
@@ -1294,7 +1356,8 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 				else if( curr_file.isdir && curr_file.name!=L".." )
 				{
 					curr_path+=os_file_sep()+curr_file.name;
-					curr_os_path+=os_file_sep()+fixFilenameForOS(curr_file.name);
+					curr_os_path+=os_file_sep()+osspecific_name;
+					folder_files.push(std::set<std::wstring>());
 				}
 				++line;
 			}
@@ -1406,7 +1469,7 @@ bool IncrFileBackup::doFullBackup()
 
 	ServerStatus::stopProcess(clientname, status_id);
 
-	FullFileBackup full_backup(client_main, clientid, clientname, LogAction_NoLogging, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
+	FullFileBackup full_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots);
 	full_backup();
 
 	disk_error = full_backup.hasDiskError();

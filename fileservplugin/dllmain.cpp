@@ -27,7 +27,17 @@
 #define DEF_SERVER
 #include "../Interface/Server.h"
 
-IServer *Server=NULL;
+#ifndef STATIC_PLUGIN
+IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_fileservplugin
+#define UnloadActions UnloadActions_fileservplugin
+#endif
+
 
 #include "pluginmgr.h"
 #include "FileServ.h"
@@ -78,3 +88,10 @@ DLLEXPORT void UnloadActions(void)
 		FileServ::destroy_mutex();
 	}
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 0);
+}
+#endif

@@ -118,4 +118,14 @@ void File::Close()
 	fi.close();
 }
 
+bool File::PunchHole( _i64 spos, _i64 size )
+{
+	return false;
+}
+
+bool File::Sync()
+{
+	return false;
+}
+
 #endif

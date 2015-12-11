@@ -25,8 +25,7 @@ const int ClientDAO::c_is_group = 0;
 const int ClientDAO::c_is_user = 1;
 const int ClientDAO::c_is_system_user = 2;
 
-ClientDAO::ClientDAO(IDatabase *pDB, bool with_files_tmp)
-	: with_files_tmp(with_files_tmp)
+ClientDAO::ClientDAO(IDatabase *pDB)
 {
 	db=pDB;
 	prepareQueries();
@@ -40,16 +39,7 @@ ClientDAO::~ClientDAO()
 void ClientDAO::prepareQueries()
 {
 	q_get_files=db->Prepare("SELECT data,num FROM files WHERE name=?", false);
-
-	if(with_files_tmp)
-	{
-		q_add_files=db->Prepare("INSERT INTO files_tmp (name, num, data) VALUES (?,?,?)", false);
-	}
-	else
-	{
-		q_add_files=NULL;
-	}
-	
+	q_add_files=db->Prepare("INSERT INTO files (name, num, data) VALUES (?,?,?)", false);
 	q_get_dirs=db->Prepare("SELECT name, path, id, optional, tgroup, symlinked FROM backupdirs", false);
 	q_remove_all=db->Prepare("DELETE FROM files", false);
 	q_get_changed_dirs=db->Prepare("SELECT id, name FROM mdirs WHERE name GLOB ? UNION SELECT id, name FROM mdirs_backup WHERE name GLOB ?", false);
@@ -61,17 +51,6 @@ void ClientDAO::prepareQueries()
 	q_remove_shadowcopies=db->Prepare("DELETE FROM shadowcopies WHERE id=?", false);
 	q_save_changed_dirs=db->Prepare("INSERT OR REPLACE INTO mdirs_backup SELECT id, name FROM mdirs WHERE name GLOB ?", false);
 	q_delete_saved_changed_dirs=db->Prepare("DELETE FROM mdirs_backup", false);
-	if(with_files_tmp)
-	{
-		q_copy_from_tmp_files=db->Prepare("INSERT INTO files (num, data, name) SELECT num, data, name FROM files_tmp", false);
-		q_delete_tmp_files=db->Prepare("DELETE FROM files_tmp", false);
-	}
-	else
-	{
-		q_copy_from_tmp_files=NULL;
-		q_delete_tmp_files=NULL;
-	}
-	
 	q_has_changed_gap=db->Prepare("SELECT name FROM mdirs WHERE name GLOB '##-GAP-##*'", false);
 	q_get_del_dirs=db->Prepare("SELECT name FROM del_dirs WHERE name GLOB ? UNION SELECT name FROM del_dirs_backup WHERE name GLOB ?", false);
 	q_del_del_dirs=db->Prepare("DELETE FROM del_dirs WHERE name GLOB ?", false);
@@ -101,8 +80,6 @@ void ClientDAO::destroyQueries(void)
 	db->destroyQuery(q_remove_shadowcopies);
 	db->destroyQuery(q_save_changed_dirs);
 	db->destroyQuery(q_delete_saved_changed_dirs);
-	db->destroyQuery(q_copy_from_tmp_files);
-	db->destroyQuery(q_delete_tmp_files);
 	db->destroyQuery(q_has_changed_gap);
 	db->destroyQuery(q_get_del_dirs);
 	db->destroyQuery(q_del_del_dirs);
@@ -294,6 +271,18 @@ char * constructData(const std::vector<SFileAndHash> &data, size_t &datasize)
 	return buffer;
 }
 
+std::string guidToString( GUID guid )
+{
+	return bytesToHex(reinterpret_cast<unsigned char*>(&guid), sizeof(guid));
+}
+
+GUID randomGuid()
+{
+	GUID ret;
+	Server->secureRandomFill(reinterpret_cast<char*>(&ret), sizeof(ret));
+	return ret;
+}
+
 void ClientDAO::addFiles(std::wstring path, const std::vector<SFileAndHash> &data)
 {
 	size_t ds;
@@ -342,7 +331,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.id=watoi(res[i][L"id"]);
 		dir.tname=res[i][L"name"];
 		dir.path=res[i][L"path"];
-		dir.optional=(res[i][L"optional"]==L"1");
+		dir.flags=watoi(res[i][L"flags"]);
 		dir.group=watoi(res[i][L"tgroup"]);
 		dir.symlinked=(res[i][L"symlinked"]==L"1");
 		dir.symlinked_confirmed=false;
@@ -475,14 +464,6 @@ void ClientDAO::deleteSavedChangedDirs(void)
 {
 	q_delete_saved_changed_dirs->Write();
 	q_delete_saved_changed_dirs->Reset();
-}
-
-void ClientDAO::copyFromTmpFiles(void)
-{
-	q_copy_from_tmp_files->Write();
-	q_copy_from_tmp_files->Reset();
-	q_delete_tmp_files->Write();
-	q_delete_tmp_files->Reset();
 }
 
 bool ClientDAO::hasChangedGap(void)
@@ -689,14 +670,14 @@ std::vector<ClientDAO::SToken> ClientDAO::getFileAccessTokens(void)
 
 /**
 * @-SQLGenAccess
-* @func int ClientDAO::getFileAccessTokenId2Alts
-* @return int id
+* @func int64 ClientDAO::getFileAccessTokenId2Alts
+* @return int64 id
 * @sql
 *    SELECT id
 *    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
 *								  (is_user = :is_user_alt1(int) OR is_user = :is_user_alt2(int))
 */
-ClientDAO::CondInt ClientDAO::getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2)
+ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2)
 {
 	if(q_getFileAccessTokenId2Alts==NULL)
 	{
@@ -707,25 +688,25 @@ ClientDAO::CondInt ClientDAO::getFileAccessTokenId2Alts(const std::wstring& acco
 	q_getFileAccessTokenId2Alts->Bind(is_user_alt2);
 	db_results res=q_getFileAccessTokenId2Alts->Read();
 	q_getFileAccessTokenId2Alts->Reset();
-	CondInt ret = { false, 0 };
+	CondInt64 ret = { false, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi(res[0][L"id"]);
+		ret.value=watoi64(res[0][L"id"]);
 	}
 	return ret;
 }
 
 /**
 * @-SQLGenAccess
-* @func int ClientDAO::getFileAccessTokenId
-* @return int id
+* @func int64 ClientDAO::getFileAccessTokenId
+* @return int64 id
 * @sql
 *    SELECT id
 *    FROM fileaccess_tokens WHERE accountname = :accountname(string) AND
 *								  is_user = :is_user(int)
 */
-ClientDAO::CondInt ClientDAO::getFileAccessTokenId(const std::wstring& accountname, int is_user)
+ClientDAO::CondInt64 ClientDAO::getFileAccessTokenId(const std::wstring& accountname, int is_user)
 {
 	if(q_getFileAccessTokenId==NULL)
 	{
@@ -735,11 +716,11 @@ ClientDAO::CondInt ClientDAO::getFileAccessTokenId(const std::wstring& accountna
 	q_getFileAccessTokenId->Bind(is_user);
 	db_results res=q_getFileAccessTokenId->Read();
 	q_getFileAccessTokenId->Reset();
-	CondInt ret = { false, 0 };
+	CondInt64 ret = { false, 0 };
 	if(!res.empty())
 	{
 		ret.exists=true;
-		ret.value=watoi(res[0][L"id"]);
+		ret.value=watoi64(res[0][L"id"]);
 	}
 	return ret;
 }
@@ -751,9 +732,9 @@ ClientDAO::CondInt ClientDAO::getFileAccessTokenId(const std::wstring& accountna
 *    INSERT OR REPLACE INTO token_group_memberships
 *          (uid, gid)
 *      VALUES
-*           (:uid(int), (SELECT id FROM fileaccess_tokens WHERE accountname = :accountname(string) AND is_user=0) )
+*           (:uid(int64), (SELECT id FROM fileaccess_tokens WHERE accountname = :accountname(string) AND is_user=0) )
 */
-void ClientDAO::updateGroupMembership(int uid, const std::wstring& accountname)
+void ClientDAO::updateGroupMembership(int64 uid, const std::wstring& accountname)
 {
 	if(q_updateGroupMembership==NULL)
 	{
@@ -799,10 +780,10 @@ std::vector<int> ClientDAO::getGroupMembership(int uid)
 *    INSERT INTO backupdirs
 *		(name, path, server_default, optional, tgroup, symlinked)
 *    VALUES
-*       (:name(string), :path(string), :server_default(int), :optional(int), :tgroup(int),
+*       (:name(string), :path(string), :server_default(int), :flags(int), :tgroup(int),
 *        :symlinked(int) )
 **/
-void ClientDAO::addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int optional, int tgroup, int symlinked)
+void ClientDAO::addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int flags, int tgroup, int symlinked)
 {
 	if(q_addBackupDir==NULL)
 	{
@@ -811,7 +792,7 @@ void ClientDAO::addBackupDir(const std::wstring& name, const std::wstring& path,
 	q_addBackupDir->Bind(name);
 	q_addBackupDir->Bind(path);
 	q_addBackupDir->Bind(server_default);
-	q_addBackupDir->Bind(optional);
+	q_addBackupDir->Bind(flags);
 	q_addBackupDir->Bind(tgroup);
 	q_addBackupDir->Bind(symlinked);
 	q_addBackupDir->Write();

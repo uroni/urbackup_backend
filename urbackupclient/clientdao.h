@@ -24,12 +24,24 @@ typedef struct _GUID {
 #endif
 #endif
 
+std::string guidToString(GUID guid);
+GUID randomGuid();
+
+enum EBackupDirFlag
+{
+	EBackupDirFlag_None = 0,
+	EBackupDirFlag_Optional = 1,
+	EBackupDirFlag_FollowSymlinks = 2,
+	EBackupDirFlag_SymlinksOptional = 4,
+	EBackupDirFlag_OneFilesystem = 8
+};
+
 struct SBackupDir
 {
 	int id;
 	std::wstring tname;
 	std::wstring path;
-	bool optional;
+	int flags;
 	int group;
 	bool symlinked;
 	bool symlinked_confirmed;
@@ -82,7 +94,7 @@ struct SFileAndHash
 class ClientDAO
 {
 public:
-	ClientDAO(IDatabase *pDB, bool with_files_tmp=true);
+	ClientDAO(IDatabase *pDB);
 	~ClientDAO();
 	void prepareQueries();
 	void destroyQueries(void);
@@ -98,8 +110,6 @@ public:
 	bool hasFiles(std::wstring path);
 	
 	void removeAllFiles(void);
-
-	void copyFromTmpFiles(void);
 
 	std::vector<SBackupDir> getBackupDirs(void);
 
@@ -137,10 +147,10 @@ public:
 	static const int c_is_system_user;
 
 	//@-SQLGenFunctionsBegin
-	struct CondInt
+	struct CondInt64
 	{
 		bool exists;
-		int value;
+		int64 value;
 	};
 	struct SToken
 	{
@@ -154,11 +164,11 @@ public:
 	void updateShadowCopyStarttime(int id);
 	void updateFileAccessToken(const std::wstring& accountname, const std::wstring& token, int is_user);
 	std::vector<SToken> getFileAccessTokens(void);
-	CondInt getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2);
-	CondInt getFileAccessTokenId(const std::wstring& accountname, int is_user);
-	void updateGroupMembership(int uid, const std::wstring& accountname);
+	CondInt64 getFileAccessTokenId2Alts(const std::wstring& accountname, int is_user_alt1, int is_user_alt2);
+	CondInt64 getFileAccessTokenId(const std::wstring& accountname, int is_user);
+	void updateGroupMembership(int64 uid, const std::wstring& accountname);
 	std::vector<int> getGroupMembership(int uid);
-	void addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int optional, int tgroup, int symlinked);
+	void addBackupDir(const std::wstring& name, const std::wstring& path, int server_default, int flags, int tgroup, int symlinked);
 	void delBackupDir(int64 id);
 	//@-SQLGenFunctionsEnd
 
@@ -180,8 +190,6 @@ private:
 	IQuery *q_remove_shadowcopies;
 	IQuery *q_save_changed_dirs;
 	IQuery *q_delete_saved_changed_dirs;
-	IQuery *q_copy_from_tmp_files;
-	IQuery *q_delete_tmp_files;
 	IQuery *q_has_changed_gap;
 	IQuery *q_get_del_dirs;
 	IQuery *q_del_del_dirs;

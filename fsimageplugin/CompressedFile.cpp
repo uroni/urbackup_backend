@@ -21,10 +21,11 @@
 #include <assert.h>
 #include <memory>
 #include <algorithm>
+#include <memory.h>
 
-#define MINIZ_NO_STDIO
-#define MINIZ_NO_TIME
-#define MINIZ_NO_ARCHIVE_APIS
+#ifndef _WIN32
+#define MINIZ_HEADER_FILE_ONLY
+#endif
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.c"
 
@@ -155,6 +156,13 @@ void CompressedFile::readIndex(bool *has_error)
 	}
 
 	size_t nOffsetItems = static_cast<size_t>(filesize/blocksize + ((filesize%blocksize!=0)?1:0));
+
+	if(nOffsetItems==0)
+	{
+		Server->Log("Compressed file contains nothing", LL_ERROR);
+		error=true;
+		return;
+	}
 
 	blockOffsets.resize(nOffsetItems);
 
@@ -519,6 +527,12 @@ bool CompressedFile::finish()
 		writeHeader();
 	}
 
+	if(!uncompressedFile->Sync())
+	{
+		error=true;
+		Server->Log("Error syncing uncompressed file to disk", LL_ERROR);
+	}
+
 	if(!error)
 	{
 		finished = true;
@@ -587,4 +601,14 @@ _u32 CompressedFile::writeToFile(const char* buffer, _u32 bsize)
 bool CompressedFile::hasNoMagic()
 {
 	return noMagic;
+}
+
+bool CompressedFile::PunchHole( _i64 spos, _i64 size )
+{
+	return false;
+}
+
+bool CompressedFile::Sync()
+{
+	return finish();
 }

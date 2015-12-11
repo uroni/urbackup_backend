@@ -408,6 +408,7 @@ void ServerCleanupThread::do_remove_unknown(void)
 				Server->Log(L"Path for file backup [id="+convert(res_file_backups[j].id)+L" path="+res_file_backups[j].path+L" clientname="+clientname+L"] does not exist. Deleting it from the database.", LL_WARNING);
 
 				removeFileBackupSql(backupid);
+
 			}
 		}
 
@@ -740,20 +741,13 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 		deleted_size_bytes=getImageSize(backupid);
 	}
 
-	if(remove_associated)
+
+	if(update_stat)
 	{
-		std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
-		for(size_t i=0;i<assoc.size();++i)
-		{
-			int64 is=getImageSize(assoc[i]);
-			if(is>0) deleted_size_bytes+=is;
-			removeImage(assoc[i], settings, false, force_remove, remove_associated, remove_references);
-		}
+		deleted_size_bytes=getImageSize(backupid);
 	}
 
-	bool ret=true;
-
-	ServerStatus::updateActive();
+	bool ret = true;
 
 	if(remove_references)
 	{
@@ -785,6 +779,19 @@ bool ServerCleanupThread::removeImage(int backupid, ServerSettings* settings,
 			return false;
 		}
 	}
+
+	if(remove_associated)
+	{
+		std::vector<int> assoc=cleanupdao->getAssocImageBackups(backupid);
+		for(size_t i=0;i<assoc.size();++i)
+		{
+			int64 is=getImageSize(assoc[i]);
+			if(is>0) deleted_size_bytes+=is;
+			removeImage(assoc[i], settings, false, force_remove, remove_associated, remove_references);
+		}
+	}
+
+	ServerStatus::updateActive();
 
 	ServerCleanupDao::CondString res=cleanupdao->getImagePath(backupid);
 	if(res.exists)
@@ -1139,6 +1146,7 @@ bool ServerCleanupThread::deleteFileBackup(const std::wstring &backupfolder, int
 	if(del || force_remove)
 	{
 		removeFileBackupSql(backupid);
+
 
 	}
 
@@ -1719,29 +1727,29 @@ void ServerCleanupThread::rewrite_history(const std::wstring& back_start, const 
 		db->Write("PRAGMA foreign_keys = 0");
 	}
 
-	db->DetachDBs();
-	db->BeginWriteTransaction();
-	Server->Log("Deleting history...", LL_DEBUG);
-	cleanupdao->deleteClientHistoryIds(back_start, back_stop);
-	cleanupdao->deleteClientHistoryItems(back_start, back_stop);
-
-	Server->Log("Writing history...", LL_DEBUG);
-	for(size_t i=0;i<daily_history.size();++i)
 	{
-		const ServerCleanupDao::SHistItem& hist_item = daily_history[i];
-		cleanupdao->insertClientHistoryId(hist_item.max_created);
-		int64 hist_id = db->getLastInsertID();
-		cleanupdao->insertClientHistoryItem(hist_item.id,
-			hist_item.name, hist_item.lastbackup, hist_item.lastseen,
-			hist_item.lastbackup_image,
-			hist_item.bytes_used_files, hist_item.bytes_used_images,
-			hist_item.max_created,
-			hist_id);
+		DBScopedDetach detachDbs(db);
+		DBScopedWriteTransaction transaction(db);
+
+		Server->Log("Deleting history...", LL_DEBUG);
+		cleanupdao->deleteClientHistoryIds(back_start, back_stop);
+		cleanupdao->deleteClientHistoryItems(back_start, back_stop);
+
+		Server->Log("Writing history...", LL_DEBUG);
+		for(size_t i=0;i<daily_history.size();++i)
+		{
+			const ServerCleanupDao::SHistItem& hist_item = daily_history[i];
+			cleanupdao->insertClientHistoryId(hist_item.max_created);
+			int64 hist_id = db->getLastInsertID();
+			cleanupdao->insertClientHistoryItem(hist_item.id,
+				hist_item.name, hist_item.lastbackup, hist_item.lastseen,
+				hist_item.lastbackup_image,
+				hist_item.bytes_used_files, hist_item.bytes_used_images,
+				hist_item.max_created,
+				hist_id);
+		}
 	}
-
-	db->EndTransaction();
-	db->AttachDBs();
-
+	
 	if(db->getEngineName()=="sqlite" &&
 		!foreign_keys.empty() )
 	{

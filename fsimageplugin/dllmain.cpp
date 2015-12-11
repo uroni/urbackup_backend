@@ -28,14 +28,28 @@
 #include <stdio.h>
 #include <string>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
+
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_fsimageplugin
+#define UnloadActions UnloadActions_fsimageplugin
+#endif
 
 #include "../Interface/Action.h"
 #include "../Interface/File.h"
 #include "../stringtools.h"
 #include "../urbackupcommon/sha2/sha2.h"
+#include "../urbackupcommon/mbrdata.h"
 
 #include <stdlib.h>
 
@@ -81,14 +95,16 @@ namespace
 
 		if(findextension(fn)==L"vhdz")
 		{
-			VHDFile vhdfile(fn, true, 0);
+			std::auto_ptr<VHDFile> vhdfile(new VHDFile(fn, true, 0));
 
-			if(vhdfile.isOpen() && vhdfile.getParent()!=NULL)
+			if(vhdfile->isOpen() && vhdfile->getParent()!=NULL)
 			{
-				if(vhdfile.isCompressed())
+				if(vhdfile->isCompressed())
 				{
-					Server->Log("Decompressing parent VHD \""+vhdfile.getParent()->getFilename()+"\"...", LL_INFO);
-					bool b = decompress_vhd(vhdfile.getParent()->getFilenameW(), vhdfile.getParent()->getFilenameW());
+					std::wstring parent_fn = vhdfile->getParent()->getFilenameW();
+					vhdfile.reset();
+					Server->Log(L"Decompressing parent VHD \""+parent_fn+L"\"...", LL_INFO);
+					bool b = decompress_vhd(parent_fn, parent_fn);
 
 					if(!b)
 					{
@@ -178,6 +194,247 @@ namespace
 			return NULL;
 		}
 	}
+	
+	struct partition
+	{
+		unsigned char boot_flag;       
+		unsigned char chs_begin[3];
+		unsigned char sys_type;
+		unsigned char chs_end[3];
+		unsigned int start_sector;
+		unsigned int nr_sector;
+	};
+
+	void show_progress(int64 pos, int64 max)
+	{
+		static int count=0;
+		++count;
+		if(count%1000==0)
+		{
+			static int lastpc=-1;
+
+			int currentpc = static_cast<int>(static_cast<float>(pos)/max*100.f+0.5f);
+			if(currentpc!=lastpc)
+			{
+				lastpc=currentpc;
+				Server->Log(L"Assembling... "+convert(currentpc)+L"%", LL_INFO);
+			}
+		}
+	}
+
+	bool assemble_vhd(const std::vector<std::wstring>& fn, const std::wstring& output)
+	{
+		//This function leaks currently. Do exit program after function!
+
+		if(fn.empty())
+		{
+			Server->Log("No input VHD", LL_ERROR);
+			return false;
+		}
+
+		std::vector<SMBRData> mbrdatas;
+
+		for(size_t i=0;i<fn.size();++i)
+		{
+			std::auto_ptr<IFile> f(Server->openFile(fn[i]+L".mbr", MODE_READ));
+			if(f.get()==NULL)
+			{
+				Server->Log(L"Could not open MBR file "+fn[i]+L".mbr", LL_ERROR);
+				exit(1);
+			}
+			size_t fsize=(size_t)f->Size();
+			std::vector<char> buf;
+			buf.resize(fsize);
+			f->Read(buf.data(), (_u32)fsize);
+
+			CRData mbr(buf.data(), fsize);
+			SMBRData mbrdata(mbr);
+			if(mbrdata.hasError())
+			{
+				Server->Log("Error while parsing MBR data", LL_ERROR);
+				return false;
+			}
+
+			for(size_t j=0;j<mbrdatas.size();++j)
+			{
+				if(mbrdatas[j].partition_number==mbrdata.partition_number)
+				{
+					Server->Log(L"Volume "+mbrdatas[j].volume_name+L" ("+
+						fn[j]+L") has the same partition number as the volume "+mbrdata.volume_name+
+						L" ("+fn[i]+L"). Please make sure you only select volumes from one device.", LL_ERROR);
+					return false;
+				}
+			}
+
+			mbrdatas.push_back(mbrdata);
+		}
+
+		std::string mbr = mbrdatas[0].mbr_data;
+
+		partition* partitions = reinterpret_cast<partition*>(&mbr[446]);
+
+		std::string skip_s=Server->getServerParameter("skip");
+		int skip=1024*512;
+		if(!skip_s.empty())
+		{
+			skip=atoi(skip_s.c_str());
+		}
+
+		
+		std::vector<IFile*> input_files;
+		std::vector<IFilesystem*> input_fs;
+
+		input_files.resize(fn.size());
+		input_fs.resize(fn.size());
+
+		int64 total_copy_bytes = 0;
+		const int64 c_sector_size=512;
+		int64 total_size = 0;
+		int64 total_written = 0;
+
+		for(size_t i=0;i<fn.size();++i)
+		{
+			VHDFile* in(new VHDFile(fn[i], true, 0));
+			if(!in->isOpen())
+			{
+				Server->Log(L"Error opening VHD-File \""+fn[i]+L"\"", LL_ERROR);
+				return false;
+			}
+
+			input_files[i] = new FileWrapper(in, skip);
+
+			FSNTFS *ntfs = new FSNTFS(input_files[i], false, false);
+
+			if(!ntfs->hasError())
+			{
+				input_fs[i]=ntfs;
+
+				total_copy_bytes+=ntfs->calculateUsedSpace();
+			}
+			else
+			{
+				Server->Log(L"Volume "+mbrdatas[i].volume_name+L" not an NTFS volume. Copying all blocks...", LL_WARNING);
+				total_copy_bytes+=input_files[i]->Size();
+			}
+
+			partition* cpart = partitions + (mbrdatas[i].partition_number-1);
+
+			/*unsigned char chs_expected[3] = { 0xfe, 0xff, 0xff };
+			if(memcmp(cpart->chs_begin, chs_expected, 3)!=0
+				|| memcmp(cpart->chs_end, chs_expected,3)!=0)
+			{
+				Server->Log(L"MBR partition of Volume "+mbrdatas[i].volume_name+L" does not use LBA addressing scheme", LL_ERROR);
+				return false;
+			}*/
+
+			cpart->start_sector=little_endian(cpart->start_sector);
+			cpart->nr_sector=little_endian(cpart->nr_sector);
+
+			total_size = (std::max)(total_size, cpart->start_sector*c_sector_size + cpart->nr_sector*c_sector_size);
+		}
+
+		VHDFile vhdout(output, false, total_size, 2*1024*1024, true, false);
+		if(!vhdout.isOpen())
+		{
+			Server->Log(L"Error opening output VHD-File \""+output+L"\"", LL_ERROR);
+			return false;
+		}
+
+		int64 curr_pos=0;
+
+		vhdout.Seek(0);
+
+		if(vhdout.Write(mbr.data(), static_cast<_u32>(mbr.size()))!=static_cast<_u32>(mbr.size()))
+		{
+			Server->Log("Error writing MBR", LL_ERROR);
+			return false;
+		}
+
+		for(size_t i=0;i<fn.size();++i)
+		{
+			Server->Log(L"Writing "+fn[i]+L" into output VHD...");
+
+			partition* cpart = partitions + (mbrdatas[i].partition_number-1);
+			int64 out_pos = cpart->start_sector*c_sector_size;
+			int64 max_pos = out_pos + cpart->nr_sector*c_sector_size;
+
+			if(input_fs[i]!=NULL)
+			{
+				Server->Log(L"Optimized by only writing used NTFS sectors...");
+
+				int64 blocksize = input_fs[i]->getBlocksize();
+				int64 numblocks = input_fs[i]->getSize()/blocksize;
+
+				for(int64 block=0;block<numblocks;++block)
+				{
+					char* buf = input_fs[i]->readBlock(block);
+					if(buf!=NULL)
+					{
+						fs_buffer fsb(input_fs[i], buf);
+
+						vhdout.Seek(out_pos);
+						if(vhdout.Write(buf, static_cast<_u32>(blocksize))!=static_cast<_u32>(blocksize))
+						{
+							Server->Log("Error writing to VHD output file", LL_ERROR);
+							return false;
+						}
+					}					
+					
+					out_pos+=blocksize;
+
+					if(out_pos>max_pos)
+					{
+						Server->Log("Trying to write beyon partition", LL_ERROR);
+						return false;
+					}
+
+
+					total_written+=blocksize;
+					show_progress(total_written, total_size);
+				}
+			}
+			else
+			{
+				std::vector<char> buf;
+				buf.resize(32768);
+
+				vhdout.Seek(out_pos);
+
+				if(out_pos+input_files[i]->Size()>max_pos)
+				{
+					Server->Log("Trying to write beyond partition (2)", LL_ERROR);
+					return false;
+				}
+
+				input_files[i]->Seek(0);
+
+				for(int64 pos=0, size=input_files[i]->Size();pos<size;)
+				{
+					int64 toread = (std::min)(static_cast<int64>(buf.size()), size-pos);
+
+					_u32 read = input_files[i]->Read(buf.data(), static_cast<_u32>(toread));
+
+					if(read!=toread)
+					{
+						Server->Log("Error reading from input VHD file", LL_ERROR);
+						return false;
+					}
+
+					if(vhdout.Write(buf.data(), read)!=read)
+					{
+						Server->Log("Error writing to VHD output file (2)", LL_ERROR);
+						return false;
+					}
+
+					total_written+=read;
+					pos+=read;
+					show_progress(total_written, total_size);
+				}
+			}
+		}
+
+		return true;
+	}
 
 }
 
@@ -242,7 +499,17 @@ DLLEXPORT void LoadActions(IServer* pServer)
 			filter += L"*.vhdz";
 			filter += (wchar_t)'\0';
 			filter += (wchar_t)'\0';
-			decompress = Server->ConvertToUTF8(file_via_dialog(L"Please select compressed image file to decompress", filter));
+			std::vector<std::wstring> res = file_via_dialog(L"Please select compressed image file to decompress",
+				filter, false, true, L"");
+			if(!res.empty())
+			{
+				decompress = Server->ConvertToUTF8(res[0]);
+			}
+			else
+			{
+				decompress.clear();
+			}
+			
 
 			if(decompress.empty())
 			{
@@ -272,11 +539,76 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		exit(b?0:3);
 	}
 
+	std::string assemble = Server->getServerParameter("assemble");
+	if(!assemble.empty())
+	{
+		bool selected_via_gui=false;
+		std::vector<std::wstring> input_files;
+		std::wstring output_file;
+#ifdef _WIN32
+		if(assemble=="SelectViaGUI")
+		{
+			std::wstring filter;
+			filter += L"Image files (*.vhdz;*.vhd)";
+			filter += (wchar_t)'\0';
+			filter += L"*.vhdz;*.vhd";
+			filter += (wchar_t)'\0';
+			/*filter += L"Image files (*.vhd)";
+			filter += (wchar_t)'\0';
+			filter += L"*.vhd";
+			filter += (wchar_t)'\0';*/
+			filter += (wchar_t)'\0';
+			input_files = file_via_dialog(L"Please select all the images to assemble into one image",
+				filter, true, true, L"");
+
+			filter.clear();
+			filter += L"Image file (*.vhd)";
+			filter += (wchar_t)'\0';
+			filter += L"*.vhd";
+			filter += (wchar_t)'\0';
+			filter += (wchar_t)'\0';
+
+			std::vector<std::wstring> output_files = file_via_dialog(L"Please select where to save the output image",
+				filter, false, false, L"vhd");
+
+			if(!output_files.empty())
+			{
+				output_file = output_files[0];
+			}			
+
+			selected_via_gui=true;
+		}
+#endif
+
+		if(!selected_via_gui)
+		{
+			TokenizeMail(Server->ConvertToUnicode(assemble), input_files, L";");
+			output_file = Server->ConvertToUnicode(Server->getServerParameter("output_file"));
+		}
+
+		if(input_files.empty())
+		{
+			Server->Log("No input files selected", LL_ERROR);
+			exit(1);
+		}
+
+		if(output_file.empty())
+		{
+			Server->Log("No output file selected", LL_ERROR);
+			exit(1);
+		}
+
+		bool b = assemble_vhd(input_files, output_file);		
+
+		exit(b?0:3);
+	}
+
+
 	std::string devinfo=Server->getServerParameter("devinfo");
 
 	if(!devinfo.empty())
 	{
-		FSNTFS ntfs(L"\\\\.\\"+widen(devinfo)+L":", false);
+		FSNTFS ntfs(L"\\\\.\\"+widen(devinfo)+L":", false, true);
 	
 		if(!ntfs.hasError())
 		{
@@ -600,7 +932,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		int skip=1024*512;
 		FileWrapper wrapper(in.get(), skip);
-		FSNTFS fs(&wrapper, true);
+		FSNTFS fs(&wrapper, false, false);
 		if(fs.hasError())
 		{
 			Server->Log("Error opening device file", LL_ERROR);
@@ -652,7 +984,6 @@ DLLEXPORT void LoadActions(IServer* pServer)
 				{
 					sha256_update(&ctx, (unsigned char*)buf.get(), ntfs_blocksize);
 				}
-
 				mixed = mixed | 1;
 			}
 			else
@@ -837,7 +1168,7 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 		if(Server->getServerParameter("fix")!="true")
 		{
-			FSNTFS fs(&vhd, true);
+			FSNTFS fs(&vhd, true, false);
 			if(fs.hasError())
 			{
 				Server->Log("NTFS filesystem has errors", LL_ERROR);
@@ -867,3 +1198,10 @@ DLLEXPORT void UnloadActions(void)
 {
 	
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 0);
+}
+#endif

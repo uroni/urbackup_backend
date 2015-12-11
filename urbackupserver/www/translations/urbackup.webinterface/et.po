@@ -1,0 +1,1196 @@
+# UrBackup translation
+# Copyright (C) 2011-2015 See translators
+# This work is licensed under a Creative Commons Attribution 4.0 International License (See http://creativecommons.org/licenses/by/4.0/).
+# 
+# Translators:
+# Meelis Veemees <veemeesmeelis@gmail.com>, 2015
+msgid ""
+msgstr ""
+"Project-Id-Version: UrBackup\n"
+"PO-Revision-Date: 2015-05-19 10:05+0000\n"
+"Last-Translator: Meelis Veemees <veemeesmeelis@gmail.com>\n"
+"Language-Team: Estonian (http://www.transifex.com/p/urbackup/language/et/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: et\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "action_1"
+msgstr "Täiendav varukoopia"
+
+msgid "action_2"
+msgstr "Täielik varukoopia"
+
+msgid "action_3"
+msgstr "Täiendav kettapildi varukoopia"
+
+msgid "action_4"
+msgstr "Täielik kettapildi varukoopia"
+
+msgid "action_1_d"
+msgstr "Kustutan täiandavat failide varukoopiat"
+
+msgid "action_2_d"
+msgstr "Kustutan täielikku failide varukoopiat"
+
+msgid "action_3_d"
+msgstr "Kustutan täiendavat kettapildi varukoopiat"
+
+msgid "action_4_d"
+msgstr "Kustutan täielikku failide varukoopiat"
+
+msgid "nav_item_6"
+msgstr "Olek"
+
+msgid "nav_item_5"
+msgstr "Tegevused"
+
+msgid "nav_item_4"
+msgstr "Varundused"
+
+msgid "nav_item_3"
+msgstr "Logid"
+
+msgid "nav_item_2"
+msgstr "Statistika"
+
+msgid "nav_item_1"
+msgstr "Seaded"
+
+msgid "unknown"
+msgstr "Teadmata"
+
+msgid "overview"
+msgstr "Ülevaade"
+
+msgid "ok"
+msgstr "Ok"
+
+msgid "no_recent_backup"
+msgstr "Pole varukoopiat"
+
+msgid "backup_never"
+msgstr "Iial"
+
+msgid "yes"
+msgstr "Jah"
+
+msgid "no"
+msgstr "Ei"
+
+msgid "tBackup status"
+msgstr "Varundamise olek"
+
+msgid "tComputer name"
+msgstr "Arvuti nimi"
+
+msgid "tLast seen"
+msgstr "Viimati nähtud"
+
+msgid "tLast file backup"
+msgstr "Viimane failide varundus"
+
+msgid "tLast image backup"
+msgstr "Viimane kettapildi varukoopia"
+
+msgid "tFile backup status"
+msgstr "Failide varundamise olek"
+
+msgid "tImage backup status"
+msgstr "Kettapildi varukoopia olek"
+
+msgid "tShow details"
+msgstr "Näita täpsemalt"
+
+msgid "tExtra clients"
+msgstr "Ekstra seadega kliendid"
+
+msgid "tNo extra clients"
+msgstr "Pole ekstra seadega kliente"
+
+msgid "tActions"
+msgstr "Tegevused"
+
+msgid "tOnline"
+msgstr "Online"
+
+msgid "tHostname/IP"
+msgstr "Hostinimi/IP"
+
+msgid "tServer identity"
+msgstr "Serveri identifitseerimine"
+
+msgid "users"
+msgstr "Kasutajad"
+
+msgid "general_settings"
+msgstr "Peamine"
+
+msgid "admin"
+msgstr "Administraator"
+
+msgid "user"
+msgstr "Kasutaja"
+
+msgid "username_empty"
+msgstr "Palun sisesta kasutajanimi"
+
+msgid "password_empty"
+msgstr "Palun sisesta parool"
+
+msgid "password_differ"
+msgstr "Paroolid ei ühti"
+
+msgid "user_n_exist"
+msgstr "Kasutajat ei eksisteeri"
+
+msgid "password_wrong"
+msgstr "Vale parool"
+
+msgid "user_exists"
+msgstr "Selline kasutaja on juba olemas"
+
+msgid "session_timeout"
+msgstr "Tegevusetus on sessiooni peatanud. Palun logi uuesti sisse."
+
+msgid "really_del_user"
+msgstr "Kindel, et tahad selle kasutaja eemaldada?"
+
+msgid "user_add_done"
+msgstr "Uus kasutaja edukalt lisatud"
+
+msgid "user_remove_done"
+msgstr "Kasutaja eduaklt eemaldatud."
+
+msgid "user_update_right_done"
+msgstr "Kasutaja õigused edukalt muudetud."
+
+msgid "user_pw_change_ok"
+msgstr "Kasutaja parool edukalt muudetud."
+
+msgid "right_all"
+msgstr "Kõik õigused"
+
+msgid "right_none"
+msgstr "Pole õigusi"
+
+msgid "filter"
+msgstr "Filtreeri"
+
+msgid "all"
+msgstr "Kõik"
+
+msgid "loglevel_0"
+msgstr "Info"
+
+msgid "loglevel_1"
+msgstr "Hoiatused"
+
+msgid "loglevel_2"
+msgstr "Vead"
+
+msgid "dir_error_text"
+msgstr ""
+
+msgid "tmpdir_error_text"
+msgstr ""
+
+msgid "starting"
+msgstr "Käivitan"
+
+msgid "ident_err"
+msgstr "Server lükkas tagasi"
+
+msgid "enter_hostname"
+msgstr "Palun sisesta hostinimi või IP aadress"
+
+msgid "clients"
+msgstr "Kliendid"
+
+msgid "validate_text_empty"
+msgstr ""
+
+msgid "validate_text_notint"
+msgstr ""
+
+msgid "validate_name_update_freq_incr"
+msgstr "Täiendava faili varundamise intervall:"
+
+msgid "validate_name_update_freq_full"
+msgstr "Täielik failide varundamise intervall:"
+
+msgid "validate_name_update_freq_image_full"
+msgstr "Täiendava kettapildi varundamise intervall:"
+
+msgid "validate_name_update_freq_image_incr"
+msgstr "Täielik kettapildi varundamise intervall:"
+
+msgid "validate_name_max_file_incr"
+msgstr "Maksimum arv täiendavaid failide varundusi:"
+
+msgid "validate_name_min_file_incr"
+msgstr ""
+
+msgid "validate_name_max_file_full"
+msgstr ""
+
+msgid "validate_name_min_file_full"
+msgstr ""
+
+msgid "validate_name_min_image_incr"
+msgstr ""
+
+msgid "validate_name_max_image_incr"
+msgstr ""
+
+msgid "validate_name_min_image_full"
+msgstr ""
+
+msgid "validate_name_max_image_full"
+msgstr ""
+
+msgid "validate_name_startup_backup_delay"
+msgstr "lüka edasi peale süsteemi starti"
+
+msgid "validate_err_notregexp_backup_window"
+msgstr ""
+
+msgid "validate_name_max_active_clients"
+msgstr ""
+
+msgid "validate_name_max_sim_backups"
+msgstr ""
+
+msgid "validate_name_backupfolder"
+msgstr ""
+
+msgid "validate_name_computername"
+msgstr "arvuti nimi"
+
+msgid "too_many_clients_err"
+msgstr "Liiga palju kliente"
+
+msgid "really_remove_client"
+msgstr ""
+
+msgid "computername"
+msgstr "Arvuti nimi"
+
+msgid "storage_usage_pie_graph_title"
+msgstr "Ruumi kasutus"
+
+msgid "storage_usage_pie_graph_colname1"
+msgstr "Arvuti nimi"
+
+msgid "storage_usage_pie_graph_colname2"
+msgstr "Ruumi kasutus"
+
+msgid "storage_usage_bar_graph_title"
+msgstr "Ruumi kasutus"
+
+msgid "storage_usage_bar_graph_colname1"
+msgstr "Kuupäev"
+
+msgid "storage_usage_bar_graph_colname2"
+msgstr "Ruumi kasutus"
+
+msgid "tImages"
+msgstr ""
+
+msgid "tFiles"
+msgstr "Faile"
+
+msgid "tSum"
+msgstr "Kokku"
+
+msgid "validate_err_notregexp_cleanup_window"
+msgstr ""
+
+msgid "mail_settings"
+msgstr ""
+
+msgid "upgrade_error_text"
+msgstr ""
+
+msgid "tActivities"
+msgstr "Tegevused"
+
+msgid "tAction"
+msgstr ""
+
+msgid "tProgress"
+msgstr "Edenemine"
+
+msgid "tFiles in queue"
+msgstr ""
+
+msgid "tLast activities"
+msgstr ""
+
+msgid "tStarting time"
+msgstr "Algusaeg"
+
+msgid "tRequired time"
+msgstr ""
+
+msgid "tUsed Storage"
+msgstr "Kasutatud kettamaht"
+
+msgid "tClients"
+msgstr "Kliendid"
+
+msgid "tLogs"
+msgstr "Logid"
+
+msgid "tReports"
+msgstr "Raportid"
+
+msgid "tSend reports to"
+msgstr "Saada raport"
+
+msgid "tSend"
+msgstr "Saada"
+
+msgid "tBackups with a log message of at least log level"
+msgstr ""
+
+msgid "tBackup time"
+msgstr "Varundamise aeg"
+
+msgid "tErrors"
+msgstr "Vead"
+
+msgid "tWarnings"
+msgstr "Hoiatused"
+
+msgid "tStorage allocation"
+msgstr ""
+
+msgid "tStorage usage"
+msgstr "Ruumi kasutus"
+
+msgid "tAll"
+msgstr "Kõik"
+
+msgid "tBackup storage path"
+msgstr ""
+
+msgid "tDo not do image backups"
+msgstr ""
+
+msgid "tDo not do file backups"
+msgstr ""
+
+msgid "tAutomatically shut down server"
+msgstr ""
+
+msgid "tAutoupdate clients"
+msgstr ""
+
+msgid "tMax number of simultaneous backups"
+msgstr ""
+
+msgid "tMax number of recently active clients"
+msgstr ""
+
+msgid "tCleanup time window"
+msgstr ""
+
+msgid "tAutomatically backup UrBackup database"
+msgstr ""
+
+msgid "tInterval for incremental file backups"
+msgstr ""
+
+msgid "tInterval for full file backups"
+msgstr ""
+
+msgid "tInterval for incremental image backups"
+msgstr ""
+
+msgid "tInterval for full image backups"
+msgstr ""
+
+msgid "tMaximal number of incremental file backups"
+msgstr ""
+
+msgid "tMinimal number of incremental file backups"
+msgstr ""
+
+msgid "tMaximal number of full file backups"
+msgstr ""
+
+msgid "tMinimal number of full file backups"
+msgstr ""
+
+msgid "tMaximal number of incremental image backups"
+msgstr ""
+
+msgid "tMinimal number of incremental image backups"
+msgstr ""
+
+msgid "tMaximal number of full image backups"
+msgstr ""
+
+msgid "tMinimal number of full image backups"
+msgstr ""
+
+msgid "tDelay after system startup"
+msgstr ""
+
+msgid "tBackup window"
+msgstr ""
+
+msgid "tExcluded files (with wildcards)"
+msgstr ""
+
+msgid "tIncluded files (with wildcards)"
+msgstr ""
+
+msgid "tDefault directories to backup"
+msgstr ""
+
+msgid "tVolumes to backup"
+msgstr ""
+
+msgid "tAllow client-side changing of the directories to backup"
+msgstr ""
+
+msgid "tAllow client-side starting of file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of image backups"
+msgstr ""
+
+msgid "tAllow client-side viewing of backup logs"
+msgstr ""
+
+msgid "tAllow client-side pausing of backups"
+msgstr ""
+
+msgid "tAllow client-side changing of settings"
+msgstr ""
+
+msgid "tdays"
+msgstr "päeva"
+
+msgid "thours"
+msgstr "tundi"
+
+msgid "tmin"
+msgstr "min"
+
+msgid "tMail server name"
+msgstr ""
+
+msgid "tMail server port"
+msgstr ""
+
+msgid "tMail server username (empty for none)"
+msgstr ""
+
+msgid "tMail server password"
+msgstr ""
+
+msgid "tSender E-Mail Address"
+msgstr ""
+
+msgid "tSend mails only with SSL/TLS"
+msgstr ""
+
+msgid "tCheck SSL/TLS certificate"
+msgstr ""
+
+msgid ""
+"tSend test mail to this email address after saving the settings (leave empty"
+" to not send a test mail)"
+msgstr ""
+
+msgid "tTest Mail sent successfully"
+msgstr ""
+
+msgid "tSending test mail failed. Error:"
+msgstr ""
+
+msgid "tFilter"
+msgstr "Filtreeri"
+
+msgid "tBack"
+msgstr "Tagasi"
+
+msgid "tAdd"
+msgstr "Lisa"
+
+msgid "tRemove"
+msgstr "Eemalda"
+
+msgid "tSave"
+msgstr "Salvesta"
+
+msgid "tLevel"
+msgstr ""
+
+msgid "tTime"
+msgstr ""
+
+msgid "tMessage"
+msgstr "Teade"
+
+msgid "tLog"
+msgstr "Logi"
+
+msgid "tUsername"
+msgstr "Kasutajanimi"
+
+msgid "tRights"
+msgstr ""
+
+msgid "tNo Users"
+msgstr ""
+
+msgid "tCreate user"
+msgstr ""
+
+msgid "tPassword"
+msgstr "Parool"
+
+msgid "tRepeat password"
+msgstr ""
+
+msgid "tRights for"
+msgstr ""
+
+msgid "tAbort"
+msgstr "Tühista"
+
+msgid "tCreate"
+msgstr ""
+
+msgid "tChange rights"
+msgstr ""
+
+msgid "tChange password"
+msgstr ""
+
+msgid "tLogin"
+msgstr "Logi sisse"
+
+msgid "tInfos"
+msgstr "Info"
+
+msgid "tSeparate settings for this client"
+msgstr ""
+
+msgid "tServer"
+msgstr "Server"
+
+msgid "tFile backups"
+msgstr "Failide varundamine"
+
+msgid "tImage backups"
+msgstr "Image varundamine"
+
+msgid "tPermissions"
+msgstr "Õigused"
+
+msgid "tClient"
+msgstr "Klient"
+
+msgid "tArchival"
+msgstr ""
+
+msgid "tInternet"
+msgstr "Internet"
+
+msgid "tPerform autoupdates silently"
+msgstr ""
+
+msgid "tMax backup speed for local network"
+msgstr ""
+
+msgid "tNo activities"
+msgstr ""
+
+msgid "tSelect all"
+msgstr "Vali kõik"
+
+msgid "tSelect none"
+msgstr ""
+
+msgid "tRemove selected"
+msgstr ""
+
+msgid "tStart for selected"
+msgstr ""
+
+msgid "tInternet clients"
+msgstr ""
+
+msgid "tAdd additional internet clients"
+msgstr ""
+
+msgid "tClient name"
+msgstr ""
+
+msgid "tNo entries for this filter"
+msgstr ""
+
+msgid "tNo data"
+msgstr ""
+
+msgid "tTotal max backup speed for local network"
+msgstr ""
+
+msgid "tArchive every"
+msgstr ""
+
+msgid "tArchive for"
+msgstr ""
+
+msgid "tArchive window"
+msgstr ""
+
+msgid "tBackup type"
+msgstr ""
+
+msgid "tEnable internet mode (requires server restart)"
+msgstr ""
+
+msgid "tInternet server name/IP"
+msgstr ""
+
+msgid "tInternet server port"
+msgstr ""
+
+msgid "tDo image backups over internet"
+msgstr ""
+
+msgid "tDo full file backups over internet"
+msgstr ""
+
+msgid "tMax backup speed for internet connection"
+msgstr ""
+
+msgid "tTotal max backup speed for internet connection"
+msgstr ""
+
+msgid "tEncrypted transfer"
+msgstr ""
+
+msgid "tCompressed transfer"
+msgstr ""
+
+msgid "file_backup"
+msgstr ""
+
+msgid "hours"
+msgstr "tundi"
+
+msgid "days"
+msgstr "päeva"
+
+msgid "weeks"
+msgstr ""
+
+msgid "months"
+msgstr ""
+
+msgid "year"
+msgstr ""
+
+msgid "hour"
+msgstr ""
+
+msgid "day"
+msgstr ""
+
+msgid "week"
+msgstr ""
+
+msgid "month"
+msgstr ""
+
+msgid "years"
+msgstr ""
+
+msgid "min"
+msgstr ""
+
+msgid "mins"
+msgstr "Minutit"
+
+msgid "validate_name_archive_every"
+msgstr ""
+
+msgid "validate_name_archive_for"
+msgstr ""
+
+msgid "forever"
+msgstr ""
+
+msgid "backup_in_progress"
+msgstr "Varundamine käib ..."
+
+msgid "really_remove_clients"
+msgstr ""
+
+msgid "no_client_selected"
+msgstr ""
+
+msgid "queued_backup"
+msgstr "Ootel varundamine"
+
+msgid "starting_backup_failed"
+msgstr ""
+
+msgid "trying_to_stop_backup"
+msgstr ""
+
+msgid "unarchived_in"
+msgstr ""
+
+msgid "validate_err_notregexp_archive_window"
+msgstr ""
+
+msgid "wait_for_archive_window"
+msgstr ""
+
+msgid "validate_err_notregexp_image_letters"
+msgstr ""
+
+msgid "validate_name_global_local_speed"
+msgstr ""
+
+msgid "validate_name_global_internet_speed"
+msgstr ""
+
+msgid "validate_name_local_speed"
+msgstr ""
+
+msgid "validate_name_internet_speed"
+msgstr ""
+
+msgid "enter_clientname"
+msgstr ""
+
+msgid "internet_client_added"
+msgstr ""
+
+msgid "change_pw"
+msgstr ""
+
+msgid "old_pw_wrong"
+msgstr ""
+
+msgid "tID"
+msgstr ""
+
+msgid "tFile"
+msgstr "Fail"
+
+msgid "tSize"
+msgstr ""
+
+msgid "tIncremental"
+msgstr ""
+
+msgid "tLoading"
+msgstr ""
+
+msgid "tStorage usage of"
+msgstr ""
+
+msgid "tDelete domain"
+msgstr ""
+
+msgid "tChange rights for user"
+msgstr ""
+
+msgid "tDomain"
+msgstr "Domeen"
+
+msgid "tTranslation"
+msgstr "Tõlge"
+
+msgid "tNew domain"
+msgstr ""
+
+msgid "tChange"
+msgstr "Muuda"
+
+msgid "tChange password for user"
+msgstr ""
+
+msgid "tSaved settings successfully"
+msgstr ""
+
+msgid "tThis client is going to be removed."
+msgstr ""
+
+msgid "tStop removing client"
+msgstr ""
+
+msgid "tFailed"
+msgstr "Ebaõnnestus"
+
+msgid "tSuccessfull"
+msgstr ""
+
+msgid "tInfo"
+msgstr "Info"
+
+msgid "tError"
+msgstr "Viga"
+
+msgid "tWarning"
+msgstr "Hoiatus"
+
+msgid "tCurrent version"
+msgstr "Paregune versioon"
+
+msgid "tTarget version"
+msgstr ""
+
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings."
+msgstr ""
+
+msgid "tNext archival"
+msgstr ""
+
+msgid "tweeks"
+msgstr ""
+
+msgid "tmonth"
+msgstr ""
+
+msgid "tyears"
+msgstr ""
+
+msgid "tforever"
+msgstr ""
+
+msgid "tFile backup"
+msgstr ""
+
+msgid "tIncremental file backup"
+msgstr "Täiendav varukoopia"
+
+msgid "tFull file backup"
+msgstr "Täis varukoopia"
+
+msgid "tEnable internet mode"
+msgstr ""
+
+msgid "tInternet auth key"
+msgstr ""
+
+msgid "tIncremental image backup"
+msgstr "Täiendav kettapildi varukoopia"
+
+msgid "tFull image backup"
+msgstr "Täielik kettapildi varukoopia"
+
+msgid ""
+"tClients are removed during the cleanup time window, if they are offline."
+msgstr ""
+
+msgid "tArchived"
+msgstr ""
+
+msgid "nospc_stalled_text"
+msgstr ""
+
+msgid "nospc_fatal_text"
+msgstr ""
+
+msgid "tNondefault temporary file directory"
+msgstr ""
+
+msgid "tClients are removed during the cleanup in the cleanup time window."
+msgstr ""
+
+msgid "about_urbackup"
+msgstr "UrBackup tarkvarast"
+
+msgid "loading"
+msgstr ""
+
+msgid "authentication_err"
+msgstr ""
+
+msgid "tInverval for incremental image backups"
+msgstr ""
+
+msgid "action_5"
+msgstr ""
+
+msgid "action_6"
+msgstr ""
+
+msgid "really_recalculate"
+msgstr ""
+
+msgid "database_error_text"
+msgstr ""
+
+msgid "creating_filescache_text"
+msgstr ""
+
+msgid "tDownload folder as ZIP"
+msgstr ""
+
+msgid "tOld password"
+msgstr ""
+
+msgid "tNew password"
+msgstr ""
+
+msgid "tRepeat new password"
+msgstr ""
+
+msgid "tChanging password failed:"
+msgstr ""
+
+msgid "tChanged password successfully"
+msgstr ""
+
+msgid "tNumber of file entries processed"
+msgstr ""
+
+msgid "tUrBackup live log"
+msgstr ""
+
+msgid "tLive Log"
+msgstr ""
+
+msgid "tShow"
+msgstr "Näita"
+
+msgid "tThere is a new version of UrBackup server available"
+msgstr ""
+
+msgid "tIndexing..."
+msgstr "Indekseerin"
+
+msgid "tDelete"
+msgstr "Kustuta"
+
+msgid "tDownload client from update server"
+msgstr ""
+
+msgid "tGlobal soft filesystem quota"
+msgstr ""
+
+msgid "tDisable"
+msgstr "Keela"
+
+msgid "tImage backup file format"
+msgstr ""
+
+msgid "tAllow client-side starting of full file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of incremental file backups"
+msgstr ""
+
+msgid "tAllow client-side starting of full image backups"
+msgstr ""
+
+msgid "tAllow client-side starting of incremental image backups"
+msgstr ""
+
+msgid "tBackup window for incremental file backups"
+msgstr ""
+
+msgid "tBackup window for full file backups"
+msgstr ""
+
+msgid "tBackup window for incremental image backups"
+msgstr ""
+
+msgid "tBackup window for full image backups"
+msgstr ""
+
+msgid "tSoft client quota"
+msgstr ""
+
+msgid "tCalculate file-hashes on the client"
+msgstr ""
+
+msgid "tAdvanced"
+msgstr ""
+
+msgid "tTemporary files as file backup buffer"
+msgstr ""
+
+msgid "tTemporary files as image backup buffer"
+msgstr ""
+
+msgid "tLocal full file backup transfer mode"
+msgstr ""
+
+msgid "tRaw"
+msgstr ""
+
+msgid "tHashed"
+msgstr ""
+
+msgid "tInternet full file backup transfer mode"
+msgstr ""
+
+msgid "tLocal incremental file backup transfer mode"
+msgstr ""
+
+msgid "tBlock differences - hashed"
+msgstr ""
+
+msgid "tInternet incremental file backup transfer mode"
+msgstr ""
+
+msgid "tLocal image backup transfer mode"
+msgstr ""
+
+msgid "tInternet image backup transfer mode"
+msgstr ""
+
+msgid "tFile hash collection amount"
+msgstr ""
+
+msgid "tFile hash collection timeout"
+msgstr ""
+
+msgid "tFile hash collection database cachesize"
+msgstr ""
+
+msgid "tMB"
+msgstr "MB"
+
+msgid "tUpdate stats database cachesize"
+msgstr ""
+
+msgid "tCache database type for file entries"
+msgstr ""
+
+msgid "tNone"
+msgstr "Pole"
+
+msgid "tCache database size for file entries"
+msgstr ""
+
+msgid "tSuspend index limit"
+msgstr ""
+
+msgid "tUse symlinks during incremental file backups"
+msgstr ""
+
+msgid "tEnd-to-end verification of all file backups"
+msgstr ""
+
+msgid "tServer admin mail address"
+msgstr "Serveri admini emaili aadress"
+
+msgid ""
+"tWarning: The settings configured on the client will overwrite the settings "
+"configured here. If you want to change this behaviour do not allow the "
+"client to change settings. "
+msgstr ""
+
+msgid "tClient download"
+msgstr ""
+
+msgid "tDownload"
+msgstr "Allalaadimine"
+
+msgid "tStatus"
+msgstr "Olek"
+
+msgid "tIP"
+msgstr "IP"
+
+msgid "tClient version"
+msgstr "Kliendi versioon"
+
+msgid "tOperating System"
+msgstr "Operatsioonisüsteem"
+
+msgid "tShow all clients"
+msgstr "Näita kõiki kliente"
+
+msgid "tThis client is going to be removed. "
+msgstr "Need kliendid eemaldatakse"
+
+msgid "tClients are removed during the cleanup in the cleanup time window. "
+msgstr ""
+
+msgid "tRecalculate statistics"
+msgstr ""
+
+msgid "First"
+msgstr "Esimene"
+
+msgid "Last"
+msgstr "Viimane"
+
+msgid "Next"
+msgstr "Järgmine"
+
+msgid "Previous"
+msgstr "Eelmine"
+
+msgid "No data available in table"
+msgstr ""
+
+msgid "Showing _START_ to _END_ of _TOTAL_ entries"
+msgstr ""
+
+msgid "Showing 0 to 0 of 0 entries"
+msgstr ""
+
+msgid "(filtered from _MAX_ total entries)"
+msgstr ""
+
+msgid "sInfoThousands"
+msgstr ","
+
+msgid "Show _MENU_ entries"
+msgstr ""
+
+msgid "Processing..."
+msgstr "Edenemine"
+
+msgid "Search:"
+msgstr "Otsi:"
+
+msgid "No matching records found"
+msgstr "Vasteid ei leitud"
+
+msgid "Restore to default"
+msgstr "Taasta vaikimisi"
+
+msgid "Save"
+msgstr "Salvesta"
+
+msgid "tConnect to Internet backup server if connected to local backup server"
+msgstr ""
+
+msgid "tAllow clients to quit the tray icon"
+msgstr "Luba kliendil sulgeda tegumiriba ikoon"
+
+msgid "tYou need to create a user to be able to send reports"
+msgstr ""
+
+msgid "Show/hide columns"
+msgstr "Näita/Peida veerge"
+
+msgid "tShow when a new server version is available"
+msgstr ""
+
+msgid "tVHD (Virtual HardDisk)"
+msgstr ""
+
+msgid "tCompressed VHD (Compressed non-standard Virtual HardDisk)"
+msgstr ""

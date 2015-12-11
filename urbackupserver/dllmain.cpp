@@ -25,9 +25,21 @@
 
 #include <vector>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_urbackupserver
+#define UnloadActions UnloadActions_urbackupserver
+#endif
 
 #include "../Interface/Action.h"
 #include "../Interface/Database.h"
@@ -64,8 +76,10 @@ SStartupStatus startup_status;
 #include "apps/cleanup_cmd.h"
 #include "apps/repair_cmd.h"
 #include "apps/export_auth_log.h"
+#include "apps/skiphash_copy.h"
 #include "create_files_index.h"
 #include "server_dir_links.h"
+#include "server_channel.h"
 
 #include <stdlib.h>
 #include "../Interface/DatabaseCursor.h"
@@ -347,10 +361,14 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		{
 			rc=server::check_metadata();
 		}
+		else if(app=="skiphash_copy")
+		{
+			rc=skiphash_copy_file();
+		}
 		else
 		{
 			rc=100;
-			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex");
+			Server->Log("App not found. Available apps: cleanup, remove_unknown, cleanup_database, repair_database, defrag_database, export_auth_log, check_fileindex, skiphash_copy");
 		}
 		exit(rc);
 	}
@@ -385,10 +403,39 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		writestring(ident, "urbackup/server_ident.key");
 		server_identity=ident;
 	}
+
+	if(FileExists("urbackup/server_ident_ecdsa409k1.pub") && crypto_fak!=NULL)
+	{
+		std::string signature;
+		if(!crypto_fak->signData(getFile("urbackup/server_ident_ecdsa409k1.priv"), "test", signature))
+		{
+			Server->Log("Server ECDSA identity broken. Regenerating...", LL_ERROR);
+			Server->deleteFile("urbackup/server_ident_ecdsa409k1.pub");
+			Server->deleteFile("urbackup/server_ident_ecdsa409k1.priv");
+		}
+	}
+
+	if(!FileExists("urbackup/server_ident_ecdsa409k1.pub") && crypto_fak!=NULL)
+	{
+		Server->Log("Generating Server private/public ECDSA key...", LL_INFO);
+		crypto_fak->generatePrivatePublicKeyPair("urbackup/server_ident_ecdsa409k1");
+	}
+
+	if(FileExists("urbackup/server_ident.pub") && crypto_fak!=NULL)
+	{
+		std::string signature;
+		if(!crypto_fak->signDataDSA(getFile("urbackup/server_ident.priv"), "test", signature))
+		{
+			Server->Log("Server DSA identity broken. Regenerating...", LL_ERROR);
+			Server->deleteFile("urbackup/server_ident.pub");
+			Server->deleteFile("urbackup/server_ident.priv");
+		}
+	}
+
 	if(!FileExists("urbackup/server_ident.pub") && crypto_fak!=NULL)
 	{
-		Server->Log("Generating Server private/public key...", LL_INFO);
-		crypto_fak->generatePrivatePublicKeyPair("urbackup/server_ident");
+		Server->Log("Generating Server private/public DSA key...", LL_INFO);
+		crypto_fak->generatePrivatePublicKeyPairDSA("urbackup/server_ident");
 	}
 	if((server_token=getFile("urbackup/server_token.key")).size()<5)
 	{
@@ -568,8 +615,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		ADD_ACTION(shutdown);
 	}
 
+	IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 	{
-		ServerBackupDao backup_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER));
+		ServerBackupDao backup_dao(db);
 		replay_directory_link_journal(backup_dao);
 	}
 
@@ -581,6 +629,15 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	if(url_fak==NULL)
 	{
 		Server->Log("Error loading IUrlFactory", LL_INFO);
+	}
+
+    ServerChannelThread::initOffset();
+
+	if(crypto_fak==NULL 
+		&& db->Read("SELECT * FROM settings_db.si_users WHERE pbkdf2_rounds>0").size()>0)
+	{
+		Server->Log("Encrypted user passwords need cryptoplugin. Cannot run without cryptoplugin", LL_ERROR);
+		exit(1);
 	}
 
 	server_exit_pipe=Server->createMemoryPipe();
@@ -705,6 +762,13 @@ DLLEXPORT void UnloadActions(void)
 	else
 		Server->destroyAllDatabases();
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 20);
+}
+#endif
 
 void update_file(IQuery *q_space_get, IQuery* q_space_update, IQuery *q_file_update, db_results &curr_r)
 {
@@ -1330,6 +1394,64 @@ bool update39_40()
 	return b;
 }
 
+bool upgrade40_41()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE settings_db.si_users ADD pbkdf2_rounds INTEGER");
+	b &= db->Write("UPDATE settings_db.si_users SET pbkdf2_rounds=0");
+
+	if(crypto_fak!=NULL)
+	{
+		db_results res = db->Read("SELECT id, password_md5, salt FROM settings_db.si_users");
+
+		const size_t pbkdf2_rounds = 10000;
+
+		IQuery* q_update = db->Prepare("UPDATE settings_db.si_users SET password_md5=?, pbkdf2_rounds=? WHERE id=?");
+
+		for(size_t i=0;i<res.size();++i)
+		{
+			std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(Server->ConvertToUTF8(res[i][L"password_md5"])),
+				Server->ConvertToUTF8(res[i][L"password_md5"]), pbkdf2_rounds));
+
+			q_update->Bind(password_md5);
+			q_update->Bind(pbkdf2_rounds);
+			q_update->Bind(res[i][L"id"]);
+			q_update->Write();
+			q_update->Reset();
+		}
+	}	
+
+	return b;
+}
+
+bool upgrade41_42()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("ALTER TABLE clients ADD virtualmain TEXT");
+
+	return b;
+}
+
+bool upgrade42_43()
+{
+	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
+	bool b = true;
+
+	b &= db->Write("CREATE TABLE settings_db.access_tokens ("
+		"clientid INTEGER,"
+		"tokenhash BLOB)");
+
+	b &= db->Write("CREATE UNIQUE INDEX settings_db.access_tokens_idx ON access_tokens(tokenhash)");
+
+	return b;
+}
 
 void upgrade(void)
 {
@@ -1352,7 +1474,7 @@ void upgrade(void)
 	
 	int ver=watoi(res_v[0][L"tvalue"]);
 	int old_v;
-	int max_v=40;
+	int max_v=43;
 	{
 		IScopedLock lock(startup_status.mutex);
 		startup_status.target_db_version=max_v;
@@ -1559,6 +1681,24 @@ void upgrade(void)
 				++ver;
 			case 39:
 				if(!update39_40())
+				{
+					has_error=true;
+				}
+				++ver;
+			case 40:
+				if(!upgrade40_41())
+				{
+					has_error=true;
+				}
+				++ver;
+			case 41:
+				if(!upgrade41_42())
+				{
+					has_error=true;
+				}
+				++ver;
+			case 42:
+				if(!upgrade42_43())
 				{
 					has_error=true;
 				}

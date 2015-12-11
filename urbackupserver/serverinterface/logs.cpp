@@ -122,7 +122,7 @@ ACTION_IMPL(logs)
 			{
 				bed="(l.warnings>0 OR l.errors>0)";
 			}
-			qstr="SELECT l.id AS id, c.name AS name, strftime('"+helper.getTimeFormatString()+"', l.created, 'localtime') AS time, l.errors AS errors, l.warnings AS warnings, "
+			qstr="SELECT l.id AS id, c.name AS name, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, l.errors AS errors, l.warnings AS warnings, "
 				"l.image AS image, l.incremental AS incremental, l.resumed AS resumed FROM logs l INNER JOIN clients c ON l.clientid=c.id";
 
 			if(!v_filter.empty())
@@ -145,7 +145,7 @@ ACTION_IMPL(logs)
 				JSON::Object obj;
 				obj.set("name", res[i][L"name"]);
 				obj.set("id", watoi(res[i][L"id"]));
-				obj.set("time", res[i][L"time"]);
+				obj.set("time", watoi64(res[i][L"time"]));
 				obj.set("errors", watoi(res[i][L"errors"]));
 				obj.set("warnings", watoi(res[i][L"warnings"]));
 				obj.set("image", watoi(res[i][L"image"]));
@@ -208,7 +208,7 @@ ACTION_IMPL(logs)
 		}
 		else
 		{
-			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, ld.data AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created, 'localtime') AS time, c.name AS name "
+			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, ld.data AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, c.name AS name "
 				"FROM ((logs l INNER JOIN log_data ld ON l.id=ld.logid) INNER JOIN clients c ON l.clientid=c.id) WHERE l.id=?");
 			q->Bind(logid);
 			db_results res=q->Read();
@@ -235,7 +235,7 @@ ACTION_IMPL(logs)
 				{
 					JSON::Object log;
 					log.set("data", res[0][L"logdata"]);
-					log.set("time", res[0][L"time"]);
+					log.set("time", watoi64(res[0][L"time"]));
 					log.set("clientname", res[0][L"name"]);
 					ret.set("log", log);
 				}
@@ -247,7 +247,7 @@ ACTION_IMPL(logs)
 		ret.set("error", 1);
 	}
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

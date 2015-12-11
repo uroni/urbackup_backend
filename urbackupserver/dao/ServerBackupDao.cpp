@@ -345,6 +345,32 @@ std::vector<std::wstring> ServerBackupDao::getDeletePendingClientNames(void)
 }
 
 /**
+* @-SQLGenAccess
+* @func string ServerBackupDao::getVirtualMainClientname
+* @return string virtualmain
+* @sql
+*      SELECT virtualmain FROM clients WHERE id=:clientid(int)
+*/
+ServerBackupDao::CondString ServerBackupDao::getVirtualMainClientname(int clientid)
+{
+	if(q_getVirtualMainClientname==NULL)
+	{
+		q_getVirtualMainClientname=db->Prepare("SELECT virtualmain FROM clients WHERE id=?", false);
+	}
+	q_getVirtualMainClientname->Bind(clientid);
+	db_results res=q_getVirtualMainClientname->Read();
+	q_getVirtualMainClientname->Reset();
+	CondString ret = { false, L"" };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=res[0][L"virtualmain"];
+	}
+	return ret;
+}
+
+
+/**
 * @-SQLGenAccessNoCheck
 * @func bool ServerBackupDao::createTemporaryLastFilesTable
 * @sql
@@ -1752,18 +1778,19 @@ void ServerBackupDao::addUserToken(const std::wstring& username, const std::wstr
 *				AND clientid=:clientid(int) AND incremental=0)
 *		  OR (datetime('now', :backup_interval_incr(string))<backuptime
 *				AND clientid=:clientid(int) AND complete=1) )
-*		  AND done=1 AND tgroup=0
+*		  AND done=1 AND tgroup=:tgroup(int)
 */
-ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr)
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int tgroup)
 {
 	if(q_hasRecentFullOrIncrFileBackup==NULL)
 	{
-		q_hasRecentFullOrIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE ((datetime('now', ?)<backuptime AND clientid=? AND incremental=0) OR (datetime('now', ?)<backuptime AND clientid=? AND complete=1) ) AND done=1 AND tgroup=0", false);
+		q_hasRecentFullOrIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE ((datetime('now', ?)<backuptime AND clientid=? AND incremental=0) OR (datetime('now', ?)<backuptime AND clientid=? AND complete=1) ) AND done=1 AND tgroup=?", false);
 	}
 	q_hasRecentFullOrIncrFileBackup->Bind(backup_interval_full);
 	q_hasRecentFullOrIncrFileBackup->Bind(clientid);
 	q_hasRecentFullOrIncrFileBackup->Bind(backup_interval_incr);
 	q_hasRecentFullOrIncrFileBackup->Bind(clientid);
+	q_hasRecentFullOrIncrFileBackup->Bind(tgroup);
 	db_results res=q_hasRecentFullOrIncrFileBackup->Read();
 	q_hasRecentFullOrIncrFileBackup->Reset();
 	CondInt64 ret = { false, 0 };
@@ -1782,16 +1809,17 @@ ServerBackupDao::CondInt64 ServerBackupDao::hasRecentFullOrIncrFileBackup(const 
 * @sql
 *       SELECT id FROM backups
 *		WHERE datetime('now', :backup_interval(string))<backuptime
-*			AND clientid=:clientid(int) AND complete=1 AND done=1 AND tgroup=0
+*			AND clientid=:clientid(int) AND complete=1 AND done=1 AND tgroup=:tgroup(int)
 */
-ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid)
+ServerBackupDao::CondInt64 ServerBackupDao::hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid, int tgroup)
 {
 	if(q_hasRecentIncrFileBackup==NULL)
 	{
-		q_hasRecentIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE datetime('now', ?)<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=0", false);
+		q_hasRecentIncrFileBackup=db->Prepare("SELECT id FROM backups WHERE datetime('now', ?)<backuptime AND clientid=? AND complete=1 AND done=1 AND tgroup=?", false);
 	}
 	q_hasRecentIncrFileBackup->Bind(backup_interval);
 	q_hasRecentIncrFileBackup->Bind(clientid);
+	q_hasRecentIncrFileBackup->Bind(tgroup);
 	db_results res=q_hasRecentIncrFileBackup->Read();
 	q_hasRecentIncrFileBackup->Reset();
 	CondInt64 ret = { false, 0 };
@@ -1976,6 +2004,87 @@ ServerBackupDao::SFileBackupInfo ServerBackupDao::getFileBackupInfo(int backupid
 	return ret;
 }
 
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::setVirtualMainClient
+* @sql
+*       UPDATE clients SET virtualmain=:virtualmain(string) WHERE id=:clientid(int64)
+*/
+void ServerBackupDao::setVirtualMainClient(const std::wstring& virtualmain, int64 clientid)
+{
+	if(q_setVirtualMainClient==NULL)
+	{
+		q_setVirtualMainClient=db->Prepare("UPDATE clients SET virtualmain=? WHERE id=?", false);
+	}
+	q_setVirtualMainClient->Bind(virtualmain);
+	q_setVirtualMainClient->Bind(clientid);
+	q_setVirtualMainClient->Write();
+	q_setVirtualMainClient->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::deleteUsedAccessTokens
+* @sql
+*       DELETE FROM settings_db.access_tokens WHERE clientid=:clientid(int)
+*/
+void ServerBackupDao::deleteUsedAccessTokens(int clientid)
+{
+	if(q_deleteUsedAccessTokens==NULL)
+	{
+		q_deleteUsedAccessTokens=db->Prepare("DELETE FROM settings_db.access_tokens WHERE clientid=?", false);
+	}
+	q_deleteUsedAccessTokens->Bind(clientid);
+	q_deleteUsedAccessTokens->Write();
+	q_deleteUsedAccessTokens->Reset();
+}
+
+/**
+* @-SQLGenAccess
+* @func int ServerBackupDao::hasUsedAccessToken
+* @return int clientid
+* @sql
+*       SELECT clientid FROM settings_db.access_tokens WHERE tokenhash=:tokenhash(blob)
+*/
+ServerBackupDao::CondInt ServerBackupDao::hasUsedAccessToken(const std::string& tokenhash)
+{
+	if(q_hasUsedAccessToken==NULL)
+	{
+		q_hasUsedAccessToken=db->Prepare("SELECT clientid FROM settings_db.access_tokens WHERE tokenhash=?", false);
+	}
+	q_hasUsedAccessToken->Bind(tokenhash.c_str(), (_u32)tokenhash.size());
+	db_results res=q_hasUsedAccessToken->Read();
+	q_hasUsedAccessToken->Reset();
+	CondInt ret = { false, 0 };
+	if(!res.empty())
+	{
+		ret.exists=true;
+		ret.value=watoi(res[0][L"clientid"]);
+	}
+	return ret;
+}
+
+/**
+* @-SQLGenAccess
+* @func void ServerBackupDao::addUsedAccessToken
+* @sql
+*       INSERT INTO settings_db.access_tokens (clientid, tokenhash)
+*		VALUES (:clientid(int), :tokenhash(blob) )
+*/
+void ServerBackupDao::addUsedAccessToken(int clientid, const std::string& tokenhash)
+{
+	if(q_addUsedAccessToken==NULL)
+	{
+		q_addUsedAccessToken=db->Prepare("INSERT INTO settings_db.access_tokens (clientid, tokenhash) VALUES (?, ? )", false);
+	}
+	q_addUsedAccessToken->Bind(clientid);
+	q_addUsedAccessToken->Bind(tokenhash.c_str(), (_u32)tokenhash.size());
+	q_addUsedAccessToken->Write();
+	q_addUsedAccessToken->Reset();
+}
+
+
+
 //@-SQLGenSetup
 void ServerBackupDao::prepareQueries( void )
 {
@@ -1993,6 +2102,7 @@ void ServerBackupDao::prepareQueries( void )
 	q_addToOldBackupfolders=NULL;
 	q_getOldBackupfolders=NULL;
 	q_getDeletePendingClientNames=NULL;
+	q_getVirtualMainClientname=NULL;
 	q_createTemporaryLastFilesTable=NULL;
 	q_dropTemporaryLastFilesTable=NULL;
 	q_createTemporaryLastFilesTableIndex=NULL;
@@ -2065,6 +2175,10 @@ void ServerBackupDao::prepareQueries( void )
 	q_getRestoreIdentity=NULL;
 	q_setRestoreDone=NULL;
 	q_getFileBackupInfo=NULL;
+	q_setVirtualMainClient=NULL;
+	q_deleteUsedAccessTokens=NULL;
+	q_hasUsedAccessToken=NULL;
+	q_addUsedAccessToken=NULL;
 }
 
 //@-SQLGenDestruction
@@ -2084,6 +2198,7 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_addToOldBackupfolders);
 	db->destroyQuery(q_getOldBackupfolders);
 	db->destroyQuery(q_getDeletePendingClientNames);
+	db->destroyQuery(q_getVirtualMainClientname);
 	db->destroyQuery(q_createTemporaryLastFilesTable);
 	db->destroyQuery(q_dropTemporaryLastFilesTable);
 	db->destroyQuery(q_createTemporaryLastFilesTableIndex);
@@ -2156,6 +2271,10 @@ void ServerBackupDao::destroyQueries( void )
 	db->destroyQuery(q_getRestoreIdentity);
 	db->destroyQuery(q_setRestoreDone);
 	db->destroyQuery(q_getFileBackupInfo);
+	db->destroyQuery(q_setVirtualMainClient);
+	db->destroyQuery(q_deleteUsedAccessTokens);
+	db->destroyQuery(q_hasUsedAccessToken);
+	db->destroyQuery(q_addUsedAccessToken);
 }
 
 void ServerBackupDao::commit()

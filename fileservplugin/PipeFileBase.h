@@ -40,6 +40,10 @@ public:
 
 	virtual void forceExitWait() = 0;
 
+	virtual bool PunchHole( _i64 spos, _i64 size );
+
+	virtual bool Sync();
+
 protected:
 
 	void init();
@@ -57,7 +61,8 @@ private:
 
 	size_t getReadAvail();
 	void readBuf(char* buf, size_t toread);
-	
+
+
 	std::wstring cmd;
 
 	int64 curr_pos;

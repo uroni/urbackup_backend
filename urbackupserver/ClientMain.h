@@ -31,9 +31,10 @@ class BackupServerContinuous;
 class ContinuousBackup;
 class Backup;
 
-const int c_group_all = -1;
 const int c_group_default = 0;
 const int c_group_continuous = 1;
+const int c_group_max = 99;
+const int c_group_size = 100;
 
 struct SProtocolVersions
 {
@@ -41,7 +42,7 @@ struct SProtocolVersions
 			filesrv_protocol_version(0), file_protocol_version(0),
 				file_protocol_version_v2(0), set_settings_version(0),
 				image_protocol_version(0), eta_version(0), cdp_version(0),
-				efi_version(0), file_meta(0)
+				efi_version(0), file_meta(0), select_sha_version(0)
 			{
 
 			}
@@ -55,6 +56,7 @@ struct SProtocolVersions
 	int cdp_version;
 	int efi_version;
 	int file_meta;
+	int select_sha_version;
 };
 
 struct SRunningBackup
@@ -94,7 +96,7 @@ class ClientMain : public IThread, public FileClientChunked::ReconnectionCallbac
 {
 	friend class ServerHashExisting;
 public:
-	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, bool internet_connection, bool use_snapshots, bool use_reflink);
+	ClientMain(IPipe *pPipe, sockaddr_in pAddr, const std::wstring &pName, const std::wstring& pSubName, const std::wstring& pMainName, int filebackup_group_offset, bool internet_connection, bool use_snapshots, bool use_reflink);
 	~ClientMain(void);
 
 	void operator()(void);
@@ -175,12 +177,16 @@ public:
 
 	static void addShareToCleanup(int clientid, const SShareCleanup& cleanupData);
 
+	static bool startBackupBarrier(int64 timeout_seconds);
+
+	static void stopBackupBarrier();
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
 	void updateLastseen(void);
-	bool isUpdateFull(void);
-	bool isUpdateIncr(void);
+	bool isUpdateFull(int tgroup);
+	bool isUpdateIncr(int tgroup);
 	bool isUpdateFullImage(void);
 	bool isUpdateIncrImage(void);
 	bool isUpdateFullImage(const std::string &letter);
@@ -218,6 +224,9 @@ private:
 	sockaddr_in clientaddr;
 	IMutex *clientaddr_mutex;
 	std::wstring clientname;
+	std::wstring clientsubname;
+	std::wstring clientmainname;
+	int filebackup_group_offset;
 
 	std::wstring tmpfile_path;
 	static size_t tmpfile_num;
@@ -291,4 +300,5 @@ private:
 
 	logid_t logid;
 	static int restore_client_id;
+	static bool running_backups_allowed;
 };

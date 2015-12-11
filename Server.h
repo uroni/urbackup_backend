@@ -1,3 +1,4 @@
+#pragma once
 #define NO_INTERFACE
 
 #ifdef THREAD_BOOST
@@ -80,6 +81,7 @@ public:
 
 	virtual bool LoadDLL(const std::string &name);
 	virtual bool UnloadDLL(const std::string &name);
+	void LoadStaticPlugins();
 
 	virtual void destroy(IObject *obj);
 
@@ -121,7 +123,7 @@ public:
 	virtual std::string GenerateHexMD5(const std::wstring &input);
 	virtual std::string GenerateBinaryMD5(const std::wstring &input);
 
-	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1);
+	virtual void StartCustomStreamService(IService *pService, std::string pServiceName, unsigned short pPort, int pMaxClientsPerThread=-1, IServer::BindTarget bindTarget=IServer::BindTarget_All);
 	virtual IPipe* ConnectStream(std::string pServer, unsigned short pPort, unsigned int pTimeoutms);
 	virtual IPipe *PipeFromSocket(SOCKET pSocket);
 	virtual void DisconnectStream(IPipe *pipe);
@@ -190,6 +192,8 @@ public:
 	void setLogRotationFilesize(size_t filesize);
 
 	void setLogRotationNumFiles(size_t numfiles);
+
+	void setLogConsoleTime(bool b);
 
 private:
 
@@ -285,6 +289,8 @@ private:
 	std::string logfile_chown_user;
 
 	size_t log_rotation_size;
+
+	bool log_console_time;
 
 	size_t log_rotation_files;
 };

@@ -473,7 +473,7 @@ bool CowFile::setUnused(_i64 unused_start, _i64 unused_end)
 bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 {
 	FileWrapper devfile(this, fs_offset);
-	FSNTFS ntfs(&devfile, false);
+	FSNTFS ntfs(&devfile, false, false);
 
 	if(ntfs.hasError())
 	{
@@ -517,7 +517,7 @@ bool CowFile::trimUnused(_i64 fs_offset, ITrimCallback* trim_callback)
 bool CowFile::syncBitmap(_i64 fs_offset)
 {
 	FileWrapper devfile(this, fs_offset);
-	FSNTFS ntfs(&devfile, false);
+	FSNTFS ntfs(&devfile, false, false);
 
 	if(ntfs.hasError())
 	{

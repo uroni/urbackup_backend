@@ -10,9 +10,23 @@ if( navigator.userAgent.indexOf("Opera")!=-1 )
 	g.opera=true;
 }
 g.ie=false;
-if( navigator.appName=="Microsoft Internet Explorer" && g.opera==false )
+if( navigator.appName=="Microsoft Internet Explorer")
 {
 	g.ie=true;
+}
+else if (navigator.appName == 'Netscape' &&
+	(navigator.userAgent.indexOf("Edge")!=-1
+	|| navigator.userAgent.indexOf("Trident")!=-1) ) //grr
+{
+	g.ie=true;
+}
+
+if (!Date.now) { Date.now = function now() { return +(new Date); }; } 
+
+if(typeof String.prototype.trim !== 'function') {
+  String.prototype.trim = function() {
+    return this.replace(/^\s+|\s+$/g, ''); 
+  }
 }
 
 function trans(str)
@@ -33,7 +47,7 @@ function iernd()
 	if(g.ie==true && window.Ajax )
 	{
 		var rnd=Math.floor(Math.random()*100000);
-		return '&iernd='+rnd;
+		return '&iernd='+Date.now()+rnd;
 	}
 	return '';
 }
@@ -210,7 +224,14 @@ getJSON = function(action, parameters, callback)
 					g.last_function=cb;
 					g.last_data=clone(data);
 				}
-				cb(data);
+				try
+				{
+					cb(data);
+				}
+				catch(e)
+				{
+					console.log(e);
+				}
 			}
 		});
 }
@@ -354,6 +375,72 @@ function LoadScript(url, id)
 	}
 }
 
+function determine_date_format()
+{
+	//Create a known date string
+	var y = new Date(2013, 9, 25);
+	var lds = y.toLocaleDateString();
+
+	//search for the position of the year, day, and month
+	var yPosi = lds.search("2013");
+	var dPosi = lds.search("25");
+	var mPosi = lds.search("10");
+
+	// try to determine date separator
+	var dateSeperator = "/";
+	var pointPos = lds.indexOf(".");
+	if (pointPos != -1)
+	dateSeperator = ".";
+
+	//Sometimes the month is displayed by the month name so guess where it is
+	if(mPosi == -1)
+	{
+		mPosi = lds.search("9");
+		if(mPosi == -1)
+		{
+			//if the year and day are not first then maybe month is first
+			if(yPosi != 0 && dPosi != 0)
+			{
+				mPosi = 0;
+			}
+			//if year and day are not last then maybe month is last
+			else if((yPosi+4 <  lds.length) && (dPosi+2 < lds.length)){
+				mPosi = Infinity;
+			}
+			//otherwist is in the middle
+			else  if(yPosi < dPosi){
+				mPosi = ((dPosi - yPosi)/2) + yPosi;            
+			}else if(dPosi < yPosi){
+				mPosi = ((yPosi - dPosi)/2) + dPosi;
+			}   
+		}
+	}
+	
+	var formatString="";
+	
+	var order = [yPosi, dPosi, mPosi];
+	order.sort(function(a,b){return a-b});
+
+	for(i=0; i < order.length; i++)
+	{
+		if(i>0)
+			formatString+=dateSeperator;
+			
+		if(order[i] == yPosi)
+		{
+			formatString += "YYYY";
+		}else if(order[i] == dPosi){
+			formatString += "DD";
+		}else if(order[i] == mPosi){
+			formatString += "MM";
+		}
+	}
+	
+	g.dateFormatString = formatString;
+}
+
+determine_date_format();
+
 function format_date(d)
 {
 	var wt=d.getDate();
@@ -374,8 +461,15 @@ function format_date(d)
 	var min=d.getMinutes();
 	if( min<10 )
 		min="0"+min;
-	
-	return wt+"."+m+"."+j+" "+h+":"+min;
+		
+	return g.dateFormatString.replace("YYYY", j).
+			replace("MM", m).replace("DD", wt) +
+				" "+h+":"+min;
+}
+
+function format_unix_timestamp(ts)
+{
+	return format_date(new Date(ts*1000));
 }
 
 function format_size(s)
@@ -509,6 +603,16 @@ function randomString()
 	var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
 	var string_length = 50;
 	var randomstring = '';
+	
+	var array = new Uint32Array(string_length);
+	if(window.crypto && window.crypto.getRandomValues(array))
+	{
+		for (var i=0; i<string_length; i++) {
+			randomstring += chars.charAt(array[i]%chars.length);
+		}
+		return randomstring;
+	}
+	
 	for (var i=0; i<string_length; i++) {
 		var rnum = Math.floor(Math.random() * chars.length);
 		randomstring += chars.substring(rnum,rnum+1);
@@ -555,7 +659,7 @@ function validate_text_int(a)
 {
 	for(var i=0;i<a.length;++i)
 	{
-		if(!isInt(I(a[i]).value))
+		if(I(a[i]) && !isInt(I(a[i]).value))
 		{
 			if(trans("validate_err_notint_"+a[i]))
 			{

@@ -132,6 +132,9 @@ void PipeSessions::removeFile(const std::wstring& cmd)
 		}		
 
 		it->second.file->forceExitWait();
+
+        it->second.input_pipe->isReadable(10000);
+
 		delete it->second.file;
 		delete it->second.input_pipe;
 		pipe_files.erase(it);
@@ -228,7 +231,7 @@ void PipeSessions::operator()()
 }
 
 void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std::string& public_fn,
-	const std::string& server_token, const std::string& identity )
+	const std::string& server_token, const std::string& identity, int64 folder_items)
 {
 	if(public_fn.empty() || next(public_fn, 0, "urbackup/"))
 	{
@@ -240,6 +243,7 @@ void PipeSessions::transmitFileMetadata( const std::string& local_fn, const std:
 	CWData data;
 	data.addString(public_fn);
 	data.addString(local_fn);
+	data.addInt64(folder_items);
 
 	IScopedLock lock(mutex);
 
@@ -270,6 +274,7 @@ void PipeSessions::metadataStreamEnd( const std::string& server_token )
 		CWData data;
 		data.addString(std::string());
 		data.addString(std::string());
+		data.addInt64(0);
 
 		it->second.input_pipe->Write(data.getDataPtr(), data.getDataSize());
 	}

@@ -81,7 +81,7 @@ ACTION_IMPL(livelog)
 	{
 		JSON::Object ret;
 		ret.set("error", true);
-		helper.Write(ret.get(false));
+        helper.Write(ret.stringify(false));
 		return;
 	}
 
@@ -133,5 +133,5 @@ ACTION_IMPL(livelog)
 
 	ret.set("logdata", j_logdata);
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }

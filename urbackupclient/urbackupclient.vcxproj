@@ -78,6 +78,7 @@
     <ClCompile Include="ClientService.cpp" />
     <ClCompile Include="ClientServiceCMD.cpp" />
     <ClCompile Include="client_restore.cpp" />
+    <ClCompile Include="cmdline_preprocessor.cpp" />
     <ClCompile Include="common_tokens.cpp" />
     <ClCompile Include="DirectoryWatcherThread.cpp" />
     <ClCompile Include="dllmain.cpp" />

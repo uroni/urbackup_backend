@@ -168,6 +168,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\common\data.cpp" />
     <ClCompile Include="..\urbackupcommon\sha2\sha2.c" />
     <ClCompile Include="CompressedFile.cpp" />
     <ClCompile Include="dllmain.cpp" />
@@ -183,6 +184,7 @@
     <ClCompile Include="fs\unknown.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\data.h" />
     <ClInclude Include="..\urbackupcommon\sha2\sha2.h" />
     <ClInclude Include="CompressedFile.h" />
     <ClInclude Include="filesystem.h" />

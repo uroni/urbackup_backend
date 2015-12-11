@@ -19,6 +19,9 @@
 #define _FILE_OFFSET_BITS 64
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include "Server.h"
 #include "file.h"
@@ -30,7 +33,15 @@
 #include <errno.h>
 #include <stdint.h>
 
-#include <sys/fcntl.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
+#ifndef FALLOC_FL_KEEP_SIZE
+#define FALLOC_FL_KEEP_SIZE    0x1
+#endif
+#ifndef FALLOC_FL_PUNCH_HOLE
+#define FALLOC_FL_PUNCH_HOLE   0x2
+#endif
 
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #define open64 open
@@ -39,6 +50,8 @@
 #define O_LARGEFILE 0
 #define stat64 stat
 #define fstat64 fstat
+#else
+#include <linux/fs.h>
 #endif
 
 File::File()
@@ -196,9 +209,26 @@ bool File::Seek(_i64 spos)
 _i64 File::Size(void)
 {
 	struct stat64 stat_buf;
-	fstat64(fd, &stat_buf);
-
-	return stat_buf.st_size;
+	int rc = fstat64(fd, &stat_buf);
+	
+	if(rc==0)
+	{
+		if(S_ISBLK(stat_buf.st_mode))
+		{
+			_i64 ret;
+			rc = ioctl(fd, BLKGETSIZE64, &ret);
+			if(rc==0)
+			{
+				return ret;
+			}
+		}
+		
+		return stat_buf.st_size;	
+	}
+	else
+	{
+		return -1;
+	}
 }
 
 _i64 File::RealSize(void)
@@ -216,6 +246,25 @@ void File::Close()
 		close( fd );
 		fd=-1;
 	}
+}
+
+bool File::PunchHole( _i64 spos, _i64 size )
+{
+	int rc = fallocate64(fd, FALLOC_FL_PUNCH_HOLE|FALLOC_FL_KEEP_SIZE, spos, size);
+
+	if(rc==0)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool File::Sync()
+{
+	return fsync(fd)==0;
 }
 
 #endif

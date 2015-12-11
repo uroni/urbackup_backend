@@ -618,3 +618,4 @@ void ServerFileBufferWriter::writeBuffer(IFile *buf)
 	fb_queue.push(buf);
 	cond->notify_all();
 }
+

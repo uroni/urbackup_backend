@@ -65,6 +65,11 @@ void ServerDownloadThread::operator()( void )
 		fc_chunked->setQueueCallback(this);
 	}
 
+	if(filesrv_protocol_version>2)
+	{
+		fc.setQueueCallback(this);
+	}
+
 	while(true)
 	{
 		SQueueItem curr;
@@ -203,7 +208,7 @@ void ServerDownloadThread::operator()( void )
 
 void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
 	const std::wstring &os_path, _i64 predicted_filesize, const FileMetadata& metadata,
-    bool is_script, bool metadata_only, bool at_front )
+    bool is_script, bool metadata_only, size_t folder_items)
 {
 	SQueueItem ni;
 	ni.id = id;
@@ -219,23 +224,15 @@ void ServerDownloadThread::addToQueueFull(size_t id, const std::wstring &fn, con
 	ni.metadata = metadata;
 	ni.is_script = is_script;
     ni.metadata_only = metadata_only;
+	ni.folder_items = folder_items;
 
 	IScopedLock lock(mutex);
-	if(!at_front)
-	{
-		dl_queue.push_back(ni);
-	}
-	else
-	{
-		dl_queue.push_front(ni);
-	}
+	dl_queue.push_back(ni);
+
 	cond->notify_one();
 
 	queue_size+=queue_items_full;
-	if(!at_front)
-	{
-		sleepQueue(lock);
-	}
+	sleepQueue(lock);
 }
 
 
@@ -316,13 +313,13 @@ bool ServerDownloadThread::load_file(SQueueItem todl)
 
 	std::wstring cfn=getDLPath(todl);
 
-    _u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, todl.metadata_only);
+    _u32 rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, todl.metadata_only, true, todl.folder_items);
 
 	int hash_retries=5;
 	while(rc==ERR_HASH && hash_retries>0)
 	{
 		fd->Seek(0);
-        rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, todl.metadata_only);
+        rc=fc.GetFile(Server->ConvertToUTF8(cfn), fd, hashed_transfer, todl.metadata_only, true, todl.folder_items);
 		--hash_retries;
 	}
 
@@ -743,18 +740,18 @@ size_t ServerDownloadThread::getMaxOkId()
 	return max_ok_id;
 }
 
-std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& metadata)
+std::string ServerDownloadThread::getQueuedFileFull(FileClient::MetadataQueue& metadata, size_t& folder_items)
 {
 	IScopedLock lock(mutex);
 	for(std::deque<SQueueItem>::iterator it=dl_queue.begin();
 		it!=dl_queue.end();++it)
 	{
 		if(it->action==EQueueAction_Fileclient && 
-			!it->queued && it->fileclient==EFileClient_Full
-			&& it->predicted_filesize>0)
+			!it->queued && it->fileclient==EFileClient_Full )
 		{
 			it->queued=true;
-			metadata=FileClient::MetadataQueue_Data;
+			metadata=it->metadata_only? FileClient::MetadataQueue_Metadata : FileClient::MetadataQueue_Data;
+			folder_items = it->folder_items;
 			return Server->ConvertToUTF8(getDLPath(*it));
 		}
 	}

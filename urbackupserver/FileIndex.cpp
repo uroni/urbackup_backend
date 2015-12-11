@@ -37,6 +37,8 @@ std::map<FileIndex::SIndexKey, int64>* FileIndex::other_cache_buffer=&cache_buff
 IMutex *FileIndex::mutex=NULL;
 ICondition *FileIndex::cond=NULL;
 bool FileIndex::do_shutdown=false;
+bool FileIndex::do_flush=false;
+
 
 void FileIndex::operator()(void)
 {
@@ -57,13 +59,14 @@ void FileIndex::operator()(void)
 				break;
 			}
 
-			while(active_cache_buffer->empty())
+			while(active_cache_buffer->empty() && !do_shutdown)
 			{
+				do_flush=false;
 				int64 starttime=Server->getTimeMS();
 
 				while(active_cache_buffer->size()<min_size_no_wait
 					&& Server->getTimeMS()-starttime<max_wait_time
-					&& !do_shutdown)
+					&& !do_shutdown && !do_flush)
 				{
 					cond->wait(&lock, max_wait_time);
 				}
@@ -103,6 +106,7 @@ void FileIndex::operator()(void)
 		{
 			IScopedLock lock(mutex);
 			local_buf->clear();
+			do_flush=false;
 		}
 	}
 
@@ -293,4 +297,19 @@ bool FileIndex::get_from_cache_exact( const SIndexKey& key, const std::map<SInde
 	}
 
 	return false;
+}
+
+void FileIndex::flush()
+{
+	IScopedLock lock(mutex);
+
+	do_flush=true;
+
+	while(do_flush)
+	{
+		cond->notify_all();
+		lock.relock(NULL);
+		Server->wait(100);
+		lock.relock(mutex);
+	}
 }

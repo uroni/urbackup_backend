@@ -40,7 +40,7 @@ public:
 	static SExitInformation getExitInformation(const std::wstring& cmd);
 
 	static void transmitFileMetadata(const std::string& local_fn, const std::string& public_fn,
-		const std::string& server_token, const std::string& identity);
+		const std::string& server_token, const std::string& identity, int64 folder_items);
 
 	static void metadataStreamEnd(const std::string& server_token);
 

@@ -22,7 +22,7 @@ namespace JSON
 		size_t size(void);
 		void erase(size_t idx);
 
-		std::string get(bool compressed);
+        std::string stringify(bool compressed) const;
 	private:
 		std::vector<Value> data;
 	};
@@ -35,9 +35,9 @@ namespace JSON
 
 		void set(const std::string &key, const Value &val);
 		void erase(const std::string &key);
-		Value get(const std::string &key);
+        Value get(const std::string &key);
 
-		std::string get(bool compressed);
+        std::string stringify(bool compressed) const;
 
 		const std::map<std::string, Value>& get_data();
 
@@ -92,7 +92,7 @@ namespace JSON
 
 		Value & operator=(const Value &other);
 
-		std::string get(bool compressed);
+        std::string stringify(bool compressed) const;
 
 		std::wstring toString() const;
 
@@ -127,7 +127,7 @@ namespace JSON
 		void init(const wchar_t* val);
 		void init(long unsigned int val);
 
-		std::wstring escape(const std::wstring &t);
+        std::wstring escape(const std::wstring &t) const;
 
 		void *data;
 		Value_type data_type;

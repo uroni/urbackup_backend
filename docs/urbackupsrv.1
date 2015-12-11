@@ -1,0 +1,70 @@
+.\" In .TH, FOO should be all caps, SECTION should be 1-8, maybe w/ subsection
+.\" other parms are allowed: see man(7), man(1)
+.\"
+.\" This template provided by Tom Christiansen <tchrist@jhereg.perl.com>.
+.\" 
+.TH URBACKUPSRV 1
+.SH NAME
+urbackupsrv \- Network file and image backup server
+.SH SYNOPSIS
+This binary starts the UrBackup server and some other tools.
+UrBackup is a server for backing up clients
+via a network. Only few settings can be modified via command line
+arguments to the binary - mainly logging options and ports for the web interface.
+For all other settings please use the web interface.
+.PP
+.SH DESCRIPTION
+Following actions are available. Get specific command help with urbackupsrv <command> --help
+
+.TP
+.B run
+Run UrBackup server
+.TP
+.B verify-hashes
+Verify file backup hashes
+.TP
+.B remove-unknown
+Remove unknown files and directories from backup storage and fix symbolic links in backup storage
+.TP
+.B reset-pw
+Reset web interface administrator password
+.TP
+.B cleanup
+Cleanup file/image backups from backup storage
+.TP
+.B repair-database
+Try to repair UrBackup database
+.TP
+.B defrag-database
+Rebuild UrBackup database
+.TP
+.B export-auth-log
+Export authentication log to csv file
+.TP
+.B decompress-file
+Decompress UrBackup compressed file
+.TP
+.B mount-vhd
+Mount VHD file
+.TP
+.B assemble
+Assemble VHD(Z) volumes into one disk VHD file
+
+.SH EXAMPLES
+urbackupsrv run --http-port 80 --loglevel debug --daemon
+
+.SH ENVIRONMENT
+UrBackup server uses the temporary directory quite heavily, if configured to do so.
+If you do not have enough space in the default location (/tmp) you should modify the temporary
+directory location before running urbackupsrv. E.g. by
+export TMPDIR=/media/BIGDRIVE/tmp
+
+.SH FILES
+.br
+.nf
+\fI/var/urbackup/	Database and web interface files location
+
+.SH CEVEATS
+UrBackup server starts as user "urbackup" per default and as such has limited rights.
+Please assure that urbackup has read/write rights on above locations, the 
+specified backup folder and the temporary directory.

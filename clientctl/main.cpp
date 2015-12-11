@@ -21,221 +21,290 @@
 #include <stdlib.h>
 #include "Connector.h"
 #include "../stringtools.h"
+#include "../tclap/CmdLine.h"
 
+#ifndef _WIN32
+#include "../config.h"
+#define PWFILE VARDIR "/urbackup/pw.txt"
+#else
+#define PACKAGE_VERSION "$version_full_numeric$"
+#define VARDIR ""
+#define PWFILE "pw.txt"
+#endif
 
-int main(int argc, char *argv[])
+const std::string cmdline_version = PACKAGE_VERSION;
+
+void show_version()
 {
-	bool help=false;
+	std::cout << "UrBackup Client Controler v" << cmdline_version << std::endl;
+	std::cout << "Copyright (C) 2011-2015 Martin Raiber" << std::endl;
+	std::cout << "This is free software; see the source for copying conditions. There is NO"<< std::endl;
+	std::cout << "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<< std::endl;
+}
 
-        if(argc>1 && (std::string)argv[1]=="help")
-        {
-            help=true;
-        }
+void action_help(std::string cmd)
+{
+	std::cout << std::endl;
+	std::cout << "USAGE:" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " [--help] [--version] <command> [<args>]" << std::endl;
+	std::cout << std::endl;
+	std::cout << "Get specific command help with " << cmd << " <command> --help" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " start" << std::endl;
+	std::cout << "\t\t" "Start an incremental/full image/file backup" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " status" << std::endl;
+	std::cout << "\t\t" "Get current backup status" << std::endl;
+	std::cout << std::endl;
+	std::cout << "\t" << cmd << " list" << std::endl;
+	std::cout << "\t\t" "List backups and files/folders in backups" << std::endl;
+	std::cout << std::endl;
+}
 
-	for(int i=0;i<argc;++i)
+typedef int(*action_fun)(std::vector<std::string> args);
+
+class PwClientCmd
+{
+public:
+	PwClientCmd(TCLAP::CmdLine& cmd)
+		: cmd(cmd),
+		pw_file_arg("p", "pw-file",
+		"Use password in file",
+		false, PWFILE, "path", cmd),
+		client_arg("c", "client",
+		"Start backup on this client",
+		false, "127.0.0.1", "hostname/IP", cmd)
 	{
-                if((std::string)argv[i]=="--help")
-			help=true;
+
 	}
-	if(argc==1 || help)
+
+	void set()
 	{
-		std::cout << "UrBackup CMD client v0.1" << std::endl;
-		std::cout << "Start with urbackup_client_cmd start --incr --file or client_cmd --full --image" << std::endl;
-		std::cout << "Command line options" << std::endl;
-		std::cout << "[--help] Display this help" << std::endl;
-		std::cout << "[--incr] Do incremental backup" << std::endl;
-		std::cout << "[--full] Do full backup" << std::endl;
-		std::cout << "[--image] Do image backup" << std::endl;
-		std::cout << "[--file] Do file backup" << std::endl;
-		std::cout << "[--pw file] Use password in file [default=pw.txt]" << std::endl;
-		std::cout << "[--client hostname/ip] Start backup on this client [default=127.0.0.1]" << std::endl;
+		Connector::setPWFile(pw_file_arg.getValue());
+		Connector::setClient(client_arg.getValue());
+	}
+
+private:
+	TCLAP::CmdLine& cmd;
+
+	TCLAP::ValueArg<std::string> pw_file_arg;
+	TCLAP::ValueArg<std::string> client_arg;
+};
+
+int action_start(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Start an incremental/full image/file backup", ' ', cmdline_version);
+
+	TCLAP::SwitchArg incr_backup("i", "incremental", "Start incremental backup");
+	TCLAP::SwitchArg full_backup("f", "full", "Start full backup");
+
+	cmd.xorAdd(incr_backup, full_backup);
+
+	TCLAP::SwitchArg file_backup("l", "file", "Start file backup");
+	TCLAP::SwitchArg image_backup("m", "image", "Start image backup");
+
+	cmd.xorAdd(file_backup, image_backup);
+
+	PwClientCmd pw_client_cmd(cmd);
+
+	cmd.parse(args);
+
+	pw_client_cmd.set();
+
+	int rc;
+	if(file_backup.getValue())
+	{
+		rc = Connector::startBackup(full_backup.getValue());
 	}
 	else
 	{
-		if(argc<2)
+		rc = Connector::startImage(full_backup.getValue());
+	}
+
+	if(rc==2)
+	{
+		std::cout << "Backup is already running" << std::endl;
+		return 2;
+	}
+	else if(rc==1)
+	{
+		std::cout << "Backup started" << std::endl;
+		return 0;
+	}
+	else
+	{
+		std::cerr << "Error starting backup. No server found?" << std::endl;
+		return 1;		
+	}
+}
+
+int action_status(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("Get current backup status", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd);
+
+	cmd.parse(args);
+
+	pw_client_cmd.set();
+
+	std::string status = Connector::getStatusDetail();
+	if(!status.empty())
+	{
+		std::cout << status << std::endl;
+		return 0;
+	}
+	else
+	{
+		std::cerr << "Error getting status" << std::endl;
+		return 1;
+	}
+}
+
+int action_list(std::vector<std::string> args)
+{
+	TCLAP::CmdLine cmd("List backups and files/folders in backups", ' ', cmdline_version);
+
+	PwClientCmd pw_client_cmd(cmd);
+
+	TCLAP::ValueArg<int> backupid_arg("b", "backupid",
+		"Backupid of backup from which to list files/folders",
+		false, 0, "id", cmd);
+
+	TCLAP::ValueArg<std::string> path_arg("d", "path",
+		"Path of folder/file of which to list backups/contents",
+		false, "", "path", cmd);
+
+	cmd.parse(args);
+
+	pw_client_cmd.set();
+
+	if(path_arg.getValue().empty() && !backupid_arg.isSet())
+	{
+		std::string filebackups = Connector::getFileBackupsList();
+
+		if(!filebackups.empty())
 		{
-			std::cerr << "Please specify an action like start/list/status" << std::endl;
+			std::cout << filebackups << std::endl;
+			return 0;
+		}
+		else
+		{
+			std::cerr << "Error getting file backups" << std::endl;
 			return 1;
 		}
-
-		std::string action = strlower(argv[1]);
-		int incr=-1;
-		int image=-1;
-		std::string pw="pw.txt";
-		std::string client="127.0.0.1";
-		std::string path;
-		bool has_backupid=false;
-		int backupid=0;
-
-		for(int i=2;i<argc;++i)
+	}
+	else
+	{
+		int* pbackupid = NULL;
+		if(backupid_arg.isSet())
 		{
-			std::string ca=argv[i];
-			std::string na;
-			if(i+1<argc)
-				na=argv[i+1];
-
-			if(ca=="--incr" )
-				incr=1;
-			else if(ca=="--full")
-				incr=0;
-			else if(ca=="--image")
-				image=1;
-			else if(ca=="--file")
-				image=0;
-			else if(ca=="--pw")
-			{
-				if(!na.empty())
-				{
-					pw=na;
-					++i;
-				}
-			}
-			else if(ca=="--client")
-			{
-				if(!na.empty() && !next(na, 0, "-"))
-				{
-					client=na;
-					++i;
-				}
-				else
-				{
-					std::cerr << "Please specify a hostname/ip for parameter --client" << std::endl;
-					return 1;
-				}
-			}
-			else if(ca=="--path")
-			{
-				if(!na.empty() && !next(na, 0, "-"))
-				{
-					path=na;
-					++i;
-				}
-				else
-				{
-					std::cerr << "Please specify a path for parameter --path" << std::endl;
-					return 1;
-				}
-			}
-			else if(ca=="--backupid")
-			{
-				if(!na.empty() && !next(na, 0, "-"))
-				{
-					has_backupid=true;
-					backupid = atoi(na.c_str());
-					++i;
-				}
-				else
-				{
-					std::cerr << "Please specify a backup id for parameter --backupid" << std::endl;
-					return 1;
-				}
-			}
+			pbackupid = &backupid_arg.getValue();
 		}
+		std::string filelist = Connector::getFileList(path_arg.getValue(), pbackupid);
 
-		Connector::setPWFile(pw);
-		Connector::setClient(client);
-
-		if(action=="start")
+		if(!filelist.empty())
 		{
-			if( incr==-1 || image==-1 )
-			{
-				std::cerr << "Not enough arguments. Use --help to show available arguments." << std::endl;
-				return 1;
-			}
-
-			int rc=0;
-			if(image==0)
-			{
-				if(incr==0)
-				{
-					rc=Connector::startBackup(true);
-				}
-				else
-				{
-					rc=Connector::startBackup(false);
-				}
-			}
-			else
-			{
-				if(incr==0)
-				{
-					rc=Connector::startImage(true);
-				}
-				else
-				{
-					rc=Connector::startImage(true);
-				}
-			}
-
-			if(rc==2)
-			{
-				std::cout << "Backup is already running" << std::endl;
-				return 2;
-			}
-			else if(rc==1)
-			{
-				std::cout << "Backup started" << std::endl;
-				return 0;
-			}
-			else
-			{
-				std::cerr << "Error starting backup. No server found?" << std::endl;
-				return 1;		
-			}
+			std::cout << filelist << std::endl;
+			return 0;
 		}
-		else if(action=="status")
+		else
 		{
-			std::string status = Connector::getStatusDetail();
-			if(!status.empty())
-			{
-				std::cout << status << std::endl;
-				return 0;
-			}
-			else
-			{
-				std::cerr << "Error getting status" << std::endl;
-				return 1;
-			}
-		}
-		else if(action=="list")
-		{
-			int* pbackupid=NULL;
-			if(has_backupid)
-			{
-				pbackupid = &backupid;
-			}
-
-			if(path.empty())
-			{
-				std::string filebackups = Connector::getFileBackupsList();
-
-				if(!filebackups.empty())
-				{
-					std::cout << filebackups << std::endl;
-					return 0;
-				}
-				else
-				{
-					std::cerr << "Error getting file backups" << std::endl;
-					return 1;
-				}
-			}
-			else
-			{
-				std::string filelist = Connector::getFileList(path, pbackupid);
-
-				if(!filelist.empty())
-				{
-					std::cout << filelist << std::endl;
-					return 0;
-				}
-				else
-				{
-					std::cerr << "Error getting file list" << std::endl;
-					return 1;
-				}
-			}
+			std::cerr << "Error getting file list" << std::endl;
+			return 1;
 		}
 	}
-	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	if(argc==0)
+	{
+		std::cout << "Not enough arguments (zero arguments) -- no program name" << std::endl;
+		return 1;
+	}
+
+	std::vector<std::string> actions;
+	std::vector<action_fun> action_funs;
+	actions.push_back("start");
+	action_funs.push_back(action_start);
+	actions.push_back("status");
+	action_funs.push_back(action_status);
+	actions.push_back("list");
+	action_funs.push_back(action_list);
+
+	bool has_help=false;
+	bool has_version=false;
+	size_t action_idx=std::string::npos;
+	std::vector<std::string> args;
+	args.push_back(argv[0]);
+	for(int i=1;i<argc;++i)
+	{
+		std::string arg = argv[i];
+
+		if(arg=="--help" || arg=="-h")
+		{
+			has_help=true;
+		}
+
+		if(arg=="--version")
+		{
+			has_version=true;
+		}
+
+		if(!arg.empty() && arg[0]=='-')
+		{
+			args.push_back(arg);
+			continue;
+		}
+
+		bool found_action=false;
+		for(size_t j=0;j<actions.size();++j)
+		{
+			if(next(actions[j], 0, arg))
+			{
+				if(action_idx!=std::string::npos)
+				{
+					action_help(argv[0]);
+					exit(1);
+				}
+				action_idx=j;
+				found_action=true;
+			}
+		}
+
+		if(!found_action)
+		{
+			args.push_back(arg);
+		}
+	}
+
+	if(action_idx==std::string::npos)
+	{
+		if(has_help)
+		{
+			action_help(argv[0]);
+			exit(1);
+		}
+		if(has_version)
+		{
+			show_version();
+			exit(1);
+		}
+		action_help(argv[0]);
+		exit(1);
+	}
+
+	try
+	{
+		args[0]+=" "+actions[action_idx];
+		int rc = action_funs[action_idx](args);
+		return rc;
+	}
+	catch (TCLAP::ArgException &e)
+	{
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+		return 1;
+	}
 }

@@ -95,9 +95,16 @@ CAcceptThread *c_at=NULL;
 int main_fkt(int argc, char *argv[]);
 
 #ifndef AS_SERVICE
-int main(int argc, char *argv[])
-{
+
+#ifdef _WIN32
+#define MAINNAME main
 #else
+#define MAINNAME real_main
+#endif
+
+int MAINNAME(int argc, char *argv[])
+{
+#else //AS_SERVICE
 int my_init_fcn_t(int argc, char *argv[])
 {
 #endif
@@ -168,6 +175,7 @@ int main_fkt(int argc, char *argv[])
 	bool daemon=false;
 	std::string daemon_user;
 	std::string pidfile;
+	bool log_console_no_time=false;
 
 	for(int i=1;i<argc;++i)
 	{
@@ -249,6 +257,10 @@ int main_fkt(int argc, char *argv[])
 			Server->setLogRotationNumFiles(atoi(narg.c_str()));
 			++i;
 		}
+		else if( carg=="--log_console_no_time")
+		{
+			log_console_no_time = true;
+		}
 		else
 		{
 			if( carg.size()>1 && carg[0]=='-' )
@@ -306,12 +318,29 @@ int main_fkt(int argc, char *argv[])
 		}
 #endif
 #else
-		Server->setServerWorkingDir(Server->ConvertToUnicode(ExtractFilePath(argv[0])));
+		char buf[4096];
+		char* cwd = getcwd(buf, sizeof(buf));
+		if(cwd==NULL)
+		{
+			Server->setServerWorkingDir(Server->ConvertToUnicode(ExtractFilePath(argv[0])));
+		}
+		else
+		{
+			Server->setServerWorkingDir(Server->ConvertToUnicode(cwd));
+		}		
 #endif
 	}
 	else
 	{
 		Server->setServerWorkingDir(Server->ConvertToUnicode(workingdir));
+#ifndef _WIN32
+		int rc = chdir(Server->ConvertToUTF8(Server->getServerWorkingDir()).c_str());
+		if(rc!=0)
+		{
+			Server->Log("Cannot set working directory to directory "+workingdir, LL_ERROR);
+		}
+
+#endif
 	}
 
 
@@ -383,6 +412,11 @@ int main_fkt(int argc, char *argv[])
 			Server->setLogLevel(LL_ERROR);
 	}
 
+	if(log_console_no_time)
+	{
+		Server->setLogConsoleTime(false);
+	}
+
 	if(is_big_endian())
 	{
 		Server->setLogLevel(LL_DEBUG);
@@ -391,14 +425,12 @@ int main_fkt(int argc, char *argv[])
 #ifndef _WIN32
 	if( !daemon_user.empty() && (getuid()==0 || geteuid()==0) )
 	{
-	    Server->Log("Changing user...", LL_DEBUG);
 		char buf[1000];
 	    passwd pwbuf;
 		passwd *pw;
 		int rc=getpwnam_r(daemon_user.c_str(), &pwbuf, buf, 1000, &pw);
 	    if(pw!=NULL)
 	    {
-			Server->Log("done.");
 			setgid(pw->pw_gid);
 			setuid(pw->pw_uid);
 	    }
@@ -433,6 +465,8 @@ int main_fkt(int argc, char *argv[])
 			Server->Log("Loading "+(std::string)plugins[i]+" failed", LL_ERROR);
 		}
 	}
+
+	Server->LoadStaticPlugins();
 	
 	CLoadbalancerClient *lbs=NULL;
 	if( loadbalancer!="" )

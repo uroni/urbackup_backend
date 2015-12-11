@@ -73,6 +73,7 @@ private:
 	size_t fn_off;
 	std::string public_fn;
 	std::string local_fn;
+	int64 folder_items;
 	IFileServ::IMetadataCallback* callback;
 	IFile* metadata_file;
 	int64 metadata_file_off;

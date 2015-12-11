@@ -23,6 +23,8 @@ public:
 
 	void doExit(void);
 
+    static void initOffset();
+
 private:
 	int64 lasttime;
 	int clientid;
@@ -63,7 +65,7 @@ private:
 	std::vector<int> client_right_ids;
 	bool all_client_rights;
 
-	int img_id_offset;
+    static int img_id_offset;
 
 	std::string identity;
 	std::string client_addr;
@@ -71,4 +73,6 @@ private:
 	SessionKeepaliveThread* keepalive_thread;
 
 	std::wstring clientname;
+
+	std::string last_fileaccesstokens;
 };

@@ -25,9 +25,11 @@
 #include "../server_settings.h"
 #include "../../urlplugin/IUrlFactory.h"
 #include "../../urbackupcommon/glob.h"
+#include "../../cryptoplugin/ICryptoFactory.h"
 
 extern std::string server_identity;
 extern IUrlFactory *url_fak;
+extern ICryptoFactory *crypto_fak;
 
 Helper::Helper(THREAD_ID pTID, str_map *pGET, str_nmap *pPARAMS)
 {
@@ -241,7 +243,7 @@ void Helper::releaseAll(void)
 
 std::string Helper::getTimeFormatString(void)
 {
-	return "%Y-%m-%d %H:%M";
+	return "%s";
 }
 
 std::string Helper::getLanguage(void)
@@ -288,16 +290,18 @@ bool Helper::hasRights(int clientid, std::string rights, std::vector<int> right_
 bool Helper::checkPassword(const std::wstring &username, const std::wstring &password, int *user_id, bool plainpw)
 {
 	IDatabase *db=getDatabase();
-	IQuery *q=db->Prepare("SELECT id, name, password_md5, salt FROM settings_db.si_users WHERE name=?");
+	IQuery *q=db->Prepare("SELECT id, name, password_md5, salt, pbkdf2_rounds FROM settings_db.si_users WHERE name=?");
 	q->Bind(username);
 	db_results res=q->Read();
 	if(!res.empty())
 	{
 		std::wstring password_md5=res[0][L"password_md5"];
+
 		if(!plainpw)
 		{
 			std::string ui_password=wnarrow(password);
 			std::string r_password=Server->GenerateHexMD5(Server->ConvertToUTF8(session->mStr[L"rnd"]+password_md5));
+
 			if(r_password!=ui_password)
 			{
 				return false;
@@ -314,6 +318,14 @@ bool Helper::checkPassword(const std::wstring &username, const std::wstring &pas
 		else
 		{
 			std::string db_password = Server->GenerateHexMD5(Server->ConvertToUTF8(res[0][L"salt"]+password));
+
+			size_t pbkdf2_rounds = watoi(res[0][L"pbkdf2_rounds"]);
+			if(pbkdf2_rounds>0)
+			{
+				db_password = strlower(crypto_fak->generatePasswordHash(hexToBytes(db_password),
+					Server->ConvertToUTF8(res[0][L"salt"]), pbkdf2_rounds));
+			}
+
 			if(db_password!=wnarrow(password_md5))
 			{
 				return false;

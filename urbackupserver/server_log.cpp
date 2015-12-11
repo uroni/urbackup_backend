@@ -43,7 +43,21 @@ void ServerLogger::Log(logid_t logid, const std::string &pStr, int LogLevel)
 	if(LogLevel<0)
 		return;
 
-	logMemory(logid, pStr, LogLevel);
+	logMemory(Server->getTimeSeconds(), logid, pStr, LogLevel);
+}
+
+void ServerLogger::Log(int64 times, logid_t logid, const std::string &pStr, int LogLevel)
+{
+	Server->Log(pStr, LogLevel);
+
+	IScopedLock lock(mutex);
+
+	logCircular(logid_client[logid], pStr, LogLevel);
+
+	if(LogLevel<0)
+		return;
+
+	logMemory(times, logid, pStr, LogLevel);
 }
 
 void ServerLogger::Log(logid_t logid, const std::wstring &pStr, int LogLevel)
@@ -59,15 +73,15 @@ void ServerLogger::Log(logid_t logid, const std::wstring &pStr, int LogLevel)
 	if(LogLevel<0)
 		return;
 
-	logMemory(logid, utf8Str, LogLevel);
+	logMemory(Server->getTimeSeconds(), logid, utf8Str, LogLevel);
 }
 
-void ServerLogger::logMemory(logid_t logid, const std::string &pStr, int LogLevel)
+void ServerLogger::logMemory(int64 times, logid_t logid, const std::string &pStr, int LogLevel)
 {
 	SLogEntry le;
 	le.data=pStr;
 	le.loglevel=LogLevel;
-	le.time=Server->getTimeSeconds();
+	le.time=times;
 
 	std::map<logid_t, std::vector<SLogEntry> >::iterator iter=logdata.find(logid);
 	if( iter==logdata.end() )

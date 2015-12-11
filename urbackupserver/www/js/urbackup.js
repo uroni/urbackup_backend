@@ -25,7 +25,9 @@ g.languages=[
 				{ l: "Nederlands", s: "nl" },
 				{ l: "norsk", s: "no_NO" },
 				{ l: "Italiano", s: "it_IT" },
-				{ l: "České", s: "cs_CZ" }
+				{ l: "České", s: "cs_CZ" },
+				{ l: "Türk", s: "tr" },
+				{ l: "Português", s: "pt" }
 			];
 
 g.languages.sort(function (a,b) { if(a.l>b.l) return 1; if(a.l<b.l) return -1; return 0; } );	
@@ -536,6 +538,8 @@ function show_progress2(data)
 			obj.duration/=60;
 			obj.duration=Math.ceil(obj.duration);
 			obj.duration+=" min";
+			
+			obj.backuptime = format_unix_timestamp(obj.backuptime);
 						
 			rows+=dustRender("lastacts_row", obj);
 		}
@@ -873,10 +877,15 @@ function show_status2(data)
 		}
 		
 		if(obj.lastbackup=="") obj.lastbackup=trans("backup_never");
+		else obj.lastbackup = format_unix_timestamp(obj.lastbackup);
+		
 		if(obj.lastbackup_image=="") obj.lastbackup_image=trans("backup_never");
+		else obj.lastbackup_image = format_unix_timestamp(obj.lastbackup_image);
 		
 		if(obj.online) obj.online=trans("yes");
 		else obj.online=trans("no");
+		
+		if(obj.lastseen!="") obj.lastseen = format_unix_timestamp(obj.lastseen);
 		
 		obj.Action_remove_start="";
 		obj.Action_remove_end="";
@@ -935,7 +944,7 @@ function show_status2(data)
 			case 5: obj.status="resume_incr_file"; break;
 			case 6: obj.status="resume_full_file"; break;
 			case 10: obj.status=trans("starting"); break;
-			case 11: obj.status=trans("ident_err")+" <a href=\"http://www.urbackup.org/FAQ.php#ident_err\" target=\"_blank\">?</a>"; break;
+			case 11: obj.status=trans("ident_err")+" <a href=\"help.htm#ident_err\" target=\"_blank\">?</a>"; break;
 			case 12: obj.status=trans("too_many_clients_err"); break;
 			case 13: obj.status=trans("authentication_err"); break;
 			default: obj.status="&nbsp;"
@@ -1253,8 +1262,10 @@ function show_backups2(data)
 		for(var i=0;i<data.clients.length;++i)
 		{
 			var obj=data.clients[i];
-			if(obj.lastbackup.length==0)
+			if(obj.lastbackup.length=="")
 				obj.lastbackup="&nbsp;";
+			else
+				obj.lastbackup = format_unix_timestamp(obj.lastbackup);
 			rows+=dustRender("backups_clients_row", obj);
 		}
 		ndata=dustRender("backups_clients", {rows: rows, ses: g.session});
@@ -1298,6 +1309,8 @@ function show_backups2(data)
 			}
 			
 			obj.clientid=data.clientid;
+			
+			obj.backuptime = format_unix_timestamp(obj.backuptime);
 				
 			rows+=dustRender("backups_backups_row", obj);
 		}
@@ -1381,7 +1394,7 @@ function show_backups2(data)
 		
 		var obj = {rows: rows,
 			ses: g.session, clientname: data.clientname,
-			clientid: data.clientid, cpath: cp, backuptime: data.backuptime,
+			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
 			backupid: data.backupid, path: encodeURIComponent(path).replace(/'/g,"%27") };
 			
 		if(!data.token_authentication)
@@ -1807,6 +1820,8 @@ function show_settings2(data)
 			data.settings.global_settings_start="";
 			data.settings.global_settings_end="";
 			
+			data.settings.main_client = true;
+			
 			data.settings.client_plural="s";
 			
 			data.settings.ONLY_WIN32_BEGIN=unescapeHTML(data.settings.ONLY_WIN32_BEGIN);
@@ -2069,8 +2084,6 @@ function show_settings2(data)
 		}
 	}
 	
-	g.archive_item_id=0;
-	
 	var update_tabber=false;
 	if(g.data_f!=ndata)
 	{
@@ -2112,6 +2125,8 @@ function show_settings2(data)
 	
 	if(update_tabber && data.sa && (data.sa=="clientsettings" || data.sa=="general") )
 	{
+		g.archive_item_id=0;
+		
 		for(var i=0;i<data.archive_settings.length;++i)
 		{
 			var obj=data.archive_settings[i];
@@ -2189,6 +2204,7 @@ g.settings_list=[
 "internet_mode_enabled",
 "silent_update",
 "client_quota",
+"virtual_clients",
 "end_to_end_file_backup_verification",
 "local_full_file_transfer_mode",
 "internet_full_file_transfer_mode",
@@ -2203,7 +2219,7 @@ g.settings_list=[
 "internet_readd_file_entries",
 "local_incr_image_style",
 "local_full_image_style",
-"follow_symlinks",
+"background_backups",
 "internet_incr_image_style",
 "internet_full_image_style"
 ];
@@ -2277,7 +2293,7 @@ function validateCommonSettings()
 							 { id: "backup_window_full_file", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_incr_image", errid: "backup_window", regexp: backup_window_regex },
 							 { id: "backup_window_full_image", errid: "backup_window", regexp: backup_window_regex } ]) ) return false;
-	if(!validate_text_regex([{ id: "image_letters", regexp: /^([A-Za-z][;,]?)*$/i }] ) ) return false;
+	if(!validate_text_regex([{ id: "image_letters", regexp: /^(ALL)|(ALL_NONUSB)|(all)|(all_nonusb)|([A-Za-z][;,]?)*$/i }] ) ) return false;
 	return true;
 }
 function getArchivePars()
@@ -2614,7 +2630,14 @@ function login2(data)
 	var username=I('username').value;
 	var password=I('password').value;
 	
-	var pwmd5 = calcMD5(data.rnd+calcMD5(data.salt+password));
+	var pwmd5 = calcMD5(data.salt+password);
+	
+	if(data.pbkdf2_rounds>0)
+	{
+		pwmd5 = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(sjcl.codec.hex.toBits(pwmd5), data.salt, data.pbkdf2_rounds));
+	}
+	
+	pwmd5 = calcMD5(data.rnd+pwmd5);
 	
 	new getJSON("login", "username="+username+"&password="+pwmd5, login3);
 }
@@ -2745,12 +2768,19 @@ function doChangePW2(data)
 	var password=I('old_password').value;
 	var password1=I('password1').value;
 	
-	var pwmd5=calcMD5(data.rnd+calcMD5(data.salt+password));
-		
-	var salt=randomString();
-	var password_md5=calcMD5(salt+password1);
+	var pwmd5 = calcMD5(data.salt+password);
 	
-	var pars="&userid=own&pwmd5="+password_md5+"&salt="+salt+"&old_pw="+pwmd5;
+	if(data.pbkdf2_rounds>0)
+	{
+		pwmd5 = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(sjcl.codec.hex.toBits(pwmd5), data.salt, data.pbkdf2_rounds));
+	}
+	
+	pwmd5=calcMD5(data.rnd+pwmd5);
+	
+	var new_salt = randomString();
+	var pwmd5_new = calcMD5(new_salt + password1);
+		
+	var pars="&userid=own&pwmd5="+pwmd5_new+"&salt="+new_salt+"&old_pw="+pwmd5;
 	
 	new getJSON("settings", "sa=changepw"+pars, doChangePW3);
 }
@@ -3043,6 +3073,8 @@ function show_logs2(data)
 			
 			obj.action=trans(a);
 			
+			obj.time = format_unix_timestamp(obj.time);
+			
 			rows+=dustRender("logs_row", obj);
 		}
 		if(data.logs.length==0)
@@ -3175,8 +3207,7 @@ function createLog(d, ll)
 				obj.time=obj.message.substr(0,idx);
 				if(!isNaN(obj.time-0))
 				{
-					var d=new Date(obj.time*1000);
-					obj.time=format_date(d);
+					obj.time=format_unix_timestamp(obj.time);
 					obj.message=obj.message.substr(idx+1,obj.message.length-idx-1);
 				}
 				else
@@ -3499,11 +3530,16 @@ function addArchiveItemInt(archive_every, archive_every_unit, archive_for, archi
 }
 function replaceArchiveId(old_id, new_id)
 {
+	var archive_timeleft;
+	if(I('archive_timeleft_'+old_id))
+	{
+		archive_timeleft = I('archive_timeleft_'+old_id).value;
+	}
 	var item=I('archive_'+old_id);
 	item.innerHTML=dustRender("settings_archive_row",  { id: new_id, archive_next: I('archive_next_'+old_id).value, archive_every_i: I('archive_every_'+old_id).value, archive_every: I('archive_every_str_'+old_id).innerHTML,
 			archive_every_unit: I('archive_every_unit_'+old_id).value, archive_for_i: I('archive_for_'+old_id).value, archive_for: I('archive_for_str_'+old_id).innerHTML, archive_for_unit: I('archive_for_unit_'+old_id).value,
 			archive_backup_type: I('archive_backup_type_'+old_id).value, archive_backup_type_str: backupTypeStr(I('archive_backup_type_'+old_id).value), archive_window: I('archive_window_'+old_id).value,
-			archive_timeleft: I('archive_timeleft_'+old_id).value } );
+			archive_timeleft: archive_timeleft } );
 }
 function deleteArchiveItem(id)
 {

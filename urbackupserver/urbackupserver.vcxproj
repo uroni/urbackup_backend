@@ -278,8 +278,10 @@
     <ClCompile Include="apps\cleanup_cmd.cpp" />
     <ClCompile Include="apps\export_auth_log.cpp" />
     <ClCompile Include="apps\repair_cmd.cpp" />
+    <ClCompile Include="apps\skiphash_copy.cpp" />
     <ClCompile Include="Backup.cpp" />
     <ClCompile Include="ChunkPatcher.cpp" />
+    <ClCompile Include="cmdline_preprocessor.cpp" />
     <ClCompile Include="ContinuousBackup.cpp" />
     <ClCompile Include="create_files_index.cpp" />
     <ClCompile Include="dao\ServerBackupDao.cpp" />
@@ -378,6 +380,7 @@
     <ClInclude Include="apps\cleanup_cmd.h" />
     <ClInclude Include="apps\export_auth_log.h" />
     <ClInclude Include="apps\repair_cmd.h" />
+    <ClInclude Include="apps\skiphash_copy.h" />
     <ClInclude Include="Backup.h" />
     <ClInclude Include="ChunkPatcher.h" />
     <ClInclude Include="ContinuousBackup.h" />

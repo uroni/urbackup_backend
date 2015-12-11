@@ -46,6 +46,8 @@
 #define stat64 stat
 #define statvfs64 statvfs
 #define open64 open
+#define readdir64 readdir
+#define dirent64 dirent
 #endif
 
 void getMousePos(int &x, int &y)
@@ -54,12 +56,12 @@ void getMousePos(int &x, int &y)
 	y=0;
 }
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool exact_filesize, bool with_usn)
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error, bool exact_filesize, bool with_usn, bool ignore_other_fs)
 {
-	return getFiles(path, has_error);
+	return getFiles(path, has_error, ignore_other_fs);
 }
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool ignore_other_fs)
 {
 	if(has_error!=NULL)
 	{
@@ -68,20 +70,36 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
     std::string upath=ConvertToUTF8(path);
 	std::vector<SFile> tmp;
 	DIR *dp;
-    struct dirent *dirp;
+    struct dirent64 *dirp;
     if((dp  = opendir(upath.c_str())) == NULL)
 	{
 		if(has_error!=NULL)
 		{
 			*has_error=true;
 		}
-        Log("No permission to access \""+upath+"\"", LL_ERROR);
+		std::wstring errmsg;
+		int err = os_last_error(errmsg);
+		Log(L"Cannot open \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
         return tmp;
     }
 	
+	dev_t parent_dev_id;
+	bool has_parent_dev_id=false;
+	if(ignore_other_fs)
+	{
+		struct stat64 f_info;
+		int rc=lstat64(upath.c_str(), &f_info);
+		if(rc==0)
+		{
+			has_parent_dev_id = true;
+			parent_dev_id = f_info.st_dev; 
+		}
+	}
+	
 	upath+=os_file_sepn();
 
-    while ((dirp = readdir(dp)) != NULL)
+    errno=0;
+    while ((dirp = readdir64(dp)) != NULL)
 	{
 		SFile f;
         f.name=ConvertToUnicode(dirp->d_name);
@@ -98,7 +116,13 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			struct stat64 f_info;
 			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
 			if(rc==0)
-			{
+			{	
+				if(ignore_other_fs && S_ISDIR(f_info.st_mode)
+					&& has_parent_dev_id && parent_dev_id!=f_info.st_dev)
+				{
+					continue;
+				}
+				
 				if(S_ISLNK(f_info.st_mode))
 				{
 					f.issym=true;
@@ -109,6 +133,10 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 					if(rc2==0)
 					{
 						f.isdir=S_ISDIR(l_info.st_mode);
+					}
+					else
+					{
+						f.isdir=false;
 					}
 				}
 			
@@ -147,7 +175,9 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 			}
 			else
 			{
-                    Log("Stat failed for \""+upath+dirp->d_name+"\" errno: "+nconvert(errno), LL_ERROR);
+                 std::wstring errmsg;
+				int err = os_last_error(errmsg);
+				Log("Cannot stat \""+upath+dirp->d_name+"\": "+ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
                     if(has_error!=NULL)
                     {
                         *has_error=true;
@@ -158,12 +188,33 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error)
 		}
 		else
 		{
+			if(ignore_other_fs && has_parent_dev_id)
+			{
+				struct stat64 f_info;
+				int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
+				if(rc==0 && parent_dev_id!=f_info.st_dev)
+				{
+					continue;
+				}
+			}
+		
 			f.last_modified=0;
 			f.size=0;
 		}
 #endif
 		tmp.push_back(f);
+		errno=0;
     }
+    
+    if(errno!=0)
+    {
+		std::wstring errmsg;
+		int err = os_last_error(errmsg);
+	    Log(L"Error listing files in directory \""+path+L"\": "+errmsg+L" ("+convert(err)+L")", LL_ERROR);
+		if(has_error!=NULL)
+			*has_error=true;
+    }
+    
     closedir(dp);
 	
 	std::sort(tmp.begin(), tmp.end());
@@ -336,12 +387,17 @@ int64 os_free_space(const std::wstring &path)
 	if(cp[cp.size()-1]!='/')
 		cp+='/';
 
-	struct statvfs64 buf;
+	struct statvfs64 buf = {};
     int rc=statvfs64(ConvertToUTF8(path).c_str(), &buf);
 	if(rc==0)
-		return buf.f_bsize*buf.f_bavail;
+	{
+		int64 blocksize = buf.f_frsize ? buf.f_frsize : buf.f_bsize;
+		return blocksize*buf.f_bavail;
+	}
 	else
+	{
 		return -1;
+	}
 }
 
 int64 os_total_space(const std::wstring &path)
@@ -663,6 +719,17 @@ int64 os_last_error()
 	return errno;
 }
 
+int64 os_last_error(std::wstring& message)
+{
+	int err = errno;
+	char* str = strerror(err);
+	if(str!=NULL)
+	{
+		message = ConvertToUnicode(str);
+	}
+	return err;
+}
+
 const int64 WINDOWS_TICK=10000000;
 const int64 SEC_TO_UNIX_EPOCH=11644473600LL;
 
@@ -676,10 +743,10 @@ int64 os_to_windows_filetime(int64 unix_time)
 	return (unix_time+SEC_TO_UNIX_EPOCH)*WINDOWS_TICK;
 }
 
-bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified)
+bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified, int64 accessed)
 {
 	struct utimbuf times;
-	times.actime = static_cast<time_t>(last_modified);
+	times.actime = static_cast<time_t>(accessed);
 	times.modtime = static_cast<time_t>(last_modified);
     int rc = utime(ConvertToUTF8(fn).c_str(), &times);
 	return rc==0;
@@ -749,6 +816,7 @@ SFile getFileMetadata( const std::wstring &path )
 		ret.size = f_info.st_size;
 		ret.last_modified = f_info.st_mtime;
 		ret.created = f_info.st_ctime;
+		ret.accessed = f_info.st_atime;
 
 		return ret;
 	}
@@ -781,3 +849,37 @@ bool os_path_absolute(const std::wstring& path)
         return false;
     }
 }
+
+int os_popen(const std::string& cmd, std::string& ret)
+{
+	ret.clear();
+
+	FILE* in = NULL;
+
+#ifndef _WIN32
+#define _popen popen
+#define _pclose pclose
+#endif
+
+	in = _popen(cmd.c_str(), "r");
+
+	if(in==NULL)
+	{
+		return -1;
+	}
+
+	char buf[4096];
+	size_t read;
+	do
+	{
+		read=fread(buf, 1, sizeof(buf), in);
+		if(read>0)
+		{
+			ret.append(buf, buf+read);
+		}
+	}
+	while(read==sizeof(buf));
+
+	return _pclose(in);
+}
+

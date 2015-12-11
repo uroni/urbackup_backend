@@ -3,10 +3,8 @@ Description=UrBackup Client/Server Network Backup System
 After=syslog.target network.target
 
 [Service]
-Type=forking
-NotifyAccess=all
-PIDFile=/run/urbackup_srv.pid
-ExecStart=/usr/sbin/start_urbackup_server
+ExecStart=/usr/bin/urbackupsrv run --config /etc/default/urbackupsrv --no-consoletime
+User=root
 
 [Install]
 WantedBy=multi-user.target

@@ -109,10 +109,10 @@ private:
 
 	bool sendFullFile(IFile* file, _i64 start_offset, bool with_hashes);
 
-	bool RecvMessage(void);
+	bool RecvMessage();
 	bool ProcessPacket(CRData *data);
 	bool ReadFilePart(HANDLE hFile, const _i64 &offset,const bool &last);
-	int SendData(void);
+	int SendData();
 	void ReleaseMemory(void);
 	void CloseThread(HANDLE hFile);
 
@@ -133,7 +133,7 @@ private:
 	int currfilepart;
 	int sendfilepart;
 
-	CBufMgr* bufmgr;
+	fileserv::CBufMgr* bufmgr;
 	CTCPStack stack;
 	char buffer[BUFFERSIZE];
 

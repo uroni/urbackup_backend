@@ -22,6 +22,11 @@ public:
 
 
 	//@-SQLGenFunctionsBegin
+	struct CondInt
+	{
+		bool exists;
+		int value;
+	};
 	struct CondInt64
 	{
 		bool exists;
@@ -153,6 +158,7 @@ public:
 	void addToOldBackupfolders(const std::wstring& backupfolder);
 	std::vector<std::wstring> getOldBackupfolders(void);
 	std::vector<std::wstring> getDeletePendingClientNames(void);
+	CondString getVirtualMainClientname(int clientid);
 	bool createTemporaryLastFilesTable(void);
 	void dropTemporaryLastFilesTable(void);
 	bool createTemporaryLastFilesTableIndex(void);
@@ -217,14 +223,18 @@ public:
 	void addUserOnClient(int clientid, const std::wstring& username);
 	void addClientToken(int clientid, const std::wstring& token);
 	void addUserToken(const std::wstring& username, const std::wstring& token);
-	CondInt64 hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr);
-	CondInt64 hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid);
+	CondInt64 hasRecentFullOrIncrFileBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int tgroup);
+	CondInt64 hasRecentIncrFileBackup(const std::wstring& backup_interval, int clientid, int tgroup);
 	CondInt64 hasRecentFullOrIncrImageBackup(const std::wstring& backup_interval_full, int clientid, const std::wstring& backup_interval_incr, int image_version, const std::wstring& letter);
 	CondInt64 hasRecentIncrImageBackup(const std::wstring& backup_interval, int clientid, int image_version, const std::wstring& letter);
 	void addRestore(int clientid, const std::wstring& path, const std::wstring& identity);
 	CondString getRestoreIdentity(int64 restore_id, int clientid);
 	void setRestoreDone(int success, int64 restore_id);
 	SFileBackupInfo getFileBackupInfo(int backupid);
+	void setVirtualMainClient(const std::wstring& virtualmain, int64 clientid);
+	void deleteUsedAccessTokens(int clientid);
+	CondInt hasUsedAccessToken(const std::string& tokenhash);
+	void addUsedAccessToken(int clientid, const std::string& tokenhash);
 	//@-SQLGenFunctionsEnd
 
 	int64 addFileEntryExternal(int backupid, const std::wstring& fullpath, const std::wstring& hashpath, const std::string& shahash, int64 filesize, int64 rsize, int clientid, int incremental, int64 next_entry, int64 prev_entry, int pointed_to);
@@ -252,6 +262,7 @@ private:
 	IQuery* q_addToOldBackupfolders;
 	IQuery* q_getOldBackupfolders;
 	IQuery* q_getDeletePendingClientNames;
+	IQuery* q_getVirtualMainClientname;
 	IQuery* q_createTemporaryLastFilesTable;
 	IQuery* q_dropTemporaryLastFilesTable;
 	IQuery* q_createTemporaryLastFilesTableIndex;
@@ -324,6 +335,10 @@ private:
 	IQuery* q_getRestoreIdentity;
 	IQuery* q_setRestoreDone;
 	IQuery* q_getFileBackupInfo;
+	IQuery* q_setVirtualMainClient;
+	IQuery* q_deleteUsedAccessTokens;
+	IQuery* q_hasUsedAccessToken;
+	IQuery* q_addUsedAccessToken;
 	//@-SQLGenVariablesEnd
 
 	IDatabase *db;

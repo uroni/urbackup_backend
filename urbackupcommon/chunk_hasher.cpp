@@ -22,9 +22,12 @@
 #include "../fileservplugin/chunk_settings.h"
 #include "../md5.h"
 #include "../common/adler32.h"
+#include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include <memory.h>
+#include <memory>
 
-std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb, bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written)
+std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallback *cb,
+	bool ret_sha2, IFile *copy, bool modify_inplace, int64* inplace_written, IFile* hashinput, bool show_pc)
 {
 	f->Seek(0);
 
@@ -34,24 +37,80 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	if(!writeRepeatFreeSpace(hashoutput, (char*)&fsize_endian, sizeof(_i64), cb))
 		return "";
 
-	sha512_ctx ctx;
+	_i64 input_size;
+	if(hashinput!=NULL)
+	{
+		hashinput->Seek(0);
+		if(hashinput->Read(reinterpret_cast<char*>(&input_size), sizeof(input_size))!=sizeof(input_size))
+		{
+			return "";
+		}
+
+		input_size = little_endian(input_size);
+	}
+
+	sha_def_ctx ctx;
 	if(ret_sha2)
-		sha512_init(&ctx);
+		sha_def_init(&ctx);
 
 	_i64 n_chunks=c_checkpoint_dist/c_small_hash_dist;
 	char buf[c_small_hash_dist];
 	char copy_buf[c_small_hash_dist];
 	_i64 copy_write_pos=0;
+	bool copy_read_eof=false;
 	char zbuf[big_hash_size]={};
 	_i64 hashoutputpos=sizeof(_i64);
+
+	std::auto_ptr<SChunkHashes> chunk_hashes;
+	if(hashinput!=NULL)
+	{
+		chunk_hashes.reset(new SChunkHashes);
+	}
+
+	int last_pc=0;
+	if(show_pc)
+	{
+		Server->Log("0%", LL_INFO);
+	}
+
 	for(_i64 pos=0;pos<fsize;)
 	{
+		if(chunk_hashes.get())
+		{
+			if(pos<input_size)
+			{
+				hashinput->Seek(hashoutputpos);
+				_u32 read = hashinput->Read(chunk_hashes->big_hash, sizeof(SChunkHashes));
+				if(read==0)
+				{
+					chunk_hashes.reset();
+				}
+			}
+			else
+			{
+				chunk_hashes.reset();
+			}
+		}
+
+		if(show_pc)
+		{
+			int curr_pc = (int)( (100.f*pos)/fsize+0.5f );
+			if(curr_pc!=last_pc)
+			{
+				last_pc=curr_pc;
+				Server->Log(nconvert(curr_pc)+"%", LL_INFO);
+			}
+		}
+
 		_i64 epos=pos+c_checkpoint_dist;
 		MD5 big_hash;
+		MD5 big_hash_copy_control;
 		_i64 hashoutputpos_start=hashoutputpos;
 		writeRepeatFreeSpace(hashoutput, zbuf, big_hash_size, cb);
 		hashoutputpos+=big_hash_size;
-		for(;pos<epos && pos<fsize;pos+=c_small_hash_dist)
+		size_t chunkidx=0;
+		_i64 copy_write_pos_start = copy_write_pos;
+		for(;pos<epos && pos<fsize;pos+=c_small_hash_dist,++chunkidx)
 		{
 			_u32 r=f->Read(buf, c_small_hash_dist);
 			_u32 small_hash=urb_adler32(urb_adler32(0, NULL, 0), buf, r);
@@ -64,27 +123,77 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 
 			if(ret_sha2)
 			{
-				sha512_update(&ctx, (unsigned char*)buf, r);
+				sha_def_update(&ctx, (unsigned char*)buf, r);
 			}
 			if(copy!=NULL)
 			{
 				if(modify_inplace)
 				{
-					_u32 copy_r=copy->Read(copy_buf, c_small_hash_dist);
-
-					if(copy_r!=r || memcmp(copy_buf, buf, r)!=0)
+					if(chunk_hashes.get())
 					{
-						copy->Seek(copy_write_pos);
-						if(!writeRepeatFreeSpace(copy, buf, r, cb) )
-							return "";
-
-						if(inplace_written!=NULL)
+						if(memcmp(&small_hash, &chunk_hashes->small_hash[chunkidx*small_hash_size], sizeof(small_hash))==0)
 						{
-							*inplace_written+=r;
+							big_hash_copy_control.update((unsigned char*)buf, r);
 						}
-					}
+						else
+						{
+							//read old data
+							copy->Seek(copy_write_pos);
+							_u32 copy_r=copy->Read(copy_buf, c_small_hash_dist);
 
-					copy_write_pos+=r;
+							if(copy_r < c_small_hash_dist)
+							{
+								copy_read_eof=true;
+							}
+
+							big_hash_copy_control.update((unsigned char*)copy_buf, copy_r);
+
+							//write new data
+							copy->Seek(copy_write_pos);
+							if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+								return "";
+
+							if(inplace_written!=NULL)
+							{
+								*inplace_written+=r;
+							}
+						}
+
+						copy_write_pos+=r;
+					}
+					else
+					{
+						_u32 copy_r;
+						if(copy_read_eof)
+						{
+							copy_r=0;
+						}
+						else
+						{
+							copy->Seek(copy_write_pos);
+							copy_r=copy->Read(copy_buf, c_small_hash_dist);
+
+							if(copy_r < c_small_hash_dist)
+							{
+								copy_read_eof=true;
+							}
+						}
+
+						if(copy_read_eof || copy_r!=r || memcmp(copy_buf, buf, r)!=0)
+						{
+							copy->Seek(copy_write_pos);
+							if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+								return "";
+
+							if(inplace_written!=NULL)
+							{
+								*inplace_written+=r;
+							}
+						}
+
+						copy_write_pos+=r;
+					}
+					
 				}
 				else
 				{
@@ -98,6 +207,33 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		if(!writeRepeatFreeSpace(hashoutput, (const char*)big_hash.raw_digest_int(),  big_hash_size, cb))
 			return "";
 
+		if(copy!=NULL && chunk_hashes.get() && modify_inplace)
+		{
+			big_hash_copy_control.finalize();
+			if(memcmp(big_hash_copy_control.raw_digest_int(), chunk_hashes->big_hash, big_hash_size)!=0)
+			{
+				Server->Log("Small hash collision. Copying whole big block...", LL_DEBUG);
+				copy_write_pos = copy_write_pos_start;
+				pos = epos - c_checkpoint_dist;
+				f->Seek(pos);
+				for(;pos<epos && pos<fsize;pos+=c_small_hash_dist)
+				{
+					_u32 r=f->Read(buf, c_small_hash_dist);
+
+					copy->Seek(copy_write_pos);
+					if(!writeRepeatFreeSpace(copy, buf, r, cb) )
+						return "";
+
+					if(inplace_written!=NULL)
+					{
+						*inplace_written+=r;
+					}
+
+					copy_write_pos+=r;
+				}
+			}
+		}
+
 		hashoutput->Seek(hashoutputpos);
 	}
 
@@ -105,7 +241,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	{
 		std::string ret;
 		ret.resize(64);
-		sha512_final(&ctx, (unsigned char*)&ret[0]);
+		sha_def_final(&ctx, (unsigned char*)&ret[0]);
 		return ret;
 	}
 	else

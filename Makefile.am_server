@@ -1,27 +1,56 @@
 ACLOCAL_AMFLAGS = -I m4
-sbin_PROGRAMS = urbackup_srv
-urbackup_srv_SOURCES = AcceptThread.cpp Client.cpp Database.cpp Query.cpp SelectThread.cpp Server.cpp ServerLinux.cpp ServiceAcceptor.cpp ServiceWorker.cpp SessionMgr.cpp StreamPipe.cpp Template.cpp WorkerThread.cpp main.cpp md5.cpp stringtools.cpp libfastcgi/fastcgi.cpp Mutex_lin.cpp LoadbalancerClient.cpp DBSettingsReader.cpp file_common.cpp file_fstream.cpp file_linux.cpp FileSettingsReader.cpp LookupService.cpp SettingsReader.cpp Table.cpp OutputStream.cpp ThreadPool.cpp MemoryPipe.cpp Condition_lin.cpp MemorySettingsReader.cpp sqlite/sqlite3.c sqlite/shell.c SQLiteFactory.cpp PipeThrottler.cpp mt19937ar.cpp DatabaseCursor.cpp SharedMutex_lin.cpp
-urbackup_srv_LDADD = $(PTHREAD_LIBS) $(DLOPEN_LIBS)
-sbin_SCRIPTS = start_urbackup_server
+sbin_PROGRAMS = urbackup_snapshot_helper
+bin_PROGRAMS = urbackupsrv
+urbackupsrv_SOURCES = AcceptThread.cpp Client.cpp Database.cpp Query.cpp SelectThread.cpp Server.cpp ServerLinux.cpp ServiceAcceptor.cpp ServiceWorker.cpp SessionMgr.cpp StreamPipe.cpp Template.cpp WorkerThread.cpp main.cpp md5.cpp stringtools.cpp libfastcgi/fastcgi.cpp Mutex_lin.cpp LoadbalancerClient.cpp DBSettingsReader.cpp file_common.cpp file_fstream.cpp file_linux.cpp FileSettingsReader.cpp LookupService.cpp SettingsReader.cpp Table.cpp OutputStream.cpp ThreadPool.cpp MemoryPipe.cpp Condition_lin.cpp MemorySettingsReader.cpp sqlite/sqlite3.c sqlite/shell.c SQLiteFactory.cpp PipeThrottler.cpp mt19937ar.cpp DatabaseCursor.cpp SharedMutex_lin.cpp StaticPluginRegistration.cpp common/data.cpp common/adler32.cpp
 
-if WITH_FORTIFY
-AM_CPPFLAGS = -g -O2 -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
+urbackupsrv_SOURCES += fsimageplugin/dllmain.cpp fsimageplugin/filesystem.cpp fsimageplugin/FSImageFactory.cpp fsimageplugin/pluginmgr.cpp fsimageplugin/vhdfile.cpp fsimageplugin/fs/ntfs.cpp fsimageplugin/fs/unknown.cpp fsimageplugin/CompressedFile.cpp fsimageplugin/LRUMemCache.cpp fsimageplugin/cowfile.cpp fsimageplugin/FileWrapper.cpp
+
+urbackupsrv_SOURCES += urbackupcommon/os_functions_lin.cpp urbackupcommon/sha2/sha2.c urbackupcommon/fileclient/FileClient.cpp urbackupcommon/fileclient/tcpstack.cpp urbackupcommon/escape.cpp urbackupcommon/bufmgr.cpp urbackupcommon/json.cpp urbackupcommon/CompressedPipe.cpp urbackupcommon/InternetServicePipe2.cpp urbackupcommon/settingslist.cpp urbackupcommon/fileclient/FileClientChunked.cpp urbackupcommon/InternetServicePipe.cpp urbackupcommon/filelist_utils.cpp urbackupcommon/file_metadata.cpp urbackupcommon/glob.cpp urbackupcommon/chunk_hasher.cpp urbackupcommon/CompressedPipe2.cpp
+
+urbackupsrv_SOURCES += urbackupserver/dllmain.cpp urbackupserver/server.cpp urbackupserver/ClientMain.cpp urbackupserver/server_hash.cpp urbackupserver/server_prepare_hash.cpp urbackupserver/server_update.cpp urbackupserver/server_status.cpp urbackupserver/server_channel.cpp urbackupserver/server_ping.cpp urbackupserver/server_log.cpp  urbackupserver/server_writer.cpp urbackupserver/server_running.cpp urbackupserver/server_cleanup.cpp urbackupserver/server_settings.cpp urbackupserver/server_update_stats.cpp urbackupserver/serverinterface/helper.cpp  urbackupserver/serverinterface/lastacts.cpp urbackupserver/serverinterface/login.cpp urbackupserver/serverinterface/progress.cpp urbackupserver/serverinterface/salt.cpp urbackupserver/serverinterface/users.cpp urbackupserver/serverinterface/piegraph.cpp urbackupserver/serverinterface/usage.cpp urbackupserver/serverinterface/usagegraph.cpp urbackupserver/serverinterface/status.cpp urbackupserver/serverinterface/settings.cpp urbackupserver/serverinterface/backups.cpp urbackupserver/serverinterface/logs.cpp urbackupserver/serverinterface/getimage.cpp urbackupserver/serverinterface/download_client.cpp urbackupserver/treediff/TreeDiff.cpp urbackupserver/treediff/TreeNode.cpp urbackupserver/treediff/TreeReader.cpp urbackupserver/ChunkPatcher.cpp urbackupserver/InternetServiceConnector.cpp urbackupserver/server_archive.cpp urbackupserver/filedownload.cpp urbackupserver/serverinterface/shutdown.cpp urbackupserver/snapshot_helper.cpp urbackupserver/verify_hashes.cpp urbackupserver/apps/cleanup_cmd.cpp urbackupserver/apps/repair_cmd.cpp urbackupserver/dao/ServerCleanupDao.cpp urbackupserver/lmdb/mdb.c urbackupserver/lmdb/midl.c urbackupserver/LMDBFileIndex.cpp urbackupserver/FileIndex.cpp urbackupserver/create_files_index.cpp urbackupserver/serverinterface/livelog.cpp urbackupserver/serverinterface/start_backup.cpp urbackupserver/serverinterface/create_zip.cpp urbackupserver/server_dir_links.cpp urbackupserver/dao/ServerBackupDao.cpp urbackupserver/apps/export_auth_log.cpp urbackupserver/apps/check_files_index.cpp urbackupserver/ServerDownloadThread.cpp urbackupserver/server_hash_existing.cpp urbackupserver/Backup.cpp urbackupserver/ImageBackup.cpp urbackupserver/FileBackup.cpp urbackupserver/IncrFileBackup.cpp urbackupserver/FullFileBackup.cpp urbackupserver/ContinuousBackup.cpp urbackupserver/ThrottleUpdater.cpp urbackupserver/FileMetadataDownloadThread.cpp urbackupserver/restore_client.cpp urbackupserver/WalCheckpointThread.cpp urbackupserver/apps/skiphash_copy.cpp urbackupserver/cmdline_preprocessor.cpp
+
+urbackupsrv_SOURCES += fileservplugin/dllmain.cpp fileservplugin/bufmgr.cpp fileservplugin/CClientThread.cpp fileservplugin/CriticalSection.cpp fileservplugin/CTCPFileServ.cpp fileservplugin/CUDPThread.cpp fileservplugin/FileServ.cpp fileservplugin/FileServFactory.cpp fileservplugin/log.cpp fileservplugin/main.cpp fileservplugin/map_buffer.cpp fileservplugin/pluginmgr.cpp fileservplugin/ChunkSendThread.cpp fileservplugin/PipeFile.cpp fileservplugin/PipeSessions.cpp fileservplugin/PipeFileUnix.cpp fileservplugin/PipeFileBase.cpp fileservplugin/FileMetadataPipe.cpp
+
+if WITH_URLPLUGIN
+urbackupsrv_SOURCES += urlplugin/dllmain.cpp urlplugin/pluginmgr.cpp urlplugin/UrlFactory.cpp
 endif
 
-AM_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX
-AM_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY $(SUID_CFLAGS)
-AM_LDFLAGS = $(SUID_LDFLAGS)
+if WITH_CRYPTOPLUGIN
+urbackupsrv_SOURCES += cryptoplugin/dllmain.cpp cryptoplugin/AESDecryption.cpp cryptoplugin/CryptoFactory.cpp cryptoplugin/pluginmgr.cpp cryptoplugin/AESEncryption.cpp cryptoplugin/ZlibCompression.cpp cryptoplugin/ZlibDecompression.cpp cryptoplugin/AESGCMDecryption.cpp cryptoplugin/AESGCMEncryption.cpp cryptoplugin/ECDHKeyExchange.cpp
+endif
+
+if WITH_FUSEPLUGIN
+urbackupsrv_SOURCES += fuseplugin/dllmain.cpp
+endif
+
+if WITH_FORTIFY
+FORTIFY_FLAGS = -fstack-protector --param=ssp-buffer-size=4 -Wformat -Werror=format-security -D_FORTIFY_SOURCE=2
+endif
+
+urbackupsrv_LDADD = $(LIBCURL) $(CRYPTOPP_LIBS) $(PTHREAD_LIBS) $(DLOPEN_LIBS) $(FUSE_LIBS)
+urbackupsrv_CXXFLAGS = $(PTHREAD_CFLAGS) -DLINUX -DSTATIC_PLUGIN $(WITH_FUSEPLUGIN_CXXFLAGS) -DVARDIR='"$(localstatedir)"'
+urbackupsrv_CPPFLAGS = $(CRYPTOPP_CPPFLAGS) $(LIBCURL_CPPFLAGS) $(FUSE_CFLAGS) $(FORTIFY_FLAGS)
+urbackupsrv_CFLAGS = -DSQLITE_ENABLE_UNLOCK_NOTIFY $(SUID_CFLAGS)
+urbackupsrv_LDFLAGS = $(SUID_LDFLAGS) $(CRYPTOPP_LDFLAGS)
+
+urbackup_snapshot_helper_SOURCES = snapshot_helper/main.cpp urbackupcommon/os_functions_lin_min.cpp stringtools.cpp
+urbackup_snapshot_helper_LDADD = 
+urbackup_snapshot_helper_CXXFLAGS=-DOS_FUNC_NO_NET -DOS_FUNC_NO_IFACE_SERVER -DLINUX
+urbackup_snapshot_helper_CFLAGS=$(SUID_CFLAGS)
+urbackup_snapshot_helper_CPPFLAGS=$(FORTIFY_FLAGS)
+urbackup_snapshot_helper_LDFLAGS=$(SUID_LDFLAGS)
+
 SUBDIRS=. $(P_SUBDIRS)
-install-exec-local: defaults_server init.d_server logrotate_urbackup_srv
+install-exec-local: defaults_server init.d_server logrotate_urbackupsrv
 if INSTALL_INITD
 if PACKAGING
-	$(INSTALL) -D "$(srcdir)/init.d_server" "$(DESTDIR)$(sysconfdir)/init.d/urbackup_srv"
-	$(INSTALL) -D "$(srcdir)/defaults_server" "$(DESTDIR)$(sysconfdir)/default/urbackup_srv"
-	$(INSTALL) -D "$(srcdir)/logrotate_urbackup_srv" "$(DESTDIR)$(sysconfdir)/logrotate.d/urbackup_srv"
+	$(INSTALL) -D "$(srcdir)/init.d_server" "$(DESTDIR)$(sysconfdir)/init.d/urbackupsrv"
+	$(INSTALL) -D "$(srcdir)/defaults_server" "$(DESTDIR)$(sysconfdir)/default/urbackupsrv"
+	$(INSTALL) -D "$(srcdir)/logrotate_urbackupsrv" "$(DESTDIR)$(sysconfdir)/logrotate.d/urbackupsrv"
 else
-	$(INSTALL) -D "$(srcdir)/init.d_server" "$(sysconfdir)/init.d/urbackup_srv"
-	$(INSTALL) -D "$(srcdir)/logrotate_urbackup_srv" "$(sysconfdir)/logrotate.d/urbackup_srv"
-	if ! test -e "$(sysconfdir)/default/urbackup_srv"; then $(INSTALL) -D "$(srcdir)/defaults_server" "$(sysconfdir)/default/urbackup_srv"; fi
+	$(INSTALL) -D "$(srcdir)/init.d_server" "$(sysconfdir)/init.d/urbackupsrv"
+	$(INSTALL) -D "$(srcdir)/logrotate_urbackupsrv" "$(sysconfdir)/logrotate.d/urbackupsrv"
+	if ! test -e "$(sysconfdir)/default/urbackupsrv"; then $(INSTALL) -D "$(srcdir)/defaults_server" "$(sysconfdir)/default/urbackupsrv"; fi
 endif
 endif
 
@@ -36,7 +65,61 @@ else
 endif
 	chown urbackup:urbackup "$(DESTDIR)$(localstatedir)/urbackup"
 endif
+
+install-data-local: urbackupserver/backup_server.db urbackup/status.htm urbackupserver/www/js/*.js urbackupserver/www/*.htm urbackupserver/www/css/*.css urbackupserver/www/images/*.png urbackupserver/www/images/*.gif urbackupserver/www/fonts/* urbackupserver/urbackup_ecdsa409k1.pub urbackupserver/www/*.swf
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup"
+	chmod +x "$(DESTDIR)$(localstatedir)/urbackup"
+	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/urbackupserver/backup_server.db" "$(DESTDIR)$(localstatedir)/urbackup/backup_server.db.template"
+	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/urbackup/status.htm" "$(DESTDIR)$(localstatedir)/urbackup/status.htm"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www/css"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www/js"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www/fonts"
+	$(INSTALL) $(INSTALL_OPTS) -m 744 -d "$(DESTDIR)$(localstatedir)/urbackup/www/images"
+if !PACKAGING
+	chmod u+x "$(DESTDIR)$(localstatedir)/urbackup/www"
+	chmod u+x "$(DESTDIR)$(localstatedir)/urbackup"
+endif
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/js/*.js "$(DESTDIR)$(localstatedir)/urbackup/www/js/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/*.htm "$(DESTDIR)$(localstatedir)/urbackup/www/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/css/*.css "$(DESTDIR)$(localstatedir)/urbackup/www/css/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/images/*.png "$(DESTDIR)$(localstatedir)/urbackup/www/images/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/images/*.gif "$(DESTDIR)$(localstatedir)/urbackup/www/images/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/urbackup_ecdsa409k1.pub "$(DESTDIR)$(localstatedir)/urbackup/urbackup_ecdsa409k1.pub"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/*.swf "$(DESTDIR)$(localstatedir)/urbackup/www/"
+	$(INSTALL_DATA) $(INSTALL_OPTS) $(srcdir)/urbackupserver/www/fonts/* "$(DESTDIR)$(localstatedir)/urbackup/www/fonts/"
 	
+cryptoplugin_headers = cryptoplugin/AESEncryption.h cryptoplugin/AESDecryption.h cryptoplugin/IAESDecryption.h cryptoplugin/ICryptoFactory.h cryptoplugin/pluginmgr.h cryptoplugin/IAESEncryption.h cryptoplugin/CryptoFactory.h cryptoplugin/IZlibCompression.h cryptoplugin/IZlibDecompression.h cryptoplugin/ZlibCompression.h cryptoplugin/ZlibDecompression.h cryptoplugin/cryptopp_inc.h cryptoplugin/AESGCMDecryption.h cryptoplugin/AESGCMEncryption.h cryptoplugin/ECDHKeyExchange.h cryptoplugin/IAESGCMDecryption.h cryptoplugin/IAESGCMEncryption.h cryptoplugin/IECDHKeyExchange.h
+
+fileservplugin_headers = fileservplugin/bufmgr.h fileservplugin/CUDPThread.h fileservplugin/FileServFactory.h fileservplugin/IFileServ.h fileservplugin/packet_ids.h fileservplugin/socket_header.h fileservplugin/CriticalSection.h fileservplugin/FileServ.h fileservplugin/log.h fileservplugin/pluginmgr.h   fileservplugin/CClientThread.h fileservplugin/CTCPFileServ.h fileservplugin/IFileServFactory.h fileservplugin/map_buffer.h fileservplugin/settings.h fileservplugin/types.h fileservplugin/chunk_settings.h fileservplugin/ChunkSendThread.h fileservplugin/PipeFile.h fileservplugin/PipeSessions.h  fileservplugin/PipeFileBase.h fileservplugin/IPermissionCallback.h fileservplugin/FileMetadataPipe.h
+
+fsimageplugin_headers = fsimageplugin/filesystem.h fsimageplugin/FSImageFactory.h fsimageplugin/IFilesystem.h fsimageplugin/IFSImageFactory.h fsimageplugin/IVHDFile.h fsimageplugin/pluginmgr.h fsimageplugin/vhdfile.h fsimageplugin/fs/ntfs.h fsimageplugin/fs/unknown.h fsimageplugin/CompressedFile.h fsimageplugin/LRUMemCache.h common/miniz.c fsimageplugin/cowfile.h fsimageplugin/FileWrapper.h
+
+tclap_headers = \
+			 tclap/CmdLineInterface.h \
+			 tclap/ArgException.h \
+			 tclap/CmdLine.h \
+			 tclap/XorHandler.h \
+			 tclap/MultiArg.h \
+			 tclap/UnlabeledMultiArg.h \
+			 tclap/ValueArg.h \
+			 tclap/UnlabeledValueArg.h \
+			 tclap/Visitor.h tclap/Arg.h \
+			 tclap/HelpVisitor.h \
+			 tclap/SwitchArg.h \
+			 tclap/MultiSwitchArg.h \
+			 tclap/VersionVisitor.h \
+			 tclap/IgnoreRestVisitor.h \
+			 tclap/CmdLineOutput.h \
+			 tclap/StdOutput.h \
+			 tclap/DocBookOutput.h \
+			 tclap/ZshCompletionOutput.h \
+			 tclap/OptionalUnlabeledTracker.h \
+			 tclap/Constraint.h \
+			 tclap/ValuesConstraint.h \
+			 tclap/ArgTraits.h \
+			 tclap/StandardTraits.h
 	
-noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h file.h Mutex_boost.h Condition_boost.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h Interface/DatabaseFactory.h Interface/DatabaseInt.h SQLiteFactory.h sqlite/shell.h PipeThrottler.h Interface/PipeThrottler.h mt19937ar.h DatabaseCursor.h Interface/DatabaseCursor.h Interface/SharedMutex.h SharedMutex_lin.h
-EXTRA_DIST=docs/start_urbackup_server.1 docs/urbackup_srv.1 init.d_server defaults_server start_urbackup_server logrotate_urbackup_srv urbackup-server.service urbackup-server-firewalld.xml
+noinst_HEADERS=SessionMgr.h WorkerThread.h Helper_win32.h Database.h defaults.h ServiceAcceptor.h Query.h SettingsReader.h file.h Mutex_boost.h Condition_boost.h file_memory.h MemorySettingsReader.h Condition_lin.h LookupService.h Template.h types.h DBSettingsReader.h stringtools.h ThreadPool.h libs.h vld_.h ServiceWorker.h StreamPipe.h LoadbalancerClient.h socket_header.h FileSettingsReader.h SelectThread.h md5.h vld.h Table.h Client.h MemoryPipe.h Mutex_lin.h AcceptThread.h OutputStream.h Server.h Interface/SessionMgr.h Interface/Service.h Interface/PluginMgr.h Interface/Database.h Interface/Pipe.h Interface/CustomClient.h Interface/User.h Interface/Query.h Interface/SettingsReader.h Interface/Types.h Interface/Template.h Interface/ThreadPool.h Interface/Mutex.h Interface/File.h Interface/Condition.h Interface/Table.h Interface/Plugin.h Interface/Thread.h Interface/Action.h Interface/Object.h Interface/OutputStream.h Interface/Server.h libfastcgi/fastcgi.hpp sqlite/sqlite3.h sqlite/sqlite3ext.h utf8/utf8.h utf8/utf8/checked.h utf8/utf8/core.h utf8/utf8/unchecked.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h Interface/DatabaseFactory.h Interface/DatabaseInt.h SQLiteFactory.h sqlite/shell.h PipeThrottler.h Interface/PipeThrottler.h mt19937ar.h DatabaseCursor.h Interface/DatabaseCursor.h Interface/SharedMutex.h SharedMutex_lin.h httpserver/HTTPAction.h httpserver/HTTPClient.h httpserver/HTTPFile.h httpserver/HTTPProxy.h httpserver/HTTPService.h httpserver/IndexFiles.h httpserver/MIMEType.h urbackupserver/server_ping.h urbackupserver/server_cleanup.h urbackupcommon/os_functions.h urbackupcommon/json.h urbackupserver/serverinterface/helper.h urbackupserver/serverinterface/action_header.h urbackupserver/serverinterface/actions.h urbackupserver/server_writer.h urbackupcommon/settings.h urbackupserver/server_settings.h urbackupserver/zero_hash.h urbackupserver/server_update.h urbackupserver/server_log.h urbackupserver/server_hash.h urbackupserver/server_status.h urbackupcommon/bufmgr.h urbackupserver/server_update_stats.h urbackupcommon/sha2/sha2.h urbackupcommon/fileclient/FileClient.h common/data.h urbackupcommon/fileclient/socket_header.h urbackupcommon/fileclient/tcpstack.h urbackupcommon/fileclient/packet_ids.h urbackupserver/database.h urbackupserver/mbr_code.h urbackupserver/action_header.h urbackupcommon/escape.h urbackupserver/server.h urbackupserver/server_running.h urbackupserver/server_prepare_hash.h urbackupserver/actions.h urbackupserver/server_channel.h urbackupserver/ClientMain.h urbackupserver/treediff/TreeDiff.h urbackupserver/treediff/TreeNode.h urbackupserver/treediff/TreeReader.h fileservplugin/IFileServFactory.h fileservplugin/IFileServ.h urlplugin/IUrlFactory.h urbackupcommon/capa_bits.h cryptoplugin/ICryptoFactory.h urbackupcommon/fileclient/FileClientChunked.h urbackupserver/ChunkPatcher.h urbackupcommon/CompressedPipe.h urbackupcommon/InternetServicePipe.h urbackupcommon/InternetServicePipe2.h urbackupcommon/InternetServiceIDs.h urbackupserver/InternetServiceConnector.h md5.h urbackupcommon/settingslist.h urbackupserver/server_archive.h cryptoplugin/IZlibCompression.h cryptoplugin/IZlibDecompression.h cryptoplugin/ICryptoFactory.h cryptoplugin/IAESEncryption.h cryptoplugin/IAESDecryption.h fileservplugin/chunk_settings.h urbackupcommon/internet_pipe_capabilities.h urbackupcommon/mbrdata.h urbackupserver/filedownload.h urbackupserver/snapshot_helper.h urbackupserver/apps/cleanup_cmd.h urbackupserver/apps/repair_cmd.h urbackupserver/dao/ServerCleanupDao.h urbackupserver/lmdb/lmdb.h urbackupserver/lmdb/midl.h urbackupserver/LMDBFileIndex.h urbackupserver/create_files_index.h urbackupserver/FileIndex.h urbackupserver/serverinterface/rights.h urbackupserver/server_dir_links.h urbackupserver/dao/ServerBackupDao.h urbackupserver/apps/app.h urbackupserver/apps/export_auth_log.h urbackupserver/serverinterface/login.h urbackupserver/ServerDownloadThread.h common/adler32.h urbackupserver/server_hash_existing.h urbackupcommon/file_metadata.h urbackupcommon/filelist_utils.h urbackupserver/Backup.h urbackupserver/ImageBackup.h urbackupserver/FileBackup.h urbackupserver/IncrFileBackup.h urbackupserver/FullFileBackup.h urbackupserver/ContinuousBackup.h urbackupserver/ThrottleUpdater.h urbackupcommon/glob.h urbackupserver/FileMetadataDownloadThread.h urbackupserver/restore_client.h urbackupcommon/chunk_hasher.h urbackupserver/WalCheckpointThread.h urbackupcommon/CompressedPipe2.h urlplugin/IUrlFactory.h urlplugin/pluginmgr.h urlplugin/UrlFactory.h StaticPluginRegistration.h $(cryptoplugin_headers) $(fileservplugin_headers) $(fsimageplugin_headers) $(tclap_headers)
+
+EXTRA_DIST=docs/urbackupsrv.1 init.d_server defaults_server logrotate_urbackupsrv urbackup-server.service urbackup-server-firewalld.xml urbackupserver/backup_server.db urbackup/status.htm urbackupserver/www/js/*.js urbackupserver/www/*.htm urbackupserver/www/css/*.css urbackupserver/www/images/*.png urbackupserver/www/images/*.gif urbackupserver/www/*.ico urbackupserver/urbackup_ecdsa409k1.pub urbackupserver/www/*.swf urbackupserver/www/fonts/* tclap/COPYING tclap/AUTHORS

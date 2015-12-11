@@ -111,6 +111,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(backup_window_incr_image);
 	SET_SETTING(backup_window_full_image);
 	SET_SETTING(computername);
+	SET_SETTING(virtual_clients);
 	SET_SETTING(exclude_files);
 	SET_SETTING(include_files);
 	SET_SETTING(default_dirs);
@@ -148,7 +149,7 @@ JSON::Object getJSONClientSettings(ServerSettings &settings)
 	SET_SETTING(internet_readd_file_entries);
 	SET_SETTING(local_incr_image_style);
 	SET_SETTING(local_full_image_style);
-	SET_SETTING(follow_symlinks);
+	SET_SETTING(background_backups);
 	SET_SETTING(internet_incr_image_style);
 	SET_SETTING(internet_full_image_style);
 #undef SET_SETTING
@@ -495,13 +496,32 @@ void updateArchiveSettings(int clientid, str_map &GET, IDatabase *db)
 		++i;
 	}
 
-	IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
 	if(clientid!=0)
 	{		
+		IQuery *q_get=db->Prepare("SELECT value FROM settings_db.settings WHERE clientid="+nconvert(clientid)+" AND key=?");
 		IQuery *q_update=db->Prepare("UPDATE settings_db.settings SET value=? WHERE key=? AND clientid="+nconvert(clientid));
 		IQuery *q_insert=db->Prepare("INSERT INTO settings_db.settings (key, value, clientid) VALUES (?,?,"+nconvert(clientid)+")");
 
-		updateSetting(L"overwrite_archive_settings", L"true", q_get, q_update, q_insert);
+		IQuery *q_identical_config = db->Prepare("SELECT COUNT(clientid) AS c, MAX(clientid) AS max_clientid, MIN(clientid) AS min_clientid, interval, interval_unit, length, length_unit, backup_types, archive_window "
+			"FROM settings_db.automatic_archival WHERE (clientid=? OR clientid=0)"
+			"GROUP BY interval, interval_unit, length, length_unit, backup_types, archive_window");
+		q_identical_config->Bind(clientid);
+		db_results res = q_identical_config->Read();
+		q_identical_config->Reset();
+
+		std::wstring overwrite_archive_settings = L"false";
+		for(size_t i=0;i<res.size();++i)
+		{
+			if(res[i][L"min_clientid"]!=L"0" ||
+				res[i][L"max_clientid"]!=convert(clientid) ||
+				watoi(res[i][L"c"])%2!=0)
+			{
+				overwrite_archive_settings=L"true";
+				break;
+			}
+		}
+
+		updateSetting(L"overwrite_archive_settings", overwrite_archive_settings, q_get, q_update, q_insert);
 	}
 	else
 	{
@@ -753,6 +773,7 @@ ACTION_IMPL(settings)
 				s=getClientSettings(db, t_clientid);
 				obj.set("overwrite", s.overwrite);
 				obj.set("clientid", t_clientid);
+				obj.set("main_client", backupdao.getVirtualMainClientname(t_clientid).value.empty());
 
 				ret.set("cowraw_available", BackupServer::isSnapshotsEnabled());
 				ret.set("settings",  obj);
@@ -767,20 +788,28 @@ ACTION_IMPL(settings)
 		{
 			std::wstring name=strlower(GET[L"name"]);
 			std::wstring salt=GET[L"salt"];
-			std::wstring pwmd5=GET[L"pwmd5"];
+			std::string pwmd5=Server->ConvertToUTF8(GET[L"pwmd5"]);
 
 			IQuery *q_find=db->Prepare("SELECT id FROM settings_db.si_users WHERE name=?");
 			q_find->Bind(name);
 			db_results res=q_find->Read();
 			q_find->Reset();
 
-
 			if(res.empty())
 			{
-				IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt) VALUES (?,?,?)");
+				size_t pbkdf2_rounds=0;
+				if(crypto_fak!=NULL)
+				{
+					pbkdf2_rounds=10000;
+
+					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), Server->ConvertToUTF8(salt), pbkdf2_rounds));
+				}
+
+				IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt, pbkdf2_rounds) VALUES (?,?,?,?)");
 				q->Bind(name);
 				q->Bind(pwmd5);
 				q->Bind(salt);
+				q->Bind(pbkdf2_rounds);
 				q->Write();
 				q->Reset();
 
@@ -812,7 +841,7 @@ ACTION_IMPL(settings)
 			if(ok)
 			{
 				std::wstring salt=GET[L"salt"];
-				std::wstring pwmd5=GET[L"pwmd5"];
+				std::string pwmd5=Server->ConvertToUTF8(GET[L"pwmd5"]);
 				int t_userid;
 				if(GET[L"userid"]==L"own")
 				{
@@ -822,10 +851,20 @@ ACTION_IMPL(settings)
 				{
 					t_userid=watoi(GET[L"userid"]);
 				}
-				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET salt=?, password_md5=? WHERE id=?");
+
+				size_t pbkdf2_rounds=0;
+				if(crypto_fak!=NULL)
+				{
+					pbkdf2_rounds=10000;
+
+					pwmd5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(pwmd5), Server->ConvertToUTF8(salt), pbkdf2_rounds));
+				}
+
+				IQuery *q=db->Prepare("UPDATE settings_db.si_users SET salt=?, password_md5=?, pbkdf2_rounds=? WHERE id=?");
 			
 				q->Bind(salt);
 				q->Bind(pwmd5);
+				q->Bind(pbkdf2_rounds);
 				q->Bind(t_userid);
 				q->Write();
 				q->Reset();
@@ -1026,7 +1065,7 @@ ACTION_IMPL(settings)
 	ret.set("ONLY_WIN32_END", "-->");
 #endif
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

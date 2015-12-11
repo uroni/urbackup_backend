@@ -308,6 +308,7 @@
     <ClCompile Include="SharedMutex_boost.cpp" />
     <ClCompile Include="SQLiteFactory.cpp" />
     <ClCompile Include="sqlite\shell.c" />
+    <ClCompile Include="StaticPluginRegistration.cpp" />
     <ClCompile Include="StreamPipe.cpp" />
     <ClCompile Include="stringtools.cpp" />
     <ClCompile Include="Table.cpp" />
@@ -355,6 +356,7 @@
     <ClInclude Include="socket_header.h" />
     <ClInclude Include="SQLiteFactory.h" />
     <ClInclude Include="sqlite\shell.h" />
+    <ClInclude Include="StaticPluginRegistration.h" />
     <ClInclude Include="StreamPipe.h" />
     <ClInclude Include="stringtools.h" />
     <ClInclude Include="Table.h" />

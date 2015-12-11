@@ -74,6 +74,8 @@ public:
 	virtual _u32 Write(const char* buffer, _u32 bsize, bool *has_error=NULL);
 	virtual _i64 Size(void);
 	virtual _i64 RealSize(void);
+	virtual bool PunchHole( _i64 spos, _i64 size );
+	virtual bool Sync();
 	
 	bool Seek(_i64 offset);
 	bool Read(char* buffer, size_t bsize, size_t &read);

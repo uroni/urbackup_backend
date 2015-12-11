@@ -20,6 +20,9 @@
 #include "bufmgr.h"
 #include "log.h"
 
+namespace fileserv
+{
+
 CBufMgr::CBufMgr(unsigned int nbuf, unsigned int bsize)
 {
 	for(unsigned int i=0;i<nbuf;++i)
@@ -76,3 +79,5 @@ unsigned int CBufMgr::nfreeBufffer(void)
 {
 	return freebufs;
 }
+
+} //namespace fileserv

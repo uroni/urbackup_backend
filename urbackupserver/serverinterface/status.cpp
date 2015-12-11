@@ -42,7 +42,7 @@ bool client_download(Helper& helper, JSON::Array &client_downloads)
 	if(!FileExists("urbackup/UrBackupUpdate.exe"))
 		return false;
 
-	if(!FileExists("urbackup/UrBackupUpdate.sig"))
+	if(!FileExists("urbackup/UrBackupUpdate.sig2"))
 		return false;
 
 	if(crypto_fak==NULL)
@@ -222,7 +222,8 @@ ACTION_IMPL(status)
 			{
 				for(size_t i=0;i<remove_client.size();++i)
 				{
-					IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=?");
+					IQuery *q=db->Prepare("UPDATE clients SET delete_pending=1 WHERE id=? OR virtualmain = (SELECT name FROM clients WHERE id=?)");
+					q->Bind(remove_client[i]);
 					q->Bind(remove_client[i]);
 					q->Write();
 					q->Reset();
@@ -244,8 +245,8 @@ ACTION_IMPL(status)
 					filter+=" OR ";
 			}
 		}
-		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen, 'localtime') AS lastseen,"
-			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image, 'localtime') AS lastbackup_image FROM clients"+filter+" ORDER BY name");
+		db_results res=db->Read("SELECT id, delete_pending, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup, strftime('"+helper.getTimeFormatString()+"', lastseen) AS lastseen,"
+			"strftime('"+helper.getTimeFormatString()+"', lastbackup_image) AS lastbackup_image FROM clients"+filter+" ORDER BY name");
 
 		double backup_ok_mod_file=3.;
 		db_results res_t=db->Read("SELECT value FROM settings_db.settings WHERE key='backup_ok_mod_file' AND clientid=0");
@@ -270,9 +271,9 @@ ACTION_IMPL(status)
 			std::wstring clientname=res[i][L"name"];
 			stat.set("id", clientid);
 			stat.set("name", clientname);
-			stat.set("lastbackup", res[i][L"lastbackup"]);
-			stat.set("lastseen", res[i][L"lastseen"]);
-			stat.set("lastbackup_image", res[i][L"lastbackup_image"]);
+			stat.set("lastbackup", watoi64(res[i][L"lastbackup"]));
+			stat.set("lastseen", watoi64(res[i][L"lastseen"]));
+			stat.set("lastbackup_image", watoi64(res[i][L"lastbackup_image"]));
 			stat.set("delete_pending", res[i][L"delete_pending"] );
 
 			std::string ip="-";
@@ -484,7 +485,7 @@ ACTION_IMPL(status)
 	{
 		ret.set("error", 1);
 	}
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }
 
 #endif //CLIENT_ONLY

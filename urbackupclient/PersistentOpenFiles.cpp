@@ -65,7 +65,8 @@ bool PersistentOpenFiles::flushf_int(bool allow_cycle)
 	}
 	wdata.clear();
 
-	if(persistf->Size()>20*1024*1024 && allow_cycle)
+	if(persistf->Size()>20*1024*1024 && allow_cycle
+		&& bytes_deleted>5*1024*1024)
 	{
 		return cycle();
 	}
@@ -253,6 +254,11 @@ void PersistentOpenFiles::add( const std::wstring& fn )
 
 		addf(fn, curr_id);
 	}
+}
+
+bool PersistentOpenFiles::is_present( const std::wstring& fn )
+{
+	return (open_files.find(fn)!=open_files.end());
 }
 
 PersistentOpenFiles::PersistentOpenFiles() : curr_id(0), bytes_written(0), bytes_deleted(0)

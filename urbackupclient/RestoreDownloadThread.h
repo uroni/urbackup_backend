@@ -35,7 +35,8 @@ namespace
 			fileclient(EFileClient_Full),
 			queued(false),
 			action(EQueueAction_Fileclient),
-			is_script(false)
+			is_script(false),
+			folder_items(0)
 		{
 		}
 
@@ -50,6 +51,7 @@ namespace
 		SPatchDownloadFiles patch_dl_files;
 		FileMetadata metadata;
 		bool is_script;
+		size_t folder_items;
 	};
 }
 
@@ -61,7 +63,7 @@ public:
 	void operator()();
 
 	void addToQueueFull(size_t id, const std::wstring &remotefn, const std::wstring &destfn,
-        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool at_front, bool metadata_only);
+        _i64 predicted_filesize, const FileMetadata& metadata, bool is_script, bool metadata_only, size_t folder_items);
 
 	void addToQueueChunked(size_t id, const std::wstring &remotefn, const std::wstring &destfn,
 		_i64 predicted_filesize, const FileMetadata& metadata, bool is_script, IFile* orig_file, IFile* chunkhashes);
@@ -74,7 +76,7 @@ public:
 
 	bool load_file_patch(SQueueItem todl);
 
-	virtual std::string getQueuedFileFull( FileClient::MetadataQueue& metadata );
+	virtual std::string getQueuedFileFull( FileClient::MetadataQueue& metadata, size_t& folder_items);
 
 	virtual void unqueueFileFull( const std::string& fn );
 

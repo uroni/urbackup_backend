@@ -2,11 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([urbackup-server], [1.5.0.BUILDID], [martin@urbackup.org])
+AC_INIT([urbackup-server], [2.0.0.BUILDID], [martin@urbackup.org])
 AC_CONFIG_SRCDIR([AcceptThread.cpp])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([subdir-objects])
 AC_ARG_WITH([mail],
      AS_HELP_STRING([--without-mail], [Disables server mailing features. Use this to remove the dependency on libcurl.]))
 AC_ARG_WITH([crypto],
@@ -22,21 +22,13 @@ AC_ARG_ENABLE([fortify],
      AS_HELP_STRING([--disable-fortify], [Disable GCC/runtime fortification]))
 AM_CONDITIONAL(WITH_FORTIFY, test "x$enable_fortify" != xno)
 
-    
-
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
 
-#AX_BOOST_BASE([1.38.0])
-#AX_BOOST_THREAD
-
-#if !($HAVE_BOOST_THREAD)
-#then
-#   echo "Sorry, you need the Thread-Lib from Boost."
-#   echo "Please install from http://www.boost.org"
-#   exit 1
-#fi
+AC_CXX_HAVE_SSTREAM
+AC_CXX_HAVE_STRSTREAM
+AC_CXX_HAVE_LONG_LONG
 
 AX_PTHREAD
 if !($HAVE_PTHREAD)
@@ -86,30 +78,38 @@ AC_SUBST([DLOPEN_LIBS])
 
 P_SUBDIRS="snapshot_helper fsimageplugin httpserver urbackupserver"
 
-AS_IF([test "x$with_mail" != "xno"],
-    [P_SUBDIRS="urlplugin $P_SUBDIRS"])
-AS_IF([test "x$with_crypto" != "xno"],
-    [P_SUBDIRS="cryptoplugin $P_SUBDIRS"])
-AS_IF([test "x$with_mountvhd" = "xyes"],
-	[P_SUBDIRS="fuseplugin $P_SUBDIRS"])
-
-AC_SUBST([P_SUBDIRS])
-
-if test "x$with_crypto" != "xno"; then
-    AC_CONFIG_SUBDIRS([cryptoplugin])
-fi
-
-if test "x$with_mail" != "xno"; then
-    AC_CONFIG_SUBDIRS([urlplugin])
-fi
-
-if test "x$with_mountvhd" = "xyes"; then
-	AC_CONFIG_SUBDIRS([fuseplugin])
-fi
-
+AM_CONDITIONAL(WITH_URLPLUGIN, test "x$with_mail" != "xno")
+AM_CONDITIONAL(WITH_CRYPTOPLUGIN, test "x$with_crypto" != "xno")
+AM_CONDITIONAL(WITH_FUSEPLUGIN, test "x$with_mountvhd" != "xno")
 AM_CONDITIONAL(PACKAGING, test "x$enable_packaging" = xyes)
 AM_CONDITIONAL(INSTALL_INITD, test "x$enable_install_initd" = xyes)
 
-AC_CONFIG_SUBDIRS([snapshot_helper fsimageplugin httpserver urbackupserver])
+if test "x$with_mail" != "xno"
+then
+	LIBCURL_CHECK_CONFIG(,[7.20.0],,[
+       AC_MSG_ERROR([Your system lacks of libcurl >= 7.20.0])
+     ])
+fi
+
+if test "x$with_crypto" != "xno"
+then
+	MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install or build without crypto support."; exit 44;])
+fi
+
+WITH_FUSEPLUGIN_CXXFLAGS=""
+if test "x$with_mountvhd" != "xno"
+then
+	PKG_CHECK_MODULES([FUSE], [fuse >= 2.8.0], [
+			  AC_SUBST([FUSE_CFLAGS])
+              AC_SUBST([FUSE_LIBS])
+	])
+	WITH_FUSEPLUGIN_CXXFLAGS="-DWITH_FUSEPLUGIN"
+fi
+AC_SUBST([WITH_FUSEPLUGIN_CXXFLAGS])
+
+AC_SEARCH_LIBS([clock_gettime], [rt posix4],
+	[test "$ac_cv_search_clock_gettime" = "none required" || LIBS="$LIBS $ac_cv_search_clock_gettime"],
+	[AC_MSG_FAILURE([No library for clock_gettime found])] )
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

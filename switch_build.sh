@@ -44,10 +44,6 @@ switch()
 {
 	switch_build
 	switch_m_build
-	cd fsimageplugin
-	switch_build
-	cd ../cryptoplugin
-	switch_build
 }
 
 clean_build()
@@ -74,11 +70,8 @@ then
 elif [[ "x$1" == "xclient" ]]
 then
 	cbuild="client"
-elif [[ "x$1" == "xbdbplugin" ]]
-then
-	cbuild="bdbplugin"
 else
-	echo "No valid build enviroment. Available: client, server"
+	echo "No valid build environment. Available: client, server"
 	exit 0
 fi
 

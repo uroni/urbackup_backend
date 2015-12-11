@@ -13,7 +13,7 @@ class FileMetadata
 {
 public:
 	FileMetadata()
-		: last_modified(0), created(0), exist(false), has_orig_path(false)
+		: last_modified(0), created(0), accessed(0), exist(false), has_orig_path(false)
 	{
 
 	}
@@ -30,6 +30,7 @@ public:
 	std::string file_permissions;
 	int64 last_modified;
 	int64 created;
+	int64 accessed;
 	std::string shahash;
 	bool has_orig_path;
 	std::string orig_path;
@@ -42,9 +43,9 @@ public:
 			&& created == other.created;
 	}
 
-	static bool hasPermission(const std::string& permissions, int id, bool& denied);
+	static bool hasPermission(const std::string& permissions, int64 id, bool& denied);
 
-	bool hasPermission(int id, bool& denied) const;
+	bool hasPermission(int64 id, bool& denied) const;
 
 	void serialize(CWData& data) const;
 

@@ -21,8 +21,12 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 #include "FileServ.h"
+#include "CUDPThread.h"
 
 int start_server_int(unsigned short tcpport, unsigned short udpport, const std::string &pSname, const bool *pDostop, bool use_fqdn);
+
+bool FileServFactory::backupground_backups_enabled = true;
+
 
 class ExecThread : public IThread
 {
@@ -56,10 +60,11 @@ private:
 
 IPermissionCallback* FileServFactory::permission_callback = NULL;
 
-IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name, bool use_fqdn_default)
+IFileServ * FileServFactory::createFileServ(unsigned short tcpport, unsigned short udpport, const std::wstring &name, bool use_fqdn_default, bool enable_background_priority)
 {
 	bool *dostop=new bool;
 	*dostop=false;
+	backupground_backups_enabled = enable_background_priority;
 	ExecThread *et=new ExecThread(tcpport, udpport, name, dostop, use_fqdn_default);
 	THREADPOOL_TICKET t=Server->getThreadPool()->execute(et);
 	FileServ *fs=new FileServ(dostop, name, t, use_fqdn_default);
@@ -76,6 +81,11 @@ void FileServFactory::setPermissionCallback( IPermissionCallback* new_permission
 	permission_callback=new_permission_callback;
 }
 
+bool FileServFactory::backgroundBackupsEnabled()
+{
+	return backupground_backups_enabled;
+}
+
 IPermissionCallback* FileServFactory::getPermissionCallback()
 {
 	return permission_callback;
@@ -87,4 +97,9 @@ IFileServ* FileServFactory::createFileServNoBind(const std::wstring &name, bool 
 	*dostop=false;
 	FileServ *fs=new FileServ(dostop, name, ILLEGAL_THREADPOOL_TICKET, use_fqdn_default);
 	return fs;
+}
+
+std::wstring FileServFactory::getDefaultServerName( bool use_fqdn )
+{
+	return Server->ConvertToUnicode(getSystemServerName(use_fqdn));
 }

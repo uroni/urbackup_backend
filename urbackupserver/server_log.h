@@ -24,6 +24,7 @@ class ServerLogger
 {
 public:
 	static void Log(logid_t logid, const std::string &pStr, int LogLevel=LL_INFO);
+	static void Log(int64 times, logid_t logid, const std::string &pStr, int LogLevel=LL_INFO);
 	static void Log(logid_t logid, const std::wstring &pStr, int LogLevel=LL_INFO);
 
 	static void init_mutex(void);
@@ -45,7 +46,7 @@ public:
 private:
 
 	static void logCircular(int clientid, const std::string &pStr, int LogLevel);
-	static void logMemory(logid_t logid, const std::string &pStr, int LogLevel);
+	static void logMemory(int64 times, logid_t logid, const std::string &pStr, int LogLevel);
 
 	static std::map<logid_t, std::vector<SLogEntry> > logdata;
 	static std::map<int, SCircularData> circular_logdata;

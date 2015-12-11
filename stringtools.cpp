@@ -365,7 +365,7 @@ string ExtractFileName(string fulln, string separators)
 		bool separator = separators.find(fulln[i])!=string::npos;
 		if(separator)
 		{
-			if(i<(s32)fulln.length()-2)
+			if(i<(s32)fulln.length()-1)
 				break;
 		}
 		if(fulln[i]!=0 && !separator)
@@ -386,7 +386,7 @@ wstring ExtractFileName(wstring fulln, wstring separators)
 
 		if( separator )
 		{
-			if(i<(s32)fulln.length()-2)
+			if(i<(s32)fulln.length()-1)
 				break;
 		}
 		if(fulln[i]!=0 && !separator)
@@ -1080,17 +1080,33 @@ std::string EscapeParamString(const std::string &pStr)
 	ret.reserve(pStr.size());
 	for(size_t i=0;i<pStr.size();++i)
 	{
-		if(pStr[i]=='&')
+		switch(pStr[i])
 		{
-			ret+="%26";
+		case '&': ret+="%26"; break;
+		case '$': ret+="%24"; break;
+		case '/': ret+="%2F"; break;
+		case ' ': ret+="%20"; break;
+		case '#': ret+="%23"; break;
+		default: ret+=pStr[i]; break;
 		}
-		else if(pStr[i]=='$')
+	}
+	return ret;
+}
+
+std::wstring EscapeParamString(const std::wstring &pStr)
+{
+	std::wstring ret;
+	ret.reserve(pStr.size());
+	for(size_t i=0;i<pStr.size();++i)
+	{
+		switch(pStr[i])
 		{
-			ret+="%24";
-		}
-		else
-		{
-			ret+=pStr[i];
+		case '&': ret+=L"%26"; break;
+		case '$': ret+=L"%24"; break;
+		case '/': ret+=L"%2F"; break;
+		case ' ': ret+=L"%20"; break;
+		case '#': ret+=L"%23"; break;
+		default: ret+=pStr[i]; break;
 		}
 	}
 	return ret;
@@ -1207,11 +1223,6 @@ void ParseParamStrHttp(const std::string &pStr, std::map<std::wstring,std::wstri
 	}
 }
 
-int round(float f)
-{
-  return (int)(f<0?f-0.5f:f+0.5f);
-}
-
 std::string FormatTime(int timeins)
 {
 	float t=(float)timeins;
@@ -1242,7 +1253,11 @@ std::string FormatTime(int timeins)
 
 //-------------------HTML DECODE-----------------
 
-const char array[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'}; 
+namespace
+{
+	const char hexnum_array[] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'}; 
+}
+
 
 bool IsHex(const std::string &str)
 {
@@ -1252,7 +1267,7 @@ bool IsHex(const std::string &str)
 		bool in=false;
 		for(size_t t=0;t<16;++t)
 		{
-			if(array[t]==str[i])
+			if(hexnum_array[t]==str[i])
 			{
 				in=true;
 				break;
@@ -1276,7 +1291,7 @@ unsigned long hexToULong(const std::string &data)
 	{
 		for(unsigned char j = 0; j < 16; j++)
 		{
-			if( str[i] == array[j])
+			if( str[i] == hexnum_array[j])
 			{			
 				return_value = ((return_value * 16) + j);
 			}
@@ -1289,15 +1304,15 @@ std::string byteToHex(unsigned char ch)
 {
 	std::string r;
 	r.resize(2);
-	r[0]=array[ch%16];
-	ch/=16;
-	r[1]=array[ch%16];
+	r[0]=hexnum_array[ch/16];
+	r[1]=hexnum_array[ch%16];
 	return r;
 }
 
 std::string bytesToHex(const unsigned char *b, size_t bsize)
 {
 	std::string r;
+	r.reserve(bsize*2);
 	for(size_t i=0;i<bsize;++i)
 	{
 		r+=byteToHex(b[i]);
@@ -1737,6 +1752,8 @@ std::string PrettyPrintTime(int64 ms)
 	unsigned int c_h=c_m*60;
 	unsigned int c_d=c_h*24;
 
+	int64 orig = ms;
+
 	if( ms>c_d)
 	{
 		int64 t=ms/c_d;
@@ -1767,6 +1784,12 @@ std::string PrettyPrintTime(int64 ms)
 		if(!ret.empty()) ret+=" ";
 		ret+=nconvert(t)+"s";
 		ms-=t*c_s;
+	}
+
+	if( orig < c_s)
+	{
+		if(!ret.empty()) ret+=" ";
+		ret+=nconvert(ms)+"ms";
 	}
 
 	return ret;

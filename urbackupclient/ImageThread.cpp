@@ -34,6 +34,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <memory>
 
 extern IFSImageFactory *image_fak;
 
@@ -124,7 +125,8 @@ void ImageThread::sendFullImageThread(void)
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true));
+				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true,
+					IndexThread::backgroundBackupsEnabled(std::string()), true));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
@@ -483,7 +485,8 @@ void ImageThread::sendIncrImageThread(void)
 			FsShutdownHelper shutdown_helper;
 			if(!image_inf->shadowdrive.empty())
 			{
-				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true));
+				fs.reset(image_fak->createFilesystem(Server->ConvertToUnicode(image_inf->shadowdrive), true,
+					IndexThread::backgroundBackupsEnabled(std::string()), true));
 				shutdown_helper.reset(fs.get());
 			}
 			if(fs.get()==NULL)
@@ -815,15 +818,20 @@ void ImageThread::sendIncrImageThread(void)
 void ImageThread::operator()(void)
 {
 #ifdef _WIN32
+#ifndef _DEBUG
+	if(IndexThread::backgroundBackupsEnabled())
+	{
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 #if defined(VSS_XP) || defined(VSS_S03)
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #else
-	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
+		SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
 #endif
 #else
-	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+		SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_LOWEST);
 #endif //THREAD_MODE_BACKGROUND_BEGIN
+	}
+#endif _DEBUG
 #endif
 	if(image_inf->thread_action==TA_FULL_IMAGE)
 	{
@@ -855,7 +863,7 @@ void ImageThread::operator()(void)
 			}
 		}
 	}
-	client->resetImageBackupStatus();
+	client->resetImageBackupStatus(this);
 #ifdef _WIN32
 #ifdef THREAD_MODE_BACKGROUND_END
 	SetThreadPriority( GetCurrentThread(), THREAD_MODE_BACKGROUND_END);

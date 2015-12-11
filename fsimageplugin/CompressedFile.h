@@ -22,9 +22,12 @@ public:
 	virtual bool Seek(_i64 spos);
 	virtual _i64 Size(void);
 	virtual _i64 RealSize();
+	virtual bool PunchHole( _i64 spos, _i64 size );
 
 	virtual std::string getFilename(void);
 	virtual std::wstring getFilenameW(void);
+
+	virtual bool Sync();
 
 	bool hasError();
 
@@ -42,6 +45,7 @@ private:
 
 	_u32 readFromFile(char* buffer, _u32 bsize, bool *has_error);
 	_u32 writeToFile(const char* buffer, _u32 bsize);
+	
 
 	__int64 filesize;
 	__int64 index_offset;

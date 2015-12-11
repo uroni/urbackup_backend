@@ -25,9 +25,22 @@
 
 #include <vector>
 
+#ifndef STATIC_PLUGIN
 #define DEF_SERVER
+#endif
+
 #include "../Interface/Server.h"
+
+#ifndef STATIC_PLUGIN
 IServer *Server;
+#else
+#include "../StaticPluginRegistration.h"
+
+extern IServer* Server;
+
+#define LoadActions LoadActions_urbackupclient
+#define UnloadActions UnloadActions_urbackupclient
+#endif
 
 #include "../Interface/Action.h"
 #include "../Interface/Database.h"
@@ -49,10 +62,12 @@ IServer *Server;
 #include "../urbackupcommon/os_functions.h"
 #ifdef _WIN32
 #include "DirectoryWatcherThread.h"
+#include "win_sysvol.h"
 #endif
 #include "InternetClient.h"
 #include <stdlib.h>
 #include "file_permissions.h"
+
 
 PLUGIN_ID filesrv_pluginid;
 IFSImageFactory *image_fak;
@@ -71,7 +86,7 @@ bool upgrade_client(void);
 
 std::string lang="en";
 std::string time_format_str_de="%d.%m.%Y %H:%M";
-std::string time_format_str="%m/%d/%Y %H:%M";
+std::string time_format_str="%d.%m.%Y %H:%M";
 
 #ifdef _WIN32
 const std::string pw_file="pw.txt";
@@ -300,6 +315,10 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	internetclient_ticket=InternetClient::start(do_leak_check);
 
+#ifdef _WIN32
+	cacheSysVolume();
+#endif
+
 	Server->Log("Started UrBackupClient Backend...", LL_INFO);
 	Server->wait(1000);
 }
@@ -319,6 +338,13 @@ DLLEXPORT void UnloadActions(void)
 		Server->destroyAllDatabases();
 	}
 }
+
+#ifdef STATIC_PLUGIN
+namespace
+{
+	static RegisterPluginHelper register_plugin(LoadActions, UnloadActions, 10);
+}
+#endif
 
 void upgrade_client1_2(IDatabase *db)
 {

@@ -34,8 +34,8 @@ extern std::string server_identity;
 extern std::string server_token;
 
 
-FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots )
-	: FileBackup(client_main, clientid, clientname, log_action, false, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots)
+FullFileBackup::FullFileBackup( ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, int group, bool use_tmpfiles, std::wstring tmpfile_path, bool use_reflink, bool use_snapshots )
+	: FileBackup(client_main, clientid, clientname, clientsubname, log_action, false, group, use_tmpfiles, tmpfile_path, use_reflink, use_snapshots)
 {
 
 }
@@ -69,7 +69,7 @@ bool FullFileBackup::doFileBackup()
 
 	bool no_backup_dirs=false;
 	bool connect_fail=false;
-	bool b=request_filelist_construct(true, false, group, true, no_backup_dirs, connect_fail);
+	bool b=request_filelist_construct(true, false, group, true, no_backup_dirs, connect_fail, clientsubname);
 	if(!b)
 	{
 		has_early_error=true;
@@ -222,6 +222,11 @@ bool FullFileBackup::doFileBackup()
 	bool is_offline=false;
 	bool script_dir=false;
 
+	std::stack<std::set<std::wstring> > folder_files;
+	folder_files.push(std::set<std::wstring>());
+	std::vector<size_t> folder_items;
+	folder_items.push_back(0);
+
 	while( (read=tmp->Read(buffer, 4096))>0 && r_done==false && c_has_error==false)
 	{
 		for(size_t i=0;i<read;++i)
@@ -281,7 +286,18 @@ bool FullFileBackup::doFileBackup()
 					break;
 				}
 
-				std::wstring osspecific_name=fixFilenameForOS(cf.name);
+				std::wstring osspecific_name;
+
+				if(!cf.isdir || cf.name!=L"..")
+				{
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
+
+					for(size_t j=0;j<folder_items.size();++j)
+					{
+						++folder_items[j];
+					}
+				}
+
 				if(cf.isdir)
 				{
 					if(cf.name!=L"..")
@@ -336,6 +352,9 @@ bool FullFileBackup::doFileBackup()
 							break;
 						}
 
+						folder_files.push(std::set<std::wstring>());
+						folder_items.push_back(0);
+
 						++depth;
 						if(depth==1)
 						{
@@ -357,13 +376,15 @@ bool FullFileBackup::doFileBackup()
 					}
 					else
 					{
+						folder_files.pop();
+
                         if(client_main->getProtocolVersions().file_meta>0 && !script_dir)
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"),
 								ExtractFileName(curr_os_path, L"/"), ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
-								metadata, false, true);
+								metadata, false, true, folder_items.back());
 						}
-
+						folder_items.pop_back();
 						--depth;
 						if(depth==0)
 						{
@@ -429,7 +450,7 @@ bool FullFileBackup::doFileBackup()
 						}
 					}
 
-					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(L"sha512") );
+					std::map<std::wstring, std::wstring>::iterator hash_it=( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier_w) );
 					if( hash_it!=extra_params.end())
 					{
 						if(link_file(cf.name, osspecific_name, curr_path, curr_os_path, base64_decode_dash(wnarrow(hash_it->second)), cf.size,
@@ -449,13 +470,13 @@ bool FullFileBackup::doFileBackup()
                 	if(client_main->getProtocolVersions().file_meta>0)
                 	{
                     	    server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
-                    	        metadata, script_dir, true);
+                    	        metadata, script_dir, true, 0);
                     	}
                     }
                     else
 					{
 						server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
-							metadata, script_dir, false);
+							metadata, script_dir, false, 0);
 					}
 				}
 
@@ -577,6 +598,8 @@ bool FullFileBackup::doFileBackup()
 	}
 	else if(verification_ok)
 	{
+		FileIndex::flush();
+
 		db->BeginWriteTransaction();
 		if(!os_rename_file(widen(clientlistName(group, true)), widen(clientlistName(group, false))) )
 		{

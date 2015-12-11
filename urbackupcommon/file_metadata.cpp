@@ -186,6 +186,12 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 
 				if(out->Size()>size_should)
 				{
+					if(!out->Seek(size_should))
+					{
+						Server->Log(L"Cannot seek to "+convert(size_should)+L" (2) in \""+out->getFilenameW()+L"\". Error writing metadata to file.", LL_WARNING);
+						return false;
+					}
+
 					int64 os_metadata_size;
 					if(out->Read(reinterpret_cast<char*>(&os_metadata_size), sizeof(os_metadata_size))!=sizeof(os_metadata_size))
 					{
@@ -419,7 +425,7 @@ int64 os_metadata_offset( IFile* meta_file )
 bool copy_os_metadata( const std::wstring& in_fn, const std::wstring& out_fn, INotEnoughSpaceCallback *cb)
 {
 	std::auto_ptr<IFile> in_f(Server->openFile(os_file_prefix(in_fn), MODE_READ));
-    std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_WRITE));
+    std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_RW));
 
 	if(in_f.get()==NULL)
 	{
@@ -489,6 +495,10 @@ void FileMetadata::serialize( CWData& data ) const
 {
 	data.addString(shahash);
 	data.addString(orig_path);
+    data.addString(file_permissions);
+	data.addVarInt(last_modified);
+	data.addVarInt(created);
+	data.addVarInt(accessed);
 }
 
 bool FileMetadata::read( CRData& data )
@@ -496,6 +506,10 @@ bool FileMetadata::read( CRData& data )
 	bool ok=true;
 	ok &= data.getStr(&shahash);
 	ok &= data.getStr(&orig_path);
+    ok &= data.getStr(&file_permissions);
+	ok &= data.getVarInt(&last_modified);
+	ok &= data.getVarInt(&created);
+	ok &= data.getVarInt(&accessed);
 
 	if(ok)
 	{
@@ -528,12 +542,12 @@ bool FileMetadata::read( str_map& extra_params )
 	return true;
 }
 
-bool FileMetadata::hasPermission(int id, bool& denied) const
+bool FileMetadata::hasPermission(int64 id, bool& denied) const
 {
 	return hasPermission(file_permissions, id, denied);
 }
 
-bool FileMetadata::hasPermission( const std::string& permissions, int id, bool& denied )
+bool FileMetadata::hasPermission( const std::string& permissions, int64 id, bool& denied )
 {
 	CRData perm(permissions.data(),
 		permissions.size());
@@ -541,8 +555,8 @@ bool FileMetadata::hasPermission( const std::string& permissions, int id, bool& 
 	char action;
 	while(perm.getChar(&action))
 	{
-		int pid;
-		if(!perm.getInt(&pid))
+		int64 pid;
+		if(!perm.getVarInt(&pid))
 		{
 			return false;
 		}
@@ -550,13 +564,13 @@ bool FileMetadata::hasPermission( const std::string& permissions, int id, bool& 
 		switch(action)
 		{
 		case ID_GRANT_ACCESS:
-			if(pid==-1 || pid==id)
+			if(pid==0 || pid==id)
 			{
 				return true;
 			}
 			break;
 		case ID_DENY_ACCESS:
-			if(pid==-1 || pid==id)
+			if(pid==0 || pid==id)
 			{
 				denied=true;
 				return false;

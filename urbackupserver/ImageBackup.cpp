@@ -33,6 +33,7 @@
 #include <memory.h>
 #include <stdlib.h>
 #include "../Interface/Types.h"
+#include <cstring>
 #include "../urbackupcommon/sha2/sha2.h"
 #include "../Interface/Pipe.h"
 #include "../urbackupcommon/fileclient/tcpstack.h"
@@ -98,8 +99,8 @@ namespace
 	}
 }
 
-ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool incremental, std::string letter)
-	: Backup(client_main, clientid, clientname, log_action, false, incremental), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
+ImageBackup::ImageBackup(ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool incremental, std::string letter)
+	: Backup(client_main, clientid, clientname, clientsubname, log_action, false, incremental), pingthread_ticket(ILLEGAL_THREADPOOL_TICKET), letter(letter), synthetic_full(false)
 {
 }
 
@@ -156,7 +157,7 @@ bool ImageBackup::doBackup()
 	{
 		ServerLogger::Log(logid, "Backing up SYSVOL...", LL_DEBUG);
 		client_main->stopBackupRunning(false);
-		ImageBackup sysvol_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "SYSVOL");
+		ImageBackup sysvol_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "SYSVOL");
 		sysvol_backup();
 
 		if(sysvol_backup.getResult())
@@ -172,7 +173,7 @@ bool ImageBackup::doBackup()
 		{
 			ServerLogger::Log(logid, "Backing up EFI System Partition...", LL_DEBUG);
 			client_main->stopBackupRunning(false);
-			ImageBackup esp_backup(client_main, clientid, clientname, LogAction_NoLogging, false, "ESP");
+			ImageBackup esp_backup(client_main, clientid, clientname, clientsubname, LogAction_NoLogging, false, "ESP");
 			esp_backup();
 
 			if(esp_backup.getResult())
@@ -1184,10 +1185,12 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 									if(num_hash_errors<10)
 									{
 										ServerLogger::Log(logid, "Checksum for image block wrong. Retrying...", LL_WARNING);
+										transferred_bytes+=cc->getTransferedBytes();
 										Server->destroy(cc);
 										cc=NULL;
 										nextblock=last_verified_block;
 										++num_hash_errors;
+										break;
 									}
 									else
 									{

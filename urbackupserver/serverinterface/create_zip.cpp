@@ -27,6 +27,7 @@
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../../common/miniz.c"
 
+
 namespace
 {
 
@@ -277,7 +278,7 @@ size_t my_mz_write_func(void *pOpaque, mz_uint64 file_ofs, const void *pBuf, siz
   return b?n:0;
 }
 
-bool miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
+bool my_miniz_init(mz_zip_archive *pZip, MiniZFileInfo* fileInfo)
 {
 	pZip->m_pWrite = my_mz_write_func;
 	pZip->m_pIO_opaque = fileInfo;
@@ -389,7 +390,7 @@ bool create_zip_to_output(const std::wstring& foldername, const std::wstring& ha
 
 	file_info.tid=Server->getThreadID();
 
-	if(!miniz_init(&zip_archive, &file_info))
+	if(!my_miniz_init(&zip_archive, &file_info))
 	{
 		Server->Log("Error while initializing ZIP archive", LL_ERROR);
 		return false;

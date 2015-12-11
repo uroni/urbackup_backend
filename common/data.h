@@ -25,6 +25,8 @@ public:
 	void addVoidPtr(void *ptr);
 	void addBuffer(const char* buffer, size_t bsize);
 
+	void addVarInt(int64 ta);
+
 	void clear();
 
 private:
@@ -50,6 +52,7 @@ public:
 	bool getChar(char *ret);
 	bool getUChar(unsigned char *ret);
 	bool getVoidPtr(void **ret);
+	bool getVarInt(int64* ret);
 
 	unsigned int getSize(void);
 	unsigned int getLeft(void);

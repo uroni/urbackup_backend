@@ -28,7 +28,7 @@ namespace
 	{
 	public:
 		TokenCallback()
-			: client_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT), false)
+			: client_dao(Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT))
 		{
 		}
 

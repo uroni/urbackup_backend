@@ -85,6 +85,7 @@ std::vector<std::string> ClientConnector::new_server_idents;
 bool ClientConnector::end_to_end_file_backup_verification_enabled=false;
 std::map<std::string, std::string> ClientConnector::challenges;
 bool ClientConnector::has_file_changes = false;
+void* ClientConnector::backup_running_owner=NULL;
 std::vector<std::pair<std::string, IPipe*> > ClientConnector::fileserv_connections;
 RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
 bool ClientConnector::status_updated= false;
@@ -287,7 +288,8 @@ bool ClientConnector::Run(void)
 				}
 				IScopedLock lock(backup_mutex);
 				backup_running=RUNNING_NONE;
-				backup_done=true;
+				backup_running_owner=NULL;
+				backup_done=true;	
 				return false;
 			}
 			else if(msg=="done")
@@ -309,6 +311,7 @@ bool ClientConnector::Run(void)
 				state=CCSTATE_NORMAL;
 				IScopedLock lock(backup_mutex);
 				backup_running=RUNNING_NONE;
+				backup_running_owner=NULL;
 				backup_done=true;
 			}
 			else if(file_version>1 && Server->getTimeMS()-last_update_time>30000)
@@ -468,7 +471,7 @@ bool ClientConnector::Run(void)
 				{
 					hashdatafile->Seek(0);
 					writeUpdateFile(hashdatafile, "version_new.txt");
-					writeUpdateFile(hashdatafile, "UrBackupUpdate.sig");
+					writeUpdateFile(hashdatafile, "UrBackupUpdate.sig2");
 					writeUpdateFile(hashdatafile, "UrBackupUpdate_untested.exe");
 
 					std::wstring hashdatafile_fn=hashdatafile->getFilenameW();
@@ -483,7 +486,7 @@ bool ClientConnector::Run(void)
 							if(checkHash(getSha512Hash(updatefile)))
 							{
 								Server->destroy(updatefile);
-								if(crypto_fak->verifyFile("urbackup_dsa.pub", "UrBackupUpdate_untested.exe", "UrBackupUpdate.sig"))
+								if(crypto_fak->verifyFile("urbackup_ecdsa409k1.pub", "UrBackupUpdate_untested.exe", "UrBackupUpdate.sig2"))
 								{
 									Server->deleteFile("UrBackupUpdate.exe");
 									moveFile(L"UrBackupUpdate_untested.exe", L"UrBackupUpdate.exe");
@@ -1052,12 +1055,12 @@ namespace
 }
 
 
-bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
+bool ClientConnector::saveBackupDirs(str_map &args, bool server_default, int group_offset)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->BeginWriteTransaction();
 	db_results backupdirs=db->Prepare("SELECT name, path FROM backupdirs")->Read();
-	db->Prepare("DELETE FROM backupdirs WHERE symlinked=0")->Write();
+	db->Prepare("DELETE FROM backupdirs WHERE symlinked=0 AND tgroup BETWEEN "+nconvert(group_offset)+" AND "+nconvert(group_offset+c_group_max))->Write();
 	IQuery *q=db->Prepare("INSERT INTO backupdirs (name, path, server_default, optional, tgroup) VALUES (?, ? ,"+nconvert(server_default?1:0)+", ?, ?)");
 	/**
 	Use empty client settings
@@ -1087,19 +1090,42 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			else
 				name=ExtractFileName(dir);
 
-			int group = c_group_default;
+			int group = group_offset + c_group_default;
 
 			str_map::iterator group_arg=args.find(L"dir_"+convert(i)+L"_group");
 			if(group_arg!=args.end() && !group_arg->second.empty())
-				group=watoi(group_arg->second);
+				group=group_offset + watoi(group_arg->second);
 
-			bool optional = false;
-			size_t optional_off = name.find(L"/optional");
-			if(optional_off!=std::string::npos &&
-				optional_off == name.size()-9)
+			int flags = EBackupDirFlag_FollowSymlinks | EBackupDirFlag_SymlinksOptional; //default flags
+			size_t flags_off = name.find(L"/");
+			if(flags_off!=std::string::npos)
 			{
-				optional=true;
-				name.resize(optional_off);
+				flags=0;
+
+				std::vector<std::wstring> str_flags;
+				TokenizeMail(getafter(L"/", name), str_flags, L",;");
+
+				for(size_t i=0;i<str_flags.size();++i)
+				{
+					std::wstring flag = strlower(trim(str_flags[i]));
+					if(flag==L"optional")
+					{
+						flags |= EBackupDirFlag_Optional;
+					}
+					else if(flag==L"follow_symlinks")
+					{
+						flags |= EBackupDirFlag_FollowSymlinks;
+					}
+					else if(flag==L"symlinks_optional")
+					{
+						flags |= EBackupDirFlag_SymlinksOptional;
+					}
+					else if(flag==L"one_filesystem" || flag==L"one_fs")
+					{
+						flags |= EBackupDirFlag_OneFilesystem;
+					}
+				}
+				name.resize(flags_off);
 			}
 
 			name=removeChars(name);
@@ -1151,14 +1177,14 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			{
 				//It's not already watched. Add it
 				SBackupDir new_dir = {
-					0, name, dir, optional, group };
+					0, name, dir, flags, group };
 
 				new_watchdirs.push_back(new_dir);
 			}
 			
 			q->Bind(name);
 			q->Bind(dir);
-			q->Bind(optional?1:0);
+			q->Bind(flags);
 			q->Bind(group);
 			q->Write();
 			q->Reset();
@@ -1198,7 +1224,7 @@ bool ClientConnector::saveBackupDirs(str_map &args, bool server_default)
 			data.addChar(IndexThread::IndexThreadAction_RemoveWatchdir);
 			data.addVoidPtr(contractor);
 			data.addString(Server->ConvertToUTF8(backupdirs[i][L"path"]));
-			if(watoi(backupdirs[i][L"group"])==c_group_continuous)
+			if(watoi(backupdirs[i][L"group"])%c_group_size==c_group_continuous)
 			{
 				data.addString(Server->ConvertToUTF8(backupdirs[i][L"name"]));
 			}
@@ -1326,8 +1352,22 @@ std::vector<std::wstring> getSettingsList(void);
 
 void ClientConnector::updateSettings(const std::string &pData)
 {
-	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader("urbackup/data/settings.cfg"));
 	std::auto_ptr<ISettingsReader> new_settings(Server->createMemorySettingsReader(pData));
+
+	std::string settings_fn="urbackup/data/settings.cfg";
+	std::string settings_server_fn="urbackup/data/settings_"+server_token+".cfg";
+	std::string clientsubname;
+	std::string str_group_offset;
+	int group_offset=0;
+	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty()
+		&& new_settings->getValue("filebackup_group_offset", &str_group_offset))
+	{
+		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+		settings_server_fn = "urbackup/data/settings_"+conv_filename(clientsubname) + "_"+server_token+".cfg";
+		group_offset = atoi(str_group_offset.c_str());
+	}
+
+	std::auto_ptr<ISettingsReader> curr_settings(Server->createFileSettingsReader(settings_fn));
 
 	std::vector<std::wstring> settings_names=getSettingsList();
 	settings_names.push_back(L"client_set_settings");
@@ -1433,7 +1473,8 @@ void ClientConnector::updateSettings(const std::string &pData)
 	}
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
-	IQuery *q=db->Prepare("SELECT id FROM backupdirs WHERE server_default=0", false);
+	IQuery *q=db->Prepare("SELECT id FROM backupdirs WHERE server_default=0 AND tgroup=?", false);
+	q->Bind(group_offset);
 	db_results res=q->Read();
 	db->destroyQuery(q);
 	if(res.empty())
@@ -1455,12 +1496,12 @@ void ClientConnector::updateSettings(const std::string &pData)
 				if(path.find(L"|")!=std::string::npos)
 				{
 					std::vector<std::wstring> toks;
-					Tokenize(default_dirs, toks, L"|");
-					name = toks[0];
-					path = toks[1];
+					Tokenize(path, toks, L"|");
+					path = toks[0];
+					name = toks[1];
 					if(toks.size()>2)
 					{
-						group = watoi(toks[2]);
+						group = (std::min)(c_group_max, (std::max)(0, watoi(toks[2])));
 					}
 				}
 				args[L"dir_"+convert(i)]=path;
@@ -1470,18 +1511,18 @@ void ClientConnector::updateSettings(const std::string &pData)
 				args[L"dir_"+convert(i)+L"_group"]=convert(group);
 			}
 
-			saveBackupDirs(args, true);
+			saveBackupDirs(args, true, group_offset);
 		}
 	}
 
 	if(mod)
 	{
-		writestring(Server->ConvertToUTF8(new_settings_str), "urbackup/data/settings.cfg");
+		writestring(Server->ConvertToUTF8(new_settings_str), settings_fn);
 
 		InternetClient::updateSettings();
 	}
 
-	std::auto_ptr<ISettingsReader> curr_server_settings(Server->createFileSettingsReader("urbackup/data/settings_"+server_token+".cfg"));
+	std::auto_ptr<ISettingsReader> curr_server_settings(Server->createFileSettingsReader(settings_server_fn));
 	std::vector<std::wstring> global_settings = getGlobalizedSettingsList();
 
 	std::wstring new_token_settings=L"";
@@ -1521,7 +1562,7 @@ void ClientConnector::updateSettings(const std::string &pData)
 
 	if(mod_server_settings)
 	{
-		writestring(Server->ConvertToUTF8(new_settings_str), "urbackup/data/settings_"+server_token+".cfg");
+		writestring(Server->ConvertToUTF8(new_settings_str), settings_server_fn);
 	}
 }
 
@@ -1538,7 +1579,14 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	}
 
-	ISettingsReader* old_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+	std::string settings_fn="urbackup/data/settings.cfg";
+	std::string clientsubname;
+	if(new_settings->getValue("clientsubname", &clientsubname) && !clientsubname.empty())
+	{
+		settings_fn = "urbackup/data/settings_"+conv_filename(clientsubname)+".cfg";
+	}
+
+	ISettingsReader* old_settings=Server->createFileSettingsReader(settings_fn);
 
 	std::vector<std::wstring> new_keys = new_settings->getKeys();
 	bool modified_settings=true;
@@ -1596,7 +1644,7 @@ void ClientConnector::replaceSettings(const std::string &pData)
 		new_data+="client_set_settings=true\n";
 		new_data+="client_set_settings_time="+nconvert(Server->getTimeSeconds())+"\n";
 
-		writestring(new_data, "urbackup/data/settings.cfg");
+		writestring(new_data, settings_fn);
 	}
 
 	Server->destroy(new_settings);
@@ -1693,13 +1741,17 @@ bool ClientConnector::sendFullImage(void)
 	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile);
 	mempipe=Server->createMemoryPipe();
 	mempipe_owner=true;
-	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
-	state=CCSTATE_IMAGE;
+
 	IScopedLock lock(backup_mutex);
+
 	backup_running=RUNNING_FULL_IMAGE;
+	backup_running_owner = image_inf.image_thread;
 	pcdone=0;
 	backup_source_token=server_token;
 	status_updated = true;
+	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
+	state=CCSTATE_IMAGE;
+	
 	return true;
 }
 
@@ -1709,14 +1761,18 @@ bool ClientConnector::sendIncrImage(void)
 	image_inf.image_thread=new ImageThread(this, pipe, mempipe, &image_inf, server_token, hashdatafile);
 	mempipe=Server->createMemoryPipe();
 	mempipe_owner=true;
-	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
-	state=CCSTATE_IMAGE_HASHDATA;
+
 	IScopedLock lock(backup_mutex);
 	backup_running=RUNNING_INCR_IMAGE;
+	backup_running_owner = image_inf.image_thread;
 	pcdone=0;
 	pcdone2=0;
 	backup_source_token=server_token;
 	status_updated = true;
+
+	image_inf.thread_ticket=Server->getThreadPool()->execute(image_inf.image_thread);
+	state=CCSTATE_IMAGE_HASHDATA;
+	
 	return true;
 }
 
@@ -1950,7 +2006,7 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	mbr.addString(Server->ConvertToUTF8((std::wstring)voln));
 	mbr.addString(Server->ConvertToUTF8((std::wstring)fsn));
 
-	IFile *dev=Server->openFile(L"\\\\.\\PhysicalDrive"+convert((int)dev_num.DeviceNumber), MODE_READ);
+	IFile *dev=Server->openFile(L"\\\\.\\PhysicalDrive"+convert((int)dev_num.DeviceNumber), MODE_READ_DEVICE);
 
 	if(dev==NULL)
 	{
@@ -2089,7 +2145,9 @@ bool ClientConnector::sendMBR(std::wstring dl, std::wstring &errmsg)
 	tcpstack.Send(pipe, mbr);
 
 	return true;
-#endif //WIN_32
+#else //_WIN32
+	return false;
+#endif
 }
 
 const int64 receive_timeouttime=60000;
@@ -2372,10 +2430,11 @@ bool ClientConnector::isHashdataOkay(void)
 	return hashdataok;
 }
 
-void ClientConnector::resetImageBackupStatus(void)
+void ClientConnector::resetImageBackupStatus(void* owner)
 {
 	IScopedLock lock(backup_mutex);
-	if(backup_running==RUNNING_FULL_IMAGE || backup_running==RUNNING_INCR_IMAGE)
+	if( (backup_running==RUNNING_FULL_IMAGE || backup_running==RUNNING_INCR_IMAGE)
+		&& (backup_running_owner==NULL || backup_running_owner==owner) )
 	{
 		backup_running=RUNNING_NONE;
 	}
@@ -2409,11 +2468,16 @@ void ClientConnector::update_silent(void)
 #endif
 }
 
-bool ClientConnector::calculateFilehashesOnClient(void)
+bool ClientConnector::calculateFilehashesOnClient(const std::string& clientsubname)
 {
 	if(internet_conn)
 	{
-		ISettingsReader *curr_settings=Server->createFileSettingsReader("urbackup/data/settings.cfg");
+		std::string settings_fn = "urbackup/data/settings.cfg";
+		if(!clientsubname.empty())
+		{
+			settings_fn = "urbackup/data/settings_"+clientsubname+".cfg";
+		}
+		ISettingsReader *curr_settings=Server->createFileSettingsReader(settings_fn);
 
 		std::string val;
 		if(curr_settings->getValue("internet_calculate_filehashes_on_client", &val)
@@ -2436,7 +2500,7 @@ bool ClientConnector::isBackupRunning()
 {
 	IScopedLock lock(backup_mutex);
 
-	std::string job = getCurrRunningJob();
+	std::string job = getCurrRunningJob(false);
 
 	return job!="NOA" && job!="DONE";
 }
@@ -2559,7 +2623,7 @@ void ClientConnector::sendStatus()
 
 	std::string ret = getLastBackupTime();
 
-	ret += "#" + getCurrRunningJob();
+	ret += "#" + getCurrRunningJob(true);
 
 	if(backup_running!=RUNNING_INCR_IMAGE)
 		ret+="#"+nconvert(pcdone);
@@ -2685,7 +2749,7 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
     }
 
 	std::auto_ptr<ISettingsReader> access_keys(
-		Server->createFileSettingsReader("access_keys.properties"));
+		Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
 	std::vector<std::wstring> server_token_keys = access_keys->getKeys();
 
@@ -2697,6 +2761,11 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 
 	std::string ret;
 
+	std::string session_key;
+	session_key.resize(32);
+	Server->randomFill(&session_key[0], session_key.size());
+
+	bool has_token=false;
 	for(size_t i=0;i<server_token_keys.size();++i)
 	{
 		std::wstring server_key;
@@ -2705,10 +2774,18 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 			&server_key) && !server_key.empty())
 		{
 			ret += "&tokens"+nconvert(i)+"="+base64_encode_dash(
-				crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
-				Server->ConvertToUTF8(server_key) ) );
+				crypto_fak->encryptAuthenticatedAES(session_key,
+				Server->ConvertToUTF8(server_key)) );
+			has_token=true;
 		}
 	}
+
+	if(has_token)
+	{
+		ret += "&token_data="+base64_encode_dash(
+			crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
+			session_key ) );
+	}	
 
 	if(with_clientname)
 	{

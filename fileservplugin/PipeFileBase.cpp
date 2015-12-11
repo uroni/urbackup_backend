@@ -394,3 +394,13 @@ void PipeFileBase::waitForExit()
 
 	Server->getThreadPool()->waitFor(tickets);
 }
+
+bool PipeFileBase::PunchHole( _i64 spos, _i64 size )
+{
+	return false;
+}
+
+bool PipeFileBase::Sync()
+{
+	return false;
+}

@@ -207,7 +207,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 	std::wstring curr_files_dir;
 	std::vector<SFileAndHash> curr_files;
 
-	ClientDAO client_dao(db, false);
+	ClientDAO client_dao(db);
 
 	size_t line=0;
 
@@ -217,6 +217,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 
 	int64 laststatsupdate=Server->getTimeMS();
 	int64 skipped_bytes = 0;
+
+	std::vector<size_t> folder_items;
+	folder_items.push_back(0);
 
 	do 
 	{
@@ -241,6 +244,14 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					{
 						int pcdone = (std::min)(100,(int)(((float)fc.getReceivedDataBytes() + (float)fc_chunked->getReceivedDataBytes() + skipped_bytes)/((float)total_size/100.f)+0.5f));;
 						ClientConnector::updateRestorePc(status_id, pcdone, server_token);
+					}
+				}
+
+				if(!data.isdir || data.name!=L"..")
+				{
+					for(size_t j=0;j<folder_items.size();++j)
+					{
+						++folder_items[j];
 					}
 				}
 
@@ -283,6 +294,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 							}							
 						}
 
+						folder_items.push_back(0);
+
 						server_path+=L"/"+data.name;
 
 						++depth;
@@ -295,7 +308,9 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 						restore_path=ExtractFilePath(restore_path, os_file_sep());						
 
                         restore_download->addToQueueFull(line, server_path, restore_path, 0,
-                            metadata, false, false, true);
+                            metadata, false, true, folder_items.back());
+
+						folder_items.pop_back();
 					}
 				}
 				else
@@ -400,7 +415,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 								else
 								{
 									restore_download->addToQueueFull(line, server_fn, local_fn, 
-                                        data.size, metadata, false, false, true);
+                                        data.size, metadata, false, true, 0);
 
 									std::wstring tmpfn = chunkhashes->getFilenameW();
 									delete chunkhashes;
@@ -413,7 +428,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					else
 					{
 						restore_download->addToQueueFull(line, server_fn, local_fn, 
-                            data.size, metadata, false, false, false);
+                            data.size, metadata, false, false, 0);
 					}
 				}
 				++line;

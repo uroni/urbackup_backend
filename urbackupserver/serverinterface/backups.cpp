@@ -29,6 +29,7 @@
 #include "../../fileservplugin/IFileServ.h"
 #include "../server_status.h"
 #include "../restore_client.h"
+#include "../dao/ServerBackupDao.h"
 
 extern ICryptoFactory *crypto_fak;
 extern IFileServ* fileserv;
@@ -292,12 +293,40 @@ namespace backupaccess
 
 			if(iter!=GET.end())
 			{
-				std::string decry = crypto_fak->decryptAuthenticatedAES(base64_decode_dash(wnarrow(iter->second)), client_key);
-				if(!decry.empty())
+				std::string bin_input = base64_decode_dash(wnarrow(iter->second));
+				std::string session_key = crypto_fak->decryptAuthenticatedAES(bin_input, client_key);
+				if(!session_key.empty())
 				{
+					iter = GET.find(L"token_data");
+
+					if(iter==GET.end())
+					{
+						return std::string();
+					}
+
+					bin_input = base64_decode_dash(wnarrow(iter->second));
+
+					std::string decry = crypto_fak->decryptAuthenticatedAES(bin_input, session_key);
+
+					if(!decry.empty())
+					{
+						std::string tokenhash = Server->GenerateBinaryMD5(bin_input);
+
+						ServerBackupDao backupdao(db);
+						if(backupdao.hasUsedAccessToken(tokenhash).exists)
+						{
+							return std::string();
+						}
+						else
+						{
+							backupdao.addUsedAccessToken(clientid, tokenhash);
+						}
+					}
+
 					return decry;
 				}
 			}
+			++i;
 		} while (iter!=GET.end());
 
 		return std::string();
@@ -348,7 +377,7 @@ namespace backupaccess
 
 				bool denied = false;
 				if(backup_tokens[i].token==tokens[j] &&
-					metadata.hasPermission(static_cast<int>(backup_tokens[i].id), denied))
+					metadata.hasPermission(backup_tokens[i].id, denied))
 				{
 					has_permission=true;
 				}
@@ -368,7 +397,7 @@ namespace backupaccess
 
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
-		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
+		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
 		q->Bind(t_clientid);
 		db_results res=q->Read();
 		JSON::Array backups;
@@ -381,7 +410,7 @@ namespace backupaccess
 
 			JSON::Object obj;
 			obj.set("id", watoi(res[i][L"id"])+backupid_offset);
-			obj.set("backuptime", res[i][L"t_backuptime"]);
+			obj.set("backuptime", watoi64(res[i][L"t_backuptime"]));
 			obj.set("incremental", watoi(res[i][L"incremental"]));
             obj.set("size_bytes", watoi64(res[i][L"size_bytes"]));
             int archived = watoi(res[i][L"archived"]);
@@ -417,6 +446,8 @@ namespace backupaccess
 
 		std::vector<std::wstring> t_path;
 		Tokenize(u_path, t_path, L"/");
+
+        ret.can_access_path=true;
 
 		for(size_t i=0;i<t_path.size();++i)
 		{
@@ -487,14 +518,15 @@ namespace backupaccess
 		}
 	}
 
-	bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname, std::string* fileaccesstokens, const std::wstring& u_path, JSON::Object& ret)
+    bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname, std::string* fileaccesstokens,
+                               const std::wstring& u_path, int backupid_offset, JSON::Object& ret)
 	{
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
 		db_results res;
 		if(backupid)
 		{
-			IQuery* q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=? AND clientid=?");
+			IQuery* q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime) AS backuptime FROM backups WHERE id=? AND clientid=?");
 			q->Bind(*backupid);
 			q->Bind(t_clientid);
 			res=q->Read();
@@ -502,13 +534,17 @@ namespace backupaccess
 
 			if(!res.empty())
 			{
-				ret.set("backuptime", res[0][L"backuptime"]);
-				ret.set("backupid", *backupid);
+				ret.set("backuptime", watoi64(res[0][L"backuptime"]));
+                ret.set("backupid", *backupid + backupid_offset);
 			}
+            else
+            {
+                return false;
+            }
 		}
 		else
 		{
-			IQuery* q=db->Prepare("SELECT id, path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE clientid=? ORDER BY backuptime DESC");
+			IQuery* q=db->Prepare("SELECT id, path,strftime('"+helper.getTimeFormatString()+"', backuptime) AS backuptime FROM backups WHERE clientid=? ORDER BY backuptime DESC");
 			q->Bind(t_clientid);
 			res=q->Read();
 			q->Reset();
@@ -575,9 +611,9 @@ namespace backupaccess
 							JSON::Object obj;
 							obj.set("name", tfiles[i].name);
 							obj.set("dir", tfiles[i].isdir);
-							obj.set("size", tfiles[i].size);
 							obj.set("mod", tmetadata[i].last_modified);
 							obj.set("creat", tmetadata[i].created);
+							obj.set("access", tmetadata[i].accessed);
 							files.add(obj);
 						}
 					}
@@ -600,6 +636,7 @@ namespace backupaccess
 							obj.set("size", tfiles[i].size);
 							obj.set("mod", tmetadata[i].last_modified);
 							obj.set("creat", tmetadata[i].created);
+							obj.set("access", tmetadata[i].accessed);
 							if(!tmetadata[i].shahash.empty())
 							{
 								obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(tmetadata[i].shahash.c_str()), static_cast<unsigned int>(tmetadata[i].shahash.size())));
@@ -632,13 +669,13 @@ namespace backupaccess
 						}
 						else
 						{
-							obj.set("size", 0);
 							obj.set("dir", true);
 						}
 						obj.set("mod", metadata.last_modified);
 						obj.set("creat", metadata.created);
-						obj.set("backupid", res[k][L"id"]);
-						obj.set("backuptime", res[k][L"backuptime"]);
+						obj.set("access", metadata.accessed);
+                        obj.set("backupid", watoi(res[k][L"id"])+backupid_offset);
+						obj.set("backuptime", watoi64(res[k][L"backuptime"]));
 						if(!metadata.shahash.empty())
 						{
 							obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(metadata.shahash.c_str()), static_cast<unsigned int>(metadata.shahash.size())));
@@ -730,7 +767,7 @@ ACTION_IMPL(backups)
 		IDatabase *db=helper.getDatabase();
 		if(sa.empty())
 		{
-			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup FROM clients";
+			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup FROM clients";
 			if(token_authentication)
 			{
 				if(GET.find(L"clientname")==GET.end())
@@ -790,7 +827,7 @@ ACTION_IMPL(backups)
 					JSON::Object obj;
 					obj.set("name", res[i][L"name"]);
 					obj.set("id", watoi(res[i][L"id"]));
-					obj.set("lastbackup", res[i][L"lastbackup"]);
+					obj.set("lastbackup", watoi64(res[i][L"lastbackup"]));
 					clients.add(obj);
 				}
 				ret.set("clients", clients);
@@ -808,7 +845,7 @@ ACTION_IMPL(backups)
 				if(t_clientid==-1)
 				{
 					ret.set("error", "2");
-					helper.Write(ret.get(false));
+                    helper.Write(ret.stringify(false));
 					return;
 				}
 			}
@@ -865,7 +902,7 @@ ACTION_IMPL(backups)
 				if(t_clientid==-1)
 				{
 					ret.set("error", "2");
-					helper.Write(ret.get(false));
+                    helper.Write(ret.stringify(false));
 					return;
 				}
 			}
@@ -931,7 +968,7 @@ ACTION_IMPL(backups)
 							if(ServerStatus::getStatus(clientname).comm_pipe==NULL)
 							{
 								ret.set("err", "client_not_online");
-								helper.Write(ret.get(false));
+                                helper.Write(ret.stringify(false));
 								return;
 							}
 
@@ -939,19 +976,19 @@ ACTION_IMPL(backups)
 								path_info.backup_tokens.tokens, tokens, path_info.rel_path.empty(), path_info.rel_path))
 							{
 								ret.set("err", "internal_error");
-								helper.Write(ret.get(false));
+                                helper.Write(ret.stringify(false));
 								return;
 							}
 
 							ret.set("ok", "true");
-							helper.Write(ret.get(false));
+                            helper.Write(ret.stringify(false));
 							return;
 						}
 					}
 					else
 					{
 						if(!backupaccess::get_files_with_tokens(db, has_backupid ? &backupid : NULL, t_clientid, clientname, token_authentication ? &fileaccesstokens : NULL,
-								u_path, ret))
+                                u_path, 0, ret))
 						{
 							return;
 						}
@@ -969,5 +1006,5 @@ ACTION_IMPL(backups)
 		ret.set("error", 1);
 	}
 
-	helper.Write(ret.get(false));
+    helper.Write(ret.stringify(false));
 }

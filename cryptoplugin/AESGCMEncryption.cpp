@@ -21,7 +21,7 @@
 #include "../Interface/Server.h"
 #include <assert.h>
 
-const size_t iv_size = 64;
+const size_t iv_size = 12;
 const size_t end_marker_zeros=2;
 
 AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
@@ -48,6 +48,8 @@ AESGCMEncryption::AESGCMEncryption( const std::string& key, bool hash_password)
 	encryption.SetKeyWithIV(m_sbbKey.BytePtr(), m_sbbKey.size(),
 		m_IV.BytePtr(), m_IV.size());
 
+	m_orig_IV = m_IV;
+
 	iv_done=false;
 
 	assert(encryption.CanUseStructuredIVs());
@@ -64,8 +66,9 @@ void AESGCMEncryption::put( const char *data, size_t data_size )
 void AESGCMEncryption::flush()
 {
 	encryption_filter.MessageEnd();
-	encryption.Resynchonize();
 	end_markers.push_back(encryption_filter.MaxRetrievable());
+	CryptoPP::IncrementCounterByOne(m_IV.BytePtr(), static_cast<unsigned int>(m_IV.size()));
+	encryption.Resynchronize(m_IV.BytePtr(), static_cast<int>(m_IV.size()));
 	overhead_size+=16; //tag size
 }
 
@@ -93,9 +96,9 @@ std::string AESGCMEncryption::get()
 
 	if(!iv_done)
 	{
-		memcpy(&ret[0], m_IV.BytePtr(), m_IV.size());
+		memcpy(&ret[0], m_orig_IV.BytePtr(), m_orig_IV.size());
 		iv_done=true;
-		overhead_size+=m_IV.size();
+		overhead_size+=m_orig_IV.size();
 	}
 
 	if(max_retrievable>0)

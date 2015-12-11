@@ -224,7 +224,6 @@ access_backups_shell_mui.txt
 sha2.Plo
 *.Plo
 osx-pkg
-
 clouddrive/*
 transaction_helper/*
 urbackup/new2_db/*
@@ -232,3 +231,6 @@ urbackup/server_ident_ecdsa409k1.priv
 urbackup/server_ident_ecdsa409k1.pub
 clientctl/Debug/*
 urbackup/new_version_deb/*
+
+urbackupserver/www/js/templates.js.new
+urbackupserver/www/templates.js.new

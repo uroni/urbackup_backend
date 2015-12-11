@@ -19,7 +19,7 @@
 #include "../Interface/Server.h"
 #include "../stringtools.h"
 
-const size_t iv_size = 64;
+const size_t iv_size = 12;
 const size_t end_marker_zeros=2;
 
 AESGCMDecryption::AESGCMDecryption( const std::string &password, bool hash_password )
@@ -156,7 +156,8 @@ bool AESGCMDecryption::put( const char *data, size_t data_size)
 			
 			overhead_bytes+=16; //tag size
 
-			decryption.Resynchonize();
+			CryptoPP::IncrementCounterByOne(reinterpret_cast<byte*>(&iv_buffer[0]), static_cast<unsigned int>(iv_buffer.size()));
+			decryption.Resynchronize(reinterpret_cast<const byte*>(iv_buffer.data()), static_cast<int>(iv_buffer.size()));
 
 			if(data_size>end_marker_pos)
 			{

@@ -29,6 +29,8 @@ public:
 	virtual bool Seek(_i64 spos)=0;
 	virtual _i64 Size(void)=0;
 	virtual _i64 RealSize()=0;
+	virtual bool PunchHole(_i64 spos, _i64 size) = 0;
+	virtual bool Sync() = 0;
 	
 	virtual std::string getFilename(void)=0;
 	virtual std::wstring getFilenameW(void)=0;

@@ -12,7 +12,7 @@ struct SFile
 {
 	SFile() :
 		size(0), last_modified(0), 
-		usn(0), created(0),
+		usn(0), created(0), accessed(0),
 		isdir(false), issym(false),
 		isspecial(false)
 	{
@@ -24,6 +24,7 @@ struct SFile
 	int64 last_modified;
 	int64 usn;
 	int64 created;
+	int64 accessed;
 	bool isdir;
 	bool issym;
 	bool isspecial;
@@ -34,9 +35,9 @@ struct SFile
 	}
 };
 
-std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error=NULL, bool exact_filesize=true, bool with_usn=false);
+std::vector<SFile> getFilesWin(const std::wstring &path, bool *has_error=NULL, bool exact_filesize=true, bool with_usn=false, bool ignore_other_fs=false);
 
-std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL);
+std::vector<SFile> getFiles(const std::wstring &path, bool *has_error=NULL, bool ignore_other_fs=false);
 
 SFile getFileMetadataWin(const std::wstring &path, bool with_usn);
 
@@ -108,7 +109,7 @@ int64 os_last_error();
 
 int64 os_to_windows_filetime(int64 unix_time);
 
-bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified);
+bool os_set_file_time(const std::wstring& fn, int64 created, int64 last_modified, int64 accessed);
 
 bool copy_file(const std::wstring &src, const std::wstring &dst);
 
@@ -122,5 +123,9 @@ enum EFileType
 };
 
 int os_get_file_type(const std::wstring &path);
+
+int os_popen(const std::string& cmd, std::string& ret);
+
+int64 os_last_error(std::wstring& message);
 
 #endif //OS_FUNCTIONS_H

@@ -17,6 +17,7 @@
 **************************************************************************/
 
 #include <memory.h>
+#include <cstring>
 #include "HTTPProxy.h"
 #include "HTTPService.h"
 #include "../Interface/Server.h"

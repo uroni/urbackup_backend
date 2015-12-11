@@ -23,6 +23,9 @@
 #include <iostream>
 #include "../stringtools.h"
 #include "../log_redir.h"
+#include "../Interface/Mutex.h"
+#include "../Interface/Thread.h"
+#include "../Interface/Server.h"
 
 std::wstring getVolumeLabel(PWCHAR VolumeName)
 {
@@ -533,3 +536,39 @@ std::wstring getEspVolume( std::wstring &mpath )
 
 	return widen(found_part);
 }
+
+namespace
+{
+	std::wstring mpath_cached;
+	std::wstring sysvol_name_cached;
+
+	IMutex* mutex = NULL;
+
+	class SysvolCacheThread : public IThread
+	{
+	public:
+		void operator()()
+		{
+			{
+				IScopedLock lock(mutex);
+				sysvol_name_cached = getSysVolume(mpath_cached);
+			}
+			delete this;
+		}
+	};
+}
+
+std::wstring getSysVolumeCached(std::wstring &mpath)
+{
+	IScopedLock lock(mutex);
+
+	mpath = mpath_cached;
+	return sysvol_name_cached;
+}
+
+void cacheSysVolume()
+{
+	mutex = Server->createMutex();
+	Server->createThread(new SysvolCacheThread);
+}
+

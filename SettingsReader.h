@@ -14,11 +14,13 @@ public:
 	std::string getValue(std::string key);
 	int getValue(std::string key, int def);
 	float getValue(std::string key, float def);
+	int64 getValue(std::string key, int64 def);
 
 	std::wstring getValue(std::wstring key,std::wstring def);
 	std::wstring getValue(std::wstring key);
 	int getValue(std::wstring key, int def);
 	float getValue(std::wstring key, float def);
+	int64 getValue(std::wstring key, int64 def);
 };
 
 #endif //CSETTINGSREADER_H

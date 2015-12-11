@@ -54,7 +54,7 @@ void destroy_mutex1(void)
 
 BackupServerHash::BackupServerHash(IPipe *pPipe, int pClientid, bool use_snapshots, bool use_reflink, bool use_tmpfiles, logid_t logid)
 	: use_snapshots(use_snapshots), use_reflink(use_reflink), use_tmpfiles(use_tmpfiles), backupdao(NULL), old_backupfolders_loaded(false),
-	  logid(logid)
+	  logid(logid), detached_db(false)
 {
 	pipe=pPipe;
 	clientid=pClientid;
@@ -103,8 +103,8 @@ void BackupServerHash::operator()(void)
 {
 	setupDatabase();
 
-	db->DetachDBs();
-	
+	DBScopedDetach detachDbs(db);
+	detached_db=true;
 
 	while(true)
 	{
@@ -123,7 +123,7 @@ void BackupServerHash::operator()(void)
 		{
 			deinitDatabase();
 			Server->Log("server_hash Thread finished - normal");
-			db->AttachDBs();
+			detachDbs.attach();
 			Server->destroyDatabases(Server->getThreadID());
 			delete this;
 			return;
@@ -162,8 +162,8 @@ void BackupServerHash::operator()(void)
 				if(!rd.getStr(&sha2))
 					ServerLogger::Log(logid, "Reading hash from pipe failed", LL_ERROR);
 
-				if(sha2.size()!=64)
-					ServerLogger::Log(logid, "SHA512 length of file \""+tfn+"\" wrong.", LL_ERROR);
+				if(sha2.size()!=SHA_DEF_DIGEST_SIZE)
+					ServerLogger::Log(logid, "SHA length of file hash of \""+tfn+"\" wrong.", LL_ERROR);
 
 				std::string hashoutput_fn;
 				rd.getStr(&hashoutput_fn);
@@ -246,12 +246,6 @@ void BackupServerHash::operator()(void)
 						{
 							copyFile(hashf.get(), Server->ConvertToUnicode(hash_dest));
 						}
-
-						/*if(!write_file_metadata(os_file_prefix(Server->ConvertToUnicode(hash_dest)),
-							this, metadata))
-						{
-							ServerLogger::Log(logid, "Error while writing metadata to \""+hash_dest+"\"", LL_ERROR);
-						}*/
 					}
 				}
 			}
@@ -1500,17 +1494,15 @@ bool BackupServerHash::correctPath( std::wstring& ff, std::wstring& f_hashpath )
 	if(!old_backupfolders_loaded)
 	{
 		old_backupfolders_loaded=true;
-		db->AttachDBs();
+		DBScopedAttach attachDbs(detached_db ? db : NULL);
 		old_backupfolders=backupdao->getOldBackupfolders();
-		db->DetachDBs();
 	}
 
 	if(backupfolder.empty())
 	{
-		db->AttachDBs();
+		DBScopedAttach attachDbs(detached_db ? db : NULL);
 		ServerSettings settings(db);
 		backupfolder = settings.getSettings()->backupfolder;
-		db->DetachDBs();
 	}
 
 	for(size_t i=0;i<old_backupfolders.size();++i)

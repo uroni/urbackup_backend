@@ -41,7 +41,7 @@ void PrintInfo(IFilesystem *fs)
 	Server->Log("FSINFO: blocksize="+nconvert(fs->getBlocksize())+" size="+nconvert(fs->getSize())+" has_error="+nconvert(fs->hasError())+" used_space="+nconvert(fs->calculateUsedSpace()), LL_DEBUG);
 }
 
-IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool read_ahead)
+IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool read_ahead, bool background_priority, bool exclude_shadow_storage)
 {
 	IFile *dev=Server->openFile(pDev, MODE_READ_DEVICE);
 	if(dev==NULL)
@@ -68,7 +68,15 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 	if(isNTFS(buffer) )
 	{
 		Server->Log(L"Filesystem type is ntfs ("+pDev+L")", LL_DEBUG);
-		FSNTFS *fs=new FSNTFS(pDev, read_ahead);
+		FSNTFS *fs=new FSNTFS(pDev, read_ahead, background_priority);
+
+
+		/** NOT TESTED ENOUGH
+		if(exclude_shadow_storage && pDev.find(L"HarddiskVolumeShadowCopy")!=std::string::npos)
+		{
+			fs->excludeFiles(pDev+L"\\System Volume Information", L"{3808876b-c176-4e48-b7ae-04046e6cc752}");
+			fs->excludeFile(pDev+L"\\pagefile.sys");
+		}*/
 		
 		/*
 		int64 idx=0;
@@ -96,7 +104,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 			delete fs;
 
 			Server->Log("Unknown filesystem type", LL_DEBUG);
-			FSUnknown *fs2=new FSUnknown(pDev, read_ahead);
+			FSUnknown *fs2=new FSUnknown(pDev, read_ahead, background_priority);
 			if(fs2->hasError())
 			{
 				delete fs2;
@@ -111,7 +119,7 @@ IFilesystem *FSImageFactory::createFilesystem(const std::wstring &pDev, bool rea
 	else
 	{
 		Server->Log("Unknown filesystem type", LL_DEBUG);
-		FSUnknown *fs=new FSUnknown(pDev, read_ahead);
+		FSUnknown *fs=new FSUnknown(pDev, read_ahead, background_priority);
 		if(fs->hasError())
 		{
 			delete fs;
@@ -149,7 +157,6 @@ IVHDFile *FSImageFactory::createVHDFile(const std::wstring &fn, bool pRead_only,
 		return NULL;
 #endif
 	}
-
 	return NULL;
 }
 

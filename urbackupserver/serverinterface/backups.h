@@ -59,6 +59,6 @@ namespace backupaccess
 		std::wstring clientname, std::wstring backupfolder, int* backupid, std::wstring backuppath);
 
 	bool get_files_with_tokens(IDatabase* db, int* backupid, int t_clientid, std::wstring clientname,
-		std::string* fileaccesstokens, const std::wstring& u_path, JSON::Object& ret);
+        std::string* fileaccesstokens, const std::wstring& u_path, int backupid_offset, JSON::Object& ret);
 }
 

@@ -30,8 +30,8 @@
 
 extern IUrlFactory *url_fak;
 
-Backup::Backup(ClientMain* client_main, int clientid, std::wstring clientname, LogAction log_action, bool is_file_backup, bool is_incremental)
-	: client_main(client_main), clientid(clientid), clientname(clientname), log_action(log_action),
+Backup::Backup(ClientMain* client_main, int clientid, std::wstring clientname, std::wstring clientsubname, LogAction log_action, bool is_file_backup, bool is_incremental)
+	: client_main(client_main), clientid(clientid), clientname(clientname), clientsubname(clientsubname), log_action(log_action),
 	is_file_backup(is_file_backup), r_incremental(is_incremental), r_resumed(false), backup_result(false),
 	log_backup(true), has_early_error(false), should_backoff(true), db(NULL), status_id(0)
 {

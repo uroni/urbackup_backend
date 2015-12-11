@@ -4,6 +4,7 @@
 #include "../Interface/Types.h"
 #include <vector>
 #define MINIZ_HEADER_FILE_ONLY
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "../common/miniz.c"
 
 class ICompressedPipe : public IPipe

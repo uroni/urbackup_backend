@@ -29,7 +29,7 @@ IMutex* File::index_mutex = NULL;
 std::wstring File::random_prefix;
 
 File::File()
-	: hfile(INVALID_HANDLE_VALUE)
+	: hfile(INVALID_HANDLE_VALUE), is_sparse(false)
 {
 
 }
@@ -290,6 +290,45 @@ void File::init_mutex()
 void File::destroy_mutex()
 {
 	Server->destroy(index_mutex);
+}
+
+bool File::PunchHole( _i64 spos, _i64 size )
+{
+	if(!is_sparse)
+	{
+		FILE_SET_SPARSE_BUFFER buf = {TRUE};
+		BOOL b = DeviceIoControl(hfile, FSCTL_SET_SPARSE, &buf,
+			static_cast<DWORD>(sizeof(buf)), NULL, 0, NULL, NULL);
+
+		if(!b)
+		{
+			return false;
+		}
+
+		is_sparse=true;
+	}
+	
+	FILE_ZERO_DATA_INFORMATION zdi;
+
+	zdi.FileOffset.QuadPart = spos;
+	zdi.BeyondFinalZero.QuadPart = spos + size;
+
+	BOOL b = DeviceIoControl(hfile, FSCTL_SET_ZERO_DATA, &zdi,
+		static_cast<DWORD>(sizeof(zdi)), NULL, 0, NULL, 0);
+
+	if(!b)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+bool File::Sync()
+{
+	return FlushFileBuffers(hfile)!=0;
 }
 
 #endif

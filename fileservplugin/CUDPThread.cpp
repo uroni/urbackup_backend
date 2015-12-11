@@ -99,8 +99,16 @@ bool CUDPThread::hasError(void)
 
 CUDPThread::CUDPThread(_u16 udpport,std::string servername, bool use_fqdn)
 {
+	init(udpport, servername, use_fqdn);
+}
+
+void CUDPThread::init(_u16 udpport,std::string servername, bool use_fqdn)
+{
 	has_error=false;
 	do_stop=false;
+	udpport_=udpport;
+	use_fqdn_=use_fqdn;
+
 	{
 		udpsock=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -181,7 +189,38 @@ void CUDPThread::operator()(void)
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
 #endif
 
-	while(UdpStep()==true && do_stop==false);
+	do 
+	{
+		while(UdpStep()==true && do_stop==false);
+
+
+		if(!do_stop && has_error)
+		{
+			Log("Trying to restart UDP listening...", LL_DEBUG);
+
+			if(udpsock!=SOCKET_ERROR)
+			{
+				closesocket(udpsock);
+			}
+
+			init(udpport_, mServername, use_fqdn_);
+
+			if(has_error)
+			{
+				break;
+			}
+
+			if(!UdpStep())
+			{
+				break;
+			}
+		}
+		else
+		{
+			break;
+		}
+
+	} while (true);
 	
 #ifdef LOG_SERVER
 	Server->Log("CUDPThread exited.", LL_DEBUG);
@@ -233,6 +272,9 @@ bool CUDPThread::UdpStep(void)
 		{
 #ifdef LOG_SERVER
 			Server->Log("Recvfrom error in CUDPThread::UdpStep", LL_ERROR);
+#ifdef _WIN32
+			Server->Log("Last error: "+ nconvert((int)GetLastError()), LL_ERROR);
+#endif
 #endif
 			has_error=true;
 			return false;
@@ -267,6 +309,9 @@ bool CUDPThread::UdpStep(void)
 	{
 #ifdef LOG_SERVER
 			Server->Log("Select error in CUDPThread::UdpStep", LL_ERROR);
+#ifdef _WIN32
+			Server->Log("Last error: "+ nconvert((int)GetLastError()), LL_ERROR);
+#endif
 #endif
 		has_error=true;
 		return false;
@@ -277,7 +322,7 @@ bool CUDPThread::UdpStep(void)
 
 void CUDPThread::stop(void)
 {
+	do_stop=true;
 	Log("Stopping CUPDThread...", LL_DEBUG);
 	closesocket(udpsock);
-	do_stop=true;
 }

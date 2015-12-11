@@ -309,6 +309,12 @@
     <ClCompile Include="restore_client.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
+    <ClCompile Include="apps\skiphash_copy.cpp">
+      <Filter>apps</Filter>
+    </ClCompile>
+    <ClCompile Include="cmdline_preprocessor.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="action_header.h">
@@ -565,6 +571,9 @@
     </ClInclude>
     <ClInclude Include="restore_client.h">
       <Filter>Quelldateien</Filter>
+    </ClInclude>
+    <ClInclude Include="apps\skiphash_copy.h">
+      <Filter>apps</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

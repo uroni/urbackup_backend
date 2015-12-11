@@ -42,49 +42,13 @@ then
 fi
 
 
-
-DAEMON_LIBS="$PREFIX/lib"
-if ! test -e $DAEMON_LIBS/liburbackupserver.so
-then
-	DAEMON_LIBS="$PREFIX/lib64"
-	if ! test -e $DAEMON_LIBS/liburbackupserver.so
-	then
-		DAEMON_LIBS="/lib"
-	fi
-fi
-
-PLUGIN_URL="--plugin $DAEMON_LIBS/liburbackupserver_urlplugin.so"
-if ! test -e $DAEMON_LIBS/liburbackupserver_urlplugin.so
-then
-	PLUGIN_URL=""
-fi
-
-PLUGIN_BDB="--plugin $DAEMON_LIBS/liburbackupserver_bdbplugin.so"
-if ! test -e $DAEMON_LIBS/liburbackupserver_bdbplugin.so
-then
-	PLUGIN_BDB=""
-fi
-
-PLUGIN_CRYPTO="--plugin $DAEMON_LIBS/liburbackupserver_cryptoplugin.so"
-if ! test -e $DAEMON_LIBS/liburbackupserver_cryptoplugin.so
-then
-	PLUGIN_CRYPTO=""
-fi
-
 SNAPSHOT_HELPER="$PREFIX/bin/urbackup_snapshot_helper"
 if ! test -x $SNAPSHOT_HELPER
 then
 	echo "Info: Snapshot helper not found. Btrfs mode will not work."
 fi
 
-HAS_MOUNTVHD=1
-if ! test -e $DAEMON_LIBS/liburbackupserver_fuseplugin.so
-then
-	HAS_MOUNTVHD=0
-fi	
-
-HTTP_PLUGIN="--plugin $DAEMON_LIBS/liburbackupserver_httpserver.so"
-DAEMON_PLUGINS="$PLUGIN_BDB $PLUGIN_URL $PLUGIN_CRYPTO --plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver.so --http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --snapshot_helper $SNAPSHOT_HELPER"
+DAEMON_ARGS="--http_root $DAEMON_DIR/urbackup/www --workingdir $DAEMON_DIR --snapshot_helper $SNAPSHOT_HELPER"
 S_DAEMON="--daemon"
 
 print_help()
@@ -110,11 +74,9 @@ print_help()
 	echo "--broadcast_interfaces   List of network interfaces from which to send broadcasts (separated by ,)"
 	echo "--user			   Start as specific user (default: urbackup)"
 	echo "--decompress {file}	Decompress a UrBackup compressed file"
-	if [ "x$HAS_MOUNTVHD" = "x1" ]; then
-		echo "--mountvhd {file} 	Mount the VHD(z)-file"
-		echo "--mountpoint {dir}	Mount the VHD(z)-file at this mountpoint"
-		echo "--tempmount {dir}		Use this directory as temporary mountpoint"
-	fi
+	echo "--mountvhd {file} 	Mount the VHD(z)-file"
+	echo "--mountpoint {dir}	Mount the VHD(z)-file at this mountpoint"
+	echo "--tempmount {dir}		Use this directory as temporary mountpoint"
 	echo ""
 	echo "Have a nice day!"
 	exit 0
@@ -197,7 +159,6 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	then
 		LOGLEVEL="info"
 		S_DAEMON="--no-server"
-		HTTP_PLUGIN=""
 		PIDFILE_DEF="/var/run/urbackup_verify_hashes.pid"
 	fi
 	
@@ -205,7 +166,6 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	then
 		LOGLEVEL="debug"
 		S_DAEMON="--no-server"
-		HTTP_PLUGIN=""
 		PIDFILE_DEF="/var/run/urbackup_reset_pw.pid"
 	fi
 	
@@ -213,7 +173,6 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	then
 		LOGLEVEL="debug"
 		S_DAEMON="--no-server"
-		HTTP_PLUGIN=""
 		PIDFILE_DEF="/var/run/urbackup_cleanup.pid"
 	fi
 	
@@ -229,7 +188,7 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 	
 	if [ "x$RUN_IN_VALGRIND" = "x1" ]
 	then
-		S_DAEMON="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so"
+		S_DAEMON=""
 	fi
 	
 	if [ "x$MOUNTVHD_MOUNTPOINT" != "x" ]; then
@@ -255,10 +214,10 @@ if `$GETOPT -T > /dev/null 2>&1`; [ $? = 4 ]; then
 		fi
 		echo "Using temporary mountpoint $MOUNTVHD_TMPDIR"
 		S_DAEMON="--daemon"
-		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --plugin $DAEMON_LIBS/liburbackupserver_fuseplugin.so --mount $MOUNTVHD --mountpoint $MOUNTVHD_TMPDIR --loglevel debug"
+		DAEMON_ARGS="--mount $MOUNTVHD --mountpoint $MOUNTVHD_TMPDIR --loglevel debug"
 	elif [ "x$DECOMPRESS" != "x" ]
 	then
-		DAEMON_ARGS="--plugin $DAEMON_LIBS/liburbackupserver_fsimageplugin.so --decompress $DECOMPRESS --loglevel debug"
+		DAEMON_ARGS="--decompress $DECOMPRESS --loglevel debug"
 		S_DAEMON=""
 	else
 		echo $BROADCAST_INTERFACES
@@ -279,11 +238,6 @@ fi
 ulimit -n 100000 > /dev/null 2>&1
 
 export MPLCONFIGDIR=$DAEMON_DIR/urbackup
-
-if [ "x$MOUNTVHD" = "x" ]
-then
-	DAEMON_ARGS="$HTTP_PLUGIN $DAEMON_PLUGINS $DAEMON_ARGS"
-fi
 
 if [ "x$RESET_PW" != "x" ]
 then

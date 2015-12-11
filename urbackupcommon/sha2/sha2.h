@@ -34,6 +34,8 @@
 #ifndef SHA2_H
 #define SHA2_H
 
+#include <wchar.h>
+
 #define SHA224_DIGEST_SIZE ( 224 / 8)
 #define SHA256_DIGEST_SIZE ( 256 / 8)
 #define SHA384_DIGEST_SIZE ( 384 / 8)
@@ -99,6 +101,36 @@ void sha512_update(sha512_ctx *ctx, const unsigned char *message,
 void sha512_final(sha512_ctx *ctx, unsigned char *digest);
 void sha512(const unsigned char *message, unsigned int len,
             unsigned char *digest);
+
+
+typedef sha512_ctx sha_def_ctx;
+
+static void sha_def_init(sha_def_ctx *ctx)
+{
+	sha512_init(ctx);
+}
+
+static void sha_def_update(sha_def_ctx *ctx, const unsigned char *message,
+	unsigned int len)
+{
+	sha512_update(ctx, message, len);
+}
+
+static void sha_def_final(sha_def_ctx *ctx, unsigned char *digest)
+{
+	sha512_final(ctx, digest);
+}
+
+static void sha_def(const unsigned char *message, unsigned int len,
+	unsigned char *digest)
+{
+	sha512(message, len, digest);
+}
+
+#define SHA_DEF_DIGEST_SIZE ( 512 / 8)
+
+const static char* sha_def_identifier="sha512";
+const static wchar_t* sha_def_identifier_w=L"sha512";
 
 #ifdef __cplusplus
 }

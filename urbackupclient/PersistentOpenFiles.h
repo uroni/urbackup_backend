@@ -23,6 +23,8 @@ public:
 
 	void remove(const std::wstring& fn);
 
+	bool is_present(const std::wstring& fn);
+
 	std::vector<std::wstring> get();
 
 	bool flushf();

@@ -37,7 +37,7 @@
 #include "DirectoryWatcherThread.h"
 #else
 #include "lin_ver.h"
-std::wstring getSysVolume(std::wstring &mpath){ return L""; }
+std::wstring getSysVolumeCached(std::wstring &mpath){ return L""; }
 std::wstring getEspVolume(std::wstring &mpath){ return L""; }
 #endif
 #include "../client_version.h"
@@ -64,7 +64,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 	{
 		if(Server->getServerParameter("restore_mode")=="true" && !ident_ok )
 		{
-			ServerIdentityMgr::addServerIdentity(identity, "");
+			ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
 				tcpstack.Send(pipe, "OK");
 		}
 		else if( ident_ok )
@@ -89,7 +89,7 @@ void ClientConnector::CMD_ADD_IDENTITY(const std::string &identity, const std::s
 
 			if( ServerIdentityMgr::numServerIdentities()==0 )
 			{
-				ServerIdentityMgr::addServerIdentity(identity, "");
+				ServerIdentityMgr::addServerIdentity(identity, SPublicKeys());
 				tcpstack.Send(pipe, "OK");
 			}
 			else
@@ -158,19 +158,23 @@ void ClientConnector::CMD_SIGNATURE(const std::string &identity, const std::stri
 	ParseParamStrHttp(cmd.substr(hashpos+1), &params);
 
 	std::string pubkey = base64_decode_dash(wnarrow(params[L"pubkey"]));
+	std::string pubkey_ecdsa409k1 = base64_decode_dash(wnarrow(params[L"pubkey_ecdsa409k1"]));
 	std::string signature = base64_decode_dash(wnarrow(params[L"signature"]));
+	std::string signature_ecdsa409k1 = base64_decode_dash(wnarrow(params[L"signature_ecdsa409k1"]));
 	std::string session_identity = Server->ConvertToUTF8(params[L"session_identity"]);
 
 	if(!ServerIdentityMgr::hasPublicKey(identity))
 	{
-		ServerIdentityMgr::setPublicKey(identity, pubkey);
+		ServerIdentityMgr::setPublicKeys(identity, SPublicKeys(pubkey, pubkey_ecdsa409k1));
 	}
 
-	pubkey = ServerIdentityMgr::getPublicKey(identity);
+	SPublicKeys pubkeys = ServerIdentityMgr::getPublicKeys(identity);
 	
-	if(crypto_fak->verifyData(pubkey, challenge, signature))
+	if( (!pubkeys.ecdsa409k1_key.empty() && crypto_fak->verifyData(pubkeys.ecdsa409k1_key, challenge, signature_ecdsa409k1))
+		|| (pubkeys.ecdsa409k1_key.empty() && !pubkeys.dsa_key.empty() && crypto_fak->verifyDataDSA(pubkeys.dsa_key, challenge, signature)) )
 	{
 		ServerIdentityMgr::addSessionIdentity(session_identity, endpoint_name);
+		ServerIdentityMgr::setPublicKeys(identity, SPublicKeys(pubkey, pubkey_ecdsa409k1));
 		tcpstack.Send(pipe, "ok");
 		challenges.erase(challenge_it);
 	}
@@ -202,6 +206,12 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	}
 
 	std::wstring resume = params[L"resume"];
+	std::wstring sha_version_str = params[L"sha"];
+	int sha_version = 512;
+	if(!sha_version_str.empty())
+	{
+		sha_version = watoi(sha_version_str);
+	}
 
 	int group=c_group_default;
 
@@ -209,6 +219,14 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	if(it_group!=params.end())
 	{
 		group = watoi(it_group->second);
+	}
+
+	std::string clientsubname;
+
+	str_map::iterator it_clientsubname = params.find(L"clientsubname");
+	if(it_clientsubname!=params.end())
+	{
+		clientsubname = conv_filename(Server->ConvertToUTF8(it_clientsubname->second));
 	}
 
 	unsigned int flags = 0;
@@ -238,7 +256,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 		flags |= flag_end_to_end_verification;
 	}
 
-	if(calculateFilehashesOnClient())
+	if(calculateFilehashesOnClient(clientsubname))
 	{
 		flags |= flag_calc_checksums;
 	}
@@ -248,11 +266,13 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	IScopedLock lock(backup_mutex);
 
 	CWData data;
-	data.addChar(0);
+	data.addChar(IndexThread::IndexThreadAction_StartIncrFileBackup);
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
 	data.addInt(group);
 	data.addInt(flags);
+	data.addString(clientsubname);
+	data.addInt(sha_version);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -308,6 +328,19 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		group = watoi(it_group->second);
 	}
 
+	std::wstring sha_version_str = params[L"sha"];
+	int sha_version = 512;
+	if(!sha_version_str.empty())
+	{
+		sha_version = watoi(sha_version_str);
+	}
+	std::string clientsubname;
+	str_map::iterator it_clientsubname = params.find(L"clientsubname");
+	if(it_clientsubname!=params.end())
+	{
+		clientsubname = conv_filename(Server->ConvertToUTF8(it_clientsubname->second));
+	}
+
 	int flags = 0;
 
 	if(params.find(L"with_scripts")!=params.end())
@@ -335,7 +368,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		flags |= flag_end_to_end_verification;
 	}
 
-	if(calculateFilehashesOnClient())
+	if(calculateFilehashesOnClient(clientsubname))
 	{
 		flags |= flag_calc_checksums;
 	}
@@ -345,11 +378,13 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	IScopedLock lock(backup_mutex);
 
 	CWData data;
-	data.addChar(1);
+	data.addChar(IndexThread::IndexThreadAction_StartFullFileBackup);
 	data.addVoidPtr(mempipe);
 	data.addString(server_token);
 	data.addInt(group);
 	data.addInt(flags);
+	data.addString(clientsubname);
+	data.addInt(sha_version);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -366,7 +401,6 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 
 void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 {
-#ifdef _WIN32
 	if(cmd[cmd.size()-1]=='"')
 	{
 		state=CCSTATE_SHADOWCOPY;
@@ -384,14 +418,10 @@ void ClientConnector::CMD_START_SHADOWCOPY(const std::string &cmd)
 	{
 		Server->Log("Invalid command", LL_ERROR);
 	}
-#else
-	tcpstack.Send(pipe, "DONE");
-#endif
 }
 
 void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 {
-#ifdef _WIN32
 	if(cmd[cmd.size()-1]=='"')
 	{
 		state=CCSTATE_SHADOWCOPY;
@@ -409,9 +439,6 @@ void ClientConnector::CMD_STOP_SHADOWCOPY(const std::string &cmd)
 	{
 		Server->Log("Invalid command", LL_ERROR);
 	}
-#else
-	tcpstack.Send(pipe, "DONE");
-#endif
 }
 
 void ClientConnector::CMD_SET_INCRINTERVAL(const std::string &cmd)
@@ -457,7 +484,7 @@ void ClientConnector::CMD_GET_BACKUPDIRS(const std::string &cmd)
 
 		ret.set("dirs", dirs);
 
-		tcpstack.Send(pipe, ret.get(true));
+        tcpstack.Send(pipe, ret.stringify(true));
 	}
 	else
 	{
@@ -507,6 +534,7 @@ void ClientConnector::CMD_DID_BACKUP(const std::string &cmd)
 			backup_running==RUNNING_RESUME_INCR_FILE || backup_running==RUNNING_RESUME_FULL_FILE )
 		{
 			backup_running=RUNNING_NONE;
+			backup_running_owner=NULL;
 			backup_done=true;
 		}
 		lasttime=Server->getTimeMS();
@@ -545,7 +573,7 @@ std::string ClientConnector::getLastBackupTime()
 	}
 }
 
-std::string ClientConnector::getCurrRunningJob()
+std::string ClientConnector::getCurrRunningJob(bool reset_done)
 {
 	if(last_pingtime!=0 && Server->getTimeMS()-last_pingtime>x_pingtimeout)
 	{
@@ -558,8 +586,11 @@ std::string ClientConnector::getCurrRunningJob()
 			return "DONE";
 		else
 			return "NOA";
-
-		backup_done=false;
+		
+		if(reset_done)
+		{
+			backup_done=false;
+		}
 	}
 	else if(backup_running==RUNNING_INCR_FILE)
 	{
@@ -611,7 +642,7 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	ret.set("eta_ms", eta_ms);
 
-	ret.set("currently_running", getCurrRunningJob());
+	ret.set("currently_running", getCurrRunningJob(false));
 
 	JSON::Array servers;
 
@@ -633,7 +664,7 @@ void ClientConnector::CMD_STATUS_DETAIL(const std::string &cmd)
 
 	ret.set("capability_bits", getCapabilities());
 
-	tcpstack.Send(pipe, ret.get(false));
+    tcpstack.Send(pipe, ret.stringify(false));
 
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_CLIENT);
 	db->destroyAllQueries();
@@ -918,7 +949,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			std::wstring sysvol;
 			if(image_inf.image_letter=="SYSVOL")
 			{
-				sysvol=getSysVolume(mpath);
+				sysvol=getSysVolumeCached(mpath);
 			}
 			else
 			{
@@ -1114,7 +1145,7 @@ void ClientConnector::CMD_MBR(const std::string &cmd)
 	if(dl==L"SYSVOL")
 	{
 		std::wstring mpath;
-		dl=getSysVolume(mpath);
+		dl=getSysVolumeCached(mpath);
 	}
 	else if(dl==L"ESP")
 	{
@@ -1231,30 +1262,73 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 	}
 	else
 	{
-		std::string accessparams = getAccessTokensParams(params[L"tokens"], true);
 
-		if(accessparams.empty())
+		std::string utf8_tokens = Server->ConvertToUTF8(params[L"tokens"]);
+		std::string filebackups;
+		std::string accessparams;
+
+		if(channel_pipes.size()==1)
 		{
-			tcpstack.Send(pipe, "0");
-			return;
+			accessparams+=" with_id_offset=false";
 		}
 
-		accessparams[0]=' ';
+		bool has_token_params=false;
 
-		std::string filebackups;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-            sendChannelPacket(channel_pipes[i], cmd+accessparams);
-            std::string nc=receivePacket(channel_pipes[i]);
-            if(!nc.empty() && nc!="err")
+			for(size_t j=0;j<2;++j)
 			{
-				if(!filebackups.empty())
+				if(channel_pipes[i].last_tokens!=utf8_tokens)
 				{
-					filebackups[filebackups.size()-1] = ',';
-					nc[0]=' ';
+					if(!has_token_params)
+					{
+						std::string token_params = getAccessTokensParams(params[L"tokens"], true);
+
+						if(token_params.empty())
+						{
+							tcpstack.Send(pipe, "0");
+							return;
+						}
+
+						if(accessparams.empty())
+						{
+							accessparams = token_params;
+							accessparams[0]=' ';
+						}
+						else
+						{
+							accessparams+=token_params;
+						}
+
+						has_token_params=true;
+					}			
 				}
-				filebackups+=nc;
+
+				sendChannelPacket(channel_pipes[i], cmd+accessparams);
+				std::string nc=receivePacket(channel_pipes[i]);
+				if(!nc.empty() && nc!="err")
+				{
+					channel_pipes[i].last_tokens = utf8_tokens;
+
+					if(!filebackups.empty())
+					{
+						filebackups[filebackups.size()-1] = ',';
+						nc[0]=' ';
+					}
+					filebackups+=nc;
+
+					break;
+				}
+				else if(!has_token_params)
+				{
+					channel_pipes[i].last_tokens="";
+				}
+				else
+				{
+					break;
+				}
 			}
+			
 		}
         if(filebackups.empty())
         {
@@ -1278,15 +1352,7 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 	}
 	else
 	{
-		std::string accessparams = getAccessTokensParams(params[L"tokens"], true);
-
-		if(accessparams.empty())
-		{
-			tcpstack.Send(pipe, "0");
-			return;
-		}
-
-		accessparams[0]=' ';
+		std::string accessparams;
 
 		str_map::iterator it_path = params.find(L"path");
 
@@ -1302,19 +1368,98 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 			accessparams+="&backupid="+EscapeParamString(Server->ConvertToUTF8(it_backupid->second));
 		}
 
+		if(channel_pipes.size()==1)
+		{
+			accessparams+="&with_id_offset=false";
+		}
+
+        std::string filelist;
+
+		if(!accessparams.empty())
+		{
+			accessparams[0]=' ';
+		}
+
+		std::string utf8_tokens = Server->ConvertToUTF8(params[L"tokens"]);
+		bool has_token_params=false;
+		bool break_outer=false;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-            sendChannelPacket(channel_pipes[i], cmd+accessparams);
-
-            std::string nc=receivePacket(channel_pipes[i]);
-			if(!nc.empty() && nc!="err")
+			for(size_t j=0;j<2;++j)
 			{
-				tcpstack.Send(pipe, "1"+nc);
-				return;
+				if(channel_pipes[i].last_tokens!=utf8_tokens)
+				{
+					if(!has_token_params)
+					{
+						std::string token_params = getAccessTokensParams(params[L"tokens"], true);
+
+						if(token_params.empty())
+						{
+							tcpstack.Send(pipe, "0");
+							return;
+						}
+
+						if(accessparams.empty())
+						{
+							accessparams = token_params;
+							accessparams[0]=' ';
+						}
+						else
+						{
+							accessparams+=token_params;
+						}
+
+						has_token_params=true;
+					}
+				}
+
+				sendChannelPacket(channel_pipes[i], cmd+accessparams);
+
+				std::string nc=receivePacket(channel_pipes[i]);
+				if(!nc.empty() && nc!="err")
+				{
+					channel_pipes[i].last_tokens = utf8_tokens;
+
+					if(!filelist.empty())
+					{
+						filelist[filelist.size()-1] = ',';
+						nc[0]=' ';
+					}
+
+					filelist+=nc;
+
+					if(it_backupid!=params.end())
+					{
+						break_outer=true;
+						break;
+					}
+
+					break;
+				}
+				else if(!has_token_params)
+				{
+					channel_pipes[i].last_tokens="";
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			if(break_outer)
+			{
+				break;
 			}
 		}
 
-		tcpstack.Send(pipe, "0");
+        if(!filelist.empty())
+        {
+            tcpstack.Send(pipe, "1"+filelist);
+        }
+        else
+        {
+            tcpstack.Send(pipe, "0");
+        }
 	}
 }
 
@@ -1628,12 +1773,12 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1");
+		"&FILE_META=1&SELECT_SHA=1");
 #else
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1");
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1");
 #endif
 }
 
@@ -1642,7 +1787,7 @@ void ClientConnector::CMD_NEW_SERVER(str_map &params)
 	std::string ident=Server->ConvertToUTF8(params[L"ident"]);
 	if(!ident.empty())
 	{
-		ServerIdentityMgr::addServerIdentity(ident, "");
+		ServerIdentityMgr::addServerIdentity(ident, SPublicKeys());
 		tcpstack.Send(pipe, "OK");
 	}
 	else

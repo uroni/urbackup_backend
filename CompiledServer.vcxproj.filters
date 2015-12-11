@@ -156,6 +156,9 @@
     <ClCompile Include="SharedMutex_boost.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="StaticPluginRegistration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AcceptThread.h">
@@ -367,6 +370,9 @@
     </ClInclude>
     <ClInclude Include="Interface\SharedMutex.h">
       <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="StaticPluginRegistration.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

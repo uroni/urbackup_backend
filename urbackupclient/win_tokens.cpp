@@ -28,6 +28,7 @@
 #include "tokens.h"
 #include "../common/data.h"
 #include <assert.h>
+#include "../Interface/Types.h"
 
 #pragma comment(lib, "netapi32.lib")
 
@@ -36,7 +37,7 @@ namespace tokens
 
 struct Token
 {
-	int id;
+	int64 id;
 	bool is_user;
 };
 
@@ -354,7 +355,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt token_id = dao->getFileAccessTokenId(users[i], 1);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(users[i], 1);
 
 		if(!token_id.exists)
 		{
@@ -381,7 +382,7 @@ void read_all_tokens(ClientDAO* dao, TokenCache& token_cache)
 			continue;
 		}
 
-		ClientDAO::CondInt token_id = dao->getFileAccessTokenId(groups[i], 0);
+		ClientDAO::CondInt64 token_id = dao->getFileAccessTokenId(groups[i], 0);
 
 		if(!token_id.exists)
 		{
@@ -424,7 +425,7 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 	{
 		//allow to all
 		token_info.addChar(ID_GRANT_ACCESS);
-		token_info.addUInt(-1);
+		token_info.addVarInt(0);
 	}
 
 	char* ptr=reinterpret_cast<char*>(dacl+1);
@@ -478,15 +479,17 @@ std::string get_file_tokens( const std::wstring& fn, ClientDAO* dao, TokenCache&
 
 			if(token_it!=token_cache.get()->tokens.end())
 			{
+				assert(token_it->second.id!=0);
+
 				if(allow)
 				{
 					token_info.addChar(ID_GRANT_ACCESS);
-					token_info.addInt(token_it->second.id);
+					token_info.addVarInt(token_it->second.id);
 				}
 				else
 				{
 					token_info.addChar(ID_DENY_ACCESS);
-					token_info.addInt(token_it->second.id);
+					token_info.addVarInt(token_it->second.id);
 				}
 			}
 			else if(!allow)
