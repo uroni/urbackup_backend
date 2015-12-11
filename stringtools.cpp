@@ -1077,6 +1077,7 @@ std::string EscapeSQLString(const std::string &pStr)
 std::string EscapeParamString(const std::string &pStr)
 {
 	std::string ret;
+	ret.reserve(pStr.size());
 	for(size_t i=0;i<pStr.size();++i)
 	{
 		switch(pStr[i])
@@ -1095,6 +1096,7 @@ std::string EscapeParamString(const std::string &pStr)
 std::wstring EscapeParamString(const std::wstring &pStr)
 {
 	std::wstring ret;
+	ret.reserve(pStr.size());
 	for(size_t i=0;i<pStr.size();++i)
 	{
 		switch(pStr[i])
