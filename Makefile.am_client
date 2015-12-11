@@ -53,7 +53,15 @@ endif
 	mkdir -p "$(DESTDIR)$(localstatedir)/urbackup/data"
 	
 INSTALL_OPTS=
-install-data-local: urbackupclient/backup_client.db urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb client/data/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-ok-big.xpm client/data/backup-progress.xpm client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm client/data/logo1.png client/data/lang/*/*.mo
+install-data-local: urbackupclient/backup_client.db urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf \
+if WITH_GUI_CLIENT
+					urbackupclient/backup_scripts/mariadb client/data/info.txt client/data/backup-bad.xpm client/data/backup-ok.xpm client/data/backup-ok-big.xpm client/data/backup-progress.xpm \
+					client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm \
+					client/data/logo1.png client/data/lang/*/*.mo
+else
+					urbackupclient/backup_scripts/mariadb
+endif
+
 	$(MKDIR_P) $(DESTDIR)$(localstatedir)/urbackup/
 	$(INSTALL_DATA) $(INSTALL_OPTS) "$(srcdir)/urbackupclient/backup_client.db" "$(DESTDIR)$(localstatedir)/urbackup/backup_client.db.template"
 	touch "$(DESTDIR)$(localstatedir)/urbackup/new.txt"
