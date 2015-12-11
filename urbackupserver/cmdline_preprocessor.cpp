@@ -453,7 +453,7 @@ int action_repair_database(std::vector<std::string> args)
 	return run_real_main(real_args);
 }
 
-int action_reset_pw(std::vector<std::string> args)
+int action_reset_admin_pw(std::vector<std::string> args)
 {
 	TCLAP::CmdLine cmd("Reset web interface administrator password", ' ', cmdline_version);
 
@@ -765,7 +765,7 @@ void action_help(std::string cmd)
 	std::cout << "\t" << cmd << " remove-unknown" << std::endl;
 	std::cout << "\t\t" "Remove unknown files and directories from backup storage and fix symbolic links in backup storage" << std::endl;
 	std::cout << std::endl;
-	std::cout << "\t" << cmd << " reset-pw" << std::endl;
+	std::cout << "\t" << cmd << " reset-admin-pw" << std::endl;
 	std::cout << "\t\t" "Reset web interface administrator password" << std::endl;
 	std::cout << std::endl;
 	std::cout << "\t" << cmd << " cleanup" << std::endl;
@@ -809,8 +809,8 @@ int main(int argc, char* argv[])
 	action_funs.push_back(action_verify_hashes);
 	actions.push_back("remove-unknown");
 	action_funs.push_back(action_remove_unknown);
-	actions.push_back("reset-pw");
-	action_funs.push_back(action_reset_pw);
+	actions.push_back("reset-admin-pw");
+	action_funs.push_back(action_reset_admin_pw);
 	actions.push_back("cleanup");
 	action_funs.push_back(action_cleanup);
 	actions.push_back("repair-database");

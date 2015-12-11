@@ -19,6 +19,7 @@ AM_CONDITIONAL(WITH_FORTIFY, test "x$enable_fortify" != xno)
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
+AM_PROG_CC_C_O
 
 AX_PTHREAD
 if !($HAVE_PTHREAD)

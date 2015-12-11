@@ -553,24 +553,33 @@ DLLEXPORT void LoadActions(IServer* pServer)
 	std::string set_admin_pw=Server->getServerParameter("set_admin_pw");
 	if(!set_admin_pw.empty())
 	{
-		std::string rnd=ServerSettings::generateRandomAuthKey(20);
+		std::string new_salt=ServerSettings::generateRandomAuthKey(20);
+
+		const size_t pbkdf2_rounds = 10000;
+
+		std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(Server->GenerateHexMD5(new_salt+set_admin_pw)),
+				new_salt, pbkdf2_rounds));
 
 		IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
+
 		db_results res=db->Read("SELECT password_md5 FROM settings_db.si_users WHERE name='admin'");
+
 		if(res.empty())
 		{
-			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt) VALUES (?,?,?)");
+			IQuery *q=db->Prepare("INSERT INTO settings_db.si_users (name, password_md5, salt, pbkdf2_rounds) VALUES (?,?,?)");
 			q->Bind("admin");
-			q->Bind(Server->GenerateHexMD5(rnd+set_admin_pw));
-			q->Bind(rnd);
+			q->Bind(password_md5);
+			q->Bind(new_salt);
+			q->Bind(pbkdf2_rounds);
 			q->Write();
 			q->Reset();
 		}
 		else
 		{
-			IQuery *q=db->Prepare("UPDATE si_users SET password_md5=?, salt=? WHERE name='admin'");
-			q->Bind(Server->GenerateHexMD5(rnd+set_admin_pw));
-			q->Bind(rnd);
+			IQuery *q=db->Prepare("UPDATE si_users SET password_md5=?, salt=?, pbkdf2_rounds=? WHERE name='admin'");
+			q->Bind(password_md5);
+			q->Bind(new_salt);
+			q->Bind(pbkdf2_rounds);
 			q->Write();
 			q->Reset();
 		}
@@ -1414,7 +1423,7 @@ bool upgrade40_41()
 		for(size_t i=0;i<res.size();++i)
 		{
 			std::string password_md5 = strlower(crypto_fak->generatePasswordHash(hexToBytes(Server->ConvertToUTF8(res[i][L"password_md5"])),
-				Server->ConvertToUTF8(res[i][L"password_md5"]), pbkdf2_rounds));
+				Server->ConvertToUTF8(res[i][L"salt"]), pbkdf2_rounds));
 
 			q_update->Bind(password_md5);
 			q_update->Bind(pbkdf2_rounds);
