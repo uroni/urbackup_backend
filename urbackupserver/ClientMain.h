@@ -177,6 +177,10 @@ public:
 
 	static void addShareToCleanup(int clientid, const SShareCleanup& cleanupData);
 
+	static bool startBackupBarrier(int64 timeout_seconds);
+
+	static void stopBackupBarrier();
+
 private:
 	void unloadSQL(void);
 	void prepareSQL(void);
@@ -296,4 +300,5 @@ private:
 
 	logid_t logid;
 	static int restore_client_id;
+	static bool running_backups_allowed;
 };

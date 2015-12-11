@@ -92,6 +92,7 @@ size_t ClientMain::tmpfile_num=0;
 IMutex* ClientMain::cleanup_mutex = NULL;
 std::map<int, std::vector<SShareCleanup> > ClientMain::cleanup_shares;
 int ClientMain::restore_client_id = -1;
+bool ClientMain::running_backups_allowed=true;
 
 
 
@@ -1761,7 +1762,7 @@ bool ClientMain::isBackupsRunningOkay(bool file)
 	IScopedLock lock(running_backup_mutex);
 	if(running_backups<server_settings->getSettings()->max_sim_backups)
 	{
-		return true;
+		return running_backups_allowed;
 	}
 	else
 	{
@@ -2437,3 +2438,32 @@ void ClientMain::cleanupShares()
 	}
 }
 
+bool ClientMain::startBackupBarrier( int64 timeout_seconds )
+{
+	IScopedLock lock(running_backup_mutex);
+
+	running_backups_allowed=false;
+
+	int64 starttime = Server->getTimeSeconds();
+
+	while(running_backups>0 && Server->getTimeSeconds()-starttime<timeout_seconds)
+	{
+		lock.relock(NULL);
+		Server->wait(60000);
+		lock.relock(running_backup_mutex);
+	}
+
+	if(running_backups==0)
+	{
+		return true;
+	}
+
+	running_backups_allowed=true;
+	return false;
+}
+
+void ClientMain::stopBackupBarrier()
+{
+	IScopedLock lock(running_backup_mutex);
+	running_backups_allowed=true;
+}
