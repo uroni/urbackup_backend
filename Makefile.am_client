@@ -60,7 +60,7 @@ install-data-local: urbackupclient/backup_client.db urbackupclient/backup_script
 					client/data/backup-progress-pause.xpm client/data/backup-no-server.xpm client/data/backup-no-recent.xpm client/data/backup-indexing.xpm \
 					client/data/logo1.png client/data/lang/*/*.mo
 else
-					urbackupclient/backup_client.db urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb
+install-data-local: urbackupclient/backup_client.db urbackupclient/backup_scripts/list urbackupclient/backup_scripts/mariadb.conf urbackupclient/backup_scripts/mariadb
 endif
 
 	$(MKDIR_P) $(DESTDIR)$(localstatedir)/urbackup/
