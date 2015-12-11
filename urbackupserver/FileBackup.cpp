@@ -1010,6 +1010,11 @@ bool FileBackup::hasDiskError()
 
 bool FileBackup::constructBackupPath(bool with_hashes, bool on_snapshot, bool create_fs)
 {
+	if(!createDirectoryForClient())
+	{
+		return false;
+	}
+
 	time_t tt=time(NULL);
 #ifdef _WIN32
 	tm lt;
