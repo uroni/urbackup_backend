@@ -3723,7 +3723,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 			target.erase(0, bpath.size());
 			target = backup_dirs[i].tname + (target.empty() ? L"" : (os_file_sep() + target));
 
-			if(backup_dirs[i].symlinked)
+			if(backup_dirs[i].symlinked && !backup_dirs[i].symlinked_confirmed)
 			{
 				VSSLog(L"Following symbolic link at \""+symlink+L"\" confirms symlink backup target \""+target+L"\"", LL_INFO);
 				backup_dirs[i].symlinked_confirmed=true;
