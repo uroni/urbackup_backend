@@ -831,7 +831,7 @@ std::wstring os_get_final_path(std::wstring path)
     char* retptr = realpath(ConvertToUTF8(path).c_str(), NULL);
 	if(retptr==NULL)
 	{
-		return std::wstring();
+		return path;
 	}
     std::wstring ret = ConvertToUnicode(retptr);
 	free(retptr);
