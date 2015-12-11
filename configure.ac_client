@@ -96,7 +96,8 @@ AS_IF([test "x$enable_headless" != "xyes"],
 			])
 	fi
 	AS_IF([test x"$opsys" = x"osx"],
-		[AC_PROG_OBJCXX])
+		[AC_PROG_OBJC
+		_AM_DEPENDENCIES(OBJC)])
 ])
 
 AC_SEARCH_LIBS([clock_gettime], [rt posix4],
