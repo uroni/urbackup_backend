@@ -100,6 +100,36 @@ void sha512_final(sha512_ctx *ctx, unsigned char *digest);
 void sha512(const unsigned char *message, unsigned int len,
             unsigned char *digest);
 
+
+typedef sha256_ctx sha_def_ctx;
+
+static void sha_def_init(sha_def_ctx *ctx)
+{
+	sha256_init(ctx);
+}
+
+static void sha_def_update(sha_def_ctx *ctx, const unsigned char *message,
+	unsigned int len)
+{
+	sha256_update(ctx, message, len);
+}
+
+static void sha_def_final(sha_def_ctx *ctx, unsigned char *digest)
+{
+	sha256_final(ctx, digest);
+}
+
+static void sha_def(const unsigned char *message, unsigned int len,
+	unsigned char *digest)
+{
+	sha256(message, len, digest);
+}
+
+#define SHA_DEF_DIGEST_SIZE ( 256 / 8)
+
+const static char* sha_def_identifier="sha256";
+const static wchar_t* sha_def_identifier_w=L"sha256";
+
 #ifdef __cplusplus
 }
 #endif

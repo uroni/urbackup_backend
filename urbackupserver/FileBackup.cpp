@@ -160,6 +160,11 @@ bool FileBackup::request_filelist_construct(bool full, bool resume, int group,
 			start_backup_cmd+="incr";
 	}
 
+	if(client_main->getProtocolVersions().select_sha_version>0)
+	{
+		start_backup_cmd+="&sha=512";
+	}
+
 	start_backup_cmd+="&with_permissions=1&with_scripts=1&with_orig_path=1&with_sequence=1&with_proper_symlinks=1";
 
 	if(with_token)
@@ -840,27 +845,27 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 
 				if( !cf.isdir )
 				{
-					std::string sha256hex=Server->ConvertToUTF8(extras[L"sha256"]);
+					std::string sha256hex=Server->ConvertToUTF8(extras[L"sha256_verify"]);
 
 					if(sha256hex.empty())
 					{
-						std::string sha512base64 = wnarrow(extras[L"sha512"]);
-						if(sha512base64.empty())
+						std::string shabase64 = wnarrow(extras[sha_def_identifier_w]);
+						if(shabase64.empty())
 						{
 							std::string msg="No hash for file \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" found. Verification failed.";
 							verify_ok=false;
 							ServerLogger::Log(logid, msg, LL_ERROR);
 							log << msg << std::endl;
 						}
-						else if(getSHA512(curr_path+os_file_sep()+cfn)!=base64_decode_dash(sha512base64))
+						else if(getSHADef(curr_path+os_file_sep()+cfn)!=base64_decode_dash(shabase64))
 						{
 							std::string msg="Hashes for \""+Server->ConvertToUTF8(curr_path+os_file_sep()+cf.name)+"\" differ (client side hash). Verification failed.";
 							verify_ok=false;
 							ServerLogger::Log(logid, msg, LL_ERROR);
 							log << msg << std::endl;
 							save_debug_data(remote_path+L"/"+cf.name,
-								base64_encode_dash(getSHA512(curr_path+os_file_sep()+cfn)),
-								sha512base64);
+								base64_encode_dash(getSHADef(curr_path+os_file_sep()+cfn)),
+								shabase64);
 						}
 						else
 						{
@@ -966,6 +971,34 @@ std::string FileBackup::getSHA512(const std::wstring& fn)
 	std::string dig;
 	dig.resize(64);
 	sha512_final(&ctx, reinterpret_cast<unsigned char*>(&dig[0]));
+
+	return dig;
+}
+
+std::string FileBackup::getSHADef(const std::wstring& fn)
+{
+	sha_def_ctx ctx;
+	sha_def_init(&ctx);
+
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ);
+
+	if(f==NULL)
+	{
+		return std::string();
+	}
+
+	char buffer[32768];
+	unsigned int r;
+	while( (r=f->Read(buffer, 32768))>0)
+	{
+		sha_def_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+	}
+
+	Server->destroy(f);
+
+	std::string dig;
+	dig.resize(SHA_DEF_DIGEST_SIZE);
+	sha_def_final(&ctx, reinterpret_cast<unsigned char*>(&dig[0]));
 
 	return dig;
 }

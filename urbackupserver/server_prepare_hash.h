@@ -11,7 +11,6 @@
 
 
 
-
 class BackupServerPrepareHash : public IThread, public IChunkPatcherCallback
 {
 public:
@@ -26,7 +25,7 @@ public:
 
 	bool hasError(void);
 
-	static std::string hash_sha512(IFile *f);
+	static std::string hash_sha(IFile *f);
 
 private:
 	
@@ -37,7 +36,7 @@ private:
 
 	int clientid;
 
-	sha512_ctx ctx;
+	sha_def_ctx ctx;
 
 	ChunkPatcher chunk_patcher;
 	

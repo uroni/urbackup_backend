@@ -755,7 +755,7 @@ bool IncrFileBackup::doFileBackup()
 					std::string curr_sha2;
 					{
 						std::map<std::wstring, std::wstring>::iterator hash_it = 
-							( (local_hash.get()==NULL)?extra_params.end():extra_params.find(L"sha512") );					
+							( (local_hash.get()==NULL)?extra_params.end():extra_params.find(sha_def_identifier_w) );					
 						if(hash_it!=extra_params.end())
 						{
 							curr_sha2 = base64_decode_dash(wnarrow(hash_it->second));

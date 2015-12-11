@@ -425,6 +425,7 @@ void IndexThread::operator()(void)
 			unsigned int flags;
 			data.getUInt(&flags);
 			data.getStr(&index_clientsubname);
+			data.getInt(&sha_version);
 
 			setFlags(flags);
 
@@ -511,6 +512,7 @@ void IndexThread::operator()(void)
 			unsigned int flags;
 			data.getUInt(&flags);
 			data.getStr(&index_clientsubname);
+			data.getInt(&sha_version);
 
 			setFlags(flags);
 
@@ -1196,12 +1198,19 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 
 			if(calculate_filehashes_on_client)
 			{
-				extra+="&sha512=" + base64_encode_dash(files[i].hash);
-			}
+					if(sha_version!=256)
+					{
+						outfile << "sha512=" << base64_encode_dash(files[i].hash);
+					}
+					else
+					{
+						outfile << "sha256=" << base64_encode_dash(files[i].hash);
+					}
+				}
 				
 			if(end_to_end_file_backup_verification)
 			{
-				extra+="&sha256=" + getSHA256(dir+os_file_sep()+files[i].name);
+				extra+="&sha256_verify=" + getSHA256(dir+os_file_sep()+files[i].name);
 			}
 
 			if(files[i].issym && with_proper_symlinks)
@@ -1448,7 +1457,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 
 			if(needs_hashing)
 			{
-				fsfile.hash=getSHA512Binary(filepath+os_file_sep()+fsfile.name);
+				fsfile.hash=getShaBinary(filepath+os_file_sep()+fsfile.name);
 				calculated_hash=true;
 			}
 		}
@@ -1467,7 +1476,7 @@ bool IndexThread::addMissingHashes(std::vector<SFileAndHash>* dbfiles, std::vect
 			if(skipFile(orig_path+os_file_sep()+dbfile.name, namedpath+os_file_sep()+dbfile.name))
 				continue;
 
-			dbfile.hash=getSHA512Binary(filepath+os_file_sep()+dbfile.name);
+			dbfile.hash=getShaBinary(filepath+os_file_sep()+dbfile.name);
 			calculated_hash=true;
 		}
 	}
@@ -3426,6 +3435,51 @@ std::string IndexThread::escapeListName( const std::string& listname )
 			ret+=listname[i];
 		}
 	}
+	return ret;
+}
+
+std::string IndexThread::getShaBinary( const std::wstring& fn )
+{
+	if(sha_version!=256)
+	{
+		return getSHA512Binary(fn);
+	}
+	else
+	{
+		return getSHA256Binary(fn);
+	}
+}
+
+std::string IndexThread::getSHA256Binary( const std::wstring& fn )
+{
+	Server->Log(L"Calculating SHA256 Hash for file \""+fn+L"\"", LL_DEBUG);
+	sha256_ctx ctx;
+	sha256_init(&ctx);
+
+	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
+
+	if(f==NULL)
+	{
+		return std::string();
+	}
+
+	char buffer[32768];
+	unsigned int r;
+	while( (r=f->Read(buffer, 32768))>0)
+	{
+		sha256_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
+
+		if(IdleCheckerThread::getPause())
+		{
+			Server->wait(5000);
+		}
+	}
+
+	Server->destroy(f);
+
+	std::string ret;
+	ret.resize(32);
+	sha256_final(&ctx, reinterpret_cast<unsigned char*>(const_cast<char*>(ret.c_str())));
 	return ret;
 }
 

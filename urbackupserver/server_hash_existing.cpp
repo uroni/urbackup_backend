@@ -69,7 +69,7 @@ void ServerHashExisting::operator()()
 			ObjectScope destroy_f(f);
 
 			int64 filesize = f->Size();
-			std::string sha2 = BackupServerPrepareHash::hash_sha512(f);
+			std::string sha2 = BackupServerPrepareHash::hash_sha(f);
 
 			incr_backup->addExistingHash(item.fullpath, item.hashpath, sha2, filesize, -1);
 		}

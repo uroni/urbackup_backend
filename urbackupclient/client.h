@@ -255,8 +255,10 @@ private:
 
 	void addFilesInt(std::wstring path, const std::vector<SFileAndHash> &data);
 	void commitAddFilesBuffer();
+	std::string getShaBinary(const std::wstring& fn);
 
 	std::wstring removeDirectorySeparatorAtEnd(const std::wstring& path);
+	std::string getSHA256Binary(const std::wstring& fn);
 	std::wstring addDirectorySeparatorAtEnd(const std::wstring& path);
 
 	void resetFileEntries(void);
@@ -349,6 +351,7 @@ private:
 	_i64 last_filebackup_filetime;
 
 	tokens::TokenCache token_cache;
+	int sha_version;
 };
 
 std::wstring add_trailing_slash(const std::wstring &strDirName);

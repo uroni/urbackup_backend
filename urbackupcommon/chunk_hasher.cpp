@@ -49,9 +49,9 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 		input_size = little_endian(input_size);
 	}
 
-	sha512_ctx ctx;
+	sha_def_ctx ctx;
 	if(ret_sha2)
-		sha512_init(&ctx);
+		sha_def_init(&ctx);
 
 	_i64 n_chunks=c_checkpoint_dist/c_small_hash_dist;
 	char buf[c_small_hash_dist];
@@ -123,7 +123,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 
 			if(ret_sha2)
 			{
-				sha512_update(&ctx, (unsigned char*)buf, r);
+				sha_def_update(&ctx, (unsigned char*)buf, r);
 			}
 			if(copy!=NULL)
 			{
@@ -241,7 +241,7 @@ std::string build_chunk_hashs(IFile *f, IFile *hashoutput, INotEnoughSpaceCallba
 	{
 		std::string ret;
 		ret.resize(64);
-		sha512_final(&ctx, (unsigned char*)&ret[0]);
+		sha_def_final(&ctx, (unsigned char*)&ret[0]);
 		return ret;
 	}
 	else

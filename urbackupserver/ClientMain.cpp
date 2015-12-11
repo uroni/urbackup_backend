@@ -1262,6 +1262,11 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.file_meta=watoi(it->second);
 		}
+		it=params.find(L"SELECT_SHA");
+		if(it!=params.end())
+		{
+			protocol_versions.select_sha_version=watoi(it->second);
+		}
 	}
 
 	return !cap.empty();

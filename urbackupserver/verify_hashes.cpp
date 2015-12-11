@@ -115,8 +115,8 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 
 	std::wstring f_name=ExtractFileName(fp);
 
-	sha512_ctx shactx;
-	sha512_init(&shactx);
+	sha_def_ctx shactx;
+	sha_def_init(&shactx);
 
 	_u32 r;
 	char buf[c_read_blocksize];
@@ -126,7 +126,7 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 		r=f->Read(buf, c_read_blocksize);
 		if(r>0)
 		{
-			sha512_update(&shactx, (unsigned char*) buf, r);
+			sha_def_update(&shactx, (unsigned char*) buf, r);
 		}
 		curr_verified+=r;
 
@@ -143,10 +143,10 @@ bool verify_file(db_single_result &res, _i64 &curr_verified, _i64 verify_size, b
 	}
 
 	const unsigned char * db_sha=(unsigned char*)res[L"shahash"].c_str();
-	unsigned char calc_dig[64];
-	sha512_final(&shactx, calc_dig);
+	unsigned char calc_dig[SHA_DEF_DIGEST_SIZE];
+	sha_def_final(&shactx, calc_dig);
 
-	if(memcmp(db_sha, calc_dig, 64)!=0)
+	if(memcmp(db_sha, calc_dig, SHA_DEF_DIGEST_SIZE)!=0)
 	{
 		Server->Log(L"Hash of \""+fp+L"\" is wrong", LL_ERROR);
 		return false;

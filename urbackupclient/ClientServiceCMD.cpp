@@ -206,6 +206,12 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	}
 
 	std::wstring resume = params[L"resume"];
+	std::wstring sha_version_str = params[L"sha"];
+	int sha_version = 512;
+	if(!sha_version_str.empty())
+	{
+		sha_version = watoi(sha_version_str);
+	}
 
 	int group=c_group_default;
 
@@ -266,6 +272,7 @@ void ClientConnector::CMD_START_INCR_FILEBACKUP(const std::string &cmd)
 	data.addInt(group);
 	data.addInt(flags);
 	data.addString(clientsubname);
+	data.addInt(sha_version);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -321,6 +328,12 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 		group = watoi(it_group->second);
 	}
 
+	std::wstring sha_version_str = params[L"sha"];
+	int sha_version = 512;
+	if(!sha_version_str.empty())
+	{
+		sha_version = watoi(sha_version_str);
+	}
 	std::string clientsubname;
 	str_map::iterator it_clientsubname = params.find(L"clientsubname");
 	if(it_clientsubname!=params.end())
@@ -371,6 +384,7 @@ void ClientConnector::CMD_START_FULL_FILEBACKUP(const std::string &cmd)
 	data.addInt(group);
 	data.addInt(flags);
 	data.addString(clientsubname);
+	data.addInt(sha_version);
 	IndexThread::getMsgPipe()->Write(data.getDataPtr(), data.getDataSize());
 	mempipe_owner=false;
 
@@ -1649,12 +1663,12 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1");
+		"&FILE_META=1&SELECT_SHA=1");
 #else
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString(Server->ConvertToUTF8(client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1");
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1");
 #endif
 }
 

@@ -130,7 +130,7 @@ void BackupServerPrepareHash::operator()(void)
 				std::string h;
 				if(!diff_file)
 				{
-					h=hash_sha512(tf);
+					h=hash_sha(tf);
 				}
 				else
 				{
@@ -162,43 +162,43 @@ void BackupServerPrepareHash::operator()(void)
 	}
 }
 
-std::string BackupServerPrepareHash::hash_sha512(IFile *f)
+std::string BackupServerPrepareHash::hash_sha(IFile *f)
 {
 	f->Seek(0);
 	unsigned char buf[32768];
 	_u32 rc;
 
-	sha512_ctx local_ctx;
-	sha512_init(&local_ctx);
+	sha_def_ctx local_ctx;
+	sha_def_init(&local_ctx);
 	do
 	{
 		rc=f->Read((char*)buf, 32768);
 		if(rc>0)
-			sha512_update(&local_ctx, buf, rc);
+			sha_def_update(&local_ctx, buf, rc);
 	}
 	while(rc>0);
 	
 	std::string ret;
-	ret.resize(64);
-	sha512_final(&local_ctx, (unsigned char*)&ret[0]);
+	ret.resize(SHA_DEF_DIGEST_SIZE);
+	sha_def_final(&local_ctx, (unsigned char*)&ret[0]);
 	return ret;
 }
 
 std::string BackupServerPrepareHash::hash_with_patch(IFile *f, IFile *patch)
 {
-	sha512_init(&ctx);
+	sha_def_init(&ctx);
 	
 	chunk_patcher.ApplyPatch(f, patch);
 
 	std::string ret;
-	ret.resize(64);
-	sha512_final(&ctx, (unsigned char*)&ret[0]);
+	ret.resize(SHA_DEF_DIGEST_SIZE);
+	sha_def_final(&ctx, (unsigned char*)&ret[0]);
 	return ret;
 }
 
 void BackupServerPrepareHash::next_chunk_patcher_bytes(const char *buf, size_t bsize, bool changed)
 {
-	sha512_update(&ctx, (const unsigned char*)buf, (unsigned int)bsize);
+	sha_def_update(&ctx, (const unsigned char*)buf, (unsigned int)bsize);
 }
 
 bool BackupServerPrepareHash::isWorking(void)
