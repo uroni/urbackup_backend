@@ -107,5 +107,9 @@ then
 fi
 AC_SUBST([WITH_FUSEPLUGIN_CXXFLAGS])
 
+AC_SEARCH_LIBS([clock_gettime], [rt posix4],
+	[test "$ac_cv_search_clock_gettime" = "none required" || LIBS="$LIBS $ac_cv_search_clock_gettime"],
+	[AC_MSG_FAILURE([No library for clock_gettime found])] )
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
