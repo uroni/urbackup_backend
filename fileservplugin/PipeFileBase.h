@@ -42,6 +42,8 @@ public:
 
 	virtual bool PunchHole( _i64 spos, _i64 size );
 
+	virtual bool Sync();
+
 protected:
 
 	void init();

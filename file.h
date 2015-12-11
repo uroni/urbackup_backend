@@ -50,6 +50,7 @@ public:
 	_i64 RealSize();
 	void Close();
 	bool PunchHole( _i64 spos, _i64 size );
+	bool Sync();
 
 #ifdef _WIN32
 	static void init_mutex();

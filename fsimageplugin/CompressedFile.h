@@ -27,6 +27,8 @@ public:
 	virtual std::string getFilename(void);
 	virtual std::wstring getFilenameW(void);
 
+	virtual bool Sync();
+
 	bool hasError();
 
 	bool finish();

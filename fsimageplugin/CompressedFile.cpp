@@ -527,6 +527,12 @@ bool CompressedFile::finish()
 		writeHeader();
 	}
 
+	if(!uncompressedFile->Sync())
+	{
+		error=true;
+		Server->Log("Error syncing uncompressed file to disk", LL_ERROR);
+	}
+
 	if(!error)
 	{
 		finished = true;
@@ -600,4 +606,9 @@ bool CompressedFile::hasNoMagic()
 bool CompressedFile::PunchHole( _i64 spos, _i64 size )
 {
 	return false;
+}
+
+bool CompressedFile::Sync()
+{
+	return finish();
 }

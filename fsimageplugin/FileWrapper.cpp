@@ -87,3 +87,8 @@ bool FileWrapper::PunchHole( _i64 spos, _i64 size )
 	return false;
 }
 
+bool FileWrapper::Sync()
+{
+	return false;
+}
+

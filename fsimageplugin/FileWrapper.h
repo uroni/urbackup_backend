@@ -30,6 +30,8 @@ public:
 
 	virtual bool PunchHole( _i64 spos, _i64 size );
 
+	virtual bool Sync();
+
 private:
 	int64 offset;
 	IVHDFile* wfile;

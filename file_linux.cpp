@@ -262,4 +262,9 @@ bool File::PunchHole( _i64 spos, _i64 size )
 	}
 }
 
+bool File::Sync()
+{
+	return fsync(fd)==0;
+}
+
 #endif

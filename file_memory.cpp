@@ -111,3 +111,8 @@ std::wstring CMemoryFile::getFilenameW(  )
 {
 	return L"_MEMORY_";
 }
+
+bool CMemoryFile::Sync()
+{
+	return false;
+}
