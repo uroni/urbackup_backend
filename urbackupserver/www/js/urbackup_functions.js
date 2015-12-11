@@ -399,6 +399,12 @@ function format_date(d)
 	return wt+"."+m+"."+j+" "+h+":"+min;
 }
 
+function format_unix_timestamp(ts)
+{
+	var d=new Date(ts*1000);
+	return format_date(d);
+}
+
 function format_size(s)
 {
 	var suffix="bytes";

@@ -538,6 +538,8 @@ function show_progress2(data)
 			obj.duration/=60;
 			obj.duration=Math.ceil(obj.duration);
 			obj.duration+=" min";
+			
+			obj.backuptime = format_unix_timestamp(obj.backuptime);
 						
 			rows+=dustRender("lastacts_row", obj);
 		}
@@ -875,10 +877,15 @@ function show_status2(data)
 		}
 		
 		if(obj.lastbackup=="") obj.lastbackup=trans("backup_never");
+		else obj.lastbackup = format_unix_timestamp(obj.lastbackup);
+		
 		if(obj.lastbackup_image=="") obj.lastbackup_image=trans("backup_never");
+		else obj.lastbackup_image = format_unix_timestamp(obj.lastbackup_image);
 		
 		if(obj.online) obj.online=trans("yes");
 		else obj.online=trans("no");
+		
+		if(obj.lastseen!="") obj.lastseen = format_unix_timestamp(obj.lastseen);
 		
 		obj.Action_remove_start="";
 		obj.Action_remove_end="";
@@ -1255,8 +1262,10 @@ function show_backups2(data)
 		for(var i=0;i<data.clients.length;++i)
 		{
 			var obj=data.clients[i];
-			if(obj.lastbackup.length==0)
+			if(obj.lastbackup.length=="")
 				obj.lastbackup="&nbsp;";
+			else
+				obj.lastbackup = format_unix_timestamp(obj.lastbackup);
 			rows+=dustRender("backups_clients_row", obj);
 		}
 		ndata=dustRender("backups_clients", {rows: rows, ses: g.session});
@@ -1300,6 +1309,8 @@ function show_backups2(data)
 			}
 			
 			obj.clientid=data.clientid;
+			
+			obj.backuptime = format_unix_timestamp(obj.backuptime);
 				
 			rows+=dustRender("backups_backups_row", obj);
 		}
@@ -1383,7 +1394,7 @@ function show_backups2(data)
 		
 		var obj = {rows: rows,
 			ses: g.session, clientname: data.clientname,
-			clientid: data.clientid, cpath: cp, backuptime: data.backuptime,
+			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
 			backupid: data.backupid, path: encodeURIComponent(path).replace(/'/g,"%27") };
 			
 		if(!data.token_authentication)
@@ -3062,6 +3073,8 @@ function show_logs2(data)
 			
 			obj.action=trans(a);
 			
+			obj.time = format_unix_timestamp(obj.time);
+			
 			rows+=dustRender("logs_row", obj);
 		}
 		if(data.logs.length==0)
@@ -3194,8 +3207,7 @@ function createLog(d, ll)
 				obj.time=obj.message.substr(0,idx);
 				if(!isNaN(obj.time-0))
 				{
-					var d=new Date(obj.time*1000);
-					obj.time=format_date(d);
+					obj.time=format_unix_timestamp(obj.time);
 					obj.message=obj.message.substr(idx+1,obj.message.length-idx-1);
 				}
 				else

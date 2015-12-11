@@ -122,7 +122,7 @@ ACTION_IMPL(logs)
 			{
 				bed="(l.warnings>0 OR l.errors>0)";
 			}
-			qstr="SELECT l.id AS id, c.name AS name, strftime('"+helper.getTimeFormatString()+"', l.created, 'localtime') AS time, l.errors AS errors, l.warnings AS warnings, "
+			qstr="SELECT l.id AS id, c.name AS name, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, l.errors AS errors, l.warnings AS warnings, "
 				"l.image AS image, l.incremental AS incremental, l.resumed AS resumed FROM logs l INNER JOIN clients c ON l.clientid=c.id";
 
 			if(!v_filter.empty())
@@ -208,7 +208,7 @@ ACTION_IMPL(logs)
 		}
 		else
 		{
-			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, ld.data AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created, 'localtime') AS time, c.name AS name "
+			IQuery *q=db->Prepare("SELECT l.clientid AS clientid, ld.data AS logdata, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, c.name AS name "
 				"FROM ((logs l INNER JOIN log_data ld ON l.id=ld.logid) INNER JOIN clients c ON l.clientid=c.id) WHERE l.id=?");
 			q->Bind(logid);
 			db_results res=q->Read();

@@ -382,7 +382,7 @@ namespace backupaccess
 
 		Helper helper(Server->getThreadID(), NULL, NULL);
 
-		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
+		IQuery *q=db->Prepare("SELECT id, strftime('"+helper.getTimeFormatString()+"', backuptime) AS t_backuptime, incremental, size_bytes, archived, archive_timeout, path FROM backups WHERE complete=1 AND done=1 AND clientid=? ORDER BY backuptime DESC");
 		q->Bind(t_clientid);
 		db_results res=q->Read();
 		JSON::Array backups;
@@ -510,7 +510,7 @@ namespace backupaccess
 		db_results res;
 		if(backupid)
 		{
-			IQuery* q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE id=? AND clientid=?");
+			IQuery* q=db->Prepare("SELECT path,strftime('"+helper.getTimeFormatString()+"', backuptime) AS backuptime FROM backups WHERE id=? AND clientid=?");
 			q->Bind(*backupid);
 			q->Bind(t_clientid);
 			res=q->Read();
@@ -528,7 +528,7 @@ namespace backupaccess
 		}
 		else
 		{
-			IQuery* q=db->Prepare("SELECT id, path,strftime('"+helper.getTimeFormatString()+"', backuptime, 'localtime') AS backuptime FROM backups WHERE clientid=? ORDER BY backuptime DESC");
+			IQuery* q=db->Prepare("SELECT id, path,strftime('"+helper.getTimeFormatString()+"', backuptime) AS backuptime FROM backups WHERE clientid=? ORDER BY backuptime DESC");
 			q->Bind(t_clientid);
 			res=q->Read();
 			q->Reset();
@@ -750,7 +750,7 @@ ACTION_IMPL(backups)
 		IDatabase *db=helper.getDatabase();
 		if(sa.empty())
 		{
-			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup, 'localtime') AS lastbackup FROM clients";
+			std::string qstr = "SELECT id, name, strftime('"+helper.getTimeFormatString()+"', lastbackup) AS lastbackup FROM clients";
 			if(token_authentication)
 			{
 				if(GET.find(L"clientname")==GET.end())

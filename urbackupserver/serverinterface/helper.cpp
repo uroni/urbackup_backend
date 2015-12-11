@@ -243,7 +243,7 @@ void Helper::releaseAll(void)
 
 std::string Helper::getTimeFormatString(void)
 {
-	return "%Y-%m-%d %H:%M";
+	return "%s";
 }
 
 std::string Helper::getLanguage(void)
