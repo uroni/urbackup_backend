@@ -846,6 +846,12 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 				{
 					std::string sha256hex=Server->ConvertToUTF8(extras[L"sha256_verify"]);
 
+					if(sha256hex.empty() && SHA_DEF_DIGEST_SIZE == 64)
+					{
+						//compatibility
+						sha256hex = Server->ConvertToUTF8(extras[L"sha256"]);
+					}
+
 					if(sha256hex.empty())
 					{
 						std::string shabase64 = wnarrow(extras[sha_def_identifier_w]);
@@ -889,7 +895,8 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 					{
 						curr_path=ExtractFilePath(curr_path, os_file_sep());
 						remote_path=ExtractFilePath(remote_path, L"/");
-						folder_files.push(std::set<std::wstring>());
+						
+						folder_files.pop();
 					}
 					else
 					{
@@ -900,7 +907,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 
 						remote_path+=cfn;
 
-						folder_files.pop();
+						folder_files.push(std::set<std::wstring>());
 					}
 				}
 			}
