@@ -92,17 +92,17 @@ void getLastActs(Helper &helper, JSON::Object &ret, std::vector<int> clientids)
 		obj.set("id", watoi(res[i][L"backupid"]));
 		obj.set("clientid", watoi(res[i][L"clientid"]));
 		obj.set("name", res[i][L"name"]);
-		obj.set("backuptime", res[i][L"backuptime"]);
+		obj.set("backuptime", watoi64(res[i][L"backuptime"]));
 		obj.set("incremental", watoi(res[i][L"incremental"]));
-		obj.set("duration", res[i][L"duration"]);
+		obj.set("duration", watoi64(res[i][L"duration"]));
 		obj.set("resumed", watoi(res[i][L"resumed"]));
 		if(watoi(res[i][L"size_calculated"])==1)
 		{
-			obj.set("size_bytes", res[i][L"size_bytes"]);
+			obj.set("size_bytes", watoi64(res[i][L"size_bytes"]));
 		}
 		else
 		{
-			obj.set("size_bytes", "-1");
+			obj.set("size_bytes", -1);
 		}
 		obj.set("image", watoi(res[i][L"image"]));
 		obj.set("del", (res[i][L"del"]==L"1") );

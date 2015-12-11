@@ -271,9 +271,9 @@ ACTION_IMPL(status)
 			std::wstring clientname=res[i][L"name"];
 			stat.set("id", clientid);
 			stat.set("name", clientname);
-			stat.set("lastbackup", res[i][L"lastbackup"]);
-			stat.set("lastseen", res[i][L"lastseen"]);
-			stat.set("lastbackup_image", res[i][L"lastbackup_image"]);
+			stat.set("lastbackup", watoi64(res[i][L"lastbackup"]));
+			stat.set("lastseen", watoi64(res[i][L"lastseen"]));
+			stat.set("lastbackup_image", watoi64(res[i][L"lastbackup_image"]));
 			stat.set("delete_pending", res[i][L"delete_pending"] );
 
 			std::string ip="-";

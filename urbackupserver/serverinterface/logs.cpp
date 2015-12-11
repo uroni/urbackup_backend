@@ -145,7 +145,7 @@ ACTION_IMPL(logs)
 				JSON::Object obj;
 				obj.set("name", res[i][L"name"]);
 				obj.set("id", watoi(res[i][L"id"]));
-				obj.set("time", res[i][L"time"]);
+				obj.set("time", watoi64(res[i][L"time"]));
 				obj.set("errors", watoi(res[i][L"errors"]));
 				obj.set("warnings", watoi(res[i][L"warnings"]));
 				obj.set("image", watoi(res[i][L"image"]));
@@ -235,7 +235,7 @@ ACTION_IMPL(logs)
 				{
 					JSON::Object log;
 					log.set("data", res[0][L"logdata"]);
-					log.set("time", res[0][L"time"]);
+					log.set("time", watoi64(res[0][L"time"]));
 					log.set("clientname", res[0][L"name"]);
 					ret.set("log", log);
 				}

@@ -395,7 +395,7 @@ namespace backupaccess
 
 			JSON::Object obj;
 			obj.set("id", watoi(res[i][L"id"])+backupid_offset);
-			obj.set("backuptime", res[i][L"t_backuptime"]);
+			obj.set("backuptime", watoi64(res[i][L"t_backuptime"]));
 			obj.set("incremental", watoi(res[i][L"incremental"]));
             obj.set("size_bytes", watoi64(res[i][L"size_bytes"]));
             int archived = watoi(res[i][L"archived"]);
@@ -518,7 +518,7 @@ namespace backupaccess
 
 			if(!res.empty())
 			{
-				ret.set("backuptime", res[0][L"backuptime"]);
+				ret.set("backuptime", watoi64(res[0][L"backuptime"]));
                 ret.set("backupid", *backupid + backupid_offset);
 			}
             else
@@ -658,7 +658,7 @@ namespace backupaccess
 						obj.set("mod", metadata.last_modified);
 						obj.set("creat", metadata.created);
                         obj.set("backupid", watoi(res[k][L"id"])+backupid_offset);
-						obj.set("backuptime", res[k][L"backuptime"]);
+						obj.set("backuptime", watoi64(res[k][L"backuptime"]));
 						if(!metadata.shahash.empty())
 						{
 							obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(metadata.shahash.c_str()), static_cast<unsigned int>(metadata.shahash.size())));
@@ -810,7 +810,7 @@ ACTION_IMPL(backups)
 					JSON::Object obj;
 					obj.set("name", res[i][L"name"]);
 					obj.set("id", watoi(res[i][L"id"]));
-					obj.set("lastbackup", res[i][L"lastbackup"]);
+					obj.set("lastbackup", watoi64(res[i][L"lastbackup"]));
 					clients.add(obj);
 				}
 				ret.set("clients", clients);
