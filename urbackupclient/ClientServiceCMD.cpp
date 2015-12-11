@@ -931,7 +931,7 @@ void ClientConnector::CMD_FULL_IMAGE(const std::string &cmd, bool ident_ok)
 			if(params[L"checksum"]==L"1")
 				image_inf.with_checksum=true;
 		}
-		image_inf.bitmap=false;
+		image_inf.with_bitmap=false;
 		if(params.find(L"bitmap")!=params.end())
 		{
 			if(params[L"bitmap"]==L"1")

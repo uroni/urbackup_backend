@@ -176,7 +176,7 @@ void ImageThread::sendFullImageThread(void)
 	#endif
 				if(image_inf->no_shadowcopy)
 				{
-					*flags = *flags & (^ImageFlag_Persistent);
+					*flags = *flags & (~ImageFlag_Persistent);
 				}
 				if(image_inf->with_bitmap)
 				{
@@ -217,10 +217,10 @@ void ImageThread::sendFullImageThread(void)
 					++bitmap_size;
 				}
 				
-				unsigned char* bitmap = fs->getBitmap();
+				const unsigned char* bitmap = fs->getBitmap();
 				
 				sha256_ctx shactx;
-				sha256_innit(&shactx);
+				sha256_init(&shactx);
 				
 				while(bitmap_size>0)
 				{
@@ -228,7 +228,7 @@ void ImageThread::sendFullImageThread(void)
 					
 					sha256_update(&shactx, bitmap, (unsigned int)tosend);
 					
-					if(!pipe->Write(reinterpret_cast<char*>(bitmap), tosend))
+					if(!pipe->Write(reinterpret_cast<const char*>(bitmap), tosend))
 					{
 						Server->Log("Pipe broken while sending bitmap", LL_ERROR);
 						run = false;
