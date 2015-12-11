@@ -842,6 +842,11 @@ void IndexThread::indexDirs(void)
 	std::sort(changed_dirs.begin(), changed_dirs.end());
 
 
+	for(size_t i=0;i<backup_dirs.size();++i)
+	{
+		backup_dirs[i].symlinked_confirmed=false;
+	}
+
 	std::vector<SCRef*> past_refs;
 
 	last_tmp_update_time=Server->getTimeMS();
@@ -3803,8 +3808,9 @@ void IndexThread::removeUnconfirmedSymlinkDirs()
 {
 	for(size_t i=0;i<backup_dirs.size();)
 	{
-		if(backup_dirs[i].symlinked &&
-			!backup_dirs[i].symlinked_confirmed)
+		if(backup_dirs[i].symlinked
+			&& !backup_dirs[i].symlinked_confirmed
+			&& index_group == backup_dirs[i].group)
 		{
 #ifdef _WIN32
 			if(dwt!=NULL)
