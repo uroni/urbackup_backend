@@ -79,8 +79,8 @@ MULE_CHECK_CRYPTOPP([5.1], [], [echo "Crypto++ not found. Please install or buil
 
 AM_CONDITIONAL(WITH_GUI_CLIENT, test "x$enable_headless" != "xyes")
 
-if test "x$enable_headless" != "xyes"
-then
+AS_IF([test "x$enable_headless" != "xyes"],
+[
 	AM_OPTIONS_WXCONFIG
 	reqwx=2.9.0
 	AM_PATH_WXCONFIG($reqwx, wxWin=1)
@@ -95,8 +95,9 @@ then
 			wxWidgets version is $reqwx or above.
 			])
 	fi
-	AC_PROG_OBJCXX
-fi
+	AS_IF([test x"$opsys" = x"osx"],
+		[AC_PROG_OBJCXX])
+])
 
 AC_SEARCH_LIBS([clock_gettime], [rt posix4],
 	[test "$ac_cv_search_clock_gettime" = "none required" || LIBS="$LIBS $ac_cv_search_clock_gettime"],
