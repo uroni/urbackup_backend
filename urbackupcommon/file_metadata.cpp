@@ -186,6 +186,12 @@ bool write_file_metadata(IFile* out, INotEnoughSpaceCallback *cb, const FileMeta
 
 				if(out->Size()>size_should)
 				{
+					if(!out->Seek(size_should))
+					{
+						Server->Log(L"Cannot seek to "+convert(size_should)+L" (2) in \""+out->getFilenameW()+L"\". Error writing metadata to file.", LL_WARNING);
+						return false;
+					}
+
 					int64 os_metadata_size;
 					if(out->Read(reinterpret_cast<char*>(&os_metadata_size), sizeof(os_metadata_size))!=sizeof(os_metadata_size))
 					{

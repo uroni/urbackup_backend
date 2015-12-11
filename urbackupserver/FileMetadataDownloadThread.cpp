@@ -64,7 +64,8 @@ void FileMetadataDownloadThread::operator()()
 	metadata_tmp_fn = tmp_f->getFilenameW();
 }
 
-bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metadata_dir, const std::wstring& backup_dir, INotEnoughSpaceCallback *cb)
+bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metadata_dir,
+	const std::wstring& backup_dir, INotEnoughSpaceCallback *cb, const std::map<std::wstring, std::wstring>& filepath_corrections)
 {
 	buffer.resize(32768);
 	std::auto_ptr<IFile> metadata_f(Server->openFile(metadata_tmp_fn, MODE_READ_SEQUENTIAL));
@@ -130,6 +131,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			std::vector<std::string> fs_toks;
 			TokenizeMail(curr_fn.substr(1), fs_toks, "/");
 
+			std::wstring curr_path;
 			for(size_t i=0;i<fs_toks.size();++i)
 			{
 				if(fs_toks[i]!="." && fs_toks[i]!="..")
@@ -140,10 +142,21 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 						os_path+=os_file_sep();
 					}
 
+					std::wstring path_component = Server->ConvertToUnicode(fs_toks[i]);
+
+					curr_path += L"/" + path_component;
+
+					str_map::const_iterator it_correction = filepath_corrections.find(curr_path);
+					if(it_correction!=filepath_corrections.end())
+					{
+						path_component = it_correction->second;
+					}
+
+					os_path+=path_component;
+
 					if(i==fs_toks.size()-1)
 					{
-						os_path_metadata += escape_metadata_fn(Server->ConvertToUnicode(fs_toks[i]));
-						os_path+=Server->ConvertToUnicode(fs_toks[i]);
+						os_path_metadata += escape_metadata_fn(path_component);
 
 						if(is_dir && !is_dir_symlink)
 						{
@@ -151,9 +164,8 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 						}
 					}
 					else
-					{
-						os_path_metadata += Server->ConvertToUnicode(fs_toks[i]);
-						os_path+= Server->ConvertToUnicode(fs_toks[i]);
+					{						
+						os_path_metadata += path_component;
 					}					
 				}
 			}
@@ -772,7 +784,8 @@ int check_metadata()
 	std::string dummy_server_token;
 	FileMetadataDownloadThread metadata_thread(dummy_server_token, Server->ConvertToUnicode(metadata_file));
 
-	return metadata_thread.applyMetadata(std::wstring(), std::wstring(), NULL)?0:1;
+	str_map corrections;
+	return metadata_thread.applyMetadata(std::wstring(), std::wstring(), NULL, corrections)?0:1;
 }
 
 } //namespace server

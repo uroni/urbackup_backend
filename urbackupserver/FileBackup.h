@@ -82,7 +82,7 @@ protected:
 	void calculateEtaFileBackup( int64 &last_eta_update, int64& eta_set_time, int64 ctime, FileClient &fc, FileClientChunked* fc_chunked,
 		int64 linked_bytes, int64 &last_eta_received_bytes, double &eta_estimated_speed, _i64 files_size );
 	bool hasChange(size_t line, const std::vector<size_t> &diffs);
-	std::wstring fixFilenameForOS(const std::wstring& fn, std::set<std::wstring>& samedir_filenames);	
+	std::wstring fixFilenameForOS(const std::wstring& fn, std::set<std::wstring>& samedir_filenames, const std::wstring& curr_path);	
 	bool link_file(const std::wstring &fn, const std::wstring &short_fn, const std::wstring &curr_path,
 		const std::wstring &os_path, const std::string& sha2, _i64 filesize, bool add_sql, const FileMetadata& metadata);
 	void sendBackupOkay(bool b_okay);
@@ -138,4 +138,6 @@ protected:
 
     std::auto_ptr<server::FileMetadataDownloadThread> metadata_download_thread;
 	THREADPOOL_TICKET metadata_download_thread_ticket;
+
+	std::map<std::wstring, std::wstring> filepath_corrections;
 };

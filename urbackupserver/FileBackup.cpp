@@ -592,7 +592,7 @@ bool FileBackup::hasChange(size_t line, const std::vector<size_t> &diffs)
 	return std::binary_search(diffs.begin(), diffs.end(), line);
 }
 
-std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::wstring>& samedir_filenames)
+std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::wstring>& samedir_filenames, const std::wstring& curr_path)
 {
 	std::wstring ret;
 	bool modified_filename=false;
@@ -680,10 +680,23 @@ std::wstring FileBackup::fixFilenameForOS(const std::wstring& fn, std::set<std::
 	{
 		ret = base + L"_" + convert(idx);
 		++idx;
+		modified_filename=true;
 	}
 
 	samedir_filenames.insert(strlower(ret));
 #endif
+
+	if(modified_filename)
+	{
+		if(curr_path.empty())
+		{
+			filepath_corrections[fn] = ret;
+		}
+		else
+		{
+			filepath_corrections[curr_path+L"/"+fn] = ret;
+		}
+	}
 
 	return ret;
 }
@@ -822,7 +835,7 @@ bool FileBackup::verify_file_backup(IFile *fileentries)
 
 				if(!cf.isdir || cf.name!=L"..")
 				{
-					cfn = fixFilenameForOS(cf.name, folder_files.top());
+					cfn = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
 				}
 
 				if( !cf.isdir )
@@ -1223,7 +1236,7 @@ bool FileBackup::createUserView(IFile* file_list_f, const std::vector<int64>& id
 
 				if(!data.isdir || data.name!=L"..")
 				{
-					osspecific_name = fixFilenameForOS(data.name, folder_files.top());
+					osspecific_name = fixFilenameForOS(data.name, folder_files.top(), curr_path);
 				}
 
 				std::string permissions = base64_decode_dash(wnarrow(extra[L"dacl"]));
@@ -1409,7 +1422,8 @@ bool FileBackup::createSymlink(const std::wstring& name, size_t depth, const std
 	for(size_t i=0;i<toks.size();++i)
 	{
 		std::set<std::wstring> emptyset;
-		std::wstring component = fixFilenameForOS(toks[i], emptyset);
+		std::wstring emptypath;
+		std::wstring component = fixFilenameForOS(toks[i], emptyset, emptypath);
 
 		if(component==L".." || component==L".")
 			continue;
@@ -1481,7 +1495,7 @@ bool FileBackup::stopFileMetadataDownloadThread()
 
 		if(!disk_error && !has_early_error && !metadata_download_thread->getHasError())
 		{
-			metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main);
+			metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, filepath_corrections);
 		}
 	}
 

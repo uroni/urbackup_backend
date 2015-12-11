@@ -290,7 +290,7 @@ bool FullFileBackup::doFileBackup()
 
 				if(!cf.isdir || cf.name!=L"..")
 				{
-					osspecific_name = fixFilenameForOS(cf.name, folder_files.top());
+					osspecific_name = fixFilenameForOS(cf.name, folder_files.top(), curr_path);
 
 					for(size_t j=0;j<folder_items.size();++j)
 					{

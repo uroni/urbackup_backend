@@ -40,7 +40,8 @@ public:
 
 	virtual void operator()();
 
-	bool applyMetadata(const std::wstring& backup_metadata_dir, const std::wstring& backup_dir, INotEnoughSpaceCallback *cb);
+	bool applyMetadata(const std::wstring& backup_metadata_dir, const std::wstring& backup_dir,
+		INotEnoughSpaceCallback *cb, const std::map<std::wstring, std::wstring>& filepath_corrections);
 	bool applyWindowsMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
     bool applyUnixMetadata(IFile* metadata_f, IFile* output_f, int64& metadata_size, INotEnoughSpaceCallback *cb, int64 output_offset);
 
