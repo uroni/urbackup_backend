@@ -3725,6 +3725,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 
 			if(backup_dirs[i].symlinked)
 			{
+				VSSLog(L"Following symbolic link at \""+symlink+L"\" confirms symlink backup target \""+target+L"\"", LL_INFO);
 				backup_dirs[i].symlinked_confirmed=true;
 			}
 
@@ -3734,7 +3735,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 
 	if(index_flags & EBackupDirFlag_FollowSymlinks)
 	{
-		VSSLog(L"Following symbolic link at \""+symlink+L"\" to new backup target \""+target+L"\"", LL_INFO);
+		VSSLog(L"Following symbolic link at \""+symlink+L"\" to new symlink backup target \""+target+L"\"", LL_INFO);
 		addSymlinkBackupDir(target);
 		return true;
 	}
