@@ -375,6 +375,72 @@ function LoadScript(url, id)
 	}
 }
 
+function determine_date_format()
+{
+	//Create a known date string
+	var y = new Date(2013, 9, 25);
+	var lds = y.toLocaleDateString();
+
+	//search for the position of the year, day, and month
+	var yPosi = lds.search("2013");
+	var dPosi = lds.search("25");
+	var mPosi = lds.search("10");
+
+	// try to determine date separator
+	var dateSeperator = "/";
+	var pointPos = lds.indexOf(".");
+	if (pointPos != -1)
+	dateSeperator = ".";
+
+	//Sometimes the month is displayed by the month name so guess where it is
+	if(mPosi == -1)
+	{
+		mPosi = lds.search("9");
+		if(mPosi == -1)
+		{
+			//if the year and day are not first then maybe month is first
+			if(yPosi != 0 && dPosi != 0)
+			{
+				mPosi = 0;
+			}
+			//if year and day are not last then maybe month is last
+			else if((yPosi+4 <  lds.length) && (dPosi+2 < lds.length)){
+				mPosi = Infinity;
+			}
+			//otherwist is in the middle
+			else  if(yPosi < dPosi){
+				mPosi = ((dPosi - yPosi)/2) + yPosi;            
+			}else if(dPosi < yPosi){
+				mPosi = ((yPosi - dPosi)/2) + dPosi;
+			}   
+		}
+	}
+	
+	var formatString="";
+	
+	var order = [yPosi, dPosi, mPosi];
+	order.sort(function(a,b){return a-b});
+
+	for(i=0; i < order.length; i++)
+	{
+		if(i>0)
+			formatString+=dateSeperator;
+			
+		if(order[i] == yPosi)
+		{
+			formatString += "YYYY";
+		}else if(order[i] == dPosi){
+			formatString += "DD";
+		}else if(order[i] == mPosi){
+			formatString += "MM";
+		}
+	}
+	
+	g.dateFormatString = formatString;
+}
+
+determine_date_format();
+
 function format_date(d)
 {
 	var wt=d.getDate();
@@ -395,14 +461,15 @@ function format_date(d)
 	var min=d.getMinutes();
 	if( min<10 )
 		min="0"+min;
-	
-	return wt+"."+m+"."+j+" "+h+":"+min;
+		
+	return g.dateFormatString.replace("YYYY", j).
+			replace("MM", m).replace("DD", wt) +
+				" "+h+":"+min;
 }
 
 function format_unix_timestamp(ts)
 {
-	var d=new Date(ts*1000);
-	return format_date(d);
+	return format_date(new Date(ts*1000));
 }
 
 function format_size(s)

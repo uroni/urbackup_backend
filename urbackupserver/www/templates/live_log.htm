@@ -34,7 +34,6 @@ function refresh_log2(data)
 		var obj=data.logdata[i];
 		if(obj.id>g.max_log_id)
 		{
-			var d=new Date(obj.time*1000);
 			var s_loglevel="";
 			var background_color="";
 			
@@ -51,7 +50,7 @@ function refresh_log2(data)
 			case  2: s_loglevel="ERROR"; break;
 			}
 			new_data+=dustRender("live_log_row", {
-				time: format_date(d), loglevel: s_loglevel, message: obj.msg, background_color: background_color
+				time: format_unix_timestamp(obj.time), loglevel: s_loglevel, message: obj.msg, background_color: background_color
 			});
 			
 			g.max_log_id=obj.id;
