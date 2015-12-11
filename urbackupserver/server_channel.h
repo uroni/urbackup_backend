@@ -73,4 +73,6 @@ private:
 	SessionKeepaliveThread* keepalive_thread;
 
 	std::wstring clientname;
+
+	std::string last_fileaccesstokens;
 };

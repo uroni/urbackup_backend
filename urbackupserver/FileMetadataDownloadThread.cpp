@@ -83,7 +83,16 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 		char ch;
 		if(metadata_f->Read(reinterpret_cast<char*>(&ch), sizeof(ch))!=sizeof(ch))
 		{
-			if(!saved_folder_items.empty())
+			bool not_applied=false;
+			for(size_t i=0;i<saved_folder_items.size();++i)
+			{
+				if(saved_folder_items[i].folder_items!=-1)
+				{
+					not_applied = true;
+					break;
+				}
+			}
+			if(not_applied)
 			{
 				ServerLogger::Log(logid, L"Not all folder metadata could be applied. Metadata was inconsistent.", LL_WARNING);
 			}
@@ -238,6 +247,7 @@ bool FileMetadataDownloadThread::applyMetadata( const std::wstring& backup_metad
 			curr_metadata.created=created;
 			curr_metadata.last_modified = modified;
 			curr_metadata.file_permissions = permissions;
+			curr_metadata.accessed = accessed;
 
 			int64 offset = 0;
 

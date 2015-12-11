@@ -337,9 +337,13 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 		std::wstring name=Server->ConvertToUnicode(msg.substr(17));
 		GET_BACKUPIMAGES(name);
 	}
-    else if(next(msg, 0, "GET FILE BACKUPS TOKENS "))
+    else if(next(msg, 0, "GET FILE BACKUPS TOKENS"))
     {
-        std::string s_params=msg.substr(24);
+        std::string s_params;
+		if(msg.size()>=24)
+		{
+			s_params = msg.substr(24);
+		}		
         str_map params;
         ParseParamStrHttp(s_params, &params);
 
@@ -715,16 +719,30 @@ void ServerChannelThread::GET_FILE_BACKUPS( const std::wstring& clientname )
 void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	std::string fileaccesstokens = backupaccess::decryptTokens(db, params);
 
-	if(fileaccesstokens.empty())
+	if(params.find(L"token_data")!=params.end())
+	{
+		last_fileaccesstokens = backupaccess::decryptTokens(db, params);
+	}
+
+	if(last_fileaccesstokens.empty())
 	{
         tcpstack.Send(input, "err");
 		db->destroyAllQueries();
 		return;
 	}
 
-	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &fileaccesstokens, img_id_offset);
+	int local_id_offset;
+	if(params[L"with_id_offset"]==L"false")
+	{
+		local_id_offset = 0;
+	}
+	else
+	{
+		local_id_offset = img_id_offset;
+	}
+
+	JSON::Array backups = backupaccess::get_backups_with_tokens(db, clientid, clientname, &last_fileaccesstokens, local_id_offset);
 
     tcpstack.Send(input, backups.stringify(false));
 	db->destroyAllQueries();
@@ -735,27 +753,41 @@ void ServerChannelThread::GET_FILE_BACKUPS_TOKENS(str_map& params)
 void ServerChannelThread::GET_FILE_LIST_TOKENS(str_map& params)
 {
 	IDatabase *db=Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
-	std::string fileaccesstokens = backupaccess::decryptTokens(db, params);
+
+	if(params.find(L"token_data")!=params.end())
+	{
+		last_fileaccesstokens = backupaccess::decryptTokens(db, params);
+	}
 
 	JSON::Object ret;
-	if(fileaccesstokens.empty())
+	if(last_fileaccesstokens.empty())
 	{
 		tcpstack.Send(input, "err");
 		db->destroyAllQueries();
 		return;
 	}
 
+	int local_id_offset;
+	if(params[L"with_id_offset"]==L"false")
+	{
+		local_id_offset = 0;
+	}
+	else
+	{
+		local_id_offset = img_id_offset;
+	}
+
 	bool has_backupid=params.find(L"backupid")!=params.end();
 	int backupid=0;
 	if(has_backupid)
 	{
-		backupid=watoi(params[L"backupid"])-img_id_offset;
+		backupid=watoi(params[L"backupid"])-local_id_offset;
 	}
 
 	std::wstring u_path=params[L"path"];
 
 	if(!backupaccess::get_files_with_tokens(db, has_backupid? &backupid:NULL,
-        clientid, clientname, &fileaccesstokens, u_path, img_id_offset, ret))
+        clientid, clientname, &last_fileaccesstokens, u_path, local_id_offset, ret))
 	{
 		tcpstack.Send(input, "err");
 	}

@@ -1247,30 +1247,73 @@ void ClientConnector::CMD_RESTORE_GET_FILE_BACKUPS_TOKENS( const std::string &cm
 	}
 	else
 	{
-		std::string accessparams = getAccessTokensParams(params[L"tokens"], true);
 
-		if(accessparams.empty())
+		std::string utf8_tokens = Server->ConvertToUTF8(params[L"tokens"]);
+		std::string filebackups;
+		std::string accessparams;
+
+		if(channel_pipes.size()==1)
 		{
-			tcpstack.Send(pipe, "0");
-			return;
+			accessparams+=" with_id_offset=false";
 		}
 
-		accessparams[0]=' ';
+		bool has_token_params=false;
 
-		std::string filebackups;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-            sendChannelPacket(channel_pipes[i], cmd+accessparams);
-            std::string nc=receivePacket(channel_pipes[i]);
-            if(!nc.empty() && nc!="err")
+			for(size_t j=0;j<2;++j)
 			{
-				if(!filebackups.empty())
+				if(channel_pipes[i].last_tokens!=utf8_tokens)
 				{
-					filebackups[filebackups.size()-1] = ',';
-					nc[0]=' ';
+					if(!has_token_params)
+					{
+						std::string token_params = getAccessTokensParams(params[L"tokens"], true);
+
+						if(token_params.empty())
+						{
+							tcpstack.Send(pipe, "0");
+							return;
+						}
+
+						if(accessparams.empty())
+						{
+							accessparams = token_params;
+							accessparams[0]=' ';
+						}
+						else
+						{
+							accessparams+=token_params;
+						}
+
+						has_token_params=true;
+					}			
 				}
-				filebackups+=nc;
+
+				sendChannelPacket(channel_pipes[i], cmd+accessparams);
+				std::string nc=receivePacket(channel_pipes[i]);
+				if(!nc.empty() && nc!="err")
+				{
+					channel_pipes[i].last_tokens = utf8_tokens;
+
+					if(!filebackups.empty())
+					{
+						filebackups[filebackups.size()-1] = ',';
+						nc[0]=' ';
+					}
+					filebackups+=nc;
+
+					break;
+				}
+				else if(!has_token_params)
+				{
+					channel_pipes[i].last_tokens="";
+				}
+				else
+				{
+					break;
+				}
 			}
+			
 		}
         if(filebackups.empty())
         {
@@ -1294,15 +1337,7 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 	}
 	else
 	{
-		std::string accessparams = getAccessTokensParams(params[L"tokens"], true);
-
-		if(accessparams.empty())
-		{
-			tcpstack.Send(pipe, "0");
-			return;
-		}
-
-		accessparams[0]=' ';
+		std::string accessparams;
 
 		str_map::iterator it_path = params.find(L"path");
 
@@ -1318,27 +1353,87 @@ void ClientConnector::CMD_GET_FILE_LIST_TOKENS(const std::string &cmd, str_map &
 			accessparams+="&backupid="+EscapeParamString(Server->ConvertToUTF8(it_backupid->second));
 		}
 
+		if(channel_pipes.size()==1)
+		{
+			accessparams+="&with_id_offset=false";
+		}
+
         std::string filelist;
 
+		if(!accessparams.empty())
+		{
+			accessparams[0]=' ';
+		}
+
+		std::string utf8_tokens = Server->ConvertToUTF8(params[L"tokens"]);
+		bool has_token_params=false;
+		bool break_outer=false;
 		for(size_t i=0;i<channel_pipes.size();++i)
 		{
-            sendChannelPacket(channel_pipes[i], cmd+accessparams);
-
-            std::string nc=receivePacket(channel_pipes[i]);
-			if(!nc.empty() && nc!="err")
+			for(size_t j=0;j<2;++j)
 			{
-                if(!filelist.empty())
-                {
-                    filelist[filelist.size()-1] = ',';
-                    nc[0]=' ';
-                }
+				if(channel_pipes[i].last_tokens!=utf8_tokens)
+				{
+					if(!has_token_params)
+					{
+						std::string token_params = getAccessTokensParams(params[L"tokens"], true);
 
-                filelist+=nc;
+						if(token_params.empty())
+						{
+							tcpstack.Send(pipe, "0");
+							return;
+						}
 
-                if(it_backupid!=params.end())
-                {
-                    break;
-                }
+						if(accessparams.empty())
+						{
+							accessparams = token_params;
+							accessparams[0]=' ';
+						}
+						else
+						{
+							accessparams+=token_params;
+						}
+
+						has_token_params=true;
+					}
+				}
+
+				sendChannelPacket(channel_pipes[i], cmd+accessparams);
+
+				std::string nc=receivePacket(channel_pipes[i]);
+				if(!nc.empty() && nc!="err")
+				{
+					channel_pipes[i].last_tokens = utf8_tokens;
+
+					if(!filelist.empty())
+					{
+						filelist[filelist.size()-1] = ',';
+						nc[0]=' ';
+					}
+
+					filelist+=nc;
+
+					if(it_backupid!=params.end())
+					{
+						break_outer=true;
+						break;
+					}
+
+					break;
+				}
+				else if(!has_token_params)
+				{
+					channel_pipes[i].last_tokens="";
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			if(break_outer)
+			{
+				break;
 			}
 		}
 

@@ -294,24 +294,39 @@ namespace backupaccess
 			if(iter!=GET.end())
 			{
 				std::string bin_input = base64_decode_dash(wnarrow(iter->second));
-				std::string decry = crypto_fak->decryptAuthenticatedAES(bin_input, client_key);
-				if(!decry.empty())
+				std::string session_key = crypto_fak->decryptAuthenticatedAES(bin_input, client_key);
+				if(!session_key.empty())
 				{
-					std::string tokenhash = Server->GenerateBinaryMD5(bin_input);
+					iter = GET.find(L"token_data");
 
-					ServerBackupDao backupdao(db);
-					if(backupdao.hasUsedAccessToken(tokenhash).exists)
+					if(iter==GET.end())
 					{
 						return std::string();
 					}
-					else
+
+					bin_input = base64_decode_dash(wnarrow(iter->second));
+
+					std::string decry = crypto_fak->decryptAuthenticatedAES(bin_input, session_key);
+
+					if(!decry.empty())
 					{
-						backupdao.addUsedAccessToken(clientid, tokenhash);
+						std::string tokenhash = Server->GenerateBinaryMD5(bin_input);
+
+						ServerBackupDao backupdao(db);
+						if(backupdao.hasUsedAccessToken(tokenhash).exists)
+						{
+							return std::string();
+						}
+						else
+						{
+							backupdao.addUsedAccessToken(clientid, tokenhash);
+						}
 					}
 
 					return decry;
 				}
 			}
+			++i;
 		} while (iter!=GET.end());
 
 		return std::string();
@@ -595,9 +610,9 @@ namespace backupaccess
 							JSON::Object obj;
 							obj.set("name", tfiles[i].name);
 							obj.set("dir", tfiles[i].isdir);
-							obj.set("size", tfiles[i].size);
 							obj.set("mod", tmetadata[i].last_modified);
 							obj.set("creat", tmetadata[i].created);
+							obj.set("access", tmetadata[i].accessed);
 							files.add(obj);
 						}
 					}
@@ -620,6 +635,7 @@ namespace backupaccess
 							obj.set("size", tfiles[i].size);
 							obj.set("mod", tmetadata[i].last_modified);
 							obj.set("creat", tmetadata[i].created);
+							obj.set("access", tmetadata[i].accessed);
 							if(!tmetadata[i].shahash.empty())
 							{
 								obj.set("shahash", base64_encode(reinterpret_cast<const unsigned char*>(tmetadata[i].shahash.c_str()), static_cast<unsigned int>(tmetadata[i].shahash.size())));
@@ -652,11 +668,11 @@ namespace backupaccess
 						}
 						else
 						{
-							obj.set("size", 0);
 							obj.set("dir", true);
 						}
 						obj.set("mod", metadata.last_modified);
 						obj.set("creat", metadata.created);
+						obj.set("access", metadata.accessed);
                         obj.set("backupid", watoi(res[k][L"id"])+backupid_offset);
 						obj.set("backuptime", watoi64(res[k][L"backuptime"]));
 						if(!metadata.shahash.empty())

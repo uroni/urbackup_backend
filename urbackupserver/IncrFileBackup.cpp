@@ -579,15 +579,11 @@ bool IncrFileBackup::doFileBackup()
 							{
 								skip_dir_completely=1;
 								dir_linked=true;
-								bool curr_has_hashes = false;
 
 								std::wstring src_hashpath = last_backuppath_hashes+local_curr_os_path;
 
-								if(with_hashes)
-								{
-									curr_has_hashes = link_directory_pool(*backup_dao, clientid, backuppath_hashes+local_curr_os_path,
+								bool curr_has_hashes = link_directory_pool(*backup_dao, clientid, backuppath_hashes+local_curr_os_path,
 										src_hashpath, dir_pool_path, BackupServer::isFilesystemTransactionEnabled());
-								}
 
 								if(copy_last_file_entries)
 								{
@@ -660,22 +656,33 @@ bool IncrFileBackup::doFileBackup()
 									ServerLogger::Log(logid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
 								}
 							}
-							else if(!write_file_metadata(metadata_fn, client_main, metadata, false) )
+							
+							if(!indirchange && curr_path!=L"/urbackup_backup_scripts")
 							{
-								ServerLogger::Log(logid, L"Writing directory metadata to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\" failed.", LL_ERROR);
+								std::wstring srcpath=os_file_prefix(last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn);
+								if(!os_create_hardlink(metadata_fn, srcpath, use_snapshots, NULL))
+								{
+									if(!copy_file(srcpath, metadata_fn))
+									{
+										if(client_main->handle_not_enough_space(metadata_fn))
+										{
+											if(!copy_file(srcpath, metadata_fn))
+											{
+												ServerLogger::Log(logid, L"Cannot copy directory metadata from \""+srcpath+L"\" to \""+metadata_fn+L"\". - " + widen(systemErrorInfo()), LL_ERROR);
+											}
+										}
+										else
+										{
+											ServerLogger::Log(logid, L"Cannot copy directory metadata from \""+srcpath+L"\" to \""+metadata_fn+L"\". - " + widen(systemErrorInfo()), LL_ERROR);
+										}
+									}
+								}
+							}
+							else if(!write_file_metadata(metadata_fn, client_main, metadata, false))
+							{
+								ServerLogger::Log(logid, L"Writing directory metadata to \""+metadata_fn+L"\" failed.", LL_ERROR);
 								c_has_error=true;
 								break;
-							}
-
-                            if(!indirchange && curr_path!=L"/urbackup_backup_scripts")
-							{
-								std::wstring srcpath=last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn;
-								if(!copy_os_metadata(srcpath, backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn, client_main))
-								{
-									ServerLogger::Log(logid, L"Error copying OS dependent directory metadata from last backup to \""+backuppath_hashes+local_curr_os_path+os_file_sep()+metadata_dir_fn+L"\".", LL_ERROR);
-									c_has_error=true;
-									break;
-								}
 							}
 						}
 						
@@ -750,7 +757,7 @@ bool IncrFileBackup::doFileBackup()
 					}
 
 					bool copy_curr_file_entry=false;
-					bool curr_has_hash = false;
+					bool curr_has_hash = true;
 					bool readd_curr_file_entry_sparse=false;
 					std::string curr_sha2;
 					{
@@ -812,6 +819,11 @@ bool IncrFileBackup::doFileBackup()
 						{
 							if(!r_offline || hasChange(line, modified_inplace_ids))
 							{
+								for(size_t j=0;j<folder_items.size();++j)
+								{
+									++folder_items[j];
+								}
+
 								if(intra_file_diffs)
 								{
 									server_download->addToQueueChunked(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?cf.size:-1,
@@ -843,8 +855,8 @@ bool IncrFileBackup::doFileBackup()
 						{
 							ServerLogger::Log(logid, L"Creating hardlink from \""+srcpath+L"\" to \""+backuppath+local_curr_os_path+L"\" failed. Hardlink limit was reached. Copying file...", LL_DEBUG);
 							copyFile(srcpath, backuppath+local_curr_os_path,
-								with_hashes?(last_backuppath_hashes+local_curr_os_path):std::wstring(),
-								with_hashes?(backuppath_hashes+local_curr_os_path):std::wstring(),
+								last_backuppath_hashes+local_curr_os_path,
+								backuppath_hashes+local_curr_os_path,
 								metadata);
 							f_ok=true;
 							copied_hashes=true;
@@ -903,17 +915,16 @@ bool IncrFileBackup::doFileBackup()
 							copy_curr_file_entry=copy_last_file_entries;						
 							readd_curr_file_entry_sparse = readd_file_entries_sparse;
 
-							if(with_hashes && !copied_hashes)
+							if(!copied_hashes)
 							{
 								curr_has_hash = os_create_hardlink(os_file_prefix(backuppath_hashes+local_curr_os_path), os_file_prefix(last_backuppath_hashes+local_curr_os_path), use_snapshots, NULL);
 							}
 						}
 					}
-					else
+					else //use_snapshot
 					{
 						copy_curr_file_entry=copy_last_file_entries;
 						readd_curr_file_entry_sparse = readd_file_entries_sparse;
-						curr_has_hash = with_hashes;
 					}
 
 					if(copy_curr_file_entry)

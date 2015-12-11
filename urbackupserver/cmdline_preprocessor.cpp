@@ -830,7 +830,7 @@ int main(int argc, char* argv[])
 	size_t action_idx=std::string::npos;
 	std::vector<std::string> args;
 	args.push_back(argv[0]);
-	for(size_t i=1;i<argc;++i)
+	for(int i=1;i<argc;++i)
 	{
 		std::string arg = argv[i];
 

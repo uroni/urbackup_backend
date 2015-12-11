@@ -425,7 +425,7 @@ int64 os_metadata_offset( IFile* meta_file )
 bool copy_os_metadata( const std::wstring& in_fn, const std::wstring& out_fn, INotEnoughSpaceCallback *cb)
 {
 	std::auto_ptr<IFile> in_f(Server->openFile(os_file_prefix(in_fn), MODE_READ));
-    std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_WRITE));
+    std::auto_ptr<IFile> out_f(Server->openFile(os_file_prefix(out_fn), MODE_RW));
 
 	if(in_f.get()==NULL)
 	{
@@ -496,6 +496,9 @@ void FileMetadata::serialize( CWData& data ) const
 	data.addString(shahash);
 	data.addString(orig_path);
     data.addString(file_permissions);
+	data.addVarInt(last_modified);
+	data.addVarInt(created);
+	data.addVarInt(accessed);
 }
 
 bool FileMetadata::read( CRData& data )
@@ -504,6 +507,9 @@ bool FileMetadata::read( CRData& data )
 	ok &= data.getStr(&shahash);
 	ok &= data.getStr(&orig_path);
     ok &= data.getStr(&file_permissions);
+	ok &= data.getVarInt(&last_modified);
+	ok &= data.getVarInt(&created);
+	ok &= data.getVarInt(&accessed);
 
 	if(ok)
 	{

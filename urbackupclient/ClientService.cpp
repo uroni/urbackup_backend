@@ -2749,7 +2749,7 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
     }
 
 	std::auto_ptr<ISettingsReader> access_keys(
-		Server->createFileSettingsReader("access_keys.properties"));
+		Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
 	std::vector<std::wstring> server_token_keys = access_keys->getKeys();
 
@@ -2761,6 +2761,11 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 
 	std::string ret;
 
+	std::string session_key;
+	session_key.resize(32);
+	Server->randomFill(&session_key[0], session_key.size());
+
+	bool has_token=false;
 	for(size_t i=0;i<server_token_keys.size();++i)
 	{
 		std::wstring server_key;
@@ -2769,10 +2774,18 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 			&server_key) && !server_key.empty())
 		{
 			ret += "&tokens"+nconvert(i)+"="+base64_encode_dash(
-				crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
-				Server->ConvertToUTF8(server_key) ) );
+				crypto_fak->encryptAuthenticatedAES(session_key,
+				Server->ConvertToUTF8(server_key)) );
+			has_token=true;
 		}
 	}
+
+	if(has_token)
+	{
+		ret += "&token_data="+base64_encode_dash(
+			crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
+			session_key ) );
+	}	
 
 	if(with_clientname)
 	{

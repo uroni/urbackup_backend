@@ -84,6 +84,7 @@ struct SChannel
 	std::string endpoint_name;
 	std::string token;
 	bool* make_fileserv;
+	std::string last_tokens;
 };
 
 struct SVolumesCache;

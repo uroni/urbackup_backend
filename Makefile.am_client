@@ -29,7 +29,7 @@ urbackupclientbackend_LDFLAGS = $(PTHREAD_LIBS) $(SUID_LDFLAGS)
 
 urbackupclientctl_SOURCES = clientctl/main.cpp urbackupcommon/os_functions_lin.cpp stringtools.cpp clientctl/Connector.cpp clientctl/tcpstack.cpp urbackupcommon/escape.cpp
 urbackupclientctl_LDADD = 
-urbackupclientctl_CXXFLAGS = -DOS_FUNC_NO_NET -DOS_FUNC_NO_SERVER -DLINUX
+urbackupclientctl_CXXFLAGS = -DOS_FUNC_NO_NET -DOS_FUNC_NO_SERVER -DLINUX -DVARDIR='"$(localstatedir)"'
 
 if MACOSX
 urbackupclientgui_osx_SOURCES = client/osxutils.mm

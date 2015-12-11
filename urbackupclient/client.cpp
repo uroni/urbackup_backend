@@ -3508,7 +3508,7 @@ bool IndexThread::backgroundBackupsEnabled(const std::string& clientsubname)
 void IndexThread::writeTokens()
 {
 	std::auto_ptr<ISettingsReader> access_keys(
-		Server->createFileSettingsReader("access_keys.properties"));
+		Server->createFileSettingsReader("urbackup/access_keys.properties"));
 
 	std::string access_keys_data;
 	std::vector<std::wstring> keys
@@ -3550,7 +3550,7 @@ void IndexThread::writeTokens()
 
 	if(modified_file)
 	{
-		write_file_only_admin(access_keys_data, "access_keys.properties");
+		write_file_only_admin(access_keys_data, "urbackup/access_keys.properties");
 	}	
 
 	tokens::write_tokens();

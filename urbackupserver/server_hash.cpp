@@ -246,12 +246,6 @@ void BackupServerHash::operator()(void)
 						{
 							copyFile(hashf.get(), Server->ConvertToUnicode(hash_dest));
 						}
-
-						/*if(!write_file_metadata(os_file_prefix(Server->ConvertToUnicode(hash_dest)),
-							this, metadata))
-						{
-							ServerLogger::Log(logid, "Error while writing metadata to \""+hash_dest+"\"", LL_ERROR);
-						}*/
 					}
 				}
 			}
