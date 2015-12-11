@@ -20,6 +20,7 @@ AM_CONDITIONAL(WITH_FORTIFY, test "x$enable_fortify" != xno)
 AC_PROG_CXX
 AC_PROG_CC
 AM_PROG_CC_C_O
+AC_PROG_OBJCXX
 
 AX_PTHREAD
 if !($HAVE_PTHREAD)
@@ -95,9 +96,6 @@ AS_IF([test "x$enable_headless" != "xyes"],
 			wxWidgets version is $reqwx or above.
 			])
 	fi
-	AS_IF([test x"$opsys" = x"osx"],
-		[AC_PROG_OBJC
-		_AM_DEPENDENCIES(OBJC)])
 ])
 
 AC_SEARCH_LIBS([clock_gettime], [rt posix4],
