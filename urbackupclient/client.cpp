@@ -3041,17 +3041,23 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 	sha512_ctx ctx;
 	sha512_init(&ctx);
 
-	IFile * f=Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP);
+	std::auto_ptr<IFile> f(Server->openFile(os_file_prefix(fn), MODE_READ_SEQUENTIAL_BACKUP));
 
-	if(f==NULL)
+	if(f.get()==NULL)
 	{
 		return std::string();
 	}
 
 	char buffer[32768];
 	unsigned int r;
-	while( (r=f->Read(buffer, 32768))>0)
+	bool r_has_error=false;
+	while( (r=f->Read(buffer, 32768, &r_has_error))>0)
 	{
+		if(r_has_error)
+		{
+			return std::string();
+		}
+	    
 		sha512_update(&ctx, reinterpret_cast<const unsigned char*>(buffer), r);
 
 		if(IdleCheckerThread::getPause())
@@ -3059,8 +3065,11 @@ std::string IndexThread::getSHA512Binary(const std::wstring& fn)
 			Server->wait(5000);
 		}
 	}
-
-	Server->destroy(f);
+	
+	if(r_has_error)
+	{
+		return std::string();
+	}
 
 	std::string ret;
 	ret.resize(64);

@@ -906,7 +906,7 @@ bool IncrFileBackup::doFileBackup()
 							num_readded_entries);
 					}
 
-                    if(download_metadata)
+                    if(download_metadata && client_main->getProtocolVersions().file_meta>0)
                     {
                         server_download->addToQueueFull(line, cf.name, osspecific_name, curr_path, curr_os_path, queue_downloads?0:-1,
                             metadata, script_dir, true);
@@ -1270,6 +1270,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 					{
 						if( curr_dir_exists )
 						{
+							ServerLogger::Log(logid, L"Removing file \""+curr_fn+L"\" in ::deleteFilesInSnapshot", LL_DEBUG);
 							if( !Server->deleteFile(os_file_prefix(curr_fn)) )
 							{
 								if(!no_error)

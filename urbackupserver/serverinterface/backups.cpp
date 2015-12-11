@@ -424,26 +424,27 @@ namespace backupaccess
 				&& t_path[i].find(L"/")==std::string::npos
 				&& t_path[i].find(L"\\")==std::string::npos )
 			{
-				ret.rel_path+=UnescapeSQLString(t_path[i])+os_file_sep();
-				ret.rel_metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]))+os_file_sep();
+			
+				ret.rel_path+=UnescapeSQLString(t_path[i]);
+				ret.rel_metadata_path+=escape_metadata_fn(UnescapeSQLString(t_path[i]));
+				
+				std::wstring curr_full_dir = backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+(ret.rel_path.empty()?L"":(os_file_sep()+ret.rel_path));
+				
+				if(i==t_path.size()-1 && !os_directory_exists(os_file_prefix(curr_full_dir)) )
+				{
+					ret.is_file=true;
+				}
+				else
+				{
+					ret.rel_path+=os_file_sep();
+					ret.rel_metadata_path+=os_file_sep();
+				}
 
 				if(fileaccesstokens)
 				{
 					std::wstring curr_metadata_dir=backupfolder+os_file_sep()+clientname+os_file_sep()+backuppath+os_file_sep()+L".hashes"+(ret.rel_metadata_path.empty()?L"":(os_file_sep()+ret.rel_metadata_path));
 
-			
-					if(!backupid 
-						&& i==t_path.size()-1
-						&& !os_directory_exists(os_file_prefix(curr_metadata_dir)) )
-					{
-						ret.is_file=true;
-					}
-
-					if( ret.is_file)
-					{
-						curr_metadata_dir.erase(curr_metadata_dir.size()-1, 1);
-					}
-					else
+					if(!ret.is_file)
 					{
 						curr_metadata_dir+=metadata_dir_fn;
 					}
@@ -535,7 +536,7 @@ namespace backupaccess
 			{
 				SPathInfo path_info = get_metadata_path_with_tokens(u_path, fileaccesstokens, clientname, backupfolder, backupid, backuppath);
 
-				if(!path_info.can_access_path)
+				if(fileaccesstokens && !path_info.can_access_path)
 				{
 					continue;
 				}
@@ -901,7 +902,7 @@ ACTION_IMPL(backups)
 						backupaccess::SPathInfo path_info = backupaccess::get_metadata_path_with_tokens(u_path, token_authentication ? &fileaccesstokens : NULL,
 							clientname, backupfolder, has_backupid ? &backupid : NULL, backuppath);
 
-						if(!path_info.can_access_path)
+						if(token_authentication && !path_info.can_access_path)
 						{
 							return;
 						}

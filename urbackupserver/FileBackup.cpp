@@ -1,5 +1,4 @@
-/*************************************************************************
-*    UrBackup - Client/Server backup system
+/*    UrBackup - Client/Server backup system
 *    Copyright (C) 2011-2015 Martin Raiber
 *
 *    This program is free software: you can redistribute it and/or modify
@@ -1405,7 +1404,8 @@ void FileBackup::save_debug_data(const std::wstring& rfn, const std::string& loc
 	ServerLogger::Log(logid, "Local hash: "+local_hash+" remote hash: "+remote_hash, LL_INFO);
 	ServerLogger::Log(logid, L"Trying to download "+rfn, LL_INFO);
 
-	FileClient fc(false, server_identity, client_main->getProtocolVersions().filesrv_protocol_version,
+	std::string identity = client_main->getSessionIdentity().empty()?server_identity:client_main->getSessionIdentity();
+	FileClient fc(false, identity, client_main->getProtocolVersions().filesrv_protocol_version,
 		client_main->isOnInternetConnection(), client_main, use_tmpfiles?NULL:client_main);
 
 	_u32 rc=client_main->getClientFilesrvConnection(&fc, server_settings.get(), 10000);

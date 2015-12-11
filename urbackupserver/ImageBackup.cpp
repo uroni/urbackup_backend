@@ -227,17 +227,20 @@ bool ImageBackup::doBackup()
 		{
 			synthetic_full=false;
 			ServerLogger::Log(logid, "Error retrieving last image backup. Doing full image backup instead.", LL_WARNING);
-			ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat());
+			ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
+					client_main->getProtocolVersions().image_protocol_version>1);
 		}
 		else
 		{
 			ret = doImage(letter, last.path, last.incremental+1,
-				cowraw_format?0:last.incremental_ref, image_hashed_transfer, server_settings->getImageFileFormat());
+				cowraw_format?0:last.incremental_ref, image_hashed_transfer, server_settings->getImageFileFormat(),
+				client_main->getProtocolVersions().image_protocol_version>1);
 		}
 	}
 	else
 	{
-		ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat());
+		ret = doImage(letter, L"", 0, 0, image_hashed_transfer, server_settings->getImageFileFormat(),
+			      client_main->getProtocolVersions().image_protocol_version>1);
 	}
 
 	if(ret)
@@ -266,7 +269,21 @@ bool ImageBackup::doBackup()
 	return ret;
 }
 
-bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format)
+namespace
+{
+	enum ETransferState
+	{
+		ETransferState_First,
+		ETransferState_Bitmap,
+		ETransferState_Image
+	};
+	
+	const unsigned char ImageFlag_Persistent=1;
+	const unsigned char ImageFlag_Bitmap=2;
+}
+
+
+bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref, bool transfer_checksum, std::string image_file_format, bool transfer_bitmap)
 {
 	CTCPStack tcpstack(client_main->isOnInternetConnection());
 	IPipe *cc=client_main->getClientCommandConnection(10000);
@@ -288,6 +305,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	{
 		chksum_str="&checksum=1";
 		with_checksum=true;
+	}
+	
+	if(transfer_bitmap)
+	{
+		chksum_str+="&bitmap=1";
 	}
 
 	/*
@@ -405,6 +427,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	IVHDFile *r_vhdfile=NULL;
 	IFile *hashfile=NULL;
 	IFile *parenthashfile=NULL;
+	std::auto_ptr<IFile> bitmap_file;
 	int64 blockcnt=0;
 	int64 numblocks=0;
 	int64 blocks=0;
@@ -442,6 +465,10 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 	double eta_estimated_speed = 0;
 	int64 eta_set_time = Server->getTimeMS();
 	ServerStatus::setProcessEtaSetTime(clientname, status_id, eta_set_time);
+	ETransferState transfer_state = ETransferState_First;
+	unsigned char image_flags=0;
+	size_t bitmap_read = 0;
+	
 
 	int num_hash_errors=0;
 
@@ -530,7 +557,16 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 
 				if(pParentvhd.empty())
 				{
-					size_t sent = tcpstack.Send(cc, identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id));
+					std::string cmd = identity+"FULL IMAGE letter="+pLetter+"&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id);
+					if(transfer_bitmap)
+					{
+						cmd+="&bitmap=1";
+					}
+					if(with_checksum)
+					{
+						cmd+="&checksum=1";
+					}
+					size_t sent = tcpstack.Send(cc, cmd);
 					if(sent==0)
 					{
 						ServerLogger::Log(logid, "Sending 'FULL IMAGE' command failed", LL_WARNING);
@@ -544,6 +580,14 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 				else
 				{
 					std::string ts="INCR IMAGE letter=C:&shadowdrive="+shadowdrive+"&start="+nconvert(continue_block)+"&shadowid="+nconvert(shadow_id)+"&hashsize="+nconvert(parenthashfile->Size());
+					if(transfer_bitmap)
+					{
+						ts+="&bitmap=1";
+					}
+					if(with_checksum)
+					{
+						ts+="&checksum=1";
+					}
 					size_t sent=tcpstack.Send(cc, identity+ts);
 					if(sent==0)
 					{
@@ -584,9 +628,9 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 		}
 		else
 		{
-			if(first)
+			if(transfer_state==ETransferState_First)
 			{
-				first=false;
+				transfer_state = ETransferState_Image;
 				size_t csize=sizeof(unsigned int);
 				_u32 off_start=off;
 				if(r>=csize)
@@ -679,6 +723,21 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 						ServerLogger::Log(logid, L"Error opening Hashfile \""+imagefn+L".hash\"", LL_ERROR);
 						goto do_image_cleanup;
 					}
+					
+					if(transfer_bitmap)
+					{
+						bitmap_file.reset(Server->openFile(os_file_prefix(imagefn+L".bitmap"), MODE_WRITE));
+						if(bitmap_file.get()==NULL)
+						{
+							ServerLogger::Log(logid, L"Error opening bitmap file \""+imagefn+L".bitmap\"", LL_ERROR);
+							goto do_image_cleanup;
+						}
+						else
+						{
+							const char bitmap_magic[9] = "UrBBMM8C";
+							bitmap_file->Write(bitmap_magic, 8);
+						}
+					}
 
 					vhdfile=new ServerVHDWriter(r_vhdfile, blocksize, 5000, clientid, server_settings->getSettings()->use_tmpfiles_images, mbr_offset, hashfile, vhd_blocksize*blocksize, logid);
 					vhdfile_ticket=Server->getThreadPool()->execute(vhdfile);
@@ -724,9 +783,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 				csize+=1;
 				if(r>=csize)
 				{
-					char c_persistent=buffer[off];
-					if(c_persistent!=0)
+					image_flags=static_cast<unsigned char>(buffer[off]);
+					if(image_flags & ImageFlag_Persistent)
 						persistent=true;
+					if(image_flags & ImageFlag_Bitmap)
+						transfer_state = ETransferState_Bitmap;
 					++off;
 				}
 				else
@@ -808,6 +869,65 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 				{
 					off=0;
 					continue;
+				}
+			}
+			if(transfer_state==ETransferState_Bitmap)
+			{
+				size_t bitmap_size = totalblocks/8;
+				if(totalblocks%8!=0)
+				{
+					++bitmap_size;
+				}
+				
+				if(bitmap_size>1024*1024*1024)
+				{
+					ServerLogger::Log(logid, "Bitmap too large", LL_ERROR);
+					goto do_image_cleanup;
+				}
+				
+				if(bitmap_read<bitmap_size)
+				{
+					size_t toread = (std::min)(bitmap_size - bitmap_read, r-off);
+					sha256_update(&shactx, (unsigned char*)&buffer[off], (unsigned int)toread);
+				}
+				
+				bitmap_size += sha_size;
+				
+				size_t toread = (std::min)(bitmap_size - bitmap_read, r-off);
+				
+				if(bitmap_file->Write(&buffer[off], toread)!=toread)
+				{
+					ServerLogger::Log(logid, "Error writing to bitmap file", LL_ERROR);
+					goto do_image_cleanup;
+				}
+				
+				bitmap_read+=toread;
+				
+				if(bitmap_read==bitmap_size)
+				{
+					off+=toread;
+					
+					bitmap_file->Seek(bitmap_size-sha_size);
+					char dig_recv[sha_size];
+					bitmap_file->Read(dig_recv, sha_size);
+					
+					unsigned char dig[sha_size];
+					sha256_final(&shactx, dig);
+					
+					if(memcmp(dig, &buffer[off], sha_size)!=0)
+					{
+						ServerLogger::Log(logid, "Checksum for bitmap wrong. Stopping image backup.", LL_ERROR);
+						goto do_image_cleanup;
+					}
+					
+					transfer_state = ETransferState_Image;
+					transfer_bitmap = false;
+				}
+				else
+				{
+				    assert(r==off+toread);
+				    off=0;
+				    continue;
 				}
 			}
 			while(true)
@@ -892,6 +1012,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 								ClientMain::sendMailToAdmins("Fatal error occured during image backup", ServerLogger::getWarningLevelTextLogdata(logid));
 								goto do_image_cleanup;
 							}
+						}
+						else
+						{
+							ServerLogger::Log(logid, "Block sent out of sequence. Expected block >="+nconvert(nextblock)+" got "+nconvert(currblock)+". Stopping image backup.", LL_ERROR);
+							goto do_image_cleanup;
 						}
 
 						currblock=-1;
@@ -1105,6 +1230,11 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 								accum=true;
 							}
 							currblock=-1;
+						}
+						else if(currblock<0)
+						{
+							ServerLogger::Log(logid, "Received unknown block number: "+nconvert(currblock)+". Stopping image backup.", LL_ERROR);
+							goto do_image_cleanup;
 						}
 						else
 						{

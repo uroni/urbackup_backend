@@ -22,7 +22,7 @@ protected:
 	virtual bool doBackup();
 
 	bool doImage(const std::string &pLetter, const std::wstring &pParentvhd, int incremental, int incremental_ref,
-		bool transfer_checksum, std::string image_file_format);
+		bool transfer_checksum, std::string image_file_format, bool transfer_bitmap);
 	unsigned int writeMBR(ServerVHDWriter* vhdfile, uint64 volsize);
 	int64 updateNextblock(int64 nextblock, int64 currblock, sha256_ctx* shactx, unsigned char* zeroblockdata,
 		bool parent_fn, ServerVHDWriter* parentfile, IFile* hashfile, IFile* parenthashfile, unsigned int blocksize,

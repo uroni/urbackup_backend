@@ -485,7 +485,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 		{
 			if(too_many_hardlinks)
 			{
-				ServerLogger::Log(logid, L"HT: Hardlinking failed (Maximum hardlink count reached): \""+existing_file.fullpath+L"\"", LL_DEBUG);
+				ServerLogger::Log(logid, L"HT: Hardlinking failed (Maximum hardlink count reached) Source=\""+existing_file.fullpath+L"\" Destination=\""+tfn+L"\"", LL_DEBUG);
 				hardlink_limit = true;
 				break;
 			}
@@ -515,7 +515,7 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 				}
 				else
 				{
-					ServerLogger::Log(logid, L"HT: Hardlinking failed (unkown error): \""+existing_file.fullpath+L"\"", LL_DEBUG);
+					ServerLogger::Log(logid, L"HT: Hardlinking failed (unkown error) Source=\""+existing_file.fullpath+L"\" Destination=\""+tfn+L"\"", LL_DEBUG);
 
 					if(copy_from_hardlink_if_failed)
 					{

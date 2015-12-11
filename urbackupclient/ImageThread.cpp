@@ -37,6 +37,13 @@
 
 extern IFSImageFactory *image_fak;
 
+namespace
+{
+	const unsigned char ImageFlag_Persistent=1;
+	const unsigned char ImageFlag_Bitmap=2;
+}
+
+
 ImageThread::ImageThread(ClientConnector *client, IPipe *pipe, IPipe *mempipe, ImageInformation *image_inf, std::string server_token, IFile *hashdatafile)
 	: client(client), pipe(pipe), mempipe(mempipe), image_inf(image_inf), server_token(server_token), hashdatafile(hashdatafile)
 {
@@ -158,18 +165,20 @@ void ImageThread::sendFullImageThread(void)
 				cptr+=sizeof(int64);
 				memcpy(cptr, &blockcnt, sizeof(int64) );
 				cptr+=sizeof(int64);
+				unsigned char* flags = reinterpret_cast<unsigned char*>(cptr);
+				*flags=0;
 	#ifndef VSS_XP //persistence
 	#ifndef VSS_S03
-				*cptr=1;
-	#else
-				*cptr=0;
+				*flags|=ImageFlag_Persistent;
 	#endif
-	#else
-				*cptr=0;
 	#endif
 				if(image_inf->no_shadowcopy)
 				{
-					*cptr=0;
+					*flags = *flags & (^ImageFlag_Persistent);
+				}
+				if(image_inf->with_bitmap)
+				{
+					*flags|=ImageFlag_Bitmap;
 				}
 				++cptr;
 				unsigned int shadowdrive_size=(unsigned int)image_inf->shadowdrive.size();
@@ -193,6 +202,48 @@ void ImageThread::sendFullImageThread(void)
 				{
 					Server->Log("Pipe broken -1", LL_ERROR);
 					run=false;
+					break;
+				}
+			}
+			
+			
+			if(image_inf->with_bitmap)
+			{
+				size_t bitmap_size = (drivesize/blocksize)/8;
+				if( (drivesize/blocksize)%8!=0 )
+				{
+					++bitmap_size;
+				}
+				
+				unsigned char* bitmap = fs->getBitmap();
+				
+				sha256_ctx shactx;
+				sha256_innit(&shactx);
+				
+				while(bitmap_size>0)
+				{
+					size_t tosend = (std::min)((size_t)4096, bitmap_size);
+					
+					sha256_update(&shactx, bitmap, (unsigned int)tosend);
+					
+					if(!pipe->Write(reinterpret_cast<char*>(bitmap), tosend))
+					{
+						Server->Log("Pipe broken while sending bitmap", LL_ERROR);
+						run = false;
+						break;
+					}
+					
+					bitmap_size-=tosend;
+					bitmap+=tosend;
+				}
+				
+				unsigned char dig[c_hashsize];
+				sha256_final(&shactx, dig);
+				
+				if(!pipe->Write(reinterpret_cast<char*>(dig), c_hashsize))
+				{
+					Server->Log("Pipe broken while sending bitmap checksum", LL_ERROR);
+					run = false;
 					break;
 				}
 			}
