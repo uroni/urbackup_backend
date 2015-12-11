@@ -27,6 +27,7 @@
 #else
 #define PACKAGE_VERSION "unknown"
 #define VARDIR ""
+#define BINDIR ""
 #include <direct.h>
 #endif
 
@@ -283,6 +284,8 @@ int action_run(std::vector<std::string> args)
 	real_args.push_back(pidfile_arg.getValue());
 	real_args.push_back("--workingdir");
 	real_args.push_back(VARDIR);
+	real_args.push_back("--snapshot_helper");
+	real_args.push_back(BINDIR "/urbackup_snapshot_helper");
 	real_args.push_back("--user");
 	real_args.push_back(user_arg.getValue());
 	if(!sqlite_tmpdir_arg.getValue().empty())
