@@ -339,13 +339,28 @@ void ClientMain::operator ()(void)
 
 	if(!createDirectoryForClient())
 	{
-		Server->wait(10*60*1000); //10min
+		int64 starttime = Server->getTimeMS();
+		int64 ctime;
+		bool has_dir=false;
+		while( (ctime=Server->getTimeMS())>=starttime && ctime-starttime<10*60*1000)
+		{
+			Server->wait(1000);
 
-		BackupServer::forceOfflineClient(clientname);
-		pipe->Write("ok");
-		delete server_settings;
-		delete this;
-		return;
+			if(createDirectoryForClient())
+			{
+				has_dir=true;
+				break;
+			}
+		}
+
+		if(!has_dir)
+		{
+			BackupServer::forceOfflineClient(clientname);
+			pipe->Write("ok");
+			delete server_settings;
+			delete this;
+			return;
+		}
 	}
 
 	if(server_settings->getSettings()->computername.empty() || !clientsubname.empty())
