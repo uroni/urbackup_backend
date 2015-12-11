@@ -3713,6 +3713,13 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 
 	for(size_t i=0;i<backup_dirs.size();++i)
 	{
+		if(backup_dirs[i].group!=index_group)
+			continue;
+
+		if(backup_dirs[i].symlinked
+			&& !(index_flags & EBackupDirFlag_FollowSymlinks))
+			continue;
+
 		std::wstring bpath = addDirectorySeparatorAtEnd(backup_dirs[i].path);
 		
 		#ifndef _WIN32
@@ -3746,7 +3753,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 	}
 	else
 	{
-		Server->Log(L"Not following symlink "+symlink+L" because of configuration.", LL_INFO);
+		Server->Log(L"Not following symlink "+symlink+L" because of configuration.", LL_DEBUG);
 		return false;
 	}
 }
@@ -3876,7 +3883,10 @@ std::vector<SFileAndHash> IndexThread::convertToFileAndHash( const std::wstring&
 		{
 			if(!getAbsSymlinkTarget(orig_dir+os_file_sep()+files[i].name, orig_dir, ret[i].symlink_target))
 			{
-				Server->Log(L"Error getting symlink target of symlink "+orig_dir+os_file_sep()+files[i].name, LL_ERROR);
+				if(!(index_flags & EBackupDirFlag_SymlinksOptional) && (index_flags & EBackupDirFlag_FollowSymlinks) )
+				{
+					VSSLog(L"Error getting symlink target of symlink "+orig_dir+os_file_sep()+files[i].name, LL_ERROR);
+				}
 			}
 		}
 	}
