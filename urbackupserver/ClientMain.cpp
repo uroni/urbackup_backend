@@ -2020,11 +2020,20 @@ IFile *ClientMain::getTemporaryFileRetry(bool use_tmpfiles, const std::wstring& 
 				IScopedLock lock(tmpfile_mutex);
 				num=tmpfile_num++;
 			}
-			pfd=Server->openFile(tmpfile_path+os_file_sep()+convert(num), MODE_RW_CREATE);
+			pfd=Server->openFile(os_file_prefix(tmpfile_path+os_file_sep()+convert(num)), MODE_RW_CREATE);
 		}
 
 		if(pfd==NULL)
 		{
+			if(!os_directory_exists(os_file_prefix(tmpfile_path)))
+			{
+				ServerLogger::Log(logid, "Temporary file path did not exist. Creating it.", LL_INFO);
+
+				if(!os_create_dir_recursive(os_file_prefix(tmpfile_path)))
+				{
+					ServerLogger::Log(logid, "Error creating temporary file path", LL_WARNING);
+				}
+			}
 			ServerLogger::Log(logid, "Error opening temporary file. Retrying...", LL_WARNING);
 			--tries;
 			if(tries<0)
