@@ -80,7 +80,7 @@ P_SUBDIRS="snapshot_helper fsimageplugin httpserver urbackupserver"
 
 AM_CONDITIONAL(WITH_URLPLUGIN, test "x$with_mail" != "xno")
 AM_CONDITIONAL(WITH_CRYPTOPLUGIN, test "x$with_crypto" != "xno")
-AM_CONDITIONAL(WITH_FUSEPLUGIN, test "x$with_mountvhd" != "xno")
+AM_CONDITIONAL(WITH_FUSEPLUGIN, test "x$with_mountvhd" = "xyes")
 AM_CONDITIONAL(PACKAGING, test "x$enable_packaging" = xyes)
 AM_CONDITIONAL(INSTALL_INITD, test "x$enable_install_initd" = xyes)
 
@@ -97,7 +97,7 @@ then
 fi
 
 WITH_FUSEPLUGIN_CXXFLAGS=""
-if test "x$with_mountvhd" != "xno"
+if test "x$with_mountvhd" = "xyes"
 then
 	PKG_CHECK_MODULES([FUSE], [fuse >= 2.8.0], [
 			  AC_SUBST([FUSE_CFLAGS])

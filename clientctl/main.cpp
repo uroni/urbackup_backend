@@ -36,7 +36,7 @@ const std::string cmdline_version = PACKAGE_VERSION;
 
 void show_version()
 {
-	std::cout << "UrBackup Client Controler v" << cmdline_version << std::endl;
+	std::cout << "UrBackup Client Controller v" << cmdline_version << std::endl;
 	std::cout << "Copyright (C) 2011-2015 Martin Raiber" << std::endl;
 	std::cout << "This is free software; see the source for copying conditions. There is NO"<< std::endl;
 	std::cout << "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."<< std::endl;
