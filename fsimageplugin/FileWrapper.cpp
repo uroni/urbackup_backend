@@ -82,3 +82,8 @@ FileWrapper::FileWrapper( IVHDFile* wfile, int64 offset )
 	Seek(0);
 }
 
+bool FileWrapper::PunchHole( _i64 spos, _i64 size )
+{
+	return false;
+}
+
