@@ -1,0 +1,249 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>UrBackup - Help</title>
+	<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css" />
+	<link rel="stylesheet" type="text/css" href="css/bootstrap-theme.min.css" />
+	<link rel="stylesheet" type="text/css" href="css/bootstrap-flat.min.css" />
+	<link rel="stylesheet" type="text/css" href="css/bootstrap-flat-extras.min.css" />
+	<link rel="stylesheet" type="text/css" href="css/throbber.css" />
+	<link rel="stylesheet" type="text/css" href="css/bootstrap-formhelpers.min.css" />
+	<script language="JavaScript" src="jquery.js"></script>
+	<script language="javascript" src="js/bootstrap.min.js"></script>
+	<link rel="icon" href="favicon.ico" type="image/vnd.microsoft.icon">
+	<link rel="shortcut icon" type="image/x-icon" href="favicon.ico"/>
+	<style>
+	.form-group {
+		margin-bottom: 0px;
+	}
+	.panel-body blockquote {	
+		font-size: 14px !important;
+	}
+	</style>
+	<script type="text/javascript">
+	window.onload_fun = function()
+	{
+		if(typeof location.hash!="undefined" && location.hash.length>1)
+		{
+			var elem = document.getElementById(location.hash.substr(1));
+			if(elem)
+			{
+				elem.style.color='red';
+			}
+		}
+	}
+	</script>
+</head>
+
+<body style="margin-top: 70px" onload="if(typeof window.onload_fun!='undefined') onload_fun();">
+	<nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+		<div class="container-fluid">
+			<div class="navbar-header">
+				<span class="navbar-brand">UrBackup Help</span>
+			</div>
+			<div class="collapse navbar-collapse" id="navbar-collapse-1">
+				<ul class="nav navbar-nav" id="main_nav">
+				</ul>
+			</div>
+		</div>
+	</nav>
+	<div class="container" id="boostrap_container">		
+		
+		<div class="pos_bar">			
+			<div id="nav_pos">
+			</div>
+		</div>
+		
+		<div id="data_div">
+			<div id="data_f">
+				<div class="panel panel-default">
+					<div class="panel-heading">UrBackup help</div>
+					<div class="panel-body">
+						<div dir="ltr">
+<!-- Start HELP -->
+<h3 id="ident_err">Server says 'Server rejected' for a client and does not backup that client</h3>
+
+
+<p>Because of security reasons the UrBackup client only allows the first UrBackup server it sees to back up. For this reasons every server has a random server identity and starting from UrBackup Server 1.4 a private/public key pair. This identity changes if you uninstall and then install the server or if you use another server. The best option is to prevent this by saving the <code>urbackup/server_ident.key</code>, and if present <code>urbackup/server_ident.priv</code> and <code>urbackup/server_ident.pub</code>, on the server and to restore it if it has changed. If you did not do this your options are:</p>
+
+<ul>
+<li>Click on the popup that asks if you want to use the new UrBackup server</li>
+<li>Delete the <code>server_idents.txt</code> on the client, stop the UrBackup client back-end service, wait 5min, and start the service again.</li>
+<li>Uninstall the UrBackup client, wait 5min and then install it again. You loose your settings if you do this.</li>
+<li>Get the server identity from the server (It is shown on the admin page for server administrators) and add it to the client's <code>server_idents.txt</code>.</li>
+</ul>
+
+<h3 id="backup_window">How to define a backup window?</h3>
+
+
+<p>In the settings you can set a backup window. The server will only start backing up clients within this window. The clients can always start backups on their own, even outside the backup windows. If a backup is started it runs till it is finished and does not stop if the backup process does not complete within the backup window. A few examples for the backup window:</p>
+
+<blockquote class="blockquotetest"><p><code>1-7/0-24</code>: Allow backups on every day of the week on every hour. <br/>
+<code>Mon-Sun/0-24</code>: An equivalent notation of the above<br/>
+<code>Mon-Fri/8:00-9:00, 19:30-20:30;Sat,Sun/0-24</code>: On weekdays backup between 8 and 9 and between 19:30 and 20:30. On Saturday and Sunday the whole time.</p></blockquote>
+
+<p>As one can see a number can denote a day of the week (1-Monday, 2-Thuesday, 3-Wednesday, 4-Thursday, 5-Friday, 6-Saturday, 7-Sunday). You can also use the abbreviations of the days (Mon, Thues, Wed, Thurs, Fri, Sat, Sun). The times can either consist of only full hours or of hours with minutes. The hours are on the 24 hour clock. You can set multiple days and times per window definition, separated per <code>","</code>. You can also set multiple window definitions. Separate them with <code>";"</code>.</p>
+
+
+<h3 id="exclude_files">How to exclude files?</h3>
+
+
+<p>You can exclude files with wildcard matching. For example if you want to exclude all MP3s and movie files enter something like this:</p>
+
+<blockquote><p><code>*.mp3;*.avi;*.mkv;*.mp4;*.mpg;*.mpeg</code></p></blockquote>
+
+<p>If you want to exclude a directory e.g. Temp you can do it like this:</p>
+
+<blockquote><p><code>*/Temp/*</code> (or <code>*\Temp\*</code>)</p></blockquote>
+
+<p>This would exclude all files in directories named Temp.
+You can also give the full local name</p>
+
+<blockquote><p><code>C:\Users\User\AppData\Local\Temp\*</code></p></blockquote>
+
+<p>or the name you gave the location e.g. with <code>C:|C_Drive</code></p>
+
+<blockquote><p><code>C_Drive\Users\User\AppData\Local\Temp\*</code></p></blockquote>
+
+<p>Rules are separated by a semicolon (<code>";"</code>).
+Use a backslash for Windows clients (<code>"\"</code>) and a forward slash for Linux clients (<code>"/"</code>) to separate folders.</p>
+
+<h3 id="include_files">How to include files?</h3>
+
+
+<p>If you do not define an include pattern all files in the backups paths except the excluded ones are backed up. As soon as you define an include pattern only files which match this pattern are backed up. Similar to the exclude pattern you can include files by their extension:</p>
+
+<blockquote><p><code>*.doc;*.docx</code></p></blockquote>
+
+<p>Would only backup Word documents.</p>
+
+<blockquote><p><code>*\Documents\*</code></p></blockquote>
+
+<p>Would only backup files in document folders.</p>
+
+<p>Additionally to the standard wildcard(<code>"*"</code>) which matches every character you can use <code>":"</code> which matches every character except the path separator (/ or \).
+If you backup e.g. the <code>C:\Users</code> path and want to backup all document directories you can use the pattern</p>
+
+<blockquote><p><code>Users\:\Documents\*</code></p></blockquote>
+
+<p>That way e.g. <code>Users\Foo\Other\Documents</code> would not be backed up.</p>
+
+<p>The pattern is used for all paths you specify. So if you use the above rule for the Users folder and want to backup all files in another folder be sure to add that folder to the pattern e.g. by specifying</p>
+
+<blockquote><p><code>Users\:\Documents\*;D:\bla\*</code></p></blockquote>
+
+<h3 id="cleanup_window">How to define a clean-up window?</h3>
+
+
+<p>UrBackup will do its clean-up during this time. This is when old backups and clients are deleted, the quotas are enforced, old database entries are deleted and the database is backed up. You can specify the weekday and the hour as intervals. The syntax is the same as for the backup window. Thus please see the FAQ entry of the <html><a href="#backup_window">backup window</a></html> for details on how to specify such time windows.
+The default value is <code>1-7/3-4</code> which means that the clean-up will be started on each day (1-Monday - 7-Sunday) between 3 am and 4 am.</p>
+
+<h3 id="default_dirs">How to define default backup locations?</h3>
+
+
+<p>Just enter the different locations separated by a semicolon (<code>";"</code>) e.g.</p>
+
+<blockquote><p><code>C:\Users;C:\Program Files</code></p></blockquote>
+
+<p>If you want to give the backup locations a different name you can add one with the pipe symbol e.g:</p>
+
+<blockquote><p><code>C:\Users|User files;C:\Program Files|Programs</code></p></blockquote>
+
+<p>gives the <code>"Users"</code> directory the name <code>"User files"</code> and the <code>"Program files"</code> directory the name <code>"Programs"</code>.</p>
+
+<p>Those locations are only the default locations. Even if you check <em>"Separate settings for this client"</em> and disable <em>"Allow client to change settings"</em>, once the client modified the paths changes in this field are not used by the client.</p>
+
+<h3 id="image_letters">How to specify the volumes to backup?</h3>
+
+
+<p>UrBackup backs up all the volumes you specify in the <em>"Volumes to backup"</em> field. You should specify volume letters (C,D,E,...) separated by <code>";"</code> or <code>","</code> there. With UrBackup Client and Server 1.4 you can also sepecify <code>"ALL"</code> to backup all volumes or <code>"ALL_NONUSB"</code> to backup all volumes except volumes connected via USB.</p>
+
+<h3>Microsoft Outlook .ost files aren't backed up!</h3>
+
+<p>Microsoft Outlook adds exceptions to the Microsoft Shadow Copy Service to exclude the .ost files. Several Backup tools (UrBackup included) therefore do not backup them. Here is what seems like an official statement from Microsoft:
+<em>"Maintaining changes to .ost files within shadow copies is expensive in terms of space and I/O activity. The performance impact doesn't occur during the image backup itself--the only extra work at backup time is backing up the .ost file as part of the image. Instead, the performance impact occurs during the ongoing, everyday I/O to the .ost file when Outlook is running. If the .ost changes were kept in shadow copies, then every time Outlook writes to the .ost file, the result is a copy-on-write I/O hit (2 writes, 1 read). Although we have worked to reduce the impact of copy-on-writes on shadow copies,  a heavily churned file like an .ost file could still cause problems. For these reasons, and the fact that .ost files can be regenerated, we chose to delete .ost files from the shadow copy before the image is created. Even if the performance issues didn't exist, there are situations where Exchange will, after an .ost is restored, detect a "future" version of the .ost file and force you to delete and then regenerate the local .ost file. Therefore, it's still preferable to regenerate an .ost file instead of restoring it."</em></p>
+
+<p>Basically just backup the Exchange server (which you can do with UrBackup, too) and you are good.</p>
+
+<h3 id="archived">What does the "Archived" column show?</h3>
+
+
+<p>If the box in that column is checked the backup is archived. As long as a backup is archived UrBackup won't delete it under any circumstance. If there is a stop watch next to the box it means the backup will stop being archived after some time. This time is shown if you hover over the stop watch.</p>
+
+<h3 id="archive_window">How to use the archive window?</h3>
+
+
+<p>The archival window allows you to archive backups at very specific times. The format is
+very similar to <em>crontab</em>. The fields are the same except that there are no minutes:
+<html>
+<br/></p>
+
+<table border="1">
+<tr>
+<th>Field</th>
+<th>Allowed values</th>
+<th>Remark</th>
+</tr>
+<tr><td>Hour</td><td>0-23</td><td>&nbsp;</td></tr>
+<tr><td>Day of month</td><td>1-31</td><td>&nbsp;</td></tr>
+<tr><td>Month</td><td>1-12</td><td>No names allowed</td></tr>
+<tr><td>Day of week</td><td>0-7</td><td>0 and 7 are Sunday</td></tr>
+</table>
+
+
+<p></html></p>
+
+<p>To archive a file backup on the first Friday of every month we would
+then set <em>"Archive every"</em> to something like 27 days. After entering the time we
+want the backups archived for we would then add</p>
+
+<blockquote><p><code>*;*;*;5</code></p></blockquote>
+
+<p>as window (<code>hour;day of month;month;day of week</code>).
+To archive a backup every Friday we would set <em>"Archive every"</em> to a value
+greater than one day but less than 7 days. This works because both conditions have to
+apply: The time since the last backup archival must be greater than <em>"Archive every"</em> and
+the server must be currently in the archive window.
+Other examples are easier. To archive a backup on the first of every month the window
+would be</p>
+
+<blockquote><p><code>*;1;*;*</code></p></blockquote>
+
+<p>and "Archive every" something like 2-27 days.
+One can add several values for every field by separating them via a comma such that</p>
+
+<blockquote><p><code>*;*;*;3,5</code></p></blockquote>
+
+<p>and <em>"Archive every"</em> one day would archive a backup on Wednesday and Friday. Other
+advanced features found in <em>crontab</em> are not present.</p>
+
+<h3 id="global_soft_fs_quota">What is the global soft filesystem quota?</h3>
+
+<p>During clean-ups UrBackup will look at the used space of the filesystem the backup folder is on. If the used space is higher than the global soft filesystem quota UrBackup will delete old backups, if possible, till the used space is below the quota. Be aware that not only UrBackup's files count against the quota, but other files as well. A quota that only takes into account UrBackup's files is the client specific quota.
+You can specify the quota via a percentage of total space, or by a size. For example let the size of the Backup device be 1 Tera-byte:
+If you set the global filesystem quota to <em>"90%"</em>, UrBackup will delete old backups as soon as more than about 900 Giga-bytes of the available space is used. You could also directly set the quota to 900 Giga-bytes by setting it to <em>"900G"</em>. Other units are possible, e.g. <em>"900000M"</em> or <em>"1T"</em>.</p>
+
+<h3 id="base_dir_lost">UrBackup has an error that the "base dir" is lost during a file backup or that the "access to root directory is gone"</h3></p>
+
+<p> UrBackup does consistent backups by creating snapshots of the volumes the files reside on (also called shadow copies). Once a snapshot is created, when data is written to the volume (for example if a file is changed) the old data has to be copied to the so called shadow storage in order to preserve the point in time snapshot. If too much data is overwritten the volume may not have enough space to save the data being overwritten for the existing snapshot. In this case Windows deletes the snapshot and UrBackup stops the backup and has to start anew. You can confirm this is happening by looking into the Windows event log for "VSS" error events.</p>
+
+<p> To prevent this issue you should:</p>
+
+<ul>
+<li>Ensure that there is enough free space on the volumes being backed up (freeing space will most likely fix your issue)</li>
+<li>Not perform write intensive tasks during the backups</li>
+<li>Check that enough disk space is allocated for the shadow storage. Go to the system settings. Press advanced system settings. Go to the computer protection tab, select the volume and press configure. Then you can see and change the maximum percentage of shadow storage. The shadow storage will not be shown as used, and gets shrunk (by deleting snapshots) if necessary</li>
+</ul>
+
+<!-- End HELP -->
+						<div class="pull-right">
+							<input class="btn pull-right btn-primary" value="Close this page" onClick="window.close();" />
+						</div>
+					</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
