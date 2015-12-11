@@ -10,10 +10,18 @@ if( navigator.userAgent.indexOf("Opera")!=-1 )
 	g.opera=true;
 }
 g.ie=false;
-if( navigator.appName=="Microsoft Internet Explorer" && g.opera==false )
+if( navigator.appName=="Microsoft Internet Explorer")
 {
 	g.ie=true;
 }
+else if (navigator.appName == 'Netscape' &&
+	(navigator.userAgent.indexOf("Edge")!=-1
+	|| navigator.userAgent.indexOf("Trident")!=-1) ) //grr
+{
+	g.ie=true;
+}
+
+if (!Date.now) { Date.now = function now() { return +(new Date); }; } 
 
 function trans(str)
 {
@@ -33,7 +41,7 @@ function iernd()
 	if(g.ie==true && window.Ajax )
 	{
 		var rnd=Math.floor(Math.random()*100000);
-		return '&iernd='+rnd;
+		return '&iernd='+Date.now()+rnd;
 	}
 	return '';
 }
