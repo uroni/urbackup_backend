@@ -357,7 +357,9 @@ void BackupServerGet::operator ()(void)
 	{
 		bool c = false;
 		do
-		{			
+		{	
+			c=false;
+
 			bool b = authenticatePubKey();
 			if(!b && needs_authentification)
 			{
