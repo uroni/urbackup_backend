@@ -67,7 +67,7 @@ void writeFileItem(IFile* f, SFile cf)
 {
 	if(cf.isdir)
 	{
-		writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\"\n");
+		writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" 0 "+nconvert(cf.last_modified)+"\n");
 	}
 	else
 	{
@@ -81,15 +81,15 @@ void writeFileItem(IFile* f, SFile cf, std::string extra)
 
 	if(cf.isdir)
 	{
-		writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))
-			+"\""+extra+"\n");
+		writeFileRepeat(f, "d\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" 0 "+nconvert(cf.last_modified)
+			+extra+"\n");
 	}
 	else
 	{
 		
 
 		writeFileRepeat(f, "f\""+escapeListName(Server->ConvertToUTF8(cf.name))+"\" "+nconvert(cf.size)+" "+nconvert(cf.last_modified)
-			+"\""+extra+"\n");
+			+extra+"\n");
 	}
 }
 

@@ -222,9 +222,10 @@ bool IncrFileBackup::doFileBackup()
 	std::vector<size_t> *large_unchanged_subtrees_ref=NULL;
 	if(use_directory_links) large_unchanged_subtrees_ref=&large_unchanged_subtrees;
 	std::vector<size_t> modified_inplace_ids;
+	std::vector<size_t> dir_diffs;
 
 	std::vector<size_t> diffs=TreeDiff::diffTrees(clientlistName(group), wnarrow(tmpfilename),
-		error, deleted_ids_ref, large_unchanged_subtrees_ref, &modified_inplace_ids);
+		error, deleted_ids_ref, large_unchanged_subtrees_ref, &modified_inplace_ids, dir_diffs);
 
 	if(error)
 	{
@@ -397,6 +398,7 @@ bool IncrFileBackup::doFileBackup()
 	folder_files.push(std::set<std::wstring>());
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
+	std::stack<bool> dir_diff_stack;
 
 	while( (read=tmp->Read(buffer, 4096))>0 )
 	{
@@ -546,7 +548,11 @@ bool IncrFileBackup::doFileBackup()
 
 					if(cf.name!=L"..")
 					{
-						if(indirchange)
+						bool dir_diff = hasChange(line, dir_diffs);
+
+						dir_diff_stack.push(dir_diff);
+
+						if(indirchange || dir_diff)
 						{
 							for(size_t j=0;j<folder_items.size();++j)
 							{
@@ -613,7 +619,7 @@ bool IncrFileBackup::doFileBackup()
 								}
 							}
 						}
-						if(!dir_linked && (!use_snapshots || indirchange) )
+						if(!dir_linked && (!use_snapshots || indirchange || dir_diff) )
 						{
 							bool create_hash_dir=true;
 							str_map::iterator sym_target = extra_params.find(L"sym_target");
@@ -657,7 +663,7 @@ bool IncrFileBackup::doFileBackup()
 								}
 							}
 							
-							if(!indirchange && curr_path!=L"/urbackup_backup_scripts")
+							if(!indirchange && !dir_diff && curr_path!=L"/urbackup_backup_scripts")
 							{
 								std::wstring srcpath=os_file_prefix(last_backuppath_hashes+local_curr_os_path + os_file_sep()+metadata_dir_fn);
 								if(!os_create_hardlink(metadata_fn, srcpath, use_snapshots, NULL))
@@ -709,7 +715,7 @@ bool IncrFileBackup::doFileBackup()
 					}
 					else //cf.name==".."
 					{
-						if(indirchange && client_main->getProtocolVersions().file_meta>0)
+						if((indirchange || dir_diff_stack.top()) && client_main->getProtocolVersions().file_meta>0)
 						{
 							server_download->addToQueueFull(line, ExtractFileName(curr_path, L"/"), ExtractFileName(curr_os_path, L"/"),
 								ExtractFilePath(curr_path, L"/"), ExtractFilePath(curr_os_path, L"/"), queue_downloads?0:-1,
@@ -718,6 +724,7 @@ bool IncrFileBackup::doFileBackup()
 
 						folder_files.pop();
 						folder_items.pop_back();
+						dir_diff_stack.pop();
 
 						--depth;
 						if(indirchange==true && depth==changelevel)
@@ -1006,7 +1013,23 @@ bool IncrFileBackup::doFileBackup()
 		r_offline=true;
 	}
 
+	if(incr_backup_stoptime==0)
+	{
+		incr_backup_stoptime=Server->getTimeMS();
+	}
+
 	sendBackupOkay(!r_offline && !c_has_error);
+
+	ServerLogger::Log(logid, L"Waiting for file hashing and copying threads...", LL_INFO);
+
+	waitForFileThreads();
+
+	if( bsh->hasError() || bsh_prepare->hasError() )
+	{
+		disk_error=true;
+	}
+
+	bool metadata_ok = stopFileMetadataDownloadThread();
 
 	ServerLogger::Log(logid, L"Writing new file list...", LL_INFO);
 
@@ -1025,6 +1048,12 @@ bool IncrFileBackup::doFileBackup()
 			{
 				if(cf.isdir)
 				{
+					if( (r_offline || !metadata_ok)
+						&& hasChange(line, dir_diffs))
+					{
+						cf.last_modified *= Server->getRandomNumber();
+					}
+
 					writeFileItem(clientlist, cf);
 				}
 				else if(server_download->isDownloadOk(line)
@@ -1069,15 +1098,6 @@ bool IncrFileBackup::doFileBackup()
 			backup_dao->dropTemporaryLastFilesTableIndex();
 			backup_dao->dropTemporaryLastFilesTable();
 		}
-	}
-
-	ServerLogger::Log(logid, L"Waiting for file hashing and copying threads...", LL_INFO);
-
-	waitForFileThreads();
-
-	if( bsh->hasError() || bsh_prepare->hasError() )
-	{
-		disk_error=true;
 	}
 
 	if(!r_offline && !c_has_error && !disk_error)
@@ -1184,11 +1204,6 @@ bool IncrFileBackup::doFileBackup()
 	Server->destroy(tmp);
 	Server->deleteFile(tmpfilename);
 
-	if(incr_backup_stoptime==0)
-	{
-		incr_backup_stoptime=Server->getTimeMS();
-	}
-
 	_i64 transferred_bytes=fc.getTransferredBytes()+(fc_chunked.get()?fc_chunked->getTransferredBytes():0);
 	_i64 transferred_compressed=fc.getRealTransferredBytes()+(fc_chunked.get()?fc_chunked->getRealTransferredBytes():0);
 	int64 passed_time=incr_backup_stoptime-incr_backup_starttime;
@@ -1197,8 +1212,6 @@ bool IncrFileBackup::doFileBackup()
 	{
 		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_compressed)+" ratio: "+nconvert((float)transferred_compressed/transferred_bytes)+")");
 	}
-
-	stopFileMetadataDownloadThread();
 
 	if(group==c_group_default)
 	{

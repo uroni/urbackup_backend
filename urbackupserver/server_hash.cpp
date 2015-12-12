@@ -598,6 +598,11 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 					}
 					else
 					{
+						if(!os_file_truncate(os_file_prefix(hash_fn), get_hashdata_size(t_filesize)))
+						{
+							ServerLogger::Log(logid, "Error truncating hashdata file -1", LL_ERROR);
+						}
+
 						write_metadata=true;
 					}
 					Server->destroy(src);
@@ -626,9 +631,9 @@ bool BackupServerHash::findFileAndLink(const std::wstring &tfn, IFile *tf, std::
 						}
 						else
 						{
-							if(!os_file_truncate(hash_fn, get_hashdata_size(t_filesize)))
+							if(!os_file_truncate(os_file_prefix(hash_fn), get_hashdata_size(t_filesize)))
 							{
-								ServerLogger::Log(logid, "Error truncating hashdata file", LL_ERROR);
+								ServerLogger::Log(logid, "Error truncating hashdata file -2", LL_ERROR);
 							}
 							write_metadata=true;
 						}

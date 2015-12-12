@@ -104,104 +104,67 @@ std::vector<SFile> getFiles(const std::wstring &path, bool *has_error, bool igno
 		SFile f;
         f.name=ConvertToUnicode(dirp->d_name);
 		if(f.name==L"." || f.name==L".." )
-			continue;
-		
-#ifndef sun
+			continue;		
+
 		f.isdir=(dirp->d_type==DT_DIR);
-		if(!f.isdir || dirp->d_type==DT_UNKNOWN 
-				|| (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR)
-				|| dirp->d_type==DT_LNK )
-		{
-#endif
-			struct stat64 f_info;
-			int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
-			if(rc==0)
-			{	
-				if(ignore_other_fs && S_ISDIR(f_info.st_mode)
-					&& has_parent_dev_id && parent_dev_id!=f_info.st_dev)
-				{
-					continue;
-				}
-				
-				if(S_ISLNK(f_info.st_mode))
-				{
-					f.issym=true;
-					f.isspecial=true;
-					struct stat64 l_info;
-					int rc2 = stat64((upath+dirp->d_name).c_str(), &l_info);
-					
-					if(rc2==0)
-					{
-						f.isdir=S_ISDIR(l_info.st_mode);
-					}
-					else
-					{
-						f.isdir=false;
-					}
-				}
+		
+		struct stat64 f_info;
+		int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
+		if(rc==0)
+		{	
+			f.isdir = S_ISDIR(f_info.st_mode);
 			
-#ifndef sun
-				if(dirp->d_type==DT_UNKNOWN
-					|| (dirp->d_type!=DT_REG && dirp->d_type!=DT_DIR)
-					|| dirp->d_type==DT_LNK)
+			if(ignore_other_fs && S_ISDIR(f_info.st_mode)
+				&& has_parent_dev_id && parent_dev_id!=f_info.st_dev)
+			{
+				continue;
+			}
+			
+			if(S_ISLNK(f_info.st_mode))
+			{
+				f.issym=true;
+				f.isspecial=true;
+				struct stat64 l_info;
+				int rc2 = stat64((upath+dirp->d_name).c_str(), &l_info);
+				
+				if(rc2==0)
 				{
-#endif
-					if(!f.issym)
-					{
-						f.isdir=S_ISDIR(f_info.st_mode);
-					}
-					
-					if(!f.isdir)
-					{
-						if(!S_ISREG(f_info.st_mode) )
-						{
-							f.isspecial=true;
-						}
-                        uint64 last_modified = (uint64)f_info.st_mtime | ((uint64)f_info.st_ctime<<32);
-                        f.last_modified=last_modified;
-						if(f.last_modified<0) f.last_modified*=-1;
-						f.size=f_info.st_size;
-					}
-#ifndef sun
+					f.isdir=S_ISDIR(l_info.st_mode);
 				}
 				else
 				{
-                    uint64 last_modified = (uint64)f_info.st_mtime | ((uint64)f_info.st_ctime<<32);
-                    f.last_modified=last_modified;
-					if(f.last_modified<0) f.last_modified*=-1;
-					f.size=f_info.st_size;
+					f.isdir=false;
 				}
-#endif
 			}
-			else
+			
+			f.usn = (uint64)f_info.st_mtime | ((uint64)f_info.st_ctime<<32);
+			if(f.usn<0) f.usn*=-1;
+			
+			if(!f.isdir)
 			{
-                 std::wstring errmsg;
-				int err = os_last_error(errmsg);
-				Log("Cannot stat \""+upath+dirp->d_name+"\": "+ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
-                    if(has_error!=NULL)
-                    {
-                        *has_error=true;
-                    }
-                    continue;
+				if(!S_ISREG(f_info.st_mode) )
+				{
+					f.isspecial=true;
+				}			
+				
+				f.size=f_info.st_size;
 			}
-#ifndef sun
+			
+			f.last_modified=f_info.st_mtime;
+			f.created = f_info.st_ctime;
+			f.accessed = f_info.st_atime;
 		}
 		else
 		{
-			if(ignore_other_fs && has_parent_dev_id)
+			std::wstring errmsg;
+			int err = os_last_error(errmsg);
+			Log("Cannot stat \""+upath+dirp->d_name+"\": "+ConvertToUTF8(errmsg)+" ("+nconvert(err)+")", LL_ERROR);
+			if(has_error!=NULL)
 			{
-				struct stat64 f_info;
-				int rc=lstat64((upath+dirp->d_name).c_str(), &f_info);
-				if(rc==0 && parent_dev_id!=f_info.st_dev)
-				{
-					continue;
-				}
+				*has_error=true;
 			}
-		
-			f.last_modified=0;
-			f.size=0;
+			continue;
 		}
-#endif
 		tmp.push_back(f);
 		errno=0;
     }

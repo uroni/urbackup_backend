@@ -117,6 +117,10 @@ bool TreeReader::readTree(const std::string &fn)
 					{
 						stringbuffer_size+=2*sizeof(int64);
 					}
+					else
+					{
+						stringbuffer_size+=sizeof(int64);
+					}
 					if(name!="..")
 					{
 						++lines;
@@ -244,6 +248,7 @@ bool TreeReader::readTree(const std::string &fn)
 							nodes[idx].setId(lines);
 
 							char ch=data[0];
+							nodes[idx].setType(ch);
 							if(ch=='f')
 							{
 								std::string sdata=data.substr(1);
@@ -256,6 +261,19 @@ bool TreeReader::readTree(const std::string &fn)
 								char* ndata=&stringbuffer[stringbuffer_pos];
 								memcpy(&stringbuffer[stringbuffer_pos], &ifilesize, sizeof(_i64));
 								stringbuffer_pos+=sizeof(_i64);
+								memcpy(&stringbuffer[stringbuffer_pos], &ilast_mod, sizeof(_i64));
+								stringbuffer_pos+=sizeof(_i64);
+
+								nodes[idx].setData(ndata);
+							}
+							else
+							{
+								std::string sdata=data.substr(1);
+								std::string last_mod=getafter(" ", sdata);
+
+								_i64 ilast_mod=os_atoi64(last_mod);
+								char* ndata=&stringbuffer[stringbuffer_pos];
+
 								memcpy(&stringbuffer[stringbuffer_pos], &ilast_mod, sizeof(_i64));
 								stringbuffer_pos+=sizeof(_i64);
 

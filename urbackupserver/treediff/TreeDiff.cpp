@@ -22,7 +22,7 @@
 
 std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string &t2, bool &error,
 	std::vector<size_t> *deleted_ids, std::vector<size_t>* large_unchanged_subtrees,
-	std::vector<size_t> *modified_inplace_ids)
+	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs)
 {
 	std::vector<size_t> ret;
 
@@ -40,7 +40,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 		return ret;
 	}
 
-	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], ret, modified_inplace_ids);
+	gatherDiffs(&(*r1.getNodes())[0], &(*r2.getNodes())[0], ret, modified_inplace_ids, dir_diffs);
 	if(deleted_ids!=NULL)
 	{
 		gatherDeletes(&(*r1.getNodes())[0], *deleted_ids);
@@ -53,6 +53,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 	}
 
 	std::sort(ret.begin(), ret.end());
+	std::sort(dir_diffs.begin(), dir_diffs.end());
 
 	if(modified_inplace_ids!=NULL)
 	{
@@ -63,7 +64,7 @@ std::vector<size_t> TreeDiff::diffTrees(const std::string &t1, const std::string
 }
 
 void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diffs,
-	std::vector<size_t> *modified_inplace_ids)
+	std::vector<size_t> *modified_inplace_ids, std::vector<size_t> &dir_diffs)
 {
 	size_t nc_2=t2->getNumChildren();
 	size_t nc_1=t1->getNumChildren();
@@ -73,6 +74,7 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 	{		
 		bool found=false;
 		bool name_found=false;
+		bool dir_diff=false;
 		TreeNode *c1=t1->getFirstChild();
 		while(c1!=NULL)
 		{
@@ -80,9 +82,17 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 			{
 				name_found=true;
 
-				if(c1->dataEquals(*c2))
+				bool equal_dir = (c1->getType()=='d' && c2->getType()=='d');
+
+				if(equal_dir)
 				{
-					gatherDiffs(c1, c2, diffs, modified_inplace_ids);
+					dir_diff = !c1->dataEquals(*c2);
+				}
+
+				if( equal_dir
+					 || c1->dataEquals(*c2) )
+				{
+					gatherDiffs(c1, c2, diffs, modified_inplace_ids, dir_diffs);
 					c2->setMappedNode(c1);
 					c1->setMappedNode(c2);
 					found=true;
@@ -92,16 +102,24 @@ void TreeDiff::gatherDiffs(TreeNode *t1, TreeNode *t2, std::vector<size_t> &diff
 			c1=c1->getNextSibling();
 		}
 
-		if(!found)
+		if(!found || dir_diff)
 		{
-			diffs.push_back(c2->getId());
+			if(dir_diff)
+			{
+				dir_diffs.push_back(c2->getId());
+			}
+			else
+			{
+				diffs.push_back(c2->getId());
+			}
+
 			if(!did_subtree_change)
 			{
 				subtreeChanged(c2);
 				did_subtree_change=true;
 			}
 
-			if(name_found && modified_inplace_ids!=NULL)
+			if(name_found && !dir_diff && modified_inplace_ids!=NULL)
 			{
 				modified_inplace_ids->push_back(c2->getId());
 			}

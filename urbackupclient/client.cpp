@@ -1084,7 +1084,6 @@ void IndexThread::indexDirs(void)
 			removeFile(L"urbackup/data/filelist_"+convert(index_group)+L".ub");
 			moveFile(L"urbackup/data/filelist_new.ub", L"urbackup/data/filelist_"+convert(index_group)+L".ub");
 		}
-		Server->wait(1000);
 	}
 
 	if(patterns_changed)
@@ -1183,7 +1182,14 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 		{
 			close_dir=true;
 
-			writeDir(outfile, named_path, extra);
+			SFile metadata = getFileMetadataWin(os_file_prefix(dir), true);
+
+			if(metadata.usn==0)
+			{
+				metadata.usn = metadata.last_modified;
+			}
+
+			writeDir(outfile, named_path, with_orig_path, metadata.usn, extra);
 			extra.clear();
 		}
 	}
@@ -1305,7 +1311,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 					listname = named_path;
 				}
 				
-				writeDir(outfile, listname, extra);
+				writeDir(outfile, listname, with_orig_path, files[i].change_indicator, extra);
 				extra.clear();
 
 				bool b=true;
@@ -3673,9 +3679,14 @@ void IndexThread::writeTokens()
 	write_file_only_admin(data, "urbackup"+os_file_sepn()+"data"+os_file_sepn()+"tokens_"+starttoken+".properties");
 }
 
-void IndexThread::writeDir(std::fstream& out, const std::wstring& name, const std::string& extra )
+void IndexThread::writeDir(std::fstream& out, const std::wstring& name, bool with_change, int64 change_identicator, const std::string& extra)
 {
 	out << "d\"" << escapeListName(Server->ConvertToUTF8(name)) << "\"";
+
+	if(with_change)
+	{
+		out << " 0 " << change_identicator;
+	}
 
 	if(!extra.empty())
 	{

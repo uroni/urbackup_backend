@@ -520,6 +520,8 @@ bool FullFileBackup::doFileBackup()
 		r_done=true;
 	}
 
+	int64 transfer_stop_time = Server->getTimeMS();
+
 	size_t max_line = line;
 
 	if(!r_done && !c_has_error)
@@ -534,7 +536,14 @@ bool FullFileBackup::doFileBackup()
 	running_updater->stop();
 	backup_dao->updateFileBackupRunning(backupid);
 
-	ServerLogger::Log(logid, L"Writing new file list...", LL_INFO);
+	ServerLogger::Log(logid, L"Waiting for file hashing and copying threads...", LL_INFO);
+
+	waitForFileThreads();
+
+
+	bool metadata_ok = stopFileMetadataDownloadThread();
+
+	ServerLogger::Log(logid, L"Writing new file list...", LL_INFO);	
 
 	tmp->Seek(0);
 	line = 0;
@@ -548,6 +557,11 @@ bool FullFileBackup::doFileBackup()
 			{
 				if(cf.isdir && line<max_line)
 				{
+					if(!metadata_ok || is_offline)
+					{
+						cf.last_modified *= Server->getRandomNumber();
+					}
+
 					writeFileItem(clientlist, cf);
 				}
 				else if(!cf.isdir && 
@@ -567,10 +581,6 @@ bool FullFileBackup::doFileBackup()
 
 	Server->destroy(clientlist);
 
-	ServerLogger::Log(logid, L"Waiting for file hashing and copying threads...", LL_INFO);
-
-	waitForFileThreads();
-
 	bool verification_ok = true;
 	if(!r_done && !c_has_error
 	        && (server_settings->getSettings()->end_to_end_file_backup_verification
@@ -589,8 +599,6 @@ bool FullFileBackup::doFileBackup()
 			ServerLogger::Log(logid, "Backup verification ok", LL_INFO);
 		}
 	}
-
-
 
 	if( bsh->hasError() || bsh_prepare->hasError() )
 	{
@@ -654,7 +662,7 @@ bool FullFileBackup::doFileBackup()
 
 	_i64 transferred_bytes=fc.getTransferredBytes();
 	_i64 transferred_compressed=fc.getRealTransferredBytes();
-	int64 passed_time=Server->getTimeMS()-full_backup_starttime;
+	int64 passed_time=transfer_stop_time-full_backup_starttime;
 	if(passed_time==0) passed_time=1;
 
 	ServerLogger::Log(logid, "Transferred "+PrettyPrintBytes(transferred_bytes)+" - Average speed: "+PrettyPrintSpeed((size_t)((transferred_bytes*1000)/(passed_time)) ), LL_INFO );
@@ -662,8 +670,6 @@ bool FullFileBackup::doFileBackup()
 	{
 		ServerLogger::Log(logid, "(Before compression: "+PrettyPrintBytes(transferred_compressed)+" ratio: "+nconvert((float)transferred_compressed/transferred_bytes)+")");
 	}
-
-	stopFileMetadataDownloadThread();
 
 	ClientMain::run_script(L"urbackup" + os_file_sep() + L"post_full_filebackup", L"\""+ backuppath + L"\"", logid);
 

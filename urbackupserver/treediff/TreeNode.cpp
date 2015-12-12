@@ -21,15 +21,15 @@
 #include <memory.h>
 #include <string.h>
 
-TreeNode::TreeNode(const char* name, const char* data, TreeNode *parent)
+TreeNode::TreeNode(const char* name, const char* data, TreeNode *parent, char node_type)
 	: name(name), data(data), parent(parent), num_children(0), nextSibling(NULL), mapped_node(NULL),
-	  subtree_changed(false)
+	  subtree_changed(false), node_type(node_type)
 {
 }
 
 TreeNode::TreeNode(void)
 	: num_children(0), nextSibling(NULL), mapped_node(NULL), subtree_changed(false), parent(NULL),
-	name(NULL), data(NULL)
+	name(NULL), data(NULL), node_type(0)
 {
 }
 
@@ -49,7 +49,7 @@ std::string TreeNode::getData()
 {
 	if(data!=NULL)
 	{
-		return std::string(data, data+c_treenode_data_size);
+		return std::string(data, data+getDataSize());
 	}
 	else
 	{
@@ -172,9 +172,14 @@ bool TreeNode::nameEquals( const TreeNode& other )
 
 bool TreeNode::dataEquals( const TreeNode& other )
 {
+	if(node_type!=other.node_type)
+	{
+		return false;
+	}
+
 	if(data!=NULL && other.data!=NULL)
 	{
-		return memcmp(data, other.data, c_treenode_data_size)==0;
+		return memcmp(data, other.data, getDataSize())==0;
 	}
 	else
 	{
@@ -186,4 +191,26 @@ bool TreeNode::equals( const TreeNode& other )
 {
 	return nameEquals(other) &&
 		dataEquals(other);
+}
+
+size_t TreeNode::getDataSize()
+{
+	if(node_type=='d')
+	{
+		return c_treenode_data_size_dir;
+	}
+	else
+	{
+		return c_treenode_data_size_file;
+	}
+}
+
+char TreeNode::getType()
+{
+	return node_type;
+}
+
+void TreeNode::setType( char t )
+{
+	node_type = t;
 }

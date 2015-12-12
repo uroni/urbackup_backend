@@ -1530,8 +1530,8 @@ bool FileBackup::stopFileMetadataDownloadThread()
 				}
 
 				ServerLogger::Log(logid, "Waiting for metadata download stream to finish", LL_DEBUG);
-				Server->wait(10000);
-				
+				Server->wait(1000);
+
 				metadata_download_thread->shutdown();
 			}
 			while(!Server->getThreadPool()->waitFor(metadata_download_thread_ticket, 10000));
@@ -1539,7 +1539,7 @@ bool FileBackup::stopFileMetadataDownloadThread()
 
 		if(!disk_error && !has_early_error && !metadata_download_thread->getHasError())
 		{
-			metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, filepath_corrections);
+			return metadata_download_thread->applyMetadata(backuppath_hashes, backuppath, client_main, filepath_corrections);
 		}
 	}
 
