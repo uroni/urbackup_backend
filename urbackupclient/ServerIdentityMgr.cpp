@@ -24,14 +24,11 @@
 
 const unsigned int ident_online_timeout=1*60*60*1000; //1h
 
-std::vector<std::string> ServerIdentityMgr::identities;
+std::vector<SIdentity> ServerIdentityMgr::identities;
 IMutex *ServerIdentityMgr::mutex=NULL;
 IFileServ *ServerIdentityMgr::filesrv=NULL;
-std::vector<int64> ServerIdentityMgr::online_identities;
 std::vector<std::string> ServerIdentityMgr::new_identities;
-std::vector<SPublicKeys> ServerIdentityMgr::publickeys;
 std::vector<SSessionIdentity> ServerIdentityMgr::session_identities;
-std::vector<int64> ServerIdentityMgr::online_session_identities;
 
 #ifdef _WIN32
 const std::string server_ident_file="server_idents.txt";
@@ -57,9 +54,7 @@ void ServerIdentityMgr::addServerIdentity(const std::string &pIdentity, const SP
 {
 	IScopedLock lock(mutex);
 	loadServerIdentities();
-	identities.push_back(pIdentity);
-	publickeys.push_back(pPublicKey);
-	online_identities.push_back(0);
+	identities.push_back(SIdentity(pIdentity, pPublicKey));
 	if(pPublicKey.empty())
 	{
 		filesrv->addIdentity("#I"+pIdentity+"#");
@@ -73,14 +68,14 @@ bool ServerIdentityMgr::checkServerSessionIdentity(const std::string &pIdentity,
 
 	for(size_t i=0;i<session_identities.size();++i)
 	{
-		int64 time = online_session_identities[i];
+		int64 time = session_identities[i].onlinetime;
 		if(time<0) time*=-1;
 
 		if(session_identities[i].ident==pIdentity
 			&& session_identities[i].endpoint==endpoint
 			&& Server->getTimeMS()-time<ident_online_timeout)
 		{
-			online_session_identities[i]=Server->getTimeMS();
+			session_identities[i].onlinetime=Server->getTimeMS();
 			return true;
 		}
 	}
@@ -92,25 +87,14 @@ bool ServerIdentityMgr::checkServerIdentity(const std::string &pIdentity)
 {
 	IScopedLock lock(mutex);
 
-	for(size_t i=0;i<identities.size();++i)
-	{
-		if(identities[i]==pIdentity)
-		{
-			online_identities[i]=Server->getTimeMS();
-			return true;
-		}
-	}
-	return false;
+	return std::find(identities.begin(), identities.end(), SIdentity(pIdentity))!=identities.end();
 }
 
 void ServerIdentityMgr::loadServerIdentities(void)
 {
 	IScopedLock lock(mutex);
-	std::vector<std::string> old_identities=identities;
-	std::vector<int64> old_online_identities=online_identities;
+	std::vector<SIdentity> old_identities=identities;
 	identities.clear();
-	publickeys.clear();
-	online_identities.clear();
 	std::string data=getFile(server_ident_file);
 	int numl=linecount(data);
 	for(int i=0;i<=numl;++i)
@@ -123,30 +107,26 @@ void ServerIdentityMgr::loadServerIdentities(void)
 		if(l.size()>5)
 		{
 			size_t hashpos = l.find("#");
+			SPublicKeys pubkeys;
 			if(hashpos!=std::string::npos)
 			{
 				str_map params;
 				ParseParamStrHttp(l.substr(hashpos+1), &params);
 				
-				publickeys.push_back(SPublicKeys(base64_decode_dash(wnarrow(params[L"pubkey"])),
-					base64_decode_dash(wnarrow(params[L"pubkey_ecdsa409k1"]))));
+				pubkeys = SPublicKeys(base64_decode_dash(wnarrow(params[L"pubkey"])),
+					base64_decode_dash(wnarrow(params[L"pubkey_ecdsa409k1"])));
 
 				l = l.substr(0, hashpos);
 			}
 			else
 			{
 				filesrv->addIdentity("#I"+l+"#");
-				publickeys.push_back(SPublicKeys("", ""));
 			}
-			identities.push_back(l);
-			std::vector<std::string>::iterator it=std::find(old_identities.begin(), old_identities.end(), l);
+			identities.push_back(SIdentity(l, pubkeys));
+			std::vector<SIdentity>::iterator it=std::find(old_identities.begin(), old_identities.end(), SIdentity(l));
 			if(it!=old_identities.end())
 			{
-				online_identities.push_back(old_online_identities[it-old_identities.begin()]);
-			}
-			else
-			{
-				online_identities.push_back(0);
+				identities[identities.size()-1].onlinetime = it->onlinetime;
 			}
 		}
 	}
@@ -161,8 +141,8 @@ void ServerIdentityMgr::loadServerIdentities(void)
 			new_identities.push_back(l);
 		}
 	}
+
 	std::vector<SSessionIdentity> old_session_identities=session_identities;
-	old_online_identities=online_session_identities;
 	session_identities.clear();
 	data=getFile(server_session_ident_file);
 	numl=linecount(data);
@@ -180,19 +160,15 @@ void ServerIdentityMgr::loadServerIdentities(void)
 
 			l = l.substr(0, hashpos);
 
-			SSessionIdentity session_ident = {l, wnarrow(params[L"endpoint"])};
+			SSessionIdentity session_ident(l, wnarrow(params[L"endpoint"]), -1*Server->getTimeMS());
 			session_identities.push_back(session_ident);
 
 			filesrv->addIdentity("#I"+l+"#");
 
-			std::vector<SSessionIdentity>::iterator it=std::find(old_session_identities.begin(), old_session_identities.end(), session_ident);
+			std::vector<SSessionIdentity>::iterator it=std::find(old_session_identities.begin(), old_session_identities.end(), SSessionIdentity(session_ident));
 			if(it!=old_session_identities.end())
 			{
-				online_session_identities.push_back(old_online_identities[it-old_session_identities.begin()]);
-			}
-			else
-			{
-				online_session_identities.push_back(-1*Server->getTimeMS());
+				session_identities[session_identities.size()-1].onlinetime = it->onlinetime;
 			}
 		}
 	}
@@ -231,14 +207,14 @@ void ServerIdentityMgr::writeServerIdentities(void)
 	for(size_t i=0;i<identities.size();++i)
 	{
 		if(!idents.empty()) idents+="\r\n";
-		idents+=identities[i];
+		idents+=identities[i].ident;
 		bool has_pubkey=false;
-		if(!publickeys[i].dsa_key.empty())
+		if(!identities[i].publickeys.dsa_key.empty())
 		{
-			idents+="#pubkey="+base64_encode_dash(publickeys[i].dsa_key);
+			idents+="#pubkey="+base64_encode_dash(identities[i].publickeys.dsa_key);
 			has_pubkey=true;
 		}
-		if(!publickeys[i].ecdsa409k1_key.empty())
+		if(!identities[i].publickeys.ecdsa409k1_key.empty())
 		{
 			if(has_pubkey)
 			{
@@ -248,7 +224,7 @@ void ServerIdentityMgr::writeServerIdentities(void)
 			{
 				idents+="#";
 			}
-			idents+="pubkey_ecdsa409k1="+base64_encode_dash(publickeys[i].ecdsa409k1_key);
+			idents+="pubkey_ecdsa409k1="+base64_encode_dash(identities[i].publickeys.ecdsa409k1_key);
 		}
 	}
 	write_file_only_admin(idents, server_ident_file);
@@ -266,16 +242,16 @@ bool ServerIdentityMgr::hasOnlineServer(void)
 {
 	IScopedLock lock(mutex);
 	int64 ctime=Server->getTimeMS();
-	for(size_t i=0;i<online_identities.size();++i)
+	for(size_t i=0;i<identities.size();++i)
 	{
-		if(online_identities[i]!=0 && ctime-online_identities[i]<ident_online_timeout)
+		if(identities[i].onlinetime!=0 && ctime-identities[i].onlinetime<ident_online_timeout)
 		{
 			return true;
 		}
 	}
-	for(size_t i=0;i<online_session_identities.size();++i)
+	for(size_t i=0;i<session_identities.size();++i)
 	{
-		if(online_session_identities[i]!=0 && ctime-online_session_identities[i]<ident_online_timeout)
+		if(session_identities[i].onlinetime!=0 && ctime-session_identities[i].onlinetime<ident_online_timeout)
 		{
 			return true;
 		}
@@ -286,44 +262,46 @@ bool ServerIdentityMgr::hasOnlineServer(void)
 SPublicKeys ServerIdentityMgr::getPublicKeys( const std::string &pIdentity )
 {
 	IScopedLock lock(mutex);
-	for(size_t i=0;i<identities.size();++i)
+
+	std::vector<SIdentity>::iterator it = std::find(identities.begin(), identities.end(), SIdentity(pIdentity));
+
+	if(it!=identities.end())
 	{
-		if(identities[i]==pIdentity)
-		{
-			return publickeys[i];
-		}
+		return it->publickeys;
 	}
+
 	return SPublicKeys(std::string(), std::string());
 }
 
 bool ServerIdentityMgr::setPublicKeys( const std::string &pIdentity, const SPublicKeys &pPublicKeys )
 {
 	IScopedLock lock(mutex);
-	for(size_t i=0;i<identities.size();++i)
+
+	std::vector<SIdentity>::iterator it = std::find(identities.begin(), identities.end(), SIdentity(pIdentity));
+
+	if(it!=identities.end())
 	{
-		if(identities[i]==pIdentity)
+		it->publickeys = pPublicKeys;
+
+		if(!pPublicKeys.empty())
 		{
-			publickeys[i]=pPublicKeys;
-			if(!pPublicKeys.empty())
-			{
-				filesrv->removeIdentity(pIdentity);
-			}
-			writeServerIdentities();
-			return true;
+			filesrv->removeIdentity(pIdentity);
 		}
+		writeServerIdentities();
+		return true;
 	}
+
 	return false;
 }
 
 bool ServerIdentityMgr::hasPublicKey( const std::string &pIdentity )
 {
 	IScopedLock lock(mutex);
-	for(size_t i=0;i<identities.size();++i)
+	std::vector<SIdentity>::iterator it = std::find(identities.begin(), identities.end(), SIdentity(pIdentity));
+
+	if(it!=identities.end())
 	{
-		if(identities[i]==pIdentity)
-		{
-			return !publickeys[i].empty();
-		}
+		return !it->publickeys.empty();
 	}
 	return false;
 }
@@ -331,9 +309,8 @@ bool ServerIdentityMgr::hasPublicKey( const std::string &pIdentity )
 void ServerIdentityMgr::addSessionIdentity( const std::string &pIdentity, const std::string& endpoint )
 {
 	IScopedLock lock(mutex);
-	SSessionIdentity session_ident = { pIdentity, endpoint};
+	SSessionIdentity session_ident(pIdentity, endpoint, Server->getTimeMS());
 	session_identities.push_back(session_ident);
-	online_session_identities.push_back(Server->getTimeMS());
 	filesrv->addIdentity("#I"+pIdentity+"#");
 	writeSessionIdentities();
 }
@@ -354,7 +331,7 @@ void ServerIdentityMgr::writeSessionIdentities()
 	std::string idents;
 	for(size_t i=session_identities.size(); i-- >0;)
 	{
-		int64 time = online_session_identities[i];
+		int64 time = session_identities[i].onlinetime;
 		if(time<0) time*=-1;
 
 		if(Server->getTimeMS()-time<ident_online_timeout)

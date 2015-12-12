@@ -3,8 +3,21 @@
 
 struct SSessionIdentity
 {
+	explicit SSessionIdentity(std::string ident)
+		: ident(ident), onlinetime(0)
+	{
+
+	}
+
+	SSessionIdentity(std::string ident, std::string endpoint, int64 onlinetime)
+		: ident(ident), endpoint(endpoint), onlinetime(onlinetime)
+	{
+
+	}
+
 	std::string ident;
 	std::string endpoint;
+	int64 onlinetime;
 
 	bool operator==(const SSessionIdentity& other) const
 	{
@@ -21,7 +34,7 @@ struct SPublicKeys
 	SPublicKeys(std::string dsa_key,
 		std::string ecdsa409k1_key)
 		: dsa_key(dsa_key),
-		  ecdsa409k1_key(ecdsa409k1_key)
+		ecdsa409k1_key(ecdsa409k1_key)
 	{
 
 	}
@@ -33,6 +46,30 @@ struct SPublicKeys
 
 	std::string dsa_key;
 	std::string ecdsa409k1_key;
+};
+
+struct SIdentity
+{
+	explicit SIdentity(std::string ident)
+		: ident(ident), onlinetime(0)
+	{
+
+	}
+
+	SIdentity(std::string ident, SPublicKeys publickeys)
+		: ident(ident), onlinetime(0), publickeys(publickeys)
+	{
+
+	}
+
+	std::string ident;
+	int64 onlinetime;
+	SPublicKeys publickeys;
+
+	bool operator==(const SIdentity& other) const
+	{
+		return ident==other.ident;
+	}
 };
 
 class ServerIdentityMgr
@@ -60,12 +97,9 @@ private:
 	static void writeServerIdentities(void);
 	static void writeSessionIdentities();
 
-	static std::vector<std::string> identities;
-	static std::vector<SPublicKeys> publickeys;
-	static std::vector<int64> online_identities;
+	static std::vector<SIdentity> identities;
 	static std::vector<std::string> new_identities;
 	static std::vector<SSessionIdentity> session_identities;
-	static std::vector<int64> online_session_identities;
 
 	static IMutex *mutex;
 
