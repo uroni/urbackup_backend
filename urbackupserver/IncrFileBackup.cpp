@@ -1313,7 +1313,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 					{
 						if(curr_dir_exists)
 						{
-							if(!remove_directory_link_dir(curr_fn, *backup_dao, clientid) )
+							if(!os_remove_nonempty_dir(os_file_prefix(curr_fn)) )
 							{
 								if(!no_error)
 								{
