@@ -838,7 +838,7 @@ void ClientConnector::ReceivePackets(void)
 			{
 				CMD_PING_RUNNING2(cmd); continue;
 			}
-			else if( (cmd=="CHANNEL" || next(cmd, 0, "1CHANNEL") ) )
+			else if( next(cmd, 0, "1CHANNEL") )
 			{
 				CMD_CHANNEL(cmd, &g_lock); continue;
 			}

@@ -57,7 +57,6 @@ private:
 	IMutex *mutex;
 
 	volatile bool do_exit;
-	bool combat_mode;
 	bool internet_mode;
 
 	std::string salt;

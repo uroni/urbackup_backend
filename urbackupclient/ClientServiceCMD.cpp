@@ -753,16 +753,14 @@ void ClientConnector::CMD_CHANNEL(const std::string &cmd, IScopedLock *g_lock)
 	{
 		g_lock->relock(backup_mutex);
 
-		int capa=0;
 		std::string token;
-		if(cmd.find("1CHANNEL ")==0)
-		{
-			std::string s_params=cmd.substr(9);
-			str_map params;
-			ParseParamStrHttp(s_params, &params);
-			capa=watoi(params[L"capa"]);
-			token=wnarrow(params[L"token"]);
-		}
+
+		std::string s_params=cmd.substr(9);
+		str_map params;
+		ParseParamStrHttp(s_params, &params);
+		int capa=watoi(params[L"capa"]);
+		token=wnarrow(params[L"token"]);
+
 		channel_capa.push_back(capa);
 
 		channel_pipe=SChannel(pipe, internet_conn, endpoint_name, token, &make_fileserv);

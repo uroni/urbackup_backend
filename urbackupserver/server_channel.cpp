@@ -148,14 +148,6 @@ ServerChannelThread::ServerChannelThread(ClientMain *client_main, const std::wst
 	do_exit=false;
 	mutex=Server->createMutex();
 	input=NULL;
-	if(clientid!=-1)
-	{
-		combat_mode=false;
-	}
-	else
-	{
-		combat_mode=true;
-	}
 	tcpstack.setAddChecksum(internet_mode);
 }
 
@@ -188,14 +180,9 @@ void ServerChannelThread::operator()(void)
 					IScopedLock lock(mutex);
 					input=np;
 				}
-				if(combat_mode)
-				{
-					tcpstack.Send(input, identity+"CHANNEL");
-				}
-				else
-				{
-					tcpstack.Send(input, identity+"1CHANNEL capa="+nconvert(constructCapabilities())+"&token="+server_token);
-				}
+
+				tcpstack.Send(input, identity+"1CHANNEL capa="+nconvert(constructCapabilities())+"&token="+server_token);
+
 				lasttime=Server->getTimeMS();
 				lastpingtime=lasttime;
 			}
@@ -219,13 +206,9 @@ void ServerChannelThread::operator()(void)
 				{
 					tcpstack.AddData((char*)ret.c_str(), ret.size());
 
-					size_t packetsize;
-					char* pck;
-					while( (pck=tcpstack.getPacket(&packetsize))!=NULL && packetsize>0)
+					while(tcpstack.getPacket(ret) && !ret.empty())
 					{
-						ret.assign(pck, pck+packetsize);
 						Server->Log("Channel message: "+ret, LL_DEBUG);
-						delete [] pck;
 						lasttime=Server->getTimeMS();
 						std::string r=processMsg(ret);
 						if(!r.empty())
@@ -234,7 +217,7 @@ void ServerChannelThread::operator()(void)
 
 					bool was_updated;
 					settings->getSettings(&was_updated);
-					if(input!=NULL && was_updated && !combat_mode)
+					if(input!=NULL && was_updated)
 					{
 						IScopedLock lock(mutex);
 						Server->destroy(input);
@@ -288,7 +271,7 @@ std::string ServerChannelThread::processMsg(const std::string &msg)
 {
 	if(msg=="ERR")
 	{
-		combat_mode=true;
+		return std::string();
 	}
 	else if(msg=="START BACKUP INCR")
 	{
