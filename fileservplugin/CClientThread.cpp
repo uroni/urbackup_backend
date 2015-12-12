@@ -136,48 +136,6 @@ CClientThread::~CClientThread()
 	}
 }
 
-void CClientThread::EnableNagle(void)
-{
-	if(has_socket)
-	{
-#ifdef DISABLE_NAGLE
-#if defined(_WIN32) || defined(__APPLE__)
-	BOOL opt=FALSE;
-	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
-	if( err==SOCKET_ERROR )
-		Log("Error: Setting TCP_NODELAY=FALSE failed", LL_WARNING);
-#else
-	static bool once=true;
-	if( once==true )
-	{
-		once=false;
-		int opt=1;
-		int err=setsockopt(int_socket, IPPROTO_TCP, TCP_CORK, (char*)&opt, sizeof(int) );
-		if( err==SOCKET_ERROR )
-		{
-			Log("Error: Setting TCP_CORK failed. errno: "+nconvert(errno), LL_WARNING);
-		}
-	}
-#endif
-#endif
-	}
-}
-
-void CClientThread::DisableNagle(void)
-{
-	if(has_socket)
-	{
-#ifdef DISABLE_NAGLE
-#ifdef _WIN32
-	BOOL opt=TRUE;
-	int err=setsockopt(int_socket,IPPROTO_TCP, TCP_NODELAY, (char*)&opt, sizeof(BOOL) );
-	if( err==SOCKET_ERROR )
-		Log("Error: Setting TCP_NODELAY=TRUE failed", LL_WARNING);
-#endif
-#endif
-	}
-}
-
 void CClientThread::operator()(void)
 {
 #ifdef _WIN32

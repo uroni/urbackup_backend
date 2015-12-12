@@ -116,9 +116,6 @@ private:
 	void ReleaseMemory(void);
 	void CloseThread(HANDLE hFile);
 
-	void EnableNagle(void);
-	void DisableNagle(void);
-
 	bool GetFileBlockdiff(CRData *data);
 	bool Handle_ID_BLOCK_REQUEST(CRData *data);
 

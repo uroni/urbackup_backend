@@ -30,9 +30,6 @@
 #include "log.h"
 
 std::fstream logfile;
-#ifdef CAMPUS
-CCampusThread *ct=NULL;
-#endif
 CTCPFileServ *TCPServer=NULL;
 
 #ifdef LINUX
@@ -412,9 +409,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #endif //AS_SERVICE
 
 #ifndef AS_SERVICE
-#ifdef CAMPUS
-	delete ct;
-#endif
 	return 2;
 #endif
 #ifdef _DEBUG

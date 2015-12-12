@@ -13,13 +13,11 @@ const _i32 SENDSIZE=16384;
 const uchar VERSION=36;
 const _i32 WINDOW_SIZE=512*1024; // 128 kbyte
 
-#define DISABLE_NAGLE
-//#define DISABLE_WINDOW_SIZE
+#define DISABLE_WINDOW_SIZE
 //#define HIGH_PRIORITY
 //#define LOG_FILE
 //#define LOG_CONSOLE
 //#define LOG_OFF
-//#define CAMPUS
 #define LOG_SERVER
 #define DLL_EXPORT
 #define CHECK_IDENT

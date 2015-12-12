@@ -123,20 +123,12 @@ bool CTCPFileServ::Start(_u16 tcpport,_u16 udpport, std::string pServername, boo
 
 		if( err==SOCKET_ERROR )
 			Log("Error: Can't modify SO_SNDBUF", LL_DEBUG);
-		else 
-			Log("Info: retval "+nconvert(err), LL_DEBUG );
 
 
 		err=setsockopt(mSocket, SOL_SOCKET, SO_RCVBUF, (char *) &window_size, sizeof(window_size));
 
 		if( err==SOCKET_ERROR )
 			Log("Error: Can't modify SO_RCVBUF", LL_DEBUG);
-		else 
-			Log("Info: retval "+nconvert(err), LL_DEBUG );
-
-		socklen_t window_size_len=sizeof(window_size);
-		getsockopt(mSocket, SOL_SOCKET, SO_SNDBUF,(char *) &window_size, &window_size_len );
-		Log("Info: Window size="+nconvert(window_size));
 #endif
 		int optval=1;
 		rc=setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(int));
