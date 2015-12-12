@@ -879,6 +879,12 @@ void IndexThread::indexDirs(void)
 
 			std::wstring mod_path=backup_dirs[i].path;
 
+#ifdef _WIN32
+			if(mod_path.size()==2) //e.g. C:
+			{
+				mod_path+=os_file_sep();
+			}
+#endif
 			int filetype = os_get_file_type(os_file_prefix(mod_path));
 
 			bool shadowcopy_optional = (backup_dirs[i].flags & EBackupDirFlag_Optional)
@@ -893,7 +899,14 @@ void IndexThread::indexDirs(void)
 				VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_DEBUG);	
 				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy);
 				VSSLog("done.", LL_DEBUG);
-			}		
+			}
+			else if(shadowcopy_optional)
+			{
+				std::wstring err_msg;
+				int64 errcode = os_last_error(err_msg);
+
+				VSSLog(L"Cannot access \""+mod_path+L"\". Not creating snapshot.  Errorcode: "+convert(errcode)+L" - "+trim(err_msg), LL_ERROR);
+			}
 
 			if(stale_shadowcopy)
 			{
@@ -904,7 +917,7 @@ void IndexThread::indexDirs(void)
 			{
 				if(!shadowcopy_optional)
 				{
-					VSSLog(L"Creating snapshot of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
+					VSSLog(L"Creating snapshot of \""+scd->dir+L"\" failed.", LL_ERROR);
 				}
 				shareDir(widen(starttoken), scd->dir, scd->target);
 			}
@@ -942,11 +955,9 @@ void IndexThread::indexDirs(void)
 				}
 				std::sort(changed_dirs.begin(), changed_dirs.end());
 
-				#ifndef VSS_XP
-				#ifndef VSS_S03
+				#if !defined(VSS_XP) && !defined(VSS_S03)
 				VSSLog(L"Scanning for changed hard links in \""+backup_dirs[i].tname+L"\"...", LL_DEBUG);
 				handleHardLinks(backup_dirs[i].path, mod_path);
-				#endif
 				#endif
 
 				std::vector<std::wstring> deldirs=cd->getDelDirs(strlower(backup_dirs[i].path), false);
@@ -1143,13 +1154,23 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 	
 	if(first)
 	{
-		int filetype = os_get_file_type(os_file_prefix(dir));
+		std::wstring curr_dir = os_file_prefix(dir);
+		int filetype = os_get_file_type(curr_dir);
+
+		if(filetype==0)
+		{
+			curr_dir = os_file_prefix(add_trailing_slash(dir));
+			filetype = os_get_file_type(curr_dir);
+		}
 
 		if(!(filetype & EFileType_File) && !(filetype & EFileType_Directory))
 		{
 			if(!(flags & EBackupDirFlag_Optional) && (!symlinked || !(flags & EBackupDirFlag_SymlinksOptional) ) )
 			{
-				VSSLog(L"Cannot access path to backup: \""+dir+L"\"", LL_ERROR);
+				std::wstring err_msg;
+				int64 errcode = os_last_error(err_msg);
+
+				VSSLog(L"Cannot access path to backup: \""+dir+L"\" Errorcode: "+convert(errcode)+L" - "+trim(err_msg), LL_ERROR);
 				index_error=true;
 			}
 
@@ -1182,7 +1203,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 		{
 			close_dir=true;
 
-			SFile metadata = getFileMetadataWin(os_file_prefix(dir), true);
+			SFile metadata = getFileMetadataWin(curr_dir, true);
 
 			if(metadata.usn==0)
 			{
