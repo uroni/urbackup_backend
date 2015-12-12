@@ -879,20 +879,33 @@ void IndexThread::indexDirs(void)
 
 			std::wstring mod_path=backup_dirs[i].path;
 
-			VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_DEBUG);
+			int filetype = os_get_file_type(os_file_prefix(mod_path));
+
+			bool shadowcopy_optional = (backup_dirs[i].flags & EBackupDirFlag_Optional)
+				|| (backup_dirs[i].symlinked && (backup_dirs[i].flags & EBackupDirFlag_SymlinksOptional) );
+
 			bool onlyref=true;
 			bool stale_shadowcopy=false;
-			bool b=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy);
-			VSSLog("done.", LL_DEBUG);
+			bool shadowcopy_ok=false;
+
+			if(filetype!=0 || !shadowcopy_optional)
+			{
+				VSSLog(L"Creating shadowcopy of \""+scd->dir+L"\" in indexDirs()", LL_DEBUG);	
+				shadowcopy_ok=start_shadowcopy(scd, &onlyref, true, past_refs, false, &stale_shadowcopy);
+				VSSLog("done.", LL_DEBUG);
+			}		
 
 			if(stale_shadowcopy)
 			{
 				has_stale_shadowcopy=true;
 			}
 
-			if(!b)
+			if(!shadowcopy_ok)
 			{
-				VSSLog(L"Creating snapshot of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
+				if(!shadowcopy_optional)
+				{
+					VSSLog(L"Creating snapshot of \""+scd->dir+L"\" failed in indexDirs().", LL_ERROR);
+				}
 				shareDir(widen(starttoken), scd->dir, scd->target);
 			}
 			else
@@ -913,7 +926,7 @@ void IndexThread::indexDirs(void)
 			std::string extra;
 
 #ifdef _WIN32
-			if(!b || !onlyref)
+			if(!shadowcopy_ok || !onlyref)
 			{
 				past_refs.push_back(scd->ref);
 				DirectoryWatcherThread::update_and_wait(open_files);
@@ -1131,7 +1144,7 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 	
 	if(first)
 	{
-		int filetype = os_get_file_type(os_file_prefix(dir+os_file_sep()+fn_filter));
+		int filetype = os_get_file_type(os_file_prefix(dir));
 
 		if(!(filetype & EFileType_File) && !(filetype & EFileType_Directory))
 		{
@@ -1909,6 +1922,7 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	{
 		sc_refs.erase(sc_refs.end()-1);
 		delete dir->ref;
+		dir->ref=NULL;
 		dir->target = dir->orig_target;
 	}
 

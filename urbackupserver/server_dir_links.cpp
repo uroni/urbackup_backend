@@ -270,7 +270,7 @@ namespace
 
 		std::wstring directory_pool = ExtractFileName(ExtractFilePath(ExtractFilePath(pool_path, os_file_sep()), os_file_sep()), os_file_sep());
 
-		if(directory_pool!=".directory_pool")
+		if(directory_pool!=L".directory_pool")
 		{
 			//Other symlink. Simply delete
 			if(!os_remove_symlink_dir(os_file_prefix(path)))
