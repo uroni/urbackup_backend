@@ -331,7 +331,7 @@ std::vector<SBackupDir> ClientDAO::getBackupDirs(void)
 		dir.id=watoi(res[i][L"id"]);
 		dir.tname=res[i][L"name"];
 		dir.path=res[i][L"path"];
-		dir.flags=watoi(res[i][L"flags"]);
+		dir.flags=watoi(res[i][L"optional"]);
 		dir.group=watoi(res[i][L"tgroup"]);
 		dir.symlinked=(res[i][L"symlinked"]==L"1");
 		dir.symlinked_confirmed=false;
