@@ -1369,7 +1369,7 @@ bool IncrFileBackup::deleteFilesInSnapshot(const std::string clientlist_fn, cons
 					{
 						if( curr_dir_exists )
 						{
-							ServerLogger::Log(logid, L"Removing file \""+curr_fn+L"\" in ::deleteFilesInSnapshot", LL_DEBUG);
+							//ServerLogger::Log(logid, L"Removing file \""+curr_fn+L"\" in ::deleteFilesInSnapshot", LL_DEBUG);
 							if( !Server->deleteFile(os_file_prefix(curr_fn)) )
 							{
 								if(!no_error)
