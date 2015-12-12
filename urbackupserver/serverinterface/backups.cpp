@@ -294,7 +294,7 @@ namespace backupaccess
 			if(iter!=GET.end())
 			{
 				std::string bin_input = base64_decode_dash(wnarrow(iter->second));
-				std::string session_key = crypto_fak->decryptAuthenticatedAES(bin_input, client_key);
+				std::string session_key = crypto_fak->decryptAuthenticatedAES(bin_input, client_key, 1);
 				if(!session_key.empty())
 				{
 					iter = GET.find(L"token_data");
@@ -306,7 +306,7 @@ namespace backupaccess
 
 					bin_input = base64_decode_dash(wnarrow(iter->second));
 
-					std::string decry = crypto_fak->decryptAuthenticatedAES(bin_input, session_key);
+					std::string decry = crypto_fak->decryptAuthenticatedAES(bin_input, session_key, 1);
 
 					if(!decry.empty())
 					{

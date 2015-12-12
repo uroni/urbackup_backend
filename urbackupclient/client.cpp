@@ -3551,7 +3551,7 @@ void IndexThread::writeTokens()
 
 	if(!has_server_key || (Server->getTimeSeconds()-curr_key_age)>7*24*60*60)
 	{
-		curr_key = Server->secureRandomString(30);
+		curr_key = Server->secureRandomString(32);
 		curr_key_age = Server->getTimeSeconds();
 		modified_file=true;
 	}

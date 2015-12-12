@@ -2775,7 +2775,7 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 		{
 			ret += "&tokens"+nconvert(i)+"="+base64_encode_dash(
 				crypto_fak->encryptAuthenticatedAES(session_key,
-				Server->ConvertToUTF8(server_key)) );
+				Server->ConvertToUTF8(server_key), 1));
 			has_token=true;
 		}
 	}
@@ -2784,7 +2784,7 @@ std::string ClientConnector::getAccessTokensParams(const std::wstring& tokens, b
 	{
 		ret += "&token_data="+base64_encode_dash(
 			crypto_fak->encryptAuthenticatedAES(Server->ConvertToUTF8(tokens),
-			session_key ) );
+			session_key, 1) );
 	}	
 
 	if(with_clientname)
