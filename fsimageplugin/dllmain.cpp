@@ -1191,7 +1191,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	Server->RegisterPluginThreadsafeModel( imagepluginmgr, "fsimageplugin");
 
+#ifndef STATIC_PLUGIN
 	Server->Log("Loaded -fsimageplugin- plugin", LL_INFO);
+#endif
 }
 
 DLLEXPORT void UnloadActions(void)

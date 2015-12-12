@@ -58,7 +58,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 
 	Server->RegisterPluginThreadsafeModel( urlpluginmgr, "url");
 
+#ifndef STATIC_PLUGIN
 	Server->Log("Loaded -url- plugin", LL_INFO);
+#endif
 }
 
 DLLEXPORT void UnloadActions(void)

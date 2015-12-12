@@ -78,7 +78,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		fileserv->addIdentity("");
 	}
 
+#ifndef STATIC_PLUGIN
 	Server->Log("Loaded -fileserv- plugin", LL_INFO);
+#endif
 }
 
 DLLEXPORT void UnloadActions(void)

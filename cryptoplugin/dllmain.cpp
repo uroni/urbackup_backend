@@ -131,7 +131,9 @@ DLLEXPORT void LoadActions(IServer* pServer)
 		_exit(0);
 	}
 
+#ifndef STATIC_PLUGIN
 	Server->Log("Loaded -cryptoplugin- plugin", LL_INFO);
+#endif
 }
 
 DLLEXPORT void UnloadActions(void)
