@@ -171,7 +171,7 @@ void ServerChannelThread::operator()(void)
 			IPipe *np=client_main->getClientCommandConnection(10000, &client_addr);
 			if(np==NULL)
 			{
-				Server->Log("Connecting Channel to ClientService failed - CONNECT error -55", LL_DEBUG);
+				Server->Log(L"Connecting Channel to "+clientname+L" failed - CONNECT error -55", LL_DEBUG);
 				Server->wait(10000);
 			}
 			else
@@ -191,7 +191,7 @@ void ServerChannelThread::operator()(void)
 		{
 			if(Server->getTimeMS()-lasttime>180000)
 			{
-				Server->Log("Resetting channel because of timeout.", LL_DEBUG);
+				Server->Log(L"Resetting channel to "+clientname+L" because of timeout.", LL_DEBUG);
 				IScopedLock lock(mutex);
 				Server->destroy(input);
 				input=NULL;
@@ -229,7 +229,7 @@ void ServerChannelThread::operator()(void)
 				{
 					if(input->hasError())
 					{
-						Server->Log("Lost channel connection to client. has_error=true", LL_DEBUG);
+						Server->Log(L"Lost channel connection to "+clientname+L". has_error=true", LL_DEBUG);
 						IScopedLock lock(mutex);
 						Server->destroy(input);
 						input=NULL;
@@ -238,7 +238,7 @@ void ServerChannelThread::operator()(void)
 					}
 					else
 					{
-						Server->Log("Lost channel connection to client. has_error=false", LL_DEBUG);
+						Server->Log(L"Lost channel connection to "+clientname+L". has_error=false", LL_DEBUG);
 						Server->wait(1000);
 					}
 				}
