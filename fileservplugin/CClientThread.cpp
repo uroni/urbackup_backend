@@ -66,7 +66,6 @@
 CClientThread::CClientThread(SOCKET pSocket, CTCPFileServ* pParent)
 {
 	int_socket=pSocket;
-	DisableNagle();
 
 	stopped=false;
 	killable=false;
@@ -1456,7 +1455,6 @@ bool CClientThread::GetFileHashAndMetadata( CRData* data )
 
 	if(hFile == INVALID_HANDLE_VALUE)
 	{
-		hFile=NULL;
 #ifdef CHECK_BASE_PATH
 		std::wstring basePath=map_file(getuntil(L"/",o_filename)+L"/", ident);
 		if(!isDirectory(basePath))
