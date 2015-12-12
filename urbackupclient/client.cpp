@@ -1900,10 +1900,19 @@ bool IndexThread::start_shadowcopy(SCDirs *dir, bool *onlyref, bool allow_restar
 	
 
 #ifdef _WIN32
-	return start_shadowcopy_win(dir, wpath, for_imagebackup, onlyref);
+	bool b = start_shadowcopy_win(dir, wpath, for_imagebackup, onlyref);
 #else
-	return start_shadowcopy_lin(dir, wpath, for_imagebackup, onlyref);
+	bool b = start_shadowcopy_lin(dir, wpath, for_imagebackup, onlyref);
 #endif
+
+	if(!b)
+	{
+		sc_refs.erase(sc_refs.end()-1);
+		delete dir->ref;
+		dir->target = dir->orig_target;
+	}
+
+	return b;
 }
 
 namespace
