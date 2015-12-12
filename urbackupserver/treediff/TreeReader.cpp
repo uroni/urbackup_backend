@@ -117,12 +117,13 @@ bool TreeReader::readTree(const std::string &fn)
 					{
 						stringbuffer_size+=2*sizeof(int64);
 					}
-					else
+					if(ltype!="d" || name!="..")
 					{
-						stringbuffer_size+=sizeof(int64);
-					}
-					if(name!="..")
-					{
+						if(ltype=='d')
+						{
+							stringbuffer_size+=sizeof(int64);
+						}
+
 						++lines;
 						stringbuffer_size+=name.size()+1;
 					}
