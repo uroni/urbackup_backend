@@ -260,12 +260,24 @@ namespace
 			return false;
 		}
 
-		std::wstring pool_name = ExtractFileName(pool_path);
+		std::wstring pool_name = ExtractFileName(pool_path, os_file_sep());
 
 		if(pool_name.empty())
 		{
 			Server->Log(L"Error extracting pool name from pool path \""+pool_path+L"\"", LL_ERROR);
 			return false;
+		}
+
+		std::wstring directory_pool = ExtractFileName(ExtractFilePath(ExtractFilePath(pool_path, os_file_sep()), os_file_sep()), os_file_sep());
+
+		if(directory_pool!=".directory_pool")
+		{
+			//Other symlink. Simply delete
+			if(!os_remove_symlink_dir(os_file_prefix(path)))
+			{
+				Server->Log(L"Error removing symlink dir \""+path+L"\"", LL_ERROR);
+			}
+			return true;
 		}
 
 		std::wstring target_raw;
