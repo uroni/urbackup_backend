@@ -3727,6 +3727,8 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 		return false;
 	}
 
+	std::wstring orig_target = target;
+
 	if(!os_path_absolute(target))
 	{
 		target = orig_path + os_file_sep() + target;
@@ -3760,7 +3762,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 
 			if(backup_dirs[i].symlinked && !backup_dirs[i].symlinked_confirmed)
 			{
-				VSSLog(L"Following symbolic link at \""+symlink+L"\" confirms symlink backup target \""+target+L"\"", LL_INFO);
+				VSSLog(L"Following symbolic link at \""+symlink+L"\" to \""+orig_target+L"\" confirms symlink backup target \""+backup_dirs[i].tname+L"\" to \""+backup_dirs[i].path+L"\"", LL_INFO);
 				backup_dirs[i].symlinked_confirmed=true;
 			}
 
@@ -3770,7 +3772,7 @@ bool IndexThread::getAbsSymlinkTarget( const std::wstring& symlink, const std::w
 
 	if(index_flags & EBackupDirFlag_FollowSymlinks)
 	{
-		VSSLog(L"Following symbolic link at \""+symlink+L"\" to new symlink backup target \""+target+L"\"", LL_INFO);
+		VSSLog(L"Following symbolic link at \""+symlink+L"\" to new symlink backup target at \""+target+L"\"", LL_INFO);
 		addSymlinkBackupDir(target);
 		return true;
 	}
