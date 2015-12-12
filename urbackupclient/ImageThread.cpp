@@ -819,7 +819,7 @@ void ImageThread::operator()(void)
 {
 #ifdef _WIN32
 #ifndef _DEBUG
-	if(IndexThread::backgroundBackupsEnabled())
+	if(IndexThread::backgroundBackupsEnabled(std::string()))
 	{
 #ifdef THREAD_MODE_BACKGROUND_BEGIN
 #if defined(VSS_XP) || defined(VSS_S03)
