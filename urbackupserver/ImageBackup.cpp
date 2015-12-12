@@ -896,7 +896,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 				
 				size_t toread = (std::min)(bitmap_size - bitmap_read, r-off);
 				
-				if(bitmap_file->Write(&buffer[off], toread)!=toread)
+				if(bitmap_file->Write(&buffer[off], static_cast<_u32>(toread))!=toread)
 				{
 					ServerLogger::Log(logid, "Error writing to bitmap file", LL_ERROR);
 					goto do_image_cleanup;
@@ -906,7 +906,7 @@ bool ImageBackup::doImage(const std::string &pLetter, const std::wstring &pParen
 				
 				if(bitmap_read==bitmap_size)
 				{
-					off+=toread;
+					off+=static_cast<_u32>(toread);
 					
 					bitmap_file->Seek(bitmap_size-sha_size);
 					char dig_recv[sha_size];

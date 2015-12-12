@@ -548,7 +548,11 @@ bool IncrFileBackup::doFileBackup()
 
 					if(cf.name!=L"..")
 					{
-						bool dir_diff = hasChange(line, dir_diffs);
+						bool dir_diff = false;
+						if(!indirchange)
+						{
+							dir_diff = hasChange(line, dir_diffs);
+						}						
 
 						dir_diff_stack.push(dir_diff);
 
@@ -621,10 +625,20 @@ bool IncrFileBackup::doFileBackup()
 						}
 						if(!dir_linked && (!use_snapshots || indirchange || dir_diff) )
 						{
-							bool create_hash_dir=true;
+							bool create_hash_dir= !(dir_diff && use_snapshots);
 							str_map::iterator sym_target = extra_params.find(L"sym_target");
 							if(sym_target!=extra_params.end())
 							{
+								if(dir_diff && use_snapshots)
+								{
+									if(!os_remove_symlink_dir(backuppath+local_curr_os_path))
+									{
+										ServerLogger::Log(logid, L"Could not remove symbolic link at \""+backuppath+local_curr_os_path+L"\" " + widen(systemErrorInfo()), LL_ERROR);
+										c_has_error=true;
+										break;
+									}
+								}
+
 								if(!createSymlink(backuppath+local_curr_os_path, depth, sym_target->second, Server->ConvertToUnicode(orig_sep), true))
 								{
 									ServerLogger::Log(logid, L"Creating symlink at \""+backuppath+local_curr_os_path+L"\" to \""+sym_target->second+L" failed. " + widen(systemErrorInfo()), LL_ERROR);
@@ -635,7 +649,7 @@ bool IncrFileBackup::doFileBackup()
 								metadata_fn = backuppath_hashes + convertToOSPathFromFileClient(orig_curr_os_path + L"/" + escape_metadata_fn(cf.name)); 
 								create_hash_dir=false;
 							}
-							else if(!os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
+							else if( (dir_diff && use_snapshots) || !os_create_dir(os_file_prefix(backuppath+local_curr_os_path)))
 							{
 								if(!os_directory_exists(os_file_prefix(backuppath+local_curr_os_path)))
 								{
@@ -660,6 +674,16 @@ bool IncrFileBackup::doFileBackup()
 								else
 								{
 									ServerLogger::Log(logid, L"Directory  \""+backuppath_hashes+local_curr_os_path+L"\" does already exist. - " + widen(systemErrorInfo()), LL_WARNING);
+								}
+							}
+
+							if(dir_diff && use_snapshots)
+							{
+								if(!Server->deleteFile(metadata_fn))
+								{
+									ServerLogger::Log(logid, L"Error deleting metadata file \""+metadata_fn+L"\".", LL_ERROR);
+									c_has_error=true;
+									break;
 								}
 							}
 							
