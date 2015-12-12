@@ -1210,7 +1210,15 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 				continue;
 			}
 			has_include=true;
-			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(files[i].name)) << "\" " << files[i].size << " " << files[i].change_indicator;
+
+			std::wstring listname = files[i].name;
+
+			if(first && !fn_filter.empty() && i==0)
+			{
+				listname = named_path;
+			}
+
+			outfile << "f\"" << escapeListName(Server->ConvertToUTF8(listname)) << "\" " << files[i].size << " " << files[i].change_indicator;
 		
 			bool params_started=false;
 
@@ -1289,8 +1297,15 @@ bool IndexThread::initialCheck(std::wstring orig_dir, std::wstring dir, std::wst
 				{
 					extra+="&special=1";
 				}
+
+				std::wstring listname = files[i].name;
+
+				if(first && !fn_filter.empty() && i==0)
+				{
+					listname = named_path;
+				}
 				
-				writeDir(outfile, files[i].name, extra);
+				writeDir(outfile, listname, extra);
 				extra.clear();
 
 				bool b=true;
