@@ -1308,6 +1308,10 @@ do_image_cleanup:
 		delete vhdfile;
 		vhdfile=NULL;
 	}
+	else if(r_vhdfile!=NULL)
+	{
+		image_fak->destroyVHDFile(r_vhdfile);
+	}
 	if(hashfile!=NULL) Server->destroy(hashfile);
 	if(parenthashfile!=NULL) Server->destroy(parenthashfile);
 	delete []zeroblockdata;
