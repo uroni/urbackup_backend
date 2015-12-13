@@ -1399,6 +1399,11 @@ std::string CServer::ConvertToUTF32(const std::string &input)
 
 std::string CServer::ConvertFromUTF16(const std::string &input)
 {
+	if(input.empty())
+	{
+		return std::string();
+	}
+
 	std::string ret;
     try
     {
@@ -1410,6 +1415,11 @@ std::string CServer::ConvertFromUTF16(const std::string &input)
 
 std::string CServer::ConvertFromUTF32(const std::string &input)
 {
+	if(input.empty())
+	{
+		return std::string();
+	}
+
 	std::string ret;
     try
     {
