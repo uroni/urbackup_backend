@@ -1768,15 +1768,22 @@ void ClientConnector::CMD_CAPA(const std::string &cmd)
 		win_nonusb_volumes = get_all_volumes_list(true, volumes_cache);
 	}
 
+	std::string restore=Server->getServerParameter("allow_restore");
+
+	if(restore.empty())
+	{
+		restore="client-confirms";
+	}
+
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&IMAGE=1&UPDATE=1&MBR=1&FILESRV=3&SET_SETTINGS=1&IMAGE_VER=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)+
 		"&ALL_VOLUMES="+EscapeParamString(win_volumes)+"&ETA=1&CDP=0&ALL_NONUSB_VOLUMES="+EscapeParamString(win_nonusb_volumes)+"&EFI=1"
-		"&FILE_META=1&SELECT_SHA=1");
+		"&FILE_META=1&SELECT_SHA=1&RESTORE="+restore);
 #else
 	std::string os_version_str=get_lin_os_version();
 	tcpstack.Send(pipe, "FILE=2&FILE2=1&FILESRV=3&SET_SETTINGS=1&CLIENTUPDATE=1"
 		"&CLIENT_VERSION_STR="+EscapeParamString((client_version_str))+"&OS_VERSION_STR="+EscapeParamString(os_version_str)
-		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1");
+		+"&ETA=1&CPD=0&FILE_META=1&SELECT_SHA=1&RESTORE="+restore);
 #endif
 }
 
@@ -1885,6 +1892,13 @@ void ClientConnector::CMD_SCRIPT_STDERR(const std::string& cmd)
 
 void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 {
+	std::string restore=Server->getServerParameter("allow_restore");
+	if(restore!="client-confirms" && restore!="server-confirms")
+	{
+		tcpstack.Send(pipe, "disabled");
+		return;
+	}
+
 	str_map params;
 	ParseParamStrHttp(cmd, &params);
 
@@ -1894,12 +1908,25 @@ void ClientConnector::CMD_FILE_RESTORE(const std::string& cmd)
 	int64 status_id=watoi64(params["status_id"]);
 	int64 log_id=watoi64(params["log_id"]);
 
+	RestoreFiles* local_restore_files = new RestoreFiles(restore_id, status_id, log_id, client_token, server_token);
+
+	if(restore == "client-confirms")
 	{
 		IScopedLock lock(backup_mutex);
 		restore_ok_status = RestoreOk_Wait;
-	}
+		status_updated = true;
 
-	Server->getThreadPool()->execute(new RestoreFiles(restore_id, status_id, log_id, client_token, server_token));
+		if(restore_files!=NULL)
+		{
+			delete restore_files;
+		}
+
+		restore_files = local_restore_files;
+	}
+	else
+	{
+		Server->getThreadPool()->execute(local_restore_files);
+	}
 
 	tcpstack.Send(pipe, "ok");
 }
@@ -1910,10 +1937,22 @@ void ClientConnector::CMD_RESTORE_OK( str_map &params )
 	if(params["ok"]=="true")
 	{
 		restore_ok_status = RestoreOk_Ok;
+
+		if(restore_files!=NULL)
+		{
+			Server->getThreadPool()->execute(restore_files);
+			restore_files=NULL;
+		}
 	}
 	else
 	{
 		restore_ok_status = RestoreOk_Declined;
+	}
+
+	if(restore_files!=NULL)
+	{
+		delete restore_files;
+		restore_files=NULL;
 	}
 
 	tcpstack.Send(pipe, "ok");

@@ -380,6 +380,26 @@ int ServerStatus::numRunningJobs( const std::string &clientname )
 	return s->running_jobs;
 }
 
+void ServerStatus::setRestore( const std::string &clientname, ERestore restore )
+{
+	IScopedLock lock(mutex);
+	SStatus *s=&status[clientname];
+	s->restore = restore;
+}
+
+bool ServerStatus::canRestore( const std::string &clientname, bool& server_confirms)
+{
+	IScopedLock lock(mutex);
+	std::map<std::string, SStatus>::iterator it=status.find(clientname);
+	if(it==status.end())
+	{
+		return false;
+	}
+	SStatus* s=&it->second;
+	server_confirms = s->restore==ERestore_server_confirms;
+	return s->online && s->r_online && s->restore!=ERestore_disabled;
+}
+
 ACTION_IMPL(server_status)
 {
 #ifndef _DEBUG

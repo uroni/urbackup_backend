@@ -1247,19 +1247,17 @@ bool IndexThread::initialCheck(std::string orig_dir, std::string dir, std::strin
 
 			outfile << "f\"" << escapeListName((listname)) << "\" " << files[i].size << " " << files[i].change_indicator;
 		
-			bool params_started=false;
-
 			if(calculate_filehashes_on_client)
 			{
-					if(sha_version!=256)
-					{
-						outfile << "sha512=" << base64_encode_dash(files[i].hash);
-					}
-					else
-					{
-						outfile << "sha256=" << base64_encode_dash(files[i].hash);
-					}
+				if(sha_version!=256)
+				{
+					extra+="&sha512="+base64_encode_dash(files[i].hash);
 				}
+				else
+				{
+					extra+="&sha256="+base64_encode_dash(files[i].hash);
+				}
+			}
 				
 			if(end_to_end_file_backup_verification)
 			{

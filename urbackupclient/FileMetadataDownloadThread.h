@@ -16,6 +16,7 @@ public:
 
 	bool applyOsMetadata(IFile* metadata_f, const std::string& output_fn);
 
+	void shutdown();
 
 private:
 	RestoreFiles& restore;

@@ -93,9 +93,23 @@ void RestoreFiles::operator()()
 
 	ClientConnector::updateRestorePc(status_id, 101, server_token);
 
-	fc.InformMetadataStreamEnd(client_token);
-	Server->getThreadPool()->waitFor(metadata_dl);
+	do
+	{
+		if(fc.InformMetadataStreamEnd(client_token)==ERR_TIMEOUT)
+		{
+			fc.Reconnect();
 
+			fc.InformMetadataStreamEnd(client_token);
+		}
+
+		log("Waiting for metadata download stream to finish", LL_DEBUG);
+
+		Server->wait(1000);
+
+		metadata_thread->shutdown();
+	}
+	while(!Server->getThreadPool()->waitFor(metadata_dl, 10000));
+	
 	if(!metadata_thread->applyMetadata())
 	{
 		restore_failed(fc, metadata_dl);
@@ -221,16 +235,29 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 	std::vector<size_t> folder_items;
 	folder_items.push_back(0);
 
+	std::stack<std::vector<std::string> > folder_files;
+	folder_files.push(std::vector<std::string>());
+
+	std::vector<std::string> deletion_queue;
+	std::vector<std::pair<std::string, std::string> > rename_queue;
+
+	bool single_item=false;
+
 	do 
 	{
 		read = filelist->Read(buffer.data(), static_cast<_u32>(buffer.size()));
 
-		for(_u32 i=0;i<read;++i)
+		for(_u32 i=0;i<read && !has_error;++i)
 		{
 			if(filelist_parser.nextEntry(buffer[i], data, &extra))
 			{
 				FileMetadata metadata;
 				metadata.read(extra);
+
+				if(depth==0 && extra.find("single_item")!=extra.end())
+				{
+					single_item=true;
+				}
 
 				int64 ctime=Server->getTimeMS();
 				if(ctime-laststatsupdate>1000)
@@ -294,7 +321,15 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 							}							
 						}
 
+#ifdef _WIN32
+						std::string name_lower = strlower(data.name);
+#else
+						std::string name_lower = data.name;
+#endif
+						folder_files.top().push_back(name_lower);
+
 						folder_items.push_back(0);
+						folder_files.push(std::vector<std::string>());
 
 						server_path+="/"+data.name;
 
@@ -304,6 +339,11 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					{
 						--depth;
 
+						if(!removeFiles(restore_path, folder_files, deletion_queue))
+						{
+							has_error=true;
+						}
+
 						server_path=ExtractFilePath(server_path, "/");
 						restore_path=ExtractFilePath(restore_path, os_file_sep());						
 
@@ -311,6 +351,7 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
                             metadata, false, true, folder_items.back());
 
 						folder_items.pop_back();
+						folder_files.pop();
 					}
 				}
 				else
@@ -322,6 +363,8 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 					std::string name_lower = data.name;
 #endif
 					std::string server_fn = server_path + "/" + data.name;
+
+					folder_files.top().push_back(name_lower);
 
 					str_map::iterator it_orig_path = extra.find("orig_path");
 					if(it_orig_path!=extra.end())
@@ -375,6 +418,21 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 						}
 
 						IFile* orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW);
+
+#ifdef _WIN32
+						if(orig_file)
+						{
+							size_t idx=0;
+							std::string old_local_fn=local_fn;
+							while(orig_file==NULL && idx<100)
+							{
+								local_fn=old_local_fn+"_"+convert(idx);
+								++idx;
+								orig_file = Server->openFile(os_file_prefix(local_fn), MODE_RW);
+							}
+							rename_queue.push_back(std::make_pair(local_fn, old_local_fn));
+						}
+#endif
 
 						if(orig_file==NULL)
 						{
@@ -435,7 +493,15 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
 			}
 		}
 
-	} while (read>0);
+	} while (read>0 && !has_error);
+
+	if(!single_item)
+	{
+		if(!removeFiles(restore_path, folder_files, deletion_queue))
+		{
+			has_error=true;
+		}
+	}
 
     restore_download->queueStop();
 
@@ -451,6 +517,47 @@ bool RestoreFiles::downloadFiles(FileClient& fc, int64 total_size)
             ClientConnector::updateRestorePc(status_id, pcdone, server_token);
         }
     }
+
+#ifdef _WIN32
+	bool request_restart=false;
+
+	if(!has_error && !restore_download->hasError())
+	{
+		if(!deletion_queue.empty())
+		{
+			request_restart = true;
+
+			if(!deleteFilesOnRestart(deletion_queue))
+			{
+				has_error=true;
+			}
+		}
+
+		if(!rename_queue.empty())
+		{
+			request_restart = true;
+			if(!renameFilesOnRestart(rename_queue))
+			{
+				has_error=true;
+			}
+		}
+
+		rename_queue = restore_download->getRenameQueue();
+		if(!rename_queue.empty())
+		{
+			request_restart = true;
+			if(!renameFilesOnRestart(rename_queue))
+			{
+				has_error=true;
+			}
+		}
+	}	
+
+	if(request_restart)
+	{
+		ClientConnector::requestRestoreRestart();
+	}
+#endif
 
     if(restore_download->hasError())
     {
@@ -492,5 +599,153 @@ void RestoreFiles::restore_failed(FileClient& fc, THREADPOOL_TICKET metadata_dl)
 	Server->getThreadPool()->waitFor(metadata_dl);
 
 	ClientConnector::restoreDone(log_id, status_id, restore_id, false, server_token);
+}
+
+bool RestoreFiles::removeFiles( std::string restore_path,
+	std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue )
+{
+	bool ret=true;
+
+	bool get_files_error;
+	std::vector<SFile> files = getFiles(os_file_prefix(restore_path), &get_files_error);
+
+	if(get_files_error)
+	{
+		log("Error enumerating files in \""+restore_path+"\"", LL_ERROR);
+		ret=false;
+	}
+	else
+	{
+		for(size_t j=0;j<files.size();++j)
+		{
+			std::string fn_lower = strlower(files[j].name);
+
+			if(std::find(folder_files.top().begin(), folder_files.top().end(), fn_lower)==folder_files.top().end())
+			{
+				std::string cpath = restore_path+os_file_sep()+files[j].name;
+				if(files[j].isdir)
+				{
+					if(!os_remove_nonempty_dir(os_file_prefix(cpath)))
+					{
+						log("Error deleting directory \""+restore_path+"\"", LL_WARNING);
+#ifndef _WIN32
+						ret=false;
+#else
+						deletion_queue.push_back(cpath);
+#endif
+					}
+				}
+				else
+				{
+					if(!Server->deleteFile(os_file_prefix(cpath)))
+					{
+						log("Error deleting file \""+restore_path+"\"", LL_WARNING);
+
+#ifndef _WIN32
+						ret=false;
+#else
+						deletion_queue.push_back(cpath);
+#endif
+					}
+				}
+			}
+		}
+	}
+
+	return ret;
+}
+
+bool RestoreFiles::deleteFilesOnRestart( std::vector<std::string> &deletion_queue_dirs )
+{
+	for(size_t i=0;i<deletion_queue_dirs.size();++i)
+	{
+		int ftype = os_get_file_type(deletion_queue_dirs[i]);
+
+		if(ftype & EFileType_Directory)
+		{
+			if(!deleteFolderOnRestart(deletion_queue_dirs[i]))
+			{
+				log("Error deleting folder "+deletion_queue_dirs[i]+" on restart", LL_ERROR);
+				return false;
+			}
+		}
+		else
+		{
+			if(!deleteFileOnRestart(deletion_queue_dirs[i]))
+			{
+				log("Error deleting file "+deletion_queue_dirs[i]+" on restart", LL_ERROR);
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool RestoreFiles::deleteFileOnRestart( const std::string& fpath )
+{
+#ifndef _WIN32
+	return false;
+#else
+	BOOL b = MoveFileExW(Server->ConvertToWchar(os_file_prefix(fpath)).c_str(), NULL, MOVEFILE_DELAY_UNTIL_REBOOT);
+	if(b!=TRUE)
+	{
+		log("Error deleting file "+fpath+" on restart", LL_ERROR);
+	}
+	return b==TRUE;
+#endif
+}
+
+bool RestoreFiles::deleteFolderOnRestart( const std::string& fpath )
+{
+	std::vector<SFile> files = getFiles(os_file_prefix(fpath));
+
+	for(size_t i=0;i<files.size();++i)
+	{
+		if(files[i].isdir)
+		{
+			if(!deleteFolderOnRestart(fpath + os_file_sep() + files[i].name))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			if(!deleteFileOnRestart(fpath + os_file_sep() + files[i].name))
+			{
+				return false;
+			}
+		}
+	}
+
+#ifndef _WIN32
+	return false;
+#else
+	BOOL b = MoveFileExW(Server->ConvertToWchar(os_file_prefix(fpath)).c_str(), NULL, MOVEFILE_DELAY_UNTIL_REBOOT);
+	if(b!=TRUE)
+	{
+		log("Error deleting folder "+fpath+" on restart", LL_ERROR);
+	}
+	return b==TRUE;
+#endif
+}
+
+bool RestoreFiles::renameFilesOnRestart( std::vector<std::pair<std::string, std::string> >& rename_queue )
+{
+#ifndef _WIN32
+	return false;
+#else
+	for(size_t i=0;i<rename_queue.size();++i)
+	{
+		BOOL b = MoveFileExW(Server->ConvertToWchar(os_file_prefix(rename_queue[i].first)).c_str(), 
+			Server->ConvertToWchar(os_file_prefix(rename_queue[i].second)).c_str(), MOVEFILE_DELAY_UNTIL_REBOOT);
+		if(b!=TRUE)
+		{
+			log("Error renaming "+rename_queue[i].first+" to "+rename_queue[i].second+" on Windows restart", LL_ERROR);
+			return false;
+		}
+	}
+	return true;
+#endif
 }
 

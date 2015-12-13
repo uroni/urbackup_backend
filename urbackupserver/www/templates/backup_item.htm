@@ -15,7 +15,9 @@
 					<th style="width: 150px" class="tabHeaderRight">{tSize}</th>
 					<th style="width: 150px" class="tabHeaderRight">{tCreated}</th>
 					<th style="width: 150px" class="tabHeaderRight">{tLast modified}</th>
+					<th style="width: 150px" class="tabHeaderRight">{tLast accessed}</th>
 					<th style="width: 150px" class="tabHeaderRight">{tBackup time}</th>
+					<th style="width: 150px" class="tabHeaderRight">{tVersion}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -24,9 +26,11 @@
 						<td style="cursor: pointer">&nbsp;</td>
 						<td style="cursor: pointer">{name|s}</td>
 						<td style="cursor: pointer">{size|s}</td>
-						<td style="cursor: pointer">{created|s}</td>
-						<td style="cursor: pointer">{last_modified|s}</td>
+						<td style="cursor: pointer">{creat|s}</td>
+						<td style="cursor: pointer">{mod|s}</td>
+						<td style="cursor: pointer">{access|s}</td>
 						<td style="cursor: pointer">{backuptime|s}</td>
+						{?has_version}<td style="cursor: pointer; vertical-align: bottom" valign="bottom" rowspan="{rowspan}">{version}</td>{/has_version}
 					</tr>
 				{/items}
 			</tbody>

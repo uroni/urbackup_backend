@@ -1348,12 +1348,12 @@ function show_backups2(data)
 		
 		if(els.length>1 && (els[1].length>0 || els.length>2))
 		{
-			cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+data.backupid+")\">"+data.backuptime+"</a> > ";
+			cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+data.backupid+")\">"+format_unix_timestamp(data.backuptime)+"</a> > ";
 			rows+=dustRender("backups_files_row", {size:"&nbsp;", name:"..", proc:"Files", path: last_path, clientid: data.clientid, backupid:data.backupid});
 		}
 		else
 		{
-			cp+="<strong>"+data.backuptime+"</strong>"
+			cp+="<strong>"+format_unix_timestamp(data.backuptime)+"</strong>"
 		}
 		
 		for(var i=0;i<data.files.length;++i)
@@ -1361,7 +1361,7 @@ function show_backups2(data)
 			var obj=data.files[i];
 			if(obj.dir)
 			{
-				obj.size="&nbsp;";
+				obj.size="";
 				obj.proc="Files";
 			}
 			else
@@ -1369,12 +1369,40 @@ function show_backups2(data)
 				obj.size=format_size(obj.size);				
 				obj.proc="FilesDL";
 			}
+			
+			if(obj.creat==0)
+			{
+				obj.creat="-";
+			}
+			else
+			{
+				obj.creat=format_unix_timestamp(obj.creat);
+			}
+			
+			if(obj.mod==0)
+			{
+				obj.mod="-";
+			}
+			else
+			{	
+				obj.mod=format_unix_timestamp(obj.mod);
+			}
+			
+			if(obj.access==0)
+			{
+				obj.access="-";
+			}
+			else
+			{	
+				obj.access=format_unix_timestamp(obj.access);
+			}
+			
 			obj.clientid=data.clientid;
 			obj.backupid=data.backupid;
 			obj.path=encodeURIComponent(path+"/"+obj.name).replace(/'/g,"%27");
 			obj.list_items=true;
-				
-			rows+=dustRender("backups_files_row", obj);
+			
+			data.files[i]=obj;
 		}
 		
 		for(var i=0;i<els.length;++i)
@@ -1397,7 +1425,13 @@ function show_backups2(data)
 			}
 		}
 		
-		var obj = {rows: rows,
+		var server_confirms_restore="false";
+		if(data.server_confirms_restore)
+		{
+			server_confirms_restore="true";
+		}
+		
+		var obj = {files: data.files, can_restore: data.can_restore, server_confirms_restore: server_confirms_restore,
 			ses: g.session, clientname: data.clientname,
 			clientid: data.clientid, cpath: cp, backuptime: format_unix_timestamp(data.backuptime),
 			backupid: data.backupid, path: encodeURIComponent(path).replace(/'/g,"%27") };
@@ -1410,7 +1444,6 @@ function show_backups2(data)
 		if( data.files.length>0 )
 		{
 			obj.download_zip=true;
-			obj.restore=true;
 		}
 		
 		ndata=dustRender("backups_files", obj);
@@ -1438,11 +1471,11 @@ function show_backups2(data)
 				
 				if(els.length>1 && (els[1].length>0 || els.length>2))
 				{
-					cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+g.last_browse_backupid+")\">"+g.last_browse_backuptime+"</a> > ";
+					cp+="<a href=\"javascript: tabMouseClickBackups("+data.clientid+", "+g.last_browse_backupid+")\">"+format_unix_timestamp(g.last_browse_backuptime)+"</a> > ";
 				}
 				else
 				{
-					cp+="<strong>"+g.last_browse_backuptime+"</strong>"
+					cp+="<strong>"+format_unix_timestamp(g.last_browse_backuptime)+"</strong>"
 				}
 				
 				for(var i=0;i<els.length;++i)
@@ -1469,6 +1502,9 @@ function show_backups2(data)
 		
 		var items = [];
 		
+		var lastitemhash="-";
+		var lastitemidx=-1;
+		
 		for(var i=0;i<data.files.length;++i)
 		{
 			var obj=data.files[i];
@@ -1486,6 +1522,61 @@ function show_backups2(data)
 			}
 			obj.clientid=data.clientid;
 			
+			if(obj.creat==0)
+			{
+				obj.creat="-";
+			}
+			else
+			{
+				obj.creat=format_unix_timestamp(obj.creat);
+			}
+			
+			if(obj.mod==0)
+			{
+				obj.mod="-";
+			}
+			else
+			{	
+				obj.mod=format_unix_timestamp(obj.mod);
+			}
+			
+			if(obj.access==0)
+			{
+				obj.access="-";
+			}
+			else
+			{
+				obj.access=format_unix_timestamp(obj.access);
+			}
+			
+			obj.backuptime = format_unix_timestamp(obj.backuptime);
+			
+			obj.rowspan=1;
+			obj.has_version=true;
+			obj.version=1;
+			
+			if(obj.shahash && lastitemhash==obj.shahash)
+			{
+				items[lastitemidx].rowspan+=1;
+				obj.has_version=false;
+				obj.version=items[lastitemidx].version;
+			}
+			else if(obj.shahash)
+			{
+				lastitemidx=i;
+				lastitemhash=obj.shahash;
+			}
+			
+			if(obj.has_version)
+			{
+				for(var j=0;j<items.length;++j)
+				{
+					if(items[j].has_version)
+					{
+						items[j].version+=1;
+					}
+				}
+			}
 				
 			items.push(obj);
 		}
@@ -1599,9 +1690,19 @@ function downloadZIP(clientid, backupid, path)
 {
 	location.href=getURL("backups", "sa=zipdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"));
 }
-function restoreFiles(clientid, backupid, path)
+function restoreFiles(clientid, backupid, path, server_confirms_restore)
 {
 	if(!startLoading()) return;
+	
+	if(server_confirms_restore)
+	{
+		if(!confirm("Are you sure you want to restore the selected files? Existing files will be overwritten. Files created within the selected folder since the backup will be deleted. When in doubt please cancel and run a file backup before proceeding."))
+		{
+			stopLoading();
+			return;
+		}
+	}
+	
 	new getJSON("backups", "sa=clientdl&clientid="+clientid+"&backupid="+backupid+"&path="+path.replace(/\//g,"%2F"), restore_callback);
 }
 
@@ -2114,18 +2215,7 @@ function show_settings2(data)
 	
 	if(update_tabber)
 	{
-		var tabberOptions = { manualStartup:true,
-								'onClick': function(argsObj) {
-									g.tabberidx = argsObj.index; } };
-		tabberAutomatic(tabberOptions);
-		if(tabber_set_idx!=-1)
-		{
-			I('settings_tabber').tabber.tabShow(tabber_set_idx);
-		}
-		else
-		{
-			g.tabberidx=-1;
-		}
+		//TODO: sett column to tabber_set_idx
 	}
 	
 	if(update_tabber && data.sa && (data.sa=="clientsettings" || data.sa=="general") )
@@ -3050,7 +3140,18 @@ function show_logs2(data)
 				obj.wclass="warning";
 				
 			var action=0;
-			if(obj.image==0)
+			if(obj.restore!=0)
+			{
+				if(obj.image==0)
+				{
+					action=8;
+				}
+				else
+				{
+					action=9;
+				}
+			}
+			else if(obj.image==0)
 			{
 				if(obj.resumed==0)
 				{
@@ -3150,6 +3251,10 @@ function show_logs2(data)
 }
 function logs_draw_mail()
 {
+	if(!I('report_mail'))
+	{
+		return;
+	}
 	var d="";
 	var a=I('report_mail').value.split(';');
 	for(var i=0;i<a.length;++i)

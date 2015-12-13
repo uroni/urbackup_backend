@@ -113,6 +113,16 @@ void read_config_file(std::string fn, std::vector<std::string>& real_args)
 				}
 			}
 		}
+		if(settings->getValue("RESTORE", &val))
+		{
+			val = unquote_value(val);
+
+			if(!val.empty())
+			{
+				real_args.push_back("--allow_restore");
+				real_args.push_back(strlower(unquote_value(val)));
+			}
+		}
 	}	
 
 	if(destroy_server)
@@ -179,6 +189,16 @@ int main(int argc, char* argv[])
 			false, "", "path", cmd);
 #endif
 
+		std::vector<std::string> restore_arg_vals;
+		restore_arg_vals.push_back("client-confirms");
+		restore_arg_vals.push_back("server-confirms");
+		restore_arg_vals.push_back("disabled");
+
+		TCLAP::ValuesConstraint<std::string> restore_arg_constraint(restore_arg_vals);
+		TCLAP::ValueArg<std::string> restore_arg("r", "restore",
+			"Specifies if restores are allowed and where they have to be confirmed",
+			false, "client-confirms", &restore_arg_constraint, cmd);
+
 		cmd.parse(argc, argv);
 
 		std::vector<std::string> real_args;
@@ -216,6 +236,11 @@ int main(int argc, char* argv[])
 		{
 			real_args.push_back("--internet_only_mode");
 			real_args.push_back("true");
+		}
+		if(std::find(real_args.begin(), real_args.end(), "--allow_restore")==real_args.end())
+		{
+			real_args.push_back("--allow_restore");
+			real_args.push_back(restore_arg.getValue());
 		}
 		return run_real_main(real_args);
 	}

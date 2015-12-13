@@ -8,6 +8,7 @@
 #include "../urbackupcommon/fileclient/FileClientChunked.h"
 #include "../Interface/Database.h"
 #include <memory>
+#include <stack>
 
 
 class RestoreFiles : public IThread, public FileClient::ReconnectionCallback, public FileClientChunked::ReconnectionCallback
@@ -37,7 +38,17 @@ private:
 	int64 calculateDownloadSize();
 
 	bool downloadFiles(FileClient& fc, int64 total_size);
-	
+
+	bool removeFiles( std::string restore_path, std::stack<std::vector<std::string> > &folder_files, std::vector<std::string> &deletion_queue );
+
+	bool deleteFilesOnRestart(std::vector<std::string> &deletion_queue);
+
+	bool deleteFileOnRestart(const std::string& fpath);
+
+	bool deleteFolderOnRestart(const std::string& fpath);
+
+	bool renameFilesOnRestart(std::vector<std::pair<std::string, std::string> >& rename_queue);
+
 	std::auto_ptr<FileClientChunked> createFcChunked();
 
 	int64 restore_id;

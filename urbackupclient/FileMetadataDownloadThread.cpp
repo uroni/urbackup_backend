@@ -364,6 +364,12 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 		has_error=true;
 	}
 
+	if(!read_stat.getVarInt(&basic_info.ChangeTime.QuadPart))
+	{
+		restore.log("Error getting LastWriteTime of file \""+output_fn+"\".", LL_ERROR);
+		has_error=true;
+	}
+
 	if(SetFileInformationByHandle(hFile, FileBasicInfo, &basic_info, sizeof(basic_info))!=TRUE)
 	{
 		restore.log("Error setting file attributes of file \""+output_fn+"\".", LL_ERROR);
@@ -652,6 +658,14 @@ bool FileMetadataDownloadThread::applyOsMetadata( IFile* metadata_f, const std::
 }
 
 #endif //_WIN32
+
+
+void FileMetadataDownloadThread::shutdown()
+{
+	fc.Shutdown();
+}
+
+
 
 } //namespace client
 

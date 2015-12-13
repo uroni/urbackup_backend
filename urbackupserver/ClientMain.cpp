@@ -1285,6 +1285,22 @@ bool ClientMain::updateCapabilities(void)
 		{
 			protocol_versions.select_sha_version=watoi(it->second);
 		}
+		it=params.find("RESTORE");
+		if(it!=params.end())
+		{
+			if(it->second=="client-confirms")
+			{
+				ServerStatus::setRestore(clientname, ERestore_client_confirms);
+			}
+			else if(it->second=="server-confirms")
+			{
+				ServerStatus::setRestore(clientname, ERestore_server_confirms);
+			}
+			else
+			{
+				ServerStatus::setRestore(clientname, ERestore_disabled);
+			}			
+		}
 	}
 
 	return !cap.empty();

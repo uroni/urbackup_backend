@@ -136,7 +136,11 @@ bool FileMetadataPipe::readStdoutIntoBuffer( char* buf, size_t buf_avail, size_t
 					
 			CWData meta_data;
 			meta_data.addChar(1);
+#ifdef _WIN32
 			meta_data.addVarInt(file_meta.created);
+#else
+			meta_data.addVarInt(0);
+#endif
 			meta_data.addVarInt(file_meta.last_modified);
 			meta_data.addVarInt(file_meta.accessed);
 			meta_data.addVarInt(folder_items);
@@ -355,12 +359,6 @@ void FileMetadataPipe::forceExitWait()
 }
 
 #ifdef _WIN32
-
-int64 to_int64(FILETIME ft)
-{
-	return static_cast<int64>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime;
-}
-
 bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t& read_bytes )
 {
 	if(metadata_buffer_size-metadata_buffer_off>0)
@@ -385,8 +383,8 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 		backup_read_state = 0;
 		backup_read_context=NULL;
 
-		BY_HANDLE_FILE_INFORMATION file_information;
-		if(GetFileInformationByHandle(hFile, &file_information)==FALSE)
+		FILE_BASIC_INFO file_information;
+		if(GetFileInformationByHandleEx(hFile, FileBasicInfo, &file_information, sizeof(file_information))==FALSE)
 		{
 			errpipe->Write("Error getting file attributes of \""+local_fn+"\". Last error: "+convert((int)GetLastError())+"\n");
 			return false;
@@ -394,10 +392,11 @@ bool FileMetadataPipe::transmitCurrMetadata( char* buf, size_t buf_avail, size_t
 
 		CWData data;
 		data.addChar(1);
-		data.addUInt(file_information.dwFileAttributes);
-		data.addVarInt(to_int64(file_information.ftCreationTime));
-		data.addVarInt(to_int64(file_information.ftLastAccessTime));
-		data.addVarInt(to_int64(file_information.ftLastWriteTime));
+		data.addUInt(file_information.FileAttributes);
+		data.addVarInt(file_information.CreationTime.QuadPart);
+		data.addVarInt(file_information.LastAccessTime.QuadPart);
+		data.addVarInt(file_information.LastWriteTime.QuadPart);
+		data.addVarInt(file_information.ChangeTime.QuadPart);
 
 		_u32 data_size = little_endian(static_cast<_u32>(data.getDataSize()));
 		memcpy(metadata_buffer.data(), &data_size, sizeof(data_size));

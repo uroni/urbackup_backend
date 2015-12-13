@@ -199,6 +199,21 @@ bool RestoreDownloadThread::load_file( SQueueItem todl )
 	{
 		dest_f.reset(Server->openFile(os_file_prefix(todl.destfn), MODE_WRITE));
 
+#ifdef _WIN32
+		if(dest_f.get()==NULL)
+		{
+			size_t idx=0;
+			std::string old_destfn=todl.destfn;
+			while(dest_f.get()==NULL && idx<100)
+			{
+				todl.destfn=old_destfn+"_"+convert(idx);
+				++idx;
+				dest_f.reset(Server->openFile(os_file_prefix(todl.destfn), MODE_WRITE));
+			}
+			rename_queue.push_back(std::make_pair(todl.destfn, old_destfn));
+		}
+#endif
+
 		if(dest_f.get()==NULL)
 		{
 			download_nok_ids.push_back(todl.id);
@@ -383,5 +398,10 @@ void RestoreDownloadThread::sleepQueue(IScopedLock& lock)
 		Server->wait(1000);
 		lock.relock(mutex.get());
 	}
+}
+
+std::vector<std::pair<std::string, std::string> > RestoreDownloadThread::getRenameQueue()
+{
+	return rename_queue;
 }
 

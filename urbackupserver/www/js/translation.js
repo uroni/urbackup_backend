@@ -787,6 +787,8 @@ translations.en = {
 "Minimize": "Minimize",
 "Maximize": "Maximize",
 "ldap_settings": "LDAP/AD",
+"action_8": "File restore",
+"action_9": "Image restore",
 "action_1": "Incremental file backup",
 "action_2": "Full file backup",
 "action_3": "Incremental image backup",

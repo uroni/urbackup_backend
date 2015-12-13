@@ -89,6 +89,8 @@ void* ClientConnector::backup_running_owner=NULL;
 std::vector<std::pair<std::string, IPipe*> > ClientConnector::fileserv_connections;
 RestoreOkStatus ClientConnector::restore_ok_status = RestoreOk_None;
 bool ClientConnector::status_updated= false;
+RestoreFiles* ClientConnector::restore_files = NULL;
+size_t ClientConnector::needs_restore_restart = 0;
 
 
 
@@ -2665,6 +2667,11 @@ void ClientConnector::sendStatus()
 		ret+="&restore_ask=true";
 	}
 
+	if(needs_restore_restart>0)
+	{
+		ret+="&needs_restore_restart="+convert(needs_restore_restart);
+	}
+
 	tcpstack.Send(pipe, ret);
 
 	db->destroyAllQueries();
@@ -2810,6 +2817,12 @@ bool ClientConnector::sendChannelPacket(const SChannel& channel, const std::stri
 {
     CTCPStack localstack(channel.internet_connection);
     return localstack.Send(channel.pipe, msg) == msg.size();
+}
+
+void ClientConnector::requestRestoreRestart()
+{
+	IScopedLock lock(backup_mutex);
+	++needs_restore_restart;
 }
 
 

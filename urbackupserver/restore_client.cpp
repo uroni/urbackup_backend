@@ -116,20 +116,35 @@ namespace
 
 		void operator()()
 		{
-			if(!createFilelist(foldername, hashfoldername, 0, skip_special_root))
-			{
-				return;
-			}
-
 			IDatabase* db = Server->getDatabase(Server->getThreadID(), URBACKUPDB_SERVER);
 			ServerBackupDao backup_dao(db);
 
 			std::string identity = ServerSettings::generateRandomAuthKey(25);
 			backup_dao.addRestore(restore_clientid, folder_log_name, identity);
-			int64 restore_id = db->getLastInsertID();
-			size_t status_id = ServerStatus::startProcess(curr_clientname, sa_restore);
 
-			logid_t log_id = ServerLogger::getLogId(restore_clientid);
+			restore_id = db->getLastInsertID();
+			status_id = ServerStatus::startProcess(curr_clientname, sa_restore_file);
+
+			log_id = ServerLogger::getLogId(restore_clientid);
+
+			if(!createFilelist(foldername, hashfoldername, 0, skip_special_root))
+			{
+				ServerStatus::stopProcess(curr_clientname, status_id);
+
+				int errors=0;
+				int warnings=0;
+				int infos=0;
+				std::string logdata=ServerLogger::getLogdata(log_id, errors, warnings, infos);
+
+				backup_dao.saveBackupLog(restore_clientid, errors, warnings, infos, 0,
+					0, 0, 1);
+
+				backup_dao.saveBackupLogData(db->getLastInsertID(), logdata);
+
+				backup_dao.setRestoreDone(0, restore_id);
+
+				return;
+			}		
 
 			fileserv->addIdentity(identity);
 			fileserv->shareDir("clientdl_filelist", filelist_f->getFilename(), identity);
@@ -167,7 +182,10 @@ namespace
 			const std::vector<SFile> files = getFiles(os_file_prefix(foldername), &has_error);
 
 			if(has_error)
+			{
+				ServerLogger::Log(log_id, "Cannot read files from folder "+foldername+". Cannot start restore.", LL_ERROR);
 				return false;
+			}
 
 			bool ret=true;
 
@@ -212,12 +230,16 @@ namespace
 					has_metadata = true;
 				}
 
+				if(!has_metadata)
+				{
+					ServerLogger::Log(log_id, "Cannot read file metadata of file "+filename+" from "+metadataname+". Cannot start restore.", LL_ERROR);
+					return false;
+				}
+
 				std::string extra;
 
-				std::string fn_utf8 = (file.name);
-
 				if(!metadata.orig_path.empty() &&
-					(depth==0 || metadata.orig_path.find(fn_utf8)!=metadata.orig_path.size()-fn_utf8.size()))
+					(depth==0 || metadata.orig_path.find(file.name)!=metadata.orig_path.size()-file.name.size()))
 				{
                     extra="&orig_path="+EscapeParamString(metadata.orig_path);
 				}
@@ -225,6 +247,11 @@ namespace
 				if(!metadata.shahash.empty())
 				{
 					extra+="&shahash="+base64_encode_dash(metadata.shahash);
+				}
+
+				if(depth==0 && !filter_fns.empty())
+				{
+					extra+="&single_item=1";
 				}
 
 				writeFileItem(filelist_f, file, extra);
@@ -256,10 +283,13 @@ namespace
 		std::vector<std::string> tokens;
 		bool skip_special_root;
 		std::string folder_log_name;
+		int64 restore_id;
+		size_t status_id;
+		logid_t log_id;
 	};
 }
 
-bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, const std::string& foldername, const std::string& hashfoldername,
+bool create_clientdl_thread(const std::string& curr_clientname, int curr_clientid, int restore_clientid, std::string foldername, std::string hashfoldername,
 	const std::string& filter, bool token_authentication, const std::vector<backupaccess::SToken> &backup_tokens, const std::vector<std::string> &tokens, bool skip_hashes,
 	const std::string& folder_log_name)
 {
@@ -268,6 +298,16 @@ bool create_clientdl_thread(const std::string& curr_clientname, int curr_clienti
 	if(filelist_f==NULL)
 	{
 		return false;
+	}
+
+	if(!foldername.empty() && foldername[foldername.size()-1]==os_file_sep()[0])
+	{
+		foldername = foldername.substr(0, foldername.size()-1);
+	}
+
+	if(!hashfoldername.empty() && hashfoldername[hashfoldername.size()-1]==os_file_sep()[0])
+	{
+		hashfoldername = hashfoldername.substr(0, hashfoldername.size()-1);
 	}
 
 	Server->getThreadPool()->execute(new ClientDownloadThread(curr_clientname, curr_clientid, restore_clientid, 

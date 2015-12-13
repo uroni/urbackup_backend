@@ -19,7 +19,8 @@ enum SStatusAction
 	sa_resume_incr_file=5,
 	sa_resume_full_file=6,
 	sa_cdp_sync=7,
-	sa_restore=8,
+	sa_restore_file=8,
+	sa_restore_imge=9,
 	sa_update
 };
 
@@ -29,6 +30,13 @@ enum SStatusError
 	se_ident_error,
 	se_authentication_error,
 	se_too_many_clients
+};
+
+enum ERestore
+{
+	ERestore_disabled,
+	ERestore_client_confirms,
+	ERestore_server_confirms
 };
 
 class IPipe;
@@ -62,7 +70,7 @@ struct SProcess
 struct SStatus
 {
 	SStatus(void){ online=false; has_status=false;r_online=false; clientid=0; 
-		comm_pipe=NULL; status_error=se_none; running_jobs=0; }
+		comm_pipe=NULL; status_error=se_none; running_jobs=0; restore=ERestore_disabled; }
 
 	std::string client;
 	int clientid;
@@ -76,6 +84,7 @@ struct SStatus
 	std::string os_version_string;
 	std::vector<SProcess> processes;
 	int running_jobs;
+	ERestore restore;
 };
 
 class ServerStatus
@@ -94,6 +103,8 @@ public:
 	static void setOSVersionString(const std::string &clientname, const std::string& os_version_string);
 	static bool sendToCommPipe(const std::string &clientname, const std::string& msg);
 	static void setClientId(const std::string &clientname, int clientid);
+	static void setRestore(const std::string &clientname, ERestore restore);
+	static bool canRestore(const std::string &clientname, bool& server_confirms);
 
 	static void init_mutex(void);
 	static void destroy_mutex(void);

@@ -90,6 +90,8 @@ public:
 
     bool hasError();
 
+	std::vector<std::pair<std::string, std::string> > getRenameQueue();
+
 private:
 
 	void sleepQueue(IScopedLock& lock);
@@ -110,4 +112,6 @@ private:
 	bool is_offline;
 
 	const std::string& client_token;
+
+	std::vector<std::pair<std::string, std::string> > rename_queue;
 };

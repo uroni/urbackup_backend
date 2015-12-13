@@ -89,6 +89,7 @@ struct SChannel
 };
 
 struct SVolumesCache;
+class RestoreFiles;
 
 const unsigned int x_pingtimeout=180000;
 
@@ -130,6 +131,8 @@ public:
 	static bool restoreDone(int64 log_id, int64 status_id, int64 restore_id, bool success, const std::string& identity);
 
 	static IPipe* getFileServConnection(const std::string& server_token, unsigned int timeoutms);
+
+	static void requestRestoreRestart();
 
 private:
 	bool checkPassword(const std::string &cmd, bool& change_pw);
@@ -263,7 +266,9 @@ private:
 	static bool has_file_changes;
 	static std::vector<std::pair<std::string, IPipe*> > fileserv_connections;
 	static RestoreOkStatus restore_ok_status;
+	static RestoreFiles* restore_files;
 	static bool status_updated;
+	static size_t needs_restore_restart;
 
 	IFile *hashdatafile;
 	unsigned int hashdataleft;

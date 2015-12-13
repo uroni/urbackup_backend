@@ -242,7 +242,11 @@ bool FullFileBackup::doFileBackup()
 				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
-					orig_sep = (extra_params["orig_sep"]);
+					str_map::iterator it_orig_sep = extra_params.find("orig_sep");
+					if(it_orig_sep!=extra_params.end())
+					{
+						orig_sep = it_orig_sep->second;
+					}
 					if(orig_sep.empty()) orig_sep="\\";
 				}
 
@@ -501,7 +505,7 @@ bool FullFileBackup::doFileBackup()
 		else
 		{
 			ServerStatus::setProcessPcDone(clientname, status_id,
-				(std::min)(100,(int)(((float)fc.getReceivedDataBytes())/((float)files_size/100.f)+0.5f)));
+				(std::min)(100,(int)(((float)fc.getReceivedDataBytes() + linked_bytes)/((float)files_size/100.f)+0.5f)));
 		}
 
 		ServerStatus::setProcessQueuesize(clientname, status_id,

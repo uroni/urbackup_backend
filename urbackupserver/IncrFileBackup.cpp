@@ -470,7 +470,11 @@ bool IncrFileBackup::doFileBackup()
 				if(has_orig_path)
 				{
 					curr_orig_path = metadata.orig_path;
-					orig_sep = base64_decode_dash((extra_params["orig_sep"]));
+					str_map::iterator it_orig_sep = extra_params.find("orig_sep");
+					if(it_orig_sep!=extra_params.end())
+					{
+						orig_sep = it_orig_sep->second;
+					}
 					if(orig_sep.empty()) orig_sep="\\";
 				}
 
@@ -1018,7 +1022,8 @@ bool IncrFileBackup::doFileBackup()
 		else
 		{
 			ServerStatus::setProcessPcDone(clientname, status_id,
-				(std::min)(100,(int)(((float)(fc.getReceivedDataBytes() + (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0) + linked_bytes))/((float)files_size/100.f)+0.5f)));
+				(std::min)(100,(int)(((float)(fc.getReceivedDataBytes()
+				+ (fc_chunked.get()?fc_chunked->getReceivedDataBytes():0) + linked_bytes))/((float)files_size/100.f)+0.5f)) );
 		}
 
 		ServerStatus::setProcessQueuesize(clientname, status_id,

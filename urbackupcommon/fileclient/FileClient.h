@@ -117,11 +117,11 @@ public:
 		void setProgressLogCallback(FileClient::ProgressLogCallback* cb);
 
 		_u32 Flush();
+
+		bool Reconnect(void);
               
 private:
 		void bindToNewInterfaces();
-
-		bool Reconnect(void);
 
 		void fillQueue();
 

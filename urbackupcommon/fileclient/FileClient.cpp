@@ -1470,6 +1470,7 @@ _u32 FileClient::InformMetadataStreamEnd( const std::string& server_token )
 	if(stack.Send( tcpsock, data.getDataPtr(), data.getDataSize() )!=data.getDataSize())
 	{
 		Server->Log("Timeout during sending metadata stream end (1)", LL_ERROR);
+		return ERR_TIMEOUT;
 	}
 
 	while(true)

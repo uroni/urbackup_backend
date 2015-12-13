@@ -81,7 +81,6 @@ private:
 
 
 bool DeleteFileInt(std::string pFilename);
-bool DeleteFileInt(std::string pFilename);
 
 #endif //FILE_H
 

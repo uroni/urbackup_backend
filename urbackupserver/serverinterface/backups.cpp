@@ -588,6 +588,16 @@ namespace backupaccess
 				ret.set("clientname", clientname);
 				ret.set("clientid", t_clientid);							
 				ret.set("path", u_path);
+				bool server_confirms;
+				if(ServerStatus::canRestore(clientname, server_confirms))
+				{
+					ret.set("can_restore", true);
+					if(server_confirms)
+					{
+						ret.set("server_confirms_restore", true);
+					}
+				}
+				
 
 				if(backupid)
 				{

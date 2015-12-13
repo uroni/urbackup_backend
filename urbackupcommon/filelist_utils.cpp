@@ -67,7 +67,14 @@ void writeFileItem(IFile* f, SFile cf)
 {
 	if(cf.isdir)
 	{
-		writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\" 0 "+convert(cf.last_modified)+"\n");
+		if(cf.name!="..")
+		{
+			writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\" 0 "+convert(cf.last_modified)+"\n");
+		}
+		else
+		{
+			writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\"\n");
+		}		
 	}
 	else
 	{
@@ -81,13 +88,19 @@ void writeFileItem(IFile* f, SFile cf, std::string extra)
 
 	if(cf.isdir)
 	{
-		writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\" 0 "+convert(cf.last_modified)
-			+extra+"\n");
+		if(cf.name!="..")
+		{
+			writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\" 0 "+convert(cf.last_modified)
+				+extra+"\n");
+		}
+		else
+		{
+			writeFileRepeat(f, "d\""+escapeListName((cf.name))+"\""+extra+"\n");
+		}
+		
 	}
 	else
 	{
-		
-
 		writeFileRepeat(f, "f\""+escapeListName((cf.name))+"\" "+convert(cf.size)+" "+convert(cf.last_modified)
 			+extra+"\n");
 	}
@@ -117,7 +130,7 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std:
 			t_name.erase(t_name.size()-1,1);
 			data.name=(t_name);
 			t_name="";
-			if(data.isdir)
+			if(data.isdir && data.name=="..")
 			{
 				if(ch=='\n')
 				{
@@ -169,6 +182,15 @@ bool FileListParser::nextEntry( char ch, SFile &data, std::map<std::string, std:
 		if(ch!=' ')
 		{
 			t_name+=ch;
+		}
+		else if(data.isdir && ch=='\n')
+		{
+			reset();
+			if(extra!=NULL)
+			{
+				extra->clear();
+			}
+			return true;
 		}
 		else
 		{

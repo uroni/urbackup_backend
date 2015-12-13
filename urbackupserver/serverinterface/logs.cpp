@@ -123,7 +123,7 @@ ACTION_IMPL(logs)
 				bed="(l.warnings>0 OR l.errors>0)";
 			}
 			qstr="SELECT l.id AS id, c.name AS name, strftime('"+helper.getTimeFormatString()+"', l.created) AS time, l.errors AS errors, l.warnings AS warnings, "
-				"l.image AS image, l.incremental AS incremental, l.resumed AS resumed FROM logs l INNER JOIN clients c ON l.clientid=c.id";
+				"l.image AS image, l.incremental AS incremental, l.resumed AS resumed, l.restore AS restore FROM logs l INNER JOIN clients c ON l.clientid=c.id";
 
 			if(!v_filter.empty())
 			{
@@ -151,6 +151,7 @@ ACTION_IMPL(logs)
 				obj.set("image", watoi(res[i]["image"]));
 				obj.set("incremental", watoi(res[i]["incremental"]));
 				obj.set("resumed", watoi(res[i]["resumed"]));
+				obj.set("restore", watoi(res[i]["restore"]));
 				logs.add(obj);
 			}
 			ret.set("logs", logs);
