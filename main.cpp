@@ -599,7 +599,7 @@ void my_stop_fcn(void)
 	{
 		Server->ShutdownPlugins();
 	}
-	nt_service&  service = nt_service::instance("CompiledServer");
+	nt_service&  service = nt_service::instance(L"UrBackupBackend");
 	service.stop(0);
 }
 
@@ -647,7 +647,7 @@ int main(int argc, char *argv[])
 	else
 	{
 		// creates an access point to the instance of the service framework
-		nt_service&  service = nt_service::instance("CompiledServer");
+		nt_service&  service = nt_service::instance(L"UrBackupBackend");
 
 		// register "my_service_main" to be executed as the service main method 
 		service.register_service_main( my_service_main );
