@@ -205,9 +205,14 @@ function try_anonymous_login(data)
 		return;
 	}
 	
-	if(document.cookie.indexOf("bootstrap_maximize=true")!=-1)
+	if(document.cookie.indexOf("bootstrap_maximize=true")!=-1
+		|| (window.localStorage && localStorage.getItem("bootstrap_maximize")==="true") )
 	{
 		g.maximize_or_minimize();
+	}
+	else
+	{
+		I('maximize').innerHTML=trans('Maximize'); 
 	}
 	
 	var params;
@@ -3714,14 +3719,24 @@ g.maximize_or_minimize = function()
 	if(I('boostrap_container').className==="container")
 	{
 		I('boostrap_container').className='container-fluid';
-		I('maximize').innerHTML=trans('Minimize'); 
-		document.cookie="bootstrap_maximize=true; max-age="+365*24*60*60+"; path=/";
+		I('maximize').innerHTML=trans('Minimize');
+		var d = new Date();
+		d.setTime(d.getTime() + 365*24*60*60*1000);		
+		document.cookie="bootstrap_maximize=true; expires="+d.toUTCString()+"";
+		if(window.localStorage)
+		{
+			window.localStorage.setItem('bootstrap_maximize', 'true');
+		}
 	}
 	else
 	{
 		I('boostrap_container').className='container';
 		I('maximize').innerHTML=trans('Maximize'); 
-		document.cookie="bootstrap_maximize=; path=/";
+		document.cookie="bootstrap_maximize=";
+		if(window.localStorage)
+		{
+			window.localStorage.setItem('bootstrap_maximize', 'false');
+		}
 	}
 	
 	if($("#status_table"))
